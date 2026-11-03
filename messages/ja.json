@@ -23,7 +23,7 @@
     "history": "履歴",
     "extraction": "抽出",
     "library": "ライブラリ",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "screening": "スクリーニング",
     "settings": "設定",
     "save": "保存",
@@ -292,12 +292,12 @@
       "noMemberLimit": "メンバー数の上限なし",
       "southernFeature1": "無料の組織のすべて",
       "southernFeature2": "お問い合わせ後に組織へ追加されます",
-      "librariesName": "Evidence Libraries",
+      "librariesName": "Evidence Communities",
       "librariesDescription": "リクエストに応じて組織で有効にします。プランとクレジットは変わりません。",
-      "librariesFeature1": "公開の Evidence Libraries",
+      "librariesFeature1": "公開の Evidence Communities",
       "librariesFeature2": "著者プロフィールの作成と編集",
       "librariesOn": "この組織で有効",
-      "openLibraries": "Evidence Libraries を開く"
+      "openLibraries": "Evidence Communities を開く"
     },
     "cancelScheduledDowngrade": "予約済みのダウングレードをキャンセル",
     "scheduled": "予約済み",
@@ -325,7 +325,7 @@
     "loading": "公開設定を読み込み中…",
     "storedHint": "保存済みの認証情報を使う場合は空欄にします",
     "saved": "公開設定を保存しました",
-    "activateHint": "設定を有効化すると、このライブラリに適用されます。",
+    "activateHint": "設定を有効化すると、このコミュニティに適用されます。",
     "failure": "認証情報を確認できませんでした。保存されていません。もう一度お試しください。",
     "zenodoRequired": "Crossref の有効時に必須です。ファイルは利用可能になり次第保存されます。",
     "zenodoHint": "ファイルを保存し、Zenodo DOI を作成します。",
@@ -348,8 +348,8 @@
     "depositorName": "登録者名",
     "email": "登録者のメールアドレス",
     "namespace": "DOI 名前空間",
-    "namespaceHint": "既定ではライブラリのアドレス名を使用します。",
-    "libraryName": "ライブラリ名",
+    "namespaceHint": "既定ではコミュニティのアドレス名を使用します。",
+    "libraryName": "コミュニティ名",
     "checking": "認証情報を確認中…",
     "needsVerification": "変更を保存する前に検証が必要です。",
     "verified": "確認済み {date}",
@@ -359,7 +359,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "アクセスできません",
-    "organizationFeatureDescription": "このワークスペースのプランに Evidence Libraries は含まれていません。",
+    "organizationFeatureDescription": "このワークスペースのプランに Evidence Communities は含まれていません。",
     "backToSearch": "検索に戻る",
     "loadingTitle": "ワークスペースを読み込み中",
     "loadingDescription": "認証済みワークスペースを準備しています。",
@@ -1607,14 +1607,14 @@
       "collection": "コレクション",
       "saved": "保存した論文",
       "screening": "スクリーニング",
-      "evidenceLibrary": "Evidence Library"
+      "evidenceLibrary": "Evidence Community"
     },
     "noSets": {
       "search": "保存した検索はまだありません。",
       "collection": "コレクションはまだありません。",
       "saved": "保存した論文はまだありません。",
       "screening": "完了したスクリーニングはまだありません。",
-      "evidenceLibrary": "Evidence Library はまだありません。"
+      "evidenceLibrary": "Evidence Community はまだありません。"
     },
     "papersToScreen": "スクリーニングする論文",
     "paperCount": "{count, plural, other {# 件}}",
@@ -1714,8 +1714,8 @@
     "apps": "件のアプリ",
     "revokeApp": "{app} を取り消す",
     "integrations": "連携",
-    "zoteroAbout": "チャットと Evidence Libraries でライブラリとグループを使えます",
-    "zoteroKeeps": "Evidence Libraries は既存のグループの同期を続けます",
+    "zoteroAbout": "チャットと Evidence Communities でライブラリとグループを使えます",
+    "zoteroKeeps": "Evidence Communities は既存のグループの同期を続けます",
     "connect": "接続",
     "disconnect": "接続を解除",
     "connectedTime": "{time}に接続",
@@ -1725,12 +1725,12 @@
     "picker": {
       "placeholder": "機関を選択",
       "search": "機関を検索",
-      "notSetUp": "レコードの機関名はライブラリのセットアップ後に表示されます。",
+      "notSetUp": "レコードの機関名はコミュニティのセットアップ後に表示されます。",
       "empty": "レコードにはまだ機関名がありません。",
       "none": "なし",
       "useTyped": "「{name}」を使う",
       "title": "機関を選択",
-      "description": "名前は、このライブラリのレコードから取得されます。",
+      "description": "名前は、このコミュニティのレコードから取得されます。",
       "colName": "機関",
       "colRecords": "レコード",
       "noMatch": "一致する機関はありません。",
@@ -1739,7 +1739,7 @@
     }
   },
   "evidenceLibraryConfiguration": {
-    "untitled": "無題のライブラリ",
+    "untitled": "無題のコミュニティ",
     "unsaved": "未保存の変更",
     "viewOnly": "閲覧のみ",
     "save": "保存",
@@ -1754,18 +1754,18 @@
     "fixFirst": "先に強調表示された項目を修正してください",
     "fixFirstToast": "強調表示された項目を修正してください",
     "fixFirstToastDescription": "保存する前に、確認が必要なセクションがあります。",
-    "activateDraftTitle": "このライブラリをセットアップして有効化しますか？",
+    "activateDraftTitle": "このコミュニティをセットアップして有効化しますか？",
     "activateDraftBody": "{name} をセットアップし、{address} で公開します。約 2 分かかります。",
     "activateDraftConfirm": "セットアップを開始",
     "activateTitle": "この版を有効化しますか？",
     "activateBody": "新しい版を公開します。約 2 分かかります。",
-    "activateBodySoftware": "これらの設定に必要な最新の Evidence Library ソフトウェアにも、ライブラリを更新します。そのため、もう少し時間がかかることがあります。",
+    "activateBodySoftware": "これらの設定に必要な最新の Evidence Community ソフトウェアにも、コミュニティを更新します。そのため、もう少し時間がかかることがあります。",
     "activateBodyUnsaved": "保存していない変更は、先に保存されます。",
     "activateConfirm": "有効化",
-    "activationError": "ライブラリを有効化できませんでした。もう一度試してください。",
+    "activationError": "コミュニティを有効化できませんでした。もう一度試してください。",
     "applying": "変更を適用しています",
     "operationFailed": "前回の有効化に失敗しました",
-    "backToLibraries": "ライブラリ一覧に戻る",
+    "backToLibraries": "コミュニティ一覧に戻る",
     "backToTop": "ページの先頭に戻る",
     "rail": {
       "aria": "設定のセクション",
@@ -1813,15 +1813,15 @@
       "storage": "ファイル",
       "application": "アプリ",
       "deployment": "ビルド",
-      "health_check": "ライブラリのページを確認しています",
+      "health_check": "コミュニティのページを確認しています",
       "coolify": "ビルド",
       "convex": "仕上げ中",
       "completed": "公開中"
     },
     "problems": {
       "notificationSchedule": "ダイジェストの曜日、時刻、タイムゾーンを正しく選んでください。",
-      "nameMissing": "ライブラリに名前を付けてください。",
-      "shortNameMissing": "ライブラリに短い名前を付けてください。",
+      "nameMissing": "コミュニティに名前を付けてください。",
+      "shortNameMissing": "コミュニティに短い名前を付けてください。",
       "partnerName": "助成パートナーごとに名前が必要です。",
       "badColour": "色のひとつが正しくありません。",
       "institutionName": "機関ごとに名前が必要です。",
@@ -1853,7 +1853,7 @@
       "consentVersion": "同意のバージョンは、1 以上の整数にしてください。",
       "aiKey": "OpenRouter のキーを追加してください。",
       "aiModel": "質問に答えるモデルを選んでください。",
-      "aiModelUnknown": "そのモデルは、ライブラリのソフトウェアでは提供されていません。別のモデルを選んでください。",
+      "aiModelUnknown": "そのモデルは、コミュニティのソフトウェアでは提供されていません。別のモデルを選んでください。",
       "homeStepName": "テキストのみのステップにはすべて名前を付けてください。",
       "homeLimit": "ホームページのテキストが長すぎるか、リストの項目が多すぎます。短くしてください。",
       "tagFilters": "タグフィルターには名前が、各項目にはタグが必要です。"
@@ -1888,16 +1888,16 @@
     "identity": {
       "description": "利用者に見える名前、訪問するアドレス、共有されたときの見た目を設定します。",
       "nameLabel": "名前",
-      "nameError": "ライブラリの名前を入力してください。",
+      "nameError": "コミュニティの名前を入力してください。",
       "shortNameLabel": "短い名前",
       "shortNameHint": "エクスポートファイル名、メールの件名、サイトをアプリとして固定したときに使われます。",
-      "shortNameError": "ライブラリの短い名前を入力してください。",
+      "shortNameError": "コミュニティの短い名前を入力してください。",
       "addressLabel": "公開アドレス",
       "addressHint": "独自のアドレスを追加するには、ドメインのセクションを使ってください。",
       "copyAddress": "アドレスをコピー",
       "copied": "コピーしました",
       "taglineLabel": "キャッチコピー",
-      "taglineHint": "ライブラリ検索の上に表示される見出しです。空のままにすると「検索」と表示されます。",
+      "taglineHint": "コミュニティ検索の上に表示される見出しです。空のままにすると「検索」と表示されます。",
       "taglinePlaceholder": "より良い判断のためのエビデンス",
       "descriptionLabel": "説明",
       "descriptionHint": "ホームページと検索結果に表示されます。",
@@ -1909,9 +1909,9 @@
       "partnerName": "パートナー名",
       "partnerPlaceholder": "パートナー名",
       "shareImageLabel": "共有画像",
-      "shareImageHint": "ライブラリをソーシャルメディアで共有するときに使われます。PNG、JPG、WEBP に対応しています。",
+      "shareImageHint": "コミュニティをソーシャルメディアで共有するときに使われます。PNG、JPG、WEBP に対応しています。",
       "showNameLabel": "ロゴの横の名前",
-      "showNameHint": "ロゴにライブラリ名が含まれている場合はオフにします。"
+      "showNameHint": "ロゴにコミュニティ名が含まれている場合はオフにします。"
     },
     "theme": {
       "description": "公開サイトのレイアウト、フォント、ロゴ、色を設定します。",
@@ -1934,7 +1934,7 @@
       "fontsHeading": "フォント",
       "headingFontLabel": "見出しのフォント",
       "bodyFontLabel": "本文のフォント",
-      "sampleHeading": "あなたのライブラリ",
+      "sampleHeading": "あなたのコミュニティ",
       "sampleBody": "公開サイトで本文の段落がどう見えるかの例です。",
       "logosHeading": "ロゴとブラウザーアイコン",
       "logoLightLabel": "ライトモードのロゴ",
@@ -1982,19 +1982,19 @@
       "add": "機関を追加"
     },
     "danger": {
-      "description": "このライブラリを削除します。慎重に操作してください。",
-      "deleteTitle": "ライブラリを削除",
+      "description": "このコミュニティを削除します。慎重に操作してください。",
+      "deleteTitle": "コミュニティを削除",
       "deleteHint": "サイト、アドレス、設定を削除します。",
-      "deleteButton": "ライブラリを削除"
+      "deleteButton": "コミュニティを削除"
     },
     "deleteDialog": {
-      "title": "このライブラリを削除しますか？",
+      "title": "このコミュニティを削除しますか？",
       "body": "{name}、そのアプリ、ファイル、アドレス {address} を削除します。この操作は取り消せません。",
       "typeToConfirm": "確認のため {name} と入力してください",
-      "confirm": "ライブラリを削除",
-      "startedTitle": "ライブラリを削除しています",
+      "confirm": "コミュニティを削除",
+      "startedTitle": "コミュニティを削除しています",
       "startedDescription": "{name} を削除しています。数秒かかります。",
-      "error": "ライブラリを削除できませんでした。実行中のライブラリの操作が終わってから、もう一度試してください。"
+      "error": "コミュニティを削除できませんでした。実行中のコミュニティの操作が終わってから、もう一度試してください。"
     },
     "links": {
       "labelLabel": "ラベル",
@@ -2009,8 +2009,8 @@
       "pageLabel": "ページ",
       "pages": {
         "home": "ホーム",
-        "library": "ライブラリ",
-        "digests": "ライブラリダイジェスト",
+        "library": "コミュニティ",
+        "digests": "コミュニティダイジェスト",
         "map": "マップ",
         "evidence": "エビデンスマップ",
         "contact": "連絡先",
@@ -2098,7 +2098,7 @@
       "disclaimer": "免責事項",
       "disclaimerHint": "すべてのページの下部に、小さな注記として表示されます。",
       "attribution": "帰属表示",
-      "attributionHint": "1 行で書いてください。例: ライブラリを運営している人や組織。",
+      "attributionHint": "1 行で書いてください。例: コミュニティを運営している人や組織。",
       "poweredBy": "提供: OpenScholar",
       "poweredByHint": "OpenScholar へのリンクを付けた小さな表示です。",
       "poweredByLocked": "有料プランで利用できます。"
@@ -2151,13 +2151,13 @@
       "pickedCount": "{count, plural, =0 {未選択} other {# 件を選択中}}"
     },
     "collections": {
-      "description": "ライブラリのデータベースにあるコレクションのうち、サイトに表示するものと、その順番を選びます。",
+      "description": "コミュニティのデータベースにあるコレクションのうち、サイトに表示するものと、その順番を選びます。",
       "shownHeading": "サイトに表示",
       "introHint": "各コレクションは絞り込みのグループになり、そのサブコレクションが選択肢になります。ドラッグして、サイトでの順番を決めてください。",
       "loading": "コレクションを読み込んでいます…",
-      "failed": "ライブラリのコレクションを読み込めませんでした。",
-      "notSetUp": "先にライブラリをセットアップしてください。その後、ライブラリの管理ページでコレクションを作成するか、Zotero から同期してください。",
-      "noneInDatabase": "コレクションはまだありません。ライブラリの管理ページで作成するか、Zotero から同期してください。",
+      "failed": "コミュニティのコレクションを読み込めませんでした。",
+      "notSetUp": "先にコミュニティをセットアップしてください。その後、コミュニティの管理ページでコレクションを作成するか、Zotero から同期してください。",
+      "noneInDatabase": "コレクションはまだありません。コミュニティの管理ページで作成するか、Zotero から同期してください。",
       "empty": "表示するコレクションはまだありません。",
       "records": "{count, plural, =1 {# 件のレコード} other {# 件のレコード}}",
       "titleLabel": "サイト上のタイトル",
@@ -2220,25 +2220,25 @@
         "failedAt": "{time} にインポートが失敗しました",
         "lastSuccess": "最後の成功: {when}",
         "retry": "インポートを再実行",
-        "retryStarted": "数秒以内にライブラリがこのソースをインポートします。",
-        "retryFailed": "今すぐインポートするようライブラリに依頼できませんでした。少し待ってからもう一度お試しください。",
+        "retryStarted": "数秒以内にコミュニティがこのソースをインポートします。",
+        "retryFailed": "今すぐインポートするようコミュニティに依頼できませんでした。少し待ってからもう一度お試しください。",
         "details": "技術的な詳細",
         "afterActivate": "有効化するとインポートされます",
         "startsSoon": "1 分以内に開始します",
         "failure": {
           "access_denied": "{provider} が保存済みのキーを拒否しました。接続で確認してから再実行してください。",
-          "owner_left": "このコレクションを追加した人が組織を離れたため、ライブラリはそのレコードを取り下げました。",
+          "owner_left": "このコレクションを追加した人が組織を離れたため、コミュニティはそのレコードを取り下げました。",
           "not_found": "{provider} でこのソースが見つからないか、保存済みのキーではアクセスできません。",
           "missing_key": "このソースの API キーが保存されていません。接続で追加してください。",
           "invalid_query": "{provider} が検索を拒否しました。検索を編集してから、もう一度有効化してください。",
-          "too_large": "このソースのレコード数がライブラリの上限を超えています。",
+          "too_large": "このソースのレコード数がコミュニティの上限を超えています。",
           "rate_limited": "{provider} がリクエストを制限しています。インポートは毎分再試行します。",
           "unavailable": "{provider} に接続できませんでした。インポートは毎分再試行します。",
           "interrupted": "インポートが途中で止まりました。自動的に再開します。",
           "internal": "インポートで予期しないエラーが発生しました。技術的な詳細で内容を確認できます。"
         }
       },
-      "description": "ライブラリのレコードの取得元です。",
+      "description": "コミュニティのレコードの取得元です。",
       "accountHeading": "Zotero アカウント",
       "notConnected": "未接続",
       "notConnectedHint": "一度サインインすると、グループが選択画面に表示されます。",
@@ -2275,7 +2275,7 @@
       "listLabel": "接続済みのソース",
       "connections": "接続",
       "connectionsTitle": "ソースの接続",
-      "connectionsDescription": "このライブラリのアカウントアクセスとインポート設定を管理します。",
+      "connectionsDescription": "このコミュニティのアカウントアクセスとインポート設定を管理します。",
       "providerTabs": "ソースの提供元",
       "addSource": "ソースを追加",
       "zoteroGroup": "Zotero グループ",
@@ -2291,7 +2291,7 @@
         "ownKey": "独自の API キー",
         "platformHint": "OpenScholar に含まれています。更新では変更されたレコードだけを取得します。",
         "keyLabel": "OpenAlex API キー",
-        "keyHint": "このライブラリで独自の OpenAlex API キーを使います。",
+        "keyHint": "このコミュニティで独自の OpenAlex API キーを使います。",
         "savedKey": "保存済みのキー {hint}",
         "keyPlaceholder": "OpenAlex API キーを入力",
         "saveKey": "API キーを保存",
@@ -2314,14 +2314,14 @@
         "processPdfs": "PDF を処理"
       },
       "removeTitle": "このグループを削除しますか？",
-      "removeBody": "取り込み済みのレコードはライブラリに残ります。今後の変更は取り込まれません。",
+      "removeBody": "取り込み済みのレコードはコミュニティに残ります。今後の変更は取り込まれません。",
       "removeConfirm": "削除",
       "health": {
         "connected": "接続済み",
         "paused": "一時停止中"
       },
       "tagRulesHeading": "Zotero のタグルール",
-      "tagRulesIntro": "Zotero のタグで、ライブラリがレコードをどう扱うかが決まります。非表示タグはノートと添付ファイルにも効きます。",
+      "tagRulesIntro": "Zotero のタグで、コミュニティがレコードをどう扱うかが決まります。非表示タグはノートと添付ファイルにも効きます。",
       "tagPlaceholder": "タグを追加…",
       "tagRules": {
         "hidden": {
@@ -2385,7 +2385,7 @@
       "collectionConnectFailed": "このコレクションを追加できませんでした。",
       "collectionPicker": {
         "title": "コレクションを追加",
-        "description": "あなたの OpenScholar コレクションです。チェックしたものをライブラリが追跡し、変更されると更新します。",
+        "description": "あなたの OpenScholar コレクションです。チェックしたものをコミュニティが追跡し、変更されると更新します。",
         "search": "コレクションを検索…",
         "colCollection": "コレクション",
         "noCollections": "まだコレクションがありません。",
@@ -2405,15 +2405,15 @@
           "passing": "主題に言及するだけ",
           "notAbout": "主題と関係ない"
         },
-        "keep": "ライブラリに残す: {grade}",
-        "inLibrary": "件がライブラリに",
+        "keep": "コミュニティに残す: {grade}",
+        "inLibrary": "件がコミュニティに",
         "keptOut": "件を除外",
         "reading": "読み取り中",
         "gradingAgain": "再評価中 {done, number} / {of, number}",
         "gradingNote": "すべてのレコードを再評価し終えるまで、下の評価は現在の主題のものです。",
         "gradedAgain": "件を再評価",
         "notGradedYet": "件が未評価",
-        "onLibraryKey": "ライブラリのキーで",
+        "onLibraryKey": "コミュニティのキーで",
         "toFinish": "で完了",
         "ofSample": "{size, number} 件中 {changed, number} 件",
         "changeInTrial": "が試行で評価が変わる",
@@ -2423,16 +2423,16 @@
         "gradeThem": "評価する",
         "currentSubject": "現在の主題",
         "newSubject": "新しい主題",
-        "startsOnActivate": "この設定を有効化し、ライブラリが新しい主題を取り込むと評価が始まります。",
-        "refused": "ライブラリは評価を始めませんでした: {reason}",
+        "startsOnActivate": "この設定を有効化し、コミュニティが新しい主題を取り込むと評価が始まります。",
+        "refused": "コミュニティは評価を始めませんでした: {reason}",
         "requestFailed": "評価を依頼できませんでした",
         "trialFailed": "試行が完了しませんでした",
-        "notRunning": "ライブラリはまだ稼働していません。",
+        "notRunning": "コミュニティはまだ稼働していません。",
         "underACent": "1 セント未満",
         "underAMinute": "1 分未満",
         "aboutMinutes": "約 {count} 分",
         "aboutHours": "約 {count} 時間",
-        "methods": "同じ読み取りで、各レコードの研究デザイン、著者自身が結果を統合したか、対象地域、抄録に数値の結果があるかも得られます。1 件あたり約 $0.000075。読み取りに失敗したレコードは未評価のままライブラリに入り、後で読み直されます。",
+        "methods": "同じ読み取りで、各レコードの研究デザイン、著者自身が結果を統合したか、対象地域、抄録に数値の結果があるかも得られます。1 件あたり約 $0.000075。読み取りに失敗したレコードは未評価のままコミュニティに入り、後で読み直されます。",
         "gradedOnceActive": "この設定が有効になると、レコードが評価されます。"
       }
     },
@@ -2516,16 +2516,16 @@
         "addTag": "タグを追加",
         "removeTag": "タグを削除",
         "pickerTitle": "{name} にタグを追加",
-        "pickerDescription": "ライブラリのタグ（使用数の多い順）。まだどのレコードにもないタグを入力するか、入力した文字を接頭辞として使えます。",
+        "pickerDescription": "コミュニティのタグ（使用数の多い順）。まだどのレコードにもないタグを入力するか、入力した文字を接頭辞として使えます。",
         "pickerSearch": "タグを検索",
         "colTag": "タグ",
         "colRecords": "レコード",
         "used": "追加済み",
         "loading": "タグを読み込んでいます",
-        "failed": "ライブラリのタグを読み込めませんでした",
-        "noTags": "ライブラリにはまだタグがありません",
+        "failed": "コミュニティのタグを読み込めませんでした",
+        "noTags": "コミュニティにはまだタグがありません",
         "noMatch": "一致するタグはありません",
-        "notSetUp": "ライブラリの設定後にタグが表示されます",
+        "notSetUp": "コミュニティの設定後にタグが表示されます",
         "useTyped": "\"{tag}\" を追加",
         "usePrefix": "\"{prefix}\" で始まるすべてのタグ",
         "labelFor": "{tag} の読者向け表示",
@@ -2589,12 +2589,12 @@
       "hints": {
         "themeSwitcher": "ライトモードとダークモードを選べるようにします。",
         "languageSwitcher": "サイトの表示言語を変えられるようにします。",
-        "collections": "ライブラリにコレクションを表示します。",
+        "collections": "コミュニティにコレクションを表示します。",
         "collectionNotes": "コレクションを選んだとき、そのコレクションの説明メモを表示します。",
         "countryFocus": "国のフィルター、出版物の国、国マップを表示します。",
         "authorFilter": "著者で絞り込めるようにします。",
         "yearsDropdown": "検索バーに年の選択欄を表示します。",
-        "downloads": "出版物とライブラリ全体の引用をダウンロードできるようにします。",
+        "downloads": "出版物とコミュニティ全体の引用をダウンロードできるようにします。",
         "atomFeed": "Atom フィードへのリンクを表示します。",
         "readerAccounts": "読者が OpenScholar でサインインして、レコードをブックマークしたりコレクションを保存したりできるようにします。"
       },
@@ -2656,20 +2656,20 @@
       "consentVersionHint": "Cookie の説明文を変えたら、この番号を上げてください。すべての訪問者に、もう一度確認されます。",
       "consentVersionError": "1 以上の整数を入力してください。"
     },
-    "updatingSoftware": "Evidence Library のソフトウェアを {rev} に更新しています",
+    "updatingSoftware": "Evidence Community のソフトウェアを {rev} に更新しています",
     "operationFlow": {
       "saving": "変更を保存中",
       "queued": "開始待ち",
       "assembling": "リリースを準備中",
       "validating": "設定を確認中",
-      "publishing": "ライブラリをビルド中",
+      "publishing": "コミュニティをビルド中",
       "activating": "公開準備中",
       "database": "データベースを作成中",
       "storage": "ファイルを準備中",
-      "application": "ライブラリを作成中",
-      "deployment": "ライブラリをビルド中",
+      "application": "コミュニティを作成中",
+      "deployment": "コミュニティをビルド中",
       "health_check": "公開準備中",
-      "coolify": "ライブラリを削除中",
+      "coolify": "コミュニティを削除中",
       "convex": "削除を完了中",
       "completed": "公開中"
     },
@@ -2678,7 +2678,7 @@
       "checking": "更新を確認しています…",
       "checkAgain": "もう一度確認",
       "checkError": "更新を確認できませんでした。もう一度試してください。",
-      "notRunning": "ライブラリが公開されると利用できます。",
+      "notRunning": "コミュニティが公開されると利用できます。",
       "updateAvailable": "更新があります",
       "upToDate": "最新です",
       "runningLabel": "稼働中",
@@ -2700,8 +2700,8 @@
         "reliability": "修正"
       },
       "update": "更新",
-      "updateTitle": "このライブラリを更新しますか？",
-      "updateBody": "ライブラリは最新の Evidence Library ソフトウェアで作り直されます。レコード、設定、アドレスは変わりません。約 1 分かかります。",
+      "updateTitle": "このコミュニティを更新しますか？",
+      "updateBody": "コミュニティは最新の Evidence Community ソフトウェアで作り直されます。レコード、設定、アドレスは変わりません。約 1 分かかります。",
       "updateConfirm": "今すぐ更新",
       "updateError": "更新を開始できませんでした。もう一度試してください。",
       "historyHeading": "公開済みの版",
@@ -2722,18 +2722,18 @@
       "addressSilent": "{host} では、何も応答していません。",
       "addressMove": "新しいアドレスに移動",
       "addressBack": "プラットフォームのアドレスに戻す",
-      "addressMoveTitle": "このライブラリを新しいアドレスに移動しますか？",
-      "addressMoveBody": "ライブラリは、次に空いているアドレスを使います。レコードと設定は変わりません。古いアドレスを使っている人は、ライブラリに届かなくなります。",
+      "addressMoveTitle": "このコミュニティを新しいアドレスに移動しますか？",
+      "addressMoveBody": "コミュニティは、次に空いているアドレスを使います。レコードと設定は変わりません。古いアドレスを使っている人は、コミュニティに届かなくなります。",
       "addressMoveConfirm": "今すぐ移動",
       "addressMoveStarted": "移動を開始しました",
       "addressMoveStartedDescription": "{address} に移動しています…",
-      "addressMoveError": "ライブラリを移動できませんでした。もう一度試してください。",
+      "addressMoveError": "コミュニティを移動できませんでした。もう一度試してください。",
       "restoreError": "版を復元できませんでした。もう一度試してください。"
     },
     "ai": {
-      "description": "訪問者が、ライブラリのエビデンスについて質問できるようにします。",
+      "description": "訪問者が、コミュニティのエビデンスについて質問できるようにします。",
       "answersLabel": "AI の回答",
-      "answersHint": "ライブラリに質問への回答機能を追加します。使った分は OpenRouter に支払います。",
+      "answersHint": "コミュニティに質問への回答機能を追加します。使った分は OpenRouter に支払います。",
       "keyLabel": "OpenRouter のキー",
       "keyHint": "openrouter.ai で作成してください。暗号化して保存され、二度と表示されません。",
       "keyStored": "キーを保存しました",
@@ -2754,7 +2754,7 @@
       "modelError": "同期済みの OpenRouter カタログからモデルを選択してください。"
     },
     "domain": {
-      "description": "ライブラリに、自分のウェブアドレスを使います。",
+      "description": "コミュニティに、自分のウェブアドレスを使います。",
       "platformLabel": "プラットフォームのアドレス",
       "customLabel": "カスタムドメイン",
       "customDomainsLabel": "カスタムドメイン",
@@ -2784,7 +2784,7 @@
         "wrong-target": "そのドメインは別の場所を指しています。別のプロキシの背後にある場合は、このレコードのプロキシをオフにしてください。",
         "token-mismatch": "所有者の確認用レコードに、別の値が入っています",
         "host-taken": "そのドメインでは、すでに別のサイトが応答しています",
-        "not-served": "ライブラリはまだ稼働していません",
+        "not-served": "コミュニティはまだ稼働していません",
         "caa-blocked": "このドメインは、一部の証明書発行機関しか許可していません。letsencrypt.org を許可する CAA レコードを追加してください。",
         "tls-timeout": "TLS を有効にできませんでした。ドメインをもう一度確認してください。"
       },
@@ -2792,7 +2792,7 @@
         "invalid": "ドメインの形式ではありません",
         "platform-host": "そのアドレスは、すでにプラットフォームが使っています",
         "host-taken": "そのドメインは、すでに別のサイトで使われています",
-        "too-many": "このライブラリには、これ以上ドメインを追加できません",
+        "too-many": "このコミュニティには、これ以上ドメインを追加できません",
         "check-failed": "ドメインを確認できませんでした。もう一度試してください。"
       },
       "tlsActive": "TLS: 有効",
@@ -2808,12 +2808,12 @@
       "rateLimited": "DNS の確認回数が多すぎます。1 分後にもう一度お試しください。",
       "removing": "削除しています",
       "checkFailed": "We could not check the domain. Try again.",
-      "deploying": "変更をライブラリに適用しています",
+      "deploying": "変更をコミュニティに適用しています",
       "checked": "DNS を確認しました",
       "recordsNeedAttention": "一部の DNS レコードを修正する必要があります。",
       "removeAgain": "削除を完了",
-      "confirmOffTitle": "ライブラリをプラットフォームのアドレスに戻しますか？",
-      "confirmOffBody": "ライブラリは再び {address} で応答します。サインイン中の全員はサインアウトされ、カスタムドメインを訪れた人はプラットフォームのアドレスに移動します。",
+      "confirmOffTitle": "コミュニティをプラットフォームのアドレスに戻しますか？",
+      "confirmOffBody": "コミュニティは再び {address} で応答します。サインイン中の全員はサインアウトされ、カスタムドメインを訪れた人はプラットフォームのアドレスに移動します。",
       "confirmAction": "アドレスを変更"
     },
     "retry": "もう一度試す",
@@ -2848,26 +2848,26 @@
     "publicationsView": "出版物のソース",
     "noOpenAlex": "OpenAlex の文献は見つかりませんでした。",
     "progress": "{total, number} 件中 {loaded, number} 件",
-    "searchLibrary": "ライブラリの文献を検索",
+    "searchLibrary": "コミュニティの文献を検索",
     "searchPlaceholder": "文献を検索",
     "updating": "文献グループを更新中です。しばらくしてから再読み込みしてください。",
-    "unavailable": "一部のライブラリの所在は利用できません。利用できる所在を表示しています。",
-    "loadingLibrary": "ライブラリの文献を読み込み中",
+    "unavailable": "一部のコミュニティの所在は利用できません。利用できる所在を表示しています。",
+    "loadingLibrary": "コミュニティの文献を読み込み中",
     "noPageMatches": "このページに一致するものはありません。続けて文献を読み込んでください。",
     "noLibraryMatches": "検索に一致する文献はありません。",
-    "noLibraryRecords": "このトピックを使う公開済みの Evidence Library レコードはまだありません。"
+    "noLibraryRecords": "このトピックを使う公開済みの Evidence Community レコードはまだありません。"
   },
   "evidenceLibraries": {
     "list": {
-      "title": "Evidence Libraries",
+      "title": "Evidence Communities",
       "openAdmin": "管理を開く",
       "retry": "再試行",
-      "deleting": "ライブラリを削除しています",
+      "deleting": "コミュニティを削除しています",
       "deleteFailed": {
-        "runtime": "このライブラリの稼働中のサイトを削除できなかったため、削除は完了していません。もう一度試すか、サポートに連絡してください。",
-        "files": "このライブラリのファイルを削除できなかったため、削除は完了していません。もう一度試すか、サポートに連絡してください。",
-        "database": "このライブラリのデータベースを削除できなかったため、削除は完了していません。もう一度試すか、サポートに連絡してください。",
-        "records": "このライブラリの削除は完了していません。もう一度試すか、サポートに連絡してください。"
+        "runtime": "このコミュニティの稼働中のサイトを削除できなかったため、削除は完了していません。もう一度試すか、サポートに連絡してください。",
+        "files": "このコミュニティのファイルを削除できなかったため、削除は完了していません。もう一度試すか、サポートに連絡してください。",
+        "database": "このコミュニティのデータベースを削除できなかったため、削除は完了していません。もう一度試すか、サポートに連絡してください。",
+        "records": "このコミュニティの削除は完了していません。もう一度試すか、サポートに連絡してください。"
       }
     },
     "status": {
@@ -2889,16 +2889,16 @@
       "completed": "公開中"
     },
     "new": {
-      "title": "新しい Evidence Library",
-      "backToLibraries": "ライブラリ一覧に戻る",
+      "title": "新しい Evidence Community",
+      "backToLibraries": "コミュニティ一覧に戻る",
       "ownerTitle": "オーナー",
       "ownerOnlyTitle": "オーナーのみ",
-      "ownerOnlyDescription": "組織のオーナーだけが、ライブラリを作成できます。",
-      "libraryTitle": "ライブラリ",
+      "ownerOnlyDescription": "組織のオーナーだけが、コミュニティを作成できます。",
+      "libraryTitle": "コミュニティ",
       "libraryDescription": "名前は公開サイトに表示され、公開アドレスの元になります。",
       "nameLabel": "名前",
       "namePlaceholder": "例: Climate Education Evidence",
-      "nameError": "ライブラリの名前を入力してください。",
+      "nameError": "コミュニティの名前を入力してください。",
       "shortNameLabel": "短い名前",
       "shortNameHint": "名前から自動で設定されます。後で「設定」から変更できます。",
       "addressLabel": "公開アドレス",
@@ -2908,7 +2908,7 @@
       "reserve": "アドレスを予約",
       "checking": "予約しています…",
       "reserved": "予約済み",
-      "nameTaken": "{name} という名前のライブラリがすでにあります。",
+      "nameTaken": "{name} という名前のコミュニティがすでにあります。",
       "openExisting": "開く",
       "checkFailed": "アドレスを確認できませんでした。もう一度試してください。",
       "addressTaken": "このアドレスは、たった今ほかの人が予約しました。もう一度確認してください。",
@@ -2916,7 +2916,7 @@
       "tryAgain": "もう一度試す"
     },
     "setup": {
-      "backToLibraries": "ライブラリ一覧に戻る",
+      "backToLibraries": "コミュニティ一覧に戻る",
       "configure": "設定",
       "openAdmin": "管理を開く",
       "groupTitle": "セットアップ",
@@ -2924,7 +2924,7 @@
       "retryingTitle": "再試行中",
       "retryingDescription": "止まったステップから、もう一度始めています。",
       "retryError": "セットアップを再開できませんでした。もう一度試してください。",
-      "draftHint": "このライブラリの設定ページから、セットアップして有効化してください。",
+      "draftHint": "このコミュニティの設定ページから、セットアップして有効化してください。",
       "stoppedHint": "再試行すると、このステップとそのあとのステップをやり直します。",
       "deploymentError": "ビルドが完了しませんでした。",
       "steps": {
@@ -2942,27 +2942,27 @@
         },
         "application": {
           "name": "アプリ",
-          "waiting": "ライブラリのアプリを作成します。",
-          "running": "ライブラリのアプリを作成しています…",
-          "done": "ライブラリのアプリを作成しました。"
+          "waiting": "コミュニティのアプリを作成します。",
+          "running": "コミュニティのアプリを作成しています…",
+          "done": "コミュニティのアプリを作成しました。"
         },
         "deployment": {
           "name": "ビルド",
-          "waiting": "ライブラリをビルドして、オンラインにします。",
-          "running": "ライブラリをビルドして、オンラインにしています…",
-          "done": "ライブラリをビルドして、オンラインにしました。"
+          "waiting": "コミュニティをビルドして、オンラインにします。",
+          "running": "コミュニティをビルドして、オンラインにしています…",
+          "done": "コミュニティをビルドして、オンラインにしました。"
         },
         "readiness": {
           "name": "準備確認",
-          "waiting": "ライブラリのページが読み込めるか確認します。",
-          "running": "ライブラリのページが読み込めるか確認しています…",
-          "done": "ライブラリのページが読み込めることを確認しました。"
+          "waiting": "コミュニティのページが読み込めるか確認します。",
+          "running": "コミュニティのページが読み込めるか確認しています…",
+          "done": "コミュニティのページが読み込めることを確認しました。"
         },
         "active": {
           "name": "公開中",
-          "waiting": "ライブラリが公開アドレスで開きます。",
-          "running": "ライブラリを公開アドレスで開いています…",
-          "done": "ライブラリが公開アドレスで公開されています。"
+          "waiting": "コミュニティが公開アドレスで開きます。",
+          "running": "コミュニティを公開アドレスで開いています…",
+          "done": "コミュニティが公開アドレスで公開されています。"
         }
       },
       "live": {
@@ -2971,17 +2971,17 @@
         "copyAddress": "アドレスをコピー",
         "copiedShort": "コピーしました",
         "copied": "アドレスをコピーしました",
-        "openLibrary": "ライブラリを開く",
+        "openLibrary": "コミュニティを開く",
         "settingUp": "{name} をセットアップしています",
         "stopped": "セットアップが止まりました",
         "copyFailed": "アドレスをコピーできませんでした"
       },
-      "deletingHint": "このライブラリを削除しています。"
+      "deletingHint": "このコミュニティを削除しています。"
     },
     "notFound": {
-      "title": "ライブラリが見つかりません",
+      "title": "コミュニティが見つかりません",
       "description": "削除されたか、別の組織のライブラリです。",
-      "back": "ライブラリ一覧に戻る"
+      "back": "コミュニティ一覧に戻る"
     }
   },
   "settingsShell": {
@@ -2998,7 +2998,7 @@
       "plans": "プラン",
       "users": "ユーザー",
       "aiModels": "AI モデル",
-      "evidenceLibraries": "Evidence Libraries"
+      "evidenceLibraries": "Evidence Communities"
     },
     "sharedDev": "共有開発",
     "production": "本番",
@@ -3099,16 +3099,16 @@
       "creditsOrKey": "クレジット、またはユーザーのキー"
     },
     "evidenceLibraries": {
-      "title": "Evidence Library へのアクセス",
+      "title": "Evidence Community へのアクセス",
       "organizations": "組織",
       "search": "組織を検索",
       "show": "表示",
       "all": "すべて",
       "on": "オン",
       "off": "オフ",
-      "libraries": "{count, plural, other {# 件のライブラリ}}",
-      "switchLabel": "{name} の Evidence Libraries",
-      "moveFirst": "先にライブラリを移動または削除してください",
+      "libraries": "{count, plural, other {# 件のコミュニティ}}",
+      "switchLabel": "{name} の Evidence Communities",
+      "moveFirst": "先にコミュニティを移動または削除してください",
       "noMatches": "一致する組織はありません"
     }
   },
@@ -3219,7 +3219,7 @@
     "views": {
       "results": "検索結果",
       "extractionJob": "抽出ジョブ",
-      "librarySettings": "ライブラリ設定",
+      "librarySettings": "コミュニティ設定",
       "authors": "著者",
       "page": "このページ"
     },
@@ -3282,7 +3282,7 @@
       "holds": "最大 {credits, number} クレジットを確保",
       "runs": "実行",
       "asks": "確認",
-      "publishing": "ライブラリの公開",
+      "publishing": "コミュニティの公開",
       "publishingDetail": "訪問者にすぐ表示されます",
       "moreJobs": "さらに表示"
     },
@@ -3304,7 +3304,7 @@
     "chat": "チャット",
     "remove": "削除",
     "organization": "組織",
-    "shareNote": "共有相手はこの会話を見ることができます。会話内の検索、コレクション、ライブラリのアクセス権はそれぞれのままです。チャットできる人は自分の名前でメッセージを送り、アシスタントはその人自身のアクセス権とクレジットで動作します。",
+    "shareNote": "共有相手はこの会話を見ることができます。会話内の検索、コレクション、コミュニティのアクセス権はそれぞれのままです。チャットできる人は自分の名前でメッセージを送り、アシスタントはその人自身のアクセス権とクレジットで動作します。",
     "shareFailed": "このチャットの共有設定を変更できませんでした",
     "steps": {
       "undo": "元に戻す",
@@ -3936,121 +3936,121 @@
         "ask": "チャットのモデルを一覧"
       },
       "libraries": {
-        "doing": "Evidence Library の一覧を読んでいます",
-        "did": "Evidence Library の一覧を読みました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library の一覧を読む"
+        "doing": "Evidence Community の一覧を読んでいます",
+        "did": "Evidence Community の一覧を読みました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community の一覧を読む"
       },
       "readerLibraries": {
-        "doing": "閲覧している Evidence Library を読んでいます",
-        "did": "閲覧している Evidence Library を読みました",
-        "where": "Evidence Library",
-        "ask": "閲覧している Evidence Library を読む"
+        "doing": "閲覧している Evidence Community を読んでいます",
+        "did": "閲覧している Evidence Community を読みました",
+        "where": "Evidence Community",
+        "ask": "閲覧している Evidence Community を読む"
       },
       "readerSources": {
-        "doing": "Evidence Library にあるあなたの資料を読んでいます",
-        "did": "Evidence Library にあるあなたの資料を読みました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library にあるあなたの資料を読む"
+        "doing": "Evidence Community にあるあなたの資料を読んでいます",
+        "did": "Evidence Community にあるあなたの資料を読みました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community にあるあなたの資料を読む"
       },
       "readerAddress": {
-        "doing": "Evidence Library のアドレスを読んでいます",
-        "did": "Evidence Library のアドレスを読みました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library のアドレスを読む"
+        "doing": "Evidence Community のアドレスを読んでいます",
+        "did": "Evidence Community のアドレスを読みました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community のアドレスを読む"
       },
       "readerSource": {
-        "doing": "Evidence Library のソースを読んでいます",
-        "did": "Evidence Library のソースを読みました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library のソースを読む"
+        "doing": "Evidence Community のソースを読んでいます",
+        "did": "Evidence Community のソースを読みました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community のソースを読む"
       },
       "readerRecords": {
-        "doing": "Evidence Library のレコードを読んでいます",
-        "did": "Evidence Library のレコードを読みました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library のレコードを読む"
+        "doing": "Evidence Community のレコードを読んでいます",
+        "did": "Evidence Community のレコードを読みました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community のレコードを読む"
       },
       "newLibraryCollection": {
-        "doing": "Evidence Library にコレクションを作成しています",
-        "did": "Evidence Library にコレクションを作成しました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library にコレクションを作成",
-        "askMany": "Evidence Library に {count, number} 件のコレクションを作成",
-        "doingMany": "Evidence Library に {count, number} 件のコレクションを作成しています",
-        "didMany": "Evidence Library に {count, number} 件のコレクションを作成しました"
+        "doing": "Evidence Community にコレクションを作成しています",
+        "did": "Evidence Community にコレクションを作成しました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community にコレクションを作成",
+        "askMany": "Evidence Community に {count, number} 件のコレクションを作成",
+        "doingMany": "Evidence Community に {count, number} 件のコレクションを作成しています",
+        "didMany": "Evidence Community に {count, number} 件のコレクションを作成しました"
       },
       "deleteLibraryCollection": {
-        "doing": "Evidence Library のコレクションを削除しています",
-        "did": "Evidence Library のコレクションを削除しました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library のコレクションを削除",
-        "askMany": "Evidence Library の {count, number} 件のコレクションを削除",
-        "doingMany": "Evidence Library の {count, number} 件のコレクションを削除しています",
-        "didMany": "Evidence Library の {count, number} 件のコレクションを削除しました"
+        "doing": "Evidence Community のコレクションを削除しています",
+        "did": "Evidence Community のコレクションを削除しました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community のコレクションを削除",
+        "askMany": "Evidence Community の {count, number} 件のコレクションを削除",
+        "doingMany": "Evidence Community の {count, number} 件のコレクションを削除しています",
+        "didMany": "Evidence Community の {count, number} 件のコレクションを削除しました"
       },
       "changeLibraryRecords": {
-        "doing": "Evidence Library のコレクションを変更しています",
-        "did": "Evidence Library のコレクションを変更しました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library のコレクションを変更",
-        "askMany": "Evidence Library の {count, number} 件のコレクションを変更",
-        "doingMany": "Evidence Library の {count, number} 件のコレクションを変更しています",
-        "didMany": "Evidence Library の {count, number} 件のコレクションを変更しました"
+        "doing": "Evidence Community のコレクションを変更しています",
+        "did": "Evidence Community のコレクションを変更しました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community のコレクションを変更",
+        "askMany": "Evidence Community の {count, number} 件のコレクションを変更",
+        "doingMany": "Evidence Community の {count, number} 件のコレクションを変更しています",
+        "didMany": "Evidence Community の {count, number} 件のコレクションを変更しました"
       },
       "readHandoff": {
-        "doing": "Evidence Library から渡された内容を開いています",
-        "did": "Evidence Library から渡された内容を開きました",
-        "where": "Evidence Library",
-        "ask": "Evidence Library から渡された内容を開く"
+        "doing": "Evidence Community から渡された内容を開いています",
+        "did": "Evidence Community から渡された内容を開きました",
+        "where": "Evidence Community",
+        "ask": "Evidence Community から渡された内容を開く"
       },
       "readLibraryDraft": {
-        "doing": "ライブラリの設定を読んでいます",
-        "did": "ライブラリの設定を読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリの設定を読む",
-        "askMany": "{count, number} 件のライブラリの設定を読む",
-        "doingMany": "{count, number} 件のライブラリの設定を読んでいます",
-        "didMany": "{count, number} 件のライブラリの設定を読みました"
+        "doing": "コミュニティの設定を読んでいます",
+        "did": "コミュニティの設定を読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの設定を読む",
+        "askMany": "{count, number} 件のコミュニティの設定を読む",
+        "doingMany": "{count, number} 件のコミュニティの設定を読んでいます",
+        "didMany": "{count, number} 件のコミュニティの設定を読みました"
       },
       "readLibraryRevision": {
-        "doing": "ライブラリ設定の版を読んでいます",
-        "did": "ライブラリ設定の版を読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリ設定の版を読む"
+        "doing": "コミュニティ設定の版を読んでいます",
+        "did": "コミュニティ設定の版を読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティ設定の版を読む"
       },
       "readLibraryTeam": {
-        "doing": "ライブラリのチームを読んでいます",
-        "did": "ライブラリのチームを読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリのチームを読む",
-        "askMany": "{count, number} 件のライブラリのチームを読む",
-        "doingMany": "{count, number} 件のライブラリのチームを読んでいます",
-        "didMany": "{count, number} 件のライブラリのチームを読みました"
+        "doing": "コミュニティのチームを読んでいます",
+        "did": "コミュニティのチームを読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティのチームを読む",
+        "askMany": "{count, number} 件のコミュニティのチームを読む",
+        "doingMany": "{count, number} 件のコミュニティのチームを読んでいます",
+        "didMany": "{count, number} 件のコミュニティのチームを読みました"
       },
       "editLibraryDraft": {
-        "doing": "ライブラリの下書きを変更しています",
-        "did": "ライブラリの下書きを変更しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリの下書きを変更"
+        "doing": "コミュニティの下書きを変更しています",
+        "did": "コミュニティの下書きを変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの下書きを変更"
       },
       "addLibraryMember": {
-        "doing": "ライブラリのチームに追加しています",
-        "did": "ライブラリのチームに追加しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリのチームに追加"
+        "doing": "コミュニティのチームに追加しています",
+        "did": "コミュニティのチームに追加しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティのチームに追加"
       },
       "changeLibraryRole": {
-        "doing": "ライブラリでの役割を変更しています",
-        "did": "ライブラリでの役割を変更しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリでの役割を変更"
+        "doing": "コミュニティでの役割を変更しています",
+        "did": "コミュニティでの役割を変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティでの役割を変更"
       },
       "removeLibraryMember": {
-        "doing": "ライブラリのチームから外しています",
-        "did": "ライブラリのチームから外しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリのチームから外す"
+        "doing": "コミュニティのチームから外しています",
+        "did": "コミュニティのチームから外しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティのチームから外す"
       },
       "zoteroGroups": {
         "doing": "Zotero のグループを読んでいます",
@@ -4071,79 +4071,79 @@
         "ask": "Zotero の項目を読む"
       },
       "inviteLibraryMember": {
-        "doing": "ライブラリに招待しています",
-        "did": "ライブラリに招待しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリに招待",
-        "askMany": "{count, number} 人をライブラリに招待",
-        "doingMany": "{count, number} 人をライブラリに招待しています",
-        "didMany": "{count, number} 人をライブラリに招待しました"
+        "doing": "コミュニティに招待しています",
+        "did": "コミュニティに招待しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティに招待",
+        "askMany": "{count, number} 人をコミュニティに招待",
+        "doingMany": "{count, number} 人をコミュニティに招待しています",
+        "didMany": "{count, number} 人をコミュニティに招待しました"
       },
       "changeLibraryInvite": {
-        "doing": "ライブラリへの招待を変更しています",
-        "did": "ライブラリへの招待を変更しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリへの招待を変更"
+        "doing": "コミュニティへの招待を変更しています",
+        "did": "コミュニティへの招待を変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティへの招待を変更"
       },
       "libraryInvites": {
-        "doing": "ライブラリへの招待を読んでいます",
-        "did": "ライブラリへの招待を読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリへの招待を読む"
+        "doing": "コミュニティへの招待を読んでいます",
+        "did": "コミュニティへの招待を読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティへの招待を読む"
       },
       "answerLibraryInvite": {
-        "doing": "ライブラリへの招待に返答しています",
-        "did": "ライブラリへの招待に返答しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリへの招待に返答"
+        "doing": "コミュニティへの招待に返答しています",
+        "did": "コミュニティへの招待に返答しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティへの招待に返答"
       },
       "startLibrary": {
-        "doing": "ライブラリの下書きを作成しています",
-        "did": "ライブラリの下書きを作成しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリの下書きを作成"
+        "doing": "コミュニティの下書きを作成しています",
+        "did": "コミュニティの下書きを作成しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの下書きを作成"
       },
       "librarySources": {
-        "doing": "ライブラリのソースを読んでいます",
-        "did": "ライブラリのソースを読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリのソースを読む",
-        "askMany": "{count, number} 件のライブラリのソースを読む",
-        "doingMany": "{count, number} 件のライブラリのソースを読んでいます",
-        "didMany": "{count, number} 件のライブラリのソースを読みました"
+        "doing": "コミュニティのソースを読んでいます",
+        "did": "コミュニティのソースを読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティのソースを読む",
+        "askMany": "{count, number} 件のコミュニティのソースを読む",
+        "doingMany": "{count, number} 件のコミュニティのソースを読んでいます",
+        "didMany": "{count, number} 件のコミュニティのソースを読みました"
       },
       "runningCollections": {
-        "doing": "ライブラリのコレクションを読んでいます",
-        "did": "ライブラリのコレクションを読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリのコレクションを読む"
+        "doing": "コミュニティのコレクションを読んでいます",
+        "did": "コミュニティのコレクションを読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティのコレクションを読む"
       },
       "runningInstitutions": {
-        "doing": "ライブラリの機関を読んでいます",
-        "did": "ライブラリの機関を読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリの機関を読む"
+        "doing": "コミュニティの機関を読んでいます",
+        "did": "コミュニティの機関を読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの機関を読む"
       },
       "runningPublications": {
-        "doing": "ライブラリの出版物を読んでいます",
-        "did": "ライブラリの出版物を読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリの出版物を読む"
+        "doing": "コミュニティの出版物を読んでいます",
+        "did": "コミュニティの出版物を読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの出版物を読む"
       },
       "runningPublication": {
-        "doing": "ライブラリの出版物を1件読んでいます",
-        "did": "ライブラリの出版物を1件読みました",
-        "where": "Evidence Library",
-        "ask": "ライブラリの出版物を1件読む",
-        "askMany": "ライブラリの出版物を {count, number} 件読む",
-        "doingMany": "ライブラリの出版物を {count, number} 件読んでいます",
-        "didMany": "ライブラリの出版物を {count, number} 件読みました"
+        "doing": "コミュニティの出版物を1件読んでいます",
+        "did": "コミュニティの出版物を1件読みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの出版物を1件読む",
+        "askMany": "コミュニティの出版物を {count, number} 件読む",
+        "doingMany": "コミュニティの出版物を {count, number} 件読んでいます",
+        "didMany": "コミュニティの出版物を {count, number} 件読みました"
       },
       "syncLibrarySource": {
-        "doing": "ライブラリの取り込みを再試行しています",
-        "did": "ライブラリの取り込みを再試行しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリの取り込みを再試行"
+        "doing": "コミュニティの取り込みを再試行しています",
+        "did": "コミュニティの取り込みを再試行しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの取り込みを再試行"
       },
       "authorProfiles": {
         "doing": "著者プロフィールを読んでいます",
@@ -4206,20 +4206,20 @@
         "didMany": "Zotero の PDF を {count, number} 件チャットに追加しました"
       },
       "gradeLibrarySource": {
-        "doing": "ライブラリにソースの評価を依頼中",
-        "did": "ライブラリにソースの評価を依頼しました",
-        "where": "Evidence Library",
-        "ask": "ライブラリのソースのレコードを評価する"
+        "doing": "コミュニティにソースの評価を依頼中",
+        "did": "コミュニティにソースの評価を依頼しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティのソースのレコードを評価する"
       },
       "trySourceSubject": {
         "doing": "スクリーニングの主題を試行中",
         "did": "スクリーニングの主題を試しました",
-        "where": "Evidence Library",
+        "where": "Evidence Community",
         "ask": "スクリーニングの主題を 200 件で試す"
       },
       "libraryAccess": {
-        "doing": "Evidence Library へのアクセスを確認しています",
-        "did": "Evidence Library へのアクセスを確認しました",
+        "doing": "Evidence Community へのアクセスを確認しています",
+        "did": "Evidence Community へのアクセスを確認しました",
         "where": "管理"
       }
     },
@@ -4386,7 +4386,7 @@
       "paper": "論文",
       "extraction": "抽出",
       "screening": "スクリーニング",
-      "library": "エビデンスライブラリ",
+      "library": "エビデンスコミュニティ",
       "topic": "トピック",
       "chat": "チャット"
     }
@@ -4461,7 +4461,7 @@
       "searches": "検索",
       "screenings": "スクリーニング",
       "extractions": "抽出",
-      "evidenceLibraries": "エビデンスライブラリ",
+      "evidenceLibraries": "エビデンスコミュニティ",
       "changeLogo": "ロゴを変更",
       "organizationName": "組織名",
       "saveName": "名前を保存",
@@ -4475,12 +4475,12 @@
       "makeAdminFirst": "先に別のメンバーを管理者にしてください",
       "leave": "退出",
       "deleteName": "{name} を削除",
-      "stillHasLibrary": "{library} はこの組織のエビデンスライブラリです。先に移動するか削除してください。",
-      "deleteLibrary": "ライブラリを削除",
+      "stillHasLibrary": "{library} はこの組織のエビデンスコミュニティです。先に移動するか削除してください。",
+      "deleteLibrary": "コミュニティを削除",
       "libraryBeingDeleted": "{library} を削除しています。",
       "libraryDeleteFailed": "{library} を削除できませんでした。もう一度お試しください。",
       "deleteDetail": "{count, number} 人のメンバー全員から削除されます",
-      "moveLibrariesFirst": "先にエビデンスライブラリを移動するか削除してください",
+      "moveLibrariesFirst": "先にエビデンスコミュニティを移動するか削除してください",
       "delete": "削除",
       "deleteConfirm": "コレクション、検索、スクリーニング、抽出も {count, number} 人のメンバー全員から削除されます。元に戻せません。",
       "leaveConfirm": "管理者に再び招待されるまで、この組織の作業にアクセスできなくなります。",
@@ -4555,7 +4555,7 @@
       "paymentFailed": "前回の支払いに失敗しました。",
       "noMemberLimit": "メンバー数の上限なし",
       "membersUnit": "{count, plural, other {人のメンバー}}",
-      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "evidenceLibrariesIncluded": "Evidence Communities",
       "seePlans": "プランを見る"
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
@@ -4756,15 +4756,15 @@
     "changeInSettings": "AI 設定で変更"
   },
   "librarySources": {
-    "kind": "Evidence Library のレコード",
-    "library": "Evidence Library",
-    "address": "ライブラリのアドレスを貼り付け",
+    "kind": "Evidence Community のレコード",
+    "library": "Evidence Community",
+    "address": "コミュニティのアドレスを貼り付け",
     "show": "表示",
     "filter": {
       "all": "すべて",
       "yours": "自分の",
       "shared": "共有されたもの",
-      "library": "ライブラリのもの"
+      "library": "コミュニティのもの"
     },
     "find": "検索",
     "everyRecord": "{library} のすべてのレコード",
@@ -4789,14 +4789,14 @@
     "outdated": "ここで使うには {library} の更新が必要です。",
     "error": {
       "notAddress": "アドレスではありません。",
-      "notHosted": "そのライブラリは OpenScholar で運営されていません。",
+      "notHosted": "そのコミュニティは OpenScholar で運営されていません。",
       "private": "このコレクションは非公開です。オーナーが共有できます。",
       "notFound": "そのアドレスには何もありません。",
       "empty": "その検索またはコレクションにはレコードがありません。",
       "profile": "その人のコレクションを開いて、そのアドレスをコピーしてください。",
-      "unknownPage": "検索、コレクション、またはライブラリのアドレスをコピーしてください。",
-      "outdated": "ここで使うには、このライブラリの更新が必要です。",
-      "unreadable": "ライブラリから応答がありません。もう一度お試しください。"
+      "unknownPage": "検索、コレクション、またはコミュニティのアドレスをコピーしてください。",
+      "outdated": "ここで使うには、このコミュニティの更新が必要です。",
+      "unreadable": "コミュニティから応答がありません。もう一度お試しください。"
     },
     "role": {
       "owner": "オーナー",
@@ -4818,17 +4818,17 @@
   "fromLibrary": {
     "title": "{library} から",
     "gone": "開くものがありません",
-    "goneHint": "ライブラリからのこのリンクは期限切れです。ライブラリからもう一度開いてください。",
+    "goneHint": "コミュニティからのこのリンクは期限切れです。コミュニティからもう一度開いてください。",
     "problem": {
-      "notAddress": "ここに開くものはありません。ライブラリからもう一度開いてください。",
-      "notHosted": "そのライブラリは OpenScholar でもう動いていません。",
+      "notAddress": "ここに開くものはありません。コミュニティからもう一度開いてください。",
+      "notHosted": "そのコミュニティは OpenScholar でもう動いていません。",
       "private": "そのコレクションは非公開です。所有者があなたと共有できます。",
-      "notFound": "ライブラリには送られたものがもうありません。",
-      "empty": "ライブラリから送られたものには、今はレコードがありません。",
-      "profile": "ここに開くものはありません。ライブラリからもう一度開いてください。",
-      "unknownPage": "ここに開くものはありません。ライブラリからもう一度開いてください。",
-      "outdated": "ここで使うには、そのライブラリの更新が必要です。",
-      "unreadable": "ライブラリが応答しませんでした。少し待ってからもう一度お試しください。"
+      "notFound": "コミュニティには送られたものがもうありません。",
+      "empty": "コミュニティから送られたものには、今はレコードがありません。",
+      "profile": "ここに開くものはありません。コミュニティからもう一度開いてください。",
+      "unknownPage": "ここに開くものはありません。コミュニティからもう一度開いてください。",
+      "outdated": "ここで使うには、そのコミュニティの更新が必要です。",
+      "unreadable": "コミュニティが応答しませんでした。少し待ってからもう一度お試しください。"
     },
     "from": {
       "smartScreening": "スマートスクリーニング",
@@ -4940,15 +4940,15 @@
     }
   },
   "libraryHomeSettings": {
-    "thePageVisitorsLandOnAt": "訪問者がライブラリのアドレスで最初に見るページです。",
+    "thePageVisitorsLandOnAt": "訪問者がコミュニティのアドレスで最初に見るページです。",
     "showAHomePage": "ホームページを表示",
-    "whenThisIsOffTheLibrary": "オフにすると、ライブラリのアドレスは出版物の一覧を開きます。",
+    "whenThisIsOffTheLibrary": "オフにすると、コミュニティのアドレスは出版物の一覧を開きます。",
     "introduction": "紹介",
-    "shownInTheHeroUnderThe": "ヒーローの、ライブラリの名前とキャッチコピーの下に表示されます。",
-    "whatTheLibraryIsFor": "このライブラリの目的",
-    "whatDoesThisLibraryCollectAnd": "このライブラリは何を集め、誰のために集めますか？",
+    "shownInTheHeroUnderThe": "ヒーローの、コミュニティの名前とキャッチコピーの下に表示されます。",
+    "whatTheLibraryIsFor": "このコミュニティの目的",
+    "whatDoesThisLibraryCollectAnd": "このコミュニティは何を集め、誰のために集めますか？",
     "howPublicationsGetIn": "出版物が追加される方法",
-    "stepsWithATypeAreFilled": "種類があるステップは、追跡した出版物から入力されるか、ライブラリの検索とレコードから数えられます。",
+    "stepsWithATypeAreFilled": "種類があるステップは、追跡した出版物から入力されるか、コミュニティの検索とレコードから数えられます。",
     "addStep": "ステップを追加",
     "statement": "文章",
     "noStepsTheSectionShowsThe": "ステップはありません。このセクションは文章だけを表示します。",
@@ -4959,20 +4959,20 @@
     "editorShown": "表示する編集者",
     "whoeverApprovedIt": "承認した人",
     "whatHappens": "起きたこと",
-    "whoRunsTheLibrary": "ライブラリを運営する人",
-    "peopleFromTheLibrarySTeam": "ライブラリのチームの人や、手動で追加した人が、ここで設定した順番で表示されます。",
+    "whoRunsTheLibrary": "コミュニティを運営する人",
+    "peopleFromTheLibrarySTeam": "コミュニティのチームの人や、手動で追加した人が、ここで設定した順番で表示されます。",
     "aboutTheTeam": "チームについて",
     "usedInsteadWhenThereIsNo": "チームの説明文がないときに、代わりに使われます。",
     "suggestAPublication": "出版物を提案",
     "opensAnEmailTo": "{email} へのメールを開きます",
     "needsAContactEmail": "連絡先のメールアドレスが必要です",
     "joinAsAnEditor": "編集者として参加",
-    "askTheLibrary": "ライブラリに質問",
-    "typedIntoTheQuestionBoxOne": "質問ボックスに順番に入力されます。空欄のままにすると、ライブラリのトピックから作られた質問が使われます。",
-    "shownWhenAiAnswersAreOn": "機能の AI の回答がオンのときに表示されます。空欄のままにすると、ライブラリのトピックから作られた質問が使われます。",
+    "askTheLibrary": "コミュニティに質問",
+    "typedIntoTheQuestionBoxOne": "質問ボックスに順番に入力されます。空欄のままにすると、コミュニティのトピックから作られた質問が使われます。",
+    "shownWhenAiAnswersAreOn": "機能の AI の回答がオンのときに表示されます。空欄のままにすると、コミュニティのトピックから作られた質問が使われます。",
     "exampleQuestion": "質問の例 {value}",
     "usingAndCiting": "利用と引用",
-    "shownBesideTheCitationOfThe": "ライブラリの引用の横に表示されます。引用は、ライブラリの名前とアドレスから作られます。",
+    "shownBesideTheCitationOfThe": "コミュニティの引用の横に表示されます。引用は、コミュニティの名前とアドレスから作られます。",
     "licenceAndReuse": "ライセンスと再利用",
     "howMayPeopleReuseWhatThey": "ここで見つけたものを、どのように再利用できますか？",
     "heading": "見出し",
@@ -4991,12 +4991,12 @@
     "takedownForm": "削除依頼フォーム",
     "off": "オフ",
     "filledInForYou": "自動で入力",
-    "newestPublicationsTheMostCitedDigests": "新着の出版物、被引用数の多い出版物、ダイジェスト、最新のレビューは、ライブラリ自体から取得されます。",
+    "newestPublicationsTheMostCitedDigests": "新着の出版物、被引用数の多い出版物、ダイジェスト、最新のレビューは、コミュニティ自体から取得されます。",
     "editIn": "{card} で編集",
     "peopleShown": "表示する人",
     "addFromTheTeam": "チームから追加",
     "addPeopleFromTheTeam": "チームから人を追加",
-    "everyoneOnTheLibrarySTeam": "ライブラリのチームの全員が、アカウントの写真とともに表示されます。",
+    "everyoneOnTheLibrarySTeam": "コミュニティのチームの全員が、アカウントの写真とともに表示されます。",
     "addSomeone": "人を追加",
     "nobodyIsShownAddPeopleFrom": "誰も表示されていません。チームから人を追加するか、アカウントを持たない人を追加してください。",
     "removedFromTheTeamSoNot": "チームから外れたため、表示されません",
@@ -5035,7 +5035,7 @@
       },
       "search": {
         "label": "検索語",
-        "hint": "ライブラリの OpenAlex 検索が探す単語、フレーズ、トピックを数えます",
+        "hint": "コミュニティの OpenAlex 検索が探す単語、フレーズ、トピックを数えます",
         "fallback": "検索で見つかった",
         "example": "検索語"
       },
@@ -5065,12 +5065,12 @@
     },
     "reviewedOn": "{date} に確認",
     "addedOn": "{date} に追加",
-    "howTheLibraryIsCurated": "ライブラリの収録方法",
+    "howTheLibraryIsCurated": "コミュニティの収録方法",
     "optional": "任意",
     "removeStep": "ステップを削除",
     "whoIsBehindIt": "運営者",
     "getInvolved": "参加方法",
-    "usingAndCitingTheLibrary": "ライブラリの利用と引用",
+    "usingAndCitingTheLibrary": "コミュニティの利用と引用",
     "identity": "基本情報",
     "contact": "連絡先",
     "notSet": "未設定",
@@ -5090,10 +5090,10 @@
     "searchPublications": "出版物を検索",
     "date": "日付",
     "loadingPublications": "出版物を読み込んでいます",
-    "theLibrarySPublicationsCouldNot": "ライブラリの出版物を読み込めませんでした。",
+    "theLibrarySPublicationsCouldNot": "コミュニティの出版物を読み込めませんでした。",
     "noPublicationHasAPdfYet": "PDFが添付された出版物はまだありません。",
     "noPublicationMatches": "一致する出版物はありません。",
-    "theLibraryIsNotSetUp": "ライブラリはまだ設定されていません。",
+    "theLibraryIsNotSetUp": "コミュニティはまだ設定されていません。",
     "linked": "リンク済み"
   },
   "libraryTeamAccess": {
@@ -5109,12 +5109,12 @@
     "cancelInvitation": "招待を取り消す",
     "cancelThisInvitation": "この招待を取り消しますか？",
     "removeAccessToThisAuthorProfile": "この著者プロフィールへのアクセスを削除しますか？",
-    "removeFromThisLibraryOrganizationMembership": "このライブラリから削除しますか？組織のメンバーシップと、ほかのライブラリへのアクセスは変わりません。",
+    "removeFromThisLibraryOrganizationMembership": "このコミュニティから削除しますか？組織のメンバーシップと、ほかのコミュニティへのアクセスは変わりません。",
     "keep": "残す",
     "profileAccess": "プロフィールへのアクセス",
     "team": "チーム",
     "theOwnerManagesAccessEditorsCan": "オーナーがアクセスを管理します。編集者はこのプロフィールを編集できます。",
-    "manageAccessToThisLibrary": "このライブラリへのアクセスを管理します。",
+    "manageAccessToThisLibrary": "このコミュニティへのアクセスを管理します。",
     "addEditor": "編集者を追加",
     "addMember": "メンバーを追加",
     "inviteProfileEditor": "プロフィールの編集者を招待",
@@ -5127,29 +5127,29 @@
     "chooseAPerson": "ユーザーを選ぶ",
     "emailAddress": "メールアドレス",
     "nameOrganisationOrg": "name@organisation.org",
-    "libraryRole": "ライブラリでの役割",
+    "libraryRole": "コミュニティでの役割",
     "editorsCanEditProfileDetailsAnd": "編集者は、プロフィールの詳細を編集し、出版物を選べます。",
-    "accessAppliesToThisLibraryOnly": "アクセスはこのライブラリだけに適用されます。",
-    "theyLlReceiveAccessToThis": "この人には、このライブラリだけへのアクセス権が与えられます。組織のメンバーシップは変わりません。",
+    "accessAppliesToThisLibraryOnly": "アクセスはこのコミュニティだけに適用されます。",
+    "theyLlReceiveAccessToThis": "この人には、このコミュニティだけへのアクセス権が与えられます。組織のメンバーシップは変わりません。",
     "cancel": "キャンセル",
     "sendInvitation": "招待を送信",
     "dismissMemberStatus": "メンバーの状態を閉じる",
     "organizationOwners": "組織のオーナー",
-    "accessToAllLibrariesManagedIn": "すべてのライブラリへのアクセス。組織の設定で管理します。",
+    "accessToAllLibrariesManagedIn": "すべてのコミュニティへのアクセス。組織の設定で管理します。",
     "everyoneElseInTheOrganization": "組織のそのほかの全員",
     "viewersUntilYouAddThemBelow": "下で役割を付けて追加するまでは閲覧者です。",
     "everyoneIn": "{name} のすべてのユーザー",
-    "everyoneWithoutARoleInThis": "このライブラリで役割がないすべてのユーザー",
+    "everyoneWithoutARoleInThis": "このコミュニティで役割がないすべてのユーザー",
     "viewer": "閲覧者",
     "teamView": "チームの表示",
     "profileMembers": "プロフィールのメンバー",
-    "libraryMembers": "ライブラリのメンバー",
+    "libraryMembers": "コミュニティのメンバー",
     "invitations": "招待",
     "searchTeam": "チームを検索",
     "findAPerson": "ユーザーを探す…",
-    "aboutLibraryRoles": "ライブラリの役割について",
+    "aboutLibraryRoles": "コミュニティの役割について",
     "editor": "編集者",
-    "reviewPublishAndManageLibraryContent": "ライブラリの内容をレビュー、公開、管理します。",
+    "reviewPublishAndManageLibraryContent": "コミュニティの内容をレビュー、公開、管理します。",
     "creator": "作成者",
     "editItemsAndSubmitWorkFor": "項目を編集し、レビュー用に提出します。",
     "loadingTeam": "チームを読み込んでいます",
@@ -5175,37 +5175,37 @@
       "Viewer": "閲覧者"
     },
     "roleHints": {
-      "Owner": "組織から継承されています。組織のすべてのライブラリとチームを管理できます。",
-      "Editor": "アイテムを確認して公開します。ライブラリのコンテンツを管理します。",
+      "Owner": "組織から継承されています。組織のすべてのコミュニティとチームを管理できます。",
+      "Editor": "アイテムを確認して公開します。コミュニティのコンテンツを管理します。",
       "Creator": "アイテムを作成・編集し、ファイルをアップロードして確認に提出します。",
-      "Viewer": "組織内のその他のメンバーです。ライブラリとそのアイテムを変更せずに閲覧できます。"
+      "Viewer": "組織内のその他のメンバーです。コミュニティとそのアイテムを変更せずに閲覧できます。"
     },
-    "removeFromLibrary": "ライブラリから削除",
+    "removeFromLibrary": "コミュニティから削除",
     "removeFromProfile": "プロフィールから削除",
-    "whoManagesLibrary": "このライブラリを管理できるユーザーを選択してください。",
+    "whoManagesLibrary": "このコミュニティを管理できるユーザーを選択してください。",
     "whoManagesProfile": "このプロフィールを管理できるユーザーを選択してください。",
-    "addToLibrary": "ライブラリに追加",
+    "addToLibrary": "コミュニティに追加",
     "addToProfile": "プロフィールに追加",
-    "acceptingGrantsLibrary": "承諾すると、このライブラリにのみアクセスできます。",
+    "acceptingGrantsLibrary": "承諾すると、このコミュニティにのみアクセスできます。",
     "acceptingGrantsProfile": "承諾すると、このプロフィールにのみアクセスできます。",
-    "removedFromLibrary": "このライブラリから削除しました。",
+    "removedFromLibrary": "このコミュニティから削除しました。",
     "removedFromProfile": "このプロフィールから削除しました。",
-    "addedToLibrary": "{name}をこのライブラリに追加しました。",
+    "addedToLibrary": "{name}をこのコミュニティに追加しました。",
     "addedToProfile": "{name}をこのプロフィールに追加しました。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {# 件の出版物のダイジェストを待機中です。}}",
     "noPublicationsInThePeriodNothing": "この期間に出版物はありません。何も送信されません。",
-    "publishTheLibraryConfigurationWithReader": "先に、読者の購読を有効にしてライブラリの設定を公開してください。",
+    "publishTheLibraryConfigurationWithReader": "先に、読者の購読を有効にしてコミュニティの設定を公開してください。",
     "theDigestRequestCouldNotBe": "ダイジェストの依頼を確認できませんでした。もう一度試してください。既存のエディションは、二重に送信されません。",
     "emailUpdates": "メールでの更新",
     "readerSubscriptions": "読者の購読",
-    "readersCanChooseNewPublicationsLibrary": "読者は、新しい出版物、ライブラリのダイジェスト、またはその両方を選べます。空のエディションは送信されません。",
+    "readersCanChooseNewPublicationsLibrary": "読者は、新しい出版物、コミュニティのダイジェスト、またはその両方を選べます。空のエディションは送信されません。",
     "digestCovers": "ダイジェストの対象期間",
     "aPublicationWithoutAFullDate": "日付が完全でない出版物は、どの期間にも含まれません。",
-    "anOlderPublicationCountsWhenIt": "古い出版物も、ライブラリにとって新しければ対象になります。",
+    "anOlderPublicationCountsWhenIt": "古い出版物も、コミュニティにとって新しければ対象になります。",
     "publicationsPublishedInThePeriod": "期間内に公開された出版物",
-    "publicationsAddedToTheLibraryIn": "期間内にライブラリに追加された出版物",
+    "publicationsAddedToTheLibraryIn": "期間内にコミュニティに追加された出版物",
     "frequency": "頻度",
     "weekly": "毎週",
     "monthly": "毎月",
@@ -5215,8 +5215,8 @@
     "time": "時刻",
     "timezone": "タイムゾーン",
     "beforeADigestGoesOut": "ダイジェストを送信する前に",
-    "itWaitsInTheLibraryS": "ライブラリの管理画面で待機します。作成者が編集でき、編集者またはオーナーが公開します。",
-    "itIsPublishedAndEmailedAs": "作成されるとすぐに公開され、メールで送信されます。ライブラリの管理画面で、後から修正できます。",
+    "itWaitsInTheLibraryS": "コミュニティの管理画面で待機します。作成者が編集でき、編集者またはオーナーが公開します。",
+    "itIsPublishedAndEmailedAs": "作成されるとすぐに公開され、メールで送信されます。コミュニティの管理画面で、後から修正できます。",
     "anEditorApprovesIt": "編集者が承認する",
     "itIsSentAsAiWrote": "AI が書いたとおりに送信する",
     "nameWhoCheckedIt": "確認した人の名前を表示する",
@@ -5254,23 +5254,23 @@
     "keepThisUnderCharacters": "{maxLength}文字以内で入力してください。"
   },
   "libraryList": {
-    "evidenceLibraries": "Evidence Libraries",
-    "newLibrary": "新しいライブラリ",
-    "libraryView": "ライブラリの表示",
+    "evidenceLibraries": "Evidence Communities",
+    "newLibrary": "新しいコミュニティ",
+    "libraryView": "コミュニティの表示",
     "sharedWithYou": "あなたと共有",
     "invitations": "招待",
-    "searchLibraries": "ライブラリを検索",
-    "findALibrary": "ライブラリを探す…",
-    "acceptAccessToALibraryWithout": "組織に参加せずに、ライブラリへのアクセスを承諾します。",
-    "loadingLibraries": "ライブラリを読み込んでいます",
-    "noLibrariesMatchTheseFilters": "条件に一致するライブラリはありません。",
+    "searchLibraries": "コミュニティを検索",
+    "findALibrary": "コミュニティを探す…",
+    "acceptAccessToALibraryWithout": "組織に参加せずに、コミュニティへのアクセスを承諾します。",
+    "loadingLibraries": "コミュニティを読み込んでいます",
+    "noLibrariesMatchTheseFilters": "条件に一致するコミュニティはありません。",
     "noPendingInvitations": "保留中の招待はありません。",
-    "librariesPeopleShareWithYouAppear": "ほかの人があなたと共有したライブラリが、ここに表示されます。",
-    "hasNoLibrariesYet": "{name} にはまだライブラリがありません。",
+    "librariesPeopleShareWithYouAppear": "ほかの人があなたと共有したコミュニティが、ここに表示されます。",
+    "hasNoLibrariesYet": "{name} にはまだコミュニティがありません。",
     "organization": "組織: {organization}",
     "inheritedFromOrganizationOwnership": "組織のオーナー権限から引き継いでいます",
-    "everyoneInTheOrganizationViewsIts": "組織の全員が、そのライブラリを閲覧できます",
-    "assignedToThisLibrary": "このライブラリに割り当て済み",
+    "everyoneInTheOrganizationViewsIts": "組織の全員が、そのコミュニティを閲覧できます",
+    "assignedToThisLibrary": "このコミュニティに割り当て済み",
     "decline": "辞退",
     "acceptInvitation": "招待を承諾",
     "deleting": "削除中",
@@ -5280,7 +5280,7 @@
     "viewSetup": "セットアップを表示",
     "actionsFor": "{name} の操作",
     "settings": "設定",
-    "viewPublicLibrary": "公開ライブラリを表示",
+    "viewPublicLibrary": "公開コミュニティを表示",
     "openAdmin": "管理を開く",
     "moreActionsFor": "{name} のその他の操作",
     "declineInvitation": "招待を辞退しますか？",
@@ -5288,7 +5288,7 @@
     "declineInvitation2": "招待を辞退",
     "previewCover": "{title} の表紙をプレビュー",
     "preview": "{title} をプレビュー",
-    "declineBody": "{name} へのアクセス権は得られません。ほかのライブラリには影響しません。",
+    "declineBody": "{name} へのアクセス権は得られません。ほかのコミュニティには影響しません。",
     "owner": "所有者",
     "editor": "編集者",
     "creator": "作成者",
@@ -5334,9 +5334,9 @@
     "fromOpenalex": "OpenAlex から",
     "findAPublication": "出版物を探す…",
     "searchPublications": "出版物を検索",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "publishedIn": "掲載先",
-    "publishedWorksInThisLibrary": "このライブラリの掲載済みの作品 {length} 件",
+    "publishedWorksInThisLibrary": "このコミュニティの掲載済みの作品 {length} 件",
     "publications": "出版物",
     "noPublicationsMatchYourSearch": "検索に一致する出版物はありません。",
     "noPublicationsSelectedYet": "まだ出版物が選ばれていません。",

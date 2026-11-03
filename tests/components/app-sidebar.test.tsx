@@ -106,7 +106,7 @@ describe("<AppSidebar>", () => {
   it("opens Extract and Publish only where the workspace has them", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: "extract" })).toHaveAttribute("href", "/extraction");
-    expect(screen.getByRole("link", { name: "publish" })).toHaveAttribute("href", "/evidence-libraries");
+    expect(screen.getByRole("link", { name: "publish" })).toHaveAttribute("href", "/evidence-communities");
   });
 
   it("hydrates as the server drew it when the look cookie changed after the request", async () => {

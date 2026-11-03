@@ -203,7 +203,7 @@ const SECTION_COMPONENTS: Record<
   analytics: AnalyticsSection,
 };
 
-const LIBRARIES_HREF = "/evidence-libraries";
+const LIBRARIES_HREF = "/evidence-communities";
 
 /** What the platform refused and where it belongs, or null when it said nothing useful. */
 function readRefusal(error: unknown): SaveRefusal | null {
@@ -460,7 +460,7 @@ function Workspace({
         activateConfiguration({ libraryId, expectedEditVersion: version }),
       )
       .then((result) => {
-        if (result.kind === "setup") router.push(`/evidence-libraries/${libraryId}/setup`);
+        if (result.kind === "setup") router.push(`/evidence-communities/${libraryId}/setup`);
       })
       .catch((error: unknown) => showRefusal(error, t("activationError")))
       .finally(() => setActivating(false));

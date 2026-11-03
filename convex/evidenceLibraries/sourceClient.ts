@@ -42,25 +42,25 @@ async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: str
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
-    throw new LibrarySourceError("unavailable", `The library did not answer: ${error instanceof Error ? error.message : String(error)}`);
+    throw new LibrarySourceError("unavailable", `The community did not answer: ${error instanceof Error ? error.message : String(error)}`);
   }
   const answer: unknown = await response.json().catch(() => null);
   if (response.ok) {
     const parsed = schema.safeParse(answer);
-    if (!parsed.success) throw new LibrarySourceError("invalid", "The library answered in a shape OpenScholar doesn't read.", response.status);
+    if (!parsed.success) throw new LibrarySourceError("invalid", "The community answered in a shape OpenScholar doesn't read.", response.status);
     return parsed.data;
   }
   const refusal = refusalSchema.safeParse(answer);
   // A runtime from before these calls has no such path: it answers its own page, not a refusal.
-  if (response.status === 404 && !refusal.success) throw new LibrarySourceError("outdated", "This library needs an update to be used here.", 404);
-  if (response.status === 401) throw new LibrarySourceError("refused", "The library refused OpenScholar's credential.", 401);
+  if (response.status === 404 && !refusal.success) throw new LibrarySourceError("outdated", "This community needs an update to be used here.", 404);
+  if (response.status === 401) throw new LibrarySourceError("refused", "The community refused OpenScholar's credential.", 401);
   const code = refusal.success ? refusal.data.error : "";
-  const message = refusal.success ? (refusal.data.message ?? code) : `The library answered ${response.status}.`;
+  const message = refusal.success ? (refusal.data.message ?? code) : `The community answered ${response.status}.`;
   if (code === "private" || code === "reader_accounts_off") throw new LibrarySourceError("private", message, response.status);
   if (code === "not_found") throw new LibrarySourceError("not_found", message, response.status);
   if (code === "too_many") throw new LibrarySourceError("too_many", message, response.status);
   if (code === "index_changed") throw new LibrarySourceError("index_changed", message, response.status);
-  if (code === "contract") throw new LibrarySourceError("outdated", "This library needs an update to be used here.", response.status);
+  if (code === "contract") throw new LibrarySourceError("outdated", "This community needs an update to be used here.", response.status);
   if (code === "role" || code === "not_reader" || code === "changed") throw new LibrarySourceError(code, message, response.status);
   throw new LibrarySourceError(response.status >= 500 ? "unavailable" : "invalid", message, response.status);
 }

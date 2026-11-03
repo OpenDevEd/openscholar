@@ -15,8 +15,8 @@ import { TOPIC_PUBLICATIONS_PAGE, topicPublicationsReadValidator } from "./valid
 export const publicationsAction = defineUserAction({
   path: "topics/assistant:publications",
   description:
-    `Reads the publications Evidence Libraries hold on a research area, by its topic ID such as T10044, ${TOPIC_PUBLICATIONS_PAGE} at a time from \`cursor\`, searched by \`query\` in their titles, authors and abstracts. ` +
-    "Each one's title, type, year, authors, its page, the library it's in and how many libraries hold a copy; `next` is the next page's `cursor`, null on the last. `updating`: the list is being regrouped and may change. The area itself is research/topics:get.",
+    `Reads the publications Evidence Communities hold on a research area, by its topic ID such as T10044, ${TOPIC_PUBLICATIONS_PAGE} at a time from \`cursor\`, searched by \`query\` in their titles, authors and abstracts. ` +
+    "Each one's title, type, year, authors, its page, the community it's in and how many communities hold a copy; `next` is the next page's `cursor`, null on the last. `updating`: the list is being regrouped and may change. The area itself is research/topics:get.",
   args: { topicId: v.string(), query: v.optional(v.union(v.string(), v.null())), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: topicPublicationsReadValidator,
   spendsCredits: false,

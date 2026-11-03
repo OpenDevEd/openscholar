@@ -20,8 +20,8 @@ const KEPT: ReadonlyArray<readonly [page: RegExp, parameters: readonly string[]]
   [/^\/extraction\/new$/, ["step", "tab"]],
   [/^\/topics$/, ["q", "domain", "field", "subfield"]],
   [/^\/topics\/[^/]+$/, ["libraryQuery"]],
-  [/^\/evidence-libraries$/, ["view"]],
-  [/^\/evidence-libraries\/[^/]+\/configuration$/, ["section"]],
+  [/^\/evidence-(?:communities|libraries)$/, ["view"]],
+  [/^\/evidence-(?:communities|libraries)\/[^/]+\/configuration$/, ["section"]],
 ];
 /** Characters of an address that is read at all, of a path, and of a parameter's value. */
 const ADDRESS_MAX = 4_000;
@@ -107,7 +107,7 @@ export function recordOf(address: string): LinkedRecord | null {
   if (path === "/library" && has("col")) return { kind: "collection" };
   if (/^\/extraction\/[^/]+$/.test(path) && path !== "/extraction/new") return { kind: "extraction" };
   if (path === "/screening" && has("job")) return { kind: "screening" };
-  if (/^\/evidence-libraries\/[^/]+(\/.*)?$/.test(path)) return { kind: "library" };
+  if (/^\/evidence-(?:communities|libraries)\/[^/]+(\/.*)?$/.test(path)) return { kind: "library" };
   if (/^\/topics\/[^/]+$/.test(path)) return { kind: "topic" };
   return null;
 }

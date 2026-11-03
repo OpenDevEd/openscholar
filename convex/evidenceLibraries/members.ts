@@ -8,13 +8,13 @@ import { itemGuestsOf, sharedWithOf } from "../sharing/items";
 /** Refuses another person once a library has MAX_LIBRARY_MEMBERS (#357), from its count: the people given a role, and the invitations still waiting. */
 export async function assertLibraryHasRoom(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
   if ((await countOf(ctx, itemGuestsOf(libraryId))) >= MAX_LIBRARY_MEMBERS) {
-    throw createError("VALIDATION_ERROR", `A library can have up to ${MAX_LIBRARY_MEMBERS.toLocaleString("en")} people. Remove someone to add another.`);
+    throw createError("VALIDATION_ERROR", `A community can have up to ${MAX_LIBRARY_MEMBERS.toLocaleString("en")} people. Remove someone to add another.`);
   }
 }
 
 /** Refuses another direct grant once a person has MAX_LIBRARY_GRANTS_PER_PERSON, so their grants read in one query (#427), from their count. */
 export async function assertPersonHasRoom(ctx: QueryCtx, userId: Id<"users">) {
   if ((await countOf(ctx, sharedWithOf(userId, "library"))) >= MAX_LIBRARY_GRANTS_PER_PERSON) {
-    throw createError("VALIDATION_ERROR", `This person already has access to ${MAX_LIBRARY_GRANTS_PER_PERSON.toLocaleString("en")} libraries. Remove them from one to add another.`);
+    throw createError("VALIDATION_ERROR", `This person already has access to ${MAX_LIBRARY_GRANTS_PER_PERSON.toLocaleString("en")} communities. Remove them from one to add another.`);
   }
 }

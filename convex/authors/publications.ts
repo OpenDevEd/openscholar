@@ -15,13 +15,13 @@ export const replaceFromLibrary = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-    if (!libraryId) throw createError("VALIDATION_ERROR", "Invalid library ID");
+    if (!libraryId) throw createError("VALIDATION_ERROR", "Invalid community ID");
     await authenticateLibraryServiceCredential(ctx, {libraryId, credentialDigest: args.credentialDigest});
     if (!/^[A-Z0-9]{8}$/.test(args.itemKey) || !Number.isSafeInteger(args.revision) || args.revision < 1 || args.profileIds.length > MAX_AUTHORS_PER_PUBLICATION) {
       throw createError("VALIDATION_ERROR", "Invalid publication associations");
     }
     const library = await ctx.db.get("evidenceLibraries", libraryId);
-    if (!library || library.state === "disabled") throw createError("FORBIDDEN", "Library is unavailable");
+    if (!library || library.state === "disabled") throw createError("FORBIDDEN", "Community is unavailable");
     const receipt = await ctx.db.query("authorPublicationReceipts")
       .withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", args.itemKey)).unique();
     if (receipt && receipt.revision >= args.revision) return null;

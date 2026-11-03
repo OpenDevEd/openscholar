@@ -54,9 +54,9 @@ describe("Library Team", () => {
    render(<TeamSection libraryId={libraryId} />);
    const user = userEvent.setup();
    await user.click(screen.getByRole("button", { name: "Actions for Grace" }));
-   await user.click(screen.getByRole("menuitem", { name: "Remove from library" }));
+   await user.click(screen.getByRole("menuitem", { name: "Remove from community" }));
    expect(mocks.mutate).not.toHaveBeenCalled();
-   await user.click(screen.getByRole("button", { name: "Remove from library" }));
+   await user.click(screen.getByRole("button", { name: "Remove from community" }));
    expect(mocks.mutate).toHaveBeenCalledWith({ libraryId, clerkUserId: "creator" });
  });
 });

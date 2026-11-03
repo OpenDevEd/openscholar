@@ -149,7 +149,7 @@ describe("the OpenRouter key", () => {
       fixture.t.run((ctx) =>
         requireUnchangedAiProviderKey(ctx, libraryId, seen),
       ),
-    ).rejects.toThrow(/changed while the library was publishing/);
+    ).rejects.toThrow(/changed while the community was publishing/);
 
     // Removing it counts as a change too.
     const afterReplace = await fixture.t.run((ctx) =>
@@ -163,7 +163,7 @@ describe("the OpenRouter key", () => {
       fixture.t.run((ctx) =>
         requireUnchangedAiProviderKey(ctx, libraryId, afterReplace),
       ),
-    ).rejects.toThrow(/changed while the library was publishing/);
+    ).rejects.toThrow(/changed while the community was publishing/);
 
     // An untouched key passes.
     await write(OPENROUTER_KEY);

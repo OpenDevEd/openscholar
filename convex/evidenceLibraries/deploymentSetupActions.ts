@@ -143,7 +143,7 @@ export const runDeploymentSetup = internalAction({
       if (deployment.state !== "finished") {
         throw new CoolifyClientError(
           "COOLIFY_DEPLOYMENT_FAILED",
-          "Coolify could not deploy the Evidence Library",
+          "Coolify could not deploy the Evidence Community",
         );
       }
       if (!deployment.coolifyConfigHash) {
@@ -167,7 +167,7 @@ export const runDeploymentSetup = internalAction({
           ? { code: error.code, message: error.message }
           : {
               code: "DEPLOYMENT_SETUP_FAILED",
-              message: "Evidence Library deployment could not be checked",
+              message: "Evidence Community deployment could not be checked",
             };
       if (safeError.code === "DEPLOYMENT_SETUP_FAILED") {
         console.error("[evidence-library] deployment setup failed", {

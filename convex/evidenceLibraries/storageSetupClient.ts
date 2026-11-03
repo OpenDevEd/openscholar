@@ -127,7 +127,7 @@ export function createLibraryStorageBucketNames(
   if (!libraryId.trim()) {
     throw new StorageSetupError(
       "INVALID_STORAGE_CONFIG",
-      "Evidence Library ID is missing",
+      "Evidence Community ID is missing",
     );
   }
   const digest = createHash("sha256").update(libraryId).digest("hex");

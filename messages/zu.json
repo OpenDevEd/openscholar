@@ -23,7 +23,7 @@
     "history": "Umlando",
     "extraction": "Ukukhishwa",
     "library": "Umtapo wolwazi",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "screening": "Ukuskrini",
     "settings": "Izilungiselelo",
     "save": "Gcina",
@@ -292,12 +292,12 @@
       "noMemberLimit": "Awukho umkhawulo wamalungu",
       "southernFeature1": "Konke okusenhlanganweni yamahhala",
       "southernFeature2": "Kwengezwa enhlanganweni yakho ngemva kokuxhumana nathi",
-      "librariesName": "Evidence Libraries",
+      "librariesName": "Evidence Communities",
       "librariesDescription": "Kuvulelwa inhlangano yakho ngesicelo. Ipulani namakhredithi ayo kuhlala kunjalo.",
-      "librariesFeature1": "Ama-Evidence Libraries omphakathi",
+      "librariesFeature1": "Ama-Evidence Communities omphakathi",
       "librariesFeature2": "Dala futhi uhlele amaphrofayili ababhali",
       "librariesOn": "Kuvuliwe enhlanganweni yakho",
-      "openLibraries": "Vula ama-Evidence Libraries"
+      "openLibraries": "Vula ama-Evidence Communities"
     },
     "cancelScheduledDowngrade": "Khansela ukwehliswa okuhleleliwe",
     "scheduled": "Kuhleleliwe",
@@ -325,7 +325,7 @@
     "loading": "Iyalayisha izilungiselelo zokushicilela…",
     "storedHint": "Shiya kungenalutho ukuze ugcine imvume egciniwe",
     "saved": "Izilungiselelo zokushicilela zigciniwe",
-    "activateHint": "Vula ukulungiselela ukuze uzisebenzise kulo mtapo wolwazi.",
+    "activateHint": "Vula ukulungiselela ukuze uzisebenzise kulo mphakathi.",
     "failure": "Izimvume azikwazanga ukuqinisekiswa. Akukho okugciniwe. Zama futhi.",
     "zenodoRequired": "Kuyadingeka lapho i-Crossref ivuliwe. Amafayela agcinwa uma kutholakala.",
     "zenodoHint": "Gcina amafayela futhi udale ama-DOI we-Zenodo.",
@@ -348,8 +348,8 @@
     "depositorName": "Igama lomfaki",
     "email": "Imeyili yomfaki",
     "namespace": "Isikhala segama le-DOI",
-    "namespaceHint": "Ngokuzenzakalelayo kusebenzisa igama lekheli lalo mtapo wolwazi.",
-    "libraryName": "Igama lomtapo wolwazi",
+    "namespaceHint": "Ngokuzenzakalelayo kusebenzisa igama lekheli lalo mphakathi.",
+    "libraryName": "Igama lomphakathi",
     "checking": "Ihlola izimvume zomhlinzeki…",
     "needsVerification": "Izinguquko zidinga ukuqinisekiswa ngaphambi kokuthi zigcinwe.",
     "verified": "Iqinisekisiwe ngo-{date}",
@@ -359,7 +359,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Akuvunyelwe",
-    "organizationFeatureDescription": "Uhlelo lwalesi sikhala sokusebenzela alufaki i-Evidence Libraries.",
+    "organizationFeatureDescription": "Uhlelo lwalesi sikhala sokusebenzela alufaki i-Evidence Communities.",
     "backToSearch": "Buyela ekusesheni",
     "loadingTitle": "Iyalayisha isikhala sokusebenzela",
     "loadingDescription": "Silungiselela isikhala sakho sokusebenzela esiqinisekisiwe.",
@@ -1607,14 +1607,14 @@
       "collection": "Iqoqo",
       "saved": "Amaphepha agciniwe",
       "screening": "Ukuskrini",
-      "evidenceLibrary": "Evidence Library"
+      "evidenceLibrary": "Evidence Community"
     },
     "noSets": {
       "search": "Azikho izisesho ezigciniwe okwamanje.",
       "collection": "Azikho amaqoqo okwamanje.",
       "saved": "Azikho amaphepha agciniwe okwamanje.",
       "screening": "Azikho izinkuskrini eziqediwe okwamanje.",
-      "evidenceLibrary": "Azikho Evidence Libraries okwamanje."
+      "evidenceLibrary": "Azikho Evidence Communities okwamanje."
     },
     "papersToScreen": "Amaphepha okuskrinwa",
     "paperCount": "{count, plural, one {# iphepha} other {# amaphepha}}",
@@ -1725,12 +1725,12 @@
     "picker": {
       "placeholder": "Khetha isikhungo",
       "search": "Sesha izikhungo",
-      "notSetUp": "Amagama asuka kumarekhodi avela ngemva kokulungiswa komtapo wolwazi.",
+      "notSetUp": "Amagama asuka kumarekhodi avela ngemva kokulungiswa komphakathi.",
       "empty": "Azikho amagama ezikhungo kumarekhodi okwamanje.",
       "none": "Lutho",
       "useTyped": "Sebenzisa \"{name}\"",
       "title": "Khetha isikhungo",
-      "description": "Amagama asuka kumarekhodi kulo mtapo wolwazi.",
+      "description": "Amagama asuka kumarekhodi kulo mphakathi.",
       "colName": "Isikhungo",
       "colRecords": "Amarekhodi",
       "noMatch": "Asikho isikhungo esihambisanayo.",
@@ -1739,7 +1739,7 @@
     }
   },
   "evidenceLibraryConfiguration": {
-    "untitled": "Umtapo wolwazi ongenasihloko",
+    "untitled": "Umphakathi ongenasihloko",
     "unsaved": "Izinguquko ezingagciniwe",
     "viewOnly": "Ukubuka kuphela",
     "save": "Gcina",
@@ -1754,18 +1754,18 @@
     "fixFirst": "Lungisa amagama agqanyisiwe kuqala",
     "fixFirstToast": "Lungisa amagama agqanyisiwe",
     "fixFirstToastDescription": "Amanye amagigaba adinga ukunakwa ngaphambi kokugcina.",
-    "activateDraftTitle": "Lungisa bese wenza lo mtapo wolwazi usebenze?",
+    "activateDraftTitle": "Lungisa bese wenza lo mphakathi usebenze?",
     "activateDraftBody": "Lokhu kulungisa i-{name} futhi kuyibeke ku-inthanethi ku-{address}. Kuthatha cishe imizuzu emi-2.",
     "activateDraftConfirm": "Qala ukulungisa",
     "activateTitle": "Wenza lolu guquko lusebenze?",
     "activateBody": "Lokhu kushicilela inguqulo entsha. Kuthatha cishe imizuzu emi-2.",
-    "activateBodySoftware": "Futhi ibuyekeza umtapo wolwazi ube softhiwe yakamuva ye-Evidence Library, eyidingwa yilezi zilungiselelo, ngakho kungathatha imizuzu eminingi.",
+    "activateBodySoftware": "Futhi ibuyekeza umphakathi ube softhiwe yakamuva ye-Evidence Community, eyidingwa yilezi zilungiselelo, ngakho kungathatha imizuzu eminingi.",
     "activateBodyUnsaved": "Izinguquko zakho ezingagciniwe zizogcinwa kuqala.",
     "activateConfirm": "Yenza isebenze",
-    "activationError": "Umtapo wolwazi awukwazanga ukwenziwa usebenze. Zama futhi.",
+    "activationError": "Umphakathi awukwazanga ukwenziwa usebenze. Zama futhi.",
     "applying": "Iyasebenzisa izinguquko zakho",
     "operationFailed": "Ukwenza isebenze kokugcina kehlulekile",
-    "backToLibraries": "Buyela emitapweni yolwazi",
+    "backToLibraries": "Buyela emiphakathini",
     "backToTop": "Buyela phezulu",
     "rail": {
       "aria": "Izigaba zokumisa",
@@ -1813,15 +1813,15 @@
       "storage": "Amafayela",
       "application": "Uhlelo lokusebenza",
       "deployment": "Iyakha",
-      "health_check": "Iyahlola ikhasi lomtapo wolwazi",
+      "health_check": "Iyahlola ikhasi lomphakathi",
       "coolify": "Iyakha",
       "convex": "Iyaqeda",
       "completed": "Ikhona"
     },
     "problems": {
       "notificationSchedule": "Khetha usuku olusemthethweni lwesifinyezo, isikhathi nesikhathi sezindawo.",
-      "nameMissing": "Nika umtapo wolwazi igama.",
-      "shortNameMissing": "Nika umtapo wolwazi igama elifushanisiwe.",
+      "nameMissing": "Nika umphakathi igama.",
+      "shortNameMissing": "Nika umphakathi igama elifushanisiwe.",
       "partnerName": "Wonke abasekeli ngezimali badinga igama.",
       "badColour": "Enye yemibala ayivumelekile.",
       "institutionName": "Wonke amasikhungo adinga igama.",
@@ -1853,7 +1853,7 @@
       "consentVersion": "Inguqulo yokuvuma iyinombolo ephelele, u-1 noma ngaphezulu.",
       "aiKey": "Engeza ukhiye wakho we-OpenRouter.",
       "aiModel": "Khetha imodeli eyphendula imibuzo.",
-      "aiModelUnknown": "Leyo modeli akuyona esinikezwa isofthiwe yomtapo wolwazi wakho. Khetha enye.",
+      "aiModelUnknown": "Leyo modeli akuyona esinikezwa isofthiwe yomphakathi wakho. Khetha enye.",
       "homeStepName": "Nika igama kuwo wonke amanyathelo asemibhalweni kuphela.",
       "homeLimit": "Eminye imbhalo yekhasi lokuqala ide kunalokho okuvunyelwe, noma uhlu lunezingenisi eziningi kakhulu. Yifushanise.",
       "tagFilters": "Wonke amahlungi wamathegi adinga igama, nakho konke okungeniswayo kudinga ithegi."
@@ -1886,18 +1886,18 @@
       "textFile": "Umbhalo olayishiwe"
     },
     "identity": {
-      "description": "Igama abantu abalibonayo, ikheli abavakashela kulo, nokuthi umtapo wolwazi ubukeka kanjani uma wabelwana.",
+      "description": "Igama abantu abalibonayo, ikheli abavakashela kulo, nokuthi umphakathi ubukeka kanjani uma wabelwana.",
       "nameLabel": "Igama",
-      "nameError": "Faka igama lomtapo wolwazi.",
+      "nameError": "Faka igama lomphakathi.",
       "shortNameLabel": "Igama elifushanisiwe",
       "shortNameHint": "Lisetshenziswa emagameni amafayela okukhipha, izihloko ze-imeyili, nalapho isayithi libekwa njengohlelo.",
-      "shortNameError": "Faka igama elifushanisiwe lomtapo wolwazi.",
+      "shortNameError": "Faka igama elifushanisiwe lomphakathi.",
       "addressLabel": "Ikheli lomphakathi",
       "addressHint": "Sebenzisa isigaba se-Domain ukuze wengeze ikheli lakho.",
       "copyAddress": "Kopisha ikheli",
       "copied": "Kukopishiwe",
       "taglineLabel": "Isifinyezo esifushane",
-      "taglineHint": "Ikhanda elingaphezulu kokusesha komtapo wolwazi. Shiya kungenalutho ukuze kuboniswe Ukusesha.",
+      "taglineHint": "Ikhanda elingaphezulu kokusesha komphakathi. Shiya kungenalutho ukuze kuboniswe Ukusesha.",
       "taglinePlaceholder": "Ubufakazi bezinqumo ezingcono",
       "descriptionLabel": "Incazelo",
       "descriptionHint": "Iboniswa ekhasini lokuqala nasemiphumelweni yokusesha.",
@@ -1909,9 +1909,9 @@
       "partnerName": "Igama lomlekeleli",
       "partnerPlaceholder": "Igama lomlekeleli",
       "shareImageLabel": "Isithombe sokwabelana",
-      "shareImageHint": "Sisetshenziswa lapho umtapo wolwazi wabelwana ezinkundleni zokuxhumana. PNG, JPG noma WEBP.",
+      "shareImageHint": "Sisetshenziswa lapho umphakathi wabelwana ezinkundleni zokuxhumana. PNG, JPG noma WEBP.",
       "showNameLabel": "Igama eduze kologo",
-      "showNameHint": "Vala uma ilogo sele ibhala igama lomtapo wolwazi."
+      "showNameHint": "Vala uma ilogo sele ibhala igama lomphakathi."
     },
     "theme": {
       "description": "Ukwakheka, amafonti, amalogo, nemibala yesayithi lomphakathi.",
@@ -1934,7 +1934,7 @@
       "fontsHeading": "Amafonti",
       "headingFontLabel": "Ifonti yesihloko",
       "bodyFontLabel": "Ifonti yombhalo",
-      "sampleHeading": "Umtapo wolwazi wakho",
+      "sampleHeading": "Umphakathi wakho",
       "sampleBody": "Lokhu kuyindlela ndima yombhalo ngayo ngesayithi lomphakathi.",
       "logosHeading": "Ilogo nesithonjana sesiphequluli",
       "logoLightLabel": "Ilogo yemodi yokukhanya",
@@ -1982,19 +1982,19 @@
       "add": "Engeza isikhungo"
     },
     "danger": {
-      "description": "Susa lo mtapo wolwazi. Qaphela lapha.",
-      "deleteTitle": "Susa umtapo wolwazi",
+      "description": "Susa lo mphakathi. Qaphela lapha.",
+      "deleteTitle": "Susa umphakathi",
       "deleteHint": "Kususa isayithi, ikheli, nezilungiselelo.",
-      "deleteButton": "Susa umtapo wolwazi"
+      "deleteButton": "Susa umphakathi"
     },
     "deleteDialog": {
-      "title": "Susa lo mtapo wolwazi?",
+      "title": "Susa lo mphakathi?",
       "body": "Lokhu kususa i-{name}, uhlelo lwayo, amafayela ayo, nekheli layo {address}. Lokhu akukwazi ukuhlehliswa.",
       "typeToConfirm": "Thayipha {name} ukuze uqinisekise",
-      "confirm": "Susa umtapo wolwazi",
-      "startedTitle": "Iyasusa umtapo wolwazi",
+      "confirm": "Susa umphakathi",
+      "startedTitle": "Iyasusa umphakathi",
       "startedDescription": "I-{name} iyasuswa. Kuthatha imizuzwana embalwa.",
-      "error": "Umtapo wolwazi awukwazanga ukususwa. Qeda noma yimuphi umsebenzi womtapo wolwazi osebenzayo, bese uzama futhi."
+      "error": "Umphakathi awukwazanga ukususwa. Qeda noma yimuphi umsebenzi womphakathi osebenzayo, bese uzama futhi."
     },
     "links": {
       "labelLabel": "Ilebula",
@@ -2009,8 +2009,8 @@
       "pageLabel": "Ikhasi",
       "pages": {
         "home": "Ikhasi lokuqala",
-        "library": "Umtapo wolwazi",
-        "digests": "Izifinyezo zomtapo wolwazi",
+        "library": "Umphakathi",
+        "digests": "Izifinyezo zomphakathi",
         "map": "Imephu",
         "evidence": "Imephu yobufakazi",
         "contact": "Ukuxhumana",
@@ -2098,7 +2098,7 @@
       "disclaimer": "Isaziso",
       "disclaimerHint": "Iboniswa ngombhalo omncane ezansi kwalo lonke ikhasi.",
       "attribution": "Umthombo wokukhomba",
-      "attributionHint": "Umugqa owodwa, isibonelo ukuthi ngubani oqhuba umtapo wolwazi.",
+      "attributionHint": "Umugqa owodwa, isibonelo ukuthi ngubani oqhuba umphakathi.",
       "poweredBy": "Iqhutshwa yi-OpenScholar",
       "poweredByHint": "Umugqa omncane oxhuma emuva ku-OpenScholar.",
       "poweredByLocked": "Iyatholakala kuhlelo olukhokhelwayo."
@@ -2151,13 +2151,13 @@
       "pickedCount": "{count, plural, =0 {Akukho okukhethiwe} one {# okukhethiwe} other {# okukhethiwe}}"
     },
     "collections": {
-      "description": "Khetha ukuthi yimaphi amaqoqo asedatabeseni yomtapo wolwazi azovela esayithini, nokuthi ahlelwe kanjani.",
+      "description": "Khetha ukuthi yimaphi amaqoqo asedatabeseni yomphakathi azovela esayithini, nokuthi ahlelwe kanjani.",
       "shownHeading": "Iboniswa esayithini",
       "introHint": "Iqoqo ngalinye liba yiqembu lezihlungi, namaqoqo ayo amancane abe yizinketho. Hudula ukuze uhlele ukuthi ahlelwe kanjani esayithini.",
       "loading": "Iyalayisha amaqoqo…",
-      "failed": "Ayikwazanga ukulayisha amaqoqo womtapo wolwazi.",
-      "notSetUp": "Lungisa kuqala umtapo wolwazi, bese udala amaqoqo ekhasini lawo lokuphatha noma uwavumelanise ku-Zotero.",
-      "noneInDatabase": "Azikho amaqoqo okwamanje. Wadale ekhasini lokuphatha lomtapo wolwazi noma wawavumelanise ku-Zotero.",
+      "failed": "Ayikwazanga ukulayisha amaqoqo womphakathi.",
+      "notSetUp": "Lungisa kuqala umphakathi, bese udala amaqoqo ekhasini lawo lokuphatha noma uwavumelanise ku-Zotero.",
+      "noneInDatabase": "Azikho amaqoqo okwamanje. Wadale ekhasini lokuphatha lomphakathi noma wawavumelanise ku-Zotero.",
       "empty": "Azikho amaqoqo aboniswayo okwamanje.",
       "records": "{count, plural, =1 {irekhodi elingu-1} other {# amarekhodi}}",
       "titleLabel": "Isihloko esisesayithini",
@@ -2220,25 +2220,25 @@
         "failedAt": "Ukungenisa kehlulekile ngo-{time}",
         "lastSuccess": "Impumelelo yokugcina {when}",
         "retry": "Zama futhi ukungenisa",
-        "retryStarted": "Umtapo wolwazi uzongenisa lo mthombo emizweni embalwa.",
-        "retryFailed": "Umtapo wolwazi awukwazanga ukucelwa ukungenisa manje. Zama futhi maduzane.",
+        "retryStarted": "Umphakathi uzongenisa lo mthombo emizweni embalwa.",
+        "retryFailed": "Umphakathi awukwazanga ukucelwa ukungenisa manje. Zama futhi maduzane.",
         "details": "Imininingwane yobuchwepheshe",
         "afterActivate": "Ukungenisa kuqala ngemva kokuthi wenze isebenze",
         "startsSoon": "Iqala emzuzwini owodwa",
         "failure": {
           "access_denied": "I-{provider} yenqabe ukhiye ogciniwe. Hlola esigabeni sokuxhumana, bese uzama futhi.",
-          "owner_left": "Umuntu owengeze leli qoqo ushiye inhlangano, ngakho umtapo wolwazi uhoxise amarekhodi ayo.",
+          "owner_left": "Umuntu owengeze leli qoqo ushiye inhlangano, ngakho umphakathi uhoxise amarekhodi ayo.",
           "not_found": "I-{provider} ayisathola lo mthombo, noma ukhiye ogciniwe awukwazi ukuwubona.",
           "missing_key": "Akukho khiyi ye-API egciniwe kulo mthombo. Engeza enye esigabeni sokuxhumana.",
           "invalid_query": "I-{provider} yenqabe ukusesha. Hlela ukusesha, bese wenza isebenze futhi.",
-          "too_large": "Lo mthombo unamarekhodi amaningi kunalawo umtapo wolwazi ovumela.",
+          "too_large": "Lo mthombo unamarekhodi amaningi kunalawo umphakathi ovumela.",
           "rate_limited": "I-{provider} ilinganisa izicelo. Ukungenisa kuzama futhi njalo ngomzuzu.",
           "unavailable": "I-{provider} ayikwazanga ukufinyelelwa. Ukungenisa kuzama futhi njalo ngomzuzu.",
           "interrupted": "Ukungenisa kumile ngaphambi kokuthi kuqedeke. Kuqala futhi ngokwakho.",
           "internal": "Ukungenisa kuhlangabezane nephutha elingalindelekile. Imininingwane yobuchwepheshe ikhombisa okwenzekile."
         }
       },
-      "description": "Lapho amarekhodi omtapo wolwazi evela khona.",
+      "description": "Lapho amarekhodi omphakathi evela khona.",
       "accountHeading": "I-akhawunti ye-Zotero",
       "notConnected": "Ayixhunyiwe",
       "notConnectedHint": "Ngena kanye. Amaqembu akho bese evela kukhethi.",
@@ -2275,7 +2275,7 @@
       "listLabel": "Imithombo exhunyiwe",
       "connections": "Ukuxhumana",
       "connectionsTitle": "Ukuxhumana komthombo",
-      "connectionsDescription": "Phatha ukufinyelela kwe-akhawunti nezilungiselelo zokungenisa zalo mtapo wolwazi.",
+      "connectionsDescription": "Phatha ukufinyelela kwe-akhawunti nezilungiselelo zokungenisa zalo mphakathi.",
       "providerTabs": "Umhlinzeki womthombo",
       "addSource": "Engeza umthombo",
       "zoteroGroup": "Iqembu le-Zotero",
@@ -2291,7 +2291,7 @@
         "ownKey": "Ukhiye wami we-API",
         "platformHint": "Kufakiwe ku-OpenScholar. Ukuvuselela kulanda amarekhodi ashintshile kuphela.",
         "keyLabel": "Ukhiye we-API we-OpenAlex",
-        "keyHint": "Sebenzisa ukhiye wakho we-API we-OpenAlex kulo mtapo wolwazi.",
+        "keyHint": "Sebenzisa ukhiye wakho we-API we-OpenAlex kulo mphakathi.",
         "savedKey": "Ukhiye ogciniwe {hint}",
         "keyPlaceholder": "Faka ukhiye wakho we-API we-OpenAlex",
         "saveKey": "Gcina ukhiye we-API",
@@ -2314,14 +2314,14 @@
         "processPdfs": "Qhubeka nama-PDF"
       },
       "removeTitle": "Susa leli qembu?",
-      "removeBody": "Amarekhodi asevele engeniswe ahlala emtapweni wolwazi. Izinguquko ezintsha ngeke zingeniswe.",
+      "removeBody": "Amarekhodi asevele engeniswe ahlala emphakathini. Izinguquko ezintsha ngeke zingeniswe.",
       "removeConfirm": "Susa",
       "health": {
         "connected": "Kuxhunyiwe",
         "paused": "Imisiwe"
       },
       "tagRulesHeading": "Imithetho yamathegi e-Zotero",
-      "tagRulesIntro": "Amathegi ku-Zotero ashintsha ukuthi umtapo wolwazi uphatha kanjani irekhodi. Amathegi okufihla asebenza nakumanothi nasezixhumanisi.",
+      "tagRulesIntro": "Amathegi ku-Zotero ashintsha ukuthi umphakathi uphatha kanjani irekhodi. Amathegi okufihla asebenza nakumanothi nasezixhumanisi.",
       "tagPlaceholder": "Engeza ithegi…",
       "tagRules": {
         "hidden": {
@@ -2385,7 +2385,7 @@
       "collectionConnectFailed": "Ayikwazanga ukungeza leli qoqo.",
       "collectionPicker": {
         "title": "Engeza amaqoqo",
-        "description": "Amaqoqo akho we-OpenScholar. Umtapo wolwazi ulandela amaqoqo oticka bese uyavuselela uma eshintsha.",
+        "description": "Amaqoqo akho we-OpenScholar. Umphakathi ulandela amaqoqo oticka bese uyavuselela uma eshintsha.",
         "search": "Sesha amaqoqo…",
         "colCollection": "Iqoqo",
         "noCollections": "Awunawo amaqoqo okwamanje.",
@@ -2405,15 +2405,15 @@
           "passing": "Ikhomba kancane",
           "notAbout": "Akukho ngayo"
         },
-        "keep": "Gcina emtapweni wolwazi: {grade}",
-        "inLibrary": "emtapweni wolwazi",
+        "keep": "Gcina emphakathini: {grade}",
+        "inLibrary": "emphakathini",
         "keptOut": "kugcinwe ngaphandle",
         "reading": "Iyafunda",
         "gradingAgain": "Iyaphinda inikeze amamaki, {done, number} kwa-{of, number}",
         "gradingNote": "Amamaki angezansi ayesihloko samanje kuze kube yilapho wonke amarekhodi enikezwa amamaki futhi.",
         "gradedAgain": "amarekhodi aphinde anikezwa amamaki",
         "notGradedYet": "amarekhodi angakanikezwa amamaki",
-        "onLibraryKey": "ekhiyeni lomtapo wolwazi",
+        "onLibraryKey": "ekhiyeni lomphakathi",
         "toFinish": "ukuze kuqedwe",
         "ofSample": "{changed, number} kwa-{size, number}",
         "changeInTrial": "shintsha imaki ekuhlolweni",
@@ -2423,16 +2423,16 @@
         "gradeThem": "Nika amamaki",
         "currentSubject": "Isihloko samanje",
         "newSubject": "Isihloko esisha",
-        "startsOnActivate": "Ukunikeza amamaki kuqala ngemva kokuthi wenze lezi zilungiselelo zisebenze nomtapo wolwazi uthatha isihloko esisha.",
-        "refused": "Umtapo wolwazi awuqalanga ukunikeza amamaki: {reason}",
+        "startsOnActivate": "Ukunikeza amamaki kuqala ngemva kokuthi wenze lezi zilungiselelo zisebenze nomphakathi uthatha isihloko esisha.",
+        "refused": "Umphakathi awuqalanga ukunikeza amamaki: {reason}",
         "requestFailed": "Ukucela ukunikezwa kwamamaki akukwazanga",
         "trialFailed": "Ukuhlola akuqedanga",
-        "notRunning": "Umtapo wolwazi awusasebenzi.",
+        "notRunning": "Umphakathi awusasebenzi.",
         "underACent": "ngaphansi kwe-1¢",
         "underAMinute": "ngaphansi komzuzu",
         "aboutMinutes": "cishe imizuzu {count}",
         "aboutHours": "cishe amahora {count}",
-        "methods": "Ukufunda okufanayo kunika irekhodi ngalinye uhlobo lwalo locwaningo, noma ababhali baye bahlanganisa imiphumela ngokwabo, isifunda seluphenya nokuthi isifingqo siveza yini izinombolo. Cishe $0.000075 ngerekhodi. Irekhodi okungahlulekanga ukufunda kwalo lingena emtapweni wolwazi lingenamamaki bese lifundwa futhi kamuva.",
+        "methods": "Ukufunda okufanayo kunika irekhodi ngalinye uhlobo lwalo locwaningo, noma ababhali baye bahlanganisa imiphumela ngokwabo, isifunda seluphenya nokuthi isifingqo siveza yini izinombolo. Cishe $0.000075 ngerekhodi. Irekhodi okungahlulekanga ukufunda kwalo lingena emphakathini lingenamamaki bese lifundwa futhi kamuva.",
         "gradedOnceActive": "Amarekhodi anikezwa amamaki kanye lapho lezi zilungiselelo zisebenza."
       }
     },
@@ -2475,7 +2475,7 @@
       "institutionLabel": "Ilebula loluhla oluwehlisayo",
       "institutionLabelHint": "Ilebula oluhla oluwehlisayo, isibonelo Izikhungo noma Abalingani.",
       "sourcesFilter": "Ihlungi lemithombo",
-      "sourcesFilterHint": "Abafundi banciphisa imiphumela ngemithombo eyithole. Ibonakala uma umtapo wolwazi unemithombo emibili noma ngaphezulu.",
+      "sourcesFilterHint": "Abafundi banciphisa imiphumela ngemithombo eyithole. Ibonakala uma umphakathi unemithombo emibili noma ngaphezulu.",
       "sourcesLabel": "Ikhanda lemithombo",
       "sourcesLabelHint": "Okubonwa ngabafundi phezu kwemithombo, isibonelo Izindawo zesihloko.",
       "sourcesLabelError": "Nika ikhanda lemithombo igama.",
@@ -2516,16 +2516,16 @@
         "addTag": "Engeza ithegi",
         "removeTag": "Susa ithegi",
         "pickerTitle": "Engeza ithegi ku-{name}",
-        "pickerDescription": "Amathegi omtapo wolwazi, asetshenziswa kakhulu kuqala. Bhala ithegi amarekhodi angakaliphathi okwamanje, noma thatha okubhalile njengesiqalo.",
+        "pickerDescription": "Amathegi omphakathi, asetshenziswa kakhulu kuqala. Bhala ithegi amarekhodi angakaliphathi okwamanje, noma thatha okubhalile njengesiqalo.",
         "pickerSearch": "Sesha amathegi",
         "colTag": "Ithegi",
         "colRecords": "Amarekhodi",
         "used": "Kungeziwe",
         "loading": "Ifunda amathegi",
-        "failed": "Amathegi omtapo wolwazi ayikwazanga ukufundwa",
-        "noTags": "Umtapo wolwazi awunawo amathegi okwamanje",
+        "failed": "Amathegi omphakathi ayikwazanga ukufundwa",
+        "noTags": "Umphakathi awunawo amathegi okwamanje",
         "noMatch": "Akukho thegi elihambisanayo",
-        "notSetUp": "Amathegi aboniswa uma umtapo wolwazi usuwulungisiwe",
+        "notSetUp": "Amathegi aboniswa uma umphakathi usuwulungisiwe",
         "useTyped": "Engeza \"{tag}\"",
         "usePrefix": "Wonke amathegi aqala nge-\"{prefix}\"",
         "labelFor": "Okubonwa ngabafundi nge-{tag}",
@@ -2589,12 +2589,12 @@
       "hints": {
         "themeSwitcher": "Vumela abantu bakhethe imodi yokukhanya noma yobumnyama.",
         "languageSwitcher": "Vumela abantu bashintshe ulimi lwesayithi.",
-        "collections": "Bonisa amaqoqo emtapweni wolwazi.",
+        "collections": "Bonisa amaqoqo emphakathini.",
         "collectionNotes": "Bonisa inothi lencazelo yeqoqo uma leyo qoqo likhethiwe.",
         "countryFocus": "Bonisa izihlungi zamazwe, amazwe asezincwadini, nemephu yamazwe.",
         "authorFilter": "Vumela abantu bahlunge ngababhali.",
         "yearsDropdown": "Bonisa uhla lokukhetha unyaka esesheni.",
-        "downloads": "Nikeza ukulanda ukubhalisa zezincwadi nomtapo wolwazi wonke.",
+        "downloads": "Nikeza ukulanda ukubhalisa zezincwadi nomphakathi wonke.",
         "atomFeed": "Bonisa ixhumanisi lefidi ye-Atom.",
         "readerAccounts": "Vumela abafundi bangene nge-OpenScholar bagcine amarekhodi namaqoqo."
       },
@@ -2656,20 +2656,20 @@
       "consentVersionHint": "Khuphula lokhu uma ushintsha umbhalo wakho wamakhukhi ukuze wonke abavakashi babuzwe futhi.",
       "consentVersionError": "Sebenzisa inombolo ephelele, u-1 noma ngaphezulu."
     },
-    "updatingSoftware": "Ibuyekeza isofthiwe ye-Evidence Library ibe {rev}",
+    "updatingSoftware": "Ibuyekeza isofthiwe ye-Evidence Community ibe {rev}",
     "operationFlow": {
       "saving": "Iyagcina izinguquko",
       "queued": "Ilinda ukuqala",
       "assembling": "Ilungiselela ukukhishwa",
       "validating": "Ihlola izilungiselelo",
-      "publishing": "Yakha umtapo wolwazi",
+      "publishing": "Yakha umphakathi",
       "activating": "Iyaqala ukusebenza",
       "database": "Idala idatabase",
       "storage": "Ilungiselela amafayela",
-      "application": "Idala umtapo wolwazi",
-      "deployment": "Yakha umtapo wolwazi",
+      "application": "Idala umphakathi",
+      "deployment": "Yakha umphakathi",
       "health_check": "Iyaqala ukusebenza",
-      "coolify": "Isusa umtapo wolwazi",
+      "coolify": "Isusa umphakathi",
       "convex": "Iqeda ukususwa",
       "completed": "Ikhona"
     },
@@ -2678,7 +2678,7 @@
       "checking": "Iyahlola izibuyekezo…",
       "checkAgain": "Hlola futhi",
       "checkError": "Izibuyekezo azikwazanga ukuhlolwa. Zama futhi.",
-      "notRunning": "Kuyatholakala lapho umtapo wolwazi usuphila.",
+      "notRunning": "Kuyatholakala lapho umphakathi usuphila.",
       "updateAvailable": "Kukhona ukubuyekezwa",
       "upToDate": "Kusibekelwe",
       "runningLabel": "Iyasebenza",
@@ -2700,8 +2700,8 @@
         "reliability": "Okulungisiwe"
       },
       "update": "Buyekeza",
-      "updateTitle": "Buyekeza lo mtapo wolwazi?",
-      "updateBody": "Umtapo wolwazi wakhiwa kabusha ngesofthiwe yakamuva ye-Evidence Library. Amarekhodi, izilungiselelo nekheli kuhlala kuyafana. Kuthatha cishe umzuzu.",
+      "updateTitle": "Buyekeza lo mphakathi?",
+      "updateBody": "Umphakathi wakhiwa kabusha ngesofthiwe yakamuva ye-Evidence Community. Amarekhodi, izilungiselelo nekheli kuhlala kuyafana. Kuthatha cishe umzuzu.",
       "updateConfirm": "Buyekeza manje",
       "updateError": "Ukubuyekeza akukwazanga ukuqala. Zama futhi.",
       "historyHeading": "Izinguqulo ezishicilelwe",
@@ -2722,18 +2722,18 @@
       "addressSilent": "Akukho okuphendulayo ku-{host}.",
       "addressMove": "Hambisa ube ekhelini elisha",
       "addressBack": "Buyela ekhelini lesisekelo",
-      "addressMoveTitle": "Hambisa lo mtapo wolwazi ube ekhelini elisha?",
-      "addressMoveBody": "Umtapo wolwazi uthatha ikheli elitholakalayo elilandelayo. Amarekhodi nezilungiselelo kuhlala kuyafana. Noma ubani osebenzisa ikheli elidala ngeke alifinyelele.",
+      "addressMoveTitle": "Hambisa lo mphakathi ube ekhelini elisha?",
+      "addressMoveBody": "Umphakathi uthatha ikheli elitholakalayo elilandelayo. Amarekhodi nezilungiselelo kuhlala kuyafana. Noma ubani osebenzisa ikheli elidala ngeke alifinyelele.",
       "addressMoveConfirm": "Hambisa manje",
       "addressMoveStarted": "Ukuhamba kuqalile",
       "addressMoveStartedDescription": "Kuhamba kuya ku-{address}…",
-      "addressMoveError": "Umtapo wolwazi awukwazanga ukuhanjiswa. Zama futhi.",
+      "addressMoveError": "Umphakathi awukwazanga ukuhanjiswa. Zama futhi.",
       "restoreError": "Inguqulo ayikwazanga ukubuyiselwa. Zama futhi."
     },
     "ai": {
-      "description": "Vumela abavakashi babuze imibuzo ngobufakazi emtapweni wakho wolwazi.",
+      "description": "Vumela abavakashi babuze imibuzo ngobufakazi emphakathini wakho wolwazi.",
       "answersLabel": "Izimpendulo ze-AI",
-      "answersHint": "Engeza ukuphendula imibuzo emtapweni wolwazi. Ukhokha i-OpenRouter ngalokho okusetshenziswayo.",
+      "answersHint": "Engeza ukuphendula imibuzo emphakathini. Ukhokha i-OpenRouter ngalokho okusetshenziswayo.",
       "keyLabel": "Ukhiye we-OpenRouter",
       "keyHint": "Dala okukodwa ku-openrouter.ai. Igciniwe ibethelwe futhi ayisoze ibonakale futhi.",
       "keyStored": "Ukhiye ugciniwe",
@@ -2754,7 +2754,7 @@
       "modelError": "Khetha imodeli kusuka ohlwini lwe-OpenRouter oluvunyelwene nalo."
     },
     "domain": {
-      "description": "Sebenzisa ikheli lakho leweb somtapo wolwazi.",
+      "description": "Sebenzisa ikheli lakho leweb somphakathi.",
       "platformLabel": "Ikheli lenkundla",
       "customLabel": "Idomeyini yezifiso",
       "customDomainsLabel": "Amadomeyini ezifiso",
@@ -2784,7 +2784,7 @@
         "wrong-target": "Leyo domeyini ibhekisela kwenye indawo. Uma ihlezi ngemuva kwenye iproxy, vala iproxy kuleli rekhodi.",
         "token-mismatch": "Irekhodi lobunikazi linenani elihlukile",
         "host-taken": "Enye isayithi isiphendula kale kuleyo domeyini",
-        "not-served": "Umtapo wolwazi awusasebenzi okwamanje",
+        "not-served": "Umphakathi awusasebenzi okwamanje",
         "caa-blocked": "Leyo domeyini ivumela abahlinzeki bezitifiketi abathile kuphela. Engeza irekhodi le-CAA elivumela letsencrypt.org.",
         "tls-timeout": "I-TLS ayikwazanga ukusebenza. Hlola idomeyini futhi."
       },
@@ -2792,7 +2792,7 @@
         "invalid": "Lokho akubonakali njengedomeyini",
         "platform-host": "Leli kheli sele liyeleka kunkundla",
         "host-taken": "Leyo domeyini isisetshenziswa esinye isayithi",
-        "too-many": "Lo mtapo wolwazi sele unamadomeyini amaningi kakhulu angawubamba",
+        "too-many": "Lo mphakathi sele unamadomeyini amaningi kakhulu angawubamba",
         "check-failed": "Asikwazanga ukuhlola idomeyini. Zama futhi."
       },
       "tlsActive": "I-TLS: Iyasebenza",
@@ -2808,12 +2808,12 @@
       "rateLimited": "I-DNS ihlolwe kaningi kakhulu. Zama futhi emzuzwini owodwa.",
       "removing": "Iyasusa",
       "checkFailed": "I-DNS ayikwazanga ukuhlolwa okwamanje. Ingase isaqhubeka nokubuyekeza. Zama futhi maduzane.",
-      "deploying": "Ifaka lolu shintsho emtapweni wolwazi",
+      "deploying": "Ifaka lolu shintsho emphakathini",
       "checked": "I-DNS ihlolwe",
       "recordsNeedAttention": "Amanye amarekhodi e-DNS asadinga ukunakwa.",
       "removeAgain": "Qedela ukususa",
-      "confirmOffTitle": "Buyisela umtapo wolwazi ekhelini lawo lenkundla?",
-      "confirmOffBody": "Umtapo wolwazi uzophendula ku-{address} futhi. Bonke abangenile bazophuma, nabavakashi bedomeyini yezifiso bazofika ekhelini lenkundla.",
+      "confirmOffTitle": "Buyisela umphakathi ekhelini lawo lenkundla?",
+      "confirmOffBody": "Umphakathi uzophendula ku-{address} futhi. Bonke abangenile bazophuma, nabavakashi bedomeyini yezifiso bazofika ekhelini lenkundla.",
       "confirmAction": "Shintsha ikheli"
     },
     "retry": "Zama futhi",
@@ -2848,26 +2848,26 @@
     "publicationsView": "Imithombo yokushicilela",
     "noOpenAlex": "Akukho okushicilelwe kwe-OpenAlex okutholakele.",
     "progress": "{loaded, number} kwa-{total, number}",
-    "searchLibrary": "Sesha okushicilelwe emtapweni wolwazi",
+    "searchLibrary": "Sesha okushicilelwe emphakathini",
     "searchPlaceholder": "Sesha okushicilelwe",
     "updating": "Amaqembu okushicilelwa ayavuselelwa. Vuselela ngokushesha.",
-    "unavailable": "Ezinye izindawo zomtapo wolwazi azitholakali. Kubonisiwe ezitholakalayo.",
-    "loadingLibrary": "Iyalayisha okushicilelwe emtapweni wolwazi",
+    "unavailable": "Ezinye izindawo zomphakathi azitholakali. Kubonisiwe ezitholakalayo.",
+    "loadingLibrary": "Iyalayisha okushicilelwe emphakathini",
     "noPageMatches": "Akukho okuhambisanayo kuleli khasi. Qhubeka ulayisha okushicilelwe.",
     "noLibraryMatches": "Akukho okushicilelwe okuhambisana nokusesha kwakho.",
-    "noLibraryRecords": "Akukho marekhodi e-Evidence Library ashicilelwe asebenzisa lesi sihloko okwamanje."
+    "noLibraryRecords": "Akukho marekhodi e-Evidence Community ashicilelwe asebenzisa lesi sihloko okwamanje."
   },
   "evidenceLibraries": {
     "list": {
-      "title": "Evidence Libraries",
+      "title": "Evidence Communities",
       "openAdmin": "Vula i-admin",
       "retry": "Zama futhi",
-      "deleting": "Iyasusa umtapo wolwazi",
+      "deleting": "Iyasusa umphakathi",
       "deleteFailed": {
-        "runtime": "Asikwazanga ukususa isayithi elisebenzayo lalo mtapo wolwazi, ngakho akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo.",
-        "files": "Asikwazanga ukususa amafayela alo mtapo wolwazi, ngakho akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo.",
-        "database": "Asikwazanga ukususa idatabase yalo mtapo wolwazi, ngakho akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo.",
-        "records": "Lo mtapo wolwazi akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo."
+        "runtime": "Asikwazanga ukususa isayithi elisebenzayo lalo mphakathi, ngakho akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo.",
+        "files": "Asikwazanga ukususa amafayela alo mphakathi, ngakho akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo.",
+        "database": "Asikwazanga ukususa idatabase yalo mphakathi, ngakho akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo.",
+        "records": "Lo mphakathi akukaqedwa ukususwa. Zama futhi, noma xhumana nosekelo."
       }
     },
     "status": {
@@ -2889,16 +2889,16 @@
       "completed": "Ikhona"
     },
     "new": {
-      "title": "Evidence Library entsha",
-      "backToLibraries": "Buyela emitapweni yolwazi",
+      "title": "Evidence Community entsha",
+      "backToLibraries": "Buyela emiphakathini",
       "ownerTitle": "Umnikazi",
       "ownerOnlyTitle": "Abanikazi kuphela",
-      "ownerOnlyDescription": "Umnikazi wenhlangano kuphela ongadala umtapo wolwazi.",
-      "libraryTitle": "Umtapo wolwazi",
+      "ownerOnlyDescription": "Umnikazi wenhlangano kuphela ongadala umphakathi.",
+      "libraryTitle": "Umphakathi",
       "libraryDescription": "Igama livela kuwebhusayithi esidlangalaleni futhi lisetha ikheli lomphakathi.",
       "nameLabel": "Igama",
       "namePlaceholder": "Isibonelo: Ubufakazi bemfundo yezulu",
-      "nameError": "Faka igama lomtapo wolwazi.",
+      "nameError": "Faka igama lomphakathi.",
       "shortNameLabel": "Igama elifushanisiwe",
       "shortNameHint": "Lisethwa ngokusuka kugama. Ungalishintsha kamuva ngaphansi kokumisa.",
       "addressLabel": "Ikheli lomphakathi",
@@ -2908,7 +2908,7 @@
       "reserve": "Bambela ikheli",
       "checking": "Iyabamba…",
       "reserved": "Libanjiwe",
-      "nameTaken": "Sesinomtapo wolwazi ogama lawo ngu-{name}.",
+      "nameTaken": "Sesinomphakathi ogama lawo ngu-{name}.",
       "openExisting": "Wuvule",
       "checkFailed": "Ikheli alikwazanga ukuhlolwa. Zama futhi.",
       "addressTaken": "Omunye umuntu ubambe leli kheli manje nje. Hlola futhi.",
@@ -2916,7 +2916,7 @@
       "tryAgain": "Zama futhi"
     },
     "setup": {
-      "backToLibraries": "Buyela emitapweni yolwazi",
+      "backToLibraries": "Buyela emiphakathini",
       "configure": "Lungisa",
       "openAdmin": "Vula i-admin",
       "groupTitle": "Ukulungisa",
@@ -2924,7 +2924,7 @@
       "retryingTitle": "Iyazama futhi",
       "retryingDescription": "Iqala kabusha kusukela esinyathelweni esamisa.",
       "retryError": "Ukulungisa akukwazanga ukuqalwa kabusha. Zama futhi.",
-      "draftHint": "Lungisa bese wenza lo mtapo wolwazi usebenze kusuka ekhasini lokumisa lawo.",
+      "draftHint": "Lungisa bese wenza lo mphakathi usebenze kusuka ekhasini lokumisa lawo.",
       "stoppedHint": "Zama futhi kuphinda leli sinyathelo namanye amanyathelo alandelayo.",
       "deploymentError": "Ukwakha akuqedanga.",
       "steps": {
@@ -2942,27 +2942,27 @@
         },
         "application": {
           "name": "Uhlelo lokusebenza",
-          "waiting": "Idala uhlelo lomtapo wolwazi.",
-          "running": "Idala uhlelo lomtapo wolwazi…",
-          "done": "Idalwe uhlelo lomtapo wolwazi."
+          "waiting": "Idala uhlelo lomphakathi.",
+          "running": "Idala uhlelo lomphakathi…",
+          "done": "Idalwe uhlelo lomphakathi."
         },
         "deployment": {
           "name": "Ukwakha",
-          "waiting": "Yakha umtapo wolwazi uwufake ku-inthanethi.",
-          "running": "Yakha umtapo wolwazi uwufake ku-inthanethi…",
-          "done": "Umtapo wolwazi wakhiwe wafakwa ku-inthanethi."
+          "waiting": "Yakha umphakathi uwufake ku-inthanethi.",
+          "running": "Yakha umphakathi uwufake ku-inthanethi…",
+          "done": "Umphakathi wakhiwe wafakwa ku-inthanethi."
         },
         "readiness": {
           "name": "Ukulungela",
-          "waiting": "Hlola ukuthi ikhasi lomtapo wolwazi liyalayisha.",
-          "running": "Ihlola ukuthi ikhasi lomtapo wolwazi liyalayisha…",
-          "done": "Kuhlolwe ukuthi ikhasi lomtapo wolwazi liyalayisha."
+          "waiting": "Hlola ukuthi ikhasi lomphakathi liyalayisha.",
+          "running": "Ihlola ukuthi ikhasi lomphakathi liyalayisha…",
+          "done": "Kuhlolwe ukuthi ikhasi lomphakathi liyalayisha."
         },
         "active": {
           "name": "Iyasebenza",
-          "waiting": "Umtapo wolwazi uvula ekhelini lawo lomphakathi.",
-          "running": "Ivula umtapo wolwazi ekhelini lawo lomphakathi…",
-          "done": "Umtapo wolwazi usebenza ekhelini lawo lomphakathi."
+          "waiting": "Umphakathi uvula ekhelini lawo lomphakathi.",
+          "running": "Ivula umphakathi ekhelini lawo lomphakathi…",
+          "done": "Umphakathi usebenza ekhelini lawo lomphakathi."
         }
       },
       "live": {
@@ -2971,17 +2971,17 @@
         "copyAddress": "Kopisha ikheli",
         "copiedShort": "Kukopishiwe",
         "copied": "Ikheli likopishiwe",
-        "openLibrary": "Vula umtapo wolwazi",
+        "openLibrary": "Vula umphakathi",
         "settingUp": "Iyalungisa i-{name}",
         "stopped": "Ukulungisa kumisiwe",
         "copyFailed": "Ikheli alikwazanga ukukopishwa"
       },
-      "deletingHint": "Lo mtapo wolwazi uyasuswa."
+      "deletingHint": "Lo mphakathi uyasuswa."
     },
     "notFound": {
-      "title": "Umtapo wolwazi awutholakalanga",
+      "title": "Umphakathi awutholakalanga",
       "description": "Mhlawumbe ususwe, noma ungowenye inhlangano.",
-      "back": "Buyela emitapweni yolwazi"
+      "back": "Buyela emiphakathini"
     }
   },
   "settingsShell": {
@@ -2998,7 +2998,7 @@
       "plans": "Izinhlelo",
       "users": "Abasebenzisi",
       "aiModels": "Amamodeli e-AI",
-      "evidenceLibraries": "Evidence Libraries"
+      "evidenceLibraries": "Evidence Communities"
     },
     "sharedDev": "I-dev ehlanganyelwe",
     "production": "Ukukhiqiza",
@@ -3099,16 +3099,16 @@
       "creditsOrKey": "Amakhredithi, noma ukhiye womsebenzisi"
     },
     "evidenceLibraries": {
-      "title": "Ukufinyelela ku-Evidence Library",
+      "title": "Ukufinyelela ku-Evidence Community",
       "organizations": "izinhlangano",
       "search": "Sesha izinhlangano",
       "show": "Bonisa",
       "all": "Konke",
       "on": "Kuvuliwe",
       "off": "Kuvaliwe",
-      "libraries": "{count, plural, one {# umtapo} other {# imitapo}}",
-      "switchLabel": "Ama-Evidence Libraries ka-{name}",
-      "moveFirst": "Qala ngokuhambisa noma ususe imitapo yayo",
+      "libraries": "{count, plural, one {# umphakathi} other {# imiphakathi}}",
+      "switchLabel": "Ama-Evidence Communities ka-{name}",
+      "moveFirst": "Qala ngokuhambisa noma ususe imiphakathi yayo",
       "noMatches": "Azikho izinhlangano ezifanayo"
     }
   },
@@ -3219,7 +3219,7 @@
     "views": {
       "results": "Imiphumela yokusesha",
       "extractionJob": "Umsebenzi wokukhishwa",
-      "librarySettings": "Izilungiselelo zomtapo wolwazi",
+      "librarySettings": "Izilungiselelo zomphakathi",
       "authors": "Ababhali",
       "page": "lelikhasi"
     },
@@ -3282,7 +3282,7 @@
       "holds": "Ibamba kuze kube ngu-{credits, plural, one {# ikhredithi} other {# amakhredithi}}",
       "runs": "Iyasebenza",
       "asks": "Iyabuza",
-      "publishing": "Ukushicilela umtapo wolwazi",
+      "publishing": "Ukushicilela umphakathi",
       "publishingDetail": "Abavakashi bayibona ngokushesha",
       "moreJobs": "Imisebenzi eminingi"
     },
@@ -3304,7 +3304,7 @@
     "chat": "Xoxa",
     "remove": "Susa",
     "organization": "Inhlangano",
-    "shareNote": "Bayibona le ngxoxo. Izisesho, amaqoqo nemitapo yolwazi okuyo kugcina ukufinyelela kwayo. Abangaxoxa bathumela imiyalezo njengabo, futhi umsizi wenza ngokufinyelela nangamakhredithi abo.",
+    "shareNote": "Bayibona le ngxoxo. Izisesho, amaqoqo nemiphakathi okuyo kugcina ukufinyelela kwayo. Abangaxoxa bathumela imiyalezo njengabo, futhi umsizi wenza ngokufinyelela nangamakhredithi abo.",
     "shareFailed": "Ayikwazanga ukushintsha ukuthi le ngxoxo ibelwane nobani",
     "steps": {
       "undo": "Hlehlisa",
@@ -3936,121 +3936,121 @@
         "ask": "Bala amamodeli engxoxo"
       },
       "libraries": {
-        "doing": "Ifunda ama-Evidence Library akho",
-        "did": "Ifunde ama-Evidence Library akho",
-        "where": "Evidence Libraries",
-        "ask": "Funda ama-Evidence Library akho"
+        "doing": "Ifunda ama-Evidence Community akho",
+        "did": "Ifunde ama-Evidence Community akho",
+        "where": "Evidence Communities",
+        "ask": "Funda ama-Evidence Community akho"
       },
       "readerLibraries": {
-        "doing": "Ifunda ama-Evidence Library ofunda kuwo",
-        "did": "Ifunde ama-Evidence Library ofunda kuwo",
-        "where": "Evidence Libraries",
-        "ask": "Funda ama-Evidence Library ofunda kuwo"
+        "doing": "Ifunda ama-Evidence Community ofunda kuwo",
+        "did": "Ifunde ama-Evidence Community ofunda kuwo",
+        "where": "Evidence Communities",
+        "ask": "Funda ama-Evidence Community ofunda kuwo"
       },
       "readerSources": {
-        "doing": "Ifunda okulondolozwe ama-Evidence Library akho ngawe",
-        "did": "Ifunde okulondolozwe ama-Evidence Library akho ngawe",
-        "where": "Evidence Libraries",
-        "ask": "Funda okulondolozwe ama-Evidence Library akho ngawe"
+        "doing": "Ifunda okulondolozwe ama-Evidence Community akho ngawe",
+        "did": "Ifunde okulondolozwe ama-Evidence Community akho ngawe",
+        "where": "Evidence Communities",
+        "ask": "Funda okulondolozwe ama-Evidence Community akho ngawe"
       },
       "readerAddress": {
-        "doing": "Ifunda ikheli le-Evidence Library",
-        "did": "Ifunde ikheli le-Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Funda ikheli le-Evidence Library"
+        "doing": "Ifunda ikheli le-Evidence Community",
+        "did": "Ifunde ikheli le-Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Funda ikheli le-Evidence Community"
       },
       "readerSource": {
-        "doing": "Ifunda umthombo we-Evidence Library",
-        "did": "Ifunde umthombo we-Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Funda umthombo we-Evidence Library"
+        "doing": "Ifunda umthombo we-Evidence Community",
+        "did": "Ifunde umthombo we-Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Funda umthombo we-Evidence Community"
       },
       "readerRecords": {
-        "doing": "Ifunda amarekhodi e-Evidence Library",
-        "did": "Ifunde amarekhodi e-Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Funda amarekhodi e-Evidence Library"
+        "doing": "Ifunda amarekhodi e-Evidence Community",
+        "did": "Ifunde amarekhodi e-Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Funda amarekhodi e-Evidence Community"
       },
       "newLibraryCollection": {
-        "doing": "Yenza iqoqo ku-Evidence Library",
-        "did": "Yenze iqoqo ku-Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Yenza iqoqo ku-Evidence Library",
-        "askMany": "Yenza {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Library",
-        "doingMany": "Iyenza {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Library",
-        "didMany": "Yenze {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Library"
+        "doing": "Yenza iqoqo ku-Evidence Community",
+        "did": "Yenze iqoqo ku-Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Yenza iqoqo ku-Evidence Community",
+        "askMany": "Yenza {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Community",
+        "doingMany": "Iyenza {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Community",
+        "didMany": "Yenze {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Community"
       },
       "deleteLibraryCollection": {
-        "doing": "Isusa iqoqo ku-Evidence Library",
-        "did": "Yasusa iqoqo ku-Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Susa iqoqo ku-Evidence Library",
-        "askMany": "Susa {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Library",
-        "doingMany": "Isusa {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Library",
-        "didMany": "Yasusa {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Library"
+        "doing": "Isusa iqoqo ku-Evidence Community",
+        "did": "Yasusa iqoqo ku-Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Susa iqoqo ku-Evidence Community",
+        "askMany": "Susa {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Community",
+        "doingMany": "Isusa {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Community",
+        "didMany": "Yasusa {count, plural, one {# iqoqo} other {# amaqoqo}} ku-Evidence Community"
       },
       "changeLibraryRecords": {
-        "doing": "Ishintsha iqoqo le-Evidence Library",
-        "did": "Yashintsha iqoqo le-Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Shintsha iqoqo le-Evidence Library",
-        "askMany": "Shintsha {count, plural, one {# iqoqo le-Evidence Library} other {# amaqoqo e-Evidence Library}}",
-        "doingMany": "Ishintsha {count, plural, one {# iqoqo le-Evidence Library} other {# amaqoqo e-Evidence Library}}",
-        "didMany": "Yashintsha {count, plural, one {# iqoqo le-Evidence Library} other {# amaqoqo e-Evidence Library}}"
+        "doing": "Ishintsha iqoqo le-Evidence Community",
+        "did": "Yashintsha iqoqo le-Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Shintsha iqoqo le-Evidence Community",
+        "askMany": "Shintsha {count, plural, one {# iqoqo le-Evidence Community} other {# amaqoqo e-Evidence Community}}",
+        "doingMany": "Ishintsha {count, plural, one {# iqoqo le-Evidence Community} other {# amaqoqo e-Evidence Community}}",
+        "didMany": "Yashintsha {count, plural, one {# iqoqo le-Evidence Community} other {# amaqoqo e-Evidence Community}}"
       },
       "readHandoff": {
-        "doing": "Ivula lokho i-Evidence Library eyinikeze kona",
-        "did": "Yivule lokho i-Evidence Library eyinikeze kona",
-        "where": "Evidence Libraries",
-        "ask": "Vula lokho i-Evidence Library eyinikeze kona"
+        "doing": "Ivula lokho i-Evidence Community eyinikeze kona",
+        "did": "Yivule lokho i-Evidence Community eyinikeze kona",
+        "where": "Evidence Communities",
+        "ask": "Vula lokho i-Evidence Community eyinikeze kona"
       },
       "readLibraryDraft": {
-        "doing": "Ifunda izilungiselelo zomtapo wolwazi",
-        "did": "Ifunde izilungiselelo zomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda izilungiselelo zomtapo wolwazi",
-        "askMany": "Funda izilungiselelo zo-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}",
-        "doingMany": "Ifunda izilungiselelo zo-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}",
-        "didMany": "Ifunde izilungiselelo zo-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}"
+        "doing": "Ifunda izilungiselelo zomphakathi",
+        "did": "Ifunde izilungiselelo zomphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda izilungiselelo zomphakathi",
+        "askMany": "Funda izilungiselelo zo-{count, plural, one {# umphakathi} other {# imiphakathi}}",
+        "doingMany": "Ifunda izilungiselelo zo-{count, plural, one {# umphakathi} other {# imiphakathi}}",
+        "didMany": "Ifunde izilungiselelo zo-{count, plural, one {# umphakathi} other {# imiphakathi}}"
       },
       "readLibraryRevision": {
-        "doing": "Ifunda inguqulo yezilungiselelo zomtapo wolwazi",
-        "did": "Ifunde inguqulo yezilungiselelo zomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda inguqulo yezilungiselelo zomtapo wolwazi"
+        "doing": "Ifunda inguqulo yezilungiselelo zomphakathi",
+        "did": "Ifunde inguqulo yezilungiselelo zomphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda inguqulo yezilungiselelo zomphakathi"
       },
       "readLibraryTeam": {
-        "doing": "Ifunda ithimba lomtapo wolwazi",
-        "did": "Ifunde ithimba lomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda ithimba lomtapo wolwazi",
-        "askMany": "Funda amathimba ka-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}",
-        "doingMany": "Ifunda amathimba ka-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}",
-        "didMany": "Ifunde amathimba ka-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}"
+        "doing": "Ifunda ithimba lomphakathi",
+        "did": "Ifunde ithimba lomphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda ithimba lomphakathi",
+        "askMany": "Funda amathimba ka-{count, plural, one {# umphakathi} other {# imiphakathi}}",
+        "doingMany": "Ifunda amathimba ka-{count, plural, one {# umphakathi} other {# imiphakathi}}",
+        "didMany": "Ifunde amathimba ka-{count, plural, one {# umphakathi} other {# imiphakathi}}"
       },
       "editLibraryDraft": {
-        "doing": "Ishintsha ukudrafti yomtapo wolwazi",
-        "did": "Yashintsha ukudrafti yomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Shintsha ukudrafti yomtapo wolwazi"
+        "doing": "Ishintsha ukudrafti yomphakathi",
+        "did": "Yashintsha ukudrafti yomphakathi",
+        "where": "Evidence Community",
+        "ask": "Shintsha ukudrafti yomphakathi"
       },
       "addLibraryMember": {
-        "doing": "Yengeza umuntu ethimbeni lomtapo wolwazi",
-        "did": "Yengeze umuntu ethimbeni lomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Yengeza umuntu ethimbeni lomtapo wolwazi"
+        "doing": "Yengeza umuntu ethimbeni lomphakathi",
+        "did": "Yengeze umuntu ethimbeni lomphakathi",
+        "where": "Evidence Community",
+        "ask": "Yengeza umuntu ethimbeni lomphakathi"
       },
       "changeLibraryRole": {
-        "doing": "Ishintsha indima yomuntu kumtapo wolwazi",
-        "did": "Yashintsha indima yomuntu kumtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Shintsha indima yomuntu kumtapo wolwazi"
+        "doing": "Ishintsha indima yomuntu kumphakathi",
+        "did": "Yashintsha indima yomuntu kumphakathi",
+        "where": "Evidence Community",
+        "ask": "Shintsha indima yomuntu kumphakathi"
       },
       "removeLibraryMember": {
-        "doing": "Isusa umuntu ethimbeni lomtapo wolwazi",
-        "did": "Yasusa umuntu ethimbeni lomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Susa umuntu ethimbeni lomtapo wolwazi"
+        "doing": "Isusa umuntu ethimbeni lomphakathi",
+        "did": "Yasusa umuntu ethimbeni lomphakathi",
+        "where": "Evidence Community",
+        "ask": "Susa umuntu ethimbeni lomphakathi"
       },
       "zoteroGroups": {
         "doing": "Ifunda amaqembu akho e-Zotero",
@@ -4071,79 +4071,79 @@
         "ask": "Funda izinto ku-Zotero yakho"
       },
       "inviteLibraryMember": {
-        "doing": "Imema umuntu emtapweni wolwazi",
-        "did": "Imeme umuntu emtapweni wolwazi",
-        "where": "Evidence Library",
-        "ask": "Mema umuntu emtapweni wolwazi",
-        "askMany": "Mema {count, plural, one {# umuntu} other {# abantu}} emtapweni wolwazi",
-        "doingMany": "Imema {count, plural, one {# umuntu} other {# abantu}} emtapweni wolwazi",
-        "didMany": "Imeme {count, plural, one {# umuntu} other {# abantu}} emtapweni wolwazi"
+        "doing": "Imema umuntu emphakathini",
+        "did": "Imeme umuntu emphakathini",
+        "where": "Evidence Community",
+        "ask": "Mema umuntu emphakathini",
+        "askMany": "Mema {count, plural, one {# umuntu} other {# abantu}} emphakathini",
+        "doingMany": "Imema {count, plural, one {# umuntu} other {# abantu}} emphakathini",
+        "didMany": "Imeme {count, plural, one {# umuntu} other {# abantu}} emphakathini"
       },
       "changeLibraryInvite": {
-        "doing": "Ishintsha isimemo somtapo wolwazi",
-        "did": "Yashintsha isimemo somtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Shintsha isimemo somtapo wolwazi"
+        "doing": "Ishintsha isimemo somphakathi",
+        "did": "Yashintsha isimemo somphakathi",
+        "where": "Evidence Community",
+        "ask": "Shintsha isimemo somphakathi"
       },
       "libraryInvites": {
-        "doing": "Ifunda izimemo zakho zomtapo wolwazi",
-        "did": "Ifunde izimemo zakho zomtapo wolwazi",
-        "where": "Evidence Libraries",
-        "ask": "Funda izimemo zakho zomtapo wolwazi"
+        "doing": "Ifunda izimemo zakho zomphakathi",
+        "did": "Ifunde izimemo zakho zomphakathi",
+        "where": "Evidence Communities",
+        "ask": "Funda izimemo zakho zomphakathi"
       },
       "answerLibraryInvite": {
-        "doing": "Iphendula isimemo somtapo wolwazi",
-        "did": "Iphendule isimemo somtapo wolwazi",
-        "where": "Evidence Libraries",
-        "ask": "Phendula isimemo somtapo wolwazi"
+        "doing": "Iphendula isimemo somphakathi",
+        "did": "Iphendule isimemo somphakathi",
+        "where": "Evidence Communities",
+        "ask": "Phendula isimemo somphakathi"
       },
       "startLibrary": {
-        "doing": "Iqala ukudrafti yomtapo wolwazi",
-        "did": "Yaqala ukudrafti yomtapo wolwazi",
-        "where": "Evidence Libraries",
-        "ask": "Qala ukudrafti yomtapo wolwazi"
+        "doing": "Iqala ukudrafti yomphakathi",
+        "did": "Yaqala ukudrafti yomphakathi",
+        "where": "Evidence Communities",
+        "ask": "Qala ukudrafti yomphakathi"
       },
       "librarySources": {
-        "doing": "Ifunda imithombo yomtapo wolwazi",
-        "did": "Ifunde imithombo yomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda imithombo yomtapo wolwazi",
-        "askMany": "Funda imithombo ye-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}",
-        "doingMany": "Ifunda imithombo ye-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}",
-        "didMany": "Ifunde imithombo ye-{count, plural, one {# umtapo wolwazi} other {# amatapo wolwazi}}"
+        "doing": "Ifunda imithombo yomphakathi",
+        "did": "Ifunde imithombo yomphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda imithombo yomphakathi",
+        "askMany": "Funda imithombo ye-{count, plural, one {# umphakathi} other {# imiphakathi}}",
+        "doingMany": "Ifunda imithombo ye-{count, plural, one {# umphakathi} other {# imiphakathi}}",
+        "didMany": "Ifunde imithombo ye-{count, plural, one {# umphakathi} other {# imiphakathi}}"
       },
       "runningCollections": {
-        "doing": "Ifunda amaqoqo omtapo wolwazi",
-        "did": "Ifunde amaqoqo omtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda amaqoqo omtapo wolwazi"
+        "doing": "Ifunda amaqoqo omphakathi",
+        "did": "Ifunde amaqoqo omphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda amaqoqo omphakathi"
       },
       "runningInstitutions": {
-        "doing": "Ifunda izikhungo zomtapo wolwazi",
-        "did": "Ifunde izikhungo zomtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda izikhungo zomtapo wolwazi"
+        "doing": "Ifunda izikhungo zomphakathi",
+        "did": "Ifunde izikhungo zomphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda izikhungo zomphakathi"
       },
       "runningPublications": {
-        "doing": "Ifunda okushicilelwe komtapo wolwazi",
-        "did": "Ifunde okushicilelwe komtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda okushicilelwe komtapo wolwazi"
+        "doing": "Ifunda okushicilelwe komphakathi",
+        "did": "Ifunde okushicilelwe komphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda okushicilelwe komphakathi"
       },
       "runningPublication": {
-        "doing": "Ifunda okushicilelwe komtapo wolwazi",
-        "did": "Ifunde okushicilelwe komtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Funda okushicilelwe komtapo wolwazi",
-        "askMany": "Funda {count, plural, one {# okushicilelwe komtapo wolwazi} other {# okushicilelwe kwamatapo wolwazi}}",
-        "doingMany": "Ifunda {count, plural, one {# okushicilelwe komtapo wolwazi} other {# okushicilelwe kwamatapo wolwazi}}",
-        "didMany": "Ifunde {count, plural, one {# okushicilelwe komtapo wolwazi} other {# okushicilelwe kwamatapo wolwazi}}"
+        "doing": "Ifunda okushicilelwe komphakathi",
+        "did": "Ifunde okushicilelwe komphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda okushicilelwe komphakathi",
+        "askMany": "Funda {count, plural, one {# okushicilelwe komphakathi} other {# okushicilelwe kwimiphakathi}}",
+        "doingMany": "Ifunda {count, plural, one {# okushicilelwe komphakathi} other {# okushicilelwe kwimiphakathi}}",
+        "didMany": "Ifunde {count, plural, one {# okushicilelwe komphakathi} other {# okushicilelwe kwimiphakathi}}"
       },
       "syncLibrarySource": {
-        "doing": "Iphinda izame ukungenisa komtapo wolwazi",
-        "did": "Iphinde yazama ukungenisa komtapo wolwazi",
-        "where": "Evidence Library",
-        "ask": "Zama futhi ukungenisa komtapo wolwazi"
+        "doing": "Iphinda izame ukungenisa komphakathi",
+        "did": "Iphinde yazama ukungenisa komphakathi",
+        "where": "Evidence Community",
+        "ask": "Zama futhi ukungenisa komphakathi"
       },
       "authorProfiles": {
         "doing": "Ifunda amaphrofayili ababhali",
@@ -4206,20 +4206,20 @@
         "didMany": "Yafaka {count, plural, one {# i-PDF ye-Zotero} other {# ama-PDF e-Zotero}} engxoxweni"
       },
       "gradeLibrarySource": {
-        "doing": "Icela umtapo wolwazi ukuthi unikeze amamaki umthombo",
-        "did": "Icele umtapo wolwazi ukuthi unikeze amamaki umthombo",
-        "where": "Evidence Library",
-        "ask": "Nika amamaki amarekhodi womthombo womtapo wolwazi"
+        "doing": "Icela umphakathi ukuthi unikeze amamaki umthombo",
+        "did": "Icele umphakathi ukuthi unikeze amamaki umthombo",
+        "where": "Evidence Community",
+        "ask": "Nika amamaki amarekhodi womthombo womphakathi"
       },
       "trySourceSubject": {
         "doing": "Izama isihloko sokuskrini",
         "did": "Izame isihloko sokuskrini",
-        "where": "Evidence Library",
+        "where": "Evidence Community",
         "ask": "Zama isihloko sokuskrini kumarekhodi angu-200"
       },
       "libraryAccess": {
-        "doing": "Ibheka ukufinyelela ku-Evidence Library",
-        "did": "Ibheke ukufinyelela ku-Evidence Library",
+        "doing": "Ibheka ukufinyelela ku-Evidence Community",
+        "did": "Ibheke ukufinyelela ku-Evidence Community",
         "where": "Umphathi"
       }
     },
@@ -4386,7 +4386,7 @@
       "paper": "Iphepha",
       "extraction": "Ukukhishwa",
       "screening": "Ukuskrini",
-      "library": "Evidence Library",
+      "library": "Evidence Community",
       "topic": "Isihloko",
       "chat": "Ingxoxo"
     }
@@ -4461,7 +4461,7 @@
       "searches": "Izisesho",
       "screenings": "Izinkuskrini",
       "extractions": "Ukukhishwa",
-      "evidenceLibraries": "Evidence Libraries",
+      "evidenceLibraries": "Evidence Communities",
       "changeLogo": "Shintsha ilogo",
       "organizationName": "Igama lenhlangano",
       "saveName": "Gcina igama",
@@ -4475,12 +4475,12 @@
       "makeAdminFirst": "Qala ngokwenza omunye umuntu umphathi",
       "leave": "Shiya",
       "deleteName": "Susa i-{name}",
-      "stillHasLibrary": "I-{library} ingenye yama-Evidence Libraries ayo. Yihambise noma uyisuse kuqala.",
-      "deleteLibrary": "Susa umtapo wolwazi",
+      "stillHasLibrary": "I-{library} ingenye yama-Evidence Communities ayo. Yihambise noma uyisuse kuqala.",
+      "deleteLibrary": "Susa umphakathi",
       "libraryBeingDeleted": "I-{library} iyasuswa.",
       "libraryDeleteFailed": "I-{library} ayikwazanga ukususwa. Zama futhi.",
       "deleteDetail": "Iyayisusa kubo {count, plural, one {ilungu layo elingu-#} other {wonke amalungu ayo angu-#}}",
-      "moveLibrariesFirst": "Hambisa noma usule ama-Evidence Libraries ayo kuqala",
+      "moveLibrariesFirst": "Hambisa noma usule ama-Evidence Communities ayo kuqala",
       "delete": "Susa",
       "deleteConfirm": "Amaqoqo ayo, izisesho, ukuskrini nokukhishwa kuhamba nayo, kubo {count, plural, one {ilungu layo elingu-#} other {wonke amalungu ayo angu-#}}. Lokhu akukwazi ukuhlehliswa.",
       "leaveConfirm": "Uyalahlekelwa ukufinyelela komsebenzi wayo kuze kube yilapho umphathi ekumemela futhi.",
@@ -4555,7 +4555,7 @@
       "paymentFailed": "Inkokhelo yokugcina yehlulekile.",
       "noMemberLimit": "Awukho umkhawulo wamalungu",
       "membersUnit": "{count, plural, one {ilungu} other {amalungu}}",
-      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "evidenceLibrariesIncluded": "Evidence Communities",
       "seePlans": "Bona amapulani"
     },
     "couldntInvite": "Inhlangano yakhiwe, kodwa izimemo azikaphumi. Zithumele kusuka ezilungiselelweni zakho zamalungu.",
@@ -4756,15 +4756,15 @@
     "changeInSettings": "Shintsha ezilungiselelweni ze-AI"
   },
   "librarySources": {
-    "kind": "Amarekhodi e-Evidence Library",
-    "library": "Evidence Library",
-    "address": "Namathisela ikheli lomtapo wolwazi",
+    "kind": "Amarekhodi e-Evidence Community",
+    "library": "Evidence Community",
+    "address": "Namathisela ikheli lomphakathi",
     "show": "Bonisa",
     "filter": {
       "all": "Konke",
       "yours": "Okwakho",
       "shared": "Okwabelwane nawe",
-      "library": "Okomtapo wolwazi"
+      "library": "Okomphakathi"
     },
     "find": "Thola",
     "everyRecord": "Wonke amarekhodi ku-{library}",
@@ -4789,14 +4789,14 @@
     "outdated": "I-{library} idinga ukuvuselelwa ukuze isetshenziswe lapha.",
     "error": {
       "notAddress": "Lokho akuyona ikheli.",
-      "notHosted": "I-OpenScholar ayisebenzisi lowo mtapo wolwazi.",
+      "notHosted": "I-OpenScholar ayisebenzisi lowo mphakathi.",
       "private": "Leli qoqo liyimfihlo. Umnikazi walo angalabelana nawe.",
       "notFound": "Akukho lutho kulelo kheli.",
       "empty": "Lolu sesho noma leli qoqo alinawo amarekhodi.",
       "profile": "Vula elinye lamaqoqo abo bese ukopisha leli kheli.",
-      "unknownPage": "Kopisha ikheli lesesho, leqoqo, noma lomtapo wolwazi.",
-      "outdated": "Lowo mtapo wolwazi udinga ukuvuselelwa ukuze usetshenziswe lapha.",
-      "unreadable": "Umtapo wolwazi awuphendulanga. Zama futhi."
+      "unknownPage": "Kopisha ikheli lesesho, leqoqo, noma lomphakathi.",
+      "outdated": "Lowo mphakathi udinga ukuvuselelwa ukuze usetshenziswe lapha.",
+      "unreadable": "Umphakathi awuphendulanga. Zama futhi."
     },
     "role": {
       "owner": "Umnikazi",
@@ -4818,17 +4818,17 @@
   "fromLibrary": {
     "title": "Kusuka ku-{library}",
     "gone": "Akukho okuvulwayo",
-    "goneHint": "Leli xhumanisi elivela emtapweni wolwazi liphelelwe yisikhathi. Livule futhi emtapweni wolwazi.",
+    "goneHint": "Leli xhumanisi elivela emphakathini liphelelwe yisikhathi. Livule futhi emphakathini.",
     "problem": {
-      "notAddress": "Akukho lutho lapha olungavulwa. Livule futhi emtapweni wolwazi.",
-      "notHosted": "Lowo mtapo wolwazi awusasebenzi ku-OpenScholar.",
+      "notAddress": "Akukho lutho lapha olungavulwa. Livule futhi emphakathini.",
+      "notHosted": "Lowo mphakathi awusasebenzi ku-OpenScholar.",
       "private": "Leli qoqo liyimfihlo. Umnikazi walo angalabelana nawe.",
-      "notFound": "Umtapo wolwazi awusenalo lokho owawuthumele.",
-      "empty": "Lokho umtapo wolwazi owawuthumele akusenawo amarekhodi manje.",
-      "profile": "Akukho lutho lapha olungavulwa. Livule futhi emtapweni wolwazi.",
-      "unknownPage": "Akukho lutho lapha olungavulwa. Livule futhi emtapweni wolwazi.",
-      "outdated": "Lowo mtapo wolwazi udinga ukuvuselelwa ukuze usetshenziswe lapha.",
-      "unreadable": "Umtapo wolwazi awuphendulanga. Zama futhi maduzane."
+      "notFound": "Umphakathi awusenalo lokho owawuthumele.",
+      "empty": "Lokho umphakathi owawuthumele akusenawo amarekhodi manje.",
+      "profile": "Akukho lutho lapha olungavulwa. Livule futhi emphakathini.",
+      "unknownPage": "Akukho lutho lapha olungavulwa. Livule futhi emphakathini.",
+      "outdated": "Lowo mphakathi udinga ukuvuselelwa ukuze usetshenziswe lapha.",
+      "unreadable": "Umphakathi awuphendulanga. Zama futhi maduzane."
     },
     "from": {
       "smartScreening": "Ukuskrini okuhlakaniphile",
@@ -4940,15 +4940,15 @@
     }
   },
   "libraryHomeSettings": {
-    "thePageVisitorsLandOnAt": "Ikhasi abavakashi abafika kulo ekheleni lomtapo wolwazi.",
+    "thePageVisitorsLandOnAt": "Ikhasi abavakashi abafika kulo ekheleni lomphakathi.",
     "showAHomePage": "Bonisa ikhasi lokuqala",
-    "whenThisIsOffTheLibrary": "Uma lokhu kuvaliwe, ikheli lomtapo wolwazi livula uhlu lwamashicilelo.",
+    "whenThisIsOffTheLibrary": "Uma lokhu kuvaliwe, ikheli lomphakathi livula uhlu lwamashicilelo.",
     "introduction": "Isingeniso",
-    "shownInTheHeroUnderThe": "Iboniswa ekhasini eliphezulu, ngaphansi kwegama lomtapo wolwazi nesifinyezo sawo esifushane.",
-    "whatTheLibraryIsFor": "Umtapo wolwazi ukhona ngani",
-    "whatDoesThisLibraryCollectAnd": "Lo mtapo wolwazi uqoqa ini, futhi ubani?",
+    "shownInTheHeroUnderThe": "Iboniswa ekhasini eliphezulu, ngaphansi kwegama lomphakathi nesifinyezo sawo esifushane.",
+    "whatTheLibraryIsFor": "Umphakathi ukhona ngani",
+    "whatDoesThisLibraryCollectAnd": "Lo mphakathi uqoqa ini, futhi ubani?",
     "howPublicationsGetIn": "Amashicilelo angena kanjani",
-    "stepsWithATypeAreFilled": "Izinyathelo ezinohlobo zigcwaliswa ngokusuka kushicilelo oluthile, noma zibalwe kusuka kumasesho nakumarekhodi omtapo wolwazi.",
+    "stepsWithATypeAreFilled": "Izinyathelo ezinohlobo zigcwaliswa ngokusuka kushicilelo oluthile, noma zibalwe kusuka kumasesho nakumarekhodi omphakathi.",
     "addStep": "Engeza isinyathelo",
     "statement": "Isitatimende",
     "noStepsTheSectionShowsThe": "Azikho izinyathelo. Leli gigaba libonisa isitatimende sodwa.",
@@ -4959,20 +4959,20 @@
     "editorShown": "Umhleli obonisiwe",
     "whoeverApprovedIt": "Ngubani okugunyaze",
     "whatHappens": "Kwenzekani",
-    "whoRunsTheLibrary": "Ubani oqhuba umtapo wolwazi",
-    "peopleFromTheLibrarySTeam": "Abantu abavela ethimbeni lomtapo wolwazi, noma abangezwe ngesandla, badlula ngohlelo olusethwe lapha.",
+    "whoRunsTheLibrary": "Ubani oqhuba umphakathi",
+    "peopleFromTheLibrarySTeam": "Abantu abavela ethimbeni lomphakathi, noma abangezwe ngesandla, badlula ngohlelo olusethwe lapha.",
     "aboutTheTeam": "Mayelana nethimba",
     "usedInsteadWhenThereIsNo": "Isetshenziswa esikhundleni salokho uma kungekho sigwebo sethimba.",
     "suggestAPublication": "Phakamisa ushicilelo",
     "opensAnEmailTo": "Ivula imeyili ku-{email}",
     "needsAContactEmail": "Idinga imeyili yokuxhumana",
     "joinAsAnEditor": "Joyina njengomhleli",
-    "askTheLibrary": "Buza umtapo wolwazi",
-    "typedIntoTheQuestionBoxOne": "Ibhalwa ebhokisini lombuzo ngalinye ngemva kwelinye. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomtapo wolwazi.",
-    "shownWhenAiAnswersAreOn": "Iboniswa uma izimpendulo ze-AI zivuliwe kuZici. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomtapo wolwazi.",
+    "askTheLibrary": "Buza umphakathi",
+    "typedIntoTheQuestionBoxOne": "Ibhalwa ebhokisini lombuzo ngalinye ngemva kwelinye. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomphakathi.",
+    "shownWhenAiAnswersAreOn": "Iboniswa uma izimpendulo ze-AI zivuliwe kuZici. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomphakathi.",
     "exampleQuestion": "Umbuzo wesibonelo {value}",
     "usingAndCiting": "Ukusebenzisa nokubhalisa",
-    "shownBesideTheCitationOfThe": "Iboniswa eduze kokubhalisa komtapo wolwazi, okwakhiwe ngegama lawo nekheli lawo.",
+    "shownBesideTheCitationOfThe": "Iboniswa eduze kokubhalisa komphakathi, okwakhiwe ngegama lawo nekheli lawo.",
     "licenceAndReuse": "Ilayisense nokusetshenziswa kabusha",
     "howMayPeopleReuseWhatThey": "Abantu bangawusebenzisa kabusha kanjani lokho abakutholayo lapha?",
     "heading": "Ikhanda",
@@ -4991,12 +4991,12 @@
     "takedownForm": "Ifomu lokususa",
     "off": "Kuvaliwe",
     "filledInForYou": "Igcwaliswe ngawe",
-    "newestPublicationsTheMostCitedDigests": "Ushicilelo olusha kakhulu, olubhalisiwe kakhulu, izifinyezo nokubuyekeza kwamuva kuvela emtapweni wolwazi ngokwawo.",
+    "newestPublicationsTheMostCitedDigests": "Ushicilelo olusha kakhulu, olubhalisiwe kakhulu, izifinyezo nokubuyekeza kwamuva kuvela emphakathini ngokwawo.",
     "editIn": "Hlela ku-{card}",
     "peopleShown": "Abantu ababoniswayo",
     "addFromTheTeam": "Engeza ethimbeni",
     "addPeopleFromTheTeam": "Engeza abantu ethimbeni",
-    "everyoneOnTheLibrarySTeam": "Wonke abantu ethimbeni lomtapo wolwazi, nesithombe sabo esivela ku-akhawunti yabo.",
+    "everyoneOnTheLibrarySTeam": "Wonke abantu ethimbeni lomphakathi, nesithombe sabo esivela ku-akhawunti yabo.",
     "addSomeone": "Engeza umuntu",
     "nobodyIsShownAddPeopleFrom": "Akekho obonisiwe. Engeza abantu ethimbeni, noma engeza umuntu ongenayo i-akhawunti.",
     "removedFromTheTeamSoNot": "Isusiwe ethimbeni, ngakho ayiboniswa",
@@ -5035,7 +5035,7 @@
       },
       "search": {
         "label": "Amagama okusesha",
-        "hint": "Ibala amagama, amahlamvu nezihloko okusesha kwe-OpenAlex komtapo wolwazi okuwafuna",
+        "hint": "Ibala amagama, amahlamvu nezihloko okusesha kwe-OpenAlex komphakathi okuwafuna",
         "fallback": "Kutholakale ngokusesha",
         "example": "Amagama okusesha"
       },
@@ -5065,12 +5065,12 @@
     },
     "reviewedOn": "Kubuyekezwe ngo-{date}",
     "addedOn": "Kungezwe ngo-{date}",
-    "howTheLibraryIsCurated": "Umtapo wolwazi uhlelwa kanjani",
+    "howTheLibraryIsCurated": "Umphakathi uhlelwa kanjani",
     "optional": "Okungakhethwa",
     "removeStep": "Susa isinyathelo",
     "whoIsBehindIt": "Ubani ongemuva kwayo",
     "getInvolved": "Bamba iqhaza",
-    "usingAndCitingTheLibrary": "Ukusebenzisa nokubhalisa umtapo wolwazi",
+    "usingAndCitingTheLibrary": "Ukusebenzisa nokubhalisa umphakathi",
     "identity": "Ubunikazi",
     "contact": "Ukuxhumana",
     "notSet": "Akusethiwe",
@@ -5090,10 +5090,10 @@
     "searchPublications": "Sesha okushicilelwe",
     "date": "Usuku",
     "loadingPublications": "Iyalayisha okushicilelwe",
-    "theLibrarySPublicationsCouldNot": "Okushicilelwe komtapo wolwazi akukwazanga ukufundwa.",
+    "theLibrarySPublicationsCouldNot": "Okushicilelwe komphakathi akukwazanga ukufundwa.",
     "noPublicationHasAPdfYet": "Akukho ushicilelo oluneyi-PDF okwamanje.",
     "noPublicationMatches": "Akukho ushicilelo ohambisanayo.",
-    "theLibraryIsNotSetUp": "Umtapo wolwazi awusalungiswa okwamanje.",
+    "theLibraryIsNotSetUp": "Umphakathi awusalungiswa okwamanje.",
     "linked": "Kuxhunyiwe"
   },
   "libraryTeamAccess": {
@@ -5109,12 +5109,12 @@
     "cancelInvitation": "Khansela isimemo",
     "cancelThisInvitation": "Khansela lesi simemo?",
     "removeAccessToThisAuthorProfile": "Susa ukufinyelela kule phrofayili lombhali?",
-    "removeFromThisLibraryOrganizationMembership": "Susa kule laybhulali? Ilungu lenhlangano nokufinyelela kwezinye imitapo yolwazi kuzohlala njengoba kunjalo.",
+    "removeFromThisLibraryOrganizationMembership": "Susa kule laybhulali? Ilungu lenhlangano nokufinyelela kwezinye imiphakathi kuzohlala njengoba kunjalo.",
     "keep": "Gcina",
     "profileAccess": "Ukufinyelela kuphrofayili",
     "team": "Ithimba",
     "theOwnerManagesAccessEditorsCan": "Umnikazi uphatha ukufinyelela. Abahleli bangahlela le phrofayili.",
-    "manageAccessToThisLibrary": "Phatha ukufinyelela kulo mtapo wolwazi.",
+    "manageAccessToThisLibrary": "Phatha ukufinyelela kulo mphakathi.",
     "addEditor": "Engeza umhleli",
     "addMember": "Engeza ilungu",
     "inviteProfileEditor": "Mema umhleli wephrofayili",
@@ -5127,29 +5127,29 @@
     "chooseAPerson": "Khetha umuntu",
     "emailAddress": "Ikheli le-imeyili",
     "nameOrganisationOrg": "name@organisation.org",
-    "libraryRole": "Indima yomtapo wolwazi",
+    "libraryRole": "Indima yomphakathi",
     "editorsCanEditProfileDetailsAnd": "Abahleli bangahlela imininingwane yephrofayili bakhethe okushicilelwe.",
-    "accessAppliesToThisLibraryOnly": "Ukufinyelela kusebenza kulo mtapo wolwazi kuphela.",
-    "theyLlReceiveAccessToThis": "Bazothola ukufinyelela kulo mtapo wolwazi kuphela. Ukuba lilungu lenhlangano akushintshi.",
+    "accessAppliesToThisLibraryOnly": "Ukufinyelela kusebenza kulo mphakathi kuphela.",
+    "theyLlReceiveAccessToThis": "Bazothola ukufinyelela kulo mphakathi kuphela. Ukuba lilungu lenhlangano akushintshi.",
     "cancel": "Khansela",
     "sendInvitation": "Thumela isimemo",
     "dismissMemberStatus": "Cashisa isimo selungu",
     "organizationOwners": "Abanikazi benhlangano",
-    "accessToAllLibrariesManagedIn": "Ukufinyelela kuwo wonke amatapo wolwazi. Iphathwa ezilungiselelweni zenhlangano.",
+    "accessToAllLibrariesManagedIn": "Ukufinyelela kuwo wonke imiphakathi. Iphathwa ezilungiselelweni zenhlangano.",
     "everyoneElseInTheOrganization": "Wonke abanye enhlanganweni",
     "viewersUntilYouAddThemBelow": "Abambukeli kuze kube yilapho ubengeza ngezansi ngendima.",
     "everyoneIn": "Wonke abantu ku-{name}",
-    "everyoneWithoutARoleInThis": "Wonke umuntu ongenandima kulo mtapo wolwazi",
+    "everyoneWithoutARoleInThis": "Wonke umuntu ongenandima kulo mphakathi",
     "viewer": "Umbukeli",
     "teamView": "Ukubuka ithimba",
     "profileMembers": "Amalungu ephrofayili",
-    "libraryMembers": "Amalungu omtapo wolwazi",
+    "libraryMembers": "Amalungu omphakathi",
     "invitations": "Izimemo",
     "searchTeam": "Sesha ithimba",
     "findAPerson": "Thola umuntu…",
-    "aboutLibraryRoles": "Mayelana nezindima zomtapo wolwazi",
+    "aboutLibraryRoles": "Mayelana nezindima zomphakathi",
     "editor": "Umhleli",
-    "reviewPublishAndManageLibraryContent": "Buyekeza, shicilela, uphathe okuqukethwe komtapo wolwazi.",
+    "reviewPublishAndManageLibraryContent": "Buyekeza, shicilela, uphathe okuqukethwe komphakathi.",
     "creator": "Umdali",
     "editItemsAndSubmitWorkFor": "Hlela izinto uphinde uthumele umsebenzi ukuze ubuyekezwe.",
     "loadingTeam": "Iyalayisha ithimba",
@@ -5175,37 +5175,37 @@
       "Viewer": "Umbukeli"
     },
     "roleHints": {
-      "Owner": "Idlulisiwe enhlanganweni. Phatha yonke imitapo yolwazi namathimba ayo.",
-      "Editor": "Buyekeza uphinde ushicilele izinto. Phatha okuqukethwe komtapo wolwazi.",
+      "Owner": "Idlulisiwe enhlanganweni. Phatha yonke imiphakathi namathimba ayo.",
+      "Editor": "Buyekeza uphinde ushicilele izinto. Phatha okuqukethwe komphakathi.",
       "Creator": "Dala futhi uhlele izinto, layisha amafayela uphinde uwathumele ukuze abuyekezwe.",
-      "Viewer": "Wonke abanye enhlanganweni. Bona umtapo wolwazi nezinto zawo ngaphandle kokuzishintsha."
+      "Viewer": "Wonke abanye enhlanganweni. Bona umphakathi nezinto zawo ngaphandle kokuzishintsha."
     },
-    "removeFromLibrary": "Susa kumtapo wolwazi",
+    "removeFromLibrary": "Susa kumphakathi",
     "removeFromProfile": "Susa kuphrofayili",
-    "whoManagesLibrary": "Khetha ubani ongaphatha lo mtapo wolwazi.",
+    "whoManagesLibrary": "Khetha ubani ongaphatha lo mphakathi.",
     "whoManagesProfile": "Khetha ubani ongaphatha le phrofayili.",
-    "addToLibrary": "Engeza emtapweni wolwazi",
+    "addToLibrary": "Engeza emphakathini",
     "addToProfile": "Engeza kuphrofayili",
-    "acceptingGrantsLibrary": "Ukwamukela kunikeza ukufinyelela kulo mtapo wolwazi kuphela.",
+    "acceptingGrantsLibrary": "Ukwamukela kunikeza ukufinyelela kulo mphakathi kuphela.",
     "acceptingGrantsProfile": "Ukwamukela kunikeza ukufinyelela kule phrofayili kuphela.",
-    "removedFromLibrary": "Kususiwe kulo mtapo wolwazi.",
+    "removedFromLibrary": "Kususiwe kulo mphakathi.",
     "removedFromProfile": "Kususiwe kule phrofayili.",
-    "addedToLibrary": "U-{name} wengeziwe kulo mtapo wolwazi.",
+    "addedToLibrary": "U-{name} wengeziwe kulo mphakathi.",
     "addedToProfile": "U-{name} wengeziwe kule phrofayili."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Isifinyezo sibekwe emgqeni ushicilelo olu-#.} other {Isifinyezo sibekwe emgqeni ukushicilelwa okungu-#.}}",
     "noPublicationsInThePeriodNothing": "Azikho ukushicilelwa kuleso sikhathi. Akukho okuthunyelwe.",
-    "publishTheLibraryConfigurationWithReader": "Qala ukushicilela ukumisa komtapo wolwazi nokubhalisela kwabafundi kuvulekile.",
+    "publishTheLibraryConfigurationWithReader": "Qala ukushicilela ukumisa komphakathi nokubhalisela kwabafundi kuvulekile.",
     "theDigestRequestCouldNotBe": "Isicelo sesifinyezo asikwazanga ukuqinisekiswa. Zama futhi; izinhlelo ezikhona azizuthunyelwa kabili.",
     "emailUpdates": "Izibuyekezo ngemeyili",
     "readerSubscriptions": "Ukubhalisela kwabafundi",
-    "readersCanChooseNewPublicationsLibrary": "Abafundi bangakhetha ushicilelo olusha, izifinyezo zomtapo wolwazi, noma zombili. Izinhlelo ezingenalutho ziyadlulwa.",
+    "readersCanChooseNewPublicationsLibrary": "Abafundi bangakhetha ushicilelo olusha, izifinyezo zomphakathi, noma zombili. Izinhlelo ezingenalutho ziyadlulwa.",
     "digestCovers": "Isikhathi sesifinyezo",
     "aPublicationWithoutAFullDate": "Ushicilelo olungenalo usuku olugcwele aluphathelwa sikhathi.",
-    "anOlderPublicationCountsWhenIt": "Ushicilelo oludala luyabalwa uma lusha kumtapo wolwazi.",
+    "anOlderPublicationCountsWhenIt": "Ushicilelo oludala luyabalwa uma lusha kumphakathi.",
     "publicationsPublishedInThePeriod": "Ukushicilelwa okushicilelwe kuleso sikhathi",
-    "publicationsAddedToTheLibraryIn": "Ukushicilelwa okungezwe emtapweni wolwazi kuleso sikhathi",
+    "publicationsAddedToTheLibraryIn": "Ukushicilelwa okungezwe emphakathini kuleso sikhathi",
     "frequency": "Ukuphindwa",
     "weekly": "Ngeviki",
     "monthly": "Ngenyanga",
@@ -5215,8 +5215,8 @@
     "time": "Isikhathi",
     "timezone": "Indawo yesikhathi",
     "beforeADigestGoesOut": "Ngaphambi kokuthi isifinyezo siphume",
-    "itWaitsInTheLibraryS": "Silinde ephaneli yokuphatha komtapo wolwazi, lapho Abadali bangasihlela khona, nomhleli noma umnikazi abese bayashicilela.",
-    "itIsPublishedAndEmailedAs": "Siyashicilelwa siphinde sithunyelwe ngemeyili ngokushesha lapho sibhalwa. Singalungiswa ephaneli yokuphatha komtapo wolwazi.",
+    "itWaitsInTheLibraryS": "Silinde ephaneli yokuphatha komphakathi, lapho Abadali bangasihlela khona, nomhleli noma umnikazi abese bayashicilela.",
+    "itIsPublishedAndEmailedAs": "Siyashicilelwa siphinde sithunyelwe ngemeyili ngokushesha lapho sibhalwa. Singalungiswa ephaneli yokuphatha komphakathi.",
     "anEditorApprovesIt": "Umhleli uyasigunyaza",
     "itIsSentAsAiWrote": "Sithunyelwa njengoba i-AI yasibhala",
     "nameWhoCheckedIt": "Qamba igama lalowo owasihlola",
@@ -5254,23 +5254,23 @@
     "keepThisUnderCharacters": "Gcina lokhu kungaphansi kwezinhlamvu ezingu-{maxLength}."
   },
   "libraryList": {
-    "evidenceLibraries": "Imitapo yobufakazi",
-    "newLibrary": "Umtapo wolwazi omusha",
-    "libraryView": "Ukubuka umtapo wolwazi",
+    "evidenceLibraries": "Imiphakathi yobufakazi",
+    "newLibrary": "Umphakathi omusha",
+    "libraryView": "Ukubuka umphakathi",
     "sharedWithYou": "Okwabelwane nawe",
     "invitations": "Izimemo",
-    "searchLibraries": "Sesha imitapo yolwazi",
-    "findALibrary": "Thola umtapo wolwazi…",
-    "acceptAccessToALibraryWithout": "Yamukela ukufinyelela komtapo wolwazi ngaphandle kokujoyina inhlangano yawo.",
-    "loadingLibraries": "Iyalayisha imitapo yolwazi",
-    "noLibrariesMatchTheseFilters": "Akukho mitapo yolwazi ehambisana nalezi zihlungi.",
+    "searchLibraries": "Sesha imiphakathi",
+    "findALibrary": "Thola umphakathi…",
+    "acceptAccessToALibraryWithout": "Yamukela ukufinyelela komphakathi ngaphandle kokujoyina inhlangano yawo.",
+    "loadingLibraries": "Iyalayisha imiphakathi",
+    "noLibrariesMatchTheseFilters": "Akukho miphakathi ehambisana nalezi zihlungi.",
     "noPendingInvitations": "Azikho izimemo ezilindile.",
-    "librariesPeopleShareWithYouAppear": "Imitapo yolwazi abantu abakwabelana nawe izovela lapha.",
-    "hasNoLibrariesYet": "U-{name} akanayo imitapo yolwazi okwamanje.",
+    "librariesPeopleShareWithYouAppear": "Imiphakathi abantu abakwabelana nawe izovela lapha.",
+    "hasNoLibrariesYet": "U-{name} akanayo imiphakathi okwamanje.",
     "organization": "Inhlangano: {organization}",
     "inheritedFromOrganizationOwnership": "Idluliselwe ekubeni ngumnikazi wenhlangano",
-    "everyoneInTheOrganizationViewsIts": "Wonke abantu enhlanganweni babona imitapo yolwazi yayo",
-    "assignedToThisLibrary": "Ibekelwe lo mtapo wolwazi",
+    "everyoneInTheOrganizationViewsIts": "Wonke abantu enhlanganweni babona imiphakathi yayo",
+    "assignedToThisLibrary": "Ibekelwe lo mphakathi",
     "decline": "Nqaba",
     "acceptInvitation": "Yamukela isimemo",
     "deleting": "Iyasusa",
@@ -5280,7 +5280,7 @@
     "viewSetup": "Bona ukulungiswa",
     "actionsFor": "Izenzo ze-{name}",
     "settings": "Izilungiselelo",
-    "viewPublicLibrary": "Bona umtapo wolwazi esidlangalaleni",
+    "viewPublicLibrary": "Bona umphakathi esidlangalaleni",
     "openAdmin": "Vula i-admin",
     "moreActionsFor": "Ezinye izenzo ze-{name}",
     "declineInvitation": "Nqaba isimemo?",
@@ -5288,7 +5288,7 @@
     "declineInvitation2": "Nqaba isimemo",
     "previewCover": "Buka ukumbozwa kwe-{title}",
     "preview": "Buka {title}",
-    "declineBody": "Ngeke uthole ukufinyelela ku-{name}. Eminye imitapo yakho yolwazi ayithintekile.",
+    "declineBody": "Ngeke uthole ukufinyelela ku-{name}. Eminye imiphakathi yakho yolwazi ayithintekile.",
     "owner": "Umnikazi",
     "editor": "Umhleli",
     "creator": "Umdali",
@@ -5334,9 +5334,9 @@
     "fromOpenalex": "Kusuka ku-OpenAlex",
     "findAPublication": "Thola ushicilelo…",
     "searchPublications": "Sesha okushicilelwe",
-    "evidenceLibraries": "Imitapo yobufakazi",
+    "evidenceLibraries": "Imiphakathi yobufakazi",
     "publishedIn": "Kushicilelwe ku-",
-    "publishedWorksInThisLibrary": "Imisebenzi engu-{length} eshicilelwe kulo mtapo wolwazi",
+    "publishedWorksInThisLibrary": "Imisebenzi engu-{length} eshicilelwe kulo mphakathi",
     "publications": "Okushicilelwe",
     "noPublicationsMatchYourSearch": "Akukho okushicilelwe okuhambisana nokusesha kwakho.",
     "noPublicationsSelectedYet": "Akukho okushicilelwe okukhethiwe okwamanje.",

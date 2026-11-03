@@ -141,7 +141,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
         >
           {opened ? (
             <Button asChild variant="outline" className="w-full">
-              <Link href="/evidence-libraries">{t("openLibraries")}</Link>
+              <Link href="/evidence-communities">{t("openLibraries")}</Link>
             </Button>
           ) : (
             <ContactButton href={LIBRARIES_REQUEST} variant="outline" />

@@ -40,7 +40,7 @@ Filler
 
 Plain speech
 - No abstract metaphor nouns: landscape, lens, vector, nexus, paradigm, framework (unless a record proposes one by that name), ecosystem, cornerstone, backbone, scaffolding (unless it is the teaching term).
-- Say what a study did and found, not how the field feels. If a sentence could appear unchanged in a digest of a different library, cut it.
+- Say what a study did and found, not how the field feels. If a sentence could appear unchanged in a digest of a different community, cut it.
 - One idea per sentence. Split a sentence the reader would have to reread.
 - Active voice with a named actor: "the authors surveyed 412 teachers", never "412 teachers were surveyed".
 - Cut adverbs, or use the number: "significantly improves" becomes the measured difference when the record gives one.

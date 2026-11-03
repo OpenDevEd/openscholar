@@ -63,7 +63,7 @@ function SetupProgressView({
   const status = setup.status;
   const failed = status === "setup_failed";
   const active = status === "active";
-  const base = `/evidence-libraries/${setup.library._id}`;
+  const base = `/evidence-communities/${setup.library._id}`;
   const address = setup.publicAddress;
   const steps = setupSteps({
     status: setup.setupOperation.status,
@@ -103,7 +103,7 @@ function SetupProgressView({
     <LibraryPageShell
       title={setup.identity.name}
       image={setup.faviconUrl}
-      backHref="/evidence-libraries"
+      backHref="/evidence-communities"
       backLabel={t("backToLibraries")}
       titleAside={<><LibraryStatusChip status={status} /><LibraryAddressLink address={address} className="hidden text-sm text-muted-foreground @5xl:inline-flex" /></>}
       actions={

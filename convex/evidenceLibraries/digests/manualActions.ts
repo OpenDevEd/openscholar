@@ -32,10 +32,10 @@ export const send = action({
         signal: AbortSignal.timeout(30_000),
         redirect: "error",
       });
-      if (!response.ok) throw new Error(`Library returned ${response.status}: ${(await response.text()).slice(0, 500)}`);
+      if (!response.ok) throw new Error(`Community returned ${response.status}: ${(await response.text()).slice(0, 500)}`);
       return resultSchema.parse(await response.json());
     } catch (error) {
-      console.error("Manual library digest request failed", {libraryId: args.libraryId, error});
+      console.error("Manual community digest request failed", {libraryId: args.libraryId, error});
       throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", "The digest request could not be confirmed. Try again; existing editions will not be sent twice.");
     }
   },

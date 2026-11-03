@@ -13,7 +13,7 @@ export const ADDRESS_HEADER = "x-page-address";
  * a folder under app/o/[slug] and under app, and nothing else is: paths.test.ts fails when a
  * page is added to one side only.
  */
-export const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-libraries", "/authors", "/topics", "/settings", "/pricing", "/from-library"];
+export const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-communities", "/authors", "/topics", "/settings", "/pricing", "/from-library"];
 const within = (path: string, section: string) => path === section || path.startsWith(`${section}/`);
 
 /**
@@ -39,7 +39,7 @@ export function pageItem(path: string, params: URLSearchParams): Item | null {
   const [, section, id, page] = path.split("/");
   if (section === "results" && id) return { kind: "search", id: decodeURIComponent(id) };
   if (section === "extraction" && id && id !== "new") return { kind: "extraction", id };
-  if (section === "evidence-libraries" && id && id !== "new") return { kind: "library", id };
+  if (section === "evidence-communities" && id && id !== "new") return { kind: "library", id };
   if (section === "authors" && id) return { kind: "profile", id };
   const job = path === "/screening" ? params.get("job") : null;
   if (job && job !== "new") return { kind: "screening", id: job };
@@ -48,7 +48,7 @@ export function pageItem(path: string, params: URLSearchParams): Item | null {
 }
 
 /** Where each kind of item's section starts. */
-const SECTION_OF: Record<Item["kind"], string> = { search: "/", screening: "/screening", extraction: "/extraction", collection: "/library", library: "/evidence-libraries", profile: "/authors" };
+const SECTION_OF: Record<Item["kind"], string> = { search: "/", screening: "/screening", extraction: "/extraction", collection: "/library", library: "/evidence-communities", profile: "/authors" };
 
 /**
  * Where a switch to another workspace lands, which is always in that workspace, on a page it

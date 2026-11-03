@@ -35,7 +35,7 @@ export const SECTION_REGISTRY = [
     key: "identity",
     pointer: "/identity",
     label: "Identity",
-    description: "Library name, URL, and visual identity.",
+    description: "Community name, URL, and visual identity.",
     authority: "ownerEdited",
   },
   {
@@ -196,7 +196,7 @@ export const SECTION_REGISTRY = [
     key: "notifications",
     pointer: "/notifications",
     label: "Email updates",
-    description: "Reader subscriptions and library digest schedule.",
+    description: "Reader subscriptions and community digest schedule.",
     authority: "ownerEdited",
   },
   {
@@ -217,7 +217,7 @@ export const SECTION_REGISTRY = [
     key: "home",
     pointer: "/home",
     label: "Home page",
-    description: "The page visitors land on and who runs the library.",
+    description: "The page visitors land on and who runs the community.",
     authority: "ownerEdited",
   },
 ] as const satisfies readonly SectionDefinition[];

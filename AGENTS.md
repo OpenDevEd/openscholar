@@ -29,6 +29,11 @@ the other.
   admin", "the admin page", and "the admin panel" mean new-el's `/admin`.
   "Evidence Library" on its own means new-el unless the request is about
   configuration or setup.
+- People read "Evidence Community" and "community". "Library" on its own means
+  the saved papers in OpenScholar. Code, tables, service APIs and older plans
+  still say Evidence Library (`evidenceLibraries`, `/api/v1/evidence-libraries`,
+  `new-el`), and "Evidence Community" in a request means that same thing. Never
+  write "library" in text people read when the community is meant.
 - Before touching code, decide which repository the request is about from what
   it names, not from the current directory. Work in that repository's checkout
   or a worktree of it, even when the session started in the other one.

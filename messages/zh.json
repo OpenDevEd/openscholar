@@ -23,7 +23,7 @@
     "history": "历史",
     "extraction": "提取",
     "library": "文献库",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "screening": "筛选",
     "settings": "设置",
     "save": "保存",
@@ -292,12 +292,12 @@
       "noMemberLimit": "成员数量不限",
       "southernFeature1": "包含免费组织的全部内容",
       "southernFeature2": "联系我们后添加到你的组织",
-      "librariesName": "Evidence Libraries",
+      "librariesName": "Evidence Communities",
       "librariesDescription": "按申请为你的组织开启。方案和积分保持不变。",
-      "librariesFeature1": "公开的 Evidence Libraries",
+      "librariesFeature1": "公开的 Evidence Communities",
       "librariesFeature2": "创建和编辑作者资料",
       "librariesOn": "已为你的组织开启",
-      "openLibraries": "打开 Evidence Libraries"
+      "openLibraries": "打开 Evidence Communities"
     },
     "cancelScheduledDowngrade": "取消已安排的降级",
     "scheduled": "已安排",
@@ -325,7 +325,7 @@
     "loading": "正在加载发布设置…",
     "storedHint": "留空以保留已保存的凭据",
     "saved": "发布设置已保存",
-    "activateHint": "激活配置以应用到此文库。",
+    "activateHint": "激活配置以应用到此社区。",
     "failure": "无法验证凭据。未保存任何更改。请重试。",
     "zenodoRequired": "启用 Crossref 时为必需项。文件可用时即会存档。",
     "zenodoHint": "存档文件并创建 Zenodo DOI。",
@@ -348,8 +348,8 @@
     "depositorName": "提交者姓名",
     "email": "提交者邮箱",
     "namespace": "DOI 命名空间",
-    "namespaceHint": "默认使用此文库的地址名称。",
-    "libraryName": "文库名称",
+    "namespaceHint": "默认使用此社区的地址名称。",
+    "libraryName": "社区名称",
     "checking": "正在检查服务商凭据…",
     "needsVerification": "更改必须经过验证后才能保存。",
     "verified": "已验证 {date}",
@@ -359,7 +359,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "无权访问",
-    "organizationFeatureDescription": "此工作区的套餐不包含 Evidence Libraries。",
+    "organizationFeatureDescription": "此工作区的套餐不包含 Evidence Communities。",
     "backToSearch": "返回搜索",
     "loadingTitle": "加载工作区",
     "loadingDescription": "准备您的认证工作区。",
@@ -1607,14 +1607,14 @@
       "collection": "合集",
       "saved": "已保存的论文",
       "screening": "筛选",
-      "evidenceLibrary": "Evidence Library"
+      "evidenceLibrary": "Evidence Community"
     },
     "noSets": {
       "search": "还没有保存的搜索。",
       "collection": "还没有合集。",
       "saved": "还没有保存的论文。",
       "screening": "还没有已完成的筛选。",
-      "evidenceLibrary": "还没有 Evidence Library。"
+      "evidenceLibrary": "还没有 Evidence Community。"
     },
     "papersToScreen": "要筛选的论文",
     "paperCount": "{count, plural, other {# 篇}}",
@@ -1714,8 +1714,8 @@
     "apps": "个应用",
     "revokeApp": "撤销 {app}",
     "integrations": "集成",
-    "zoteroAbout": "在聊天和 Evidence Libraries 中使用你的文库和群组",
-    "zoteroKeeps": "Evidence Libraries 会继续同步已有的群组",
+    "zoteroAbout": "在聊天和 Evidence Communities 中使用你的文库和群组",
+    "zoteroKeeps": "Evidence Communities 会继续同步已有的群组",
     "connect": "连接",
     "disconnect": "断开连接",
     "connectedTime": "{time}连接",
@@ -1725,12 +1725,12 @@
     "picker": {
       "placeholder": "选择机构",
       "search": "搜索机构",
-      "notSetUp": "图书馆设置后会显示记录中的机构名称。",
+      "notSetUp": "社区设置后会显示记录中的机构名称。",
       "empty": "记录中还没有机构名称。",
       "none": "无",
       "useTyped": "使用“{name}”",
       "title": "选择机构",
-      "description": "名称来自此文献库中的记录。",
+      "description": "名称来自此文献社区中的记录。",
       "colName": "机构",
       "colRecords": "记录",
       "noMatch": "没有匹配的机构。",
@@ -1739,7 +1739,7 @@
     }
   },
   "evidenceLibraryConfiguration": {
-    "untitled": "未命名文献库",
+    "untitled": "未命名文献社区",
     "unsaved": "未保存的更改",
     "viewOnly": "仅查看",
     "save": "保存",
@@ -1754,18 +1754,18 @@
     "fixFirst": "请先修正标出的字段",
     "fixFirstToast": "请修正标出的字段",
     "fixFirstToastDescription": "部分内容需要处理后才能保存。",
-    "activateDraftTitle": "设置并激活此文献库？",
+    "activateDraftTitle": "设置并激活此文献社区？",
     "activateDraftBody": "这将设置 {name} 并将其上线到 {address}。大约需要 2 分钟。",
     "activateDraftConfirm": "开始设置",
     "activateTitle": "激活此版本？",
     "activateBody": "这将发布新版本。大约需要 2 分钟。",
-    "activateBodySoftware": "同时会把文献库更新到最新的 Evidence Library 软件，这些设置需要该版本，因此可能还要多花几分钟。",
+    "activateBodySoftware": "同时会把文献社区更新到最新的 Evidence Community 软件，这些设置需要该版本，因此可能还要多花几分钟。",
     "activateBodyUnsaved": "未保存的更改将先被保存。",
     "activateConfirm": "激活",
-    "activationError": "无法激活文献库。请重试。",
+    "activationError": "无法激活文献社区。请重试。",
     "applying": "正在应用您的更改",
     "operationFailed": "上一次激活失败",
-    "backToLibraries": "返回文献库列表",
+    "backToLibraries": "返回文献社区列表",
     "backToTop": "回到顶部",
     "rail": {
       "aria": "配置部分",
@@ -1813,15 +1813,15 @@
       "storage": "文件",
       "application": "应用",
       "deployment": "构建中",
-      "health_check": "正在检查文献库页面",
+      "health_check": "正在检查文献社区页面",
       "coolify": "构建中",
       "convex": "收尾中",
       "completed": "已上线"
     },
     "problems": {
       "notificationSchedule": "请选择有效的摘要日、时间和时区。",
-      "nameMissing": "请为文献库填写名称。",
-      "shortNameMissing": "请为文献库填写简称。",
+      "nameMissing": "请为文献社区填写名称。",
+      "shortNameMissing": "请为文献社区填写简称。",
       "partnerName": "每个资助方合作伙伴都需要名称。",
       "badColour": "其中一个颜色无效。",
       "institutionName": "每个机构都需要名称。",
@@ -1853,7 +1853,7 @@
       "consentVersion": "Cookie 同意版本是 1 或更大的整数。",
       "aiKey": "请添加您的 OpenRouter 密钥。",
       "aiModel": "请选择用于回答问题的模型。",
-      "aiModelUnknown": "该模型不在您的文献库软件提供的范围内。请选择其他模型。",
+      "aiModelUnknown": "该模型不在您的文献社区软件提供的范围内。请选择其他模型。",
       "homeStepName": "请为每个纯文本步骤填写名称。",
       "homeLimit": "首页的某些文字超出了长度限制，或某个列表的条目过多。请缩短。",
       "tagFilters": "每个标签筛选都需要名称，每个条目都需要标签。"
@@ -1888,16 +1888,16 @@
     "identity": {
       "description": "人们看到的名称、访问的地址，以及分享时的外观。",
       "nameLabel": "名称",
-      "nameError": "请输入文献库名称。",
+      "nameError": "请输入文献社区名称。",
       "shortNameLabel": "简称",
       "shortNameHint": "用于导出文件名、邮件主题，以及网站被固定为应用时。",
-      "shortNameError": "请输入文献库简称。",
+      "shortNameError": "请输入文献社区简称。",
       "addressLabel": "公开地址",
       "addressHint": "如需添加您自己的地址，请使用“域名”部分。",
       "copyAddress": "复制地址",
       "copied": "已复制",
       "taglineLabel": "标语",
-      "taglineHint": "文献库搜索上方的标题。留空则显示“搜索”。",
+      "taglineHint": "文献社区搜索上方的标题。留空则显示“搜索”。",
       "taglinePlaceholder": "为更好的决策提供证据",
       "descriptionLabel": "描述",
       "descriptionHint": "显示在首页和搜索结果中。",
@@ -1909,9 +1909,9 @@
       "partnerName": "合作伙伴名称",
       "partnerPlaceholder": "合作伙伴名称",
       "shareImageLabel": "分享图片",
-      "shareImageHint": "文献库在社交媒体上分享时使用。PNG、JPG 或 WEBP。",
+      "shareImageHint": "文献社区在社交媒体上分享时使用。PNG、JPG 或 WEBP。",
       "showNameLabel": "徽标旁的名称",
-      "showNameHint": "徽标已包含图书馆名称时请关闭。"
+      "showNameHint": "徽标已包含社区名称时请关闭。"
     },
     "theme": {
       "description": "公开网站的布局、字体、标志和颜色。",
@@ -1934,7 +1934,7 @@
       "fontsHeading": "字体",
       "headingFontLabel": "标题字体",
       "bodyFontLabel": "正文字体",
-      "sampleHeading": "您的文献库",
+      "sampleHeading": "您的文献社区",
       "sampleBody": "这是公开网站上正文段落的显示效果。",
       "logosHeading": "标志和浏览器图标",
       "logoLightLabel": "浅色模式标志",
@@ -1982,19 +1982,19 @@
       "add": "添加机构"
     },
     "danger": {
-      "description": "删除此文献库。请谨慎操作。",
-      "deleteTitle": "删除文献库",
+      "description": "删除此文献社区。请谨慎操作。",
+      "deleteTitle": "删除文献社区",
       "deleteHint": "会移除网站、地址和设置。",
-      "deleteButton": "删除文献库"
+      "deleteButton": "删除文献社区"
     },
     "deleteDialog": {
-      "title": "删除此文献库？",
+      "title": "删除此文献社区？",
       "body": "这将移除 {name}、它的应用、它的文件，以及它的地址 {address}。此操作无法撤销。",
       "typeToConfirm": "输入 {name} 以确认",
-      "confirm": "删除文献库",
-      "startedTitle": "正在删除文献库",
+      "confirm": "删除文献社区",
+      "startedTitle": "正在删除文献社区",
       "startedDescription": "{name} 正在被移除。大约需要几秒钟。",
-      "error": "无法删除文献库。请先结束正在进行的文献库操作，然后重试。"
+      "error": "无法删除文献社区。请先结束正在进行的文献社区操作，然后重试。"
     },
     "links": {
       "labelLabel": "标签",
@@ -2009,8 +2009,8 @@
       "pageLabel": "页面",
       "pages": {
         "home": "首页",
-        "library": "文献库",
-        "digests": "文库摘要",
+        "library": "文献社区",
+        "digests": "社区摘要",
         "map": "地图",
         "evidence": "证据地图",
         "contact": "联系",
@@ -2098,7 +2098,7 @@
       "disclaimer": "免责声明",
       "disclaimerHint": "在每个页面底部以小字显示。",
       "attribution": "署名",
-      "attributionHint": "一行，例如文献库的运营方。",
+      "attributionHint": "一行，例如文献社区的运营方。",
       "poweredBy": "由 OpenScholar 提供支持",
       "poweredByHint": "一行小字，链接回 OpenScholar。",
       "poweredByLocked": "付费方案可用。"
@@ -2151,13 +2151,13 @@
       "pickedCount": "{count, plural, =0 {未选择} other {已选择 #}}"
     },
     "collections": {
-      "description": "选择文献库数据库中的哪些集合出现在网站上，以及显示顺序。",
+      "description": "选择文献社区数据库中的哪些集合出现在网站上，以及显示顺序。",
       "shownHeading": "网站上显示的内容",
       "introHint": "每个集合都会成为一个筛选组，其子集合作为选项。拖动可设置它们在网站上的顺序。",
       "loading": "正在加载集合…",
-      "failed": "无法加载文献库的集合。",
-      "notSetUp": "请先设置文献库，然后在其管理页面创建集合，或从 Zotero 同步集合。",
-      "noneInDatabase": "还没有集合。请在文献库管理页面创建，或从 Zotero 同步。",
+      "failed": "无法加载文献社区的集合。",
+      "notSetUp": "请先设置文献社区，然后在其管理页面创建集合，或从 Zotero 同步集合。",
+      "noneInDatabase": "还没有集合。请在文献社区管理页面创建，或从 Zotero 同步。",
       "empty": "还没有显示任何集合。",
       "records": "{count, plural, other {# 条记录}}",
       "titleLabel": "网站上的标题",
@@ -2220,25 +2220,25 @@
         "failedAt": "{time} 导入失败",
         "lastSuccess": "上次成功：{when}",
         "retry": "重新导入",
-        "retryStarted": "图书馆将在几秒内导入此来源。",
-        "retryFailed": "无法请求图书馆立即导入。请稍后再试。",
+        "retryStarted": "社区将在几秒内导入此来源。",
+        "retryFailed": "无法请求社区立即导入。请稍后再试。",
         "details": "技术详情",
         "afterActivate": "激活后导入",
         "startsSoon": "一分钟内开始",
         "failure": {
           "access_denied": "{provider} 拒绝了已保存的密钥。请在“连接”中检查后重试。",
-          "owner_left": "添加此合集的人已离开组织，因此图书馆撤下了其中的记录。",
+          "owner_left": "添加此合集的人已离开组织，因此社区撤下了其中的记录。",
           "not_found": "{provider} 找不到此来源，或已保存的密钥无权访问。",
           "missing_key": "此来源没有保存 API 密钥。请在“连接”中添加。",
           "invalid_query": "{provider} 拒绝了该搜索。请编辑搜索后重新激活。",
-          "too_large": "此来源的记录数超过了图书馆允许的上限。",
+          "too_large": "此来源的记录数超过了社区允许的上限。",
           "rate_limited": "{provider} 正在限制请求。导入每分钟重试一次。",
           "unavailable": "无法连接 {provider}。导入每分钟重试一次。",
           "interrupted": "导入在完成前停止了，会自动重新开始。",
           "internal": "导入遇到意外错误。技术详情说明了发生的情况。"
         }
       },
-      "description": "文献库记录的来源。",
+      "description": "文献社区记录的来源。",
       "accountHeading": "Zotero 账户",
       "notConnected": "未连接",
       "notConnectedHint": "登录一次。之后您的群组会出现在选择器中。",
@@ -2275,7 +2275,7 @@
       "listLabel": "已连接的来源",
       "connections": "连接",
       "connectionsTitle": "来源连接",
-      "connectionsDescription": "管理此文献库的账户访问和导入设置。",
+      "connectionsDescription": "管理此文献社区的账户访问和导入设置。",
       "providerTabs": "来源提供方",
       "addSource": "添加来源",
       "zoteroGroup": "Zotero 群组",
@@ -2291,7 +2291,7 @@
         "ownKey": "自有 API 密钥",
         "platformHint": "包含在 OpenScholar 中。更新只获取有变化的记录。",
         "keyLabel": "OpenAlex API 密钥",
-        "keyHint": "为此文献库使用你自己的 OpenAlex API 密钥。",
+        "keyHint": "为此文献社区使用你自己的 OpenAlex API 密钥。",
         "savedKey": "已保存的密钥 {hint}",
         "keyPlaceholder": "输入你的 OpenAlex API 密钥",
         "saveKey": "保存 API 密钥",
@@ -2314,14 +2314,14 @@
         "processPdfs": "处理 PDF"
       },
       "removeTitle": "移除此群组？",
-      "removeBody": "已导入的记录会保留在文献库中。新的更改将不会被导入。",
+      "removeBody": "已导入的记录会保留在文献社区中。新的更改将不会被导入。",
       "removeConfirm": "移除",
       "health": {
         "connected": "已连接",
         "paused": "已暂停"
       },
       "tagRulesHeading": "Zotero 标签规则",
-      "tagRulesIntro": "Zotero 中的标签决定资料库如何处理一条记录。隐藏标签同样作用于它的笔记和附件。",
+      "tagRulesIntro": "Zotero 中的标签决定社区如何处理一条记录。隐藏标签同样作用于它的笔记和附件。",
       "tagPlaceholder": "添加标签…",
       "tagRules": {
         "hidden": {
@@ -2385,7 +2385,7 @@
       "collectionConnectFailed": "无法添加此合集。",
       "collectionPicker": {
         "title": "添加合集",
-        "description": "你的 OpenScholar 合集。图书馆会关注你勾选的合集，并在其变化时更新。",
+        "description": "你的 OpenScholar 合集。社区会关注你勾选的合集，并在其变化时更新。",
         "search": "搜索合集…",
         "colCollection": "合集",
         "noCollections": "你还没有合集。",
@@ -2405,15 +2405,15 @@
           "passing": "顺带提及",
           "notAbout": "与主题无关"
         },
-        "keep": "保留在文献库中：{grade}",
-        "inLibrary": "条在文献库中",
+        "keep": "保留在文献社区中：{grade}",
+        "inLibrary": "条在文献社区中",
         "keptOut": "条被排除",
         "reading": "正在读取",
         "gradingAgain": "正在重新评级，{done, number} / {of, number}",
         "gradingNote": "在每条记录都重新评级之前，下方的评级仍是当前主题的。",
         "gradedAgain": "条记录将重新评级",
         "notGradedYet": "条记录尚未评级",
-        "onLibraryKey": "使用文献库的密钥",
+        "onLibraryKey": "使用文献社区的密钥",
         "toFinish": "完成所需",
         "ofSample": "{size, number} 条中 {changed, number} 条",
         "changeInTrial": "在试用中评级改变",
@@ -2423,16 +2423,16 @@
         "gradeThem": "评级",
         "currentSubject": "当前主题",
         "newSubject": "新主题",
-        "startsOnActivate": "激活这些设置、文献库采用新主题后，评级就会开始。",
-        "refused": "文献库未开始评级：{reason}",
+        "startsOnActivate": "激活这些设置、文献社区采用新主题后，评级就会开始。",
+        "refused": "文献社区未开始评级：{reason}",
         "requestFailed": "无法发起评级",
         "trialFailed": "试用未完成",
-        "notRunning": "文献库尚未运行。",
+        "notRunning": "文献社区尚未运行。",
         "underACent": "不到 1 美分",
         "underAMinute": "不到一分钟",
         "aboutMinutes": "约 {count} 分钟",
         "aboutHours": "约 {count} 小时",
-        "methods": "同一次读取还会给出每条记录的研究类型、作者是否自行合并了结果、所研究的地区，以及摘要是否报告数值。每条约 $0.000075。读取失败的记录会以未评级状态进入文献库，稍后再读。",
+        "methods": "同一次读取还会给出每条记录的研究类型、作者是否自行合并了结果、所研究的地区，以及摘要是否报告数值。每条约 $0.000075。读取失败的记录会以未评级状态进入文献社区，稍后再读。",
         "gradedOnceActive": "这些设置生效后，记录才会被评级。"
       }
     },
@@ -2475,7 +2475,7 @@
       "institutionLabel": "下拉菜单标签",
       "institutionLabelHint": "下拉菜单上的标签，例如“机构”或“合作伙伴”。",
       "sourcesFilter": "来源筛选器",
-      "sourcesFilterHint": "读者可将结果缩小到发现这些结果的来源。文献库有两个或以上来源时才会显示。",
+      "sourcesFilterHint": "读者可将结果缩小到发现这些结果的来源。文献社区有两个或以上来源时才会显示。",
       "sourcesLabel": "来源标题",
       "sourcesLabelHint": "读者在来源上方看到的文字，例如“主题领域”。",
       "sourcesLabelError": "请填写来源标题。",
@@ -2516,16 +2516,16 @@
         "addTag": "添加标签",
         "removeTag": "移除标签",
         "pickerTitle": "为 {name} 添加标签",
-        "pickerDescription": "图书馆的标签，最常用的在前。可输入还没有记录使用的标签，或将输入内容作为前缀。",
+        "pickerDescription": "社区的标签，最常用的在前。可输入还没有记录使用的标签，或将输入内容作为前缀。",
         "pickerSearch": "搜索标签",
         "colTag": "标签",
         "colRecords": "记录",
         "used": "已添加",
         "loading": "正在读取标签",
-        "failed": "无法读取图书馆的标签",
-        "noTags": "图书馆还没有标签",
+        "failed": "无法读取社区的标签",
+        "noTags": "社区还没有标签",
         "noMatch": "没有匹配的标签",
-        "notSetUp": "图书馆设置后会显示标签",
+        "notSetUp": "社区设置后会显示标签",
         "useTyped": "添加\"{tag}\"",
         "usePrefix": "所有以\"{prefix}\"开头的标签",
         "labelFor": "读者看到的 {tag}",
@@ -2589,12 +2589,12 @@
       "hints": {
         "themeSwitcher": "允许人们选择浅色或深色模式。",
         "languageSwitcher": "允许人们更改网站语言。",
-        "collections": "在文献库中显示集合。",
+        "collections": "在文献社区中显示集合。",
         "collectionNotes": "选中某个集合时，显示该集合的描述备注。",
         "countryFocus": "显示国家筛选器、出版物所涉及的国家，以及国家地图。",
         "authorFilter": "允许人们按作者筛选。",
         "yearsDropdown": "在搜索栏中显示年份选择器。",
-        "downloads": "为出版物和整个文献库提供引用下载。",
+        "downloads": "为出版物和整个文献社区提供引用下载。",
         "atomFeed": "显示 Atom 订阅源的链接。",
         "readerAccounts": "允许读者使用 OpenScholar 登录，以收藏记录并保存集合。"
       },
@@ -2656,7 +2656,7 @@
       "consentVersionHint": "更改 Cookie 文本时请提高此数字，以便每位访客重新确认。",
       "consentVersionError": "请使用 1 或更大的整数。"
     },
-    "updatingSoftware": "正在将 Evidence Library 软件更新到 {rev}",
+    "updatingSoftware": "正在将 Evidence Community 软件更新到 {rev}",
     "operationFlow": {
       "saving": "正在保存更改",
       "queued": "等待开始",
@@ -2678,7 +2678,7 @@
       "checking": "正在检查更新…",
       "checkAgain": "重新检查",
       "checkError": "无法检查更新。请重试。",
-      "notRunning": "文献库上线后可用。",
+      "notRunning": "文献社区上线后可用。",
       "updateAvailable": "有可用更新",
       "upToDate": "已是最新",
       "runningLabel": "正在运行",
@@ -2700,8 +2700,8 @@
         "reliability": "修复"
       },
       "update": "更新",
-      "updateTitle": "更新此文献库？",
-      "updateBody": "文献库将基于最新的 Evidence Library 软件重新构建。记录、设置和地址保持不变。大约需要一分钟。",
+      "updateTitle": "更新此文献社区？",
+      "updateBody": "文献社区将基于最新的 Evidence Community 软件重新构建。记录、设置和地址保持不变。大约需要一分钟。",
       "updateConfirm": "立即更新",
       "updateError": "无法开始更新。请重试。",
       "historyHeading": "已发布版本",
@@ -2722,18 +2722,18 @@
       "addressSilent": "{host} 上没有任何服务响应。",
       "addressMove": "迁移到新地址",
       "addressBack": "返回平台地址",
-      "addressMoveTitle": "将此文献库迁移到新地址？",
-      "addressMoveBody": "文献库会使用下一个可用地址。记录和设置保持不变。使用旧地址的人将无法访问。",
+      "addressMoveTitle": "将此文献社区迁移到新地址？",
+      "addressMoveBody": "文献社区会使用下一个可用地址。记录和设置保持不变。使用旧地址的人将无法访问。",
       "addressMoveConfirm": "立即迁移",
       "addressMoveStarted": "迁移已开始",
       "addressMoveStartedDescription": "正在迁移到 {address}…",
-      "addressMoveError": "无法迁移文献库。请重试。",
+      "addressMoveError": "无法迁移文献社区。请重试。",
       "restoreError": "无法恢复该版本。请重试。"
     },
     "ai": {
-      "description": "允许访客就文献库中的证据提出问题。",
+      "description": "允许访客就文献社区中的证据提出问题。",
       "answersLabel": "AI 回答",
-      "answersHint": "为文献库添加问答功能。您需为其使用量向 OpenRouter 付费。",
+      "answersHint": "为文献社区添加问答功能。您需为其使用量向 OpenRouter 付费。",
       "keyLabel": "OpenRouter 密钥",
       "keyHint": "在 openrouter.ai 创建。密钥会加密存储，且之后不再显示。",
       "keyStored": "密钥已保存",
@@ -2754,7 +2754,7 @@
       "modelError": "请从已同步的 OpenRouter 目录中选择模型。"
     },
     "domain": {
-      "description": "为文献库使用您自己的网址。",
+      "description": "为文献社区使用您自己的网址。",
       "platformLabel": "平台地址",
       "customLabel": "自定义域名",
       "customDomainsLabel": "自定义域名",
@@ -2784,7 +2784,7 @@
         "wrong-target": "该域名指向了其他位置。如果它位于另一个代理之后，请为此记录关闭该代理。",
         "token-mismatch": "所有权记录中的值不同",
         "host-taken": "该域名上已有另一个网站在响应",
-        "not-served": "文献库尚未运行",
+        "not-served": "文献社区尚未运行",
         "caa-blocked": "此域名只允许特定的证书颁发机构。请添加允许 letsencrypt.org 的 CAA 记录。",
         "tls-timeout": "无法激活 TLS。请再次检查域名。"
       },
@@ -2792,7 +2792,7 @@
         "invalid": "这看起来不是域名",
         "platform-host": "该地址已属于平台",
         "host-taken": "该域名已被另一个网站使用",
-        "too-many": "此文献库已达到可添加域名的上限",
+        "too-many": "此文献社区已达到可添加域名的上限",
         "check-failed": "无法检查该域名。请重试。"
       },
       "tlsActive": "TLS：已启用",
@@ -2808,12 +2808,12 @@
       "rateLimited": "DNS 检查过于频繁。请一分钟后重试。",
       "removing": "正在移除",
       "checkFailed": "We could not check the domain. Try again.",
-      "deploying": "正在将更改应用到文献库",
+      "deploying": "正在将更改应用到文献社区",
       "checked": "DNS 已检查",
       "recordsNeedAttention": "部分 DNS 记录仍需处理。",
       "removeAgain": "完成移除",
-      "confirmOffTitle": "将文献库恢复为平台地址？",
-      "confirmOffBody": "文献库将重新在 {address} 上响应。所有已登录用户都会被登出，访问自定义域名的访客将被带到平台地址。",
+      "confirmOffTitle": "将文献社区恢复为平台地址？",
+      "confirmOffBody": "文献社区将重新在 {address} 上响应。所有已登录用户都会被登出，访问自定义域名的访客将被带到平台地址。",
       "confirmAction": "更改地址"
     },
     "retry": "重试",
@@ -2848,26 +2848,26 @@
     "publicationsView": "出版物来源",
     "noOpenAlex": "未找到 OpenAlex 文献。",
     "progress": "{loaded, number} / {total, number}",
-    "searchLibrary": "搜索文献库中的文献",
+    "searchLibrary": "搜索文献社区中的文献",
     "searchPlaceholder": "搜索文献",
     "updating": "文献分组正在更新，请稍后刷新。",
-    "unavailable": "部分文献库位置不可用，已显示可用的位置。",
-    "loadingLibrary": "正在加载文献库中的文献",
+    "unavailable": "部分文献社区位置不可用，已显示可用的位置。",
+    "loadingLibrary": "正在加载文献社区中的文献",
     "noPageMatches": "本页没有匹配项。请继续加载文献。",
     "noLibraryMatches": "没有与搜索匹配的文献。",
-    "noLibraryRecords": "还没有已发布的 Evidence Library 记录使用此主题。"
+    "noLibraryRecords": "还没有已发布的 Evidence Community 记录使用此主题。"
   },
   "evidenceLibraries": {
     "list": {
-      "title": "Evidence Libraries",
+      "title": "Evidence Communities",
       "openAdmin": "打开管理后台",
       "retry": "重试",
-      "deleting": "正在删除文献库",
+      "deleting": "正在删除文献社区",
       "deleteFailed": {
-        "runtime": "无法移除此文献库正在运行的网站，因此删除尚未完成。请重试，或联系支持。",
-        "files": "无法移除此文献库的文件，因此删除尚未完成。请重试，或联系支持。",
-        "database": "无法移除此文献库的数据库，因此删除尚未完成。请重试，或联系支持。",
-        "records": "此文献库的删除尚未完成。请重试，或联系支持。"
+        "runtime": "无法移除此文献社区正在运行的网站，因此删除尚未完成。请重试，或联系支持。",
+        "files": "无法移除此文献社区的文件，因此删除尚未完成。请重试，或联系支持。",
+        "database": "无法移除此文献社区的数据库，因此删除尚未完成。请重试，或联系支持。",
+        "records": "此文献社区的删除尚未完成。请重试，或联系支持。"
       }
     },
     "status": {
@@ -2889,16 +2889,16 @@
       "completed": "已上线"
     },
     "new": {
-      "title": "新建 Evidence Library",
-      "backToLibraries": "返回文献库列表",
+      "title": "新建 Evidence Community",
+      "backToLibraries": "返回文献社区列表",
       "ownerTitle": "所有者",
       "ownerOnlyTitle": "仅限所有者",
-      "ownerOnlyDescription": "只有组织的所有者可以创建文献库。",
-      "libraryTitle": "文献库",
+      "ownerOnlyDescription": "只有组织的所有者可以创建文献社区。",
+      "libraryTitle": "文献社区",
       "libraryDescription": "名称会显示在公开网站上，并决定公开地址。",
       "nameLabel": "名称",
       "namePlaceholder": "例如：气候教育证据库",
-      "nameError": "请输入文献库名称。",
+      "nameError": "请输入文献社区名称。",
       "shortNameLabel": "简称",
       "shortNameHint": "根据名称自动生成。您可以稍后在“配置”中修改。",
       "addressLabel": "公开地址",
@@ -2908,7 +2908,7 @@
       "reserve": "预留地址",
       "checking": "正在预留…",
       "reserved": "已预留",
-      "nameTaken": "您已有一个名为 {name} 的文献库。",
+      "nameTaken": "您已有一个名为 {name} 的文献社区。",
       "openExisting": "打开它",
       "checkFailed": "无法检查地址。请重试。",
       "addressTaken": "该地址刚刚被他人预留。请重新检查。",
@@ -2916,7 +2916,7 @@
       "tryAgain": "重试"
     },
     "setup": {
-      "backToLibraries": "返回文献库列表",
+      "backToLibraries": "返回文献社区列表",
       "configure": "配置",
       "openAdmin": "打开管理后台",
       "groupTitle": "设置",
@@ -2924,7 +2924,7 @@
       "retryingTitle": "正在重试",
       "retryingDescription": "从停止的步骤重新开始。",
       "retryError": "无法重新开始设置。请重试。",
-      "draftHint": "请在配置页面设置并激活此文献库。",
+      "draftHint": "请在配置页面设置并激活此文献社区。",
       "stoppedHint": "重试会重复此步骤及其之后的步骤。",
       "deploymentError": "构建未完成。",
       "steps": {
@@ -2942,27 +2942,27 @@
         },
         "application": {
           "name": "应用",
-          "waiting": "正在创建文献库应用。",
-          "running": "正在创建文献库应用…",
-          "done": "已创建文献库应用。"
+          "waiting": "正在创建文献社区应用。",
+          "running": "正在创建文献社区应用…",
+          "done": "已创建文献社区应用。"
         },
         "deployment": {
           "name": "构建",
-          "waiting": "正在构建文献库并使其上线。",
-          "running": "正在构建文献库并使其上线…",
-          "done": "已构建文献库并使其上线。"
+          "waiting": "正在构建文献社区并使其上线。",
+          "running": "正在构建文献社区并使其上线…",
+          "done": "已构建文献社区并使其上线。"
         },
         "readiness": {
           "name": "就绪检查",
-          "waiting": "正在检查文献库页面能否加载。",
-          "running": "正在检查文献库页面能否加载…",
-          "done": "已检查文献库页面可以加载。"
+          "waiting": "正在检查文献社区页面能否加载。",
+          "running": "正在检查文献社区页面能否加载…",
+          "done": "已检查文献社区页面可以加载。"
         },
         "active": {
           "name": "上线",
-          "waiting": "文献库将在其公开地址上打开。",
-          "running": "正在通过公开地址打开文献库…",
-          "done": "文献库已在其公开地址上线。"
+          "waiting": "文献社区将在其公开地址上打开。",
+          "running": "正在通过公开地址打开文献社区…",
+          "done": "文献社区已在其公开地址上线。"
         }
       },
       "live": {
@@ -2971,17 +2971,17 @@
         "copyAddress": "复制地址",
         "copiedShort": "已复制",
         "copied": "地址已复制",
-        "openLibrary": "打开文献库",
+        "openLibrary": "打开文献社区",
         "settingUp": "正在设置 {name}",
         "stopped": "设置已停止",
         "copyFailed": "无法复制地址"
       },
-      "deletingHint": "此文献库正在被删除。"
+      "deletingHint": "此文献社区正在被删除。"
     },
     "notFound": {
-      "title": "未找到文献库",
+      "title": "未找到文献社区",
       "description": "可能已被删除，或属于其他组织。",
-      "back": "返回文献库列表"
+      "back": "返回文献社区列表"
     }
   },
   "settingsShell": {
@@ -2998,7 +2998,7 @@
       "plans": "套餐",
       "users": "用户",
       "aiModels": "AI 模型",
-      "evidenceLibraries": "Evidence Libraries"
+      "evidenceLibraries": "Evidence Communities"
     },
     "sharedDev": "共享开发",
     "production": "生产环境",
@@ -3099,16 +3099,16 @@
       "creditsOrKey": "积分，或用户的密钥"
     },
     "evidenceLibraries": {
-      "title": "Evidence Library 访问权限",
+      "title": "Evidence Community 访问权限",
       "organizations": "组织",
       "search": "搜索组织",
       "show": "显示",
       "all": "全部",
       "on": "开启",
       "off": "关闭",
-      "libraries": "{count, plural, other {# 个资料库}}",
-      "switchLabel": "{name} 的 Evidence Libraries",
-      "moveFirst": "请先移动或删除其资料库",
+      "libraries": "{count, plural, other {# 个社区}}",
+      "switchLabel": "{name} 的 Evidence Communities",
+      "moveFirst": "请先移动或删除其社区",
       "noMatches": "没有匹配的组织"
     }
   },
@@ -3219,7 +3219,7 @@
     "views": {
       "results": "检索结果",
       "extractionJob": "提取任务",
-      "librarySettings": "文献库设置",
+      "librarySettings": "文献社区设置",
       "authors": "作者",
       "page": "此页面"
     },
@@ -3282,7 +3282,7 @@
       "holds": "最多预留 {credits, number} 积分",
       "runs": "运行",
       "asks": "询问",
-      "publishing": "发布文献库",
+      "publishing": "发布文献社区",
       "publishingDetail": "访客会立即看到",
       "moreJobs": "更多任务"
     },
@@ -3304,7 +3304,7 @@
     "chat": "对话",
     "remove": "移除",
     "organization": "组织",
-    "shareNote": "他们可以看到此对话。其中的搜索、合集和文库仍保留各自的访问权限。可对话的人以自己的身份发送消息，助手以他们自己的权限和额度为他们执行操作。",
+    "shareNote": "他们可以看到此对话。其中的搜索、合集和社区仍保留各自的访问权限。可对话的人以自己的身份发送消息，助手以他们自己的权限和额度为他们执行操作。",
     "shareFailed": "无法更改此对话的共享设置",
     "steps": {
       "undo": "撤销",
@@ -3936,121 +3936,121 @@
         "ask": "列出聊天模型"
       },
       "libraries": {
-        "doing": "正在读取您的 Evidence Library",
-        "did": "已读取您的 Evidence Library",
-        "where": "Evidence Library",
-        "ask": "读取您的 Evidence Library"
+        "doing": "正在读取您的 Evidence Community",
+        "did": "已读取您的 Evidence Community",
+        "where": "Evidence Community",
+        "ask": "读取您的 Evidence Community"
       },
       "readerLibraries": {
-        "doing": "正在读取您阅读的 Evidence Library",
-        "did": "已读取您阅读的 Evidence Library",
-        "where": "Evidence Library",
-        "ask": "读取您阅读的 Evidence Library"
+        "doing": "正在读取您阅读的 Evidence Community",
+        "did": "已读取您阅读的 Evidence Community",
+        "where": "Evidence Community",
+        "ask": "读取您阅读的 Evidence Community"
       },
       "readerSources": {
-        "doing": "正在读取您的 Evidence Library 中为您保存的内容",
-        "did": "已读取您的 Evidence Library 中为您保存的内容",
-        "where": "Evidence Library",
-        "ask": "读取您的 Evidence Library 中为您保存的内容"
+        "doing": "正在读取您的 Evidence Community 中为您保存的内容",
+        "did": "已读取您的 Evidence Community 中为您保存的内容",
+        "where": "Evidence Community",
+        "ask": "读取您的 Evidence Community 中为您保存的内容"
       },
       "readerAddress": {
-        "doing": "正在读取一个 Evidence Library 地址",
-        "did": "已读取一个 Evidence Library 地址",
-        "where": "Evidence Library",
-        "ask": "读取一个 Evidence Library 地址"
+        "doing": "正在读取一个 Evidence Community 地址",
+        "did": "已读取一个 Evidence Community 地址",
+        "where": "Evidence Community",
+        "ask": "读取一个 Evidence Community 地址"
       },
       "readerSource": {
-        "doing": "正在读取一个 Evidence Library 来源",
-        "did": "已读取一个 Evidence Library 来源",
-        "where": "Evidence Library",
-        "ask": "读取一个 Evidence Library 来源"
+        "doing": "正在读取一个 Evidence Community 来源",
+        "did": "已读取一个 Evidence Community 来源",
+        "where": "Evidence Community",
+        "ask": "读取一个 Evidence Community 来源"
       },
       "readerRecords": {
-        "doing": "正在读取 Evidence Library 记录",
-        "did": "已读取 Evidence Library 记录",
-        "where": "Evidence Library",
-        "ask": "读取 Evidence Library 记录"
+        "doing": "正在读取 Evidence Community 记录",
+        "did": "已读取 Evidence Community 记录",
+        "where": "Evidence Community",
+        "ask": "读取 Evidence Community 记录"
       },
       "newLibraryCollection": {
-        "doing": "正在 Evidence Library 中创建合集",
-        "did": "已在 Evidence Library 中创建合集",
-        "where": "Evidence Library",
-        "ask": "在 Evidence Library 中创建合集",
-        "askMany": "在 Evidence Library 中创建 {count, number} 个合集",
-        "doingMany": "正在 Evidence Library 中创建 {count, number} 个合集",
-        "didMany": "已在 Evidence Library 中创建 {count, number} 个合集"
+        "doing": "正在 Evidence Community 中创建合集",
+        "did": "已在 Evidence Community 中创建合集",
+        "where": "Evidence Community",
+        "ask": "在 Evidence Community 中创建合集",
+        "askMany": "在 Evidence Community 中创建 {count, number} 个合集",
+        "doingMany": "正在 Evidence Community 中创建 {count, number} 个合集",
+        "didMany": "已在 Evidence Community 中创建 {count, number} 个合集"
       },
       "deleteLibraryCollection": {
-        "doing": "正在删除 Evidence Library 中的合集",
-        "did": "已删除 Evidence Library 中的合集",
-        "where": "Evidence Library",
-        "ask": "删除 Evidence Library 中的合集",
-        "askMany": "删除 Evidence Library 中的 {count, number} 个合集",
-        "doingMany": "正在删除 Evidence Library 中的 {count, number} 个合集",
-        "didMany": "已删除 Evidence Library 中的 {count, number} 个合集"
+        "doing": "正在删除 Evidence Community 中的合集",
+        "did": "已删除 Evidence Community 中的合集",
+        "where": "Evidence Community",
+        "ask": "删除 Evidence Community 中的合集",
+        "askMany": "删除 Evidence Community 中的 {count, number} 个合集",
+        "doingMany": "正在删除 Evidence Community 中的 {count, number} 个合集",
+        "didMany": "已删除 Evidence Community 中的 {count, number} 个合集"
       },
       "changeLibraryRecords": {
-        "doing": "正在更改 Evidence Library 合集",
-        "did": "已更改 Evidence Library 合集",
-        "where": "Evidence Library",
-        "ask": "更改 Evidence Library 合集",
-        "askMany": "更改 {count, number} 个 Evidence Library 合集",
-        "doingMany": "正在更改 {count, number} 个 Evidence Library 合集",
-        "didMany": "已更改 {count, number} 个 Evidence Library 合集"
+        "doing": "正在更改 Evidence Community 合集",
+        "did": "已更改 Evidence Community 合集",
+        "where": "Evidence Community",
+        "ask": "更改 Evidence Community 合集",
+        "askMany": "更改 {count, number} 个 Evidence Community 合集",
+        "doingMany": "正在更改 {count, number} 个 Evidence Community 合集",
+        "didMany": "已更改 {count, number} 个 Evidence Community 合集"
       },
       "readHandoff": {
-        "doing": "正在打开 Evidence Library 转来的内容",
-        "did": "已打开 Evidence Library 转来的内容",
-        "where": "Evidence Library",
-        "ask": "打开 Evidence Library 转来的内容"
+        "doing": "正在打开 Evidence Community 转来的内容",
+        "did": "已打开 Evidence Community 转来的内容",
+        "where": "Evidence Community",
+        "ask": "打开 Evidence Community 转来的内容"
       },
       "readLibraryDraft": {
-        "doing": "正在读取一个文献库的设置",
-        "did": "已读取一个文献库的设置",
-        "where": "Evidence Library",
-        "ask": "读取一个文献库的设置",
-        "askMany": "读取 {count, number} 个文献库的设置",
-        "doingMany": "正在读取 {count, number} 个文献库的设置",
-        "didMany": "已读取 {count, number} 个文献库的设置"
+        "doing": "正在读取一个文献社区的设置",
+        "did": "已读取一个文献社区的设置",
+        "where": "Evidence Community",
+        "ask": "读取一个文献社区的设置",
+        "askMany": "读取 {count, number} 个文献社区的设置",
+        "doingMany": "正在读取 {count, number} 个文献社区的设置",
+        "didMany": "已读取 {count, number} 个文献社区的设置"
       },
       "readLibraryRevision": {
-        "doing": "正在读取文献库设置的一个版本",
-        "did": "已读取文献库设置的一个版本",
-        "where": "Evidence Library",
-        "ask": "读取文献库设置的一个版本"
+        "doing": "正在读取文献社区设置的一个版本",
+        "did": "已读取文献社区设置的一个版本",
+        "where": "Evidence Community",
+        "ask": "读取文献社区设置的一个版本"
       },
       "readLibraryTeam": {
-        "doing": "正在读取文献库的团队",
-        "did": "已读取文献库的团队",
-        "where": "Evidence Library",
-        "ask": "读取文献库的团队",
-        "askMany": "读取 {count, number} 个文献库的团队",
-        "doingMany": "正在读取 {count, number} 个文献库的团队",
-        "didMany": "已读取 {count, number} 个文献库的团队"
+        "doing": "正在读取文献社区的团队",
+        "did": "已读取文献社区的团队",
+        "where": "Evidence Community",
+        "ask": "读取文献社区的团队",
+        "askMany": "读取 {count, number} 个文献社区的团队",
+        "doingMany": "正在读取 {count, number} 个文献社区的团队",
+        "didMany": "已读取 {count, number} 个文献社区的团队"
       },
       "editLibraryDraft": {
-        "doing": "正在更改文献库的草稿",
-        "did": "已更改文献库的草稿",
-        "where": "Evidence Library",
-        "ask": "更改文献库的草稿"
+        "doing": "正在更改文献社区的草稿",
+        "did": "已更改文献社区的草稿",
+        "where": "Evidence Community",
+        "ask": "更改文献社区的草稿"
       },
       "addLibraryMember": {
-        "doing": "正在将某人加入文献库团队",
-        "did": "已将某人加入文献库团队",
-        "where": "Evidence Library",
-        "ask": "将某人加入文献库团队"
+        "doing": "正在将某人加入文献社区团队",
+        "did": "已将某人加入文献社区团队",
+        "where": "Evidence Community",
+        "ask": "将某人加入文献社区团队"
       },
       "changeLibraryRole": {
-        "doing": "正在更改某人在文献库中的角色",
-        "did": "已更改某人在文献库中的角色",
-        "where": "Evidence Library",
-        "ask": "更改某人在文献库中的角色"
+        "doing": "正在更改某人在文献社区中的角色",
+        "did": "已更改某人在文献社区中的角色",
+        "where": "Evidence Community",
+        "ask": "更改某人在文献社区中的角色"
       },
       "removeLibraryMember": {
-        "doing": "正在将某人移出文献库团队",
-        "did": "已将某人移出文献库团队",
-        "where": "Evidence Library",
-        "ask": "将某人移出文献库团队"
+        "doing": "正在将某人移出文献社区团队",
+        "did": "已将某人移出文献社区团队",
+        "where": "Evidence Community",
+        "ask": "将某人移出文献社区团队"
       },
       "zoteroGroups": {
         "doing": "正在读取您的 Zotero 群组",
@@ -4071,79 +4071,79 @@
         "ask": "读取您 Zotero 中的条目"
       },
       "inviteLibraryMember": {
-        "doing": "正在邀请某人加入文献库",
-        "did": "已邀请某人加入文献库",
-        "where": "Evidence Library",
-        "ask": "邀请某人加入文献库",
-        "askMany": "邀请 {count, number} 人加入文献库",
-        "doingMany": "正在邀请 {count, number} 人加入文献库",
-        "didMany": "已邀请 {count, number} 人加入文献库"
+        "doing": "正在邀请某人加入文献社区",
+        "did": "已邀请某人加入文献社区",
+        "where": "Evidence Community",
+        "ask": "邀请某人加入文献社区",
+        "askMany": "邀请 {count, number} 人加入文献社区",
+        "doingMany": "正在邀请 {count, number} 人加入文献社区",
+        "didMany": "已邀请 {count, number} 人加入文献社区"
       },
       "changeLibraryInvite": {
-        "doing": "正在修改文献库邀请",
-        "did": "已修改文献库邀请",
-        "where": "Evidence Library",
-        "ask": "修改文献库邀请"
+        "doing": "正在修改文献社区邀请",
+        "did": "已修改文献社区邀请",
+        "where": "Evidence Community",
+        "ask": "修改文献社区邀请"
       },
       "libraryInvites": {
-        "doing": "正在读取您的文献库邀请",
-        "did": "已读取您的文献库邀请",
-        "where": "Evidence Library",
-        "ask": "读取您的文献库邀请"
+        "doing": "正在读取您的文献社区邀请",
+        "did": "已读取您的文献社区邀请",
+        "where": "Evidence Community",
+        "ask": "读取您的文献社区邀请"
       },
       "answerLibraryInvite": {
-        "doing": "正在回复文献库邀请",
-        "did": "已回复文献库邀请",
-        "where": "Evidence Library",
-        "ask": "回复文献库邀请"
+        "doing": "正在回复文献社区邀请",
+        "did": "已回复文献社区邀请",
+        "where": "Evidence Community",
+        "ask": "回复文献社区邀请"
       },
       "startLibrary": {
-        "doing": "正在创建文献库草稿",
-        "did": "已创建文献库草稿",
-        "where": "Evidence Library",
-        "ask": "创建文献库草稿"
+        "doing": "正在创建文献社区草稿",
+        "did": "已创建文献社区草稿",
+        "where": "Evidence Community",
+        "ask": "创建文献社区草稿"
       },
       "librarySources": {
-        "doing": "正在读取文献库的来源",
-        "did": "已读取文献库的来源",
-        "where": "Evidence Library",
-        "ask": "读取文献库的来源",
-        "askMany": "读取 {count, number} 个文献库的来源",
-        "doingMany": "正在读取 {count, number} 个文献库的来源",
-        "didMany": "已读取 {count, number} 个文献库的来源"
+        "doing": "正在读取文献社区的来源",
+        "did": "已读取文献社区的来源",
+        "where": "Evidence Community",
+        "ask": "读取文献社区的来源",
+        "askMany": "读取 {count, number} 个文献社区的来源",
+        "doingMany": "正在读取 {count, number} 个文献社区的来源",
+        "didMany": "已读取 {count, number} 个文献社区的来源"
       },
       "runningCollections": {
-        "doing": "正在读取文献库的合集",
-        "did": "已读取文献库的合集",
-        "where": "Evidence Library",
-        "ask": "读取文献库的合集"
+        "doing": "正在读取文献社区的合集",
+        "did": "已读取文献社区的合集",
+        "where": "Evidence Community",
+        "ask": "读取文献社区的合集"
       },
       "runningInstitutions": {
-        "doing": "正在读取文献库的机构",
-        "did": "已读取文献库的机构",
-        "where": "Evidence Library",
-        "ask": "读取文献库的机构"
+        "doing": "正在读取文献社区的机构",
+        "did": "已读取文献社区的机构",
+        "where": "Evidence Community",
+        "ask": "读取文献社区的机构"
       },
       "runningPublications": {
-        "doing": "正在读取文献库的出版物",
-        "did": "已读取文献库的出版物",
-        "where": "Evidence Library",
-        "ask": "读取文献库的出版物"
+        "doing": "正在读取文献社区的出版物",
+        "did": "已读取文献社区的出版物",
+        "where": "Evidence Community",
+        "ask": "读取文献社区的出版物"
       },
       "runningPublication": {
-        "doing": "正在读取文献库的一篇出版物",
-        "did": "已读取文献库的一篇出版物",
-        "where": "Evidence Library",
-        "ask": "读取文献库的一篇出版物",
-        "askMany": "读取文献库的 {count, number} 篇出版物",
-        "doingMany": "正在读取文献库的 {count, number} 篇出版物",
-        "didMany": "已读取文献库的 {count, number} 篇出版物"
+        "doing": "正在读取文献社区的一篇出版物",
+        "did": "已读取文献社区的一篇出版物",
+        "where": "Evidence Community",
+        "ask": "读取文献社区的一篇出版物",
+        "askMany": "读取文献社区的 {count, number} 篇出版物",
+        "doingMany": "正在读取文献社区的 {count, number} 篇出版物",
+        "didMany": "已读取文献社区的 {count, number} 篇出版物"
       },
       "syncLibrarySource": {
-        "doing": "正在重试文献库导入",
-        "did": "已重试文献库导入",
-        "where": "Evidence Library",
-        "ask": "重试文献库导入"
+        "doing": "正在重试文献社区导入",
+        "did": "已重试文献社区导入",
+        "where": "Evidence Community",
+        "ask": "重试文献社区导入"
       },
       "authorProfiles": {
         "doing": "正在读取作者资料",
@@ -4206,20 +4206,20 @@
         "didMany": "已将 {count, number} 个 Zotero PDF 加入对话"
       },
       "gradeLibrarySource": {
-        "doing": "正在请求文献库为来源评级",
-        "did": "已请求文献库为来源评级",
-        "where": "Evidence Library",
-        "ask": "为文献库来源的记录评级"
+        "doing": "正在请求文献社区为来源评级",
+        "did": "已请求文献社区为来源评级",
+        "where": "Evidence Community",
+        "ask": "为文献社区来源的记录评级"
       },
       "trySourceSubject": {
         "doing": "正在试用筛选主题",
         "did": "已试用筛选主题",
-        "where": "Evidence Library",
+        "where": "Evidence Community",
         "ask": "在 200 条记录上试用筛选主题"
       },
       "libraryAccess": {
-        "doing": "正在查看 Evidence Library 访问权限",
-        "did": "已查看 Evidence Library 访问权限",
+        "doing": "正在查看 Evidence Community 访问权限",
+        "did": "已查看 Evidence Community 访问权限",
         "where": "管理"
       }
     },
@@ -4555,7 +4555,7 @@
       "paymentFailed": "上次付款失败。",
       "noMemberLimit": "成员数量不限",
       "membersUnit": "{count, plural, other {名成员}}",
-      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "evidenceLibrariesIncluded": "Evidence Communities",
       "seePlans": "查看方案"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
@@ -4756,15 +4756,15 @@
     "changeInSettings": "在 AI 设置中更改"
   },
   "librarySources": {
-    "kind": "Evidence Library 记录",
-    "library": "Evidence Library",
-    "address": "粘贴文献库地址",
+    "kind": "Evidence Community 记录",
+    "library": "Evidence Community",
+    "address": "粘贴文献社区地址",
     "show": "显示",
     "filter": {
       "all": "全部",
       "yours": "我的",
       "shared": "与我共享",
-      "library": "文献库自有"
+      "library": "文献社区自有"
     },
     "find": "查找",
     "everyRecord": "{library} 的全部记录",
@@ -4789,14 +4789,14 @@
     "outdated": "{library} 需要更新后才能在这里使用。",
     "error": {
       "notAddress": "这不是一个地址。",
-      "notHosted": "该文献库不由 OpenScholar 运行。",
+      "notHosted": "该文献社区不由 OpenScholar 运行。",
       "private": "该合集是私密的。所有者可以与你共享。",
       "notFound": "该地址下没有内容。",
       "empty": "该搜索或合集中没有记录。",
       "profile": "打开对方的某个合集并复制其地址。",
-      "unknownPage": "请复制检索、合集或文献库的地址。",
-      "outdated": "该文献库需要更新后才能在这里使用。",
-      "unreadable": "文献库没有响应。请重试。"
+      "unknownPage": "请复制检索、合集或文献社区的地址。",
+      "outdated": "该文献社区需要更新后才能在这里使用。",
+      "unreadable": "文献社区没有响应。请重试。"
     },
     "role": {
       "owner": "所有者",
@@ -4818,17 +4818,17 @@
   "fromLibrary": {
     "title": "来自 {library}",
     "gone": "没有可打开的内容",
-    "goneHint": "这个来自文献库的链接已过期。请从文献库重新打开。",
+    "goneHint": "这个来自文献社区的链接已过期。请从文献社区重新打开。",
     "problem": {
-      "notAddress": "这里没有可打开的内容。请从文献库重新打开。",
-      "notHosted": "该文献库已不在 OpenScholar 上运行。",
+      "notAddress": "这里没有可打开的内容。请从文献社区重新打开。",
+      "notHosted": "该文献社区已不在 OpenScholar 上运行。",
       "private": "该合集是私密的。其所有者可以与你共享。",
-      "notFound": "文献库已不再有它发送的内容。",
-      "empty": "文献库发送的内容目前没有记录。",
-      "profile": "这里没有可打开的内容。请从文献库重新打开。",
-      "unknownPage": "这里没有可打开的内容。请从文献库重新打开。",
-      "outdated": "该文献库需要更新后才能在这里使用。",
-      "unreadable": "文献库没有响应。请稍后重试。"
+      "notFound": "文献社区已不再有它发送的内容。",
+      "empty": "文献社区发送的内容目前没有记录。",
+      "profile": "这里没有可打开的内容。请从文献社区重新打开。",
+      "unknownPage": "这里没有可打开的内容。请从文献社区重新打开。",
+      "outdated": "该文献社区需要更新后才能在这里使用。",
+      "unreadable": "文献社区没有响应。请稍后重试。"
     },
     "from": {
       "smartScreening": "智能筛选",
@@ -4940,15 +4940,15 @@
     }
   },
   "libraryHomeSettings": {
-    "thePageVisitorsLandOnAt": "访客访问文献库地址时看到的页面。",
+    "thePageVisitorsLandOnAt": "访客访问文献社区地址时看到的页面。",
     "showAHomePage": "显示首页",
-    "whenThisIsOffTheLibrary": "关闭时，文献库地址会打开出版物列表。",
+    "whenThisIsOffTheLibrary": "关闭时，文献社区地址会打开出版物列表。",
     "introduction": "简介",
-    "shownInTheHeroUnderThe": "显示在页首区域，位于文献库名称和标语下方。",
-    "whatTheLibraryIsFor": "文献库的用途",
-    "whatDoesThisLibraryCollectAnd": "这个文献库收集什么内容，面向谁？",
+    "shownInTheHeroUnderThe": "显示在页首区域，位于文献社区名称和标语下方。",
+    "whatTheLibraryIsFor": "文献社区的用途",
+    "whatDoesThisLibraryCollectAnd": "这个文献社区收集什么内容，面向谁？",
     "howPublicationsGetIn": "出版物如何进入文献库",
-    "stepsWithATypeAreFilled": "带类型的步骤会根据所跟踪的出版物填写，或根据文献库的搜索和记录统计。",
+    "stepsWithATypeAreFilled": "带类型的步骤会根据所跟踪的出版物填写，或根据文献社区的搜索和记录统计。",
     "addStep": "添加步骤",
     "statement": "说明",
     "noStepsTheSectionShowsThe": "没有步骤。该部分只显示说明文字。",
@@ -4959,20 +4959,20 @@
     "editorShown": "显示的编辑者",
     "whoeverApprovedIt": "批准该出版物的人",
     "whatHappens": "发生了什么",
-    "whoRunsTheLibrary": "运营文献库的人",
-    "peopleFromTheLibrarySTeam": "文献库团队成员或手动添加的人员将按此处设置的顺序依次显示。",
+    "whoRunsTheLibrary": "运营文献社区的人",
+    "peopleFromTheLibrarySTeam": "文献社区团队成员或手动添加的人员将按此处设置的顺序依次显示。",
     "aboutTheTeam": "关于团队",
     "usedInsteadWhenThereIsNo": "没有团队介绍时使用此文字。",
     "suggestAPublication": "推荐出版物",
     "opensAnEmailTo": "打开发往 {email} 的邮件",
     "needsAContactEmail": "需要联系邮箱",
     "joinAsAnEditor": "以编辑者身份加入",
-    "askTheLibrary": "向文献库提问",
-    "typedIntoTheQuestionBoxOne": "依次显示在提问框中。留空则保留由文献库主题生成的问题。",
-    "shownWhenAiAnswersAreOn": "在“功能”中开启 AI 回答时显示。留空则保留由文献库主题生成的问题。",
+    "askTheLibrary": "向文献社区提问",
+    "typedIntoTheQuestionBoxOne": "依次显示在提问框中。留空则保留由文献社区主题生成的问题。",
+    "shownWhenAiAnswersAreOn": "在“功能”中开启 AI 回答时显示。留空则保留由文献社区主题生成的问题。",
     "exampleQuestion": "示例问题 {value}",
     "usingAndCiting": "使用与引用",
-    "shownBesideTheCitationOfThe": "显示在文献库引用旁边，引用由其名称和地址生成。",
+    "shownBesideTheCitationOfThe": "显示在文献社区引用旁边，引用由其名称和地址生成。",
     "licenceAndReuse": "许可与再利用",
     "howMayPeopleReuseWhatThey": "人们可以如何再利用在这里找到的内容？",
     "heading": "标题",
@@ -4991,12 +4991,12 @@
     "takedownForm": "下架表单",
     "off": "关闭",
     "filledInForYou": "已为您填写",
-    "newestPublicationsTheMostCitedDigests": "最新出版物、被引最多的出版物、摘要和最新审阅由文献库自动提供。",
+    "newestPublicationsTheMostCitedDigests": "最新出版物、被引最多的出版物、摘要和最新审阅由文献社区自动提供。",
     "editIn": "在 {card} 中编辑",
     "peopleShown": "显示的人员",
     "addFromTheTeam": "从团队添加",
     "addPeopleFromTheTeam": "从团队添加人员",
-    "everyoneOnTheLibrarySTeam": "文献库团队中的所有人，使用其账户中的照片。",
+    "everyoneOnTheLibrarySTeam": "文献社区团队中的所有人，使用其账户中的照片。",
     "addSomeone": "添加他人",
     "nobodyIsShownAddPeopleFrom": "未显示任何人。请从团队添加人员，或添加没有账户的人。",
     "removedFromTheTeamSoNot": "已从团队移除，因此不显示",
@@ -5035,7 +5035,7 @@
       },
       "search": {
         "label": "搜索词",
-        "hint": "统计文献库 OpenAlex 搜索所查找的词语、短语和主题",
+        "hint": "统计文献社区 OpenAlex 搜索所查找的词语、短语和主题",
         "fallback": "通过搜索找到",
         "example": "搜索词"
       },
@@ -5065,12 +5065,12 @@
     },
     "reviewedOn": "审阅于 {date}",
     "addedOn": "添加于 {date}",
-    "howTheLibraryIsCurated": "文献库的收录方式",
+    "howTheLibraryIsCurated": "文献社区的收录方式",
     "optional": "可选",
     "removeStep": "移除步骤",
     "whoIsBehindIt": "由谁负责",
     "getInvolved": "参与方式",
-    "usingAndCitingTheLibrary": "使用与引用文献库",
+    "usingAndCitingTheLibrary": "使用与引用文献社区",
     "identity": "身份",
     "contact": "联系方式",
     "notSet": "未设置",
@@ -5090,10 +5090,10 @@
     "searchPublications": "搜索出版物",
     "date": "日期",
     "loadingPublications": "正在加载出版物",
-    "theLibrarySPublicationsCouldNot": "无法读取文献库中的出版物。",
+    "theLibrarySPublicationsCouldNot": "无法读取文献社区中的出版物。",
     "noPublicationHasAPdfYet": "暂无出版物包含 PDF。",
     "noPublicationMatches": "没有符合条件的出版物。",
-    "theLibraryIsNotSetUp": "文献库尚未设置。",
+    "theLibraryIsNotSetUp": "文献社区尚未设置。",
     "linked": "已关联"
   },
   "libraryTeamAccess": {
@@ -5109,12 +5109,12 @@
     "cancelInvitation": "取消邀请",
     "cancelThisInvitation": "取消此邀请？",
     "removeAccessToThisAuthorProfile": "移除对此作者资料的访问权限？",
-    "removeFromThisLibraryOrganizationMembership": "从此文献库中移除？组织成员身份和其他文献库的访问权限保持不变。",
+    "removeFromThisLibraryOrganizationMembership": "从此文献社区中移除？组织成员身份和其他文献社区的访问权限保持不变。",
     "keep": "保留",
     "profileAccess": "资料访问权限",
     "team": "团队",
     "theOwnerManagesAccessEditorsCan": "所有者管理访问权限。编辑者可以编辑此资料。",
-    "manageAccessToThisLibrary": "管理此文献库的访问权限。",
+    "manageAccessToThisLibrary": "管理此文献社区的访问权限。",
     "addEditor": "添加编辑者",
     "addMember": "添加成员",
     "inviteProfileEditor": "邀请资料编辑者",
@@ -5127,29 +5127,29 @@
     "chooseAPerson": "选择一人",
     "emailAddress": "邮箱地址",
     "nameOrganisationOrg": "name@organisation.org",
-    "libraryRole": "文献库角色",
+    "libraryRole": "文献社区角色",
     "editorsCanEditProfileDetailsAnd": "编辑者可以编辑资料详情并选择出版物。",
-    "accessAppliesToThisLibraryOnly": "访问权限仅适用于此文献库。",
-    "theyLlReceiveAccessToThis": "他们将只获得此文献库的访问权限。组织成员身份保持不变。",
+    "accessAppliesToThisLibraryOnly": "访问权限仅适用于此文献社区。",
+    "theyLlReceiveAccessToThis": "他们将只获得此文献社区的访问权限。组织成员身份保持不变。",
     "cancel": "取消",
     "sendInvitation": "发送邀请",
     "dismissMemberStatus": "关闭成员状态",
     "organizationOwners": "组织所有者",
-    "accessToAllLibrariesManagedIn": "可访问所有文献库。在组织设置中管理。",
+    "accessToAllLibrariesManagedIn": "可访问所有文献社区。在组织设置中管理。",
     "everyoneElseInTheOrganization": "组织中的其他所有人",
     "viewersUntilYouAddThemBelow": "在您于下方添加并指定角色之前，均为查看者。",
     "everyoneIn": "{name} 中的所有人",
-    "everyoneWithoutARoleInThis": "此文献库中没有角色的所有人",
+    "everyoneWithoutARoleInThis": "此文献社区中没有角色的所有人",
     "viewer": "查看者",
     "teamView": "团队视图",
     "profileMembers": "资料成员",
-    "libraryMembers": "文献库成员",
+    "libraryMembers": "文献社区成员",
     "invitations": "邀请",
     "searchTeam": "搜索团队",
     "findAPerson": "查找人员…",
-    "aboutLibraryRoles": "关于文献库角色",
+    "aboutLibraryRoles": "关于文献社区角色",
     "editor": "编辑者",
-    "reviewPublishAndManageLibraryContent": "审阅、发布并管理文献库内容。",
+    "reviewPublishAndManageLibraryContent": "审阅、发布并管理文献社区内容。",
     "creator": "创建者",
     "editItemsAndSubmitWorkFor": "编辑条目并提交待审阅的内容。",
     "loadingTeam": "正在加载团队",
@@ -5175,37 +5175,37 @@
       "Viewer": "查看者"
     },
     "roleHints": {
-      "Owner": "从组织继承。可管理其所有文献库及团队。",
-      "Editor": "审核并发布条目。管理文献库内容。",
+      "Owner": "从组织继承。可管理其所有文献社区及团队。",
+      "Editor": "审核并发布条目。管理文献社区内容。",
       "Creator": "创建和编辑条目，上传文件并提交审核。",
-      "Viewer": "组织中的其他成员。可查看文献库及其条目，但不能更改。"
+      "Viewer": "组织中的其他成员。可查看文献社区及其条目，但不能更改。"
     },
-    "removeFromLibrary": "从文献库中移除",
+    "removeFromLibrary": "从文献社区中移除",
     "removeFromProfile": "从个人资料中移除",
-    "whoManagesLibrary": "选择可以管理此文献库的人。",
+    "whoManagesLibrary": "选择可以管理此文献社区的人。",
     "whoManagesProfile": "选择可以管理此个人资料的人。",
-    "addToLibrary": "添加到文献库",
+    "addToLibrary": "添加到文献社区",
     "addToProfile": "添加到个人资料",
-    "acceptingGrantsLibrary": "接受后仅可访问此文献库。",
+    "acceptingGrantsLibrary": "接受后仅可访问此文献社区。",
     "acceptingGrantsProfile": "接受后仅可访问此个人资料。",
-    "removedFromLibrary": "已从此文献库中移除。",
+    "removedFromLibrary": "已从此文献社区中移除。",
     "removedFromProfile": "已从此个人资料中移除。",
-    "addedToLibrary": "已将{name}添加到此文献库。",
+    "addedToLibrary": "已将{name}添加到此文献社区。",
     "addedToProfile": "已将{name}添加到此个人资料。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {已为 # 篇出版物排队摘要。}}",
     "noPublicationsInThePeriodNothing": "此期间没有出版物。未发送任何内容。",
-    "publishTheLibraryConfigurationWithReader": "请先发布已启用读者订阅的文献库配置。",
+    "publishTheLibraryConfigurationWithReader": "请先发布已启用读者订阅的文献社区配置。",
     "theDigestRequestCouldNotBe": "无法确认摘要请求。请重试；已发送的期次不会重复发送。",
     "emailUpdates": "邮件更新",
     "readerSubscriptions": "读者订阅",
-    "readersCanChooseNewPublicationsLibrary": "读者可以选择新出版物、文献库摘要，或两者都选。空的期次会被跳过。",
+    "readersCanChooseNewPublicationsLibrary": "读者可以选择新出版物、文献社区摘要，或两者都选。空的期次会被跳过。",
     "digestCovers": "摘要覆盖范围",
     "aPublicationWithoutAFullDate": "没有完整日期的出版物不属于任何期间。",
-    "anOlderPublicationCountsWhenIt": "较早的出版物如果对文献库来说是新的，也会计入。",
+    "anOlderPublicationCountsWhenIt": "较早的出版物如果对文献社区来说是新的，也会计入。",
     "publicationsPublishedInThePeriod": "在该期间发表的出版物",
-    "publicationsAddedToTheLibraryIn": "在该期间添加到文献库的出版物",
+    "publicationsAddedToTheLibraryIn": "在该期间添加到文献社区的出版物",
     "frequency": "频率",
     "weekly": "每周",
     "monthly": "每月",
@@ -5215,8 +5215,8 @@
     "time": "时间",
     "timezone": "时区",
     "beforeADigestGoesOut": "摘要发出前",
-    "itWaitsInTheLibraryS": "摘要会留在文献库的管理面板中，创建者可以编辑，编辑者或所有者负责发布。",
-    "itIsPublishedAndEmailedAs": "摘要写好后会立即发布并发送邮件。发布后仍可在文献库的管理面板中更正。",
+    "itWaitsInTheLibraryS": "摘要会留在文献社区的管理面板中，创建者可以编辑，编辑者或所有者负责发布。",
+    "itIsPublishedAndEmailedAs": "摘要写好后会立即发布并发送邮件。发布后仍可在文献社区的管理面板中更正。",
     "anEditorApprovesIt": "由编辑者批准",
     "itIsSentAsAiWrote": "按 AI 撰写的原样发送",
     "nameWhoCheckedIt": "署名审核人",
@@ -5254,23 +5254,23 @@
     "keepThisUnderCharacters": "请保持在{maxLength}个字符以内。"
   },
   "libraryList": {
-    "evidenceLibraries": "Evidence Libraries",
-    "newLibrary": "新建文献库",
-    "libraryView": "文献库视图",
+    "evidenceLibraries": "Evidence Communities",
+    "newLibrary": "新建文献社区",
+    "libraryView": "文献社区视图",
     "sharedWithYou": "与您共享",
     "invitations": "邀请",
-    "searchLibraries": "搜索文献库",
-    "findALibrary": "查找文献库…",
-    "acceptAccessToALibraryWithout": "在不加入其组织的情况下，接受访问某个文献库的权限。",
-    "loadingLibraries": "正在加载文献库",
-    "noLibrariesMatchTheseFilters": "没有符合这些筛选条件的文献库。",
+    "searchLibraries": "搜索文献社区",
+    "findALibrary": "查找文献社区…",
+    "acceptAccessToALibraryWithout": "在不加入其组织的情况下，接受访问某个文献社区的权限。",
+    "loadingLibraries": "正在加载文献社区",
+    "noLibrariesMatchTheseFilters": "没有符合这些筛选条件的文献社区。",
     "noPendingInvitations": "没有待处理的邀请。",
-    "librariesPeopleShareWithYouAppear": "他人与您共享的文献库会显示在这里。",
-    "hasNoLibrariesYet": "{name} 还没有文献库。",
+    "librariesPeopleShareWithYouAppear": "他人与您共享的文献社区会显示在这里。",
+    "hasNoLibrariesYet": "{name} 还没有文献社区。",
     "organization": "组织：{organization}",
     "inheritedFromOrganizationOwnership": "继承自组织所有权",
-    "everyoneInTheOrganizationViewsIts": "组织中的所有人都可以查看其文献库",
-    "assignedToThisLibrary": "已分配到此文献库",
+    "everyoneInTheOrganizationViewsIts": "组织中的所有人都可以查看其文献社区",
+    "assignedToThisLibrary": "已分配到此文献社区",
     "decline": "拒绝",
     "acceptInvitation": "接受邀请",
     "deleting": "正在删除",
@@ -5280,7 +5280,7 @@
     "viewSetup": "查看设置",
     "actionsFor": "{name} 的操作",
     "settings": "设置",
-    "viewPublicLibrary": "查看公开文献库",
+    "viewPublicLibrary": "查看公开文献社区",
     "openAdmin": "打开管理后台",
     "moreActionsFor": "{name} 的更多操作",
     "declineInvitation": "拒绝邀请？",
@@ -5288,7 +5288,7 @@
     "declineInvitation2": "拒绝邀请",
     "previewCover": "预览 {title} 的封面",
     "preview": "预览 {title}",
-    "declineBody": "您将无法访问 {name}。您的其他文献库不受影响。",
+    "declineBody": "您将无法访问 {name}。您的其他文献社区不受影响。",
     "owner": "所有者",
     "editor": "编辑",
     "creator": "创建者",
@@ -5334,9 +5334,9 @@
     "fromOpenalex": "来自 OpenAlex",
     "findAPublication": "查找出版物…",
     "searchPublications": "搜索出版物",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "publishedIn": "发表于",
-    "publishedWorksInThisLibrary": "此文献库中有 {length} 篇已发表作品",
+    "publishedWorksInThisLibrary": "此文献社区中有 {length} 篇已发表作品",
     "publications": "出版物",
     "noPublicationsMatchYourSearch": "没有符合搜索的出版物。",
     "noPublicationsSelectedYet": "尚未选择任何出版物。",

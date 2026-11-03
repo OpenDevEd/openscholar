@@ -1318,8 +1318,8 @@ function useViewName() {
   if (at("/screening")) return common("screening");
   if (pathname.startsWith("/extraction/")) return t("extractionJob");
   if (at("/extraction")) return common("extraction");
-  if (/^\/evidence-libraries\/[^/]+\/configuration/.test(pathname)) return t("librarySettings");
-  if (at("/evidence-libraries")) return common("evidenceLibraries");
+  if (/^\/evidence-communities\/[^/]+\/configuration/.test(pathname)) return t("librarySettings");
+  if (at("/evidence-communities")) return common("evidenceLibraries");
   if (at("/topics")) return topics("title");
   if (at("/authors")) return t("authors");
   if (at("/settings")) return common("settings");

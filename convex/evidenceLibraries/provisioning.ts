@@ -56,13 +56,13 @@ export async function createPendingRuntimeBinding(
   if (existing) {
     throw createError(
       "CONFLICT",
-      "Evidence Library runtime binding already exists",
+      "Evidence Community runtime binding already exists",
     );
   }
   if (occupied) {
     throw createError(
       "CONFLICT",
-      "Evidence Library public address is already used",
+      "Evidence Community public address is already used",
     );
   }
 

@@ -70,7 +70,7 @@ export type PlatformBrandAssets = {
 };
 
 const PLATFORM_BRAND_MISSING_MESSAGE =
-  "The library has no logo or favicon and the OpenScholar defaults are not set up yet. Upload one or ask support.";
+  "The community has no logo or favicon and the OpenScholar defaults are not set up yet. Upload one or ask support.";
 
 export type PlatformMailService = {
   host: string;
@@ -252,7 +252,7 @@ export class ConfigurationAssemblyError extends Error {
   readonly issues: ValidationIssue[];
 
   constructor(issues: ValidationIssue[]) {
-    super("Evidence Library configuration is invalid");
+    super("Evidence Community configuration is invalid");
     this.name = "ConfigurationAssemblyError";
     this.issues = issues;
   }

@@ -85,7 +85,7 @@ async function requireDomainLibraryAccess(
   }
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library) {
-    throw createError("NOT_FOUND", "Evidence Library not found");
+    throw createError("NOT_FOUND", "Evidence Community not found");
   }
   return { library, clerkUserId: "platform" };
 }
@@ -161,7 +161,7 @@ async function readRuntimeBinding(
   if (!binding || binding.libraryId !== library._id) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library runtime binding not found",
+      "Evidence Community runtime binding not found",
     );
   }
   return binding;
@@ -261,12 +261,12 @@ export const chooseMainAddress = mutation({
     );
     const draft = await readLibraryDraft(ctx, args.libraryId);
     if (!draft) {
-      throw createError("NOT_FOUND", "Evidence Library draft not found");
+      throw createError("NOT_FOUND", "Evidence Community draft not found");
     }
     if (args.domainId !== null) {
       const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
       if (!row || row.libraryId !== args.libraryId) {
-        throw createError("NOT_FOUND", "That domain is not on this library");
+        throw createError("NOT_FOUND", "That domain is not on this community");
       }
       if (
         row.state !== "active" ||
@@ -308,7 +308,7 @@ export const stageMainDomainRemoval = mutation({
     );
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     if (!args.remove && row.removingAt !== undefined) {
       throw createError("CONFLICT", "That domain is already being removed");
@@ -482,7 +482,7 @@ export const readDomainContext = internalQuery({
       ? rows.find((entry) => entry._id === args.domainId)
       : undefined;
     if (args.domainId && !row) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     const revision = access.library.activeRevisionId
       ? await ctx.db.get(
@@ -537,7 +537,7 @@ async function requireLibraryNotBeingDeleted(
 ): Promise<void> {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library || library.state === "disabled") {
-    throw createError("CONFLICT", "That library is being deleted");
+    throw createError("CONFLICT", "That community is being deleted");
   }
 }
 
@@ -650,7 +650,7 @@ export const claimDomainTransition = internalMutation({
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     const now = Date.now();
     const held = row.transition;
@@ -728,7 +728,7 @@ export const claimDomainTransitions = internalMutation({
       args.domainIds.map((domainId) => ctx.db.get(domainId)),
     );
     if (rows.some((row) => !row || row.libraryId !== args.libraryId)) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     const now = Date.now();
     const claimable = rows.filter(
@@ -853,7 +853,7 @@ export async function claimDomainTransitionRow(
   // delete the very things a new change would be writing.
   const library = await ctx.db.get("evidenceLibraries", row.libraryId);
   if (!library || library.state === "disabled") {
-    throw createError("CONFLICT", "That library is being deleted");
+    throw createError("CONFLICT", "That community is being deleted");
   }
   if (
     row.transition &&
@@ -916,7 +916,7 @@ export const writeDomainCheck = internalMutation({
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     requireTransition(row, args.token);
     const now = Date.now();
@@ -949,7 +949,7 @@ export const recoverLiveDomain = internalMutation({
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     requireTransition(row, args.token);
     if (
@@ -1009,7 +1009,7 @@ export const writeDomainAttachment = internalMutation({
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     // A receipt from a step that has been overtaken is refused, so a check
     // cannot reattach a domain a removal already took out.
@@ -1238,7 +1238,7 @@ export const claimDomainRoutes = internalMutation({
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const binding = await readRuntimeBinding(ctx, access.library);
     if (!("targetRuntimeId" in binding) || !binding.targetRuntimeId) {
-      throw createError("CONFLICT", "This library is not running yet");
+      throw createError("CONFLICT", "This community is not running yet");
     }
     for (const status of ["queued", "running"] as const) {
       for (const operation of await readActiveOperations(ctx, args.libraryId, status, "publish")) {
@@ -1315,7 +1315,7 @@ export const settleRoutedDomain = internalMutation({
     await requireLibraryNotBeingDeleted(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     requireTransition(row, args.token);
     if (row.pendingDeployment) {

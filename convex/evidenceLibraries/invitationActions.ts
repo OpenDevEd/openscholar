@@ -15,7 +15,7 @@ const inviteArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), ro
 async function sendInvitation(ctx: ActionCtx, args: { libraryId: Id<"evidenceLibraries">; email: string; role: "editor" | "creator"; actingAs?: Id<"users"> }): Promise<null> {
   const mail = requireInvitationMail();
   const origin = requireAppUrl();
-  const invitationsUrl = new URL("/evidence-libraries?view=invitations", origin).href;
+  const invitationsUrl = new URL("/evidence-communities?view=invitations", origin).href;
   const invitationId = await ctx.runMutation(internal.evidenceLibraries.invitations.prepare, args);
   const invitation = await ctx.runQuery(internal.evidenceLibraries.invitations.readDelivery, { invitationId, ...(args.actingAs ? { actingAs: args.actingAs } : {}) });
   if (!invitation) throw createError("CONFLICT", "Invitation is no longer available");
@@ -29,10 +29,10 @@ async function sendInvitation(ctx: ActionCtx, args: { libraryId: Id<"evidenceLib
         identity: {...invitation.emailIdentity, baseUrl: invitation.emailIdentity.baseUrl ?? origin},
         role: invitation.role, acceptUrl: invitationsUrl,
       }),
-      text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} to view and accept the invitation:\n${invitationsUrl}\n\nThis invitation expires in seven days. It grants access to this library only.`,
+      text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} to view and accept the invitation:\n${invitationsUrl}\n\nThis invitation expires in seven days. It grants access to this community only.`,
     });
   } catch (error) {
-    console.error("Library invitation email failed", { invitationId, error });
+    console.error("Community invitation email failed", { invitationId, error });
     await ctx.runMutation(internal.sharing.invitations.recordDelivery, { invitationId, delivery: "failed" });
     throw createError("VALIDATION_ERROR", "The invitation email could not be sent. Try again.");
   }

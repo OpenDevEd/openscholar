@@ -49,7 +49,7 @@ export const listAction = defineUserQuery({
   description:
     "Lists the papers of a screening job the person may read (one of their workspace's, or one shared with them) that landed in one outcome (included, unclear, excluded or failed), a page at a time in the order the job took them, " +
     "each with its score, stars and the answer to every question it was scored on. Given `text`, the papers whose title or authors best match its words, best first. " +
-    "With `notInLibrary`, only the included papers its Evidence Library collection didn't take, the library holding no record of them.",
+    "With `notInLibrary`, only the included papers its Evidence Community collection didn't take, the community holding no record of them.",
   args: { jobId: v.id("screeningJobs"), outcome: screeningOutcomeValidator, text: v.optional(v.string()), notInLibrary: v.optional(v.boolean()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(screeningJobPaperValidator),
   run: async (ctx, actor, { jobId, outcome, text, notInLibrary, paginationOpts }) => {

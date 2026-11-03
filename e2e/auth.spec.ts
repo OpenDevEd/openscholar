@@ -264,7 +264,7 @@ test.describe("clerk auth flows", () => {
   }) => {
     await signIn(page);
     // A library belongs to the organization whose workspace it's made in (#651).
-    await page.goto(`/o/${await organizationSlug()}/evidence-libraries/new`);
+    await page.goto(`/o/${await organizationSlug()}/evidence-communities/new`);
 
     const libraryName = `E2E Library ${Date.now()}`;
     await page
@@ -283,7 +283,7 @@ test.describe("clerk auth flows", () => {
       page.getByRole("textbox", { name: "Public address" }),
     ).toHaveText(/-lib\./);
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page).toHaveURL(/\/evidence-libraries\/[^/]+\/configuration$/);
+    await expect(page).toHaveURL(/\/evidence-communities\/[^/]+\/configuration$/);
     const configurationUrl = page.url();
 
     const tagline = "Evidence that survives a reload";

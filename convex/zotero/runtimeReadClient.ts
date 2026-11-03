@@ -178,20 +178,20 @@ async function runtimeFetch(
   } catch (error) {
     throw new RuntimeReadError(
       "RUNTIME_READ_UNAVAILABLE",
-      `The library did not answer: ${error instanceof Error ? error.message : String(error)}`,
+      `The community did not answer: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
   if (response.status === 401 || response.status === 403) {
     throw new RuntimeReadError(
       "RUNTIME_READ_REFUSED",
-      "The library refused the machine credential",
+      "The community refused the machine credential",
       response.status,
     );
   }
   if (!response.ok && !accept.includes(response.status)) {
     throw new RuntimeReadError(
       "RUNTIME_READ_UNAVAILABLE",
-      `The library answered ${response.status}`,
+      `The community answered ${response.status}`,
       response.status,
     );
   }
@@ -214,7 +214,7 @@ async function runtimeGet(
   } catch {
     throw new RuntimeReadError(
       "RUNTIME_READ_INVALID",
-      "The library did not answer with JSON",
+      "The community did not answer with JSON",
     );
   }
 }
@@ -245,7 +245,7 @@ function readPage<T>(
   ) {
     throw new RuntimeReadError(
       "RUNTIME_READ_INVALID",
-      `The library's ${what} has an unexpected shape`,
+      `The community's ${what} has an unexpected shape`,
     );
   }
   return {
@@ -333,7 +333,7 @@ export async function readRuntimeCollectionsByIds(
   // the caller has to split the list itself.
   if (input.ids.length > RUNTIME_RESOLVE_MAX_IDS) {
     throw new Error(
-      `Ask the library about at most ${RUNTIME_RESOLVE_MAX_IDS} collections at a time`,
+      `Ask the community about at most ${RUNTIME_RESOLVE_MAX_IDS} collections at a time`,
     );
   }
   const body = await runtimeGet(
@@ -351,7 +351,7 @@ export async function readRuntimeCollectionsByIds(
   if (!rows || rows.some((row) => row === null)) {
     throw new RuntimeReadError(
       "RUNTIME_READ_INVALID",
-      "The library's collection list has an unexpected shape",
+      "The community's collection list has an unexpected shape",
     );
   }
   // A library that does not read `ids` answers with its own first page, so
@@ -423,7 +423,7 @@ export async function readRuntimeHomeQuestions(
   ) {
     throw new RuntimeReadError(
       "RUNTIME_READ_INVALID",
-      "The library's home page questions have an unexpected shape",
+      "The community's home page questions have an unexpected shape",
     );
   }
   return (questions as (string | null)[]).slice(0, RUNTIME_HOME_QUESTIONS_MAX);
@@ -463,7 +463,7 @@ export async function requestRuntimeScreeningGrade(
   if (refusal?.code === "not_ready") return "not-ready";
   throw new RuntimeReadError(
     "RUNTIME_READ_REFUSED",
-    typeof refusal?.message === "string" ? refusal.message : "The library refused to grade the source",
+    typeof refusal?.message === "string" ? refusal.message : "The community refused to grade the source",
     409,
   );
 }
@@ -482,7 +482,7 @@ export async function tryRuntimeScreeningSubject(
   try {
     return await response.json();
   } catch {
-    throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library did not answer with JSON");
+    throw new RuntimeReadError("RUNTIME_READ_INVALID", "The community did not answer with JSON");
   }
 }
 

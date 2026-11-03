@@ -147,7 +147,7 @@ export function requireMatchingCoolifyDeployment(
   if (deployment.runtimeCommit !== expected.runtimeCommit) {
     throw new CoolifyClientError(
       "COOLIFY_DEPLOYMENT_CONFLICT",
-      "Coolify deployed another Evidence Library release",
+      "Coolify deployed another Evidence Community release",
     );
   }
 }
@@ -306,7 +306,7 @@ function requireCommit(value: string): string {
   if (!COMMIT.test(value)) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library commit must be a lowercase 40-character commit",
+      "Evidence Community commit must be a lowercase 40-character commit",
     );
   }
   return value;
@@ -316,7 +316,7 @@ function requireRuntimeImage(value: string): RuntimeImageReference {
   if (!isRuntimeImageReference(value)) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library image must use the fixed GHCR repository and an exact digest",
+      "Evidence Community image must use the fixed GHCR repository and an exact digest",
     );
   }
   return value;
@@ -349,7 +349,7 @@ function requirePublicDomain(value: string): string {
   } catch {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library domain must be a valid HTTPS origin",
+      "Evidence Community domain must be a valid HTTPS origin",
     );
   }
   if (
@@ -363,7 +363,7 @@ function requirePublicDomain(value: string): string {
   ) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library domain must be a valid HTTPS origin",
+      "Evidence Community domain must be a valid HTTPS origin",
     );
   }
   return url.origin;
@@ -373,7 +373,7 @@ function requireLibraryConfigJson(value: string): string {
   if (!value || new TextEncoder().encode(value).byteLength > 900_000) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library runtime configuration is missing or too large",
+      "Evidence Community runtime configuration is missing or too large",
     );
   }
   let parsed: unknown;
@@ -382,13 +382,13 @@ function requireLibraryConfigJson(value: string): string {
   } catch {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library runtime configuration must be valid JSON",
+      "Evidence Community runtime configuration must be valid JSON",
     );
   }
   if (!isRecord(parsed)) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library runtime configuration must be a JSON object",
+      "Evidence Community runtime configuration must be a JSON object",
     );
   }
   return value;
@@ -590,7 +590,7 @@ export function createCoolifyLibraryTag(
   if (!LIBRARY_ID.test(libraryId)) {
     throw new CoolifyClientError(
       "INVALID_COOLIFY_CONFIG",
-      "Evidence Library ID is missing or invalid",
+      "Evidence Community ID is missing or invalid",
     );
   }
   return `openscholar-library-${libraryId}`;
@@ -787,7 +787,7 @@ async function listTaggedApplications(
     if (Array.isArray(payload) && payload.length > 1) {
       throw new CoolifyClientError(
         "COOLIFY_APPLICATION_CONFLICT",
-        "More than one Coolify application uses this library tag",
+        "More than one Coolify application uses this community tag",
       );
     }
     invalidResponse("Coolify returned an invalid application list");
@@ -808,7 +808,7 @@ async function listTaggedApplications(
   if (uuids.length > 1) {
     throw new CoolifyClientError(
       "COOLIFY_APPLICATION_CONFLICT",
-      "More than one Coolify application uses this library tag",
+      "More than one Coolify application uses this community tag",
     );
   }
   return uuids;
@@ -981,7 +981,7 @@ async function readExpectedBoundApplication(
   ) {
     throw new CoolifyClientError(
       "COOLIFY_APPLICATION_CONFLICT",
-      "The bound Coolify application no longer matches this library",
+      "The bound Coolify application no longer matches this community",
     );
   }
   return application;
@@ -1130,7 +1130,7 @@ async function reconcileTag(
   if (!tags.includes(applicationTag)) {
     throw new CoolifyClientError(
       "COOLIFY_APPLICATION_MISMATCH",
-      "Coolify did not save the library application tag",
+      "Coolify did not save the community application tag",
     );
   }
   return true;
@@ -1632,7 +1632,7 @@ export function createCoolifyClient(input: {
       ) {
         throw new CoolifyClientError(
           "COOLIFY_APPLICATION_CONFLICT",
-          "The saved Coolify application does not match this library tag",
+          "The saved Coolify application does not match this community tag",
         );
       }
       const applicationUuid = savedApplicationUuid ?? taggedApplications[0];
@@ -1671,7 +1671,7 @@ export function createCoolifyClient(input: {
       ) {
         throw new CoolifyClientError(
           "COOLIFY_APPLICATION_CONFLICT",
-          "The bound Coolify application no longer matches this library",
+          "The bound Coolify application no longer matches this community",
         );
       }
       const url = new URL(
@@ -1695,7 +1695,7 @@ export function createCoolifyClient(input: {
       if (!(await waitForApplicationAbsent(client, applicationUuid))) {
         throw new CoolifyClientError(
           "COOLIFY_DELETE_FAILED",
-          "Coolify still contains the Evidence Library application",
+          "Coolify still contains the Evidence Community application",
         );
       }
       return { applicationUuid, outcome: "deleted" };
@@ -1839,7 +1839,7 @@ export function createCoolifyClient(input: {
       ) {
         throw new CoolifyClientError(
           "INVALID_COOLIFY_CONFIG",
-          "Evidence Library commit and image must be checked together",
+          "Evidence Community commit and image must be checked together",
         );
       }
       if (
@@ -1851,7 +1851,7 @@ export function createCoolifyClient(input: {
         if (application.gitCommitSha !== runtimeCommit) {
           throw new CoolifyClientError(
             "COOLIFY_APPLICATION_CONFLICT",
-            "The bound Coolify application no longer matches this library",
+            "The bound Coolify application no longer matches this community",
           );
         }
         await requireEnvironmentReadback(client, applicationUuid, {
@@ -2162,7 +2162,7 @@ export function createCoolifyClient(input: {
         if (application.gitCommitSha !== runtimeCommit) {
           throw new CoolifyClientError(
             "COOLIFY_APPLICATION_MISMATCH",
-            "Coolify did not save the requested Evidence Library commit",
+            "Coolify did not save the requested Evidence Community commit",
           );
         }
       }
@@ -2221,7 +2221,7 @@ export function createCoolifyClient(input: {
       if (application.gitCommitSha !== expectedRuntimeCommit) {
         throw new CoolifyClientError(
           "COOLIFY_APPLICATION_CONFLICT",
-          "The bound Coolify application no longer matches this library",
+          "The bound Coolify application no longer matches this community",
         );
       }
       await requireEnvironmentReadback(client, applicationUuid, {

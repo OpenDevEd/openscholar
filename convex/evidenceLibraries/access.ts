@@ -16,7 +16,7 @@ export type EvidenceLibraryAdminRole = "owner" | "editor" | "creator";
 type OrganizationAccessCtx = Pick<QueryCtx | MutationCtx, "auth" | "db">;
 
 function denyOrganizationAccess(): never {
-  throw createError("FORBIDDEN", "Evidence Library access denied");
+  throw createError("FORBIDDEN", "Evidence Community access denied");
 }
 
 /**
@@ -37,7 +37,7 @@ export type LibraryOwner = NonNullable<Awaited<ReturnType<typeof libraryOwner>>>
 
 /** The workspace a library is in, which every one has once its backfill has run. */
 export function requireLibraryWorkspace(library: Doc<"evidenceLibraries">) {
-  if (!library.workspaceId) throw createError("CONFLICT", "This library isn't in a workspace yet. Try again in a moment.");
+  if (!library.workspaceId) throw createError("CONFLICT", "This community isn't in a workspace yet. Try again in a moment.");
   return library.workspaceId;
 }
 
@@ -178,7 +178,7 @@ export async function readEvidenceLibraryAccess(
 }
 
 export async function requireEvidenceLibraryAccess(ctx: OrganizationAccessCtx, libraryId: Id<"evidenceLibraries">, action: OrganizationAction) {
-  if (!await ctx.auth.getUserIdentity()) throw createError("UNAUTHENTICATED", "Sign in to access this library");
+  if (!await ctx.auth.getUserIdentity()) throw createError("UNAUTHENTICATED", "Sign in to access this community");
   const access = await readEvidenceLibraryAccess(ctx, libraryId, action);
   if (!access) return denyOrganizationAccess();
   return access;

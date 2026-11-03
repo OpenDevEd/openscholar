@@ -50,6 +50,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // The old addresses: running communities still send their admins through /evidence-libraries (convex/evidenceLibraries/runtimeConfiguration.ts).
+  async redirects() {
+    return [
+      { source: "/evidence-libraries", destination: "/evidence-communities", permanent: true },
+      { source: "/evidence-libraries/:path*", destination: "/evidence-communities/:path*", permanent: true },
+      { source: "/o/:slug/evidence-libraries", destination: "/o/:slug/evidence-communities", permanent: true },
+      { source: "/o/:slug/evidence-libraries/:path*", destination: "/o/:slug/evidence-communities/:path*", permanent: true },
+      { source: "/settings/admin/evidence-libraries", destination: "/settings/admin/evidence-communities", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {

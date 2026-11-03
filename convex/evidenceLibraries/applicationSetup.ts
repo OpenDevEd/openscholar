@@ -83,7 +83,7 @@ export const readApplicationSetupRuntime = internalQuery({
       operation.kind !== "setup" ||
       operation.libraryId !== args.libraryId
     ) {
-      throw createError("NOT_FOUND", "Evidence Library setup not found");
+      throw createError("NOT_FOUND", "Evidence Community setup not found");
     }
     const runtimeCommit = operation.setupRuntimeCommit;
     const runtimeImage = operation.setupRuntimeImage;
@@ -91,7 +91,7 @@ export const readApplicationSetupRuntime = internalQuery({
     if (!runtimeCommit || !runtimeImage) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library setup runtime is incomplete",
+        "Evidence Community setup runtime is incomplete",
       );
     }
     return {
@@ -212,14 +212,14 @@ export const prepareApplicationSetup = internalMutation({
     if (!databaseCredential || !storageCredential) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library database and storage credentials are incomplete",
+        "Evidence Community database and storage credentials are incomplete",
       );
     }
     const storageReceipt = setup.setupOperation.setupReceipts?.storage;
     if (!storageReceipt) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library storage receipt is missing",
+        "Evidence Community storage receipt is missing",
       );
     }
     const sections = revisionSnapshot.migration.snapshot.sections;
@@ -231,7 +231,7 @@ export const prepareApplicationSetup = internalMutation({
     if (!validatedSections.valid) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library revision configuration is incomplete",
+        "Evidence Community revision configuration is incomplete",
       );
     }
     const runtimeCommit =
@@ -286,7 +286,7 @@ export const prepareApplicationSetup = internalMutation({
     if (existingMachine && !existingMachine.credentialDigest) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library machine credential is incomplete",
+        "Evidence Community machine credential is incomplete",
       );
     }
     const encryptedMachineCredential =
@@ -396,7 +396,7 @@ export const completeApplicationSetup = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library release commit changed during setup",
+        "Evidence Community release commit changed during setup",
       );
     }
     const storageReceipt = setup.setupOperation.setupReceipts?.storage;
@@ -407,7 +407,7 @@ export const completeApplicationSetup = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library storage buckets changed during setup",
+        "Evidence Community storage buckets changed during setup",
       );
     }
     const applicationId = requireNonBlankProvisioningValue(
@@ -461,7 +461,7 @@ export const completeApplicationSetup = internalMutation({
       ) {
         throw createError(
           "INVALID_DATA",
-          `Evidence Library ${name} credential is incomplete`,
+          `Evidence Community ${name} credential is incomplete`,
         );
       }
     }
@@ -488,7 +488,7 @@ export const completeApplicationSetup = internalMutation({
     if (occupied && occupied._id !== setup.runtimeBinding._id) {
       throw createError(
         "CONFLICT",
-        "Evidence Library Coolify application is already assigned",
+        "Evidence Community Coolify application is already assigned",
       );
     }
     if (
@@ -497,7 +497,7 @@ export const completeApplicationSetup = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library setup resolved a different Coolify application",
+        "Evidence Community setup resolved a different Coolify application",
       );
     }
     const now = Date.now();

@@ -8,7 +8,7 @@ describe("the record a reply's link points at", () => {
     expect(recordOf("https://openalex.org/W2084286260")).toEqual({ kind: "paper", paperId: "W2084286260" });
     expect(recordOf("/screening?job=j1")?.kind).toBe("screening");
     expect(recordOf("/extraction/x1")?.kind).toBe("extraction");
-    expect(recordOf("/evidence-libraries/l1/configuration?section=sources")?.kind).toBe("library");
+    expect(recordOf("/evidence-communities/l1/configuration?section=sources")?.kind).toBe("library");
     expect(recordOf("/topics/T13305")?.kind).toBe("topic");
     expect(recordOf("/?chat=c1")?.kind).toBe("chat");
   });

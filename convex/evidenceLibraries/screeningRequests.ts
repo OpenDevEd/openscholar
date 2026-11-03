@@ -42,7 +42,7 @@ export async function requestScreeningGrade(
       .query("evidenceLibraryScreeningRequests")
       .withIndex("by_library_source", (q) => q.eq("libraryId", request.libraryId))
       .take(MAX_LIBRARY_SOURCES);
-    if (waiting.length >= MAX_LIBRARY_SOURCES) throw createError("CONFLICT", "Every source of this library already has a grading request waiting.");
+    if (waiting.length >= MAX_LIBRARY_SOURCES) throw createError("CONFLICT", "Every source of this community already has a grading request waiting.");
   }
   const requestId = await ctx.db.insert("evidenceLibraryScreeningRequests", { ...request, requestedAt: Date.now() });
   const report = await ctx.db
@@ -120,7 +120,7 @@ export const settle = internalMutation({
       sendingAt: undefined,
       ...(outcome === "queued" ? { sentAt: now } : {}),
       ...(outcome === "refused" ? { error } : {}),
-      ...(outcome === "not-ready" ? { error: "The library didn't take the request within an hour. Check that the settings were activated and the library is running, then ask again." } : {}),
+      ...(outcome === "not-ready" ? { error: "The community didn't take the request within an hour. Check that the settings were activated and the community is running, then ask again." } : {}),
     });
     return null;
   },

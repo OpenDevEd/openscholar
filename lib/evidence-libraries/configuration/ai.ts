@@ -75,7 +75,7 @@ export function aiProviderIssues(
       return [
         issue(
           "/ai/providers",
-          "This library saves exactly one AI provider, OpenRouter.",
+          "This community saves exactly one AI provider, OpenRouter.",
         ),
       ];
     }
@@ -87,7 +87,7 @@ export function aiProviderIssues(
     return [
       issue(
         "/ai/providers",
-        "This library saves exactly one AI provider, OpenRouter.",
+        "This community saves exactly one AI provider, OpenRouter.",
       ),
     ];
   }
@@ -97,7 +97,7 @@ export function aiProviderIssues(
     issues.push(
       issue(
         "/ai/providers/0/provider",
-        "OpenRouter is the only AI provider this library can use.",
+        "OpenRouter is the only AI provider this community can use.",
       ),
     );
   }

@@ -73,7 +73,7 @@ export function createAiProviderKey(
           pointer: "/ai/providers",
           section: "ai",
           keyword: "aiProvider",
-          message: "This library saves exactly one AI provider, OpenRouter.",
+          message: "This community saves exactly one AI provider, OpenRouter.",
         },
       ]);
     }
@@ -91,10 +91,10 @@ export function createAiProviderKey(
       // Belt and braces: the caller checks the entry first, so reaching here
       // with anything but one OpenRouter entry means a caller skipped it.
       if (provider.provider !== AI_PROVIDER) {
-        refuse("OpenRouter is the only AI provider this library can use.");
+        refuse("OpenRouter is the only AI provider this community can use.");
       }
       if (index > 0) {
-        refuse("This library saves exactly one AI provider, OpenRouter.");
+        refuse("This community saves exactly one AI provider, OpenRouter.");
       }
       if (provider.enabled !== true) return { ...provider };
       if (!apiKey) refuse("AI answers need an OpenRouter key.");
@@ -154,7 +154,7 @@ export async function requireNoRunningOperation(
 }
 
 export const AI_PROVIDER_KEY_CHANGED_MESSAGE =
-  "The AI key changed while the library was publishing. Publish again.";
+  "The AI key changed while the community was publishing. Publish again.";
 
 /** Stops a publish that read a key which has since been replaced or removed. */
 export async function requireUnchangedAiProviderKey(
@@ -185,7 +185,7 @@ export const removeAiProviderKey = mutation({
     await requireNoRunningOperation(ctx, args.libraryId);
     const credential = await findAiProviderCredential(ctx, args.libraryId);
     if (!credential) {
-      throw createError("NOT_FOUND", "This library has no AI key stored");
+      throw createError("NOT_FOUND", "This community has no AI key stored");
     }
     await ctx.db.delete("evidenceLibraryCredentials", credential._id);
     await writeAuditLogRecord(ctx, {

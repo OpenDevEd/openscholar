@@ -144,7 +144,7 @@ describe("<NewLibraryForm>", () => {
     expect(screen.queryByRole("button", { name: "reserve" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "continue" }));
-    expect(mocks.push).toHaveBeenCalledWith("/evidence-libraries/lib_1/configuration");
+    expect(mocks.push).toHaveBeenCalledWith("/evidence-communities/lib_1/configuration");
   });
 
   it("shows the numbered address the server chose, not the one the name suggests", async () => {
@@ -183,7 +183,7 @@ describe("<NewLibraryForm>", () => {
     expect(alert).toHaveTextContent("nameTaken");
     expect(screen.getByRole("link", { name: "openExisting" })).toHaveAttribute(
       "href",
-      "/evidence-libraries/lib_existing/configuration",
+      "/evidence-communities/lib_existing/configuration",
     );
     expect(screen.getByRole("button", { name: "reserve" })).toBeDisabled();
     // A name is typed, so the box shows a dash, not the "type a name" hint.

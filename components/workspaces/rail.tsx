@@ -163,7 +163,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const read = { extracts: liveExtracts ?? held.extracts, publishes: livePublishes ?? held.publishes };
   if (read.extracts !== held.extracts || read.publishes !== held.publishes) setHeld(read);
   const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : held.extracts);
-  const publishes = (livePublishes ?? (cached.look ? cached.look.publish === true : held.publishes)) ? "/evidence-libraries" : null;
+  const publishes = (livePublishes ?? (cached.look ? cached.look.publish === true : held.publishes)) ? "/evidence-communities" : null;
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
@@ -266,7 +266,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                     })}
                   </Opening>
                 ) : null}
-                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") })}</Opening> : null}
+                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-communities") })}</Opening> : null}
                 {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
                 {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
               </AnimatePresence>

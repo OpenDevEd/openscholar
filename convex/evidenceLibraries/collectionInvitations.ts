@@ -57,13 +57,13 @@ type Caller = { libraryId: string; clerkUserId: string; credentialDigest: string
 async function callerOf(ctx: Pick<QueryCtx, "db">, caller: Caller) {
   const libraryId = ctx.db.normalizeId("evidenceLibraries", caller.libraryId);
   if (!libraryId || !(await findMatchingLibraryServiceCredential(ctx, { libraryId, credentialDigest: caller.credentialDigest }))) {
-    throw createError("UNAUTHENTICATED", "Invalid library service credential");
+    throw createError("UNAUTHENTICATED", "Invalid community service credential");
   }
   const [library, reader] = await Promise.all([
     ctx.db.get("evidenceLibraries", libraryId),
     ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", caller.clerkUserId)).unique(),
   ]);
-  if (!library || library.state === "disabled" || reader?.state !== "active") throw createError("FORBIDDEN", "This reader or library can't use invitations");
+  if (!library || library.state === "disabled" || reader?.state !== "active") throw createError("FORBIDDEN", "This reader or community can't use invitations");
   return { library, reader };
 }
 

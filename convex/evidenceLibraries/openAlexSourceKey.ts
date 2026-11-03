@@ -70,7 +70,7 @@ export async function requireUnchangedOpenAlexKey(
   if (!same) {
     throw createError(
       "CONFLICT",
-      "The OpenAlex key changed while the library was publishing. Publish again.",
+      "The OpenAlex key changed while the community was publishing. Publish again.",
     );
   }
 }

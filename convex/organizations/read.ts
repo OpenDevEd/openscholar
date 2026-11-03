@@ -158,7 +158,7 @@ export async function deletable(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
   const organization = await organizationOf(ctx, workspaceId);
   if (organization.deletingAt !== undefined) throw createError("CONFLICT", "This organization is being deleted already.");
   const library = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first();
-  if (library) throw createError("VALIDATION_ERROR", `This organization has an Evidence Library, ${library.name}. Move or delete it first.`);
+  if (library) throw createError("VALIDATION_ERROR", `This organization has an Evidence Community, ${library.name}. Move or delete it first.`);
   return organization;
 }
 

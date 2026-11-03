@@ -47,7 +47,7 @@ async function runningTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">)
 /** A running library's address and credential, or why it can't be read. */
 async function libraryTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">): Promise<LibraryTarget & { name: string }> {
   const target = await runningTarget(ctx, libraryId);
-  if (!target) throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", "This Evidence Library isn't running, so its records can't be read.");
+  if (!target) throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", "This Evidence Community isn't running, so its records can't be read.");
   return target;
 }
 
@@ -66,12 +66,12 @@ async function asked<T>(libraryId: Id<"evidenceLibraries">, call: string, reader
     if (!(error instanceof LibrarySourceError)) throw error;
     console.warn("[library sources]", { libraryId, call, reader, code: error.code, status: error.status, reason: error.message });
     if (error.code === "private") throw createError("FORBIDDEN", "This collection is private: only its owner and the people it's shared with can read it.");
-    if (error.code === "not_found") throw createError("NOT_FOUND", "The library has no such collection.");
-    if (error.code === "too_many") throw createError("VALIDATION_ERROR", `A library source gives at most ${LIBRARY_SOURCE_MAX.toLocaleString("en")} records at once.`);
+    if (error.code === "not_found") throw createError("NOT_FOUND", "The community has no such collection.");
+    if (error.code === "too_many") throw createError("VALIDATION_ERROR", `A community source gives at most ${LIBRARY_SOURCE_MAX.toLocaleString("en")} records at once.`);
     if (error.code === "role") throw createError("FORBIDDEN", "You can only view this collection: its owner can let you edit it.");
-    if (error.code === "not_reader") throw createError("FORBIDDEN", "Sign in to this library once to keep collections there.");
+    if (error.code === "not_reader") throw createError("FORBIDDEN", "Sign in to this community once to keep collections there.");
     if (error.code === "changed") throw createError("CONFLICT", error.message);
-    throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", error.code === "index_changed" ? "The library's search changed while it was read. Try again." : error.message);
+    throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", error.code === "index_changed" ? "The community's search changed while it was read. Try again." : error.message);
   }
 }
 
@@ -108,7 +108,7 @@ export const papers = internalAction({
   args: { libraryId: v.id("evidenceLibraries"), keys: v.array(v.string()) },
   returns: v.array(screeningPaperInputValidator),
   handler: async (ctx, { libraryId, keys }): Promise<Array<Infer<typeof screeningPaperInputValidator>>> => {
-    if (keys.length > LIBRARY_BATCH_MAX) throw new Error(`Library records are read ${LIBRARY_BATCH_MAX} at a time.`);
+    if (keys.length > LIBRARY_BATCH_MAX) throw new Error(`Community records are read ${LIBRARY_BATCH_MAX} at a time.`);
     const target = await libraryTarget(ctx, libraryId);
     const records = await asked(libraryId, "records/batch", null, () => readLibraryRecords(fetch, target, keys));
     return records.map((record) => libraryPaper(libraryId, target.baseUrl, record));
@@ -169,9 +169,9 @@ export const destination = internalAction({
 async function makeCollection(libraryId: Id<"evidenceLibraries">, target: LibraryTarget, reader: string, collection: { name: string; description?: string; private: boolean; requestId: string }) {
   const name = collection.name.trim();
   if (!name) throw createError("VALIDATION_ERROR", "Name the new collection.");
-  if (name.length > LIBRARY_COLLECTION_NAME_MAX) throw createError("VALIDATION_ERROR", `A library collection's name is at most ${LIBRARY_COLLECTION_NAME_MAX} characters.`);
+  if (name.length > LIBRARY_COLLECTION_NAME_MAX) throw createError("VALIDATION_ERROR", `A community collection's name is at most ${LIBRARY_COLLECTION_NAME_MAX} characters.`);
   const description = collection.description?.trim();
-  if (description && description.length > LIBRARY_COLLECTION_DESCRIPTION_MAX) throw createError("VALIDATION_ERROR", `A library collection's description is at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX} characters.`);
+  if (description && description.length > LIBRARY_COLLECTION_DESCRIPTION_MAX) throw createError("VALIDATION_ERROR", `A community collection's description is at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX} characters.`);
   return await asked(libraryId, "readers/collections:create", reader, () => createReaderCollection(fetch, target, reader, { name, ...(description ? { description } : {}), private: collection.private, requestId: collection.requestId }));
 }
 
@@ -412,7 +412,7 @@ export const flushWrites = internalAction({
       try {
         // A library taken down since has no collection to write to.
         const target = await runningTarget(ctx, libraryId);
-        if (!target) throw new LibrarySourceError("not_found", "This Evidence Library isn't running any more.");
+        if (!target) throw new LibrarySourceError("not_found", "This Evidence Community isn't running any more.");
         const keyOf = new Map<string, string>();
         for (const row of group) if (row.ref.source === "library" && row.ref.libraryId === libraryId) keyOf.set(row.paperKey, row.ref.key);
         const asking = group.filter((row) => !keyOf.has(row.paperKey) && (row.crossRefs?.openalexId || row.crossRefs?.doi));

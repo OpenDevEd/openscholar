@@ -105,7 +105,7 @@ it("tells the writer each publication's study type and whether it is open access
   await finishGeneration();
   expect(sent.jev).toEqual([]);
   const prompt = JSON.stringify(sent.writer[0]);
-  expect(prompt).toContain("its library read it");
+  expect(prompt).toContain("its community read it");
   const supplied = (/\{\\"libraryId.*\}\]\}/.exec(prompt)?.[0] ?? "").replaceAll("\\\"", "\"");
   expect((JSON.parse(supplied) as {publications: {key: string; studyType?: string; openAccess?: boolean}[]}).publications.map(entry => [entry.key, entry.studyType ?? null, entry.openAccess ?? null])).toEqual([
     ["ABCD2345", "rct", true], ["BBBB2345", "systematic-review", false], ["CCCC2345", null, null],

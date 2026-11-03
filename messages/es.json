@@ -23,7 +23,7 @@
     "history": "Historial",
     "extraction": "Extracción",
     "library": "Biblioteca",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "screening": "Cribado",
     "settings": "Configuración",
     "save": "Guardar",
@@ -292,12 +292,12 @@
       "noMemberLimit": "Sin límite de miembros",
       "southernFeature1": "Todo lo de la organización gratuita",
       "southernFeature2": "Se añade a tu organización después de que nos contactes",
-      "librariesName": "Evidence Libraries",
+      "librariesName": "Evidence Communities",
       "librariesDescription": "Se activa para tu organización a petición. Su plan y sus créditos no cambian.",
-      "librariesFeature1": "Evidence Libraries públicas",
+      "librariesFeature1": "Evidence Communities públicas",
       "librariesFeature2": "Crear y editar perfiles de autor",
       "librariesOn": "Activado para tu organización",
-      "openLibraries": "Abrir Evidence Libraries"
+      "openLibraries": "Abrir Evidence Communities"
     },
     "cancelScheduledDowngrade": "Cancelar el cambio programado a un plan inferior",
     "scheduled": "Programado",
@@ -325,7 +325,7 @@
     "loading": "Cargando la configuración de publicación…",
     "storedHint": "Déjelo en blanco para mantener la credencial guardada",
     "saved": "Configuración de publicación guardada",
-    "activateHint": "Active la configuración para aplicarla a esta biblioteca.",
+    "activateHint": "Active la configuración para aplicarla a esta comunidad.",
     "failure": "No se pudieron verificar las credenciales. No se guardó nada. Inténtelo de nuevo.",
     "zenodoRequired": "Obligatorio mientras Crossref esté activado. Los archivos se archivan cuando están disponibles.",
     "zenodoHint": "Archive archivos y cree DOI de Zenodo.",
@@ -348,8 +348,8 @@
     "depositorName": "Nombre del depositante",
     "email": "Correo del depositante",
     "namespace": "Espacio de nombres DOI",
-    "namespaceHint": "Por defecto, el nombre de dirección de esta biblioteca.",
-    "libraryName": "Nombre de la biblioteca",
+    "namespaceHint": "Por defecto, el nombre de dirección de esta comunidad.",
+    "libraryName": "Nombre de la comunidad",
     "checking": "Comprobando las credenciales del proveedor…",
     "needsVerification": "Los cambios necesitan verificación antes de poder guardarse.",
     "verified": "Verificado el {date}",
@@ -359,7 +359,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "No permitido",
-    "organizationFeatureDescription": "El plan de este espacio de trabajo no incluye Evidence Libraries.",
+    "organizationFeatureDescription": "El plan de este espacio de trabajo no incluye Evidence Communities.",
     "backToSearch": "Volver a la búsqueda",
     "loadingTitle": "Cargando el espacio de trabajo",
     "loadingDescription": "Preparando su espacio de trabajo autenticado.",
@@ -1608,14 +1608,14 @@
       "collection": "Colección",
       "saved": "Artículos guardados",
       "screening": "Cribado",
-      "evidenceLibrary": "Evidence Library"
+      "evidenceLibrary": "Evidence Community"
     },
     "noSets": {
       "search": "Todavía no hay búsquedas guardadas.",
       "collection": "Todavía no hay colecciones.",
       "saved": "Todavía no hay artículos guardados.",
       "screening": "Todavía no hay cribados terminados.",
-      "evidenceLibrary": "Todavía no hay Evidence Libraries."
+      "evidenceLibrary": "Todavía no hay Evidence Communities."
     },
     "papersToScreen": "Artículos para cribar",
     "paperCount": "{count, plural, one {# artículo} other {# artículos}}",
@@ -1715,8 +1715,8 @@
     "apps": "aplicaciones",
     "revokeApp": "Revocar {app}",
     "integrations": "Integraciones",
-    "zoteroAbout": "Use sus bibliotecas y grupos en chats y Evidence Libraries",
-    "zoteroKeeps": "Las Evidence Libraries siguen sincronizando los grupos que ya tienen",
+    "zoteroAbout": "Use sus bibliotecas y grupos en chats y Evidence Communities",
+    "zoteroKeeps": "Las Evidence Communities siguen sincronizando los grupos que ya tienen",
     "connect": "Conectar",
     "disconnect": "Desconectar",
     "connectedTime": "Conectado {time}",
@@ -1726,12 +1726,12 @@
     "picker": {
       "placeholder": "Elija una institución",
       "search": "Buscar instituciones",
-      "notSetUp": "Los nombres de los registros aparecen cuando la biblioteca está configurada.",
+      "notSetUp": "Los nombres de los registros aparecen cuando la comunidad está configurada.",
       "empty": "Todavía no hay nombres de instituciones en los registros.",
       "none": "Ninguna",
       "useTyped": "Usar \"{name}\"",
       "title": "Elija una institución",
-      "description": "Los nombres proceden de los registros de esta biblioteca.",
+      "description": "Los nombres proceden de los registros de esta comunidad.",
       "colName": "Institución",
       "colRecords": "Registros",
       "noMatch": "Ninguna institución coincide.",
@@ -1740,7 +1740,7 @@
     }
   },
   "evidenceLibraryConfiguration": {
-    "untitled": "Biblioteca sin título",
+    "untitled": "Comunidad sin título",
     "unsaved": "Cambios sin guardar",
     "viewOnly": "Solo lectura",
     "save": "Guardar",
@@ -1755,18 +1755,18 @@
     "fixFirst": "Corrija primero los campos marcados",
     "fixFirstToast": "Corrija los campos marcados",
     "fixFirstToastDescription": "Algunas secciones necesitan atención antes de guardar.",
-    "activateDraftTitle": "¿Configurar y activar esta biblioteca?",
+    "activateDraftTitle": "¿Configurar y activar esta comunidad?",
     "activateDraftBody": "Esto configura {name} y la publica en {address}. Tarda unos 2 minutos.",
     "activateDraftConfirm": "Iniciar configuración",
     "activateTitle": "¿Activar esta versión?",
     "activateBody": "Esto publica la nueva versión. Tarda unos 2 minutos.",
-    "activateBodySoftware": "También actualiza la biblioteca a la última versión del software de Evidence Library, que necesitan estos ajustes, así que puede tardar unos minutos más.",
+    "activateBodySoftware": "También actualiza la comunidad a la última versión del software de Evidence Community, que necesitan estos ajustes, así que puede tardar unos minutos más.",
     "activateBodyUnsaved": "Los cambios sin guardar se guardarán antes.",
     "activateConfirm": "Activar",
-    "activationError": "No se pudo activar la biblioteca. Inténtelo de nuevo.",
+    "activationError": "No se pudo activar la comunidad. Inténtelo de nuevo.",
     "applying": "Aplicando sus cambios",
     "operationFailed": "La última activación falló",
-    "backToLibraries": "Volver a las bibliotecas",
+    "backToLibraries": "Volver a las comunidades",
     "backToTop": "Volver arriba",
     "rail": {
       "aria": "Secciones de configuración",
@@ -1814,15 +1814,15 @@
       "storage": "Archivos",
       "application": "Aplicación",
       "deployment": "Compilando",
-      "health_check": "Revisando la página de la biblioteca",
+      "health_check": "Revisando la página de la comunidad",
       "coolify": "Compilando",
       "convex": "Terminando",
       "completed": "En línea"
     },
     "problems": {
       "notificationSchedule": "Elija un día, una hora y una zona horaria válidos para el resumen.",
-      "nameMissing": "Ponga un nombre a la biblioteca.",
-      "shortNameMissing": "Ponga un nombre corto a la biblioteca.",
+      "nameMissing": "Ponga un nombre a la comunidad.",
+      "shortNameMissing": "Ponga un nombre corto a la comunidad.",
       "partnerName": "Cada socio financiador necesita un nombre.",
       "badColour": "Uno de los colores no es válido.",
       "institutionName": "Cada institución necesita un nombre.",
@@ -1854,7 +1854,7 @@
       "consentVersion": "La versión del consentimiento es un número entero, 1 o superior.",
       "aiKey": "Añada su clave de OpenRouter.",
       "aiModel": "Elija el modelo que responde a las preguntas.",
-      "aiModelUnknown": "Ese modelo no está entre los que ofrece el software de su biblioteca. Elija otro.",
+      "aiModelUnknown": "Ese modelo no está entre los que ofrece el software de su comunidad. Elija otro.",
       "homeStepName": "Ponga un nombre a cada paso de solo texto.",
       "homeLimit": "Parte del texto de la página de inicio es más largo de lo permitido, o una lista tiene demasiadas entradas. Acórtelo.",
       "tagFilters": "Cada filtro de etiqueta necesita un nombre, y cada entrada una etiqueta."
@@ -1887,18 +1887,18 @@
       "textFile": "Texto subido"
     },
     "identity": {
-      "description": "El nombre que ve la gente, la dirección que visitan y el aspecto de la biblioteca al compartirla.",
+      "description": "El nombre que ve la gente, la dirección que visitan y el aspecto de la comunidad al compartirla.",
       "nameLabel": "Nombre",
-      "nameError": "Escriba un nombre para la biblioteca.",
+      "nameError": "Escriba un nombre para la comunidad.",
       "shortNameLabel": "Nombre corto",
       "shortNameHint": "Se usa en los nombres de los archivos exportados, en los asuntos de correo y cuando el sitio se fija como aplicación.",
-      "shortNameError": "Escriba un nombre corto para la biblioteca.",
+      "shortNameError": "Escriba un nombre corto para la comunidad.",
       "addressLabel": "Dirección pública",
       "addressHint": "Use la sección Dominio para añadir su propia dirección.",
       "copyAddress": "Copiar dirección",
       "copied": "Copiado",
       "taglineLabel": "Lema",
-      "taglineHint": "El encabezado sobre la búsqueda de la biblioteca. Déjelo vacío para mostrar Buscar.",
+      "taglineHint": "El encabezado sobre la búsqueda de la comunidad. Déjelo vacío para mostrar Buscar.",
       "taglinePlaceholder": "Evidencia para decisiones mejores",
       "descriptionLabel": "Descripción",
       "descriptionHint": "Se muestra en la página de inicio y en los resultados de búsqueda.",
@@ -1910,9 +1910,9 @@
       "partnerName": "Nombre del socio",
       "partnerPlaceholder": "Nombre del socio",
       "shareImageLabel": "Imagen para compartir",
-      "shareImageHint": "Se usa cuando la biblioteca se comparte en redes sociales. PNG, JPG o WEBP.",
+      "shareImageHint": "Se usa cuando la comunidad se comparte en redes sociales. PNG, JPG o WEBP.",
       "showNameLabel": "Nombre junto al logotipo",
-      "showNameHint": "Desactívelo si el logotipo ya escribe el nombre de la biblioteca."
+      "showNameHint": "Desactívelo si el logotipo ya escribe el nombre de la comunidad."
     },
     "theme": {
       "description": "Diseño, tipografías, logotipos y colores del sitio público.",
@@ -1935,7 +1935,7 @@
       "fontsHeading": "Tipografías",
       "headingFontLabel": "Tipografía de los títulos",
       "bodyFontLabel": "Tipografía del texto",
-      "sampleHeading": "Su biblioteca",
+      "sampleHeading": "Su comunidad",
       "sampleBody": "Así se verá un párrafo de texto en el sitio público.",
       "logosHeading": "Logotipo e icono del navegador",
       "logoLightLabel": "Logotipo en modo claro",
@@ -1983,19 +1983,19 @@
       "add": "Añadir institución"
     },
     "danger": {
-      "description": "Elimine esta biblioteca. Tenga cuidado.",
-      "deleteTitle": "Eliminar la biblioteca",
+      "description": "Elimine esta comunidad. Tenga cuidado.",
+      "deleteTitle": "Eliminar la comunidad",
       "deleteHint": "Elimina el sitio, la dirección y los ajustes.",
-      "deleteButton": "Eliminar biblioteca"
+      "deleteButton": "Eliminar comunidad"
     },
     "deleteDialog": {
-      "title": "¿Eliminar esta biblioteca?",
+      "title": "¿Eliminar esta comunidad?",
       "body": "Esto elimina {name}, su aplicación, sus archivos y su dirección {address}. No se puede deshacer.",
       "typeToConfirm": "Escriba {name} para confirmar",
-      "confirm": "Eliminar biblioteca",
-      "startedTitle": "Eliminando biblioteca",
+      "confirm": "Eliminar comunidad",
+      "startedTitle": "Eliminando comunidad",
       "startedDescription": "Se está eliminando {name}. Tarda unos segundos.",
-      "error": "No se pudo eliminar la biblioteca. Termine cualquier operación en curso de la biblioteca y vuelva a intentarlo."
+      "error": "No se pudo eliminar la comunidad. Termine cualquier operación en curso de la comunidad y vuelva a intentarlo."
     },
     "links": {
       "labelLabel": "Etiqueta",
@@ -2010,8 +2010,8 @@
       "pageLabel": "Página",
       "pages": {
         "home": "Inicio",
-        "library": "Biblioteca",
-        "digests": "Resúmenes de la biblioteca",
+        "library": "Comunidad",
+        "digests": "Resúmenes de la comunidad",
         "map": "Mapa",
         "evidence": "Mapa de evidencia",
         "contact": "Contacto",
@@ -2099,7 +2099,7 @@
       "disclaimer": "Aviso legal",
       "disclaimerHint": "Se muestra en texto pequeño al pie de cada página.",
       "attribution": "Atribución",
-      "attributionHint": "Una línea, por ejemplo, quién gestiona la biblioteca.",
+      "attributionHint": "Una línea, por ejemplo, quién gestiona la comunidad.",
       "poweredBy": "Desarrollado con OpenScholar",
       "poweredByHint": "Una línea pequeña que enlaza de vuelta a OpenScholar.",
       "poweredByLocked": "Disponible en los planes de pago."
@@ -2152,13 +2152,13 @@
       "pickedCount": "{count, plural, =0 {Nada seleccionado} one {# seleccionado} other {# seleccionados}}"
     },
     "collections": {
-      "description": "Elija qué colecciones de la base de datos de la biblioteca aparecen en el sitio, y en qué orden.",
+      "description": "Elija qué colecciones de la base de datos de la comunidad aparecen en el sitio, y en qué orden.",
       "shownHeading": "Se muestra en el sitio",
       "introHint": "Cada colección se convierte en un grupo de filtros, con sus subcolecciones como opciones. Arrastre para fijar su orden en el sitio.",
       "loading": "Cargando colecciones…",
-      "failed": "No se pudieron cargar las colecciones de la biblioteca.",
-      "notSetUp": "Configure primero la biblioteca y luego cree colecciones en su página de administración o sincronícelas desde Zotero.",
-      "noneInDatabase": "Todavía no hay colecciones. Créelas en la página de administración de la biblioteca o sincronícelas desde Zotero.",
+      "failed": "No se pudieron cargar las colecciones de la comunidad.",
+      "notSetUp": "Configure primero la comunidad y luego cree colecciones en su página de administración o sincronícelas desde Zotero.",
+      "noneInDatabase": "Todavía no hay colecciones. Créelas en la página de administración de la comunidad o sincronícelas desde Zotero.",
       "empty": "Todavía no se muestra ninguna colección.",
       "records": "{count, plural, =1 {# registro} other {# registros}}",
       "titleLabel": "Título en el sitio",
@@ -2221,25 +2221,25 @@
         "failedAt": "La importación falló a las {time}",
         "lastSuccess": "Último éxito {when}",
         "retry": "Reintentar importación",
-        "retryStarted": "La biblioteca importará esta fuente en unos segundos.",
-        "retryFailed": "No se pudo pedir a la biblioteca que importe ahora. Inténtelo de nuevo en un momento.",
+        "retryStarted": "La comunidad importará esta fuente en unos segundos.",
+        "retryFailed": "No se pudo pedir a la comunidad que importe ahora. Inténtelo de nuevo en un momento.",
         "details": "Detalles técnicos",
         "afterActivate": "Se importa después de activar",
         "startsSoon": "Empieza en menos de un minuto",
         "failure": {
           "access_denied": "{provider} rechazó la clave guardada. Revísela en Conexiones e inténtelo de nuevo.",
-          "owner_left": "La persona que añadió esta colección salió de la organización, así que la biblioteca retiró sus registros.",
+          "owner_left": "La persona que añadió esta colección salió de la organización, así que la comunidad retiró sus registros.",
           "not_found": "{provider} ya no encuentra esta fuente, o la clave guardada no puede verla.",
           "missing_key": "No hay ninguna clave de API guardada para esta fuente. Añádala en Conexiones.",
           "invalid_query": "{provider} rechazó la búsqueda. Edítela y después vuelva a activarla.",
-          "too_large": "Esta fuente tiene más registros de los que permite la biblioteca.",
+          "too_large": "Esta fuente tiene más registros de los que permite la comunidad.",
           "rate_limited": "{provider} está limitando las solicitudes. La importación lo volverá a intentar cada minuto.",
           "unavailable": "No se pudo contactar con {provider}. La importación lo volverá a intentar cada minuto.",
           "interrupted": "La importación se detuvo antes de terminar. Volverá a empezar por sí sola.",
           "internal": "La importación encontró un error inesperado. Los detalles técnicos muestran lo que pasó."
         }
       },
-      "description": "De dónde vienen los registros de la biblioteca.",
+      "description": "De dónde vienen los registros de la comunidad.",
       "accountHeading": "Cuenta de Zotero",
       "notConnected": "No conectada",
       "notConnectedHint": "Inicie sesión una vez. Después aparecerán sus grupos en el selector.",
@@ -2276,7 +2276,7 @@
       "listLabel": "Fuentes conectadas",
       "connections": "Conexiones",
       "connectionsTitle": "Conexiones de fuentes",
-      "connectionsDescription": "Gestione el acceso de las cuentas y los ajustes de importación de esta biblioteca.",
+      "connectionsDescription": "Gestione el acceso de las cuentas y los ajustes de importación de esta comunidad.",
       "providerTabs": "Proveedor de fuentes",
       "addSource": "Añadir fuente",
       "zoteroGroup": "Grupo de Zotero",
@@ -2292,7 +2292,7 @@
         "ownKey": "Clave de API propia",
         "platformHint": "Incluido con OpenScholar. Las actualizaciones solo traen los registros cambiados.",
         "keyLabel": "Clave de API de OpenAlex",
-        "keyHint": "Use su propia clave de API de OpenAlex para esta biblioteca.",
+        "keyHint": "Use su propia clave de API de OpenAlex para esta comunidad.",
         "savedKey": "Clave guardada {hint}",
         "keyPlaceholder": "Escriba su clave de API de OpenAlex",
         "saveKey": "Guardar clave de API",
@@ -2315,14 +2315,14 @@
         "processPdfs": "Procesar PDF"
       },
       "removeTitle": "¿Quitar este grupo?",
-      "removeBody": "Los registros ya importados se quedan en la biblioteca. Los cambios nuevos no se importarán.",
+      "removeBody": "Los registros ya importados se quedan en la comunidad. Los cambios nuevos no se importarán.",
       "removeConfirm": "Quitar",
       "health": {
         "connected": "Conectada",
         "paused": "En pausa"
       },
       "tagRulesHeading": "Reglas de etiquetas de Zotero",
-      "tagRulesIntro": "Las etiquetas de Zotero cambian la forma en que la biblioteca trata un registro. Las etiquetas de ocultar también actúan sobre sus notas y adjuntos.",
+      "tagRulesIntro": "Las etiquetas de Zotero cambian la forma en que la comunidad trata un registro. Las etiquetas de ocultar también actúan sobre sus notas y adjuntos.",
       "tagPlaceholder": "Añadir una etiqueta…",
       "tagRules": {
         "hidden": {
@@ -2386,7 +2386,7 @@
       "collectionConnectFailed": "No se pudo añadir esta colección.",
       "collectionPicker": {
         "title": "Añadir colecciones",
-        "description": "Sus colecciones de OpenScholar. La biblioteca sigue las que marque y se actualiza cuando cambian.",
+        "description": "Sus colecciones de OpenScholar. La comunidad sigue las que marque y se actualiza cuando cambian.",
         "search": "Buscar colecciones…",
         "colCollection": "Colección",
         "noCollections": "Todavía no tiene colecciones.",
@@ -2406,15 +2406,15 @@
           "passing": "Lo menciona de pasada",
           "notAbout": "No trata sobre ello"
         },
-        "keep": "Conservar en la biblioteca: {grade}",
-        "inLibrary": "en la biblioteca",
+        "keep": "Conservar en la comunidad: {grade}",
+        "inLibrary": "en la comunidad",
         "keptOut": "apartados",
         "reading": "Leyendo",
         "gradingAgain": "Calificando de nuevo, {done, number} de {of, number}",
         "gradingNote": "Las calificaciones de abajo son del tema actual hasta que todos los registros se hayan calificado de nuevo.",
         "gradedAgain": "registros calificados de nuevo",
         "notGradedYet": "registros aún sin calificar",
-        "onLibraryKey": "con la clave de la biblioteca",
+        "onLibraryKey": "con la clave de la comunidad",
         "toFinish": "para terminar",
         "ofSample": "{changed, number} de {size, number}",
         "changeInTrial": "cambio de calificación en una prueba",
@@ -2424,16 +2424,16 @@
         "gradeThem": "Calificarlos",
         "currentSubject": "Tema actual",
         "newSubject": "Tema nuevo",
-        "startsOnActivate": "La calificación empieza cuando active estos ajustes y la biblioteca adopte el nuevo tema.",
-        "refused": "La biblioteca no empezó a calificar: {reason}",
+        "startsOnActivate": "La calificación empieza cuando active estos ajustes y la comunidad adopte el nuevo tema.",
+        "refused": "La comunidad no empezó a calificar: {reason}",
         "requestFailed": "No se pudo solicitar la calificación",
         "trialFailed": "La prueba no terminó",
-        "notRunning": "La biblioteca todavía no está en funcionamiento.",
+        "notRunning": "La comunidad todavía no está en funcionamiento.",
         "underACent": "menos de 1 ¢",
         "underAMinute": "menos de un minuto",
         "aboutMinutes": "unos {count} min",
         "aboutHours": "unas {count} h",
-        "methods": "La misma lectura asigna a cada registro su tipo de estudio, si sus autores agruparon resultados por su cuenta, la región que estudia y si su resumen incluye cifras. Unos $0.000075 por registro. Un registro cuya lectura falla entra en la biblioteca sin calificar y se vuelve a leer más tarde.",
+        "methods": "La misma lectura asigna a cada registro su tipo de estudio, si sus autores agruparon resultados por su cuenta, la región que estudia y si su resumen incluye cifras. Unos $0.000075 por registro. Un registro cuya lectura falla entra en la comunidad sin calificar y se vuelve a leer más tarde.",
         "gradedOnceActive": "Los registros se califican cuando estos ajustes están activos."
       }
     },
@@ -2476,7 +2476,7 @@
       "institutionLabel": "Etiqueta del desplegable",
       "institutionLabelHint": "La etiqueta del desplegable, por ejemplo Instituciones o Socios.",
       "sourcesFilter": "Filtro de fuentes",
-      "sourcesFilterHint": "Los lectores acotan los resultados a las fuentes que los encontraron. Se muestra cuando la biblioteca tiene dos fuentes o más.",
+      "sourcesFilterHint": "Los lectores acotan los resultados a las fuentes que los encontraron. Se muestra cuando la comunidad tiene dos fuentes o más.",
       "sourcesLabel": "Encabezado de fuentes",
       "sourcesLabelHint": "Lo que ven los lectores encima de las fuentes, por ejemplo Áreas temáticas.",
       "sourcesLabelError": "Ponga nombre al encabezado de fuentes.",
@@ -2517,16 +2517,16 @@
         "addTag": "Añadir una etiqueta",
         "removeTag": "Quitar etiqueta",
         "pickerTitle": "Añadir una etiqueta a {name}",
-        "pickerDescription": "Las etiquetas de la biblioteca, de más a menos usadas. Escriba una etiqueta que ningún registro tenga todavía, o use lo que escribe como prefijo.",
+        "pickerDescription": "Las etiquetas de la comunidad, de más a menos usadas. Escriba una etiqueta que ningún registro tenga todavía, o use lo que escribe como prefijo.",
         "pickerSearch": "Buscar etiquetas",
         "colTag": "Etiqueta",
         "colRecords": "Registros",
         "used": "Añadida",
         "loading": "Leyendo etiquetas",
-        "failed": "No se pudieron leer las etiquetas de la biblioteca",
-        "noTags": "La biblioteca todavía no tiene etiquetas",
+        "failed": "No se pudieron leer las etiquetas de la comunidad",
+        "noTags": "La comunidad todavía no tiene etiquetas",
         "noMatch": "Ninguna etiqueta coincide",
-        "notSetUp": "Las etiquetas aparecen cuando la biblioteca está configurada",
+        "notSetUp": "Las etiquetas aparecen cuando la comunidad está configurada",
         "useTyped": "Añadir \"{tag}\"",
         "usePrefix": "Cada etiqueta que empiece por \"{prefix}\"",
         "labelFor": "Lo que ven los lectores en {tag}",
@@ -2590,12 +2590,12 @@
       "hints": {
         "themeSwitcher": "Permita a las personas elegir el modo claro u oscuro.",
         "languageSwitcher": "Permita a las personas cambiar el idioma del sitio.",
-        "collections": "Muestra las colecciones de la biblioteca.",
+        "collections": "Muestra las colecciones de la comunidad.",
         "collectionNotes": "Muestra la nota de descripción de una colección cuando esa colección está seleccionada.",
         "countryFocus": "Muestra filtros por país, los países de las publicaciones y el mapa de países.",
         "authorFilter": "Permita a las personas filtrar por autor.",
         "yearsDropdown": "Muestra un selector de años en la barra de búsqueda.",
-        "downloads": "Ofrece descargas de citas de las publicaciones y de toda la biblioteca.",
+        "downloads": "Ofrece descargas de citas de las publicaciones y de toda la comunidad.",
         "atomFeed": "Muestra un enlace a la fuente Atom.",
         "readerAccounts": "Permita a los lectores iniciar sesión con OpenScholar para guardar registros y mantener colecciones."
       },
@@ -2657,20 +2657,20 @@
       "consentVersionHint": "Súbala cuando cambie el texto de sus cookies para que se vuelva a pedir el consentimiento a todos los visitantes.",
       "consentVersionError": "Use un número entero, 1 o superior."
     },
-    "updatingSoftware": "Actualizando el software de Evidence Library a {rev}",
+    "updatingSoftware": "Actualizando el software de Evidence Community a {rev}",
     "operationFlow": {
       "saving": "Guardando cambios",
       "queued": "Esperando para empezar",
       "assembling": "Preparando la versión",
       "validating": "Revisando los ajustes",
-      "publishing": "Compilando la biblioteca",
+      "publishing": "Compilando la comunidad",
       "activating": "Poniéndola en línea",
       "database": "Creando la base de datos",
       "storage": "Preparando los archivos",
-      "application": "Creando la biblioteca",
-      "deployment": "Compilando la biblioteca",
+      "application": "Creando la comunidad",
+      "deployment": "Compilando la comunidad",
       "health_check": "Poniéndola en línea",
-      "coolify": "Eliminando la biblioteca",
+      "coolify": "Eliminando la comunidad",
       "convex": "Terminando la eliminación",
       "completed": "En línea"
     },
@@ -2679,7 +2679,7 @@
       "checking": "Buscando actualizaciones…",
       "checkAgain": "Volver a comprobar",
       "checkError": "No se pudieron buscar actualizaciones. Inténtelo de nuevo.",
-      "notRunning": "Disponible cuando la biblioteca esté en línea.",
+      "notRunning": "Disponible cuando la comunidad esté en línea.",
       "updateAvailable": "Actualización disponible",
       "upToDate": "Al día",
       "runningLabel": "En ejecución",
@@ -2701,8 +2701,8 @@
         "reliability": "Correcciones"
       },
       "update": "Actualizar",
-      "updateTitle": "¿Actualizar esta biblioteca?",
-      "updateBody": "La biblioteca se recompila con la última versión del software de Evidence Library. Los registros, los ajustes y la dirección se mantienen. Tarda cerca de un minuto.",
+      "updateTitle": "¿Actualizar esta comunidad?",
+      "updateBody": "La comunidad se recompila con la última versión del software de Evidence Community. Los registros, los ajustes y la dirección se mantienen. Tarda cerca de un minuto.",
       "updateConfirm": "Actualizar ahora",
       "updateError": "No se pudo iniciar la actualización. Inténtelo de nuevo.",
       "historyHeading": "Versiones publicadas",
@@ -2723,18 +2723,18 @@
       "addressSilent": "Nada responde en {host}.",
       "addressMove": "Trasladar a una dirección nueva",
       "addressBack": "Volver a la dirección de la plataforma",
-      "addressMoveTitle": "¿Trasladar esta biblioteca a una dirección nueva?",
-      "addressMoveBody": "La biblioteca toma la siguiente dirección libre. Los registros y los ajustes se mantienen. Quien use la dirección anterior no llegará a ella.",
+      "addressMoveTitle": "¿Trasladar esta comunidad a una dirección nueva?",
+      "addressMoveBody": "La comunidad toma la siguiente dirección libre. Los registros y los ajustes se mantienen. Quien use la dirección anterior no llegará a ella.",
       "addressMoveConfirm": "Trasladar ahora",
       "addressMoveStarted": "Traslado iniciado",
       "addressMoveStartedDescription": "Trasladando a {address}…",
-      "addressMoveError": "No se pudo trasladar la biblioteca. Inténtelo de nuevo.",
+      "addressMoveError": "No se pudo trasladar la comunidad. Inténtelo de nuevo.",
       "restoreError": "No se pudo restaurar la versión. Inténtelo de nuevo."
     },
     "ai": {
-      "description": "Permita a los visitantes hacer preguntas sobre la evidencia de su biblioteca.",
+      "description": "Permita a los visitantes hacer preguntas sobre la evidencia de su comunidad.",
       "answersLabel": "Respuestas de IA",
-      "answersHint": "Añade a la biblioteca la respuesta a preguntas. Paga a OpenRouter por lo que use.",
+      "answersHint": "Añade a la comunidad la respuesta a preguntas. Paga a OpenRouter por lo que use.",
       "keyLabel": "Clave de OpenRouter",
       "keyHint": "Cree una en openrouter.ai. Se guarda cifrada y no se vuelve a mostrar.",
       "keyStored": "Clave guardada",
@@ -2755,7 +2755,7 @@
       "modelError": "Elija un modelo del catálogo de OpenRouter sincronizado."
     },
     "domain": {
-      "description": "Use su propia dirección web para la biblioteca.",
+      "description": "Use su propia dirección web para la comunidad.",
       "platformLabel": "Dirección de la plataforma",
       "customLabel": "Dominio propio",
       "customDomainsLabel": "Dominios propios",
@@ -2785,7 +2785,7 @@
         "wrong-target": "Ese dominio apunta a otro lugar. Si está detrás de otro proxy, desactive el proxy para este registro.",
         "token-mismatch": "El registro de propiedad tiene un valor distinto",
         "host-taken": "Otro sitio ya responde en ese dominio",
-        "not-served": "La biblioteca todavía no está en funcionamiento",
+        "not-served": "La comunidad todavía no está en funcionamiento",
         "caa-blocked": "Este dominio solo admite ciertos proveedores de certificados. Añada un registro CAA que permita letsencrypt.org.",
         "tls-timeout": "No se pudo activar TLS. Vuelva a comprobar el dominio."
       },
@@ -2793,7 +2793,7 @@
         "invalid": "Eso no parece un dominio",
         "platform-host": "Esa dirección ya pertenece a la plataforma",
         "host-taken": "Ese dominio ya lo usa otro sitio",
-        "too-many": "Esta biblioteca ya tiene todos los dominios que admite",
+        "too-many": "Esta comunidad ya tiene todos los dominios que admite",
         "check-failed": "No pudimos comprobar el dominio. Inténtelo de nuevo."
       },
       "tlsActive": "TLS: activo",
@@ -2809,12 +2809,12 @@
       "rateLimited": "El DNS se comprobó demasiadas veces. Inténtelo de nuevo en un minuto.",
       "removing": "Quitando",
       "checkFailed": "Todavía no se pudo comprobar el DNS. Puede que aún se esté actualizando. Inténtelo de nuevo en breve.",
-      "deploying": "Aplicando el cambio a la biblioteca",
+      "deploying": "Aplicando el cambio a la comunidad",
       "checked": "DNS comprobado",
       "recordsNeedAttention": "Algunos registros DNS todavía necesitan atención.",
       "removeAgain": "Terminar de quitar",
-      "confirmOffTitle": "¿Devolver la biblioteca a su dirección de la plataforma?",
-      "confirmOffBody": "La biblioteca volverá a responder en {address}. Todos los usuarios con sesión iniciada la cerrarán, y los visitantes del dominio propio llegarán a la dirección de la plataforma.",
+      "confirmOffTitle": "¿Devolver la comunidad a su dirección de la plataforma?",
+      "confirmOffBody": "La comunidad volverá a responder en {address}. Todos los usuarios con sesión iniciada la cerrarán, y los visitantes del dominio propio llegarán a la dirección de la plataforma.",
       "confirmAction": "Cambiar la dirección"
     },
     "retry": "Inténtelo de nuevo",
@@ -2849,26 +2849,26 @@
     "publicationsView": "Fuentes de publicaciones",
     "noOpenAlex": "No se encontraron publicaciones de OpenAlex.",
     "progress": "{loaded, number} de {total, number}",
-    "searchLibrary": "Buscar publicaciones de la biblioteca",
+    "searchLibrary": "Buscar publicaciones de la comunidad",
     "searchPlaceholder": "Buscar publicaciones",
     "updating": "Los grupos de publicaciones se están actualizando. Actualice la página en breve.",
-    "unavailable": "Algunas ubicaciones de la biblioteca no están disponibles. Se muestran las ubicaciones disponibles.",
-    "loadingLibrary": "Cargando publicaciones de la biblioteca",
+    "unavailable": "Algunas ubicaciones de la comunidad no están disponibles. Se muestran las ubicaciones disponibles.",
+    "loadingLibrary": "Cargando publicaciones de la comunidad",
     "noPageMatches": "No hay coincidencias en esta página. Siga cargando publicaciones.",
     "noLibraryMatches": "Ninguna publicación coincide con su búsqueda.",
-    "noLibraryRecords": "Todavía no hay registros publicados de Evidence Library que usen este tema."
+    "noLibraryRecords": "Todavía no hay registros publicados de Evidence Community que usen este tema."
   },
   "evidenceLibraries": {
     "list": {
-      "title": "Evidence Libraries",
+      "title": "Evidence Communities",
       "openAdmin": "Abrir administración",
       "retry": "Reintentar",
-      "deleting": "Eliminando la biblioteca",
+      "deleting": "Eliminando la comunidad",
       "deleteFailed": {
-        "runtime": "No pudimos quitar el sitio en funcionamiento de esta biblioteca, así que su eliminación no ha terminado. Inténtelo de nuevo o contacte con soporte.",
-        "files": "No pudimos quitar los archivos de esta biblioteca, así que su eliminación no ha terminado. Inténtelo de nuevo o contacte con soporte.",
-        "database": "No pudimos quitar la base de datos de esta biblioteca, así que su eliminación no ha terminado. Inténtelo de nuevo o contacte con soporte.",
-        "records": "La eliminación de esta biblioteca no ha terminado. Inténtelo de nuevo o contacte con soporte."
+        "runtime": "No pudimos quitar el sitio en funcionamiento de esta comunidad, así que su eliminación no ha terminado. Inténtelo de nuevo o contacte con soporte.",
+        "files": "No pudimos quitar los archivos de esta comunidad, así que su eliminación no ha terminado. Inténtelo de nuevo o contacte con soporte.",
+        "database": "No pudimos quitar la base de datos de esta comunidad, así que su eliminación no ha terminado. Inténtelo de nuevo o contacte con soporte.",
+        "records": "La eliminación de esta comunidad no ha terminado. Inténtelo de nuevo o contacte con soporte."
       }
     },
     "status": {
@@ -2890,16 +2890,16 @@
       "completed": "En línea"
     },
     "new": {
-      "title": "Nueva Evidence Library",
-      "backToLibraries": "Volver a las bibliotecas",
+      "title": "Nueva Evidence Community",
+      "backToLibraries": "Volver a las comunidades",
       "ownerTitle": "Propietario",
       "ownerOnlyTitle": "Solo propietarios",
-      "ownerOnlyDescription": "Solo un propietario de la organización puede crear una biblioteca.",
-      "libraryTitle": "Biblioteca",
+      "ownerOnlyDescription": "Solo un propietario de la organización puede crear una comunidad.",
+      "libraryTitle": "Comunidad",
       "libraryDescription": "El nombre aparece en el sitio web público y define la dirección pública.",
       "nameLabel": "Nombre",
       "namePlaceholder": "Ejemplo: Evidencia sobre educación climática",
-      "nameError": "Escriba un nombre para la biblioteca.",
+      "nameError": "Escriba un nombre para la comunidad.",
       "shortNameLabel": "Nombre corto",
       "shortNameHint": "Se genera a partir del nombre. Puede cambiarlo más adelante en Configurar.",
       "addressLabel": "Dirección pública",
@@ -2909,7 +2909,7 @@
       "reserve": "Reservar dirección",
       "checking": "Reservando…",
       "reserved": "Reservada",
-      "nameTaken": "Ya tiene una biblioteca llamada {name}.",
+      "nameTaken": "Ya tiene una comunidad llamada {name}.",
       "openExisting": "Abrirla",
       "checkFailed": "No se pudo comprobar la dirección. Inténtelo de nuevo.",
       "addressTaken": "Alguien acaba de reservar esta dirección. Vuelva a comprobarla.",
@@ -2917,7 +2917,7 @@
       "tryAgain": "Inténtelo de nuevo"
     },
     "setup": {
-      "backToLibraries": "Volver a las bibliotecas",
+      "backToLibraries": "Volver a las comunidades",
       "configure": "Configurar",
       "openAdmin": "Abrir administración",
       "groupTitle": "Configuración",
@@ -2925,7 +2925,7 @@
       "retryingTitle": "Reintentando",
       "retryingDescription": "Se vuelve a empezar desde el paso que se detuvo.",
       "retryError": "No se pudo reiniciar la configuración. Inténtelo de nuevo.",
-      "draftHint": "Configure y active esta biblioteca desde su página de configuración.",
+      "draftHint": "Configure y active esta comunidad desde su página de configuración.",
       "stoppedHint": "Reintentar repite este paso y los siguientes.",
       "deploymentError": "La compilación no terminó.",
       "steps": {
@@ -2943,27 +2943,27 @@
         },
         "application": {
           "name": "Aplicación",
-          "waiting": "Creando la aplicación de la biblioteca.",
-          "running": "Creando la aplicación de la biblioteca…",
-          "done": "Se creó la aplicación de la biblioteca."
+          "waiting": "Creando la aplicación de la comunidad.",
+          "running": "Creando la aplicación de la comunidad…",
+          "done": "Se creó la aplicación de la comunidad."
         },
         "deployment": {
           "name": "Compilación",
-          "waiting": "Compilando la biblioteca y poniéndola en línea.",
-          "running": "Compilando la biblioteca y poniéndola en línea…",
-          "done": "La biblioteca se compiló y se puso en línea."
+          "waiting": "Compilando la comunidad y poniéndola en línea.",
+          "running": "Compilando la comunidad y poniéndola en línea…",
+          "done": "La comunidad se compiló y se puso en línea."
         },
         "readiness": {
           "name": "Disponibilidad",
-          "waiting": "Comprobando que la página de la biblioteca carga.",
-          "running": "Comprobando que la página de la biblioteca carga…",
-          "done": "Se comprobó que la página de la biblioteca carga."
+          "waiting": "Comprobando que la página de la comunidad carga.",
+          "running": "Comprobando que la página de la comunidad carga…",
+          "done": "Se comprobó que la página de la comunidad carga."
         },
         "active": {
           "name": "En línea",
-          "waiting": "La biblioteca se abre en su dirección pública.",
-          "running": "Abriendo la biblioteca en su dirección pública…",
-          "done": "La biblioteca está en línea en su dirección pública."
+          "waiting": "La comunidad se abre en su dirección pública.",
+          "running": "Abriendo la comunidad en su dirección pública…",
+          "done": "La comunidad está en línea en su dirección pública."
         }
       },
       "live": {
@@ -2972,17 +2972,17 @@
         "copyAddress": "Copiar dirección",
         "copiedShort": "Copiado",
         "copied": "Dirección copiada",
-        "openLibrary": "Abrir biblioteca",
+        "openLibrary": "Abrir comunidad",
         "settingUp": "Configurando {name}",
         "stopped": "La configuración se detuvo",
         "copyFailed": "No se pudo copiar la dirección"
       },
-      "deletingHint": "Esta biblioteca se está eliminando."
+      "deletingHint": "Esta comunidad se está eliminando."
     },
     "notFound": {
-      "title": "Biblioteca no encontrada",
+      "title": "Comunidad no encontrada",
       "description": "Puede que se haya eliminado o que pertenezca a otra organización.",
-      "back": "Volver a las bibliotecas"
+      "back": "Volver a las comunidades"
     }
   },
   "settingsShell": {
@@ -2999,7 +2999,7 @@
       "plans": "Planes",
       "users": "Usuarios",
       "aiModels": "Modelos de IA",
-      "evidenceLibraries": "Evidence Libraries"
+      "evidenceLibraries": "Evidence Communities"
     },
     "sharedDev": "Desarrollo compartido",
     "production": "Producción",
@@ -3100,16 +3100,16 @@
       "creditsOrKey": "Créditos, o la clave del usuario"
     },
     "evidenceLibraries": {
-      "title": "Acceso a Evidence Library",
+      "title": "Acceso a Evidence Community",
       "organizations": "organizaciones",
       "search": "Buscar organizaciones",
       "show": "Mostrar",
       "all": "Todas",
       "on": "Activado",
       "off": "Desactivado",
-      "libraries": "{count, plural, one {# biblioteca} other {# bibliotecas}}",
-      "switchLabel": "Evidence Libraries para {name}",
-      "moveFirst": "Primero mueve o elimina sus bibliotecas",
+      "libraries": "{count, plural, one {# comunidad} other {# comunidades}}",
+      "switchLabel": "Evidence Communities para {name}",
+      "moveFirst": "Primero mueve o elimina sus comunidades",
       "noMatches": "Ninguna organización coincide"
     }
   },
@@ -3220,7 +3220,7 @@
     "views": {
       "results": "Resultados de búsqueda",
       "extractionJob": "Trabajo de extracción",
-      "librarySettings": "Ajustes de la biblioteca",
+      "librarySettings": "Ajustes de la comunidad",
       "authors": "Autores",
       "page": "esta página"
     },
@@ -3283,7 +3283,7 @@
       "holds": "Retiene hasta {credits, plural, one {# crédito} other {# créditos}}",
       "runs": "Ejecuta",
       "asks": "Pregunta",
-      "publishing": "Publicar una biblioteca",
+      "publishing": "Publicar una comunidad",
       "publishingDetail": "Los visitantes la ven al momento",
       "moreJobs": "Más trabajos"
     },
@@ -3305,7 +3305,7 @@
     "chat": "Chat",
     "remove": "Quitar",
     "organization": "Organización",
-    "shareNote": "Ven esta conversación. Las búsquedas, colecciones y bibliotecas que contiene mantienen su propio acceso. Quienes pueden chatear envían mensajes como ellos mismos, y el asistente actúa por ellos con su propio acceso y sus propios créditos.",
+    "shareNote": "Ven esta conversación. Las búsquedas, colecciones y comunidades que contiene mantienen su propio acceso. Quienes pueden chatear envían mensajes como ellos mismos, y el asistente actúa por ellos con su propio acceso y sus propios créditos.",
     "shareFailed": "No se pudo cambiar con quién se comparte este chat",
     "steps": {
       "undo": "Deshacer",
@@ -3937,121 +3937,121 @@
         "ask": "Listar los modelos de chat"
       },
       "libraries": {
-        "doing": "Leyendo sus Evidence Libraries",
-        "did": "Leyó sus Evidence Libraries",
-        "where": "Evidence Libraries",
-        "ask": "Leer sus Evidence Libraries"
+        "doing": "Leyendo sus Evidence Communities",
+        "did": "Leyó sus Evidence Communities",
+        "where": "Evidence Communities",
+        "ask": "Leer sus Evidence Communities"
       },
       "readerLibraries": {
-        "doing": "Leyendo las Evidence Libraries que usted lee",
-        "did": "Leyó las Evidence Libraries que usted lee",
-        "where": "Evidence Libraries",
-        "ask": "Leer las Evidence Libraries que usted lee"
+        "doing": "Leyendo las Evidence Communities que usted lee",
+        "did": "Leyó las Evidence Communities que usted lee",
+        "where": "Evidence Communities",
+        "ask": "Leer las Evidence Communities que usted lee"
       },
       "readerSources": {
-        "doing": "Leyendo lo que sus Evidence Libraries guardan para usted",
-        "did": "Leyó lo que sus Evidence Libraries guardan para usted",
-        "where": "Evidence Libraries",
-        "ask": "Leer lo que sus Evidence Libraries guardan para usted"
+        "doing": "Leyendo lo que sus Evidence Communities guardan para usted",
+        "did": "Leyó lo que sus Evidence Communities guardan para usted",
+        "where": "Evidence Communities",
+        "ask": "Leer lo que sus Evidence Communities guardan para usted"
       },
       "readerAddress": {
-        "doing": "Leyendo la dirección de una Evidence Library",
-        "did": "Leyó la dirección de una Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Leer la dirección de una Evidence Library"
+        "doing": "Leyendo la dirección de una Evidence Community",
+        "did": "Leyó la dirección de una Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Leer la dirección de una Evidence Community"
       },
       "readerSource": {
-        "doing": "Leyendo una fuente de Evidence Library",
-        "did": "Leyó una fuente de Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Leer una fuente de Evidence Library"
+        "doing": "Leyendo una fuente de Evidence Community",
+        "did": "Leyó una fuente de Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Leer una fuente de Evidence Community"
       },
       "readerRecords": {
-        "doing": "Leyendo registros de Evidence Library",
-        "did": "Leyó registros de Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Leer registros de Evidence Library"
+        "doing": "Leyendo registros de Evidence Community",
+        "did": "Leyó registros de Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Leer registros de Evidence Community"
       },
       "newLibraryCollection": {
-        "doing": "Creando una colección en una Evidence Library",
-        "did": "Creó una colección en una Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Crear una colección en una Evidence Library",
-        "askMany": "Crear {count, plural, one {# colección} other {# colecciones}} en una Evidence Library",
-        "doingMany": "Creando {count, plural, one {# colección} other {# colecciones}} en una Evidence Library",
-        "didMany": "Creó {count, plural, one {# colección} other {# colecciones}} en una Evidence Library"
+        "doing": "Creando una colección en una Evidence Community",
+        "did": "Creó una colección en una Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Crear una colección en una Evidence Community",
+        "askMany": "Crear {count, plural, one {# colección} other {# colecciones}} en una Evidence Community",
+        "doingMany": "Creando {count, plural, one {# colección} other {# colecciones}} en una Evidence Community",
+        "didMany": "Creó {count, plural, one {# colección} other {# colecciones}} en una Evidence Community"
       },
       "deleteLibraryCollection": {
-        "doing": "Eliminando una colección de una Evidence Library",
-        "did": "Eliminó una colección de una Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Eliminar una colección de una Evidence Library",
-        "askMany": "Eliminar {count, plural, one {# colección} other {# colecciones}} de una Evidence Library",
-        "doingMany": "Eliminando {count, plural, one {# colección} other {# colecciones}} de una Evidence Library",
-        "didMany": "Eliminó {count, plural, one {# colección} other {# colecciones}} de una Evidence Library"
+        "doing": "Eliminando una colección de una Evidence Community",
+        "did": "Eliminó una colección de una Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Eliminar una colección de una Evidence Community",
+        "askMany": "Eliminar {count, plural, one {# colección} other {# colecciones}} de una Evidence Community",
+        "doingMany": "Eliminando {count, plural, one {# colección} other {# colecciones}} de una Evidence Community",
+        "didMany": "Eliminó {count, plural, one {# colección} other {# colecciones}} de una Evidence Community"
       },
       "changeLibraryRecords": {
-        "doing": "Cambiando una colección de una Evidence Library",
-        "did": "Cambió una colección de una Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Cambiar una colección de una Evidence Library",
-        "askMany": "Cambiar {count, plural, one {# colección de Evidence Library} other {# colecciones de Evidence Library}}",
-        "doingMany": "Cambiando {count, plural, one {# colección de Evidence Library} other {# colecciones de Evidence Library}}",
-        "didMany": "Cambió {count, plural, one {# colección de Evidence Library} other {# colecciones de Evidence Library}}"
+        "doing": "Cambiando una colección de una Evidence Community",
+        "did": "Cambió una colección de una Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Cambiar una colección de una Evidence Community",
+        "askMany": "Cambiar {count, plural, one {# colección de Evidence Community} other {# colecciones de Evidence Community}}",
+        "doingMany": "Cambiando {count, plural, one {# colección de Evidence Community} other {# colecciones de Evidence Community}}",
+        "didMany": "Cambió {count, plural, one {# colección de Evidence Community} other {# colecciones de Evidence Community}}"
       },
       "readHandoff": {
-        "doing": "Abriendo lo que entregó una Evidence Library",
-        "did": "Abrió lo que entregó una Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Abrir lo que entregó una Evidence Library"
+        "doing": "Abriendo lo que entregó una Evidence Community",
+        "did": "Abrió lo que entregó una Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Abrir lo que entregó una Evidence Community"
       },
       "readLibraryDraft": {
-        "doing": "Leyendo los ajustes de una biblioteca",
-        "did": "Leyó los ajustes de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer los ajustes de una biblioteca",
-        "askMany": "Leer los ajustes de {count, plural, one {# biblioteca} other {# bibliotecas}}",
-        "doingMany": "Leyendo los ajustes de {count, plural, one {# biblioteca} other {# bibliotecas}}",
-        "didMany": "Leyó los ajustes de {count, plural, one {# biblioteca} other {# bibliotecas}}"
+        "doing": "Leyendo los ajustes de una comunidad",
+        "did": "Leyó los ajustes de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer los ajustes de una comunidad",
+        "askMany": "Leer los ajustes de {count, plural, one {# comunidad} other {# comunidades}}",
+        "doingMany": "Leyendo los ajustes de {count, plural, one {# comunidad} other {# comunidades}}",
+        "didMany": "Leyó los ajustes de {count, plural, one {# comunidad} other {# comunidades}}"
       },
       "readLibraryRevision": {
-        "doing": "Leyendo una versión de los ajustes de una biblioteca",
-        "did": "Leyó una versión de los ajustes de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer una versión de los ajustes de una biblioteca"
+        "doing": "Leyendo una versión de los ajustes de una comunidad",
+        "did": "Leyó una versión de los ajustes de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer una versión de los ajustes de una comunidad"
       },
       "readLibraryTeam": {
-        "doing": "Leyendo el equipo de una biblioteca",
-        "did": "Leyó el equipo de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer el equipo de una biblioteca",
-        "askMany": "Leer los equipos de {count, plural, one {# biblioteca} other {# bibliotecas}}",
-        "doingMany": "Leyendo los equipos de {count, plural, one {# biblioteca} other {# bibliotecas}}",
-        "didMany": "Leyó los equipos de {count, plural, one {# biblioteca} other {# bibliotecas}}"
+        "doing": "Leyendo el equipo de una comunidad",
+        "did": "Leyó el equipo de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer el equipo de una comunidad",
+        "askMany": "Leer los equipos de {count, plural, one {# comunidad} other {# comunidades}}",
+        "doingMany": "Leyendo los equipos de {count, plural, one {# comunidad} other {# comunidades}}",
+        "didMany": "Leyó los equipos de {count, plural, one {# comunidad} other {# comunidades}}"
       },
       "editLibraryDraft": {
-        "doing": "Cambiando el borrador de una biblioteca",
-        "did": "Cambió el borrador de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Cambiar el borrador de una biblioteca"
+        "doing": "Cambiando el borrador de una comunidad",
+        "did": "Cambió el borrador de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Cambiar el borrador de una comunidad"
       },
       "addLibraryMember": {
-        "doing": "Añadiendo a alguien al equipo de una biblioteca",
-        "did": "Añadió a alguien al equipo de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Añadir a alguien al equipo de una biblioteca"
+        "doing": "Añadiendo a alguien al equipo de una comunidad",
+        "did": "Añadió a alguien al equipo de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Añadir a alguien al equipo de una comunidad"
       },
       "changeLibraryRole": {
-        "doing": "Cambiando el rol de alguien en una biblioteca",
-        "did": "Cambió el rol de alguien en una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Cambiar el rol de alguien en una biblioteca"
+        "doing": "Cambiando el rol de alguien en una comunidad",
+        "did": "Cambió el rol de alguien en una comunidad",
+        "where": "Evidence Community",
+        "ask": "Cambiar el rol de alguien en una comunidad"
       },
       "removeLibraryMember": {
-        "doing": "Quitando a alguien del equipo de una biblioteca",
-        "did": "Quitó a alguien del equipo de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Quitar a alguien del equipo de una biblioteca"
+        "doing": "Quitando a alguien del equipo de una comunidad",
+        "did": "Quitó a alguien del equipo de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Quitar a alguien del equipo de una comunidad"
       },
       "zoteroGroups": {
         "doing": "Leyendo sus grupos de Zotero",
@@ -4072,79 +4072,79 @@
         "ask": "Leer elementos de su Zotero"
       },
       "inviteLibraryMember": {
-        "doing": "Invitando a alguien a una biblioteca",
-        "did": "Invitó a alguien a una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Invitar a alguien a una biblioteca",
-        "askMany": "Invitar a {count, plural, one {# persona} other {# personas}} a una biblioteca",
-        "doingMany": "Invitando a {count, plural, one {# persona} other {# personas}} a una biblioteca",
-        "didMany": "Invitó a {count, plural, one {# persona} other {# personas}} a una biblioteca"
+        "doing": "Invitando a alguien a una comunidad",
+        "did": "Invitó a alguien a una comunidad",
+        "where": "Evidence Community",
+        "ask": "Invitar a alguien a una comunidad",
+        "askMany": "Invitar a {count, plural, one {# persona} other {# personas}} a una comunidad",
+        "doingMany": "Invitando a {count, plural, one {# persona} other {# personas}} a una comunidad",
+        "didMany": "Invitó a {count, plural, one {# persona} other {# personas}} a una comunidad"
       },
       "changeLibraryInvite": {
-        "doing": "Cambiando una invitación a una biblioteca",
-        "did": "Cambió una invitación a una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Cambiar una invitación a una biblioteca"
+        "doing": "Cambiando una invitación a una comunidad",
+        "did": "Cambió una invitación a una comunidad",
+        "where": "Evidence Community",
+        "ask": "Cambiar una invitación a una comunidad"
       },
       "libraryInvites": {
-        "doing": "Leyendo sus invitaciones a bibliotecas",
-        "did": "Leyó sus invitaciones a bibliotecas",
-        "where": "Evidence Libraries",
-        "ask": "Leer sus invitaciones a bibliotecas"
+        "doing": "Leyendo sus invitaciones a comunidades",
+        "did": "Leyó sus invitaciones a comunidades",
+        "where": "Evidence Communities",
+        "ask": "Leer sus invitaciones a comunidades"
       },
       "answerLibraryInvite": {
-        "doing": "Respondiendo a una invitación a una biblioteca",
-        "did": "Respondió a una invitación a una biblioteca",
-        "where": "Evidence Libraries",
-        "ask": "Responder a una invitación a una biblioteca"
+        "doing": "Respondiendo a una invitación a una comunidad",
+        "did": "Respondió a una invitación a una comunidad",
+        "where": "Evidence Communities",
+        "ask": "Responder a una invitación a una comunidad"
       },
       "startLibrary": {
-        "doing": "Iniciando un borrador de biblioteca",
-        "did": "Inició un borrador de biblioteca",
-        "where": "Evidence Libraries",
-        "ask": "Iniciar un borrador de biblioteca"
+        "doing": "Iniciando un borrador de comunidad",
+        "did": "Inició un borrador de comunidad",
+        "where": "Evidence Communities",
+        "ask": "Iniciar un borrador de comunidad"
       },
       "librarySources": {
-        "doing": "Leyendo las fuentes de una biblioteca",
-        "did": "Leyó las fuentes de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer las fuentes de una biblioteca",
-        "askMany": "Leer las fuentes de {count, plural, one {# biblioteca} other {# bibliotecas}}",
-        "doingMany": "Leyendo las fuentes de {count, plural, one {# biblioteca} other {# bibliotecas}}",
-        "didMany": "Leyó las fuentes de {count, plural, one {# biblioteca} other {# bibliotecas}}"
+        "doing": "Leyendo las fuentes de una comunidad",
+        "did": "Leyó las fuentes de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer las fuentes de una comunidad",
+        "askMany": "Leer las fuentes de {count, plural, one {# comunidad} other {# comunidades}}",
+        "doingMany": "Leyendo las fuentes de {count, plural, one {# comunidad} other {# comunidades}}",
+        "didMany": "Leyó las fuentes de {count, plural, one {# comunidad} other {# comunidades}}"
       },
       "runningCollections": {
-        "doing": "Leyendo las colecciones de una biblioteca",
-        "did": "Leyó las colecciones de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer las colecciones de una biblioteca"
+        "doing": "Leyendo las colecciones de una comunidad",
+        "did": "Leyó las colecciones de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer las colecciones de una comunidad"
       },
       "runningInstitutions": {
-        "doing": "Leyendo las instituciones de una biblioteca",
-        "did": "Leyó las instituciones de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer las instituciones de una biblioteca"
+        "doing": "Leyendo las instituciones de una comunidad",
+        "did": "Leyó las instituciones de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer las instituciones de una comunidad"
       },
       "runningPublications": {
-        "doing": "Leyendo las publicaciones de una biblioteca",
-        "did": "Leyó las publicaciones de una biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer las publicaciones de una biblioteca"
+        "doing": "Leyendo las publicaciones de una comunidad",
+        "did": "Leyó las publicaciones de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer las publicaciones de una comunidad"
       },
       "runningPublication": {
-        "doing": "Leyendo una publicación de biblioteca",
-        "did": "Leyó una publicación de biblioteca",
-        "where": "Evidence Library",
-        "ask": "Leer una publicación de biblioteca",
-        "askMany": "Leer {count, plural, one {# publicación de biblioteca} other {# publicaciones de biblioteca}}",
-        "doingMany": "Leyendo {count, plural, one {# publicación de biblioteca} other {# publicaciones de biblioteca}}",
-        "didMany": "Leyó {count, plural, one {# publicación de biblioteca} other {# publicaciones de biblioteca}}"
+        "doing": "Leyendo una publicación de comunidad",
+        "did": "Leyó una publicación de comunidad",
+        "where": "Evidence Community",
+        "ask": "Leer una publicación de comunidad",
+        "askMany": "Leer {count, plural, one {# publicación de comunidad} other {# publicaciones de comunidad}}",
+        "doingMany": "Leyendo {count, plural, one {# publicación de comunidad} other {# publicaciones de comunidad}}",
+        "didMany": "Leyó {count, plural, one {# publicación de comunidad} other {# publicaciones de comunidad}}"
       },
       "syncLibrarySource": {
-        "doing": "Reintentando una importación de biblioteca",
-        "did": "Reintentó una importación de biblioteca",
-        "where": "Evidence Library",
-        "ask": "Reintentar una importación de biblioteca"
+        "doing": "Reintentando una importación de comunidad",
+        "did": "Reintentó una importación de comunidad",
+        "where": "Evidence Community",
+        "ask": "Reintentar una importación de comunidad"
       },
       "authorProfiles": {
         "doing": "Leyendo perfiles de autor",
@@ -4207,20 +4207,20 @@
         "didMany": "Puso {count, plural, one {# PDF de Zotero} other {# PDF de Zotero}} en el chat"
       },
       "gradeLibrarySource": {
-        "doing": "Pidiendo a una biblioteca que califique una fuente",
-        "did": "Pidió a una biblioteca que calificara una fuente",
-        "where": "Evidence Library",
-        "ask": "Calificar los registros de la fuente de una biblioteca"
+        "doing": "Pidiendo a una comunidad que califique una fuente",
+        "did": "Pidió a una comunidad que calificara una fuente",
+        "where": "Evidence Community",
+        "ask": "Calificar los registros de la fuente de una comunidad"
       },
       "trySourceSubject": {
         "doing": "Probando un tema de cribado",
         "did": "Probó un tema de cribado",
-        "where": "Evidence Library",
+        "where": "Evidence Community",
         "ask": "Probar un tema de cribado con 200 registros"
       },
       "libraryAccess": {
-        "doing": "Viendo el acceso a Evidence Library",
-        "did": "Se vio el acceso a Evidence Library",
+        "doing": "Viendo el acceso a Evidence Community",
+        "did": "Se vio el acceso a Evidence Community",
         "where": "Administración"
       }
     },
@@ -4387,7 +4387,7 @@
       "paper": "Artículo",
       "extraction": "Extracción",
       "screening": "Cribado",
-      "library": "Evidence Library",
+      "library": "Evidence Community",
       "topic": "Tema",
       "chat": "Chat"
     }
@@ -4462,7 +4462,7 @@
       "searches": "Búsquedas",
       "screenings": "Cribados",
       "extractions": "Extracciones",
-      "evidenceLibraries": "Evidence Libraries",
+      "evidenceLibraries": "Evidence Communities",
       "changeLogo": "Cambiar logotipo",
       "organizationName": "Nombre de la organización",
       "saveName": "Guardar nombre",
@@ -4476,12 +4476,12 @@
       "makeAdminFirst": "Primero haga administrador a otra persona",
       "leave": "Salir",
       "deleteName": "Eliminar {name}",
-      "stillHasLibrary": "{library} es una de sus Evidence Libraries. Trasládela o elimínela primero.",
-      "deleteLibrary": "Eliminar biblioteca",
+      "stillHasLibrary": "{library} es una de sus Evidence Communities. Trasládela o elimínela primero.",
+      "deleteLibrary": "Eliminar comunidad",
       "libraryBeingDeleted": "Se está eliminando {library}.",
       "libraryDeleteFailed": "No se pudo eliminar {library}. Inténtelo de nuevo.",
       "deleteDetail": "Se elimina para {count, plural, one {su # miembro} other {todos sus # miembros}}",
-      "moveLibrariesFirst": "Traslade o elimine primero sus Evidence Libraries",
+      "moveLibrariesFirst": "Traslade o elimine primero sus Evidence Communities",
       "delete": "Eliminar",
       "deleteConfirm": "Sus colecciones, búsquedas, cribados y extracciones se eliminan con ella, para {count, plural, one {su # miembro} other {todos sus # miembros}}. No se puede deshacer.",
       "leaveConfirm": "Perderá el acceso a su trabajo hasta que un administrador le invite de nuevo.",
@@ -4556,7 +4556,7 @@
       "paymentFailed": "El último pago falló.",
       "noMemberLimit": "Sin límite de miembros",
       "membersUnit": "{count, plural, one {miembro} other {miembros}}",
-      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "evidenceLibrariesIncluded": "Evidence Communities",
       "seePlans": "Ver planes"
     },
     "couldntInvite": "La organización se creó, pero las invitaciones no salieron. Envíelas desde los ajustes de sus miembros.",
@@ -4757,15 +4757,15 @@
     "changeInSettings": "Cambiar en los ajustes de IA"
   },
   "librarySources": {
-    "kind": "Registros de Evidence Library",
-    "library": "Evidence Library",
-    "address": "Pegue una dirección de biblioteca",
+    "kind": "Registros de Evidence Community",
+    "library": "Evidence Community",
+    "address": "Pegue una dirección de comunidad",
     "show": "Mostrar",
     "filter": {
       "all": "Todos",
       "yours": "Suyas",
       "shared": "Compartidas con usted",
-      "library": "De la biblioteca"
+      "library": "De la comunidad"
     },
     "find": "Buscar",
     "everyRecord": "Todos los registros de {library}",
@@ -4790,14 +4790,14 @@
     "outdated": "{library} necesita una actualización para usarse aquí.",
     "error": {
       "notAddress": "Eso no es una dirección.",
-      "notHosted": "OpenScholar no gestiona esa biblioteca.",
+      "notHosted": "OpenScholar no gestiona esa comunidad.",
       "private": "Esa colección es privada. Su propietario puede compartirla con usted.",
       "notFound": "No hay nada en esa dirección.",
       "empty": "Esa búsqueda o colección no tiene registros.",
       "profile": "Abra una de sus colecciones y copie esa dirección.",
-      "unknownPage": "Copie la dirección de una búsqueda, una colección o la biblioteca.",
-      "outdated": "Esa biblioteca necesita una actualización para usarse aquí.",
-      "unreadable": "La biblioteca no respondió. Inténtelo de nuevo."
+      "unknownPage": "Copie la dirección de una búsqueda, una colección o la comunidad.",
+      "outdated": "Esa comunidad necesita una actualización para usarse aquí.",
+      "unreadable": "La comunidad no respondió. Inténtelo de nuevo."
     },
     "role": {
       "owner": "Propietario",
@@ -4819,17 +4819,17 @@
   "fromLibrary": {
     "title": "Desde {library}",
     "gone": "Nada que abrir",
-    "goneHint": "Este enlace desde una biblioteca ha caducado. Ábralo de nuevo desde la biblioteca.",
+    "goneHint": "Este enlace desde una comunidad ha caducado. Ábralo de nuevo desde la comunidad.",
     "problem": {
-      "notAddress": "No hay nada aquí que abrir. Ábralo de nuevo desde la biblioteca.",
-      "notHosted": "Esa biblioteca ya no funciona en OpenScholar.",
+      "notAddress": "No hay nada aquí que abrir. Ábralo de nuevo desde la comunidad.",
+      "notHosted": "Esa comunidad ya no funciona en OpenScholar.",
       "private": "Esa colección es privada. Su propietario puede compartirla con usted.",
-      "notFound": "La biblioteca ya no tiene lo que envió.",
-      "empty": "Lo que envió la biblioteca no tiene registros ahora.",
-      "profile": "No hay nada aquí que abrir. Ábralo de nuevo desde la biblioteca.",
-      "unknownPage": "No hay nada aquí que abrir. Ábralo de nuevo desde la biblioteca.",
-      "outdated": "Esa biblioteca necesita una actualización para usarse aquí.",
-      "unreadable": "La biblioteca no respondió. Inténtelo de nuevo en un momento."
+      "notFound": "La comunidad ya no tiene lo que envió.",
+      "empty": "Lo que envió la comunidad no tiene registros ahora.",
+      "profile": "No hay nada aquí que abrir. Ábralo de nuevo desde la comunidad.",
+      "unknownPage": "No hay nada aquí que abrir. Ábralo de nuevo desde la comunidad.",
+      "outdated": "Esa comunidad necesita una actualización para usarse aquí.",
+      "unreadable": "La comunidad no respondió. Inténtelo de nuevo en un momento."
     },
     "from": {
       "smartScreening": "Cribado inteligente",
@@ -4941,15 +4941,15 @@
     }
   },
   "libraryHomeSettings": {
-    "thePageVisitorsLandOnAt": "La página en la que aterrizan los visitantes en la dirección de la biblioteca.",
+    "thePageVisitorsLandOnAt": "La página en la que aterrizan los visitantes en la dirección de la comunidad.",
     "showAHomePage": "Mostrar una página de inicio",
-    "whenThisIsOffTheLibrary": "Cuando está desactivado, la dirección de la biblioteca abre la lista de publicaciones.",
+    "whenThisIsOffTheLibrary": "Cuando está desactivado, la dirección de la comunidad abre la lista de publicaciones.",
     "introduction": "Introducción",
-    "shownInTheHeroUnderThe": "Se muestra en la cabecera, debajo del nombre y el lema de la biblioteca.",
-    "whatTheLibraryIsFor": "Para qué sirve la biblioteca",
-    "whatDoesThisLibraryCollectAnd": "¿Qué recoge esta biblioteca y para quién?",
+    "shownInTheHeroUnderThe": "Se muestra en la cabecera, debajo del nombre y el lema de la comunidad.",
+    "whatTheLibraryIsFor": "Para qué sirve la comunidad",
+    "whatDoesThisLibraryCollectAnd": "¿Qué recoge esta comunidad y para quién?",
     "howPublicationsGetIn": "Cómo entran las publicaciones",
-    "stepsWithATypeAreFilled": "Los pasos con un tipo se rellenan a partir de la publicación seguida, o se cuentan a partir de las búsquedas y los registros de la biblioteca.",
+    "stepsWithATypeAreFilled": "Los pasos con un tipo se rellenan a partir de la publicación seguida, o se cuentan a partir de las búsquedas y los registros de la comunidad.",
     "addStep": "Añadir paso",
     "statement": "Texto",
     "noStepsTheSectionShowsThe": "Sin pasos. La sección muestra el texto por sí solo.",
@@ -4960,20 +4960,20 @@
     "editorShown": "Editor mostrado",
     "whoeverApprovedIt": "Quien la aprobó",
     "whatHappens": "Qué ocurre",
-    "whoRunsTheLibrary": "Quién gestiona la biblioteca",
-    "peopleFromTheLibrarySTeam": "Las personas del equipo de la biblioteca, o añadidas a mano, aparecen en el orden indicado aquí.",
+    "whoRunsTheLibrary": "Quién gestiona la comunidad",
+    "peopleFromTheLibrarySTeam": "Las personas del equipo de la comunidad, o añadidas a mano, aparecen en el orden indicado aquí.",
     "aboutTheTeam": "Sobre el equipo",
     "usedInsteadWhenThereIsNo": "Se usa en su lugar cuando no hay frase del equipo.",
     "suggestAPublication": "Sugerir una publicación",
     "opensAnEmailTo": "Abre un correo para {email}",
     "needsAContactEmail": "Necesita un correo de contacto",
     "joinAsAnEditor": "Unirse como editor",
-    "askTheLibrary": "Preguntar a la biblioteca",
-    "typedIntoTheQuestionBoxOne": "Se escriben en el cuadro de preguntas una tras otra. Un cuadro vacío mantiene la pregunta creada a partir de los temas de la biblioteca.",
-    "shownWhenAiAnswersAreOn": "Se muestra cuando las respuestas de IA están activadas en Funciones. Un cuadro vacío mantiene la pregunta creada a partir de los temas de la biblioteca.",
+    "askTheLibrary": "Preguntar a la comunidad",
+    "typedIntoTheQuestionBoxOne": "Se escriben en el cuadro de preguntas una tras otra. Un cuadro vacío mantiene la pregunta creada a partir de los temas de la comunidad.",
+    "shownWhenAiAnswersAreOn": "Se muestra cuando las respuestas de IA están activadas en Funciones. Un cuadro vacío mantiene la pregunta creada a partir de los temas de la comunidad.",
     "exampleQuestion": "Pregunta de ejemplo {value}",
     "usingAndCiting": "Uso y citas",
-    "shownBesideTheCitationOfThe": "Se muestra junto a la cita de la biblioteca, que se forma con su nombre y su dirección.",
+    "shownBesideTheCitationOfThe": "Se muestra junto a la cita de la comunidad, que se forma con su nombre y su dirección.",
     "licenceAndReuse": "Licencia y reutilización",
     "howMayPeopleReuseWhatThey": "¿Cómo pueden reutilizar las personas lo que encuentran aquí?",
     "heading": "Encabezado",
@@ -4992,12 +4992,12 @@
     "takedownForm": "Formulario de retirada",
     "off": "Desactivado",
     "filledInForYou": "Rellenado por usted",
-    "newestPublicationsTheMostCitedDigests": "Las publicaciones más recientes, las más citadas, los resúmenes y la última revisión proceden de la propia biblioteca.",
+    "newestPublicationsTheMostCitedDigests": "Las publicaciones más recientes, las más citadas, los resúmenes y la última revisión proceden de la propia comunidad.",
     "editIn": "Editar en {card}",
     "peopleShown": "Personas mostradas",
     "addFromTheTeam": "Añadir del equipo",
     "addPeopleFromTheTeam": "Añadir personas del equipo",
-    "everyoneOnTheLibrarySTeam": "Todas las personas del equipo de la biblioteca, con la foto de su cuenta.",
+    "everyoneOnTheLibrarySTeam": "Todas las personas del equipo de la comunidad, con la foto de su cuenta.",
     "addSomeone": "Añadir a alguien",
     "nobodyIsShownAddPeopleFrom": "No se muestra nadie. Añada personas del equipo o a alguien que no tenga cuenta.",
     "removedFromTheTeamSoNot": "Quitada del equipo, así que no se muestra",
@@ -5036,7 +5036,7 @@
       },
       "search": {
         "label": "Términos de búsqueda",
-        "hint": "Cuenta las palabras, frases y temas que buscan las búsquedas de OpenAlex de la biblioteca",
+        "hint": "Cuenta las palabras, frases y temas que buscan las búsquedas de OpenAlex de la comunidad",
         "fallback": "Encontrada por búsqueda",
         "example": "Términos de búsqueda"
       },
@@ -5066,12 +5066,12 @@
     },
     "reviewedOn": "Revisada el {date}",
     "addedOn": "Añadida el {date}",
-    "howTheLibraryIsCurated": "Cómo se selecciona el contenido de la biblioteca",
+    "howTheLibraryIsCurated": "Cómo se selecciona el contenido de la comunidad",
     "optional": "Opcional",
     "removeStep": "Quitar paso",
     "whoIsBehindIt": "Quién está detrás",
     "getInvolved": "Cómo participar",
-    "usingAndCitingTheLibrary": "Cómo usar y citar la biblioteca",
+    "usingAndCitingTheLibrary": "Cómo usar y citar la comunidad",
     "identity": "Identidad",
     "contact": "Contacto",
     "notSet": "Sin definir",
@@ -5091,10 +5091,10 @@
     "searchPublications": "Buscar publicaciones",
     "date": "Fecha",
     "loadingPublications": "Cargando publicaciones",
-    "theLibrarySPublicationsCouldNot": "No se pudieron cargar las publicaciones de la biblioteca.",
+    "theLibrarySPublicationsCouldNot": "No se pudieron cargar las publicaciones de la comunidad.",
     "noPublicationHasAPdfYet": "Ninguna publicación tiene PDF todavía.",
     "noPublicationMatches": "Ninguna publicación coincide.",
-    "theLibraryIsNotSetUp": "La biblioteca todavía no está configurada.",
+    "theLibraryIsNotSetUp": "La comunidad todavía no está configurada.",
     "linked": "Enlazado"
   },
   "libraryTeamAccess": {
@@ -5110,12 +5110,12 @@
     "cancelInvitation": "Cancelar invitación",
     "cancelThisInvitation": "¿Cancelar esta invitación?",
     "removeAccessToThisAuthorProfile": "¿Quitar el acceso a este perfil de autor?",
-    "removeFromThisLibraryOrganizationMembership": "¿Quitar de esta biblioteca? La pertenencia a la organización y el acceso a otras bibliotecas no cambian.",
+    "removeFromThisLibraryOrganizationMembership": "¿Quitar de esta comunidad? La pertenencia a la organización y el acceso a otras comunidades no cambian.",
     "keep": "Conservar",
     "profileAccess": "Acceso al perfil",
     "team": "Equipo",
     "theOwnerManagesAccessEditorsCan": "El propietario gestiona el acceso. Los editores pueden editar este perfil.",
-    "manageAccessToThisLibrary": "Gestione el acceso a esta biblioteca.",
+    "manageAccessToThisLibrary": "Gestione el acceso a esta comunidad.",
     "addEditor": "Añadir editor",
     "addMember": "Añadir miembro",
     "inviteProfileEditor": "Invitar a un editor del perfil",
@@ -5128,29 +5128,29 @@
     "chooseAPerson": "Elija una persona",
     "emailAddress": "Dirección de correo",
     "nameOrganisationOrg": "name@organisation.org",
-    "libraryRole": "Rol en la biblioteca",
+    "libraryRole": "Rol en la comunidad",
     "editorsCanEditProfileDetailsAnd": "Los editores pueden editar los datos del perfil y elegir publicaciones.",
-    "accessAppliesToThisLibraryOnly": "El acceso se aplica solo a esta biblioteca.",
-    "theyLlReceiveAccessToThis": "Recibirán acceso solo a esta biblioteca. La pertenencia a la organización no cambia.",
+    "accessAppliesToThisLibraryOnly": "El acceso se aplica solo a esta comunidad.",
+    "theyLlReceiveAccessToThis": "Recibirán acceso solo a esta comunidad. La pertenencia a la organización no cambia.",
     "cancel": "Cancelar",
     "sendInvitation": "Enviar invitación",
     "dismissMemberStatus": "Descartar el estado de miembro",
     "organizationOwners": "Propietarios de la organización",
-    "accessToAllLibrariesManagedIn": "Acceso a todas las bibliotecas. Se gestiona en los ajustes de la organización.",
+    "accessToAllLibrariesManagedIn": "Acceso a todas las comunidades. Se gestiona en los ajustes de la organización.",
     "everyoneElseInTheOrganization": "Todos los demás de la organización",
     "viewersUntilYouAddThemBelow": "Lectores hasta que los añada abajo con un rol.",
     "everyoneIn": "Todos en {name}",
-    "everyoneWithoutARoleInThis": "Todos sin rol en esta biblioteca",
+    "everyoneWithoutARoleInThis": "Todos sin rol en esta comunidad",
     "viewer": "Lector",
     "teamView": "Vista del equipo",
     "profileMembers": "Miembros del perfil",
-    "libraryMembers": "Miembros de la biblioteca",
+    "libraryMembers": "Miembros de la comunidad",
     "invitations": "Invitaciones",
     "searchTeam": "Buscar en el equipo",
     "findAPerson": "Buscar a una persona…",
-    "aboutLibraryRoles": "Sobre los roles de biblioteca",
+    "aboutLibraryRoles": "Sobre los roles de comunidad",
     "editor": "Editor",
-    "reviewPublishAndManageLibraryContent": "Revisar, publicar y gestionar el contenido de la biblioteca.",
+    "reviewPublishAndManageLibraryContent": "Revisar, publicar y gestionar el contenido de la comunidad.",
     "creator": "Creador",
     "editItemsAndSubmitWorkFor": "Editar elementos y enviar trabajo para revisión.",
     "loadingTeam": "Cargando el equipo",
@@ -5176,37 +5176,37 @@
       "Viewer": "Lector"
     },
     "roleHints": {
-      "Owner": "Heredado de la organización. Gestiona todas sus bibliotecas y sus equipos.",
-      "Editor": "Revisar y publicar elementos. Gestionar el contenido de la biblioteca.",
+      "Owner": "Heredado de la organización. Gestiona todas sus comunidades y sus equipos.",
+      "Editor": "Revisar y publicar elementos. Gestionar el contenido de la comunidad.",
       "Creator": "Crear y editar elementos, subir archivos y enviarlos a revisión.",
-      "Viewer": "El resto de la organización. Ver la biblioteca y sus elementos sin cambiarlos."
+      "Viewer": "El resto de la organización. Ver la comunidad y sus elementos sin cambiarlos."
     },
-    "removeFromLibrary": "Quitar de la biblioteca",
+    "removeFromLibrary": "Quitar de la comunidad",
     "removeFromProfile": "Quitar del perfil",
-    "whoManagesLibrary": "Elija quién puede gestionar esta biblioteca.",
+    "whoManagesLibrary": "Elija quién puede gestionar esta comunidad.",
     "whoManagesProfile": "Elija quién puede gestionar este perfil.",
-    "addToLibrary": "Añadir a la biblioteca",
+    "addToLibrary": "Añadir a la comunidad",
     "addToProfile": "Añadir al perfil",
-    "acceptingGrantsLibrary": "Al aceptar, se concede acceso solo a esta biblioteca.",
+    "acceptingGrantsLibrary": "Al aceptar, se concede acceso solo a esta comunidad.",
     "acceptingGrantsProfile": "Al aceptar, se concede acceso solo a este perfil.",
-    "removedFromLibrary": "Quitado de esta biblioteca.",
+    "removedFromLibrary": "Quitado de esta comunidad.",
     "removedFromProfile": "Quitado de este perfil.",
-    "addedToLibrary": "{name} se ha unido a esta biblioteca.",
+    "addedToLibrary": "{name} se ha unido a esta comunidad.",
     "addedToProfile": "{name} se ha unido a este perfil."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Resumen en cola para # publicación.} other {Resumen en cola para # publicaciones.}}",
     "noPublicationsInThePeriodNothing": "No hay publicaciones en el periodo. No se envió nada.",
-    "publishTheLibraryConfigurationWithReader": "Publique primero la configuración de la biblioteca con las suscripciones de lectores activadas.",
+    "publishTheLibraryConfigurationWithReader": "Publique primero la configuración de la comunidad con las suscripciones de lectores activadas.",
     "theDigestRequestCouldNotBe": "No se pudo confirmar la solicitud del resumen. Inténtelo de nuevo; las ediciones existentes no se enviarán dos veces.",
     "emailUpdates": "Actualizaciones por correo",
     "readerSubscriptions": "Suscripciones de lectores",
-    "readersCanChooseNewPublicationsLibrary": "Los lectores pueden elegir nuevas publicaciones, resúmenes de la biblioteca o ambos. Las ediciones vacías se omiten.",
+    "readersCanChooseNewPublicationsLibrary": "Los lectores pueden elegir nuevas publicaciones, resúmenes de la comunidad o ambos. Las ediciones vacías se omiten.",
     "digestCovers": "Qué cubre el resumen",
     "aPublicationWithoutAFullDate": "Una publicación sin fecha completa no pertenece a ningún periodo.",
-    "anOlderPublicationCountsWhenIt": "Una publicación antigua cuenta cuando es nueva para la biblioteca.",
+    "anOlderPublicationCountsWhenIt": "Una publicación antigua cuenta cuando es nueva para la comunidad.",
     "publicationsPublishedInThePeriod": "Publicaciones publicadas en el periodo",
-    "publicationsAddedToTheLibraryIn": "Publicaciones añadidas a la biblioteca en el periodo",
+    "publicationsAddedToTheLibraryIn": "Publicaciones añadidas a la comunidad en el periodo",
     "frequency": "Frecuencia",
     "weekly": "Semanal",
     "monthly": "Mensual",
@@ -5216,8 +5216,8 @@
     "time": "Hora",
     "timezone": "Zona horaria",
     "beforeADigestGoesOut": "Antes de que salga un resumen",
-    "itWaitsInTheLibraryS": "Espera en el panel de administración de la biblioteca, donde los creadores pueden editarlo y un editor o propietario lo publica.",
-    "itIsPublishedAndEmailedAs": "Se publica y se envía por correo en cuanto se escribe. Aún se puede corregir en el panel de administración de la biblioteca.",
+    "itWaitsInTheLibraryS": "Espera en el panel de administración de la comunidad, donde los creadores pueden editarlo y un editor o propietario lo publica.",
+    "itIsPublishedAndEmailedAs": "Se publica y se envía por correo en cuanto se escribe. Aún se puede corregir en el panel de administración de la comunidad.",
     "anEditorApprovesIt": "Un editor lo aprueba",
     "itIsSentAsAiWrote": "Se envía tal como lo escribió la IA",
     "nameWhoCheckedIt": "Indicar quién lo revisó",
@@ -5255,23 +5255,23 @@
     "keepThisUnderCharacters": "Use menos de {maxLength} caracteres."
   },
   "libraryList": {
-    "evidenceLibraries": "Evidence Libraries",
-    "newLibrary": "Nueva biblioteca",
-    "libraryView": "Vista de biblioteca",
+    "evidenceLibraries": "Evidence Communities",
+    "newLibrary": "Nueva comunidad",
+    "libraryView": "Vista de comunidad",
     "sharedWithYou": "Compartidas con usted",
     "invitations": "Invitaciones",
-    "searchLibraries": "Buscar bibliotecas",
-    "findALibrary": "Buscar una biblioteca…",
-    "acceptAccessToALibraryWithout": "Acepte el acceso a una biblioteca sin unirse a su organización.",
-    "loadingLibraries": "Cargando bibliotecas",
-    "noLibrariesMatchTheseFilters": "Ninguna biblioteca coincide con estos filtros.",
+    "searchLibraries": "Buscar comunidades",
+    "findALibrary": "Buscar una comunidad…",
+    "acceptAccessToALibraryWithout": "Acepte el acceso a una comunidad sin unirse a su organización.",
+    "loadingLibraries": "Cargando comunidades",
+    "noLibrariesMatchTheseFilters": "Ninguna comunidad coincide con estos filtros.",
     "noPendingInvitations": "No hay invitaciones pendientes.",
-    "librariesPeopleShareWithYouAppear": "Aquí aparecen las bibliotecas que otras personas comparten con usted.",
-    "hasNoLibrariesYet": "{name} todavía no tiene bibliotecas.",
+    "librariesPeopleShareWithYouAppear": "Aquí aparecen las comunidades que otras personas comparten con usted.",
+    "hasNoLibrariesYet": "{name} todavía no tiene comunidades.",
     "organization": "Organización: {organization}",
     "inheritedFromOrganizationOwnership": "Heredada de la propiedad de la organización",
-    "everyoneInTheOrganizationViewsIts": "Todos en la organización ven sus bibliotecas",
-    "assignedToThisLibrary": "Asignada a esta biblioteca",
+    "everyoneInTheOrganizationViewsIts": "Todos en la organización ven sus comunidades",
+    "assignedToThisLibrary": "Asignada a esta comunidad",
     "decline": "Rechazar",
     "acceptInvitation": "Aceptar invitación",
     "deleting": "Eliminando",
@@ -5281,7 +5281,7 @@
     "viewSetup": "Ver la configuración",
     "actionsFor": "Acciones de {name}",
     "settings": "Ajustes",
-    "viewPublicLibrary": "Ver biblioteca pública",
+    "viewPublicLibrary": "Ver comunidad pública",
     "openAdmin": "Abrir administración",
     "moreActionsFor": "Más acciones de {name}",
     "declineInvitation": "¿Rechazar la invitación?",
@@ -5289,7 +5289,7 @@
     "declineInvitation2": "Rechazar invitación",
     "previewCover": "Vista previa de la portada de {title}",
     "preview": "Vista previa de {title}",
-    "declineBody": "No tendrá acceso a {name}. Sus otras bibliotecas no se ven afectadas.",
+    "declineBody": "No tendrá acceso a {name}. Sus otras comunidades no se ven afectadas.",
     "owner": "Propietario",
     "editor": "Editor",
     "creator": "Creador",
@@ -5335,9 +5335,9 @@
     "fromOpenalex": "Desde OpenAlex",
     "findAPublication": "Buscar una publicación…",
     "searchPublications": "Buscar publicaciones",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "publishedIn": "Publicado en",
-    "publishedWorksInThisLibrary": "{length} obras publicadas en esta biblioteca",
+    "publishedWorksInThisLibrary": "{length} obras publicadas en esta comunidad",
     "publications": "Publicaciones",
     "noPublicationsMatchYourSearch": "Ninguna publicación coincide con su búsqueda.",
     "noPublicationsSelectedYet": "Todavía no hay publicaciones seleccionadas.",

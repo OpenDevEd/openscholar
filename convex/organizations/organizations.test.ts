@@ -199,7 +199,7 @@ describe("an organization", () => {
     // Bob renames it, with an undo, and can't delete it while it has an Evidence Library.
     expect((await bobAs.action(api.organizations.manage.rename, { ...inLab, name: "Learning Lab" })).undo).toEqual({ path: "organizations/manage:rename", args: { name: "Lab", expect: "Learning Lab" } });
     const libraryId = await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: lab.workspaceId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "bob", updatedByClerkUserId: "bob", createdAt: 1, updatedAt: 1 }));
-    await expect(bobAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow(/Evidence Library, Library/);
+    await expect(bobAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow(/Evidence Community, Library/);
     await t.run((ctx) => ctx.db.delete("evidenceLibraries", libraryId));
     await bobAs.action(api.organizations.manage.deleteOrganization, inLab);
     expect((await bobAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Bob"]);
@@ -286,7 +286,7 @@ describe("an organization", () => {
     expect(await refusal(bob)).toMatch(/Only an admin/);
     expect(await refusal(alice)).toBeNull();
     await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: lab.workspaceId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "alice", updatedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 }));
-    expect(await refusal(alice)).toMatch(/Evidence Library, Library/);
+    expect(await refusal(alice)).toMatch(/Evidence Community, Library/);
   });
 
   it("takes its workspace and what's in it with it when it's deleted", async () => {

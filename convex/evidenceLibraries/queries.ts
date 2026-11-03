@@ -698,7 +698,7 @@ export async function readEvidenceLibraryDraft(
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   const configurationSnapshot = await loadDraftConfigurationSnapshot(
     ctx,
@@ -776,7 +776,7 @@ export async function readEvidenceLibraryRevision(
     args.revisionId,
   );
   if (!revision || revision.libraryId !== args.libraryId) {
-    throw createError("NOT_FOUND", "Evidence Library revision not found");
+    throw createError("NOT_FOUND", "Evidence Community revision not found");
   }
   const configurationSnapshot = await loadRevisionConfigurationSnapshot(
     ctx,

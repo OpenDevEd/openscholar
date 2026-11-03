@@ -101,7 +101,7 @@ describe("library access", () => {
       ),
     );
 
-    expect(crossTenant).toMatch(/FORBIDDEN.*Evidence Library access denied/);
+    expect(crossTenant).toMatch(/FORBIDDEN.*Evidence Community access denied/);
     expect(missing).toBe(crossTenant);
   });
 });

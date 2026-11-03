@@ -9,7 +9,7 @@ import { findAndReplace } from "mdast-util-find-and-replace";
 import { recordOf, type LinkedRecord } from "@/lib/assistant/view";
 
 /** An address of one of the app's record pages, whole: its path and parameters, short of a closing bracket or the sentence's last mark. */
-const ADDRESS = /\/(?:results\/|library\?|extraction\/|screening\?|evidence-libraries\/|topics\/|\?chat=)[^\s<>()[\]{}"'`]*[^\s<>()[\]{}"'`.,;:!?]/g;
+const ADDRESS = /\/(?:results\/|library\?|extraction\/|screening\?|evidence-(?:communities|libraries)\/|topics\/|\?chat=)[^\s<>()[\]{}"'`]*[^\s<>()[\]{}"'`.,;:!?]/g;
 
 export const recordLinks = (nameOf: (kind: LinkedRecord["kind"]) => string) => () => (tree: Root) => {
   findAndReplace(
