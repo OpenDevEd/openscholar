@@ -29,9 +29,9 @@ const tabs = [
   if (ws) {
     const tabs = [...ws.querySelectorAll("[role=tab]")], panes = [...ws.querySelectorAll(".pane")];
     const load = (i) => { if (i.dataset.src) { i.srcset = i.dataset.srcset; i.src = i.dataset.src; delete i.dataset.src; delete i.dataset.srcset; } };
-    // A pane's dark screen only loads once someone has asked for dark.
+    // The laptop's dark screen only loads once someone has asked for dark. The tablet and phone are always dark, so they always load.
     let want = ws.dataset.theme;
-    const fill = (k, dark = want === "dark") => panes[k].querySelectorAll("img").forEach((i) => { if (dark || !i.closest(".scr.dark")) load(i); });
+    const fill = (k, dark = want === "dark") => panes[k].querySelectorAll("img").forEach((i) => { if (dark || !i.closest(".lap .scr.dark")) load(i); });
     // Nothing swaps until its images can paint, or half a second has passed, so a slow connection never shows a blank screen.
     const ready = (k) => Promise.race([Promise.all([...panes[k].querySelectorAll("img")].filter((i) => i.getAttribute("src")).map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 500))]);
     let wanted = 0;
@@ -63,7 +63,7 @@ const tabs = [
   .mode { display: flex; flex: none; gap: 2px; margin-left: 4px; padding: 3px; border-radius: 14px; background: rgb(255 255 255 / .08); color: rgb(255 255 255 / .72); } .mode i { display: grid; place-items: center; width: 34px; height: 38px; border-radius: 11px; transition: background-color .25s var(--ease), color .25s var(--ease); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: #fff; color: var(--ink); }
   /* The one scroll-tied moment on the site. The stage holds still while the closed laptop opens on its hinge and its screen wakes, then the tablet and phone slide in from the sides and the dock arrives. Browsers without scroll timelines just show it open, with no pause. Ranges count from the pin's top edge meeting the bottom of the screen. */
   @supports (animation-timeline: view()) { @media (prefers-reduced-motion: no-preference) and (min-width: 701px) {
-    .ws-pin { --at: calc(100svh - 88px); view-timeline: --ws block; } .ws-pin::after { content: ""; display: block; height: 90svh; } .ws-pin .ws { position: sticky; top: 88px; }
+    .ws-pin { --at: calc(100svh - 88px); view-timeline: --ws block; } .ws-pin::after { content: ""; display: block; height: 116svh; } .ws-pin .ws { position: sticky; top: 88px; }
     .pane :global(.lap .body) { transform-origin: 50% 100%; animation: lid linear both; animation-range: cover calc(var(--at) - 140px) cover calc(var(--at) + 42svh); }
     .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #03061c; pointer-events: none; animation: wake linear both; animation-range: cover calc(var(--at) - 10svh) cover calc(var(--at) + 46svh); }
     .pane :global(.tb) { animation: out-l linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); } .pane :global(.ph) { animation: out-r linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); }
