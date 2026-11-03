@@ -119,6 +119,6 @@ Uma ungathanda ukuvimbela ukudalwa kwe-cookie yethu yokuhlaziya:
 
 Uma unemibuzo ngezinqubo zethu zama-cookie, sicela usithinte:
 
-**Imeyili**: contact@opendeved.net
+**Imeyili**: support@openscholar.ai
 
 **Okubuyekezwe kokugcina**: 13 Febhuwari 2026

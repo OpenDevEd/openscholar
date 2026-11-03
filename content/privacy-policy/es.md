@@ -17,7 +17,7 @@ Este aviso de privacidad le explica qué puede esperar que hagamos con sus datos
 
 # **Datos de contacto**
 
-Correo electrónico: contact@opendeved.net
+Correo electrónico: support@openscholar.ai
 
 # **Qué información recopilamos, usamos y por qué**
 

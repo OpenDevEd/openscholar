@@ -106,9 +106,9 @@ async function main() {
         );
       }
 
-      if (!current.content.includes("contact@opendeved.net")) {
+      if (!current.content.includes("support@openscholar.ai")) {
         failures.push(
-          `${current.filePath}: required contact marker contact@opendeved.net is missing`
+          `${current.filePath}: required contact marker support@openscholar.ai is missing`
         );
       }
 

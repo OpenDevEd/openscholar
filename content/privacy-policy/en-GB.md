@@ -17,7 +17,7 @@ This privacy notice tells you what to expect us to do with your personal informa
 
 # **Contact details**
 
-Email: contact@opendeved.net
+Email: support@openscholar.ai
 
 # **What information we collect, use, and why**
 

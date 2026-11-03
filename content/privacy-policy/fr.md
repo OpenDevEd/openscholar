@@ -17,7 +17,7 @@ Cet avis de confidentialité vous indique ce que nous faisons de vos information
 
 # **Coordonnées**
 
-E-mail : contact@opendeved.net
+E-mail : support@openscholar.ai
 
 # **Informations que nous collectons, utilisons et pourquoi**
 

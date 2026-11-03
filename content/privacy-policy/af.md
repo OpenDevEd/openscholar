@@ -17,7 +17,7 @@ Hierdie privaatheidskennisgewing vertel jou wat om van ons te verwag met jou per
 
 # **Kontakbesonderhede**
 
-E-pos: contact@opendeved.net
+E-pos: support@openscholar.ai
 
 # **Watter inligting ons versamel, gebruik en waarom**
 
