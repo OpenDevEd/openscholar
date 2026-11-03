@@ -248,22 +248,14 @@
     "perMonth": "/شهر",
     "freePrice": "مجاني",
     "enterprisePlanName": "المؤسسات",
-    "freeDescription": "ابدأ مجانًا، دون الحاجة إلى بطاقة",
-    "goDescription": "للباحثين النشطين الذين يحتاجون إلى الترجمة وقدرة أكبر من الذكاء الاصطناعي",
-    "proDescription": "مسار المراجعة المنهجية الكامل",
+    "freeDescription": "لا حاجة إلى بطاقة.",
     "enterpriseDescription": "نشر على مستوى المؤسسة بأقصى سعة",
     "creditsOnce": "رصيد التسجيل لمرة واحدة: {credits, number}",
-    "freeFeature2": "البحث والتصفية الكاملان",
-    "freeFeature3": "ميزات الذكاء الاصطناعي بمفتاح API الخاص بك",
     "creditsPerMonth": "الرصيد الشهري: {credits, number}",
-    "goFeature2": "ترجمة الاستعلامات والأوراق",
-    "goFeature3": "ذكاء اصطناعي من الخادم أو بمفتاحك الخاص",
     "features": {
       "extraction": "استخلاص البيانات",
       "authors": "ملفات المؤلفين"
     },
-    "proFeature3": "تشمل جميع ميزات Go",
-    "proFeature4": "دعم ذو أولوية",
     "enterpriseFeature1": "الرصيد الشهري: {credits, number}",
     "enterpriseFeature2": "كل ما في Pro",
     "enterpriseFeature3": "تسجيل دخول موحّد (SSO) وسجلات التدقيق",
@@ -296,14 +288,32 @@
       "changeSeats": "تغيير المقاعد",
       "keepTeam": "الإبقاء على {plan}",
       "movesOn": "ينتقل في {date}",
-      "moveToFreeAtRenewal": "تبقى {organization} على باقة الفريق حتى {date}. بعد ذلك تنتقل إلى {plan}، مع ما يصل إلى {members, number} من الأعضاء ورصيد مشترك شهري قدره {credits, number}."
+      "moveToFreeAtRenewal": "تبقى {organization} على باقة الفريق حتى {date}. بعد ذلك تنتقل إلى {plan}، مع ما يصل إلى {members, number} من الأعضاء ورصيد مشترك شهري قدره {credits, number}.",
+      "alphaFreeDescription": "اعملوا معًا برصيد مشترك واحد.",
+      "noMemberLimit": "بلا حد للأعضاء",
+      "southernFeature1": "كل ما في المؤسسة المجانية",
+      "southernFeature2": "تضاف إلى مؤسستك بعد التواصل معنا",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "تُفعَّل لمؤسستك عند الطلب. تبقى خطتها ورصيدها كما هما.",
+      "librariesFeature1": "Evidence Libraries عامة",
+      "librariesFeature2": "إنشاء ملفات المؤلفين وتعديلها",
+      "librariesOn": "مفعّلة لمؤسستك",
+      "openLibraries": "فتح Evidence Libraries"
     },
     "cancelScheduledDowngrade": "إلغاء التخفيض المجدول",
     "scheduled": "مجدول",
     "manageInBillingPortal": "الإدارة في بوابة الفوترة",
     "downgradeTo": "التخفيض إلى {name}",
     "metadataTitle": "الأسعار | OpenScholar",
-    "metadataDescription": "أسعار بسيطة وشفافة للفرق بكل أحجامها."
+    "metadataDescription": "أسعار بسيطة وشفافة للفرق بكل أحجامها.",
+    "everyFeature": "كل ميزات OpenScholar",
+    "papersRunning": "{running, number} ورقة قيد التشغيل في الوقت نفسه",
+    "papersInRequest": "{request, number} ورقة في الطلب الواحد",
+    "unlimitedCollectionsAndGuests": "مجموعات وضيوف بلا حدود",
+    "southernDescription": "للباحثين في البلدان منخفضة ومتوسطة الدخل.",
+    "southernFeature1": "كل ما في Free",
+    "southernFeature2": "تضاف إلى حسابك بعد التواصل معنا",
+    "onRequest": "عند الطلب"
   },
   "publicationSettings": {
     "credentials": "بيانات اعتماد {provider}",
@@ -374,9 +384,7 @@
     "aiConfiguration": "إعداد الذكاء الاصطناعي"
   },
   "billingPage": {
-    "upgradePlan": "ترقية الباقة",
     "manageSubscriptionBtn": "إدارة الاشتراك",
-    "upgradeDescription": "رقِّ باقتك لفتح أرصدة وميزات أكثر.",
     "failedToLoadDetails": "تعذّر تحميل التفاصيل",
     "paymentFailedNotice": "فشل الدفع. حدّث طريقة الدفع للإبقاء على اشتراكك نشطًا.",
     "perInterval": "/ {interval}",
@@ -424,7 +432,8 @@
     "topUpConfirm": "شراء الأرصدة",
     "topUpDue": "المستحق الآن",
     "topUpBalanceNow": "الرصيد",
-    "topUpBalanceAfter": "بعد الشراء"
+    "topUpBalanceAfter": "بعد الشراء",
+    "seePlans": "عرض الخطط"
   },
   "errors": {
     "unexpectedIssue": "حدثت مشكلة غير متوقعة. أعد المحاولة، أو عُد إلى صفحة مستقرة.",
@@ -2990,7 +2999,8 @@
       "admins": "المشرفون",
       "plans": "الباقات",
       "users": "المستخدمون",
-      "aiModels": "نماذج الذكاء الاصطناعي"
+      "aiModels": "نماذج الذكاء الاصطناعي",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "التطوير المشترك",
     "production": "الإنتاج",
@@ -3089,6 +3099,19 @@
     "ai": {
       "modelCount": "{count, plural, one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}}",
       "creditsOrKey": "الأرصدة، أو مفتاح المستخدم"
+    },
+    "evidenceLibraries": {
+      "title": "الوصول إلى Evidence Library",
+      "organizations": "مؤسسات",
+      "search": "ابحث عن مؤسسات",
+      "show": "عرض",
+      "all": "الكل",
+      "on": "مفعّل",
+      "off": "غير مفعّل",
+      "libraries": "{count, plural, one {مكتبة واحدة} two {مكتبتان} few {# مكتبات} other {# مكتبة}}",
+      "switchLabel": "Evidence Libraries لـ {name}",
+      "moveFirst": "انقل مكتباتها أو احذفها أولًا",
+      "noMatches": "لا توجد مؤسسات مطابقة"
     }
   },
   "settingsAi": {
@@ -4526,7 +4549,11 @@
       "confirmPayment": "تأكيد الدفع",
       "seatHeldUndated": "أنفقوا أرصدة في فترة الفوترة هذه، لذلك يبقى مقعدهم مشغولًا حتى التجديد.",
       "paymentFailedEnds": "فشل دفع {amount}. تنتهي {plan} في {date} ما لم يُدفع المبلغ.",
-      "paymentFailed": "فشلت آخر عملية دفع."
+      "paymentFailed": "فشلت آخر عملية دفع.",
+      "noMemberLimit": "بلا حد للأعضاء",
+      "membersUnit": "{count, plural, one {عضو} other {أعضاء}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "عرض الخطط"
     },
     "couldntInvite": "أُنشئت المؤسسة، لكن الدعوات لم تُرسل. أرسلها من إعدادات الأعضاء فيها.",
     "fromCredits": "من أرصدة {name}",
@@ -4662,7 +4689,6 @@
       "guestCount": "{count, plural, zero {لا ضيوف} one {# ضيف} two {ضيفان} few {# ضيوف} many {# ضيفًا} other {# ضيف}}",
       "noLimit": "بلا حد",
       "usedOf": "{used} من {limit}",
-      "moreGuests": "ضيوف آخرون",
       "full": {
         "collection": "تتيح {plan} {count, plural, zero {لا ضيوف} one {ضيفًا واحدًا} two {ضيفين} few {# ضيوف} many {# ضيفًا} other {# ضيف}} لكل مجموعة",
         "screening": "تتيح {plan} {count, plural, zero {لا ضيوف} one {ضيفًا واحدًا} two {ضيفين} few {# ضيوف} many {# ضيفًا} other {# ضيف}} لكل عملية فرز",
@@ -4879,9 +4905,7 @@
     "ask": {
       "write": "كتابة النظرة العامة",
       "reads": "تقرأ كل النتائج البالغ عددها {count}",
-      "go": "مجانًا وتلقائيًا في Go",
       "back": "تعود النظرات العامة المجانية في {time}",
-      "pro": "{count} يوميًا في Pro",
       "noCredits": "لم تعد هناك أرصدة",
       "getCredits": "الحصول على أرصدة",
       "limit": "استُنفدت النظرات العامة المدفوعة البالغة {count} لليوم. المزيد في {time}"
@@ -5405,5 +5429,12 @@
     "confirm": "تأكيد",
     "usedSources": "{count, plural, zero {لم يُستخدم أي مصدر} one {استُخدم # مصدر} two {استُخدم مصدران} few {استُخدم # مصادر} many {استُخدم # مصدرًا} other {استُخدم # مصدر}}",
     "navigation": "التنقل"
+  },
+  "alpha": {
+    "strip": "إصدار ألفا عام للاختبار.",
+    "stripDetail": "قد تتغير الأشياء أو تتعطل.",
+    "contactUs": "تواصل معنا",
+    "plansNotice": "OpenScholar مجاني خلال إصدار ألفا العام، مع كل الميزات. ستتغير الخطط بعد ذلك.",
+    "emailAddress": "راسل {email}"
   }
 }

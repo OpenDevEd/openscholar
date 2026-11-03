@@ -130,7 +130,6 @@ export const overviewViewValidator = v.object({
   paid: v.number(),
   perDay: v.union(v.number(), v.null()),
   paidPerDay: v.number(),
-  proPerDay: v.union(v.number(), v.null()),
   credits: v.union(v.number(), v.null()),
 });
 export const overviewShownValidator = v.object({

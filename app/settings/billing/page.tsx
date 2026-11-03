@@ -276,7 +276,7 @@ export default function BillingPage() {
                     ) : null}
                   </p>
                   <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {onPaidPlan && monthly > 0 ? (
+                    {monthly > 0 ? (
                       <span className="inline-flex items-center gap-1.5">
                         <Coins className="size-3.5" />
                         {t("creditsAMonth", { amount: format.number(monthly) })}
@@ -288,7 +288,6 @@ export default function BillingPage() {
                         {account.card.brand} {account.card.last4}
                       </span>
                     ) : null}
-                    {!onPaidPlan ? <span>{t("upgradeDescription")}</span> : null}
                   </p>
                 </div>
                 {change ? (

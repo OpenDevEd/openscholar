@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
-import { FAKE_SEAT_CREDITS, fakeAutumn, installFakeAutumn } from "./billing.test-support";
+import { FAKE_SEAT_CREDITS, fakeAutumn, installFakeAutumn, sellTeamForTest } from "./billing.test-support";
 
 beforeEach(() => {
   installFakeAutumn();
@@ -25,6 +25,7 @@ const ORGANIZATION = { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab",
 async function lab(people: string[]) {
   const t = convexTest(schema);
   const workspaceId = await t.run(async (ctx) => {
+    await sellTeamForTest(ctx);
     const organizationId = await ctx.db.insert("organizations", { ...ORGANIZATION, state: "active", createdAt: 1, updatedAt: 1 });
     for (const who of people) await ctx.db.insert("users", { clerkId: `user_${who}`, email: `${who}@lab.test`, firstName: who, state: "active", createdAt: 1, updatedAt: 1 });
     return (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;

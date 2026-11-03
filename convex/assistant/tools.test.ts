@@ -894,7 +894,7 @@ describe("the assistant's tools", () => {
     await say("Screen my trials into a new collection, and extract sample sizes from 1,500 of them");
 
     expect(told(1, "screen")).toEqual({ error: "Collection name cannot be empty" });
-    expect(told(1, "extract")).toEqual({ error: "Your plan takes up to 1,000 papers in one extraction. Pick fewer, or change plan for more." });
+    expect(told(1, "extract")).toEqual({ error: "Your plan takes up to 1,000 papers in one extraction. Pick fewer." });
     expect(await steps()).toEqual([]);
   });
 

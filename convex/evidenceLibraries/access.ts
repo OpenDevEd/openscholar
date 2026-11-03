@@ -2,8 +2,7 @@ import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL }
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { hasPlanFeature } from "../billing/accounts";
-import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { opensLibraries } from "../billing/accounts";
 import { addressesOf } from "../lib/people";
 
 /**
@@ -173,8 +172,8 @@ export async function readEvidenceLibraryAccess(
   if (!role || ((action === "manage" || action === "remove") && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
-  // Managing takes the feature, which the plan of the workspace that owns the library grants (#652).
-  if (action === "manage" && !(await hasPlanFeature(ctx, owner.workspace._id, EVIDENCE_LIBRARIES_FEATURE))) return null;
+  // Managing takes Evidence Libraries in the workspace that owns the library (#652).
+  if (action === "manage" && !(await opensLibraries(ctx, owner.workspace._id))) return null;
   return { clerkUserId: identity.subject, owner, organization: owner.organization, role, library };
 }
 

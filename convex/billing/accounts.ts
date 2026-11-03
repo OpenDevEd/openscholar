@@ -10,7 +10,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "../lib/functions";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
@@ -21,7 +21,7 @@ import {
   billingAccountSnapshotValidator,
   type BillingAccountSnapshot,
 } from "./validators";
-import { ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
@@ -130,7 +130,7 @@ export async function planLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"wo
 export async function checkRequestPapers(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, papers: number, what: "screening" | "extraction") {
   const most = await planLimit(ctx, workspaceId, "request_papers");
   if (most !== undefined && papers > most) {
-    throw createError("VALIDATION_ERROR", `Your plan takes up to ${most.toLocaleString("en")} papers in one ${what}. Pick fewer, or change plan for more.`);
+    throw createError("VALIDATION_ERROR", `Your plan takes up to ${most.toLocaleString("en")} papers in one ${what}. Pick fewer.`);
   }
 }
 
@@ -141,6 +141,21 @@ export async function hasPlanFeature(
   featureId: string,
 ): Promise<boolean> {
   return (await readAccount(ctx, workspaceId))?.features?.includes(featureId) ?? false;
+}
+
+/**
+ * Whether the workspace opens Evidence Libraries and the managing of author profiles: its plan
+ * grants them, or it's an organization OpenScholar's admins switched them on for.
+ */
+export async function opensLibraries(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">): Promise<boolean> {
+  if (await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) return true;
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  return workspace?.kind === "organization" && (await ctx.db.get("organizations", workspace.organizationId))?.evidenceLibraries === true;
+}
+
+/** Whether the Team plan and its seats are on sale. Off, an organization has no member limit and every one has member caps. */
+export async function seatBillingOn(ctx: Pick<QueryCtx, "db">): Promise<boolean> {
+  return (await ctx.db.query("featureFlags").withIndex("by_key", (q) => q.eq("key", "subscriptions.team")).unique())?.enabled === true;
 }
 
 /**
@@ -257,7 +272,9 @@ export const provision = internalAction({
     const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId });
     const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined;
     const snapshot = await refreshAccount(ctx, workspaceId, { email: user.email, name });
-    if (!snapshot.signupGranted) {
+    // Which plans exist is Autumn's to say: signup credits are given while its catalog has them.
+    const catalog = await ctx.runQuery(api.billing.catalog.get, {});
+    if (!snapshot.signupGranted && (!catalog || catalog.plans.some((plan) => plan.id === SIGNUP_PLAN))) {
       await autumn.attach({
         customerId: userId,
         planId: SIGNUP_PLAN,

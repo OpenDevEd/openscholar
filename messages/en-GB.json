@@ -248,22 +248,14 @@
     "perMonth": "/mo",
     "freePrice": "Free",
     "enterprisePlanName": "Enterprise",
-    "freeDescription": "Start for free — no card required",
-    "goDescription": "For active researchers who need translation and more AI power",
-    "proDescription": "Full systematic review workflow",
+    "freeDescription": "No card required.",
     "enterpriseDescription": "Institution-wide deployment with maximum capacity",
     "creditsOnce": "{credits, number} one-time signup credits",
-    "freeFeature2": "Full search & filtering",
-    "freeFeature3": "AI features with your own API key",
     "creditsPerMonth": "{credits, number} credits per month",
-    "goFeature2": "Query & paper translation",
-    "goFeature3": "Server-side AI + your own key",
     "features": {
       "extraction": "Data extraction",
       "authors": "Author profiles"
     },
-    "proFeature3": "All Go features included",
-    "proFeature4": "Priority support",
     "enterpriseFeature1": "{credits, number} credits per month",
     "enterpriseFeature2": "Everything in Pro",
     "enterpriseFeature3": "SSO & audit logs",
@@ -296,14 +288,32 @@
       "changeSeats": "Change seats",
       "keepTeam": "Keep {plan}",
       "movesOn": "Moves on {date}",
-      "moveToFreeAtRenewal": "{organization} keeps Team until {date}. Then it moves to {plan}, with up to {members, number} members and {credits, number} shared credits a month."
+      "moveToFreeAtRenewal": "{organization} keeps Team until {date}. Then it moves to {plan}, with up to {members, number} members and {credits, number} shared credits a month.",
+      "alphaFreeDescription": "Work together on one pool of credits.",
+      "noMemberLimit": "No limit on members",
+      "southernFeature1": "Everything in Free organisation",
+      "southernFeature2": "Added to your organisation after you contact us",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "Turned on for your organisation by request. Its plan and credits stay the same.",
+      "librariesFeature1": "Public Evidence Libraries",
+      "librariesFeature2": "Create and edit author profiles",
+      "librariesOn": "On for your organisation",
+      "openLibraries": "Open Evidence Libraries"
     },
     "cancelScheduledDowngrade": "Cancel scheduled downgrade",
     "scheduled": "Scheduled",
     "manageInBillingPortal": "Manage in billing portal",
     "downgradeTo": "Downgrade to {name}",
     "metadataTitle": "Pricing | OpenScholar",
-    "metadataDescription": "Simple, transparent pricing for teams of all sizes."
+    "metadataDescription": "Simple, transparent pricing for teams of all sizes.",
+    "everyFeature": "Every feature in OpenScholar",
+    "papersRunning": "{running, number} papers running at once",
+    "papersInRequest": "{request, number} papers in one request",
+    "unlimitedCollectionsAndGuests": "Unlimited collections and guests",
+    "southernDescription": "For researchers in low- and middle-income countries.",
+    "southernFeature1": "Everything in Free",
+    "southernFeature2": "Added to your account after you contact us",
+    "onRequest": "On request"
   },
   "publicationSettings": {
     "credentials": "{provider} credentials",
@@ -374,8 +384,6 @@
     "aiConfiguration": "AI configuration"
   },
   "billingPage": {
-    "upgradePlan": "Upgrade plan",
-    "upgradeDescription": "Upgrade your plan to unlock more credits and features.",
     "failedToLoadDetails": "Failed to load details",
     "paymentFailedNotice": "Payment failed. Update your payment method to keep your subscription active.",
     "perInterval": "/ {interval}",
@@ -423,7 +431,8 @@
     "jobCharges": "This job's charges",
     "chargesLabel": "charges",
     "paymentFailedEnds": "The payment of {amount} failed. {plan} ends on {date} unless it's paid.",
-    "fixPayment": "Fix payment"
+    "fixPayment": "Fix payment",
+    "seePlans": "See plans"
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
@@ -2989,7 +2998,8 @@
       "admins": "Admins",
       "plans": "Plans",
       "users": "Users",
-      "aiModels": "AI models"
+      "aiModels": "AI models",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "Shared dev",
     "production": "Production",
@@ -3088,6 +3098,19 @@
     "ai": {
       "modelCount": "{count, plural, one {# model} other {# models}}",
       "creditsOrKey": "Credits, or the user's key"
+    },
+    "evidenceLibraries": {
+      "title": "Evidence Library access",
+      "organizations": "organisations",
+      "search": "Search organisations",
+      "show": "Show",
+      "all": "All",
+      "on": "On",
+      "off": "Off",
+      "libraries": "{count, plural, one {# library} other {# libraries}}",
+      "switchLabel": "Evidence Libraries for {name}",
+      "moveFirst": "Move or delete its libraries first",
+      "noMatches": "No organisations match"
     }
   },
   "settingsAi": {
@@ -4525,7 +4548,11 @@
       "confirmPayment": "Confirm payment",
       "seatHeldUndated": "They spent credits this billing period, so their seat stays taken until the renewal.",
       "paymentFailedEnds": "The payment of {amount} failed. {plan} ends on {date} unless it's paid.",
-      "paymentFailed": "The last payment failed."
+      "paymentFailed": "The last payment failed.",
+      "noMemberLimit": "No limit on members",
+      "membersUnit": "{count, plural, one {member} other {members}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "See plans"
     },
     "couldntInvite": "The organisation was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",
@@ -4661,7 +4688,6 @@
       "guestCount": "{count, plural, one {# guest} other {# guests}}",
       "noLimit": "No limit",
       "usedOf": "{used} of {limit}",
-      "moreGuests": "More guests",
       "full": {
         "collection": "{plan} allows {count, plural, one {# guest} other {# guests}} on each collection",
         "screening": "{plan} allows {count, plural, one {# guest} other {# guests}} on each screening",
@@ -4878,9 +4904,7 @@
     "ask": {
       "write": "Write overview",
       "reads": "Reads all {count} results",
-      "go": "Free and automatic on Go",
       "back": "Free overviews back at {time}",
-      "pro": "{count} a day on Pro",
       "noCredits": "No credits left",
       "getCredits": "Get credits",
       "limit": "Today's {count} paid overviews are used. More at {time}"
@@ -5404,5 +5428,12 @@
     "confirm": "Confirm",
     "usedSources": "{count, plural, one {Used # source} other {Used # sources}}",
     "navigation": "Navigation"
+  },
+  "alpha": {
+    "strip": "Public alpha for testing.",
+    "stripDetail": "Things may change or break.",
+    "contactUs": "Contact us",
+    "plansNotice": "OpenScholar is free during the public alpha, with every feature included. Plans will change after it.",
+    "emailAddress": "Email {email}"
   }
 }

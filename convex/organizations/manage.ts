@@ -116,7 +116,9 @@ export const createAction = defineChangingAction({
   run: async (ctx, { userId, workspaceId }, { name }): Promise<{ workspaceId: Id<"workspaces">; slug: string }> => {
     const key = clerkSecretKey();
     const { clerkUserId }: Context = await ctx.runQuery(internal.organizations.read.context, { userId, workspaceId });
-    const organization = await createInClerk(key, requireName(name), clerkUserId);
+    // While seats aren't on sale it has no member limit from the start: Clerk's default would refuse an invitation before its first sync.
+    const seatBilling: boolean = await ctx.runQuery(internal.billing.seats.seatBilling, {});
+    const organization = await createInClerk(key, requireName(name), clerkUserId, seatBilling);
     if (!isRecord(organization) || typeof organization.id !== "string") throw new Error("Clerk answered without the organization");
     await keep(ctx, key, "organization.created", organization);
     // Clerk makes its creator an admin; keep that membership too. Clerk's webhook brings it if this
@@ -140,11 +142,11 @@ const slugOf = (name: string) =>
   name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40).replace(/^-+|-+$/g, "") || "organization";
 
 /** Makes the organization in Clerk at the address its name gives it, or, when another has that, the same with a few letters after it. */
-async function createInClerk(key: string, name: string, clerkUserId: string) {
+async function createInClerk(key: string, name: string, clerkUserId: string, seatBilling: boolean) {
   const slug = slugOf(name);
   for (let attempt = 0; ; attempt++) {
     try {
-      return (await clerkRequest(key, "POST", "/organizations", { name, slug: attempt ? `${slug}-${crypto.randomUUID().slice(0, 4)}` : slug, created_by: clerkUserId })).body;
+      return (await clerkRequest(key, "POST", "/organizations", { name, slug: attempt ? `${slug}-${crypto.randomUUID().slice(0, 4)}` : slug, created_by: clerkUserId, ...(seatBilling ? {} : { max_allowed_memberships: 0 }) })).body;
     } catch (error) {
       if (attempt < 3 && error instanceof ClerkApiError && error.code === "form_identifier_exists") continue;
       refused(error);
@@ -157,7 +159,7 @@ export const inviteAction = defineChangingAction({
   path: "organizations/manage:invite",
   description:
     `Invites people to the organization the person is in, by email, as admins or members; an admin of it does this. Clerk emails each a link to join. At most ${INVITES_AT_ONCE} at once. ` +
-    `A free organization has up to ${FREE_MEMBERS} members, invitations included. On Team members, invitations and seats held to the renewal fill the seats bought (billing/seats:counts): ` +
+    `While the Team plan is on sale a free organization has up to ${FREE_MEMBERS} members, invitations included; otherwise there's no limit. On Team members, invitations and seats held to the renewal fill the seats bought (billing/seats:counts): ` +
     "with too few free, `addSeat` buys the seats missing first, charged to the organization's card for the days left to the renewal, and nothing is sent if the card is declined. Returns how many were invited.",
   args: { emails: v.array(v.string()), role: ROLE, addSeat: v.optional(v.boolean()) },
   returns: v.object({ invited: v.number() }),

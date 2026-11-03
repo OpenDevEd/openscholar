@@ -18,7 +18,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { Grouping } from "@/convex/research/searchValidators";
 import type { Locale } from "@/i18n/config";
 import { readCitedPapers } from "@/app/actions/overview-papers";
-import { AiIcon, ChevronDown, Coins, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, UpgradeIcon, Users } from "@/components/icons";
+import { AiIcon, ChevronDown, Coins, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, Users } from "@/components/icons";
 import { WorkingText } from "@/components/assistant/parts";
 import { RECORD_CHIP, recordChipStyle } from "@/components/assistant/mentions";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
@@ -304,14 +304,6 @@ function Ask({ view, total, freePlan, paidUsed, onWrite }: { view: View; total: 
       {noCredits && !atLimit ? (
         <Link href={href("/settings/billing")} className="ms-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           <Coins className="size-4" /> {t("getCredits")}
-        </Link>
-      ) : !freePlan && view.proPerDay !== null && view.perDay !== null && view.proPerDay > view.perDay ? (
-        <Link href={href("/pricing")} className="ms-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          <UpgradeIcon className="size-4" /> {t("pro", { count: view.proPerDay })}
-        </Link>
-      ) : freePlan ? (
-        <Link href={href("/pricing")} className="ms-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          <UpgradeIcon className="size-4" /> {t("go")}
         </Link>
       ) : null}
     </div>

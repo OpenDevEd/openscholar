@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { fakeAutumn, fakeAutumnFetch } from "../billing/billing.test-support";
+import { fakeAutumn, fakeAutumnFetch, sellTeamForTest } from "../billing/billing.test-support";
 import { ORGANIZATION_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
 import { paperOf } from "../lib/paperRef.test-support";
 
@@ -104,6 +104,7 @@ afterEach(() => {
 
 async function people() {
   const t = convexTest(schema);
+  await t.run(sellTeamForTest);
   const ids = await t.run(async (ctx) => {
     const add = (clerkId: string, firstName: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, firstName, state: "active", createdAt: 1, updatedAt: 1 });
     return { alice: await add("alice", "Alice"), bob: await add("bob", "Bob") };

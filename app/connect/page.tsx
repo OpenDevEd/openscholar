@@ -113,7 +113,7 @@ export default function ConnectPage() {
   const waiting = phase === "initializing" || (phase === "authenticated" && workspaces.list === undefined);
   if (phase === "anonymous" || waiting) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
         {waiting ? (
           <AuthStatePanel variant="loading" />
         ) : (
@@ -137,7 +137,7 @@ export default function ConnectPage() {
   // ── Key created — show for manual copy ─────────────────────
   if (state === "show_key" && generatedKey) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
         <div className="max-w-md w-full space-y-6">
           <div className="text-center space-y-2">
             <div className="text-3xl">&#x2713;</div>
@@ -182,7 +182,7 @@ export default function ConnectPage() {
   // ── Origin not allowed ──────────────────────────────────────
   if (!isManualMode && isOriginAllowed === false) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
         <div className="max-w-md w-full space-y-6 text-center">
           <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
             <span className="text-2xl">&#x26D4;</span>
@@ -212,7 +212,7 @@ export default function ConnectPage() {
 
   // ── Consent screen ─────────────────────────────────────────
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
+    <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
       <div className="max-w-md w-full space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-semibold">{t("connectApp")}</h1>

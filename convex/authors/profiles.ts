@@ -1,5 +1,4 @@
-import { hasPlanFeature } from "../billing/accounts";
-import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { opensLibraries } from "../billing/accounts";
 import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
@@ -52,7 +51,7 @@ const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union
  * a library shared with the person isn't that. A plan is its workspace's alone.
  */
 export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
-  if (!(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE))) throw createError("FORBIDDEN", "This workspace's plan doesn't include Evidence Libraries, which author profiles come with.");
+  if (!(await opensLibraries(ctx, workspaceId))) throw createError("FORBIDDEN", "This workspace's plan doesn't include Evidence Libraries, which author profiles come with.");
 }
 
 /** Makes a profile owned by the page's workspace. */

@@ -9,7 +9,7 @@ import { useMutation } from "convex/react";
 import { ConvexError } from "convex/values";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { AlertCircle, ArrowRight, CalendarClock, Camera, Check, ChevronRight, Coins, Copy, CreditCard, EvidenceLibrariesIcon, FileSearch, Folder, Hourglass, ListFilter, LogOut, Mail, Pencil, Repeat, RotateCcw, Search, Trash2, Users, X } from "@/components/icons";
+import { Library, AlertCircle, ArrowRight, CalendarClock, Camera, Check, ChevronRight, Coins, Copy, CreditCard, EvidenceLibrariesIcon, FileSearch, Folder, Hourglass, ListFilter, LogOut, Mail, Pencil, Repeat, RotateCcw, Search, Trash2, Users, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Paged, Segmented, Tile, Zone } from "@/components/settings/parts";
@@ -41,6 +41,8 @@ import type { FunctionReturnType } from "convex/server";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { useSeatBilling } from "@/lib/feature-flags/hook";
+import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { useHydrated } from "@/lib/use-hydrated";
 import { findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
@@ -360,6 +362,7 @@ export function WorkspaceMembers() {
   const invitations = useCursorPage(api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE);
   // Members, invitations and seats counted in full: the switcher's count stops at a hundred and one.
   const team = organization?.plan === TEAM_PLAN;
+  const seatBilling = useSeatBilling();
   const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
   const { account, catalog } = useSharedSubscriptionState();
   const invite = useWorkspaceAction(api.organizations.manage.invite);
@@ -393,7 +396,9 @@ export function WorkspaceMembers() {
   const used = memberCount + counts.invitations + held;
   const seats = team && !toFree ? counts.seats : FREE_MEMBERS;
   const free = Math.max(0, seats - used);
-  const full = used >= seats;
+  // While seats aren't on sale a free organization has no limit, so none of this is shown.
+  const counted = team || seatBilling;
+  const full = counted && used >= seats;
   const teamName = (catalog && findPlan(catalog, TEAM_PLAN)?.name) || TEAM_PLAN;
   const seatPrice = (catalog && findPlan(catalog, SEAT_PLAN)?.price?.amount) ?? 0;
   const date = (ms: number) => format.dateTime(new Date(ms), { month: "short", day: "numeric" });
@@ -430,10 +435,21 @@ export function WorkspaceMembers() {
         <section className="space-y-3 rounded-2xl border border-border-subtle p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-3xl font-semibold tabular-nums tracking-tight">
-                {used} <span className="text-lg font-normal text-muted-foreground">{t("ofSeats", { seats })}</span>
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: planName })}</p>
+              {counted ? (
+                <>
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                    {used} <span className="text-lg font-normal text-muted-foreground">{t("ofSeats", { seats })}</span>
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: planName })}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                    {memberCount} <span className="text-lg font-normal text-muted-foreground">{t("membersUnit", { count: memberCount })}</span>
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t("noMemberLimit")}</p>
+                </>
+              )}
             </div>
             {admin && team ? (
               <Button asChild variant="outline" size="sm">
@@ -441,8 +457,8 @@ export function WorkspaceMembers() {
               </Button>
             ) : null}
           </div>
-          {/* A segment a seat while they're few enough to count: members, held seats, invitations waiting for an answer, then free ones; past that, one bar. */}
-          {seats <= SEAT_SEGMENTS ? (
+          {counted ? (
+            seats <= SEAT_SEGMENTS ? (
             <div className="flex gap-1" aria-hidden>
               {Array.from({ length: seats }, (_, i) => (
                 <span key={i} className={cn("h-2 flex-1 rounded-full", segment(i))} />
@@ -454,12 +470,15 @@ export function WorkspaceMembers() {
               {held > 0 ? <span className="h-full rounded-full bg-warning/70" style={{ width: `${(held / seats) * 100}%` }} /> : null}
               {counts.invitations > 0 ? <span className="h-full rounded-full bg-primary/40" style={{ width: `${(counts.invitations / seats) * 100}%` }} /> : null}
             </div>
-          )}
+            )
+          ) : null}
           {/* What fills the seats, each tinted as its segments are. */}
           <div className="flex flex-wrap gap-1.5 text-xs tabular-nums">
-            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/12 px-2.5 text-primary">
-              <Users className="size-3.5" /> {t("membersCount", { count: memberCount })}
-            </span>
+            {counted ? (
+              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/12 px-2.5 text-primary">
+                <Users className="size-3.5" /> {t("membersCount", { count: memberCount })}
+              </span>
+            ) : null}
             {held > 0 ? (
               <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-warning/15 px-2.5 ink-warning">
                 <Hourglass className="size-3.5" /> {renewal ? t("heldUntil", { count: held, date: date(renewal) }) : t("heldCount", { count: held })}
@@ -470,7 +489,7 @@ export function WorkspaceMembers() {
                 <Mail className="size-3.5" /> {t("invitedCount", { count: counts.invitations })}
               </span>
             ) : null}
-            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-muted px-2.5 text-muted-foreground">{t("freeCount", { count: free })}</span>
+            {counted ? <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-muted px-2.5 text-muted-foreground">{t("freeCount", { count: free })}</span> : null}
           </div>
         </section>
 
@@ -670,6 +689,8 @@ export function WorkspaceBilling() {
   const format = useFormatter();
   const { workspaceId, organization, admin } = useOrganization();
   const { account, catalog } = useSharedSubscriptionState();
+  const seatBilling = useSeatBilling();
+  const libraries = useWorkspaceFeatures().data?.evidenceLibraries === true;
   const spending = useMemberSpending(workspaceId);
   // The seats it bought and what fills them, counted in full.
   const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
@@ -709,7 +730,8 @@ export function WorkspaceBilling() {
   // A limit the plan doesn't set isn't named; null is unlimited.
   const included = [
     // Team's members are its seats, which the card above counts.
-    ...(team ? [] : [{ icon: Users, label: t("includedMembers", { count: FREE_MEMBERS }) }]),
+    ...(team ? [] : [{ icon: Users, label: seatBilling ? t("includedMembers", { count: FREE_MEMBERS }) : t("noMemberLimit") }]),
+    ...(libraries ? [{ icon: Library, label: t("evidenceLibrariesIncluded") }] : []),
     ...(limits?.collections === undefined ? [] : [{ icon: Folder, label: limits.collections === null ? t("unlimitedCollections") : t("includedCollections", { count: limits.collections }) }]),
     ...(limits?.concurrency == null ? [] : [{ icon: ListFilter, label: t("papersAtOnce", { count: limits.concurrency }) }]),
     ...(limits?.request_papers === undefined ? [] : [{ icon: FileSearch, label: limits.request_papers === null ? t("anyPapersAJob") : t("papersAJob", { count: limits.request_papers }) }]),
@@ -807,7 +829,7 @@ export function WorkspaceBilling() {
                   ) : null}
                 </div>
               ) : (
-                <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>
+                <p className="text-sm tabular-nums text-muted-foreground">{seatBilling ? t("upToMembers", { count: FREE_MEMBERS }) : t("noMemberLimit")}</p>
               )}
             </div>
             {admin ? (
@@ -839,7 +861,7 @@ export function WorkspaceBilling() {
               ) : (
                 <Button asChild size="sm">
                   <Link href="/pricing">
-                    {t("moveTo", { plan: teamPlan?.name ?? "" })} <ArrowRight />
+                    {seatBilling ? t("moveTo", { plan: teamPlan?.name ?? "" }) : t("seePlans")} <ArrowRight />
                   </Link>
                 </Button>
               )
@@ -848,7 +870,7 @@ export function WorkspaceBilling() {
           {admin && topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} row className="col-span-full border-t border-border-subtle" /> : null}
         </section>
 
-        <MemberSpending spending={spending} admin={admin} team={team} members={memberCount} />
+        <MemberSpending spending={spending} admin={admin} team={team || !seatBilling} members={memberCount} />
 
         <UpgradeConfirmationDialog
           open={review !== null && review.seats !== seats}

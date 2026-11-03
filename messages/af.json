@@ -248,22 +248,14 @@
     "perMonth": "/mnd",
     "freePrice": "Gratis",
     "enterprisePlanName": "Enterprise",
-    "freeDescription": "Begin gratis — geen kaart nodig nie",
-    "goDescription": "Vir aktiewe navorsers wat vertaling en meer KI-krag nodig het",
-    "proDescription": "Volledige sistematiese oorsigwerkvloei",
+    "freeDescription": "Geen kaart nodig nie.",
     "enterpriseDescription": "Instellingswye ontplooiing met maksimum kapasiteit",
     "creditsOnce": "{credits, number} eenmalige registrasiekrediete",
-    "freeFeature2": "Volledige soek en filtering",
-    "freeFeature3": "KI-funksies met jou eie API-sleutel",
     "creditsPerMonth": "{credits, number} krediete per maand",
-    "goFeature2": "Navraag- en artikelvertaling",
-    "goFeature3": "KI aan die bedienerkant + jou eie sleutel",
     "features": {
       "extraction": "Dataekstraksie",
       "authors": "Outeurprofiele"
     },
-    "proFeature3": "Alle Go-funksies ingesluit",
-    "proFeature4": "Prioriteitondersteuning",
     "enterpriseFeature1": "{credits, number} krediete per maand",
     "enterpriseFeature2": "Alles in Pro",
     "enterpriseFeature3": "SSO en ouditlogboeke",
@@ -296,14 +288,32 @@
       "changeSeats": "Verander sitplekke",
       "keepTeam": "Hou {plan}",
       "movesOn": "Skuif op {date}",
-      "moveToFreeAtRenewal": "{organization} hou Team tot {date}. Daarna skuif dit na {plan}, met tot {members, number} lede en {credits, number} gedeelde krediete per maand."
+      "moveToFreeAtRenewal": "{organization} hou Team tot {date}. Daarna skuif dit na {plan}, met tot {members, number} lede en {credits, number} gedeelde krediete per maand.",
+      "alphaFreeDescription": "Werk saam met een poel krediete.",
+      "noMemberLimit": "Geen beperking op lede nie",
+      "southernFeature1": "Alles in die gratis organisasie",
+      "southernFeature2": "By jou organisasie gevoeg nadat jy ons gekontak het",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "Op versoek vir jou organisasie aangeskakel. Sy plan en krediete bly dieselfde.",
+      "librariesFeature1": "Openbare Evidence Libraries",
+      "librariesFeature2": "Skep en wysig outeurprofiele",
+      "librariesOn": "Aan vir jou organisasie",
+      "openLibraries": "Maak Evidence Libraries oop"
     },
     "cancelScheduledDowngrade": "Kanselleer geskeduleerde verlaging",
     "scheduled": "Geskeduleer",
     "manageInBillingPortal": "Bestuur in faktureringsportaal",
     "downgradeTo": "Verlaag na {name}",
     "metadataTitle": "Pryse | OpenScholar",
-    "metadataDescription": "Eenvoudige, deursigtige pryse vir spanne van alle groottes."
+    "metadataDescription": "Eenvoudige, deursigtige pryse vir spanne van alle groottes.",
+    "everyFeature": "Elke funksie in OpenScholar",
+    "papersRunning": "{running, number} artikels wat gelyktydig loop",
+    "papersInRequest": "{request, number} artikels in een versoek",
+    "unlimitedCollectionsAndGuests": "Onbeperkte versamelings en gaste",
+    "southernDescription": "Vir navorsers in lae- en middelinkomstelande.",
+    "southernFeature1": "Alles in Free",
+    "southernFeature2": "By jou rekening gevoeg nadat jy ons gekontak het",
+    "onRequest": "Op versoek"
   },
   "publicationSettings": {
     "credentials": "{provider}-geloofsbriewe",
@@ -374,9 +384,7 @@
     "aiConfiguration": "KI-konfigurasie"
   },
   "billingPage": {
-    "upgradePlan": "Gradeer plan op",
     "manageSubscriptionBtn": "Bestuur intekening",
-    "upgradeDescription": "Gradeer jou plan op om meer krediete en funksies te ontsluit.",
     "failedToLoadDetails": "Kon nie besonderhede laai nie",
     "paymentFailedNotice": "Betaling het misluk. Werk jou betaalmetode op om jou intekening aktief te hou.",
     "perInterval": "/ {interval}",
@@ -424,7 +432,8 @@
     "topUpConfirm": "Koop krediete",
     "topUpDue": "Nou betaalbaar",
     "topUpBalanceNow": "Saldo",
-    "topUpBalanceAfter": "Daarna"
+    "topUpBalanceAfter": "Daarna",
+    "seePlans": "Sien planne"
   },
   "errors": {
     "unexpectedIssue": "Ons het ’n onverwagte probleem ondervind. Probeer weer, of gaan terug na ’n stabiele bladsy.",
@@ -2990,7 +2999,8 @@
       "admins": "Admins",
       "plans": "Planne",
       "users": "Gebruikers",
-      "aiModels": "KI-modelle"
+      "aiModels": "KI-modelle",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "Gedeelde ontwikkeling",
     "production": "Produksie",
@@ -3089,6 +3099,19 @@
     "ai": {
       "modelCount": "{count, plural, one {# model} other {# modelle}}",
       "creditsOrKey": "Krediete, of die gebruiker se sleutel"
+    },
+    "evidenceLibraries": {
+      "title": "Toegang tot Evidence Library",
+      "organizations": "organisasies",
+      "search": "Soek organisasies",
+      "show": "Wys",
+      "all": "Almal",
+      "on": "Aan",
+      "off": "Af",
+      "libraries": "{count, plural, one {# biblioteek} other {# biblioteke}}",
+      "switchLabel": "Evidence Libraries vir {name}",
+      "moveFirst": "Skuif of verwyder eers sy biblioteke",
+      "noMatches": "Geen organisasies pas nie"
     }
   },
   "settingsAi": {
@@ -4526,7 +4549,11 @@
       "confirmPayment": "Bevestig betaling",
       "seatHeldUndated": "Hulle het in hierdie faktureringsperiode krediete bestee, so hul sitplek bly geneem tot die hernuwing.",
       "paymentFailedEnds": "Die betaling van {amount} het misluk. {plan} eindig op {date} tensy dit betaal word.",
-      "paymentFailed": "Die laaste betaling het misluk."
+      "paymentFailed": "Die laaste betaling het misluk.",
+      "noMemberLimit": "Geen beperking op lede nie",
+      "membersUnit": "{count, plural, one {lid} other {lede}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "Sien planne"
     },
     "couldntInvite": "Die organisasie is gemaak, maar die uitnodigings is nie gestuur nie. Stuur hulle vanaf sy Lede-instellings.",
     "fromCredits": "Van {name} se krediete",
@@ -4662,7 +4689,6 @@
       "guestCount": "{count, plural, one {# gas} other {# gaste}}",
       "noLimit": "Geen limiet nie",
       "usedOf": "{used} van {limit}",
-      "moreGuests": "Meer gaste",
       "full": {
         "collection": "{plan} laat {count, plural, one {# gas} other {# gaste}} op elke versameling toe",
         "screening": "{plan} laat {count, plural, one {# gas} other {# gaste}} op elke siftering toe",
@@ -4879,9 +4905,7 @@
     "ask": {
       "write": "Skryf oorsig",
       "reads": "Lees al {count} resultate",
-      "go": "Gratis en outomaties op Go",
       "back": "Gratis oorsigte terug om {time}",
-      "pro": "{count} per dag op Pro",
       "noCredits": "Geen krediete oor nie",
       "getCredits": "Kry krediete",
       "limit": "Vandag se {count} betaalde oorsigte is gebruik. Meer om {time}"
@@ -5405,5 +5429,12 @@
     "confirm": "Bevestig",
     "usedSources": "{count, plural, one {Het # bron gebruik} other {Het # bronne gebruik}}",
     "navigation": "Navigasie"
+  },
+  "alpha": {
+    "strip": "Openbare alfa vir toetsing.",
+    "stripDetail": "Dinge kan verander of breek.",
+    "contactUs": "Kontak ons",
+    "plansNotice": "OpenScholar is gratis tydens die openbare alfa, met elke funksie ingesluit. Planne sal daarna verander.",
+    "emailAddress": "E-pos {email}"
   }
 }

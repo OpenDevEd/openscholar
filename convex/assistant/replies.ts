@@ -93,7 +93,7 @@ export async function admit(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
   }
   if (stillWriting >= most) {
     throw createError("CONFLICT", most < ASSISTANT_REPLIES_AT_ONCE
-      ? `Your plan lets the assistant write ${most} ${most === 1 ? "reply" : "replies"} for you at once. Wait for one to finish, or change plan for more.`
+      ? `Your plan lets the assistant write ${most} ${most === 1 ? "reply" : "replies"} for you at once. Wait for one to finish.`
       : `The assistant is already writing ${most} replies for you. Wait for one to finish.`);
   }
 }

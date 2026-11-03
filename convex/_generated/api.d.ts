@@ -349,6 +349,7 @@ import type * as models_queries from "../models/queries.js";
 import type * as models_sync from "../models/sync.js";
 import type * as openalex_limits from "../openalex/limits.js";
 import type * as organizationFeatures from "../organizationFeatures.js";
+import type * as organizations_libraryAccess from "../organizations/libraryAccess.js";
 import type * as organizations_manage from "../organizations/manage.js";
 import type * as organizations_queries from "../organizations/queries.js";
 import type * as organizations_read from "../organizations/read.js";
@@ -805,6 +806,7 @@ declare const fullApi: ApiFromModules<{
   "models/sync": typeof models_sync;
   "openalex/limits": typeof openalex_limits;
   organizationFeatures: typeof organizationFeatures;
+  "organizations/libraryAccess": typeof organizations_libraryAccess;
   "organizations/manage": typeof organizations_manage;
   "organizations/queries": typeof organizations_queries;
   "organizations/read": typeof organizations_read;

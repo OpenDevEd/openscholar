@@ -117,6 +117,8 @@ export const catalogPlanValidator = v.object({
   limits: v.optional(planLimitsValidator),
   /** Metadata `popular: true` marks the plan as the one to recommend. */
   popular: v.boolean(),
+  /** Listed but not sold: people ask for it, and it's added to them in Autumn. */
+  byRequest: v.optional(v.literal(true)),
   /** Metadata `highlights`: extra lines for the pricing card. */
   highlights: capped(v.optional(v.array(v.string())), MAX_PLAN_DETAILS),
   /** Metadata `bundles` on the top-up plan: the credit amounts offered. */

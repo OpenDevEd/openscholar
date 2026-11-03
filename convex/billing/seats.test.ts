@@ -6,7 +6,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { FREE_MEMBERS, ORGANIZATION_PLAN } from "../../lib/billing/plans";
-import { fakeAutumn, installFakeAutumn } from "./billing.test-support";
+import { fakeAutumn, installFakeAutumn, sellTeamForTest } from "./billing.test-support";
 
 // The ledger worker counts charges on whichever timers are active when they're recorded.
 beforeEach(() => {
@@ -22,6 +22,7 @@ const ORGANIZATION = { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab",
 
 it("gives members the seats bought, holds a leaver's seat to the renewal when they spent from it, and frees the rest", async () => {
   const t = convexTest(schema);
+  await t.run(sellTeamForTest);
   const { lab, users } = await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", { ...ORGANIZATION, state: "active", createdAt: 1, updatedAt: 1 });
     const users: Record<string, Id<"users">> = {};
@@ -102,6 +103,7 @@ it("gives members the seats bought, holds a leaver's seat to the renewal when th
 
 it("runs one sync of an organization at a time, and the one asked for meanwhile once after it", async () => {
   const t = convexTest(schema);
+  await t.run(sellTeamForTest);
   const workspaceId = await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", { ...ORGANIZATION, state: "active", createdAt: 1, updatedAt: 1 });
     return (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
@@ -117,6 +119,7 @@ it("runs one sync of an organization at a time, and the one asked for meanwhile 
 
 it("counts a member's charge the ledger hasn't counted yet, and a hold, as spending that keeps their seat", async () => {
   const t = convexTest(schema);
+  await t.run(sellTeamForTest);
   const { lab, users } = await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", { ...ORGANIZATION, state: "active", createdAt: 1, updatedAt: 1 });
     const users: Record<string, Id<"users">> = {};

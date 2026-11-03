@@ -248,22 +248,14 @@
     "perMonth": "/mês",
     "freePrice": "Gratuito",
     "enterprisePlanName": "Empresarial",
-    "freeDescription": "Comece gratuitamente, sem cartão de crédito",
-    "goDescription": "Para investigadores ativos que precisam de tradução e de mais potência de IA",
-    "proDescription": "Fluxo completo de revisão sistemática",
+    "freeDescription": "Não é preciso cartão.",
     "enterpriseDescription": "Implementação para toda a instituição, com capacidade máxima",
     "creditsOnce": "{credits, number} créditos únicos de registo",
-    "freeFeature2": "Pesquisa e filtragem completas",
-    "freeFeature3": "Funcionalidades de IA com a sua própria chave de API",
     "creditsPerMonth": "{credits, number} créditos por mês",
-    "goFeature2": "Tradução de pesquisas e de artigos",
-    "goFeature3": "IA no servidor + a sua própria chave",
     "features": {
       "extraction": "Extração de dados",
       "authors": "Perfis de autor"
     },
-    "proFeature3": "Inclui todas as funcionalidades do Go",
-    "proFeature4": "Apoio prioritário",
     "enterpriseFeature1": "{credits, number} créditos por mês",
     "enterpriseFeature2": "Tudo o que está no Pro",
     "enterpriseFeature3": "SSO e registos de auditoria",
@@ -296,14 +288,32 @@
       "changeSeats": "Alterar lugares",
       "keepTeam": "Manter {plan}",
       "movesOn": "Muda em {date}",
-      "moveToFreeAtRenewal": "{organization} mantém a Team até {date}. Depois passa para {plan}, com até {members, number} membros e {credits, number} créditos partilhados por mês."
+      "moveToFreeAtRenewal": "{organization} mantém a Team até {date}. Depois passa para {plan}, com até {members, number} membros e {credits, number} créditos partilhados por mês.",
+      "alphaFreeDescription": "Trabalhem em conjunto com um só fundo de créditos.",
+      "noMemberLimit": "Sem limite de membros",
+      "southernFeature1": "Tudo o que está na organização gratuita",
+      "southernFeature2": "Adicionado à sua organização depois de nos contactar",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "Ativado para a sua organização a pedido. O plano e os créditos mantêm-se.",
+      "librariesFeature1": "Evidence Libraries públicas",
+      "librariesFeature2": "Criar e editar perfis de autor",
+      "librariesOn": "Ativado para a sua organização",
+      "openLibraries": "Abrir Evidence Libraries"
     },
     "cancelScheduledDowngrade": "Cancelar redução de plano agendada",
     "scheduled": "Agendado",
     "manageInBillingPortal": "Gerir no portal de faturação",
     "downgradeTo": "Reduzir para {name}",
     "metadataTitle": "Preços | OpenScholar",
-    "metadataDescription": "Preços simples e transparentes para equipas de qualquer dimensão."
+    "metadataDescription": "Preços simples e transparentes para equipas de qualquer dimensão.",
+    "everyFeature": "Todas as funcionalidades do OpenScholar",
+    "papersRunning": "{running, number} artigos em curso ao mesmo tempo",
+    "papersInRequest": "{request, number} artigos num pedido",
+    "unlimitedCollectionsAndGuests": "Coleções e convidados ilimitados",
+    "southernDescription": "Para investigadores de países de rendimento baixo e médio.",
+    "southernFeature1": "Tudo o que está no Free",
+    "southernFeature2": "Adicionado à sua conta depois de nos contactar",
+    "onRequest": "A pedido"
   },
   "publicationSettings": {
     "credentials": "Credenciais do {provider}",
@@ -374,9 +384,7 @@
     "aiConfiguration": "Configuração de IA"
   },
   "billingPage": {
-    "upgradePlan": "Atualizar plano",
     "manageSubscriptionBtn": "Gerir subscrição",
-    "upgradeDescription": "Atualize o seu plano para desbloquear mais créditos e funcionalidades.",
     "failedToLoadDetails": "Não foi possível carregar os detalhes",
     "paymentFailedNotice": "O pagamento falhou. Atualize o método de pagamento para manter a subscrição ativa.",
     "perInterval": "/ {interval}",
@@ -424,7 +432,8 @@
     "topUpConfirm": "Comprar créditos",
     "topUpDue": "A pagar agora",
     "topUpBalanceNow": "Saldo",
-    "topUpBalanceAfter": "Depois"
+    "topUpBalanceAfter": "Depois",
+    "seePlans": "Ver planos"
   },
   "errors": {
     "unexpectedIssue": "Ocorreu um problema inesperado. Tente novamente ou volte a uma página estável.",
@@ -2990,7 +2999,8 @@
       "admins": "Administradores",
       "plans": "Planos",
       "users": "Utilizadores",
-      "aiModels": "Modelos de IA"
+      "aiModels": "Modelos de IA",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "Desenvolvimento partilhado",
     "production": "Produção",
@@ -3089,6 +3099,19 @@
     "ai": {
       "modelCount": "{count, plural, one {# modelo} other {# modelos}}",
       "creditsOrKey": "Créditos ou a chave do utilizador"
+    },
+    "evidenceLibraries": {
+      "title": "Acesso à Evidence Library",
+      "organizations": "organizações",
+      "search": "Pesquisar organizações",
+      "show": "Mostrar",
+      "all": "Todas",
+      "on": "Ativado",
+      "off": "Desativado",
+      "libraries": "{count, plural, one {# biblioteca} other {# bibliotecas}}",
+      "switchLabel": "Evidence Libraries para {name}",
+      "moveFirst": "Mova ou apague primeiro as suas bibliotecas",
+      "noMatches": "Nenhuma organização corresponde"
     }
   },
   "settingsAi": {
@@ -4526,7 +4549,11 @@
       "confirmPayment": "Confirmar pagamento",
       "seatHeldUndated": "Gastaram créditos neste período de faturação, por isso o lugar fica ocupado até à renovação.",
       "paymentFailedEnds": "O pagamento de {amount} falhou. O {plan} termina a {date}, a menos que seja pago.",
-      "paymentFailed": "O último pagamento falhou."
+      "paymentFailed": "O último pagamento falhou.",
+      "noMemberLimit": "Sem limite de membros",
+      "membersUnit": "{count, plural, one {membro} other {membros}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "Ver planos"
     },
     "couldntInvite": "A organização foi criada, mas os convites não foram enviados. Envie-os a partir das definições de Membros.",
     "fromCredits": "Dos créditos de {name}",
@@ -4662,7 +4689,6 @@
       "guestCount": "{count, plural, one {# convidado} other {# convidados}}",
       "noLimit": "Sem limite",
       "usedOf": "{used} de {limit}",
-      "moreGuests": "Mais convidados",
       "full": {
         "collection": "O {plan} permite {count, plural, one {# convidado} other {# convidados}} em cada coleção",
         "screening": "O {plan} permite {count, plural, one {# convidado} other {# convidados}} em cada triagem",
@@ -4879,9 +4905,7 @@
     "ask": {
       "write": "Escrever visão geral",
       "reads": "Lê todos os {count} resultados",
-      "go": "Gratuito e automático no Go",
       "back": "As visões gerais gratuitas voltam às {time}",
-      "pro": "{count} por dia no Pro",
       "noCredits": "Sem créditos",
       "getCredits": "Obter créditos",
       "limit": "As {count} visões gerais pagas de hoje estão usadas. Mais às {time}"
@@ -5405,5 +5429,12 @@
     "confirm": "Confirmar",
     "usedSources": "{count, plural, one {Usada # fonte} other {Usadas # fontes}}",
     "navigation": "Navegação"
+  },
+  "alpha": {
+    "strip": "Alfa pública para testes.",
+    "stripDetail": "Algumas coisas podem mudar ou falhar.",
+    "contactUs": "Contacte-nos",
+    "plansNotice": "O OpenScholar é gratuito durante a alfa pública, com todas as funcionalidades incluídas. Os planos vão mudar depois.",
+    "emailAddress": "Enviar email para {email}"
   }
 }

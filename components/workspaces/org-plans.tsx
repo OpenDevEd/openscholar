@@ -6,7 +6,12 @@
 
 import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Building2, Users } from "@/components/icons";
+import { Building2, Library, Users } from "@/components/icons";
+import { ContactButton } from "@/components/alpha-notices";
+import { planIcon } from "@/components/billing/plan-icon";
+import { LIBRARIES_REQUEST, SOUTHERN_REQUEST } from "@/lib/billing/contact";
+import { useSeatBilling } from "@/lib/feature-flags/hook";
+import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { PlanCard } from "@/components/billing/plan-card";
 import { SeatStepper } from "@/components/billing/seat-stepper";
 import Link from "@/components/workspace-link";
@@ -44,7 +49,111 @@ const SEATS = 8;
 /** The workspace the page is in, as the server read it for the first paint. */
 export type CurrentWorkspace = NonNullable<ReturnType<typeof useCurrentWorkspace>>;
 
-export function OrganizationPlans({ featureName, initial }: { featureName: (id: string) => string; initial?: CurrentWorkspace }) {
+export function OrganizationPlans({ featureName, initial, libraries }: { featureName: (id: string) => string; initial?: CurrentWorkspace; libraries?: boolean }) {
+  return useSeatBilling() ? <TeamPlans featureName={featureName} initial={initial} /> : <AlphaPlans initial={initial} libraries={libraries} />;
+}
+
+/** During the public alpha: Free has everything but Evidence Libraries, which are switched on by request and leave the plan as it is. */
+function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; libraries?: boolean }) {
+  const t = useTranslations("pricing.organizations");
+  const tp = useTranslations("pricing");
+  const tc = useTranslations("common");
+  const { phase } = useAuthReadiness();
+  const signIn = useSignInRedirect();
+  const workspace = useCurrentWorkspace() ?? initial;
+  const organization = workspace?.kind === "organization" ? workspace : undefined;
+  const { catalog, resolvedPlan } = useSubscriptionState();
+  // As the server read it until the browser has, so the card is drawn as it stays.
+  const features = useWorkspaceFeatures().data;
+  const opened = organization !== undefined && (features?.evidenceLibraries ?? libraries) === true;
+  const [creating, setCreating] = useState(false);
+  const free = catalog && findPlan(catalog, ORGANIZATION_PLAN);
+  const southern = catalog && findPlan(catalog, "southern");
+  if (!free) return null;
+  const onSouthern = !!organization && resolvedPlan === southern?.id;
+  const limits = free.limits;
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <PlanCard
+          testId="pricing-plan-free-organization"
+          index={0}
+          current={!!organization && !onSouthern}
+          badges={organization && !onSouthern ? [{ tone: "success", label: t("yourOrganizationsPlan") }] : []}
+          icon={Building2}
+          name={t("freeOrganization")}
+          price={<div className="text-4xl font-bold">{tp("freePrice")}</div>}
+          description={t("alphaFreeDescription")}
+          features={[
+            t("noMemberLimit"),
+            ...(free.credits?.interval === "month" ? [t("sharedCreditsAMonth", { credits: free.credits.included })] : []),
+            t("capsForEachMember"),
+            tp("papersRunning", { running: limits?.concurrency ?? 0 }),
+            tp("papersInRequest", { request: limits?.request_papers ?? 0 }),
+            tp("unlimitedCollectionsAndGuests"),
+          ]}
+        >
+          {phase !== "authenticated" ? (
+            <Button className="w-full" onClick={signIn}>
+              {tc("signIn")}
+            </Button>
+          ) : organization ? (
+            <Button className="w-full" variant="outline" disabled>
+              {tc("currentPlan")}
+            </Button>
+          ) : (
+            <Button className="w-full" variant="outline" onClick={() => setCreating(true)}>
+              {t("createOrganization")}
+            </Button>
+          )}
+        </PlanCard>
+        {southern ? (
+          <PlanCard
+            testId="pricing-plan-southern-organization"
+            index={1}
+            current={onSouthern}
+            badges={onSouthern ? [{ tone: "success", label: t("yourOrganizationsPlan") }] : []}
+            icon={planIcon(southern.id)}
+            name={southern.name}
+            price={<div className="text-4xl font-bold">{tp("onRequest")}</div>}
+            description={tp("southernDescription")}
+            features={[...(southern.credits?.interval === "month" ? [t("sharedCreditsAMonth", { credits: southern.credits.included })] : []), t("southernFeature1"), t("southernFeature2")]}
+          >
+            {onSouthern ? (
+              <Button className="w-full" variant="outline" disabled>
+                {tc("currentPlan")}
+              </Button>
+            ) : (
+              <ContactButton href={SOUTHERN_REQUEST} />
+            )}
+          </PlanCard>
+        ) : null}
+        <PlanCard
+          testId="pricing-plan-evidence-libraries"
+          index={2}
+          current={opened}
+          badges={opened ? [{ tone: "success", label: t("librariesOn") }] : []}
+          icon={Library}
+          name={t("librariesName")}
+          price={<div className="text-4xl font-bold">{tp("onRequest")}</div>}
+          description={t("librariesDescription")}
+          features={[t("librariesFeature1"), t("librariesFeature2")]}
+        >
+          {opened ? (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/evidence-libraries">{t("openLibraries")}</Link>
+            </Button>
+          ) : (
+            <ContactButton href={LIBRARIES_REQUEST} variant="outline" />
+          )}
+        </PlanCard>
+      </div>
+      <CreateOrganization open={creating} onOpenChange={setCreating} />
+    </>
+  );
+}
+
+function TeamPlans({ featureName, initial }: { featureName: (id: string) => string; initial?: CurrentWorkspace }) {
   const t = useTranslations("pricing.organizations");
   const tp = useTranslations("pricing");
   const ts = useTranslations("workspaces.settings");

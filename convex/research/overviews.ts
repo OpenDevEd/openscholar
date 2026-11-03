@@ -14,7 +14,6 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Acting } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
-import { readCatalog } from "../billing/catalog";
 import { presetPick } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requestOf } from "../paperSets/search";
@@ -148,8 +147,6 @@ export const viewAction = defineUserQuery({
       paid: prefs?.paid ?? 0,
       perDay: perDay ?? null,
       paidPerDay: PAID_PER_DAY,
-      // Where today's free ones run out, the page names what Pro gives, when it's more.
-      proPerDay: (await readCatalog(ctx))?.plans.find((plan) => plan.id === "pro")?.limits?.overviews_per_day ?? null,
       credits: await paidCredits(ctx),
     };
   },

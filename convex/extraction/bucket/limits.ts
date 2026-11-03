@@ -18,7 +18,7 @@ export function assertBucketWithinLimits(items: ReadonlyArray<EffectiveCountItem
   // An empty bucket would set a job up only to find nothing to read: refused before it's made.
   if (count === 0) throw createError("VALIDATION_ERROR", "Bucket must include at least one paper");
   if (planPapers !== undefined && count > planPapers) {
-    throw createError("VALIDATION_ERROR", `Your plan takes up to ${planPapers.toLocaleString("en")} papers in one extraction. Pick fewer, or change plan for more.`);
+    throw createError("VALIDATION_ERROR", `Your plan takes up to ${planPapers.toLocaleString("en")} papers in one extraction. Pick fewer.`);
   }
   return { effectiveCount: count };
 }

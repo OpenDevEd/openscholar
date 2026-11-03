@@ -42,7 +42,7 @@ export async function requireRoom(ctx: QueryCtx, shared: Shared) {
   const most = await roomFor(ctx, shared);
   if (most === undefined || (await countOf(ctx, itemGuestsOf(shared.id))) < most) return;
   const guests = `${most.toLocaleString("en")} ${most === 1 ? "guest" : "guests"}`;
-  throw createError("VALIDATION_ERROR", most === plan ? `This workspace's plan allows ${guests} on each ${kindWord(shared.kind)}. Remove one, or change plan for more.` : `One ${kindWord(shared.kind)} has up to ${guests}. Remove one to add another.`);
+  throw createError("VALIDATION_ERROR", most === plan ? `This workspace's plan allows ${guests} on each ${kindWord(shared.kind)}. Remove one.` : `One ${kindWord(shared.kind)} has up to ${guests}. Remove one to add another.`);
 }
 
 /** Whether a person has the item already, with no guest's place: they act in its workspace, and for a kind only its owners hold, an author profile, they are one of them. */

@@ -28,6 +28,7 @@ import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { Framed, Opening, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 import { FREE_MEMBERS } from "@/lib/billing/plans";
+import { useSeatBilling } from "@/lib/feature-flags/hook";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-start transition-colors hover:bg-foreground/[0.045]";
 
@@ -280,19 +281,20 @@ function NewOrganization({ close }: { close: () => void }) {
   // The invitations go out from the organization just made, not the workspace the page is in.
   const inviteThere = useAction(api.organizations.manage.invite);
   const { name: freePlan } = usePlanOf({ kind: "organization", name: "" });
+  const seatBilling = useSeatBilling();
   const [name, setName] = useState("");
   const [draft, setDraft] = useState("");
   const [emails, setEmails] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const seats = 1 + emails.length;
-  const full = seats >= FREE_MEMBERS;
+  const full = seatBilling && seats >= FREE_MEMBERS;
   // Each address in what's typed or pasted becomes its own while there's room; what isn't one, or doesn't fit, is left over.
   const split = (text: string) => {
     const next = [...emails];
     const left: string[] = [];
     for (const part of text.split(/[\s,;]+/).filter(Boolean)) {
       if (next.includes(part)) continue;
-      if (EMAIL.test(part) && 1 + next.length < FREE_MEMBERS) next.push(part);
+      if (EMAIL.test(part) && (!seatBilling || 1 + next.length < FREE_MEMBERS)) next.push(part);
       else left.push(part);
     }
     return { next, left };
@@ -360,19 +362,21 @@ function NewOrganization({ close }: { close: () => void }) {
             />
           </label>
         </div>
-        <div className="space-y-2 rounded-xl bg-inset p-3">
-          <div className="flex items-baseline justify-between text-xs">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Users className="size-3.5" /> {t("membersHeading")}
-            </span>
-            <span className="tabular-nums text-muted-foreground">{t("seatsOf", { seats, limit: FREE_MEMBERS, plan: freePlan })}</span>
+        {seatBilling ? (
+          <div className="space-y-2 rounded-xl bg-inset p-3">
+            <div className="flex items-baseline justify-between text-xs">
+              <span className="flex items-center gap-1.5 font-medium">
+                <Users className="size-3.5" /> {t("membersHeading")}
+              </span>
+              <span className="tabular-nums text-muted-foreground">{t("seatsOf", { seats, limit: FREE_MEMBERS, plan: freePlan })}</span>
+            </div>
+            <div className="flex gap-1">
+              {Array.from({ length: FREE_MEMBERS }, (_, i) => (
+                <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors", i < seats ? "bg-primary" : "bg-muted")} />
+              ))}
+            </div>
           </div>
-          <div className="flex gap-1">
-            {Array.from({ length: FREE_MEMBERS }, (_, i) => (
-              <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors", i < seats ? "bg-primary" : "bg-muted")} />
-            ))}
-          </div>
-        </div>
+        ) : null}
       </div>
       {/* Pressing a button here leaves the focus where it was: an address still typed would become a chip as its box lost the focus, and the taller field would move the button out from under the press. */}
       <div className="flex justify-end gap-2 pt-1" onMouseDown={(e) => e.preventDefault()}>

@@ -15,6 +15,11 @@
  * and daily for every organization on Team, still holding seats, or gone with something of Team
  * not yet ended. One runs at a time for an organization; one asked for meanwhile runs once more
  * after it.
+ *
+ * While the Team plan isn't on sale (the `subscriptions.team` flag, off for the public alpha), no
+ * seats are sold and an organization on its free plan or one given by request has no member limit.
+ * Each member still has an entity, with no seat: it's what their charges are made as and what
+ * carries their cap, and the credits stay the organization's one pool. This runs for all of them.
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -25,11 +30,11 @@ import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { personName } from "../lib/people";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
-import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { FREE_MEMBERS, FREE_PLAN, ORGANIZATION_PLAN, SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
 import { monthStart } from "../../lib/billing/month";
 import { clerkRequest, clerkSecretKey } from "../lib/clerk";
 import { createError } from "../lib/errors";
-import { readAccount, refreshAccount, snapshotFromCustomer } from "./accounts";
+import { readAccount, refreshAccount, seatBillingOn, snapshotFromCustomer } from "./accounts";
 import { seatSyncRow } from "./seatSyncs";
 import { capRow, spentThisPeriod } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
@@ -46,6 +51,13 @@ const ENTITIES_PAGE = 100;
  * that are still to go. Past it the customer isn't one sync's to fix; it says so.
  */
 const MAX_ENTITIES_READ = 2 * MAX_ORGANIZATION_MEMBERS;
+
+/** Whether the Team plan and its seats are on sale, for an action. */
+export const seatBilling = internalQuery({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => await seatBillingOn(ctx),
+});
 
 /** The organization's active members, each with their cap, or null when it has more than one read takes: then no seat changes. */
 export const membersOf = internalQuery({
@@ -159,7 +171,9 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
   const account = organization ? await refreshAccount(ctx, workspaceId) : undefined;
   const customerId: string = organization ? await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId }) : workspaceId;
   const team = account?.plan === TEAM_PLAN;
-  const members: SeatMember[] | null = team ? await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId }) : [];
+  // Off Team, with seats not on sale, its members hold entities of their own.
+  const seatless = !team && organization !== null && !(await ctx.runQuery(internal.billing.seats.seatBilling, {}));
+  const members: SeatMember[] | null = team || seatless ? await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId }) : [];
   if (members === null) {
     console.error(`[seats] ${workspaceId} has more than ${MAX_ORGANIZATION_MEMBERS} members; its seats are left as they are`);
     return undefined;
@@ -179,6 +193,17 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
   }
   const gone = entities.filter((entity) => !memberIds.has(entity.id) && !held.includes(entity.id)).map((entity) => entity.id);
   for (const entityId of gone) await unlessAlready("entity_not_found", () => autumn.deleteEntity(customerId, entityId));
+
+  if (seatless) {
+    const kept = new Set(entities.map((entity) => entity.id));
+    const missing = members.filter((member) => !kept.has(member.clerkUserId));
+    for (const member of missing) await unlessAlready("entity_already_exists", () => autumn.createEntity({ customerId, entityId: member.clerkUserId, featureId: SEATS_FEATURE, name: member.name, cap: member.cap ?? null }));
+    await ctx.runMutation(internal.billing.seats.recordSeats, { workspaceId, seated: members.map((member) => member.clerkUserId) });
+    await joinFreePlan(ctx, workspaceId, customerId, account);
+    if (missing.length || freed.length || gone.length) await refreshAccount(ctx, workspaceId);
+    await followPlan(ctx, workspaceId, organization, null);
+    return { seats: 0, held: 0, overflow: false, ended: true };
+  }
 
   const pool = team ? await seatPool(customerId) : { seats: 0, remaining: 0 };
   const waiting = members.filter((member) => !holders.has(member.clerkUserId));
@@ -200,11 +225,7 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
     console.log(`[seats] ${workspaceId} ${organization ? `on ${account?.plan}` : "is gone"}: ${members.length} members, ${pool.seats} seats; seated ${seating.length}, freed ${freed.length}, held ${held.length}, entities removed ${gone.length}`);
   }
   if (organization) {
-    // Off Team, it's on the free organization plan, unless a move there is waiting for the renewal.
-    if (!team && account?.plan !== ORGANIZATION_PLAN && account?.changesAt === undefined) {
-      await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
-      await refreshAccount(ctx, workspaceId);
-    }
+    if (!team) await joinFreePlan(ctx, workspaceId, customerId, account);
     // On its way to Free at the renewal, Clerk holds it to Free's members already (billing/actions.ts `moveToFree`).
     await followPlan(ctx, workspaceId, organization, team && account?.changesAt === undefined ? pool.seats - held.length : FREE_MEMBERS);
     return { seats: pool.seats, held: held.length, overflow: waiting.length > seating.length, ...(team ? {} : { ended: true as const }) };
@@ -212,6 +233,16 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
   // An organization that's gone has its Team plan cancelled too, and then nothing of it is left to end (#652).
   if (snapshotFromCustomer(await autumn.customer(customerId)).plan === TEAM_PLAN) await autumn.update({ customerId, planId: TEAM_PLAN, cancelAction: "cancel_immediately" });
   return { seats: 0, held: 0, overflow: false, ended: true };
+}
+
+/**
+ * Off Team, an organization goes to its free plan from the personal one Autumn gives a customer with
+ * no plan, unless a move there is waiting for the renewal. A plan it was given by request stays.
+ */
+async function joinFreePlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, customerId: string, account: { plan?: string; changesAt?: number } | undefined) {
+  if ((account?.plan !== undefined && account.plan !== FREE_PLAN) || account?.changesAt !== undefined) return;
+  await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
+  await refreshAccount(ctx, workspaceId);
 }
 
 /** How long a sync waits before trying again to set a member limit Clerk refused. */
@@ -235,10 +266,11 @@ async function clerkCounts(clerkOrganizationId: string) {
 
 /**
  * Sets Clerk's limit on the organization's members to its plan's: the seats free of held ones on
- * Team (#863), FREE_MEMBERS otherwise. One Clerk refuses is tried again later.
+ * Team (#863), FREE_MEMBERS otherwise, or null for none (0 to Clerk) while seats aren't on sale. One
+ * Clerk refuses is tried again later.
  */
-async function followPlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, { clerkOrganizationId, memberLimit }: { clerkOrganizationId: string; memberLimit?: number }, wanted: number) {
-  const limit = Math.max(1, wanted);
+async function followPlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, { clerkOrganizationId, memberLimit }: { clerkOrganizationId: string; memberLimit?: number }, wanted: number | null) {
+  const limit = wanted === null ? 0 : Math.max(1, wanted);
   if (memberLimit === limit) return;
   try {
     await setMemberLimit(ctx, workspaceId, clerkOrganizationId, limit);
@@ -323,7 +355,7 @@ const TEAMS_PAGE = 100;
 
 /**
  * The daily check that catches a change an event missed, and frees the seats held to a renewal
- * once it has passed: syncs every organization on Team, then every one still holding seats, then
+ * once it has passed: syncs every organization on Team, or on its free plan while seats aren't on sale, then every one still holding seats, then
  * every one that's gone whose sync hasn't ended everything of Team yet. One on two lists syncs
  * twice, which changes nothing the second time.
  */
@@ -332,12 +364,13 @@ export const syncTeams = internalMutation({
   returns: v.null(),
   handler: async (ctx, { paginationOpts, list }) => {
     const opts = paginationOpts ?? { cursor: null, numItems: TEAMS_PAGE };
+    const seatBilling = await seatBillingOn(ctx);
     const page =
       list === "holding"
         ? await ctx.db.query("seatSyncs").withIndex("by_seats", (q) => q.gt("seats", 0)).paginate(opts)
         : list === "ending"
           ? await ctx.db.query("seatSyncs").withIndex("by_ending", (q) => q.eq("ending", true)).paginate(opts)
-          : await ctx.db.query("billingAccounts").withIndex("by_plan", (q) => q.eq("plan", TEAM_PLAN)).paginate(opts);
+          : await ctx.db.query("billingAccounts").withIndex("by_plan", (q) => q.eq("plan", seatBilling ? TEAM_PLAN : ORGANIZATION_PLAN)).paginate(opts);
     for (const row of page.page) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: row.workspaceId });
     const following = list === undefined ? "holding" : list === "holding" ? "ending" : undefined;
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.billing.seats.syncTeams, { paginationOpts: { cursor: page.continueCursor, numItems: TEAMS_PAGE }, ...(list ? { list } : {}) });

@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import {
   ExternalLink,
   UpgradeIcon,
+  Library,
   SettingsIcon,
   PersonIcon,
   SecurityIcon,
@@ -84,7 +85,9 @@ function Shell({ children }: { children: ReactNode }) {
   const subscriptionsEnabled = useFeatureFlagForPlan("subscriptions.enabled", subscription.planFeatures);
   const creditsEnabled = useFeatureFlagForPlan("credits.enabled", subscription.planFeatures);
   const plan = subscription.resolvedPlan;
-  const showUpgrade = subscription.onDefaultPlan !== false && !subscription.account?.hasPaid;
+  // A plan given by request has no billing of its own to manage.
+  const byRequest = subscription.catalog && subscription.resolvedPlan ? findPlan(subscription.catalog, subscription.resolvedPlan)?.byRequest : undefined;
+  const showUpgrade = (subscription.onDefaultPlan !== false || byRequest === true) && !subscription.account?.hasPaid;
   const hideBilling = !subscriptionsEnabled && !creditsEnabled && showUpgrade && !subscription.isSettling;
   // With subscriptions off, a Free account has no plan worth naming.
   const showPlan = subscriptionsEnabled || subscription.onDefaultPlan === false;
@@ -138,6 +141,7 @@ function Shell({ children }: { children: ReactNode }) {
             { href: "/settings/admin/ai", title: t("items.aiModels"), icon: AiIcon },
             { href: "/settings/admin/models", title: t("items.modelList"), icon: ModelsIcon },
             { href: "/settings/admin/admins", title: t("items.admins"), icon: AdminsIcon },
+            { href: "/settings/admin/evidence-libraries", title: t("items.evidenceLibraries"), icon: Library },
             { href: "https://dashboard.clerk.com", title: t("items.users"), icon: ClerkIcon, external: "Clerk" },
             // Its address is read after the page shows, so it comes last: nothing under it to push down.
             ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),
@@ -261,7 +265,7 @@ function BillingAction({ showUpgrade, subscriptionsEnabled }: { showUpgrade: boo
       onClick={onClick}
     >
       {loading ? <Spinner /> : showUpgrade ? <UpgradeIcon /> : <ExternalLink />}
-      <span className={BAR_LABEL}>{showUpgrade ? t("upgradePlan") : ts("manageBilling")}</span>
+      <span className={BAR_LABEL}>{showUpgrade ? t("seePlans") : ts("manageBilling")}</span>
     </Button>
   );
 }

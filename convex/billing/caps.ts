@@ -1,5 +1,5 @@
 /**
- * What an organization's members spend each month, and the caps its admins set on it on Team
+ * What an organization's members spend each month, and the caps its admins set on it
  * (#652), as pages and the assistant read and change them. Autumn enforces a cap, as the usage
  * limit on the member's seat; ./memberCaps.ts has the sums and the copy pages read.
  */
@@ -12,10 +12,8 @@ import { internalMutation, internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { assistantAction, assistantQuery, defineChangingAction, defineUserQuery, reversedBy, userAction, userQuery } from "../lib/userActions";
-import { TEAM_PLAN } from "../../lib/billing/plans";
-import { readAccount } from "./accounts";
 import { autumn } from "./autumn";
-import { capLeft, capOf, capRow, MAX_MEMBER_CAP, seatOf, spendable as spendableBy, spentSince, workspaceSpentSince } from "./memberCaps";
+import { capLeft, capOf, capRow, hasCaps, MAX_MEMBER_CAP, seatOf, spendable as spendableBy, spentSince, workspaceSpentSince } from "./memberCaps";
 import { monthStart } from "../../lib/billing/month";
 
 const SET_CAP = "billing/caps:setCap" as const;
@@ -34,7 +32,7 @@ const spendingValidator = v.object({
   you: v.boolean(),
   /** Credits charged for their work this month. */
   spent: v.number(),
-  /** Their cap this month, on Team. */
+  /** Their cap this month. */
   cap: v.optional(v.number()),
 });
 
@@ -47,7 +45,7 @@ async function organizationOf(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
 export const spendingAction = defineUserQuery({
   path: "billing/caps:spending",
   description:
-    "Lists what members of the organization the person is in spent of its credits since `month` (the first moment of a month in UTC), a page at a time, each with the cap an admin set on it on the Team plan. " +
+    "Lists what members of the organization the person is in spent of its credits since `month` (the first moment of a month in UTC), a page at a time, each with the cap an admin set on it. " +
     "The person comes first. An admin sees every member; a member sees only themselves. `cursor` is `continueCursor` from the page before.",
   args: { paginationOpts: paginationOptsValidator, ...monthArg },
   returns: paginationResultValidator(spendingValidator),
@@ -80,7 +78,7 @@ export const spendingForAssistant = assistantQuery(spendingAction);
 export const allowanceAction = defineUserQuery({
   path: "billing/caps:allowance",
   description:
-    "Says what the person spent of the organization's credits since `month` (the first moment of a month in UTC), and their cap if an admin set one on the Team plan, with `left`, what remains of it for that month once what their running work holds is taken off; with no cap they draw on its credits freely. " +
+    "Says what the person spent of the organization's credits since `month` (the first moment of a month in UTC), and their cap if an admin set one, with `left`, what remains of it for that month once what their running work holds is taken off; with no cap they draw on its credits freely. " +
     "`total` is what everyone spent for an admin, and the person's own for anyone else. In their own workspace it's what they spent of their own credits.",
   args: monthArg,
   returns: v.object({ spent: v.number(), cap: v.optional(v.number()), left: v.optional(v.number()), total: v.number() }),
@@ -108,7 +106,7 @@ export const capTarget = internalQuery({
   returns: v.object({ customerId: v.string(), entityId: v.string(), was: v.union(v.number(), v.null()) }),
   handler: async (ctx, { workspaceId, role, memberId }) => {
     if (!(await organizationOf(ctx, workspaceId)) || role !== "admin") throw createError("FORBIDDEN", "Only an admin of the organization sets members' caps.");
-    if ((await readAccount(ctx, workspaceId))?.plan !== TEAM_PLAN) throw createError("FORBIDDEN", "Caps for each member come with the Team plan.");
+    if (!(await hasCaps(ctx, workspaceId))) throw createError("FORBIDDEN", "Caps for each member come with the Team plan.");
     const member = await ctx.db.get("users", memberId);
     // A member holds a seat once the organization's seats have caught up with them.
     if (!member || !(await seatOf(ctx, workspaceId, member.clerkId))) throw createError("NOT_FOUND", "This person isn't a member with a seat yet. If they just joined, try again in a minute.");
@@ -137,7 +135,7 @@ const undoCapArgs = { ...capArgs, expect: v.optional(v.union(v.number(), v.null(
 export const setCapAction = defineChangingAction({
   path: SET_CAP,
   description:
-    `Sets how many of the organization's credits a member may spend each calendar month (UTC), or takes the cap off with null; an admin does this, on the Team plan. Up to ${MAX_MEMBER_CAP.toLocaleString("en")} credits. ` +
+    `Sets how many of the organization's credits a member may spend each calendar month (UTC), or takes the cap off with null; an admin does this. Up to ${MAX_MEMBER_CAP.toLocaleString("en")} credits. ` +
     "What they spent this month counts against it at once: past it, their replies and jobs are refused until next month or a higher cap. Returns `undo`, which puts the cap back as it was.",
   args: undoCapArgs,
   returns: v.object({ undo: reversedBy(SET_CAP, undoCapArgs) }),
