@@ -22,12 +22,12 @@ const faq = [
     <div class="m-flow" data-in>
       <ul class="files" aria-label="Spreadsheet copies a team might be passing around">{files.map((f, i) => <li style={`--i:${i}`}><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="3" fill="#047857" /><path d="M6 6h8M6 10h8M6 14h8M10 6v8" stroke="#fff" stroke-width="1.5" /></svg>{f}</li>)}</ul>
       <svg class="lines" data-lines viewBox="0 0 120 300" preserveAspectRatio="none" fill="none" aria-hidden="true">{files.map((_, i) => <path d={`M0 ${25 + i * 50}C70 ${25 + i * 50} 50 150 120 150`} stroke="#fff" stroke-opacity=".75" stroke-width="2" stroke-dasharray="3 6" vector-effect="non-scaling-stroke" />)}</svg>
-      <Device class="one" kind="laptop" name="screen" theme="dark" alt="One shared screening, showing who ran it, its progress and its questions" tilt sizes="(max-width: 900px) 92vw, 880px" />
+      <Device class="one" kind="laptop" name="screen2" theme="dark" alt="One shared screening, showing who ran it, its progress and its questions" tilt sizes="(max-width: 900px) 92vw, 880px" />
     </div>
   </section>
   <RoleDoors />
   <Faq items={faq} />
-  <section class="bleed close" style="--tint:#047857"><Art name="dark-ribbon" pos="50% 100%" live /><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
+  <section class="bleed close" style="--tint:#047857"><Art name="close-green" pos="50% 100%" live /><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
 </Base>
 <style>
   .merge { display: grid; gap: 28px; padding: var(--pad); } .m-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }

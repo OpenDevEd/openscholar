@@ -84,4 +84,4 @@ if (fine && !still.matches && $("[data-live]")) (window.requestIdleCallback || s
 
 // Entrances: each section gets one deliberate move as it arrives, once.
 const inView = $$("[data-in]");
-if (inView.length) { const io = new IntersectionObserver((list) => { for (const en of list) if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }, { threshold: .2, rootMargin: "0px 0px -8% 0px" }); inView.forEach((el) => io.observe(el)); }
+if (inView.length) { const io = new IntersectionObserver((list) => { for (const en of list) if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }, { threshold: 0, rootMargin: "0px 0px -18% 0px" }); inView.forEach((el) => io.observe(el)); }

@@ -1,12 +1,14 @@
 @font-face { font-family: Ubuntu; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-latin-400-normal.woff2) format("woff2"); }
 @font-face { font-family: Ubuntu; font-weight: 500; font-display: swap; src: url(/fonts/ubuntu-latin-500-normal.woff2) format("woff2"); }
+/* A stand-in that takes up the same space as Ubuntu, so text doesn't reflow when the real font arrives on a slow connection. */
+@font-face { font-family: "Ubuntu Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans"); size-adjust: 97%; ascent-override: 96%; descent-override: 19.500%; line-gap-override: 0%; }
 @font-face { font-family: "Ubuntu Mono"; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-mono-latin-400-normal.woff2) format("woff2"); }
 @view-transition { navigation: auto; }
 :root {
   color-scheme: light;
   --ink: #0a1a3f; --t2: #47557a; --t3: #5d698a; --line: rgb(10 26 63 / .1); --line2: rgb(10 26 63 / .18); --soft: #f3f6fb; --brand: #2563eb; --brand-dark: #1d4ed8;
   --ease: cubic-bezier(.22, 1, .36, 1);
-  --sans: Ubuntu, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Ubuntu Mono", ui-monospace, Menlo, monospace;
+  --sans: Ubuntu, "Ubuntu Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Ubuntu Mono", ui-monospace, Menlo, monospace;
   --spectrum: linear-gradient(90deg, #2563eb, #06b6d4, #10b981, #f59e0b, #f43f5e); --night: #010827;
   --gap: 16px; --pad: clamp(24px, 4.4vw, 64px); --r: 28px;
 }
@@ -28,15 +30,15 @@ p { text-wrap: pretty; }
 .strip { max-width: 1280px; margin-inline: auto; padding-inline: var(--gap); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
 
 /* A colour field panel. */
-.panel { position: relative; isolation: isolate; overflow: clip; border-radius: var(--r); background: var(--bg, #0b1f6b); color: #fff; scroll-margin-top: 84px; }
+.panel { position: relative; isolation: isolate; overflow: clip; border-radius: var(--r); background: var(--bg, #0b1f6b); color: #fff; }
 .panel > .field { position: absolute; inset: 0; z-index: -1; }
 /* Light follows the pointer across a colour field. */
 .panel::after, .bleed::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 50%), rgb(255 255 255 / .14), transparent 70%); opacity: 0; transition: opacity .3s var(--ease); }
 .panel:hover::after, .bleed:hover::after { opacity: 1; }
 
 /* A section whose art runs to the edges of the window while its content keeps to the strip. */
-.bleed { position: relative; isolation: isolate; width: 100vw; margin-inline: calc(50% - 50vw); overflow: clip; color: #fff; scroll-margin-top: 84px; }
-.inner { max-width: 1280px; margin-inline: auto; padding-inline: calc(var(--gap) + clamp(8px, 2.6vw, 32px)); }
+.bleed { position: relative; isolation: isolate; width: 100vw; margin-inline: calc(50% - 50vw); overflow: clip; color: #fff; }
+.inner { width: 100%; max-width: 1280px; margin-inline: auto; padding-inline: calc(var(--gap) + var(--pad)); }
 .panel > .art { z-index: -1; }
 .art { position: absolute; inset: 0; z-index: -2; overflow: clip; }
 .art img { width: 100%; height: 100%; object-fit: cover; }
