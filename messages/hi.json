@@ -207,7 +207,12 @@
       "af": "अफ़्रीकान्स",
       "zu": "ज़ुलू"
     },
-    "you": "आप"
+    "you": "आप",
+    "calendarToday": "आज, {date}",
+    "calendarSelected": "{date}, चयनित",
+    "calendarMonth": "महीना चुनें",
+    "calendarYear": "वर्ष चुनें",
+    "calendarNavigation": "कैलेंडर नेविगेशन"
   },
   "home": {
     "tagline": "लाखों अकादमिक पेपर और शोध लेख खोजें",

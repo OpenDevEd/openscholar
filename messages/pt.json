@@ -207,7 +207,12 @@
       "af": "Africâner",
       "zu": "Zulu"
     },
-    "you": "Você"
+    "you": "Você",
+    "calendarToday": "Hoje, {date}",
+    "calendarSelected": "{date}, selecionado",
+    "calendarMonth": "Escolher o mês",
+    "calendarYear": "Escolher o ano",
+    "calendarNavigation": "Navegação do calendário"
   },
   "home": {
     "tagline": "Pesquise milhões de artigos académicos e de investigação",

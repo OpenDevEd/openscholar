@@ -207,7 +207,12 @@
       "af": "Afrikaans",
       "zu": "Zulu"
     },
-    "you": "Sie"
+    "you": "Sie",
+    "calendarToday": "Heute, {date}",
+    "calendarSelected": "{date}, ausgewählt",
+    "calendarMonth": "Monat auswählen",
+    "calendarYear": "Jahr auswählen",
+    "calendarNavigation": "Kalendernavigation"
   },
   "home": {
     "tagline": "Durchsuchen Sie Millionen wissenschaftlicher Artikel und Forschungsbeiträge",

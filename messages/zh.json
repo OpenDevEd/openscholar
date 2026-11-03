@@ -207,7 +207,12 @@
       "af": "南非荷兰语",
       "zu": "祖鲁语"
     },
-    "you": "你"
+    "you": "你",
+    "calendarToday": "今天，{date}",
+    "calendarSelected": "{date}，已选择",
+    "calendarMonth": "选择月份",
+    "calendarYear": "选择年份",
+    "calendarNavigation": "日历导航"
   },
   "home": {
     "tagline": "搜索数百万学术论文和研究文章",

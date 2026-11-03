@@ -207,7 +207,12 @@
       "af": "IsiAfrikaans",
       "zu": "IsiZulu"
     },
-    "you": "Wena"
+    "you": "Wena",
+    "calendarToday": "Namuhla, {date}",
+    "calendarSelected": "{date}, kukhethiwe",
+    "calendarMonth": "Khetha inyanga",
+    "calendarYear": "Khetha unyaka",
+    "calendarNavigation": "Ukuzulazula kwekhalenda"
   },
   "home": {
     "tagline": "Sesha izinkulungwane zamaphepha emfundo nezihloko zocwaningo",

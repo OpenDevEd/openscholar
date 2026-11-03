@@ -11,6 +11,7 @@ import {
   DayPicker,
   getDefaultClassNames,
   type DayButton,
+  type Modifiers,
 } from "react-day-picker"
 
 import { useLocale, useTranslations } from "next-intl"
@@ -35,6 +36,13 @@ function Calendar({
   const locale = useLocale()
   const t = useTranslations("common")
 
+  // What a screen reader says for a day. The library's own says it in English, whatever the page's language.
+  const dayName = (date: Date, modifiers?: Modifiers) => {
+    const day = date.toLocaleDateString(locale, { dateStyle: "full" })
+    const named = modifiers?.today ? t("calendarToday", { date: day }) : day
+    return modifiers?.selected ? t("calendarSelected", { date: named }) : named
+  }
+
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -44,7 +52,17 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       dir={isRightToLeft(locale) ? "rtl" : "ltr"}
-      labels={{ labelNext: () => t("next"), labelPrevious: () => t("previous") }}
+      labels={{
+        labelNext: () => t("next"),
+        labelPrevious: () => t("previous"),
+        labelDayButton: dayName,
+        labelGridcell: dayName,
+        labelGrid: (date) => date.toLocaleString(locale, { month: "long", year: "numeric" }),
+        labelWeekday: (date) => date.toLocaleString(locale, { weekday: "long" }),
+        labelMonthDropdown: () => t("calendarMonth"),
+        labelYearDropdown: () => t("calendarYear"),
+        labelNav: () => t("calendarNavigation"),
+      }}
       formatters={{
         formatMonthDropdown: (date) => date.toLocaleString(locale, { month: "short" }),
         formatCaption: (date) => date.toLocaleString(locale, { month: "long", year: "numeric" }),

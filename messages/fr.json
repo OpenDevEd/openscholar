@@ -207,7 +207,12 @@
       "af": "Afrikaans",
       "zu": "Zoulou"
     },
-    "you": "Vous"
+    "you": "Vous",
+    "calendarToday": "Aujourd'hui, {date}",
+    "calendarSelected": "{date}, sélectionné",
+    "calendarMonth": "Choisir le mois",
+    "calendarYear": "Choisir l'année",
+    "calendarNavigation": "Navigation du calendrier"
   },
   "home": {
     "tagline": "Recherchez des millions d'articles académiques et de recherche",

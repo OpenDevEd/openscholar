@@ -207,7 +207,12 @@
       "af": "Afrikaans",
       "zu": "Zulu"
     },
-    "you": "You"
+    "you": "You",
+    "calendarToday": "Today, {date}",
+    "calendarSelected": "{date}, selected",
+    "calendarMonth": "Choose the month",
+    "calendarYear": "Choose the year",
+    "calendarNavigation": "Calendar navigation"
   },
   "home": {
     "tagline": "Search millions of academic papers and research articles",
