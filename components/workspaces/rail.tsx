@@ -31,6 +31,7 @@ import {
   Share2,
   Sun,
   type AppIcon,
+  UpgradeIcon,
 } from "@/components/icons";
 import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
 import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
@@ -45,13 +46,15 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "@/components/workspace-link";
+import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
-import { useFeatureFlag, useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
+import { useFeatureFlag, useFeatureFlagForPlan, useSeatBilling } from "@/lib/feature-flags/hook";
+import { TEAM_PLAN } from "@/lib/billing/plans";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { findPlan } from "@/lib/billing/catalog";
+import { findPlan, mainPlans } from "@/lib/billing/catalog";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { useCurrentQueryStore, useKeywordExpansionStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -618,8 +621,13 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
   const tc = useTranslations("common");
   const format = useFormatter();
   const { user } = useUser();
-  const { account, catalog, resolvedPlan } = useSubscriptionState();
+  const { account, catalog, resolvedPlan, planFeatures } = useSubscriptionState();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
+  const subscriptions = useFeatureFlagForPlan("subscriptions.enabled", planFeatures);
+  const seatBilling = useSeatBilling();
+  // An organization's highest plan is Team while it's on sale; otherwise the plans anyone picks between, cheapest first.
+  const highestPlan = workspace?.kind === "organization" && seatBilling ? TEAM_PLAN : catalog ? mainPlans(catalog).at(-1)?.id : undefined;
+  const canUpgrade = subscriptions && resolvedPlan !== null && resolvedPlan !== highestPlan;
   const email = user?.primaryEmailAddress?.emailAddress;
   const billing = settingsHref(workspace, "/billing");
   const catalogPlan = catalog && resolvedPlan ? findPlan(catalog, resolvedPlan) : undefined;
@@ -644,18 +652,27 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
       <AnimatePresence>
         {hasCredits ? (
           <Opening key="credits" instant={creditsFromStart}>
-            <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
-              <span className="flex items-baseline justify-between gap-2">
-                <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
-                <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
-              </span>
-              {/* Against the month's credits, on a plan that grants them each month. */}
-              {share !== null ? (
-                <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
-                  <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+            <div className="mx-1 mb-1 space-y-1">
+              <Link href={billing} onClick={onNavigate} className="block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
+                  <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
                 </span>
+                {/* Against the month's credits, on a plan that grants them each month. */}
+                {share !== null ? (
+                  <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
+                    <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+                  </span>
+                ) : null}
+              </Link>
+              {canUpgrade ? (
+                <Button asChild size="sm" className="w-full">
+                  <Link href="/pricing" onClick={onNavigate}>
+                    <UpgradeIcon /> {tc("upgrade")}
+                  </Link>
+                </Button>
               ) : null}
-            </Link>
+            </div>
           </Opening>
         ) : null}
       </AnimatePresence>
