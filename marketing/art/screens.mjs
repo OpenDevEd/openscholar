@@ -1,7 +1,16 @@
 // Compresses captured screens into the sizes each device shows them at. Usage: node art/screens.mjs <folder of name-device-theme.png>
-// Laptop screens are captured at 1280 by 800, tablets at 834 by 1112 and phones at 393 by 852, signed in to a test workspace, in both themes.
+// Laptops are captured at 1120 by 700, community laptops at 1024 by 640, tablets at 834 by 1112 and phones at 393 by 795, signed in to a test workspace, in both themes.
+// A phone's capture gets a band on top in the colour of its own header, for the status bar to sit on, so the two read as one screen.
 import sharp from "sharp"; import { readdirSync, mkdirSync } from "node:fs";
 const from = process.argv[2], out = new URL("../public/img/screens/", import.meta.url).pathname; mkdirSync(out, { recursive: true });
 const WIDTHS = { laptop: [2000, 1000], tablet: [1400, 800], phone: [800, 400] }; let total = 0;
-for (const f of readdirSync(from).filter((x) => x.endsWith(".png"))) { const name = f.slice(0, -4), dev = name.split("-").at(-2); for (const [i, w] of WIDTHS[dev].entries()) { const r = await sharp(`${from}/${f}`).resize({ width: w }).avif({ quality: i ? 48 : 56, effort: 6 }).toFile(`${out}${name}${i ? `-${w}` : ""}.avif`); total += r.size; } }
+const save = async (img, name, w, q) => { const r = await img.resize({ width: w }).avif({ quality: q, effort: 6 }).toFile(`${out}${name}.avif`); total += r.size; };
+for (const f of readdirSync(from).filter((x) => x.endsWith(".png"))) {
+  const name = f.slice(0, -4), dev = name.split("-").at(-2), file = `${from}/${f}`, m = await sharp(file).metadata();
+  let base = await sharp(file).png().toBuffer();
+  if (dev === "phone") { const { data } = await sharp(file).extract({ left: m.width >> 1, top: 2, width: 1, height: 1 }).removeAlpha().raw().toBuffer({ resolveWithObject: true }); base = await sharp(file).removeAlpha().extend({ top: Math.round(m.height * (57 / 795)), background: { r: data[0], g: data[1], b: data[2] } }).png().toBuffer(); }
+  for (const [i, w] of WIDTHS[dev].entries()) await save(sharp(base), `${name}${i ? `-${w}` : ""}`, w, i ? 48 : 56);
+}
+// Panels shown at their real size, cut from the laptop captures: [name, file, left, top, width, height]
+for (const [name, file, left, top, width, height] of [["panel-assistant-light", "assistant-laptop-light", 1330, 34, 878, 1334], ["panel-assistant-dark", "assistant-laptop-dark", 1330, 34, 878, 1334], ["panel-citation-light", "trust-laptop-light", 176, 18, 890, 1364], ["panel-citation-dark", "trust-laptop-dark", 176, 18, 890, 1364]]) await save(sharp(`${from}/${file}.png`).extract({ left, top, width, height }), name, 880, 58);
 console.log("total KB", Math.round(total / 1024));

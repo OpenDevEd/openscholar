@@ -1,7 +1,7 @@
 @font-face { font-family: Ubuntu; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-latin-400-normal.woff2) format("woff2"); }
 @font-face { font-family: Ubuntu; font-weight: 500; font-display: swap; src: url(/fonts/ubuntu-latin-500-normal.woff2) format("woff2"); }
 /* A stand-in that takes up the same space as Ubuntu, so text doesn't reflow when the real font arrives on a slow connection. */
-@font-face { font-family: "Ubuntu Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans"); size-adjust: 97%; ascent-override: 96%; descent-override: 19.500%; line-gap-override: 0%; }
+@font-face { font-family: "Ubuntu Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans"); size-adjust: 101.5%; ascent-override: 91.8%; descent-override: 18.6%; line-gap-override: 0%; }
 @font-face { font-family: "Ubuntu Mono"; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-mono-latin-400-normal.woff2) format("woff2"); }
 @view-transition { navigation: auto; }
 :root {

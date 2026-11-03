@@ -3,11 +3,11 @@
 import Device from "./Device.astro";
 import Icon from "./Icon.astro";
 const tabs = [
-  { label: "Search", icon: "search", lap: "search", ph: "search2", alt: "Search results with an overview of the field, on a laptop and a phone" },
-  { label: "Screen", icon: "sieve", lap: "screen", ph: "screen2", alt: "A screening's progress, questions and papers, on a laptop and a phone" },
-  { label: "Extract", icon: "table", lap: "extract-detail", ph: "extract", alt: "An extraction table with an answer and a confidence score for each paper" },
-  { label: "Assistant", icon: "spark", lap: "assistant", ph: "assistant", alt: "The research assistant reporting on an extraction and listing papers to check by hand" },
-  { label: "Publish", icon: "globe", lap: "c-home", ph: "c-search", alt: "A live Evidence Community under its own name" },
+  { label: "Search", color: "#2563eb", icon: "search", lap: "search", ph: "search2", alt: "Search results with an overview of the field, on a laptop and a phone" },
+  { label: "Screen", color: "#10b981", icon: "sieve", lap: "screen", ph: "screen2", alt: "A screening's progress, questions and papers, on a laptop and a phone" },
+  { label: "Extract", color: "#f59e0b", icon: "table", lap: "extract-detail", ph: "extract", alt: "An extraction table with an answer and a confidence score for each paper" },
+  { label: "Assistant", color: "#06b6d4", icon: "spark", lap: "assistant", ph: "assistant", alt: "The research assistant reporting on an extraction and listing papers to check by hand" },
+  { label: "Publish", color: "#f43f5e", icon: "globe", lap: "c-home", ph: "c-search", alt: "A live Evidence Community under its own name" },
 ];
 ---
 <div class="ws" data-ws data-theme="light">
@@ -16,9 +16,16 @@ const tabs = [
     <button type="button" class="mode" data-mode aria-label="Switch the screens between light and dark"><i class="sun"><Icon name="sun" size={16} /></i><i class="moon"><Icon name="moon" size={16} /></i></button>
   </div>
   <div class="stage">
-    {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`}>
+    {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`} style={`--c:${t.color}`}>
       <Device class="lap" kind="laptop" name={t.lap} theme="both" alt={t.alt} eager={i === 0} defer={i > 0} sizes="(max-width: 900px) 120vw, 1000px" />
-      <Device class="ph" kind="phone" name={t.ph} theme="both" eager={i === 0} defer={i > 0} sizes="(max-width: 900px) 40vw, 240px" />
+      <Device class="ph" kind="phone" name={t.ph} theme="both" eager={i === 0} defer={i > 0} sizes="(max-width: 900px) 40vw, 200px" />
+      <div class="chip" aria-hidden="true">
+        {i === 0 && <><span class="q"><b>"peer tutoring"</b> <i>AND</i> <em>reading</em></span><span class="m">829 papers</span></>}
+        {i === 1 && <><b>14 of 15 included</b><u class="bar"><s style="width:93%"></s></u><span class="m">Included at 2 of 3 points</span></>}
+        {i === 2 && <><span class="m">Who took part?</span><b>294 students aged 11 to 13</b><u class="bar"><s style="width:90%"></s></u></>}
+        {i === 3 && <><b>Start an extraction</b><span class="m">8 papers, 3 questions</span><span class="allow">Allow once</span></>}
+        {i === 4 && <><b>Wealth Inequality</b><span class="m">Updated every night</span></>}
+      </div>
     </div>)}
   </div>
 </div>
@@ -45,12 +52,15 @@ const tabs = [
   [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding-inline: 14px; border-radius: 10px; color: var(--t2); font-size: 15px; white-space: nowrap; transition: color .2s var(--ease), background-color .2s var(--ease); flex: none; } [role="tab"]:hover { color: var(--ink); background: rgb(10 26 63 / .05); } [role="tab"][aria-selected="true"] { color: #fff; background: var(--ink); }
   u { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--spectrum); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 7s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes fill { to { transform: scaleX(1); } }
   .mode { position: relative; display: flex; flex: none; padding: 4px; gap: 2px; color: var(--t2); } .mode i { display: grid; place-items: center; width: 36px; height: 40px; border-radius: 10px; transition: background-color .25s var(--ease), color .25s var(--ease); } .mode:hover i { color: var(--ink); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: var(--ink); color: #fff !important; }
-  /* The laptop stands on the page and the phone leans in front of it. Choosing a theme wipes across both, with the phone always on the other theme so both are on show. */
-  .stage { position: relative; aspect-ratio: 1120 / 620; perspective: 2000px; }
+  /* The stream pours into the laptop. The phone stands in front of its left edge, always on the other theme, so both are on show. Choosing a theme wipes across both. */
+  .stage { position: relative; aspect-ratio: 1000 / 620; } /* The stream goes into the laptop and doesn't come out underneath. */ .stage::before { content: ""; position: absolute; z-index: -1; left: 4%; right: -50vw; top: 30%; bottom: -60vh; background: #fff; }
   .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .4s var(--ease), visibility 0s .4s; } .pane.on { opacity: 1; visibility: visible; transition: opacity .4s var(--ease); z-index: 1; }
-  .pane :global(.lap) { position: absolute; left: 1%; top: 0; width: 80%; }
-  .pane :global(.ph) { position: absolute; right: 1.500%; bottom: -3%; width: 20%; transform: translateY(14px) rotate(1.5deg); transition: transform .7s var(--ease); } .pane.on :global(.ph) { transform: rotate(0); }
+  .pane :global(.lap) { position: absolute; left: 0; top: 0; width: 88%; } .pane :global(.lap .body) { box-shadow: inset 0 0 0 1.5px #4b4e57, inset 0 0 0 3px #15161a, 0 -10px 60px -4px var(--c), 0 40px 80px -36px rgb(8 14 40 / .75); transition: box-shadow .5s var(--ease); }
+  .pane :global(.ph) { position: absolute; right: -1%; bottom: -5%; width: 19%; z-index: 2; transform: translateY(14px); transition: transform .7s var(--ease); } .pane.on :global(.ph) { transform: none; }
   .pane :global(.lap .scr.dark) { clip-path: inset(0 100% 0 0); } [data-theme="dark"] .pane :global(.lap .scr.dark) { clip-path: inset(0); }
   .pane :global(.ph .scr.light) { clip-path: inset(0 100% 0 0); z-index: 1; } [data-theme="dark"] .pane :global(.ph .scr.light) { clip-path: inset(0); }
+  /* One small fact from the screen, on its corner. */
+  .chip { position: absolute; z-index: 2; left: 2%; bottom: 8%; display: grid; gap: 4px; min-width: 200px; padding: 12px 14px; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 0 44px -8px var(--c), 0 24px 44px -20px rgb(10 26 63 / .55); font-size: 14px; line-height: 1.25; opacity: 0; transform: translateY(12px); transition: opacity .4s var(--ease), transform .6s var(--ease); } .pane.on .chip { opacity: 1; transform: none; transition-delay: .18s; } .chip b { font-weight: 500; } .chip .m { font-size: 13px; color: var(--t2); } .chip .q { font-size: 15px; font-weight: 500; white-space: nowrap; } .chip .q b { padding: 1px 4px; border-radius: 4px; background: #ffe08a; } .chip .q i { font-style: normal; color: var(--t3); } .chip .q em { font-style: normal; padding: 1px 4px; border-radius: 4px; background: #a9d6ff; } .bar { display: block; height: 5px; border-radius: 3px; background: var(--soft); overflow: hidden; text-decoration: none; } .bar s { display: block; height: 100%; background: var(--c); text-decoration: none; } .allow { justify-self: start; margin-top: 4px; padding: 6px 12px; border-radius: 9px; background: var(--brand); color: #fff; font-weight: 500; }
+  @media (max-width: 1000px) { .chip { display: none; } }
   @media (max-width: 700px) { .stage { aspect-ratio: 402 / 480; } .pane :global(.lap) { left: 0; width: 100%; top: 0; } .pane :global(.ph) { right: 2%; bottom: 0; width: 42%; } [role="tab"] { padding-inline: 10px; } [role="tab"] span { font-size: 14px; } .mode i { width: 32px; } }
 </style>

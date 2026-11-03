@@ -26,7 +26,7 @@ const rows = [
 </script>
 <style>
   [data-rows] .r { transition: background-color .15s var(--ease); } [data-rows] .r.sel { background: rgb(217 119 6 / .09); box-shadow: inset 3px 0 0 #d97706; } [data-rows] .r { cursor: pointer; margin-inline: -24px; padding-inline: 24px; }
-  .from { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: start; margin-inline: -24px; margin-bottom: -12px; padding: 14px 24px; min-height: 76px; border-radius: 0 0 18px 18px; background: var(--soft); font-size: 15px; line-height: 1.4; } .lb { font: 400 13px/1.5 var(--mono); color: var(--t2); } .from mark { background: #fde68a; border-radius: 3px; padding-inline: 2px; }
+  .from { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: start; margin-inline: -24px; margin-bottom: -12px; padding: 14px 24px; min-height: 76px; border-radius: 0 0 18px 18px; background: var(--soft); font-size: 15px; line-height: 1.4; } .lb { font: 400 13px/1.5 var(--mono); color: var(--t2); } .from :global(mark) { background: #fde68a; color: inherit; border-radius: 3px; padding-inline: 2px; }
   .x { padding: 8px 24px 12px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 30px 60px -28px rgb(70 25 5 / .7); }
   .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-block: 12px; } .bar b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; }
   .sort { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 12px; border-radius: 10px; background: var(--soft); font-size: 14px; font-weight: 500; transition: background-color .15s var(--ease), color .15s var(--ease); } .sort:hover { background: #e6eeff; } 

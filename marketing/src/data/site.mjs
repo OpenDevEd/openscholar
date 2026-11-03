@@ -5,7 +5,7 @@ export const NAV = [
     { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#22d3ee", field: "ocean", art: "sea", img: "search2-laptop-dark" },
     { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "pane", img: "screen-laptop-dark" },
     { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", color: "#fbbf24", field: "amber", art: "grid", img: "extract-laptop-dark" },
-    { href: "/#assistant", title: "Delegate to the assistant", text: "It does the groundwork and asks before it acts", icon: "spark", color: "#60a5fa", field: "cobalt", art: "gate", img: "assistant-laptop-dark" },
+    { href: "/#assistant", title: "Delegate to the assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#60a5fa", field: "cobalt", art: "gate", img: "assistant-laptop-dark" },
     { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", color: "#f59e0b", field: "night", art: "thread" },
   ] },
   { id: "communities", href: "/evidence-communities/", label: "Evidence Communities", rows: [
