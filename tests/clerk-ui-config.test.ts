@@ -14,6 +14,15 @@ describe("clerk ui config", () => {
     }
   });
 
+  // Clerk's English has no entry for these, so a language file built from its keys loses them, and the server's English shows.
+  it("has sign-in's errors in every language but English", async () => {
+    for (const locale of locales.filter((code) => !code.startsWith("en"))) {
+      const errors = (await clerkLocalizationFor(locale))?.unstable__errors;
+      expect(errors?.form_identifier_not_found, locale).toBeTruthy();
+      expect(errors?.form_code_incorrect, locale).toBeTruthy();
+    }
+  });
+
   it("returns dark appearance only for dark mode", () => {
     expect(resolveClerkAppearance("dark").theme).toBeDefined();
     expect(resolveClerkAppearance("light").theme).toBeUndefined();
