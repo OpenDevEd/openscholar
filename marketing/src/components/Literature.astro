@@ -21,7 +21,7 @@ const whole = `${total} papers, 1972 to 2026`;
   const lit = document.querySelector("[data-lit]");
   if (lit) {
     const out = lit.querySelector("[data-readout]");
-    lit.querySelectorAll(".c").forEach((c) => c.addEventListener("pointerenter", () => { out.textContent = c.dataset.t; }));
+    lit.querySelectorAll(".c").forEach((c) => { const rows = [...c.querySelectorAll("u")].map((u) => lit.querySelector(`.page li[data-k="${u.dataset.k}"]`)); c.addEventListener("pointerenter", () => { out.textContent = c.dataset.t; rows.forEach((r) => r.classList.add("hit")); }); c.addEventListener("pointerleave", () => rows.forEach((r) => r.classList.remove("hit"))); });
     lit.querySelector(".plot").addEventListener("pointerleave", () => { out.textContent = lit.dataset.whole; });
     // A title and its tile light up together, so the page and the field read as one thing.
     lit.querySelectorAll(".page li").forEach((li) => { const tile = lit.querySelector(`u[data-k="${li.dataset.k}"]`); li.addEventListener("pointerenter", () => { tile.classList.add("hit"); li.classList.add("hit"); }); li.addEventListener("pointerleave", () => { tile.classList.remove("hit"); li.classList.remove("hit"); }); });
