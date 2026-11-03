@@ -60,6 +60,8 @@ $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("i
 const foot = $("[data-foot]");
 new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
 const stand = $(".stand", foot); new IntersectionObserver(([e], o) => { if (e.isIntersecting) { stand.classList.add("up"); o.disconnect(); } }, { threshold: .15 }).observe(stand);
+// A lifted letter's reflection moves with it, so both copies take the class.
+const copies = [...stand.querySelectorAll(".word")].map((w) => [...w.children]); const lift = (n) => copies.forEach((c) => c.forEach((s, i) => { s.classList.toggle("lift", i === n); s.classList.toggle("lift2", Math.abs(i - n) === 1); })); copies[0].forEach((s, i) => s.addEventListener("pointerenter", () => lift(i))); copies[0][0].parentElement.addEventListener("pointerleave", () => lift(-1));
 const veil = $(".veil", foot);
 if (fine) { foot.addEventListener("pointerenter", () => foot.classList.add("held")); foot.addEventListener("pointerleave", () => { foot.classList.remove("held"); veil.style.transform = ""; }); }
 

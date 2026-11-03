@@ -3,53 +3,48 @@
 import Art from "./Art.astro";
 ---
 <section class="panel gate" id="assistant" data-gate>
-  <Art name="door-front" sizes="(max-width: 1280px) 134vw, 1672px" />
-  <div class="g-copy"><h2>Delegate the groundwork, not the decisions</h2><p class="lead">Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand.</p></div>
-  <div class="queue" aria-hidden="true">{Array.from({ length: 5 }, (_, i) => <i style={`--i:${i}`}></i>)}</div>
-  <i class="glow" aria-hidden="true"></i>
-  <div class="hinge">
-    <div class="leaf">
-      <div class="ask">
-        <img src="/img/screens/panel-approve-light.avif" width="809" height="602" loading="lazy" decoding="async" alt="The research assistant asking for approval before it starts an extraction, with Allow once and Always allow in this chat" />
-        <button type="button" class="yes one" data-yes aria-label="Allow once"></button>
-        <button type="button" class="yes all" data-yes aria-label="Always allow in this chat"></button>
+  <div class="g-stage">
+    <Art name="door-front" sizes="(max-width: 1280px) 134vw, 1672px" />
+    <div class="g-copy"><h2>Delegate the groundwork, not the decisions</h2><p class="lead">Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand.</p></div>
+    <div class="queue" aria-hidden="true">{Array.from({ length: 5 }, (_, i) => <img src="/img/sheet-glass.avif" width="280" height="280" loading="lazy" decoding="async" alt="" style={`--i:${i}`} />)}</div>
+    <i class="glow" aria-hidden="true"></i>
+    <div class="hinge">
+      <div class="leaf">
+        <div class="ask">
+          <img src="/img/screens/panel-approve-light.avif" width="809" height="602" loading="lazy" decoding="async" alt="The research assistant asking for approval before it starts an extraction, with Allow once and Always allow in this chat" />
+          <button type="button" class="yes one" data-yes aria-label="Allow once"></button>
+          <button type="button" class="yes all" data-yes aria-label="Always allow in this chat"></button>
+        </div>
+        <i class="handle" aria-hidden="true"></i>
       </div>
-      <i class="handle" aria-hidden="true"></i>
     </div>
-  </div>
-  <p class="hold">Nothing moves until you answer</p>
-  <div class="report">
-    <img src="/img/screens/panel-assistant-light.avif" width="878" height="926" loading="lazy" decoding="async" alt="The research assistant's report, listing which papers to check by hand and why" />
-    <button type="button" class="btn ghost again" data-again>Ask again</button>
+    <p class="hold wait">Nothing moves until you answer</p>
+    <div class="hold done"><p>Then it tells you what to check by hand</p><button type="button" class="again" data-again>See it again</button></div>
+    <div class="report"><img src="/img/screens/panel-assistant-light.avif" width="878" height="926" loading="lazy" decoding="async" alt="The research assistant's report, listing which papers to check by hand and why" /></div>
   </div>
 </section>
 <script>
   const gate = document.querySelector("[data-gate]");
   if (gate) {
-    let timer = 0;
-    const open = () => { clearTimeout(timer); gate.classList.add("open"); };
-    const wait = () => { clearTimeout(timer); if (!gate.classList.contains("open") && !gate.matches(":hover, :focus-within") && matchMedia("(prefers-reduced-motion: no-preference)").matches) timer = setTimeout(open, 3600); };
-    gate.querySelectorAll("[data-yes]").forEach((b) => b.addEventListener("click", open));
-    gate.querySelector("[data-again]").addEventListener("click", () => { gate.classList.remove("open"); gate.querySelector("[data-yes]").focus(); });
-    gate.addEventListener("pointerenter", () => clearTimeout(timer)); gate.addEventListener("pointerleave", wait);
-    // It only answers for you the first time it comes into view.
-    const seen = new IntersectionObserver(([e]) => { if (e.isIntersecting) { wait(); seen.disconnect(); } }, { threshold: .6 }); seen.observe(gate);
+    const again = gate.querySelector("[data-again]"), first = gate.querySelector("[data-yes]");
+    gate.querySelectorAll("[data-yes]").forEach((b) => b.addEventListener("click", () => { gate.classList.add("open"); again.focus({ preventScroll: true }); }));
+    again.addEventListener("click", () => { gate.classList.remove("open"); first.focus({ preventScroll: true }); });
   }
 </script>
 <style>
   /* Phones and small windows: the two real panels, one above the other. */
-  .gate { display: grid; gap: 20px; padding: var(--pad); background: #05124f; } .g-copy { display: grid; gap: 18px; } .queue, .glow, .handle, .yes, .again, .hold { display: none; } .ask img, .report img { display: block; width: 100%; height: auto; border-radius: 16px; box-shadow: 0 0 0 1px rgb(255 255 255 / .3), 0 40px 80px -30px rgb(2 8 50 / .85); }
-  @media (min-width: 701px) and (max-width: 1100px) { .gate { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } .g-copy { grid-column: 1 / -1; } .gate > :global(.art) { display: none; } }
-  /* From here up everything is measured against the door in the picture. */
+  .gate { padding: var(--pad); background: #05124f; } .g-stage { position: relative; isolation: isolate; display: grid; gap: 20px; } .g-copy { display: grid; gap: 18px; } .queue, .glow, .handle, .yes, .hold { display: none; } .ask img, .report img { display: block; width: 100%; height: auto; border-radius: 16px; box-shadow: 0 0 0 1px rgb(255 255 255 / .3), 0 40px 80px -30px rgb(2 8 50 / .85); }
+  @media (min-width: 701px) and (max-width: 1100px) { .g-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } .g-copy { grid-column: 1 / -1; } }
+  @media (max-width: 1100px) { .gate :global(.art) { display: none; } .gate { background: radial-gradient(ellipse 80% 50% at 50% 100%, #1740b8, transparent), #05124f; } }
+  /* From here up everything is measured against the door in the picture, and the whole scene fits the window's height as well as its width. */
   @media (min-width: 1101px) {
-    .gate { --u: calc(100cqw / 1248); display: block; container-type: inline-size; padding: 0; aspect-ratio: 1248 / 860; }
-    .gate > * { --u: calc(100cqw / 1248); }
-    .gate > :global(.art) { inset: auto; left: calc(var(--u) * -60); top: 0; width: calc(var(--u) * 1672); height: calc(var(--u) * 941); }
-    .g-copy { position: absolute; left: var(--pad); top: calc(var(--u) * 96); width: calc(var(--u) * 316); } .g-copy h2 { font-size: calc(var(--u) * 40); } .g-copy .lead { font-size: calc(var(--u) * 17.5); }
-    /* The papers wait on the floor line. */
+    .gate { padding: 0; container-type: inline-size; background: #000a34; }
+    .g-stage { --u: min(calc(100cqw / 1248), calc((100svh - 32px) / 860)); display: block; width: calc(var(--u) * 1248); height: calc(var(--u) * 860); margin-inline: auto; }
+    .gate :global(.art) { inset: auto; left: calc(var(--u) * -60); top: 0; width: calc(var(--u) * 1672); height: calc(var(--u) * 941); -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%); mask-image: linear-gradient(90deg, transparent, #000 5%); }
+    .g-copy { position: absolute; left: calc(var(--u) * 64); top: calc(var(--u) * 96); width: calc(var(--u) * 316); } .g-copy h2 { font-size: calc(var(--u) * 40); } .g-copy .lead { font-size: calc(var(--u) * 17.5); }
+    /* The papers wait on the floor line, then walk into the doorway and away into its depth. */
     .queue { display: block; position: absolute; inset: 0; pointer-events: none; }
-    .queue i { position: absolute; left: calc(var(--u) * (64 + var(--i) * 64)); top: calc(var(--u) * 666); width: calc(var(--u) * 56); height: calc(var(--u) * 88); border-radius: calc(var(--u) * 5); background: linear-gradient(rgb(255 255 255 / .55), rgb(255 255 255 / .55)) calc(var(--u) * 8) calc(var(--u) * 12) / 60% 2px no-repeat, linear-gradient(rgb(255 255 255 / .28), rgb(255 255 255 / .28)) calc(var(--u) * 8) calc(var(--u) * 21) / 72% 2px no-repeat, linear-gradient(rgb(255 255 255 / .28), rgb(255 255 255 / .28)) calc(var(--u) * 8) calc(var(--u) * 29) / 50% 2px no-repeat, linear-gradient(150deg, rgb(160 205 255 / .34), rgb(90 150 255 / .1) 60%, rgb(160 220 255 / .24)); box-shadow: inset 0 0 0 1px rgb(200 230 255 / .6), 0 0 calc(var(--u) * 26) rgb(90 170 255 / .28); }
-    .queue i::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% + 3px); height: 46%; border-radius: inherit; background: linear-gradient(rgb(160 210 255 / .24), transparent); }
+    .queue img { position: absolute; left: calc(var(--u) * (46 + var(--i) * 64)); top: calc(var(--u) * 650); width: calc(var(--u) * 96); height: calc(var(--u) * 106); object-fit: contain; opacity: .78; }
     /* The door, on its hinge. */
     .hinge { position: absolute; left: calc(var(--u) * 428); top: calc(var(--u) * 122); width: calc(var(--u) * 348); height: calc(var(--u) * 630); perspective: calc(var(--u) * 1400); }
     .leaf { position: absolute; inset: 0; display: grid; align-items: center; padding-inline: calc(var(--u) * 10); transform-origin: 0 50%; background: linear-gradient(118deg, rgb(170 205 255 / .2), rgb(150 190 255 / .05) 36%, rgb(190 225 255 / .13) 58%, rgb(150 190 255 / .04) 72%); box-shadow: inset 0 0 0 1px rgb(205 230 255 / .55); transition: transform 1.1s cubic-bezier(.55, 0, .15, 1); }
@@ -57,12 +52,13 @@ import Art from "./Art.astro";
     .yes { display: block; position: absolute; top: 83.900%; height: 11.900%; border-radius: calc(var(--u) * 7); cursor: pointer; transition: background-color .15s var(--ease), box-shadow .15s var(--ease); } .one { left: 3.100%; width: 46%; box-shadow: 0 0 0 calc(var(--u) * 3) rgb(251 191 36 / .9), 0 0 calc(var(--u) * 26) rgb(251 191 36 / .55); } .all { left: 51%; width: 46%; } .yes:hover { background: rgb(255 255 255 / .16); } .yes:active { background: rgb(0 0 0 / .14); }
     .handle { display: block; position: absolute; right: calc(var(--u) * 10); top: 76%; width: calc(var(--u) * 5); height: calc(var(--u) * 80); border-radius: 99px; background: linear-gradient(90deg, #eef6ff, #8fb4e8); box-shadow: 0 0 calc(var(--u) * 12) rgb(160 210 255 / .7); }
     .glow { display: block; position: absolute; left: calc(var(--u) * 428); top: calc(var(--u) * 122); width: calc(var(--u) * 348); height: calc(var(--u) * 630); background: radial-gradient(ellipse 70% 62% at 56% 58%, rgb(150 215 255 / .55), rgb(70 140 255 / .14) 70%, transparent); opacity: 0; pointer-events: none; transition: opacity 1.2s var(--ease); }
-    .report { position: absolute; left: calc(var(--u) * 826); top: calc(var(--u) * 132); width: calc(var(--u) * 390); display: grid; justify-items: start; gap: calc(var(--u) * 14); }
-    .again { display: inline-flex; }
-    .hold { display: block; position: absolute; left: calc(var(--u) * 836); top: calc(var(--u) * 372); width: calc(var(--u) * 340); font-size: calc(var(--u) * 32); line-height: 1.15; letter-spacing: -.02em; font-weight: 500; transition: opacity .3s var(--ease), translate .4s var(--ease); transition-delay: 1.2s; } .open .hold { opacity: 0; translate: calc(var(--u) * 24) 0; transition-delay: 0s; }
-    /* Opening: door, then light, then the papers go through one by one, then the report arrives from the doorway. */
+    /* One line beside the door, before and after. */
+    .hold { display: block; position: absolute; left: calc(var(--u) * 836); top: calc(var(--u) * 340); width: calc(var(--u) * 340); font-size: calc(var(--u) * 32); line-height: 1.15; letter-spacing: -.02em; font-weight: 500; transition: opacity .35s var(--ease); } .wait { transition-delay: .9s; } .done { opacity: 0; visibility: hidden; transition: opacity .5s var(--ease), visibility 0s .5s; } .open .wait { opacity: 0; transition-delay: 0s; } .open .done { opacity: 1; visibility: visible; transition: opacity .6s var(--ease) 2s; }
+    .again { margin-top: calc(var(--u) * 14); color: rgb(255 255 255 / .78); font-size: calc(var(--u) * 15); font-weight: 400; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; transition: color .15s var(--ease); } .again:hover { color: #fff; }
+    /* The report comes forward out of the light and stands in the doorway. */
+    .report { position: absolute; left: calc(var(--u) * 392); top: calc(var(--u) * 134); width: calc(var(--u) * 420); transform-origin: 50% 60%; } .report img { box-shadow: 0 0 0 1px rgb(255 255 255 / .4), 0 calc(var(--u) * 40) calc(var(--u) * 80) calc(var(--u) * -20) rgb(2 8 50 / .9), 0 0 calc(var(--u) * 70) rgb(120 190 255 / .4); }
     .open .leaf { transform: rotateY(76deg); } .open .ask { opacity: 0; pointer-events: none; } .open .yes { visibility: hidden; } .open .glow { opacity: 1; transition-delay: .25s; }
-    .open .queue i { animation: pass 1.5s var(--ease) calc(.55s + (4 - var(--i)) * 130ms) forwards; } @keyframes pass { 72% { opacity: 1; } to { opacity: 0; translate: calc(var(--u) * (790 - var(--i) * 64)) 0; } }
-    :global(.has-js) .gate:not(.open) .report { opacity: 0; translate: calc(var(--u) * -90) 0; scale: .97; pointer-events: none; visibility: hidden; } :global(.has-js) .gate .report { transition: opacity .3s var(--ease), translate .3s var(--ease), scale .3s var(--ease); } :global(.has-js) .gate.open .report { transition: opacity .8s var(--ease) 1.5s, translate 1s var(--ease) 1.5s, scale 1s var(--ease) 1.5s; }
+    .open .queue img { animation: pass 1.7s cubic-bezier(.5, 0, .3, 1) calc(.5s + (4 - var(--i)) * 130ms) forwards; } @keyframes pass { 58% { opacity: 1; translate: calc(var(--u) * (508 - var(--i) * 64)) 0; scale: 1; } to { opacity: 0; translate: calc(var(--u) * (508 - var(--i) * 64)) calc(var(--u) * -150); scale: .16; } }
+    :global(.has-js) .gate:not(.open) .report { opacity: 0; scale: .3; visibility: hidden; pointer-events: none; transition: opacity .25s var(--ease), scale .25s var(--ease), visibility 0s .25s; } :global(.has-js) .gate.open .report { transition: opacity .7s var(--ease) 1.5s, scale 1s cubic-bezier(.2, .8, .3, 1) 1.5s; } :global(html:not(.has-js)) .ask { opacity: 0; }
   }
 </style>

@@ -10,7 +10,7 @@ const tabs = [
   { label: "Publish", color: "#fb7185", icon: "globe", lap: "c-home", tab: "c-map", ph: "c-search", alt: "A live Evidence Community under its own name" },
 ];
 ---
-<div class="ws" data-ws data-theme="light" style={`--glow:${tabs[0].color}`}>
+<div class="ws-pin"><div class="ws" data-ws data-theme="light" style={`--glow:${tabs[0].color}`}>
   <div class="stage">
     <i class="bloom" aria-hidden="true"></i>
     {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`} data-c={t.color}>
@@ -23,14 +23,15 @@ const tabs = [
       <button type="button" class="mode" data-mode aria-label="Switch the laptop between light and dark"><i class="sun"><Icon name="sun" size={16} /></i><i class="moon"><Icon name="moon" size={16} /></i></button>
     </div>
   </div>
-</div>
+</div></div>
 <script>
   const ws = document.querySelector("[data-ws]");
   if (ws) {
     const tabs = [...ws.querySelectorAll("[role=tab]")], panes = [...ws.querySelectorAll(".pane")];
     const load = (i) => { if (i.dataset.src) { i.srcset = i.dataset.srcset; i.src = i.dataset.src; delete i.dataset.src; delete i.dataset.srcset; } };
     // A pane's dark screen only loads once someone has asked for dark.
-    const fill = (k, dark = ws.dataset.theme === "dark") => panes[k].querySelectorAll("img").forEach((i) => { if (dark || !i.closest(".scr.dark")) load(i); });
+    let want = ws.dataset.theme;
+    const fill = (k, dark = want === "dark") => panes[k].querySelectorAll("img").forEach((i) => { if (dark || !i.closest(".scr.dark")) load(i); });
     // Nothing swaps until its images can paint, or half a second has passed, so a slow connection never shows a blank screen.
     const ready = (k) => Promise.race([Promise.all([...panes[k].querySelectorAll("img")].filter((i) => i.getAttribute("src")).map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 500))]);
     let wanted = 0;
@@ -38,7 +39,7 @@ const tabs = [
     // The bar filling up under a tab is the timer: when its animation ends, the next tab starts. Reduced motion removes the animation, so nothing advances by itself.
     ws.addEventListener("animationend", (e) => { if (e.animationName.includes("fill")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
     tabs.forEach((t, i) => { t.addEventListener("click", () => { ws.classList.add("held"); pick(i); }); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
-    ws.querySelector("[data-mode]").addEventListener("click", () => { const next = ws.dataset.theme === "light" ? "dark" : "light", n = wanted; fill(n, next === "dark"); ready(n).then(() => { ws.dataset.theme = next; }); });
+    ws.querySelector("[data-mode]").addEventListener("click", () => { want = want === "light" ? "dark" : "light"; const asked = want, n = wanted; fill(n); ready(n).then(() => { if (asked === want) ws.dataset.theme = asked; }); });
     new IntersectionObserver(([en]) => ws.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(ws);
     const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { fill(1); near.disconnect(); } }); near.observe(ws);
   }
@@ -60,17 +61,17 @@ const tabs = [
   [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 46px; padding-inline: 14px; border-radius: 14px; color: rgb(255 255 255 / .72); font-size: 15px; white-space: nowrap; flex: none; transition: color .2s var(--ease), background-color .2s var(--ease); } [role="tab"]:hover { color: #fff; background: rgb(255 255 255 / .09); } [role="tab"][aria-selected="true"] { color: #fff; background: rgb(255 255 255 / .14); } [role="tab"][aria-selected="true"] :global(svg) { color: var(--c); }
   u { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--c); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 7s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } .ws:global(.held) u { animation: none; transform: none; opacity: 0; } @keyframes fill { to { transform: scaleX(1); } }
   .mode { display: flex; flex: none; gap: 2px; margin-left: 4px; padding: 3px; border-radius: 14px; background: rgb(255 255 255 / .08); color: rgb(255 255 255 / .72); } .mode i { display: grid; place-items: center; width: 34px; height: 38px; border-radius: 11px; transition: background-color .25s var(--ease), color .25s var(--ease); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: #fff; color: var(--ink); }
-  /* The one scroll-tied moment on the site: the lid opens and the screen wakes as the tour arrives, the tablet and phone slide out from behind it, and the dock comes last. Browsers without scroll timelines just show it open. */
+  /* The one scroll-tied moment on the site. The stage holds still while the closed laptop opens on its hinge and its screen wakes, then the tablet and phone slide in from the sides and the dock arrives. Browsers without scroll timelines just show it open, with no pause. Ranges count from the pin's top edge meeting the bottom of the screen. */
   @supports (animation-timeline: view()) { @media (prefers-reduced-motion: no-preference) and (min-width: 701px) {
-    .ws { view-timeline: --ws block; }
-    .pane :global(.lap .body) { transform-origin: 50% 100%; animation: lid linear both; animation-range: cover 6% cover 38%; }
-    .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #03061c; pointer-events: none; animation: wake linear both; animation-range: cover 18% cover 38%; }
-    .pane :global(.tb) { animation: out-l linear both; animation-range: cover 22% cover 42%; } .pane :global(.ph) { animation: out-r linear both; animation-range: cover 22% cover 42%; }
-    .bloom { animation: bloom linear both; animation-range: cover 14% cover 42%; } .dock { animation: dock linear both; animation-range: cover 34% cover 44%; }
+    .ws-pin { --at: calc(100svh - 88px); view-timeline: --ws block; } .ws-pin::after { content: ""; display: block; height: 90svh; } .ws-pin .ws { position: sticky; top: 88px; }
+    .pane :global(.lap .body) { transform-origin: 50% 100%; animation: lid linear both; animation-range: cover calc(var(--at) - 140px) cover calc(var(--at) + 42svh); }
+    .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #03061c; pointer-events: none; animation: wake linear both; animation-range: cover calc(var(--at) - 10svh) cover calc(var(--at) + 46svh); }
+    .pane :global(.tb) { animation: out-l linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); } .pane :global(.ph) { animation: out-r linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); }
+    .ws .bloom { animation: bloom linear both; animation-range: cover calc(var(--at) - 20svh) cover calc(var(--at) + 50svh); } .ws .dock { animation: dock linear both; animation-range: cover calc(var(--at) + 62svh) cover calc(var(--at) + 74svh); }
     /* Separate from the shorthands above: the minifier folds animation-timeline into them otherwise, and the browser then rejects the whole declaration. */
     .pane :global(.lap .body), .pane :global(.lap .glass)::after, .pane :global(.tb), .pane :global(.ph), .ws .bloom, .ws .dock { animation-timeline: --ws; }
-    @keyframes lid { from { transform: perspective(2600px) rotateX(-74deg); } to { transform: perspective(2600px) rotateX(0); } } @keyframes wake { from { opacity: 1; } to { opacity: 0; } }
-    @keyframes out-l { from { translate: 42% 0; opacity: 0; } to { translate: 0 0; opacity: 1; } } @keyframes out-r { from { translate: -60% 0; opacity: 0; } to { translate: 0 0; opacity: 1; } }
+    @keyframes lid { from { transform: perspective(2600px) rotateX(-84deg); } to { transform: perspective(2600px) rotateX(0); } } @keyframes wake { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes out-l { from { translate: -220% 0; } to { translate: 0 0; } } @keyframes out-r { from { translate: 260% 0; } to { translate: 0 0; } }
     @keyframes bloom { from { opacity: 0; } to { opacity: .34; } } @keyframes dock { from { opacity: 0; translate: -50% 14px; } to { opacity: 1; translate: -50% 0; } }
   } }
   @media (max-width: 1320px) { [role="tab"] span { display: none; } [role="tab"][aria-selected="true"] span { display: inline; } }
