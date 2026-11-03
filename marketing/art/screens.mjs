@@ -1,6 +1,7 @@
-// Crops the captured product screens (3000 by 1880) into page images. Usage: node art/screens.mjs <folder of s-*.png> [names]
-import sharp from "sharp";
-const from = process.argv[2], only = process.argv[3]?.split(","), out = new URL("../public/img/", import.meta.url).pathname;
-// [file, left, top, width, height, cover]: `cover` paints over a leftover bar, in the colour just above it.
-const CROPS = { "shot-screen": ["screen", 950, 300, 1740, 1500, [1810, 945, 440, 30]], "shot-search2": ["search2", 740, 0, 1880, 998], "shot-extract": ["extract", 470, 180, 2215, 1560], "shot-assistant": ["assistant", 2090, 710, 880, 860] };
-for (const [name, [file, left, top, width, height, cover]] of Object.entries(CROPS)) { if (only && !only.includes(name)) continue; let img = sharp(`${from}/s-${file}.png`); if (cover) { const [x, y, w, h] = cover, { data } = await sharp(`${from}/s-${file}.png`).extract({ left: x, top: y - 12, width: 1, height: 1 }).removeAlpha().raw().toBuffer({ resolveWithObject: true }); img = sharp(await img.composite([{ input: { create: { width: w, height: h, channels: 3, background: { r: data[0], g: data[1], b: data[2] } } }, left: x, top: y }]).png().toBuffer()); } const i = await img.extract({ left, top, width, height }).resize({ width: Math.min(width, 1800) }).avif({ quality: 58, effort: 6 }).toFile(`${out}${name}.avif`); console.log(name, i.width, i.height, Math.round(i.size / 1024) + " KB"); }
+// Compresses captured screens into the sizes each device shows them at. Usage: node art/screens.mjs <folder of name-device-theme.png>
+// Laptop screens are captured at 1280 by 800, tablets at 834 by 1112 and phones at 393 by 852, signed in to a test workspace, in both themes.
+import sharp from "sharp"; import { readdirSync, mkdirSync } from "node:fs";
+const from = process.argv[2], out = new URL("../public/img/screens/", import.meta.url).pathname; mkdirSync(out, { recursive: true });
+const WIDTHS = { laptop: [2000, 1000], tablet: [1400, 800], phone: [800, 400] }; let total = 0;
+for (const f of readdirSync(from).filter((x) => x.endsWith(".png"))) { const name = f.slice(0, -4), dev = name.split("-").at(-2); for (const [i, w] of WIDTHS[dev].entries()) { const r = await sharp(`${from}/${f}`).resize({ width: w }).avif({ quality: i ? 48 : 56, effort: 6 }).toFile(`${out}${name}${i ? `-${w}` : ""}.avif`); total += r.size; } }
+console.log("total KB", Math.round(total / 1024));

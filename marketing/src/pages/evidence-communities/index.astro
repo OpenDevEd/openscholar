@@ -5,6 +5,7 @@ import Faq from "../../components/Faq.astro";
 import Arrow from "../../components/Arrow.astro";
 import DotMap from "../../components/DotMap.astro";
 import Art from "../../components/Art.astro";
+import Device from "../../components/Device.astro";
 import { APP } from "../../data/site.mjs";
 const steps = [["Name it", "Pick a name and reserve your address."], ["Connect sources", "Bring in a Zotero group, a saved search or an OpenScholar collection."], ["Make it yours", "Set your logo, colours, languages and the features readers get."], ["Go live", "Activate it. Later changes wait in a draft until you approve them."]];
 const faq = [
@@ -14,13 +15,19 @@ const faq = [
   ["Can we use our own domain and languages?", "Communities have their own address and branding, and can run in several languages, including right-to-left scripts."],
 ];
 ---
-<Base title="Evidence Communities: OpenScholar" description="A public, searchable home for your field's evidence, kept current and published under your own name." tone="dark">
+<Base title="Evidence Communities: OpenScholar" description="A public, searchable home for your field's evidence, kept current and published under your own name.">
   <section class="bleed hero" style="--tint:#be123c">
     <Art name="globe" live eager pos="100% 50%" />
     <div class="inner"><div class="h-copy"><h1>A public home for your field's evidence</h1><p class="lead">Build a searchable, citable community around your evidence, under your own name. Keep it current from your sources and let anyone question it.</p><div class="acts"><a class="btn" href={`${APP}/evidence-libraries`}>Create your community<Arrow /></a><a class="btn ghost" href="https://wealth-inequality.openscholar.ai">See a live community</a></div></div></div>
-    <div class="wall" aria-hidden="true"><div class="win" data-tilt><img src="/img/community-plate.avif" width="1000" height="782" fetchpriority="high" alt="" /></div><div class="win" data-tilt><img src="/img/community-evidence.avif" width="1240" height="640" decoding="async" alt="" /></div><div class="win" data-tilt><img src="/img/community-search.avif" width="1800" height="1128" decoding="async" alt="" /></div><div class="win" data-tilt><img src="/img/community-home.avif" width="1920" height="1149" decoding="async" alt="" /></div></div>
+    <div class="inner stagehand" aria-hidden="true">
+      <Device class="lap" kind="laptop" name="c-home" theme="dark" eager tilt sizes="(max-width: 900px) 90vw, 860px" />
+      <Device class="tab" kind="tablet" name="c-map" theme="light" sizes="(max-width: 900px) 40vw, 300px" />
+      <Device class="pho" kind="phone" name="c-search" theme="light" sizes="(max-width: 900px) 30vw, 200px" />
+    </div>
   </section>
-  <Feature id="readers" field="ocean" art="sea" chip="#0e7490" title="Everything your readers need to use the evidence" text="Far more than a list of PDFs. Readers can search and filter the whole collection, read each record, cite and export it, and follow new work in digests." img="community-search" w={1800} h={1128} alt="A community's search page with filters and records" />
+  <Feature id="readers" field="ocean" art="sea" chip="#0e7490" title="Everything your readers need to use the evidence" text="Far more than a list of PDFs. Readers can search and filter the whole collection, read each record, cite and export it, and follow new work in digests.">
+    <div class="wipe-wrap"><Device class="wipe" kind="laptop" name="c-search" theme="both" alt="A community's search page with filters and records, in light and dark" data-wipe sizes="(max-width: 900px) 90vw, 760px" /><i class="handle" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 6-4 4 4 4M13 6l4 4-4 4" /></svg></i></div>
+  </Feature>
   <section class="panel answers" id="answers">
     <i class="field f-amber" aria-hidden="true"></i>
     <div class="a-copy"><h2>Answers your readers can check</h2><p class="lead">Anyone can question the evidence in your community and get an answer that links to the record and the page it came from. When a document can't be read, the answer says so.</p></div>
@@ -35,16 +42,23 @@ const faq = [
   <section class="bleed close" style="--tint:#be123c"><Art name="dark-ribbon" pos="50% 100%" live /><h2>Open your community</h2><a class="btn" href={`${APP}/evidence-libraries`}>Create your community<Arrow /></a></section>
 </Base>
 <style>
-  .hero { background: #520116; padding-top: clamp(112px, 11vw, 168px); min-height: min(62vw, 900px); }
-  .hero > :global(.art) { left: 18vw; right: -18vw; } .h-copy { display: grid; gap: 20px; justify-items: start; width: min(50%, 640px); } .acts { display: flex; flex-wrap: wrap; gap: 10px; } .h-copy h1 { font-size: clamp(44px, 5.6vw, 80px); }
-  /* A long strip of real communities, running off both edges of the window. */
-  .wall { display: flex; gap: 16px; width: max(150vw, 1500px); margin-top: clamp(32px, 4vw, 56px); margin-bottom: -120px; margin-left: 8vw; align-items: flex-start; } .wall .win { flex: 1 1 0; min-width: 0; height: 340px; } .wall .win img { width: 100%; height: 100%; object-fit: cover; object-position: top left; }
-  @supports (animation-timeline: scroll()) { .wall { animation: glide linear both; animation-timeline: scroll(root); animation-range: 0 900px; } @keyframes glide { to { translate: -22vw 0; } } }
+  .hero { background: #520116; padding-top: clamp(104px, 9vw, 136px); }
+  .hero > :global(.art) { left: 18vw; right: -18vw; } .h-copy { display: grid; gap: 20px; justify-items: start; width: min(43%, 560px); } .h-copy > * { animation: up .9s var(--ease) both; } @keyframes up { from { opacity: 0; transform: translateY(20px); } } .acts { display: flex; flex-wrap: wrap; gap: 10px; } .h-copy h1 { font-size: clamp(44px, 5.6vw, 80px); }
+  /* Three devices rise out of the globe and fan apart as the page opens. */
+  .stagehand { position: relative; height: clamp(340px, 40vw, 520px); margin-top: clamp(28px, 3.4vw, 48px); margin-bottom: -60px; } .stagehand > :global(*) { position: absolute; }
+  .stagehand :global(.lap) { left: 13%; top: 0; width: 66%; z-index: 2; animation: lift 1.1s var(--ease) both; } .stagehand :global(.tab) { left: 0; top: 56px; width: 22%; z-index: 1; animation: from-left 1.2s .1s var(--ease) both; } .stagehand :global(.pho) { right: 3%; top: 48px; width: 16%; z-index: 3; animation: from-right 1.2s .15s var(--ease) both; }
+  @keyframes lift { from { opacity: 0; transform: translateY(40px); } } @keyframes from-left { from { opacity: 0; transform: translate(14%, 30px) rotate(-3deg); } } @keyframes from-right { from { opacity: 0; transform: translate(-30%, 30px) rotate(3deg); } }
+  /* Move across the laptop to wipe it from light to dark. */
+  .wipe-wrap { position: absolute; left: 6%; top: 50%; width: 112%; translate: 0 -50%; } @property --w { syntax: "<percentage>"; inherits: true; initial-value: 52%; }
+  .wipe-wrap { cursor: ew-resize; } .wipe-wrap :global(.scr.dark) { clip-path: inset(0 0 0 var(--w)); transition: none; z-index: 1; }
+  .handle { position: absolute; z-index: 3; top: 1.5%; height: 92%; left: calc(1.5% + var(--w) * .97); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 12px rgb(0 0 0 / .5); pointer-events: none; } .handle svg { position: absolute; top: 50%; left: 50%; translate: -50% -50%; box-sizing: content-box; width: 20px; padding: 8px; border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 6px 16px -4px rgb(4 8 30 / .6); }
+  /* It sweeps across once on arrival so people see what it does. */
+  :global(.view.in) .wipe-wrap:not(.held) { animation: sweep 2.2s var(--ease) .5s both; } @keyframes sweep { 0% { --w: 52%; } 35% { --w: 22%; } 75% { --w: 78%; } 100% { --w: 52%; } }
   .answers { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; padding: var(--pad); min-height: 520px; } .a-copy { display: grid; gap: 18px; }
   .a-demo { display: grid; gap: 12px; } .a-card, .a-page { border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgb(10 26 63 / .08), 0 26px 50px -20px rgb(60 20 5 / .6); } .a-card { padding: 22px 24px; width: 88%; } .a-q { display: inline-block; margin-bottom: 12px; padding: 7px 12px; border-radius: 10px; background: var(--soft); font-size: 14px; } .a-card p { font-size: clamp(19px, 1.9vw, 24px); line-height: 1.25; letter-spacing: -.015em; font-weight: 500; } .a-demo mark { background: #fde68a; color: inherit; border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; } sup { color: var(--brand-dark); font-size: .6em; } .a-src { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 14px; color: var(--t2); } .a-src b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: #e6eeff; color: var(--brand-dark); font-weight: 500; font-size: 13px; }
   .a-page { justify-self: end; width: 78%; padding: 16px 18px; font-size: 14px; line-height: 1.45; color: var(--t2); } .a-page > b { display: block; font-weight: 500; font-size: 15px; color: var(--ink); } .a-page em { display: block; margin-bottom: 8px; font-style: normal; font-size: 13px; color: var(--t3); } .a-page mark { color: var(--ink); }
   .world { padding: var(--pad); } .w-top { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: 28px; }
   .steps { padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .steps h2 { margin-bottom: 28px; } ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; } li span { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 14px; border-radius: 12px; background: var(--c); color: #fff; font-weight: 500; transition: transform .3s var(--ease); } li:hover span { transform: translateY(-4px); } li p { margin-top: 6px; color: var(--t2); }
   .close { background: var(--night); display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(64px, 8vw, 112px) var(--pad) max(160px, 28vw); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
-  @media (max-width: 900px) { .hero { min-height: 0; } .h-copy { width: 100%; } .wall .win { height: 240px; } .hero > :global(.art) { left: 40vw; right: -40vw; } .steps li:hover span { }  .w-top, .answers { grid-template-columns: minmax(0, 1fr); } .a-card, .a-page { width: 100%; } ol { grid-template-columns: minmax(0, 1fr); } .steps { padding-inline: 8px; } }
+  @media (max-width: 900px) { .hero { min-height: 0; } .h-copy { width: 100%; } .stagehand { height: 76vw; margin-bottom: -20px; } .stagehand :global(.lap) { left: 4%; width: 84%; } .stagehand :global(.tab) { display: none; } .stagehand :global(.pho) { right: 2%; top: 24%; width: 28%; } .wipe-wrap { position: relative; left: 0; top: 0; translate: none; width: 100%; margin-block: 8px 28px; } .hero > :global(.art) { left: 40vw; right: -40vw; } .steps li:hover span { }  .w-top, .answers { grid-template-columns: minmax(0, 1fr); } .a-card, .a-page { width: 100%; } ol { grid-template-columns: minmax(0, 1fr); } .steps { padding-inline: 8px; } }
 </style>

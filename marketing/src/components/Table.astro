@@ -8,11 +8,11 @@ const rows = [
   ["The Overcoming Reading Difficulty through Peer Tutoring in Primary School", "Ten fourth-grade students", "Action research", 80],
 ];
 ---
-<div class="x" data-x>
+<div class="x" data-x data-in>
   <div class="bar"><b>Peer tutoring trials</b><button type="button" class="sort" data-sort aria-pressed="false"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v12M3 13l3 3 3-3M14 16V4M11 7l3-3 3 3" /></svg>Least certain first</button></div>
   <div role="table" aria-label="Answers extracted from five papers">
     <div class="r head" role="row"><span role="columnheader">Paper</span><span role="columnheader">Who took part?</span><span role="columnheader">Study design</span><span role="columnheader">Model's certainty</span></div>
-    <div data-rows role="rowgroup">{rows.map(([t, who, d, c], i) => <div class="r" role="row" data-c={c} data-i={i}><span class="t" role="cell">{t}</span><span class="v" role="cell">{who}</span><span role="cell">{d}</span><span class="ml" aria-hidden="true">Model's certainty</span><span class="m" role="cell" aria-label={`${c >= 85 ? "High" : "Lower"} certainty`}><i style={`width:${c}%;background:${c >= 85 ? "#059669" : "#d97706"}`}></i></span></div>)}</div>
+    <div data-rows role="rowgroup">{rows.map(([t, who, d, c], i) => <div class="r" role="row" data-c={c} data-i={i} style={`--r:${i}`}><span class="t" role="cell">{t}</span><span class="v" role="cell">{who}</span><span role="cell">{d}</span><span class="ml" aria-hidden="true">Model's certainty</span><span class="m" role="cell" aria-label={`${c}% certainty`}><span class="track"><i style={`width:${c}%;background:${c >= 85 ? "#059669" : "#d97706"}`}></i></span><b style={`color:${c >= 85 ? "#047857" : "#b45309"}`}>{c}%</b></span></div>)}</div>
   </div>
 </div>
 <script>
@@ -25,6 +25,8 @@ const rows = [
   .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-block: 12px; } .bar b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; }
   .sort { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 12px; border-radius: 10px; background: var(--soft); font-size: 14px; font-weight: 500; transition: background-color .15s var(--ease), color .15s var(--ease); } .sort:hover { background: #e6eeff; } .sort[aria-pressed="true"] { background: var(--ink); color: #fff; }
   .r { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr); gap: 20px; align-items: center; min-height: 62px; padding-block: 10px; border-top: 1px solid var(--line); background: #fff; font-size: 15px; line-height: 1.3; } .head { min-height: 36px; font-size: 14px; color: var(--t2); } .t { font-weight: 500; } .v { color: var(--ink); }
-  .m { display: block; height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; } .m i { display: block; height: 100%; border-radius: 4px; } .ml { display: none; }
+  .m { display: flex; align-items: center; gap: 10px; } .track { flex: 1; display: block; height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; } .track i { display: block; height: 100%; border-radius: 4px; transform-origin: left; } .m b { font: 400 13px/1 var(--mono); min-width: 28px; text-align: right; } .ml { display: none; }
+  /* Rows arrive in order and each certainty bar fills as it lands. */
+  :global(.js) .x[data-in] [data-rows] .r { opacity: 0; transform: translateY(10px); } :global(.js) .x[data-in] .track i { transform: scaleX(0); } :global(.js) .x.in [data-rows] .r { opacity: 1; transform: none; transition: opacity .5s var(--ease) calc(var(--r) * .09s + .15s), transform .6s var(--ease) calc(var(--r) * .09s + .15s), background-color .15s var(--ease); } :global(.js) .x.in .track i { transform: none; transition: transform .9s var(--ease) calc(var(--r) * .09s + .4s); }
   @media (max-width: 800px) { .x { padding-inline: 16px; } .head { display: none; } .r { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; } .t { grid-column: 1 / -1; } .ml { display: block; grid-column: 1 / -1; margin-top: 4px; font-size: 13px; color: var(--t2); } .m { grid-column: 1 / -1; } }
 </style>

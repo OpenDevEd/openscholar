@@ -1,8 +1,8 @@
 // Brings generated art to life: the sheets drift, and light splits into its colours around the pointer. The <img> underneath stays the real, instant picture.
 const VS = "attribute vec2 p;varying vec2 v;void main(){v=vec2(p.x*.5+.5,.5-p.y*.5);gl_Position=vec4(p,0.,1.);}";
 const FS = `precision mediump float;uniform sampler2D t;uniform float s,e;uniform vec2 m,a,cs,co;varying vec2 v;
-void main(){vec2 d=vec2(sin(v.y*7.+s*.32)+.5*sin(v.y*19.-s*.46),cos(v.x*6.+s*.27)+.4*sin(v.x*17.+s*.38))*.0034;
-vec2 q=(v-m)*a;float r=exp(-dot(q,q)*14.)*e;vec2 c=(v+d-q*r*.14)*cs+co;float g=r*.012;
+void main(){vec2 d=vec2(sin(v.y*7.+s*.32)+.5*sin(v.y*19.-s*.46),cos(v.x*6.+s*.27)+.4*sin(v.x*17.+s*.38))*.0022;
+vec2 q=(v-m)*a;float r=exp(-dot(q,q)*14.)*e;vec2 c=(v+d-q*r*.14)*cs+co;float g=r*.0045;
 gl_FragColor=vec4(texture2D(t,c+vec2(g,0.)).r,texture2D(t,c).g,texture2D(t,c-vec2(g,0.)).b,1.);}`;
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 for (const box of document.querySelectorAll("[data-live]")) {

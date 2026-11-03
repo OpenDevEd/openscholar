@@ -2,25 +2,31 @@ export const APP = "https://dev.openscholar.ai";
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
 export const NAV = [
   { id: "product", href: "/#product", label: "Product", rows: [
-    { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", field: "ocean", art: "sea", img: "shot-search2" },
-    { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", field: "emerald", art: "sieve", img: "shot-screen" },
-    { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", field: "amber", art: "grid", img: "shot-extract" },
-    { href: "/#assistant", title: "Delegate to the assistant", text: "It does the groundwork and asks before it acts", icon: "spark", field: "cobalt", art: "gate", img: "shot-assistant" },
-    { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", field: "night", art: "thread" },
+    { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#22d3ee", field: "ocean", art: "sea", img: "search2-laptop-dark" },
+    { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve", img: "screen-laptop-dark" },
+    { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", color: "#fbbf24", field: "amber", art: "grid", img: "extract-laptop-dark" },
+    { href: "/#assistant", title: "Delegate to the assistant", text: "It does the groundwork and asks before it acts", icon: "spark", color: "#60a5fa", field: "cobalt", art: "gate", img: "assistant-laptop-dark" },
+    { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", color: "#f59e0b", field: "night", art: "thread" },
   ] },
   { id: "communities", href: "/evidence-communities/", label: "Evidence Communities", rows: [
-    { href: "/evidence-communities/#readers", title: "Search and read", text: "Everything your readers need to use the evidence", icon: "search", field: "rose", art: "globe", img: "community-search" },
-    { href: "/evidence-communities/#answers", title: "Answers readers can check", text: "Linked to the record and the page", icon: "thread", field: "amber", art: "grid", img: "community-plate" },
-    { href: "/evidence-communities/#map", title: "Maps of your field", text: "Who's working on what, and where", icon: "globe", field: "night", art: "thread", img: "community-evidence" },
-    { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", field: "rose", art: "globe", img: "community-home" },
+    { href: "/evidence-communities/#readers", title: "Search and read", text: "Everything your readers need to use the evidence", icon: "search", color: "#fb7185", field: "rose", art: "globe", img: "c-search-laptop-light" },
+    { href: "/evidence-communities/#answers", title: "Answers readers can check", text: "Linked to the record and the page", icon: "thread", color: "#fbbf24", field: "amber", art: "grid", img: "c-home2-laptop-dark" },
+    { href: "/evidence-communities/#map", title: "Maps of your field", text: "Who's working on what, and where", icon: "globe", color: "#38bdf8", field: "night", art: "thread", img: "c-map-laptop-dark" },
+    { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", color: "#fb7185", field: "rose", art: "globe", img: "c-home-laptop-light" },
   ], live: [["Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai"], ["Artificial Intelligence in Education", "https://aied.openscholar.ai"]] },
   { id: "teams", href: "/teams/", label: "Teams", rows: [
-    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", field: "ocean", art: "converge", img: "shot-screen" },
-    { href: "/teams/", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", field: "emerald", art: "sieve", img: "shot-extract" },
-    { href: "/teams/#roles", title: "The right access for each person", text: "Admins, members and guests", icon: "key", field: "night", art: "converge" },
+    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "converge", img: "screen-laptop-light" },
+    { href: "/teams/#activity", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", color: "#34d399", field: "emerald", art: "sieve", img: "extract-laptop-dark" },
+    { href: "/teams/#roles", title: "The right access for each person", text: "Admins, members and guests", icon: "key", color: "#fbbf24", field: "night", art: "converge" },
   ] },
   { id: "docs", href: "/docs/", label: "Docs" },
 ];
+// Each page's sections, for the map of the page in the header once you scroll.
+export const SECTIONS = {
+  "/": [["product", "Find", "#22d3ee"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fbbf24"], ["assistant", "Assistant", "#60a5fa"], ["trust", "Trust", "#f59e0b"], ["community", "Communities", "#fb7185"]],
+  "/evidence-communities/": [["readers", "Readers", "#22d3ee"], ["answers", "Answers", "#fbbf24"], ["map", "Map", "#38bdf8"], ["steps", "Go live", "#fb7185"]],
+  "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#fbbf24"]],
+};
 export const ICONS = {
   search: "M9 16a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm5-2 5 5",
   sieve: "M3 4h14l-5 7v6l-4-2v-4L3 4Z",
@@ -32,4 +38,8 @@ export const ICONS = {
   merge: "M3 4c6 0 4 6 10 6M3 16c6 0 4-6 10-6h4m-3-3 3 3-3 3",
   list: "M7 5h10M7 10h10M7 15h10M3 5h.01M3 10h.01M3 15h.01",
   key: "M13 11a4 4 0 1 0-3.500-2L3 15.500V18h3v-2h2v-2h2l1-1",
+  check: "m4 10.500 4 4 8-9",
+  flagq: "M10 4v8m0 4v.01",
+  sun: "M10 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM10 2v1.500M10 16.500V18M2 10h1.500M16.500 10H18M4.300 4.300l1.100 1.100M14.600 14.600l1.100 1.100M4.300 15.700l1.100-1.100M14.600 5.400l1.100-1.100",
+  moon: "M17 11.500A7.500 7.500 0 0 1 8.500 3a7.500 7.500 0 1 0 8.500 8.500Z",
 };

@@ -8,6 +8,8 @@ import Workspace from "../components/Workspace.astro";
 import Table from "../components/Table.astro";
 import Faq from "../components/Faq.astro";
 import AskBar from "../components/AskBar.astro";
+import Device from "../components/Device.astro";
+import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
 import { APP } from "../data/site.mjs";
 const teams = [
@@ -15,7 +17,9 @@ const teams = [
   ["rose", "brief", "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
   ["emerald", "community", "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
 ];
-const kept = [["yes", "The effects of a peer-tutoring strategy on children's e-book reading comprehension"], ["yes", "Assessing the differential effects of peer tutoring for tutors and tutees in elementary reading education"], ["maybe", "Role of peer tutoring and methods to boost reading skills at the urban sector primary schools"], ["yes", "Implementing an online peer tutoring intervention to promote reading skills of elementary students"]];
+const papers = ["Peer tutoring in reading in Scotland: thinking big", "Effects of reading with adult tutor/therapy dog teams", "Peer tutor-based Quranic learning in elementary schools", "Applying peer-tutoring to spelling in an elementary classroom", "Effect of peer tutoring in reading for boys in French immersion"];
+const questions = [["Is this an intervention study?", 11, 1, 3], ["Is it about reading or literacy?", 15, 0, 0], ["Is it in primary school?", 13, 1, 1]];
+const kept = [["yes", "The effects of a peer-tutoring strategy on children's e-book reading comprehension"], ["yes", "Tutoring as an elementary reading intervention to benefit bilingual learners in Mexico"], ["maybe", "Role of peer tutoring and methods to boost reading skills at the urban sector primary schools"], ["yes", "Implementing an online peer tutoring intervention to promote reading skills"]];
 const faq = [
   ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat. Answers show how well they're grounded and link to their source where they can, and the assistant tells you when it couldn't read something."],
   ["Can we choose the model?", "Yes. Choose a preset, pick a model for each task, or use your own provider key."],
@@ -26,7 +30,7 @@ const faq = [
 ---
 <Base title="OpenScholar: the evidence workspace for research teams" description="Know what the evidence says before anyone asks you to defend it. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
   <section class="bleed hero">
-    <div class="ribbon"><Art name="hero-ribbon" live eager /><p class="tag t1">the whole literature</p><p class="tag t2">your criteria</p><p class="tag t3">the evidence you can defend</p></div>
+    <div class="ribbon"><Art name="hero-ribbon" live eager /></div>
     <div class="inner">
       <div class="h-copy"><h1>Know what the evidence says before anyone asks you to defend it</h1><p class="lead">OpenScholar is the evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.</p><div class="acts"><a class="btn brand" href={APP}>Get started<Arrow /></a><a class="btn line" href="https://wealth-inequality.openscholar.ai">See a live community</a></div></div>
       <Workspace />
@@ -37,13 +41,20 @@ const faq = [
     <div class="teams">{teams.map(([f, k, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><AudienceArt kind={k} /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>
   </section>
 
-  <Feature id="product" field="ocean" art="sea" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it." img="shot-search2" w={1800} h={955} alt="Results for a search, with an overview of the field and highlighted terms"><Cards kind="query" /></Feature>
+  <Feature id="product" class="find" field="ocean" art="sea" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it.">
+    <Device class="slab" kind="tablet" name="search2" theme="dark" alt="Search results on a tablet, with an overview of the field and a chart of papers per year" tilt sizes="(max-width: 900px) 90vw, 620px" />
+    <div class="over"><Cards kind="query" /></div>
+  </Feature>
 
   <section class="bleed sieve" id="screening">
-    <Art name="sieve" pos="50% 100%" live />
+    <Art name="sieve" pos="50% 100%" />
     <div class="inner">
-      <div class="b-head"><h2>Decide what counts once, then apply it to every paper</h2><p class="lead">Write your questions and what each answer is worth. AI answers for every paper, your rules decide what's included, and you can overrule any answer.</p></div>
-      <div class="flow"><p class="tag">every paper in your search</p><Cards kind="rule" /><div class="kept" aria-label="Papers that met the criteria"><b>Included</b><ul>{kept.map(([v, t]) => <li class={v}><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{v === "yes" ? <path d="m4 10.500 4 4 8-9" /> : <path d="M10 5v6m0 4v.01" />}</svg><span>{t}</span></li>)}</ul></div></div>
+      <div class="s-head"><h2>Decide what counts once, then apply it to every paper</h2><p class="lead">Write your questions and what each answer is worth. AI answers for every paper, your rules decide what's included, and you can overrule any answer.</p></div>
+      <div class="flow" data-in>
+        <ul class="incoming" aria-hidden="true">{papers.map((t, i) => <li style={`--i:${i}`}>{t}</li>)}</ul>
+        <div class="frost rules"><b>Your criteria</b><ol>{questions.map(([q, y, u, n], i) => <li style={`--i:${i}`}><span class="n">{i + 1}</span><span class="q">{q}</span><span class="tri" aria-label={`${y} yes, ${u} unclear, ${n} no`}><i style={`flex:${y}`} class="y"></i><i style={`flex:${u}`} class="u"></i><i style={`flex:${n}`} class="x"></i></span><span class="c">{y}<em>yes</em></span></li>)}</ol><p>Included at 2 of 3 points</p></div>
+        <div class="frost out"><div class="tally"><b>Included</b><span>14 of 15 papers</span></div><i class="bar" aria-hidden="true"><u></u></i><ul>{kept.map(([v, t], i) => <li class={v} style={`--i:${i}`}><Icon name={v === "yes" ? "check" : "flagq"} size={16} /><span>{t}</span></li>)}</ul></div>
+      </div>
     </div>
   </section>
 
@@ -53,16 +64,19 @@ const faq = [
     <Table />
   </section>
 
-  <Feature id="assistant" field="cobalt" art="gate" scrim="--sc:9 32 124;--dir:270deg" chip="#1d4ed8" flip narrow title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand." img="shot-assistant" w={880} h={860} alt="The research assistant listing which papers to check by hand after an extraction"><Cards kind="approve" /></Feature>
+  <Feature id="assistant" class="ask-f" field="cobalt" art="gate" scrim="--sc:9 32 124;--dir:270deg" chip="#1d4ed8" flip title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand.">
+    <Device class="hand" kind="phone" name="assistant" theme="dark" alt="The research assistant on a phone, listing which papers to check by hand" sizes="(max-width: 900px) 60vw, 280px" />
+    <div class="over"><Cards kind="approve" /></div>
+  </Feature>
 
   <section class="bleed trust" id="trust">
     <div class="inner t-head"><h2>Built for the moment someone asks how you know</h2><p class="lead">Follow a cited answer back through its sentence to its paper. Your criteria are written down, every change has a name beside it, and people make the final call.</p></div>
-    <div class="wire">
-      <Art name="thread" live />
+    <div class="wire" data-in>
+      <Art name="thread" />
       <div class="inner trace" aria-hidden="true">
-        <div class="t-a"><span>What is the sample size?</span><b>298 pupils</b></div>
-        <div class="t-b">A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</div>
-        <div class="t-c"><b>Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia</b><span>Thurston, 2023</span></div>
+        <div class="t-a"><span>What is the sample size?</span><b>298 pupils</b><em>97% confidence</em></div>
+        <div class="t-b"><p>A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</p></div>
+        <div class="t-c"><i class="sheet-mini"><u></u><u></u><u></u><u></u></i><div><b>Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia</b><span>Thurston, 2023</span></div></div>
       </div>
     </div>
   </section>
@@ -70,7 +84,10 @@ const faq = [
   <section class="panel publish" id="community" style="--tint:#be123c">
     <Art name="globe" pos="100% 50%" />
     <div class="p-copy"><h2>Turn your evidence into a living community</h2><p class="lead">Give your field a public home with your own branding and address. You choose the sources that keep it current, and readers can search it, explore it and ask it questions.</p><a class="btn" href="/evidence-communities/">Explore Evidence Communities<Arrow /></a></div>
-    <div class="p-shots"><a class="win a" data-tilt href="https://wealth-inequality.openscholar.ai" aria-label="Wealth Inequality and Social Mobility community"><img src="/img/community-plate.avif" width="1000" height="782" loading="lazy" decoding="async" alt="" /></a><a class="win b" data-tilt href="https://aied.openscholar.ai" aria-label="Artificial Intelligence in Education community"><img src="/img/community-evidence.avif" width="1240" height="640" loading="lazy" decoding="async" alt="" /></a></div>
+    <div class="p-devices" data-in>
+      <a class="p-lap" href="https://wealth-inequality.openscholar.ai" aria-label="Wealth Inequality and Social Mobility community"><Device kind="laptop" name="c-home" theme="light" alt="" tilt sizes="(max-width: 900px) 80vw, 620px" /></a>
+      <Device class="p-ph" kind="phone" name="c-map" theme="dark" alt="" sizes="(max-width: 900px) 30vw, 170px" />
+    </div>
   </section>
 
   <Faq items={faq} />
@@ -79,29 +96,44 @@ const faq = [
 </Base>
 <style>
   .hero { color: var(--ink); background: #fff; padding-block: clamp(96px, 9vw, 128px) clamp(24px, 3vw, 40px); }
-  .ribbon { position: absolute; z-index: -2; top: 0; right: 0; width: max(100vw, 1180px); aspect-ratio: 1672 / 941; -webkit-mask-image: linear-gradient(#000 82%, transparent); mask-image: linear-gradient(#000 82%, transparent); }
+  .ribbon { position: absolute; z-index: -2; top: 0; right: 0; width: max(100vw, 1180px); aspect-ratio: 1672 / 941; -webkit-mask-image: linear-gradient(#000 82%, transparent); mask-image: linear-gradient(#000 82%, transparent); animation: unfurl 1.5s var(--ease) both; }
+  @keyframes unfurl { from { clip-path: inset(0 0 100% 30%); } to { clip-path: inset(0 0 0 0); } }
   .ribbon :global(.art) { z-index: 0; }
-  .tag { position: absolute; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 5px 9px; border-radius: 8px; background: rgb(255 255 255 / .86); box-shadow: 0 0 0 1px var(--line); color: var(--ink); white-space: nowrap; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-  .t1 { left: 79%; top: 17%; } .t2 { left: 67%; top: 42%; } .t3 { left: 82%; top: 58%; }
-  .tag::after { content: ""; position: absolute; top: 50%; width: 40px; height: 1px; background: currentColor; opacity: .5; }
-  .tag::after { right: 100%; }
-  .h-copy { display: grid; gap: 20px; justify-items: start; width: min(47%, 640px); min-width: 0; margin-bottom: clamp(32px, 4vw, 48px); } .h-copy h1 { font-size: clamp(40px, 4.5vw, 64px); } .h-copy .lead { color: var(--t2); } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .h-copy { display: grid; gap: 20px; justify-items: start; width: min(47%, 640px); min-width: 0; margin-bottom: clamp(28px, 3.4vw, 44px); } .h-copy h1 { font-size: clamp(40px, 4.5vw, 64px); } .h-copy .lead { color: var(--t2); } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .h-copy > * { animation: rise .9s var(--ease) both; } .h-copy > :nth-child(2) { animation-delay: .08s; } .h-copy > :nth-child(3) { animation-delay: .16s; } .hero :global(.ws) { animation: rise 1s .22s var(--ease) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(22px); } }
   .band { display: grid; gap: 28px; padding: var(--pad); } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .stack { grid-template-columns: minmax(0, 1fr); width: min(52%, 600px); } .band :global(.art) { height: 440px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
-  .sieve { background: #013527; padding-block: clamp(56px, 7vw, 96px); min-height: min(58vw, 860px); }
-  .flow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: center; margin-top: clamp(32px, 6vw, 88px); } .flow .tag { position: static; justify-self: start; background: rgb(0 40 30 / .7); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); } .flow .tag::after { display: none; }
-  .kept { padding: 14px 16px; border-radius: 14px; background: rgb(255 255 255 / .94); color: var(--ink); box-shadow: 0 22px 40px -16px rgb(0 30 20 / .7); font-size: 14px; line-height: 1.3; } .kept > b { display: block; font-weight: 500; font-size: 16px; margin-bottom: 8px; } .kept ul { display: grid; gap: 8px; } .kept li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; } .kept svg { margin-top: 1px; color: #047857; } .kept .maybe svg { color: #b45309; } .kept span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  /* Find: a tablet standing off the panel's edge, with the query on top of it. */
+  :global(.find) :global(.slab) { position: absolute; left: 8%; top: 56px; width: min(620px, 92%); } :global(.find) .over { position: absolute; left: -4%; bottom: 40px; width: min(360px, 62%); z-index: 2; } :global(.find) { min-height: 680px; }
+  /* Assistant: the phone waits at the door with the approval beside it. */
+  :global(.ask-f) :global(.hand) { position: absolute; left: 14%; top: 44px; width: 270px; } :global(.ask-f) .over { position: absolute; left: 50%; bottom: 64px; width: min(330px, 46%); z-index: 2; }
+  /* Screening: papers cross the pane through your criteria and leave as a short list. */
+  .sieve { background: #013527; padding-block: clamp(56px, 7vw, 96px) clamp(56px, 7vw, 104px); min-height: min(58vw, 880px); --g: 2 44 34; }
+  .s-head { display: grid; gap: 16px; width: min(50%, 600px); }
+  .flow { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: center; margin-top: clamp(32px, 5vw, 72px); }
+  .incoming { display: grid; gap: 8px; margin-left: calc((100vw - min(100vw, 1280px)) / -2 - 40px); padding-right: 16px; font-size: 14px; color: rgb(255 255 255 / .92); -webkit-mask-image: linear-gradient(90deg, transparent, #000 34%); mask-image: linear-gradient(90deg, transparent, #000 34%); } .incoming li { justify-self: end; max-width: 340px; padding: 8px 12px; border-radius: 10px; background: rgb(2 44 34 / .62); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rules { padding: 18px 18px 14px; } .rules > b { display: block; font-weight: 500; font-size: 17px; margin-bottom: 12px; } .rules ol { display: grid; gap: 12px; } .rules li { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; font-size: 14px; } .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: rgb(255 255 255 / .14); font: 400 13px/1 var(--mono); } .tri { grid-column: 2 / 3; display: flex; gap: 2px; height: 5px; border-radius: 3px; overflow: hidden; } .tri .y { background: #34d399; } .tri .u { background: #fbbf24; } .tri .x { background: rgb(255 255 255 / .3); } .c { grid-column: 3; grid-row: 1 / 3; font: 400 18px/1 var(--mono); text-align: right; } .c em { display: block; margin-top: 2px; font-style: normal; font-size: 11px; opacity: .7; } .rules p { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgb(255 255 255 / .14); font-size: 13px; opacity: .85; }
+  .out { padding: 18px; } .tally { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; } .tally b { font-weight: 500; font-size: 17px; } .tally span { font: 400 13px/1 var(--mono); opacity: .85; } .out .bar { display: flex; height: 6px; margin-block: 10px 12px; border-radius: 3px; background: #fbbf24; overflow: hidden; } .out .bar u { display: block; width: 93.3%; background: #34d399; transform-origin: left; text-decoration: none; } .out ul { display: grid; gap: 9px; font-size: 14px; line-height: 1.3; } .out li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; } .out li :global(svg) { margin-top: 1px; color: #6ee7b7; } .out .maybe :global(svg) { color: #fbbf24; } .out li span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .js .flow[data-in] { opacity: 1; transform: none; }
+  .js .flow .incoming li { transform: translateX(-60px); opacity: 0; } .js .flow .rules, .js .flow .out { opacity: 0; transform: translateY(18px); } .js .flow .tri, .js .flow .bar u { transform: scaleX(0); transform-origin: left; } .js .flow .out li { opacity: 0; transform: translateX(-10px); }
+  .js .flow.in .incoming li { transform: none; opacity: 1; transition: transform .9s var(--ease) calc(var(--i) * .07s), opacity .6s var(--ease) calc(var(--i) * .07s); } .js .flow.in .rules { opacity: 1; transform: none; transition: opacity .7s var(--ease) .25s, transform .8s var(--ease) .25s; } .js .flow.in .tri { transform: none; transition: transform .9s var(--ease) calc(.5s + var(--i, 0) * .1s); } .js .flow.in .out { opacity: 1; transform: none; transition: opacity .7s var(--ease) .75s, transform .8s var(--ease) .75s; } .js .flow.in .bar u { transform: none; transition: transform 1s var(--ease) .95s; } .js .flow.in .out li { opacity: 1; transform: none; transition: opacity .5s var(--ease) calc(1.1s + var(--i) * .1s), transform .5s var(--ease) calc(1.1s + var(--i) * .1s); }
   .who { padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .who h2 { max-width: 16em; margin-bottom: 28px; }
   .teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); margin-inline: calc(var(--pad) * -1); } .teams .panel { display: flex; flex-direction: column; gap: 10px; padding: 24px; } .teams :global(svg:not(h3 svg)) { margin-bottom: 14px; transition: transform .4s var(--ease); } .teams :global(.aud) { margin-bottom: 14px; transition: transform .4s var(--ease); } .teams .panel:hover :global(.aud), .teams .panel:hover > :global(svg) { transform: translateY(-4px); } .teams h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .teams h3 :global(i) { display: grid; place-items: center; width: 28px; height: 28px; transition: transform .3s var(--ease); } .teams .panel:hover h3 :global(i) { transform: translateX(4px); } .teams p { font-size: 16px; line-height: 1.4; }
+  /* Trust: one line of light from the answer to the paper. It lights from the left when you arrive, and each card wakes as it gets there. */
   .trust { background: #00081a; padding-top: clamp(56px, 7vw, 96px); } .t-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
-  .wire { position: relative; isolation: isolate; display: grid; align-items: center; min-height: clamp(420px, 40vw, 620px); } .wire :global(.art) { z-index: -1; }
-  .wire { overflow: clip; } .wire::after { content: ""; position: absolute; z-index: -1; left: -220px; top: 50%; width: 220px; height: 3px; margin-top: -1.5px; background: linear-gradient(90deg, transparent, #fff 50%, transparent); animation: run 3.6s linear infinite; }
-  @keyframes run { to { transform: translateX(calc(100vw + 220px)); } }
-  .trace { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 5fr) minmax(0, 4fr); gap: clamp(32px, 5vw, 72px); align-items: center; width: 100%; }
-  .t-a, .t-b, .t-c { padding: 18px 20px; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgb(251 191 36 / .5), 0 24px 60px -20px rgb(251 191 36 / .35); transition: transform .3s var(--ease); } .t-a:hover, .t-b:hover, .t-c:hover { transform: translateY(-4px); } .t-a span, .t-c span { display: block; font-size: 14px; color: var(--t2); } .t-a b { display: block; margin-top: 4px; font-weight: 500; font-size: 26px; letter-spacing: -.02em; } .t-b { font-size: 16px; line-height: 1.45; color: var(--t2); } .t-b mark { background: #fde68a; color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; } .t-c b { display: block; font-weight: 500; line-height: 1.3; margin-bottom: 4px; }
-  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: var(--pad); min-height: 620px; background: #520116; } .p-copy { display: grid; gap: 18px; justify-items: start; } .publish :global(.btn) { --chip: var(--tint); } .publish > :global(.art) { z-index: -1; }
-  .p-shots { position: relative; height: 480px; } .p-shots .win { position: absolute; display: block; } .p-shots .win:hover { z-index: 2; } .a { left: 0; top: 0; width: 62%; z-index: 1; } .b { right: 0; bottom: 0; width: 62%; }
+  .wire { position: relative; isolation: isolate; overflow: clip; display: grid; align-items: center; margin-top: -24px; min-height: clamp(460px, 44vw, 660px); } .wire :global(.art) { z-index: -1; -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent); }
+  .wire::after { content: ""; position: absolute; z-index: -1; left: -220px; top: 50%; width: 220px; height: 3px; margin-top: -1.5px; background: linear-gradient(90deg, transparent, #fff 50%, transparent); animation: run 3.6s linear infinite; } @keyframes run { to { transform: translateX(calc(100vw + 220px)); } }
+  .trace { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 5fr) minmax(0, 4fr); gap: clamp(40px, 5vw, 72px); align-items: stretch; width: 100%; }
+  .t-a, .t-b, .t-c { display: flex; flex-direction: column; justify-content: center; min-height: 148px; padding: 18px 20px; border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgb(251 191 36 / .55), 0 24px 70px -18px rgb(251 191 36 / .4); transition: transform .3s var(--ease), box-shadow .3s var(--ease); } .t-a:hover, .t-b:hover, .t-c:hover { transform: translateY(-4px); box-shadow: 0 0 0 1px rgb(251 191 36 / .9), 0 30px 80px -16px rgb(251 191 36 / .6); }
+  .t-a span, .t-c span { display: block; font-size: 14px; color: var(--t2); } .t-a b { display: block; margin-top: 4px; font-weight: 500; font-size: 30px; letter-spacing: -.02em; } .t-a em { margin-top: 6px; font-style: normal; font: 400 13px/1 var(--mono); color: #047857; } .t-b { font-size: 16px; line-height: 1.5; color: var(--t2); } .t-b mark { background: linear-gradient(#fde68a, #fde68a) no-repeat 0 0 / 100% 100%; color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .t-c { flex-direction: row; align-items: center; justify-content: flex-start; gap: 14px; } .t-c b { display: block; font-weight: 500; line-height: 1.3; margin-bottom: 4px; } .sheet-mini { flex: none; display: grid; align-content: start; gap: 5px; width: 54px; height: 72px; padding: 10px 8px; border-radius: 5px; background: var(--soft); box-shadow: 0 0 0 1px var(--line), 0 6px 12px -6px rgb(10 26 63 / .3); } .sheet-mini u { display: block; height: 3px; border-radius: 2px; background: var(--line2); } .sheet-mini u:nth-child(3) { background: #fbbf24; }
+  .js .wire[data-in] { opacity: 1; transform: none; } .js .wire :global(.art img) { clip-path: inset(0 100% 0 0); } .js .wire.in :global(.art img) { clip-path: inset(0); transition: clip-path 1.6s cubic-bezier(.45, 0, .2, 1); } .js .wire .t-a, .js .wire .t-b, .js .wire .t-c { opacity: 0; transform: translateY(14px); } .js .wire.in .t-a, .js .wire.in .t-b, .js .wire.in .t-c { opacity: 1; transform: none; transition: opacity .6s var(--ease), transform .7s var(--ease), box-shadow .3s var(--ease); } .js .wire.in .t-b { transition-delay: .5s, .5s, 0s; } .js .wire.in .t-c { transition-delay: 1s, 1s, 0s; } .js .wire .t-b mark { background-size: 0 100%; } .js .wire.in .t-b mark { background-size: 100% 100%; transition: background-size .8s var(--ease) 1s; }
+  /* Community: a laptop on the globe and a phone in front of it, each on a different theme. */
+  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: 0 0 0 var(--pad); min-height: 660px; background: #520116; } .p-copy { display: grid; gap: 18px; justify-items: start; padding-block: var(--pad); max-width: 440px; } .publish :global(.btn) { --chip: var(--tint); } .publish > :global(.art) { z-index: -1; } .publish > :global(.art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #520116 34%, rgb(82 1 22 / 0) 62%); }
+  .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }
   .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
-  @media (max-width: 1100px) { .tag { display: none; } .flow .tag { display: none; } .flow { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } }
-  @media (max-width: 900px) { .ribbon { top: 420px; width: 170vw; right: -50vw; } .h-copy { width: 100%; } .publish, .t-head { grid-template-columns: minmax(0, 1fr); } .b-head, .flow { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .wire { min-height: 0; padding-block: 32px; } .trace { grid-template-columns: minmax(0, 1fr); gap: 28px; } .p-shots { height: 76vw; } }
+  @media (max-width: 1100px) { .incoming { display: none; } .flow { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } }
+  @media (max-width: 900px) { .ribbon { top: 420px; width: 170vw; right: -50vw; } .h-copy { width: 100%; } .publish, .t-head { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .b-head, .flow { grid-template-columns: minmax(0, 1fr); } .stack, .s-head { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .wire { min-height: 0; padding-block: 40px; margin-top: 0; } .trace { grid-template-columns: minmax(0, 1fr); gap: 28px; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
+    :global(.find) :global(.slab) { position: relative; left: 0; top: 0; width: 100%; margin-bottom: -60%; } :global(.find) :global(.view) { overflow: clip; height: 118vw; margin-inline: calc(var(--pad) * -1 + 8px); padding-inline: 8px; } :global(.find) .over { left: 12px; right: 12px; width: auto; bottom: 16px; } :global(.ask-f) :global(.view) { height: 136vw; overflow: clip; } :global(.ask-f) :global(.hand) { position: relative; left: 0; top: 0; width: 78%; margin-inline: auto; } :global(.ask-f) .over { left: 0; right: 0; width: auto; bottom: 12px; } }
 </style>

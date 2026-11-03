@@ -6,6 +6,10 @@ const top = $(".top"), mega = $("[data-mega]"), nav = $(".nav"), pill = $(".pill
 const mark = () => top.classList.toggle("stuck", scrollY > 24);
 addEventListener("scroll", mark, { passive: true }); mark();
 
+// The header follows the page: the section you're reading takes the name's place, and its bar along the capsule's edge fills as you go.
+const secName = $("[data-sec]"), rail = $$("[data-to]"), targets = rail.map((a) => document.getElementById(a.dataset.to));
+if (rail.length) { let raf = 0, active = -1; const spy = () => { raf = 0; const mid = innerHeight * .45; let now = -1; targets.forEach((t, i) => { const r = t.getBoundingClientRect(); const p = r.top >= mid ? 0 : r.bottom <= mid ? 1 : (mid - r.top) / r.height; rail[i].style.setProperty("--p", p.toFixed(3)); if (r.top < mid && r.bottom > mid) now = i; }); if (now !== active) { active = now; top.classList.toggle("has-sec", now >= 0); if (now >= 0) secName.textContent = rail[now].dataset.label; } }; addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(spy); }, { passive: true }); addEventListener("resize", spy, { passive: true }); spy(); }
+
 // One highlight slides between the links.
 const links = $$(".lk", nav);
 const slide = (a) => { pill.style.setProperty("--px", `${a.offsetLeft}px`); pill.style.setProperty("--pw", `${a.offsetWidth}px`); pill.style.opacity = 1; };
@@ -13,14 +17,14 @@ const slide = (a) => { pill.style.setProperty("--px", `${a.offsetLeft}px`); pill
 // One panel changes shape between menus. Wait a moment before opening so a passing pointer doesn't trigger it, and move straight between menus once it's open.
 let openTimer, closeTimer, current = null;
 const subs = $$("[data-sub]", mega);
-const showRow = (sub, i) => { $$(".row", sub).forEach((r, n) => r.classList.toggle("on", n === i)); $$(".st", sub).forEach((s, n) => s.classList.toggle("on", n === i)); };
+const showRow = (sub, i) => { const rows = $$(".row", sub); rows.forEach((r, n) => r.classList.toggle("on", n === i)); $$(".st", sub).forEach((s, n) => s.classList.toggle("on", n === i)); const hl = $(".hl", sub); if (hl) { hl.style.setProperty("--hy", `${rows[i].offsetTop}px`); hl.style.setProperty("--hh", `${rows[i].offsetHeight}px`); } };
 function open(a) {
   const id = a.dataset.menu, sub = subs.find((s) => s.dataset.sub === id);
   $$("img[data-src]", sub).forEach((i) => { i.src = i.dataset.src; delete i.dataset.src; });
   if (!sub.dataset.ready) { showRow(sub, 0); sub.dataset.ready = "1"; }
   subs.forEach((s) => { const on = s === sub; if (on) s.style.setProperty("--from", "0px"); else s.style.setProperty("--from", `${subs.indexOf(s) < subs.indexOf(sub) ? -24 : 24}px`); s.toggleAttribute("data-on", on); s.inert = !on; });
-  const box = top.getBoundingClientRect(), r = a.getBoundingClientRect(), w = sub.offsetWidth, h = sub.offsetHeight, room = top.clientWidth - 2 * parseFloat(getComputedStyle(top).paddingLeft);
-  const x = Math.max(0, Math.min(r.left + r.width / 2 - box.left - parseFloat(getComputedStyle(top).paddingLeft) - w / 2, room - w));
+  const pad = parseFloat(getComputedStyle(top).paddingLeft), box = top.getBoundingClientRect(), r = a.getBoundingClientRect(), w = sub.offsetWidth, h = sub.offsetHeight, room = top.clientWidth - 2 * pad;
+  const x = Math.max(0, Math.min(r.left + r.width / 2 - box.left - pad - w / 2, room - w));
   mega.style.cssText = `--w:${w}px;--h:${h}px;--x:${x}px`;
   mega.toggleAttribute("data-open", true); links.forEach((l) => l.classList.toggle("on", l === a)); current = id; slide(a);
 }
@@ -54,6 +58,7 @@ $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("i
 
 // Pointer effects on real mice and trackpads only.
 if (fine) {
+  const bar = $(".bar"); bar.addEventListener("pointermove", (e) => bar.style.setProperty("--bx", `${e.clientX - bar.getBoundingClientRect().left}px`), { passive: true });
   let frame = 0, last;
   addEventListener("pointermove", (e) => {
     last = e;
@@ -70,5 +75,12 @@ if (fine) {
   document.addEventListener("pointerout", (e) => { const tilt = e.target.closest?.("[data-tilt]"); if (tilt && !tilt.contains(e.relatedTarget)) tilt.style.transform = ""; });
 }
 
+// Move across a device to wipe it between its light and dark screens.
+for (const d of $$("[data-wipe]")) d.parentElement.addEventListener("pointermove", (e) => { const r = $(".glass", d).getBoundingClientRect(), box = d.parentElement; box.classList.add("held"); box.style.setProperty("--w", `${Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)).toFixed(1)}%`); }, { passive: true });
+
 // The art moves once the page is idle, and only where there's a real pointer and a real graphics card to spare.
 if (fine && !still.matches && $("[data-live]")) (window.requestIdleCallback || setTimeout)(() => import("./live.js"));
+
+// Entrances: each section gets one deliberate move as it arrives, once.
+const inView = $$("[data-in]");
+if (inView.length) { const io = new IntersectionObserver((list) => { for (const en of list) if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } }, { threshold: .2, rootMargin: "0px 0px -8% 0px" }); inView.forEach((el) => io.observe(el)); }

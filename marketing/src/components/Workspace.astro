@@ -1,48 +1,56 @@
 ---
-// The hero's product window: one real screen for each step of the work, advancing by itself until someone takes over.
-import Cards from "./Cards.astro";
+// The hero's product stage: one real laptop and phone for each step of the work, in light and dark. It steps through by itself until someone takes over.
+import Device from "./Device.astro";
 import Icon from "./Icon.astro";
 const tabs = [
-  { label: "Search", icon: "search", img: "shot-search", w: 1800, h: 1128, css: "width:139%;margin:-15% 0 0 -39%", alt: "OpenScholar's search results, with an AI overview of the field and query terms highlighted in each paper", card: "query" },
-  { label: "Screen", icon: "sieve", img: "shot-screen", w: 1740, h: 1500, css: "width:100%", alt: "A screening showing its progress, its questions and the included papers", card: "rule" },
-  { label: "Extract", icon: "table", img: "shot-extract", w: 1800, h: 1268, css: "width:100%", alt: "An extraction table with an answer and a confidence score for each paper" },
-  { label: "Assistant", icon: "spark", img: "shot-assistant", w: 880, h: 860, css: "width:58%", alt: "The research assistant listing which papers to check by hand after an extraction", card: "approve" },
-  { label: "Publish", icon: "globe", img: "community-home", w: 1920, h: 1150, css: "width:100%", alt: "A live Evidence Community with its own name and branding" },
+  { label: "Search", icon: "search", lap: "search2", ph: "search2", alt: "Search results with an overview of the field, on a laptop and a phone" },
+  { label: "Screen", icon: "sieve", lap: "screen", ph: "screen2", alt: "A screening's progress, questions and papers, on a laptop and a phone" },
+  { label: "Extract", icon: "table", lap: "extract", ph: "extract", alt: "An extraction table with an answer and a confidence score for each paper" },
+  { label: "Assistant", icon: "spark", lap: "assistant", ph: "assistant", alt: "The research assistant reporting on an extraction and listing papers to check by hand" },
+  { label: "Publish", icon: "globe", lap: "c-home", ph: "c-home", alt: "A live Evidence Community under its own name" },
 ];
 ---
-<div class="ws" data-ws>
-  <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1}><Icon name={t.icon} size={16} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>
-  <div class="frame"><div class="stage">
+<div class="ws" data-ws data-theme="light">
+  <div class="ctrl">
+    <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1}><Icon name={t.icon} size={16} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>
+    <button type="button" class="mode" data-mode aria-label="Switch the screens between light and dark"><i class="sun"><Icon name="sun" size={16} /></i><i class="moon"><Icon name="moon" size={16} /></i></button>
+  </div>
+  <div class="stage">
     {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`}>
-      <img {...(i === 0 ? { src: `/img/${t.img}.avif`, fetchpriority: "high" } : { "data-src": `/img/${t.img}.avif` })} width={t.w} height={t.h} alt={t.alt} style={t.css} />
-      {t.card && <div class="over"><Cards kind={t.card} /></div>}
+      <Device class="lap" kind="laptop" name={t.lap} theme="both" alt={t.alt} eager={i === 0} defer={i > 0} sizes="(max-width: 900px) 120vw, 1000px" />
+      <Device class="ph" kind="phone" name={t.ph} theme="both" eager={i === 0} defer={i > 0} sizes="(max-width: 900px) 40vw, 240px" />
     </div>)}
-  </div></div>
+  </div>
 </div>
 <script>
   const ws = document.querySelector("[data-ws]");
   if (ws) {
     const tabs = [...ws.querySelectorAll("[role=tab]")], panes = [...ws.querySelectorAll(".pane")];
-    const load = (i) => { if (i.dataset.src) { i.src = i.dataset.src; delete i.dataset.src; } };
-    const pick = (n, focus) => { load(panes[n].querySelector("img")); tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; panes[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
+    const load = (i) => { if (i.dataset.src) { i.srcset = i.dataset.srcset; i.src = i.dataset.src; delete i.dataset.src; delete i.dataset.srcset; } };
+    const pick = (n, focus) => { panes[n].querySelectorAll("img").forEach(load); tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; panes[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
     // The bar filling up under a tab is the timer: when its animation ends, the next tab starts. Reduced motion removes the animation, so nothing advances by itself.
     ws.addEventListener("animationend", (e) => { if (e.animationName.includes("fill")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
     tabs.forEach((t, i) => { t.addEventListener("click", () => pick(i)); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
+    ws.querySelector("[data-mode]").addEventListener("click", () => (ws.dataset.theme = ws.dataset.theme === "light" ? "dark" : "light"));
     new IntersectionObserver(([en]) => ws.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(ws);
     const fill = () => ws.querySelectorAll("img[data-src]").forEach(load);
-    addEventListener("load", () => (window.requestIdleCallback || setTimeout)(fill), { once: true }); if (document.readyState === "complete") fill();
+    if (document.readyState === "complete") fill(); else addEventListener("load", () => (window.requestIdleCallback || setTimeout)(fill), { once: true });
   }
 </script>
 <style>
-  .ws { position: relative; display: grid; gap: 10px; transform-origin: 50% 100%; }
-  @supports (animation-timeline: scroll()) { .ws { animation: settle linear both; animation-timeline: scroll(root); animation-range: 0 460px; } @keyframes settle { from { transform: perspective(1800px) rotateX(9deg) scale(.97); } to { transform: none; } } }
-  .tabs { justify-self: start; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: rgb(255 255 255 / .72); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6); box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgb(10 26 63 / .4); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .ws { position: relative; display: grid; gap: 16px; }
+  .ctrl { display: flex; align-items: center; gap: 8px; }
+  .tabs, .mode { border-radius: 14px; background: rgb(255 255 255 / .72); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6); box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgb(10 26 63 / .4); }
+  .tabs { display: flex; gap: 2px; padding: 4px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding-inline: 14px; border-radius: 10px; color: var(--t2); font-size: 15px; white-space: nowrap; transition: color .2s var(--ease), background-color .2s var(--ease); flex: none; } [role="tab"]:hover { color: var(--ink); background: rgb(10 26 63 / .05); } [role="tab"][aria-selected="true"] { color: #fff; background: var(--ink); }
-  u { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--spectrum); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 6.5s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes fill { to { transform: scaleX(1); } }
-  .frame { padding: 8px; border-radius: 22px; background: rgb(255 255 255 / .46); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 0 0 1px rgb(10 26 63 / .08), 0 50px 90px -40px rgb(10 26 63 / .55); }
-  .stage { position: relative; aspect-ratio: 16 / 9.2; border-radius: 15px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px var(--line); }
-  .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .45s var(--ease), visibility 0s .45s; } .pane.on { opacity: 1; visibility: visible; transition: opacity .45s var(--ease); z-index: 1; }
-  .pane img { max-width: none; height: auto; transform: translateY(10px); transition: transform .7s var(--ease); } .pane.on img { transform: none; }
-  .over { position: absolute; right: 24px; bottom: 24px; width: min(360px, 44%); transform: translateY(16px); opacity: 0; transition: transform .6s .12s var(--ease), opacity .4s .12s var(--ease); } .on .over { transform: none; opacity: 1; }
-  @media (max-width: 700px) { .stage { aspect-ratio: 4 / 4.4; } .pane img { width: 190% !important; margin: 0 !important; } .pane:first-child img { margin: -22% 0 0 -60% !important; } .pane:nth-child(4) img { width: 100% !important; } .over { left: 12px; right: 12px; bottom: 12px; width: auto; } .frame { padding: 5px; } }
+  u { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--spectrum); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 7s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes fill { to { transform: scaleX(1); } }
+  .mode { position: relative; display: flex; flex: none; padding: 4px; gap: 2px; color: var(--t2); } .mode i { display: grid; place-items: center; width: 36px; height: 40px; border-radius: 10px; transition: background-color .25s var(--ease), color .25s var(--ease); } .mode:hover i { color: var(--ink); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: var(--ink); color: #fff !important; }
+  /* The laptop stands on the page and the phone leans in front of it. Choosing a theme wipes across both, with the phone always on the other theme so both are on show. */
+  .stage { position: relative; aspect-ratio: 1248 / 790; perspective: 2000px; }
+  .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .4s var(--ease), visibility 0s .4s; } .pane.on { opacity: 1; visibility: visible; transition: opacity .4s var(--ease); z-index: 1; }
+  .pane :global(.lap) { position: absolute; left: 3.5%; top: 0; width: 84%; }
+  .pane :global(.ph) { position: absolute; right: 2%; bottom: 0; width: 20%; transform: translateY(14px) rotate(1.5deg); transition: transform .7s var(--ease); } .pane.on :global(.ph) { transform: rotate(0); }
+  .pane :global(.lap .scr.dark) { clip-path: inset(0 100% 0 0); } [data-theme="dark"] .pane :global(.lap .scr.dark) { clip-path: inset(0); }
+  .pane :global(.ph .scr.light) { clip-path: inset(0 100% 0 0); z-index: 1; } [data-theme="dark"] .pane :global(.ph .scr.light) { clip-path: inset(0); }
+  @media (max-width: 700px) { .stage { aspect-ratio: 402 / 470; } .pane :global(.lap) { left: -8%; width: 116%; top: 0; } .pane :global(.ph) { right: 4%; width: 42%; } .ctrl { flex-wrap: wrap; } }
 </style>

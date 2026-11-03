@@ -1,11 +1,15 @@
 ---
 import "../styles/global.css";
-import { APP, NAV } from "../data/site.mjs";
+import { APP, NAV, SECTIONS } from "../data/site.mjs";
 import { GUIDES } from "../data/docs.mjs";
 import AskBar from "../components/AskBar.astro";
 import Icon from "../components/Icon.astro";
-const { title, description, tone = "light" } = Astro.props;
-const path = Astro.url.pathname;
+import Arrow from "../components/Arrow.astro";
+import markFile from "../data/mark.svg?raw";
+const { title, description } = Astro.props;
+const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
+// The logo's three arcs, inline so they can fan open on hover.
+const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
 const tries = ["Does peer tutoring improve reading?", "What works to keep girls in secondary school?", "\"cash transfers\" AND nutrition", "How does wealth inequality affect social mobility?"];
 ---
 <!doctype html>
@@ -25,28 +29,33 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   <link rel="preload" href="/fonts/ubuntu-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/ubuntu-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin />
   <script type="speculationrules" set:html={JSON.stringify({ prerender: [{ where: { href_matches: "/*" }, eagerness: "moderate" }] })} />
+  <script is:inline>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js")</script>
   <slot name="head" />
 </head>
 <body>
-  <div class="top" data-tone={tone}>
+  <div class="top">
     <header class="bar">
-      <a class="brand" href="/" aria-label="OpenScholar home"><img src="/favicon.svg" width="28" height="28" alt="" /><span class="roll" data-t="OpenScholar"><span>OpenScholar</span></span></a>
+      <a class="brand" href="/" aria-label="OpenScholar home">
+        <svg class="mark" viewBox="-0.51 -0.79 83.03 83.03" width="28" height="28" aria-hidden="true" set:html={MARK} />
+        <span class="slot"><span class="now" data-name>OpenScholar</span>{sections.length > 0 && <span class="now sec" data-sec aria-hidden="true"></span>}</span>
+      </a>
       <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">
-        <button class="cmd" type="button" data-palette><Icon name="search" size={16} /><span>Ask a question</span><kbd data-key>⌘K</kbd></button>
+        <button class="cmd" type="button" data-palette aria-label="Ask a question"><Icon name="search" size={16} /><span class="tick" aria-hidden="true">{tries.map((t) => <span>{t}</span>)}</span><kbd data-key>⌘K</kbd></button>
         <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
-        <a class="go" href={APP}><span>Get started</span></a>
-        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet"><button type="button" class="s-ask" data-palette><Icon name="search" size={18} />Ask a question</button>{NAV.map((n) => <a href={n.href}>{n.label}</a>)}<a href={`${APP}/sign-in`}>Sign in</a></div></details>
+        <a class="go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span></a>
+        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet"><button type="button" class="s-ask" data-palette><Icon name="search" size={18} />Ask a question</button>{NAV.map((n) => <a href={n.href}>{n.label}<Arrow /></a>)}<a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
       </div>
+      {sections.length > 0 && <nav class="rail" aria-label="On this page" data-rail>{sections.map(([id, label, color]) => <a href={`#${id}`} data-to={id} data-label={label} style={`--c:${color}`} aria-label={label}><i></i></a>)}</nav>}
     </header>
     <div class="mega" data-mega>
       {NAV.map((n) => <div class="sub" data-sub={n.id} inert>
         {n.rows ? <div class="split">
-          <div class="rows">
-            {n.rows.map((r, i) => <a class="row" href={r.href} data-row={i}><i><Icon name={r.icon} /></i><span><b>{r.title}</b><em>{r.text}</em></span></a>)}
+          <div class="rows"><span class="hl" aria-hidden="true"></span>
+            {n.rows.map((r, i) => <a class="row" href={r.href} data-row={i} style={`--c:${r.color}`}><i><Icon name={r.icon} /></i><span><b>{r.title}</b><em>{r.text}</em></span></a>)}
             {n.live && <div class="live"><span>See one live</span>{n.live.map(([t, u]) => <a href={u}>{t}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l6-6M4 3h5v5" /></svg></a>)}</div>}
           </div>
-          <div class="stage">{n.rows.map((r, i) => <div class:list={["st", `f-${r.field}`, { "with-img": r.img }]} data-st={i}>{r.art && <img class="a" data-src={`/img/art-${r.art}.avif`} alt="" />}{r.img && <img class="s" data-src={`/img/${r.img}.avif`} alt="" />}</div>)}</div>
+          <div class="stage">{n.rows.map((r, i) => <div class:list={["st", `f-${r.field}`]} data-st={i}>{r.art && <img class="a" data-src={`/img/art-${r.art}-960.avif`} alt="" />}{r.img && <img class="s" data-src={`/img/screens/${r.img}-1000.avif`} alt="" />}</div>)}</div>
         </div> : <div class="guides"><div class="g-grid">{GUIDES.map((g) => <a href={`/docs/#${g.id}`}><span class="roll" data-t={g.title}><span>{g.title}</span></span></a>)}</div></div>}
       </div>)}
     </div>
@@ -72,55 +81,61 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
 </body>
 </html>
 <style>
-  .top { position: sticky; top: 10px; z-index: 50; max-width: 1280px; height: 64px; margin: 10px auto -74px; padding-inline: var(--gap); }
-  .bar { position: relative; display: flex; align-items: center; gap: 20px; height: 64px; padding: 0 10px 0 16px; border-radius: 18px; background: rgb(255 255 255 / .5); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .5); transition: background-color .25s var(--ease), box-shadow .25s var(--ease), color .25s var(--ease); }
-  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .bar { color: #fff; background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2); }
-  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .brand img { filter: brightness(0) invert(1); }
-  .stuck .bar, .top:has(.mega[data-open]) .bar { background: rgb(255 255 255 / .78); box-shadow: 0 0 0 1px var(--line), 0 16px 36px -20px rgb(10 26 63 / .4); color: var(--ink); }
-  .bar::after { content: ""; position: absolute; inset: auto 18px 0; height: 2px; border-radius: 2px; background: var(--spectrum); transform-origin: left; transform: scaleX(0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
-  .stuck .bar::after { opacity: 1; }
-  @supports (animation-timeline: scroll()) { .bar::after { animation: grow linear both; animation-timeline: scroll(root); } @keyframes grow { to { transform: scaleX(1); } } }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; letter-spacing: -.02em; flex: none; } .brand img { transition: rotate .5s var(--ease), filter .25s var(--ease); } .brand:hover img { rotate: -90deg; }
-  .nav { position: relative; display: flex; gap: 2px; font-size: 15px; }
-  .lk { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; }
-  .chev { opacity: .55; transition: rotate .25s var(--ease); } .lk.on .chev { rotate: 180deg; } .lk[aria-current] { background: rgb(10 26 63 / .05); } .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .lk[aria-current] { background: rgb(255 255 255 / .12); }
-  .pill { position: absolute; top: 0; left: 0; height: 40px; width: var(--pw, 0); border-radius: 11px; background: rgb(10 26 63 / .07); opacity: 0; transform: translateX(var(--px, 0)); transition: transform .28s var(--ease), width .28s var(--ease), opacity .18s var(--ease); pointer-events: none; }
-  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .pill { background: rgb(255 255 255 / .16); }
+  /* A dark glass capsule that tightens once the page moves under it. */
+  .top { position: sticky; top: 10px; z-index: 50; max-width: 1280px; height: 64px; margin: 10px auto -74px; padding-inline: var(--gap); color: #fff; }
+  .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(rgb(14 22 58 / .84), rgb(7 12 38 / .88)); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 8 30 / .7); transition: width .4s var(--ease); }
+  .stuck .bar { width: min(100%, 1120px); } .stuck .tick { width: 0; } .stuck .cmd { gap: 6px; } .tick { transition: width .4s var(--ease); }
+  /* Light from the pointer catches the capsule's edge. */
+  .bar::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: radial-gradient(180px circle at var(--bx, 50%) 50%, rgb(255 255 255 / .85), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; } .bar:hover::before { opacity: 1; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; letter-spacing: -.02em; flex: none; }
+  .mark { flex: none; overflow: visible; } .mark :global(path) { transform-origin: 8% 50%; transition: transform .5s var(--ease); } .brand:hover .mark :global(path:nth-child(1)) { transform: rotate(-12deg); } .brand:hover .mark :global(path:nth-child(3)) { transform: rotate(10deg); }
+  /* The name gives way to the section you're reading, in the same slot so nothing moves. */
+  .slot { position: relative; display: block; width: 118px; height: 24px; overflow: hidden; } .now { position: absolute; inset: 0; line-height: 24px; white-space: nowrap; transition: transform .4s var(--ease), opacity .3s var(--ease); } .sec { transform: translateY(100%); opacity: 0; } .has-sec .now[data-name] { transform: translateY(-100%); opacity: 0; } .has-sec .sec { transform: none; opacity: 1; } .has-sec .brand:hover .now[data-name] { transform: none; opacity: 1; } .has-sec .brand:hover .sec { transform: translateY(100%); opacity: 0; }
+  .nav { position: relative; display: flex; gap: 2px; font-size: 15px; color: rgb(255 255 255 / .82); }
+  .lk { position: relative; z-index: 1; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; transition: color .15s var(--ease); } .lk:hover, .lk.on { color: #fff; } .lk[aria-current] { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); }
+  .chev { opacity: .6; transition: rotate .25s var(--ease); } .lk.on .chev { rotate: 180deg; }
+  .pill { position: absolute; top: 0; left: 0; height: 40px; width: var(--pw, 0); border-radius: 11px; background: rgb(255 255 255 / .12); opacity: 0; transform: translateX(var(--px, 0)); transition: transform .3s var(--ease), width .3s var(--ease), opacity .18s var(--ease); pointer-events: none; }
   .end { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
-  .cmd { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; border-radius: 11px; background: rgb(255 255 255 / .5); box-shadow: inset 0 0 0 1px var(--line2); font-size: 14px; color: inherit; transition: background-color .15s var(--ease), box-shadow .15s var(--ease); } .cmd:hover { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1px var(--brand), 0 0 0 3px rgb(37 99 235 / .14); }
-  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .cmd:not(:hover) { background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); }
-  kbd { min-width: 46px; text-align: center; padding: 3px 6px; border-radius: 6px; background: rgb(10 26 63 / .07); font: 400 12px/1 var(--mono); color: inherit; } .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .cmd:not(:hover) kbd { background: rgb(255 255 255 / .16); }
-  .signin { font-size: 15px; padding: 8px 10px; }
-  .go { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 44px; padding-inline: 16px; border-radius: 12px; background: var(--brand); color: #fff; font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; transition: box-shadow .2s var(--ease); }
-  .go::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; background: conic-gradient(from 0deg, #2563eb, #06b6d4, #10b981, #f59e0b, #f43f5e, #2563eb); translate: -50% -50%; opacity: 0; transition: opacity .25s var(--ease); }
-  .go::after { content: ""; position: absolute; z-index: -1; inset: 2px; border-radius: 10px; background: var(--brand); transition: background-color .15s var(--ease); }
-  .go:hover::before { opacity: 1; animation: turn 2.4s linear infinite; } .go:hover::after { background: var(--brand-dark); }
+  /* The search button keeps asking real questions. */
+  .cmd { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; border-radius: 11px; background: rgb(255 255 255 / .07); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); font-size: 14px; color: rgb(255 255 255 / .8); transition: background-color .15s var(--ease), box-shadow .15s var(--ease), color .15s var(--ease); } .cmd:hover { background: rgb(255 255 255 / .14); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); }
+  .tick { position: relative; display: block; width: 190px; height: 20px; overflow: hidden; text-align: left; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); } .tick span { display: block; height: 20px; line-height: 20px; white-space: nowrap; animation: tick 16s var(--ease) infinite; } .cmd:hover .tick span { animation-play-state: paused; }
+  @keyframes tick { 0%, 22% { transform: translateY(0); } 25%, 47% { transform: translateY(-100%); } 50%, 72% { transform: translateY(-200%); } 75%, 97% { transform: translateY(-300%); } 100% { transform: translateY(0); } }
+  kbd { min-width: 34px; text-align: center; padding: 4px 6px; border-radius: 7px; background: rgb(255 255 255 / .1); font: 400 12px/1 var(--mono); color: inherit; }
+  .signin { font-size: 15px; padding: 8px 10px; color: rgb(255 255 255 / .82); transition: color .15s var(--ease); } .signin:hover { color: #fff; }
+  .go { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 44px; padding-inline: 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; }
+  .go::before { content: ""; position: absolute; z-index: -2; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; background: conic-gradient(from 0deg, #2563eb, #06b6d4, #10b981, #f59e0b, #f43f5e, #2563eb); translate: -50% -50%; opacity: 0; transition: opacity .25s var(--ease); }
+  .go::after { content: ""; position: absolute; z-index: -1; inset: 2px; border-radius: 10px; background: #fff; }
+  .go:hover::before { opacity: 1; animation: turn 2.4s linear infinite; }
   @keyframes turn { to { rotate: 360deg; } }
-  .menu { display: none; position: relative; } .menu summary { list-style: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgb(255 255 255 / .6); box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink); cursor: pointer; } .menu summary::-webkit-details-marker { display: none; }
-  .sheet { position: absolute; right: 0; top: 54px; width: min(320px, calc(100vw - 2 * var(--gap) - 20px)); padding: 8px; border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 18px 40px -12px rgb(10 26 63 / .3); display: grid; } .sheet a, .s-ask { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; border-radius: 10px; text-align: left; } .sheet a:hover, .s-ask:hover { background: var(--soft); }
+  /* A map of the page along the capsule's lower edge: one bar per section, in that section's colour. */
+  .rail { position: absolute; left: 24px; right: 24px; bottom: 0; display: flex; gap: 4px; height: 10px; align-items: flex-end; opacity: 0; pointer-events: none; transition: opacity .3s var(--ease); } .stuck .rail { opacity: 1; pointer-events: auto; }
+  .rail a { position: relative; flex: 1; height: 10px; display: flex; align-items: flex-end; } .rail i { position: relative; display: block; width: 100%; height: 2px; border-radius: 2px; background: rgb(255 255 255 / .14); overflow: hidden; transition: height .15s var(--ease); } .rail i::after { content: ""; position: absolute; inset: 0; background: var(--c); transform: scaleX(var(--p, 0)); transform-origin: left; } .rail a:hover i { height: 4px; }
+  .rail a::after { content: attr(data-label); position: absolute; top: 14px; left: 50%; translate: -50% 4px; padding: 5px 9px; border-radius: 8px; background: #0b1330; color: #fff; font: 400 13px/1.2 var(--mono); white-space: nowrap; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); opacity: 0; pointer-events: none; transition: opacity .12s var(--ease), translate .12s var(--ease); } .rail a:hover::after { opacity: 1; translate: -50% 0; }
+  .menu { display: none; position: relative; } .menu summary { list-style: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgb(255 255 255 / .1); cursor: pointer; } .menu summary::-webkit-details-marker { display: none; }
+  .sheet { position: absolute; right: 0; top: 56px; width: min(340px, calc(100vw - 2 * var(--gap) - 20px)); padding: 8px; border-radius: 18px; background: #0b1330; color: #fff; box-shadow: 0 0 0 1px rgb(255 255 255 / .12), 0 30px 60px -20px rgb(4 8 30 / .8); display: grid; } .sheet a, .s-ask { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 10px 12px; border-radius: 12px; text-align: left; font-size: 17px; } .s-ask { justify-content: flex-start; color: rgb(255 255 255 / .8); } .sheet a:hover, .s-ask:hover { background: rgb(255 255 255 / .08); } .sheet :global(svg) { flex: none; }
   /* One panel that changes shape between menus. */
-  .mega { position: absolute; top: 72px; left: var(--gap); width: var(--w, 800px); height: var(--h, 320px); transform: translateX(var(--x, 0)); border-radius: 20px; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 40px 80px -30px rgb(10 26 63 / .45); opacity: 0; visibility: hidden; color: var(--ink); overflow: hidden; }
+  .mega { position: absolute; top: 72px; left: var(--gap); width: var(--w, 800px); height: var(--h, 320px); transform: translateX(var(--x, 0)); border-radius: 22px; background: #0b1330; box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), inset 0 0 0 1px rgb(255 255 255 / .08), 0 50px 90px -30px rgb(4 8 30 / .75); opacity: 0; visibility: hidden; color: #fff; overflow: hidden; }
   .top:has(.mega[data-open])::after { content: ""; position: absolute; left: 0; right: 0; top: 64px; height: 10px; }
-  .mega[data-open] { opacity: 1; visibility: visible; transition: opacity .16s var(--ease), transform .3s var(--ease), width .3s var(--ease), height .3s var(--ease); }
+  .mega[data-open] { opacity: 1; visibility: visible; transition: opacity .16s var(--ease), transform .32s var(--ease), width .32s var(--ease), height .32s var(--ease); }
   .mega:not([data-open]) { transition: opacity .12s var(--ease), visibility 0s .12s; }
-  .sub { position: absolute; top: 0; left: 0; opacity: 0; transform: translateX(var(--from, 0)); transition: opacity .2s var(--ease), transform .3s var(--ease); pointer-events: none; }
+  .sub { position: absolute; top: 0; left: 0; opacity: 0; transform: translateX(var(--from, 0)); transition: opacity .2s var(--ease), transform .32s var(--ease); pointer-events: none; }
   .sub[data-on] { opacity: 1; transform: none; pointer-events: auto; }
-  .split { display: grid; grid-template-columns: 400px 420px; width: 820px; }
-  .rows { display: grid; align-content: start; gap: 2px; padding: 10px; }
-  .row { display: flex; gap: 12px; padding: 10px; border-radius: 12px; transition: background-color .15s var(--ease); } .row i { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--soft); color: var(--brand-dark); transition: background-color .15s var(--ease), color .15s var(--ease); } .row b { display: block; font-weight: 500; font-size: 15px; line-height: 1.3; } .row em { display: block; font-style: normal; font-size: 13px; line-height: 1.35; color: var(--t2); }
-  .row.on, .row:focus-visible { background: var(--soft); } .row.on i, .row:focus-visible i { background: var(--brand); color: #fff; }
-  .live { display: grid; gap: 4px; margin-top: 6px; padding: 12px 10px 8px; border-top: 1px solid var(--line); font-size: 13px; } .live span { color: var(--t3); } .live a { display: flex; align-items: center; gap: 6px; font-size: 14px; } .live a:hover { color: var(--brand-dark); }
-  .stage { position: relative; margin: 10px 10px 10px 0; border-radius: 12px; overflow: hidden; min-height: 300px; }
-  .st { position: absolute; inset: 0; opacity: 0; transition: opacity .25s var(--ease); } .st.on { opacity: 1; } .st .a { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; } .st .s { position: absolute; left: 28px; top: 28px; width: 560px; max-width: none; border-radius: 10px; box-shadow: 0 24px 48px -16px rgb(10 20 60 / .6); transform: translateY(8px); transition: transform .4s var(--ease); } .st.on .s { transform: none; }
-  .guides { width: 560px; padding: 12px; } .g-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; } .g-grid a { padding: 9px 12px; border-radius: 10px; font-size: 15px; transition: background-color .15s var(--ease); } .g-grid a:hover { background: var(--soft); }
-  .foot { position: relative; overflow: hidden; background: #070d2b; color: #fff; } .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 56px calc(var(--gap) + 8px) 24px; }
-  .f-brand img { filter: brightness(0) invert(1); } .f-brand p { margin-top: 12px; color: rgb(255 255 255 / .72); max-width: 18em; } .foot nav { display: flex; gap: 56px; } .foot nav div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .72); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav a { transition: color .15s var(--ease); } .foot nav a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .6); }
+  .split { display: grid; grid-template-columns: 380px 460px; width: 840px; }
+  .rows { position: relative; display: grid; align-content: start; gap: 2px; padding: 10px; } .hl { position: absolute; left: 10px; right: 10px; top: 0; height: var(--hh, 0); border-radius: 14px; background: rgb(255 255 255 / .07); transform: translateY(var(--hy, 0)); transition: transform .28s var(--ease), height .28s var(--ease); pointer-events: none; }
+  .row { position: relative; display: flex; gap: 12px; padding: 10px; border-radius: 14px; } .row i { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: rgb(255 255 255 / .07); color: rgb(255 255 255 / .75); transition: background-color .2s var(--ease), color .2s var(--ease); } .row b { display: block; font-weight: 500; font-size: 15px; line-height: 1.3; } .row em { display: block; font-style: normal; font-size: 13px; line-height: 1.35; color: rgb(255 255 255 / .62); }
+  .row.on i, .row:focus-visible i { background: var(--c); color: #071030; }
+  .live { display: grid; gap: 4px; margin-top: 6px; padding: 12px 10px 8px; border-top: 1px solid rgb(255 255 255 / .1); font-size: 13px; } .live span { color: rgb(255 255 255 / .55); } .live a { display: flex; align-items: center; gap: 6px; font-size: 14px; color: rgb(255 255 255 / .85); } .live a:hover { color: #fff; }
+  .stage { position: relative; margin: 10px 10px 10px 0; border-radius: 14px; overflow: hidden; min-height: 320px; }
+  .st { position: absolute; inset: 0; opacity: 0; transition: opacity .25s var(--ease); } .st.on { opacity: 1; } .st .a { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; } .st .s { position: absolute; left: 24px; top: 24px; width: 620px; max-width: none; border-radius: 10px 0 0 0; box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 24px 48px -16px rgb(4 8 30 / .8); transform: translateY(10px); transition: transform .45s var(--ease); } .st.on .s { transform: none; }
+  .guides { width: 560px; padding: 12px; } .g-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; } .g-grid a { padding: 9px 12px; border-radius: 10px; font-size: 15px; color: rgb(255 255 255 / .85); transition: background-color .15s var(--ease), color .15s var(--ease); } .g-grid a:hover { background: rgb(255 255 255 / .08); color: #fff; }
+  .foot { position: relative; overflow: hidden; background: var(--night); color: #fff; } .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 56px calc(var(--gap) + 8px) 24px; }
+  .f-brand p { margin-top: 12px; color: rgb(255 255 255 / .72); max-width: 18em; } .foot nav { display: flex; gap: 56px; } .foot nav div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .72); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav a { transition: color .15s var(--ease); } .foot nav a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .6); }
   /* The name is barely there until the pointer brings colour through it. */
   .word { margin-top: 8px; padding-inline: var(--gap); text-align: center; font-weight: 500; font-size: 17.4vw; line-height: .86; letter-spacing: -.05em; white-space: nowrap; margin-bottom: -.1em; color: transparent; -webkit-background-clip: text; background-clip: text; background-image: radial-gradient(circle 380px at var(--mx, -999px) var(--my, 50%), #38bdf8, #34d399 35%, #fbbf24 65%, transparent 100%), linear-gradient(rgb(255 255 255 / .1), rgb(255 255 255 / .1)); user-select: none; }
   .palette { width: min(640px, calc(100vw - 24px)); margin: 12vh auto auto; padding: 10px; border: 0; border-radius: 24px; background: #fff; color: var(--ink); box-shadow: 0 40px 100px -24px rgb(10 26 63 / .6); } .palette::backdrop { background: rgb(7 13 43 / .5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .palette :global(.ask) { width: 100%; box-shadow: inset 0 0 0 1px var(--line2); } .palette ul { display: grid; gap: 2px; margin-top: 8px; } .palette li button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 10px; text-align: left; font-size: 15px; color: var(--t2); transition: background-color .12s var(--ease), color .12s var(--ease); } .palette li button:hover, .palette li button:focus-visible { background: var(--soft); color: var(--ink); }
-  @media (max-width: 1160px) { .cmd span, .signin { display: none; } .cmd { padding: 0 6px 0 10px; } }
+  @media (max-width: 1240px) { .tick, .signin { display: none; } .cmd { padding: 0 6px 0 10px; } }
   @media (max-width: 960px) { .nav, .signin, .cmd, .mega { display: none; } .menu { display: block; } }
-  @media (max-width: 365px) { .brand .roll { display: none; } }
-  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav { gap: 32px; flex-wrap: wrap; } .top { margin-inline: 0; } .bar { padding-inline: 12px 8px; } }
+  @media (max-width: 365px) { .slot { width: 0; } }
+  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav { gap: 32px; flex-wrap: wrap; } .bar { padding-inline: 12px 8px; } .rail a::after { display: none; } }
 </style>

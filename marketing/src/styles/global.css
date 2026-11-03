@@ -42,8 +42,11 @@ p { text-wrap: pretty; }
 .art img { width: 100%; height: 100%; object-fit: cover; }
 .art canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .6s var(--ease); }
 .art.dim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(var(--dir, 90deg), rgb(var(--sc, 3 44 66) / .94), rgb(var(--sc, 3 44 66) / .7) 45%, rgb(var(--sc, 3 44 66) / 0) 70%); }
-/* Small technical labels pinned to a graphic. */
-.tag { font: 400 14px/1.2 var(--mono); }
+/* Glass laid over art, tinted by the section's --g. */
+.frost { position: relative; border-radius: 18px; background: rgb(var(--g, 4 40 32) / .68); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 60px -28px rgb(0 10 20 / .8); color: #fff; }
+/* Entrances, only once scripts are running, so nothing stays hidden without them. */
+.js [data-in] { opacity: 0; transform: translateY(26px); }
+.js [data-in].in { opacity: 1; transform: none; transition: opacity .8s var(--ease) var(--d, 0s), transform .9s var(--ease) var(--d, 0s); }
 
 /* The colour fields behind each panel: drawn by the browser, so they cost nothing to load. */
 .f-cobalt { background: radial-gradient(ellipse 22% 34% at 98% 98%, #0284c7, transparent), radial-gradient(ellipse 45% 71% at 12% 86%, #1e40af, transparent), radial-gradient(ellipse 37% 60% at 62% 76%, #0369a1, transparent), radial-gradient(ellipse 40% 64% at 81% 18%, #1d4ed8, transparent), radial-gradient(ellipse 45% 71% at 19% 12%, #2563eb, transparent), #1036a8; }
