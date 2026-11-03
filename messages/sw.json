@@ -207,7 +207,12 @@
       "af": "Kiafrikaans",
       "zu": "Kizulu"
     },
-    "you": "Wewe"
+    "you": "Wewe",
+    "calendarToday": "Leo, {date}",
+    "calendarSelected": "{date}, imechaguliwa",
+    "calendarMonth": "Chagua mwezi",
+    "calendarYear": "Chagua mwaka",
+    "calendarNavigation": "Urambazaji wa kalenda"
   },
   "home": {
     "tagline": "Tafuta mamilioni ya makala za kitaaluma na machapisho ya utafiti",

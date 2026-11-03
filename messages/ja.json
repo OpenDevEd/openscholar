@@ -207,7 +207,12 @@
       "af": "アフリカーンス語",
       "zu": "ズールー語"
     },
-    "you": "あなた"
+    "you": "あなた",
+    "calendarToday": "今日、{date}",
+    "calendarSelected": "{date}、選択済み",
+    "calendarMonth": "月を選択",
+    "calendarYear": "年を選択",
+    "calendarNavigation": "カレンダーのナビゲーション"
   },
   "home": {
     "tagline": "数百万の学術論文と研究記事を検索",

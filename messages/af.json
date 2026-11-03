@@ -207,7 +207,12 @@
       "af": "Afrikaans",
       "zu": "Zoeloe"
     },
-    "you": "Jy"
+    "you": "Jy",
+    "calendarToday": "Vandag, {date}",
+    "calendarSelected": "{date}, gekies",
+    "calendarMonth": "Kies die maand",
+    "calendarYear": "Kies die jaar",
+    "calendarNavigation": "Kalendernavigasie"
   },
   "home": {
     "tagline": "Soek miljoene akademiese artikels en navorsingsartikels",

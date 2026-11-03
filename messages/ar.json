@@ -207,7 +207,12 @@
       "af": "الأفريقانية",
       "zu": "الزولو"
     },
-    "you": "أنت"
+    "you": "أنت",
+    "calendarToday": "اليوم، {date}",
+    "calendarSelected": "{date}، محدَّد",
+    "calendarMonth": "اختر الشهر",
+    "calendarYear": "اختر السنة",
+    "calendarNavigation": "التنقل في التقويم"
   },
   "home": {
     "tagline": "ابحث في ملايين الأوراق الأكاديمية ومقالات البحث",
