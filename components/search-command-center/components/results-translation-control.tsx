@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useAppToast } from "@/lib/toast";
-import { useResultsTranslationSettingsStore, useTranslationStore } from "@/lib/store";
+import { useResultsTranslationSettingsStore } from "@/lib/store";
 import { TranslationContext } from "@/components/results-contexts";
 import { LanguageSelectItems } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
@@ -186,8 +186,9 @@ export function TranslationSettingsMenu({
     (state) => state.clearTargetLanguageOverride
   );
 
-  const undoTranslations = useTranslationStore((state) => state.undoTranslations);
-  const showAllTranslations = useTranslationStore((state) => state.showAllTranslations);
+  const setTranslationsUndone = useResultsTranslationSettingsStore(
+    (state) => state.setTranslationsUndone
+  );
 
   const isUsingLocaleTarget = targetLanguageOverride === null;
   const targetMode = isUsingLocaleTarget ? "locale" : "manual";
@@ -218,22 +219,22 @@ export function TranslationSettingsMenu({
       toast.ai.configRequired(t("configureAISettings"));
       return;
     }
-    showAllTranslations();
+    setTranslationsUndone(false);
     onRun();
-  }, [isConfigured, isRunDisabled, onRun, showAllTranslations, t, toast]);
+  }, [isConfigured, isRunDisabled, onRun, setTranslationsUndone, t, toast]);
 
   // Off as well, or the next page of results would translate itself straight away.
   const handleUndoTranslation = useCallback(() => {
     setAutoTranslateResults(false);
-    undoTranslations();
-  }, [setAutoTranslateResults, undoTranslations]);
+    setTranslationsUndone(true);
+  }, [setAutoTranslateResults, setTranslationsUndone]);
 
   const handleAutoTranslateChange = useCallback(
     (enabled: boolean) => {
       setAutoTranslateResults(enabled);
-      if (enabled) showAllTranslations();
+      if (enabled) setTranslationsUndone(false);
     },
-    [setAutoTranslateResults, showAllTranslations]
+    [setAutoTranslateResults, setTranslationsUndone]
   );
 
   return (

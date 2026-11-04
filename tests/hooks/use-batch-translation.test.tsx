@@ -42,7 +42,7 @@ beforeEach(() => {
   executeMock.mockReset();
   // Reset Zustand store between tests (no public reset; clear by overwrite).
   useTranslationStore.setState({ translations: {}, showTranslations: {} });
-  useResultsTranslationSettingsStore.setState({ targetLanguageOverride: null, autoTranslateResults: false });
+  useResultsTranslationSettingsStore.setState({ targetLanguageOverride: null, autoTranslateResults: false, translationsUndone: false });
 });
 
 /** Long enough for a refused batch to settle and for any re-send to show. */
@@ -291,24 +291,40 @@ describe("useBatchTranslation — auto-translate", () => {
 
 describe("useBatchTranslation — Undo translation", () => {
   const paper = { id: "p1", title: "Title 1", abstract: "Abstract 1" };
+  const translated = { results: { p1: { translatedTitle: "T", translatedAbstract: "A", noTranslationNeeded: false } }, errors: [] };
+  const props = { searchId: "s1", papers: [paper], canStart: true, manualRunRequestId: 1 };
+  const setUndone = (undone: boolean) => act(() => useResultsTranslationSettingsStore.getState().setTranslationsUndone(undone));
 
-  it("stops counting a paper as translated, and running again shows it without paying twice", async () => {
-    executeMock.mockResolvedValue({ results: { p1: { translatedTitle: "T", translatedAbstract: "A", noTranslationNeeded: false } }, errors: [] });
-    const props = { searchId: "s1", papers: [paper], canStart: true, manualRunRequestId: 1 };
+  it("stops counting a paper as translated, and running again brings it back without paying twice", async () => {
+    executeMock.mockResolvedValue(translated);
     const { result, rerender } = pressRun(props);
     await settle();
     expect(result.current.translatedPaperCount).toBe(1);
 
-    act(() => useTranslationStore.getState().undoTranslations());
+    setUndone(true);
     expect(result.current.translatedPaperCount).toBe(0);
-    expect(useTranslationStore.getState().getShowTranslated("p1")).toBe(false);
 
     // As the menu's Run does.
-    act(() => useTranslationStore.getState().showAllTranslations());
+    setUndone(false);
     rerender({ ...props, manualRunRequestId: 2 });
     await settle();
     expect(result.current.translatedPaperCount).toBe(1);
-    expect(useTranslationStore.getState().getShowTranslated("p1")).toBe(true);
+    expect(executeMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("stays undone when a batch still running comes back afterwards, and keeps what it paid for", async () => {
+    let finish = (_: unknown) => {};
+    executeMock.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const { result } = pressRun(props);
+    await settle();
+
+    setUndone(true);
+    finish(translated);
+    await settle();
+    expect(result.current.translatedPaperCount).toBe(0);
+
+    setUndone(false);
+    expect(result.current.translatedPaperCount).toBe(1);
     expect(executeMock).toHaveBeenCalledTimes(1);
   });
 });

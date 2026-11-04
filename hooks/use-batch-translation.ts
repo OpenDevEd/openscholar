@@ -69,6 +69,7 @@ export function useBatchTranslation({
   const targetLanguageOverride = useResultsTranslationSettingsStore((state) => state.targetLanguageOverride);
   const targetLanguage = targetLanguageOverride ?? localeLanguage;
   const autoTranslateResults = useResultsTranslationSettingsStore((state) => state.autoTranslateResults);
+  const translationsUndone = useResultsTranslationSettingsStore((state) => state.translationsUndone);
   const { execute, isConfigured } = useBatchTranslations();
   const { getTranslation, setShowTranslated } = useTranslationStore();
   // The run count outlives this hook, as the results page mounts again on a new search.
@@ -203,15 +204,15 @@ export function useBatchTranslation({
     }
   }, [hasPendingManualRun, papersNeedingTranslation.length, effectiveCanStart, manualRunRequestId]);
 
-  // Reactive count of papers translated for the current target language, leaving out any undone.
+  // Reactive count of papers already translated for the current target language.
   // Uses a store selector so it re-renders when new translations land.
   const translatedPaperCount = useTranslationStore(
     useCallback(
       (state) =>
-        papers.filter(
-          (p) => state.translations[translationKey(p.id, targetLanguage)] != null && p.id in state.showTranslations
+        translationsUndone ? 0 : papers.filter(
+          (p) => state.translations[translationKey(p.id, targetLanguage)] != null
         ).length,
-      [papers, targetLanguage]
+      [papers, targetLanguage, translationsUndone]
     )
   );
 

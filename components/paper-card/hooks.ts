@@ -41,11 +41,11 @@ export function useTranslate(
     (state) => state.targetLanguageOverride
   );
   const targetLanguage = targetLanguageOverride ?? localeToLanguageCode(locale);
+  const translationsUndone = useResultsTranslationSettingsStore((state) => state.translationsUndone);
 
-  // Use selectors to subscribe to specific translation data (composite key: paperId:target).
-  // After Undo translation a paper reads as never translated, so it has nothing to switch to.
+  // Use selectors to subscribe to specific translation data (composite key: paperId:target)
   const translatedContent = useTranslationStore(
-    (state) => (data?.id && targetLanguage && data.id in state.showTranslations
+    (state) => (data?.id && targetLanguage && !translationsUndone
       ? state.getTranslation(data.id, targetLanguage)
       : null)
   );

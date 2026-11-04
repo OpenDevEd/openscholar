@@ -952,10 +952,6 @@ interface TranslationState {
   setShowTranslated: (id: string, show: boolean) => void;
   clearTranslation: (id: string) => void;
   clearAllTranslations: () => void;
-  /** Puts every paper back as it was before any translation, keeping what was paid for. */
-  undoTranslations: () => void;
-  /** Shows every translation held, without paying for any of them again. */
-  showAllTranslations: () => void;
 }
 
 export const useTranslationStore = create<TranslationState>()(
@@ -1011,18 +1007,6 @@ export const useTranslationStore = create<TranslationState>()(
     clearAllTranslations: () => {
       set({ translations: {} });
     },
-
-    undoTranslations: () => {
-      set({ showTranslations: {} });
-    },
-
-    showAllTranslations: () => {
-      set((state) => ({
-        showTranslations: Object.fromEntries(
-          Object.keys(state.translations).map((key) => [key.slice(0, key.lastIndexOf(":")), true])
-        ),
-      }));
-    },
   })
 );
 
@@ -1030,6 +1014,12 @@ interface ResultsTranslationSettingsState {
   autoTranslateResults: boolean;
   targetLanguageOverride: string | null;
   manualRunRequestId: number;
+  /**
+   * Undo translation was pressed: every paper reads as never translated, whatever comes back from a batch still
+   * running. What was paid for stays held, so Run or auto-translate brings it back without paying twice.
+   */
+  translationsUndone: boolean;
+  setTranslationsUndone: (undone: boolean) => void;
   setAutoTranslateResults: (enabled: boolean) => void;
   setTargetLanguageOverride: (language: string | null) => void;
   clearTargetLanguageOverride: () => void;
@@ -1042,6 +1032,8 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
       autoTranslateResults: false,
       targetLanguageOverride: null,
       manualRunRequestId: 0,
+      translationsUndone: false,
+      setTranslationsUndone: (undone) => set({ translationsUndone: undone }),
       setAutoTranslateResults: (enabled) => set({ autoTranslateResults: enabled }),
       setTargetLanguageOverride: (language) => set({ targetLanguageOverride: language }),
       clearTargetLanguageOverride: () => set({ targetLanguageOverride: null }),

@@ -26,7 +26,7 @@ export interface TranslationContextValue {
   loadingPaperIds?: Set<string>;
   errors?: Array<{ paperId: string; error: string }>;
   isConfigured?: boolean;
-  /** Number of visible papers translated for the active target language, leaving out any undone */
+  /** Number of visible papers that already have a translation for the active target language */
   translatedPaperCount?: number;
   /** Total number of visible papers eligible for translation */
   totalPaperCount?: number;
