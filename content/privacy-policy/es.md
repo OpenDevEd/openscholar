@@ -30,7 +30,7 @@ Recopilamos o utilizamos la siguiente información personal **para que funcionen
 
 Cuando utiliza una función de IA, su solicitud y el texto del artículo necesario se envían al proveedor de IA que realiza el trabajo.
 
-Enviamos a PostHog un registro de cada solicitud de IA y de cada trabajo de cribado, sin su texto, para controlar el coste y la fiabilidad. Solo incluye su ID de cuenta si aceptó las cookies de analítica.
+Enviamos a PostHog un registro de cada solicitud de IA y de cada trabajo de cribado, sin su texto, y de cada registro, primer pago y cambio de plan, para controlar el coste, la fiabilidad y el crecimiento. Solo incluye su ID de cuenta si aceptó las cookies de analítica.
 
 Recopilamos o usamos los siguientes datos personales para **atender consultas, reclamaciones o solicitudes**:
 

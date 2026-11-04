@@ -21,7 +21,7 @@ function setGoogleAnalyticsAllowed(allowed: boolean) {
 /**
  * Google Analytics loads only once someone accepts analytics cookies, and advertising stays off, as the privacy
  * policy says. The tag counts page changes itself. The property's own settings keep search text away from
- * Google: the launch plan lists them (plans/production-launch/README.md).
+ * Google: Site search is off, and `q`, `search` and `libraryQuery` are redacted.
  */
 export function ConsentAwareGoogleAnalytics() {
   const shouldCollect = useAnalyticsConsent();

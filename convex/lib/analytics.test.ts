@@ -80,6 +80,7 @@ describe("analytics.capture", () => {
       $ai_session_id: "job_1",
       $ai_trace_id: "trace_1",
       feature: "Screening",
+      to_plan: "pro",
       credits_deducted: 2,
       credits_remaining: 90,
       job_id: "job_1",
@@ -95,7 +96,7 @@ describe("analytics.capture", () => {
     expect(others).toHaveLength(2);
     for (const event of others) {
       expect(event.distinct_id).toBe("no-analytics-consent");
-      expect(event.properties).toMatchObject({ $ai_model: "m", $ai_input_tokens: 10, feature: "Screening", credits_deducted: 2, $process_person_profile: false });
+      expect(event.properties).toMatchObject({ $ai_model: "m", $ai_input_tokens: 10, feature: "Screening", to_plan: "pro", credits_deducted: 2, $process_person_profile: false });
       for (const key of ["$ai_session_id", "$ai_trace_id", "credits_remaining", "job_id"]) expect(event.properties).not.toHaveProperty(key);
     }
   });
@@ -122,6 +123,34 @@ describe("analytics.capture", () => {
     // A browser with no answer changes nothing.
     await person.mutation(api.users.mutations.ensureUser, {});
     expect(await saved()).toBe("denied");
+  });
+
+  it("records a sign-up, a first payment and a change of plan, each once", async () => {
+    const t = convexTest(schema);
+    const person = t.withIdentity({ subject: "user_a" });
+    await person.mutation(api.users.mutations.ensureUser, {});
+    const workspaceId = await t.run(async (ctx) => (await ctx.db.query("workspaces").first())!._id);
+    const write = (plan: string, hasPaid: boolean, fetchedAt: number) =>
+      t.mutation(internal.billing.accounts.writeSnapshot, {
+        workspaceId,
+        withCard: false,
+        fetchedAt,
+        snapshot: { plan, hasPaid, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
+      });
+    await write("free", false, 1);
+    await write("free", false, 2);
+    await write("pro", true, 3);
+    await write("pro", true, 4);
+    await write("go", true, 5);
+
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    const sent = scheduled.flatMap((job) => (job.args[0] as { events?: Array<{ event: string; distinctId: string; properties: string }> }).events ?? []);
+    expect(sent.map(({ event, distinctId, properties }) => [event, distinctId, JSON.parse(properties)])).toEqual([
+      ["account_created", "user_a", {}],
+      ["first_payment", "user_a", { workspace_kind: "personal", plan: "pro" }],
+      ["plan_changed", "user_a", { workspace_kind: "personal", from_plan: "free", to_plan: "pro" }],
+      ["plan_changed", "user_a", { workspace_kind: "personal", from_plan: "pro", to_plan: "go" }],
+    ]);
   });
 
   it("sends nothing where PostHog isn't set up", async () => {

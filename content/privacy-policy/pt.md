@@ -30,7 +30,7 @@ Recolhemos ou utilizamos as seguintes informações pessoais **para fazer funcio
 
 Quando utiliza uma funcionalidade de IA, o seu pedido e o texto do artigo necessário são enviados ao fornecedor de IA que faz o trabalho.
 
-Enviamos à PostHog um registo de cada pedido de IA e de cada tarefa de triagem, sem o respetivo texto, para acompanhar o custo e a fiabilidade. Só inclui o seu ID de conta se tiver aceitado os cookies de análise.
+Enviamos à PostHog um registo de cada pedido de IA e de cada tarefa de triagem, sem o respetivo texto, e de cada registo de conta, primeiro pagamento e mudança de plano, para acompanhar o custo, a fiabilidade e o crescimento. Só inclui o seu ID de conta se tiver aceitado os cookies de análise.
 
 Recolhemos ou utilizamos os seguintes dados pessoais para **tratar de pedidos de informação, reclamações ou pretensões**:
 

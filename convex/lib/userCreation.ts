@@ -3,6 +3,7 @@ import { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { readAccount } from "../billing/accounts";
 import { ensureWorkspace } from "../workspaces/create";
+import { captureLater } from "./analyticsEvents";
 
 export async function createUserWithDefaults(
   ctx: MutationCtx,
@@ -30,6 +31,7 @@ export async function createUserWithDefaults(
   await ctx.db.insert("libraryCounts", { workspaceId, count: 0 });
 
   await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
+  await captureLater(ctx, [{ distinctId: userData.clerkId, event: "account_created", properties: {}, timestamp: now }]);
   return userId;
 }
 

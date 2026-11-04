@@ -11,7 +11,8 @@ import {
   type QueryCtx,
 } from "../lib/functions";
 import { api, internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import { captureLater, UNNAMED_ACCOUNT } from "../lib/analyticsEvents";
 import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { createError } from "../lib/errors";
@@ -187,6 +188,7 @@ export const writeSnapshot = internalMutation({
     };
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("billingAccounts", row);
+    await captureBillingChanges(ctx, workspace, existing, snapshot, fetchedAt);
     return null;
   },
 });
@@ -212,6 +214,26 @@ export const zeroBalance = internalMutation({
     return null;
   },
 });
+
+/** A first payment and a change of plan, read from what Autumn just said: every way of paying ends up here. */
+async function captureBillingChanges(
+  ctx: MutationCtx,
+  workspace: Doc<"workspaces">,
+  before: Doc<"billingAccounts"> | null,
+  after: BillingAccountSnapshot,
+  timestamp: number,
+) {
+  if (!before) return;
+  const person = workspace.kind === "personal" ? await ctx.db.get("users", workspace.userId) : null;
+  const shared = { distinctId: person?.clerkId ?? UNNAMED_ACCOUNT, timestamp };
+  const workspaceKind = { workspace_kind: workspace.kind };
+  await captureLater(ctx, [
+    ...(after.hasPaid && !before.hasPaid ? [{ ...shared, event: "first_payment", properties: { ...workspaceKind, plan: after.plan } }] : []),
+    ...(before.plan && after.plan && before.plan !== after.plan
+      ? [{ ...shared, event: "plan_changed", properties: { ...workspaceKind, from_plan: before.plan, to_plan: after.plan } }]
+      : []),
+  ]);
+}
 
 /**
  * Fetches the customer from Autumn and stores the snapshot. The card costs
