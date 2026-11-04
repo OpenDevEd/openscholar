@@ -30,7 +30,7 @@ Nous collectons ou utilisons les informations personnelles suivantes **pour fair
 
 Lorsque vous utilisez une fonctionnalité d'IA, votre demande et le texte d'article nécessaire sont envoyés au fournisseur d'IA qui effectue le travail.
 
-Que vous acceptiez ou non les cookies d'analyse, nous envoyons à PostHog un enregistrement de chaque demande d'IA sous votre identifiant de compte, sans son texte, pour suivre les coûts et la fiabilité.
+Nous envoyons à PostHog un enregistrement de chaque demande d'IA et de chaque tâche de sélection, sans son texte, pour suivre les coûts et la fiabilité. Il ne contient votre identifiant de compte que si vous avez accepté les cookies d'analyse.
 
 Nous collectons ou utilisons les informations personnelles suivantes pour **traiter les demandes de renseignements, les réclamations ou les demandes d'indemnisation** :
 

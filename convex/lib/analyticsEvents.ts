@@ -20,6 +20,21 @@ export const analyticsEventValidator = v.object({
 });
 export type AnalyticsEvent = Omit<Infer<typeof analyticsEventValidator>, "properties"> & { properties: Record<string, unknown> };
 
+/** Who PostHog sees for work by someone who hasn't accepted analytics. */
+export const UNNAMED_ACCOUNT = "no-analytics-consent";
+const LEADS_TO_ACCOUNT = new Set(["$ai_session_id", "$ai_trace_id", "credits_remaining"]);
+
+/**
+ * An event from someone who hasn't accepted analytics: it keeps cost, tokens, timings and which feature, for
+ * totals, and loses what leads back to them, such as a job's ID. Any other text may be theirs too.
+ */
+export function withoutAccount(properties: Record<string, unknown>): Record<string, unknown> {
+  const kept = Object.entries(properties).filter(
+    ([key, value]) => !LEADS_TO_ACCOUNT.has(key) && (key.startsWith("$") || key === "feature" || typeof value === "number" || typeof value === "boolean"),
+  );
+  return { ...Object.fromEntries(kept), $process_person_profile: false };
+}
+
 /** Schedules PostHog events (./analytics.ts). Analytics never fails the work it describes. */
 export async function captureLater(
   ctx: Pick<ActionCtx | MutationCtx, "scheduler">,

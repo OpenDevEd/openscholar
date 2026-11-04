@@ -53,7 +53,12 @@ function subscribeToConsent(onChange: () => void) {
   return () => window.removeEventListener(CONSENT_UPDATED_EVENT, onChange);
 }
 
-/** Whether someone has accepted analytics, as they accept or withdraw it. */
+/** Whether someone has accepted analytics in this browser. */
 export function useAnalyticsConsent(): boolean {
   return useSyncExternalStore(subscribeToConsent, () => getStoredConsent()?.choice === "granted", () => false);
+}
+
+/** When someone last answered the cookie banner in this browser. It changes even when the answer is the same as before. */
+export function useConsentAnsweredAt(): string | null {
+  return useSyncExternalStore(subscribeToConsent, () => getStoredConsent()?.timestamp ?? null, () => null);
 }

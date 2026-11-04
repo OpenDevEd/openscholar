@@ -6,7 +6,7 @@ import posthog from "posthog-js";
 import { useUser } from "@clerk/nextjs";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
-import { useAnalyticsConsent } from "@/lib/consent-storage";
+import { getStoredConsent, useAnalyticsConsent, useConsentAnsweredAt } from "@/lib/consent-storage";
 
 export function PostHogIdentify() {
   const { data: convexUser } = useOptionalAuthQuery(api.users.queries.me, {});
@@ -16,6 +16,18 @@ export function PostHogIdentify() {
   const hasSyncedRef = useRef(false);
   // Identifying sends the name and email to PostHog, cookies or not, so it waits for Accept.
   const consented = useAnalyticsConsent();
+  const consentAnsweredAt = useConsentAnsweredAt();
+  const saveConsent = useMutation(api.users.mutations.saveAnalyticsConsent);
+  const userId = convexUser?._id;
+  const savedConsentAt = convexUser?.analyticsConsent?.at;
+
+  // The banner's answer lives in this browser. The server reads it from the account to decide whether its own analytics name them.
+  useEffect(() => {
+    const stored = getStoredConsent();
+    if (!userId || !stored) return;
+    const at = Date.parse(stored.timestamp);
+    if (savedConsentAt === undefined || savedConsentAt < at) void saveConsent({ choice: stored.choice, at });
+  }, [userId, consentAnsweredAt, savedConsentAt, saveConsent]);
 
   const clerkHasProfile =
     clerkUser &&

@@ -1,5 +1,6 @@
 import { mutation } from "../lib/functions";
 import { v } from "convex/values";
+import { analyticsConsentValidator } from "../lib/validators";
 import { requireAuth } from "../lib/auth";
 import { createUserWithDefaults, ensureBillingAccount } from "../lib/userCreation";
 import { createError } from "../lib/errors";
@@ -72,6 +73,18 @@ export const ensureUser = mutation({
       lastName: identity.familyName,
       avatarUrl: identity.pictureUrl,
     });
+  },
+});
+
+/** Keeps someone's cookie banner answer on their account. An older answer from another device doesn't replace a newer one. */
+export const saveAnalyticsConsent = mutation({
+  args: analyticsConsentValidator.fields,
+  returns: v.null(),
+  handler: async (ctx, { choice, at }) => {
+    const user = await requireAuth(ctx);
+    if (user.analyticsConsent && user.analyticsConsent.at >= at) return null;
+    await ctx.db.patch("users", user._id, { analyticsConsent: { choice, at } });
+    return null;
   },
 });
 
