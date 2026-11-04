@@ -217,10 +217,7 @@ function createRuntimeNetwork(input: {
     }),
     source_type: "App\\Models\\GithubApp",
     source_id: 7,
-    environment: {
-      name: "development",
-      project: { uuid: "project0000000000000001" },
-    },
+    environment_id: 17,
     destination: { server: { uuid: "server00000000000000001" } },
     settings: {
       is_auto_deploy_enabled: false,
