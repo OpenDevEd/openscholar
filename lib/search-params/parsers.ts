@@ -69,6 +69,8 @@ export const parseAsRegions = createParser({
  * - retracted: include retracted works, which are left out by default
  * - lang: language filter
  */
+const searchDate = (value: string) => (isValid(parseISO(value)) ? value : null);
+const parseAsSearchDate = createParser({ parse: searchDate, serialize: String });
 const parseAsAuthor = createParser({ parse: authorFilterValue, serialize: String });
 const parseAsSource = createParser({ parse: (value) => sourceId(value) ?? null, serialize: String });
 const parseAsInstitution = createParser({ parse: (value) => institutionId(value) ?? null, serialize: String });
@@ -87,8 +89,8 @@ export const searchParamsParsers = {
   yt: parseAsInteger, // yearTo
   
   // Date filter (ISO strings)
-  df: parseAsString, // dateFrom
-  dt: parseAsString, // dateTo
+  df: parseAsSearchDate, // dateFrom
+  dt: parseAsSearchDate, // dateTo
   ft: parseAsString.withDefault('year'), // filterType: 'year' | 'date'
   
   // Rating filter (client-side)
@@ -202,11 +204,6 @@ function parseYearParam(searchParams: URLSearchParams, key: string): number | nu
   return year === null ? null : Math.min(new Date().getFullYear(), Math.max(MIN_YEAR, year));
 }
 
-function parseDateParam(searchParams: URLSearchParams, key: string): string | null {
-  const date = searchParams.get(key);
-  return date !== null && isValid(parseISO(date)) ? date : null;
-}
-
 /**
  * Parse URLSearchParams into ParsedSearchParams using the module defaults.
  * Unknown query params are ignored, and malformed numeric params fall back to
@@ -233,8 +230,8 @@ export function parseSearchParamsFromUrl(
       DEFAULT_SEARCH_PARAMS.page,
     yf,
     yt,
-    df: parseDateParam(searchParams, 'df'),
-    dt: parseDateParam(searchParams, 'dt'),
+    df: searchDate(searchParams.get('df') ?? ''),
+    dt: searchDate(searchParams.get('dt') ?? ''),
     ft: searchParams.get('ft') === 'date' ? 'date' : DEFAULT_SEARCH_PARAMS.ft,
     rmin,
     rmax,

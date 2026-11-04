@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { MIN_YEAR } from "../constants";
 import { paramsToSearchResult } from "./converters";
-import { parseSearchParamsFromUrl, DEFAULT_SEARCH_PARAMS } from "./parsers";
+import { parseSearchParamsFromUrl, searchParamsParsers, DEFAULT_SEARCH_PARAMS } from "./parsers";
 
 const parse = (qs: string) => parseSearchParamsFromUrl(new URLSearchParams(qs));
 
@@ -88,6 +88,9 @@ describe("parseSearchParamsFromUrl", () => {
     it("drops a date that isn't one, which would otherwise crash the page when formatted", () => {
       expect(parse("df=garbage&dt=2020-13-45")).toMatchObject({ df: null, dt: null });
       expect(parse("df=2020-01-02&dt=2021-03-04")).toMatchObject({ df: "2020-01-02", dt: "2021-03-04" });
+      // The results page reads the address through nuqs, before a redirect to the canonical one lands.
+      expect(searchParamsParsers.df.parse("garbage")).toBeNull();
+      expect(searchParamsParsers.dt.parse("2021-03-04")).toBe("2021-03-04");
     });
   });
 
