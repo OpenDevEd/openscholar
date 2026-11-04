@@ -5,6 +5,7 @@ import {
   OrcidIcon,
 } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
+import { useSearchSource } from "@/components/search-source";
 import Link from "@/components/workspace-link";
 import { AuthorSettingsNavigation } from "./author-settings-navigation";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
@@ -164,6 +165,8 @@ export default function AuthorPage({
   const [unlink, setUnlink] = useState(false);
   const [formError, setFormError] = useState("");
   const [publicationTab, setPublicationTab] = useState<"selected" | "openalex">("selected");
+  const source = useSearchSource();
+  const onOpenAlex = source.id === "openalex";
   const update = async (next: AuthorProfile) => {
     setSaving(true);
     try {
@@ -642,7 +645,7 @@ export default function AuthorPage({
               tabs={[
                 {value: "selected", label: t("selectedPublications"), icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length},
                 // The OpenAlex total is known once its first page arrives.
-                {value: "openalex", label: t("fromOpenalex"), icon: <OpenAlexIcon className="size-3.5" />, count: openAlexPapers.length ? workCount : undefined},
+                {value: "openalex", label: onOpenAlex ? t("fromOpenalex") : "All publications", icon: <source.icon className="size-3.5 shrink-0" />, count: openAlexPapers.length ? workCount : undefined},
               ]}
             />
           }
@@ -810,7 +813,7 @@ export default function AuthorPage({
                   onDownloadEssentialItem={downloadLibraryEssentialItem}
                 />
                 <div className="flex flex-col gap-4 p-4">
-{!openAlexPapers.length && (loadingWorks ? <ListLoading label={t("loadingOpenalexPublications")} /> : <ListEmpty icon={OpenAlexIcon}>{t("noOpenalexPublicationsToDisplay")}</ListEmpty>)}
+{!openAlexPapers.length && (loadingWorks ? <ListLoading label={onOpenAlex ? t("loadingOpenalexPublications") : "Loading publications"} /> : <ListEmpty icon={source.icon}>{onOpenAlex ? t("noOpenalexPublicationsToDisplay") : "No publications to display."}</ListEmpty>)}
                   {openAlexPapers
                     .map((paper, index) => (
                       <PaperCard
@@ -844,7 +847,7 @@ export default function AuthorPage({
                 )}
               </>
             ) : (
-              <ListEmpty icon={OpenAlexIcon}>{t("noOpenalexPublicationsToDisplay")}</ListEmpty>
+              <ListEmpty icon={source.icon}>{onOpenAlex ? t("noOpenalexPublicationsToDisplay") : "No publications to display."}</ListEmpty>
             )}
           </div>}
         </LibraryPageShell>
