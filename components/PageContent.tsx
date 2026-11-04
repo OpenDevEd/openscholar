@@ -143,4 +143,16 @@ function PageContent() {
   );
 }
 
-export default dynamic(() => Promise.resolve(PageContent), { ssr: false });
+/** The page's words in the server's response, for what reads a page without running it. Gone once the page is drawn. */
+function FirstResponse() {
+  const t = useTranslations("home");
+  const tm = useTranslations("metadata");
+  return (
+    <div className="sr-only">
+      <h1>{tm("siteName")}</h1>
+      <p>{t("tagline")}</p>
+    </div>
+  );
+}
+
+export default dynamic(() => Promise.resolve(PageContent), { ssr: false, loading: FirstResponse });
