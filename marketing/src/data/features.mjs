@@ -1,6 +1,6 @@
 // The one list of features, shown in the docs.
 export const PRODUCTS = [
-  { id: "openscholar", name: "OpenScholar", groups: [
+  { id: "openscholar", name: "Openscholar", groups: [
     { id: "search", name: "Search and discovery", items: [
       ["Paper search", "Searches the world's published research"],
       ["Keyword search", "AND, OR and NOT, with each term coloured in the query and in the results"],
@@ -88,7 +88,7 @@ export const PRODUCTS = [
       ["Brand", "Name, logo, icons, colours, fonts, share image, funders and institutions"],
       ["Content pages", "Home page, navigation, footer, contact and legal text"],
       ["Discovery settings", "Search scopes, filters, tag filters, collections, citation formats and feature switches"],
-      ["Sources", "Zotero groups, saved searches and OpenScholar collections, with import status and retry"],
+      ["Sources", "Zotero groups, saved searches and Openscholar collections, with import status and retry"],
       ["AI settings", "Your own provider key, which models readers may use, and a default"],
       ["Languages and analytics", "9 site languages, your own analytics and cookie consent"],
       ["Publishing", "DOI registration and file archiving, with credentials checked before saving"],
@@ -123,8 +123,8 @@ export const PRODUCTS = [
       ["Record page", "Abstract, authors, topics, collections, files and links to the original"],
       ["Open access label", "Labels open records, and closed ones too if you want"],
       ["PDF covers", "A record's first page shows on its card, and clicking it opens the PDF"],
-      ["Citations and references", "Shows how many are in the community out of the total, and opens the rest in OpenScholar"],
-      ["Cite", "The same searchable citation styles as OpenScholar"],
+      ["Citations and references", "Shows how many are in the community out of the total, and opens the rest in Openscholar"],
+      ["Cite", "The same searchable citation styles as Openscholar"],
       ["Copy buttons", "Link, abstract, DOI and other fields"],
       ["Share preview", "A record's PDF cover or title card shows when its link is shared"],
       ["Summarize and Explain", "AI on a single record, or a chat about it"],
@@ -142,7 +142,7 @@ export const PRODUCTS = [
       ["Export a chat", "Copy or export as Markdown, HTML, CSV or text"],
       ["Model choice", "Readers choose from the models the owner allows"],
       ["Smart Screening", "Add your own fields and have the AI fill them in for the records a chat cites"],
-      ["Continue in OpenScholar", "Sends the results, search or collection on, where Screen and Extract are offered"],
+      ["Continue in Openscholar", "Sends the results, search or collection on, where Screen and Extract are offered"],
     ]},
     { id: "digests", name: "Digests", items: [
       ["Digest page", "AI-written summaries by period, with reviews first and the next edition date"],
@@ -151,7 +151,7 @@ export const PRODUCTS = [
       ["Schedule", "Weekly or monthly, on a chosen day and time zone, with pause and send now"],
     ]},
     { id: "readers", name: "Reader accounts", items: [
-      ["Sign in with OpenScholar", "One account across communities"],
+      ["Sign in with Openscholar", "One account across communities"],
       ["Bookmarks and collections", "Save records into private or public collections"],
       ["Reader profile", "A shareable page with their bookmarks and collections"],
       ["Share a collection", "Invite people to view or add, and see who it's shared with"],
@@ -180,7 +180,7 @@ export const PRODUCTS = [
       ["Written in the community", "Native records with no outside source"],
       ["Saved search", "Imports a saved search and fetches only what changed"],
       ["Zotero group", "Two-way sync, with PDFs published by tag or all of them"],
-      ["OpenScholar collection", "Fills the community from a collection"],
+      ["Openscholar collection", "Fills the community from a collection"],
       ["Full text", "Downloads PDFs where the licence allows, and records stay searchable when a download fails"],
       ["Screening a source", "AI screens incoming records against a subject, with a trial run first"],
     ]},

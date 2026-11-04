@@ -6,7 +6,9 @@
 @view-transition { navigation: auto; }
 :root {
   color-scheme: light;
-  --ink: #0a1a3f; --t2: #47557a; --t3: #5d698a; --line: rgb(10 26 63 / .1); --line2: rgb(10 26 63 / .18); --soft: #f3f6fb; --brand: #2563eb; --brand-dark: #1d4ed8;
+  --ink: #0a1a3f; --t2: #47557a; --t3: #5d698a; --line: rgb(10 26 63 / .1); --line2: rgb(10 26 63 / .18); --soft: #f3f6fb;
+  /* The brand orange, with the app's brighter and deeper stops. White on it is only 2.82:1, so text on a brand fill takes --brand-on, and brand-coloured text, icons and focus rings on white take --brand-ink. */
+  --brand: oklch(0.7 0.17 54); --brand-bright: #ff9d36; --brand-deep: #e0650a; --brand-on: #361307; --brand-ink: #b2440a;
   --ease: cubic-bezier(.22, 1, .36, 1);
   --sans: Ubuntu, "Ubuntu Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Ubuntu Mono", ui-monospace, Menlo, monospace;
   --spectrum: linear-gradient(90deg, #2563eb, #06b6d4, #10b981, #f59e0b, #f43f5e); --night: #010827;
@@ -27,7 +29,7 @@ h3 { font-size: clamp(19px, 1.7vw, 22px); line-height: 1.2; letter-spacing: -.01
 p { text-wrap: pretty; }
 .lead { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; } :is(.panel, .bleed, .top, .foot, .tour) :focus-visible { outline-color: #fff; } :is(.ask, .x, .card) :focus-visible, .light :focus-visible { outline-color: var(--brand); }
+:focus-visible { outline: 3px solid var(--brand-ink); outline-offset: 2px; } :is(.panel, .bleed, .top, .foot, .tour) :focus-visible { outline-color: #fff; } :is(.ask, .x, .card) :focus-visible, .light :focus-visible { outline-color: var(--brand-ink); }
 .strip { max-width: 1280px; margin-inline: auto; padding-inline: var(--gap); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
 
 /* A colour field panel. */
@@ -61,11 +63,11 @@ p { text-wrap: pretty; }
 .f-night { background: radial-gradient(ellipse 17% 28% at 96% 98%, #0369a1, transparent), radial-gradient(ellipse 45% 71% at 55% 90%, #172554, transparent), radial-gradient(ellipse 34% 55% at 82% 12%, #155e75, transparent), radial-gradient(ellipse 40% 64% at 14% 12%, #1e3a8a, transparent), #070d2b; }
 
 /* Buttons: the arrow's chip floods the whole button on hover. */
-.btn { --face: #fff; --text: var(--ink); --chip: var(--tint, var(--brand)); --chipt: #fff; position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(10 26 63 / .18); }
+.btn { --face: #fff; --text: var(--ink); --chip: var(--tint, var(--ink)); --chipt: #fff; position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(10 26 63 / .18); }
 .btn::before { content: ""; position: absolute; z-index: -1; inset: 0; background: var(--chip); clip-path: inset(calc(50% - 18px) 8px calc(50% - 18px) calc(100% - 44px) round 10px); transition: clip-path .4s var(--ease), background-color .2s var(--ease); }
 .btn i { display: grid; place-items: center; width: 36px; height: 36px; color: var(--chipt); flex: none; overflow: hidden; transition: color .2s var(--ease); } .btn i svg { transition: transform .35s var(--ease); } .btn:hover i svg { transform: translateX(3px); }
 .btn:not(.ghost, .line):hover { color: var(--chipt); box-shadow: 0 10px 26px -8px rgb(10 26 63 / .45); } .btn:not(.ghost, .line):hover::before { clip-path: inset(0 round 14px); } .btn:active { transform: translateY(1px); }
-.btn.brand { --face: var(--brand); --text: #fff; --chip: #fff; --chipt: var(--brand); } .btn.brand:hover { --chip: var(--ink); --chipt: #fff; }
+.btn.brand { --face: var(--brand); --text: var(--brand-on); --chip: #fff; --chipt: var(--brand-ink); } .btn.brand:hover { --chip: var(--ink); --chipt: #fff; }
 .btn.ghost, .btn.line { padding-inline: 20px; } .btn.ghost::before, .btn.line::before { display: none; }
 .btn.ghost { --face: rgb(255 255 255 / .14); --text: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); } .btn.ghost:hover { background: #fff; color: var(--ink); }
 .btn.line { --face: transparent; --text: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); } .btn.line:hover { background: var(--ink); color: #fff; box-shadow: none; }

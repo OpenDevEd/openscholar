@@ -8,10 +8,10 @@ import Arrow from "../components/Arrow.astro";
 import markFile from "../data/mark.svg?raw";
 const { title, description, og = "/og.jpg", top = "#040b2e" } = Astro.props;
 const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
-// The logo's three arcs, inline so they can fan open on hover.
+// The logo inline, so its chain of nodes can turn around the Earth on hover.
 const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
 const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize", "list"], ["screening", "sieve"], ["extraction", "table"], ["assistant", "spark"]]], ["Teams", [["workspaces", "merge"], ["account", "key"]]], ["Communities", [["community-setup", "globe"], ["community-readers", "cite"], ["community-admin", "pen"]]]];
-const goto = [{ href: "/", title: "Overview", text: "The evidence workspace for research teams", icon: "search", color: "#60a5fa", area: "home product openscholar" }, { href: "/evidence-communities/", title: "Evidence Communities", text: "A public home for your field's evidence", icon: "globe", color: "#fb7185", area: "community" }, { href: "/teams/", title: "Teams", text: "One workspace for your team's evidence", icon: "merge", color: "#34d399", area: "team" }, { href: "/docs/", title: "Documentation", text: "How to use OpenScholar and Evidence Communities", icon: "list", color: "#60a5fa", area: "docs help" }, ...NAV.flatMap((n) => (n.rows ?? []).map((r) => ({ ...r, area: n.label })))];
+const goto = [{ href: "/", title: "Overview", text: "The evidence workspace for research teams", icon: "search", color: "#60a5fa", area: "home product openscholar" }, { href: "/evidence-communities/", title: "Evidence Communities", text: "A public home for your field's evidence", icon: "globe", color: "#fb7185", area: "community" }, { href: "/teams/", title: "Teams", text: "One workspace for your team's evidence", icon: "merge", color: "#34d399", area: "team" }, { href: "/docs/", title: "Documentation", text: "How to use Openscholar and Evidence Communities", icon: "list", color: "#60a5fa", area: "docs help" }, ...NAV.flatMap((n) => (n.rows ?? []).map((r) => ({ ...r, area: n.label })))];
 const tries = ["Does peer tutoring improve reading?", "What works to keep girls in secondary school?", "\"cash transfers\" AND nutrition", "How does wealth inequality affect social mobility?"];
 ---
 <!doctype html>
@@ -22,7 +22,8 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   <title>{title}</title>
   <meta name="description" content={description} />
   <meta name="theme-color" content={top} />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="/favicon-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)" />
   <link rel="canonical" href={new URL(path, Astro.site)} />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
@@ -38,9 +39,9 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   <p class="alpha"><b>Public alpha for testing.</b> <span>Things may change or break.</span> <a href="mailto:support@openscholar.ai">Contact us</a></p>
   <div class="top">
     <header class="bar">
-      <a class="brand" href="/" aria-label="OpenScholar home">
-        <svg class="mark" viewBox="-0.51 -0.79 83.03 83.03" width="28" height="28" aria-hidden="true" set:html={MARK} />
-        <span class="name">OpenScholar</span><span class="slot" aria-hidden="true"><i>/</i><span data-sec></span></span>
+      <a class="brand" href="/" aria-label="Openscholar home">
+        <svg class="mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" set:html={MARK} />
+        <span class="name">Openscholar</span><span class="slot" aria-hidden="true"><i>/</i><span data-sec></span></span>
       </a>
       <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">
@@ -70,7 +71,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
       {[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url} tabindex={copy ? -1 : undefined}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" loading="lazy" decoding="async" alt="" /><span>{c.name}</span></a></li>)}</ul>)}
     </nav>
     <div class="f-in">
-      <div class="f-brand"><img src="/favicon.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p><a class="f-go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span><Arrow /></a></div>
+      <div class="f-brand"><img src="/favicon-dark.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p><a class="f-go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span><Arrow /></a></div>
       <nav aria-label="Footer">
         <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a></div>
         <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a></div>
@@ -78,7 +79,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
       </nav>
       <p class="credit">Built by OpenDevEd and eKitabu</p>
     </div>
-    <div class="stand" aria-hidden="true"><div class="word">{[..."OpenScholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><i class="veil"></i><div class="word edge2">{[..."OpenScholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div></div>
+    <div class="stand" aria-hidden="true"><div class="word">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><i class="veil"></i><div class="word edge2">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div></div>
   </footer>
   <dialog class="palette" data-dialog aria-label="Ask a question">
     <AskBar id="ask-nav" label="Ask a question from anywhere" />
@@ -103,7 +104,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   /* Light from the pointer catches the capsule's edge. */
   .bar::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: radial-gradient(180px circle at var(--bx, 50%) 50%, rgb(255 255 255 / .85), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; } .bar:hover::before { opacity: 1; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; letter-spacing: -.02em; flex: none; }
-  .mark { flex: none; overflow: visible; } .mark :global(path) { transform-origin: 8% 50%; transition: transform .5s var(--ease); } .brand:hover .mark :global(path:nth-child(1)) { transform: rotate(-12deg); } .brand:hover .mark :global(path:nth-child(3)) { transform: rotate(10deg); }
+  .mark { flex: none; overflow: visible; } .mark :global(path:nth-child(3)) { transform-origin: 50% 50%; transition: transform .5s var(--ease); } .brand:hover .mark :global(path:nth-child(3)) { transform: rotate(18deg); }
   /* The section you're reading sits beside the name, in space that opens once there is one. */
   .name { white-space: nowrap; } .slot { display: flex; align-items: baseline; gap: 8px; width: 112px; margin-left: -2px; overflow: hidden; opacity: 0; font-size: 15px; font-weight: 400; letter-spacing: 0; white-space: nowrap; color: rgb(255 255 255 / .82); transition: opacity .3s var(--ease); } .slot i { font-style: normal; opacity: .4; } .has-sec .slot { opacity: 1; }
   .nav { position: relative; display: flex; gap: 2px; font-size: 15px; color: rgb(255 255 255 / .82); }
@@ -149,7 +150,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   .belt { display: flex; width: max-content; padding-block: 24px; border-bottom: 1px solid rgb(255 255 255 / .1); animation: belt 46s linear infinite; } .belt:hover, .belt:focus-within, .foot.away .belt { animation-play-state: paused; } @keyframes belt { to { transform: translateX(-50%); } }
   .belt ul { display: flex; flex: none; } .belt a { display: flex; align-items: center; gap: 14px; padding-inline: 28px; font-size: clamp(18px, 1.9vw, 26px); letter-spacing: -.015em; white-space: nowrap; color: rgb(255 255 255 / .82); transition: color .2s var(--ease); } .belt img { filter: saturate(1.5); width: 56px; height: 56px; object-fit: contain; transition: transform .45s var(--ease); } .belt a:hover { color: var(--c); } .belt a:hover img { transform: rotate(-8deg) scale(1.16); }
   .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 48px calc(var(--gap) + var(--pad)) 28px; }
-  .f-brand { display: grid; justify-items: start; align-content: start; gap: 12px; } .f-brand p { color: rgb(255 255 255 / .78); max-width: 18em; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.25; letter-spacing: -.01em; } .f-go { display: inline-flex; align-items: center; gap: 10px; margin-top: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; } .f-go :global(i) { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--brand); color: #fff; }
+  .f-brand { display: grid; justify-items: start; align-content: start; gap: 12px; } .f-brand p { color: rgb(255 255 255 / .78); max-width: 18em; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.25; letter-spacing: -.01em; } .f-go { display: inline-flex; align-items: center; gap: 10px; margin-top: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; } .f-go :global(i) { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--brand); color: var(--brand-on); }
   .foot nav:not(.belt) { display: flex; gap: 56px; } .foot nav:not(.belt) div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .78); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav:not(.belt) a { width: fit-content; } .foot nav:not(.belt) a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .62); }
   /* The name runs off the bottom of the page, cut from lit glass. A dark veil with one bright window slides across it, following the pointer or sweeping by itself, and only ever moves as a transform. */
   /* The name in dark glass, its edges catching a little light, with the spectrum showing only in the one bright window that moves across it. */
