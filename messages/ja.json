@@ -1394,8 +1394,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "プライバシーを尊重します",
-    "bannerDescription": "分析用Cookieを使用してOpenscholarの使用状況を理解し、製品を改善しています。以下で設定を選択してください。",
-    "dialogDescription": "分析用Cookieを使用してOpenscholarの使用状況を理解し、製品を改善しています。すべてのCookieを受け入れるか、必須でないCookieを拒否するか、またはいつでも設定を変更できます。",
+    "bannerDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。",
+    "dialogDescription": "当社と分析サービス提供者のPostHogおよびGoogleは、Openscholarの使われ方を把握して改善するためにCookieを使用します。拒否した場合は、Cookieを使わずに訪問数を数えるだけです。選択はいつでも変更できます。",
     "acceptAll": "すべて受け入れ",
     "rejectNonEssential": "必須でないものを拒否",
     "preferencesTitle": "Cookie設定",

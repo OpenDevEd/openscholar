@@ -128,6 +128,11 @@ finish, assistant, plans, `/connect` and Zotero. Note how long each step takes.
 8. Check `/` on `discover` says `index, follow`: the proxy must pass that host. Check
    sign-in, a search and a charge.
 
+Before step 7, in Google Analytics for `G-KL62MG5H1G`: turn off Site search under the web
+stream's Enhanced measurement, redact the `q` query parameter under Redact data, set Data
+retention to 14 months, and turn off data sharing. The first two keep search text away from
+Google, as the privacy policy says; code can't, because the tag reads the address itself.
+
 **Going back:** before step 6 nothing public has moved. After it, point DNS back at
 Cloud and Vercel, which are untouched. Writes made since are lost, so decide within
 the hour.

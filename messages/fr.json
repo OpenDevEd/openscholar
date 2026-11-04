@@ -1394,8 +1394,8 @@
   },
   "cookieConsent": {
     "bannerTitle": "Nous respectons votre vie privée",
-    "bannerDescription": "Nous utilisons des cookies analytiques pour comprendre comment vous utilisez Openscholar et améliorer le produit. Faites votre choix ci-dessous.",
-    "dialogDescription": "Nous utilisons des cookies analytiques pour comprendre comment vous utilisez Openscholar et améliorer le produit. Vous pouvez accepter tous les cookies, refuser les cookies non essentiels, ou modifier vos préférences à tout moment.",
+    "bannerDescription": "Nous et nos prestataires d'analyse, PostHog et Google, utilisons des cookies pour comprendre comment Openscholar est utilisé et l'améliorer. Si vous refusez, nous comptons seulement les visites, sans cookies.",
+    "dialogDescription": "Nous et nos prestataires d'analyse, PostHog et Google, utilisons des cookies pour comprendre comment Openscholar est utilisé et l'améliorer. Si vous refusez, nous comptons seulement les visites, sans cookies. Vous pouvez modifier votre choix à tout moment.",
     "acceptAll": "Tout accepter",
     "rejectNonEssential": "Refuser les non-essentiels",
     "preferencesTitle": "Préférences de cookies",

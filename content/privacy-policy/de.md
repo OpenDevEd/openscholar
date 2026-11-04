@@ -54,9 +54,13 @@ Wir erheben oder verwenden die folgenden Informationen, um **zu analysieren, wie
 * Sitzungsaufzeichnungen (Aufzeichnungen von Mausbewegungen, Klicks, Scrollvorgängen und Seiteninteraktionen; sensible Daten wie Passwörter und Zahlungsinformationen werden automatisch maskiert)
 
 **Was wir NICHT erheben:**
-* Wir erheben über die Analyse keine Eingabewerte aus Formularen, keine Passwörter und keine Zahlungsinformationen
-* Wir verwenden keine Werbe- oder Tracking-Cookies von Dritten
+* Außer Ihren Suchanfragen erheben wir über die Analyse keine Eingabewerte aus Formularen, keine Passwörter und keine Zahlungsinformationen
+* Wir verwenden keine Werbe-Cookies
 * Wir verkaufen Ihre Daten nicht an Werbetreibende
+
+Wenn Sie Analyse-Cookies akzeptieren und angemeldet sind, verknüpft PostHog diese Informationen mit Ihrem Konto, Ihrem Namen und Ihrer E-Mail-Adresse und erhält Ihre Suchanfragen. Google Analytics erhält außerdem die von Ihnen besuchten Seiten, wie Sie zu uns gekommen sind, Ihren Gerätetyp und Ihren ungefähren Standort. Es erhält Ihre Suchanfragen nicht, und seine Werbefunktionen sind deaktiviert.
+
+Bevor Sie sich entscheiden oder wenn Sie Analyse-Cookies ablehnen, zählen wir Besuche nur, ohne Cookies und ohne außer Ihrer Entscheidung etwas auf Ihrem Gerät zu speichern: die Seite, die Website, von der Sie kommen, Ihren Browsertyp und Aktionen wie das Ausführen einer Suche. Wir erfassen weder Ihre Klicks noch Ihre Eingaben, Ihren Standort oder Ihr Konto. Aus Ihrer IP-Adresse und Ihrem Browsertyp entsteht ein Code, der sich täglich ändert, und wir speichern Ihre IP-Adresse nicht.
 
 Wir erheben oder verwenden die folgenden Informationen für **das Einholen von Nutzerfeedback durch Umfragen**:
 
@@ -112,6 +116,7 @@ Weitere Informationen zu unserer Nutzung berechtigter Interessen als Rechtsgrund
 
 Unsere Rechtsgrundlagen für die Erhebung oder Verwendung von Informationen für **das Einholen von Nutzerfeedback durch Umfragen** sind:
 
+* **Berechtigte Interessen** – Für die oben beschriebene Zählung ohne Cookies stützen wir uns auf berechtigte Interessen.
 * **Berechtigte Interessen** – Wir erheben oder verwenden Ihre Informationen, weil sie Ihnen, unserer Organisation oder einer anderen Person nützen, ohne jemandem ein unangemessenes Risiko eines Schadens aufzubürden. Alle Ihre Datenschutzrechte können gelten, außer dem Recht auf Datenübertragbarkeit. Unsere berechtigten Interessen sind:
   * Das Sammeln anonymen Feedbacks hilft uns, die Bedürfnisse der Nutzer zu verstehen und unsere Website für alle Besucher zu verbessern. Umfragen sind freiwillig und fragen nicht nach direkt identifizierenden Informationen. Antworten können mit einer pseudonymisierten Sitzungskennung verknüpft werden, damit wir den Zusammenhang besser verstehen und unsere Dienste verbessern können. Nutzer profitieren von Verbesserungen, die auf dem gesammelten Feedback beruhen.
 
@@ -132,6 +137,7 @@ Weitere Informationen zu unserer Nutzung berechtigter Interessen als Rechtsgrund
   * aus Ihren Interaktionen mit unserer Website (besuchte Seiten, Klicks, Verweildauer)
 
 * **Von PostHog Analytics**: Unsere Plattform für Website-Analysen erhebt in unserem Auftrag pseudonymisierte Nutzungsdaten
+* **Google Analytics**: Wenn Sie Analyse-Cookies akzeptieren, die Analyseplattform, die in unserem Auftrag Nutzungsdaten erhebt
 
 # **Wie lange wir Informationen speichern**
 
@@ -140,8 +146,10 @@ Weitere Informationen zu unserer Nutzung berechtigter Interessen als Rechtsgrund
 | **E-Mail-Verkehr**                   | 3 Jahre ab dem Datum der letzten Kommunikation | Um Anschlussfragen zu beantworten, den Kommunikationsverlauf zu erhalten und Streitfälle zu klären |
 | **Support-Ticket-Datensätze**        | 3 Jahre ab dem Datum der Lösung             | Um ähnliche Probleme nachzuvollziehen und die Qualität des Supports zu verbessern             |
 | **Website-Analysedaten** (PostHog)   | 1 Jahr ab dem Datum der Erhebung            | Um Trends zu analysieren, langfristige Muster zu erkennen und das Produkt zu verbessern       |
+| **Website-Analysedaten** (Google Analytics) | Bis zu 14 Monate ab dem Erhebungsdatum | Um zu sehen, wie viele Menschen uns besuchen und wie sie zu uns kommen |
 | **Sitzungsaufzeichnungen** (PostHog) | 30 Tage ab dem Datum der Aufzeichnung       | Um technische Probleme zu beheben, Probleme bei der Nutzererfahrung zu verstehen und die Benutzerfreundlichkeit der Website zu verbessern |
 | **Analyse-Cookies**                  | 365 Tage ab dem letzten Besuch              | Um wiederkehrende Besucher nachzuverfolgen und die Sitzungskontinuität zu erhalten            |
+| **Google-Analytics-Cookies** | 400 Tage ab dem letzten Besuch | Um wiederkehrende Besucher zu erkennen |
 | **Umfrageantworten**                 | 1 Jahr ab dem Datum der Einreichung         | Um das Produkt zu verbessern und Feedback-Trends über die Zeit zu verfolgen                   |
 | **IP-Adressprotokolle**              | 24 Stunden ab dem Datum der Erhebung        | Für Sicherheitsüberwachung und Betrugsprävention                                              |
 | **Konto- und Forschungsdaten** | Bis Sie diese oder Ihr Konto löschen, danach etwa 30 Tage | Um den Dienst bereitzustellen |
@@ -166,6 +174,13 @@ Dieser Auftragsverarbeiter übernimmt für uns folgende Tätigkeiten:
 * Hosten von Umfrageantworten
 
 **Standort:** Deutschland (Hosting in der EU)
+
+**Google Ireland Limited**
+
+Dieser Auftragsverarbeiter übernimmt für uns folgende Tätigkeiten:
+* Erhebt und speichert Website-Analysedaten, wenn Sie Analyse-Cookies akzeptieren
+
+**Standort:** Irland und die Vereinigten Staaten
 
 **Hetzner Online GmbH**
 
@@ -235,6 +250,18 @@ Die Daten werden hauptsächlich im Europäischen Wirtschaftsraum (EWR), konkret 
 
 ---
 
+**Name der Organisation:** Google LLC
+
+**Kategorie des Empfängers:** Analyseplattform und Auftragsverarbeiter
+
+**Land, in dem die Daten hauptsächlich verarbeitet werden:** Vereinigte Staaten
+
+**Wie die Übermittlung dem Datenschutzrecht des Vereinigten Königreichs entspricht:**
+
+Übermittlungen an Google LLC stützen sich auf deren Zertifizierung unter der britischen Erweiterung des EU-US-Datenschutzrahmens.
+
+---
+
 **Namen der Organisationen:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
 **Kategorie des Empfängers:** Anbieter von Anmeldung, Zahlungen, KI und Website-Auslieferung
@@ -261,8 +288,8 @@ Wir ergreifen angemessene technische und organisatorische Maßnahmen, um Ihre pe
 Wir verwenden Cookies, um einen Teil der Analyseinformationen zu erheben, die in diesem Datenschutzhinweis beschrieben werden. Ausführliche Informationen zu den von uns verwendeten Cookies finden Sie in unserer [Cookie-Richtlinie](/cookie-policy).
 
 Die wichtigsten Punkte:
-* Wir verwenden ein Analyse-Cookie von PostHog (gespeichert für 365 Tage)
-* Keine Werbe- oder Tracking-Cookies von Dritten
+* Wir verwenden Analyse-Cookies von PostHog (gespeichert für 365 Tage) und Google Analytics (gespeichert für 400 Tage)
+* Keine Werbe-Cookies
 * Sie können Cookies über unser Cookie-Banner annehmen oder ablehnen
 * Sie können Ihre Einstellungen jederzeit über „Cookie-Einstellungen“ im Fußbereich ändern
 

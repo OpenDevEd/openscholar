@@ -6,13 +6,20 @@ Quando navega no openscholar.ai, podem ser armazenados no seu dispositivo pequen
 
 ## Cookies estritamente necessários
 
-Neste momento, o Openscholar.ai não instala quaisquer cookies necessários para o funcionamento do site.
+| **Nome** | **Finalidade** | **Validade** |
+| --- | --- | --- |
+| `__session`, `__client_uat`, `__client` | Mantêm a sua sessão iniciada | Até 1 ano |
+| `NEXT_LOCALE` | Recorda o seu idioma | 1 ano |
+| `__cf_bm`, `_cfuvid` | A Cloudflare utiliza-os para proteger o site de tráfego automatizado | 30 minutos, ou até fechar o navegador |
+
+A sua escolha sobre cookies e as definições de visualização, como painéis abertos, ficam no armazenamento local do navegador.
 
 ## Cookies de desempenho e de análise (opcionais)
 
 | **Nome** | **Finalidade** | **Validade** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Utilizamos o software de análise PostHog para perceber como as pessoas interagem com o nosso site. Isto ajuda-nos a criar relatórios melhores e a melhorar a experiência do utilizador. O cookie contém um identificador anónimo do dispositivo, os detalhes da sua sessão de navegação e a sua página de entrada inicial. Todos os dados são recolhidos de forma anónima - nunca o identificamos pessoalmente. O Openscholar.ai não utiliza tecnologias de rastreio de terceiros nem vende as suas informações a empresas de publicidade. | 365 dias |
+| `ph_phc_[token]_posthog`, `ph_phc_[token]_posthog_cpm` | Utilizamos o PostHog para perceber como o Openscholar é utilizado e para resolver problemas. Estes cookies contêm um ID aleatório do dispositivo, os detalhes da sua sessão e a primeira página a que chegou. Se iniciar sessão, contêm o ID da sua conta, e a PostHog associa a sua atividade ao seu nome e endereço de e-mail. Nunca vendemos as suas informações. | 365 dias |
+| `_ga`, `_ga_[id]` | Utilizamos o Google Analytics para ver quantas pessoas nos visitam e como chegam até nós. Estes cookies contêm um ID aleatório e os detalhes da sua sessão. | 400 dias |
 
 ### Que dados contém o cookie do PostHog?
 
@@ -24,7 +31,7 @@ O cookie do PostHog guarda os seguintes detalhes num formato estruturado:
 - **$epp**: indicadores técnicos usados pelo PostHog para funcionalidades internas
 - **$initial_person_info**: registos que mostram como chegou ao nosso site (por exemplo, a partir de um motor de pesquisa ou de uma visita direta) e em que página entrou primeiro
 
-Este cookie não contém informações que o possam identificar pessoalmente, como o seu nome, email ou outros dados privados.
+Este cookie não contém o seu nome, endereço de e-mail nem outros dados privados.
 
 ### Dados adicionais recolhidos pelo PostHog
 
@@ -50,12 +57,20 @@ Para além do próprio cookie, o PostHog recolhe automaticamente informações c
 - Até que ponto desce na página
 
 **Informações que excluímos deliberadamente:**
-- Texto que escreve em formulários
+- Texto que escreve em formulários, exceto o que pesquisa
 - Credenciais de início de sessão ou palavras-passe
 - Dados de pagamento ou de cartão de crédito
 - Quaisquer outros dados pessoais privados ou sensíveis
 - Não são utilizados cookies de publicidade de terceiros
 - Os seus dados nunca são vendidos a anunciantes ou empresas de marketing
+
+### Google Analytics
+
+Se aceitar, o Google Analytics recebe as páginas que visita, a forma como chegou até nós, o tipo de dispositivo e a sua localização aproximada. Não recebe o que pesquisa, e as suas funções de publicidade estão desligadas. Se mudar de ideias, paramo-lo e removemos os seus cookies.
+
+### Se não aceitar
+
+Antes de escolher, ou se rejeitar os cookies de análise, apenas contamos as visitas, sem cookies e sem guardar nada no seu dispositivo além da sua escolha: a página, o site de onde vem, o tipo de navegador e ações como fazer uma pesquisa. Não registamos os seus cliques, o que escreve, a sua localização nem a sua conta. O seu endereço IP e o tipo de navegador transformam-se num código que muda todos os dias, e não guardamos o seu endereço IP.
 
 ## Gerir as suas preferências de cookies
 
@@ -121,4 +136,4 @@ Para perguntas sobre as nossas práticas de cookies, contacte-nos:
 
 **Email**: support@openscholar.ai
 
-**Última atualização**: 13 de fevereiro de 2026
+**Última atualização**: 4 de novembro de 2026

@@ -6,13 +6,20 @@ Uma usesha ku-openscholar.ai, amafayela amancane edatha abizwa ngokuthi ama-cook
 
 ## Ama-cookie adingekayo ngokuphelele
 
-I-Openscholar.ai akukabeki noma yimaphi ama-cookie adingekayo ukuze iwebhusayithi isebenze.
+| **Igama** | **Inhloso** | **Iphela** |
+| --- | --- | --- |
+| `__session`, `__client_uat`, `__client` | Akugcina ungene ngemvume | Kufika onyakeni o-1 |
+| `NEXT_LOCALE` | Ikhumbula ulimi lwakho | Unyaka o-1 |
+| `__cf_bm`, `_cfuvid` | I-Cloudflare iwasebenzisela ukuvikela iwebhusayithi ekuxhumaneni okuzenzakalelayo | Imizuzu engu-30, noma uze uvale isiphequluli sakho |
+
+Ukukhetha kwakho kwama-cookie nezilungiselelo zokubonisa, njengamaphaneli avuliwe, kuhlala kusitoreji sendawo sesiphequluli sakho.
 
 ## Ama-cookie okusebenza nokuhlaziya (akukhethwa)
 
 | **Igama** | **Inhloso** | **Iphela** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Sisebenzisa uhlelo lokuhlaziya i-PostHog ukuze sifunde ukuthi abantu basebenzisana kanjani newebhusayithi yethu. Lokhu kusisiza senze imibiko engcono futhi sithuthukise isipiliyoni somsebenzisi. I-cookie iqukethe isihlonzi sedivayisi esingabizwa ngegama, imininingwane yeseshini yakho yokuphequlula, nekhasi lokuqala owafika kulo. Yonke idatha iqoqwa ngokungabizwa ngegama — asikaze sikubize ngokwakho. I-Openscholar.ai ayisebenzisi ubuchwepheshe bokulandela bomhlinzeki wangaphandle, futhi ayidayisi ulwazi lwakho kubakhangisi. | Izinsuku ezingu-365 |
+| `ph_phc_[token]_posthog`, `ph_phc_[token]_posthog_cpm` | Sisebenzisa i-PostHog ukuze sifunde ukuthi abantu bayisebenzisa kanjani i-Openscholar nokulungisa izinkinga. Lawa ma-cookie aqukethe i-ID yedivayisi engahleliwe, imininingwane yeseshini yakho nekhasi ofike kulo kuqala. Uma ungena ngemvume, aqukethe i-ID ye-akhawunti yakho, futhi i-PostHog ixhumanisa okwenzayo negama lakho nekheli lakho le-imeyili. Asilokothi sidayise ulwazi lwakho. | Izinsuku ezingu-365 |
+| `_ga`, `_ga_[id]` | Sisebenzisa i-Google Analytics ukuze sibone ukuthi bangaki abantu abasivakashelayo nokuthi bafika kanjani. Lawa ma-cookie aqukethe i-ID engahleliwe nemininingwane yeseshini yakho. | Izinsuku ezingu-400 |
 
 ### Yiluphi ulwazi oluqukethwe ku-cookie ye-PostHog?
 
@@ -24,7 +31,7 @@ I-cookie ye-PostHog igcina imininingwane elandelayo ngefomethi ehlelekile:
 - **$epp**: Izimpawu zobuchwepheshe ezisetshenziswa yi-PostHog ngezici zangaphakathi
 - **$initial_person_info**: Amarekhodi akhombisa ukuthi ufike kanjani esayithini lethu (njengokusuka kwinjini yokusesha noma ukuvakashela ngqo) nokuthi ikhasi lokuqala owafika kulo yiliphi
 
-Lo cookie awuqukethe ulwazi oluzokwazi ukukubonisa ngokwakho, njengegama lakho, imeyili, noma eminye imininingwane yakho eyimfihlo.
+Le cookie ayiqukethe igama lakho, ikheli lakho le-imeyili noma eminye imininingwane eyimfihlo.
 
 ### Idatha eyengeziwe eqoqwa yi-PostHog
 
@@ -50,12 +57,20 @@ Ngaphandle kwe-cookie uqobo, i-PostHog iqoqa ulwazi olwengeziwe ngokuzenzakalela
 - Ukuthi uskrola kude kangakanani ekhasini
 
 **Ulwazi esilukhipha ngamabomu:**
-- Umbhalo obhala ezimweni
+- Umbhalo owuthayipha ezimweni, ngaphandle kwalokho okufunayo
 - Izitifiketi zokungena noma amaphasiwedi
 - Imininingwane yokukhokha noma ikhadi lesikweletu
 - Noma iyiphi eminye imininingwane yomuntu siqu eyimfihlo noma ebucayi
 - Ama-cookie okukhangisa abahlinzeki bangaphandle awasetshenziswa
 - Idatha yakho ayidayiswa kubakhangisi noma izinkampani zokumaketha
+
+### Google Analytics
+
+Uma wamukela, i-Google Analytics ithola amakhasi owavakashelayo, indlela ofike ngayo kithi, uhlobo lwedivayisi yakho nendawo yakho ecishe ibe yiyo. Ayitholi lokho okufunayo, futhi izici zayo zokukhangisa zicishiwe. Uma ushintsha umqondo, siyayimisa futhi sisuse ama-cookie ayo.
+
+### Uma ungamukeli
+
+Ngaphambi kokuthi ukhethe, noma uma wenqaba ama-cookie okuhlaziya, sibala kuphela ukuvakasha, ngaphandle kwama-cookie futhi singagcini lutho edivayisini yakho ngaphandle kokukhetha kwakho: ikhasi, iwebhusayithi ovela kuyo, uhlobo lwesiphequluli sakho, nezenzo ezifana nokusesha. Asirekhodi ukuchofoza kwakho, lokho okubhalayo, indawo yakho noma i-akhawunti yakho. Ikheli lakho le-IP nohlobo lwesiphequluli kuba yikhodi eshintsha nsuku zonke, futhi asiligcini ikheli lakho le-IP.
 
 ## Ukuphatha izintandokazi zakho zama-cookie
 
@@ -121,4 +136,4 @@ Uma unemibuzo ngezinqubo zethu zama-cookie, sicela usithinte:
 
 **Imeyili**: support@openscholar.ai
 
-**Okubuyekezwe kokugcina**: 13 Febhuwari 2026
+**Okubuyekezwe kokugcina**: 4 Novemba 2026

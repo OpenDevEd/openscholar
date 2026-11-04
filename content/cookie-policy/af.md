@@ -6,13 +6,20 @@ Wanneer jy openscholar.ai blaai, kan klein datalêers wat koekies genoem word, o
 
 ## Streng noodsaaklike koekies
 
-Openscholar.ai stel tans geen koekies in wat nodig is vir die webwerf om te funksioneer nie.
+| **Naam** | **Doel** | **Verval** |
+| --- | --- | --- |
+| `__session`, `__client_uat`, `__client` | Hou jou aangemeld | Tot 1 jaar |
+| `NEXT_LOCALE` | Onthou jou taal | 1 jaar |
+| `__cf_bm`, `_cfuvid` | Cloudflare gebruik dit om die webwerf teen outomatiese verkeer te beskerm | 30 minute, of totdat jy jou blaaier toemaak |
+
+Jou koekiekeuse en vertooninstellings, soos oop panele, bly in jou blaaier se plaaslike berging.
 
 ## Prestasie- en ontledingskoekies (opsioneel)
 
 | **Naam** | **Doel** | **Verval** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Ons gebruik PostHog-ontledingsagteware om te leer hoe mense met ons webwerf omgaan. Dit help ons om beter verslae te skep en die gebruikerservaring te verbeter. Die koekie bevat ’n anonieme toestel-identifiseerder, jou blaaiersessiebesonderhede en jou aanvanklike landingsbladsy. Alle data word anoniem versamel: ons identifiseer jou nooit persoonlik nie. Openscholar.ai gebruik nie derdeparty-opsporingstegnologieë nie en verkoop ook nie jou inligting aan advertensiemaatskappye nie. | 365 dae |
+| `ph_phc_[token]_posthog`, `ph_phc_[token]_posthog_cpm` | Ons gebruik PostHog om te leer hoe mense Openscholar gebruik en om probleme reg te stel. Hierdie koekies bevat 'n ewekansige toestel-ID, jou sessiebesonderhede en die bladsy waarop jy eerste beland het. As jy aanmeld, bevat dit jou rekening-ID, en PostHog koppel jou aktiwiteit aan jou naam en e-posadres. Ons verkoop nooit jou inligting nie. | 365 dae |
+| `_ga`, `_ga_[id]` | Ons gebruik Google Analytics om te sien hoeveel mense ons besoek en hoe hulle by ons uitkom. Hierdie koekies bevat 'n ewekansige ID en jou sessiebesonderhede. | 400 dae |
 
 ### Watter data is in die PostHog-koekie?
 
@@ -24,7 +31,7 @@ Die PostHog-koekie stoor die volgende besonderhede in ’n gestruktureerde forma
 - **$epp**: Tegniese vlae wat PostHog vir interne kenmerke gebruik
 - **$initial_person_info**: Rekords wat wys hoe jy by ons webwerf uitgekom het (soos van ’n soekmasjien of ’n direkte besoek) en watter bladsy jy eerste geland het
 
-Hierdie koekie bevat geen inligting wat jou persoonlik kan identifiseer nie, soos jou naam, e-posadres of ander private besonderhede.
+Hierdie koekie bevat nie jou naam, e-posadres of ander private besonderhede nie.
 
 ### Bykomende data wat deur PostHog versamel word
 
@@ -50,12 +57,20 @@ Afgesien van die koekie self, versamel PostHog outomaties bykomende inligting:
 - Hoe ver jy op die bladsy af rol
 
 **Inligting wat ons doelbewus uitsluit:**
-- Teks wat jy in vorms tik
+- Teks wat jy in vorms tik, behalwe wat jy soek
 - Aanmeldbewyse of wagwoorde
 - Betalings- of kredietkaartbesonderhede
 - Enige ander private of sensitiewe persoonlike inligting
 - Derdeparty-advertensiekoekies word nie gebruik nie
 - Jou data word nooit aan adverteerders of bemarkingsmaatskappye verkoop nie
+
+### Google Analytics
+
+As jy aanvaar, ontvang Google Analytics die bladsye wat jy besoek, hoe jy by ons uitgekom het, jou toesteltipe en jou benaderde ligging. Dit ontvang nie wat jy soek nie, en sy advertensiefunksies is af. As jy van plan verander, stop ons dit en verwyder ons sy koekies.
+
+### As jy nie aanvaar nie
+
+Voordat jy kies, of as jy ontledingskoekies weier, tel ons net besoeke, sonder koekies en sonder om iets behalwe jou keuse op jou toestel te stoor: die bladsy, die webwerf waarvandaan jy kom, jou blaaiertipe en aksies soos om 'n soektog te doen. Ons teken nie jou klikke, wat jy tik, jou ligging of jou rekening aan nie. Jou IP-adres en blaaiertipe word 'n kode wat elke dag verander, en ons hou nie jou IP-adres nie.
 
 ## Bestuur van jou koekievoorkeure
 
@@ -121,4 +136,4 @@ Vir vrae oor ons koekiepraktyke, kontak ons asseblief:
 
 **E-pos**: support@openscholar.ai
 
-**Laas opgedateer**: 13 Februarie 2026
+**Laas opgedateer**: 4 November 2026
