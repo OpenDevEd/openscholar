@@ -7,6 +7,7 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useUser } from "@clerk/nextjs";
 import { useAction, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+import Link from "@/components/workspace-link";
 import {
   ExternalLink,
   UpgradeIcon,
@@ -42,6 +43,7 @@ import { SubscriptionStateProvider, useSharedSubscriptionState } from "@/lib/aut
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { findPlan } from "@/lib/billing/catalog";
 import { useAppToast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
@@ -88,6 +90,8 @@ function Shell({ children }: { children: ReactNode }) {
   // A plan given by request has no billing of its own to manage, unless a top-up saved a card.
   const byRequest = subscription.catalog && subscription.resolvedPlan ? findPlan(subscription.catalog, subscription.resolvedPlan)?.byRequest : undefined;
   const showUpgrade = (byRequest === true && !subscription.account?.card) || (subscription.onDefaultPlan !== false && !subscription.account?.hasPaid);
+  // A workspace on Free can move up: your own is yours to change, and an organization's is its admins'.
+  const canUpgrade = subscriptionsEnabled && subscription.catalog !== null && subscription.onDefaultPlan === true && (!inOrganization || current?.role === "admin");
   const hideBilling = !subscriptionsEnabled && !creditsEnabled && showUpgrade && !subscription.isSettling;
   // With subscriptions off, a Free account has no plan worth naming.
   const showPlan = subscriptionsEnabled || subscription.onDefaultPlan === false;
@@ -180,8 +184,21 @@ function Shell({ children }: { children: ReactNode }) {
               </>
             }
           >
-            {path === "/settings/billing" && !inOrganization ? (
-              <BillingAction showUpgrade={showUpgrade} subscriptionsEnabled={subscriptionsEnabled} />
+            {path === "/settings/billing" ? (
+              <>
+                {/* Both wait for the plan, then fade in: Upgrade stays at the end, so nothing moves when Manage billing joins it. */}
+                {!inOrganization && subscription.isReady && !(showUpgrade && subscription.onDefaultPlan) ? (
+                  <BillingAction showUpgrade={showUpgrade} subscriptionsEnabled={subscriptionsEnabled} />
+                ) : null}
+                {canUpgrade ? (
+                  <Button asChild size="sm" className={cn(BAR_ACTION, "animate-in fade-in-0 duration-200")}>
+                    <Link href="/pricing">
+                      <UpgradeIcon />
+                      <span className={BAR_LABEL}>{tc("upgrade")}</span>
+                    </Link>
+                  </Button>
+                ) : null}
+              </>
             ) : null}
           </PanelHeader>
         }
@@ -260,7 +277,7 @@ function BillingAction({ showUpgrade, subscriptionsEnabled }: { showUpgrade: boo
       data-testid="billing-manage-button"
       variant={showUpgrade ? "default" : "outline"}
       size="sm"
-      className={BAR_ACTION}
+      className={cn(BAR_ACTION, "animate-in fade-in-0 duration-200")}
       disabled={loading}
       onClick={onClick}
     >
