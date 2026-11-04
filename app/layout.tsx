@@ -32,6 +32,7 @@ import { WorkspacesProvider } from "@/components/workspaces/parts";
 import { QueryHighlightProvider } from "@/components/query-highlight";
 import { QUERY_HIGHLIGHT_COOKIE } from "@/lib/search/boolean-query";
 import { api } from "@/convex/_generated/api";
+import { previewDefaults } from "@/lib/seo/page-metadata";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
 // --font-sans in globals.css.
@@ -43,36 +44,19 @@ const appFont = Ubuntu({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("metadata");
+  const [t, defaults] = await Promise.all([getTranslations("metadata"), previewDefaults()]);
 
   return {
     metadataBase: new URL(t("siteUrl")),
-    title: t("defaultTitle"),
+    title: { default: t("defaultTitle"), template: `%s | ${t("siteName")}` },
     description: t("defaultDescription"),
     appleWebApp: {
       title: t("siteName"),
     },
-    openGraph: {
-      title: t("defaultTitle"),
-      description: t("defaultDescription"),
-      url: t("siteUrl"),
-      siteName: t("siteName"),
-      locale: t("locale"),
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("defaultTitle"),
-      description: t("defaultDescription"),
-      creator: t("twitterCreator"),
-    },
-    robots: {
-      index: true,
-      follow: true,
-    },
-    alternates: {
-      canonical: "/",
-    },
+    openGraph: { ...defaults.openGraph, title: t("defaultTitle"), description: t("defaultDescription") },
+    twitter: { ...defaults.twitter, title: t("defaultTitle"), description: t("defaultDescription") },
+    // Out of search engines unless a page says otherwise (lib/seo/page-metadata.ts).
+    robots: { index: false, follow: false },
   };
 }
 

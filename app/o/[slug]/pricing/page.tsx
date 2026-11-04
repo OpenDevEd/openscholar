@@ -1,10 +1,15 @@
+import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
+import { getTranslations } from "next-intl/server";
 import { fetchAction, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Pricing } from "@/components/Pricing";
 
-export { generateMetadata } from "@/app/pricing/page";
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("pricing");
+  return { title: t("metadataTitle") };
+}
 
 /**
  * An organization's plans (#652), drawn from the organization as the server reads it, so its cards

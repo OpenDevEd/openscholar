@@ -1,1 +1,1 @@
-export { default } from "@/app/settings/billing/layout";
+export { default, generateMetadata } from "@/app/settings/billing/layout";

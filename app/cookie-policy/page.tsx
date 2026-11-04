@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { PolicyPage } from "@/components/policy-page";
 import { getLegalMarkdown } from "@/lib/legal-content";
+import { indexedPage } from "@/lib/seo/page-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("metadata");
 
-  return {
-    title: t("cookiePolicyTitle"),
-    description: t("cookiePolicyDescription"),
-  };
+  return indexedPage({ path: "/cookie-policy", title: `${t("cookiePolicyTitle")} | ${t("siteName")}`, description: t("cookiePolicyDescription") });
 }
 
 export default async function CookiePolicyPage() {

@@ -2,6 +2,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Home, Search } from "@/components/icons";
 import { getTranslations } from 'next-intl/server';
+import type { Metadata } from 'next';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("errors");
+  return { title: t("pageNotFound") };
+}
 
 // The same card as the error page.
 export default async function NotFound() {
