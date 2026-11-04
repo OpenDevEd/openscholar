@@ -1,35 +1,31 @@
 ---
-// Hero to compare: the workspace on one navy tile, and a mosaic of six scenes, one per community, each opening its site. Delete once one is picked.
+// Hero to compare: the water-filled name and the search box, nothing else. Below, the second name in stained glass over an uneven mosaic of the six communities. Fixed sizes, plain page flow. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
+import Fill from "../../components/Fill.astro";
 import { COMMUNITIES } from "../../data/site.mjs";
+const SPAN = [5, 4, 3, 3, 4, 5];
 ---
 <Base top="#01072c" title="Hero 5: OpenScholar" description="Hero option">
-  <section class="bleed h">
-    <div class="os">
-      <h1><b>OpenScholar</b> is where your team works through the evidence</h1>
-      <p>Find the literature, screen it against your criteria and extract the data you need.</p>
+  <section class="bleed hero">
+    <div class="inner"><div class="cq">
+      <h1><Fill tex="sea" class="w">OpenScholar</Fill> <span>is the evidence workspace for research teams</span></h1>
       <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+    </div></div>
+  </section>
+  <section class="bleed ec light">
+    <div class="inner"><div class="cq">
+      <h2><Fill tex="tx-glass" flat class="e">Evidence Communities</Fill> <span>are public homes for a field's evidence</span></h2>
+      <a class="all" href="/evidence-communities/">How they work<Arrow /></a>
     </div>
-    <div class="ec light">
-      <div class="t"><h2><b>Evidence Communities</b> are where anyone can read it</h2><a class="all" href="/evidence-communities/">How they work<Arrow /></a></div>
-      <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/art-field-${c.key}-960.avif`} width="960" height="960" decoding="async" alt="" /><span class="n"><b>{c.name}</b><span>{c.host}</span></span></a></li>)}</ul>
-    </div>
+    <ul>{COMMUNITIES.map((c, i) => <li style={`--s:${SPAN[i]}`}><a href={c.url}><img src={`/img/art-scene-${c.key}-960.avif`} width="960" height="960" decoding="async" loading="lazy" alt="" /><span class="n"><b>{c.name}</b><span>{c.host}</span></span></a></li>)}</ul></div>
   </section>
 </Base>
 <style>
-  .h { --hu: 1px; display: grid; grid-template-columns: minmax(0, 1fr); }
-  h1, h2 { font-weight: 500; letter-spacing: -.03em; line-height: 1.06; text-wrap: balance; } h1 b, h2 b { font-weight: inherit; }
-  .os { display: grid; justify-items: start; align-content: center; gap: calc(var(--hu) * 18); padding: 104px var(--pad) 40px; background: #01072c; color: #fff; } h1 { font-size: clamp(34px, 8.4vw, calc(var(--hu) * 58)); color: #a9bbe6; } h1 b { color: #fff; } .os p { font-size: max(15px, calc(var(--hu) * 18)); line-height: 1.35; opacity: .86; } .os :global(.big) { width: 100%; } .os :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); }
-  .ec { display: grid; grid-template-columns: minmax(0, 1fr); background: var(--soft); color: var(--ink); } .t { display: grid; justify-items: start; gap: 8px; padding: 28px var(--pad) 20px; } h2 { font-size: clamp(24px, 5.6vw, calc(var(--hu) * 32)); color: var(--t2); } h2 b { color: var(--ink); } .all { display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: max(14px, calc(var(--hu) * 15)); transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
-  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } li { min-width: 0; min-height: 0; } li a { position: relative; isolation: isolate; display: grid; align-content: end; height: 100%; aspect-ratio: 1; overflow: clip; color: #fff; } li img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; max-width: none; object-fit: cover; transition: transform .6s var(--ease); } li a:hover img { transform: scale(1.04); } li a::after { content: ""; position: absolute; inset: 40% 0 0; z-index: -1; background: linear-gradient(transparent, rgb(1 7 44 / .86)); }
-  .n { display: grid; gap: 3px; padding: 12px; } .n b { font-weight: 500; font-size: 15px; line-height: 1.16; letter-spacing: -.01em; text-wrap: balance; } .n span { font: 400 11px/1.2 var(--mono); opacity: .8; overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
-  @media (min-width: 1000px) {
-    .h { --strip: min(100vw - var(--pad) * 2, max(1248px, (100svh - 32px) * 1.44)); --edge: calc((100vw - var(--strip)) / 2); --hu: max(.62px, min(var(--strip) / 1248, (100svh - 32px) / 868)); height: max(620px, calc(100svh - 32px)); grid-template-columns: calc(var(--edge) + var(--strip) * .42) minmax(0, 1fr); }
-    .os { padding: max(88px, calc(var(--hu) * 96)) calc(var(--hu) * 48) calc(var(--hu) * 40) var(--edge); }
-    .ec { grid-template-rows: auto minmax(0, 1fr); min-height: 0; } .t { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: max(88px, calc(var(--hu) * 100)) var(--edge) calc(var(--hu) * 18) calc(var(--hu) * 32); } .t h2 { max-width: 15em; }
-    ul { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); min-height: 0; } li a { aspect-ratio: auto; } .n { padding: calc(var(--hu) * 16); } .n b { font-size: max(14px, calc(var(--hu) * 18)); } .n span { font-size: max(10px, calc(var(--hu) * 12)); }
-    .os :global(.big .btn span) { display: none; } .os :global(.big .btn) { padding-left: 8px; } .os :global(.big .mk), .os :global(.big .btn) { zoom: max(1, tan(atan2(var(--hu), 1px))); }
-  }
+  .cq { container-type: inline-size; display: grid; gap: 20px; } h1, h2 { display: grid; gap: 8px; font-weight: 500; } :global(.w) { font-size: calc(100cqw / 5.35); } :global(.e) { --blend: normal; font-size: calc(100cqw / 9.42); } h1 span, h2 span { font-size: clamp(22px, 2.6vw, 32px); letter-spacing: -.025em; line-height: 1.15; text-wrap: balance; }
+  .hero { padding: 120px 0 64px; background: #01072c; color: #fff; } h1 span { color: #a9bbe6; } .hero :global(.big) { width: 100%; }
+  .ec { padding: 56px 0 72px; background: var(--soft); color: var(--ink); } h2 span { color: var(--t2); } .all { justify-self: start; display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 28px; } li { min-width: 0; } li a { grid-template-columns: minmax(0, 1fr); position: relative; isolation: isolate; display: grid; align-content: end; height: 100%; aspect-ratio: 1; border-radius: 14px; overflow: clip; color: #fff; } li img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; max-width: none; object-fit: cover; transition: transform .6s var(--ease); } li a:hover img { transform: scale(1.04); } li a::after { content: ""; position: absolute; inset: 40% 0 0; z-index: -1; background: linear-gradient(transparent, rgb(1 7 44 / .88)); } .n { display: grid; gap: 3px; padding: 14px; } .n b { font-weight: 500; font-size: 16px; line-height: 1.18; letter-spacing: -.01em; text-wrap: balance; } .n span { font: 400 12px/1.2 var(--mono); opacity: .82; overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 1000px) { .cq { grid-template-columns: minmax(0, 1fr) 560px; column-gap: 40px; align-items: center; } h1, h2 { display: contents; } :global(.w), :global(.e) { grid-column: 1 / -1; } .ec .cq { align-items: baseline; } .ec .all { justify-self: end; } ul { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: 300px; gap: 10px; } li { grid-column: span var(--s); } li a { aspect-ratio: auto; } li:last-child img { object-position: 50% 30%; } .n { padding: 18px; } .n b { font-size: 19px; } }
 </style>

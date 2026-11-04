@@ -5,5 +5,5 @@ export function picker(root, every = 5500) {
   const pick = (n, focus) => { at = n; tabs.forEach((t, i) => { t.setAttribute("aria-selected", i === n); t.tabIndex = i === n ? 0 : -1; }); parts.forEach((p) => p.classList.toggle("on", +p.dataset.i === n)); if (focus) tabs[n].focus(); };
   tabs.forEach((t, i) => { t.addEventListener("click", () => { held = true; pick(i); }); t.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") pick(i); }); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
   new IntersectionObserver(([en]) => { seen = en.isIntersecting; }, { threshold: .2 }).observe(root);
-  setInterval(() => { if (!held && seen && !calm.matches && !root.matches(":hover, :focus-within")) pick((at + 1) % tabs.length); }, every);
+  if (every) setInterval(() => { if (!held && seen && !calm.matches && !root.matches(":hover, :focus-within")) pick((at + 1) % tabs.length); }, every);
 }
