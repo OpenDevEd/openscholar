@@ -38,6 +38,8 @@ import type { SearchField, SearchResult } from '../types';
 
 interface SearchInitializerProps {
   children: ReactNode;
+  /** Told the ID of each search this makes, before the server has answered. */
+  onMade?: (id: string) => void;
 }
 
 /**
@@ -87,7 +89,7 @@ function QuestionSearch({ question, entry, onWritten }: { question: string; entr
   return null;
 }
 
-export function SearchInitializer({ children }: SearchInitializerProps) {
+export function SearchInitializer({ children, onMade }: SearchInitializerProps) {
   const router = useWorkspaceRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -111,9 +113,10 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       ...entry,
       ...(question ? { questionHistory: [{ question, timestamp: new Date().toISOString() }] } : {}),
     });
+    onMade?.(newId);
     router.replace(buildResultsUrl(newId, searchResultToParams({ ...entry, id: newId } as SearchResult)));
     return newId;
-  }, [addSearchResult, router]);
+  }, [addSearchResult, onMade, router]);
 
   // Reconcile URL <-> stored history. Pure decision in resolveSearchInit();
   // this effect only performs the resulting side effects.

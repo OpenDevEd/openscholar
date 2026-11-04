@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { parseSearchParamsFromUrl, DEFAULT_SEARCH_PARAMS } from "./parsers";
+import { MIN_YEAR } from "../constants";
+import { paramsToSearchResult } from "./converters";
+import { parseSearchParamsFromUrl, searchParamsParsers, DEFAULT_SEARCH_PARAMS } from "./parsers";
 
 const parse = (qs: string) => parseSearchParamsFromUrl(new URLSearchParams(qs));
 
@@ -56,6 +58,40 @@ describe("parseSearchParamsFromUrl", () => {
     expect(p.q).toBe("hello");
     expect(p).not.toHaveProperty("utm_source");
     expect(p).not.toHaveProperty("foo");
+  });
+
+  describe("an address is anyone's to type, and the server refuses a search it can't hold", () => {
+    const thisYear = new Date().getFullYear();
+
+    it.each([
+      ["yf=2030", [thisYear, thisYear]],
+      ["yf=999999", [thisYear, thisYear]],
+      ["yt=1800", [MIN_YEAR, MIN_YEAR]],
+      ["yf=-5", [MIN_YEAR, thisYear]],
+      ["yf=2025&yt=2020", [2020, 2025]],
+      ["yf=2030&yt=2020", [2020, thisYear]],
+      ["yf=2010&yt=2020", [2010, 2020]],
+    ])("%s is a year range in order, within the years a search can name", (address, range) => {
+      expect(paramsToSearchResult(parse(address)).yearRange).toEqual(range);
+    });
+
+    it("puts a rating range in order", () => {
+      expect(paramsToSearchResult(parse("rmin=5&rmax=1")).ratingRange).toEqual([1, 5]);
+    });
+
+    it("drops a field or filter type no search can have", () => {
+      expect(parse("field=garbage").field).toBe(DEFAULT_SEARCH_PARAMS.field);
+      expect(parse("ft=garbage").ft).toBe(DEFAULT_SEARCH_PARAMS.ft);
+      expect(parse("field=oql&ft=date")).toMatchObject({ field: "oql", ft: "date" });
+    });
+
+    it("drops a date that isn't one, which would otherwise crash the page when formatted", () => {
+      expect(parse("df=garbage&dt=2020-13-45")).toMatchObject({ df: null, dt: null });
+      expect(parse("df=2020-01-02&dt=2021-03-04")).toMatchObject({ df: "2020-01-02", dt: "2021-03-04" });
+      // The results page reads the address through nuqs, before a redirect to the canonical one lands.
+      expect(searchParamsParsers.df.parse("garbage")).toBeNull();
+      expect(searchParamsParsers.dt.parse("2021-03-04")).toBe("2021-03-04");
+    });
   });
 
   it("returns empty arrays for absent reg/focus", () => {
