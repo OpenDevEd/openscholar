@@ -3,13 +3,8 @@ import { getTranslations } from "next-intl/server";
 import { ResultsClientLayout } from "./results-client-layout";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("metadata");
-  const tc = await getTranslations("common");
-
-  return {
-    title: `${tc("results")} | ${t("siteName")}`,
-    description: t("defaultDescription"),
-  };
+  const t = await getTranslations("common");
+  return { title: t("results") };
 }
 
 export default async function ResultsLayout({
