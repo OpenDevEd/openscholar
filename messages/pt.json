@@ -3168,7 +3168,8 @@
       "questionToQuery": "Pergunta → pesquisa",
       "refine": "Refinar",
       "translate": "Traduzir",
-      "broadenNarrow": "Alargar / restringir"
+      "broadenNarrow": "Alargar / restringir",
+      "overview": "Resumo de IA"
     },
     "preset": "Predefinição",
     "presets": {

@@ -3167,7 +3167,8 @@
       "questionToQuery": "Question → query",
       "refine": "Refine",
       "translate": "Translate",
-      "broadenNarrow": "Broaden / narrow"
+      "broadenNarrow": "Broaden / narrow",
+      "overview": "AI overview"
     },
     "preset": "Preset",
     "presets": {

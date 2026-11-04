@@ -3167,7 +3167,8 @@
       "questionToQuery": "質問 → クエリ",
       "refine": "絞り込み",
       "translate": "翻訳",
-      "broadenNarrow": "広げる / 狭める"
+      "broadenNarrow": "広げる / 狭める",
+      "overview": "AI 概要"
     },
     "preset": "プリセット",
     "presets": {

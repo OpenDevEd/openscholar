@@ -2,7 +2,7 @@ import { internalQuery } from "../_generated/server";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { DEFAULT_PRESET, presetConfigKey, usableFor, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import { DEFAULT_PRESET, presetConfigKey, usableFor, type AiTask, type PresetKey, type PresetTask, fallbackPreset } from "../../lib/ai/tasks";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { isDecisionModel } from "../../lib/ai/decisions";
 import { aiTaskValidator, taskPickValidator } from "../aiModelConfig/validators";
@@ -13,7 +13,7 @@ import { SERVER_MODEL_SLUG } from "./config";
 export type TaskPick = { modelId: Id<"models">; effort?: Effort };
 
 /** A model users can pick that can do the task. */
-const offered = (model: Doc<"models"> | null, task: AiTask): model is Doc<"models"> =>
+const offered = (model: Doc<"models"> | null, task: PresetTask): model is Doc<"models"> =>
   model !== null && model.retiredAt === undefined && !model.hidden && usableFor(model, task);
 
 /** The effort, if the model still takes it; otherwise the model's own default. */
@@ -22,7 +22,7 @@ function withEffort(model: Doc<"models">, effort: Effort | undefined): TaskPick 
 }
 
 /** A preset's pick for a task, if it points at a model users can pick for it. */
-export async function presetPick(ctx: QueryCtx | MutationCtx, preset: PresetKey, task: AiTask): Promise<TaskPick | null> {
+export async function presetPick(ctx: QueryCtx | MutationCtx, preset: PresetKey, task: PresetTask): Promise<TaskPick | null> {
   const cfg = await ctx.db
     .query("aiModelConfig")
     .withIndex("by_key", (q) => q.eq("key", presetConfigKey(preset, task)))
@@ -31,7 +31,7 @@ export async function presetPick(ctx: QueryCtx | MutationCtx, preset: PresetKey,
 }
 
 /** The model a catalog slug names and the effort it runs at, if users can pick it for the task. */
-export async function slugPick(ctx: QueryCtx | MutationCtx, modelId: string, effort: Effort | undefined, task: AiTask): Promise<TaskPick | null> {
+export async function slugPick(ctx: QueryCtx | MutationCtx, modelId: string, effort: Effort | undefined, task: PresetTask): Promise<TaskPick | null> {
   const model = await ctx.db
     .query("models")
     .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
@@ -75,6 +75,15 @@ export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, { userId, wor
   const preset = await organizationPreset(ctx, workspaceId);
   if (preset === null) return await ownTaskPick(ctx, userId, task);
   return (await presetPick(ctx, preset, task)) ?? (preset === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, task));
+}
+
+/**
+ * What an overview runs on for someone working in a workspace: its entry in the organization's preset there, else in their
+ * own. Custom has no entry of its own, so it reads Balanced's.
+ */
+export async function overviewPick(ctx: QueryCtx | MutationCtx, { userId, workspaceId }: { userId: Id<"users">; workspaceId: Id<"workspaces"> }): Promise<TaskPick | null> {
+  const preset = (await organizationPreset(ctx, workspaceId)) ?? fallbackPreset((await userAiConfig(ctx, userId))?.choice);
+  return (await presetPick(ctx, preset, "overview")) ?? (preset === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, "overview"));
 }
 
 /** Job fields that record what a background run uses. */
