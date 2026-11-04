@@ -1061,6 +1061,8 @@
     "creditsTitle": "クレジット",
     "creditsDescription": "Openscholar が利用しているプロジェクト、データ、ライセンス。",
     "sharedTitle": "共有アイテム",
+    "termsTitle": "利用規約",
+    "termsDescription": "Openscholar の利用に関するルール。",
     "signUpTitle": "新規登録"
   },
   "validation": {
@@ -1353,6 +1355,7 @@
     "and": "と",
     "with": "使用：",
     "suffix": "",
+    "terms": "利用規約",
     "privacyPolicy": "プライバシーポリシー",
     "cookiePolicy": "Cookieポリシー",
     "cookiePreferences": "Cookie設定",

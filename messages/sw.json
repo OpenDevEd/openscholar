@@ -1062,6 +1062,8 @@
     "creditsTitle": "Shukrani",
     "creditsDescription": "Miradi, data na leseni ambazo Openscholar inajengwa juu yake.",
     "sharedTitle": "Vilivyoshirikiwa nami",
+    "termsTitle": "Masharti ya matumizi",
+    "termsDescription": "Sheria za kutumia Openscholar.",
     "signUpTitle": "Jisajili"
   },
   "validation": {
@@ -1354,6 +1356,7 @@
     "and": "na",
     "with": "kwa kutumia",
     "suffix": "",
+    "terms": "Masharti ya matumizi",
     "privacyPolicy": "Sera ya faragha",
     "cookiePolicy": "Sera ya vidakuzi",
     "cookiePreferences": "Mapendeleo ya vidakuzi",

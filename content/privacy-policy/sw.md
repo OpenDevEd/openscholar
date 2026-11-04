@@ -21,6 +21,17 @@ Barua pepe: support@openscholar.ai
 
 # **Taarifa tunazokusanya, tunazotumia, na sababu zake**
 
+Tunakusanya au kutumia taarifa binafsi zifuatazo **ili kuendesha akaunti yako na vipengele unavyotumia**:
+
+* Jina lako, anwani ya barua pepe na picha ya wasifu, na mashirika unayoyahusu
+* Unachofanya katika Openscholar: utafutaji, maswali, makala zilizohifadhiwa, ukadiriaji, mikusanyo, uchujaji, uchimbaji na mazungumzo na msaidizi
+* Faili unazopakia, na programu unazounganisha, kama Zotero
+* Krediti unazotumia na kununua. Stripe hushughulikia taarifa za kadi, na sisi tunaweka tu aina ya kadi na tarakimu zake nne za mwisho
+
+Unapotumia kipengele cha AI, ombi lako na maandishi ya makala yanayohitajika hutumwa kwa mtoa huduma wa AI anayefanya kazi hiyo.
+
+Iwe unakubali vidakuzi vya uchanganuzi au la, tunatuma kwa PostHog rekodi ya kila ombi la AI chini ya kitambulisho cha akaunti yako, bila maandishi yake, ili kufuatilia gharama na uaminifu.
+
 Tunakusanya au kutumia taarifa binafsi zifuatazo kwa **kushughulikia maswali, malalamiko au madai**:
 
 * Majina na maelezo ya mawasiliano
@@ -75,6 +86,12 @@ Ili kuwasilisha ombi la haki za ulinzi wa data, tafadhali wasiliana nasi kwa kut
 
 # **Misingi yetu halali ya kukusanya na kutumia data yako**
 
+Msingi wetu wa kisheria wa kukusanya au kutumia taarifa binafsi **ili kuendesha akaunti yako na vipengele unavyotumia** ni:
+
+* **Mkataba** – tunazihitaji ili kutoa huduma uliyojisajili. Haki zako zote za ulinzi wa data zinaweza kutumika, isipokuwa haki ya kupinga.
+
+* **Maslahi halali** – kwa rekodi hizo za maombi ya AI. Tunazihitaji ili vipengele vya AI viwe vya kuaminika na gharama zake zidhibitiwe.
+
 Misingi yetu halali ya kukusanya au kutumia taarifa binafsi kwa **kushughulikia maswali, malalamiko au madai** ni:
 
 * **Maslahi halali** – tunakusanya au kutumia taarifa zako kwa sababu zinakunufaisha wewe, shirika letu au mtu mwingine, bila kuleta hatari isiyo ya lazima ya madhara kwa yeyote. Haki zako zote za ulinzi wa data zinaweza kutumika, isipokuwa haki ya kuhamisha data. Maslahi yetu halali ni:
@@ -102,6 +119,8 @@ Kwa maelezo zaidi kuhusu matumizi yetu ya maslahi halali kama msingi halali, una
 
 # **Tunapata taarifa binafsi kutoka wapi**
 
+* **Kutoka kuingia na huduma zilizounganishwa**: Clerk unapoingia, Google ukiingia kwa Google, na Zotero ukiiunganisha
+
 * **Moja kwa moja kutoka kwako** unapo:
   * Kututumia barua pepe
   * Kukamilisha utafiti wa maoni
@@ -125,6 +144,9 @@ Kwa maelezo zaidi kuhusu matumizi yetu ya maslahi halali kama msingi halali, una
 | **Vidakuzi vya uchambuzi**           | siku 365 kuanzia ziara ya mwisho            | Kufuatilia wageni wanaorudi na kudumisha mwendelezo wa kipindi                                |
 | **Majibu ya tafiti**                 | mwaka 1 kuanzia tarehe ya kuwasilisha       | Kuboresha bidhaa na kufuatilia mwelekeo wa maoni kwa muda                                     |
 | **Kumbukumbu za anwani ya IP**       | saa 24 kuanzia tarehe ya ukusanyaji         | Kwa ufuatiliaji wa usalama na kuzuia udanganyifu                                              |
+| **Data ya akaunti na utafiti** | Hadi uifute au ufute akaunti yako, kisha takriban siku 30 | Ili kutoa huduma |
+| **Unachoongeza kwenye shirika** | Kinabaki kwenye shirika, pamoja na jina lako, baada ya kuondoka au kufuta akaunti yako | Ili shirika lihifadhi kazi yake |
+| **Rekodi za malipo** | Miaka 6 tangu tarehe ya ununuzi | Ili kufuata sheria za kodi na uhasibu |
 
 
 Baada ya vipindi hivi, tunafuta au kufanya taarifa binafsi zisiwe na utambulisho kwa usalama ili zisiweze tena kukutambulisha.
@@ -145,14 +167,55 @@ Mchakataji huyu wa data hufanya shughuli zifuatazo kwa niaba yetu:
 
 **Mahali:** Ujerumani (upangishaji wa EU)
 
-**Vercel Inc.**
+**Hetzner Online GmbH**
 
-Mchakataji huyu wa data hufanya shughuli zifuatazo kwa niaba yetu:
-* Huandaa na kuendesha tovuti yetu
-* Hutoa huduma za mtandao wa usambazaji wa maudhui (CDN)
-* Huchakata kumbukumbu za seva na data ya muunganisho
+Mchakataji huyu wa data hutufanyia shughuli zifuatazo:
+* Huhifadhi tovuti na hifadhidata yetu
 
-**Mahali:** Marekani na mtandao wa edge uliosambazwa duniani kote
+**Mahali:** Ujerumani
+
+**Cloudflare, Inc.**
+
+Mchakataji huyu wa data hutufanyia shughuli zifuatazo:
+* Hulinda na kuwasilisha trafiki ya tovuti yetu
+* Huhifadhi nakala za baadhi ya PDF za makala
+
+**Mahali:** Mtandao uliosambaa duniani kote
+
+**Clerk, Inc.**
+
+Mchakataji huyu wa data hutufanyia shughuli zifuatazo:
+* Husimamia kuingia na akaunti
+
+**Mahali:** Marekani
+
+**Stripe**
+
+Mchakataji huyu wa data hutufanyia shughuli zifuatazo:
+* Huchakata malipo ya krediti
+
+**Mahali:** Marekani na Ulaya
+
+**OpenRouter, Inc.**
+
+Mchakataji huyu wa data hutufanyia shughuli zifuatazo:
+* Hutuma maombi ya AI kwa watoa huduma za miundo wanaoyajibu, kama Anthropic, OpenAI na Google
+
+**Mahali:** Marekani
+
+**Brevo**
+
+Mchakataji huyu wa data hutufanyia shughuli zifuatazo:
+* Hutuma barua pepe za mialiko
+
+**Mahali:** Ufaransa
+
+**Supabase, Inc.**
+
+Mchakataji huyu wa data hutufanyia shughuli zifuatazo:
+* Huhifadhi faili za Evidence Communities
+
+**Mahali:** Uingereza
 
 # **Kushiriki taarifa nje ya Uingereza**
 
@@ -172,15 +235,15 @@ Data inachakatwa zaidi ndani ya Eneo la Uchumi la Ulaya (EEA), hasa nchini Ujeru
 
 ---
 
-**Jina la shirika:** Vercel Inc.
+**Majina ya mashirika:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
-**Aina ya mpokeaji:** Mtoa huduma wa upangishaji wa tovuti
+**Aina ya mpokeaji:** Watoa huduma za kuingia, malipo, AI na uwasilishaji wa tovuti
 
-**Nchi ambayo taarifa binafsi inatumwa:** Marekani (na mtandao wa edge uliosambazwa duniani kote)
+**Nchi ambako taarifa binafsi hutumwa:** Marekani, na nchi ambako watoa huduma za AI huendesha miundo yao
 
-**Uhamisho unavyozingatia sheria ya ulinzi wa data ya Uingereza:** 
+**Jinsi uhamishaji unavyofuata sheria ya ulinzi wa data ya Uingereza:** 
 
-Uhamisho kwa Vercel Inc. unafanywa kwa kutegemea uthibitisho wake chini ya Kiendelezo cha Uingereza cha Mfumo wa Faragha wa Data wa EU-U.S.
+Uhamishaji huu unategemea Nyongeza ya Uingereza kwa Mfumo wa Faragha ya Data kati ya EU na Marekani pale mpokeaji ameidhinishwa, au vinginevyo Kiambatisho cha Uingereza cha Uhamishaji wa Data wa Kimataifa.
 
 # **Tunavyolinda taarifa binafsi**
 
@@ -191,7 +254,7 @@ Tunatekeleza hatua zinazofaa za kiufundi na kiutawala kulinda taarifa zako binaf
 * **Kuficha utambulisho:** Data ya uchambuzi inafichwa utambulisho pale inapowezekana
 * **Mapitio ya usalama ya mara kwa mara:** Tunafuatilia na kusasisha taratibu zetu za usalama
 * **Wachakataji salama wa data:** Tunafanya kazi na wachakataji wanaokidhi viwango vya juu vya usalama pekee
-* **Usimamizi wa idhini ya vidakuzi:** Uchambuzi unaendeshwa kwa idhini yako pekee
+* **Usimamizi wa idhini ya vidakuzi:** Vidakuzi vya uchanganuzi na marudio ya vipindi hufanya kazi tu kwa idhini yako
 
 # **Vidakuzi**
 
@@ -233,4 +296,4 @@ Tunakuhimiza uipitie notisi hii ya faragha mara kwa mara ili kufahamu jinsi tuna
 
 # **Ilisasishwa mara ya mwisho**
 
-17 Februari 2026
+4 Novemba 2026

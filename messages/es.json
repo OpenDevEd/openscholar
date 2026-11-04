@@ -1062,6 +1062,8 @@
     "creditsTitle": "Créditos",
     "creditsDescription": "Los proyectos, datos y licencias en los que se basa Openscholar.",
     "sharedTitle": "Compartido conmigo",
+    "termsTitle": "Condiciones de uso",
+    "termsDescription": "Las normas para utilizar Openscholar.",
     "signUpTitle": "Registrarse"
   },
   "validation": {
@@ -1354,6 +1356,7 @@
     "and": "y",
     "with": "con",
     "suffix": "",
+    "terms": "Condiciones de uso",
     "privacyPolicy": "Política de privacidad",
     "cookiePolicy": "Política de cookies",
     "cookiePreferences": "Preferencias de cookies",

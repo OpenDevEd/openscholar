@@ -1062,6 +1062,8 @@
     "creditsTitle": "الأرصدة",
     "creditsDescription": "المشاريع والبيانات والتراخيص التي يعتمد عليها Openscholar.",
     "sharedTitle": "المشارَك معي",
+    "termsTitle": "شروط الاستخدام",
+    "termsDescription": "قواعد استخدام Openscholar.",
     "signUpTitle": "إنشاء حساب"
   },
   "validation": {
@@ -1354,6 +1356,7 @@
     "and": "و",
     "with": "باستخدام",
     "suffix": "",
+    "terms": "شروط الاستخدام",
     "privacyPolicy": "سياسة الخصوصية",
     "cookiePolicy": "سياسة ملفات تعريف الارتباط",
     "cookiePreferences": "تفضيلات ملفات تعريف الارتباط",
