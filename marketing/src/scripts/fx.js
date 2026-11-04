@@ -61,6 +61,8 @@ dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(
   dialog.addEventListener("click", (e) => { if (e.target.closest(".jump a")) dialog.close(); }); }
 $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("input", dialog).value = b.dataset.try; $("form", dialog).requestSubmit(); }));
 
+// The hero's stars, the communities' laptop and the closing ribbons only move while they're on screen.
+for (const el of $$("[data-orbit], .p-lap, .close")) new IntersectionObserver(([e]) => el.classList.toggle("away", !e.isIntersecting)).observe(el);
 // The footer only moves while it's on screen, and the pointer takes over from its slow sweep.
 const foot = $("[data-foot]");
 new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
