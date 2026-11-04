@@ -1,18 +1,18 @@
 # Vidakuzi
 
-## Jinsi OpenScholar.ai inavyotumia vidakuzi
+## Jinsi Openscholar.ai inavyotumia vidakuzi
 
 Unapovinjari openscholar.ai, faili ndogo za data zinazoitwa vidakuzi zinaweza kuhifadhiwa kwenye kifaa chako. Faili hizi husaidia tovuti kufanya kazi ipasavyo na kuwapa wamiliki wa tovuti maarifa kuhusu jinsi tovuti zao zinavyotumika. Hapa chini, tunaeleza vidakuzi ambavyo openscholar.ai inatumia na madhumuni yake.
 
 ## Vidakuzi muhimu kabisa
 
-Kwa sasa OpenScholar.ai haiweki vidakuzi vyovyote vinavyohitajika ili tovuti ifanye kazi.
+Kwa sasa Openscholar.ai haiweki vidakuzi vyovyote vinavyohitajika ili tovuti ifanye kazi.
 
 ## Vidakuzi vya utendaji na uchambuzi (hiari)
 
 | **Jina** | **Madhumuni** | **Muda wa kuisha** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Tunatumia programu ya uchambuzi ya PostHog kujifunza jinsi watu wanavyoingiliana na tovuti yetu. Hii inatusaidia kuunda ripoti bora zaidi na kuboresha uzoefu wa mtumiaji. Kidakuzi kina kitambulisho kisichojulikana cha kifaa, maelezo ya kipindi chako cha kuvinjari, na ukurasa wa kwanza uliofunguliwa. Data yote inakusanywa bila kukutambulisha - hatukutambui binafsi kamwe. OpenScholar.ai haitumii teknolojia za ufuatiliaji za watu wengine wala kuuza taarifa zako kwa makampuni ya matangazo. | siku 365 |
+| ph_phc_[token]_posthog | Tunatumia programu ya uchambuzi ya PostHog kujifunza jinsi watu wanavyoingiliana na tovuti yetu. Hii inatusaidia kuunda ripoti bora zaidi na kuboresha uzoefu wa mtumiaji. Kidakuzi kina kitambulisho kisichojulikana cha kifaa, maelezo ya kipindi chako cha kuvinjari, na ukurasa wa kwanza uliofunguliwa. Data yote inakusanywa bila kukutambulisha - hatukutambui binafsi kamwe. Openscholar.ai haitumii teknolojia za ufuatiliaji za watu wengine wala kuuza taarifa zako kwa makampuni ya matangazo. | siku 365 |
 
 ### Kidakuzi cha PostHog kina data gani?
 
@@ -74,7 +74,7 @@ Zaidi ya hayo, vivinjari vyote vikuu vya mtandao vina mipangilio ya kudhibiti vi
 
 Kwa vivinjari vingine, angalia nyaraka za usaidizi zinazotolewa na msanidi wa kivinjari chako.
 
-### Kuondoa kidakuzi cha OpenScholar.ai kwenye kifaa chako
+### Kuondoa kidakuzi cha Openscholar.ai kwenye kifaa chako
 
 Unaweza kuondoa kidakuzi chetu cha uchambuzi wakati wowote unapotaka kwa kutumia mipangilio ya kivinjari chako:
 

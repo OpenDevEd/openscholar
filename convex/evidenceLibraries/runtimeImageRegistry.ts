@@ -188,7 +188,7 @@ async function readTokenOwner(
       headers: {
         accept: "application/vnd.github+json",
         authorization: `Bearer ${githubToken}`,
-        "user-agent": "OpenScholar",
+        "user-agent": "Openscholar",
         "x-github-api-version": "2022-11-28",
       },
     },
@@ -232,7 +232,7 @@ async function exchangeBearerToken(
       headers: {
         accept: "application/json",
         authorization: `Basic ${btoa(`${login}:${githubToken}`)}`,
-        "user-agent": "OpenScholar",
+        "user-agent": "Openscholar",
       },
     },
     retry,
@@ -295,7 +295,7 @@ export async function resolveRuntimeImage(input: {
   );
   const manifestHeaders = {
     accept: MANIFEST_ACCEPT,
-    "user-agent": "OpenScholar",
+    "user-agent": "Openscholar",
   };
   const anonymous = await request(
     fetchImpl,

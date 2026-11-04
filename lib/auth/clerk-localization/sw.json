@@ -209,7 +209,7 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "Msimbo wa uthibitisho",
    "resendButton": "Hukupokea msimbo? Tuma tena",
-   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "subtitle": "ili kuendelea kwenye Openscholar",
    "title": "Angalia {{provider}} yako"
   },
   "backupCodeMfa": {
@@ -219,13 +219,13 @@
   "emailCode": {
    "formTitle": "Msimbo wa uthibitisho",
    "resendButton": "Hukupokea msimbo? Tuma tena",
-   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "subtitle": "ili kuendelea kwenye Openscholar",
    "title": "Angalia barua pepe yako"
   },
   "emailCodeMfa": {
    "formTitle": "Angalia barua pepe yako",
    "resendButton": "Hukupokea msimbo? Tuma tena",
-   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "subtitle": "ili kuendelea kwenye Openscholar",
    "title": "Angalia barua pepe yako"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "Inaingia..."
    },
    "resendButton": "Hukupokea kiungo? Tuma tena",
-   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "subtitle": "ili kuendelea kwenye Openscholar",
    "title": "Angalia barua pepe yako",
    "unusedTab": {
     "title": "Unaweza kufunga kichupo hiki"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "Tumia kiungo cha uthibitisho kilichotumwa kwenye barua pepe yako",
    "resendButton": "Hukupokea kiungo? Tuma tena",
-   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "subtitle": "ili kuendelea kwenye Openscholar",
    "title": "Angalia barua pepe yako"
   },
   "enterpriseConnections": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "Msimbo wa uthibitisho",
    "resendButton": "Hukupokea msimbo? Tuma tena",
-   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "subtitle": "ili kuendelea kwenye Openscholar",
    "title": "Angalia simu yako"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "Huwezi kutumia SSO?",
    "code": {
     "resendButton": "Hukupokea msimbo? Tuma tena",
-    "subtitle": "ili kuendelea kwenye {{applicationName}}",
+    "subtitle": "ili kuendelea kwenye Openscholar",
     "title": "Angalia barua pepe yako"
    },
    "notice": "Shirika lako linahitaji SSO. Kuendelea bila SSO kunarekodiwa."
@@ -367,11 +367,11 @@
     "actionLink": "Tumia njia nyingine",
     "label": "Namba ya simu ya {{provider}}",
     "subtitle": "Weka namba yako ya simu ili upate msimbo wa uthibitisho kwenye {{provider}}.",
-    "title": "Ingia kwenye {{applicationName}} ukitumia {{provider}}"
+    "title": "Ingia kwenye Openscholar ukitumia {{provider}}"
    },
    "subtitle": "Karibu tena! Tafadhali ingia ili kuendelea",
-   "title": "Ingia kwenye {{applicationName}}",
-   "titleCombined": "Endelea kwenye {{applicationName}}"
+   "title": "Ingia kwenye Openscholar",
+   "titleCombined": "Endelea kwenye Openscholar"
   },
   "totpMfa": {
    "formTitle": "Msimbo wa uthibitisho",
@@ -414,7 +414,7 @@
     "title": "Inajisajili..."
    },
    "resendButton": "Hukupokea kiungo? Tuma tena",
-   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "subtitle": "ili kuendelea kwenye Openscholar",
    "title": "Thibitisha barua pepe yako",
    "verified": {
     "title": "Umejisajili kwa mafanikio"
@@ -471,7 +471,7 @@
     "actionLink": "Tumia njia nyingine",
     "label": "Namba ya simu ya {{provider}}",
     "subtitle": "Weka namba yako ya simu ili upate msimbo wa uthibitisho kwenye {{provider}}.",
-    "title": "Jisajili kwenye {{applicationName}} ukitumia {{provider}}"
+    "title": "Jisajili kwenye Openscholar ukitumia {{provider}}"
    },
    "subtitle": "Karibu! Tafadhali jaza taarifa ili kuanza.",
    "subtitleCombined": "Karibu! Tafadhali jaza taarifa ili kuanza.",

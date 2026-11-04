@@ -131,7 +131,7 @@ export const listAction = defineUserQuery({
   path: "evidenceLibraries/readers:list",
   description:
     `The Evidence Communities the person reads, last used first, at most ${READ_LIBRARIES_MAX}: each one's ID, name and address, how it is theirs (\`signIn\`: they signed in to it; \`handoff\`: they opened its records here; \`role\`: they have a role on it, which \`role\` names). ` +
-    "Any other community OpenScholar runs is reached by its address.",
+    "Any other community Openscholar runs is reached by its address.",
   args: {},
   returns: readLibrariesValidator,
   run: async (ctx, { userId }) => (await librariesOf(ctx, userId)).map(({ library, address, ways, role, faviconUrl }) => ({ libraryId: library._id, name: library.name, address, ways, role, faviconUrl })),

@@ -7,10 +7,17 @@ import {
 
 describe("clerk ui config", () => {
   it("has Clerk's screens for every language the site offers", async () => {
-    await expect(clerkLocalizationFor("en-US")).resolves.toBeUndefined();
     for (const locale of locales.filter((code) => code !== "en-US")) {
       const localization = await clerkLocalizationFor(locale);
       expect(localization?.userProfile?.start?.emailAddressesSection?.title, locale).toBeTruthy();
+    }
+  });
+
+  // In OAuth consent the slot holds the app asking for access, not this one, so it must never be filled in.
+  it("leaves OAuth consent naming the app that asks", async () => {
+    for (const locale of locales) {
+      const { oauthConsent, oauthDeviceVerification } = await clerkLocalizationFor(locale);
+      expect(JSON.stringify({ oauthConsent, oauthDeviceVerification }), locale).not.toContain("Openscholar");
     }
   });
 

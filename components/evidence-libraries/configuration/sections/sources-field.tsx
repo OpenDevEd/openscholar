@@ -311,7 +311,7 @@ export function SourcesField({
                 key={entry.key}
                 entry={entry}
                 controller={collections}
-                live={liveFor(entry.key, !entry.enabled, "OpenScholar")}
+                live={liveFor(entry.key, !entry.enabled, "Openscholar")}
                 onRemove={() => setRemoveTarget({ kind: "collection", entry })}
               />
             ))}

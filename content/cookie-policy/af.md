@@ -1,18 +1,18 @@
 # Koekies
 
-## Hoe OpenScholar.ai koekies gebruik
+## Hoe Openscholar.ai koekies gebruik
 
 Wanneer jy openscholar.ai blaai, kan klein datalêers wat koekies genoem word, op jou toestel gestoor word. Hierdie lêers help webwerwe behoorlik werk en gee webwerfeienaars insig oor hoe hul webwerwe gebruik word. Hieronder verduidelik ons watter koekies openscholar.ai gebruik en waarvoor dit dien.
 
 ## Streng noodsaaklike koekies
 
-OpenScholar.ai stel tans geen koekies in wat nodig is vir die webwerf om te funksioneer nie.
+Openscholar.ai stel tans geen koekies in wat nodig is vir die webwerf om te funksioneer nie.
 
 ## Prestasie- en ontledingskoekies (opsioneel)
 
 | **Naam** | **Doel** | **Verval** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Ons gebruik PostHog-ontledingsagteware om te leer hoe mense met ons webwerf omgaan. Dit help ons om beter verslae te skep en die gebruikerservaring te verbeter. Die koekie bevat ’n anonieme toestel-identifiseerder, jou blaaiersessiebesonderhede en jou aanvanklike landingsbladsy. Alle data word anoniem versamel: ons identifiseer jou nooit persoonlik nie. OpenScholar.ai gebruik nie derdeparty-opsporingstegnologieë nie en verkoop ook nie jou inligting aan advertensiemaatskappye nie. | 365 dae |
+| ph_phc_[token]_posthog | Ons gebruik PostHog-ontledingsagteware om te leer hoe mense met ons webwerf omgaan. Dit help ons om beter verslae te skep en die gebruikerservaring te verbeter. Die koekie bevat ’n anonieme toestel-identifiseerder, jou blaaiersessiebesonderhede en jou aanvanklike landingsbladsy. Alle data word anoniem versamel: ons identifiseer jou nooit persoonlik nie. Openscholar.ai gebruik nie derdeparty-opsporingstegnologieë nie en verkoop ook nie jou inligting aan advertensiemaatskappye nie. | 365 dae |
 
 ### Watter data is in die PostHog-koekie?
 
@@ -74,7 +74,7 @@ Daarbenewens bied alle belangrike webblaaiers instellings om koekies te beheer. 
 
 Vir ander blaaiers, gaan die ondersteuningsdokumentasie wat deur jou blaaier se ontwikkelaar verskaf word, na.
 
-### Verwydering van die OpenScholar.ai-koekie van jou toestel
+### Verwydering van die Openscholar.ai-koekie van jou toestel
 
 Jy kan ons ontledingskoekie enige tyd verwyder deur jou blaaier se instellings te gebruik:
 

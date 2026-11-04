@@ -35,7 +35,7 @@
     "credits": "Credits",
     "upgrade": "Upgrade",
     "signIn": "Sign in",
-    "signInCreditsDescription": "Sign in to use credits for AI directly from OpenScholar",
+    "signInCreditsDescription": "Sign in to use credits for AI directly from Openscholar",
     "highlightSearchTerms": "Highlight search terms",
     "signOut": "Sign out",
     "results": "Results",
@@ -302,9 +302,9 @@
     "scheduled": "Scheduled",
     "manageInBillingPortal": "Manage in billing portal",
     "downgradeTo": "Downgrade to {name}",
-    "metadataTitle": "Pricing | OpenScholar",
+    "metadataTitle": "Pricing | Openscholar",
     "metadataDescription": "Simple, transparent pricing for teams of all sizes.",
-    "everyFeature": "Every feature in OpenScholar",
+    "everyFeature": "Every feature in Openscholar",
     "papersRunning": "{running, number} papers running at once",
     "papersInRequest": "{request, number} papers in one request",
     "unlimitedCollectionsAndGuests": "Unlimited collections and guests",
@@ -317,7 +317,7 @@
     "credentials": "{provider} credentials",
     "sandbox": "Sandbox",
     "custom": "Custom credentials",
-    "sandboxTitle": "OpenScholar sandbox",
+    "sandboxTitle": "Openscholar sandbox",
     "sandboxHint": "Uses our test account. Deposits stay in the provider's test environment.",
     "title": "Publishing",
     "description": "Connect the accounts used to register DOIs and archive publications.",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "Set up AI to enhance your search",
-    "description": "OpenScholar uses AI to refine queries, screen papers, and translate results.",
+    "description": "Openscholar uses AI to refine queries, screen papers, and translate results.",
     "signInForCredits": "Sign in for free credits",
     "useOwnApiKey": "Use your own API key"
   },
@@ -1042,25 +1042,25 @@
     "searchPlural": "searches"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar | Academic paper search",
+    "defaultTitle": "Openscholar | Academic paper search",
     "defaultDescription": "Search millions of academic papers and research articles",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "en_US",
-    "historyTitle": "Search history | OpenScholar",
+    "historyTitle": "Search history | Openscholar",
     "historyDescription": "View and manage your past search queries.",
-    "bookmarksTitle": "Bookmarks | OpenScholar",
+    "bookmarksTitle": "Bookmarks | Openscholar",
     "bookmarksDescription": "Manage your bookmarks for faster, more efficient searches.",
-    "privacyTitle": "Privacy policy | OpenScholar",
-    "privacyDescription": "OpenScholar.ai customer privacy notice. Learn how Open Development & Education collects, uses, and protects your personal information.",
-    "cookiePolicyTitle": "Cookie policy | OpenScholar",
-    "cookiePolicyDescription": "Learn how OpenScholar.ai uses cookies for analytics and how to manage your cookie preferences.",
-    "libraryTitle": "Library - OpenScholar",
+    "privacyTitle": "Privacy policy | Openscholar",
+    "privacyDescription": "Openscholar.ai customer privacy notice. Learn how Open Development & Education collects, uses, and protects your personal information.",
+    "cookiePolicyTitle": "Cookie policy | Openscholar",
+    "cookiePolicyDescription": "Learn how Openscholar.ai uses cookies for analytics and how to manage your cookie preferences.",
+    "libraryTitle": "Library - Openscholar",
     "libraryDescription": "Browse and manage your saved academic papers",
-    "creditsTitle": "Credits | OpenScholar",
-    "creditsDescription": "The projects, data and licences OpenScholar builds on.",
-    "sharedTitle": "Shared with me | OpenScholar"
+    "creditsTitle": "Credits | Openscholar",
+    "creditsDescription": "The projects, data and licences Openscholar builds on.",
+    "sharedTitle": "Shared with me | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "Bookmark \"{name}\" already exists",
@@ -1072,7 +1072,7 @@
   },
   "accessibility": {
     "closeDialog": "Close",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "Page number",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
@@ -1390,19 +1390,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "We value your privacy",
-    "bannerDescription": "We use analytics cookies to understand how you use OpenScholar and improve the product. Choose your preference below.",
-    "dialogDescription": "We use analytics cookies to understand how you use OpenScholar and improve the product. You can accept all cookies, reject non-essential ones, or change your preference anytime.",
+    "bannerDescription": "We use analytics cookies to understand how you use Openscholar and improve the product. Choose your preference below.",
+    "dialogDescription": "We use analytics cookies to understand how you use Openscholar and improve the product. You can accept all cookies, reject non-essential ones, or change your preference anytime.",
     "acceptAll": "Accept all",
     "rejectNonEssential": "Reject non-essential",
     "preferencesTitle": "Cookie preferences",
-    "preferencesDescription": "Manage how OpenScholar uses cookies for analytics."
+    "preferencesDescription": "Manage how Openscholar uses cookies for analytics."
   },
   "legal": {
     "learnMorePrefix": "Learn more in our",
     "and": "and",
     "privacyPolicy": "Privacy policy",
     "cookiePolicy": "Cookie policy",
-    "backToSite": "← Back to OpenScholar"
+    "backToSite": "← Back to Openscholar"
   },
   "upgradeDialog": {
     "title": "Upgrade to {plan}",
@@ -1684,7 +1684,7 @@
     "hideAnswers": "Hide the answers for {title}",
     "yesOrNo": "Yes or no",
     "lost": "This screening was deleted or is no longer shared with you",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "Name of the new collection in {library}",
     "savedToLibrary": "<n>{count, number}</n> added to {name} in {library}",
     "notInLibrary": "<n>{count, number}</n> not in {library}",
@@ -1937,11 +1937,11 @@
       "sampleBody": "This is how a paragraph of body text will look on the public site.",
       "logosHeading": "Logo and browser icon",
       "logoLightLabel": "Light-mode logo",
-      "logoLightHint": "Uses the OpenScholar logo until you upload one.",
+      "logoLightHint": "Uses the Openscholar logo until you upload one.",
       "logoDarkLabel": "Dark-mode logo",
       "logoDarkHint": "Uses the light-mode logo until you upload one.",
       "faviconLabel": "Light-mode browser icon",
-      "faviconHint": "Uses the OpenScholar icon until you upload one.",
+      "faviconHint": "Uses the Openscholar icon until you upload one.",
       "faviconDarkLabel": "Dark-mode browser icon",
       "faviconDarkHint": "Uses the light-mode icon until you upload one.",
       "coloursHeading": "Colours",
@@ -1960,7 +1960,7 @@
         "cardLight": "Card (light mode)"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "Sunrise",
         "forest": "Forest",
         "ocean": "Ocean",
@@ -2098,8 +2098,8 @@
       "disclaimerHint": "Shown in small print at the bottom of every page.",
       "attribution": "Attribution",
       "attributionHint": "One line, for example who runs the community.",
-      "poweredBy": "Powered by OpenScholar",
-      "poweredByHint": "A small line that links back to OpenScholar.",
+      "poweredBy": "Powered by Openscholar",
+      "poweredByHint": "A small line that links back to Openscholar.",
       "poweredByLocked": "Available on paid plans."
     },
     "contact": {
@@ -2246,7 +2246,7 @@
       "connectAccountFailed": "Could not start the Zotero sign-in. Try again.",
       "disconnect": "Disconnect",
       "disconnectTitle": "Disconnect Zotero?",
-      "disconnectBody": "Your Zotero account is disconnected from OpenScholar. Groups already connected keep importing with the key they were given; new groups need you to sign in again.",
+      "disconnectBody": "Your Zotero account is disconnected from Openscholar. Groups already connected keep importing with the key they were given; new groups need you to sign in again.",
       "disconnectFailed": "Could not disconnect. Try again.",
       "pasteLink": "Or paste a group link",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2270,7 +2270,7 @@
       "resume": "Resume",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action} source",
-      "noSources": "No sources yet. Add a Zotero group, an OpenAlex search or an OpenScholar collection.",
+      "noSources": "No sources yet. Add a Zotero group, an OpenAlex search or an Openscholar collection.",
       "listLabel": "Connected sources",
       "connections": "Connections",
       "connectionsTitle": "Source connections",
@@ -2288,7 +2288,7 @@
       "openAlex": {
         "access": "OpenAlex access",
         "ownKey": "Own API key",
-        "platformHint": "Included with OpenScholar. Updates fetch only changed records.",
+        "platformHint": "Included with Openscholar. Updates fetch only changed records.",
         "keyLabel": "OpenAlex API key",
         "keyHint": "Use your own OpenAlex API key for this community.",
         "savedKey": "Saved key {hint}",
@@ -2296,7 +2296,7 @@
         "saveKey": "Save API key",
         "removeKey": "Remove saved key",
         "removeKeyTitle": "Remove the saved OpenAlex key?",
-        "removeKeyBody": "Searches will use OpenScholar access instead.",
+        "removeKeyBody": "Searches will use Openscholar access instead.",
         "removeKeyConfirm": "Remove key",
         "addTitle": "Add a search",
         "changeTitle": "Change this search",
@@ -2366,7 +2366,7 @@
         "loading": "Loading your groups…",
         "failed": "Could not load your groups."
       },
-      "openScholarCollection": "OpenScholar collection",
+      "openScholarCollection": "Openscholar collection",
       "openScholarCollectionHint": "Follow one of your collections",
       "pdfs": "PDFs",
       "pdfPublishing": {
@@ -2379,12 +2379,12 @@
         "taggedHint": "A PDF, note or link with any of these tags in Zotero is published.",
         "everyHint": "PDFs don't need one. Notes and links still need one of these tags."
       },
-      "collectionDeleted": "This collection was deleted in OpenScholar.",
+      "collectionDeleted": "This collection was deleted in Openscholar.",
       "removeCollectionTitle": "Remove this collection?",
       "collectionConnectFailed": "Could not add this collection.",
       "collectionPicker": {
         "title": "Add collections",
-        "description": "Your OpenScholar collections. The community follows the ones you tick and updates when they change.",
+        "description": "Your Openscholar collections. The community follows the ones you tick and updates when they change.",
         "search": "Search collections…",
         "colCollection": "Collection",
         "noCollections": "You have no collections yet.",
@@ -2595,7 +2595,7 @@
         "yearsDropdown": "Show a year picker in the search bar.",
         "downloads": "Offer citation downloads for publications and the whole community.",
         "atomFeed": "Show a link to the Atom feed.",
-        "readerAccounts": "Let readers sign in with OpenScholar to bookmark records and keep collections."
+        "readerAccounts": "Let readers sign in with Openscholar to bookmark records and keep collections."
       },
       "needs": "Turn on {feature} first.",
       "needsSearch": {
@@ -3114,7 +3114,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, one {# model} other {# models}}",
     "cloudOnly": "Cloud only",
-    "openScholarCloud": "OpenScholar cloud",
+    "openScholarCloud": "Openscholar cloud",
     "browserLabel": {
       "credits": "In the cloud",
       "smart": "Cloud, then your browser",
@@ -3203,7 +3203,7 @@
       "failed": "Reply failed",
       "stopped": "Reply stopped"
     },
-    "label": "OpenScholar assistant",
+    "label": "Openscholar assistant",
     "open": "Open the assistant",
     "fold": "Fold the assistant away",
     "foldHint": "Fold away",
@@ -4788,7 +4788,7 @@
     "outdated": "{library} needs an update to be used here.",
     "error": {
       "notAddress": "That isn't an address.",
-      "notHosted": "OpenScholar doesn't run that community.",
+      "notHosted": "Openscholar doesn't run that community.",
       "private": "That collection is private. Its owner can share it with you.",
       "notFound": "There's nothing at that address.",
       "empty": "That search or collection holds no records.",
@@ -4820,7 +4820,7 @@
     "goneHint": "This link from a community has expired. Open it again from the community.",
     "problem": {
       "notAddress": "There's nothing here to open. Open it again from the community.",
-      "notHosted": "That community isn't running on OpenScholar any more.",
+      "notHosted": "That community isn't running on Openscholar any more.",
       "private": "That collection is private. Its owner can share it with you.",
       "notFound": "The community no longer has what it sent.",
       "empty": "What the community sent holds no records now.",
@@ -5415,11 +5415,11 @@
     "creatingKey": "Creating key...",
     "redirecting": "Redirecting...",
     "approve": "Approve",
-    "wantsToConnect": "<strong>{appName}</strong> wants to connect to your OpenScholar wallet.",
+    "wantsToConnect": "<strong>{appName}</strong> wants to connect to your Openscholar wallet.",
     "copyKey": "Copy this API key and paste it into <strong>{appName}</strong>. It will only be shown once.",
-    "originUnregisteredBody": "The application at <code>{origin}</code> is not registered to connect to OpenScholar.",
-    "originHelp": "Only pre-approved origins can create wallet connections. If you are the developer of <strong>{appName}</strong>, contact the OpenScholar team to register your origin.",
-    "wantsToUseCredits": "<strong>{appName}</strong> wants to use AI generation through your OpenScholar credits.",
+    "originUnregisteredBody": "The application at <code>{origin}</code> is not registered to connect to Openscholar.",
+    "originHelp": "Only pre-approved origins can create wallet connections. If you are the developer of <strong>{appName}</strong>, contact the Openscholar team to register your origin.",
+    "wantsToUseCredits": "<strong>{appName}</strong> wants to use AI generation through your Openscholar credits.",
     "unknownApp": "Unknown app",
     "thisApplicationSOriginIsNot": "This application’s origin is not registered",
     "failedToCreateConnection": "Failed to create connection"
@@ -5436,7 +5436,7 @@
     "strip": "Public alpha for testing.",
     "stripDetail": "Things may change or break.",
     "contactUs": "Contact us",
-    "plansNotice": "OpenScholar is free during the public alpha, with every feature included. Plans will change after it.",
+    "plansNotice": "Openscholar is free during the public alpha, with every feature included. Plans will change after it.",
     "emailAddress": "Email {email}"
   }
 }

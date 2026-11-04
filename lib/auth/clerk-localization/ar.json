@@ -209,23 +209,23 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "رمز التحقق",
    "resendButton": "لم تستلم الرمز؟ إعادة الإرسال",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "تحقق من {{provider}}"
   },
   "backupCodeMfa": {
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "أدخل الرمز الأحتياطي"
   },
   "emailCode": {
    "formTitle": "رمز التحقق",
    "resendButton": "لم يصلك اي رمز؟ حاول مرة أخرى.",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "التحقق من البريد الإلكتروني"
   },
   "emailCodeMfa": {
    "formTitle": "التحقق من البريد الإلكتروني",
    "resendButton": "لم يصلك اي رمز؟ حاول مرة أخرى.",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "التحقق من البريد الإلكتروني"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "تسجيل الدخول..."
    },
    "resendButton": "لم يصلك الرابط؟ حاول مرة أخرى",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "التحقق من البريد الإلكتروني",
    "unusedTab": {
     "title": "يمكنك أغلاق هذه النافذة"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "استخدم رابط التحقق المرسل إلى بريدك الإلكتروني",
    "resendButton": "لم تستلم الرابط؟ إعادة الإرسال",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "تحقق من بريدك الإلكتروني"
   },
   "enterpriseConnections": {
@@ -305,7 +305,7 @@
   },
   "password": {
    "actionLink": "أستعمل طريقة أخرى",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "ادخل كلمة المرور"
   },
   "passwordCompromised": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "رمز التحقق",
    "resendButton": "لم يصلك الرمز؟ حاول مرة أخرى",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "تحقق من هاتفك"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "لا يمكنك استخدام SSO؟",
    "code": {
     "resendButton": "لم تستلم الرمز؟ إعادة الإرسال",
-    "subtitle": "للمتابعة إلى {{applicationName}}",
+    "subtitle": "للمتابعة إلى Openscholar",
     "title": "تحقق من بريدك الإلكتروني"
    },
    "notice": "مؤسستك تشترط تسجيل الدخول الموحد. ستُسجَّل المتابعة بدونه."
@@ -367,11 +367,11 @@
     "actionLink": "استخدام طريقة أخرى",
     "label": "رقم هاتف {{provider}}",
     "subtitle": "أدخل رقم هاتفك لتلقي رمز التحقق عبر {{provider}}.",
-    "title": "سجّل الدخول إلى {{applicationName}} عبر {{provider}}"
+    "title": "سجّل الدخول إلى Openscholar عبر {{provider}}"
    },
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "تسجيل الدخول",
-   "titleCombined": "المتابعة إلى {{applicationName}}"
+   "titleCombined": "المتابعة إلى Openscholar"
   },
   "totpMfa": {
    "formTitle": "رمز التحقق",
@@ -393,14 +393,14 @@
   "continue": {
    "actionLink": "تسجيل الدخول",
    "actionText": "ليس لديك حساب؟",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "املأ الحقول المفقودة"
   },
   "emailCode": {
    "formSubtitle": "أدخل رمز التحقق المرسل إلى بريدك الإلكتروني",
    "formTitle": "رمز التحقق",
    "resendButton": "لم يصلك الرمز؟ حاول مرة أخرى",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "تحقق من بريدك الإلكتروني"
   },
   "emailLink": {
@@ -414,7 +414,7 @@
     "title": "إنشاء حساب..."
    },
    "resendButton": "لم يصلك الرابط؟ حاول مرة أخرى",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "التحقق من البريد الإلكتروني",
    "verified": {
     "title": "تم تسجيل الحساب بنجاح"
@@ -444,7 +444,7 @@
    "formSubtitle": "أدخل رمز التحقق المرسل إلى هاتفك",
    "formTitle": "رمز التحقق",
    "resendButton": "لم يصلك الرمز؟ حاول مرة أخرى",
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "title": "تحقق من هاتفك"
   },
   "protectCheck": {
@@ -471,9 +471,9 @@
     "actionLink": "استخدام طريقة أخرى",
     "label": "رقم هاتف {{provider}}",
     "subtitle": "أدخل رقم هاتفك لتلقي رمز التحقق عبر {{provider}}.",
-    "title": "أنشئ حساباً في {{applicationName}} عبر {{provider}}"
+    "title": "أنشئ حساباً في Openscholar عبر {{provider}}"
    },
-   "subtitle": "للمتابعة إلى {{applicationName}}",
+   "subtitle": "للمتابعة إلى Openscholar",
    "subtitleCombined": "مرحباً بك! يُرجى ملء البيانات للبدء.",
    "title": "أنشاء حساب جديد",
    "titleCombined": "أنشاء حساب جديد"

@@ -163,7 +163,7 @@ export const run = internalAction({
   },
 });
 
-const SYSTEM = (year: number, language: string) => `You write the short AI overview shown above a list of research papers in OpenScholar. It reads the whole search the person ran in OpenAlex, through the lens they picked, and answers what the lens asks.
+const SYSTEM = (year: number, language: string) => `You write the short AI overview shown above a list of research papers in Openscholar. It reads the whole search the person ran in OpenAlex, through the lens they picked, and answers what the lens asks.
 
 Get every number from the tools: count for how papers divide (by year, country, type and more), papers for the papers themselves. Never state a number a tool didn't give you. Make one to four tool calls, then write.
 

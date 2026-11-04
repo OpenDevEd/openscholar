@@ -1,6 +1,6 @@
 # **Política de privacidad**
 
-**Aviso de privacidad de los clientes de OpenScholar.ai**
+**Aviso de privacidad de los clientes de Openscholar.ai**
 
 Open Development & Education es la responsable del tratamiento de los datos personales descritos en este aviso.
 

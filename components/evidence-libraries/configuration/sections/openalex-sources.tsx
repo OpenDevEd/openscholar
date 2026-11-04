@@ -281,7 +281,7 @@ export function OpenAlexAccessSettings({
       <TabsList aria-label={t("openAlex.access")}>
         <TabsTrigger value="openscholar">
           <Building2 />
-          OpenScholar
+          Openscholar
         </TabsTrigger>
         <TabsTrigger value="custom">
           <KeyRound />

@@ -209,23 +209,23 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "Código de verificación",
    "resendButton": "¿No recibió un código? Reenviar",
-   "subtitle": "para continuar en {{applicationName}}",
+   "subtitle": "para continuar en Openscholar",
    "title": "Revise su {{provider}}"
   },
   "backupCodeMfa": {
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Introduce un código de seguridad"
   },
   "emailCode": {
    "formTitle": "Código de verificación",
    "resendButton": "Reenviar código",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Revise su correo electrónico"
   },
   "emailCodeMfa": {
    "formTitle": "Revise su correo electrónico",
    "resendButton": "¿No recibió un código? Reenviar",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Revise su correo electrónico"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "Iniciando sesión..."
    },
    "resendButton": "Reenviar enlace",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Revise su correo electrónico",
    "unusedTab": {
     "title": "Puede cerrar esta pestaña"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "Utiliza el enlace de verificación enviado a tu correo electrónico",
    "resendButton": "¿No recibiste el enlace? Reenviar",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Revisa tu correo electrónico"
   },
   "enterpriseConnections": {
@@ -305,7 +305,7 @@
   },
   "password": {
    "actionLink": "Usa otro método",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Introduzca su contraseña"
   },
   "passwordCompromised": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "Código de verificación",
    "resendButton": "Reenviar código",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Revisa tu teléfono"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "¿No puede usar SSO?",
    "code": {
     "resendButton": "¿No recibió un código? Reenviar",
-    "subtitle": "para continuar en {{applicationName}}",
+    "subtitle": "para continuar en Openscholar",
     "title": "Revise su correo electrónico"
    },
    "notice": "Su organización requiere inicio de sesión único. Si continúa sin él, quedará registrado."
@@ -367,11 +367,11 @@
     "actionLink": "Usar otro método",
     "label": "Número de teléfono de {{provider}}",
     "subtitle": "Escriba su número de teléfono para recibir un código de verificación en {{provider}}.",
-    "title": "Inicie sesión en {{applicationName}} con {{provider}}"
+    "title": "Inicie sesión en Openscholar con {{provider}}"
    },
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Entrar",
-   "titleCombined": "Continuar en {{applicationName}}"
+   "titleCombined": "Continuar en Openscholar"
   },
   "totpMfa": {
    "formTitle": "Código de verificación",
@@ -393,14 +393,14 @@
   "continue": {
    "actionLink": "Entrar",
    "actionText": "¿Tiene una cuenta?",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Rellene los campos que faltan"
   },
   "emailCode": {
    "formSubtitle": "Introduzca el código de verificación enviado a su correo electrónico",
    "formTitle": "Código de verificación",
    "resendButton": "Re-enviar código",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Verifique su correo electrónico"
   },
   "emailLink": {
@@ -414,7 +414,7 @@
     "title": "Registrando..."
    },
    "resendButton": "Reenviar enlace",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Verifica tu correo electrónico",
    "verified": {
     "title": "Registrado con éxito"
@@ -444,7 +444,7 @@
    "formSubtitle": "Introduzca el código de verificación enviado a su número de teléfono",
    "formTitle": "Código de verificación",
    "resendButton": "Re-enviar código",
-   "subtitle": "para continuar a {{applicationName}}",
+   "subtitle": "para continuar a Openscholar",
    "title": "Verifique su teléfono"
   },
   "protectCheck": {
@@ -471,10 +471,10 @@
     "actionLink": "Usar otro método",
     "label": "Número de teléfono de {{provider}}",
     "subtitle": "Escriba su número de teléfono para recibir un código de verificación en {{provider}}.",
-    "title": "Regístrese en {{applicationName}} con {{provider}}"
+    "title": "Regístrese en Openscholar con {{provider}}"
    },
-   "subtitle": "para continuar en {{applicationName}}",
-   "subtitleCombined": "para continuar en {{applicationName}}",
+   "subtitle": "para continuar en Openscholar",
+   "subtitleCombined": "para continuar en Openscholar",
    "title": "Crea tu cuenta",
    "titleCombined": "Crea tu cuenta"
   },

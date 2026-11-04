@@ -1,6 +1,6 @@
 # **Inqubomgomo yobumfihlo**
 
-**Isaziso sobumfihlo sekhasimende le-OpenScholar.ai**
+**Isaziso sobumfihlo sekhasimende le-Openscholar.ai**
 
 I-Open Development & Education ingumlawuli wedatha yalolu lwazi lomuntu siqu olufotshazwe kulesi saziso.
 

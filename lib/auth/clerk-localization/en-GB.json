@@ -176,13 +176,13 @@
   "emailCode": {
    "formTitle": "Verification code",
    "resendButton": "Didn't receive a code? Resend",
-   "subtitle": "to continue to {{applicationName}}",
+   "subtitle": "to continue to Openscholar",
    "title": "Check your email"
   },
   "emailCodeMfa": {
    "formTitle": "Check your email",
    "resendButton": "Didn't receive a code? Resend",
-   "subtitle": "to continue to {{applicationName}}",
+   "subtitle": "to continue to Openscholar",
    "title": "Check your email"
   },
   "emailLink": {
@@ -205,7 +205,7 @@
     "title": "Signing in..."
    },
    "resendButton": "Didn't receive a link? Resend",
-   "subtitle": "to continue to {{applicationName}}",
+   "subtitle": "to continue to Openscholar",
    "title": "Check your email",
    "unusedTab": {
     "title": "You may close this tab"
@@ -223,7 +223,7 @@
   "emailLinkMfa": {
    "formSubtitle": "Use the verification link sent to your email",
    "resendButton": "Didn't receive a link? Resend",
-   "subtitle": "to continue to {{applicationName}}",
+   "subtitle": "to continue to Openscholar",
    "title": "Check your email"
   },
   "forgotPassword": {
@@ -260,7 +260,7 @@
   "phoneCode": {
    "formTitle": "Verification code",
    "resendButton": "Didn't receive a code? Resend",
-   "subtitle": "to continue to {{applicationName}}",
+   "subtitle": "to continue to Openscholar",
    "title": "Check your phone"
   },
   "phoneCodeMfa": {
@@ -289,7 +289,7 @@
    "actionText": "Don’t have an account?",
    "actionText__join_waitlist": "Want early access?",
    "subtitle": "Welcome back! Please sign in to continue",
-   "title": "Sign in to {{applicationName}}"
+   "title": "Sign in to Openscholar"
   },
   "totpMfa": {
    "formTitle": "Verification code",
@@ -327,7 +327,7 @@
     "title": "Signing up..."
    },
    "resendButton": "Didn't receive a link? Resend",
-   "subtitle": "to continue to {{applicationName}}",
+   "subtitle": "to continue to Openscholar",
    "title": "Verify your email",
    "verified": {
     "title": "Successfully signed up"

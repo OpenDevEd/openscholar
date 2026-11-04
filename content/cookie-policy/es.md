@@ -1,18 +1,18 @@
 # Cookies
 
-## Cómo usa OpenScholar.ai las cookies
+## Cómo usa Openscholar.ai las cookies
 
 Cuando navega por openscholar.ai, es posible que se guarden en su dispositivo pequeños archivos de datos llamados cookies. Estos archivos ayudan a que los sitios web funcionen correctamente y dan a sus propietarios información sobre cómo se usan. A continuación explicamos qué cookies usa openscholar.ai y para qué sirven.
 
 ## Cookies estrictamente necesarias
 
-OpenScholar.ai no establece actualmente ninguna cookie necesaria para que el sitio web funcione.
+Openscholar.ai no establece actualmente ninguna cookie necesaria para que el sitio web funcione.
 
 ## Cookies de rendimiento y analítica (opcionales)
 
 | **Nombre** | **Finalidad** | **Caduca** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Usamos el software de analítica PostHog para saber cómo interactúan las personas con nuestro sitio web. Esto nos ayuda a crear mejores informes y a mejorar la experiencia de usuario. La cookie contiene un identificador anónimo del dispositivo, los detalles de su sesión de navegación y su página de entrada inicial. Todos los datos se recopilan de forma anónima: nunca le identificamos personalmente. OpenScholar.ai no utiliza tecnologías de seguimiento de terceros ni vende su información a empresas de publicidad. | 365 días |
+| ph_phc_[token]_posthog | Usamos el software de analítica PostHog para saber cómo interactúan las personas con nuestro sitio web. Esto nos ayuda a crear mejores informes y a mejorar la experiencia de usuario. La cookie contiene un identificador anónimo del dispositivo, los detalles de su sesión de navegación y su página de entrada inicial. Todos los datos se recopilan de forma anónima: nunca le identificamos personalmente. Openscholar.ai no utiliza tecnologías de seguimiento de terceros ni vende su información a empresas de publicidad. | 365 días |
 
 ### ¿Qué datos contiene la cookie de PostHog?
 
@@ -74,7 +74,7 @@ Además, todos los navegadores web principales ofrecen ajustes para controlar la
 
 Para otros navegadores, consulte la documentación de ayuda que facilita su desarrollador.
 
-### Cómo eliminar la cookie de OpenScholar.ai de su dispositivo
+### Cómo eliminar la cookie de Openscholar.ai de su dispositivo
 
 Puede eliminar nuestra cookie de analítica cuando quiera desde los ajustes de su navegador:
 

@@ -209,23 +209,23 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "Bestätigungscode",
    "resendButton": "Bestätigungscode nicht erhalten? Erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Überprüfen Sie {{provider}}"
   },
   "backupCodeMfa": {
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Geben Sie einen Wiederherstellungscode ein"
   },
   "emailCode": {
    "formTitle": "Bestätigungscode",
    "resendButton": "Code erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Überprüfen Sie Ihren Posteingang"
   },
   "emailCodeMfa": {
    "formTitle": "Überprüfen Sie Ihren Posteingang",
    "resendButton": "Bestätigungscode nicht erhalten? Erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Überprüfen Sie Ihren Posteingang"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "Einloggen..."
    },
    "resendButton": "Link erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Überprüfen Sie Ihren Posteingang",
    "unusedTab": {
     "title": "Sie können diesen Tab schließen"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "Verwenden Sie den an Ihre E-Mail gesendeten Bestätigungslink",
    "resendButton": "Keinen Link erhalten? Erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Überprüfen Sie Ihren Posteingang"
   },
   "enterpriseConnections": {
@@ -305,7 +305,7 @@
   },
   "password": {
    "actionLink": "Verwenden Sie eine andere Methode",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Geben Sie Ihr Passwort ein"
   },
   "passwordCompromised": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "Bestätigungscode",
    "resendButton": "Code erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Schauen Sie auf Ihr Telefon"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "SSO nicht möglich?",
    "code": {
     "resendButton": "Keinen Code erhalten? Erneut senden",
-    "subtitle": "um zu {{applicationName}} fortzufahren",
+    "subtitle": "um zu Openscholar fortzufahren",
     "title": "Prüfen Sie Ihre E-Mails"
    },
    "notice": "Ihre Organisation verlangt Single Sign-on. Wenn Sie ohne SSO fortfahren, wird das protokolliert."
@@ -367,11 +367,11 @@
     "actionLink": "Andere Methode verwenden",
     "label": "{{provider}} Telefonnummer",
     "subtitle": "Geben Sie Ihre Telefonnummer ein, um einen Bestätigungscode per {{provider}} zu erhalten.",
-    "title": "In {{applicationName}} mit {{provider}} einloggen"
+    "title": "In Openscholar mit {{provider}} einloggen"
    },
-   "subtitle": "weiter zu {{applicationName}}",
-   "title": "In {{applicationName}} einloggen",
-   "titleCombined": "Weiter zu {{applicationName}}"
+   "subtitle": "weiter zu Openscholar",
+   "title": "In Openscholar einloggen",
+   "titleCombined": "Weiter zu Openscholar"
   },
   "totpMfa": {
    "formTitle": "Bestätigungscode",
@@ -393,14 +393,14 @@
   "continue": {
    "actionLink": "Einloggen",
    "actionText": "Haben Sie ein Konto?",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Füllen Sie fehlende Felder aus"
   },
   "emailCode": {
    "formSubtitle": "Geben Sie den Bestätigungscode ein, der an Ihre E-Mail-Adresse gesendet wurde",
    "formTitle": "Bestätigungscode",
    "resendButton": "Code erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Bestätigen Sie Ihre E-Mail"
   },
   "emailLink": {
@@ -414,7 +414,7 @@
     "title": "Anmeldung..."
    },
    "resendButton": "Link erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Bestätigen Sie Ihre E-Mail",
    "verified": {
     "title": "Erfolgreich angemeldet"
@@ -444,7 +444,7 @@
    "formSubtitle": "Geben Sie den Bestätigungscode ein, der an Ihre Telefonnummer gesendet wurde",
    "formTitle": "Bestätigungscode",
    "resendButton": "Code erneut senden",
-   "subtitle": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
    "title": "Verifizieren Sie Ihre Telefonnummer"
   },
   "protectCheck": {
@@ -471,10 +471,10 @@
     "actionLink": "Andere Methode verwenden",
     "label": "{{provider}} Telefonnummer",
     "subtitle": "Geben Sie Ihre Telefonnummer ein, um einen Bestätigungscode per {{provider}} zu erhalten.",
-    "title": "In {{applicationName}} mit {{provider}} anmelden"
+    "title": "In Openscholar mit {{provider}} anmelden"
    },
-   "subtitle": "weiter zu {{applicationName}}",
-   "subtitleCombined": "weiter zu {{applicationName}}",
+   "subtitle": "weiter zu Openscholar",
+   "subtitleCombined": "weiter zu Openscholar",
    "title": "Erstellen Sie Ihr Konto",
    "titleCombined": "Erstellen Sie Ihr Konto"
   },

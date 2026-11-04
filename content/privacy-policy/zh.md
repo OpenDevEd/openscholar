@@ -1,6 +1,6 @@
 # **隐私政策**
 
-**OpenScholar.ai 客户隐私声明**
+**Openscholar.ai 客户隐私声明**
 
 Open Development & Education 是本声明中所述个人信息的 数据控制者。
 

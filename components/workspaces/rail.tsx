@@ -225,7 +225,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           transition={CARD_SPRING}
           style={{ backgroundColor: tint ? `color-mix(in oklab, ${tint} 7%, var(--sidebar))` : undefined, transformOrigin: "50% 50%" }}
         >
-          <Link href="/" onClick={onClose} aria-label="OpenScholar" className="mb-2 flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
+          <Link href="/" onClick={onClose} aria-label="Openscholar" className="mb-2 flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
             <LogoMark className="size-7" />
           </Link>
           {/* The workspace button's place. */}

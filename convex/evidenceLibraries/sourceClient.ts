@@ -47,13 +47,13 @@ async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: str
   const answer: unknown = await response.json().catch(() => null);
   if (response.ok) {
     const parsed = schema.safeParse(answer);
-    if (!parsed.success) throw new LibrarySourceError("invalid", "The community answered in a shape OpenScholar doesn't read.", response.status);
+    if (!parsed.success) throw new LibrarySourceError("invalid", "The community answered in a shape Openscholar doesn't read.", response.status);
     return parsed.data;
   }
   const refusal = refusalSchema.safeParse(answer);
   // A runtime from before these calls has no such path: it answers its own page, not a refusal.
   if (response.status === 404 && !refusal.success) throw new LibrarySourceError("outdated", "This community needs an update to be used here.", 404);
-  if (response.status === 401) throw new LibrarySourceError("refused", "The community refused OpenScholar's credential.", 401);
+  if (response.status === 401) throw new LibrarySourceError("refused", "The community refused Openscholar's credential.", 401);
   const code = refusal.success ? refusal.data.error : "";
   const message = refusal.success ? (refusal.data.message ?? code) : `The community answered ${response.status}.`;
   if (code === "private" || code === "reader_accounts_off") throw new LibrarySourceError("private", message, response.status);

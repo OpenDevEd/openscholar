@@ -522,7 +522,7 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         expect.objectContaining({
           pointer: "/ai/providers/0/models",
           message:
-            "OpenRouter models have not synced to OpenScholar yet. Try again shortly.",
+            "OpenRouter models have not synced to Openscholar yet. Try again shortly.",
         }),
       );
     }

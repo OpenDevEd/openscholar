@@ -232,7 +232,7 @@ export const runDevelopmentTeardown = internalAction({
           : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
             ? {
                 code: "OAUTH_CLIENT_DELETE_FAILED",
-                message: "The community's OpenScholar sign-in could not be removed",
+                message: "The community's Openscholar sign-in could not be removed",
               }
           : {
               code: "DEVELOPMENT_TEARDOWN_FAILED",

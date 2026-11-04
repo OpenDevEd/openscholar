@@ -98,7 +98,7 @@ export const autumnWebhook = httpAction(async (ctx, request) => {
   }
   const workspaceId = await ctx.runQuery(internal.billing.autumnWebhook.workspaceForCustomer, { customerId });
   if (!workspaceId) {
-    console.warn(`[autumn webhook] no OpenScholar workspace for Autumn customer ${customerId}`);
+    console.warn(`[autumn webhook] no Openscholar workspace for Autumn customer ${customerId}`);
     return new Response(null, { status: 204 });
   }
   // Refreshed before answering, so a failure here makes Svix retry.

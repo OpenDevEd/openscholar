@@ -209,7 +209,7 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "検証コード",
    "resendButton": "コードが届いていませんか？再送信",
-   "subtitle": "{{applicationName}} へ進む",
+   "subtitle": "Openscholar へ進む",
    "title": "{{provider}} を確認してください"
   },
   "backupCodeMfa": {
@@ -219,13 +219,13 @@
   "emailCode": {
    "formTitle": "検証コード",
    "resendButton": "コードを再送信",
-   "subtitle": "{{applicationName}} へ進む",
+   "subtitle": "Openscholar へ進む",
    "title": "メールを確認"
   },
   "emailCodeMfa": {
    "formTitle": "メールを確認",
    "resendButton": "コードが届いていませんか？再送信",
-   "subtitle": "{{applicationName}} へ進む",
+   "subtitle": "Openscholar へ進む",
    "title": "メールを確認"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "サインイン中..."
    },
    "resendButton": "リンクを再送信",
-   "subtitle": "{{applicationName}} へ進む",
+   "subtitle": "Openscholar へ進む",
    "title": "メールを確認",
    "unusedTab": {
     "title": "このタブを閉じてもかまいません"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "メールに送信された確認リンクを使用してください",
    "resendButton": "リンクが届いていませんか？再送信",
-   "subtitle": "{{applicationName}} へ進む",
+   "subtitle": "Openscholar へ進む",
    "title": "メールを確認してください"
   },
   "enterpriseConnections": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "検証コード",
    "resendButton": "コードを再送信",
-   "subtitle": "{{applicationName}} へ進む",
+   "subtitle": "Openscholar へ進む",
    "title": "電話を確認してください"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "SSOを使用できませんか？",
    "code": {
     "resendButton": "コードが届きませんか？再送信",
-    "subtitle": "{{applicationName}} に進むため",
+    "subtitle": "Openscholar に進むため",
     "title": "メールを確認してください"
    },
    "notice": "組織ではシングルサインオンが必須です。SSOを使わずに続行すると、その記録が残ります。"
@@ -367,11 +367,11 @@
     "actionLink": "別の方法を使用",
     "label": "{{provider}} の電話番号",
     "subtitle": "{{provider}} で検証コードを受け取るための電話番号を入力してください。",
-    "title": "{{provider}} を使って {{applicationName}} にサインイン"
+    "title": "{{provider}} を使って Openscholar にサインイン"
    },
    "subtitle": "お帰りなさい！続行するにはサインインしてください",
-   "title": "{{applicationName}} にサインイン",
-   "titleCombined": "{{applicationName}} へ進む"
+   "title": "Openscholar にサインイン",
+   "titleCombined": "Openscholar へ進む"
   },
   "totpMfa": {
    "formTitle": "検証コード",
@@ -414,7 +414,7 @@
     "title": "登録中..."
    },
    "resendButton": "リンクを再送信",
-   "subtitle": "{{applicationName}} へ進む",
+   "subtitle": "Openscholar へ進む",
    "title": "メールアドレスを確認",
    "verified": {
     "title": "登録が完了しました"
@@ -471,7 +471,7 @@
     "actionLink": "別の方法を使用",
     "label": "{{provider}} の電話番号",
     "subtitle": "{{provider}} で検証コードを受け取るための電話番号を入力してください。",
-    "title": "{{provider}} を使って {{applicationName}} にサインアップ"
+    "title": "{{provider}} を使って Openscholar にサインアップ"
    },
    "subtitle": "ようこそ！始めるには詳細を入力してください",
    "subtitleCombined": "ようこそ！始めるには詳細を入力してください",

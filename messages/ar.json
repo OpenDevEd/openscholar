@@ -35,7 +35,7 @@
     "credits": "الأرصدة",
     "upgrade": "ترقية",
     "signIn": "تسجيل الدخول",
-    "signInCreditsDescription": "سجّل الدخول لاستخدام الأرصدة في ميزات الذكاء الاصطناعي من OpenScholar مباشرةً.",
+    "signInCreditsDescription": "سجّل الدخول لاستخدام الأرصدة في ميزات الذكاء الاصطناعي من Openscholar مباشرةً.",
     "highlightSearchTerms": "تمييز مصطلحات البحث",
     "signOut": "تسجيل الخروج",
     "results": "النتائج",
@@ -302,9 +302,9 @@
     "scheduled": "مجدول",
     "manageInBillingPortal": "الإدارة في بوابة الفوترة",
     "downgradeTo": "التخفيض إلى {name}",
-    "metadataTitle": "الأسعار | OpenScholar",
+    "metadataTitle": "الأسعار | Openscholar",
     "metadataDescription": "أسعار بسيطة وشفافة للفرق بكل أحجامها.",
-    "everyFeature": "كل ميزات OpenScholar",
+    "everyFeature": "كل ميزات Openscholar",
     "papersRunning": "{running, number} ورقة قيد التشغيل في الوقت نفسه",
     "papersInRequest": "{request, number} ورقة في الطلب الواحد",
     "unlimitedCollectionsAndGuests": "مجموعات وضيوف بلا حدود",
@@ -317,7 +317,7 @@
     "credentials": "بيانات اعتماد {provider}",
     "sandbox": "بيئة الاختبار",
     "custom": "بيانات اعتماد مخصّصة",
-    "sandboxTitle": "بيئة اختبار OpenScholar",
+    "sandboxTitle": "بيئة اختبار Openscholar",
     "sandboxHint": "تستخدم حساب الاختبار الخاص بنا. تبقى الإيداعات في بيئة الاختبار لدى المزوّد.",
     "title": "النشر",
     "description": "اربط الحسابات المستخدمة لتسجيل معرّفات DOI وأرشفة المنشورات.",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "أعدّ الذكاء الاصطناعي لتحسين بحثك",
-    "description": "يستخدم OpenScholar الذكاء الاصطناعي لتحسين الاستعلامات وفرز الأوراق وترجمة النتائج.",
+    "description": "يستخدم Openscholar الذكاء الاصطناعي لتحسين الاستعلامات وفرز الأوراق وترجمة النتائج.",
     "signInForCredits": "سجّل الدخول للحصول على أرصدة مجانية",
     "useOwnApiKey": "استخدم مفتاح API الخاص بك"
   },
@@ -1043,25 +1043,25 @@
     "searchPlural": "عمليات بحث"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar | البحث في الأوراق الأكاديمية",
+    "defaultTitle": "Openscholar | البحث في الأوراق الأكاديمية",
     "defaultDescription": "ابحث في ملايين الأوراق الأكاديمية ومقالات البحث",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "ar_AR",
-    "historyTitle": "سجل البحث | OpenScholar",
+    "historyTitle": "سجل البحث | Openscholar",
     "historyDescription": "اعرض استعلامات بحثك السابقة وأدِرها.",
-    "bookmarksTitle": "الإشارات المرجعية | OpenScholar",
+    "bookmarksTitle": "الإشارات المرجعية | Openscholar",
     "bookmarksDescription": "أدِر إشاراتك المرجعية لبحث أسرع وأكثر كفاءة.",
-    "privacyTitle": "سياسة الخصوصية | OpenScholar",
-    "privacyDescription": "إشعار خصوصية عملاء OpenScholar.ai. تعرّف على كيفية جمع Open Development & Education لمعلوماتك الشخصية واستخدامها وحمايتها.",
-    "cookiePolicyTitle": "سياسة ملفات تعريف الارتباط | OpenScholar",
-    "cookiePolicyDescription": "تعرّف على كيفية استخدام OpenScholar.ai لملفات تعريف الارتباط لأغراض التحليل، وكيفية إدارة تفضيلاتك لها.",
-    "libraryTitle": "المكتبة - OpenScholar",
+    "privacyTitle": "سياسة الخصوصية | Openscholar",
+    "privacyDescription": "إشعار خصوصية عملاء Openscholar.ai. تعرّف على كيفية جمع Open Development & Education لمعلوماتك الشخصية واستخدامها وحمايتها.",
+    "cookiePolicyTitle": "سياسة ملفات تعريف الارتباط | Openscholar",
+    "cookiePolicyDescription": "تعرّف على كيفية استخدام Openscholar.ai لملفات تعريف الارتباط لأغراض التحليل، وكيفية إدارة تفضيلاتك لها.",
+    "libraryTitle": "المكتبة - Openscholar",
     "libraryDescription": "تصفّح أوراقك الأكاديمية المحفوظة وأدِرها",
-    "creditsTitle": "الأرصدة | OpenScholar",
-    "creditsDescription": "المشاريع والبيانات والتراخيص التي يعتمد عليها OpenScholar.",
-    "sharedTitle": "المشارَك معي | OpenScholar"
+    "creditsTitle": "الأرصدة | Openscholar",
+    "creditsDescription": "المشاريع والبيانات والتراخيص التي يعتمد عليها Openscholar.",
+    "sharedTitle": "المشارَك معي | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "الإشارة المرجعية \"{name}\" موجودة بالفعل",
@@ -1073,7 +1073,7 @@
   },
   "accessibility": {
     "closeDialog": "إغلاق",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "رقم الصفحة",
     "zoomIn": "تكبير",
     "zoomOut": "تصغير",
@@ -1391,19 +1391,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "نحن نقدّر خصوصيتك",
-    "bannerDescription": "نستخدم ملفات تعريف ارتباط للتحليل لفهم طريقة استخدامك لـ OpenScholar وتحسين المنتج. اختر تفضيلك أدناه.",
-    "dialogDescription": "نستخدم ملفات تعريف ارتباط للتحليل لفهم طريقة استخدامك لـ OpenScholar وتحسين المنتج. يمكنك قبول كل ملفات تعريف الارتباط، أو رفض غير الضرورية منها، أو تغيير تفضيلك في أي وقت.",
+    "bannerDescription": "نستخدم ملفات تعريف ارتباط للتحليل لفهم طريقة استخدامك لـ Openscholar وتحسين المنتج. اختر تفضيلك أدناه.",
+    "dialogDescription": "نستخدم ملفات تعريف ارتباط للتحليل لفهم طريقة استخدامك لـ Openscholar وتحسين المنتج. يمكنك قبول كل ملفات تعريف الارتباط، أو رفض غير الضرورية منها، أو تغيير تفضيلك في أي وقت.",
     "acceptAll": "قبول الكل",
     "rejectNonEssential": "رفض غير الضرورية",
     "preferencesTitle": "تفضيلات ملفات تعريف الارتباط",
-    "preferencesDescription": "أدِر طريقة استخدام OpenScholar لملفات تعريف الارتباط للتحليل."
+    "preferencesDescription": "أدِر طريقة استخدام Openscholar لملفات تعريف الارتباط للتحليل."
   },
   "legal": {
     "learnMorePrefix": "اعرف المزيد في",
     "and": "و",
     "privacyPolicy": "سياسة الخصوصية",
     "cookiePolicy": "سياسة ملفات تعريف الارتباط",
-    "backToSite": "→ العودة إلى OpenScholar"
+    "backToSite": "→ العودة إلى Openscholar"
   },
   "upgradeDialog": {
     "title": "الترقية إلى {plan}",
@@ -1685,7 +1685,7 @@
     "hideAnswers": "إخفاء الإجابات لـ {title}",
     "yesOrNo": "نعم أو لا",
     "lost": "حُذف هذا الفرز أو لم يعد مشاركًا معك",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "اسم المجموعة الجديدة في {library}",
     "savedToLibrary": "<n>{count, number}</n> أُضيفت إلى {name} في {library}",
     "notInLibrary": "<n>{count, number}</n> غير موجودة في {library}",
@@ -1938,11 +1938,11 @@
       "sampleBody": "هكذا تبدو فقرة من النص على الموقع العام.",
       "logosHeading": "الشعار وأيقونة المتصفح",
       "logoLightLabel": "شعار الوضع الفاتح",
-      "logoLightHint": "يُستخدم شعار OpenScholar حتى ترفع شعارًا.",
+      "logoLightHint": "يُستخدم شعار Openscholar حتى ترفع شعارًا.",
       "logoDarkLabel": "شعار الوضع الداكن",
       "logoDarkHint": "يُستخدم شعار الوضع الفاتح حتى ترفع شعارًا.",
       "faviconLabel": "أيقونة المتصفح للوضع الفاتح",
-      "faviconHint": "تُستخدم أيقونة OpenScholar حتى ترفع أيقونة.",
+      "faviconHint": "تُستخدم أيقونة Openscholar حتى ترفع أيقونة.",
       "faviconDarkLabel": "أيقونة المتصفح للوضع الداكن",
       "faviconDarkHint": "تُستخدم أيقونة الوضع الفاتح حتى ترفع أيقونة.",
       "coloursHeading": "الألوان",
@@ -1961,7 +1961,7 @@
         "cardLight": "البطاقة (الوضع الفاتح)"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "شروق",
         "forest": "غابة",
         "ocean": "محيط",
@@ -2099,8 +2099,8 @@
       "disclaimerHint": "يظهر بخط صغير في أسفل كل صفحة.",
       "attribution": "الإسناد",
       "attributionHint": "سطر واحد، مثل الجهة التي تدير المجتمع.",
-      "poweredBy": "بدعم من OpenScholar",
-      "poweredByHint": "سطر صغير يعود إلى OpenScholar.",
+      "poweredBy": "بدعم من Openscholar",
+      "poweredByHint": "سطر صغير يعود إلى Openscholar.",
       "poweredByLocked": "متاح في الباقات المدفوعة."
     },
     "contact": {
@@ -2247,7 +2247,7 @@
       "connectAccountFailed": "تعذّر بدء تسجيل الدخول إلى Zotero. حاول مرة أخرى.",
       "disconnect": "فصل الربط",
       "disconnectTitle": "هل تريد فصل Zotero؟",
-      "disconnectBody": "سيُفصل حساب Zotero الخاص بك عن OpenScholar. تستمر المجموعات المتصلة بالفعل في الاستيراد بالمفتاح الذي مُنح لها، أما المجموعات الجديدة فتحتاج منك إلى تسجيل الدخول مرة أخرى.",
+      "disconnectBody": "سيُفصل حساب Zotero الخاص بك عن Openscholar. تستمر المجموعات المتصلة بالفعل في الاستيراد بالمفتاح الذي مُنح لها، أما المجموعات الجديدة فتحتاج منك إلى تسجيل الدخول مرة أخرى.",
       "disconnectFailed": "تعذّر فصل الربط. حاول مرة أخرى.",
       "pasteLink": "أو الصق رابط مجموعة",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2271,7 +2271,7 @@
       "resume": "استئناف",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action} المصدر",
-      "noSources": "لا توجد مصادر بعد. أضف مجموعة Zotero، أو بحث OpenAlex، أو مجموعة OpenScholar.",
+      "noSources": "لا توجد مصادر بعد. أضف مجموعة Zotero، أو بحث OpenAlex، أو مجموعة Openscholar.",
       "listLabel": "المصادر المتصلة",
       "connections": "الاتصالات",
       "connectionsTitle": "اتصالات المصادر",
@@ -2289,7 +2289,7 @@
       "openAlex": {
         "access": "صلاحية الوصول إلى OpenAlex",
         "ownKey": "مفتاح API خاص",
-        "platformHint": "متضمّن مع OpenScholar. تجلب التحديثات السجلات المتغيرة فقط.",
+        "platformHint": "متضمّن مع Openscholar. تجلب التحديثات السجلات المتغيرة فقط.",
         "keyLabel": "مفتاح API لـ OpenAlex",
         "keyHint": "استخدم مفتاح OpenAlex API الخاص بك لهذا المجتمع.",
         "savedKey": "المفتاح المحفوظ {hint}",
@@ -2297,7 +2297,7 @@
         "saveKey": "حفظ مفتاح API",
         "removeKey": "إزالة المفتاح المحفوظ",
         "removeKeyTitle": "هل تريد إزالة مفتاح OpenAlex المحفوظ؟",
-        "removeKeyBody": "ستستخدم عمليات البحث صلاحية OpenScholar بدلًا من ذلك.",
+        "removeKeyBody": "ستستخدم عمليات البحث صلاحية Openscholar بدلًا من ذلك.",
         "removeKeyConfirm": "إزالة المفتاح",
         "addTitle": "إضافة بحث",
         "changeTitle": "تغيير هذا البحث",
@@ -2367,7 +2367,7 @@
         "loading": "جارٍ تحميل مجموعاتك…",
         "failed": "تعذّر تحميل مجموعاتك."
       },
-      "openScholarCollection": "مجموعة OpenScholar",
+      "openScholarCollection": "مجموعة Openscholar",
       "openScholarCollectionHint": "متابعة إحدى مجموعاتك",
       "pdfs": "ملفات PDF",
       "pdfPublishing": {
@@ -2380,12 +2380,12 @@
         "taggedHint": "يُنشر أي ملف PDF أو ملاحظة أو رابط يحمل أيًا من هذه الوسوم في Zotero.",
         "everyHint": "لا تحتاج ملفات PDF إلى وسم. أما الملاحظات والروابط فما زالت تحتاج إلى أحد هذه الوسوم."
       },
-      "collectionDeleted": "حُذفت هذه المجموعة في OpenScholar.",
+      "collectionDeleted": "حُذفت هذه المجموعة في Openscholar.",
       "removeCollectionTitle": "هل تريد إزالة هذه المجموعة؟",
       "collectionConnectFailed": "تعذّرت إضافة هذه المجموعة.",
       "collectionPicker": {
         "title": "إضافة مجموعات",
-        "description": "مجموعات OpenScholar الخاصة بك. يتبع المجتمع المجموعات التي تضع عليها علامة، وتتحدّث عند تغييرها.",
+        "description": "مجموعات Openscholar الخاصة بك. يتبع المجتمع المجموعات التي تضع عليها علامة، وتتحدّث عند تغييرها.",
         "search": "ابحث في المجموعات…",
         "colCollection": "المجموعة",
         "noCollections": "ليست لديك مجموعات بعد.",
@@ -2596,7 +2596,7 @@
         "yearsDropdown": "اعرض منتقي السنوات في شريط البحث.",
         "downloads": "أتح تنزيل الاستشهادات للمنشورات والمجتمع بأكمله.",
         "atomFeed": "اعرض رابطًا لقناة Atom.",
-        "readerAccounts": "اسمح للقراء بتسجيل الدخول بـ OpenScholar لحفظ السجلات وإنشاء المجموعات."
+        "readerAccounts": "اسمح للقراء بتسجيل الدخول بـ Openscholar لحفظ السجلات وإنشاء المجموعات."
       },
       "needs": "فعّل {feature} أولًا.",
       "needsSearch": {
@@ -3115,7 +3115,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, one {نموذج واحد} two {نموذجان} few {# نماذج} many {# نموذجًا} other {# نموذج}}",
     "cloudOnly": "السحابة فقط",
-    "openScholarCloud": "سحابة OpenScholar",
+    "openScholarCloud": "سحابة Openscholar",
     "browserLabel": {
       "credits": "في السحابة",
       "smart": "السحابة، ثم متصفحك",
@@ -3204,7 +3204,7 @@
       "failed": "فشل الرد",
       "stopped": "توقّف الرد"
     },
-    "label": "مساعد OpenScholar",
+    "label": "مساعد Openscholar",
     "open": "فتح المساعد",
     "fold": "طيّ المساعد",
     "foldHint": "طيّ",
@@ -4789,7 +4789,7 @@
     "outdated": "تحتاج {library} إلى تحديث لاستخدامها هنا.",
     "error": {
       "notAddress": "هذا ليس عنوانًا.",
-      "notHosted": "لا يشغّل OpenScholar هذا المجتمع.",
+      "notHosted": "لا يشغّل Openscholar هذا المجتمع.",
       "private": "هذه المجموعة خاصة. يستطيع مالكها مشاركتها معك.",
       "notFound": "لا يوجد شيء على هذا العنوان.",
       "empty": "هذا البحث أو هذه المجموعة لا تحتوي على سجلات.",
@@ -4821,7 +4821,7 @@
     "goneHint": "انتهت صلاحية هذا الرابط من المجتمع. افتحه مرة أخرى من المجتمع.",
     "problem": {
       "notAddress": "لا يوجد هنا ما يمكن فتحه. افتحه مرة أخرى من المجتمع.",
-      "notHosted": "لم يعد هذا المجتمع يعمل على OpenScholar.",
+      "notHosted": "لم يعد هذا المجتمع يعمل على Openscholar.",
       "private": "هذه المجموعة خاصة. يستطيع مالكها مشاركتها معك.",
       "notFound": "لم يعد المجتمع يملك ما أرسله.",
       "empty": "ما أرسله المجتمع لا يحتوي على سجلات الآن.",
@@ -5416,11 +5416,11 @@
     "creatingKey": "جارٍ إنشاء المفتاح...",
     "redirecting": "جارٍ إعادة التوجيه...",
     "approve": "موافقة",
-    "wantsToConnect": "يريد <strong>{appName}</strong> الاتصال بمحفظة OpenScholar الخاصة بك.",
+    "wantsToConnect": "يريد <strong>{appName}</strong> الاتصال بمحفظة Openscholar الخاصة بك.",
     "copyKey": "انسخ مفتاح API هذا والصقه في <strong>{appName}</strong>. لن يُعرض إلا مرة واحدة.",
-    "originUnregisteredBody": "التطبيق الموجود على <code>{origin}</code> غير مسجّل للاتصال بـ OpenScholar.",
-    "originHelp": "لا يمكن إنشاء اتصالات المحفظة إلا من المصادر المعتمدة مسبقًا. إذا كنت مطوّر <strong>{appName}</strong>، فتواصل مع فريق OpenScholar لتسجيل مصدرك.",
-    "wantsToUseCredits": "يريد <strong>{appName}</strong> استخدام توليد الذكاء الاصطناعي من خلال أرصدة OpenScholar الخاصة بك.",
+    "originUnregisteredBody": "التطبيق الموجود على <code>{origin}</code> غير مسجّل للاتصال بـ Openscholar.",
+    "originHelp": "لا يمكن إنشاء اتصالات المحفظة إلا من المصادر المعتمدة مسبقًا. إذا كنت مطوّر <strong>{appName}</strong>، فتواصل مع فريق Openscholar لتسجيل مصدرك.",
+    "wantsToUseCredits": "يريد <strong>{appName}</strong> استخدام توليد الذكاء الاصطناعي من خلال أرصدة Openscholar الخاصة بك.",
     "unknownApp": "تطبيق غير معروف",
     "thisApplicationSOriginIsNot": "مصدر هذا التطبيق غير مسجّل.",
     "failedToCreateConnection": "تعذّر إنشاء الاتصال"
@@ -5437,7 +5437,7 @@
     "strip": "إصدار ألفا عام للاختبار.",
     "stripDetail": "قد تتغير الأشياء أو تتعطل.",
     "contactUs": "تواصل معنا",
-    "plansNotice": "OpenScholar مجاني خلال إصدار ألفا العام، مع كل الميزات. ستتغير الخطط بعد ذلك.",
+    "plansNotice": "Openscholar مجاني خلال إصدار ألفا العام، مع كل الميزات. ستتغير الخطط بعد ذلك.",
     "emailAddress": "راسل {email}"
   }
 }

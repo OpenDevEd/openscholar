@@ -1,18 +1,18 @@
 # Ama-cookie
 
-## Indlela i-OpenScholar.ai esebenzisa ngayo ama-cookie
+## Indlela i-Openscholar.ai esebenzisa ngayo ama-cookie
 
 Uma usesha ku-openscholar.ai, amafayela amancane edatha abizwa ngokuthi ama-cookie angagcinwa kudivayisi yakho. Lawa mafayela asiza amawebhusayithi asebenze kahle futhi anikeze abanikazi bawo ulwazi lokuthi amawebhusayithi abo asetshenziswa kanjani. Ngezansi, sichaza ukuthi yimaphi ama-cookie i-openscholar.ai esebenzisa nokuthi asetshenziselwani.
 
 ## Ama-cookie adingekayo ngokuphelele
 
-I-OpenScholar.ai akukabeki noma yimaphi ama-cookie adingekayo ukuze iwebhusayithi isebenze.
+I-Openscholar.ai akukabeki noma yimaphi ama-cookie adingekayo ukuze iwebhusayithi isebenze.
 
 ## Ama-cookie okusebenza nokuhlaziya (akukhethwa)
 
 | **Igama** | **Inhloso** | **Iphela** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Sisebenzisa uhlelo lokuhlaziya i-PostHog ukuze sifunde ukuthi abantu basebenzisana kanjani newebhusayithi yethu. Lokhu kusisiza senze imibiko engcono futhi sithuthukise isipiliyoni somsebenzisi. I-cookie iqukethe isihlonzi sedivayisi esingabizwa ngegama, imininingwane yeseshini yakho yokuphequlula, nekhasi lokuqala owafika kulo. Yonke idatha iqoqwa ngokungabizwa ngegama — asikaze sikubize ngokwakho. I-OpenScholar.ai ayisebenzisi ubuchwepheshe bokulandela bomhlinzeki wangaphandle, futhi ayidayisi ulwazi lwakho kubakhangisi. | Izinsuku ezingu-365 |
+| ph_phc_[token]_posthog | Sisebenzisa uhlelo lokuhlaziya i-PostHog ukuze sifunde ukuthi abantu basebenzisana kanjani newebhusayithi yethu. Lokhu kusisiza senze imibiko engcono futhi sithuthukise isipiliyoni somsebenzisi. I-cookie iqukethe isihlonzi sedivayisi esingabizwa ngegama, imininingwane yeseshini yakho yokuphequlula, nekhasi lokuqala owafika kulo. Yonke idatha iqoqwa ngokungabizwa ngegama — asikaze sikubize ngokwakho. I-Openscholar.ai ayisebenzisi ubuchwepheshe bokulandela bomhlinzeki wangaphandle, futhi ayidayisi ulwazi lwakho kubakhangisi. | Izinsuku ezingu-365 |
 
 ### Yiluphi ulwazi oluqukethwe ku-cookie ye-PostHog?
 
@@ -74,7 +74,7 @@ Ngaphezu kwalokho, zonke izisakazi-webhu ezinkulu zinezilungiselelo zokulawula a
 
 Kwezinye izisakazi-webhu, hlola imibhalo yosekelo enikezwe umthuthukisi wesiphequluli sakho.
 
-### Ukususa i-cookie ye-OpenScholar.ai kudivayisi yakho
+### Ukususa i-cookie ye-Openscholar.ai kudivayisi yakho
 
 Ungasusa i-cookie yethu yokuhlaziya noma nini ngokusebenzisa izilungiselelo zesiphequluli sakho:
 

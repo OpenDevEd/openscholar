@@ -378,7 +378,7 @@ async function consumeSSEStream(
 // ─── Commands: Auth ────────────────────────────────────────
 
 async function cmdLogin(config: CLIConfig): Promise<void> {
-  console.log(styled("\n  OpenScholar Login", c.bold, c.magenta));
+  console.log(styled("\n  Openscholar Login", c.bold, c.magenta));
   console.log();
 
   // Check if already logged in
@@ -399,7 +399,7 @@ async function cmdLogin(config: CLIConfig): Promise<void> {
   }
 
   // Step 1: Open browser to connect page
-  const connectUrl = `${config.appUrl}/connect?mode=manual&app_name=${encodeURIComponent("OpenScholar CLI")}`;
+  const connectUrl = `${config.appUrl}/connect?mode=manual&app_name=${encodeURIComponent("Openscholar CLI")}`;
 
   console.log(styled("  Step 1: Authorize in your browser", c.bold));
   console.log();
@@ -709,7 +709,7 @@ async function cmdChat(config: CLIConfig): Promise<void> {
     ? styled("\uD83C\uDF10 ON", c.green, c.bold)
     : styled("OFF", c.red, c.dim);
 
-  console.log(styled("\n  OpenScholar Chat", c.bold, c.magenta));
+  console.log(styled("\n  Openscholar Chat", c.bold, c.magenta));
   console.log(styled(`  Model:  ${model}`, c.dim));
   console.log(`  ${styled("Web:    ", c.dim)}${webStatus}${config.webSearch ? "" : styled("  (use /web to enable)", c.dim)}`);
   if (config.reasoningEffort) {
@@ -1101,7 +1101,7 @@ function requireKey(config: CLIConfig): void {
 
 function printHelp(): void {
   console.log(`
-${styled("  OpenScholar Wallet CLI", c.bold, c.magenta)}
+${styled("  Openscholar Wallet CLI", c.bold, c.magenta)}
 ${styled("  Test the OpenAI-compatible wallet gateway\n", c.dim)}
 ${styled("  AUTH", c.bold)}
     ${styled("login", c.green)}                          Authenticate via browser & save key

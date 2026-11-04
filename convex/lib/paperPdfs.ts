@@ -125,7 +125,7 @@ async function fromOpenAlex(work: string, maxBytes: number): Promise<{ bytes: Ui
   const apiKey = process.env.OPENALEX_API_KEY;
   if (!apiKey) throw new Error("OPENALEX_API_KEY must be set to buy OpenAlex's copy of a paper.");
   // Through the guarded fetch: the file is read only up to `maxBytes`, and a redirect is checked like any address.
-  const { response, body } = await safeFetchPdf(`https://content.openalex.org/works/${work}.pdf?api_key=${encodeURIComponent(apiKey)}`, { maxBytes, timeoutMs: 120_000, headers: { "User-Agent": "OpenScholar (https://openscholar.ai)" } });
+  const { response, body } = await safeFetchPdf(`https://content.openalex.org/works/${work}.pdf?api_key=${encodeURIComponent(apiKey)}`, { maxBytes, timeoutMs: 120_000, headers: { "User-Agent": "Openscholar (https://openscholar.ai)" } });
   const bytes = response.ok ? new Uint8Array(await body.arrayBuffer()) : null;
   if (!bytes || !isPdf(bytes)) {
     console.warn("[paper pdfs] OpenAlex has no copy to download", { work, status: response.status });

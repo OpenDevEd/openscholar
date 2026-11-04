@@ -35,7 +35,7 @@
     "credits": "Krediete",
     "upgrade": "Gradeer op",
     "signIn": "Meld aan",
-    "signInCreditsDescription": "Meld aan om krediete vir KI direk vanaf OpenScholar te gebruik",
+    "signInCreditsDescription": "Meld aan om krediete vir KI direk vanaf Openscholar te gebruik",
     "highlightSearchTerms": "Merk soekterme uit",
     "signOut": "Meld af",
     "results": "Resultate",
@@ -302,9 +302,9 @@
     "scheduled": "Geskeduleer",
     "manageInBillingPortal": "Bestuur in faktureringsportaal",
     "downgradeTo": "Verlaag na {name}",
-    "metadataTitle": "Pryse | OpenScholar",
+    "metadataTitle": "Pryse | Openscholar",
     "metadataDescription": "Eenvoudige, deursigtige pryse vir spanne van alle groottes.",
-    "everyFeature": "Elke funksie in OpenScholar",
+    "everyFeature": "Elke funksie in Openscholar",
     "papersRunning": "{running, number} artikels wat gelyktydig loop",
     "papersInRequest": "{request, number} artikels in een versoek",
     "unlimitedCollectionsAndGuests": "Onbeperkte versamelings en gaste",
@@ -317,7 +317,7 @@
     "credentials": "{provider}-geloofsbriewe",
     "sandbox": "Toetsomgewing",
     "custom": "Pasgemaakte geloofsbriewe",
-    "sandboxTitle": "OpenScholar-toetsomgewing",
+    "sandboxTitle": "Openscholar-toetsomgewing",
     "sandboxHint": "Gebruik ons toetsrekening. Deponerings bly in die verskaffer se toetsomgewing.",
     "title": "Publikasie",
     "description": "Koppel die rekeninge wat gebruik word om DOI’s te registreer en publikasies te argiveer.",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "Stel KI op om jou soektog te verbeter",
-    "description": "OpenScholar gebruik KI om navrae te verfyn, artikels te sif en resultate te vertaal.",
+    "description": "Openscholar gebruik KI om navrae te verfyn, artikels te sif en resultate te vertaal.",
     "signInForCredits": "Meld aan vir gratis krediete",
     "useOwnApiKey": "Gebruik jou eie API-sleutel"
   },
@@ -1043,25 +1043,25 @@
     "searchPlural": "soektogte"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar | Soek akademiese artikels",
+    "defaultTitle": "Openscholar | Soek akademiese artikels",
     "defaultDescription": "Soek miljoene akademiese artikels en navorsingsartikels",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "af_ZA",
-    "historyTitle": "Soekgeskiedenis | OpenScholar",
+    "historyTitle": "Soekgeskiedenis | Openscholar",
     "historyDescription": "Bekyk en bestuur jou vorige soekopdragte.",
-    "bookmarksTitle": "Boekmerke | OpenScholar",
+    "bookmarksTitle": "Boekmerke | Openscholar",
     "bookmarksDescription": "Bestuur jou boekmerke vir vinniger, doeltreffender soektogte.",
-    "privacyTitle": "Privaatheidsbeleid | OpenScholar",
-    "privacyDescription": "OpenScholar.ai se kennisgewing oor kliëntprivaatheid. Lees hoe Open Development & Education jou persoonlike inligting versamel, gebruik en beskerm.",
-    "cookiePolicyTitle": "Koekiebeleid | OpenScholar",
-    "cookiePolicyDescription": "Lees hoe OpenScholar.ai koekies vir ontledings gebruik en hoe om jou koekievoorkeure te bestuur.",
-    "libraryTitle": "Biblioteek - OpenScholar",
+    "privacyTitle": "Privaatheidsbeleid | Openscholar",
+    "privacyDescription": "Openscholar.ai se kennisgewing oor kliëntprivaatheid. Lees hoe Open Development & Education jou persoonlike inligting versamel, gebruik en beskerm.",
+    "cookiePolicyTitle": "Koekiebeleid | Openscholar",
+    "cookiePolicyDescription": "Lees hoe Openscholar.ai koekies vir ontledings gebruik en hoe om jou koekievoorkeure te bestuur.",
+    "libraryTitle": "Biblioteek - Openscholar",
     "libraryDescription": "Blaai deur en bestuur jou gestoorde akademiese artikels",
-    "creditsTitle": "Erkennings | OpenScholar",
-    "creditsDescription": "Die projekte, data en lisensies waarop OpenScholar bou.",
-    "sharedTitle": "Met my gedeel | OpenScholar"
+    "creditsTitle": "Erkennings | Openscholar",
+    "creditsDescription": "Die projekte, data en lisensies waarop Openscholar bou.",
+    "sharedTitle": "Met my gedeel | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "Boekmerk “{name}” bestaan reeds",
@@ -1073,7 +1073,7 @@
   },
   "accessibility": {
     "closeDialog": "Maak toe",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "Bladsynommer",
     "zoomIn": "Zoem in",
     "zoomOut": "Zoem uit",
@@ -1391,19 +1391,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "Ons waardeer jou privaatheid",
-    "bannerDescription": "Ons gebruik ontledingskoekies om te verstaan hoe jy OpenScholar gebruik en die produk te verbeter. Kies jou voorkeur hieronder.",
-    "dialogDescription": "Ons gebruik ontledingskoekies om te verstaan hoe jy OpenScholar gebruik en die produk te verbeter. Jy kan alle koekies aanvaar, nie-noodsaaklike koekies weier, of jou voorkeur enige tyd verander.",
+    "bannerDescription": "Ons gebruik ontledingskoekies om te verstaan hoe jy Openscholar gebruik en die produk te verbeter. Kies jou voorkeur hieronder.",
+    "dialogDescription": "Ons gebruik ontledingskoekies om te verstaan hoe jy Openscholar gebruik en die produk te verbeter. Jy kan alle koekies aanvaar, nie-noodsaaklike koekies weier, of jou voorkeur enige tyd verander.",
     "acceptAll": "Aanvaar alles",
     "rejectNonEssential": "Weier nie-noodsaaklike",
     "preferencesTitle": "Koekievoorkeure",
-    "preferencesDescription": "Bestuur hoe OpenScholar koekies vir ontledings gebruik."
+    "preferencesDescription": "Bestuur hoe Openscholar koekies vir ontledings gebruik."
   },
   "legal": {
     "learnMorePrefix": "Lees meer in ons",
     "and": "en",
     "privacyPolicy": "Privaatheidsbeleid",
     "cookiePolicy": "Koekiebeleid",
-    "backToSite": "← Terug na OpenScholar"
+    "backToSite": "← Terug na Openscholar"
   },
   "upgradeDialog": {
     "title": "Gradeer op na {plan}",
@@ -1685,7 +1685,7 @@
     "hideAnswers": "Verberg die antwoorde vir {title}",
     "yesOrNo": "Ja of nee",
     "lost": "Hierdie siftering is uitgevee of word nie meer met jou gedeel nie",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "Naam van die nuwe versameling in {library}",
     "savedToLibrary": "<n>{count, number}</n> bygevoeg by {name} in {library}",
     "notInLibrary": "<n>{count, number}</n> nie in {library} nie",
@@ -1938,11 +1938,11 @@
       "sampleBody": "Dit is hoe ’n paragraaf liggaamteks op die openbare webwerf sal lyk.",
       "logosHeading": "Logo en blaaierikoon",
       "logoLightLabel": "Logo vir ligmodus",
-      "logoLightHint": "Gebruik die OpenScholar-logo totdat jy een oplaai.",
+      "logoLightHint": "Gebruik die Openscholar-logo totdat jy een oplaai.",
       "logoDarkLabel": "Logo vir donkermodus",
       "logoDarkHint": "Gebruik die logo vir ligmodus totdat jy een oplaai.",
       "faviconLabel": "Blaaierikoon vir ligmodus",
-      "faviconHint": "Gebruik die OpenScholar-ikoon totdat jy een oplaai.",
+      "faviconHint": "Gebruik die Openscholar-ikoon totdat jy een oplaai.",
       "faviconDarkLabel": "Blaaierikoon vir donkermodus",
       "faviconDarkHint": "Gebruik die ikoon vir ligmodus totdat jy een oplaai.",
       "coloursHeading": "Kleure",
@@ -1961,7 +1961,7 @@
         "cardLight": "Kaart (ligmodus)"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "Sonsopkoms",
         "forest": "Woud",
         "ocean": "See",
@@ -2099,8 +2099,8 @@
       "disclaimerHint": "Word in klein druk onderaan elke bladsy gewys.",
       "attribution": "Erkenning",
       "attributionHint": "Een reël, byvoorbeeld wie die gemeenskap bestuur.",
-      "poweredBy": "Aangedryf deur OpenScholar",
-      "poweredByHint": "’n Klein reël wat terug na OpenScholar skakel.",
+      "poweredBy": "Aangedryf deur Openscholar",
+      "poweredByHint": "’n Klein reël wat terug na Openscholar skakel.",
       "poweredByLocked": "Beskikbaar op betaalde planne."
     },
     "contact": {
@@ -2247,7 +2247,7 @@
       "connectAccountFailed": "Kon nie die Zotero-aanmelding begin nie. Probeer weer.",
       "disconnect": "Ontkoppel",
       "disconnectTitle": "Ontkoppel Zotero?",
-      "disconnectBody": "Jou Zotero-rekening word van OpenScholar ontkoppel. Groepe wat reeds gekoppel is, bly invoer met die sleutel wat hulle gekry het; nuwe groepe vereis dat jy weer aanmeld.",
+      "disconnectBody": "Jou Zotero-rekening word van Openscholar ontkoppel. Groepe wat reeds gekoppel is, bly invoer met die sleutel wat hulle gekry het; nuwe groepe vereis dat jy weer aanmeld.",
       "disconnectFailed": "Kon nie ontkoppel nie. Probeer weer.",
       "pasteLink": "Of plak ’n groepskakel",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2271,7 +2271,7 @@
       "resume": "Hervat",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action} bron",
-      "noSources": "Nog geen bronne nie. Voeg ’n Zotero-groep, ’n OpenAlex-soektog of ’n OpenScholar-versameling by.",
+      "noSources": "Nog geen bronne nie. Voeg ’n Zotero-groep, ’n OpenAlex-soektog of ’n Openscholar-versameling by.",
       "listLabel": "Gekoppelde bronne",
       "connections": "Verbindings",
       "connectionsTitle": "Bronverbindings",
@@ -2289,7 +2289,7 @@
       "openAlex": {
         "access": "OpenAlex-toegang",
         "ownKey": "Eie API-sleutel",
-        "platformHint": "Ingesluit by OpenScholar. Opdaterings haal net gewysigde rekords.",
+        "platformHint": "Ingesluit by Openscholar. Opdaterings haal net gewysigde rekords.",
         "keyLabel": "OpenAlex API-sleutel",
         "keyHint": "Gebruik jou eie OpenAlex API-sleutel vir hierdie gemeenskap.",
         "savedKey": "Gestoorde sleutel {hint}",
@@ -2297,7 +2297,7 @@
         "saveKey": "Stoor API-sleutel",
         "removeKey": "Verwyder gestoorde sleutel",
         "removeKeyTitle": "Verwyder die gestoorde OpenAlex-sleutel?",
-        "removeKeyBody": "Soektogte sal eerder OpenScholar-toegang gebruik.",
+        "removeKeyBody": "Soektogte sal eerder Openscholar-toegang gebruik.",
         "removeKeyConfirm": "Verwyder sleutel",
         "addTitle": "Voeg ’n soektog by",
         "changeTitle": "Verander hierdie soektog",
@@ -2367,7 +2367,7 @@
         "loading": "Laai jou groepe…",
         "failed": "Kon nie jou groepe laai nie."
       },
-      "openScholarCollection": "OpenScholar-versameling",
+      "openScholarCollection": "Openscholar-versameling",
       "openScholarCollectionHint": "Volg een van jou versamelings",
       "pdfs": "PDF’s",
       "pdfPublishing": {
@@ -2380,12 +2380,12 @@
         "taggedHint": "’n PDF, notas of skakel met enige van hierdie etikette in Zotero word gepubliseer.",
         "everyHint": "PDF’s het nie een nodig nie. Notas en skakels het steeds een van hierdie etikette nodig."
       },
-      "collectionDeleted": "Hierdie versameling is in OpenScholar uitgevee.",
+      "collectionDeleted": "Hierdie versameling is in Openscholar uitgevee.",
       "removeCollectionTitle": "Verwyder hierdie versameling?",
       "collectionConnectFailed": "Kon nie hierdie versameling byvoeg nie.",
       "collectionPicker": {
         "title": "Voeg versamelings by",
-        "description": "Jou OpenScholar-versamelings. Die gemeenskap volg die wat jy merk en werk op wanneer hulle verander.",
+        "description": "Jou Openscholar-versamelings. Die gemeenskap volg die wat jy merk en werk op wanneer hulle verander.",
         "search": "Soek versamelings…",
         "colCollection": "Versameling",
         "noCollections": "Jy het nog geen versamelings nie.",
@@ -2596,7 +2596,7 @@
         "yearsDropdown": "Wys ’n jaarkieser in die soekbalk.",
         "downloads": "Bied aanhalingsaflaaie vir publikasies en die hele gemeenskap aan.",
         "atomFeed": "Wys ’n skakel na die Atom-voer.",
-        "readerAccounts": "Laat lesers met OpenScholar aanmeld om rekords te merk en versamelings te hou."
+        "readerAccounts": "Laat lesers met Openscholar aanmeld om rekords te merk en versamelings te hou."
       },
       "needs": "Skakel eers {feature} aan.",
       "needsSearch": {
@@ -3115,7 +3115,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, one {# model} other {# modelle}}",
     "cloudOnly": "Net wolk",
-    "openScholarCloud": "OpenScholar-wolk",
+    "openScholarCloud": "Openscholar-wolk",
     "browserLabel": {
       "credits": "In die wolk",
       "smart": "Wolk, en dan jou blaaier",
@@ -3204,7 +3204,7 @@
       "failed": "Antwoord het misluk",
       "stopped": "Antwoord is gestop"
     },
-    "label": "OpenScholar-assistent",
+    "label": "Openscholar-assistent",
     "open": "Maak die assistent oop",
     "fold": "Vou die assistent weg",
     "foldHint": "Vou weg",
@@ -4789,7 +4789,7 @@
     "outdated": "{library} benodig ’n opdatering om hier gebruik te word.",
     "error": {
       "notAddress": "Dit is nie ’n adres nie.",
-      "notHosted": "OpenScholar bedryf nie daardie gemeenskap nie.",
+      "notHosted": "Openscholar bedryf nie daardie gemeenskap nie.",
       "private": "Daardie versameling is privaat. Die eienaar kan dit met jou deel.",
       "notFound": "Daar is niks by daardie adres nie.",
       "empty": "Daardie soektog of versameling bevat geen rekords nie.",
@@ -4821,7 +4821,7 @@
     "goneHint": "Hierdie skakel vanaf ’n gemeenskap het verval. Maak dit weer oop vanaf die gemeenskap.",
     "problem": {
       "notAddress": "Daar is niks hier om oop te maak nie. Maak dit weer oop vanaf die gemeenskap.",
-      "notHosted": "Daardie gemeenskap loop nie meer op OpenScholar nie.",
+      "notHosted": "Daardie gemeenskap loop nie meer op Openscholar nie.",
       "private": "Daardie versameling is privaat. Die eienaar kan dit met jou deel.",
       "notFound": "Die gemeenskap het nie meer wat dit gestuur het nie.",
       "empty": "Wat die gemeenskap gestuur het, bevat nou geen rekords nie.",
@@ -5416,11 +5416,11 @@
     "creatingKey": "Sleutel word geskep...",
     "redirecting": "Stuur deur...",
     "approve": "Keur goed",
-    "wantsToConnect": "<strong>{appName}</strong> wil aan jou OpenScholar-beursie koppel.",
+    "wantsToConnect": "<strong>{appName}</strong> wil aan jou Openscholar-beursie koppel.",
     "copyKey": "Kopieer hierdie API-sleutel en plak dit in <strong>{appName}</strong>. Dit sal net een keer gewys word.",
-    "originUnregisteredBody": "Die program by <code>{origin}</code> is nie geregistreer om aan OpenScholar te koppel nie.",
-    "originHelp": "Slegs vooraf goedgekeurde oorspronge kan beursiekoppelings skep. As jy die ontwikkelaar van <strong>{appName}</strong> is, kontak die OpenScholar-span om jou oorsprong te registreer.",
-    "wantsToUseCredits": "<strong>{appName}</strong> wil KI-generering met jou OpenScholar-krediete gebruik.",
+    "originUnregisteredBody": "Die program by <code>{origin}</code> is nie geregistreer om aan Openscholar te koppel nie.",
+    "originHelp": "Slegs vooraf goedgekeurde oorspronge kan beursiekoppelings skep. As jy die ontwikkelaar van <strong>{appName}</strong> is, kontak die Openscholar-span om jou oorsprong te registreer.",
+    "wantsToUseCredits": "<strong>{appName}</strong> wil KI-generering met jou Openscholar-krediete gebruik.",
     "unknownApp": "Onbekende app",
     "thisApplicationSOriginIsNot": "Die oorsprong van hierdie toepassing is nie geregistreer nie.",
     "failedToCreateConnection": "Kon nie verbinding skep nie"
@@ -5437,7 +5437,7 @@
     "strip": "Openbare alfa vir toetsing.",
     "stripDetail": "Dinge kan verander of breek.",
     "contactUs": "Kontak ons",
-    "plansNotice": "OpenScholar is gratis tydens die openbare alfa, met elke funksie ingesluit. Planne sal daarna verander.",
+    "plansNotice": "Openscholar is gratis tydens die openbare alfa, met elke funksie ingesluit. Planne sal daarna verander.",
     "emailAddress": "E-pos {email}"
   }
 }

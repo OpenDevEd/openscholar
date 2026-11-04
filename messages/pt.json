@@ -35,7 +35,7 @@
     "credits": "Créditos",
     "upgrade": "Atualizar",
     "signIn": "Iniciar sessão",
-    "signInCreditsDescription": "Inicie sessão para utilizar créditos de IA diretamente no OpenScholar",
+    "signInCreditsDescription": "Inicie sessão para utilizar créditos de IA diretamente no Openscholar",
     "highlightSearchTerms": "Realçar os termos da pesquisa",
     "signOut": "Terminar sessão",
     "results": "Resultados",
@@ -302,9 +302,9 @@
     "scheduled": "Agendado",
     "manageInBillingPortal": "Gerir no portal de faturação",
     "downgradeTo": "Reduzir para {name}",
-    "metadataTitle": "Preços | OpenScholar",
+    "metadataTitle": "Preços | Openscholar",
     "metadataDescription": "Preços simples e transparentes para equipas de qualquer dimensão.",
-    "everyFeature": "Todas as funcionalidades do OpenScholar",
+    "everyFeature": "Todas as funcionalidades do Openscholar",
     "papersRunning": "{running, number} artigos em curso ao mesmo tempo",
     "papersInRequest": "{request, number} artigos num pedido",
     "unlimitedCollectionsAndGuests": "Coleções e convidados ilimitados",
@@ -317,7 +317,7 @@
     "credentials": "Credenciais do {provider}",
     "sandbox": "Ambiente de teste",
     "custom": "Credenciais personalizadas",
-    "sandboxTitle": "Ambiente de teste do OpenScholar",
+    "sandboxTitle": "Ambiente de teste do Openscholar",
     "sandboxHint": "Usa a nossa conta de teste. Os depósitos ficam no ambiente de teste do fornecedor.",
     "title": "Publicação",
     "description": "Ligue as contas usadas para registar DOI e arquivar publicações.",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "Configure a IA para melhorar a sua pesquisa",
-    "description": "O OpenScholar usa IA para refinar pesquisas, fazer a triagem de artigos e traduzir resultados.",
+    "description": "O Openscholar usa IA para refinar pesquisas, fazer a triagem de artigos e traduzir resultados.",
     "signInForCredits": "Inicie sessão para obter créditos gratuitos",
     "useOwnApiKey": "Use a sua própria chave de API"
   },
@@ -1043,25 +1043,25 @@
     "searchPlural": "pesquisas"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar | Pesquisa de artigos académicos",
+    "defaultTitle": "Openscholar | Pesquisa de artigos académicos",
     "defaultDescription": "Pesquise milhões de artigos académicos e de investigação",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "pt_PT",
-    "historyTitle": "Histórico de pesquisas | OpenScholar",
+    "historyTitle": "Histórico de pesquisas | Openscholar",
     "historyDescription": "Veja e faça a gestão das suas pesquisas anteriores.",
-    "bookmarksTitle": "Marcadores | OpenScholar",
+    "bookmarksTitle": "Marcadores | Openscholar",
     "bookmarksDescription": "Faça a gestão dos seus marcadores para pesquisas mais rápidas e eficientes.",
-    "privacyTitle": "Política de privacidade | OpenScholar",
-    "privacyDescription": "Aviso de privacidade de clientes do OpenScholar.ai. Saiba como a Open Development & Education recolhe, usa e protege os seus dados pessoais.",
-    "cookiePolicyTitle": "Política de cookies | OpenScholar",
-    "cookiePolicyDescription": "Saiba como o OpenScholar.ai usa cookies para análise e como gerir as suas preferências de cookies.",
-    "libraryTitle": "Biblioteca - OpenScholar",
+    "privacyTitle": "Política de privacidade | Openscholar",
+    "privacyDescription": "Aviso de privacidade de clientes do Openscholar.ai. Saiba como a Open Development & Education recolhe, usa e protege os seus dados pessoais.",
+    "cookiePolicyTitle": "Política de cookies | Openscholar",
+    "cookiePolicyDescription": "Saiba como o Openscholar.ai usa cookies para análise e como gerir as suas preferências de cookies.",
+    "libraryTitle": "Biblioteca - Openscholar",
     "libraryDescription": "Navegue e faça a gestão dos seus artigos académicos guardados",
-    "creditsTitle": "Créditos | OpenScholar",
-    "creditsDescription": "Os projetos, dados e licenças em que o OpenScholar assenta.",
-    "sharedTitle": "Partilhado comigo | OpenScholar"
+    "creditsTitle": "Créditos | Openscholar",
+    "creditsDescription": "Os projetos, dados e licenças em que o Openscholar assenta.",
+    "sharedTitle": "Partilhado comigo | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "O marcador \"{name}\" já existe",
@@ -1073,7 +1073,7 @@
   },
   "accessibility": {
     "closeDialog": "Fechar",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "Número da página",
     "zoomIn": "Ampliar",
     "zoomOut": "Reduzir",
@@ -1391,19 +1391,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "Valorizamos a sua privacidade",
-    "bannerDescription": "Usamos cookies de análise para perceber como utiliza o OpenScholar e melhorar o produto. Escolha a sua preferência abaixo.",
-    "dialogDescription": "Usamos cookies de análise para perceber como utiliza o OpenScholar e melhorar o produto. Pode aceitar todos os cookies, rejeitar os não essenciais ou alterar a sua preferência a qualquer momento.",
+    "bannerDescription": "Usamos cookies de análise para perceber como utiliza o Openscholar e melhorar o produto. Escolha a sua preferência abaixo.",
+    "dialogDescription": "Usamos cookies de análise para perceber como utiliza o Openscholar e melhorar o produto. Pode aceitar todos os cookies, rejeitar os não essenciais ou alterar a sua preferência a qualquer momento.",
     "acceptAll": "Aceitar todos",
     "rejectNonEssential": "Rejeitar os não essenciais",
     "preferencesTitle": "Preferências de cookies",
-    "preferencesDescription": "Faça a gestão de como o OpenScholar usa cookies para análise."
+    "preferencesDescription": "Faça a gestão de como o Openscholar usa cookies para análise."
   },
   "legal": {
     "learnMorePrefix": "Saiba mais na nossa",
     "and": "e",
     "privacyPolicy": "Política de privacidade",
     "cookiePolicy": "Política de cookies",
-    "backToSite": "← Voltar ao OpenScholar"
+    "backToSite": "← Voltar ao Openscholar"
   },
   "upgradeDialog": {
     "title": "Mudar para {plan}",
@@ -1685,7 +1685,7 @@
     "hideAnswers": "Ocultar as respostas de {title}",
     "yesOrNo": "Sim ou não",
     "lost": "Esta triagem foi eliminada ou já não está partilhada consigo",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "Nome da nova coleção em {library}",
     "savedToLibrary": "<n>{count, number}</n> adicionados a {name} em {library}",
     "notInLibrary": "<n>{count, number}</n> não estão em {library}",
@@ -1938,11 +1938,11 @@
       "sampleBody": "É assim que vai aparecer um parágrafo de texto no site público.",
       "logosHeading": "Logótipo e ícone do navegador",
       "logoLightLabel": "Logótipo do modo claro",
-      "logoLightHint": "Usa o logótipo do OpenScholar até carregar um.",
+      "logoLightHint": "Usa o logótipo do Openscholar até carregar um.",
       "logoDarkLabel": "Logótipo do modo escuro",
       "logoDarkHint": "Usa o logótipo do modo claro até carregar um.",
       "faviconLabel": "Ícone do navegador no modo claro",
-      "faviconHint": "Usa o ícone do OpenScholar até carregar um.",
+      "faviconHint": "Usa o ícone do Openscholar até carregar um.",
       "faviconDarkLabel": "Ícone do navegador no modo escuro",
       "faviconDarkHint": "Usa o ícone do modo claro até carregar um.",
       "coloursHeading": "Cores",
@@ -1961,7 +1961,7 @@
         "cardLight": "Cartão (modo claro)"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "Nascer do sol",
         "forest": "Floresta",
         "ocean": "Oceano",
@@ -2099,8 +2099,8 @@
       "disclaimerHint": "Apresentado em texto pequeno no rodapé de cada página.",
       "attribution": "Atribuição",
       "attributionHint": "Uma linha, por exemplo quem gere a comunidade.",
-      "poweredBy": "Desenvolvido com o OpenScholar",
-      "poweredByHint": "Uma pequena linha que liga de volta ao OpenScholar.",
+      "poweredBy": "Desenvolvido com o Openscholar",
+      "poweredByHint": "Uma pequena linha que liga de volta ao Openscholar.",
       "poweredByLocked": "Disponível nos planos pagos."
     },
     "contact": {
@@ -2247,7 +2247,7 @@
       "connectAccountFailed": "Não foi possível iniciar o início de sessão no Zotero. Tente novamente.",
       "disconnect": "Desligar",
       "disconnectTitle": "Desligar o Zotero?",
-      "disconnectBody": "A sua conta do Zotero fica desligada do OpenScholar. Os grupos já ligados continuam a importar com a chave que lhes foi atribuída; os novos grupos exigem que volte a iniciar sessão.",
+      "disconnectBody": "A sua conta do Zotero fica desligada do Openscholar. Os grupos já ligados continuam a importar com a chave que lhes foi atribuída; os novos grupos exigem que volte a iniciar sessão.",
       "disconnectFailed": "Não foi possível desligar. Tente novamente.",
       "pasteLink": "Ou cole a ligação de um grupo",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2271,7 +2271,7 @@
       "resume": "Retomar",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action} fonte",
-      "noSources": "Ainda não há fontes. Adicione um grupo do Zotero, uma pesquisa da OpenAlex ou uma coleção do OpenScholar.",
+      "noSources": "Ainda não há fontes. Adicione um grupo do Zotero, uma pesquisa da OpenAlex ou uma coleção do Openscholar.",
       "listLabel": "Fontes ligadas",
       "connections": "Ligações",
       "connectionsTitle": "Ligações de fontes",
@@ -2289,7 +2289,7 @@
       "openAlex": {
         "access": "Acesso à OpenAlex",
         "ownKey": "Chave de API própria",
-        "platformHint": "Incluído com o OpenScholar. As atualizações descarregam apenas os registos alterados.",
+        "platformHint": "Incluído com o Openscholar. As atualizações descarregam apenas os registos alterados.",
         "keyLabel": "Chave de API da OpenAlex",
         "keyHint": "Use a sua própria chave de API da OpenAlex para esta comunidade.",
         "savedKey": "Chave guardada {hint}",
@@ -2297,7 +2297,7 @@
         "saveKey": "Guardar chave de API",
         "removeKey": "Remover a chave guardada",
         "removeKeyTitle": "Remover a chave guardada da OpenAlex?",
-        "removeKeyBody": "As pesquisas passam a usar o acesso do OpenScholar.",
+        "removeKeyBody": "As pesquisas passam a usar o acesso do Openscholar.",
         "removeKeyConfirm": "Remover chave",
         "addTitle": "Adicionar uma pesquisa",
         "changeTitle": "Alterar esta pesquisa",
@@ -2367,7 +2367,7 @@
         "loading": "A carregar os seus grupos…",
         "failed": "Não foi possível carregar os seus grupos."
       },
-      "openScholarCollection": "Coleção do OpenScholar",
+      "openScholarCollection": "Coleção do Openscholar",
       "openScholarCollectionHint": "Acompanhe uma das suas coleções",
       "pdfs": "PDF",
       "pdfPublishing": {
@@ -2380,12 +2380,12 @@
         "taggedHint": "Um PDF, nota ou ligação com alguma destas etiquetas no Zotero é publicado.",
         "everyHint": "Os PDF não precisam de nenhuma. As notas e as ligações continuam a precisar de uma destas etiquetas."
       },
-      "collectionDeleted": "Esta coleção foi eliminada no OpenScholar.",
+      "collectionDeleted": "Esta coleção foi eliminada no Openscholar.",
       "removeCollectionTitle": "Remover esta coleção?",
       "collectionConnectFailed": "Não foi possível adicionar esta coleção.",
       "collectionPicker": {
         "title": "Adicionar coleções",
-        "description": "As suas coleções do OpenScholar. A comunidade segue as que marcar e atualiza-se quando mudarem.",
+        "description": "As suas coleções do Openscholar. A comunidade segue as que marcar e atualiza-se quando mudarem.",
         "search": "Pesquisar coleções…",
         "colCollection": "Coleção",
         "noCollections": "Ainda não tem coleções.",
@@ -2596,7 +2596,7 @@
         "yearsDropdown": "Mostra um seletor de anos na barra de pesquisa.",
         "downloads": "Oferece descarregamentos de citações para as publicações e para a comunidade inteira.",
         "atomFeed": "Mostra uma ligação para o feed Atom.",
-        "readerAccounts": "Permite que os leitores iniciem sessão com o OpenScholar para guardar registos e manter coleções."
+        "readerAccounts": "Permite que os leitores iniciem sessão com o Openscholar para guardar registos e manter coleções."
       },
       "needs": "Ative primeiro {feature}.",
       "needsSearch": {
@@ -3115,7 +3115,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, one {# modelo} other {# modelos}}",
     "cloudOnly": "Só na nuvem",
-    "openScholarCloud": "Nuvem do OpenScholar",
+    "openScholarCloud": "Nuvem do Openscholar",
     "browserLabel": {
       "credits": "Na nuvem",
       "smart": "Na nuvem e depois no navegador",
@@ -3204,7 +3204,7 @@
       "failed": "A resposta falhou",
       "stopped": "Resposta interrompida"
     },
-    "label": "Assistente do OpenScholar",
+    "label": "Assistente do Openscholar",
     "open": "Abrir o assistente",
     "fold": "Recolher o assistente",
     "foldHint": "Recolher",
@@ -4789,7 +4789,7 @@
     "outdated": "{library} precisa de uma atualização para ser usada aqui.",
     "error": {
       "notAddress": "Isso não é um endereço.",
-      "notHosted": "O OpenScholar não aloja essa comunidade.",
+      "notHosted": "O Openscholar não aloja essa comunidade.",
       "private": "Essa coleção é privada. O proprietário pode partilhá-la consigo.",
       "notFound": "Não há nada nesse endereço.",
       "empty": "Essa pesquisa ou coleção não tem registos.",
@@ -4821,7 +4821,7 @@
     "goneHint": "Esta ligação de uma comunidade expirou. Abra-a de novo a partir da comunidade.",
     "problem": {
       "notAddress": "Não há nada aqui para abrir. Abra-o de novo a partir da comunidade.",
-      "notHosted": "Essa comunidade já não está a correr no OpenScholar.",
+      "notHosted": "Essa comunidade já não está a correr no Openscholar.",
       "private": "Essa coleção é privada. O proprietário pode partilhá-la consigo.",
       "notFound": "A comunidade já não tem o que enviou.",
       "empty": "O que a comunidade enviou já não tem registos.",
@@ -5416,11 +5416,11 @@
     "creatingKey": "A criar chave...",
     "redirecting": "A redirecionar...",
     "approve": "Aprovar",
-    "wantsToConnect": "<strong>{appName}</strong> quer ligar-se à sua carteira do OpenScholar.",
+    "wantsToConnect": "<strong>{appName}</strong> quer ligar-se à sua carteira do Openscholar.",
     "copyKey": "Copie esta chave de API e cole-a em <strong>{appName}</strong>. Só será mostrada uma vez.",
-    "originUnregisteredBody": "A aplicação em <code>{origin}</code> não está registada para se ligar ao OpenScholar.",
-    "originHelp": "Só as origens pré-aprovadas podem criar ligações à carteira. Se for o programador de <strong>{appName}</strong>, contacte a equipa do OpenScholar para registar a sua origem.",
-    "wantsToUseCredits": "<strong>{appName}</strong> quer usar a geração por IA através dos seus créditos do OpenScholar.",
+    "originUnregisteredBody": "A aplicação em <code>{origin}</code> não está registada para se ligar ao Openscholar.",
+    "originHelp": "Só as origens pré-aprovadas podem criar ligações à carteira. Se for o programador de <strong>{appName}</strong>, contacte a equipa do Openscholar para registar a sua origem.",
+    "wantsToUseCredits": "<strong>{appName}</strong> quer usar a geração por IA através dos seus créditos do Openscholar.",
     "unknownApp": "Aplicação desconhecida",
     "thisApplicationSOriginIsNot": "A origem desta aplicação não está registada.",
     "failedToCreateConnection": "Não foi possível criar a ligação"
@@ -5437,7 +5437,7 @@
     "strip": "Alfa pública para testes.",
     "stripDetail": "Algumas coisas podem mudar ou falhar.",
     "contactUs": "Contacte-nos",
-    "plansNotice": "O OpenScholar é gratuito durante a alfa pública, com todas as funcionalidades incluídas. Os planos vão mudar depois.",
+    "plansNotice": "O Openscholar é gratuito durante a alfa pública, com todas as funcionalidades incluídas. Os planos vão mudar depois.",
     "emailAddress": "Enviar email para {email}"
   }
 }

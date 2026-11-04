@@ -31,7 +31,7 @@ export type OAuthRedirectMode = "include" | "exact";
 export class OAuthClientBusyError extends Error {
   readonly retryable = true;
   constructor() {
-    super("Another change to this community's OpenScholar sign-in is under way");
+    super("Another change to this community's Openscholar sign-in is under way");
     this.name = "OAuthClientBusyError";
   }
 }
@@ -209,7 +209,7 @@ export async function syncLibrarySignIn(
     }),
   ]);
   if (!row?.clientId || !row.encryptedClientSecret) {
-    throw new Error("The community has no OpenScholar sign-in application");
+    throw new Error("The community has no Openscholar sign-in application");
   }
   return {
     oauth: { issuer: instance.issuer, clientId: row.clientId, encryptedClientSecret: row.encryptedClientSecret },

@@ -35,7 +35,7 @@
     "credits": "积分",
     "upgrade": "升级",
     "signIn": "登录",
-    "signInCreditsDescription": "登录后可直接使用 OpenScholar 的 AI 积分",
+    "signInCreditsDescription": "登录后可直接使用 Openscholar 的 AI 积分",
     "highlightSearchTerms": "高亮搜索词",
     "signOut": "退出",
     "results": "结果",
@@ -302,9 +302,9 @@
     "scheduled": "已安排",
     "manageInBillingPortal": "在账单门户中管理",
     "downgradeTo": "降级为 {name}",
-    "metadataTitle": "定价 | OpenScholar",
+    "metadataTitle": "定价 | Openscholar",
     "metadataDescription": "适合各种规模团队的简单透明定价。",
-    "everyFeature": "OpenScholar 的所有功能",
+    "everyFeature": "Openscholar 的所有功能",
     "papersRunning": "同时处理 {running, number} 篇论文",
     "papersInRequest": "每次请求 {request, number} 篇论文",
     "unlimitedCollectionsAndGuests": "不限合集和访客数量",
@@ -317,7 +317,7 @@
     "credentials": "{provider} 凭据",
     "sandbox": "沙盒",
     "custom": "自定义凭据",
-    "sandboxTitle": "OpenScholar 沙盒",
+    "sandboxTitle": "Openscholar 沙盒",
     "sandboxHint": "使用我们的测试账户。存档保留在服务商的测试环境中。",
     "title": "发布",
     "description": "连接用于注册 DOI 和存档出版物的账户。",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "设置 AI 以增强搜索",
-    "description": "OpenScholar 使用 AI 优化查询、筛选论文和翻译结果。",
+    "description": "Openscholar 使用 AI 优化查询、筛选论文和翻译结果。",
     "signInForCredits": "登录获取免费积分",
     "useOwnApiKey": "使用自己的 API 密钥"
   },
@@ -1042,25 +1042,25 @@
     "searchPlural": "次搜索"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar - 学术论文搜索",
+    "defaultTitle": "Openscholar - 学术论文搜索",
     "defaultDescription": "搜索数百万学术论文和研究文章",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "zh_CN",
-    "historyTitle": "搜索历史 | OpenScholar",
+    "historyTitle": "搜索历史 | Openscholar",
     "historyDescription": "查看和管理您过去的搜索查询。",
-    "bookmarksTitle": "书签 | OpenScholar",
+    "bookmarksTitle": "书签 | Openscholar",
     "bookmarksDescription": "管理您的书签，实现更快、更高效的搜索。",
-    "privacyTitle": "隐私政策 | OpenScholar",
-    "privacyDescription": "OpenScholar.ai 客户隐私声明。了解 Open Development & Education 如何收集、使用和保护您的个人信息。",
-    "cookiePolicyTitle": "Cookie 政策 | OpenScholar",
-    "cookiePolicyDescription": "了解 OpenScholar.ai 如何使用 Cookie 进行分析以及如何管理您的 Cookie 偏好设置。",
-    "libraryTitle": "文献库 - OpenScholar",
+    "privacyTitle": "隐私政策 | Openscholar",
+    "privacyDescription": "Openscholar.ai 客户隐私声明。了解 Open Development & Education 如何收集、使用和保护您的个人信息。",
+    "cookiePolicyTitle": "Cookie 政策 | Openscholar",
+    "cookiePolicyDescription": "了解 Openscholar.ai 如何使用 Cookie 进行分析以及如何管理您的 Cookie 偏好设置。",
+    "libraryTitle": "文献库 - Openscholar",
     "libraryDescription": "浏览和管理您保存的学术论文",
-    "creditsTitle": "致谢 | OpenScholar",
-    "creditsDescription": "OpenScholar 所使用的项目、数据与许可。",
-    "sharedTitle": "与我共享 | OpenScholar"
+    "creditsTitle": "致谢 | Openscholar",
+    "creditsDescription": "Openscholar 所使用的项目、数据与许可。",
+    "sharedTitle": "与我共享 | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "书签 \"{name}\" 已存在",
@@ -1072,7 +1072,7 @@
   },
   "accessibility": {
     "closeDialog": "关闭",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "页码",
     "zoomIn": "放大",
     "zoomOut": "缩小",
@@ -1390,19 +1390,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "我们重视您的隐私",
-    "bannerDescription": "我们使用分析 Cookie 来了解您如何使用 OpenScholar 并改进产品。请在下方选择您的偏好设置。",
-    "dialogDescription": "我们使用分析 Cookie 来了解您如何使用 OpenScholar 并改进产品。您可以接受所有 Cookie、拒绝非必要 Cookie，或随时更改您的偏好设置。",
+    "bannerDescription": "我们使用分析 Cookie 来了解您如何使用 Openscholar 并改进产品。请在下方选择您的偏好设置。",
+    "dialogDescription": "我们使用分析 Cookie 来了解您如何使用 Openscholar 并改进产品。您可以接受所有 Cookie、拒绝非必要 Cookie，或随时更改您的偏好设置。",
     "acceptAll": "接受全部",
     "rejectNonEssential": "拒绝非必要",
     "preferencesTitle": "Cookie 偏好设置",
-    "preferencesDescription": "管理 OpenScholar 如何使用 Cookie 进行分析。"
+    "preferencesDescription": "管理 Openscholar 如何使用 Cookie 进行分析。"
   },
   "legal": {
     "learnMorePrefix": "了解更多",
     "and": "和",
     "privacyPolicy": "隐私政策",
     "cookiePolicy": "Cookie 政策",
-    "backToSite": "← 返回 OpenScholar"
+    "backToSite": "← 返回 Openscholar"
   },
   "upgradeDialog": {
     "title": "升级到 {plan}",
@@ -1684,7 +1684,7 @@
     "hideAnswers": "隐藏 {title} 的回答",
     "yesOrNo": "是或否",
     "lost": "此筛选已被删除，或不再与你共享",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "{library} 中新合集的名称",
     "savedToLibrary": "<n>{count, number}</n> 篇已添加到 {library} 的 {name}",
     "notInLibrary": "<n>{count, number}</n> 篇不在 {library} 中",
@@ -1937,11 +1937,11 @@
       "sampleBody": "这是公开网站上正文段落的显示效果。",
       "logosHeading": "标志和浏览器图标",
       "logoLightLabel": "浅色模式标志",
-      "logoLightHint": "在您上传之前使用 OpenScholar 标志。",
+      "logoLightHint": "在您上传之前使用 Openscholar 标志。",
       "logoDarkLabel": "深色模式标志",
       "logoDarkHint": "在您上传之前使用浅色模式标志。",
       "faviconLabel": "浅色模式浏览器图标",
-      "faviconHint": "在您上传之前使用 OpenScholar 图标。",
+      "faviconHint": "在您上传之前使用 Openscholar 图标。",
       "faviconDarkLabel": "深色模式浏览器图标",
       "faviconDarkHint": "在您上传之前使用浅色模式图标。",
       "coloursHeading": "颜色",
@@ -1960,7 +1960,7 @@
         "cardLight": "卡片（浅色模式）"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "日出",
         "forest": "森林",
         "ocean": "海洋",
@@ -2098,8 +2098,8 @@
       "disclaimerHint": "在每个页面底部以小字显示。",
       "attribution": "署名",
       "attributionHint": "一行，例如文献社区的运营方。",
-      "poweredBy": "由 OpenScholar 提供支持",
-      "poweredByHint": "一行小字，链接回 OpenScholar。",
+      "poweredBy": "由 Openscholar 提供支持",
+      "poweredByHint": "一行小字，链接回 Openscholar。",
       "poweredByLocked": "付费方案可用。"
     },
     "contact": {
@@ -2246,7 +2246,7 @@
       "connectAccountFailed": "无法开始 Zotero 登录。请重试。",
       "disconnect": "断开连接",
       "disconnectTitle": "断开 Zotero 连接？",
-      "disconnectBody": "您的 Zotero 账户将与 OpenScholar 断开连接。已连接的群组将继续使用原有密钥导入；新群组需要您重新登录。",
+      "disconnectBody": "您的 Zotero 账户将与 Openscholar 断开连接。已连接的群组将继续使用原有密钥导入；新群组需要您重新登录。",
       "disconnectFailed": "无法断开连接。请重试。",
       "pasteLink": "或粘贴群组链接",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2270,7 +2270,7 @@
       "resume": "恢复",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action}来源",
-      "noSources": "还没有来源。请添加 Zotero 群组、OpenAlex 检索或 OpenScholar 合集。",
+      "noSources": "还没有来源。请添加 Zotero 群组、OpenAlex 检索或 Openscholar 合集。",
       "listLabel": "已连接的来源",
       "connections": "连接",
       "connectionsTitle": "来源连接",
@@ -2288,7 +2288,7 @@
       "openAlex": {
         "access": "OpenAlex 访问方式",
         "ownKey": "自有 API 密钥",
-        "platformHint": "包含在 OpenScholar 中。更新只获取有变化的记录。",
+        "platformHint": "包含在 Openscholar 中。更新只获取有变化的记录。",
         "keyLabel": "OpenAlex API 密钥",
         "keyHint": "为此文献社区使用你自己的 OpenAlex API 密钥。",
         "savedKey": "已保存的密钥 {hint}",
@@ -2296,7 +2296,7 @@
         "saveKey": "保存 API 密钥",
         "removeKey": "移除已保存的密钥",
         "removeKeyTitle": "移除已保存的 OpenAlex 密钥？",
-        "removeKeyBody": "搜索将改用 OpenScholar 的访问方式。",
+        "removeKeyBody": "搜索将改用 Openscholar 的访问方式。",
         "removeKeyConfirm": "移除密钥",
         "addTitle": "添加搜索",
         "changeTitle": "修改此搜索",
@@ -2366,7 +2366,7 @@
         "loading": "正在加载您的群组…",
         "failed": "无法加载您的群组。"
       },
-      "openScholarCollection": "OpenScholar 合集",
+      "openScholarCollection": "Openscholar 合集",
       "openScholarCollectionHint": "关注你的一个合集",
       "pdfs": "PDF",
       "pdfPublishing": {
@@ -2379,12 +2379,12 @@
         "taggedHint": "在 Zotero 中带有任一这些标签的 PDF、笔记或链接会被发布。",
         "everyHint": "PDF 不需要标签。笔记和链接仍需要其中一个标签。"
       },
-      "collectionDeleted": "该合集已在 OpenScholar 中删除。",
+      "collectionDeleted": "该合集已在 Openscholar 中删除。",
       "removeCollectionTitle": "移除此合集？",
       "collectionConnectFailed": "无法添加此合集。",
       "collectionPicker": {
         "title": "添加合集",
-        "description": "你的 OpenScholar 合集。社区会关注你勾选的合集，并在其变化时更新。",
+        "description": "你的 Openscholar 合集。社区会关注你勾选的合集，并在其变化时更新。",
         "search": "搜索合集…",
         "colCollection": "合集",
         "noCollections": "你还没有合集。",
@@ -2595,7 +2595,7 @@
         "yearsDropdown": "在搜索栏中显示年份选择器。",
         "downloads": "为出版物和整个文献社区提供引用下载。",
         "atomFeed": "显示 Atom 订阅源的链接。",
-        "readerAccounts": "允许读者使用 OpenScholar 登录，以收藏记录并保存集合。"
+        "readerAccounts": "允许读者使用 Openscholar 登录，以收藏记录并保存集合。"
       },
       "needs": "请先开启 {feature}。",
       "needsSearch": {
@@ -3114,7 +3114,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, other {# 个模型}}",
     "cloudOnly": "仅云端",
-    "openScholarCloud": "OpenScholar 云端",
+    "openScholarCloud": "Openscholar 云端",
     "browserLabel": {
       "credits": "在云端",
       "smart": "先云端，再浏览器",
@@ -3203,7 +3203,7 @@
       "failed": "回答失败",
       "stopped": "回答已停止"
     },
-    "label": "OpenScholar 助手",
+    "label": "Openscholar 助手",
     "open": "打开助手",
     "fold": "收起助手",
     "foldHint": "收起",
@@ -4788,7 +4788,7 @@
     "outdated": "{library} 需要更新后才能在这里使用。",
     "error": {
       "notAddress": "这不是一个地址。",
-      "notHosted": "该文献社区不由 OpenScholar 运行。",
+      "notHosted": "该文献社区不由 Openscholar 运行。",
       "private": "该合集是私密的。所有者可以与你共享。",
       "notFound": "该地址下没有内容。",
       "empty": "该搜索或合集中没有记录。",
@@ -4820,7 +4820,7 @@
     "goneHint": "这个来自文献社区的链接已过期。请从文献社区重新打开。",
     "problem": {
       "notAddress": "这里没有可打开的内容。请从文献社区重新打开。",
-      "notHosted": "该文献社区已不在 OpenScholar 上运行。",
+      "notHosted": "该文献社区已不在 Openscholar 上运行。",
       "private": "该合集是私密的。其所有者可以与你共享。",
       "notFound": "文献社区已不再有它发送的内容。",
       "empty": "文献社区发送的内容目前没有记录。",
@@ -5415,11 +5415,11 @@
     "creatingKey": "正在创建密钥…",
     "redirecting": "正在跳转…",
     "approve": "批准",
-    "wantsToConnect": "<strong>{appName}</strong> 想要连接您的 OpenScholar 钱包。",
+    "wantsToConnect": "<strong>{appName}</strong> 想要连接您的 Openscholar 钱包。",
     "copyKey": "复制此 API 密钥并粘贴到 <strong>{appName}</strong> 中。它只会显示一次。",
-    "originUnregisteredBody": "位于 <code>{origin}</code> 的应用未注册以连接 OpenScholar。",
-    "originHelp": "只有预先批准的来源才能创建钱包连接。如果您是 <strong>{appName}</strong> 的开发者，请联系 OpenScholar 团队注册您的来源。",
-    "wantsToUseCredits": "<strong>{appName}</strong> 想要通过您的 OpenScholar 积分使用 AI 生成功能。",
+    "originUnregisteredBody": "位于 <code>{origin}</code> 的应用未注册以连接 Openscholar。",
+    "originHelp": "只有预先批准的来源才能创建钱包连接。如果您是 <strong>{appName}</strong> 的开发者，请联系 Openscholar 团队注册您的来源。",
+    "wantsToUseCredits": "<strong>{appName}</strong> 想要通过您的 Openscholar 积分使用 AI 生成功能。",
     "unknownApp": "未知应用",
     "thisApplicationSOriginIsNot": "此应用的来源未注册。",
     "failedToCreateConnection": "创建连接失败"
@@ -5436,7 +5436,7 @@
     "strip": "用于测试的公开 Alpha 版。",
     "stripDetail": "内容可能会变更或出现故障。",
     "contactUs": "联系我们",
-    "plansNotice": "公开 Alpha 期间，OpenScholar 免费提供所有功能。之后方案会有变化。",
+    "plansNotice": "公开 Alpha 期间，Openscholar 免费提供所有功能。之后方案会有变化。",
     "emailAddress": "发送邮件至 {email}"
   }
 }

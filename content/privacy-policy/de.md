@@ -1,6 +1,6 @@
 # **Datenschutzerklärung**
 
-**Datenschutzhinweis für Kundinnen und Kunden von OpenScholar.ai**
+**Datenschutzhinweis für Kundinnen und Kunden von Openscholar.ai**
 
 Open Development & Education ist die Verantwortliche für die personenbezogenen Daten, die in diesem Hinweis beschrieben werden.
 

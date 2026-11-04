@@ -32,7 +32,7 @@ async function searchWeb(query: string): Promise<{ results: Result[]; usd: numbe
   for (let attempt = 0; ; attempt += 1) {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "OpenScholar assistant web search" },
+      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "Openscholar assistant web search" },
       body: JSON.stringify({
         model: WEB_SEARCH_MODEL,
         max_tokens: WEB_SEARCH_MODEL_TOKENS,

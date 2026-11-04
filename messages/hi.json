@@ -35,7 +35,7 @@
     "credits": "क्रेडिट्स",
     "upgrade": "अपग्रेड",
     "signIn": "साइन इन",
-    "signInCreditsDescription": "OpenScholar से सीधे AI के लिए क्रेडिट्स का उपयोग करने के लिए साइन इन करें",
+    "signInCreditsDescription": "Openscholar से सीधे AI के लिए क्रेडिट्स का उपयोग करने के लिए साइन इन करें",
     "highlightSearchTerms": "खोज शब्दों को हाइलाइट करें",
     "signOut": "साइन आउट",
     "results": "परिणाम",
@@ -302,9 +302,9 @@
     "scheduled": "निर्धारित",
     "manageInBillingPortal": "बिलिंग पोर्टल में प्रबंधित करें",
     "downgradeTo": "{name} पर डाउनग्रेड करें",
-    "metadataTitle": "मूल्य निर्धारण | OpenScholar",
+    "metadataTitle": "मूल्य निर्धारण | Openscholar",
     "metadataDescription": "सभी आकार की टीमों के लिए सरल और पारदर्शी मूल्य निर्धारण।",
-    "everyFeature": "OpenScholar की हर सुविधा",
+    "everyFeature": "Openscholar की हर सुविधा",
     "papersRunning": "एक साथ चल रहे {running, number} शोधपत्र",
     "papersInRequest": "एक अनुरोध में {request, number} शोधपत्र",
     "unlimitedCollectionsAndGuests": "असीमित संग्रह और अतिथि",
@@ -317,7 +317,7 @@
     "credentials": "{provider} क्रेडेंशियल",
     "sandbox": "सैंडबॉक्स",
     "custom": "अपने क्रेडेंशियल",
-    "sandboxTitle": "OpenScholar सैंडबॉक्स",
+    "sandboxTitle": "Openscholar सैंडबॉक्स",
     "sandboxHint": "हमारा परीक्षण खाता इस्तेमाल होता है। सामग्री प्रदाता के परीक्षण परिवेश में रहती है।",
     "title": "प्रकाशन",
     "description": "DOI पंजीकरण और प्रकाशनों के संग्रह के लिए खाते जोड़ें।",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "अपनी खोज को बेहतर बनाने के लिए AI सेट करें",
-    "description": "OpenScholar क्वेरी को बेहतर बनाने, पेपर की स्क्रीनिंग और परिणामों का अनुवाद करने के लिए AI का उपयोग करता है।",
+    "description": "Openscholar क्वेरी को बेहतर बनाने, पेपर की स्क्रीनिंग और परिणामों का अनुवाद करने के लिए AI का उपयोग करता है।",
     "signInForCredits": "मुफ्त क्रेडिट के लिए साइन इन करें",
     "useOwnApiKey": "अपनी API कुंजी का उपयोग करें"
   },
@@ -1042,25 +1042,25 @@
     "searchPlural": "खोजें"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar - अकादमिक पेपर खोज",
+    "defaultTitle": "Openscholar - अकादमिक पेपर खोज",
     "defaultDescription": "लाखों अकादमिक पेपर और शोध लेख खोजें",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "hi_IN",
-    "historyTitle": "खोज इतिहास | OpenScholar",
+    "historyTitle": "खोज इतिहास | Openscholar",
     "historyDescription": "अपने पिछले खोज क्वेरी देखें और प्रबंधित करें।",
-    "bookmarksTitle": "बुकमार्क्स | OpenScholar",
+    "bookmarksTitle": "बुकमार्क्स | Openscholar",
     "bookmarksDescription": "तेज़ और अधिक कुशल खोजों के लिए अपने बुकमार्क्स प्रबंधित करें।",
-    "privacyTitle": "गोपनीयता नीति | OpenScholar",
-    "privacyDescription": "OpenScholar.ai ग्राहक गोपनीयता सूचना। जानें कि Open Development & Education आपकी व्यक्तिगत जानकारी को कैसे एकत्र, उपयोग और सुरक्षित करता है।",
-    "cookiePolicyTitle": "कुकी नीति | OpenScholar",
-    "cookiePolicyDescription": "जानें कि OpenScholar.ai विश्लेषण के लिए कुकी का उपयोग कैसे करता है और अपनी कुकी प्राथमिकताओं को कैसे प्रबंधित करें।",
-    "libraryTitle": "लाइब्रेरी - OpenScholar",
+    "privacyTitle": "गोपनीयता नीति | Openscholar",
+    "privacyDescription": "Openscholar.ai ग्राहक गोपनीयता सूचना। जानें कि Open Development & Education आपकी व्यक्तिगत जानकारी को कैसे एकत्र, उपयोग और सुरक्षित करता है।",
+    "cookiePolicyTitle": "कुकी नीति | Openscholar",
+    "cookiePolicyDescription": "जानें कि Openscholar.ai विश्लेषण के लिए कुकी का उपयोग कैसे करता है और अपनी कुकी प्राथमिकताओं को कैसे प्रबंधित करें।",
+    "libraryTitle": "लाइब्रेरी - Openscholar",
     "libraryDescription": "अपने सहेजे गए शैक्षणिक शोधपत्रों को ब्राउज़ करें और प्रबंधित करें",
-    "creditsTitle": "क्रेडिट | OpenScholar",
-    "creditsDescription": "वे परियोजनाएँ, डेटा और लाइसेंस जिन पर OpenScholar आधारित है।",
-    "sharedTitle": "मेरे साथ साझा | OpenScholar"
+    "creditsTitle": "क्रेडिट | Openscholar",
+    "creditsDescription": "वे परियोजनाएँ, डेटा और लाइसेंस जिन पर Openscholar आधारित है।",
+    "sharedTitle": "मेरे साथ साझा | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "बुकमार्क \"{name}\" पहले से मौजूद है",
@@ -1072,7 +1072,7 @@
   },
   "accessibility": {
     "closeDialog": "बंद करें",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "पेज नंबर",
     "zoomIn": "ज़ूम इन",
     "zoomOut": "ज़ूम आउट",
@@ -1390,19 +1390,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "हम आपकी गोपनीयता को महत्व देते हैं",
-    "bannerDescription": "हम विश्लेषण कुकी का उपयोग यह समझने के लिए करते हैं कि आप OpenScholar का उपयोग कैसे करते हैं और उत्पाद को कैसे बेहतर बनाते हैं। अपनी प्राथमिकता नीचे चुनें।",
-    "dialogDescription": "हम विश्लेषण कुकी का उपयोग यह समझने के लिए करते हैं कि आप OpenScholar का उपयोग कैसे करते हैं और उत्पाद को कैसे बेहतर बनाते हैं। आप सभी कुकी स्वीकार कर सकते हैं, गैर-आवश्यक को अस्वीकार कर सकते हैं, या कभी भी अपनी प्राथमिकता बदल सकते हैं।",
+    "bannerDescription": "हम विश्लेषण कुकी का उपयोग यह समझने के लिए करते हैं कि आप Openscholar का उपयोग कैसे करते हैं और उत्पाद को कैसे बेहतर बनाते हैं। अपनी प्राथमिकता नीचे चुनें।",
+    "dialogDescription": "हम विश्लेषण कुकी का उपयोग यह समझने के लिए करते हैं कि आप Openscholar का उपयोग कैसे करते हैं और उत्पाद को कैसे बेहतर बनाते हैं। आप सभी कुकी स्वीकार कर सकते हैं, गैर-आवश्यक को अस्वीकार कर सकते हैं, या कभी भी अपनी प्राथमिकता बदल सकते हैं।",
     "acceptAll": "सभी स्वीकार करें",
     "rejectNonEssential": "गैर-आवश्यक अस्वीकार करें",
     "preferencesTitle": "कुकी प्राथमिकताएं",
-    "preferencesDescription": "प्रबंधित करें कि OpenScholar विश्लेषण के लिए कुकी का उपयोग कैसे करता है।"
+    "preferencesDescription": "प्रबंधित करें कि Openscholar विश्लेषण के लिए कुकी का उपयोग कैसे करता है।"
   },
   "legal": {
     "learnMorePrefix": "हमारे यहां और जानें",
     "and": "और",
     "privacyPolicy": "गोपनीयता नीति",
     "cookiePolicy": "कुकी नीति",
-    "backToSite": "← OpenScholar पर वापस जाएं"
+    "backToSite": "← Openscholar पर वापस जाएं"
   },
   "upgradeDialog": {
     "title": "{plan} में अपग्रेड करें",
@@ -1684,7 +1684,7 @@
     "hideAnswers": "{title} के उत्तर छिपाएँ",
     "yesOrNo": "हाँ या नहीं",
     "lost": "यह स्क्रीनिंग हटा दी गई है या अब आपके साथ साझा नहीं है",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "{library} में नए संग्रह का नाम",
     "savedToLibrary": "<n>{count, number}</n> {library} के {name} में जोड़े गए",
     "notInLibrary": "<n>{count, number}</n> {library} में नहीं हैं",
@@ -1937,11 +1937,11 @@
       "sampleBody": "सार्वजनिक साइट पर टेक्स्ट का एक पैराग्राफ़ ऐसा दिखेगा।",
       "logosHeading": "लोगो और ब्राउज़र आइकन",
       "logoLightLabel": "लाइट मोड का लोगो",
-      "logoLightHint": "जब तक आप अपलोड नहीं करते, OpenScholar का लोगो दिखता है।",
+      "logoLightHint": "जब तक आप अपलोड नहीं करते, Openscholar का लोगो दिखता है।",
       "logoDarkLabel": "डार्क मोड का लोगो",
       "logoDarkHint": "जब तक आप अपलोड नहीं करते, लाइट मोड वाला लोगो दिखता है।",
       "faviconLabel": "लाइट मोड का ब्राउज़र आइकन",
-      "faviconHint": "जब तक आप अपलोड नहीं करते, OpenScholar का आइकन दिखता है।",
+      "faviconHint": "जब तक आप अपलोड नहीं करते, Openscholar का आइकन दिखता है।",
       "faviconDarkLabel": "डार्क मोड का ब्राउज़र आइकन",
       "faviconDarkHint": "जब तक आप अपलोड नहीं करते, लाइट मोड वाला आइकन दिखता है।",
       "coloursHeading": "रंग",
@@ -1960,7 +1960,7 @@
         "cardLight": "कार्ड (लाइट मोड)"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "सूर्योदय",
         "forest": "जंगल",
         "ocean": "समुद्र",
@@ -2098,8 +2098,8 @@
       "disclaimerHint": "हर पेज के नीचे छोटे अक्षरों में दिखता है।",
       "attribution": "श्रेय",
       "attributionHint": "एक पंक्ति, जैसे कम्युनिटी कौन चलाता है।",
-      "poweredBy": "OpenScholar द्वारा संचालित",
-      "poweredByHint": "एक छोटी पंक्ति, जो OpenScholar पर वापस लिंक करती है।",
+      "poweredBy": "Openscholar द्वारा संचालित",
+      "poweredByHint": "एक छोटी पंक्ति, जो Openscholar पर वापस लिंक करती है।",
       "poweredByLocked": "यह सुविधा भुगतान वाले प्लान में उपलब्ध है।"
     },
     "contact": {
@@ -2246,7 +2246,7 @@
       "connectAccountFailed": "Zotero साइन-इन शुरू नहीं हो सका। फिर से कोशिश करें।",
       "disconnect": "डिस्कनेक्ट करें",
       "disconnectTitle": "Zotero डिस्कनेक्ट करें?",
-      "disconnectBody": "आपका Zotero खाता OpenScholar से डिस्कनेक्ट हो जाएगा। जो समूह पहले से जुड़े हैं, वे अपनी दी गई कुंजी से आयात करते रहेंगे। नए समूहों के लिए फिर से साइन इन करना होगा।",
+      "disconnectBody": "आपका Zotero खाता Openscholar से डिस्कनेक्ट हो जाएगा। जो समूह पहले से जुड़े हैं, वे अपनी दी गई कुंजी से आयात करते रहेंगे। नए समूहों के लिए फिर से साइन इन करना होगा।",
       "disconnectFailed": "डिस्कनेक्ट नहीं हो सका। फिर से कोशिश करें।",
       "pasteLink": "या समूह का लिंक चिपकाएं",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2270,7 +2270,7 @@
       "resume": "फिर शुरू करें",
       "sourceAction": "{name} {action}",
       "sourceActionHint": "स्रोत {action}",
-      "noSources": "अभी कोई स्रोत नहीं है। कोई Zotero समूह, OpenAlex खोज या OpenScholar संग्रह जोड़ें।",
+      "noSources": "अभी कोई स्रोत नहीं है। कोई Zotero समूह, OpenAlex खोज या Openscholar संग्रह जोड़ें।",
       "listLabel": "जुड़े हुए स्रोत",
       "connections": "कनेक्शन",
       "connectionsTitle": "स्रोत कनेक्शन",
@@ -2288,7 +2288,7 @@
       "openAlex": {
         "access": "OpenAlex पहुँच",
         "ownKey": "अपनी API कुंजी",
-        "platformHint": "OpenScholar में शामिल। अपडेट केवल बदले हुए रिकॉर्ड लाते हैं।",
+        "platformHint": "Openscholar में शामिल। अपडेट केवल बदले हुए रिकॉर्ड लाते हैं।",
         "keyLabel": "OpenAlex API कुंजी",
         "keyHint": "इस कम्युनिटी के लिए अपनी OpenAlex API कुंजी का उपयोग करें।",
         "savedKey": "सहेजी गई कुंजी {hint}",
@@ -2296,7 +2296,7 @@
         "saveKey": "API कुंजी सहेजें",
         "removeKey": "सहेजी गई कुंजी हटाएं",
         "removeKeyTitle": "सहेजी गई OpenAlex कुंजी हटाएं?",
-        "removeKeyBody": "खोजें इसके बजाय OpenScholar पहुँच का उपयोग करेंगी।",
+        "removeKeyBody": "खोजें इसके बजाय Openscholar पहुँच का उपयोग करेंगी।",
         "removeKeyConfirm": "कुंजी हटाएं",
         "addTitle": "खोज जोड़ें",
         "changeTitle": "यह खोज बदलें",
@@ -2366,7 +2366,7 @@
         "loading": "आपके समूह लोड हो रहे हैं…",
         "failed": "आपके समूह लोड नहीं हो सके।"
       },
-      "openScholarCollection": "OpenScholar संग्रह",
+      "openScholarCollection": "Openscholar संग्रह",
       "openScholarCollectionHint": "अपने किसी संग्रह का अनुसरण करें",
       "pdfs": "PDF",
       "pdfPublishing": {
@@ -2379,12 +2379,12 @@
         "taggedHint": "Zotero में इनमें से किसी भी टैग वाला PDF, नोट या लिंक प्रकाशित होता है।",
         "everyHint": "PDF को टैग की ज़रूरत नहीं है। नोट और लिंक को अब भी इनमें से एक टैग चाहिए।"
       },
-      "collectionDeleted": "यह संग्रह OpenScholar में हटा दिया गया।",
+      "collectionDeleted": "यह संग्रह Openscholar में हटा दिया गया।",
       "removeCollectionTitle": "यह संग्रह हटाएँ?",
       "collectionConnectFailed": "यह संग्रह नहीं जोड़ा जा सका।",
       "collectionPicker": {
         "title": "संग्रह जोड़ें",
-        "description": "आपके OpenScholar संग्रह। कम्युनिटी आपके चुने संग्रहों का अनुसरण करती है और उनके बदलने पर अपडेट होती है।",
+        "description": "आपके Openscholar संग्रह। कम्युनिटी आपके चुने संग्रहों का अनुसरण करती है और उनके बदलने पर अपडेट होती है।",
         "search": "संग्रह खोजें…",
         "colCollection": "संग्रह",
         "noCollections": "आपके पास अभी कोई संग्रह नहीं है।",
@@ -2595,7 +2595,7 @@
         "yearsDropdown": "खोज बार में वर्ष चुनने का टूल दिखाएं।",
         "downloads": "प्रकाशनों और पूरी कम्युनिटी के लिए उद्धरण डाउनलोड दें।",
         "atomFeed": "Atom फ़ीड का लिंक दिखाएं।",
-        "readerAccounts": "पाठकों को OpenScholar से साइन इन करने दें, ताकि वे रिकॉर्ड बुकमार्क कर सकें और संग्रह रख सकें।"
+        "readerAccounts": "पाठकों को Openscholar से साइन इन करने दें, ताकि वे रिकॉर्ड बुकमार्क कर सकें और संग्रह रख सकें।"
       },
       "needs": "पहले {feature} चालू करें।",
       "needsSearch": {
@@ -3114,7 +3114,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, one {# मॉडल} other {# मॉडल}}",
     "cloudOnly": "सिर्फ़ क्लाउड",
-    "openScholarCloud": "OpenScholar क्लाउड",
+    "openScholarCloud": "Openscholar क्लाउड",
     "browserLabel": {
       "credits": "क्लाउड में",
       "smart": "पहले क्लाउड, फिर आपका ब्राउज़र",
@@ -3203,7 +3203,7 @@
       "failed": "उत्तर विफल रहा",
       "stopped": "उत्तर रोक दिया गया"
     },
-    "label": "OpenScholar सहायक",
+    "label": "Openscholar सहायक",
     "open": "सहायक खोलें",
     "fold": "सहायक को समेटें",
     "foldHint": "समेटें",
@@ -4788,7 +4788,7 @@
     "outdated": "यहाँ इस्तेमाल के लिए {library} को अपडेट चाहिए।",
     "error": {
       "notAddress": "यह कोई पता नहीं है।",
-      "notHosted": "OpenScholar यह कम्युनिटी नहीं चलाता।",
+      "notHosted": "Openscholar यह कम्युनिटी नहीं चलाता।",
       "private": "यह संग्रह निजी है। इसका स्वामी इसे आपसे साझा कर सकता है।",
       "notFound": "उस पते पर कुछ नहीं है।",
       "empty": "उस खोज या संग्रह में कोई रिकॉर्ड नहीं है।",
@@ -4820,7 +4820,7 @@
     "goneHint": "कम्युनिटी से आया यह लिंक समाप्त हो गया है। इसे कम्युनिटी से फिर खोलें।",
     "problem": {
       "notAddress": "यहाँ खोलने के लिए कुछ नहीं है। इसे कम्युनिटी से फिर खोलें।",
-      "notHosted": "वह कम्युनिटी अब OpenScholar पर नहीं चल रही है।",
+      "notHosted": "वह कम्युनिटी अब Openscholar पर नहीं चल रही है।",
       "private": "वह संग्रह निजी है। उसका स्वामी उसे आपके साथ साझा कर सकता है।",
       "notFound": "कम्युनिटी के पास अब वह नहीं है जो उसने भेजा था।",
       "empty": "कम्युनिटी ने जो भेजा था उसमें अब कोई रिकॉर्ड नहीं है।",
@@ -5415,11 +5415,11 @@
     "creatingKey": "कुंजी बनाई जा रही है...",
     "redirecting": "पुनर्निर्देशित किया जा रहा है...",
     "approve": "मंज़ूरी दें",
-    "wantsToConnect": "<strong>{appName}</strong> आपके OpenScholar वॉलेट से कनेक्ट होना चाहता है।",
+    "wantsToConnect": "<strong>{appName}</strong> आपके Openscholar वॉलेट से कनेक्ट होना चाहता है।",
     "copyKey": "यह API कुंजी कॉपी करें और <strong>{appName}</strong> में चिपकाएं। इसे केवल एक बार दिखाया जाएगा।",
-    "originUnregisteredBody": "<code>{origin}</code> पर चल रहा ऐप OpenScholar से कनेक्ट होने के लिए पंजीकृत नहीं है।",
-    "originHelp": "केवल पूर्व-स्वीकृत ओरिजिन वॉलेट कनेक्शन बना सकते हैं। यदि आप <strong>{appName}</strong> के डेवलपर हैं, तो अपना ओरिजिन पंजीकृत कराने के लिए OpenScholar टीम से संपर्क करें।",
-    "wantsToUseCredits": "<strong>{appName}</strong> आपके OpenScholar क्रेडिट से AI जनरेशन इस्तेमाल करना चाहता है।",
+    "originUnregisteredBody": "<code>{origin}</code> पर चल रहा ऐप Openscholar से कनेक्ट होने के लिए पंजीकृत नहीं है।",
+    "originHelp": "केवल पूर्व-स्वीकृत ओरिजिन वॉलेट कनेक्शन बना सकते हैं। यदि आप <strong>{appName}</strong> के डेवलपर हैं, तो अपना ओरिजिन पंजीकृत कराने के लिए Openscholar टीम से संपर्क करें।",
+    "wantsToUseCredits": "<strong>{appName}</strong> आपके Openscholar क्रेडिट से AI जनरेशन इस्तेमाल करना चाहता है।",
     "unknownApp": "अज्ञात ऐप",
     "thisApplicationSOriginIsNot": "इस एप्लिकेशन का ऑरिजिन पंजीकृत नहीं है।",
     "failedToCreateConnection": "कनेक्शन बनाने में विफल"
@@ -5436,7 +5436,7 @@
     "strip": "परीक्षण के लिए सार्वजनिक अल्फ़ा।",
     "stripDetail": "चीज़ें बदल सकती हैं या ख़राब हो सकती हैं।",
     "contactUs": "हमसे संपर्क करें",
-    "plansNotice": "सार्वजनिक अल्फ़ा के दौरान OpenScholar मुफ़्त है और इसमें हर सुविधा शामिल है। इसके बाद योजनाएँ बदलेंगी।",
+    "plansNotice": "सार्वजनिक अल्फ़ा के दौरान Openscholar मुफ़्त है और इसमें हर सुविधा शामिल है। इसके बाद योजनाएँ बदलेंगी।",
     "emailAddress": "{email} पर ईमेल करें"
   }
 }

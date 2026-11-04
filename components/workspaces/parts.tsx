@@ -61,7 +61,7 @@ export function useCurrentWorkspace() {
 }
 
 /** Your own workspace's colour, the brand's; an organization takes another until its admins pick one. */
-const OWN_TINT = "#2563eb";
+const OWN_TINT = "#d97706";
 const TINTS = ORGANIZATION_COLOURS.filter((colour) => colour !== OWN_TINT);
 
 /** A workspace's colour, which tints the rail while you're in it. */

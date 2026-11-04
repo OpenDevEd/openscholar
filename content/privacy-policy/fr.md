@@ -1,6 +1,6 @@
 # **Politique de confidentialité**
 
-**Avis de confidentialité des clients OpenScholar.ai**
+**Avis de confidentialité des clients Openscholar.ai**
 
 Open Development & Education est le responsable du traitement des informations personnelles décrites dans le présent avis.
 
