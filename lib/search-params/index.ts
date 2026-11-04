@@ -38,6 +38,14 @@ export function readSharedOql(hash: string): string | null {
   return new URLSearchParams(hash.replace(/^#/, '')).get(SHARED_OQL);
 }
 
+/**
+ * The research question an address asks the page to make a search from. Not a search parameter:
+ * it lives in the address only until the search is made, and the search's history holds it after.
+ */
+export function readUrlQuestion(params: { get(name: string): string | null }): string {
+  return params.get('question')?.trim() ?? '';
+}
+
 /** An OQL query can outgrow a URL, so an OQL search keeps it only in its history entry. */
 function withUrlQuery(params: Partial<ParsedSearchParams>): Partial<ParsedSearchParams> {
   return params.field === OQL_FIELD ? { ...params, q: '' } : params;

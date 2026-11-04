@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { effectiveSort, searchResultToParams } from "./converters";
+import { MIN_YEAR } from "../constants";
+import { effectiveSort, paramsToSearchResult, searchResultToParams } from "./converters";
 import { DEFAULT_SEARCH_PARAMS, type ParsedSearchParams } from "./parsers";
 
 describe("searchResultToParams — selection sanitization", () => {
@@ -42,5 +43,21 @@ describe("effectiveSort", () => {
   it("keeps relevance for any keyword query", () => {
     expect(effectiveSort(params({ q: "year" }))).toBe("relevance_score:desc");
     expect(effectiveSort(params({ q: " " }))).toBe("publication_date:desc");
+  });
+});
+
+describe("paramsToSearchResult — a year range with one end", () => {
+  const range = (ends: Partial<ParsedSearchParams>) => paramsToSearchResult({ ...DEFAULT_SEARCH_PARAMS, ...ends });
+
+  it("runs from the year to now when only the start is named", () => {
+    expect(range({ yf: 2020 })).toMatchObject({ yearRange: [2020, new Date().getFullYear()], isYearRangeEnabled: true });
+  });
+
+  it("runs from the earliest year when only the end is named", () => {
+    expect(range({ yt: 2020 })).toMatchObject({ yearRange: [MIN_YEAR, 2020], isYearRangeEnabled: true });
+  });
+
+  it("stays off when neither is named", () => {
+    expect(range({})).toMatchObject({ yearRange: undefined, isYearRangeEnabled: false });
   });
 });

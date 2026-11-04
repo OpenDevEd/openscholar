@@ -3,7 +3,8 @@
 import React, { Suspense, useContext, useState } from "react";
 import { redirect, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { SearchProvider, SearchInitializer } from "@/lib/search";
+import { SearchProvider } from "@/lib/search";
+import { SearchInitializer } from "@/lib/search/initializer";
 import { ResearchLoading, useResearchStatus } from "@/lib/research/provider";
 import { useWatchedSearch } from "@/lib/research/reads";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -12,14 +13,15 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useItemHome } from "@/components/workspaces/item-home";
 import { Gone } from "@/components/workspaces/shared";
-import { parseSearchParamsFromUrl } from "@/lib/search-params";
+import { parseSearchParamsFromUrl, readUrlQuestion } from "@/lib/search-params";
 import { carriesSearch } from "@/lib/search/resolve-search-init";
 import { useWorkspaceSlug, workspaceHref } from "@/lib/workspaces/href";
 
 function InitializeResults({ children }: { children: React.ReactNode }) {
   const t = useTranslations("searchCommand");
   const account = useContext(ResearchContext);
-  const carried = carriesSearch(parseSearchParamsFromUrl(useSearchParams()));
+  const params = useSearchParams();
+  const carried = carriesSearch(parseSearchParamsFromUrl(params)) || readUrlQuestion(params) !== "";
   const searchId = getEffectiveSearchId(usePathname());
   const watched = useWatchedSearch(account ? searchId : undefined);
   const { retry } = useResearchStatus();
