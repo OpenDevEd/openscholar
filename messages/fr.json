@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Accès non autorisé",
-    "organizationFeatureDescription": "Le forfait de cet espace de travail n’inclut pas les Evidence Communities.",
+    "organizationFeatureDescription": "Les Evidence Communities sont activées pour une organisation sur demande. Écrivez à {email}.",
     "backToSearch": "Retour à la recherche",
     "loadingTitle": "Chargement de l'espace de travail",
     "loadingDescription": "Préparation de votre espace de travail authentifié.",

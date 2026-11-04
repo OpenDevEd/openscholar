@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "アクセスできません",
-    "organizationFeatureDescription": "このワークスペースのプランに Evidence Communities は含まれていません。",
+    "organizationFeatureDescription": "Evidence Communities はリクエストに応じて組織で有効にします。{email} にメールしてください。",
     "backToSearch": "検索に戻る",
     "loadingTitle": "ワークスペースを読み込み中",
     "loadingDescription": "認証済みワークスペースを準備しています。",

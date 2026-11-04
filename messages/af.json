@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Nie toegelaat nie",
-    "organizationFeatureDescription": "Hierdie werkruimte se plan sluit nie Evidence Communities in nie.",
+    "organizationFeatureDescription": "Evidence Communities word op versoek vir ’n organisasie aangeskakel. E-pos {email}.",
     "backToSearch": "Terug na soektog",
     "loadingTitle": "Laai werkruimte",
     "loadingDescription": "Berei jou geverifieerde werkruimte voor.",

@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "No permitido",
-    "organizationFeatureDescription": "El plan de este espacio de trabajo no incluye Evidence Communities.",
+    "organizationFeatureDescription": "Las Evidence Communities se activan para una organización a petición. Escribe a {email}.",
     "backToSearch": "Volver a la búsqueda",
     "loadingTitle": "Cargando el espacio de trabajo",
     "loadingDescription": "Preparando su espacio de trabajo autenticado.",
