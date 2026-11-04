@@ -3170,7 +3170,8 @@
       "questionToQuery": "问题 → 查询",
       "refine": "优化",
       "translate": "翻译",
-      "broadenNarrow": "扩大 / 缩小"
+      "broadenNarrow": "扩大 / 缩小",
+      "overview": "AI 概览"
     },
     "preset": "预设",
     "presets": {

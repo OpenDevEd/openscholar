@@ -1,9 +1,10 @@
 import { v } from "convex/values";
-import { AI_TASKS, PRESET_KEYS, SEARCH_TASKS, type AiTask, type PresetKey } from "../../lib/ai/tasks";
+import { AI_TASKS, PRESET_KEYS, PRESET_TASKS, SEARCH_TASKS, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import { EFFORTS } from "../../lib/ai/core/call-options";
 import { MAX_AI_TASKS, MAX_EFFORT_LEVELS, MAX_MODEL_MODALITIES, MAX_MODEL_PARAMETERS, MAX_TOP_PROVIDERS, capped } from "../lib/listCaps";
 
 export const aiTaskValidator = v.union(...AI_TASKS.map((task) => v.literal(task)));
+export const presetTaskValidator = v.union(...PRESET_TASKS.map((task) => v.literal(task)));
 export const searchTaskValidator = v.union(...SEARCH_TASKS.map((task) => v.literal(task)));
 export const presetKeyValidator = v.union(...PRESET_KEYS.map((preset) => v.literal(preset)));
 export const effortValidator = v.union(...EFFORTS.map((effort) => v.literal(effort)));
@@ -46,7 +47,7 @@ export const modelSummaryValidator = v.object({
 
 /** What a task runs on: its model and effort, or null when nothing live is set. */
 export const taskPickSummaryValidator = v.object({
-  task: aiTaskValidator,
+  task: presetTaskValidator,
   model: v.union(modelSummaryValidator, v.null()),
   effort: v.union(effortValidator, v.null()),
 });

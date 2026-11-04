@@ -14,7 +14,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Acting } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
-import { presetPick } from "../ai/serverModel";
+import { overviewPick } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requestOf } from "../paperSets/search";
 import { searchRequestValidator } from "../paperSets/openalex";
@@ -121,9 +121,9 @@ const storedOf = (ctx: QueryCtx, workspaceId: Id<"workspaces">, request: string,
 /** Today in UTC, as a person's day counts are kept: it starts at midnight UTC, as Autumn resets a daily limit. */
 const today = () => new Date().toISOString().slice(0, 10);
 
-/** What one overview paid in credits costs, at the Cheap preset's chat model's price; null without one. */
-async function paidCredits(ctx: QueryCtx) {
-  const pick = await presetPick(ctx, "cheap", "chat");
+/** What one overview paid in credits costs, at the price of the model it would run on for this person; null without one. */
+async function paidCredits(ctx: QueryCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
+  const pick = await overviewPick(ctx, actor);
   const model = pick ? await ctx.db.get("models", pick.modelId) : null;
   return model ? estimateCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, CALL_TOKENS.overview) : null;
 }
@@ -147,7 +147,7 @@ export const viewAction = defineUserQuery({
       paid: prefs?.paid ?? 0,
       perDay: perDay ?? null,
       paidPerDay: PAID_PER_DAY,
-      credits: await paidCredits(ctx),
+      credits: await paidCredits(ctx, { userId, workspaceId }),
     };
   },
 });
@@ -186,7 +186,7 @@ export const ensureAction = defineUserMutation({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  estimate: async (ctx, _actor, { pay }) => (pay ? ((await paidCredits(ctx)) ?? 0) : 0),
+  estimate: async (ctx, actor, { pay }) => (pay ? ((await paidCredits(ctx, actor)) ?? 0) : 0),
   run: async (ctx, actor, { searchId, lens: lensId, locale, pay, again }): Promise<Infer<typeof ensured>> => {
     const search = await searchFor(ctx, actor, searchId);
     if ("reason" in search) return "unavailable";
@@ -202,7 +202,7 @@ export const ensureAction = defineUserMutation({
     const free = perDay === undefined || counts.free < perDay;
     if (!free && !pay) return "ask";
     if (!free && counts.paid >= PAID_PER_DAY) return "limit";
-    const pick = await presetPick(ctx, "cheap", "chat");
+    const pick = await overviewPick(ctx, actor);
     if (!pick) throw createError("VALIDATION_ERROR", "No model writes overviews right now. Try again later.");
     await ctx.db.patch("overviewPrefs", prefs._id, { day, ...(free ? { free: counts.free + 1, paid: counts.paid } : { free: counts.free, paid: counts.paid + 1 }) });
     const startedAt = Date.now();

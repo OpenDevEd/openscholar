@@ -7,14 +7,14 @@ import { type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { ArrowUpDown, Brain, ChevronsUpDown, Cloud, Filter, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon, TranslateIcon } from "@/components/icons";
+import { ArrowUpDown, Brain, ChevronsUpDown, Cloud, FileText, Filter, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon, TranslateIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
-import { BROWSER_TASKS, CLOUD_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
+import { BROWSER_TASKS, CLOUD_TASKS, PRESET_KEYS, PRESET_ONLY_TASKS, type PresetKey, type PresetTask } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Segmented, type Ico } from "./parts";
 import { EffortMeter, IntelligenceMeter, PriceScale, priceLabel } from "@/components/models/meters";
@@ -46,8 +46,9 @@ export const effortOf = (model: Pick<MapModel, "effort" | "reasoningEfforts" | "
 
 export const PRESET_ICONS: Record<PresetKey, Ico> = { cheap: PiggyBank, fast: Zap, balanced: Scale, intelligent: Brain };
 
-const TASK_ICONS: Record<AiTask, Ico> = {
+const TASK_ICONS: Record<PresetTask, Ico> = {
   chat: MessageSquare,
+  overview: FileText,
   extraction: ExtractionIcon,
   screenAll: ListChecks,
   screening: Filter,
@@ -108,17 +109,22 @@ const GAP = 14;
 const NODE_H = 64;
 const NODE_GAP = 12;
 export const ZONE_LABEL = 28;
-const BROWSER_TOP = LABEL + CLOUD_TASKS.length * ROW + GAP;
-const HEIGHT = BROWSER_TOP + LABEL + BROWSER_TASKS.length * ROW;
-const TASK_Y = Object.fromEntries([
-  ...CLOUD_TASKS.map((t, i) => [t, LABEL + i * ROW + ROW / 2]),
-  ...BROWSER_TASKS.map((t, i) => [t, BROWSER_TOP + LABEL + i * ROW + ROW / 2]),
-]) as Record<AiTask, number>;
+/** Where the map's task rows sit: `cloud` above, then the browser tasks. The admin's map has more cloud rows than a person's. */
+function layoutOf(cloud: readonly PresetTask[]) {
+  const browserTop = LABEL + cloud.length * ROW + GAP;
+  return {
+    height: browserTop + LABEL + BROWSER_TASKS.length * ROW,
+    y: Object.fromEntries([
+      ...cloud.map((t, i) => [t, LABEL + i * ROW + ROW / 2]),
+      ...BROWSER_TASKS.map((t, i) => [t, browserTop + LABEL + i * ROW + ROW / 2]),
+    ]) as Record<PresetTask, number>,
+  };
+}
 export const EASE = [0.32, 0.72, 0, 1] as const;
 
-export type MapNode = { id: string; model: MapModel; paidBy: "credits" | "key"; tasks: AiTask[]; target: number };
-type Edge = { task: AiTask; node: string; y0: number };
-export type Hover = { task?: AiTask; node?: string } | null;
+export type MapNode = { id: string; model: MapModel; paidBy: "credits" | "key"; tasks: PresetTask[]; target: number };
+type Edge = { task: PresetTask; node: string; y0: number };
+export type Hover = { task?: PresetTask; node?: string } | null;
 
 const onKey = (n: MapNode) => (n.paidBy === "key" ? 1 : 0);
 
@@ -149,16 +155,21 @@ export type Routing = ReturnType<typeof useRouting>;
 export function useRouting({
   modelFor,
   onKey: runsOnKey = () => false,
+  presetOnly = false,
 }: {
-  modelFor: (t: AiTask) => MapModel | null;
+  modelFor: (t: PresetTask) => MapModel | null;
+  /** Also routes the tasks only a preset sets, on the admin's map. */
+  presetOnly?: boolean;
   /** Whether the task runs on the user's own key rather than on credits. */
-  onKey?: (t: AiTask) => boolean;
+  onKey?: (t: PresetTask) => boolean;
 }) {
   const edges: Edge[] = [];
   const nodes: MapNode[] = [];
   // Tasks on the same model, effort and payment share a card.
   const cards = new Map<string, MapNode>();
-  for (const task of [...CLOUD_TASKS, ...BROWSER_TASKS]) {
+  const cloud: readonly PresetTask[] = presetOnly ? [...CLOUD_TASKS, ...PRESET_ONLY_TASKS] : CLOUD_TASKS;
+  const { height: tasksHeight, y: taskY } = layoutOf(cloud);
+  for (const task of [...cloud, ...BROWSER_TASKS]) {
     const model = modelFor(task);
     if (!model) continue;
     const paidBy = runsOnKey(task) ? "key" : "credits";
@@ -171,12 +182,12 @@ export function useRouting({
       nodes.push(n);
     }
     n.tasks.push(task);
-    edges.push({ task, node: n.id, y0: TASK_Y[task] });
+    edges.push({ task, node: n.id, y0: taskY[task] });
   }
-  for (const n of nodes) n.target = n.tasks.reduce((sum, t) => sum + TASK_Y[t], 0) / n.tasks.length;
+  for (const n of nodes) n.target = n.tasks.reduce((sum, t) => sum + taskY[t], 0) / n.tasks.length;
   // Grow past the task list when the cards need more room than it has.
   const stacked = LABEL + nodes.length * (NODE_H + NODE_GAP) - NODE_GAP + (nodes.some(onKey) ? ZONE_LABEL : 0);
-  const height = Math.max(HEIGHT, stacked);
+  const height = Math.max(tasksHeight, stacked);
   const tops = placeNodes(nodes, height);
   const ordered = [...nodes].sort((a, b) => tops[a.id]! - tops[b.id]!);
   const colorOf = (id: string) => {
@@ -184,7 +195,7 @@ export function useRouting({
     return n.paidBy === "key" ? KEY_TINT : tintOf(n.model.id);
   };
   return {
-    edges, nodes, ordered, tops, height, colorOf,
+    cloud, edges, nodes, ordered, tops, height, colorOf,
     firstKey: ordered.find(onKey)?.id,
     modelCount: new Set(nodes.map((n) => n.model.id)).size,
   };
@@ -208,26 +219,26 @@ export function RoutingMap({
   browserLabel: string;
   browserActive?: boolean;
   renderNode: (n: MapNode) => ReactNode;
-  wrapTask?: (task: AiTask, row: ReactNode) => ReactNode;
+  wrapTask?: (task: PresetTask, row: ReactNode) => ReactNode;
   /** Turns the browser tasks' label into a control, such as how they're paid for. */
   wrapBrowserLabel?: (label: ReactNode) => ReactNode;
   /** Sits beside the cloud tasks' label, such as a way to unlock them. */
   cloudAside?: ReactNode;
 }) {
   const tm = useTranslations("settingsAi");
-  const { edges, nodes, tops, height, colorOf } = routing;
+  const { cloud, edges, nodes, tops, height, colorOf } = routing;
   // Picking a model replaces its card before the pointer can leave it, so a hovered card may be gone.
   const hover = hoverIn?.node && !nodes.some((n) => n.id === hoverIn.node) ? null : hoverIn;
   const reduceMotion = useReducedMotion();
   const nodeY = (id: string) => tops[id]! + NODE_H / 2;
   const lit = (e: Edge) => !hover || (hover.task ? e.task === hover.task : e.node === hover.node);
   const nodeLit = (n: MapNode) => !hover || (hover.node ? hover.node === n.id : n.tasks.includes(hover.task!));
-  const taskColor = (t: AiTask) => {
+  const taskColor = (t: PresetTask) => {
     const edge = edges.find((e) => e.task === t);
     return edge ? colorOf(edge.node) : undefined;
   };
 
-  const taskRow = (task: AiTask) => {
+  const taskRow = (task: PresetTask) => {
     const Icon = TASK_ICONS[task];
     // A task with no model doesn't run here, so it's grayed and there's nothing to pick.
     const runs = edges.some((e) => e.task === task);
@@ -269,7 +280,7 @@ export function RoutingMap({
             {tm("cloudOnly")}
             {cloudAside}
           </div>
-          {CLOUD_TASKS.map(taskRow)}
+          {cloud.map(taskRow)}
           <div style={{ height: GAP }} />
           <div className={cn("flex items-center ps-3 text-xs font-medium transition-colors", browserActive ? "text-primary" : "text-muted-foreground")} style={{ height: LABEL }}>
             {(wrapBrowserLabel ?? ((label: ReactNode) => label))(
@@ -518,7 +529,7 @@ export function PresetSwitch<T extends PresetKey | "custom">({
 export function usePresetModels() {
   const presets = useQuery(api.aiModelConfig.queries.presetPicks, {});
   if (!presets) return undefined;
-  return (preset: PresetKey, task: AiTask): PickedModel | null => {
+  return (preset: PresetKey, task: PresetTask): PickedModel | null => {
     const pick = presets[preset].find((r) => r.task === task);
     return pick?.model ? toMapModel(pick.model, pick.effort) : null;
   };

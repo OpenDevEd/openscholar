@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { AI_TASKS, DEFAULT_PRESET, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
+import { DEFAULT_PRESET, PRESET_KEYS, PRESET_TASKS, type PresetKey, type PresetTask } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Enter } from "@/components/settings/parts";
 import {
@@ -27,13 +27,13 @@ export default function AdminAiModelsPage() {
   const [preset, setPreset] = useState<PresetKey>(DEFAULT_PRESET);
   const presetModel = usePresetModels();
   const setPresetPick = useMutation(api.aiModelConfig.admin.setPresetPick);
-  const modelOf = (task: AiTask) => presetModel?.(preset, task) ?? null;
-  const routing = useRouting({ modelFor: modelOf });
+  const modelOf = (task: PresetTask) => presetModel?.(preset, task) ?? null;
+  const routing = useRouting({ modelFor: modelOf, presetOnly: true });
   const [today] = useState(() => new Date().toISOString().slice(0, 10));
   const { data: free } = useProtectedQuery(api.ai.freeQueries.settings, { day: today });
   const { data: flags } = useProtectedQuery(api.featureFlags.queries.list, {});
 
-  const route = (tasks: AiTask[], model: MapModel, effort?: Effort) => {
+  const route = (tasks: PresetTask[], model: MapModel, effort?: Effort) => {
     for (const task of tasks) {
       setPresetPick({ preset, task, modelId: model._id!, ...(effort && { effort }) }).catch((error: unknown) => {
         console.error("[settings] preset pick failed", error);
@@ -42,7 +42,7 @@ export default function AdminAiModelsPage() {
     }
   };
   // The other presets' picks for these tasks, one click each.
-  const presetPicks = (tasks: AiTask[]): PresetPick[] =>
+  const presetPicks = (tasks: PresetTask[]): PresetPick[] =>
     PRESET_KEYS.filter((id) => id !== preset).map((id) => {
       const picked = tasks.flatMap((task) => {
         const m = presetModel?.(id, task);
@@ -55,7 +55,7 @@ export default function AdminAiModelsPage() {
     <Enter ready={presetModel !== undefined && free !== undefined && flags !== undefined}>
       <div className="space-y-6">
         <FreeQuestionsZone key={free ? "read" : "reading"} settings={free} on={flags?.page.find((flag) => flag.key === FREE_QUESTIONS_FLAG)?.enabled ?? FLAG_REGISTRY[FREE_QUESTIONS_FLAG].enabled} />
-        <PresetSwitch value={preset} onChange={setPreset} modelsOf={(p) => AI_TASKS.flatMap((task) => presetModel?.(p, task) ?? [])} />
+        <PresetSwitch value={preset} onChange={setPreset} modelsOf={(p) => PRESET_TASKS.flatMap((task) => presetModel?.(p, task) ?? [])} />
         <MapSummary
           routing={routing}
           title={t("modelCount", { count: routing.modelCount })}

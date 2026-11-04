@@ -3171,7 +3171,8 @@
       "questionToQuery": "Frage → Abfrage",
       "refine": "Verfeinern",
       "translate": "Übersetzen",
-      "broadenNarrow": "Erweitern / eingrenzen"
+      "broadenNarrow": "Erweitern / eingrenzen",
+      "overview": "KI-Überblick"
     },
     "preset": "Voreinstellung",
     "presets": {

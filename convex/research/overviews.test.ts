@@ -23,13 +23,13 @@ async function setup() {
   const t = convexTest(schema);
   const ids = await t.run(async (ctx) => {
     const [alice, bob] = await Promise.all(["alice", "bob"].map((clerkId) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 })));
-    // The Cheap preset's chat model, which writes overviews.
+    // The overview entry of the person's preset, Balanced.
     await ctx.db.insert("models", {
       modelId: "acme/cheap", name: "Cheap", provider: "acme", inputPricePerMillion: 1, outputPricePerMillion: 5,
       isServed: false, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1,
       supportedParameters: ["tools", "reasoning"], reasoningEfforts: ["low", "medium"], defaultEffort: "medium",
     });
-    await ctx.db.insert("aiModelConfig", { key: "preset.cheap.chat", modelId: "acme/cheap", effort: "medium", updatedAt: 1 });
+    await ctx.db.insert("aiModelConfig", { key: "preset.balanced.overview", modelId: "acme/cheap", effort: "medium", updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId: alice });
     // An organization both are in, on its own plan.
     const team = await grantPlanFeaturesForTest(ctx, await seedOrganizationFeatures(ctx, ["alice", "bob"], {}), []);

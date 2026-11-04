@@ -3171,7 +3171,8 @@
       "questionToQuery": "Pregunta → consulta",
       "refine": "Refinar",
       "translate": "Traducir",
-      "broadenNarrow": "Ampliar / restringir"
+      "broadenNarrow": "Ampliar / restringir",
+      "overview": "Resumen de IA"
     },
     "preset": "Preajuste",
     "presets": {
