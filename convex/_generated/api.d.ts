@@ -341,6 +341,7 @@ import type * as migrations_screeningSearch from "../migrations/screeningSearch.
 import type * as migrations_searchSuggestions from "../migrations/searchSuggestions.js";
 import type * as migrations_searchText from "../migrations/searchText.js";
 import type * as migrations_teamLists from "../migrations/teamLists.js";
+import type * as migrations_upgradeLiveData from "../migrations/upgradeLiveData.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
 import type * as migrations_walletKeyWorkspaces from "../migrations/walletKeyWorkspaces.js";
 import type * as migrations_workspaces from "../migrations/workspaces.js";
@@ -800,6 +801,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/searchSuggestions": typeof migrations_searchSuggestions;
   "migrations/searchText": typeof migrations_searchText;
   "migrations/teamLists": typeof migrations_teamLists;
+  "migrations/upgradeLiveData": typeof migrations_upgradeLiveData;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;
   "migrations/walletKeyWorkspaces": typeof migrations_walletKeyWorkspaces;
   "migrations/workspaces": typeof migrations_workspaces;
