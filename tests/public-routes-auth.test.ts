@@ -74,6 +74,7 @@ describe("public route auth matrix", () => {
       "/settings/ai",
       "/sign-in/x",
       "/sign-up/x",
+      "/terms",
       "/topics",
       "/topics/x",
     ]);

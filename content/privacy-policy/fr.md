@@ -21,6 +21,17 @@ E-mail : support@openscholar.ai
 
 # **Informations que nous collectons, utilisons et pourquoi**
 
+Nous collectons ou utilisons les informations personnelles suivantes **pour faire fonctionner votre compte et les fonctionnalités que vous utilisez** :
+
+* Votre nom, votre adresse e-mail et votre photo de profil, ainsi que les organisations auxquelles vous appartenez
+* Ce que vous faites dans Openscholar : recherches, questions, articles enregistrés, évaluations, collections, criblages, extractions et conversations avec l'assistant
+* Les fichiers que vous importez et les applications que vous connectez, comme Zotero
+* Les crédits que vous utilisez et achetez. Stripe gère les données de carte ; nous ne conservons que la marque de la carte et ses quatre derniers chiffres
+
+Lorsque vous utilisez une fonctionnalité d'IA, votre demande et le texte d'article nécessaire sont envoyés au fournisseur d'IA qui effectue le travail.
+
+Que vous acceptiez ou non les cookies d'analyse, nous envoyons à PostHog un enregistrement de chaque demande d'IA sous votre identifiant de compte, sans son texte, pour suivre les coûts et la fiabilité.
+
 Nous collectons ou utilisons les informations personnelles suivantes pour **traiter les demandes de renseignements, les réclamations ou les demandes d'indemnisation** :
 
 * Noms et coordonnées
@@ -75,6 +86,12 @@ Pour faire une demande de droits en matière de protection des données, veuille
 
 # **Nos bases légales pour la collecte et l'utilisation de vos données**
 
+Notre base légale pour collecter ou utiliser des informations personnelles **pour faire fonctionner votre compte et les fonctionnalités que vous utilisez** est :
+
+* **Contrat** – nous en avons besoin pour fournir le service auquel vous vous êtes inscrit. Tous vos droits en matière de protection des données peuvent s'appliquer, sauf le droit d'opposition.
+
+* **Intérêts légitimes** – pour ces enregistrements de demandes d'IA. Nous en avons besoin pour garder les fonctionnalités d'IA fiables et maîtriser leurs coûts.
+
 Nos bases légales pour la collecte ou l'utilisation d'informations personnelles pour **traiter les demandes de renseignements, les réclamations ou les demandes d'indemnisation** sont :
 
 * **Intérêts légitimes** – nous collectons ou utilisons vos informations parce qu'elles vous bénéficient, à notre organisation ou à quelqu'un d'autre, sans causer de risque excessif de préjudice à quiconque. Tous vos droits en matière de protection des données peuvent s'appliquer, sauf le droit à la portabilité. Nos intérêts légitimes sont :
@@ -102,6 +119,8 @@ Pour plus d'informations sur notre utilisation des intérêts légitimes comme b
 
 # **Provenance des informations personnelles**
 
+* **De la connexion et des services connectés** : Clerk lors de la connexion, Google si vous vous connectez avec Google, et Zotero si vous le connectez
+
 * **Directement de vous** lorsque vous :
   * Nous envoyez un e-mail
   * Complétez une enquête de commentaires
@@ -125,6 +144,9 @@ Pour plus d'informations sur notre utilisation des intérêts légitimes comme b
 | **Cookies d'analyse**                | 365 jours à compter de la dernière visite                | Pour suivre les visiteurs récurrents et maintenir la continuité de la session                                   |
 | **Réponses aux enquêtes**                 | 1 an à compter de la date de soumission          | Pour améliorer le produit et suivre les tendances des commentaires au fil du temps                                    |
 | **Journaux d'adresses IP**                  | 24 heures à compter de la date de collecte         | Pour la surveillance de la sécurité et la prévention de la fraude                                                  |
+| **Données de compte et de recherche** | Jusqu'à ce que vous les supprimiez ou supprimiez votre compte, puis environ 30 jours | Pour fournir le service |
+| **Ce que vous ajoutez à une organisation** | Reste dans l'organisation, avec votre nom, après votre départ ou la suppression de votre compte | Pour que l'organisation conserve son travail |
+| **Justificatifs de paiement** | 6 ans à compter de la date d'achat | Pour respecter les règles fiscales et comptables |
 
 
 Après ces périodes, nous supprimons de manière sécurisée ou anonymisons les informations personnelles afin qu'elles ne puissent plus vous identifier.
@@ -145,14 +167,55 @@ Ce responsable du traitement des données effectue les activités suivantes pour
 
 **Localisation :** Allemagne (hébergement UE)
 
-**Vercel Inc.**
+**Hetzner Online GmbH**
 
-Ce responsable du traitement des données effectue les activités suivantes pour nous :
-* Héberge notre site Web
-* Fournit des services de réseau de diffusion de contenu (CDN)
-* Traite les journaux du serveur et les données de connexion
+Ce sous-traitant effectue les activités suivantes pour nous :
+* Héberge notre site web et notre base de données
 
-**Localisation :** États-Unis et réseau de périmètre distribué mondialement
+**Emplacement:** Allemagne
+
+**Cloudflare, Inc.**
+
+Ce sous-traitant effectue les activités suivantes pour nous :
+* Protège et achemine le trafic de notre site web
+* Stocke des copies de certains PDF d'articles
+
+**Emplacement:** Réseau distribué mondialement
+
+**Clerk, Inc.**
+
+Ce sous-traitant effectue les activités suivantes pour nous :
+* Gère la connexion et les comptes
+
+**Emplacement:** États-Unis
+
+**Stripe**
+
+Ce sous-traitant effectue les activités suivantes pour nous :
+* Traite les paiements de crédits
+
+**Emplacement:** États-Unis et Europe
+
+**OpenRouter, Inc.**
+
+Ce sous-traitant effectue les activités suivantes pour nous :
+* Envoie les demandes d'IA aux fournisseurs de modèles qui y répondent, comme Anthropic, OpenAI et Google
+
+**Emplacement:** États-Unis
+
+**Brevo**
+
+Ce sous-traitant effectue les activités suivantes pour nous :
+* Envoie les e-mails d'invitation
+
+**Emplacement:** France
+
+**Supabase, Inc.**
+
+Ce sous-traitant effectue les activités suivantes pour nous :
+* Stocke les fichiers des Evidence Communities
+
+**Emplacement:** Royaume-Uni
 
 # **Partage d'informations en dehors du Royaume-Uni**
 
@@ -172,15 +235,15 @@ Les données sont principalement traitées dans l'Espace économique européen (
 
 ---
 
-**Nom de l'organisation :** Vercel Inc.
+**Noms des organisations:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
-**Catégorie de destinataire :** Fournisseur d'hébergement de site Web
+**Catégorie de destinataire:** Fournisseurs de connexion, de paiement, d'IA et de diffusion du site web
 
-**Pays où les informations personnelles sont envoyées :** États-Unis (et réseau de périmètre distribué mondialement)
+**Pays vers lequel les informations personnelles sont envoyées:** États-Unis et pays où les fournisseurs d'IA exploitent leurs modèles
 
-**Comment le transfert est conforme à la législation britannique sur la protection des données :**
+**Comment le transfert respecte la législation britannique sur la protection des données:** 
 
-Les transferts vers Vercel Inc. sont effectués en s'appuyant sur sa certification dans le cadre de l'extension britannique du cadre de confidentialité des données UE-États-Unis.
+Ces transferts reposent sur l'extension britannique du cadre de protection des données UE-États-Unis lorsque le destinataire est certifié, ou à défaut sur l'avenant britannique relatif aux transferts internationaux de données.
 
 # **Comment nous protégeons les informations personnelles**
 
@@ -191,7 +254,7 @@ Nous mettons en œuvre des mesures techniques et organisationnelles appropriées
 * **Pseudonymisation :** Les données d'analyse sont pseudonymisées dans la mesure du possible
 * **Révisions de sécurité régulières :** Nous surveillons et mettons à jour nos pratiques de sécurité
 * **Responsables du traitement des données sécurisés :** Nous ne collaborons qu'avec des responsables du traitement qui répondent à des normes de sécurité élevées
-* **Gestion du consentement aux cookies :** L'analyse ne fonctionne qu'avec votre consentement
+* **Gestion du consentement aux cookies :** Les cookies d'analyse et les enregistrements de session ne fonctionnent qu'avec votre consentement
 
 # **Cookies**
 
@@ -233,4 +296,4 @@ Nous vous encourageons à consulter périodiquement cet avis de confidentialité
 
 # **Dernière mise à jour**
 
-17 février 2026
+4 novembre 2026

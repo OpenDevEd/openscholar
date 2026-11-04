@@ -21,6 +21,17 @@ Imeyili: support@openscholar.ai
 
 # **Ulwazi esiluqoqayo, esiluyisebenzisayo, nesizathu**
 
+Siqoqa noma sisebenzise imininingwane yomuntu elandelayo **ukuze sisebenzise i-akhawunti yakho nezici ozisebenzisayo**:
+
+* Igama lakho, ikheli le-imeyili nesithombe sephrofayela, nezinhlangano oyilungu lazo
+* Okwenzayo ku-Openscholar: ukusesha, imibuzo, amaphepha agciniwe, izilinganiso, amaqoqo, ukuskrina, ukukhishwa nezingxoxo nomsizi
+* Amafayela owalayishayo, nezinhlelo ozixhumayo, njenge-Zotero
+* Amakhredithi owasebenzisayo nowathengayo. I-Stripe iphatha imininingwane yekhadi, futhi sigcina kuphela uhlobo lwekhadi nezinombolo zalo ezine zokugcina
+
+Uma usebenzisa isici se-AI, isicelo sakho nombhalo wephepha odingekayo kuthunyelwa kumhlinzeki we-AI owenza umsebenzi.
+
+Noma wamukela amakhukhi okuhlaziya noma cha, sithumela ku-PostHog irekhodi lesicelo ngasinye se-AI ngaphansi kwe-ID ye-akhawunti yakho, ngaphandle kombhalo waso, ukuze silandele izindleko nokwethembeka.
+
 Siqoqa noma siyasebenzisa ulwazi lomuntu siqu olulandelayo **ngokuphatha imibuzo, izikhalo noma izimangalo**:
 
 * Amagama nemininingwane yokuxhumana
@@ -75,6 +86,12 @@ Ukuze wenze isicelo samalungelo okuvikelwa kwedatha, sicela uxhumane nathi usebe
 
 # **Izisekelo zethu ezisemthethweni zokuqoqa nokusebenzisa idatha yakho**
 
+Isisekelo sethu sezomthetho sokuqoqa noma ukusebenzisa imininingwane yomuntu **ukuze sisebenzise i-akhawunti yakho nezici ozisebenzisayo** yilesi:
+
+* **Inkontileka** – siyayidinga ukuze sinikeze insizakalo obhalisele yona. Wonke amalungelo akho okuvikelwa kwedatha angasebenza, ngaphandle kwelungelo lokuphikisa.
+
+* **Izithakazelo ezisemthethweni** – kulawo marekhodi ezicelo ze-AI. Siyawadinga ukuze sigcine izici ze-AI zithembekile nezindleko zazo zilawulwa.
+
 Izisekelo zethu ezisemthethweni zokuqoqa noma zokusebenzisa ulwazi lomuntu siqu ngokuphatha imibuzo, izikhalo noma izimangalo yilezi:
 
 * **Izintshisekelo ezisemthethweni** – siqoqa noma sisebenzisa ulwazi lwakho ngoba luzuzisa wena, inhlangano yethu noma omunye umuntu, ngaphandle kokudala ingozi engadingekile yokulimala kunoma ubani. Onke amalungelo akho okuvikelwa kwedatha angasebenza, ngaphandle kwelungelo lokudlulisa. Izintshisekelo zethu ezisemthethweni yilezi:
@@ -102,6 +119,8 @@ Ukuthola ulwazi oluningi ngokusebenzisa kwethu izintshisekelo ezisemthethweni nj
 
 # **Lapho sithola ulwazi lomuntu siqu khona**
 
+* **Ekungeneni nasezinsizakalweni ezixhunyiwe**: i-Clerk uma ungena, i-Google uma ungena nge-Google, ne-Zotero uma uyixhuma
+
 * **Ngqo kuwe** lapho:
   * Usithumela imeyili
   * Uqeda inhlolovo yempendulo
@@ -125,6 +144,9 @@ Ukuthola ulwazi oluningi ngokusebenzisa kwethu izintshisekelo ezisemthethweni nj
 | **Ama-cookie okuhlaziya**            | Izinsuku ezingu-365 kusukela ekuvakashelweni kokugcina | Ukulandela abavakashi ababuyayo nokugcina ukuqhubeka kweseshini                             |
 | **Izimpendulo zezinhlolovo**         | Unyaka owodwa kusukela ngosuku lokuthunyelwa | Ukuthuthukisa umkhiqizo nokulandela amaphethini empendulo ngokuhamba kwesikhathi            |
 | **Amalogi amakheli e-IP**            | Amahora angu-24 kusukela ngosuku kuqoqwe ngalo | Ukuqapha ukuphepha nokuvimbela ukukhohlisa                                                    |
+| **Idatha ye-akhawunti neyocwaningo** | Uze uyisuse noma ususe i-akhawunti yakho, bese cishe izinsuku ezingama-30 | Ukunikeza insizakalo |
+| **Okwengeza enhlanganweni** | Kuhlala enhlanganweni, negama lakho, ngemva kokuthi uhambe noma ususe i-akhawunti yakho | Ukuze inhlangano igcine umsebenzi wayo |
+| **Amarekhodi okukhokha** | Iminyaka eyi-6 kusukela ngosuku lokuthenga | Ukulandela imithetho yentela neyokubalwa kwezimali |
 
 
 Ngemva kwalezi zikhathi, sisusa noma sifihle igama ulwazi lomuntu siqu ngokuphephile ukuze lungasaqinisekisa ukuthi ungubani.
@@ -145,14 +167,55 @@ Lo mcubunguli wedatha wenza lezi zenzo esikhundleni sethu:
 
 **Indawo:** I-Germany (ukufakwa kwe-EU)
 
-**Vercel Inc.**
+**Hetzner Online GmbH**
 
-Lo mcubunguli wedatha wenza lezi zenzo esikhundleni sethu:
-* Ufaka iwebhusayithi yethu
-* Unikeza izinsizakalo ze-content delivery network (CDN)
-* Icubungula amalogi eseva nedatha yokuxhumana
+Lo mcubunguli wedatha usenzela le misebenzi elandelayo:
+* Ibamba iwebhusayithi yethu nesizindalwazi
 
-**Indawo:** I-United States nenethiwekhi ye-edge esabalalisiwe emhlabeni wonke
+**Indawo:** EJalimane
+
+**Cloudflare, Inc.**
+
+Lo mcubunguli wedatha usenzela le misebenzi elandelayo:
+* Ivikela futhi ilethe ithrafikhi yewebhusayithi yethu
+* Igcina amakhophi amanye ama-PDF amaphepha
+
+**Indawo:** Inethiwekhi esabalele emhlabeni wonke
+
+**Clerk, Inc.**
+
+Lo mcubunguli wedatha usenzela le misebenzi elandelayo:
+* Iphatha ukungena nama-akhawunti
+
+**Indawo:** E-United States
+
+**Stripe**
+
+Lo mcubunguli wedatha usenzela le misebenzi elandelayo:
+* Icubungula izinkokhelo zamakhredithi
+
+**Indawo:** E-United States naseYurophu
+
+**OpenRouter, Inc.**
+
+Lo mcubunguli wedatha usenzela le misebenzi elandelayo:
+* Ithumela izicelo ze-AI kubahlinzeki bamamodeli abaziphendulayo, njenge-Anthropic, i-OpenAI ne-Google
+
+**Indawo:** E-United States
+
+**Brevo**
+
+Lo mcubunguli wedatha usenzela le misebenzi elandelayo:
+* Ithumela ama-imeyili ezimemo
+
+**Indawo:** EFrance
+
+**Supabase, Inc.**
+
+Lo mcubunguli wedatha usenzela le misebenzi elandelayo:
+* Igcina amafayela e-Evidence Communities
+
+**Indawo:** E-United Kingdom
 
 # **Ukwabelana ngolwazi ngaphandle kwe-UK**
 
@@ -172,15 +235,15 @@ Idatha icutshungulwa kakhulu ngaphakathi kwe-European Economic Area (EEA), ikakh
 
 ---
 
-**Igama lenhlangano:** Vercel Inc.
+**Amagama ezinhlangano:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
-**Uhlobo lomamukeli:** Umhlinzeki wokufaka iwebhusayithi
+**Uhlobo lomamukeli:** Abahlinzeki bokungena, izinkokhelo, i-AI nokulethwa kwewebhusayithi
 
-**Izwe ulwazi lomuntu siqu olithunyelwa kulo:** I-United States (nenethiwekhi ye-edge esabalalisiwe emhlabeni wonke)
+**Izwe okuthunyelwa kulo imininingwane yomuntu:** E-United States, namazwe lapho abahlinzeki be-AI besebenzisa khona amamodeli abo
 
-**Indlela ukudluliswa okuhambisana ngayo nomthetho we-UK wokuvikelwa kwedatha:** 
+**Indlela ukudluliswa okuhambisana ngayo nomthetho wokuvikelwa kwedatha wase-UK:** 
 
-Ukudluliswa kwe-Vercel Inc. kwenziwa ngokuthembela ukugunyazwa kwayo ngaphansi kwe-UK Extension to the EU-U.S. Data Privacy Framework.
+Lokhu kudluliswa kuncike ku-UK Extension ye-EU-U.S. Data Privacy Framework lapho umamukeli enesitifiketi, noma kungenjalo ku-International Data Transfer Addendum yase-UK.
 
 # **Indlela esivikela ngayo ulwazi lomuntu siqu**
 
@@ -191,7 +254,7 @@ Sisebenzisa izindlela zobuchwepheshe nezohlelo ezifanele ukuvikela ulwazi lwakho
 * **Ukufihla igama:** Idatha yokuhlaziya ifihlwa igama ngangokunokwenzeka
 * **Ukubuyekezwa kokuphepha njalo:** Siyaqapha futhi sibuyekeze izindlela zethu zokuphepha
 * **Abacubunguli bedatha abaphephile:** Sisebenza kuphela nabacubunguli abahlangabezana namazinga aphezulu okuphepha
-* **Ukuphathwa kwemvume ye-cookie:** Ukuhlaziya kusebenza kuphela ngemvume yakho
+* **Ukuphatha imvume yamakhukhi:** Amakhukhi okuhlaziya nokuphindwa kwezikhathi kusebenza kuphela ngemvume yakho
 
 # **Ama-cookie**
 
@@ -233,4 +296,4 @@ Sikukhuthaza ukuthi uhlole lesi saziso sobumfihlo njalo ukuze uhlale unolwazi ng
 
 # **Okubuyekezwe kokugcina**
 
-17 Febhuwari 2026
+4 Novemba 2026

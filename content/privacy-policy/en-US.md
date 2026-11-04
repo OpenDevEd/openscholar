@@ -21,6 +21,17 @@ Email: support@openscholar.ai
 
 # **What information we collect, use, and why**
 
+We collect or use the following personal information **to run your account and the features you use**:
+
+* Your name, email address and profile photo, and the organizations you belong to
+* What you do in Openscholar: searches, questions, saved papers, ratings, collections, screenings, extractions and assistant chats
+* Files you upload, and apps you connect, such as Zotero
+* Credits you use and buy. Stripe handles card details, and we only keep the card's brand and last four digits
+
+When you use an AI feature, your request and the paper text it needs are sent to the AI provider that does the work.
+
+Whether or not you accept analytics cookies, we send PostHog a record of each AI request under your account ID, without its text, to track cost and reliability.
+
 We collect or use the following personal information for **dealing with queries, complaints or claims**:
 
 * Names and contact details
@@ -75,6 +86,12 @@ To make a data protection rights request, please contact us using the contact de
 
 # **Our lawful bases for the collection and use of your data**
 
+Our lawful basis for collecting or using personal information **to run your account and the features you use** is:
+
+* **Contract** – we need it to provide the service you signed up for. All of your data protection rights may apply, except the right to object.
+
+* **Legitimate interests** – for those records of AI requests. We need them to keep AI features reliable and their costs under control.
+
 Our lawful bases for collecting or using personal information for **dealing with queries, complaints or claims** are:
 
 * **Legitimate interests** – we’re collecting or using your information because it benefits you, our organisation or someone else, without causing an undue risk of harm to anyone. All of your data protection rights may apply, except the right to portability. Our legitimate interests are:
@@ -102,6 +119,8 @@ For more information on our use of legitimate interests as a lawful basis, you c
 
 # **Where we get personal information from**
 
+* **From sign-in and connected services**: Clerk when you sign in, Google if you sign in with Google, and Zotero if you connect it
+
 * **Directly from you** when you:
   * Send us an email
   * Complete a feedback survey
@@ -125,6 +144,9 @@ For more information on our use of legitimate interests as a lawful basis, you c
 | **Analytics cookies**                | 365 days from the last visit                | To track returning visitors and maintain session continuity                                   |
 | **Survey responses**                 | 1 year from the date of submission          | To improve the product and track feedback trends over time                                    |
 | **IP address logs**                  | 24 hours from the date of collection         | For security monitoring and fraud prevention                                                  |
+| **Account and research data** | Until you delete it or your account, then about 30 days | To provide the service |
+| **What you add to an organization** | Stays with the organization, with your name, after you leave or delete your account | So the organization keeps its work |
+| **Payment records** | 6 years from the date of purchase | To meet tax and accounting rules |
 
 
 After these periods, we securely delete or anonymise personal information so it can no longer identify you.
@@ -145,14 +167,55 @@ This data processor does the following activities for us:
 
 **Location:** Germany (EU hosting)
 
-**Vercel Inc.**
+**Hetzner Online GmbH**
 
 This data processor does the following activities for us:
-* Hosts our website
-* Provides content delivery network (CDN) services
-* Processes server logs and connection data
+* Hosts our website and database
 
-**Location:** United States and globally distributed edge network
+**Location:** Germany
+
+**Cloudflare, Inc.**
+
+This data processor does the following activities for us:
+* Protects and delivers traffic to our website
+* Stores copies of some paper PDFs
+
+**Location:** Globally distributed network
+
+**Clerk, Inc.**
+
+This data processor does the following activities for us:
+* Manages sign-in and accounts
+
+**Location:** United States
+
+**Stripe**
+
+This data processor does the following activities for us:
+* Processes payments for credits
+
+**Location:** United States and Europe
+
+**OpenRouter, Inc.**
+
+This data processor does the following activities for us:
+* Sends AI requests to the model providers that answer them, such as Anthropic, OpenAI and Google
+
+**Location:** United States
+
+**Brevo**
+
+This data processor does the following activities for us:
+* Sends invitation emails
+
+**Location:** France
+
+**Supabase, Inc.**
+
+This data processor does the following activities for us:
+* Stores files for Evidence Communities
+
+**Location:** United Kingdom
 
 # **Sharing information outside the UK**
 
@@ -172,15 +235,15 @@ Data is primarily processed within the European Economic Area (EEA), specificall
 
 ---
 
-**Organisation name:** Vercel Inc.
+**Organisation names:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
-**Category of recipient:** Website hosting provider
+**Category of recipient:** Providers of sign-in, payments, AI and website delivery
 
-**Country the personal information is sent to:** United States (and globally distributed edge network)
+**Country the personal information is sent to:** United States, and the countries where AI providers run their models
 
 **How the transfer complies with UK data protection law:** 
 
-Transfers to Vercel Inc. are made in reliance on its certification under the UK Extension to the EU-U.S. Data Privacy Framework.
+These transfers rely on the UK Extension to the EU-U.S. Data Privacy Framework where the recipient is certified, or otherwise on the UK's International Data Transfer Addendum.
 
 # **How we protect personal information**
 
@@ -191,7 +254,7 @@ We implement appropriate technical and organisational measures to protect your p
 * **Pseudonymisation:** Analytics data is pseudonymised where possible
 * **Regular security reviews:** We monitor and update our security practices
 * **Secure data processors:** We only work with processors who meet high security standards
-* **Cookie consent management:** Analytics only runs with your consent
+* **Cookie consent management:** Analytics cookies and session replays only run with your consent
 
 # **Cookies**
 
@@ -233,4 +296,4 @@ We encourage you to review this privacy notice periodically to stay informed abo
 
 # **Last updated**
 
-17 February 2026
+4 November 2026

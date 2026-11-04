@@ -1062,6 +1062,8 @@
     "creditsTitle": "Erkennings",
     "creditsDescription": "Die projekte, data en lisensies waarop Openscholar bou.",
     "sharedTitle": "Met my gedeel",
+    "termsTitle": "Gebruiksvoorwaardes",
+    "termsDescription": "Die reëls vir die gebruik van Openscholar.",
     "signUpTitle": "Registreer"
   },
   "validation": {
@@ -1354,6 +1356,7 @@
     "and": "en",
     "with": "met",
     "suffix": "",
+    "terms": "Gebruiksvoorwaardes",
     "privacyPolicy": "Privaatheidsbeleid",
     "cookiePolicy": "Koekiebeleid",
     "cookiePreferences": "Koekievoorkeure",

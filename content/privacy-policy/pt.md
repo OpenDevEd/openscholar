@@ -21,6 +21,17 @@ Email: support@openscholar.ai
 
 # **Que informações recolhemos, utilizamos e porquê**
 
+Recolhemos ou utilizamos as seguintes informações pessoais **para fazer funcionar a sua conta e as funcionalidades que utiliza**:
+
+* O seu nome, endereço de e-mail e fotografia de perfil, e as organizações a que pertence
+* O que faz no Openscholar: pesquisas, perguntas, artigos guardados, classificações, coleções, triagens, extrações e conversas com o assistente
+* Os ficheiros que carrega e as aplicações que liga, como o Zotero
+* Os créditos que utiliza e compra. A Stripe trata dos dados do cartão; só guardamos a marca do cartão e os últimos quatro dígitos
+
+Quando utiliza uma funcionalidade de IA, o seu pedido e o texto do artigo necessário são enviados ao fornecedor de IA que faz o trabalho.
+
+Aceite ou não os cookies de análise, enviamos à PostHog um registo de cada pedido de IA com o seu ID de conta, sem o respetivo texto, para acompanhar o custo e a fiabilidade.
+
 Recolhemos ou utilizamos os seguintes dados pessoais para **tratar de pedidos de informação, reclamações ou pretensões**:
 
 * Nomes e dados de contacto
@@ -75,6 +86,12 @@ Para apresentar um pedido relativo aos seus direitos de proteção de dados, con
 
 # **Os nossos fundamentos jurídicos para a recolha e utilização dos seus dados**
 
+A nossa base legal para recolher ou utilizar informações pessoais **para fazer funcionar a sua conta e as funcionalidades que utiliza** é:
+
+* **Contrato** – precisamos delas para prestar o serviço em que se registou. Podem aplicar-se todos os seus direitos de proteção de dados, exceto o direito de oposição.
+
+* **Interesses legítimos** – para esses registos de pedidos de IA. Precisamos deles para manter as funcionalidades de IA fiáveis e controlar os seus custos.
+
 Os nossos fundamentos jurídicos para recolher ou utilizar dados pessoais para **tratar de pedidos de informação, reclamações ou pretensões** são:
 
 * **Interesses legítimos** – recolhemos ou utilizamos as suas informações porque beneficiam a si, à nossa organização ou a outra pessoa, sem causar um risco indevido de dano a ninguém. Podem aplicar-se todos os seus direitos de proteção de dados, exceto o direito à portabilidade. Os nossos interesses legítimos são:
@@ -102,6 +119,8 @@ Para mais informações sobre a nossa utilização dos interesses legítimos com
 
 # **De onde obtemos os dados pessoais**
 
+* **Do início de sessão e dos serviços ligados**: a Clerk ao iniciar sessão, a Google se iniciar sessão com a Google, e o Zotero se o ligar
+
 * **Diretamente de si**, quando:
   * nos envia um email
   * preenche um inquérito de feedback
@@ -125,6 +144,9 @@ Para mais informações sobre a nossa utilização dos interesses legítimos com
 | **Cookies de análise**              | 365 dias a contar da última visita          | Para acompanhar visitantes recorrentes e manter a continuidade da sessão                      |
 | **Respostas aos inquéritos**         | 1 ano a contar da data de submissão         | Para melhorar o produto e acompanhar as tendências do feedback ao longo do tempo              |
 | **Registos de endereços IP**        | 24 horas a contar da data de recolha        | Para monitorização de segurança e prevenção de fraude                                         |
+| **Dados da conta e de investigação** | Até eliminar os dados ou a sua conta e, depois, cerca de 30 dias | Para prestar o serviço |
+| **O que adiciona a uma organização** | Fica na organização, com o seu nome, depois de sair ou eliminar a sua conta | Para que a organização mantenha o seu trabalho |
+| **Registos de pagamento** | 6 anos a partir da data de compra | Para cumprir as regras fiscais e contabilísticas |
 
 
 Decorridos estes períodos, apagamos ou anonimizamos de forma segura os dados pessoais, para que deixem de o identificar.
@@ -145,14 +167,55 @@ Este subcontratante realiza as seguintes atividades por nossa conta:
 
 **Localização:** Alemanha (alojamento na UE)
 
-**Vercel Inc.**
+**Hetzner Online GmbH**
 
-Este subcontratante realiza as seguintes atividades por nossa conta:
-* Aloja o nosso site
-* Presta serviços de rede de distribuição de conteúdos (CDN)
-* Trata registos do servidor e dados de ligação
+Este subcontratante realiza as seguintes atividades para nós:
+* Aloja o nosso site e base de dados
 
-**Localização:** Estados Unidos e rede de pontos de distribuição (edge) distribuída a nível mundial
+**Localização:** Alemanha
+
+**Cloudflare, Inc.**
+
+Este subcontratante realiza as seguintes atividades para nós:
+* Protege e entrega o tráfego do nosso site
+* Guarda cópias de alguns PDF de artigos
+
+**Localização:** Rede distribuída globalmente
+
+**Clerk, Inc.**
+
+Este subcontratante realiza as seguintes atividades para nós:
+* Gere o início de sessão e as contas
+
+**Localização:** Estados Unidos
+
+**Stripe**
+
+Este subcontratante realiza as seguintes atividades para nós:
+* Processa os pagamentos de créditos
+
+**Localização:** Estados Unidos e Europa
+
+**OpenRouter, Inc.**
+
+Este subcontratante realiza as seguintes atividades para nós:
+* Envia os pedidos de IA aos fornecedores de modelos que lhes respondem, como a Anthropic, a OpenAI e a Google
+
+**Localização:** Estados Unidos
+
+**Brevo**
+
+Este subcontratante realiza as seguintes atividades para nós:
+* Envia os e-mails de convite
+
+**Localização:** França
+
+**Supabase, Inc.**
+
+Este subcontratante realiza as seguintes atividades para nós:
+* Guarda ficheiros de Evidence Communities
+
+**Localização:** Reino Unido
 
 # **Partilha de informações fora do Reino Unido**
 
@@ -172,15 +235,15 @@ Os dados são tratados principalmente no Espaço Económico Europeu (EEE), em co
 
 ---
 
-**Nome da organização:** Vercel Inc.
+**Nomes das organizações:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
-**Categoria do destinatário:** Fornecedor de alojamento de sites
+**Categoria do destinatário:** Fornecedores de início de sessão, pagamentos, IA e entrega do site
 
-**País para onde os dados pessoais são enviados:** Estados Unidos (e rede de pontos de distribuição distribuída a nível mundial)
+**País para onde as informações pessoais são enviadas:** Estados Unidos e os países onde os fornecedores de IA executam os seus modelos
 
-**Como a transferência cumpre a legislação britânica de proteção de dados:** 
+**Como a transferência cumpre a legislação de proteção de dados do Reino Unido:** 
 
-As transferências para a Vercel Inc. são feitas com base na sua certificação ao abrigo da Extensão do Reino Unido ao Quadro de Privacidade de Dados UE-EUA.
+Estas transferências baseiam-se na Extensão do Reino Unido ao Quadro de Privacidade de Dados UE-EUA quando o destinatário é certificado ou, caso contrário, no Adendo de Transferência Internacional de Dados do Reino Unido.
 
 # **Como protegemos os dados pessoais**
 
@@ -191,7 +254,7 @@ Aplicamos medidas técnicas e organizativas adequadas para proteger os seus dado
 * **Pseudonimização:** os dados de análise são pseudonimizados sempre que possível
 * **Revisões regulares de segurança:** monitorizamos e atualizamos as nossas práticas de segurança
 * **Subcontratantes seguros:** trabalhamos apenas com subcontratantes que cumprem elevados padrões de segurança
-* **Gestão do consentimento de cookies:** a análise só funciona com o seu consentimento
+* **Gestão do consentimento de cookies:** Os cookies de análise e as gravações de sessão só funcionam com o seu consentimento
 
 # **Cookies**
 
@@ -233,4 +296,4 @@ Recomendamos que reveja este aviso de privacidade periodicamente, para se manter
 
 # **Última atualização**
 
-17 de fevereiro de 2026
+4 de novembro de 2026

@@ -8,11 +8,12 @@ const DOC_DIRECTORY: Record<LegalDocumentType, string> = {
   privacy: "privacy-policy",
   cookie: "cookie-policy",
   credits: "credits",
+  terms: "terms",
 };
 
 const SAFE_LOCALE_PATTERN = /^[A-Za-z0-9-]+$/;
 
-type LegalDocumentType = "privacy" | "cookie" | "credits";
+type LegalDocumentType = "privacy" | "cookie" | "credits" | "terms";
 
 export interface GetLegalMarkdownParams {
   docType: LegalDocumentType;
