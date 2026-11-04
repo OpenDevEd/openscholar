@@ -194,8 +194,7 @@ type CoolifyApplication = {
   composeDomains: Record<string, ComposeDomain> | null;
   sourceType: string | null;
   sourceId: number | null;
-  environmentName: string;
-  projectUuid: string;
+  environmentId: number;
   serverUuid: string;
   settings: ApplicationSettings;
 };
@@ -205,6 +204,7 @@ type DesiredApplication = {
   serverUuid: string;
   projectUuid: string;
   environmentName: string;
+  environmentId: number;
   githubAppUuid: string;
   githubAppId: number;
   runtimeCommit: string;
@@ -645,12 +645,9 @@ function parseApplication(payload: unknown): CoolifyApplication {
   const message = "Coolify returned an invalid application response";
   if (!isRecord(payload)) invalidResponse(message);
   const settingsPayload = payload.settings;
-  const environmentPayload = payload.environment;
   const destinationPayload = payload.destination;
   if (
     !isRecord(settingsPayload) ||
-    !isRecord(environmentPayload) ||
-    !isRecord(environmentPayload.project) ||
     !isRecord(destinationPayload) ||
     !isRecord(destinationPayload.server)
   ) {
@@ -667,6 +664,8 @@ function parseApplication(payload: unknown): CoolifyApplication {
   ) {
     invalidResponse(message);
   }
+  const environmentId = payload.environment_id;
+  if (typeof environmentId !== "number" || !Number.isSafeInteger(environmentId)) invalidResponse(message);
   const sourceType = responseNullableString(payload, "source_type", message);
   const settings = Object.fromEntries(
     APPLICATION_SETTING_KEYS.map((key) => [
@@ -689,11 +688,37 @@ function parseApplication(payload: unknown): CoolifyApplication {
     composeDomains: parseComposeDomains(payload.docker_compose_domains),
     sourceType,
     sourceId,
-    environmentName: responseString(environmentPayload, "name", message),
-    projectUuid: responseUuid(environmentPayload.project, "uuid", message),
+    environmentId,
     serverUuid: responseUuid(destinationPayload.server, "uuid", message),
     settings,
   };
+}
+
+/**
+ * The id of a project's environment. Since Coolify 4.6 an application names its environment only by id, so a check
+ * that it sits in the expected project and environment compares against this.
+ */
+async function readEnvironmentId(
+  client: CoolifyTransport,
+  projectUuid: string,
+  environmentName: string,
+): Promise<number> {
+  const message = "Coolify returned an invalid environment response";
+  const payload = await requestCoolify(client, {
+    expectedStatus: 200,
+    method: "GET",
+    path: `/api/v1/projects/${encodeURIComponent(projectUuid)}/environments`,
+  });
+  if (!Array.isArray(payload)) invalidResponse(message);
+  const environment = payload.find((item) => isRecord(item) && item.name === environmentName);
+  if (!environment) {
+    throw new CoolifyClientError(
+      "INVALID_COOLIFY_CONFIG",
+      `The Coolify project has no environment named ${environmentName}`,
+    );
+  }
+  if (typeof environment.id !== "number" || !Number.isSafeInteger(environment.id)) invalidResponse(message);
+  return environment.id;
 }
 
 async function readApplication(
@@ -910,8 +935,7 @@ function hasExpectedTarget(
   return (
     application.sourceType === GITHUB_SOURCE_TYPE &&
     application.sourceId === desired.githubAppId &&
-    application.environmentName === desired.environmentName &&
-    application.projectUuid === desired.projectUuid &&
+    application.environmentId === desired.environmentId &&
     application.serverUuid === desired.serverUuid
   );
 }
@@ -1665,8 +1689,7 @@ export function createCoolifyClient(input: {
         publicDomains: [publicDomains],
       });
       if (
-        application.environmentName !== environmentName ||
-        application.projectUuid !== projectUuid ||
+        application.environmentId !== (await readEnvironmentId(client, projectUuid, environmentName)) ||
         application.serverUuid !== serverUuid
       ) {
         throw new CoolifyClientError(
@@ -1742,11 +1765,13 @@ export function createCoolifyClient(input: {
         input.meilisearchMasterKey,
       );
       const githubAppId = await readGithubAppId(client, githubAppUuid);
+      const environmentId = await readEnvironmentId(client, projectUuid, environmentName);
       const desired: DesiredApplication = {
         applicationTag,
         serverUuid,
         projectUuid,
         environmentName,
+        environmentId,
         githubAppUuid,
         githubAppId,
         runtimeCommit,

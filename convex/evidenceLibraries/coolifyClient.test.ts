@@ -19,6 +19,7 @@ const PROJECT_UUID = "project0000000000000001";
 const GITHUB_APP_UUID = "github00000000000000001";
 const GITHUB_APP_ID = 7;
 const ENVIRONMENT_NAME = "development";
+const ENVIRONMENT_ID = 17;
 const RUNTIME_COMMIT = "a".repeat(40);
 const OTHER_COMMIT = "b".repeat(40);
 const RUNTIME_IMAGE = `ghcr.io/opendeved/evidence-library-runtime@sha256:${"c".repeat(64)}`;
@@ -49,10 +50,7 @@ type FakeApplication = {
   docker_compose_domains: string | null;
   source_type: string | null;
   source_id: number | null;
-  environment: {
-    name: string;
-    project: { uuid: string };
-  };
+  environment_id: number;
   destination: { server: { uuid: string } };
   settings: {
     is_auto_deploy_enabled: boolean;
@@ -127,10 +125,7 @@ function expectedApplication(
     }),
     source_type: "App\\Models\\GithubApp",
     source_id: GITHUB_APP_ID,
-    environment: {
-      name: ENVIRONMENT_NAME,
-      project: { uuid: PROJECT_UUID },
-    },
+    environment_id: ENVIRONMENT_ID,
     destination: { server: { uuid: SERVER_UUID } },
     settings: {
       is_auto_deploy_enabled: false,
@@ -228,6 +223,13 @@ function createCoolifyServer(
 
       if (headers.get("authorization") !== `Bearer ${COOLIFY_TOKEN}`) {
         return jsonResponse({ message: "Unauthenticated" }, 401);
+      }
+
+      if (method === "GET" && url.pathname === `/api/v1/projects/${PROJECT_UUID}/environments`) {
+        return jsonResponse([
+          { id: 16, uuid: "environment0000000000001", name: "production" },
+          { id: ENVIRONMENT_ID, uuid: "environment0000000000002", name: ENVIRONMENT_NAME },
+        ]);
       }
 
       if (method === "GET" && url.pathname === "/api/v1/github-apps") {
@@ -663,10 +665,7 @@ describe("Coolify Evidence Library client", () => {
     const tag = createCoolifyLibraryTag(LIBRARY_ID);
     const server = createCoolifyServer({
       application: expectedApplication({
-        environment: {
-          name: ENVIRONMENT_NAME,
-          project: { uuid: "another-project" },
-        },
+        environment_id: 99,
       }),
       tags: [tag],
     });
@@ -714,10 +713,7 @@ describe("Coolify Evidence Library client", () => {
       docker_compose_location: "/docker/compose.library.yaml",
       source_type: "App\\Models\\GithubApp",
       source_id: GITHUB_APP_ID,
-      environment: {
-        name: ENVIRONMENT_NAME,
-        project: { uuid: PROJECT_UUID },
-      },
+      environment_id: ENVIRONMENT_ID,
       destination: { server: { uuid: SERVER_UUID } },
       settings: {
         is_auto_deploy_enabled: false,
@@ -1124,6 +1120,9 @@ describe("Coolify Evidence Library client", () => {
     const application = expectedApplication();
     const fetchImpl: typeof fetch = vi.fn(async (requestInput) => {
       const url = new URL(String(requestInput));
+      if (url.pathname === `/api/v1/projects/${PROJECT_UUID}/environments`) {
+        return jsonResponse([{ id: ENVIRONMENT_ID, name: ENVIRONMENT_NAME }]);
+      }
       if (url.pathname === "/api/v1/github-apps") {
         return jsonResponse([{ id: GITHUB_APP_ID, uuid: GITHUB_APP_UUID }]);
       }
@@ -1147,10 +1146,7 @@ describe("Coolify Evidence Library client", () => {
   it("does not move an application that belongs to another Coolify project", async () => {
     const server = createCoolifyServer({
       application: expectedApplication({
-        environment: {
-          name: ENVIRONMENT_NAME,
-          project: { uuid: "another-project" },
-        },
+        environment_id: 99,
       }),
       tags: [createCoolifyLibraryTag(LIBRARY_ID)],
     });
@@ -1161,9 +1157,7 @@ describe("Coolify Evidence Library client", () => {
       code: "COOLIFY_APPLICATION_CONFLICT",
       message: "The tagged Coolify application belongs to another target",
     });
-    expect(server.application?.environment.project.uuid).toBe(
-      "another-project",
-    );
+    expect(server.application?.environment_id).toBe(99);
   });
 
   it("fails when an application repair does not survive readback", async () => {
