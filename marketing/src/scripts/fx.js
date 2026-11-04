@@ -44,22 +44,8 @@ addEventListener("keydown", (e) => { if (e.key === "Escape" && current) { const 
 
 // Phone menu.
 const menu = $(".menu");
-addEventListener("click", (e) => { if (menu?.open && (!menu.contains(e.target) || e.target.closest(".sheet a, .sheet button"))) menu.open = false; });
+addEventListener("click", (e) => { if (menu?.open && (!menu.contains(e.target) || e.target.closest(".sheet a"))) menu.open = false; });
 addEventListener("keydown", (e) => { if (e.key === "Escape" && menu?.open) { menu.open = false; $("summary", menu).focus(); } });
-
-// The question box behind the header's search button, and its shortcut.
-const dialog = $("[data-dialog]"), mac = /Mac|iPhone|iPad/.test(navigator.platform);
-if (!mac) $$("[data-key]").forEach((k) => (k.textContent = "Ctrl K"));
-const ask = () => { close(); dialog.showModal(); $("input", dialog).focus(); };
-$$("[data-palette]").forEach((b) => b.addEventListener("click", ask));
-addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); dialog.open ? dialog.close() : ask(); } });
-dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
-// Typing narrows the pages you can jump to, and Enter still asks the question. The arrow keys walk from the box down the list.
-{ const box = $("input", dialog), tries = $("[data-tries]", dialog), rows = $$(".jump li", dialog), items = () => [box, ...$$("[data-try], .jump a", dialog).filter((e) => e.offsetParent)];
-  box.addEventListener("input", () => { const q = box.value.trim().toLowerCase(); tries.hidden = !!q; let shown = 0; rows.forEach((r) => { r.hidden = !!q && !q.split(/\s+/).every((w) => r.dataset.jump.includes(w)); if (!r.hidden) shown++; }); $("[data-nojump]", dialog).hidden = shown > 0; });
-  dialog.addEventListener("keydown", (e) => { const d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (!d) return; const list = items(), i = list.indexOf(document.activeElement); const next = list[i + d]; if (next) { e.preventDefault(); next.focus(); } });
-  dialog.addEventListener("click", (e) => { if (e.target.closest(".jump a")) dialog.close(); }); }
-$$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("input", dialog).value = b.dataset.try; $("form", dialog).requestSubmit(); }));
 
 // The hero's stars, the communities' laptop and the closing ribbons only move while they're on screen.
 for (const el of $$("[data-orbit], .p-lap, .close")) new IntersectionObserver(([e]) => el.classList.toggle("away", !e.isIntersecting)).observe(el);

@@ -2,7 +2,6 @@
 import "../styles/global.css";
 import { APP, COMMUNITIES, NAV, SECTIONS } from "../data/site.mjs";
 import { GUIDES } from "../data/docs.mjs";
-import AskBar from "../components/AskBar.astro";
 import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
 import markFile from "../data/mark.svg?raw";
@@ -11,8 +10,6 @@ const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
 // The logo inline, so its chain of nodes can turn around the Earth on hover.
 const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
 const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize", "list"], ["screening", "sieve"], ["extraction", "table"], ["assistant", "spark"]]], ["Teams", [["workspaces", "merge"], ["account", "key"]]], ["Communities", [["community-setup", "globe"], ["community-readers", "cite"], ["community-admin", "pen"]]]];
-const goto = [{ href: "/", title: "Overview", text: "The evidence workspace for research teams", icon: "search", color: "#ff9d36", area: "home product openscholar" }, { href: "/evidence-communities/", title: "Evidence Communities", text: "A public home for your field's evidence", icon: "globe", color: "#fb7185", area: "community" }, { href: "/teams/", title: "Teams", text: "One workspace for your team's evidence", icon: "merge", color: "#34d399", area: "team" }, { href: "/docs/", title: "Documentation", text: "How to use Openscholar and Evidence Communities", icon: "list", color: "#7da7e6", area: "docs help" }, ...NAV.flatMap((n) => (n.rows ?? []).map((r) => ({ ...r, area: n.label })))];
-const tries = ["Does peer tutoring improve reading?", "What works to keep girls in secondary school?", "\"cash transfers\" AND nutrition", "How does wealth inequality affect social mobility?"];
 ---
 <!doctype html>
 <html lang="en">
@@ -45,10 +42,9 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
       </a>
       <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">
-        <button class="cmd" type="button" data-palette aria-label="Ask a question"><Icon name="search" size={16} /><span class="tick" aria-hidden="true">Ask a question</span><kbd data-key>⌘K</kbd></button>
         <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
         <a class="go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span></a>
-        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet"><button type="button" class="s-ask" data-palette><Icon name="search" size={18} />Ask a question</button>{NAV.map((n) => <a href={n.href}>{n.label}<Arrow /></a>)}<a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
+        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet">{NAV.map((n) => <a href={n.href}>{n.label}<Arrow /></a>)}<a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
       </div>
       {sections.length > 0 && <nav class="rail" aria-label="On this page" data-rail>{sections.map(([id, label, color]) => <a href={`#${id}`} data-to={id} data-label={label} style={`--c:${color}`} aria-label={label}><i></i></a>)}</nav>}
     </header>
@@ -81,14 +77,6 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
     </div>
     <div class="stand" aria-hidden="true"><div class="word">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><i class="veil"></i><div class="word edge2">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div></div>
   </footer>
-  <dialog class="palette" data-dialog aria-label="Ask a question">
-    <AskBar id="ask-nav" label="Ask a question from anywhere" />
-    <div class="results" data-results>
-      <ul data-tries>{tries.map((t) => <li><button type="button" data-try={t}><Icon name="search" size={16} /><span>{t}</span></button></li>)}</ul>
-      <ul class="jump" aria-label="Go to a page">{goto.map(({ href, title, text, icon, color, area }) => <li data-jump={`${title} ${text} ${area}`.toLowerCase()}><a href={href} style={`--c:${color}`}><i><Icon name={icon} size={16} /></i><span><b>{title}</b><em>{text}</em></span></a></li>)}</ul>
-      <p class="pal-none" data-nojump hidden>No pages match. Press Enter to search the research.</p>
-    </div>
-  </dialog>
   <script src="../scripts/fx.js"></script>
 </body>
 </html>
@@ -113,9 +101,6 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   .pill { position: absolute; top: 0; left: 0; height: 40px; width: var(--pw, 0); border-radius: 11px; background: rgb(255 255 255 / .12); opacity: 0; transform: translateX(var(--px, 0)); transition: transform .3s var(--ease), width .3s var(--ease), opacity .18s var(--ease); pointer-events: none; }
   .end { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
   /* The search button keeps asking real questions. */
-  .cmd { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; border-radius: 11px; background: rgb(255 255 255 / .07); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); font-size: 14px; color: rgb(255 255 255 / .8); transition: background-color .15s var(--ease), box-shadow .15s var(--ease), color .15s var(--ease); } .cmd:hover { background: rgb(255 255 255 / .14); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); }
-  .tick { white-space: nowrap; }
-  kbd { min-width: 34px; text-align: center; padding: 4px 6px; border-radius: 7px; background: rgb(255 255 255 / .1); font: 400 12px/1 var(--mono); color: inherit; }
   .signin { display: inline-flex; align-items: center; height: 40px; font-size: 15px; padding-inline: 10px; color: rgb(255 255 255 / .82); transition: color .15s var(--ease); } .signin:hover { color: #fff; }
   .go { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 44px; padding-inline: 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; }
   .go::before { content: ""; position: absolute; z-index: -2; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; background: conic-gradient(from 0deg, var(--brand-deep), var(--brand-bright), #fff1e0, var(--brand-bright), var(--brand-deep)); translate: -50% -50%; opacity: 0; transition: opacity .25s var(--ease); }
@@ -127,7 +112,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   .rail a { position: relative; flex: 1; height: 10px; display: flex; align-items: flex-end; } .rail i { position: relative; display: block; width: 100%; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--c) 42%, transparent); overflow: hidden; transition: height .15s var(--ease); } .rail i::after { content: ""; position: absolute; inset: 0; background: var(--c); opacity: .5; transform: scaleX(var(--p, 0)); transform-origin: left; transition: opacity .3s var(--ease); } .rail a:global(.now) i::after { opacity: 1; } .rail a:hover i { height: 4px; }
   .rail a::after { content: attr(data-label); position: absolute; top: 14px; left: 50%; translate: -50% 4px; padding: 5px 9px; border-radius: 8px; background: #10141f; color: #fff; font: 400 13px/1.2 var(--mono); white-space: nowrap; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); opacity: 0; pointer-events: none; transition: opacity .12s var(--ease), translate .12s var(--ease); } .rail a:hover::after { opacity: 1; translate: -50% 0; }
   .menu { display: none; position: relative; } .menu summary { list-style: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgb(255 255 255 / .1); cursor: pointer; } .menu summary::-webkit-details-marker { display: none; }
-  .sheet { position: absolute; right: 0; top: 56px; width: min(340px, calc(100vw - 2 * var(--gap) - 20px)); padding: 8px; border-radius: 18px; background: #10141f; color: #fff; box-shadow: 0 0 0 1px rgb(255 255 255 / .12), 0 30px 60px -20px rgb(4 7 16 / .8); display: grid; } .sheet a, .s-ask { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 10px 12px; border-radius: 12px; text-align: left; font-size: 17px; } .s-ask { justify-content: flex-start; color: rgb(255 255 255 / .8); } .sheet a:hover, .s-ask:hover { background: rgb(255 255 255 / .08); } .sheet :global(svg) { flex: none; }
+  .sheet { position: absolute; right: 0; top: 56px; width: min(340px, calc(100vw - 2 * var(--gap) - 20px)); padding: 8px; border-radius: 18px; background: #10141f; color: #fff; box-shadow: 0 0 0 1px rgb(255 255 255 / .12), 0 30px 60px -20px rgb(4 7 16 / .8); display: grid; } .sheet a { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 10px 12px; border-radius: 12px; text-align: left; font-size: 17px; } .sheet a:hover { background: rgb(255 255 255 / .08); } .sheet :global(svg) { flex: none; }
   .scrim { position: fixed; inset: 0; z-index: 40; background: rgb(7 11 26 / .28); opacity: 0; pointer-events: none; transition: opacity .25s var(--ease); } .top:has(.mega[data-open]) ~ .scrim { opacity: 1; }
   /* One panel that changes shape between menus. */
   .mega { position: absolute; top: 72px; left: var(--gap); width: var(--w, 800px); height: var(--h, 320px); transform: translateX(var(--x, 0)); border-radius: 22px; background: #10141f; box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), inset 0 0 0 1px rgb(255 255 255 / .08), 0 50px 90px -30px rgb(4 7 16 / .75); opacity: 0; visibility: hidden; color: #fff; overflow: hidden; }
@@ -164,10 +149,8 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   .veil { position: absolute; left: 0; top: 0; bottom: 0; width: 300vw; background: linear-gradient(90deg, rgb(7 11 26 / .93) 42%, rgb(7 11 26 / .3) 44.5%, transparent 45% 55%, rgb(7 11 26 / .3) 55.5%, rgb(7 11 26 / .93) 58%); transform: translateX(-150vw); animation: sweep 11s ease-in-out infinite alternate; pointer-events: none; }
   .foot.away .veil { animation-play-state: paused; } .foot.held .veil { animation: none; transition: transform .25s var(--ease); } @keyframes sweep { to { transform: translateX(-50vw); } }
   @media (prefers-reduced-motion: reduce) { .veil { transform: translateX(-100vw); } }
-  .palette { width: min(640px, calc(100vw - 24px)); margin: 12vh auto auto; padding: 10px; border: 0; border-radius: 24px; background: #fff; color: var(--ink); box-shadow: 0 40px 100px -24px rgb(12 16 28 / .6); } .palette::backdrop { background: rgb(7 11 26 / .5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-  .palette :global(.ask) { width: 100%; box-shadow: inset 0 0 0 1px var(--line2); } .results :focus-visible { outline-offset: -2px; } .pal-none { padding: 10px 12px; font-size: 15px; color: var(--t2); } .pal-none[hidden] { display: none; } .results { max-height: min(56svh, 460px); margin-top: 8px; overflow-y: auto; scrollbar-width: thin; } .palette ul { display: grid; gap: 2px; } .jump { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); } .palette ul[hidden] + .jump { margin-top: 0; padding-top: 0; border-top: 0; } .palette ul[hidden], .palette li[hidden] { display: none; } .jump a { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; transition: background-color .12s var(--ease); } .jump a:is(:hover, :focus-visible) { background: var(--soft); } .jump i { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--c) 18%, #fff); color: color-mix(in srgb, var(--c) 52%, var(--ink)); } .jump span { display: grid; min-width: 0; font-size: 15px; line-height: 1.25; } .jump b { font-weight: 500; color: var(--ink); } .jump em { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: normal; font-size: 13px; color: var(--t2); } .palette li button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 10px; text-align: left; font-size: 15px; color: var(--t2); transition: background-color .12s var(--ease), color .12s var(--ease); } .palette li button:hover, .palette li button:focus-visible { background: var(--soft); color: var(--ink); }
-  @media (max-width: 1240px) { .tick, .signin { display: none; } .cmd { padding: 0 6px 0 10px; } }
-  @media (max-width: 960px) { .nav, .signin, .cmd, .mega { display: none; } .menu { display: block; } }
+  @media (max-width: 1240px) { .signin { display: none; } }
+  @media (max-width: 960px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
   @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { gap: 32px; flex-wrap: wrap; } .belt { padding-block: 16px; } .belt img { filter: saturate(1.5); width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a { visibility: hidden; pointer-events: none; } .rail i { visibility: visible; } .rail { transition: opacity .3s var(--ease); } .top:not(.stuck) .rail { opacity: 0; } }
 </style>
