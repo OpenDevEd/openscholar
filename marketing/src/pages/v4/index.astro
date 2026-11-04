@@ -1,38 +1,28 @@
 ---
-// Hero to compare. The idea, from Exa and Origin: the search box is the centre of the picture. Here it is the site's screening pane: the literature runs in from the left as fine lit lines, and what counts comes out on the right as real papers. Delete once one is picked.
+// Hero to compare: a big blue panel with the button to OpenScholar, then six colour panels in the strip, one for each community in its own colour. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import Art from "../../components/Art.astro";
-import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
-import { firstPage } from "../../data/field.mjs";
-const titles = firstPage.map(([, t]) => t), rows = Array.from({ length: 13 }, (_, i) => i), keep = firstPage.slice(0, 5);
+import { APP, COMMUNITIES } from "../../data/site.mjs";
 ---
-<Base top="#02140f" title="Hero 4: OpenScholar" description="Hero option">
-  <section class="bleed hero">
-        <div class="inner c"><h1>Ask once. Keep what counts.</h1><p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p></div>
-    <Art name="sieve-front" class="sv" pos="50% 50%" />
-    <div class="flow">
-      <div class="in" aria-hidden="true">{rows.map((r) => <p style={`--r:${r}`}>{titles.concat(titles).slice(r % 10, r % 10 + 4).join("  ")}</p>)}</div>
-      <div class="pane"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /></div>
-      <ul class="out" aria-label="Papers kept for one question">{keep.map(([y, t], i) => <li style={`--i:${i}`}><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5l4 4 8-9" /></svg><span>{t}</span><em>{y}</em></li>)}</ul>
+<Base top="#ffffff" title="Hero 4: OpenScholar" description="Hero option">
+  <section class="wrap">
+    <div class="panel os">
+      <i class="field f-ocean" aria-hidden="true"></i><Art name="sea" eager sizes="1280px" />
+      <div class="c">
+        <h1>The evidence workspace for research teams</h1>
+        <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
+        <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
+      </div>
     </div>
-  </section>
-  <section class="panel comm" style="--tint:#be123c">
-    <i class="field f-rose" aria-hidden="true"></i><Art name="pavilion" pos="100% 50%" />
-    <div class="cc"><h2>Evidence Communities give your field a public home</h2><p class="lead">Your own name and address, kept current from your sources, for anyone to search and read.</p><a class="btn" href="/evidence-communities/">Explore Evidence Communities<Arrow /></a></div>
+    <ul aria-label="Live Evidence Communities">{COMMUNITIES.map((c) => <li><a class="panel" href={c.url} style={`--c:${c.color}`}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b><span>{c.host}</span><Arrow /></a></li>)}</ul>
+    <p class="ask">Evidence Communities are public homes for a field's evidence, open to anyone. <a href="/evidence-communities/">Start your own</a></p>
   </section>
 </Base>
 <style>
-  .hero { padding: 128px 0 72px; background: #02140f; } .hero > .field { position: absolute; inset: 0; z-index: -1; opacity: .35; }
-  .c { display: grid; justify-items: center; gap: 16px; text-align: center; } .lead { opacity: .9; }
-  .hero > :global(.sv) { z-index: -1; opacity: .5; -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 62%, #000 30%, transparent); mask-image: radial-gradient(ellipse 60% 70% at 50% 62%, #000 30%, transparent); }
-  .flow { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 44px; padding-inline: var(--pad); }
-  .in { display: none; } .pane { position: relative; z-index: 1; } .pane :global(.big) { width: 100%; box-shadow: 0 0 0 1px rgb(255 255 255 / .5), 0 0 60px 6px rgb(52 211 153 / .45), 0 24px 50px -18px #000; }
-  .out { display: grid; gap: 4px; } .out li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px; background: rgb(2 30 22 / .7); box-shadow: inset 0 0 0 1px rgb(110 231 183 / .28); font-size: 14px; line-height: 1.2; animation: come .7s var(--ease) calc(.5s + var(--i) * 90ms) backwards; } @keyframes come { from { opacity: 0; transform: translateX(-16px); } } .out svg { color: #6ee7b7; } .out span { overflow: clip; text-overflow: ellipsis; white-space: nowrap; } .out em { font: 400 12px/1 var(--mono); color: #a7f3d0; }
-  .comm { min-height: 380px; display: grid; align-items: center; padding: var(--pad); background: #520116; } .comm > .field { position: absolute; inset: 0; z-index: -2; } .comm > :global(.art) { z-index: -1; } .cc { display: grid; justify-items: start; gap: 18px; max-width: 560px; } .comm :global(.btn) { --chip: var(--tint); }
-  @media (min-width: 1000px) {
-    .flow { grid-template-columns: minmax(0, 1fr) 560px minmax(0, 1fr); gap: 0; align-items: center; min-height: 340px; padding: 0; margin-top: 36px; }
-    .in { display: grid; gap: 11px; overflow: clip; -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%); mask-image: linear-gradient(90deg, transparent, #000 40%); } .in p { margin-left: calc(var(--r) * -37px); color: #86efac; font: 400 11px/1 var(--mono); white-space: pre; text-align: right; direction: rtl; opacity: .62; filter: drop-shadow(0 0 5px #34d399); animation: drift 26s linear infinite; animation-delay: calc(var(--r) * -2.3s); } @keyframes drift { from { translate: -60px 0; } to { translate: 60px 0; } }
-    .out { padding-left: 0; margin-right: var(--pad); } .out li { border-radius: 0 10px 10px 0; }
-  }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); padding-top: 88px; } .os { display: grid; align-items: center; padding: 56px var(--pad); background: #0b1f6b; } .os > .field { position: absolute; inset: 0; z-index: -2; } .os > :global(.art) { z-index: -1; } .os > :global(.art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgb(4 22 66 / .9) 25%, rgb(4 22 66 / .25) 80%); }
+  .c { display: grid; justify-items: start; gap: 18px; } h1 { max-width: 15em; } .cta { height: 64px; padding-inline: 26px 12px; font-size: 18px; margin-top: 6px; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); } li { min-width: 0; } li a { display: grid; grid-template-rows: auto 1fr auto auto; justify-items: start; gap: 8px; height: 100%; padding: 18px; background: color-mix(in srgb, var(--c) 26%, #070c2e); transition: background .25s var(--ease); } li a:hover { background: color-mix(in srgb, var(--c) 42%, #070c2e); } li img { width: 84px; height: 84px; object-fit: contain; filter: saturate(1.4) drop-shadow(0 0 12px color-mix(in srgb, var(--c) 55%, transparent)); } li b { align-self: start; margin-top: 6px; font-weight: 500; font-size: 17px; line-height: 1.2; letter-spacing: -.01em; text-wrap: balance; } li span { font: 400 12px/1.25 var(--mono); opacity: .82; max-width: 100%; overflow: clip; text-overflow: ellipsis; white-space: nowrap; } li a :global(i) { display: grid; transition: transform .25s var(--ease); } li a:hover :global(i) { transform: translateX(4px); }
+  .ask { padding-inline: var(--pad); font-size: 16px; line-height: 1.4; color: var(--t2); text-align: center; } .ask a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+  @media (min-width: 1000px) { .os { padding: 64px 72px; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 </style>

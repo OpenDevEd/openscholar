@@ -1,39 +1,31 @@
 ---
-// Hero to compare. The idea, from Equals: the product's own data is the picture. Every paper on one real question is a lit tile, rising across the page, with the first page of results picked out in amber. Delete once one is picked.
+// Hero to compare: headline and button on the left, a real product screen on the right, and the real site of every community along the foot, each opening it. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
-import Art from "../../components/Art.astro";
-import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
-import { counts, firstPage } from "../../data/field.mjs";
-const years = Array.from({ length: 2026 - 1972 + 1 }, (_, i) => 1972 + i);
-const picks = (y) => firstPage.filter(([f]) => f === y).length;
-const total = Object.values(counts).reduce((a, b) => a + b, 0);
+import { APP, COMMUNITIES } from "../../data/site.mjs";
 ---
-<Base top="#040b2e" title="Hero 3: OpenScholar" description="Hero option">
+<Base top="#06154a" title="Hero 3: OpenScholar" description="Hero option">
   <section class="bleed hero">
-    <i class="field f-night" aria-hidden="true"></i>
-    <div class="inner c">
-      <h1>See the whole field before you read a page</h1>
-      <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
-      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+    <i class="field f-cobalt" aria-hidden="true"></i>
+    <div class="inner top">
+      <div class="c">
+        <h1>The evidence workspace for research teams</h1>
+        <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
+        <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
+      </div>
+      <a class="w" href={APP} aria-label="Try OpenScholar"><img src="/img/screens/screen-laptop-dark-1000.avif" width="1000" height="625" fetchpriority="high" alt="" /></a>
     </div>
-    <div class="sky" role="img" aria-label={`${total} papers on peer tutoring and reading, 1972 to 2026, rising steeply. The ten on the first page of results are a tiny part of them.`}>
-      {years.map((y, i) => <div class="y" style={`--n:${(counts[y] ?? 0) - picks(y)};--p:${picks(y)};--i:${i}`}><i class="b"></i><i class="a"></i></div>)}
-    </div>
-    <div class="key inner"><span class="k1">The first page</span><span class="k2">The other {total - firstPage.length} papers on peer tutoring and reading</span></div>
-  </section>
-  <section class="panel comm" style="--tint:#be123c">
-    <i class="field f-rose" aria-hidden="true"></i><Art name="globe" pos="100% 50%" />
-    <div class="cc"><h2>Evidence Communities give your field a public home</h2><p class="lead">Your own name and address, kept current from your sources, for anyone to search and read.</p><a class="btn" href="/evidence-communities/">Explore Evidence Communities<Arrow /></a></div>
+    <div class="ec light"><div class="inner">
+      <div class="t"><h2>Live Evidence Communities</h2><a class="all" href="/evidence-communities/">Start your own<Arrow /></a></div>
+      <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><span class="f"><img src={`/img/site-${c.key}.avif`} width="960" height="600" decoding="async" alt="" /></span><b>{c.name}</b></a></li>)}</ul>
+    </div></div>
   </section>
 </Base>
 <style>
-  .hero { padding: 128px 0 28px; background: #040b2e; } .hero > .field { position: absolute; inset: 0; z-index: -1; }
-  .c { display: grid; justify-items: start; gap: 18px; } h1 { max-width: 12em; } .c :global(.big) { width: min(100%, 600px); margin-top: 6px; } .lead { max-width: 30em; }
-  .sky { --t: 3px; display: flex; align-items: flex-end; gap: 1px; height: calc(var(--t) * 92 + 8px); margin-top: 32px; padding-inline: 8px; }
-  .y { position: relative; flex: 1 1 0; display: flex; flex-direction: column-reverse; min-width: 0; height: 100%; animation: rise .9s var(--ease) calc(var(--i) * 18ms) backwards; transform-origin: 50% 100%; } @keyframes rise { from { transform: scaleY(0); } }
-  .b, .a { display: block; flex: none; background-repeat: repeat-y; } .b { height: calc(var(--n) * var(--t)); background-image: repeating-linear-gradient(to top, #38bdf8 0 calc(var(--t) - 1px), transparent calc(var(--t) - 1px) var(--t)); filter: drop-shadow(0 0 5px rgb(56 189 248 / .55)); } .a { height: calc(var(--p) * var(--t)); background-image: repeating-linear-gradient(to top, #fbbf24 0 calc(var(--t) - 1px), transparent calc(var(--t) - 1px) var(--t)); filter: drop-shadow(0 0 7px rgb(251 191 36 / .95)); }
-  .key { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; font-size: 14px; color: #c8d3ee; } .k1, .k2 { display: inline-flex; align-items: center; gap: 8px; } .k1::before, .k2::before { content: ""; width: 14px; height: 4px; background: #fbbf24; } .k2::before { background: #38bdf8; }
-  .comm { min-height: 380px; display: grid; align-items: center; padding: var(--pad); background: #520116; } .comm > .field { position: absolute; inset: 0; z-index: -2; } .comm > :global(.art) { z-index: -1; opacity: .8; } .cc { display: grid; justify-items: start; gap: 18px; max-width: 560px; } .comm :global(.btn) { --chip: var(--tint); }
-  @media (min-width: 1000px) { .hero { padding-top: 128px; } .sky { --t: 6px; position: relative; margin-top: -188px; padding-inline: 16px; } .c { position: relative; z-index: 1; } }
+  .hero { padding-top: 112px; background: #040b2e; } .hero > .field { position: absolute; inset: 0; z-index: -2; }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; } .c { display: grid; justify-items: start; align-content: center; gap: 20px; padding-bottom: 32px; } .cta { height: 60px; padding-inline: 26px 10px; font-size: 18px; margin-top: 4px; } h1 { font-size: clamp(40px, 4.6vw, 62px); }
+  .w { display: block; max-height: 300px; overflow: clip; border-radius: 16px 16px 0 0; box-shadow: 0 0 0 1px rgb(255 255 255 / .18), 0 40px 70px -30px #000; } .w img { display: block; width: 100%; height: auto; max-width: none; }
+  .ec { padding: 24px 0 28px; background: var(--soft); color: var(--ink); } .t { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; } h2 { font-size: 24px; letter-spacing: -.02em; line-height: 1.2; } .all { display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; margin-top: 14px; } li { min-width: 0; } li a { display: grid; gap: 8px; } .f { display: block; aspect-ratio: 16 / 10; border-radius: 10px; overflow: clip; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 16px 26px -20px rgb(10 26 63 / .55); transition: box-shadow .2s var(--ease); } li a:hover .f { box-shadow: 0 0 0 2px var(--brand), 0 16px 26px -20px rgb(10 26 63 / .55); } .f img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 0 0; max-width: none; } li b { font-weight: 500; font-size: 14px; line-height: 1.22; letter-spacing: -.005em; }
+  @media (min-width: 1000px) { .top { grid-template-columns: minmax(0, 1fr) 600px; gap: 48px; } .c { padding-bottom: 48px; } .w { height: 360px; max-height: none; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 </style>
