@@ -13,6 +13,9 @@ import {
   createParser,
   createSerializer,
 } from 'nuqs';
+import { isValid, parseISO } from 'date-fns';
+import { MIN_YEAR } from '../constants';
+import { SEARCH_FIELDS } from '../types/search.types';
 import { encodeRegions, decodeRegions } from './regions';
 import { authorFilterValue } from '../openalex/author-filter';
 import { institutionId, sourceId } from '../openalex/ids';
@@ -188,32 +191,53 @@ function parseIntegerParam(
   return Number.isNaN(parsed) ? fallback : parsed;
 }
 
+/** The two ends of a range, lowest first. */
+function inOrder<T extends number | null>(from: T, to: T): [T, T] {
+  return from !== null && to !== null && from > to ? [to, from] : [from, to];
+}
+
+/** A year as the year picker takes it: within the years a search can name. */
+function parseYearParam(searchParams: URLSearchParams, key: string): number | null {
+  const year = parseIntegerParam(searchParams, key, null);
+  return year === null ? null : Math.min(new Date().getFullYear(), Math.max(MIN_YEAR, year));
+}
+
+function parseDateParam(searchParams: URLSearchParams, key: string): string | null {
+  const date = searchParams.get(key);
+  return date !== null && isValid(parseISO(date)) ? date : null;
+}
+
 /**
  * Parse URLSearchParams into ParsedSearchParams using the module defaults.
  * Unknown query params are ignored, and malformed numeric params fall back to
  * their defaults rather than becoming NaN.
+ *
+ * An address is anyone's to type, and the server refuses a search it can't hold, so a value
+ * no search can have becomes the nearest one that can, or is dropped.
  */
 export function parseSearchParamsFromUrl(
   searchParams: URLSearchParams
 ): ParsedSearchParams {
+  const field = searchParams.get('field');
+  const [yf, yt] = inOrder(parseYearParam(searchParams, 'yf'), parseYearParam(searchParams, 'yt'));
+  const [rmin, rmax] = inOrder(
+    parseIntegerParam(searchParams, 'rmin', DEFAULT_SEARCH_PARAMS.rmin) ?? DEFAULT_SEARCH_PARAMS.rmin,
+    parseIntegerParam(searchParams, 'rmax', DEFAULT_SEARCH_PARAMS.rmax) ?? DEFAULT_SEARCH_PARAMS.rmax,
+  );
   return {
     q: searchParams.get('q') ?? DEFAULT_SEARCH_PARAMS.q,
-    field: searchParams.get('field') ?? DEFAULT_SEARCH_PARAMS.field,
+    field: field !== null && SEARCH_FIELDS.some(({ value }) => value === field) ? field : DEFAULT_SEARCH_PARAMS.field,
     sort: searchParams.get('sort') ?? DEFAULT_SEARCH_PARAMS.sort,
     page:
       parseIntegerParam(searchParams, 'page', DEFAULT_SEARCH_PARAMS.page) ??
       DEFAULT_SEARCH_PARAMS.page,
-    yf: parseIntegerParam(searchParams, 'yf', null),
-    yt: parseIntegerParam(searchParams, 'yt', null),
-    df: searchParams.get('df') ?? null,
-    dt: searchParams.get('dt') ?? null,
-    ft: searchParams.get('ft') ?? DEFAULT_SEARCH_PARAMS.ft,
-    rmin:
-      parseIntegerParam(searchParams, 'rmin', DEFAULT_SEARCH_PARAMS.rmin) ??
-      DEFAULT_SEARCH_PARAMS.rmin,
-    rmax:
-      parseIntegerParam(searchParams, 'rmax', DEFAULT_SEARCH_PARAMS.rmax) ??
-      DEFAULT_SEARCH_PARAMS.rmax,
+    yf,
+    yt,
+    df: parseDateParam(searchParams, 'df'),
+    dt: parseDateParam(searchParams, 'dt'),
+    ft: searchParams.get('ft') === 'date' ? 'date' : DEFAULT_SEARCH_PARAMS.ft,
+    rmin,
+    rmax,
     rated: searchParams.get('rated') === 'true',
     reg: searchParams.has('reg') ? decodeRegions(searchParams.get('reg') || '') : [],
     focus: searchParams.has('focus') ? decodeRegions(searchParams.get('focus') || '') : [],
