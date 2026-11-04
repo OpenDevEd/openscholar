@@ -29,7 +29,7 @@ h3 { font-size: clamp(19px, 1.7vw, 22px); line-height: 1.2; letter-spacing: -.01
 p { text-wrap: pretty; }
 .lead { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-:focus-visible { outline: 3px solid var(--brand-ink); outline-offset: 2px; } :is(.panel, .bleed, .top, .foot, .tour) :focus-visible { outline-color: #fff; } :is(.ask, .x, .card) :focus-visible, .light :focus-visible { outline-color: var(--brand-ink); }
+:focus-visible { outline: 3px solid var(--brand-ink); outline-offset: 2px; } :is(.panel, .bleed, .top, .foot, .tour) :focus-visible { outline-color: #fff; } :is(.ask, .x, .card, .nameit) :focus-visible { outline-color: var(--brand-ink); }
 .strip { max-width: 1280px; margin-inline: auto; padding-inline: var(--gap); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
 
 /* A colour field panel. */
@@ -55,10 +55,9 @@ p { text-wrap: pretty; }
 .js [data-in].in { opacity: 1; transform: none; transition: opacity .8s var(--ease) var(--d, 0s), transform .9s var(--ease) var(--d, 0s); }
 
 /* The colour fields behind each panel: drawn by the browser, so they cost nothing to load. */
-.f-steel { background: radial-gradient(ellipse 22% 34% at 98% 98%, #2b6f9e, transparent), radial-gradient(ellipse 45% 71% at 12% 86%, #173a6e, transparent), radial-gradient(ellipse 37% 60% at 62% 76%, #1c4d7e, transparent), radial-gradient(ellipse 40% 64% at 81% 18%, #1e4a86, transparent), radial-gradient(ellipse 45% 71% at 19% 12%, #20508f, transparent), #14335f; }
-.f-glacier { background: radial-gradient(ellipse 37% 60% at 61% 82%, #24405f, transparent), radial-gradient(ellipse 40% 64% at 15% 88%, #1b3350, transparent), radial-gradient(ellipse 40% 64% at 78% 16%, #2a4a6b, transparent), radial-gradient(ellipse 46% 74% at 19% 18%, #1f3a59, transparent), #14233c; }
+.f-steel { background: radial-gradient(ellipse 22% 34% at 98% 98%, #2b6f9e, transparent), radial-gradient(ellipse 45% 71% at 12% 86%, #0f2a66, transparent), radial-gradient(ellipse 37% 60% at 62% 76%, #17458f, transparent), radial-gradient(ellipse 40% 64% at 81% 18%, #1a4a9a, transparent), radial-gradient(ellipse 45% 71% at 19% 12%, #18408a, transparent), #12306e; }
 .f-emerald { background: radial-gradient(ellipse 37% 60% at 8% 88%, #0a4f40, transparent), radial-gradient(ellipse 40% 64% at 54% 86%, #0f665c, transparent), radial-gradient(ellipse 42% 67% at 75% 24%, #0d5f4c, transparent), radial-gradient(ellipse 45% 71% at 16% 16%, #0d5f4c, transparent), #0a4438; }
-.f-rose { background: radial-gradient(ellipse 39% 62% at 11% 88%, #8f1238, transparent), radial-gradient(ellipse 37% 60% at 62% 86%, #a9183f, transparent), radial-gradient(ellipse 40% 64% at 78% 14%, #a61e4d, transparent), radial-gradient(ellipse 45% 71% at 18% 22%, #8f1238, transparent), #6f0f2e; }
+.f-rose { background: radial-gradient(ellipse 39% 62% at 11% 88%, #be123c, transparent), radial-gradient(ellipse 37% 60% at 62% 86%, #e11d48, transparent), radial-gradient(ellipse 40% 64% at 78% 14%, #be123c, transparent), radial-gradient(ellipse 45% 71% at 18% 22%, #be123c, transparent), #9f1239; }
 .f-ocean { background: radial-gradient(ellipse 37% 60% at 8% 86%, #12506a, transparent), radial-gradient(ellipse 40% 64% at 56% 88%, #1b4a78, transparent), radial-gradient(ellipse 40% 64% at 78% 20%, #15628a, transparent), radial-gradient(ellipse 43% 69% at 16% 18%, #116a84, transparent), #0f4a66; }
 .f-night { background: radial-gradient(ellipse 17% 28% at 96% 98%, #1c4a6e, transparent), radial-gradient(ellipse 45% 71% at 55% 90%, #121c38, transparent), radial-gradient(ellipse 34% 55% at 82% 12%, #123d52, transparent), radial-gradient(ellipse 40% 64% at 14% 12%, #1a2a55, transparent), #091026; }
 

@@ -99,10 +99,10 @@ void main(){
   col += pow(max(dot(reflect(-L, n0), vec3(0., 0., 1.)), 0.), 90.) * wet * vec3(.7, .85, 1.) * .42 * lit;
   float city = max(nc.r - .05, 0.); col += (nc * 1.1 + city * vec3(1.6, 1.1, .55) * 4.5 * (1. - cl * .8)) * (1. - smoothstep(-.2, .06, dif));
   col = mix(col, mix(vec3(.07, .11, .2), vec3(1., 1., 1.02), lit), pow(cl, 1.5) * .9);
-  col += dusk * vec3(1., .5, .22) * .2;
+  col += dusk * vec3(.9, .5, .25) * .07;
   col += mix(vec3(.3, .6, .95), vec3(1., .6, .3), smoothstep(.55, .93, sun) * .8) * pow(1. - z, 3.2) * (.24 + .9 * smoothstep(0., .8, dif));
   vec2 q = mat2(cos(rg.z), sin(rg.z), -sin(rg.z), cos(rg.z)) * p; float yr = -rg.y * sqrt(max(0., 1. - q.x * q.x / (rg.x * rg.x))); col *= 1. - .3 * gs((q.y - yr + .035) / .018);
-  if (wv > 0.) { float g = acos(clamp(dot(n0, vec3(0., .96, .28)), -1., 1.)), f = wv * 3.2 - .2, e = smoothstep(0., .1, wv) * (1. - wv), b = gs((g - f) / .2) * e; col *= 1. + b * .75; col += b * (vec3(1., .55, .2) * .1 + city * vec3(1.6, 1.15, .6) * 9.) * (1. - cl * .7) + gs((g - f) / .06) * e * vec3(1., .7, .4) * .4 + vec3(1., .72, .42) * pow(1. - z, 2.5) * smoothstep(.1, .9, p.y) * max(0., 1. - wv * 2.) * .6; }
+  if (wv > 0.) { float g = acos(clamp(dot(n0, vec3(0., .96, .28)), -1., 1.)), f = wv * 3.2 - .2, e = smoothstep(0., .1, wv) * (1. - wv), b = gs((g - f) / .2) * e; col *= 1. + b * .75; col += b * (vec3(1., .55, .2) * .1 + city * vec3(1.6, 1.15, .6) * 9.) * (1. - cl * .7) + gs((g - f) / .06) * e * vec3(1., .7, .4) * .22 + vec3(1., .72, .42) * pow(1. - z, 2.5) * smoothstep(.1, .9, p.y) * max(0., 1. - wv * 2.) * .6; }
   col = col / (1. + col * .14); float a = 1. - smoothstep(1. - 2.2 / r, 1., d);
   o = (vec4(col, 1.) * a + vec4(h, ha) * (1. - a)) * fade;
 }`;

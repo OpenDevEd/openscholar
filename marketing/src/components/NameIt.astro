@@ -4,16 +4,16 @@ import Device from "./Device.astro";
 import Arrow from "./Arrow.astro";
 import { APP } from "../data/site.mjs";
 const first = "Early childhood education";
-const colours = [["Blue", "#2563eb"], ["Teal", "#0f766e"], ["Forest", "#15803d"], ["Amber", "#b45309"], ["Crimson", "#be123c"]];
+const colours = [["Orange", "var(--brand)", "var(--brand-on)"], ["Blue", "#2563eb", "#fff"], ["Teal", "#0f766e", "#fff"], ["Forest", "#15803d", "#fff"], ["Crimson", "#be123c", "#fff"]];
 const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "");
 ---
-<section class="panel nameit" id="yours" data-name style={`--acc:${colours[0][1]}`}>
+<section class="panel nameit" id="yours" data-name style={`--acc:${colours[0][1]};--acc-on:${colours[0][2]}`}>
   <div class="n-left">
     <h2>Put your field's name on it</h2>
     <p class="lead">Your name, your address and your colours, on a community built around your evidence.</p>
     <label class="f"><span>Your field</span><input data-field type="text" maxlength="60" value={first} autocomplete="off" spellcheck="false" /></label>
     <p class="addr"><span>Public address</span><code data-addr>{slug(first)}.openscholar.ai</code></p>
-    <div class="f"><span id="n-col">Colour</span><div class="sw" role="group" aria-labelledby="n-col">{colours.map(([n, c], i) => <button type="button" aria-label={n} aria-pressed={i === 0 ? "true" : "false"} data-c={c} style={`--c:${c}`}></button>)}</div></div>
+    <div class="f"><span id="n-col">Colour</span><div class="sw" role="group" aria-labelledby="n-col">{colours.map(([n, c, on], i) => <button type="button" aria-label={n} aria-pressed={i === 0 ? "true" : "false"} data-c={c} data-on={on} style={`--c:${c}`}></button>)}</div></div>
     <a class="btn" href={`${APP}/evidence-communities`}>Create your community<Arrow /></a>
   </div>
   <div class="n-dev" aria-hidden="true">
@@ -32,7 +32,7 @@ const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCa
     const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "") || "your-field";
     const show = () => { const v = input.value.trim() || "Your field"; outs.forEach((o) => { o.textContent = v; }); lows.forEach((o) => { o.textContent = v.toLowerCase(); }); addr.textContent = `${slug(v)}.openscholar.ai`; };
     input.addEventListener("input", show);
-    const paint = (m) => { root.style.setProperty("--acc", m.dataset.c); marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); };
+    const paint = (m) => { root.style.setProperty("--acc", m.dataset.c); root.style.setProperty("--acc-on", m.dataset.on); marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); };
     // Until someone touches it, it fills itself in, so it's plain the page is live. Any touch ends this for good.
     const FIELDS = ["Marine conservation", "Early childhood education", "Urban water and sanitation", "Migration and labour markets"]; let timer = 0, on = false, done = false, field = 0, at = 0, back = false, tick = 0;
     const step = () => { if (!on || done) return; const word = FIELDS[field]; let wait = 46; if (back) { input.value = input.value.slice(0, -1); if (!input.value) { back = false; field = (field + 1) % FIELDS.length; at = 0; paint(marks[(field + 1) % marks.length]); wait = 200; } else wait = 18; } else { at += 1; input.value = word.slice(0, at); if (at >= word.length) { back = true; wait = 2600; } } show(); timer = setTimeout(step, wait); };
@@ -51,9 +51,9 @@ const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCa
   /* The page's own measurements, in 1440ths of its width, so the words sit exactly where the real site puts them. */
   .site { position: absolute; inset: 0; z-index: 1; container-type: inline-size; color: #0f0f0f; text-align: left; } .in { --p: calc(100cqw / 1440); position: absolute; inset: 0; font-family: var(--sans); }
   .navname { position: absolute; left: calc(var(--p) * 283); top: calc(var(--p) * 52); max-width: calc(var(--p) * 430); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; font-size: calc(var(--p) * 24); line-height: calc(var(--p) * 30); letter-spacing: -.025em; color: #000; }
-  .signin { position: absolute; left: calc(var(--p) * 1108); top: calc(var(--p) * 48); display: grid; place-items: center; width: calc(var(--p) * 86); height: calc(var(--p) * 30); border-radius: calc(var(--p) * 8); background: var(--acc); color: #fff; font-weight: 500; font-size: calc(var(--p) * 16); transition: background-color .25s var(--ease); }
+  .signin { position: absolute; left: calc(var(--p) * 1108); top: calc(var(--p) * 48); display: grid; place-items: center; width: calc(var(--p) * 86); height: calc(var(--p) * 30); border-radius: calc(var(--p) * 8); background: var(--acc); color: var(--acc-on); font-weight: 500; font-size: calc(var(--p) * 16); transition: background-color .25s var(--ease); }
   .hero-s { position: absolute; left: calc(var(--p) * 56); top: calc(var(--p) * 200); width: calc(var(--p) * 760); display: grid; gap: calc(var(--p) * 20); justify-items: start; }
   h3 { max-width: calc(var(--p) * 720); font: 700 calc(var(--p) * 60)/1 Montserrat, var(--sans); letter-spacing: -.03em; overflow-wrap: anywhere; } .sub { width: calc(var(--p) * 500); font: 500 calc(var(--p) * 24)/calc(var(--p) * 32) Montserrat, var(--sans); letter-spacing: -.025em; color: rgb(15 15 15 / .72); } .body { width: calc(var(--p) * 544); margin-top: calc(var(--p) * 8); font-size: calc(var(--p) * 17); line-height: calc(var(--p) * 28); color: rgb(15 15 15 / .75); } .body strong { font-weight: 500; color: #0f0f0f; }
-  .row { display: flex; gap: calc(var(--p) * 12); margin-top: calc(var(--p) * 14); } .row span { display: grid; place-items: center; height: calc(var(--p) * 40); padding-inline: calc(var(--p) * 18); border-radius: calc(var(--p) * 10); font-size: calc(var(--p) * 14); } .b1 { background: var(--acc); color: #fff; transition: background-color .25s var(--ease); } .b2 { background: #f4f4f5; color: rgb(0 0 0 / .75); font-weight: 500; }
+  .row { display: flex; gap: calc(var(--p) * 12); margin-top: calc(var(--p) * 14); } .row span { display: grid; place-items: center; height: calc(var(--p) * 40); padding-inline: calc(var(--p) * 18); border-radius: calc(var(--p) * 10); font-size: calc(var(--p) * 14); } .b1 { background: var(--acc); color: var(--acc-on); transition: background-color .25s var(--ease); } .b2 { background: #f4f4f5; color: rgb(0 0 0 / .75); font-weight: 500; }
   @media (max-width: 900px) { .nameit { grid-template-columns: minmax(0, 1fr); } }
 </style>

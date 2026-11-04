@@ -14,9 +14,9 @@ import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const teams = [
-  ["ocean", "review-card", "2 38 29", "screen-laptop-light-1000", 1000, 625, "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export.", "/#screening"],
-  ["rose", "thread", "6 9 20", "panel-citation-light", 880, 1349, "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
-  ["emerald", "globe", "76 6 32", "c-home-laptop-light-1000", 1000, 625, "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
+  ["emerald", "review-card", "2 38 29", "screen-laptop-light-1000", 1000, 625, "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export.", "/#screening"],
+  ["night", "thread", "7 11 26", "panel-citation-light", 880, 1349, "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
+  ["rose", "globe", "83 1 23", "c-home-laptop-light-1000", 1000, 625, "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
 ];
 const others = COMMUNITIES.filter((c) => c.key !== "wi");
 const questions = [["Is this an intervention study?", 11, 1, 3], ["Is it about reading or literacy?", 15, 0, 0], ["Is it in primary school?", 13, 1, 1]];
@@ -102,7 +102,7 @@ const faq = [
 <style>
   /* The dark carries on from the hero, and the devices glow against it, before the page opens up to white. */
   .tour { --bg: var(--sky); position: relative; overflow: clip; margin-top: calc(var(--gap) * -1); display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(20px, 2.6vw, 36px); width: 100vw; margin-inline: calc(50% - 50vw); padding: clamp(32px, 4vw, 56px) calc(var(--gap) + var(--pad)) clamp(40px, 4.4vw, 64px); background: var(--bg); color: #fff; border-radius: 0 0 clamp(28px, 4vw, 56px) clamp(28px, 4vw, 56px); text-align: center; scroll-margin-top: 64px; } .tour h2 { margin-inline: auto; font-size: clamp(30px, 3.6vw, 52px); } .tour :global(.ws) { width: min(100%, calc((100svh - 190px) * 1.733)); max-width: 1248px; margin-inline: auto; } @media (max-height: 519px) { .tour :global(.ws) { width: min(100%, 760px); } }
-  .band { display: grid; gap: 28px; padding: var(--pad); background: #eaf1f9; color: var(--ink); } .band .lead { color: var(--t2); } .band > :global(.art img) { opacity: 1; } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
+  .band { display: grid; gap: 28px; padding: var(--pad); background: #fdf8e2; color: var(--ink); } .band .lead { color: var(--t2); } .band > :global(.art img) { opacity: 1; } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .stack { grid-template-columns: minmax(0, 1fr); width: min(50%, 580px); } .band > :global(.art) { z-index: 0; } .band > :global(.x), .band > .b-head { position: relative; z-index: 1; } .band :global(.art) { left: 34%; height: 400px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 34%), linear-gradient(#000 62%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 34%), linear-gradient(#000 62%, transparent); mask-composite: intersect; }
   /* Find: the field for one real query, floating on the sea. */
   :global(.find) :global(.view) { display: grid; align-items: center; padding-right: var(--pad); }
@@ -143,7 +143,7 @@ const faq = [
   .tie { width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; } .tie path { stroke-dasharray: 1; filter: drop-shadow(0 0 6px var(--brand-deep)); }
   .js .proof[data-in] { opacity: 1; transform: none; } .js .proof .proof-copy, .js .proof .proof-page { opacity: 0; } .js .proof .tie path { stroke-dashoffset: 1; } .js .proof.in .proof-copy { opacity: 1; transition: opacity .6s var(--ease); } .js .proof.in .proof-page { opacity: 1; transition: opacity .7s var(--ease) .15s; } .js .proof.in .tie path { stroke-dashoffset: 0; transition: stroke-dashoffset 1.2s cubic-bezier(.45, 0, .2, 1) .45s; }
   /* Community: a laptop on the globe and a phone in front of it, each on a different theme. */
-  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: 0 0 0 var(--pad); min-height: 660px; background: #4c0620; } .p-copy { display: grid; gap: 18px; justify-items: start; padding-block: var(--pad); max-width: 440px; } .publish > :global(.art) { z-index: -1; } .publish > :global(.art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #4c0620 34%, rgb(76 6 32 / 0) 62%); }
+  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: 0 0 0 var(--pad); min-height: 660px; background: #530117; } .p-copy { display: grid; gap: 18px; justify-items: start; padding-block: var(--pad); max-width: 440px; } .publish > :global(.art) { z-index: -1; } .publish > :global(.art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #530117 34%, rgb(83 1 23 / 0) 62%); }
   /* The laptop keeps moving between real communities, each one's own site under its own name. */
   .cyc { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; animation: cyc 24s var(--ease) calc(4s + var(--i) * 4s) infinite; } @keyframes cyc { 0% { opacity: 0; } 3% { opacity: 1; } 17% { opacity: 1; } 20% { opacity: 0; } }
   .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }
