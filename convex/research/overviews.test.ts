@@ -69,6 +69,26 @@ describe("AI overviews of a search", () => {
     expect((await stored()).filter((row) => row.paid)).toHaveLength(1);
   });
 
+  it("writes none free on Custom, where they're paid, but an organization's work runs on its preset, so its members' stay free", async () => {
+    const { as, search, ensure, view, stored, setPerDay, team } = await setup();
+    await setPerDay(2);
+    await as("alice").mutation(api.userAiConfig.mutations.choose, { choice: "custom" });
+    const mine = await search("teacher training");
+
+    expect(await view()).toMatchObject({ perDay: 0 });
+    expect(await ensure(mine)).toBe("ask");
+    expect(await ensure(mine, { pay: true })).toBe("started");
+    expect((await stored()).map((row) => row.paid)).toEqual([true]);
+
+    const theirs = await search("school meals", team);
+    expect(await ensure(theirs, {}, team)).toBe("started");
+    expect((await stored()).find((row) => row.workspaceId === team)?.paid).toBe(false);
+
+    // Back on a preset, the plan's free ones return.
+    await as("alice").mutation(api.userAiConfig.mutations.choose, { choice: "balanced" });
+    expect(await view()).toMatchObject({ perDay: 2 });
+  });
+
   it("writes none free on a plan without them, and no more than PAID_PER_DAY paid ones a day, until the next day in UTC", async () => {
     const { search, ensure, view, setPerDay } = await setup();
     await setPerDay(0);
