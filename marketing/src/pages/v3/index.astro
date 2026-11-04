@@ -1,38 +1,39 @@
 ---
-// Hero to compare, after Typesafe AI on Mobbin: type alone on one strong colour, set out like a research paper, with the communities as its reference list. No images at all. Delete once one is picked.
+// Hero to compare. The idea, from Equals: the product's own data is the picture. Every paper on one real question is a lit tile, rising across the page, with the first page of results picked out in amber. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
+import Art from "../../components/Art.astro";
 import AskBar from "../../components/AskBar.astro";
-import { COMMUNITIES } from "../../data/site.mjs";
-const COLS = [["Find", "Ask in plain language and keep control of the query. Search the whole literature, not the first page of it."], ["Screen", "Decide once, against your own criteria, and apply it to every paper. Check any decision and change it."], ["Extract", "Turn papers into a table you can check, with each value tied back to where it came from."]];
+import Arrow from "../../components/Arrow.astro";
+import { counts, firstPage } from "../../data/field.mjs";
+const years = Array.from({ length: 2026 - 1972 + 1 }, (_, i) => 1972 + i);
+const picks = (y) => firstPage.filter(([f]) => f === y).length;
+const total = Object.values(counts).reduce((a, b) => a + b, 0);
 ---
-<Base top="#f98a76" title="Hero 3: OpenScholar" description="Hero option">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500&family=IBM+Plex+Mono&display=swap" rel="stylesheet" />
-  <section class="bleed hero light">
-    <div class="inner">
-      <i class="m tl"></i><i class="m tr"></i>
-      <h1>Evidence Work, Done Properly</h1>
+<Base top="#040b2e" title="Hero 3: OpenScholar" description="Hero option">
+  <section class="bleed hero">
+    <i class="field f-night" aria-hidden="true"></i>
+    <div class="inner c">
+      <h1>See the whole field before you read a page</h1>
+      <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
       <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
-      <div class="cols">
-        {COLS.map(([h, t]) => <div><h3>{h}</h3><p>{t}</p></div>)}
-        <pre aria-label="An example query">{`"peer tutoring"\nAND reading\nAND (primary\n  OR elementary)\nNOT "higher\n  education"`}</pre>
-      </div>
     </div>
+    <div class="sky" role="img" aria-label={`${total} papers on peer tutoring and reading, 1972 to 2026, rising steeply. The ten on the first page of results are a tiny part of them.`}>
+      {years.map((y, i) => <div class="y" style={`--n:${(counts[y] ?? 0) - picks(y)};--p:${picks(y)};--i:${i}`}><i class="b"></i><i class="a"></i></div>)}
+    </div>
+    <div class="key inner"><span class="k1">The first page</span><span class="k2">The other {total - firstPage.length} papers on peer tutoring and reading</span></div>
   </section>
-  <section class="bleed ec light">
-    <div class="inner g">
-      <div class="t"><h2>Evidence Communities</h2><p>Public homes for a field's evidence, under their own name and address. <a href="/evidence-communities/">How they work</a></p></div>
-      <ol>{COMMUNITIES.map((c, i) => <li><a href={c.url}><i>[{i + 1}]</i><span class="n"><b>{c.name}.</b> {c.text}. <u>{c.host}</u></span></a></li>)}</ol>
-    </div>
+  <section class="panel comm" style="--tint:#be123c">
+    <i class="field f-rose" aria-hidden="true"></i><Art name="globe" pos="100% 50%" />
+    <div class="cc"><h2>Evidence Communities give your field a public home</h2><p class="lead">Your own name and address, kept current from your sources, for anyone to search and read.</p><a class="btn" href="/evidence-communities/">Explore Evidence Communities<Arrow /></a></div>
   </section>
 </Base>
 <style>
-  .ec { margin-top: calc(var(--gap) * -1); }
-  h1, h2, h3 { font-family: "Schibsted Grotesk", var(--sans); font-weight: 500; }
-  .hero { padding: 112px 0 72px; background: #f98a76; color: #24100c; } .inner { position: relative; } .m { display: none; position: absolute; top: -8px; width: 14px; height: 14px; border-top: 1.5px solid; } .tl { left: calc(var(--gap) + var(--pad)); border-left: 1.5px solid; } .tr { right: calc(var(--gap) + var(--pad)); border-right: 1.5px solid; }
-  h1 { font-size: clamp(56px, 11vw, 148px); letter-spacing: -.05em; line-height: .9; text-align: center; text-wrap: balance; } .hero :global(.big) { width: min(100%, 820px); margin: 40px auto 0; border-radius: 4px; box-shadow: none; }
-  .cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 56px; } .cols > div { padding-left: 12px; border-left: 1.5px solid; } h3 { font: 400 13px/1 "IBM Plex Mono", var(--mono); } .cols p { margin-top: 24px; font-family: "Schibsted Grotesk", var(--sans); font-size: 18px; line-height: 1.22; } pre { margin: 0; font: 400 13px/1.35 "IBM Plex Mono", var(--mono); white-space: pre; }
-  .ec { padding: 64px 0 88px; background: #fff7f2; color: #24100c; } .g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; } h2 { font-size: clamp(36px, 4vw, 52px); letter-spacing: -.04em; line-height: 1; } .t p { margin-top: 14px; font-size: 17px; line-height: 1.35; } .t a { text-decoration: underline; text-underline-offset: 3px; }
-  ol { display: grid; font-family: "IBM Plex Mono", var(--mono); } li + li { border-top: 1.5px solid rgb(36 16 12 / .16); } li a { display: grid; grid-template-columns: 36px minmax(0, 1fr); padding: 14px 0; font-size: 14px; line-height: 1.5; transition: background .15s var(--ease); } li a:hover { background: #ffe6dc; } li i { font-style: normal; color: #b4472f; } .n b { font-weight: 400; color: #24100c; font-family: "Schibsted Grotesk", var(--sans); font-size: 18px; line-height: 1.2; } li u { color: #b4472f; text-underline-offset: 3px; }
-  @media (min-width: 1000px) { .m { display: block; } .cols { grid-template-columns: repeat(3, minmax(0, 1fr)) 170px; gap: 24px; } .g { grid-template-columns: 380px minmax(0, 1fr); gap: 64px; } }
+  .hero { padding: 128px 0 28px; background: #040b2e; } .hero > .field { position: absolute; inset: 0; z-index: -1; }
+  .c { display: grid; justify-items: start; gap: 18px; } h1 { max-width: 12em; } .c :global(.big) { width: min(100%, 600px); margin-top: 6px; } .lead { max-width: 30em; }
+  .sky { --t: 3px; display: flex; align-items: flex-end; gap: 1px; height: calc(var(--t) * 92 + 8px); margin-top: 32px; padding-inline: 8px; }
+  .y { position: relative; flex: 1 1 0; display: flex; flex-direction: column-reverse; min-width: 0; height: 100%; animation: rise .9s var(--ease) calc(var(--i) * 18ms) backwards; transform-origin: 50% 100%; } @keyframes rise { from { transform: scaleY(0); } }
+  .b, .a { display: block; flex: none; background-repeat: repeat-y; } .b { height: calc(var(--n) * var(--t)); background-image: repeating-linear-gradient(to top, #38bdf8 0 calc(var(--t) - 1px), transparent calc(var(--t) - 1px) var(--t)); filter: drop-shadow(0 0 5px rgb(56 189 248 / .55)); } .a { height: calc(var(--p) * var(--t)); background-image: repeating-linear-gradient(to top, #fbbf24 0 calc(var(--t) - 1px), transparent calc(var(--t) - 1px) var(--t)); filter: drop-shadow(0 0 7px rgb(251 191 36 / .95)); }
+  .key { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; font-size: 14px; color: #c8d3ee; } .k1, .k2 { display: inline-flex; align-items: center; gap: 8px; } .k1::before, .k2::before { content: ""; width: 14px; height: 4px; background: #fbbf24; } .k2::before { background: #38bdf8; }
+  .comm { min-height: 380px; display: grid; align-items: center; padding: var(--pad); background: #520116; } .comm > .field { position: absolute; inset: 0; z-index: -2; } .comm > :global(.art) { z-index: -1; opacity: .8; } .cc { display: grid; justify-items: start; gap: 18px; max-width: 560px; } .comm :global(.btn) { --chip: var(--tint); }
+  @media (min-width: 1000px) { .hero { padding-top: 128px; } .sky { --t: 6px; position: relative; margin-top: -188px; padding-inline: 16px; } .c { position: relative; z-index: 1; } }
 </style>

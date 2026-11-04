@@ -1,34 +1,24 @@
 ---
-// Hero to compare, after Mistral, Origin and Adaline on Mobbin: a painted landscape, a serif sentence in its sky, a gallery of small paintings for the communities. Delete once one is picked.
+// Hero to compare. The idea, from Greptile: one huge object tells the story. Here one question goes into a glass prism and comes out as the site's own colours, one for each part of the product. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
-import { COMMUNITIES } from "../../data/site.mjs";
+const RAYS = [["#22d3ee", "/#product", "Find", "Start with the whole literature"], ["#34d399", "/#screening", "Screen", "Decide what counts, once"], ["#fbbf24", "/#extraction", "Extract", "From papers to a table you can check"], ["#60a5fa", "/#assistant", "Assistant", "Delegate the groundwork"], ["#fb7185", "/evidence-communities/", "Communities", "Give your field a public home"]];
 ---
-<Base top="#d98a3d" title="Hero 1: OpenScholar" description="Hero option">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<Base top="#040b2c" title="Hero 1: OpenScholar" description="Hero option">
   <section class="bleed hero">
-    <img class="p" src="/img/art-paint-valley.avif" srcset="/img/art-paint-valley-960.avif 960w, /img/art-paint-valley.avif 1672w" sizes="100vw" width="1672" height="941" fetchpriority="high" alt="" />
+    <img class="p" src="/img/art-hero-prism.avif" srcset="/img/art-hero-prism-960.avif 960w, /img/art-hero-prism.avif 1672w" sizes="100vw" width="1672" height="941" fetchpriority="high" alt="" />
     <div class="inner c">
-      <h1><em>Find</em> your way through the evidence.</h1>
-      <p>With OpenScholar, search the literature, screen it against your criteria and extract the data you need.</p>
+      <h1>The evidence workspace for research teams</h1>
+      <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
       <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
     </div>
-  </section>
-  <section class="bleed ec light">
-    <div class="inner">
-      <div class="t"><h2>Evidence Communities are <em>public</em> homes for a field's evidence.</h2><a class="all" href="/evidence-communities/">How they work<Arrow /></a></div>
-      <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/art-paint-${c.key}-480.avif`} width="480" height="480" decoding="async" loading="lazy" alt="" /><b>{c.name}</b><span>{c.host}</span></a></li>)}</ul>
-    </div>
+    <div class="inner"><ul>{RAYS.map(([c, h, t, s]) => <li style={`--c:${c}`}><a href={h}><b>{t}<Arrow /></b><span>{s}</span></a></li>)}</ul></div>
   </section>
 </Base>
 <style>
-  .ec { margin-top: calc(var(--gap) * -1); }
-  h1, h2, li b { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; } em { font-style: italic; }
-  .hero { position: relative; isolation: isolate; overflow: clip; padding: 112px 0 340px; background: #d98a3d; color: #2c1405; } .p { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 100%; }
-  .c { display: grid; justify-items: center; gap: 18px; text-align: center; } h1 { max-width: 12em; font-size: clamp(52px, 7.2vw, 96px); letter-spacing: -.02em; line-height: .98; text-wrap: balance; } .c > p { max-width: 32em; font-size: 18px; font-weight: 500; line-height: 1.4; } .c :global(.big) { width: min(100%, 640px); margin-top: 8px; box-shadow: 0 24px 50px -22px rgb(90 40 0 / .6); }
-  .ec { padding: 72px 0 88px; background: #f8efe0; color: #3a2413; } .t { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 32px; } h2 { max-width: 19em; font-size: clamp(36px, 4.4vw, 56px); letter-spacing: -.015em; line-height: 1.02; text-wrap: balance; } .all { display: inline-flex; align-items: center; gap: 8px; color: #7a5a3c; font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: #3a2413; } .all :global(i) { display: grid; }
-  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 16px; margin-top: 36px; } li { min-width: 0; } li a { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; } li img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; margin-bottom: 8px; box-shadow: 0 0 0 6px #fffaf0, 0 0 0 7px rgb(58 36 19 / .16), 0 20px 30px -18px rgb(58 36 19 / .6); transition: box-shadow .25s var(--ease); } li a:hover img { box-shadow: 0 0 0 6px #fff, 0 0 0 8px #3a2413, 0 20px 30px -18px rgb(58 36 19 / .6); } li b { margin-top: 6px; font-size: 22px; line-height: 1.08; text-wrap: balance; } li span { color: #7a5a3c; font: 400 12px/1.25 var(--mono); overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
-  @media (min-width: 1000px) { ul { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 24px; } }
+  .hero { position: relative; display: grid; align-content: start; padding: 112px 0 0; background: #040b2c; } .p { position: absolute; z-index: -1; left: 50%; top: 290px; width: 190vw; height: auto; max-width: none; translate: -50% 0; -webkit-mask-image: linear-gradient(transparent, #000 12%, #000 84%, transparent); mask-image: linear-gradient(transparent, #000 12%, #000 84%, transparent); }
+  .c { display: grid; justify-items: start; gap: 18px; } h1 { max-width: 12em; } .c :global(.big) { width: min(100%, 600px); margin-top: 6px; } .lead { max-width: 30em; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 84vw; padding-bottom: 32px; } li a { display: grid; gap: 6px; padding-top: 14px; border-top: 2px solid var(--c); } li b { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: 18px; letter-spacing: -.01em; } li b :global(i) { display: grid; color: var(--c); transition: transform .25s var(--ease); } li a:hover b :global(i) { transform: translateX(4px); } li span { font-size: 15px; line-height: 1.35; color: #c8d3ee; }
+  @media (min-width: 1000px) { .p { left: 56%; top: auto; bottom: 20px; width: max(1680px, 118%); } .hero { min-height: 860px; align-content: space-between; padding-top: 128px; } ul { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; margin-top: 360px; padding-bottom: 36px; } }
 </style>
