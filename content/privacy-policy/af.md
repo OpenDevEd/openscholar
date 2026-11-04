@@ -21,6 +21,15 @@ E-pos: support@openscholar.ai
 
 # **Watter inligting ons versamel, gebruik en waarom**
 
+Ons versamel of gebruik die volgende persoonlike inligting **om jou rekening en die funksies wat jy gebruik te laat werk**:
+
+* Jou naam, e-posadres en profielfoto, en die organisasies waaraan jy behoort
+* Wat jy in Openscholar doen: soektogte, vrae, gestoorde artikels, graderings, versamelings, sifterings, ekstraksies en assistentgesprekke
+* Lêers wat jy oplaai, en toepassings wat jy koppel, soos Zotero
+* Krediete wat jy gebruik en koop. Stripe hanteer kaartbesonderhede, en ons sien of stoor dit nie
+
+Wanneer jy 'n KI-funksie gebruik, word jou versoek en die artikelteks wat daarvoor nodig is, gestuur na die KI-verskaffer wat die werk doen.
+
 Ons versamel of gebruik die volgende persoonlike inligting vir **die hantering van navrae, klagtes of eise**:
 
 * Name en kontakbesonderhede
@@ -75,6 +84,10 @@ Om ’n versoek oor databeskermingsregte te rig, kontak ons asseblief met die ko
 
 # **Ons wettige grondslae vir die versameling en gebruik van jou data**
 
+Ons wettige grondslag om persoonlike inligting te versamel of te gebruik **om jou rekening en die funksies wat jy gebruik te laat werk** is:
+
+* **Kontrak** – ons het dit nodig om die diens te lewer waarvoor jy ingeteken het. Al jou databeskermingsregte kan geld, behalwe die reg om beswaar te maak.
+
 Ons wettige grondslae vir die versameling of gebruik van persoonlike inligting vir **die hantering van navrae, klagtes of eise** is:
 
 * **Legitieme belange** – ons versamel of gebruik jou inligting omdat dit jou, ons organisasie of iemand anders bevoordeel, sonder om ’n onnodige risiko van skade vir enigiemand te veroorsaak. Al jou databeskermingsregte kan geld, behalwe die reg op oordraagbaarheid. Ons legitieme belange is:
@@ -102,6 +115,8 @@ Vir meer inligting oor ons gebruik van legitieme belange as wettige grondslag, k
 
 # **Waar ons persoonlike inligting vandaan kry**
 
+* **Van aanmelding en gekoppelde dienste**: Clerk wanneer jy aanmeld, Google as jy met Google aanmeld, en Zotero as jy dit koppel
+
 * **Direk van jou** wanneer jy:
   * Vir ons e-pos stuur
   * ’n Terugvoeropname voltooi
@@ -125,6 +140,8 @@ Vir meer inligting oor ons gebruik van legitieme belange as wettige grondslag, k
 | **Ontledingskoekies**                | 365 dae vanaf die laaste besoek             | Om terugkerende besoekers na te spoor en sessiekontinuïteit te handhaaf                       |
 | **Opnameantwoorde**                  | 1 jaar vanaf die datum van indiening        | Om die produk te verbeter en terugvoertendense oor tyd na te spoor                            |
 | **IP-adreslogboeke**                 | 24 uur vanaf die datum van insameling       | Vir sekuriteitsmonitering en bedrogvoorkoming                                                 |
+| **Rekening- en navorsingsdata** | Totdat jy dit of jou rekening uitvee | Om die diens te lewer |
+| **Betalingsrekords** | 6 jaar vanaf die aankoopdatum | Om aan belasting- en rekeningkundige reëls te voldoen |
 
 
 Na hierdie tydperke verwyder of anonimiseer ons persoonlike inligting veilig sodat dit jou nie meer kan identifiseer nie.
@@ -145,14 +162,55 @@ Hierdie dataverwerker doen die volgende aktiwiteite vir ons:
 
 **Ligging:** Duitsland (EU-hosting)
 
-**Vercel Inc.**
+**Hetzner Online GmbH**
 
-Hierdie dataverwerker doen die volgende aktiwiteite vir ons:
-* Huisves ons webwerf
-* Lewer inhoudleweringsnetwerk-(CDN-)dienste
-* Verwerk bedienerlogboeke en verbindingsdata
+Hierdie dataverwerker doen die volgende vir ons:
+* Huisves ons webwerf en databasis
 
-**Ligging:** Verenigde State en ’n wêreldwyd versprede randnetwerk
+**Ligging:** Duitsland
+
+**Cloudflare, Inc.**
+
+Hierdie dataverwerker doen die volgende vir ons:
+* Beskerm en lewer verkeer na ons webwerf
+* Stoor kopieë van sommige artikel-PDF's
+
+**Ligging:** Wêreldwyd versprei netwerk
+
+**Clerk, Inc.**
+
+Hierdie dataverwerker doen die volgende vir ons:
+* Bestuur aanmelding en rekeninge
+
+**Ligging:** Verenigde State
+
+**Stripe**
+
+Hierdie dataverwerker doen die volgende vir ons:
+* Verwerk betalings vir krediete
+
+**Ligging:** Verenigde State en Europa
+
+**OpenRouter, Inc.**
+
+Hierdie dataverwerker doen die volgende vir ons:
+* Stuur KI-versoeke na die modelverskaffers wat dit beantwoord, soos Anthropic, OpenAI en Google
+
+**Ligging:** Verenigde State
+
+**Brevo**
+
+Hierdie dataverwerker doen die volgende vir ons:
+* Stuur uitnodigings-e-posse
+
+**Ligging:** Frankryk
+
+**Supabase, Inc.**
+
+Hierdie dataverwerker doen die volgende vir ons:
+* Stoor lêers vir Evidence Communities
+
+**Ligging:** Verenigde Koninkryk
 
 # **Deel van inligting buite die VK**
 
@@ -172,15 +230,15 @@ Data word hoofsaaklik binne die Europese Ekonomiese Ruimte (EER) verwerk, spesif
 
 ---
 
-**Organisasienaam:** Vercel Inc.
+**Organisasiename:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
-**Kategorie ontvanger:** Webwerfaanbieder
+**Kategorie ontvanger:** Verskaffers van aanmelding, betalings, KI en webwerflewering
 
-**Land waarheen die persoonlike inligting gestuur word:** Verenigde State (en ’n wêreldwyd versprede randnetwerk)
+**Land waarheen die persoonlike inligting gestuur word:** Verenigde State, en die lande waar KI-verskaffers hul modelle bedryf
 
-**Hoe die oordrag aan die VK se databeskermingswetgewing voldoen:** 
+**Hoe die oordrag aan die VK se databeskermingswet voldoen:** 
 
-Oordragte aan Vercel Inc. word gemaak op grond van sy sertifisering onder die VK-uitbreiding van die EU-VSA Data Privacy Framework.
+Hierdie oordragte berus op die VK-uitbreiding van die EU-VS-dataprivaatheidsraamwerk waar die ontvanger gesertifiseer is, of andersins op die VK se Internasionale Data-oordragbylae.
 
 # **Hoe ons persoonlike inligting beskerm**
 
@@ -233,4 +291,4 @@ Ons moedig jou aan om hierdie privaatheidskennisgewing periodiek te hersien om i
 
 # **Laas opgedateer**
 
-17 Februarie 2026
+4 November 2026

@@ -43,4 +43,4 @@ export async function namedTitle(name: string): Promise<Metadata["title"]> {
 }
 
 /** The search-engine pages, for the sitemap. */
-export const INDEXED_PATHS = ["/", "/pricing", "/privacy", "/cookie-policy", "/credits"] as const;
+export const INDEXED_PATHS = ["/", "/pricing", "/terms", "/privacy", "/cookie-policy", "/credits"] as const;

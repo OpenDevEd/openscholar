@@ -12,6 +12,9 @@ export function Footer() {
     <footer className="py-8 shrink-0">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <Link href="/terms" className={footerLinkClassName}>
+            {t("terms")}
+          </Link>
           <Link href="/privacy" className={footerLinkClassName}>
             {t("privacyPolicy")}
           </Link>

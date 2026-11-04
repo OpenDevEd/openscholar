@@ -1061,6 +1061,8 @@
     "creditsTitle": "致谢",
     "creditsDescription": "Openscholar 所使用的项目、数据与许可。",
     "sharedTitle": "与我共享",
+    "termsTitle": "使用条款",
+    "termsDescription": "使用 Openscholar 的规则。",
     "signUpTitle": "注册"
   },
   "validation": {
@@ -1353,6 +1355,7 @@
     "and": "和",
     "with": "与",
     "suffix": "联合打造",
+    "terms": "使用条款",
     "privacyPolicy": "隐私政策",
     "cookiePolicy": "Cookie 政策",
     "cookiePreferences": "Cookie 偏好设置",

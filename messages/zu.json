@@ -1061,6 +1061,8 @@
     "creditsTitle": "Ukubonga",
     "creditsDescription": "Amaprojekthi, idatha nezilayisense i-Openscholar ekwakhelwe kuzo.",
     "sharedTitle": "Okwabelwane nami",
+    "termsTitle": "Imigomo yokusetshenziswa",
+    "termsDescription": "Imithetho yokusebenzisa i-Openscholar.",
     "signUpTitle": "Bhalisa"
   },
   "validation": {
@@ -1353,6 +1355,7 @@
     "and": "kanye no-",
     "with": "nge-",
     "suffix": "",
+    "terms": "Imigomo yokusetshenziswa",
     "privacyPolicy": "Inqubomgomo yobumfihlo",
     "cookiePolicy": "Inqubomgomo yama-cookie",
     "cookiePreferences": "Izintandokazi zama-cookie",

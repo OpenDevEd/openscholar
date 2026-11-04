@@ -21,6 +21,15 @@ E-Mail: support@openscholar.ai
 
 # **Welche Informationen wir erheben, verwenden und warum**
 
+Wir erheben oder verwenden die folgenden personenbezogenen Daten, **um Ihr Konto und die von Ihnen genutzten Funktionen zu betreiben**:
+
+* Ihren Namen, Ihre E-Mail-Adresse und Ihr Profilfoto sowie die Organisationen, denen Sie angehören
+* Was Sie in Openscholar tun: Suchen, Fragen, gespeicherte Artikel, Bewertungen, Sammlungen, Screenings, Extraktionen und Assistenten-Chats
+* Dateien, die Sie hochladen, und Apps, die Sie verbinden, etwa Zotero
+* Credits, die Sie verwenden und kaufen. Kartendaten verarbeitet Stripe; wir sehen und speichern sie nicht
+
+Wenn Sie eine KI-Funktion nutzen, werden Ihre Anfrage und der dafür nötige Artikeltext an den KI-Anbieter gesendet, der die Arbeit ausführt.
+
 Wir erheben oder verwenden die folgenden personenbezogenen Daten für **die Bearbeitung von Anfragen, Beschwerden oder Ansprüchen**:
 
 * Namen und Kontaktdaten
@@ -75,6 +84,10 @@ Um eine Anfrage zu Ihren Datenschutzrechten zu stellen, kontaktieren Sie uns bit
 
 # **Unsere Rechtsgrundlagen für die Erhebung und Verwendung Ihrer Daten**
 
+Unsere Rechtsgrundlage für die Erhebung oder Verwendung personenbezogener Daten, **um Ihr Konto und die von Ihnen genutzten Funktionen zu betreiben**, ist:
+
+* **Vertrag** – wir benötigen sie, um den Dienst bereitzustellen, für den Sie sich angemeldet haben. Alle Ihre Datenschutzrechte können gelten, außer dem Widerspruchsrecht.
+
 Unsere Rechtsgrundlagen für die Erhebung oder Verwendung personenbezogener Daten für **die Bearbeitung von Anfragen, Beschwerden oder Ansprüche** sind:
 
 * **Berechtigte Interessen** – Wir erheben oder verwenden Ihre Informationen, weil sie Ihnen, unserer Organisation oder einer anderen Person nützen, ohne jemandem ein unangemessenes Risiko eines Schadens aufzubürden. Alle Ihre Datenschutzrechte können gelten, außer dem Recht auf Datenübertragbarkeit. Unsere berechtigten Interessen sind:
@@ -102,6 +115,8 @@ Weitere Informationen zu unserer Nutzung berechtigter Interessen als Rechtsgrund
 
 # **Woher wir personenbezogene Daten erhalten**
 
+* **Von der Anmeldung und verbundenen Diensten**: Clerk bei der Anmeldung, Google, wenn Sie sich mit Google anmelden, und Zotero, wenn Sie es verbinden
+
 * **Direkt von Ihnen**, wenn Sie:
   * uns eine E-Mail senden
   * an einer Feedback-Umfrage teilnehmen
@@ -125,6 +140,8 @@ Weitere Informationen zu unserer Nutzung berechtigter Interessen als Rechtsgrund
 | **Analyse-Cookies**                  | 365 Tage ab dem letzten Besuch              | Um wiederkehrende Besucher nachzuverfolgen und die Sitzungskontinuität zu erhalten            |
 | **Umfrageantworten**                 | 1 Jahr ab dem Datum der Einreichung         | Um das Produkt zu verbessern und Feedback-Trends über die Zeit zu verfolgen                   |
 | **IP-Adressprotokolle**              | 24 Stunden ab dem Datum der Erhebung        | Für Sicherheitsüberwachung und Betrugsprävention                                              |
+| **Konto- und Forschungsdaten** | Bis Sie diese oder Ihr Konto löschen | Um den Dienst bereitzustellen |
+| **Zahlungsbelege** | 6 Jahre ab Kaufdatum | Um Steuer- und Buchhaltungsvorschriften einzuhalten |
 
 
 Nach Ablauf dieser Fristen löschen oder anonymisieren wir personenbezogene Daten sicher, sodass sie Sie nicht mehr identifizieren können.
@@ -145,14 +162,55 @@ Dieser Auftragsverarbeiter übernimmt für uns folgende Tätigkeiten:
 
 **Standort:** Deutschland (Hosting in der EU)
 
-**Vercel Inc.**
+**Hetzner Online GmbH**
 
-Dieser Auftragsverarbeiter übernimmt für uns folgende Tätigkeiten:
-* Hosten unserer Website
-* Bereitstellen von Content-Delivery-Network-Diensten (CDN)
-* Verarbeiten von Server-Logs und Verbindungsdaten
+Dieser Auftragsverarbeiter führt für uns die folgenden Tätigkeiten aus:
+* Hostet unsere Website und Datenbank
 
-**Standort:** Vereinigte Staaten und weltweit verteiltes Edge-Netzwerk
+**Standort:** Deutschland
+
+**Cloudflare, Inc.**
+
+Dieser Auftragsverarbeiter führt für uns die folgenden Tätigkeiten aus:
+* Schützt und liefert den Datenverkehr unserer Website aus
+* Speichert Kopien einiger Artikel-PDFs
+
+**Standort:** Weltweit verteiltes Netzwerk
+
+**Clerk, Inc.**
+
+Dieser Auftragsverarbeiter führt für uns die folgenden Tätigkeiten aus:
+* Verwaltet Anmeldung und Konten
+
+**Standort:** Vereinigte Staaten
+
+**Stripe**
+
+Dieser Auftragsverarbeiter führt für uns die folgenden Tätigkeiten aus:
+* Verarbeitet Zahlungen für Credits
+
+**Standort:** Vereinigte Staaten und Europa
+
+**OpenRouter, Inc.**
+
+Dieser Auftragsverarbeiter führt für uns die folgenden Tätigkeiten aus:
+* Sendet KI-Anfragen an die Modellanbieter, die sie beantworten, etwa Anthropic, OpenAI und Google
+
+**Standort:** Vereinigte Staaten
+
+**Brevo**
+
+Dieser Auftragsverarbeiter führt für uns die folgenden Tätigkeiten aus:
+* Versendet Einladungs-E-Mails
+
+**Standort:** Frankreich
+
+**Supabase, Inc.**
+
+Dieser Auftragsverarbeiter führt für uns die folgenden Tätigkeiten aus:
+* Speichert Dateien für Evidence Communities
+
+**Standort:** Vereinigtes Königreich
 
 # **Weitergabe von Informationen außerhalb des Vereinigten Königreichs**
 
@@ -172,15 +230,15 @@ Die Daten werden hauptsächlich im Europäischen Wirtschaftsraum (EWR), konkret 
 
 ---
 
-**Name der Organisation:** Vercel Inc.
+**Namen der Organisationen:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
-**Kategorie des Empfängers:** Anbieter von Website-Hosting
+**Kategorie des Empfängers:** Anbieter von Anmeldung, Zahlungen, KI und Website-Auslieferung
 
-**Land, in das die personenbezogenen Daten übermittelt werden:** Vereinigte Staaten (und weltweit verteiltes Edge-Netzwerk)
+**Land, in das die personenbezogenen Daten übermittelt werden:** Vereinigte Staaten und die Länder, in denen KI-Anbieter ihre Modelle betreiben
 
-**Wie die Übermittlung dem Datenschutzrecht des Vereinigten Königreichs entspricht:** 
+**Wie die Übermittlung dem britischen Datenschutzrecht entspricht:** 
 
-Übermittlungen an Vercel Inc. erfolgen aufgrund von dessen Zertifizierung unter der UK-Erweiterung des EU-US-Datenschutzrahmens.
+Diese Übermittlungen stützen sich auf die britische Erweiterung des EU-US-Datenschutzrahmens, sofern der Empfänger zertifiziert ist, andernfalls auf den britischen International Data Transfer Addendum.
 
 # **Wie wir personenbezogene Daten schützen**
 
@@ -233,4 +291,4 @@ Wir empfehlen Ihnen, diesen Datenschutzhinweis regelmäßig zu prüfen, um darü
 
 # **Zuletzt aktualisiert**
 
-17. Februar 2026
+4. November 2026
