@@ -1,8 +1,8 @@
 ---
 import { APP } from "../data/site.mjs";
-const { id = "ask", typing = false, first, mark = false, class: cls = "", label = "Search the research" } = Astro.props;
+const { id = "ask", typing = false, mark = false, class: cls = "", label = "Search the research" } = Astro.props;
 ---
-<form class:list={["ask", cls]} data-typing={typing || undefined} data-first={first} data-ask action={`${APP}/results`} method="get" role="search" aria-label={label}>
+<form class:list={["ask", cls]} data-typing={typing || undefined} data-ask action={`${APP}/results`} method="get" role="search" aria-label={label}>
   <label class="sr" for={id}>Ask a research question</label>
   {mark && <img class="mk" src="/favicon.svg" width="28" height="28" alt="" />}
   <input id={id} name="q" autocomplete="off" required placeholder="Ask a research question" />
@@ -13,14 +13,13 @@ const { id = "ask", typing = false, first, mark = false, class: cls = "", label 
   const QUESTION_SHOWN = "Does peer tutoring improve reading?";
   const FILLER = /^(a|an|and|are|as|at|be|by|can|did|do|does|for|from|good|has|have|how|if|in|is|it|of|on|or|really|than|that|the|their|there|these|this|to|was|were|what|when|where|which|who|why|will|with|would)$/;
   const QUESTION = /\?\s*$|^(what|why|how|who|when|where|which|is|are|do|does|did|can|could|should|will|would)\b/i, QUERY = /"|\b(AND|OR|NOT)\b/;
-  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const input = form.querySelector("input"), typed = input.value.trim() || (form.dataset.typing !== undefined ? form.dataset.q || QUESTION_SHOWN : ""); if (!input.value.trim() && typed) input.value = typed; if (QUERY.test(typed) || !QUESTION.test(typed)) return; const words = typed.replace(/[?.!,]/g, " ").split(/\s+/).filter((w, i) => w && !FILLER.test(i === 0 ? w.toLowerCase() : w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
+  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const input = form.querySelector("input"), typed = input.value.trim() || (form.dataset.typing !== undefined ? QUESTION_SHOWN : ""); if (!input.value.trim() && typed) input.value = typed; if (QUERY.test(typed) || !QUESTION.test(typed)) return; const words = typed.replace(/[?.!,]/g, " ").split(/\s+/).filter((w, i) => w && !FILLER.test(i === 0 ? w.toLowerCase() : w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
   const still = matchMedia("(prefers-reduced-motion: reduce)");
-  // A question types itself and stays, so Search always has something to search. The box still takes whatever you type instead. Choosing a community types that community's question.
+  // A question types itself and stays, so Search always has something to search. The box still takes whatever you type instead.
   for (const form of document.querySelectorAll("[data-typing]")) {
-    const input = form.querySelector("input"); input.required = false; input.placeholder = form.dataset.q = form.dataset.first || QUESTION_SHOWN;
-    let t; const type = (q) => { clearTimeout(t); form.dataset.q = q; if (still.matches || document.activeElement === input) { input.placeholder = q; return; } let c = 0; const step = () => { input.placeholder = q.slice(0, c++); if (c <= q.length) t = setTimeout(step, 30); }; step(); };
-    document.addEventListener("community", (e) => type(e.detail.question));
-    if (!still.matches) type(form.dataset.q);
+    const input = form.querySelector("input"); input.required = false; input.placeholder = QUESTION_SHOWN;
+    if (still.matches) continue;
+    let c = 0; const step = () => { if (document.activeElement === input) { input.placeholder = QUESTION_SHOWN; return; } input.placeholder = QUESTION_SHOWN.slice(0, c++); if (c <= QUESTION_SHOWN.length) setTimeout(step, 30); }; step();
   }
 </script>
 <style>
