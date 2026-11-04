@@ -6,7 +6,7 @@ const HEAD = "Ask the world's research anything".split(" ");
 const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce burnout?", "Do pesticides harm bees?", "Does remote work boost output?", "Do farm antibiotics harm people?", "Do cash transfers reduce hunger?"];
 // Stars are fixed in size and place, so they never pop or shift between loads, and none sit behind the headline or the box. They thin out towards the bottom of the sky.
 const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
-const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).toFixed(1), y = +(rng() * 820).toFixed(1), big = i < 10, small = rng() < .85; return [x, y, +(big ? 1.4 + rng() * .4 : small ? .5 + rng() * .4 : .9 + rng() * .4).toFixed(2), +((big ? .9 : small ? .2 + rng() * .4 : .7) * Math.min(1, (820 - y) / 246)).toFixed(2), i % 3]; }).filter(([x, y, , o]) => o > 0 && (x < 720 || x > 1840 || y < 100 || y > 340));
+const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).toFixed(1), y = +(rng() * 820).toFixed(1), big = i < 10, small = rng() < .85; return [x, y, +(big ? 1.4 + rng() * .4 : small ? .5 + rng() * .4 : .9 + rng() * .4).toFixed(2), +((big ? .9 : small ? .2 + rng() * .4 : .7) * Math.min(1, (820 - y) / 246)).toFixed(2), i % 3]; }).filter(([x, y, , o]) => o > 0 && (x < 720 || x > 1840 || y < 136 || y > 390));
 ---
 <link rel="preload" as="image" href="/img/earth-day.avif" fetchpriority="high" />
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
@@ -59,7 +59,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       const tf = `translate(${cx} ${cy}) rotate(${tilt * 180 / Math.PI})`; for (const g of [backG, frontG, cometB, cometF]) g.setAttribute("transform", tf);
     };
     const size = () => {
-      W = scene.clientWidth; H = scene.clientHeight; const [r, x, k] = W >= 1400 ? [320, 620, .13] : W >= 1200 ? [270, W / 2 - 60, .12] : W >= 1000 ? [280, W / 2 - 60, .16] : W >= 700 ? [230, W / 2 - 44, .18] : [Math.min(150, W / 2 - 58), W / 2 - 30, .3];
+      W = scene.clientWidth; H = scene.clientHeight; const [r, x, k] = W >= 1400 ? [320, 620, .13] : W >= 1200 ? [250, W / 2 - 60, .12] : W >= 1000 ? [260, W / 2 - 60, .16] : W >= 700 ? [216, W / 2 - 44, .18] : [Math.min(150, W / 2 - 58), W / 2 - 30, .3];
       R = r; rx = x; ry = Math.min(rx * k, W < 700 ? 60 : 1e3); cx = W / 2; cy = R + (W >= 700 ? 98 : 60); scene.style.setProperty("--sx", `${cx - R * .75}px`); scene.style.setProperty("--sy", `${cy - R * .66}px`); scene.style.setProperty("--sh", `${2 * (H - cy + R * .66)}px`); buildRing(); glSize();
     };
     // The satellites go slower in front and faster behind, so none hides for long. Behind the planet the limb covers them, a real eclipse. `sweep` swings them into place at the start.
@@ -164,7 +164,7 @@ void main(){
   }
 </script>
 <style>
-  .sky { padding: 100px 0 0; background: #040b2e; text-align: center; }
+  .sky { padding: 146px 0 0; background: #040b2e; text-align: center; }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; animation: arrive 1.2s var(--ease) backwards; }
   .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; animation: tw var(--tw) ease-in-out var(--twd) infinite alternate; } .s0 { --tw: 6s; --twd: 0s; } .s1 { --tw: 9s; --twd: -3s; } .s2 { --tw: 13s; --twd: -6s; } @keyframes tw { to { opacity: .35; } }
 
@@ -182,7 +182,7 @@ void main(){
   @media (max-width: 719px) { .halo :global(button span) { display: none; } .halo :global(.btn) { --chip: var(--brand); --chipt: #fff; gap: 0; height: 48px; min-height: 0; padding: 0 6px; } }
   @media (max-width: 500px) { .halo { width: calc(100% + 32px); margin-inline: -16px; } }
 
-  .space { position: relative; isolation: isolate; height: 570px; margin-top: -132px; overflow: clip visible; }
+  .space { position: relative; isolation: isolate; height: 562px; margin-top: -132px; overflow: clip visible; }
   .space::before { content: ""; position: absolute; left: var(--sx, 50%); top: var(--sy, 0); z-index: 0; width: 1400px; height: var(--sh, 900px); transform: translate(-50%, -50%); pointer-events: none; background: radial-gradient(closest-side, rgb(219 234 254 / .4), rgb(59 130 246 / .2) 16%, rgb(34 211 238 / .08) 44%, transparent); opacity: 0; transition: opacity 1.2s var(--ease); } :global(.lit) .space::before { opacity: 1; animation: sun 14s ease-in-out 1.2s infinite alternate; } @keyframes sun { to { opacity: .72; } }
   .earth { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; opacity: 0; transform: scale(.98); transition: opacity 1.2s var(--ease), transform 2.4s var(--ease); } :global(.lit) .earth { opacity: 1; transform: none; }
   .orb { position: absolute; inset: 0; pointer-events: none; will-change: transform; } .back { z-index: 1; } .front { z-index: 4; } .orb svg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; overflow: visible; } .cometsvg { will-change: transform; }
@@ -204,12 +204,15 @@ void main(){
   .fields :global(li.on) a, .fields li:hover a, .fields li:focus-within a { color: var(--c); } .fields :global(li.on) a::after, .fields li:hover a::after, .fields li:focus-within a::after { scale: 1; } .fields :global(li.on) img, .fields li:hover img, .fields li:focus-within img { transform: translateY(-3px) scale(1.14); filter: drop-shadow(0 0 10px var(--c)); }
 
   /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */
-  @media (max-width: 1399px) { .space { height: 508px; } } @media (max-width: 1199px) { .space { height: 540px; } }
+  @media (max-width: 1399px) { .sky { padding-top: 142px; } .space { height: 478px; } } @media (max-width: 1199px) { .sky { padding-top: 136px; } .space { height: 504px; } }
   @media (min-width: 1000px) { .fields { grid-template-columns: repeat(6, auto); justify-content: space-between; margin-inline: 0; } .fields a { max-width: 13.5em; } }
-  @media (max-width: 999px) { .space { height: 470px; } .sat { width: 80px; height: 80px; } .sat b { display: none; } .fields { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 8px; margin-inline: 0; } }
+  /* From laptops up each emblem sits beside its name, so the strip is one low line and the space it gives back goes above the headline. It takes fitNames to keep those names apart, so a hero without the planet keeps its emblems above them, with room to spare. */
+  @media (min-width: 1200px) { :global(html.has-js:not(.flat)) .fields { margin: 10px -40px 0; } :global(html.has-js:not(.flat)) .fields a { display: grid; box-sizing: content-box; align-content: center; justify-items: start; min-height: 34px; padding-left: 42px; text-align: left; } :global(html.has-js:not(.flat)) .fields a::after { left: 42px; margin-left: 0; } :global(html.has-js:not(.flat)) .fields img { position: absolute; inset-block: 0; left: 0; width: 34px; height: 34px; margin-block: auto; } }
+  @media (min-width: 1200px) and (max-width: 1399px) { :global(html.has-js:not(.flat)) .fields a { padding-left: 38px; } :global(html.has-js:not(.flat)) .fields a::after { left: 38px; } :global(html.has-js:not(.flat)) .fields img { width: 30px; height: 30px; } }
+  @media (max-width: 999px) { .sky { padding-top: 134px; } .space { height: 448px; } .sat { width: 80px; height: 80px; } .sat b { display: none; } .fields { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 8px; margin-inline: 0; } }
   @media (hover: none) { .sat b { display: none; } }
-  @media (max-width: 699px) { .space { height: 300px; margin-top: -76px; } .space::before { width: 800px; } .sat { width: 52px; height: 52px; } .hubline a, .hubline span { display: block; margin: 0; } .lead { font-size: 17px; } }
-  @media (max-width: 599px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-inline: -18px; } .fields a { font-size: 13.5px; } }
+  @media (max-width: 699px) { .sky { padding-top: 126px; } .space { height: 302px; margin-top: -76px; } .space::before { width: 800px; } .sat { width: 52px; height: 52px; } .hub { padding-bottom: 40px; } .hubline a, .hubline span { display: block; margin: 0; } .lead { font-size: 17px; } }
+  @media (max-width: 599px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-inline: -18px; } .fields a { font-size: 13.5px; } .fields img { width: 36px; height: 36px; } }
 
   /* Scrolling lifts the words away and sinks the stars. The planet, ring and strip stay with the page, so no text can collide. */
   @media (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
