@@ -138,8 +138,8 @@ export function useAppToast(): AppToastApi {
 
     const action = buildActionFromRoute(route, t, tc);
 
-    // AI_API_KEY_REQUIRED: primary = sign in, secondary = AI settings
-    if (code === "AI_API_KEY_REQUIRED") {
+    // AI_API_KEY_REQUIRED, or free questions run out: primary = sign in, secondary = AI settings
+    if (code === "AI_API_KEY_REQUIRED" || code === "AI_FREE_LIMIT_SIGNED_OUT") {
       action.secondaryAction = {
         label: t("openAISettings"),
         onClick: () => navigateTo("/settings/ai"),

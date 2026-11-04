@@ -727,6 +727,8 @@
     "aiInsufficientCredits": "Awunawo amakhredithi e-AI anele.",
     "aiPlanEntitlement": "Lesi sici se-AI sidinga uhlelo oluphezulu.",
     "aiApiKeyRequired": "Ngena ukuze uthole amakhredithi mahhala, noma engeza ukhiye we-API ezilungiselelweni.",
+    "aiFreeLimit": "Usuwasebenzisile imibuzo yocwaningo yamahhala yanamuhla. Engeza amakhredithi ukuze uqhubeke, noma uzame futhi kusasa.",
+    "aiFreeLimitSignedOut": "Usuwasebenzisile imibuzo yocwaningo yamahhala yanamuhla. Ngena ngemvume ukuze uqhubeke, noma wengeze ukhiye we-API kuzilungiselelo.",
     "aiProviderError": "Umhlinzeki we-AI akatholakali manje. Sicela uzame futhi.",
     "aiKeyUnreachable": "Umhlinzeki we-AI wokhiye wakho akafinyeleleki. Hlola ukuxhumana kwakho bese uzama futhi.",
     "aiValidationError": "Impendulo ye-AI ayikwazanga ukuqinisekiswa. Sicela uzame futhi.",
@@ -3095,7 +3097,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# imodeli} other {# amamodeli}}",
-      "creditsOrKey": "Amakhredithi, noma ukhiye womsebenzisi"
+      "creditsOrKey": "Amakhredithi, noma ukhiye womsebenzisi",
+      "free": {
+        "title": "Imibuzo yocwaningo yamahhala",
+        "today": "Namuhla: {calls, plural, one {ucingo olu-#} other {izingcingo ezi-#}}, {cost}",
+        "switch": "Mahhala uma bengakwazi ukukhokha",
+        "switchHint": "Bhala umbuzo wokusesha ovela embuzweni wocwaningo mahhala kuzivakashi ezingangenile, ezingenawo amakhredithi noma okhiye wazo wehlulekile",
+        "model": "Imodeli",
+        "modelHint": "Isebenza ngokhiye wethu. Noma ubani onamakhredithi ugcina imodeli yakhe futhi ayakhokha",
+        "modelMissing": "Leyo modeli ayisatholakali, ngakho imibuzo yamahhala iyama uze ukhethe enye",
+        "pickModel": "Khetha imodeli",
+        "limits": {
+          "perAddress": "Ikheli ngalinye, ngosuku (ongangenile)",
+          "perPerson": "Umuntu ngamunye, ngosuku (ongenile)",
+          "signedOutPerDay": "Bonke abangangenile, ngosuku",
+          "signedInPerDay": "Bonke abangenile, ngosuku"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Ukufinyelela ku-Evidence Community",

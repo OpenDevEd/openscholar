@@ -18,6 +18,8 @@ import type * as admins_queries from "../admins/queries.js";
 import type * as ai_actions from "../ai/actions.js";
 import type * as ai_config from "../ai/config.js";
 import type * as ai_estimates from "../ai/estimates.js";
+import type * as ai_freeQueries from "../ai/freeQueries.js";
+import type * as ai_freeQueriesAction from "../ai/freeQueriesAction.js";
 import type * as ai_helpers from "../ai/helpers.js";
 import type * as ai_openrouterFetch from "../ai/openrouterFetch.js";
 import type * as ai_provider from "../ai/provider.js";
@@ -475,6 +477,8 @@ declare const fullApi: ApiFromModules<{
   "ai/actions": typeof ai_actions;
   "ai/config": typeof ai_config;
   "ai/estimates": typeof ai_estimates;
+  "ai/freeQueries": typeof ai_freeQueries;
+  "ai/freeQueriesAction": typeof ai_freeQueriesAction;
   "ai/helpers": typeof ai_helpers;
   "ai/openrouterFetch": typeof ai_openrouterFetch;
   "ai/provider": typeof ai_provider;

@@ -21,7 +21,8 @@ import {
 } from "@/lib/store";
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
-import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
+import { useTranslateQuery } from "@/lib/ai/client/router";
+import { useQuestionToQuery } from "@/lib/ai/client/question-query";
 import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   }, [urlQuery, setCurrentQuery]);
 
   // Use the new router hooks
-  const { execute: enhanceQuery, isConfigured: isEnhanceConfigured } = useEnhanceSearchQuery();
+  const { write: writeQuery, isConfigured: isEnhanceConfigured } = useQuestionToQuery();
   const { execute: translateQueryFn, isConfigured: isTranslateConfigured } = useTranslateQuery();
 
   const selectedLanguage = search?.params?.lang ?? "";
@@ -139,21 +140,20 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     try {
       setIsEnhancing(true);
       const currentSearchResult = getSearchResult(effectiveSearchId);
-      const result = await enhanceQuery({
-        query: questionToProcess,
+      const enhancedQuery = await writeQuery({
+        question: questionToProcess,
         language: currentSearchResult?.language ?? localeToLanguageCode(locale),
         syntax,
-        task: "questionToQuery",
       });
 
       if (search) {
-        search.setQuery(result.enhancedQuery);
+        search.setQuery(enhancedQuery);
       }
 
       // Track AI query enhancement event
       posthog.capture("ai_query_enhanced", {
         original_question: questionToProcess,
-        enhanced_query: result.enhancedQuery,
+        enhanced_query: enhancedQuery,
         language: currentSearchResult?.language || "en",
       });
 

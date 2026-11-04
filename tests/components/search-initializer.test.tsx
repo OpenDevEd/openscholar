@@ -9,7 +9,7 @@ const { replace, execute, enhance, failed, address } = vi.hoisted(() => {
   return {
     replace: vi.fn(),
     execute,
-    enhance: { execute, isReady: true, isConfigured: true, isLoading: false, error: null },
+    enhance: { write: execute, isReady: true, isConfigured: true },
     failed: vi.fn(),
     address: { search: "" },
   };
@@ -21,7 +21,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("next-intl", () => ({ useLocale: () => "en", useTranslations: () => (key: string) => key }));
 vi.mock("@/lib/workspaces/href", () => ({ useWorkspaceRouter: () => ({ replace }) }));
-vi.mock("@/lib/ai/client/router", () => ({ useEnhanceSearchQuery: () => enhance }));
+vi.mock("@/lib/ai/client/question-query", () => ({ useQuestionToQuery: () => enhance }));
 vi.mock("@/lib/toast", () => ({ useAppToast: () => ({ ai: { failed } }) }));
 
 const QUESTION = "does tutoring help?";
@@ -39,12 +39,12 @@ describe("a new search from a research question in its address", () => {
   });
 
   it("makes one search from one written query, and the address it goes to no longer asks", async () => {
-    execute.mockResolvedValue({ enhancedQuery: "tutoring AND help", explanation: "" });
+    execute.mockResolvedValue("tutoring AND help");
     open(`?question=${encodeURIComponent(QUESTION)}&yf=2015&yt=2020`);
 
     await waitFor(() => expect(replace).toHaveBeenCalledTimes(1));
     expect(execute).toHaveBeenCalledTimes(1);
-    expect(execute.mock.calls[0]![0]).toMatchObject({ query: QUESTION, task: "questionToQuery" });
+    expect(execute.mock.calls[0]![0]).toMatchObject({ question: QUESTION });
     expect(searches()).toHaveLength(1);
     expect(searches()[0]).toMatchObject({ query: "tutoring AND help", latestQuestion: QUESTION, yearRange: [2015, 2020] });
     const url = new URL(replace.mock.calls[0]![0] as string, "http://test");
@@ -54,7 +54,7 @@ describe("a new search from a research question in its address", () => {
   });
 
   it("waits until it's known who pays", async () => {
-    execute.mockResolvedValue({ enhancedQuery: "tutoring", explanation: "" });
+    execute.mockResolvedValue("tutoring");
     enhance.isReady = false;
     const page = open(`?question=${encodeURIComponent(QUESTION)}`);
     await act(async () => {});
@@ -77,19 +77,19 @@ describe("a new search from a research question in its address", () => {
   });
 
   it("makes no search and sends no one anywhere after the person has left", async () => {
-    let answer!: (value: { enhancedQuery: string; explanation: string }) => void;
+    let answer!: (value: string) => void;
     execute.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
     const page = open(`?question=${encodeURIComponent(QUESTION)}`);
     await waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
 
     page.unmount();
-    await act(async () => answer({ enhancedQuery: "tutoring", explanation: "" }));
+    await act(async () => answer("tutoring"));
     expect(searches()).toHaveLength(0);
     expect(replace).not.toHaveBeenCalled();
   });
 
   it("drops the old answer when the address changes while it's being written, and follows the new one", async () => {
-    let answer!: (value: { enhancedQuery: string; explanation: string }) => void;
+    let answer!: (value: string) => void;
     execute.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
     const page = open(`?question=${encodeURIComponent(QUESTION)}`);
     await waitFor(() => expect(execute).toHaveBeenCalledTimes(1));
@@ -97,7 +97,7 @@ describe("a new search from a research question in its address", () => {
     address.search = "?q=tutors";
     page.rerender(<StrictMode><SearchInitializer><p>results</p></SearchInitializer></StrictMode>);
     await waitFor(() => expect(replace).toHaveBeenCalledTimes(1));
-    await act(async () => answer({ enhancedQuery: "old answer", explanation: "" }));
+    await act(async () => answer("old answer"));
 
     expect(replace).toHaveBeenCalledTimes(1);
     expect(searches()).toHaveLength(1);

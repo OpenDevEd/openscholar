@@ -728,6 +728,8 @@
     "aiInsufficientCredits": "Huna krediti za AI za kutosha.",
     "aiPlanEntitlement": "Kipengele hiki cha AI kinahitaji mpango wa juu zaidi.",
     "aiApiKeyRequired": "Ingia upate krediti za bure, au ongeza ufunguo wa API kwenye mipangilio.",
+    "aiFreeLimit": "Umetumia maswali ya utafiti ya bure ya leo. Ongeza mikopo ili kuendelea, au jaribu tena kesho.",
+    "aiFreeLimitSignedOut": "Umetumia maswali ya utafiti ya bure ya leo. Ingia ili kuendelea, au ongeza ufunguo wa API kwenye mipangilio.",
     "aiProviderError": "Mtoa huduma wa AI hapatikani kwa sasa. Tafadhali jaribu tena.",
     "aiKeyUnreachable": "Mtoa huduma wa AI wa ufunguo wako hakuweza kufikiwa. Angalia muunganisho wako kisha ujaribu tena.",
     "aiValidationError": "Jibu la AI halikuweza kuthibitishwa. Tafadhali jaribu tena.",
@@ -3096,7 +3098,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {modeli #} other {modeli #}}",
-      "creditsOrKey": "Krediti, au ufunguo wa mtumiaji"
+      "creditsOrKey": "Krediti, au ufunguo wa mtumiaji",
+      "free": {
+        "title": "Maswali ya utafiti ya bure",
+        "today": "Leo: {calls, plural, one {mwito #} other {miito #}}, {cost}",
+        "switch": "Bure wasipoweza kulipa",
+        "switchHint": "Andika hoja ya utafutaji kutoka kwa swali la utafiti bila malipo kwa wageni ambao hawajaingia, wasio na mikopo au ambao ufunguo wao umeshindwa",
+        "model": "Muundo",
+        "modelHint": "Hutumia ufunguo wetu. Yeyote mwenye mikopo hubaki na muundo wake na hulipa",
+        "modelMissing": "Muundo huo haupatikani tena, kwa hivyo maswali ya bure yanasimama hadi uchague mwingine",
+        "pickModel": "Chagua muundo",
+        "limits": {
+          "perAddress": "Kwa kila anwani, kwa siku (hajaingia)",
+          "perPerson": "Kwa kila mtu, kwa siku (ameingia)",
+          "signedOutPerDay": "Wote ambao hawajaingia, kwa siku",
+          "signedInPerDay": "Wote walioingia, kwa siku"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Ufikiaji wa Evidence Community",

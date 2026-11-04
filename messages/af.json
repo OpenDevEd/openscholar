@@ -728,6 +728,8 @@
     "aiInsufficientCredits": "Jy het nie genoeg KI-krediete nie.",
     "aiPlanEntitlement": "Hierdie KI-funksie vereis ’n hoër plan.",
     "aiApiKeyRequired": "Meld aan vir gratis krediete, of voeg ’n API-sleutel in instellings by.",
+    "aiFreeLimit": "Jy het vandag se gratis navorsingsvrae opgebruik. Voeg krediete by om voort te gaan, of probeer môre weer.",
+    "aiFreeLimitSignedOut": "Jy het vandag se gratis navorsingsvrae opgebruik. Meld aan om voort te gaan, of voeg 'n API-sleutel in instellings by.",
     "aiProviderError": "Die KI-verskaffer is nou nie beskikbaar nie. Probeer weer.",
     "aiKeyUnreachable": "Jou sleutel se KI-verskaffer kon nie bereik word nie. Gaan jou verbinding na en probeer weer.",
     "aiValidationError": "Die KI-antwoord kon nie gevalideer word nie. Probeer weer.",
@@ -3096,7 +3098,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# model} other {# modelle}}",
-      "creditsOrKey": "Krediete, of die gebruiker se sleutel"
+      "creditsOrKey": "Krediete, of die gebruiker se sleutel",
+      "free": {
+        "title": "Gratis navorsingsvrae",
+        "today": "Vandag: {calls, plural, one {# oproep} other {# oproepe}}, {cost}",
+        "switch": "Gratis as hulle nie kan betaal nie",
+        "switchHint": "Skryf gratis 'n soeknavraag uit 'n navorsingsvraag vir besoekers wat afgemeld is, sonder krediete is of wie se sleutel misluk het",
+        "model": "Model",
+        "modelHint": "Loop op ons sleutel. Enigiemand met krediete behou hul eie model en betaal",
+        "modelMissing": "Daardie model is nie meer beskikbaar nie, so gratis vrae stop totdat jy 'n ander kies",
+        "pickModel": "Kies 'n model",
+        "limits": {
+          "perAddress": "Per adres, per dag (afgemeld)",
+          "perPerson": "Per persoon, per dag (aangemeld)",
+          "signedOutPerDay": "Almal afgemeld, per dag",
+          "signedInPerDay": "Almal aangemeld, per dag"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Toegang tot Evidence Community",

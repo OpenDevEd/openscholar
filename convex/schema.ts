@@ -555,6 +555,25 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 
+  // What the free writing of queries from questions runs on and may spend (lib/ai/free-queries.ts). One row, once an admin changes something.
+  freeQuerySettings: defineTable({
+    modelId: v.string(),
+    effort: v.optional(effortValidator),
+    perAddress: v.number(),
+    perPerson: v.number(),
+    signedOutPerDay: v.number(),
+    signedInPerDay: v.number(),
+    updatedAt: v.number(),
+  }),
+  // That writing's calls and real cost, a row per audience per UTC day.
+  freeQueryDays: defineTable({
+    day: v.string(),
+    audience: v.union(v.literal("signedIn"), v.literal("signedOut")),
+    calls: v.number(),
+    failed: v.number(),
+    costUsd: v.number(),
+  }).index("by_day_and_audience", ["day", "audience"]),
+
   // ═══════════════════════════════════════════════════════════════
   // USER_AI_CONFIG - what a user's AI tasks run on: a preset, or Custom
   // with their own pick for each task.

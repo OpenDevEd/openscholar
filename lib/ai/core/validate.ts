@@ -1,5 +1,5 @@
 import { jsonrepair } from 'jsonrepair'
-import { hasWildcardInQuotedPhrase } from '../../search/wildcard'
+import { withoutQuotedWildcards } from '../../search/wildcard'
 
 /**
  * An OQL query the search box takes: the part after `works where`. OQL keeps
@@ -30,13 +30,10 @@ export function validateQuery(query: string): string {
     throw new Error('Generated query ends with an incomplete operator')
   }
 
-  // OpenAlex rejects a wildcard inside a quoted phrase ("contextual support*").
-  // Fail validation so the op retries and re-prompts the model to fix it.
-  if (hasWildcardInQuotedPhrase(query)) {
-    throw new Error('Generated query has a wildcard (* or ?) inside a quoted phrase')
-  }
-
-  return query
+  // OpenAlex rejects a wildcard inside a quoted phrase ("contextual support*"), and models keep
+  // writing them however they're told, so it's taken out here: the stemmed search still finds the
+  // word's variations. Asking again spent calls and often came back the same.
+  return withoutQuotedWildcards(query)
 }
 
 export async function repairJSON(text: string, _error: unknown): Promise<string | null> {

@@ -138,3 +138,11 @@ describe("validateOqlQuery", () => {
     expect(() => validateOqlQuery("title has (chatgpt) and")).toThrow(/incomplete operator/);
   });
 });
+
+describe("validateQuery and wildcards", () => {
+  it("takes a wildcard out of a quoted phrase, which OpenAlex refuses, and keeps the rest", () => {
+    expect(validateQuery('("peer tutor*" OR "cross-age tutor?") AND read* AND "reading scores"')).toBe(
+      '("peer tutor" OR "cross-age tutor") AND read* AND "reading scores"',
+    );
+  });
+});
