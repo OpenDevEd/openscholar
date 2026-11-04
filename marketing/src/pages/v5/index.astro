@@ -1,31 +1,39 @@
 ---
-// Hero to compare: the water-filled name and the search box, nothing else. Below, the second name in stained glass over an uneven mosaic of the six communities. Fixed sizes, plain page flow. Delete once one is picked.
+// Hero to compare, after Equals on Mobbin: a screening matrix as the picture, one cell per decision, with mono type set on its calm middle. Each community gets a strip of its own. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import AskBar from "../../components/AskBar.astro";
-import Arrow from "../../components/Arrow.astro";
-import Fill from "../../components/Fill.astro";
 import { COMMUNITIES } from "../../data/site.mjs";
-const SPAN = [5, 4, 3, 3, 4, 5];
+// A repeatable pattern: narrow columns of stacked cells, hot and varied at the edges, calm amber in the middle.
+const rng = (s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+const HOT = ["#ef6a4c", "#f38f7c", "#f6a6b8", "#f9c8c0", "#22a39a", "#5fc7bd", "#f4b23f", "#fbe3a2", "#e44f3d"], CALM = ["#f4bb5c", "#f2b24d", "#f6c573", "#f4bb5c", "#f7cf85"];
+const W = 1280, H = 640;
+const matrix = (() => { const r = rng(7), out = []; let x = 0; while (x < W) { const w = 12 + Math.floor(r() * 22); let y = 0; while (y < H) { const h = 6 + Math.floor(r() * 26), dx = Math.abs(x + w / 2 - W / 2) / (W / 2), dy = Math.abs(y + h / 2 - H / 2) / (H / 2), heat = Math.max(0, (dx / .72) ** 2 + (dy / .8) ** 2 - 1); const set = r() < heat * 1.6 ? HOT : CALM; out.push([x, y, w, h, set[Math.floor(r() * set.length)]]); y += h; } x += w; } return out; })();
+const strip = (seed) => { const r = rng(seed); return Array.from({ length: 34 }, () => HOT[Math.floor(r() * HOT.length)]); };
 ---
-<Base top="#01072c" title="Hero 5: OpenScholar" description="Hero option">
+<Base top="#0c0c0c" title="Hero 5: OpenScholar" description="Hero option">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <section class="bleed hero">
-    <div class="inner"><div class="cq">
-      <h1><Fill tex="sea" class="w">OpenScholar</Fill> <span>is the evidence workspace for research teams</span></h1>
+    <svg class="mx" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges" aria-hidden="true">{matrix.map(([x, y, w, h, f]) => <rect x={x} y={y} width={w} height={h} fill={f} />)}</svg>
+    <div class="inner c">
+      <h1>Every paper. Every decision.</h1>
+      <p>With OpenScholar, find the literature, screen it against your criteria and extract the data you need.</p>
       <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
-    </div></div>
-  </section>
-  <section class="bleed ec light">
-    <div class="inner"><div class="cq">
-      <h2><Fill tex="tx-glass" flat class="e">Evidence Communities</Fill> <span>are public homes for a field's evidence</span></h2>
-      <a class="all" href="/evidence-communities/">How they work<Arrow /></a>
     </div>
-    <ul>{COMMUNITIES.map((c, i) => <li style={`--s:${SPAN[i]}`}><a href={c.url}><img src={`/img/art-scene-${c.key}-960.avif`} width="960" height="960" decoding="async" loading="lazy" alt="" /><span class="n"><b>{c.name}</b><span>{c.host}</span></span></a></li>)}</ul></div>
+  </section>
+  <section class="bleed ec">
+    <div class="inner">
+      <h2>Evidence Communities</h2><p class="s">Public homes for a field's evidence. <a href="/evidence-communities/">How they work</a></p>
+      <ul>{COMMUNITIES.map((c, i) => <li><a href={c.url}><span class="n">{c.name}</span><span class="st" aria-hidden="true">{strip(i * 37 + 11).map((f) => <i style={`background:${f}`}></i>)}</span><span class="h">{c.host}</span></a></li>)}</ul>
+    </div>
   </section>
 </Base>
 <style>
-  .cq { container-type: inline-size; display: grid; gap: 20px; } h1, h2 { display: grid; gap: 8px; font-weight: 500; } :global(.w) { font-size: calc(100cqw / 5.35); } :global(.e) { --blend: normal; font-size: calc(100cqw / 9.42); } h1 span, h2 span { font-size: clamp(22px, 2.6vw, 32px); letter-spacing: -.025em; line-height: 1.15; text-wrap: balance; }
-  .hero { padding: 120px 0 64px; background: #01072c; color: #fff; } h1 span { color: #a9bbe6; } .hero :global(.big) { width: 100%; }
-  .ec { padding: 56px 0 72px; background: var(--soft); color: var(--ink); } h2 span { color: var(--t2); } .all { justify-self: start; display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
-  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 28px; } li { min-width: 0; } li a { grid-template-columns: minmax(0, 1fr); position: relative; isolation: isolate; display: grid; align-content: end; height: 100%; aspect-ratio: 1; border-radius: 14px; overflow: clip; color: #fff; } li img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; max-width: none; object-fit: cover; transition: transform .6s var(--ease); } li a:hover img { transform: scale(1.04); } li a::after { content: ""; position: absolute; inset: 40% 0 0; z-index: -1; background: linear-gradient(transparent, rgb(1 7 44 / .88)); } .n { display: grid; gap: 3px; padding: 14px; } .n b { font-weight: 500; font-size: 16px; line-height: 1.18; letter-spacing: -.01em; text-wrap: balance; } .n span { font: 400 12px/1.2 var(--mono); opacity: .82; overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
-  @media (min-width: 1000px) { .cq { grid-template-columns: minmax(0, 1fr) 560px; column-gap: 40px; align-items: center; } h1, h2 { display: contents; } :global(.w), :global(.e) { grid-column: 1 / -1; } .ec .cq { align-items: baseline; } .ec .all { justify-self: end; } ul { grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: 300px; gap: 10px; } li { grid-column: span var(--s); } li a { aspect-ratio: auto; } li:last-child img { object-position: 50% 30%; } .n { padding: 18px; } .n b { font-size: 19px; } }
+  .hero, .ec { margin-block: 0; }
+  h1, h2, .c > p, .s, li { font-family: "JetBrains Mono", var(--mono); }
+  .hero { position: relative; isolation: isolate; overflow: clip; padding: 136px 0 96px; background: #0c0c0c; color: #1a1205; } .mx { position: absolute; z-index: -1; left: 16px; top: 80px; width: calc(100% - 32px); height: calc(100% - 96px); }
+  .c { display: grid; justify-items: center; gap: 20px; text-align: center; } h1 { max-width: 14em; font-weight: 500; font-size: clamp(36px, 5.4vw, 72px); letter-spacing: -.045em; line-height: 1.04; text-wrap: balance; } .c > p { max-width: 36em; font-size: 16px; line-height: 1.5; } .c :global(.big) { width: min(100%, 640px); margin-top: 6px; border-radius: 6px; box-shadow: 0 0 0 1.5px #1a1205, 0 24px 40px -20px rgb(60 30 0 / .6); }
+  .ec { padding: 64px 0 88px; background: #0c0c0c; color: #f4f1ea; } h2 { font-weight: 500; font-size: clamp(30px, 3.6vw, 44px); letter-spacing: -.04em; line-height: 1.05; } .s { margin-top: 10px; font-size: 15px; color: #a8a49a; } .s a { color: #f4f1ea; text-decoration: underline; text-underline-offset: 3px; }
+  ul { margin-top: 28px; border-top: 1px solid #2a2a2a; } li { border-bottom: 1px solid #2a2a2a; } li a { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 16px 0; font-size: 15px; transition: background .15s var(--ease); } li a:hover { background: #1a1a1a; } .n { line-height: 1.25; } .st { display: flex; height: 18px; } .st i { flex: 1; } .h { color: #a8a49a; font-size: 13px; overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
+  @media (min-width: 1000px) { .hero { padding: 168px 0 136px; } li a { grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr); align-items: center; gap: 24px; padding: 18px 12px; } .h { text-align: right; } }
 </style>

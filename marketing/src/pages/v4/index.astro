@@ -1,28 +1,40 @@
 ---
-// Hero to compare: the search box above the real size of the field for one question, every paper a tile, so you see why search alone isn't enough. The communities follow as their own section. Delete once one is picked.
+// Hero to compare, after Shop and Craft on Mobbin: a real desk seen from above with the search box in the clear middle. The communities are index tabs on a folder holding the real site. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
-import Literature from "../../components/Literature.astro";
 import { COMMUNITIES } from "../../data/site.mjs";
 ---
-<Base top="#040b2e" title="Hero 4: OpenScholar" description="Hero option">
-  <section class="bleed hero">
+<Base top="#f6f2ea" title="Hero 4: OpenScholar" description="Hero option">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@144,400&display=swap" rel="stylesheet" />
+  <section class="bleed hero light">
+    <img class="p" src="/img/art-desk-top.avif" srcset="/img/art-desk-top-960.avif 960w, /img/art-desk-top.avif 1672w" sizes="(max-width: 999px) 200vw, 1672px" width="1672" height="941" fetchpriority="high" alt="" />
     <div class="inner c">
-      <h1>The evidence workspace for research teams</h1>
-      <p>Find the literature, screen it against your criteria and extract the data you need.</p>
+      <h1>The whole review, on one desk.</h1>
+      <p>With OpenScholar, find the literature, screen it against your criteria and extract the data you need.</p>
       <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
     </div>
-    <div class="inner field view" data-in><Literature /></div>
   </section>
-  <section class="bleed ec light">
-    <div class="inner t"><h2>Evidence Communities are public homes for a field's evidence</h2><a class="all" href="/evidence-communities/">How they work<Arrow /></a></div>
-    <div class="inner"><ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/art-scene-${c.key}-480.avif`} width="480" height="480" decoding="async" loading="lazy" alt="" /><b>{c.name}</b><span>{c.host}</span></a></li>)}</ul></div>
+  <section class="bleed ec light" data-sites>
+    <div class="inner">
+      <div class="t"><h2>Evidence Communities are public homes for a field's evidence.</h2><a class="all" href="/evidence-communities/">How they work<Arrow /></a></div>
+      <div class="tabs" data-tabs role="tablist" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <button type="button" role="tab" aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} aria-label={c.name} style={`--c:${c.color}`}>{c.word}</button>)}</div>
+      <div class="folder">{COMMUNITIES.map((c, i) => <a class:list={["page", { on: i === 0 }]} data-i={i} href={c.url}><span class="say"><b>{c.name}<Arrow /></b><span>{c.text}</span><code>{c.host}</code></span><img src={`/img/site-${c.key}.avif`} width="960" height="600" decoding="async" alt="" /></a>)}</div>
+    </div>
   </section>
 </Base>
+<script>
+  import { picker } from "../../scripts/picker.js";
+  picker(document.querySelector("[data-sites]"), 0);
+</script>
 <style>
-  .hero { padding: 128px 0 72px; background: #040b2e; color: #fff; } .c { display: grid; justify-items: center; gap: 16px; text-align: center; } h1 { max-width: 15em; font-weight: 500; font-size: clamp(38px, 5vw, 60px); letter-spacing: -.035em; line-height: 1.04; text-wrap: balance; } .c > p { font-size: 19px; line-height: 1.35; opacity: .86; } .c :global(.big) { width: min(100%, 720px); margin-top: 6px; } .field { margin-top: 48px; }
-  .ec { padding: 64px 0 72px; background: var(--soft); color: var(--ink); } .t { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 32px; } h2 { max-width: 20em; font-weight: 500; font-size: clamp(28px, 3.4vw, 40px); letter-spacing: -.03em; line-height: 1.1; text-wrap: balance; } .all { display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
-  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; margin-top: 28px; } li { min-width: 0; } li a { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; } li img { width: 100%; height: auto; aspect-ratio: 1; border-radius: 14px; object-fit: cover; margin-bottom: 6px; transition: filter .25s var(--ease); } li a:hover img { filter: brightness(1.15); } li b { font-weight: 500; font-size: 15px; line-height: 1.2; letter-spacing: -.01em; } li span { color: var(--t2); font: 400 12px/1.25 var(--mono); overflow: clip; text-overflow: ellipsis; white-space: nowrap; }
-  @media (min-width: 1000px) { ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .hero, .ec { margin-block: 0; }
+  h1, h2 { font-family: Fraunces, Georgia, serif; font-weight: 400; }
+  .hero { position: relative; isolation: isolate; overflow: clip; display: grid; align-content: center; min-height: 640px; padding: 120px 0 80px; background: #f6f2ea; color: #2a2118; } .p { position: absolute; z-index: -1; left: 50%; top: 50%; width: max(1100px, 100%); height: 100%; max-width: 1672px; object-fit: cover; translate: -50% -50%; -webkit-mask-image: radial-gradient(closest-side, #000 76%, transparent); mask-image: radial-gradient(closest-side, #000 76%, transparent); }
+  .c { display: grid; justify-items: center; gap: 16px; text-align: center; } h1 { max-width: 11em; font-size: clamp(42px, 5.4vw, 72px); letter-spacing: -.015em; line-height: 1; text-wrap: balance; } .c > p { max-width: 28em; font-size: 17px; line-height: 1.4; color: #5e5040; } .c :global(.big) { width: min(100%, 600px); margin-top: 6px; box-shadow: 0 0 0 1px rgb(42 33 24 / .12), 0 26px 44px -24px rgb(42 33 24 / .55); }
+  .ec { padding: 64px 0 0; background: #f6f2ea; color: #2a2118; overflow: clip; } .t { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 32px; } h2 { max-width: 18em; font-size: clamp(30px, 3.4vw, 44px); letter-spacing: -.01em; line-height: 1.06; text-wrap: balance; } .all { display: inline-flex; align-items: center; gap: 8px; color: #5e5040; font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: #2a2118; } .all :global(i) { display: grid; }
+  .tabs { display: flex; gap: 2px; margin-top: 28px; overflow-x: auto; scrollbar-width: none; padding-top: 8px; } [role="tab"] { flex: 1 0 auto; height: 44px; padding-inline: 16px; border-radius: 10px 10px 0 0; background: color-mix(in srgb, var(--c) 34%, #efe6d4); color: #2a2118; font-size: 15px; white-space: nowrap; transition: background .2s var(--ease); } [role="tab"]:hover { background: color-mix(in srgb, var(--c) 52%, #efe6d4); } [role="tab"][aria-selected="true"] { background: #fff; }
+  .folder { display: grid; background: #fff; box-shadow: 0 30px 60px -36px rgb(42 33 24 / .6); } .page { grid-area: 1 / 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 24px 24px 0; opacity: 0; visibility: hidden; transition: opacity 0s .3s, visibility 0s .3s; } .page.on { z-index: 1; opacity: 1; visibility: visible; transition: opacity .3s var(--ease); } .say { display: grid; align-content: start; gap: 8px; } .say b { display: inline-flex; align-items: center; gap: 8px; font-family: Fraunces, Georgia, serif; font-weight: 400; font-size: 26px; line-height: 1.1; letter-spacing: -.02em; } .say b :global(i) { display: grid; } .say > span { color: #5e5040; line-height: 1.4; } code { font: 400 13px/1 var(--mono); color: #5e5040; } .page img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; object-position: 0 0; max-width: none; border-radius: 10px 10px 0 0; box-shadow: 0 0 0 1px rgb(42 33 24 / .12); }
+  @media (min-width: 1000px) { .hero { min-height: 720px; } .page { grid-template-columns: 300px minmax(0, 1fr); gap: 36px; padding: 32px 32px 0; } .page img { aspect-ratio: 16 / 8; } }
 </style>
