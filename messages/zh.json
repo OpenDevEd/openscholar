@@ -5453,7 +5453,8 @@
     "strip": "用于测试的公开 Alpha 版。",
     "stripDetail": "内容可能会变更或出现故障。",
     "contactUs": "联系我们",
-    "plansNotice": "公开 Alpha 期间，Openscholar 免费提供所有功能。之后方案会有变化。",
+    "plansNoticeTitle": "公开 Alpha 期间免费",
+    "plansNoticeDetail": "包含所有功能。之后方案会有变化。",
     "emailAddress": "发送邮件至 {email}"
   }
 }

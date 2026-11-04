@@ -506,7 +506,7 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
     <div className="@container w-full pb-16">
       <StickyPageHeader>
         <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} tabs={audienceTabs}>
-          <AlphaPlansNotice className="hidden max-w-2xl gap-2 px-3 py-1.5 text-xs leading-5 @6xl:flex" />
+          <AlphaPlansNotice className="hidden @6xl:flex" />
         </PanelHeader>
       </StickyPageHeader>
 

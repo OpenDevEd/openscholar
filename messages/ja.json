@@ -5453,7 +5453,8 @@
     "strip": "テスト用の公開アルファ版です。",
     "stripDetail": "内容の変更や不具合が起こる場合があります。",
     "contactUs": "お問い合わせ",
-    "plansNotice": "公開アルファ版の間、Openscholar はすべての機能を無料で利用できます。プランはその後変更されます。",
+    "plansNoticeTitle": "公開アルファ版の間は無料",
+    "plansNoticeDetail": "すべての機能を利用できます。プランはその後変更されます。",
     "emailAddress": "{email} にメール"
   }
 }

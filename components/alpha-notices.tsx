@@ -28,13 +28,13 @@ export function AlphaStrip() {
   );
 }
 
-/** On the Pricing page, in the notice style it already uses. */
+/** On the Pricing page, as two lines of type: against the header's edge, or under the plans where the header has no room. */
 export function AlphaPlansNotice({ className }: { className?: string }) {
   const t = useTranslations("alpha");
   return (
-    <div className={cn("flex items-start gap-2.5 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info", className)}>
-      <FlaskConical className="mt-0.5 size-4 shrink-0" />
-      <span>{t("plansNotice")}</span>
+    <div className={cn("flex flex-col items-start @6xl:items-end @6xl:text-end", className)}>
+      <span className="text-sm font-semibold leading-5">{t("plansNoticeTitle")}</span>
+      <span className="text-xs leading-4 text-muted-foreground">{t("plansNoticeDetail")}</span>
     </div>
   );
 }
