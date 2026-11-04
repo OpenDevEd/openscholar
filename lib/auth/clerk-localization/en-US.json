@@ -1,0 +1,47 @@
+{
+  "organizationList": {
+    "subtitle": "to continue to Openscholar"
+  },
+  "signIn": {
+    "alternativePhoneCodeProvider": {
+      "subtitle": "to continue to Openscholar"
+    },
+    "emailCode": {
+      "subtitle": "to continue to Openscholar"
+    },
+    "emailCodeMfa": {
+      "subtitle": "to continue to Openscholar"
+    },
+    "emailLink": {
+      "subtitle": "to continue to Openscholar"
+    },
+    "emailLinkMfa": {
+      "subtitle": "to continue to Openscholar"
+    },
+    "phoneCode": {
+      "subtitle": "to continue to Openscholar"
+    },
+    "ssoBypass": {
+      "code": {
+        "subtitle": "to continue to Openscholar"
+      }
+    },
+    "start": {
+      "alternativePhoneCodeProvider": {
+        "title": "Sign in to Openscholar with {{provider}}"
+      },
+      "title": "Sign in to Openscholar",
+      "titleCombined": "Continue to Openscholar"
+    }
+  },
+  "signUp": {
+    "emailLink": {
+      "subtitle": "to continue to Openscholar"
+    },
+    "start": {
+      "alternativePhoneCodeProvider": {
+        "title": "Sign up to Openscholar with {{provider}}"
+      }
+    }
+  }
+}

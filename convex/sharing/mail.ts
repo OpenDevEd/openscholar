@@ -20,7 +20,7 @@ export const deliver = internalAction({
     if (!invitation) throw createError("CONFLICT", "Invitation is no longer available");
     try {
       await sendInvitationEmail(mail, {
-        senderName: `${invitation.inviter} via OpenScholar`,
+        senderName: `${invitation.inviter} via Openscholar`,
         to: invitation.email,
         ...itemInvitationMessage({ origin: requireAppUrl(), invitationId, ...invitation }),
       });

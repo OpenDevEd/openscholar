@@ -35,7 +35,7 @@
     "credits": "Amakhredithi",
     "upgrade": "Thuthukisa",
     "signIn": "Ngena",
-    "signInCreditsDescription": "Ngena ukuze usebenzise amakhredithi we-AI ngqo kusuka ku-OpenScholar",
+    "signInCreditsDescription": "Ngena ukuze usebenzise amakhredithi we-AI ngqo kusuka ku-Openscholar",
     "highlightSearchTerms": "Gqamisa amagama okusesha",
     "signOut": "Phuma",
     "results": "Imiphumela",
@@ -302,9 +302,9 @@
     "scheduled": "Kuhleleliwe",
     "manageInBillingPortal": "Phatha ephothaleni lokukhokha",
     "downgradeTo": "Yehlisela ku-{name}",
-    "metadataTitle": "Amanani | OpenScholar",
+    "metadataTitle": "Amanani | Openscholar",
     "metadataDescription": "Amanani alula, acacile kuwo wonke amaqembu, noma angakanani.",
-    "everyFeature": "Zonke izici ze-OpenScholar",
+    "everyFeature": "Zonke izici ze-Openscholar",
     "papersRunning": "{running, number} amaphepha asebenza ngesikhathi esisodwa",
     "papersInRequest": "{request, number} amaphepha esicelweni esisodwa",
     "unlimitedCollectionsAndGuests": "Amaqoqo nezivakashi ngaphandle komkhawulo",
@@ -317,7 +317,7 @@
     "credentials": "Izimvume ze-{provider}",
     "sandbox": "I-sandbox",
     "custom": "Izimvume zokungena ezingokwezifiso",
-    "sandboxTitle": "I-sandbox ye-OpenScholar",
+    "sandboxTitle": "I-sandbox ye-Openscholar",
     "sandboxHint": "Isebenzisa i-akhawunti yethu yokuhlola. Ukufakwa kuhlala endaweni yokuhlola yomhlinzeki.",
     "title": "Ukushicilela",
     "description": "Xhuma ama-akhawunti asetshenziselwa ukubhalisa ama-DOI nokugcina okushicilelwe.",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "Lungisa i-AI ukuze uthuthukise ukusesha kwakho",
-    "description": "I-OpenScholar isebenzisa i-AI ukuze icwengisise imibuzo, ihlole amaphepha, futhi ihumushe imiphumela.",
+    "description": "I-Openscholar isebenzisa i-AI ukuze icwengisise imibuzo, ihlole amaphepha, futhi ihumushe imiphumela.",
     "signInForCredits": "Ngena ukuze uthole amakhredithi mahhala",
     "useOwnApiKey": "Sebenzisa ukhiye wakho we-API"
   },
@@ -1042,25 +1042,25 @@
     "searchPlural": "izisesho"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar | Ukusesha amaphepha emfundo",
+    "defaultTitle": "Openscholar | Ukusesha amaphepha emfundo",
     "defaultDescription": "Sesha izinkulungwane zamaphepha emfundo nezihloko zocwaningo",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "zu_ZA",
-    "historyTitle": "Umlando wokusesha | OpenScholar",
+    "historyTitle": "Umlando wokusesha | Openscholar",
     "historyDescription": "Bona futhi uphathe imibuzo yakho yokusesha yangaphambili.",
-    "bookmarksTitle": "Izimaki | OpenScholar",
+    "bookmarksTitle": "Izimaki | Openscholar",
     "bookmarksDescription": "Phatha izimaki zakho ukuze usesha ngokushesha nangempumelela kakhulu.",
-    "privacyTitle": "Inqubomgomo yobumfihlo | OpenScholar",
-    "privacyDescription": "Isaziso sobumfihlo sekhasimende le-OpenScholar.ai. Funda ukuthi i-Open Development & Education iqoqa kanjani, isebenzisa kanjani, futhi ivikela kanjani ulwazi lwakho lomuntu siqu.",
-    "cookiePolicyTitle": "Inqubomgomo yama-cookie | OpenScholar",
-    "cookiePolicyDescription": "Funda ukuthi i-OpenScholar.ai isebenzisa kanjani ama-cookie ukuhlaziya nokuthi ulawula kanjani izintandokazi zakho zama-cookie.",
-    "libraryTitle": "Umtapo wolwazi - OpenScholar",
+    "privacyTitle": "Inqubomgomo yobumfihlo | Openscholar",
+    "privacyDescription": "Isaziso sobumfihlo sekhasimende le-Openscholar.ai. Funda ukuthi i-Open Development & Education iqoqa kanjani, isebenzisa kanjani, futhi ivikela kanjani ulwazi lwakho lomuntu siqu.",
+    "cookiePolicyTitle": "Inqubomgomo yama-cookie | Openscholar",
+    "cookiePolicyDescription": "Funda ukuthi i-Openscholar.ai isebenzisa kanjani ama-cookie ukuhlaziya nokuthi ulawula kanjani izintandokazi zakho zama-cookie.",
+    "libraryTitle": "Umtapo wolwazi - Openscholar",
     "libraryDescription": "Bheka futhi uphathe amaphepha wakho emfundo agciniwe",
-    "creditsTitle": "Ukubonga | OpenScholar",
-    "creditsDescription": "Amaprojekthi, idatha nezilayisense i-OpenScholar ekwakhelwe kuzo.",
-    "sharedTitle": "Okwabelwane nami | OpenScholar"
+    "creditsTitle": "Ukubonga | Openscholar",
+    "creditsDescription": "Amaprojekthi, idatha nezilayisense i-Openscholar ekwakhelwe kuzo.",
+    "sharedTitle": "Okwabelwane nami | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "Isimaki \"{name}\" sesivele sikhona",
@@ -1072,7 +1072,7 @@
   },
   "accessibility": {
     "closeDialog": "Vala",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "Inombolo yekhasi",
     "zoomIn": "Sondeza",
     "zoomOut": "Hlehlisa",
@@ -1390,19 +1390,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "Siyawuhlonipha ubumfihlo bakho",
-    "bannerDescription": "Sisebenzisa ama-cookie wokuhlaziya ukuze siqonde ukuthi usebenzisa kanjani i-OpenScholar futhi sithuthukise umkhiqizo. Khetha intandokazi yakho ngezansi.",
-    "dialogDescription": "Sisebenzisa ama-cookie wokuhlaziya ukuze siqonde ukuthi usebenzisa kanjani i-OpenScholar futhi sithuthukise umkhiqizo. Ungamukela wonke ama-cookie, wenqabe angadingekile, noma ushintshe intandokazi yakho noma nini.",
+    "bannerDescription": "Sisebenzisa ama-cookie wokuhlaziya ukuze siqonde ukuthi usebenzisa kanjani i-Openscholar futhi sithuthukise umkhiqizo. Khetha intandokazi yakho ngezansi.",
+    "dialogDescription": "Sisebenzisa ama-cookie wokuhlaziya ukuze siqonde ukuthi usebenzisa kanjani i-Openscholar futhi sithuthukise umkhiqizo. Ungamukela wonke ama-cookie, wenqabe angadingekile, noma ushintshe intandokazi yakho noma nini.",
     "acceptAll": "Amukela konke",
     "rejectNonEssential": "Yenqaba engadingekile",
     "preferencesTitle": "Izintandokazi zama-cookie",
-    "preferencesDescription": "Phatha ukuthi i-OpenScholar isebenzisa kanjani ama-cookie wokuhlaziya."
+    "preferencesDescription": "Phatha ukuthi i-Openscholar isebenzisa kanjani ama-cookie wokuhlaziya."
   },
   "legal": {
     "learnMorePrefix": "Funda kabanzi ku-",
     "and": "futhi",
     "privacyPolicy": "Inqubomgomo yobumfihlo",
     "cookiePolicy": "Inqubomgomo yama-cookie",
-    "backToSite": "← Buyela ku-OpenScholar"
+    "backToSite": "← Buyela ku-Openscholar"
   },
   "upgradeDialog": {
     "title": "Thuthukela ku-{plan}",
@@ -1684,7 +1684,7 @@
     "hideAnswers": "Fihla izimpendulo ze-{title}",
     "yesOrNo": "Yebo noma cha",
     "lost": "Lo kuskrini usuliwe noma awusasabelwani nawo",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "Igama leqoqo elisha ku-{library}",
     "savedToLibrary": "<n>{count, number}</n> kungezwe ku-{name} ku-{library}",
     "notInLibrary": "<n>{count, number}</n> akukho ku-{library}",
@@ -1937,11 +1937,11 @@
       "sampleBody": "Lokhu kuyindlela ndima yombhalo ngayo ngesayithi lomphakathi.",
       "logosHeading": "Ilogo nesithonjana sesiphequluli",
       "logoLightLabel": "Ilogo yemodi yokukhanya",
-      "logoLightHint": "Sisebenzisa ilogo ye-OpenScholar uze ulayishe eyakho.",
+      "logoLightHint": "Sisebenzisa ilogo ye-Openscholar uze ulayishe eyakho.",
       "logoDarkLabel": "Ilogo yemodi emnyama",
       "logoDarkHint": "Sisebenzisa ilogo yemodi yokukhanya uze ulayishe eyakho.",
       "faviconLabel": "Isithonjana sesiphequluli semodi yokukhanya",
-      "faviconHint": "Sisebenzisa isithonjana se-OpenScholar uze ulayishe esakho.",
+      "faviconHint": "Sisebenzisa isithonjana se-Openscholar uze ulayishe esakho.",
       "faviconDarkLabel": "Isithonjana sesiphequluli semodi emnyama",
       "faviconDarkHint": "Sisebenzisa isithonjana semodi yokukhanya uze ulayishe esakho.",
       "coloursHeading": "Imibala",
@@ -1960,7 +1960,7 @@
         "cardLight": "Ikhadi (imodi yokukhanya)"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "Ukuphuma kwelanga",
         "forest": "Ihlathi",
         "ocean": "Ulwandle",
@@ -2098,8 +2098,8 @@
       "disclaimerHint": "Iboniswa ngombhalo omncane ezansi kwalo lonke ikhasi.",
       "attribution": "Umthombo wokukhomba",
       "attributionHint": "Umugqa owodwa, isibonelo ukuthi ngubani oqhuba umphakathi.",
-      "poweredBy": "Iqhutshwa yi-OpenScholar",
-      "poweredByHint": "Umugqa omncane oxhuma emuva ku-OpenScholar.",
+      "poweredBy": "Iqhutshwa yi-Openscholar",
+      "poweredByHint": "Umugqa omncane oxhuma emuva ku-Openscholar.",
       "poweredByLocked": "Iyatholakala kuhlelo olukhokhelwayo."
     },
     "contact": {
@@ -2246,7 +2246,7 @@
       "connectAccountFailed": "Ayikwazanga ukuqala ukungena nge-Zotero. Zama futhi.",
       "disconnect": "Nqamula",
       "disconnectTitle": "Nqamula i-Zotero?",
-      "disconnectBody": "I-akhawunti yakho ye-Zotero inqanyuliwe ku-OpenScholar. Amaqembu asevele axhunyiwe aqhubeka engenisa ngokhiye abanikezwe wona; amaqembu amasha adinga ukuthi ungene futhi.",
+      "disconnectBody": "I-akhawunti yakho ye-Zotero inqanyuliwe ku-Openscholar. Amaqembu asevele axhunyiwe aqhubeka engenisa ngokhiye abanikezwe wona; amaqembu amasha adinga ukuthi ungene futhi.",
       "disconnectFailed": "Ayikwazanga ukunqamula. Zama futhi.",
       "pasteLink": "Noma namathisela ixhumanisi lweqembu",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2270,7 +2270,7 @@
       "resume": "Qhubeka",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "Umthombo {action}",
-      "noSources": "Azikho imithombo okwamanje. Engeza iqembu le-Zotero, isesho le-OpenAlex, noma iqoqo le-OpenScholar.",
+      "noSources": "Azikho imithombo okwamanje. Engeza iqembu le-Zotero, isesho le-OpenAlex, noma iqoqo le-Openscholar.",
       "listLabel": "Imithombo exhunyiwe",
       "connections": "Ukuxhumana",
       "connectionsTitle": "Ukuxhumana komthombo",
@@ -2288,7 +2288,7 @@
       "openAlex": {
         "access": "Ukufinyelela kwe-OpenAlex",
         "ownKey": "Ukhiye wami we-API",
-        "platformHint": "Kufakiwe ku-OpenScholar. Ukuvuselela kulanda amarekhodi ashintshile kuphela.",
+        "platformHint": "Kufakiwe ku-Openscholar. Ukuvuselela kulanda amarekhodi ashintshile kuphela.",
         "keyLabel": "Ukhiye we-API we-OpenAlex",
         "keyHint": "Sebenzisa ukhiye wakho we-API we-OpenAlex kulo mphakathi.",
         "savedKey": "Ukhiye ogciniwe {hint}",
@@ -2296,7 +2296,7 @@
         "saveKey": "Gcina ukhiye we-API",
         "removeKey": "Susa ukhiye ogciniwe",
         "removeKeyTitle": "Susa ukhiye ogciniwe we-OpenAlex?",
-        "removeKeyBody": "Ukusesha kuzosebenzisa ukufinyelela kwe-OpenScholar esikhundleni salokho.",
+        "removeKeyBody": "Ukusesha kuzosebenzisa ukufinyelela kwe-Openscholar esikhundleni salokho.",
         "removeKeyConfirm": "Susa ukhiye",
         "addTitle": "Engeza isesho",
         "changeTitle": "Shintsha lesi sesho",
@@ -2366,7 +2366,7 @@
         "loading": "Iyalayisha amaqembu akho…",
         "failed": "Ayikwazanga ukulayisha amaqembu akho."
       },
-      "openScholarCollection": "Iqoqo le-OpenScholar",
+      "openScholarCollection": "Iqoqo le-Openscholar",
       "openScholarCollectionHint": "Landela elinye lamaqoqo akho",
       "pdfs": "Ama-PDF",
       "pdfPublishing": {
@@ -2379,12 +2379,12 @@
         "taggedHint": "I-PDF, inothi noma ixhumanisi elinanoma yiliphi lalawa mathegi ku-Zotero liyashicilelwa.",
         "everyHint": "Ama-PDF awadingi elilodwa. Amanothi namaxhumanisi adinga noma yimuphi walawa mathegi."
       },
-      "collectionDeleted": "Leli qoqo lisusiwe ku-OpenScholar.",
+      "collectionDeleted": "Leli qoqo lisusiwe ku-Openscholar.",
       "removeCollectionTitle": "Susa leli qoqo?",
       "collectionConnectFailed": "Ayikwazanga ukungeza leli qoqo.",
       "collectionPicker": {
         "title": "Engeza amaqoqo",
-        "description": "Amaqoqo akho we-OpenScholar. Umphakathi ulandela amaqoqo oticka bese uyavuselela uma eshintsha.",
+        "description": "Amaqoqo akho we-Openscholar. Umphakathi ulandela amaqoqo oticka bese uyavuselela uma eshintsha.",
         "search": "Sesha amaqoqo…",
         "colCollection": "Iqoqo",
         "noCollections": "Awunawo amaqoqo okwamanje.",
@@ -2595,7 +2595,7 @@
         "yearsDropdown": "Bonisa uhla lokukhetha unyaka esesheni.",
         "downloads": "Nikeza ukulanda ukubhalisa zezincwadi nomphakathi wonke.",
         "atomFeed": "Bonisa ixhumanisi lefidi ye-Atom.",
-        "readerAccounts": "Vumela abafundi bangene nge-OpenScholar bagcine amarekhodi namaqoqo."
+        "readerAccounts": "Vumela abafundi bangene nge-Openscholar bagcine amarekhodi namaqoqo."
       },
       "needs": "Vula i-{feature} kuqala.",
       "needsSearch": {
@@ -3114,7 +3114,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, one {# imodeli} other {# amamodeli}}",
     "cloudOnly": "Ifu kuphela",
-    "openScholarCloud": "Ifu le-OpenScholar",
+    "openScholarCloud": "Ifu le-Openscholar",
     "browserLabel": {
       "credits": "Efwini",
       "smart": "Ifu, bese isiphequluli sakho",
@@ -3203,7 +3203,7 @@
       "failed": "Impendulo yehlulekile",
       "stopped": "Impendulo imisiwe"
     },
-    "label": "Umsizi we-OpenScholar",
+    "label": "Umsizi we-Openscholar",
     "open": "Vula umsizi",
     "fold": "Faka umsizi eceleni",
     "foldHint": "Faka eceleni",
@@ -4788,7 +4788,7 @@
     "outdated": "I-{library} idinga ukuvuselelwa ukuze isetshenziswe lapha.",
     "error": {
       "notAddress": "Lokho akuyona ikheli.",
-      "notHosted": "I-OpenScholar ayisebenzisi lowo mphakathi.",
+      "notHosted": "I-Openscholar ayisebenzisi lowo mphakathi.",
       "private": "Leli qoqo liyimfihlo. Umnikazi walo angalabelana nawe.",
       "notFound": "Akukho lutho kulelo kheli.",
       "empty": "Lolu sesho noma leli qoqo alinawo amarekhodi.",
@@ -4820,7 +4820,7 @@
     "goneHint": "Leli xhumanisi elivela emphakathini liphelelwe yisikhathi. Livule futhi emphakathini.",
     "problem": {
       "notAddress": "Akukho lutho lapha olungavulwa. Livule futhi emphakathini.",
-      "notHosted": "Lowo mphakathi awusasebenzi ku-OpenScholar.",
+      "notHosted": "Lowo mphakathi awusasebenzi ku-Openscholar.",
       "private": "Leli qoqo liyimfihlo. Umnikazi walo angalabelana nawe.",
       "notFound": "Umphakathi awusenalo lokho owawuthumele.",
       "empty": "Lokho umphakathi owawuthumele akusenawo amarekhodi manje.",
@@ -5415,11 +5415,11 @@
     "creatingKey": "Iyakha ukhiye...",
     "redirecting": "Iyaqondisa kabusha...",
     "approve": "Vuma",
-    "wantsToConnect": "I-<strong>{appName}</strong> ifuna ukuxhuma esikhwameni sakho se-OpenScholar.",
+    "wantsToConnect": "I-<strong>{appName}</strong> ifuna ukuxhuma esikhwameni sakho se-Openscholar.",
     "copyKey": "Kopisha lo khiye we-API bese uwunamathisela ku-<strong>{appName}</strong>. Uzobonakala kanye kuphela.",
-    "originUnregisteredBody": "Uhlelo oluku-<code>{origin}</code> aluhlanganiswanga ukuze luxhume ku-OpenScholar.",
-    "originHelp": "Imithombo evunyelwe kuphela engakha uxhumano lwesikhwama. Uma ungumthuthukisi we-<strong>{appName}</strong>, xhumana neqembu le-OpenScholar ukuze ubhalise umthombo wakho.",
-    "wantsToUseCredits": "I-<strong>{appName}</strong> ifuna ukusebenzisa ukukhiqizwa kwe-AI ngamakhredithi akho e-OpenScholar.",
+    "originUnregisteredBody": "Uhlelo oluku-<code>{origin}</code> aluhlanganiswanga ukuze luxhume ku-Openscholar.",
+    "originHelp": "Imithombo evunyelwe kuphela engakha uxhumano lwesikhwama. Uma ungumthuthukisi we-<strong>{appName}</strong>, xhumana neqembu le-Openscholar ukuze ubhalise umthombo wakho.",
+    "wantsToUseCredits": "I-<strong>{appName}</strong> ifuna ukusebenzisa ukukhiqizwa kwe-AI ngamakhredithi akho e-Openscholar.",
     "unknownApp": "Uhlelo olungaziwa",
     "thisApplicationSOriginIsNot": "Umthombo walolu hlelo awubhalisiwe",
     "failedToCreateConnection": "Uxhumano alukwazanga ukudalwa"
@@ -5436,7 +5436,7 @@
     "strip": "I-alpha yomphakathi yokuhlola.",
     "stripDetail": "Izinto zingashintsha noma zingasebenzi.",
     "contactUs": "Xhumana nathi",
-    "plansNotice": "I-OpenScholar imahhala ngesikhathi se-alpha yomphakathi, nazo zonke izici zifakiwe. Amapulani azoshintsha ngemva kwalokho.",
+    "plansNotice": "I-Openscholar imahhala ngesikhathi se-alpha yomphakathi, nazo zonke izici zifakiwe. Amapulani azoshintsha ngemva kwalokho.",
     "emailAddress": "Thumela i-imeyili ku-{email}"
   }
 }

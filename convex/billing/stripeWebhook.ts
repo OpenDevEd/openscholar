@@ -96,7 +96,7 @@ export const handleEvent = internalAction({
       const autumnId = customer.deleted ? undefined : customer.metadata.autumn_id;
       workspaceId = autumnId ? await ctx.runQuery(internal.billing.stripeWebhook.workspaceForStripeCustomer, { stripeCustomerId, autumnId }) : null;
       if (!workspaceId) {
-        console.warn(`[stripe webhook] no OpenScholar workspace for ${stripeCustomerId}`);
+        console.warn(`[stripe webhook] no Openscholar workspace for ${stripeCustomerId}`);
         return null;
       }
     }

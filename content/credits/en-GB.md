@@ -1,6 +1,6 @@
 # Credits
 
-OpenScholar uses work that other people have made and shared. This page names it.
+Openscholar uses work that other people have made and shared. This page names it.
 
 ## Citation styles
 
@@ -8,11 +8,11 @@ The citation styles and their translations come from the [Citation Style Languag
 
 Each style and locale has its own authors. [The full list names them](/citation-styles/credits.txt).
 
-OpenScholar converts the files from XML to JSON. When it lists references, it removes the citation number from styles that number their entries. The changed copies are offered under the same licence.
+Openscholar converts the files from XML to JSON. When it lists references, it removes the citation number from styles that number their entries. The changed copies are offered under the same licence.
 
 ## Icons
 
-The app's icons are from [Solar](https://www.figma.com/community/file/1166831539721848736) by 480 Design, licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). OpenScholar recolours them to its own palette.
+The app's icons are from [Solar](https://www.figma.com/community/file/1166831539721848736) by 480 Design, licensed under [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/). Openscholar recolours them to its own palette.
 
 ## Research data
 

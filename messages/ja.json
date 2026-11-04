@@ -35,7 +35,7 @@
     "credits": "クレジット",
     "upgrade": "アップグレード",
     "signIn": "サインイン",
-    "signInCreditsDescription": "OpenScholarでAIクレジットを直接使用するにはサインインしてください",
+    "signInCreditsDescription": "OpenscholarでAIクレジットを直接使用するにはサインインしてください",
     "highlightSearchTerms": "検索語をハイライト",
     "signOut": "サインアウト",
     "results": "結果",
@@ -302,9 +302,9 @@
     "scheduled": "予約済み",
     "manageInBillingPortal": "請求ポータルで管理",
     "downgradeTo": "{name} にダウングレード",
-    "metadataTitle": "料金 | OpenScholar",
+    "metadataTitle": "料金 | Openscholar",
     "metadataDescription": "どの規模のチームにも使える、わかりやすく透明性の高い料金体系です。",
-    "everyFeature": "OpenScholar のすべての機能",
+    "everyFeature": "Openscholar のすべての機能",
     "papersRunning": "同時に処理する論文 {running, number} 件",
     "papersInRequest": "1 回のリクエストで論文 {request, number} 件",
     "unlimitedCollectionsAndGuests": "コレクションとゲストは無制限",
@@ -317,7 +317,7 @@
     "credentials": "{provider} 認証情報",
     "sandbox": "サンドボックス",
     "custom": "カスタム認証情報",
-    "sandboxTitle": "OpenScholar サンドボックス",
+    "sandboxTitle": "Openscholar サンドボックス",
     "sandboxHint": "テスト用アカウントを使用します。登録先はプロバイダーのテスト環境です。",
     "title": "公開設定",
     "description": "DOI の登録と出版物の保存に使うアカウントを接続します。",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "AIで検索を強化する",
-    "description": "OpenScholarはAIを使用してクエリの改善、論文のスクリーニング、結果の翻訳を行います。",
+    "description": "OpenscholarはAIを使用してクエリの改善、論文のスクリーニング、結果の翻訳を行います。",
     "signInForCredits": "サインインして無料クレジットを取得",
     "useOwnApiKey": "自分のAPIキーを使用"
   },
@@ -1042,25 +1042,25 @@
     "searchPlural": "検索"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar - 学術論文検索",
+    "defaultTitle": "Openscholar - 学術論文検索",
     "defaultDescription": "数百万の学術論文と研究記事を検索",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "ja_JP",
-    "historyTitle": "検索履歴 | OpenScholar",
+    "historyTitle": "検索履歴 | Openscholar",
     "historyDescription": "過去の検索クエリを表示して管理。",
-    "bookmarksTitle": "ブックマーク | OpenScholar",
+    "bookmarksTitle": "ブックマーク | Openscholar",
     "bookmarksDescription": "より速く効率的な検索のためにブックマークを管理。",
-    "privacyTitle": "プライバシーポリシー | OpenScholar",
-    "privacyDescription": "OpenScholar.ai顧客のプライバシーに関する通知。Open Development & Educationがどのように個人情報を収集、使用、保護するかについて説明します。",
-    "cookiePolicyTitle": "Cookieポリシー | OpenScholar",
-    "cookiePolicyDescription": "OpenScholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。",
-    "libraryTitle": "ライブラリ - OpenScholar",
+    "privacyTitle": "プライバシーポリシー | Openscholar",
+    "privacyDescription": "Openscholar.ai顧客のプライバシーに関する通知。Open Development & Educationがどのように個人情報を収集、使用、保護するかについて説明します。",
+    "cookiePolicyTitle": "Cookieポリシー | Openscholar",
+    "cookiePolicyDescription": "Openscholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。",
+    "libraryTitle": "ライブラリ - Openscholar",
     "libraryDescription": "保存した学術論文を閲覧・管理する",
-    "creditsTitle": "クレジット | OpenScholar",
-    "creditsDescription": "OpenScholar が利用しているプロジェクト、データ、ライセンス。",
-    "sharedTitle": "共有アイテム | OpenScholar"
+    "creditsTitle": "クレジット | Openscholar",
+    "creditsDescription": "Openscholar が利用しているプロジェクト、データ、ライセンス。",
+    "sharedTitle": "共有アイテム | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "ブックマーク「{name}」は既に存在します",
@@ -1072,7 +1072,7 @@
   },
   "accessibility": {
     "closeDialog": "閉じる",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "ページ番号",
     "zoomIn": "ズームイン",
     "zoomOut": "ズームアウト",
@@ -1390,19 +1390,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "プライバシーを尊重します",
-    "bannerDescription": "分析用Cookieを使用してOpenScholarの使用状況を理解し、製品を改善しています。以下で設定を選択してください。",
-    "dialogDescription": "分析用Cookieを使用してOpenScholarの使用状況を理解し、製品を改善しています。すべてのCookieを受け入れるか、必須でないCookieを拒否するか、またはいつでも設定を変更できます。",
+    "bannerDescription": "分析用Cookieを使用してOpenscholarの使用状況を理解し、製品を改善しています。以下で設定を選択してください。",
+    "dialogDescription": "分析用Cookieを使用してOpenscholarの使用状況を理解し、製品を改善しています。すべてのCookieを受け入れるか、必須でないCookieを拒否するか、またはいつでも設定を変更できます。",
     "acceptAll": "すべて受け入れ",
     "rejectNonEssential": "必須でないものを拒否",
     "preferencesTitle": "Cookie設定",
-    "preferencesDescription": "OpenScholarが分析のためにCookieをどのように使用するかを管理します。"
+    "preferencesDescription": "Openscholarが分析のためにCookieをどのように使用するかを管理します。"
   },
   "legal": {
     "learnMorePrefix": "詳細については私たちの",
     "and": "および",
     "privacyPolicy": "プライバシーポリシー",
     "cookiePolicy": "Cookieポリシー",
-    "backToSite": "← OpenScholarに戻る"
+    "backToSite": "← Openscholarに戻る"
   },
   "upgradeDialog": {
     "title": "{plan}にアップグレード",
@@ -1684,7 +1684,7 @@
     "hideAnswers": "{title} の回答を隠す",
     "yesOrNo": "はい／いいえ",
     "lost": "このスクリーニングは削除されたか、共有が解除されました",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "{library} の新しいコレクションの名前",
     "savedToLibrary": "<n>{count, number}</n> 件を {library} の {name} に追加",
     "notInLibrary": "<n>{count, number}</n> 件は {library} にありません",
@@ -1937,11 +1937,11 @@
       "sampleBody": "公開サイトで本文の段落がどう見えるかの例です。",
       "logosHeading": "ロゴとブラウザーアイコン",
       "logoLightLabel": "ライトモードのロゴ",
-      "logoLightHint": "アップロードするまでは OpenScholar のロゴを使います。",
+      "logoLightHint": "アップロードするまでは Openscholar のロゴを使います。",
       "logoDarkLabel": "ダークモードのロゴ",
       "logoDarkHint": "アップロードするまではライトモードのロゴを使います。",
       "faviconLabel": "ライトモードのブラウザーアイコン",
-      "faviconHint": "アップロードするまでは OpenScholar のアイコンを使います。",
+      "faviconHint": "アップロードするまでは Openscholar のアイコンを使います。",
       "faviconDarkLabel": "ダークモードのブラウザーアイコン",
       "faviconDarkHint": "アップロードするまではライトモードのアイコンを使います。",
       "coloursHeading": "色",
@@ -1960,7 +1960,7 @@
         "cardLight": "カード（ライトモード）"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "サンライズ",
         "forest": "フォレスト",
         "ocean": "オーシャン",
@@ -2098,8 +2098,8 @@
       "disclaimerHint": "すべてのページの下部に、小さな注記として表示されます。",
       "attribution": "帰属表示",
       "attributionHint": "1 行で書いてください。例: コミュニティを運営している人や組織。",
-      "poweredBy": "提供: OpenScholar",
-      "poweredByHint": "OpenScholar へのリンクを付けた小さな表示です。",
+      "poweredBy": "提供: Openscholar",
+      "poweredByHint": "Openscholar へのリンクを付けた小さな表示です。",
       "poweredByLocked": "有料プランで利用できます。"
     },
     "contact": {
@@ -2246,7 +2246,7 @@
       "connectAccountFailed": "Zotero でのサインインを開始できませんでした。もう一度試してください。",
       "disconnect": "接続を解除",
       "disconnectTitle": "Zotero の接続を解除しますか？",
-      "disconnectBody": "Zotero アカウントと OpenScholar の接続を解除します。接続済みのグループは、発行されたキーで取り込みを続けます。新しいグループを追加するには、もう一度サインインが必要です。",
+      "disconnectBody": "Zotero アカウントと Openscholar の接続を解除します。接続済みのグループは、発行されたキーで取り込みを続けます。新しいグループを追加するには、もう一度サインインが必要です。",
       "disconnectFailed": "接続を解除できませんでした。もう一度試してください。",
       "pasteLink": "またはグループのリンクを貼り付け",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2270,7 +2270,7 @@
       "resume": "再開",
       "sourceAction": "{name}を{action}",
       "sourceActionHint": "ソースを{action}",
-      "noSources": "まだソースがありません。Zotero グループ、OpenAlex 検索、または OpenScholar コレクションを追加してください。",
+      "noSources": "まだソースがありません。Zotero グループ、OpenAlex 検索、または Openscholar コレクションを追加してください。",
       "listLabel": "接続済みのソース",
       "connections": "接続",
       "connectionsTitle": "ソースの接続",
@@ -2288,7 +2288,7 @@
       "openAlex": {
         "access": "OpenAlex へのアクセス",
         "ownKey": "独自の API キー",
-        "platformHint": "OpenScholar に含まれています。更新では変更されたレコードだけを取得します。",
+        "platformHint": "Openscholar に含まれています。更新では変更されたレコードだけを取得します。",
         "keyLabel": "OpenAlex API キー",
         "keyHint": "このコミュニティで独自の OpenAlex API キーを使います。",
         "savedKey": "保存済みのキー {hint}",
@@ -2296,7 +2296,7 @@
         "saveKey": "API キーを保存",
         "removeKey": "保存済みのキーを削除",
         "removeKeyTitle": "保存済みの OpenAlex キーを削除しますか？",
-        "removeKeyBody": "検索には代わりに OpenScholar のアクセスが使われます。",
+        "removeKeyBody": "検索には代わりに Openscholar のアクセスが使われます。",
         "removeKeyConfirm": "キーを削除",
         "addTitle": "検索を追加",
         "changeTitle": "この検索を変更",
@@ -2366,7 +2366,7 @@
         "loading": "グループを読み込んでいます…",
         "failed": "グループを読み込めませんでした。"
       },
-      "openScholarCollection": "OpenScholar コレクション",
+      "openScholarCollection": "Openscholar コレクション",
       "openScholarCollectionHint": "自分のコレクションを追跡",
       "pdfs": "PDF",
       "pdfPublishing": {
@@ -2379,12 +2379,12 @@
         "taggedHint": "Zotero でこれらのタグのいずれかが付いた PDF、メモ、リンクが公開されます。",
         "everyHint": "PDF にタグは不要です。メモとリンクには引き続きこれらのタグのいずれかが必要です。"
       },
-      "collectionDeleted": "このコレクションは OpenScholar で削除されました。",
+      "collectionDeleted": "このコレクションは Openscholar で削除されました。",
       "removeCollectionTitle": "このコレクションを削除しますか？",
       "collectionConnectFailed": "このコレクションを追加できませんでした。",
       "collectionPicker": {
         "title": "コレクションを追加",
-        "description": "あなたの OpenScholar コレクションです。チェックしたものをコミュニティが追跡し、変更されると更新します。",
+        "description": "あなたの Openscholar コレクションです。チェックしたものをコミュニティが追跡し、変更されると更新します。",
         "search": "コレクションを検索…",
         "colCollection": "コレクション",
         "noCollections": "まだコレクションがありません。",
@@ -2595,7 +2595,7 @@
         "yearsDropdown": "検索バーに年の選択欄を表示します。",
         "downloads": "出版物とコミュニティ全体の引用をダウンロードできるようにします。",
         "atomFeed": "Atom フィードへのリンクを表示します。",
-        "readerAccounts": "読者が OpenScholar でサインインして、レコードをブックマークしたりコレクションを保存したりできるようにします。"
+        "readerAccounts": "読者が Openscholar でサインインして、レコードをブックマークしたりコレクションを保存したりできるようにします。"
       },
       "needs": "先に {feature} をオンにしてください。",
       "needsSearch": {
@@ -3114,7 +3114,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, other {# 個のモデル}}",
     "cloudOnly": "クラウドのみ",
-    "openScholarCloud": "OpenScholar クラウド",
+    "openScholarCloud": "Openscholar クラウド",
     "browserLabel": {
       "credits": "クラウドで",
       "smart": "クラウド、次にブラウザ",
@@ -3203,7 +3203,7 @@
       "failed": "回答に失敗しました",
       "stopped": "回答を停止しました"
     },
-    "label": "OpenScholar アシスタント",
+    "label": "Openscholar アシスタント",
     "open": "アシスタントを開く",
     "fold": "アシスタントをたたむ",
     "foldHint": "たたむ",
@@ -4788,7 +4788,7 @@
     "outdated": "ここで使うには {library} の更新が必要です。",
     "error": {
       "notAddress": "アドレスではありません。",
-      "notHosted": "そのコミュニティは OpenScholar で運営されていません。",
+      "notHosted": "そのコミュニティは Openscholar で運営されていません。",
       "private": "このコレクションは非公開です。オーナーが共有できます。",
       "notFound": "そのアドレスには何もありません。",
       "empty": "その検索またはコレクションにはレコードがありません。",
@@ -4820,7 +4820,7 @@
     "goneHint": "コミュニティからのこのリンクは期限切れです。コミュニティからもう一度開いてください。",
     "problem": {
       "notAddress": "ここに開くものはありません。コミュニティからもう一度開いてください。",
-      "notHosted": "そのコミュニティは OpenScholar でもう動いていません。",
+      "notHosted": "そのコミュニティは Openscholar でもう動いていません。",
       "private": "そのコレクションは非公開です。所有者があなたと共有できます。",
       "notFound": "コミュニティには送られたものがもうありません。",
       "empty": "コミュニティから送られたものには、今はレコードがありません。",
@@ -5415,11 +5415,11 @@
     "creatingKey": "キーを作成しています…",
     "redirecting": "移動しています…",
     "approve": "承認",
-    "wantsToConnect": "<strong>{appName}</strong> が、あなたの OpenScholar ウォレットに接続しようとしています。",
+    "wantsToConnect": "<strong>{appName}</strong> が、あなたの Openscholar ウォレットに接続しようとしています。",
     "copyKey": "この API キーをコピーして、<strong>{appName}</strong> に貼り付けてください。表示されるのは一度だけです。",
-    "originUnregisteredBody": "<code>{origin}</code> のアプリは、OpenScholar に接続するための登録がされていません。",
-    "originHelp": "事前に承認されたオリジンだけが、ウォレットの接続を作成できます。<strong>{appName}</strong> の開発者の場合は、OpenScholar チームに連絡して、オリジンを登録してください。",
-    "wantsToUseCredits": "<strong>{appName}</strong> が、あなたの OpenScholar クレジットで AI 生成を使おうとしています。",
+    "originUnregisteredBody": "<code>{origin}</code> のアプリは、Openscholar に接続するための登録がされていません。",
+    "originHelp": "事前に承認されたオリジンだけが、ウォレットの接続を作成できます。<strong>{appName}</strong> の開発者の場合は、Openscholar チームに連絡して、オリジンを登録してください。",
+    "wantsToUseCredits": "<strong>{appName}</strong> が、あなたの Openscholar クレジットで AI 生成を使おうとしています。",
     "unknownApp": "不明なアプリ",
     "thisApplicationSOriginIsNot": "このアプリケーションのオリジンは登録されていません。",
     "failedToCreateConnection": "接続の作成に失敗しました"
@@ -5436,7 +5436,7 @@
     "strip": "テスト用の公開アルファ版です。",
     "stripDetail": "内容の変更や不具合が起こる場合があります。",
     "contactUs": "お問い合わせ",
-    "plansNotice": "公開アルファ版の間、OpenScholar はすべての機能を無料で利用できます。プランはその後変更されます。",
+    "plansNotice": "公開アルファ版の間、Openscholar はすべての機能を無料で利用できます。プランはその後変更されます。",
     "emailAddress": "{email} にメール"
   }
 }

@@ -119,7 +119,7 @@ async function readGithub(
         headers: {
           accept: "application/vnd.github+json",
           authorization: `Bearer ${token}`,
-          "user-agent": "OpenScholar",
+          "user-agent": "Openscholar",
           "x-github-api-version": "2022-11-28",
         },
         signal: controller.signal,

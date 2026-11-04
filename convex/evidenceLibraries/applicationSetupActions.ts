@@ -268,7 +268,7 @@ export const runApplicationSetup = internalAction({
             : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
               ? {
                   code: "OAUTH_CLIENT_SYNC_FAILED",
-                  message: "OpenScholar sign-in could not be set up for this community",
+                  message: "Openscholar sign-in could not be set up for this community",
                 }
             : error instanceof ConfigurationAssemblyError
               ? {

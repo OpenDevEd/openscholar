@@ -44,12 +44,12 @@ try {
   ]);
 
   const lines = [
-    "OpenScholar citation styles and locales: authors and licence",
+    "Openscholar citation styles and locales: authors and licence",
     "",
     "Every style and locale below is licensed under the Creative Commons",
     "Attribution-ShareAlike 3.0 License: https://creativecommons.org/licenses/by-sa/3.0/",
     "",
-    "OpenScholar converts each file from XML to JSON. When it lists references, it",
+    "Openscholar converts each file from XML to JSON. When it lists references, it",
     "removes the citation number from styles that number their entries.",
     "",
     `Styles: https://github.com/citation-style-language/styles/tree/${provenance.styles}`,

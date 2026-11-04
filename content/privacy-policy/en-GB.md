@@ -1,6 +1,6 @@
 # **Privacy policy**
 
-**OpenScholar.ai customer privacy notice**
+**Openscholar.ai customer privacy notice**
 
 Open Development & Education are the data controller for the personal information described in this notice.
 

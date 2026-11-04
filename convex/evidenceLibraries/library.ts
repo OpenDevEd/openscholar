@@ -49,8 +49,8 @@ export async function described(ctx: ActionCtx, userId: Id<"users">, libraryId: 
 export const addressAction = defineUserAction({
   path: "evidenceLibraries/library:address",
   description:
-    "What an address of any Evidence Community OpenScholar runs points at, as a source of records the person may read: the whole community, a search with its filters and order, one of the community's collections, a reader's collection (theirs, shared with them, or a public one), a search inside one, or a record. " +
-    "Or why it is none: `notAddress`, `notHosted` (no community OpenScholar runs), `private` (a collection they may not read), `notFound`, `profile` (a reader's page: give one of their collections), `unknownPage`, `outdated` (the community needs an update) or `unreadable` (it didn't answer). " +
+    "What an address of any Evidence Community Openscholar runs points at, as a source of records the person may read: the whole community, a search with its filters and order, one of the community's collections, a reader's collection (theirs, shared with them, or a public one), a search inside one, or a record. " +
+    "Or why it is none: `notAddress`, `notHosted` (no community Openscholar runs), `private` (a collection they may not read), `notFound`, `profile` (a reader's page: give one of their collections), `unknownPage`, `outdated` (the community needs an update) or `unreadable` (it didn't answer). " +
     SET,
   args: { address: v.string() },
   returns: describedValidator,
@@ -120,7 +120,7 @@ export const recordsAction = defineUserAction({
     `Reads records of an Evidence Community as the person may read them, up to ${RECORDS_PAGE} from \`start\` (0 first), in the source's order: \`total\` is how many it holds, \`next\` where the next \`start\` is when there are more. ` +
     "The source is one the community offers (evidenceLibraries/library:sources and :address give them): the whole community, one of its collections, a reader's collection, records by key (`{ records: [key] }`, whose abstracts come whole), or a search, " +
     "`{ search }`, the community search page's query string, such as `search=peer+tutoring&sort=mostCited`: `search` its words; `sort` relevance (the default), desc (newest first), asc, mostCited, leastCited, titleAZ, titleZA, authorAZ or authorZA; `collections` a community collection's key; `type` an item type; with `readerCollection` too it searches that reader's collection. " +
-    "Each record's `paper`, as OpenScholar names it (research/papers:readPdf reads its PDF when `pdf` is true), its `key` in the community, title, first authors, year, venue, type, DOI, OpenAlex ID, abstract (its start, on a page of a source) and `link`. " +
+    "Each record's `paper`, as Openscholar names it (research/papers:readPdf reads its PDF when `pdf` is true), its `key` in the community, title, first authors, year, venue, type, DOI, OpenAlex ID, abstract (its start, on a page of a source) and `link`. " +
     SET,
   args: { libraryId: v.id("evidenceLibraries"), source: librarySourceValidator, start: v.optional(v.union(v.number(), v.null())) },
   returns: libraryRecordsValidator,

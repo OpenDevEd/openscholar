@@ -1,9 +1,9 @@
 .assistant-mark { --cycle: 8.4s; display: block; flex-shrink: 0; overflow: visible; }
 .assistant-mark[data-once="true"] .motion-part { animation-iteration-count: 1; animation-fill-mode: both; }
-.assistant-mark .a { fill: var(--mark-a, #60a5fa); }
-.assistant-mark .b { fill: var(--mark-b, #2563eb); }
-.assistant-mark .c { fill: var(--mark-c, #bfdbfe); }
-.assistant-mark .eye { fill: var(--eye, #172554); }
+.assistant-mark .a { fill: var(--mark-a, #ffb347); }
+.assistant-mark .b { fill: var(--mark-b, #ff8c00); }
+.assistant-mark .c { fill: var(--mark-c, #ff6b35); }
+.assistant-mark .eye { fill: var(--eye, #361307); }
 .assistant-mark .motion-part {
   transform-box: view-box; transform-origin: 64px 64px;
   animation-duration: calc(var(--cycle) * var(--rate, 1));
@@ -12,9 +12,9 @@
 }
 .assistant-mark .eye { transform-box: fill-box; transform-origin: center; }
 .assistant-mark .smile, .assistant-mark .accent-line { opacity: 0; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.assistant-mark .smile { stroke: var(--eye, #172554); stroke-width: 3.8; }
-.assistant-mark .accent-line { stroke: var(--mark-a, #60a5fa); stroke-width: 1.7; stroke-dasharray: 1; stroke-dashoffset: 1; }
-.assistant-mark .ink-line { stroke: var(--mark-b, #2563eb); stroke-width: 2; }
+.assistant-mark .smile { stroke: var(--eye, #361307); stroke-width: 3.8; }
+.assistant-mark .accent-line { stroke: var(--mark-a, #ffb347); stroke-width: 1.7; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.assistant-mark .ink-line { stroke: var(--mark-b, #ff8c00); stroke-width: 2; }
 .assistant-mark[data-motion="idle"] .body { animation-name: o-idle-body; }
 .assistant-mark[data-motion="idle"] .p1 { animation-name: o-idle-crown; }
 .assistant-mark[data-motion="idle"] .p2 { animation-name: o-idle-middle; }

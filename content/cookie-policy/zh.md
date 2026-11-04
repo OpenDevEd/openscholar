@@ -1,18 +1,18 @@
 # Cookie政策
 
-## OpenScholar.ai如何使用Cookie
+## Openscholar.ai如何使用Cookie
 
 当您浏览openscholar.ai时，称为Cookie的小型数据文件可能会存储在您的设备上。这些文件有助于网站正常运作，并向网站所有者提供关于其网站使用情况的洞察。以下我们将解释openscholar.ai使用哪些Cookie及其用途。
 
 ## 严格必要的Cookie
 
-OpenScholar.ai目前未设置任何网站运行所需的Cookie。
+Openscholar.ai目前未设置任何网站运行所需的Cookie。
 
 ## 性能和分析Cookie（可选）
 
 | **名称** | **用途** | **有效期** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | 我们使用PostHog分析软件来了解用户如何与我们的网站互动。这帮助我们创建更好的报告并提升用户体验。该Cookie包含匿名设备标识符、您的浏览会话详情以及您最初到达的页面。所有数据均为匿名收集——我们永远不会识别您的个人身份。OpenScholar.ai不使用第三方跟踪技术，也不会将您的信息出售给广告公司。 | 365天 |
+| ph_phc_[token]_posthog | 我们使用PostHog分析软件来了解用户如何与我们的网站互动。这帮助我们创建更好的报告并提升用户体验。该Cookie包含匿名设备标识符、您的浏览会话详情以及您最初到达的页面。所有数据均为匿名收集——我们永远不会识别您的个人身份。Openscholar.ai不使用第三方跟踪技术，也不会将您的信息出售给广告公司。 | 365天 |
 
 ### PostHog Cookie包含哪些数据？
 
@@ -74,7 +74,7 @@ PostHog Cookie以结构化格式保存以下详情：
 
 对于其他浏览器，请查阅浏览器开发商提供的支持文档。
 
-### 从您的设备中移除OpenScholar.ai Cookie
+### 从您的设备中移除Openscholar.ai Cookie
 
 您可以随时使用浏览器的设置来移除我们的分析Cookie：
 

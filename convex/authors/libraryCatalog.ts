@@ -41,7 +41,7 @@ const serviceArgs = {libraryId: v.string(), clerkUserId: v.string(), credentialD
 async function requireLibraryUser(ctx: QueryCtx | MutationCtx, args: {libraryId: string; clerkUserId: string; credentialDigest: string}) {
   if (!await readLibrarySessionAccess(ctx, args)) throw createError("FORBIDDEN", "Community access required");
   const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkUserId)).unique();
-  if (!user || user.state !== "active") throw createError("FORBIDDEN", "Active OpenScholar account required");
+  if (!user || user.state !== "active") throw createError("FORBIDDEN", "Active Openscholar account required");
   return user;
 }
 

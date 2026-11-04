@@ -209,7 +209,7 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "सत्यापन कोड",
    "resendButton": "कोड प्राप्त नहीं हुआ? पुनः भेजें",
-   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "subtitle": "Openscholar पर जारी रखने के लिए",
    "title": "अपना {{provider}} जाँचें"
   },
   "backupCodeMfa": {
@@ -219,13 +219,13 @@
   "emailCode": {
    "formTitle": "सत्यापन कोड",
    "resendButton": "कोड नहीं मिला? फिर से भेजें",
-   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "subtitle": "Openscholar पर जारी रखने के लिए",
    "title": "अपना ईमेल जांचें"
   },
   "emailCodeMfa": {
    "formTitle": "अपना ईमेल जांचें",
    "resendButton": "कोड नहीं मिला? फिर से भेजें",
-   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "subtitle": "Openscholar पर जारी रखने के लिए",
    "title": "अपना ईमेल जांचें"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "साइन इन हो रहा है..."
    },
    "resendButton": "लिंक नहीं मिला? फिर से भेजें",
-   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "subtitle": "Openscholar पर जारी रखने के लिए",
    "title": "अपना ईमेल जांचें",
    "unusedTab": {
     "title": "आप इस टैब को बंद कर सकते हैं"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "अपने ईमेल पर भेजे गए सत्यापन लिंक का उपयोग करें",
    "resendButton": "लिंक नहीं मिला? पुनः भेजें",
-   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "subtitle": "Openscholar पर जारी रखने के लिए",
    "title": "अपना ईमेल जांचें"
   },
   "enterpriseConnections": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "सत्यापन कोड",
    "resendButton": "कोड नहीं मिला? फिर से भेजें",
-   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "subtitle": "Openscholar पर जारी रखने के लिए",
    "title": "अपना फोन जांचें"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "SSO का उपयोग नहीं कर सकते?",
    "code": {
     "resendButton": "कोड नहीं मिला? फिर से भेजें",
-    "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+    "subtitle": "Openscholar पर जारी रखने के लिए",
     "title": "अपना ईमेल जाँचें"
    },
    "notice": "आपके संगठन में सिंगल साइन-ऑन ज़रूरी है। इसके बिना जारी रखने पर यह दर्ज किया जाएगा।"
@@ -367,11 +367,11 @@
     "actionLink": "दूसरी विधि का उपयोग करें",
     "label": "{{provider}} फ़ोन नंबर",
     "subtitle": "{{provider}} पर सत्यापन कोड प्राप्त करने के लिए अपना फ़ोन नंबर दर्ज करें।",
-    "title": "{{provider}} के साथ {{applicationName}} में साइन इन करें"
+    "title": "{{provider}} के साथ Openscholar में साइन इन करें"
    },
    "subtitle": "वापस आने पर स्वागत है! जारी रखने के लिए कृपया साइन इन करें",
-   "title": "{{applicationName}} में साइन इन करें",
-   "titleCombined": "{{applicationName}} पर जारी रखें"
+   "title": "Openscholar में साइन इन करें",
+   "titleCombined": "Openscholar पर जारी रखें"
   },
   "totpMfa": {
    "formTitle": "सत्यापन कोड",
@@ -414,7 +414,7 @@
     "title": "साइन अप हो रहा है..."
    },
    "resendButton": "लिंक नहीं मिला? फिर से भेजें",
-   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "subtitle": "Openscholar पर जारी रखने के लिए",
    "title": "अपना ईमेल सत्यापित करें",
    "verified": {
     "title": "सफलतापूर्वक साइन अप हो गया"
@@ -471,7 +471,7 @@
     "actionLink": "दूसरी विधि का उपयोग करें",
     "label": "{{provider}} फ़ोन नंबर",
     "subtitle": "{{provider}} पर सत्यापन कोड प्राप्त करने के लिए अपना फ़ोन नंबर दर्ज करें।",
-    "title": "{{provider}} के साथ {{applicationName}} में साइन अप करें"
+    "title": "{{provider}} के साथ Openscholar में साइन अप करें"
    },
    "subtitle": "स्वागत है! आरंभ करने के लिए कृपया विवरण भरें।",
    "subtitleCombined": "स्वागत है! आरंभ करने के लिए कृपया विवरण भरें।",

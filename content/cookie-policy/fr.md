@@ -1,18 +1,18 @@
 # Cookies
 
-## Comment OpenScholar.ai utilise les cookies
+## Comment Openscholar.ai utilise les cookies
 
 Lorsque vous naviguez sur openscholar.ai, de petits fichiers de données appelés cookies peuvent être stockés sur votre appareil. Ces fichiers aident les sites web à fonctionner correctement et fournissent aux propriétaires de sites web des informations sur la façon dont leurs sites sont utilisés. Ci-dessous, nous expliquons quels cookies openscholar.ai utilise et leurs finalités.
 
 ## Cookies strictement nécessaires
 
-OpenScholar.ai ne définit actuellement aucun cookie requis pour le fonctionnement du site web.
+Openscholar.ai ne définit actuellement aucun cookie requis pour le fonctionnement du site web.
 
 ## Cookies de performance et d'analyse (facultatifs)
 
 | **Nom** | **Finalité** | **Expiration** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Nous utilisons le logiciel d'analyse PostHog pour comprendre comment les utilisateurs interagissent avec notre site web. Cela nous aide à créer de meilleurs rapports et à améliorer l'expérience utilisateur. Le cookie contient un identifiant d'appareil anonyme, les détails de votre session de navigation et votre page d'atterrissage initiale. Toutes les données sont collectées de manière anonyme - nous ne vous identifions jamais personnellement. OpenScholar.ai n'utilise pas de technologies de suivi tierces et ne vend pas vos informations à des sociétés publicitaires. | 365 jours |
+| ph_phc_[token]_posthog | Nous utilisons le logiciel d'analyse PostHog pour comprendre comment les utilisateurs interagissent avec notre site web. Cela nous aide à créer de meilleurs rapports et à améliorer l'expérience utilisateur. Le cookie contient un identifiant d'appareil anonyme, les détails de votre session de navigation et votre page d'atterrissage initiale. Toutes les données sont collectées de manière anonyme - nous ne vous identifions jamais personnellement. Openscholar.ai n'utilise pas de technologies de suivi tierces et ne vend pas vos informations à des sociétés publicitaires. | 365 jours |
 
 ### Quelles données sont contenues dans le cookie PostHog ?
 
@@ -74,7 +74,7 @@ De plus, tous les principaux navigateurs web proposent des paramètres pour cont
 
 Pour les autres navigateurs, consultez la documentation d'assistance fournie par le développeur de votre navigateur.
 
-### Suppression du cookie OpenScholar.ai de votre appareil
+### Suppression du cookie Openscholar.ai de votre appareil
 
 Vous pouvez supprimer notre cookie d'analyse à tout moment en utilisant les paramètres de votre navigateur :
 

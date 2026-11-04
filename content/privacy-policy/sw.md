@@ -1,6 +1,6 @@
 # **Sera ya faragha**
 
-**Notisi ya faragha kwa wateja wa OpenScholar.ai**
+**Notisi ya faragha kwa wateja wa Openscholar.ai**
 
 Open Development & Education ndiyo msimamizi wa data kwa taarifa binafsi zilizoelezwa katika notisi hii.
 

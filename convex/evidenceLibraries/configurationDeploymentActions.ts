@@ -507,7 +507,7 @@ export const runConfigurationDeployment = internalAction({
       if (!namesCurrentOAuthClient(runtimeConfigJson, signIn, encryptionKey)) {
         throw new CoolifyClientError(
           "CONFIGURATION_TARGET_INVALID",
-          "OpenScholar sign-in for this community changed after this publish was prepared. Publish again.",
+          "Openscholar sign-in for this community changed after this publish was prepared. Publish again.",
         );
       }
       const runtimeImage = requireTargetRuntimeImage(target.runtimeImage);
@@ -936,7 +936,7 @@ export const runConfigurationDeployment = internalAction({
           : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
             ? {
                 code: "OAUTH_CLIENT_SYNC_FAILED",
-                message: "OpenScholar sign-in could not be prepared for this community",
+                message: "Openscholar sign-in could not be prepared for this community",
               }
           : error instanceof DomainEgressRefused
             ? // Written for the owner: it says what is wrong with their domain.

@@ -26,31 +26,31 @@ const ASSETS = [
     env: "EL_DEFAULT_LOGO_URL",
     file: "public/icon.svg",
     // The files are cached as immutable, so a new version of the brand takes new names.
-    key: "platform/openscholar-logo-2026-light.svg",
+    key: "platform/openscholar-logo-hub-light.svg",
     contentType: "image/svg+xml",
   },
   {
     env: "EL_DEFAULT_LOGO_DARK_URL",
     file: "public/icon-black.svg",
-    key: "platform/openscholar-logo-2026-dark.svg",
+    key: "platform/openscholar-logo-hub-dark.svg",
     contentType: "image/svg+xml",
   },
   {
     env: "EL_DEFAULT_FAVICON_URL",
     file: "app/favicon.ico",
-    key: "platform/openscholar-favicon-2026.ico",
+    key: "platform/openscholar-favicon-hub.ico",
     contentType: "image/x-icon",
   },
   {
     runtimeIcon: true,
     file: "app/icon0.svg",
-    key: "platform/openscholar-icon-2026.svg",
+    key: "platform/openscholar-icon-hub.svg",
     contentType: "image/svg+xml",
   },
   {
     runtimeIcon: true,
     file: "app/icon1.png",
-    key: "platform/openscholar-icon-2026-96.png",
+    key: "platform/openscholar-icon-hub-96.png",
     contentType: "image/png",
   },
 ];

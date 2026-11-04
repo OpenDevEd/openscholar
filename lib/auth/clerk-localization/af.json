@@ -209,7 +209,7 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "Verifikasiekode",
    "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
-   "subtitle": "om voort te gaan na {{applicationName}}",
+   "subtitle": "om voort te gaan na Openscholar",
    "title": "Kyk na jou {{provider}}"
   },
   "backupCodeMfa": {
@@ -219,13 +219,13 @@
   "emailCode": {
    "formTitle": "Verifikasiekode",
    "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
-   "subtitle": "om voort te gaan na {{applicationName}}",
+   "subtitle": "om voort te gaan na Openscholar",
    "title": "Kyk na jou e-pos"
   },
   "emailCodeMfa": {
    "formTitle": "Kyk na jou e-pos",
    "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
-   "subtitle": "om voort te gaan na {{applicationName}}",
+   "subtitle": "om voort te gaan na Openscholar",
    "title": "Kyk na jou e-pos"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "Meld aan..."
    },
    "resendButton": "Nie ’n skakel ontvang nie? Stuur weer",
-   "subtitle": "om voort te gaan na {{applicationName}}",
+   "subtitle": "om voort te gaan na Openscholar",
    "title": "Kyk na jou e-pos",
    "unusedTab": {
     "title": "Jy kan hierdie oortjie toemaak"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "Gebruik die bevestigingskakel wat na jou e-pos gestuur is",
    "resendButton": "Nie ’n skakel ontvang nie? Stuur weer",
-   "subtitle": "om voort te gaan na {{applicationName}}",
+   "subtitle": "om voort te gaan na Openscholar",
    "title": "Kyk na jou e-pos"
   },
   "enterpriseConnections": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "Verifikasiekode",
    "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
-   "subtitle": "om voort te gaan na {{applicationName}}",
+   "subtitle": "om voort te gaan na Openscholar",
    "title": "Kyk na jou foon"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "Kan nie SSO gebruik nie?",
    "code": {
     "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
-    "subtitle": "om voort te gaan na {{applicationName}}",
+    "subtitle": "om voort te gaan na Openscholar",
     "title": "Kyk na jou e-pos"
    },
    "notice": "Jou organisasie vereis SSO. Voortgaan sonder SSO word aangeteken."
@@ -367,11 +367,11 @@
     "actionLink": "Gebruik ’n ander metode",
     "label": "{{provider}} foonnommer",
     "subtitle": "Tik jou foonnommer in om ’n verifikasiekode op {{provider}} te ontvang.",
-    "title": "Meld aan by {{applicationName}} met {{provider}}"
+    "title": "Meld aan by Openscholar met {{provider}}"
    },
    "subtitle": "Welkom terug! Meld asseblief aan om voort te gaan",
-   "title": "Meld aan by {{applicationName}}",
-   "titleCombined": "Gaan voort na {{applicationName}}"
+   "title": "Meld aan by Openscholar",
+   "titleCombined": "Gaan voort na Openscholar"
   },
   "totpMfa": {
    "formTitle": "Verifikasiekode",
@@ -414,7 +414,7 @@
     "title": "Registreer..."
    },
    "resendButton": "Nie ’n skakel ontvang nie? Stuur weer",
-   "subtitle": "om voort te gaan na {{applicationName}}",
+   "subtitle": "om voort te gaan na Openscholar",
    "title": "Bevestig jou e-pos",
    "verified": {
     "title": "Suksesvol geregistreer"
@@ -471,7 +471,7 @@
     "actionLink": "Gebruik ’n ander metode",
     "label": "{{provider}} foonnommer",
     "subtitle": "Tik jou foonnommer in om ’n verifikasiekode op {{provider}} te ontvang.",
-    "title": "Registreer by {{applicationName}} met {{provider}}"
+    "title": "Registreer by Openscholar met {{provider}}"
    },
    "subtitle": "Welkom! Vul asseblief die besonderhede in om te begin.",
    "subtitleCombined": "Welkom! Vul asseblief die besonderhede in om te begin.",

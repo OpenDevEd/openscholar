@@ -34,6 +34,8 @@ the other.
   still say Evidence Library (`evidenceLibraries`, `/api/v1/evidence-libraries`,
   `new-el`), and "Evidence Community" in a request means that same thing. Never
   write "library" in text people read when the community is meant.
+- People read the product's name as "Openscholar". Code names, HTTP headers such
+  as `X-OpenScholar-Route`, comments and older plans still say OpenScholar.
 - Before touching code, decide which repository the request is about from what
   it names, not from the current directory. Work in that repository's checkout
   or a worktree of it, even when the session started in the other one.

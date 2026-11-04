@@ -39,11 +39,11 @@ async function deliver(ctx: ActionCtx, adminId: Id<"admins">) {
     const mail = requireInvitationMail();
     const url = new URL("/settings/admin", requireAppUrl()).href;
     await sendInvitationEmail(mail, {
-      senderName: "OpenScholar",
+      senderName: "Openscholar",
       to: row.email,
-      subject: "You're an OpenScholar admin",
-      text: `You've been made an OpenScholar admin.\n\nSign in with ${row.email} to change OpenScholar's settings:\n${url}`,
-      html: `<p>You've been made an OpenScholar admin.</p><p>Sign in with ${escape(row.email)} to change OpenScholar's settings:</p><p><a href="${escape(url)}">${escape(url)}</a></p>`,
+      subject: "You're an Openscholar admin",
+      text: `You've been made an Openscholar admin.\n\nSign in with ${row.email} to change Openscholar's settings:\n${url}`,
+      html: `<p>You've been made an Openscholar admin.</p><p>Sign in with ${escape(row.email)} to change Openscholar's settings:</p><p><a href="${escape(url)}">${escape(url)}</a></p>`,
     });
   } catch (error) {
     console.error("[admins] invite email failed", { adminId, error });

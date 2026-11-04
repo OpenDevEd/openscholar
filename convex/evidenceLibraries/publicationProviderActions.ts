@@ -21,7 +21,7 @@ function sandboxValue(name: string) {
   const value = process.env[`EL_${name}`]?.trim();
   if (!value)
     throw new Error(
-      "The OpenScholar sandbox is not configured for this provider yet.",
+      "The Openscholar sandbox is not configured for this provider yet.",
     );
   return value;
 }

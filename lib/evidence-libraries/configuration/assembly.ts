@@ -70,7 +70,7 @@ export type PlatformBrandAssets = {
 };
 
 const PLATFORM_BRAND_MISSING_MESSAGE =
-  "The community has no logo or favicon and the OpenScholar defaults are not set up yet. Upload one or ask support.";
+  "The community has no logo or favicon and the Openscholar defaults are not set up yet. Upload one or ask support.";
 
 export type PlatformMailService = {
   host: string;

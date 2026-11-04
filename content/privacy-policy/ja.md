@@ -1,6 +1,6 @@
 # **プライバシーポリシー**
 
-**OpenScholar.ai 顧客プライバシーに関する通知**
+**Openscholar.ai 顧客プライバシーに関する通知**
 
 Open Development & Educationは、この通知において説明する個人情報のデータ管理者です。
 

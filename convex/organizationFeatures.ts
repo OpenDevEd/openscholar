@@ -22,7 +22,7 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
     .take(MAX_ORGANIZATIONS_PER_PERSON + 1);
   // Clerk's webhooks write memberships, so no write here can refuse one more.
   if (memberships.length > MAX_ORGANIZATIONS_PER_PERSON) {
-    throw createError("VALIDATION_ERROR", `This account belongs to more than ${MAX_ORGANIZATIONS_PER_PERSON} organizations, more than OpenScholar reads. Leave some to continue.`);
+    throw createError("VALIDATION_ERROR", `This account belongs to more than ${MAX_ORGANIZATIONS_PER_PERSON} organizations, more than Openscholar reads. Leave some to continue.`);
   }
   const rows = await Promise.all(
     memberships.map(async (membership) => ({

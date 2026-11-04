@@ -209,23 +209,23 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "验证码",
    "resendButton": "没有收到验证码？重新发送",
-   "subtitle": "以继续访问 {{applicationName}}",
+   "subtitle": "以继续访问 Openscholar",
    "title": "请查看您的 {{provider}}"
   },
   "backupCodeMfa": {
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "输入备用代码"
   },
   "emailCode": {
    "formTitle": "验证码",
    "resendButton": "重新发送验证码",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "查看您的电子邮件"
   },
   "emailCodeMfa": {
    "formTitle": "查看您的电子邮件",
    "resendButton": "未收到验证码？重新发送",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "查看您的电子邮件"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "正在登录..."
    },
    "resendButton": "重新发送链接",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "查看您的电子邮件",
    "unusedTab": {
     "title": "您可以关闭此标签页"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "使用发送到您电子邮件的验证链接",
    "resendButton": "没有收到链接？重新发送",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "查看您的电子邮件"
   },
   "enterpriseConnections": {
@@ -305,7 +305,7 @@
   },
   "password": {
    "actionLink": "使用其他方法",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "输入您的密码"
   },
   "passwordCompromised": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "验证码",
    "resendButton": "重新发送验证码",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "检查手机短信"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "无法使用 SSO？",
    "code": {
     "resendButton": "没有收到验证码？重新发送",
-    "subtitle": "以继续访问 {{applicationName}}",
+    "subtitle": "以继续访问 Openscholar",
     "title": "请查收电子邮件"
    },
    "notice": "您的组织要求使用单点登录。若不使用，此操作将被记录。"
@@ -367,11 +367,11 @@
     "actionLink": "使用其他方式",
     "label": "{{provider}} 手机号码",
     "subtitle": "输入您的手机号码，以便通过 {{provider}} 接收验证码。",
-    "title": "通过 {{provider}} 登录 {{applicationName}}"
+    "title": "通过 {{provider}} 登录 Openscholar"
    },
    "subtitle": "欢迎回来！请登录您的账户以继续。",
-   "title": "登录 {{applicationName}}",
-   "titleCombined": "继续使用 {{applicationName}}"
+   "title": "登录 Openscholar",
+   "titleCombined": "继续使用 Openscholar"
   },
   "totpMfa": {
    "formTitle": "验证码",
@@ -393,14 +393,14 @@
   "continue": {
    "actionLink": "登录",
    "actionText": "已经有账户了？",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "填写缺少的字段"
   },
   "emailCode": {
    "formSubtitle": "输入发送到您的电子邮件地址的验证码",
    "formTitle": "验证码",
    "resendButton": "重新发送验证码",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "验证您的电子邮件"
   },
   "emailLink": {
@@ -414,7 +414,7 @@
     "title": "正在注册..."
    },
    "resendButton": "重新发送链接",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "验证您的电子邮件",
    "verified": {
     "title": "成功注册"
@@ -444,7 +444,7 @@
    "formSubtitle": "输入发送到您的电话号码的验证码",
    "formTitle": "验证码",
    "resendButton": "重新发送验证码",
-   "subtitle": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
    "title": "验证您的电话"
   },
   "protectCheck": {
@@ -471,10 +471,10 @@
     "actionLink": "使用其他方式",
     "label": "{{provider}} 手机号码",
     "subtitle": "输入您的手机号码，以便通过 {{provider}} 接收验证码。",
-    "title": "通过 {{provider}} 注册 {{applicationName}}"
+    "title": "通过 {{provider}} 注册 Openscholar"
    },
-   "subtitle": "继续使用 {{applicationName}}",
-   "subtitleCombined": "继续使用 {{applicationName}}",
+   "subtitle": "继续使用 Openscholar",
+   "subtitleCombined": "继续使用 Openscholar",
    "title": "创建您的账户",
    "titleCombined": "创建您的账户"
   },

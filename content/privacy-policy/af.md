@@ -1,6 +1,6 @@
 # **Privaatheidsbeleid**
 
-**OpenScholar.ai-kennisgewing oor kliëntprivaatheid**
+**Openscholar.ai-kennisgewing oor kliëntprivaatheid**
 
 Open Development & Education is die databeheerder vir die persoonlike inligting wat in hierdie kennisgewing beskryf word.
 

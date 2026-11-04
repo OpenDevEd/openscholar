@@ -35,7 +35,7 @@
     "credits": "Krediti",
     "upgrade": "Boresha",
     "signIn": "Ingia",
-    "signInCreditsDescription": "Ingia ili kutumia krediti za AI moja kwa moja kutoka OpenScholar",
+    "signInCreditsDescription": "Ingia ili kutumia krediti za AI moja kwa moja kutoka Openscholar",
     "highlightSearchTerms": "Angazia maneno ya utafutaji",
     "signOut": "Toka",
     "results": "Matokeo",
@@ -302,9 +302,9 @@
     "scheduled": "Imepangwa",
     "manageInBillingPortal": "Simamia kwenye lango la malipo",
     "downgradeTo": "Shuka hadi {name}",
-    "metadataTitle": "Bei | OpenScholar",
+    "metadataTitle": "Bei | Openscholar",
     "metadataDescription": "Bei rahisi na wazi kwa timu za ukubwa wote.",
-    "everyFeature": "Kila kipengele cha OpenScholar",
+    "everyFeature": "Kila kipengele cha Openscholar",
     "papersRunning": "Makala {running, number} zinazoendeshwa kwa wakati mmoja",
     "papersInRequest": "Makala {request, number} katika ombi moja",
     "unlimitedCollectionsAndGuests": "Mikusanyiko na wageni bila kikomo",
@@ -317,7 +317,7 @@
     "credentials": "Vitambulisho vya {provider}",
     "sandbox": "Sanduku la majaribio",
     "custom": "Vitambulisho maalum",
-    "sandboxTitle": "Sanduku la majaribio la OpenScholar",
+    "sandboxTitle": "Sanduku la majaribio la Openscholar",
     "sandboxHint": "Inatumia akaunti yetu ya majaribio. Amana zinabaki kwenye mazingira ya majaribio ya mtoa huduma.",
     "title": "Uchapishaji",
     "description": "Unganisha akaunti zinazotumika kusajili DOI na kuhifadhi machapisho.",
@@ -374,7 +374,7 @@
   },
   "aiSetupGate": {
     "title": "Sanidi AI ili kuboresha utafutaji wako",
-    "description": "OpenScholar hutumia AI kuboresha maswali, kuchuja makala, na kutafsiri matokeo.",
+    "description": "Openscholar hutumia AI kuboresha maswali, kuchuja makala, na kutafsiri matokeo.",
     "signInForCredits": "Ingia upate krediti za bure",
     "useOwnApiKey": "Tumia ufunguo wako wa API"
   },
@@ -1043,25 +1043,25 @@
     "searchPlural": "utafutaji"
   },
   "metadata": {
-    "defaultTitle": "OpenScholar | Utafutaji wa makala za kitaaluma",
+    "defaultTitle": "Openscholar | Utafutaji wa makala za kitaaluma",
     "defaultDescription": "Tafuta mamilioni ya makala za kitaaluma na machapisho ya utafiti",
-    "siteName": "OpenScholar",
+    "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",
     "locale": "sw_KE",
-    "historyTitle": "Historia ya utafutaji | OpenScholar",
+    "historyTitle": "Historia ya utafutaji | Openscholar",
     "historyDescription": "Tazama na udhibiti hoja zako za utafutaji za awali.",
-    "bookmarksTitle": "Alamisho | OpenScholar",
+    "bookmarksTitle": "Alamisho | Openscholar",
     "bookmarksDescription": "Dhibiti alamisho zako ili utafutaji uwe wa haraka na wenye ufanisi zaidi.",
-    "privacyTitle": "Sera ya faragha | OpenScholar",
-    "privacyDescription": "Notisi ya faragha kwa wateja wa OpenScholar.ai. Jifunze jinsi Open Development & Education inavyokusanya, kutumia na kulinda taarifa zako binafsi.",
-    "cookiePolicyTitle": "Sera ya vidakuzi | OpenScholar",
-    "cookiePolicyDescription": "Jifunze jinsi OpenScholar.ai inavyotumia vidakuzi kwa uchambuzi na jinsi ya kudhibiti mapendeleo yako ya vidakuzi.",
-    "libraryTitle": "Maktaba - OpenScholar",
+    "privacyTitle": "Sera ya faragha | Openscholar",
+    "privacyDescription": "Notisi ya faragha kwa wateja wa Openscholar.ai. Jifunze jinsi Open Development & Education inavyokusanya, kutumia na kulinda taarifa zako binafsi.",
+    "cookiePolicyTitle": "Sera ya vidakuzi | Openscholar",
+    "cookiePolicyDescription": "Jifunze jinsi Openscholar.ai inavyotumia vidakuzi kwa uchambuzi na jinsi ya kudhibiti mapendeleo yako ya vidakuzi.",
+    "libraryTitle": "Maktaba - Openscholar",
     "libraryDescription": "Vinjari na udhibiti makala zako za kitaaluma ulizohifadhi",
-    "creditsTitle": "Shukrani | OpenScholar",
-    "creditsDescription": "Miradi, data na leseni ambazo OpenScholar inajengwa juu yake.",
-    "sharedTitle": "Vilivyoshirikiwa nami | OpenScholar"
+    "creditsTitle": "Shukrani | Openscholar",
+    "creditsDescription": "Miradi, data na leseni ambazo Openscholar inajengwa juu yake.",
+    "sharedTitle": "Vilivyoshirikiwa nami | Openscholar"
   },
   "validation": {
     "bookmarkNameExists": "Alamisho \"{name}\" tayari ipo",
@@ -1073,7 +1073,7 @@
   },
   "accessibility": {
     "closeDialog": "Funga",
-    "logoAlt": "OpenScholar",
+    "logoAlt": "Openscholar",
     "pageNumberInput": "Nambari ya ukurasa",
     "zoomIn": "Kuza ndani",
     "zoomOut": "Kuza nje",
@@ -1391,19 +1391,19 @@
   },
   "cookieConsent": {
     "bannerTitle": "Tunathamini faragha yako",
-    "bannerDescription": "Tunatumia vidakuzi vya uchambuzi kuelewa jinsi unavyotumia OpenScholar na kuboresha bidhaa. Chagua mapendeleo yako hapa chini.",
-    "dialogDescription": "Tunatumia vidakuzi vya uchambuzi kuelewa jinsi unavyotumia OpenScholar na kuboresha bidhaa. Unaweza kukubali vidakuzi vyote, kukataa visivyo vya lazima, au kubadilisha mapendeleo yako wakati wowote.",
+    "bannerDescription": "Tunatumia vidakuzi vya uchambuzi kuelewa jinsi unavyotumia Openscholar na kuboresha bidhaa. Chagua mapendeleo yako hapa chini.",
+    "dialogDescription": "Tunatumia vidakuzi vya uchambuzi kuelewa jinsi unavyotumia Openscholar na kuboresha bidhaa. Unaweza kukubali vidakuzi vyote, kukataa visivyo vya lazima, au kubadilisha mapendeleo yako wakati wowote.",
     "acceptAll": "Kubali yote",
     "rejectNonEssential": "Kataa visivyo vya lazima",
     "preferencesTitle": "Mapendeleo ya vidakuzi",
-    "preferencesDescription": "Dhibiti jinsi OpenScholar inavyotumia vidakuzi kwa uchambuzi."
+    "preferencesDescription": "Dhibiti jinsi Openscholar inavyotumia vidakuzi kwa uchambuzi."
   },
   "legal": {
     "learnMorePrefix": "Jifunze zaidi katika",
     "and": "na",
     "privacyPolicy": "Sera ya faragha",
     "cookiePolicy": "Sera ya vidakuzi",
-    "backToSite": "← Rudi kwenye OpenScholar"
+    "backToSite": "← Rudi kwenye Openscholar"
   },
   "upgradeDialog": {
     "title": "Boresha hadi {plan}",
@@ -1685,7 +1685,7 @@
     "hideAnswers": "Ficha majibu ya {title}",
     "yesOrNo": "Ndiyo au hapana",
     "lost": "Uchujaji huu umefutwa au haushirikiwi tena nawe",
-    "inOpenScholar": "OpenScholar",
+    "inOpenScholar": "Openscholar",
     "newCollectionIn": "Jina la mkusanyiko mpya kwenye {library}",
     "savedToLibrary": "<n>{count, number}</n> zimeongezwa kwenye {name} kwenye {library}",
     "notInLibrary": "<n>{count, number}</n> hazipo kwenye {library}",
@@ -1938,11 +1938,11 @@
       "sampleBody": "Hivi ndivyo aya ya maandishi itakavyoonekana kwenye tovuti ya umma.",
       "logosHeading": "Nembo na ikoni ya kivinjari",
       "logoLightLabel": "Nembo ya hali angavu",
-      "logoLightHint": "Inatumia nembo ya OpenScholar hadi upakie yako.",
+      "logoLightHint": "Inatumia nembo ya Openscholar hadi upakie yako.",
       "logoDarkLabel": "Nembo ya hali ya giza",
       "logoDarkHint": "Inatumia nembo ya hali angavu hadi upakie yako.",
       "faviconLabel": "Ikoni ya kivinjari ya hali angavu",
-      "faviconHint": "Inatumia ikoni ya OpenScholar hadi upakie yako.",
+      "faviconHint": "Inatumia ikoni ya Openscholar hadi upakie yako.",
       "faviconDarkLabel": "Ikoni ya kivinjari ya hali ya giza",
       "faviconDarkHint": "Inatumia ikoni ya hali angavu hadi upakie yako.",
       "coloursHeading": "Rangi",
@@ -1961,7 +1961,7 @@
         "cardLight": "Kadi (hali angavu)"
       },
       "presets": {
-        "openscholar": "OpenScholar",
+        "openscholar": "Openscholar",
         "sunrise": "Mawio ya jua",
         "forest": "Msitu",
         "ocean": "Bahari",
@@ -2099,8 +2099,8 @@
       "disclaimerHint": "Linaonyeshwa kwa maandishi madogo chini ya kila ukurasa.",
       "attribution": "Mchango",
       "attributionHint": "Mstari mmoja, kwa mfano nani anaendesha jumuiya.",
-      "poweredBy": "Inaendeshwa na OpenScholar",
-      "poweredByHint": "Mstari mdogo unaounganisha tena na OpenScholar.",
+      "poweredBy": "Inaendeshwa na Openscholar",
+      "poweredByHint": "Mstari mdogo unaounganisha tena na Openscholar.",
       "poweredByLocked": "Inapatikana kwenye mipango ya kulipia."
     },
     "contact": {
@@ -2247,7 +2247,7 @@
       "connectAccountFailed": "Imeshindwa kuanzisha kuingia kwa Zotero. Jaribu tena.",
       "disconnect": "Tenganisha",
       "disconnectTitle": "Tenganisha Zotero?",
-      "disconnectBody": "Akaunti yako ya Zotero imetenganishwa na OpenScholar. Vikundi vilivyokwisha kuunganishwa vitaendelea kuleta kwa ufunguo walivyopewa; vikundi vipya vitahitaji uingie tena.",
+      "disconnectBody": "Akaunti yako ya Zotero imetenganishwa na Openscholar. Vikundi vilivyokwisha kuunganishwa vitaendelea kuleta kwa ufunguo walivyopewa; vikundi vipya vitahitaji uingie tena.",
       "disconnectFailed": "Imeshindwa kutenganisha. Jaribu tena.",
       "pasteLink": "Au bandika kiungo cha kikundi",
       "pastePlaceholder": "https://www.zotero.org/groups/2405685/…",
@@ -2271,7 +2271,7 @@
       "resume": "Endelea",
       "sourceAction": "{action} {name}",
       "sourceActionHint": "{action} chanzo",
-      "noSources": "Bado hakuna vyanzo. Ongeza kikundi cha Zotero, utafutaji wa OpenAlex au mkusanyiko wa OpenScholar.",
+      "noSources": "Bado hakuna vyanzo. Ongeza kikundi cha Zotero, utafutaji wa OpenAlex au mkusanyiko wa Openscholar.",
       "listLabel": "Vyanzo vilivyounganishwa",
       "connections": "Miunganisho",
       "connectionsTitle": "Miunganisho ya vyanzo",
@@ -2289,7 +2289,7 @@
       "openAlex": {
         "access": "Ufikiaji wa OpenAlex",
         "ownKey": "Ufunguo wangu wa API",
-        "platformHint": "Imejumuishwa na OpenScholar. Masasisho huleta rekodi zilizobadilika pekee.",
+        "platformHint": "Imejumuishwa na Openscholar. Masasisho huleta rekodi zilizobadilika pekee.",
         "keyLabel": "Ufunguo wa API wa OpenAlex",
         "keyHint": "Tumia ufunguo wako wa API wa OpenAlex kwa jumuiya hii.",
         "savedKey": "Ufunguo uliohifadhiwa {hint}",
@@ -2297,7 +2297,7 @@
         "saveKey": "Hifadhi ufunguo wa API",
         "removeKey": "Ondoa ufunguo uliohifadhiwa",
         "removeKeyTitle": "Ondoa ufunguo wa OpenAlex uliohifadhiwa?",
-        "removeKeyBody": "Utafutaji utatumia ufikiaji wa OpenScholar badala yake.",
+        "removeKeyBody": "Utafutaji utatumia ufikiaji wa Openscholar badala yake.",
         "removeKeyConfirm": "Ondoa ufunguo",
         "addTitle": "Ongeza utafutaji",
         "changeTitle": "Badilisha utafutaji huu",
@@ -2367,7 +2367,7 @@
         "loading": "Inapakia vikundi vyako…",
         "failed": "Vikundi vyako haviwezi kupakiwa."
       },
-      "openScholarCollection": "Mkusanyiko wa OpenScholar",
+      "openScholarCollection": "Mkusanyiko wa Openscholar",
       "openScholarCollectionHint": "Fuata mojawapo ya mikusanyiko yako",
       "pdfs": "PDF",
       "pdfPublishing": {
@@ -2380,12 +2380,12 @@
         "taggedHint": "PDF, dokezo au kiungo chenye lebo yoyote kati ya hizi kwenye Zotero kinachapishwa.",
         "everyHint": "PDF hazihitaji lebo. Madokezo na viungo bado vinahitaji mojawapo ya lebo hizi."
       },
-      "collectionDeleted": "Mkusanyiko huu umefutwa kwenye OpenScholar.",
+      "collectionDeleted": "Mkusanyiko huu umefutwa kwenye Openscholar.",
       "removeCollectionTitle": "Ondoa mkusanyiko huu?",
       "collectionConnectFailed": "Imeshindwa kuongeza mkusanyiko huu.",
       "collectionPicker": {
         "title": "Ongeza mikusanyiko",
-        "description": "Mikusanyiko yako ya OpenScholar. Jumuiya inafuata iliyochaguliwa na kusasisha inapobadilika.",
+        "description": "Mikusanyiko yako ya Openscholar. Jumuiya inafuata iliyochaguliwa na kusasisha inapobadilika.",
         "search": "Tafuta mikusanyiko…",
         "colCollection": "Mkusanyiko",
         "noCollections": "Bado huna mikusanyiko.",
@@ -2596,7 +2596,7 @@
         "yearsDropdown": "Onyesha kichagua mwaka kwenye upau wa utafutaji.",
         "downloads": "Toa upakuaji wa nukuu kwa machapisho na jumuiya nzima.",
         "atomFeed": "Onyesha kiungo cha mlisho wa Atom.",
-        "readerAccounts": "Waruhusu wasomaji waingie kwa OpenScholar ili kuweka alama kwenye rekodi na kuhifadhi mikusanyiko."
+        "readerAccounts": "Waruhusu wasomaji waingie kwa Openscholar ili kuweka alama kwenye rekodi na kuhifadhi mikusanyiko."
       },
       "needs": "Washa {feature} kwanza.",
       "needsSearch": {
@@ -3115,7 +3115,7 @@
   "settingsAi": {
     "modelCount": "{count, plural, one {modeli #} other {modeli #}}",
     "cloudOnly": "Wingu pekee",
-    "openScholarCloud": "Wingu la OpenScholar",
+    "openScholarCloud": "Wingu la Openscholar",
     "browserLabel": {
       "credits": "Kwenye wingu",
       "smart": "Wingu, kisha kivinjari chako",
@@ -3204,7 +3204,7 @@
       "failed": "Jibu limeshindwa",
       "stopped": "Jibu limesimamishwa"
     },
-    "label": "Msaidizi wa OpenScholar",
+    "label": "Msaidizi wa Openscholar",
     "open": "Fungua msaidizi",
     "fold": "Kunja msaidizi",
     "foldHint": "Kunja",
@@ -4789,7 +4789,7 @@
     "outdated": "{library} inahitaji sasisho ili itumike hapa.",
     "error": {
       "notAddress": "Hiyo si anwani.",
-      "notHosted": "OpenScholar haiendeshi jumuiya hiyo.",
+      "notHosted": "Openscholar haiendeshi jumuiya hiyo.",
       "private": "Mkusanyiko huo ni wa faragha. Mmiliki wake anaweza kuushiriki nawe.",
       "notFound": "Hakuna kitu kwenye anwani hiyo.",
       "empty": "Utafutaji au mkusanyiko huo hauna rekodi.",
@@ -4821,7 +4821,7 @@
     "goneHint": "Kiungo hiki kutoka jumuiya kimeisha muda. Kifungue tena kutoka kwenye jumuiya.",
     "problem": {
       "notAddress": "Hakuna kitu hapa cha kufungua. Kifungue tena kutoka kwenye jumuiya.",
-      "notHosted": "Jumuiya hiyo haiendeshwi tena kwenye OpenScholar.",
+      "notHosted": "Jumuiya hiyo haiendeshwi tena kwenye Openscholar.",
       "private": "Mkusanyiko huo ni wa faragha. Mmiliki wake anaweza kuushiriki nawe.",
       "notFound": "Jumuiya haina tena kilichotumwa.",
       "empty": "Kilichotumwa na jumuiya hakina rekodi sasa.",
@@ -5416,11 +5416,11 @@
     "creatingKey": "Inaunda ufunguo...",
     "redirecting": "Inaelekezwa upya...",
     "approve": "Idhinisha",
-    "wantsToConnect": "<strong>{appName}</strong> inataka kuunganishwa na pochi yako ya OpenScholar.",
+    "wantsToConnect": "<strong>{appName}</strong> inataka kuunganishwa na pochi yako ya Openscholar.",
     "copyKey": "Nakili ufunguo huu wa API na uubandike kwenye <strong>{appName}</strong>. Utaonyeshwa mara moja tu.",
-    "originUnregisteredBody": "Programu iliyo kwenye <code>{origin}</code> haijasajiliwa kuunganishwa na OpenScholar.",
-    "originHelp": "Ni chanzo kilichoidhinishwa awali pekee kinachoweza kuunda miunganisho ya pochi. Ikiwa wewe ni msanidi wa <strong>{appName}</strong>, wasiliana na timu ya OpenScholar ili usajili chanzo chako.",
-    "wantsToUseCredits": "<strong>{appName}</strong> inataka kutumia uzalishaji wa AI kupitia krediti zako za OpenScholar.",
+    "originUnregisteredBody": "Programu iliyo kwenye <code>{origin}</code> haijasajiliwa kuunganishwa na Openscholar.",
+    "originHelp": "Ni chanzo kilichoidhinishwa awali pekee kinachoweza kuunda miunganisho ya pochi. Ikiwa wewe ni msanidi wa <strong>{appName}</strong>, wasiliana na timu ya Openscholar ili usajili chanzo chako.",
+    "wantsToUseCredits": "<strong>{appName}</strong> inataka kutumia uzalishaji wa AI kupitia krediti zako za Openscholar.",
     "unknownApp": "Programu isiyojulikana",
     "thisApplicationSOriginIsNot": "Chanzo cha programu hii hakijasajiliwa.",
     "failedToCreateConnection": "Imeshindwa kuunda muunganisho"
@@ -5437,7 +5437,7 @@
     "strip": "Alfa ya umma kwa majaribio.",
     "stripDetail": "Mambo yanaweza kubadilika au kuharibika.",
     "contactUs": "Wasiliana nasi",
-    "plansNotice": "OpenScholar ni bure wakati wa alfa ya umma, ikiwa na vipengele vyote. Mipango itabadilika baada ya hapo.",
+    "plansNotice": "Openscholar ni bure wakati wa alfa ya umma, ikiwa na vipengele vyote. Mipango itabadilika baada ya hapo.",
     "emailAddress": "Tuma barua pepe kwa {email}"
   }
 }

@@ -209,7 +209,7 @@
   "alternativePhoneCodeProvider": {
    "formTitle": "Ikhodi yokuqinisekisa",
    "resendButton": "Awuthole ikhodi? Thumela futhi",
-   "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
    "title": "Hlola i-{{provider}} yakho"
   },
   "backupCodeMfa": {
@@ -219,13 +219,13 @@
   "emailCode": {
    "formTitle": "Ikhodi yokuqinisekisa",
    "resendButton": "Awuthole ikhodi? Thumela futhi",
-   "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
    "title": "Hlola i-imeyili yakho"
   },
   "emailCodeMfa": {
    "formTitle": "Hlola i-imeyili yakho",
    "resendButton": "Awuthole ikhodi? Thumela futhi",
-   "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
    "title": "Hlola i-imeyili yakho"
   },
   "emailLink": {
@@ -248,7 +248,7 @@
     "title": "Uyangena..."
    },
    "resendButton": "Awuthole isixhumanisi? Thumela futhi",
-   "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
    "title": "Hlola i-imeyili yakho",
    "unusedTab": {
     "title": "Ungavala le thebhu"
@@ -270,7 +270,7 @@
   "emailLinkMfa": {
    "formSubtitle": "Sebenzisa isixhumanisi sokuqinisekisa esithunyelwe ku-imeyili yakho",
    "resendButton": "Awuthole isixhumanisi? Thumela futhi",
-   "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
    "title": "Hlola i-imeyili yakho"
   },
   "enterpriseConnections": {
@@ -320,7 +320,7 @@
   "phoneCode": {
    "formTitle": "Ikhodi yokuqinisekisa",
    "resendButton": "Awuthole ikhodi? Thumela futhi",
-   "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
    "title": "Hlola ifoni yakho"
   },
   "phoneCodeMfa": {
@@ -348,7 +348,7 @@
    "actionLink": "Awukwazi ukusebenzisa i-SSO?",
    "code": {
     "resendButton": "Awuthole ikhodi? Thumela futhi",
-    "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+    "subtitle": "ukuze uqhubeke ku-Openscholar",
     "title": "Hlola i-imeyili yakho"
    },
    "notice": "Inhlangano yakho idinga i-SSO. Ukuqhubeka ngaphandle kwayo kuyarekhodwa."
@@ -367,11 +367,11 @@
     "actionLink": "Sebenzisa enye indlela",
     "label": "Inombolo yefoni ye-{{provider}}",
     "subtitle": "Faka inombolo yakho yefoni ukuze uthole ikhodi yokuqinisekisa ku-{{provider}}.",
-    "title": "Ngena ku-{{applicationName}} nge-{{provider}}"
+    "title": "Ngena ku-Openscholar nge-{{provider}}"
    },
    "subtitle": "Siyakwamukela futhi! Sicela ungene ukuze uqhubeke",
-   "title": "Ngena ku-{{applicationName}}",
-   "titleCombined": "Qhubeka ku-{{applicationName}}"
+   "title": "Ngena ku-Openscholar",
+   "titleCombined": "Qhubeka ku-Openscholar"
   },
   "totpMfa": {
    "formTitle": "Ikhodi yokuqinisekisa",
@@ -414,7 +414,7 @@
     "title": "Uyabhalisa..."
    },
    "resendButton": "Awuthole isixhumanisi? Thumela futhi",
-   "subtitle": "ukuze uqhubeke ku-{{applicationName}}",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
    "title": "Qinisekisa i-imeyili yakho",
    "verified": {
     "title": "Ubhalise ngempumelelo"
@@ -471,7 +471,7 @@
     "actionLink": "Sebenzisa enye indlela",
     "label": "Inombolo yefoni ye-{{provider}}",
     "subtitle": "Faka inombolo yakho yefoni ukuze uthole ikhodi yokuqinisekisa ku-{{provider}}.",
-    "title": "Bhalisa ku-{{applicationName}} nge-{{provider}}"
+    "title": "Bhalisa ku-Openscholar nge-{{provider}}"
    },
    "subtitle": "Siyakwamukela! Sicela ugcwalise imininingwane ukuze uqale.",
    "subtitleCombined": "Siyakwamukela! Sicela ugcwalise imininingwane ukuze uqale.",

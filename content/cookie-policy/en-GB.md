@@ -1,18 +1,18 @@
 # Cookies
 
-## How OpenScholar.ai uses cookies
+## How Openscholar.ai uses cookies
 
 When you browse openscholar.ai, small data files called cookies may be stored on your device. These files help websites function properly and provide insights to website owners about how their sites are being used. Below, we explain which cookies openscholar.ai uses and their purposes.
 
 ## Strictly necessary cookies
 
-OpenScholar.ai does not currently set any cookies that are required for the website to function.
+Openscholar.ai does not currently set any cookies that are required for the website to function.
 
 ## Performance and analytics cookies (optional)
 
 | **Name** | **Purpose** | **Expires** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | We use PostHog analytics software to learn how people interact with our website. This helps us create better reports and enhance user experience. The cookie contains an anonymous device identifier, your browsing session details, and your initial landing page. All data is collected anonymously - we never identify you personally. OpenScholar.ai doesn't employ third party tracking technologies or sell your information to advertising companies. | 365 days |
+| ph_phc_[token]_posthog | We use PostHog analytics software to learn how people interact with our website. This helps us create better reports and enhance user experience. The cookie contains an anonymous device identifier, your browsing session details, and your initial landing page. All data is collected anonymously - we never identify you personally. Openscholar.ai doesn't employ third party tracking technologies or sell your information to advertising companies. | 365 days |
 
 ### What data is contained in the PostHog cookie?
 
@@ -74,7 +74,7 @@ Additionally, all major web browsers provide settings to control cookies. For co
 
 For other browsers, check the support documentation provided by your browser's developer.
 
-### Removing the OpenScholar.ai cookie from your device
+### Removing the Openscholar.ai cookie from your device
 
 You can remove our analytics cookie whenever you like using your browser's settings:
 

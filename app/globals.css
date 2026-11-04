@@ -16,18 +16,25 @@
    Light sets every token; dark overrides what differs. Both list their
    surfaces first, in the same order. */
 :root {
-  /* Brand: blue 600, with a brighter and a deeper stop for the brand gradient.
-     Everything brand-coloured derives from these. */
-  --primary: #2563eb;
-  --primary-bright: #3b82f6;
-  --primary-deep: #1d4ed8;
-  --primary-foreground: #ffffff;
+  /* Brand: the orange, with a brighter and a deeper stop for the brand gradient.
+     Everything brand-coloured derives from these. White on this orange is 2.82:1,
+     so text on it is dark, and text in the brand colour takes --primary-ink. */
+  --primary: oklch(0.7 0.17 54);
+  --primary-bright: #ff9d36;
+  --primary-deep: #e0650a;
+  --primary-foreground: #361307;
+  --primary-ink: #b2440a;
 
-  /* Logo: the wordmark, and the three tones of the mark's arcs. */
-  --brand-ink: #172554;
-  --logo-a: #60a5fa;
-  --logo-b: #2563eb;
-  --logo-c: #bfdbfe;
+  /* Logo: the wordmark, and the three shapes of the mark. */
+  --brand-ink: #361307;
+  --logo-sea: #ff6b35;
+  --logo-land: #fff1e0;
+  --logo-network: #141414;
+
+  /* The AI mark and the assistant's mark keep their arcs, in the three oranges. */
+  --logo-a: #ffb347;
+  --logo-b: #ff8c00;
+  --logo-c: #ff6b35;
 
   /* Surfaces, from the back of the screen to the front. Each is a solid colour
      with one job, so changing a line changes that surface everywhere. Side
@@ -36,14 +43,14 @@
   --background: oklch(0.968 0 0); /* the page behind everything */
   --sidebar: oklch(0.985 0 0); /* the app sidebar */
   --card: oklch(1 0 0); /* panels, result items and the sections of a floating sidebar */
-  --card-hover: oklch(0.975 0.012 256); /* a card under the pointer */
+  --card-hover: oklch(0.975 0.012 60); /* a card under the pointer */
   --inset: oklch(0.972 0 0); /* rows, wells and sections inside a card */
   --field: oklch(1 0 0); /* text inputs, selects and outline buttons */
   --popover: oklch(1 0 0); /* menus, popovers and dialogs */
   --muted: oklch(0.948 0 0); /* tracks, chips and quiet fills */
   --secondary: oklch(0.948 0 0); /* secondary buttons and badges */
-  --accent: oklch(0.932 0.032 256); /* hovered and selected items */
-  --sidebar-accent: oklch(0.94 0.028 256); /* hovered and selected sidebar items */
+  --accent: oklch(0.94 0.035 65); /* hovered and selected items */
+  --sidebar-accent: oklch(0.945 0.03 65); /* hovered and selected sidebar items */
   --segment: var(--muted); /* the track of a segmented switch or tab list */
   --segment-active: var(--background); /* its selected segment */
 
@@ -54,9 +61,9 @@
   --card-foreground: oklch(0.205 0 0);
   --popover-foreground: oklch(0.205 0 0);
   --secondary-foreground: oklch(0.32 0 0);
-  --accent-foreground: #1e3a8a;
+  --accent-foreground: #893411;
   --sidebar-foreground: oklch(0.35 0 0);
-  --sidebar-accent-foreground: #1e3a8a;
+  --sidebar-accent-foreground: #893411;
 
   /* Edges. */
   --border: oklch(0.9 0 0); /* card and control outlines */
@@ -100,11 +107,11 @@
   --chart-2: oklch(0.65 0.15 200);
   --chart-3: oklch(0.75 0.12 140);
   --chart-4: oklch(0.6 0.18 330);
-  --chart-5: oklch(0.72 0.16 60);
+  --chart-5: oklch(0.55 0.17 256);
 
   /* Status. One colour each: fills and icons use it directly, and `ink-*` and
      `tint-*` derive readable text and soft surfaces from it in both themes.
-     Info is cyan so it stays apart from the brand blue. */
+     Info is cyan so it stays apart from the brand orange. */
   --success: var(--color-emerald-500);
   --success-foreground: oklch(1 0 0);
   --warning: var(--color-amber-500);
@@ -151,8 +158,7 @@
   --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.25);
 }
 
-/* Dark: true black for OLED screens. As in the brand guidelines' black
-   version, the logo and every brand-coloured control are white and grey. */
+/* Dark: true black for OLED screens, with the same orange. */
 .dark {
   /* The same kinds, stepped for the dark surface. */
   --kind-search: #3987e5;
@@ -166,15 +172,11 @@
   --kind-file: #e5655c;
   --kind-zotero: #e5525d;
   --kind-author: #c26ad8;
-  --primary: #fafafa;
-  --primary-bright: #ffffff;
-  --primary-deep: #a3a3a3;
-  --primary-foreground: #0a0a0a;
+  --primary: oklch(0.72 0.17 54);
+  --primary-ink: #ff9d36;
 
   --brand-ink: #e5e5e5;
-  --logo-a: #e5e5e5;
-  --logo-b: #525252;
-  --logo-c: #fafafa;
+  --logo-network: #f5f5f5;
 
   /* Surfaces: the same list as the light theme. Cards stay close to the page
      and their edges draw them; selected and raised things are clearly lighter. */
@@ -244,6 +246,8 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --text-color-primary: var(--primary-ink);
+  --text-color-sidebar-primary: var(--primary-ink);
   --color-primary-bright: var(--primary-bright);
   --color-primary-deep: var(--primary-deep);
   --color-brand-ink: var(--brand-ink);
@@ -366,11 +370,13 @@
   .bg-segment { --icon-surface: var(--segment); }
   .bg-segment-active,
   [class*="[state=active]:bg-segment-active"][data-state="active"] { --icon-surface: var(--segment-active); }
-  /* On a primary fill the logo and the AI mark turn the fill's foreground, like the logo on the deck's blue. */
+  /* On a primary fill the mark's sea goes dark and its network white, and the AI mark turns the fill's foreground. */
   .bg-primary, .hover\:bg-primary:hover,
   [class*="[state=checked]:bg-primary"][data-state="checked"],
   [class*="[state=active]:bg-primary"][data-state="active"] {
     --icon-surface: var(--primary);
+    --logo-sea: #141414;
+    --logo-network: #ffffff;
     --logo-a: var(--primary-foreground);
     --logo-b: var(--primary-foreground);
     --logo-c: var(--primary-foreground);
@@ -502,7 +508,7 @@
 @utility ai-surface {
   background: color-mix(in oklab, var(--primary) 6%, transparent);
   border-color: color-mix(in oklab, var(--primary) 25%, transparent);
-  color: var(--primary);
+  color: var(--primary-ink);
   transition: color 200ms ease, background-color 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
 
   &:hover {
