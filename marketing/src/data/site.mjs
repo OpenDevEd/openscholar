@@ -13,9 +13,8 @@ export const NAV = [
   { id: "product", href: "/#product", label: "Product", rows: [
     { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#4fc3d9", field: "ocean", art: "sea", img: "search2-laptop-dark" },
     { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve-front", img: "screen-laptop-dark" },
-    { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", color: "#fde047", field: "night", art: "grid", img: "extract-laptop-dark" },
+    { href: "/#extraction", title: "Extract and trace", text: "Answers you can sort, export and check", icon: "table", color: "#fde047", field: "night", art: "thread", img: "extract-laptop-dark" },
     { href: "/#assistant", title: "Delegate to the assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#7da7e6", field: "steel", art: "gate", img: "assistant-laptop-dark" },
-    { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", color: "#ff9d36", field: "night", art: "thread" },
   ] },
   { id: "communities", href: "/evidence-communities/", label: "Evidence Communities", rows: [
     { href: "/evidence-communities/#readers", title: "Search and read", text: "Everything your readers need to use the evidence", icon: "search", color: "#fb7185", field: "rose", art: "globe", img: "c-search-laptop-light" },
@@ -33,7 +32,7 @@ export const NAV = [
 ];
 // Each page's sections, for the map of the page in the header once you scroll.
 export const SECTIONS = {
-  "/": [["tour", "Tour", "#ff9d36"], ["product", "Find", "#4fc3d9"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fde047"], ["assistant", "Assistant", "#7da7e6"], ["trust", "Trust", "#ff9d36"], ["community", "Communities", "#fb7185"]],
+  "/": [["tour", "Tour", "#ff9d36"], ["product", "Find", "#4fc3d9"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fde047"], ["assistant", "Assistant", "#7da7e6"], ["community", "Communities", "#fb7185"]],
   "/evidence-communities/": [["readers", "Readers", "#4fc3d9"], ["answers", "Answers", "#ff9d36"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
   "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#7da7e6"], ["publish", "Review", "#34d399"]],
 };
