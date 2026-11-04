@@ -1,10 +1,10 @@
 /**
  * AI overviews of a search (#967). The results page shows one for the lens the person has open; ./overviewsAction.ts
- * writes it on the Cheap preset's chat model, from counts and papers of the search it reads itself. An overview is
+ * writes it on the model the person's preset sets for overviews, from counts and papers of the search it reads itself. An overview is
  * stored by the search's OpenAlex request and the lens, so a search that asks the same reads it again for nothing.
  *
- * Go and above write the open lens free, up to the plan's `overviews_per_day` a day. Past it, and on a plan without
- * it, an overview waits for the person to ask and is paid in credits, up to PAID_PER_DAY a day. Folded, the page asks
+ * Go and above write the open lens free, up to the plan's `overviews_per_day` a day, for people on a preset. Past it,
+ * on a plan without it, and on Custom, an overview waits for the person to ask and is paid in credits, up to PAID_PER_DAY a day. Folded, the page asks
  * for nothing: that's how a person pauses them.
  */
 import { v, type Infer } from "convex/values";
@@ -14,7 +14,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Acting } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
-import { overviewPick } from "../ai/serverModel";
+import { organizationPreset, overviewPick, userAiConfig } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requestOf } from "../paperSets/search";
 import { searchRequestValidator } from "../paperSets/openalex";
@@ -128,6 +128,15 @@ async function paidCredits(ctx: QueryCtx, actor: { userId: Id<"users">; workspac
   return model ? estimateCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, CALL_TOKENS.overview) : null;
 }
 
+/**
+ * Free overviews a person gets a day: the plan's, or none on Custom. An organization's work always runs on its preset,
+ * so only a person's own workspace can be on Custom. Undefined when the plan has no limit.
+ */
+async function freePerDay(ctx: QueryCtx, { userId, workspaceId }: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
+  const onCustom = (await organizationPreset(ctx, workspaceId)) === null && (await userAiConfig(ctx, userId))?.choice === "custom";
+  return onCustom ? 0 : await planLimit(ctx, workspaceId, "overviews_per_day");
+}
+
 export const viewAction = defineUserQuery({
   path: "research/overviews:view",
   description:
@@ -137,7 +146,7 @@ export const viewAction = defineUserQuery({
   run: async (ctx, { userId, workspaceId }) => {
     const prefs = await prefsOf(ctx, workspaceId, userId);
     const lenses = lensesOn(prefs, await sharedOf(ctx, workspaceId), userId);
-    const perDay = await planLimit(ctx, workspaceId, "overviews_per_day");
+    const perDay = await freePerDay(ctx, { userId, workspaceId });
     return {
       lenses,
       open: lenses.some((lens) => lens.id === prefs?.open) ? prefs!.open : DEFAULT_LENS,
@@ -198,7 +207,7 @@ export const ensureAction = defineUserMutation({
     const prefs = await ownPrefs(ctx, actor);
     const day = today();
     const counts = prefs.day === day ? { free: prefs.free ?? 0, paid: prefs.paid ?? 0 } : { free: 0, paid: 0 };
-    const perDay = await planLimit(ctx, actor.workspaceId, "overviews_per_day");
+    const perDay = await freePerDay(ctx, actor);
     const free = perDay === undefined || counts.free < perDay;
     if (!free && !pay) return "ask";
     if (!free && counts.paid >= PAID_PER_DAY) return "limit";
