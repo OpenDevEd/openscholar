@@ -25,7 +25,7 @@ const first = rows.findIndex((r) => r.c === 90); // The row lit before anyone ch
   </div>
   <div class="g-wrap">
     <div class="glass" aria-hidden="true"><img src="/img/art-stack.avif" width="448" height="1536" alt="" decoding="sync" /><div class="flare"><img src="/img/art-stack.avif" width="448" height="1536" alt="" decoding="sync" /></div></div>
-    <div class="g-head"><h2>Built for the moment someone asks how you know</h2><p>Every answer keeps the sentence it came from. Every change carries a name, and people make the final call.</p></div>
+    <div class="g-head"><h2>Built for the moment someone asks how you know</h2><p>Cited answers point to the words they came from, so you can check them yourself and make the final call.</p></div>
     <div class="g-text" data-sheets>{rows.map(({ c, ask, before, pre, mark, post, after, source }, i) => <article class:list={["ab", { on: i === first }]} data-i={i} style={shade(c)}><h3>{ask}</h3><div class="ab-body"><p><span class="more">{before}</span><span class="sent">{pre}<mark>{mark}</mark>{post}</span><span class="more">{after}</span></p><p class="src">{source}</p></div></article>)}</div>
   </div>
   <svg class="wires" aria-hidden="true"><defs><linearGradient id="tail" gradientUnits="userSpaceOnUse"><stop offset="0" style="stop-color:var(--heat)" /><stop offset="1" style="stop-color:var(--heat);stop-opacity:.2" /></linearGradient></defs>{rows.map(() => <path class="hair" />)}{rows.map(() => <path class="spark" pathLength="1" />)}<path class="core" pathLength="1" /><path class="thru" pathLength="1" /><path class="run" pathLength="1" stroke="url(#tail)" /><path class="pulse" pathLength="1" /></svg>

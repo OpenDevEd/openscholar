@@ -25,11 +25,12 @@ const more = [
   <div class="b-head"><h2>From any page, the work is one message away</h2><p class="lead">The assistant sits beside whatever you have open, so "these papers" means the ones on that page. Ask for the search, the collection, the screening and the extraction in one go, and follow each step in the chat.</p></div>
   <div class="b-stage" data-stage>
     <svg class="assistant-mark b-mark" viewBox="0 0 128 128" data-motion="still" aria-hidden="true" set:html={orbitShape} />
-    <ol class="b-band" data-band data-asks={JSON.stringify(stops.map((s) => s[3]))} aria-label="Pages of Openscholar with the assistant beside them">
+    <ol class="b-band" data-band tabindex="-1" data-asks={JSON.stringify(stops.map((s) => s[3]))} aria-label="Pages of Openscholar with the assistant beside them">
       {stops.map(([id, name], i) => <li class:list={["sheet", { on: !i }]}><button type="button" aria-label={`Show the assistant beside ${name}`}><img src={`/img/beside/page-${id}.avif`} srcset={`/img/beside/page-${id}-1040.avif 1040w, /img/beside/page-${id}.avif 2000w`} sizes="(max-width: 1000px) 480px, (max-width: 1180px) 560px, (max-width: 1360px) 640px, (max-width: 1599px) 720px, 880px" width="2000" height="1250" loading="lazy" decoding="async" alt="" /></button></li>)}
     </ol>
     <div class="b-panel" data-panel>
-      {stops.map(([id, , sees, , alt], i) => <div class:list={["b-state", { on: !i }]}><img src={`/img/beside/panel-${id}.avif`} width="800" height="1195" loading="lazy" decoding="async" alt={alt} /><span class="b-sees"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5C6.5 5 3 9.7 2 12c1 2.3 4.5 7 10 7s9-4.7 10-7c-1-2.3-4.5-7-10-7Zm0 10.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" /></svg>Sees {sees}</span></div>)}
+      {stops.map(([id, , sees, , alt], i) => <div class:list={["b-state", { on: !i }]}><img src={`/img/beside/panel-${id}.avif`} width="800" height="1195" loading="lazy" decoding="sync" alt={alt} /><span class="b-sees"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5C6.5 5 3 9.7 2 12c1 2.3 4.5 7 10 7s9-4.7 10-7c-1-2.3-4.5-7-10-7Zm0 10.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" /></svg>Sees {sees}</span></div>)}
+      <i class="b-wash" aria-hidden="true"></i>
       <p class:list={["b-draft", { empty: !stops[0][3] }]} data-draft aria-hidden="true">{stops[0][3]}</p>
     </div>
   </div>
@@ -40,48 +41,261 @@ const more = [
   import { orbitSeconds } from "../mark/orbit.js";
   const root = document.querySelector("[data-beside]");
   if (root) {
-    const band = root.querySelector("[data-band]"), panel = root.querySelector("[data-panel]"), states = [...root.querySelectorAll(".b-state")], draft = root.querySelector("[data-draft]"), mark = root.querySelector(".b-mark");
-    const words = JSON.parse(band.dataset.asks), real = [...band.children], count = real.length, still = matchMedia("(prefers-reduced-motion: reduce)"), GLIDE = 1300, HOLD = GLIDE + 6000;
-    // The band is a ring: a copy of the last page before the first, and of the first two after the last, so it always moves forward.
+    const band = root.querySelector("[data-band]"), panel = root.querySelector("[data-panel]"), states = [...root.querySelectorAll(".b-state")], draft = root.querySelector("[data-draft]"), mark = root.querySelector(".b-mark"), wash = root.querySelector(".b-wash"), still = matchMedia("(prefers-reduced-motion: reduce)");
+    const words = JSON.parse(band.dataset.asks), real = [...band.children], count = real.length, mod = (n) => ((n % count) + count) % count, clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+    // The band is a ring, with four copies on each side of the real pages: a wrap shows nothing even on a very wide window, and a run of swipes has room to finish before the band has to wrap under a finger.
     const copy = (el) => { const c = el.cloneNode(true); c.setAttribute("aria-hidden", "true"); c.querySelector("button").tabIndex = -1; return c; };
-    band.prepend(copy(real[count - 1])); band.append(copy(real[0]), copy(real[1]));
-    const ring = [...band.children], left = (r) => ring[r].offsetLeft - parseFloat(getComputedStyle(band).scrollPaddingInlineStart), stopOf = (r) => (r - 1 + count) % count;
-    let at = -1, spot = 1, timer, typing, frame, settle, gliding = false, seen = false, held = false, touching = false, taken = false, typedFirst = still.matches;
-    // What the icon does at each page: it searches for papers, waits on your approval, writes up the extraction, searches again, and thinks over your communities.
-    const GESTURE = ["searching", "idle", "writing", "searching", "thinking"], POSE = ["transform", "opacity", "strokeDashoffset"], pose = (n) => Object.fromEntries(POSE.map((k) => [k, getComputedStyle(n)[k]]));
-    // A new gesture starts from the pose on screen, the way the app's panel does it.
-    const act = (gesture) => { if (still.matches || !seen) return; clearTimeout(settle); const parts = [...mark.querySelectorAll(".motion-part")], from = parts.map(pose); mark.dataset.motion = "still"; parts.forEach((n, i) => { const to = pose(n); if (POSE.some((k) => from[i][k] !== to[k])) n.animate([from[i], to], { duration: 360, easing: "cubic-bezier(.22, .7, .25, 1)" }); }); settle = setTimeout(() => { mark.style.setProperty("--cycle", `${orbitSeconds[gesture]}s`); mark.dataset.motion = gesture; }, 360); };
-    const nearest = () => { let best = 0, gap = Infinity; ring.forEach((_, r) => { const d = Math.abs(left(r) - band.scrollLeft); if (d < gap) { gap = d; best = r; } }); return best; };
-    const type = (text) => { typedFirst = true; clearInterval(typing); draft.classList.toggle("empty", !text); draft.classList.remove("typing"); if (still.matches || !text) { draft.textContent = text; act(GESTURE[at]); return; } let n = 0; draft.textContent = ""; draft.classList.add("typing"); act("listening"); typing = setInterval(() => { draft.textContent = text.slice(0, ++n); if (n >= text.length) { clearInterval(typing); draft.classList.remove("typing"); act(GESTURE[at]); } }, 26); };
-    const show = (stop) => { if (stop === at) return; const opening = at < 0; at = stop; ring.forEach((s, r) => { const on = stopOf(r) === stop; s.classList.toggle("on", on); s.querySelector("button").ariaCurrent = on ? "true" : null; }); states.forEach((s, i) => s.classList.toggle("on", i === stop)); if (!opening) type(words[stop]); };
-    const home = () => { if (spot === 0) spot = count; else if (spot > count) spot -= count; band.scrollLeft = left(spot); };
-    const glide = (r) => { spot = r; cancelAnimationFrame(frame); if (still.matches) { band.scrollLeft = left(r); home(); show(stopOf(spot)); return; } const from = band.scrollLeft, to = left(r), t0 = performance.now(); gliding = true; band.style.scrollSnapType = "none"; const tick = (t) => { const k = Math.min(1, (t - t0) / GLIDE), e = k < .5 ? 4 * k ** 3 : 1 - (-2 * k + 2) ** 3 / 2; band.scrollLeft = from + (to - from) * e; if (k < 1) frame = requestAnimationFrame(tick); else { home(); band.style.scrollSnapType = ""; gliding = false; } }; frame = requestAnimationFrame(tick); };
-    // The loop runs while the stage is on screen, unless the pointer is reading the panel or a finger is down. A click, a tab or a sideways swipe hands it to the reader for good.
-    const wake = () => { clearTimeout(timer); if (seen && !held && !touching && !taken && !still.matches) timer = setTimeout(() => { glide(spot + 1); wake(); }, HOLD); };
-    const take = () => { taken = true; clearTimeout(timer); };
-    const stop = () => { take(); cancelAnimationFrame(frame); gliding = false; band.style.scrollSnapType = ""; };
-    band.scrollLeft = left(1); show(0);
-    if (!still.matches) { draft.textContent = ""; draft.classList.add("empty"); }
-    band.addEventListener("scroll", () => { if (touching && !gliding) take(); show(stopOf(nearest())); }, { passive: true });
-    band.addEventListener("scrollend", () => { if (!gliding) { spot = nearest(); home(); } });
-    // A mostly sideways wheel moves the band. A slightly diagonal scroll is the page's: the browser would otherwise hand all of it to the band.
-    band.addEventListener("wheel", (e) => { if (!e.deltaX) return; if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) stop(); else { e.preventDefault(); scrollBy({ top: e.deltaY, behavior: "instant" }); } }, { passive: false });
-    // A finger always wins: it stops a glide already under way and takes the band.
-    band.addEventListener("touchstart", () => { touching = true; clearTimeout(timer); if (gliding) stop(); }, { passive: true });
-    for (const e of ["touchend", "touchcancel"]) band.addEventListener(e, () => { touching = false; wake(); }, { passive: true });
-    ring.forEach((s, r) => s.querySelector("button").addEventListener("click", () => { take(); glide(r); }));
-    band.addEventListener("focusin", (e) => { if (e.target.matches(":focus-visible")) { take(); glide(ring.indexOf(e.target.closest("li"))); } });
+    const spare = count - 1; band.prepend(...real.slice(1).map(copy)); band.append(...real.slice(0, spare).map(copy));
+    const ring = [...band.children], stopOf = (r) => mod(r - spare), atEnd = (n) => n > count + spare - 2 || n < 1 - spare;
+    // One chip stays on the composer and changes with the page. The chips inside the chats stay for a screen reader and for no script.
+    const names = states.map((s) => s.querySelector(".b-sees").textContent), chip = states[0].querySelector(".b-sees").cloneNode(true); chip.classList.add("b-live"); chip.setAttribute("aria-hidden", "true"); panel.append(chip);
+    const part = (q) => mark.querySelector(q), p1 = part(".p1"), p2 = part(".p2"), p3 = part(".p3"), body = part(".body"), layers = part(".layers"), face = part(".face"), eyeGroup = part(".normal-eyes"), smile = part(".smile"), eyes = [...mark.querySelectorAll(".eye"), chip.querySelector("svg")], parts = [...mark.querySelectorAll(".motion-part")];
+
+    // Everything that moves is a spring stepped from one loop in small steps that fit each frame exactly, and input only changes where the springs are heading, so nothing can restart.
+    let H = 1 / 120; const pull = (s, to, w, z) => { s.v += (w * w * (to - s.x) - 2 * z * w * s.v) * H; s.x += s.v * H; }, spring = (x = 0) => ({ x, v: 0 });
+    const chipBox = spring(), ride = spring(), crown = spring(), middle = spring(), lower = spring(), bodyX = spring(), bodyY = spring(), gazeX = spring(), gazeY = spring(), tilt = spring(), rise = spring(), squint = spring(), thump = spring(), crownThump = spring(), breath = spring(1), turn = [0, 1, 2].map(() => ({ ...spring(), to: 0 })), springs = [ride, crown, middle, lower, bodyX, bodyY, gazeX, gazeY, tilt, rise, squint, thump, crownThump, ...turn];
+    let raf = 0, last = 0, t = 0, goal = 0, aim = 0, reach = 1, heldFor = 9, lastInput = -9, lastGap = 9, rushed = false, moving = false, wheeling = false, wheelAt = 0, wheelSign = 1, owner = false, scrolledAt = 0, touching = false, dragging = false, taken = false, held = false, holdUntil = 0, onScreen = false, half = false, halfAt = 0, pageScrolledAt = -9, lit = false, ready = Infinity, hover = 0, pointer = null, glanceAt = 0, glancing = false, later = [];
+    let story = -1, clock = 0, shown = "", typed = 0, head = 0, showing = 0, veil = 0, gesture = "still", bridges = [], blinkAt = -9, lids = [.07, .04, .13], lidsOpen = true, smiling = false, chipFade = 1, chipWords = 0, chipDip = 0, chipSlack = 0, chattedAt = -9;
+    // The band's measurements, read only when the layout changes. The mark's centre is read again when the pointer comes into the section.
+    let origin = 0, step = 1, leftEdge = 0, rightEdge = 0, written = 0, cx = 0, cy = 0, idle = 0, bandWidth = 0, chipWidths = [];
+    // The band sits on its base copies, wrapping on any frame because nothing shows. Under a finger it stays on the copy it is on, because a jump would swallow a swipe just starting.
+    const place = () => { const n = touching ? ride.x + count * Math.round(((written - origin) / step - ride.x) / count) : mod(ride.x); written = origin + n * step; band.scrollLeft = written; };
+    const rewrap = (sl, n) => { written = sl - Math.sign(n) * count * step; band.scrollLeft = written; };
+    const centre = () => { const m = mark.getBoundingClientRect(); cx = m.left + scrollX + m.width / 2; cy = m.top + scrollY + m.height / 2; };
+    const measure = () => { const pad = parseFloat(getComputedStyle(band).scrollPaddingInlineStart); origin = ring[spare].offsetLeft - pad; step = (ring[spare + count].offsetLeft - ring[spare].offsetLeft) / count; leftEdge = pad; rightEdge = pad + ring[spare].offsetWidth; bandWidth = band.clientWidth; chip.style.width = ""; chipWidths = names.map((n) => { chip.lastChild.data = n; return chip.offsetWidth; }); chipSlack = parseFloat(getComputedStyle(chip).paddingRight) / 2; fitChip(); centre(); if (!owner) place(); };
+    const after = (s, f) => later.push([t + s, f]), pageScrolled = () => { pageScrolledAt = t; };
+
+    // The chip at rest on the page on show, with no motion: on load, on a resize and under reduced motion.
+    const fitChip = () => { chipBox.x = chipWidths[head]; chipBox.v = 0; chipWords = head; chipDip = 0; chipFade = 1; chip.lastChild.data = names[head]; chip.style.width = `${chipBox.x}px`; chip.style.removeProperty("--fade"); };
+    // The page on show: the bright sheet, aria-current and the chip, whose words dim at once and whose box starts for the new width.
+    // The page under the pointer brightens on every copy of it, so the band wrapping under a parked pointer changes nothing on screen.
+    const hot = (p) => ring.forEach((s, r) => s.classList.toggle("hot", stopOf(r) === p));
+    const showPage = (p) => { head = p; ring.forEach((s, r) => { const on = stopOf(r) === p; s.classList.toggle("on", on); s.querySelector("button").ariaCurrent = on ? "true" : null; }); if (still.matches) fitChip(); else chipDip = t + .06; };
+    const chat = (p) => { showing = p; chattedAt = t; states.forEach((s, i) => s.classList.toggle("on", i === p)); };
+    const write = (text) => { if (text !== shown) { shown = text; draft.textContent = text; } };
+
+    // What the icon does after each request: it searches for papers, waits on your approval, writes up the extraction, searches again, and thinks over your communities. The lengths are shortened from the app's so a gesture fits one page, except listening, which keeps the app's so its blink falls after the send.
+    const GESTURE = ["searching", "idle", "writing", "searching", "thinking"], CYCLE = { idle: orbitSeconds.idle, listening: orbitSeconds.listening, searching: 4.2, writing: 4.2, thinking: 4.2, complete: 3 };
+    const BRIDGE = { duration: 420, easing: "cubic-bezier(.22, .7, .25, 1)" }, FLAT = ["none", "matrix(1, 0, 0, 1, 0, 0)"], pose = (n) => { const c = getComputedStyle(n); return { transform: c.transform, opacity: c.opacity, strokeDashoffset: c.strokeDashoffset }; };
+    // A new gesture starts from the pose on screen: the old pose decays straight into the new gesture as it runs. The transform accumulates, like the gestures themselves, because a replacing transform runs off the main thread and hides the springs' individual properties.
+    const act = (name) => { if (name === gesture) return; gesture = name; const from = parts.map(pose); bridges.forEach((a) => a.cancel()); bridges = []; if (CYCLE[name]) mark.style.setProperty("--cycle", `${CYCLE[name]}s`); mark.dataset.motion = name; parts.forEach((n, i) => { const a = from[i], to = pose(n); if (!FLAT.includes(a.transform)) bridges.push(n.animate([{ transform: a.transform, offset: 0 }], { ...BRIDGE, composite: "accumulate" })); if (a.opacity !== to.opacity || a.strokeDashoffset !== to.strokeDashoffset) bridges.push(n.animate([{ opacity: a.opacity, strokeDashoffset: a.strokeDashoffset, offset: 0 }], { ...BRIDGE, duration: 200 })); }); };
+    const blink = (c = .07, h = .04, o = .13, must = false) => { if (must || t - blinkAt > .9) { blinkAt = t; lids = [c, h, o]; } };
+
+    // Typing has its own rhythm: quick runs, a beat after a space, a longer one after punctuation.
+    const paces = words.map((w) => { let sum = 0; return [...w].map((ch, i) => (sum += .034 + .014 * Math.sin(i * 2.4) + (ch === " " ? .07 : 0) + (/[.,?]/.test(ch) ? .12 : 0))); }), length = (p) => paces[p].at(-1) ?? 0;
+    const SEND = .36, RELEASE = .48, COMPLETE = 4.68, NEXT = 7.68, WAIT = 5, LOOKUP = 3.4, GATHER = .3, SERVE = 2, THUMP = 36, TAU = 2 * Math.PI;
+
+    // Every step, by hand or automatic, starts the same way: the ribbons take a kick that fades as they lean.
+    const depart = (dir, extra = 0) => { heldFor = 0; moving = true; band.style.scrollSnapType = "none"; crown.v -= dir * (90 + extra) * Math.max(0, 1 - Math.abs(crown.x) / 34); middle.v += dir * 60 * Math.max(0, 1 - Math.abs(middle.x) / 24); lower.v += dir * 40 * Math.max(0, 1 - Math.abs(lower.x) / 17); };
+    // A person's hand lands on top of the lean: a quick thump through the body and eyes that fades before the next click, so every click shows at any speed. Clicks closer together than the thump's own swing get a smaller one, so they read as nudges and not a shake. The crown only takes its share in a rush: a lone click gets the same force as a stronger kick (the value returned), so the crown makes one motion and never hits, hangs and swings.
+    const rap = (dir) => { lastGap = t - lastInput; lastInput = t; const size = THUMP * Math.min(1, lastGap / .3), alone = clamp((lastGap - .3) / .4, 0, 1); thump.v += dir * size; crownThump.v += dir * size * (1 - alone); return alone; };
+    // Input only moves the goal, and a repeated page does nothing.
+    const go = (to) => {
+      taken = true;
+      if (still.matches) { goal = to; settle(); return; }
+      wheeling = false; if (owner) { owner = false; band.style.scrollSnapType = "none"; }
+      if (to === goal) return;
+      const dir = Math.sign(to - goal), alone = rap(dir); rushed = lastGap < 1.1; goal = to; reach = 1;
+      depart(dir, 60 * alone);
+      run();
+    };
+    // Next and back. Clicks faster than the band can serve only thump: it never gets more than two pages behind, so it comes to rest soon after the hand stops.
+    const nudge = (dir) => { const to = Math.round(goal) + dir; if (Math.abs(to - ride.x) < SERVE) go(to); else { rap(dir); heldFor = 0; } };
+    const nearest = (p) => { const g = Math.round(goal); return g + ((mod(p - g) + 2) % count) - 2; };
+
+    // Reduced motion, and what any input does under it: everything at once, on the page asked for, with the whole request written.
+    const settle = () => {
+      cancelAnimationFrame(raf); raf = 0; later = []; wheeling = owner = moving = rushed = false;
+      goal = mod(Math.round(goal)); for (const s of springs) s.x = s.v = 0; for (const r of turn) r.to = 0; ride.x = goal; lit = true; root.classList.add("lit"); removeEventListener("scroll", pageScrolled); ready = 0; blinkAt = -9;
+      band.style.scrollSnapType = ""; place();
+      for (const n of [mark, layers, ...parts, ...eyes]) { n.style.removeProperty("rotate"); n.style.removeProperty("translate"); n.style.removeProperty("scale"); n.style.removeProperty("opacity"); }
+      bridges.forEach((a) => a.cancel()); bridges = []; gesture = "still"; mark.dataset.motion = "still";
+      veil = 0; wash.style.opacity = 0; chat(goal); showPage(goal); fitChip();
+      write(words[goal]); typed = shown.length; draft.classList.remove("typing", "sent"); draft.classList.toggle("empty", !shown);
+      story = goal; clock = length(goal) + NEXT; holdUntil = t + 4;
+    };
+
+    const tick = (ms) => {
+      if (!onScreen) { raf = 0; return; }
+      raf = requestAnimationFrame(tick);
+      const dt = clamp((ms - last) / 1000, 0, 1 / 30); last = ms; t += dt;
+      for (let i = later.length - 1; i >= 0; i--) if (later[i][0] <= t) later.splice(i, 1)[0][1]();
+
+      // The icon rises once the stage reaches the middle of the view and the page has stopped scrolling, after half a second of slow scrolling, or at the first touch of the band.
+      if (!lit && (taken || (half && (t - pageScrolledAt > .12 || t - halfAt > .5)))) {
+        lit = true; root.classList.add("lit"); removeEventListener("scroll", pageScrolled); ready = t + 1.1; rise.x = 1; blink(0, .45, .13, true);
+        [-120, -90, -60].forEach((a, i) => { turn[i].x = turn[i].to = a; after(i * .06, () => { turn[i].to = 0; }); });
+      }
+
+      // A finger or a browser scroll owns the band: read where it is, so the icon leans during a swipe too.
+      if (owner) {
+        const sl = band.scrollLeft, n = (sl - origin) / step, x = n + count * Math.round((ride.x - n) / count);
+        if (dt) ride.v += ((x - ride.x) / dt - ride.v) * .35;
+        ride.x = x; written = sl; goal = Math.round(x); heldFor = 0;
+        // A run of swipes that never lets the band rest wraps near the band's end once a finger is dragging: the browser's snap has stopped by then, and it would undo a write any earlier and swallow the swipe.
+        if ((dragging || band.style.scrollSnapType) && atEnd(n)) rewrap(sl, n);
+        if (!touching && t - scrolledAt > .14) { owner = false; goal = Math.round(x + ride.v * .12); reach = 1; band.style.scrollSnapType = "none"; }
+      }
+      // A wheel moves the aim. When it stops, the band finishes on the page ahead of where it's going, and never on one short of a page already asked for.
+      if (wheeling) { goal = Math.round(aim); heldFor = 0; if (t - wheelAt > .12) { const r = Math.round(aim + .35 * wheelSign), ahead = ride.x + ride.v / 7.5; goal = ride.v > 1 ? Math.max(r, Math.ceil(ahead - .15)) : ride.v < -1 ? Math.min(r, Math.floor(ahead + .15)) : r; wheeling = false; reach = 1; } }
+
+      const away = goal - ride.x, hold = lastGap < 1.5 ? 1.5 : .52, settled = t >= ready && !wheeling && !owner && heldFor > hold && Math.abs(away) < .25, p = mod(goal), want = words[p], T = length(p), owns = !taken && !held && !touching && t >= holdUntil, before = clock;
+      if (!wheeling && !owner) heldFor += dt;
+
+      // The draft: the old request goes first, and the new one types only once the band has arrived.
+      const erasing = !want.startsWith(shown);
+      if (erasing) { typed = Math.max(0, typed - 240 * dt); write(shown.slice(0, Math.ceil(typed))); story = -1; }
+      else if (settled) {
+        if (story !== p) { story = p; clock = shown.length ? paces[p][shown.length - 1] : 0; after(.12, blink); }
+        else clock += dt;
+        let n = shown.length; while (n < want.length && paces[p][n] <= clock) n++;
+        if (n > shown.length) write(want.slice(0, n));
+        typed = shown.length;
+      }
+      const sent = clock - T, work = sent - RELEASE, smileAt = sent - COMPLETE, end = want ? T + NEXT : WAIT;
+      let here = settled && story === p;
+
+      // The automatic loop: each page holds until its beats are done.
+      if (here && owns && clock >= end) { goal += 1; reach = 0; lastGap = 9; rushed = false; depart(1); crown.v -= 170; here = false; }
+      const doing = here && want && sent >= RELEASE && sent < COMPLETE ? GESTURE[p] : "";
+      if (here && want) {
+        // Only a search spins, as the send lets go.
+        if (GESTURE[p] === "searching" && before - T < RELEASE && sent >= RELEASE && turn[0].to < 360) { turn[0].to += 360; after(.04, () => { turn[1].to += 360; }); after(.08, () => { turn[2].to += 360; }); }
+        if (before - T < COMPLETE + .42 && smileAt >= .42) { crown.v -= 70; bodyY.v -= 150; }
+      }
+      if (here && !want) for (const at of [.9, LOOKUP]) if (before % WAIT < at && clock % WAIT >= at) blink(.12, .1, .26);
+      draft.classList.toggle("typing", erasing || (here && !!want && sent < SEND && !(sent >= .12 && sent < .24)));
+      draft.classList.toggle("sent", here && !!want && sent >= SEND);
+      draft.classList.toggle("empty", here && !want && clock >= .5);
+      act(!here ? "still" : !want ? "idle" : sent < RELEASE ? "listening" : sent < COMPLETE ? GESTURE[p] : sent < NEXT || owns ? "complete" : "idle");
+
+      // Where the eyes go and how the whole icon stands, most important first. The page coming in leads everything: the eyes dart to it and ride it in as it slides under the panel, and the head turns with them.
+      const s = clamp(ride.v / 3.375, -1, 1), spinning = turn.some((r) => r.to >= 360), gathering = here && owns && clock >= end - GATHER, sending = here && want && sent >= SEND && sent < RELEASE, towards = clamp(away + .6 * s, -1, 1);
+      let look, crownTo = -6 * hover, middleTo = 4 * hover, lowerTo = 2 * hover, bx = 0, by = sending ? 3 : 0;
+      if (t < ready) { const since = t - ready + 1.1; look = since < .65 ? [0, 0] : since < 1 ? [-3.5, 1.5] : [-1, 4.5]; }
+      else if (!here) { look = [8 * towards, -1]; bx = 5 * towards; }
+      else if (gathering) { look = [7, -.5]; crownTo += 9; bx = -3; by = 2; }
+      else if (want && sent < SEND) look = [-5 + 8 * shown.length / want.length, 4.5];
+      else if (want && sent < RELEASE + .12) look = [-4, -1.5];
+      else if (spinning) { const a = turn[0].x * Math.PI / 180, w = Math.sin(a / 2); look = [5 * Math.sin(a) * w, -5 * Math.cos(a) * w]; }
+      // Searching looks wide from side to side with the head following. Writing looks down and reads along each line, the crown dipping and the head nodding at the start of the next. Thinking looks up and away while the crown drifts.
+      else if (doing === "searching") { const a = work * TAU / 2.1; look = [9 * Math.sin(a), -1.5]; bx = 5 * Math.sin(a - .5); crownTo -= 8 * Math.sin(a - 1); }
+      else if (doing === "writing") { const line = (work / 1.4) % 1; look = [-7 + 14 * line, 6]; by = line < .16 ? 5 : 2; crownTo += 5 + 12 * (1 - line); }
+      else if (doing === "thinking") { look = work % 3.4 < 1.9 ? [-5, -6] : [4, -5]; by = -2; crownTo -= 13 + 7 * Math.sin(work * TAU / 3.4); }
+      // Waiting on your approval: the head comes slowly down toward Allow once as the wait builds, then lifts and looks up at you.
+      else if (!want) { const w = clock % WAIT, up = w < LOOKUP, e = up ? w / LOOKUP : (WAIT - w) / (WAIT - LOOKUP), lean = e * e * (3 - 2 * e); look = up ? [-2 - 2 * lean, 5] : [.5, -2]; crownTo -= 4 + 18 * lean; bx = -1 - 3 * lean; by = 1 + 4 * lean; }
+      else if (smileAt >= .08 && smileAt < .42) { look = [0, 2]; by = 7; }
+      else if (pointer) look = [clamp((pointer[0] - cx) / 60, -6, 6), clamp((pointer[1] - cy) / 60, -4, 4)];
+      else { if (t >= glanceAt) { glanceAt = t + 3.6 + Math.random() * 1.6; glancing = !glancing; } look = glancing ? [-3.5, 1.5] : [-1, 4.5]; }
+      const gazeW = here && !want ? 6 : 16, breathTo = (1 - Math.abs(s)) * (want ? 1 : .5), orbit = spinning ? clamp(turn[0].x / 360, 0, 1) : 1, tiltTo = sending ? -.25 : orbit < .8 ? Math.sin(Math.PI * orbit / .8) : 0, smileTo = here && want && smileAt >= .34 && smileAt < 1.74 ? 1 : 0;
+
+      let carrot = ride.x; const steps = Math.max(1, Math.ceil(dt * 120)); H = dt / steps;
+      for (let i = 0; i < steps; i++) {
+        reach = Math.min(1, reach + H / .35);
+        const to = wheeling ? aim : goal;
+        carrot = ride.x + clamp(to - ride.x, -.9 * reach, .9 * reach);
+        // A wheel only grips hard once the band is near its aim, so one landing mid-glide doesn't brake it.
+        if (!owner) pull(ride, carrot, wheeling ? 7.5 + 14.5 * clamp((.6 - Math.abs(to - ride.x)) / .35, 0, 1) : 7.5, 1);
+        const sp = clamp(ride.v / 3.375, -1, 1);
+        pull(crown, -28 * sp + crownTo, 5.5, .26); pull(middle, 18 * sp + middleTo, 4.5, .3); pull(lower, 12 * sp + lowerTo, 3.6, .36);
+        pull(bodyX, bx, 9, .7); pull(bodyY, by, 12, .4); pull(gazeX, look[0], gazeW, .75); pull(gazeY, look[1], gazeW, .75);
+        pull(tilt, tiltTo, 14, 1); pull(rise, 0, 7.5, .6); pull(breath, breathTo, 3, 1); pull(squint, smileTo, 16, 1); pull(thump, 0, 20, .5); pull(crownThump, 0, 20, .5); pull(chipBox, Math.max(chipWidths[head], chipWords === head ? 0 : chipWidths[chipWords]), 26, 1);
+        for (const r of turn) { pull(r, r.to, t < ready ? 5.5 : 4.4, t < ready ? .7 : .75); if (r.to >= 360 && r.x >= r.to) { r.to -= 360; r.x -= 360; } }
+      }
+
+      // The band stops exactly on its page, and snap comes back for the fingers.
+      if (moving && !wheeling && !owner && Math.abs(goal - ride.x) * step < 2 && Math.abs(ride.v) * step < 40) { goal = ride.x = mod(goal); ride.v = 0; moving = false; place(); band.style.scrollSnapType = ""; }
+      else if (moving && !owner) place();
+      const passing = mod(Math.round(carrot)); if (passing !== head) showPage(passing);
+      // The chip's box redirects mid-glide and never restarts, and never gets narrower than its words. They dim at once and swap once the new name fits: a longer one when the box has grown far enough, with half its padding to spare, and a shorter one straight away, which lets the box close in.
+      const chipTo = chipWidths[head]; if (chipWords === head && Math.abs(chipBox.x - chipTo) < .05 && Math.abs(chipBox.v) < 1) { chipBox.x = chipTo; chipBox.v = 0; }
+      const chipPx = `${chipBox.x}px`; if (chip.style.width !== chipPx) chip.style.width = chipPx;
+      if (chipWords !== head && t >= chipDip && chipBox.x >= chipTo - chipSlack) { chipWords = head; chip.lastChild.data = names[head]; }
+      const fadeTo = chipWords === head && t >= chipDip ? 1 : .3;
+      if (chipFade !== fadeTo) { chipFade = fadeTo < chipFade ? Math.max(fadeTo, chipFade - dt / .08) : Math.min(fadeTo, chipFade + dt / .25); chip.style.setProperty("--fade", chipFade); }
+
+      // The chat changes under a wash over the chat alone, so text never lands on text. On one page change the wash waits until the band has visibly left, and full cover is brief. Any quicker run of clicks stays under .7, with the chats passing beneath it no faster than one every .28 s, and it only lifts once the rhythm of the clicks has broken.
+      const rest = heldFor > (lastGap < .75 ? Math.max(.34, lastGap + .15) : .34) && Math.abs(goal - ride.x) < .6, should = rushed && !rest ? passing : p;
+      if (should !== showing && (rushed ? veil >= .6 && t - chattedAt > .28 : veil === 1 && heldFor > .12 && Math.abs(goal - ride.x) < .6)) chat(should);
+      if (rushed && rest && should === showing) rushed = false;
+      const cap = rushed ? .7 : 1, rising = should !== showing ? rushed || Math.abs(goal - ride.x) < .8 : rushed && veil > 0;
+      const nextVeil = rising ? (veil > cap ? Math.max(cap, veil - dt / .22) : Math.min(cap, veil + dt / .09)) : Math.max(0, veil - dt / .22);
+      if (nextVeil !== veil) { veil = nextVeil; wash.style.opacity = veil; }
+
+      // The icon: individual properties on top of the app's gestures, which run on transform. A lean lifts the crown and drops the lower ribbons, so they fan open toward the page instead of crossing on the far side.
+      const soft = (x) => 1.5 * Math.tanh(x / 1.5), knock = soft(thump.x), sway = (amp, period, phase = 0) => breath.x * amp * Math.sin(t * TAU / period + phase);
+      p1.style.rotate = `${46 * Math.tanh((crown.x - 9 * soft(crownThump.x)) / 46) + turn[0].x + sway(3.5, 5.2) + sway(1, 3.1, 1)}deg`; p2.style.rotate = `${middle.x + turn[1].x + sway(2.5, 6.1, 2)}deg`; p3.style.rotate = `${lower.x + turn[2].x + sway(1.5, 7.3, 4)}deg`;
+      p1.style.translate = `0 ${-.42 * Math.abs(crown.x)}px`; p2.style.translate = `0 ${.2 * Math.abs(middle.x)}px`; p3.style.translate = `0 ${.3 * Math.abs(lower.x)}px`;
+      body.style.translate = `${bodyX.x + 6 * knock}px ${bodyY.x + sway(1.8, 4.4, 2)}px`; body.style.scale = `${1 + .035 * Math.abs(knock)} ${1 - .05 * Math.abs(knock)}`; layers.style.scale = `${1 + .1 * tilt.x} ${1 - .22 * tilt.x}`; layers.style.translate = `${-.4 * bodyX.x}px 0`; face.style.translate = `${gazeX.x + 3 * knock}px ${gazeY.x}px`;
+      if (rise.x) { if (Math.abs(rise.x) < .001 && Math.abs(rise.v) < .01) { rise.x = rise.v = 0; mark.style.removeProperty("translate"); } else mark.style.translate = `0 calc(var(--rise) * ${rise.x})`; }
+      const b = t - blinkAt, [c, h, o] = lids, lid = b < c ? 1 - .88 * b / c : b < c + h ? .12 : b < c + h + o ? .12 + .88 * (b - c - h) / o : 1;
+      if (lid < 1 || !lidsOpen) { lidsOpen = lid === 1; for (const n of eyes) n.style.scale = `1 ${lid}`; }
+      // The smile: the eyes squeeze to a thin line, swap for the smile in one step at that line, and it opens out of it. Backwards when a click cuts it short. The face is never blank and never doubled.
+      if (squint.x > .001 || smiling) { smiling = squint.x > .001; const shut = squint.x > .85; eyeGroup.style.scale = `1 ${1 - .9 * squint.x}`; eyeGroup.style.opacity = shut ? 0 : ""; smile.style.opacity = shut ? 1 : ""; smile.style.scale = `1 ${.3 + .7 * clamp((squint.x - .85) / .15, 0, 1)}`; }
+    };
+    const run = () => { if (!raf && onScreen && !still.matches) { last = performance.now(); raf = requestAnimationFrame(tick); } };
+
+    measure(); new ResizeObserver(measure).observe(band); document.fonts.ready.then(measure);
+    showPage(0); fitChip();
+    if (still.matches) settle(); else draft.textContent = "";
+
+    // Scrolls the loop didn't write: a finger, or the browser moving the band itself. A scroll that arrives while the band glides with no finger down is the loop's own, and so is the browser's re-snap when the band changes width.
+    band.addEventListener("scroll", () => {
+      // The glide's last write can arrive just as reduced motion turns on: settle() is coming, and it lands on the page asked for, not the one nearest this frame.
+      if (still.matches) { if (moving) return; const n = (band.scrollLeft - origin) / step; ride.x = n; goal = Math.round(n); if (mod(goal) !== head) showPage(mod(goal)); if (mod(goal) !== showing) { chat(mod(goal)); write(words[mod(goal)]); draft.classList.toggle("empty", !shown); } clearTimeout(idle); idle = setTimeout(() => { if (!touching && still.matches) settle(); }, 140); return; }
+      if (owner) { scrolledAt = t; return; }
+      if (moving && !touching) return;
+      if (!touching && band.clientWidth !== bandWidth) return;
+      if (Math.abs(band.scrollLeft - written) > 1.5) { owner = moving = true; wheeling = false; taken = true; rushed = true; scrolledAt = t; run(); }
+    }, { passive: true });
+    // A mostly sideways wheel moves the band. A slightly diagonal scroll is the page's: the browser would otherwise hand all of it to the band. A wheel arriving mid-glide starts from where the glide is heading, and can't pull that back or add to it until the band is close.
+    band.addEventListener("wheel", (e) => {
+      if (!e.deltaX) return;
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) { e.preventDefault(); scrollBy({ top: e.deltaY, behavior: "instant" }); return; }
+      if (still.matches) return;
+      e.preventDefault(); const d = e.deltaX * (e.deltaMode ? 40 : 1) / step;
+      if (!wheeling) { aim = moving ? goal : ride.x; wheeling = true; owner = false; moving = true; rushed = true; reach = 1; lastGap = t - lastInput; band.style.scrollSnapType = "none"; }
+      taken = true; lastInput = wheelAt = t; wheelSign = Math.sign(d); aim = clamp(aim + d, Math.min(aim, ride.x - .22), Math.max(aim, ride.x + .22)); run();
+    }, { passive: false });
+    // A finger on a moving band stops nothing: a tap is a click, and only a real drag takes the band.
+    band.addEventListener("touchstart", () => { touching = true; }, { passive: true });
+    band.addEventListener("touchmove", () => { dragging = true; }, { passive: true });
+    for (const e of ["touchend", "touchcancel"]) band.addEventListener(e, () => { touching = dragging = false; holdUntil = t + 1.5; }, { passive: true });
+    // One listener for every page and the gaps between, so a mash anywhere past the open page counts, on either side. Mouse clicks leave focus alone, so it never lands on a copy.
+    band.addEventListener("mousedown", (e) => { if (e.target.closest("button")) e.preventDefault(); });
+    band.addEventListener("pointerover", (e) => { if (e.pointerType === "mouse") { const li = e.target.closest("li"); hot(li ? stopOf(ring.indexOf(li)) : -1); } }); band.addEventListener("pointerleave", () => hot(-1));
+    band.addEventListener("click", (e) => {
+      if (e.detail && (e.clientX > rightEdge || e.clientX < leftEdge)) { nudge(e.clientX > rightEdge ? 1 : -1); return; }
+      const li = e.target.closest("li"); if (li) go(nearest(stopOf(ring.indexOf(li))));
+    });
+    // The browser jumps to a focused page. The loop writes the band back before anything paints, so tabbing glides like a click. Firefox also focuses the band itself on the way in, which isn't a page.
+    band.addEventListener("focusin", (e) => {
+      const li = e.target.closest("li");
+      if (!li || !e.target.matches(":focus-visible")) return;
+      const to = nearest(stopOf(ring.indexOf(li)));
+      if (still.matches) { go(to); return; }
+      onScreen = true; moving = true; band.style.scrollSnapType = "none"; go(to); place(); run();
+    });
+    // Arrow keys step like clicks instead of the browser's own scroll, and focus goes with them so Tab carries on from the page on show.
+    band.addEventListener("keydown", (e) => {
+      const dir = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!dir) return;
+      e.preventDefault(); nudge(dir); real[mod(Math.round(goal))].querySelector("button").focus({ preventScroll: true });
+    });
     // Only a pointer that really moved over the panel holds it. A page scroll also lands a resting pointer there, and that must not stop the loop.
-    panel.addEventListener("pointermove", (e) => { if (!held && e.pointerType === "mouse" && (e.movementX || e.movementY)) { held = true; clearTimeout(timer); } });
-    panel.addEventListener("pointerleave", () => { if (held) { held = false; wake(); } });
-    mark.addEventListener("pointerenter", () => act("listening")); mark.addEventListener("pointerleave", () => act(GESTURE[at]));
+    panel.addEventListener("pointermove", (e) => { if (!held && e.pointerType === "mouse" && (e.movementX || e.movementY)) held = true; });
+    panel.addEventListener("pointerleave", () => { if (held) { held = false; holdUntil = t + 1.5; } });
+    // Hover only opens the ribbons a little, with a blink. Darting in and out gives a wiggle, never a spin.
+    mark.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") { hover = 1; if (t - blinkAt > 2) blink(); } }); mark.addEventListener("pointerleave", () => { hover = 0; });
+    root.addEventListener("pointerenter", centre); root.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") pointer = [e.pageX, e.pageY]; }); root.addEventListener("pointerleave", () => { pointer = null; });
     // Everything loads a screen before it's needed, so no page pops in mid-glide.
     new IntersectionObserver(([e]) => { if (e.isIntersecting) root.querySelectorAll("img").forEach((i) => { i.loading = "eager"; }); }, { rootMargin: "100% 0px" }).observe(root);
-    // The icon rises from behind the panel once enough of it is in view to see it happen.
-    if (still.matches) root.classList.add("lit"); else { const first = new IntersectionObserver(([e]) => { if (e.isIntersecting) { root.classList.add("lit"); first.disconnect(); } }, { threshold: .4 }); first.observe(mark); }
-    // Reduced motion turned on mid-visit settles everything where it's heading.
-    still.addEventListener("change", () => { if (!still.matches) { act(GESTURE[at]); wake(); return; } clearTimeout(timer); clearTimeout(settle); clearInterval(typing); cancelAnimationFrame(frame); gliding = false; band.style.scrollSnapType = ""; home(); show(stopOf(spot)); draft.classList.remove("typing"); draft.classList.toggle("empty", !words[at]); draft.textContent = words[at]; mark.dataset.motion = "still"; root.classList.add("lit"); });
-    new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen) { if (typedFirst) act(GESTURE[at]); else type(words[at]); wake(); } else { clearTimeout(timer); clearTimeout(settle); mark.dataset.motion = "still"; } }, { threshold: .5 }).observe(root.querySelector("[data-stage]"));
+    if (!lit) addEventListener("scroll", pageScrolled, { passive: true });
+    // The loop and the app's gestures only run while the mark or the stage is on screen. Nothing resets: the return carries on where it left.
+    const stage = root.querySelector("[data-stage]"), inView = new Set(), watch = new IntersectionObserver((list) => { for (const e of list) { if (e.isIntersecting) inView.add(e.target); else inView.delete(e.target); } const was = onScreen; onScreen = inView.size > 0; root.classList.toggle("away", !onScreen); if (onScreen !== was) for (const a of bridges) if (a.playState !== "finished") { if (onScreen) a.play(); else a.pause(); } if (onScreen && !was && lit && t - blinkAt > 3) blink(); run(); }); watch.observe(stage); watch.observe(mark);
+    // The entrance waits for the stage to cross the middle of the view, which even a stage taller than a landscape phone does.
+    new IntersectionObserver(([e]) => { if (e.isIntersecting && !half) halfAt = t; half = e.isIntersecting; }, { rootMargin: "-40% 0px -40% 0px" }).observe(stage);
+    // Reduced motion turned on mid-visit settles everything where it's heading. Turned off, it stays at rest and doesn't replay.
+    still.addEventListener("change", () => { if (still.matches) settle(); else run(); });
   }
 </script>
 <style>
@@ -93,18 +307,24 @@ const more = [
   .b-head { position: relative; z-index: 2; pointer-events: none; height: var(--head); padding-inline: var(--side); display: grid; grid-template-columns: 1fr var(--mark) 1fr; column-gap: 32px; align-items: center; } .b-head h2, .b-head .lead { pointer-events: auto; } .b-head .lead { grid-column: 3; font-size: 17px; color: var(--copy); }
   .b-stage { position: relative; z-index: 1; height: var(--panel-h); }
   /* The mark stands behind the panel and rises out of it. */
-  .b-mark { position: absolute; left: calc(50% - var(--mark) / 2); top: calc(var(--rise) * -1); width: var(--mark); height: var(--mark); transition: opacity .9s var(--ease), translate 1.4s var(--ease); } :global(.has-js) .beside:not(.lit) .b-mark { opacity: 0; translate: 0 40px; }
+  .b-mark { position: absolute; left: calc(50% - var(--mark) / 2); top: calc(var(--rise) * -1); width: var(--mark); height: var(--mark); } :global(.has-js) .beside:not(.lit) .b-mark { translate: 0 var(--rise); } .b-mark :global(.layers) { transform-box: view-box; transform-origin: 64px 64px; } .b-mark :global(.normal-eyes), .b-mark :global(.smile) { transform-origin: 64px 54px; } .b-mark :global(:is(.body, .piece, .face, .eye)) { animation-composition: accumulate; } .away .b-mark :global(*) { animation-play-state: paused; }
+  /* orbit.css is drawn for a 28px icon. At this size every accent line is drawn stronger, the scan arc is a thin ring well clear of the crown, the ink runs along the lower ribbon above the panel's edge, and the blinks are quick. The script hands the eyes to the smile, so the app's fades are off. The timing is otherwise orbit.css's. */
+  .b-mark :global(.accent-line) { stroke-width: 3; } .b-mark :global(.scan-line) { stroke-width: 2.2; scale: 1.3; } .b-mark :global(.ink-line) { stroke: var(--mark-a); translate: 0 -8px; } .b-mark[data-motion="searching"] :global(.scan-line) { animation-name: b-scan; } .b-mark[data-motion="writing"] :global(.ink-line) { animation-name: b-ink; } .b-mark[data-motion="searching"] :global(.eye) { animation-name: b-search-eyes; } .b-mark[data-motion="writing"] :global(.eye) { animation-name: b-write-eyes; } .b-mark[data-motion="complete"] :global(:is(.normal-eyes, .smile)) { animation-name: none; }
+  @keyframes b-search-eyes { 0%, 9%, 35%, 46%, 69%, 76%, 81%, 86%, 100% { transform: scaleY(1); } 17%, 25%, 30%, 53%, 57% { transform: scaleY(.76); } 32%, 33%, 78%, 79% { transform: scaleY(.13); } 63%, 65% { transform: scaleY(1.13); } }
+  @keyframes b-write-eyes { 0%, 97%, 100% { transform: scaleY(1); } 12%, 30%, 33.5%, 37.5%, 42%, 62%, 64.5%, 68.5%, 74%, 91% { transform: scaleY(.85); } 35%, 36%, 66%, 67% { transform: scaleY(.14); } }
+  @keyframes b-scan { 0%, 24%, 74%, 100% { opacity: 0; stroke-dashoffset: 1; } 31% { opacity: .7; stroke-dashoffset: .85; } 55% { opacity: .7; stroke-dashoffset: 0; } 67% { opacity: 0; stroke-dashoffset: -.08; } }
+  @keyframes b-ink { 0%, 11%, 98%, 100% { opacity: 0; stroke-dashoffset: 1; } 18% { opacity: .9; stroke-dashoffset: .88; } 30%, 40% { opacity: .9; stroke-dashoffset: .64; } 61%, 71% { opacity: .9; stroke-dashoffset: .34; } 89% { opacity: .9; stroke-dashoffset: 0; } 96% { opacity: 0; stroke-dashoffset: 0; } }
   /* The band of pages: a native scroller, so it also works by touch, trackpad and with no script at all. */
-  .b-band { position: absolute; z-index: 1; left: 0; right: 0; top: var(--band-top); display: flex; gap: var(--between); overflow-x: auto; overflow-y: hidden; padding-inline: var(--rest) 100vw; scroll-padding-inline: var(--rest); scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; } .b-band::-webkit-scrollbar { display: none; }
-  .sheet { flex: none; width: var(--sheet-w); scroll-snap-align: start; transition: opacity .7s var(--ease); } :global(.has-js) .sheet:not(.on) { opacity: .5; } :global(.has-js) .sheet:not(.on):hover { opacity: 1; }
-  .sheet button { display: block; width: 100%; height: var(--sheet-h); padding: 0; border-radius: 12px; overflow: clip; box-shadow: inset 0 0 0 1px var(--edge-line); background: #000; } .sheet img { width: 100%; height: 100%; object-fit: cover; object-position: top left; } .sheet.on button { cursor: default; } .sheet button:focus-visible { outline-offset: -4px; }
+  .b-band { position: absolute; z-index: 1; left: 0; right: 0; top: var(--band-top); display: flex; gap: var(--between); overflow-x: auto; overflow-y: hidden; padding-inline: var(--rest) 100vw; scroll-padding-inline: var(--rest); scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; touch-action: manipulation; -webkit-user-select: none; user-select: none; } .b-band::-webkit-scrollbar { display: none; }
+  .sheet { flex: none; width: var(--sheet-w); scroll-snap-align: start; transition: opacity .7s var(--ease); } :global(.has-js) .sheet:not(.on) { opacity: .5; } :global(.has-js) .sheet.hot:not(.on) { opacity: 1; }
+  .sheet button { display: block; width: 100%; height: var(--sheet-h); padding: 0; border-radius: 12px; overflow: clip; box-shadow: inset 0 0 0 1px var(--edge-line); background: #000; } .sheet img { width: 100%; height: 100%; object-fit: cover; object-position: top left; } .sheet.on button { cursor: default; } .sheet button:focus-visible, .b-band:has(button:focus-visible) .sheet.on button { outline: 3px solid #fff; outline-offset: -4px; }
   /* The panel stands proud of the band, top and bottom, and stays put. Only the chat on show reaches a screen reader. */
   .b-panel { --u: calc(100cqw / 438); position: absolute; z-index: 2; top: 0; left: calc(50% - var(--panel-w) / 2); width: var(--panel-w); height: var(--panel-h); container-type: inline-size; border-radius: 16px; overflow: clip; background: #0a0a0a; box-shadow: 0 0 0 1px var(--edge-line), 0 40px 90px -20px #000; }
-  /* The old chat is gone before the new one comes, so text never lands on text. */
-  .b-state { position: absolute; left: 0; bottom: 0; width: 100%; opacity: 0; visibility: hidden; transition: opacity .14s linear, visibility 0s .14s; } .b-state.on { z-index: 1; opacity: 1; visibility: visible; transition: opacity .24s var(--ease) .14s; } .b-state img { display: block; width: 100%; height: auto; max-width: none; }
+  /* The chats swap at once, under the wash: a dark sheet over the chat and its title only, so the panel's frame and composer never dim. */
+  .b-state { position: absolute; left: 0; bottom: 0; width: 100%; opacity: 0; visibility: hidden; } .b-state.on { z-index: 1; opacity: 1; visibility: visible; } .b-wash { position: absolute; inset: 0; z-index: 1; opacity: 0; pointer-events: none; will-change: opacity; } .b-wash::before, .b-wash::after { content: ""; position: absolute; background: #0a0a0a; } .b-wash::before { inset: 9.87% 0 16.3%; } .b-wash::after { left: 13%; width: 41%; top: 3.3%; height: 3.2%; } :global(html:not(.has-js)) .b-wash { display: none; } .b-state img { display: block; width: 100%; height: auto; max-width: none; }
   /* The draft and the chip are real text, set where the app's composer sets them. The capture is 438 wide, cropped inside the app's own edge. */
-  .b-sees { position: absolute; left: calc(var(--u) * 57); bottom: calc(var(--u) * 22); height: calc(var(--u) * 30); display: flex; align-items: center; gap: calc(var(--u) * 6); padding-inline: calc(var(--u) * 11); border-radius: 99px; background: rgb(255 157 54 / .13); color: #ff9d36; font-size: calc(var(--u) * 14); font-weight: 500; white-space: nowrap; } .b-sees svg { width: calc(var(--u) * 15); height: calc(var(--u) * 15); flex: none; }
-  .b-draft, :global(html:not(.has-js)) .b-state::after { position: absolute; z-index: 2; left: calc(var(--u) * 29); bottom: calc(var(--u) * 73); width: calc(var(--u) * 380); font-size: calc(var(--u) * 14); line-height: calc(var(--u) * 20); color: #fafafa; white-space: nowrap; } .b-draft.empty::before, :global(html:not(.has-js)) .b-state::after { content: "Ask, or type @ to point at something"; color: #a1a1a1; } .b-draft.typing::after { content: ""; display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -.12em; background: #ff9d36; }
+  .b-sees { position: absolute; left: calc(var(--u) * 57); bottom: calc(var(--u) * 22); height: calc(var(--u) * 30); display: flex; align-items: center; gap: calc(var(--u) * 6); padding-inline: calc(var(--u) * 11); border-radius: 99px; background: rgb(255 157 54 / .13); color: #ff9d36; font-size: calc(var(--u) * 14); font-weight: 500; white-space: nowrap; } .b-sees svg { width: calc(var(--u) * 15); height: calc(var(--u) * 15); flex: none; } :global(.has-js) .b-state .b-sees { opacity: 0; } .b-live { z-index: 2; overflow: clip; color: rgb(255 157 54 / var(--fade, 1)); }
+  .b-draft, :global(html:not(.has-js)) .b-state::after { position: absolute; z-index: 2; left: calc(var(--u) * 29); bottom: calc(var(--u) * 73); width: calc(var(--u) * 380); font-size: calc(var(--u) * 14); line-height: calc(var(--u) * 20); color: #fafafa; white-space: nowrap; } .b-draft { transition: color .3s; } .b-draft.sent { color: #a1a1a1; } .b-draft.empty::before { animation: b-fade .24s var(--ease); } @keyframes b-fade { from { opacity: 0; } } .b-draft.empty::before, :global(html:not(.has-js)) .b-state::after { content: "Ask, or type @ to point at something"; color: #a1a1a1; } .b-draft.typing::after { content: ""; display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -.12em; background: #ff9d36; }
   /* With no script every chat is there to swipe through, each with the composer's placeholder and the edge of the next one showing. */
   :global(html:not(.has-js)) .b-panel { --u: calc((100cqw - 28px) / 438); display: flex; align-items: flex-end; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; } :global(html:not(.has-js)) .b-state { position: relative; flex: none; width: calc(100% - 28px); opacity: 1; visibility: visible; scroll-snap-align: start; } :global(html:not(.has-js)) .b-draft { display: none; }
   /* Under the stage, a plain statement on the left and what backs it from the panel's left edge on: first what people ask, then the promise. They sit above the panel's shadow, which would dim them. */
@@ -122,5 +342,5 @@ const more = [
   /* A phone's page shows at a size you can read its title at: the same real page, cropped to its left side. */
   @media (max-width: 500px) { .beside { --sheet-w: 340px; --sheet-h: 236px; --between: 12px; } .sheet img { width: 140%; height: auto; max-width: none; } }
   @media (max-width: 360px) { .beside { --sheet-w: 280px; } .sheet img { width: 170%; } }
-  @media (prefers-reduced-motion: reduce) { .sheet, .b-state, .b-state.on, .b-mark { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .sheet, .b-draft { transition: none; } .b-draft.empty::before { animation: none; } }
 </style>
