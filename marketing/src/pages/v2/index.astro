@@ -1,36 +1,27 @@
 ---
-// Hero to compare: the Mosaic you liked, made into the whole hero. OpenScholar is the big tile, the communities are the rose tile and their six scenes, each word filled with its own material. Delete once one is picked.
+// Hero to compare: Earth with one bright orbit around it. The search box is in the clear sky above, and the communities are satellites on the near side of the ring. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
-import Art from "../../components/Art.astro";
 import AskBar from "../../components/AskBar.astro";
-import Arrow from "../../components/Arrow.astro";
-import Fill from "../../components/Fill.astro";
-import { APP, COMMUNITIES } from "../../data/site.mjs";
-const FIT = { aied: 4.55, wi: 3.25, eccar: 3.45, tvet: 4.7, aimea: 6, usaid: 2.95 }, AREA = ["a", "b", "c", "d", "e", "f"];
+import { COMMUNITIES } from "../../data/site.mjs";
+const SPOT = [[12, 77.6], [27, 82.6], [42.5, 84.6], [57.5, 84.6], [73, 82.6], [88, 77.6]];
 ---
-<Base top="#ffffff" title="Hero 2: OpenScholar" description="Hero option">
-  <section class="mos">
-    <div class="panel os">
-      <i class="field f-night" aria-hidden="true"></i>
-      <div class="cq"><h1><Fill tex="sea" class="w">OpenScholar</Fill> <span>is where your team works through the evidence</span></h1>
-      <div class="acts"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /><a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a></div></div>
+<Base top="#02062c" title="Hero 2: OpenScholar" description="Hero option">
+  <section class="bleed hero">
+    <div class="inner c">
+      <h1>The evidence workspace for research teams</h1>
+      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
     </div>
-    <div class="panel ec" style="--tint:#be123c">
-      <i class="field f-rose" aria-hidden="true"></i><Art name="pavilion" pos="100% 50%" sizes="600px" />
-      <div class="x"><h2>Evidence Communities are where anyone can read it</h2><a class="btn" href="/evidence-communities/">Explore communities<Arrow /></a></div>
+    <div class="stage">
+      <img class="p" src="/img/art-space-orbit.avif" srcset="/img/art-space-orbit-960.avif 960w, /img/art-space-orbit.avif 1672w" sizes="min(1440px, 100vw)" width="1672" height="941" fetchpriority="high" alt="" />
+      <h2>Evidence Communities are where anyone can read it</h2>
+      <ul>{COMMUNITIES.map((c, i) => <li style={`--x:${SPOT[i][0]};--y:${SPOT[i][1]};--c:${c.color}`}><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul>
     </div>
-    {COMMUNITIES.map((c, i) => <a class="panel t" href={c.url} style={`grid-area:${AREA[i]};--fit:${FIT[c.key]}`}><img src={`/img/art-scene-${c.key}-960.avif`} width="960" height="960" decoding="async" alt="" /><span class="n"><Fill tex={`tx-${c.key}-960`} base={c.color} class="word">{c.word}</Fill><b>{c.name}</b></span></a>)}
   </section>
 </Base>
 <style>
-  .mos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-top: 88px; } .panel > .field { position: absolute; inset: 0; z-index: -2; }
-  .os { display: grid; align-items: center; padding: 28px; background: #01072c; } .cq { container-type: inline-size; display: grid; gap: 16px; } h1 { display: grid; gap: 6px; font-weight: 500; } :global(.w) { font-size: calc(100cqw / 5.35); } h1 > span { font-size: clamp(22px, 2.1vw, 28px); letter-spacing: -.02em; line-height: 1.14; color: #a9bbe6; text-wrap: balance; } .acts { display: grid; gap: 10px; justify-items: start; } .acts :global(.big) { width: 100%; } .cta { height: 64px; padding-inline: 24px 12px; font-size: 17px; white-space: nowrap; }
-  .ec { display: grid; align-items: end; min-height: 240px; padding: 24px; background: #520116; } .ec > :global(.art) { z-index: -1; opacity: .72; } .x { display: grid; justify-items: start; gap: 14px; } .x h2 { font-size: clamp(24px, 2.4vw, 32px); max-width: 13em; } .ec :global(.btn) { --chip: var(--tint); }
-  .t { display: grid; align-content: end; min-height: 190px; color: #fff; transition: transform .35s var(--ease); } .t:hover { transform: translateY(-3px); } .t > img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 28%; transition: transform .7s var(--ease), filter .4s var(--ease); } .t:hover > img { transform: scale(1.05); filter: brightness(1.14); } .t::before { content: ""; position: absolute; inset: 38% 0 0; z-index: -1; background: linear-gradient(transparent, rgb(1 7 44 / .9)); }
-  .n { container-type: inline-size; display: grid; gap: 2px; padding: 14px; } .n :global(.word) { font-size: min(calc(100cqw / var(--fit)), 76px); } .n b { font-weight: 500; font-size: 13px; line-height: 1.2; text-wrap: balance; }
-  @media (min-width: 1000px) {
-    .mos { grid-template-columns: repeat(24, minmax(0, 1fr)); grid-template-rows: repeat(3, 214px); grid-template-areas: "o o o o o o o o o o o o o o k k k k k k k k k k" "o o o o o o o o o o o o o o a a a a a b b b b b" "c c c c c c d d d d d d e e e e e e f f f f f f"; }
-    .os { grid-area: o; padding: 36px; } .ec { grid-area: k; min-height: 0; padding: 28px; } .t { min-height: 0; } .acts { grid-template-columns: minmax(0, 1fr) auto; align-items: center; } .acts :global(.big .btn span) { display: none; } .acts :global(.big .btn) { padding-left: 8px; }
-  }
-  @media (max-width: 999px) { .t { grid-area: auto !important; } .mos { grid-template-columns: repeat(2, minmax(0, 1fr)); } .os, .ec { grid-column: 1 / -1; } }
+  .hero { padding: 112px 0 28px; background: #02062c; text-align: center; overflow: clip; }
+  .c { position: relative; z-index: 1; display: grid; justify-items: center; gap: 22px; } h1 { max-width: 13em; font-size: clamp(38px, 4.6vw, 62px); } .c :global(.big) { width: min(100%, 720px); }
+  .stage { position: relative; width: min(100vw, 1440px); margin: 16px auto 0; } .p { display: block; width: 100%; height: auto; max-width: none; } h2 { padding: 8px var(--pad) 12px; font-size: 22px; letter-spacing: -.02em; line-height: 1.16; text-wrap: balance; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-inline: var(--pad); } li { min-width: 0; } li a { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 8px; height: 100%; padding: 8px 12px 8px 8px; border-radius: 14px; text-align: left; background: rgb(4 10 44 / .76); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 50%, rgb(255 255 255 / .2)); transition: background .2s var(--ease); } li a:hover { background: color-mix(in srgb, var(--c) 30%, rgb(4 10 44 / .86)); } li img { width: 40px; height: 40px; object-fit: contain; filter: saturate(1.4); } li b { font-weight: 500; font-size: 13.5px; line-height: 1.18; letter-spacing: -.005em; }
+  @media (min-width: 1000px) { .hero { padding-bottom: 0; } .stage { margin-top: -262px; margin-bottom: -66px; } .p { position: relative; z-index: -1; } h2 { position: absolute; left: max(var(--pad), calc(50% - 624px)); top: 45%; width: 300px; padding: 0; text-align: left; font-size: 24px; } ul { display: block; padding: 0; } li { position: absolute; left: calc(var(--x) * 1%); top: calc(var(--y) * 1%); width: 172px; translate: -50% -50%; } li a { height: auto; } }
 </style>

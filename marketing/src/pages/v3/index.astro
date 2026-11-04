@@ -1,28 +1,30 @@
 ---
-// Hero to compare: OpenScholar and its search in the sky, a planet rising beneath it, and the communities standing along its bright horizon, following the curve. Delete once one is picked.
+// Hero to compare: a total eclipse. The headline and search box sit inside the dark disc, ringed by the corona, and the communities circle it. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import AskBar from "../../components/AskBar.astro";
-import Arrow from "../../components/Arrow.astro";
-import { APP, COMMUNITIES } from "../../data/site.mjs";
-const DROP = [128, 58, 16, 16, 58, 128];
+import { COMMUNITIES } from "../../data/site.mjs";
+// Three down each side, following the corona. Columns are mirrored, so names read inwards.
+const SPOT = [[16.5, 22, "l"], [11, 50, "l"], [16.5, 78, "l"], [83.5, 22, "r"], [89, 50, "r"], [83.5, 78, "r"]];
 ---
 <Base top="#02062c" title="Hero 3: OpenScholar" description="Hero option">
   <section class="bleed hero">
-    <img class="p" src="/img/art-hero-planet.avif" srcset="/img/art-hero-planet-960.avif 960w, /img/art-hero-planet.avif 1672w" sizes="max(1440px, 100vw)" width="1672" height="941" fetchpriority="high" alt="" />
-    <div class="inner c">
-      <h1>The evidence workspace for research teams</h1>
-      <div class="acts"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /><a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a></div>
-    </div>
-    <div class="inner">
-      <ul>{COMMUNITIES.map((c, i) => <li style={`--d:${DROP[i]}px;--c:${c.color}`}><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul>
-      <div class="cc"><h2>Evidence Communities are where anyone can read it</h2><a class="btn rose" href="/evidence-communities/">Explore communities<Arrow /></a></div>
+    <div class="stage">
+      <img class="p" src="/img/art-space-eclipse.avif" srcset="/img/art-space-eclipse-960.avif 960w, /img/art-space-eclipse.avif 1672w" sizes="(max-width: 999px) 230vw, 1440px" width="1672" height="941" fetchpriority="high" alt="" />
+      <div class="c">
+        <h1>The evidence workspace for research teams</h1>
+        <p class="lead">Find the literature, screen it and extract the data you need.</p>
+        <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+      </div>
+      <ul>{COMMUNITIES.map((c, i) => <li class={SPOT[i][2]} style={`--x:${SPOT[i][0]};--y:${SPOT[i][1]};--c:${c.color}`}><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul>
+      <h2>Evidence Communities are where anyone can read it</h2>
     </div>
   </section>
 </Base>
 <style>
-  .hero { padding: 112px 0 40px; background: #02062c; text-align: center; } .p { position: absolute; z-index: -1; left: 50%; top: 280px; width: 190vw; height: auto; max-width: none; translate: -50% 0; }
-  .c { display: grid; justify-items: center; gap: 22px; } h1 { max-width: 13em; font-size: clamp(38px, 4.6vw, 62px); } .acts { display: grid; justify-items: center; gap: 10px; width: 100%; } .acts :global(.big) { width: 100%; } .cta { height: 64px; padding-inline: 26px 12px; font-size: 18px; white-space: nowrap; }
-  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 56vw; } li { min-width: 0; } li a { display: grid; justify-items: center; gap: 8px; padding: 10px 6px; border-radius: 16px; transition: background .2s var(--ease); } li a:hover { background: color-mix(in srgb, var(--c) 20%, transparent); } li img { width: 64px; height: 64px; object-fit: contain; filter: saturate(1.4) drop-shadow(0 0 12px color-mix(in srgb, var(--c) 50%, transparent)); transition: transform .35s var(--ease); } li a:hover img { transform: translateY(-4px) scale(1.06); } li b { font-weight: 500; font-size: 14.5px; line-height: 1.2; letter-spacing: -.005em; text-wrap: balance; }
-  .cc { display: grid; justify-items: center; gap: 14px; margin-top: 24px; } h2 { max-width: 16em; font-size: clamp(24px, 2.2vw, 30px); letter-spacing: -.02em; line-height: 1.14; } .rose { --chip: #be123c; }
-  @media (min-width: 1000px) { .hero { padding-top: 120px; padding-bottom: 48px; } .p { top: 38px; width: max(1440px, 100%); } .acts { grid-template-columns: minmax(0, 1fr) auto; width: min(100%, 820px); } ul { position: relative; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start; margin-top: 96px; } li { margin-top: var(--d); } .cc { margin-top: -96px; } }
+  .hero { background: #02062c; text-align: center; overflow: clip; } .stage { position: relative; display: grid; justify-items: center; padding-top: 92px; } .p { position: absolute; z-index: -1; left: 50%; top: 56px; width: 230vw; height: auto; max-width: none; translate: -50% 0; }
+  .c { display: grid; justify-items: center; align-content: center; gap: 10px; width: min(74vw, 320px); min-height: 84vw; } h1 { font-size: 26px; line-height: 1.06; } .lead { font-size: 15px; line-height: 1.3; opacity: .9; } .c :global(.big) { width: 100%; margin-top: 4px; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; margin-top: 28px; padding-inline: var(--pad); } li { min-width: 0; } li a { display: grid; justify-items: center; gap: 6px; padding: 10px 6px; border-radius: 14px; transition: background .2s var(--ease); } li a:hover { background: color-mix(in srgb, var(--c) 20%, transparent); } li img { width: 56px; height: 56px; object-fit: contain; filter: saturate(1.4) drop-shadow(0 0 10px color-mix(in srgb, var(--c) 50%, transparent)); transition: transform .35s var(--ease); } li a:hover img { transform: scale(1.1); } li b { font-weight: 500; font-size: 14.5px; line-height: 1.2; letter-spacing: -.005em; text-wrap: balance; }
+  h2 { padding: 20px var(--pad) 32px; font-size: 22px; letter-spacing: -.02em; line-height: 1.16; text-wrap: balance; }
+  @media (min-width: 1000px) { .stage { width: min(100vw, 1440px); aspect-ratio: 16 / 9; min-height: 720px; margin-inline: auto; padding: 0; display: block; } .p { top: 16px; width: 100%; } .c { position: absolute; left: 50%; top: calc(50% + 16px); width: 480px; min-height: 0; gap: 14px; translate: -50% -50%; } h1 { font-size: 46px; } .lead { font-size: 17px; }
+    ul { position: absolute; inset: 0; display: block; margin: 0; padding: 0; } li { position: absolute; top: calc(var(--y) * 1%); width: 190px; translate: -50% -50%; } li.l { left: calc(var(--x) * 1%); } li.r { left: calc(var(--x) * 1%); } h2 { position: absolute; left: 0; right: 0; bottom: 8px; padding: 0; } }
 </style>

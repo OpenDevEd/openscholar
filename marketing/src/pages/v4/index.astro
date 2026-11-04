@@ -1,36 +1,27 @@
 ---
-// Hero to compare: one pane of glass divides two worlds in the site's own colours. Blue for the team's work with its search, rose for the public communities, and the light passes through the pane. Delete once one is picked.
+// Hero to compare: Earthrise from the Moon. The search box is in the black sky beside a huge Earth, and the communities stand out on the lunar surface. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import AskBar from "../../components/AskBar.astro";
-import Arrow from "../../components/Arrow.astro";
-import { APP, COMMUNITIES } from "../../data/site.mjs";
+import { COMMUNITIES } from "../../data/site.mjs";
 ---
-<Base top="#04123f" title="Hero 4: OpenScholar" description="Hero option">
+<Base top="#02062c" title="Hero 4: OpenScholar" description="Hero option">
   <section class="bleed hero">
-    <img class="p" src="/img/art-hero-divide.avif" srcset="/img/art-hero-divide-960.avif 960w, /img/art-hero-divide.avif 1672w" sizes="max(1440px, 100vw)" width="1672" height="941" fetchpriority="high" alt="" />
-    <div class="inner g">
-      <div class="w os">
-        <h1>Work through the evidence</h1>
-        <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
-        <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
-        <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
-      </div>
-      <div class="w ec">
-        <h2>Read it in a community</h2>
-        <p class="lead">Public homes for a field's evidence, each under its own name and address.</p>
-        <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul>
-        <a class="btn cta rose" href="/evidence-communities/">Explore communities<Arrow /></a>
-      </div>
+    <img class="p" src="/img/art-space-earthrise.avif" srcset="/img/art-space-earthrise-960.avif 960w, /img/art-space-earthrise.avif 1672w" sizes="(max-width: 999px) 200vw, max(1440px, 100vw)" width="1672" height="941" fetchpriority="high" alt="" />
+    <div class="inner c">
+      <h1>The evidence workspace for research teams</h1>
+      <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
+      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+    </div>
+    <div class="inner ec">
+      <h2>Evidence Communities are where anyone can read it</h2>
+      <ul>{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul>
     </div>
   </section>
 </Base>
 <style>
-  .hero { padding: 112px 0 0; background: linear-gradient(#04123f 0 0); } .p { display: none; }
-  .g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0; } .w { display: grid; justify-items: start; align-content: start; gap: 16px; padding: 0 calc(var(--gap) + var(--pad)) 40px; } h1, h2 { font-size: clamp(38px, 4.2vw, 58px); line-height: 1.04; letter-spacing: -.035em; text-wrap: balance; } .lead { max-width: 28em; } .w :global(.big) { width: 100%; } .cta { height: 64px; padding-inline: 26px 12px; font-size: 18px; white-space: nowrap; } .rose { --chip: #be123c; }
-  .ec { padding-top: 40px; background: #2e020d; }
-  ul { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; width: 100%; } li { min-width: 0; } li a { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; gap: 10px; height: 100%; padding: 8px 12px 8px 8px; border-radius: 14px; background: rgb(60 6 22 / .66); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); transition: background .2s var(--ease); } li a:hover { background: rgb(120 20 50 / .8); } li img { width: 40px; height: 40px; object-fit: contain; filter: saturate(1.4); } li b { font-weight: 500; font-size: 14px; line-height: 1.2; letter-spacing: -.005em; }
-  @media (min-width: 1000px) {
-    .hero { min-height: 850px; padding-top: 124px; background: linear-gradient(90deg, #04123f 50%, #2c0208 50%); } .p { display: block; position: absolute; z-index: -1; left: 50%; bottom: 0; width: max(1500px, 100%); height: auto; max-width: none; translate: -50% 0; }
-    .g { grid-template-columns: 1fr 1fr; gap: 96px; padding-inline: calc(var(--gap) + var(--pad)); } .w { padding: 0; } .ec { padding: 0; background: none; } ul { grid-template-columns: 1fr 1fr; }
-  }
+  .hero { padding: 104px 0 32px; background: #02062c; overflow: clip; } .p { position: absolute; z-index: -1; left: 50%; top: 330px; width: 200vw; height: auto; max-width: none; translate: -66% 0; }
+  .c { display: grid; justify-items: start; gap: 16px; } h1 { max-width: 12em; font-size: clamp(38px, 5vw, 66px); } .lead { max-width: 28em; } .c :global(.big) { width: 100%; margin-top: 6px; }
+  .ec { display: grid; gap: 14px; margin-top: 94vw; } h2 { font-size: 22px; letter-spacing: -.02em; line-height: 1.16; text-shadow: 0 1px 3px #000, 0 2px 18px #000, 0 0 30px #000; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } li { min-width: 0; } li a { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 10px; height: 100%; padding: 8px 12px 8px 6px; border-radius: 14px; background: rgb(2 6 30 / .6); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .14); transition: background .2s var(--ease); } li a:hover { background: color-mix(in srgb, var(--c) 30%, rgb(2 6 30 / .75)); } li img { width: 44px; height: 44px; object-fit: contain; filter: saturate(1.4); } li b { font-weight: 500; font-size: 14px; line-height: 1.18; letter-spacing: -.005em; }
+  @media (min-width: 1000px) { .hero { min-height: 810px; padding-top: 124px; } .p { top: auto; bottom: 0; width: max(1440px, 100%); translate: -50% 0; } .c { width: 100%; } .c > * { max-width: 620px; } .c :global(.big) { max-width: 600px; } .ec { margin-top: 118px; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 </style>

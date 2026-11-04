@@ -1,32 +1,29 @@
 ---
-// Hero to compare: the look you liked from wall type, standing still. Each product is one huge name in its own material and colour, with its own actions on the line beneath. Delete once one is picked.
+// Hero to compare: the site's real Earth, every research institution lit, rising under the search box, with the communities standing along its limb. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import AskBar from "../../components/AskBar.astro";
-import Arrow from "../../components/Arrow.astro";
-import Fill from "../../components/Fill.astro";
-import { APP, COMMUNITIES } from "../../data/site.mjs";
+import Globe from "../../components/Globe.astro";
+import { COMMUNITIES } from "../../data/site.mjs";
+const DROP = [214, 68, 0, 0, 68, 214];
 ---
-<Base top="#01072c" title="Hero 1: OpenScholar" description="Hero option">
-  <link rel="preload" as="image" href="/img/art-sea.avif" />
-  <section class="bleed os">
-    <div class="inner"><div class="cq">
-      <h1><Fill tex="sea" class="w">OpenScholar</Fill> <span>is where your team works through the evidence</span></h1>
+<Base top="#020a2c" title="Hero 1: OpenScholar" description="Hero option">
+  <section class="bleed hero">
+    <div class="inner c">
+      <h1>The evidence workspace for research teams</h1>
+      <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
       <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
-      <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
-    </div></div>
-  </section>
-  <section class="bleed ec">
-    <div class="inner"><div class="cq">
-      <h2><Fill tex="tx-tvet-960" base="#e11d48" class="e">Evidence Communities</Fill> <span>are where anyone can read it</span></h2>
-      <a class="btn cta rose" href="/evidence-communities/">Explore communities<Arrow /></a>
     </div>
-    <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul></div>
+    <div class="earth"><Globe /></div>
+    <div class="inner ec">
+      <h2>Evidence Communities are where anyone can read it</h2>
+      <ul>{COMMUNITIES.map((c, i) => <li style={`--d:${DROP[i]}px;--c:${c.color}`}><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul>
+    </div>
   </section>
 </Base>
 <style>
-  .cq { container-type: inline-size; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; } h1, h2 { display: grid; gap: 8px; font-weight: 500; } :global(.w) { font-size: calc(100cqw / 5.35); } :global(.e) { font-size: calc(100cqw / 9.42); } h1 > span, h2 > span { font-size: clamp(22px, 2.2vw, 28px); letter-spacing: -.02em; line-height: 1.14; text-wrap: balance; } .cq :global(.big) { width: 100%; } .cta { justify-self: start; height: 64px; padding-inline: 26px 12px; font-size: 18px; white-space: nowrap; } .rose { --chip: #be123c; }
-  .os { padding: 112px 0 36px; background: #01072c; } h1 > span { color: #a9bbe6; }
-  .ec { margin-top: calc(var(--gap) * -1); padding: 28px 0 32px; background: #2e020d; } h2 > span { color: #fda4af; }
-  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 20px; } li { min-width: 0; } li a { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 10px; height: 100%; padding: 10px 12px 10px 8px; border-radius: 14px; background: rgb(255 255 255 / .06); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: background .2s var(--ease); } li a:hover { background: rgb(255 255 255 / .15); } li img { width: 44px; height: 44px; object-fit: contain; filter: saturate(1.4); } li b { font-weight: 500; font-size: 14px; line-height: 1.2; letter-spacing: -.005em; }
-  @media (min-width: 1000px) { .cq { grid-template-columns: 360px minmax(0, 1fr) auto; column-gap: 20px; align-items: center; } h1, h2 { display: contents; } :global(.w), :global(.e) { grid-column: 1 / -1; } .ec .cq { grid-template-columns: minmax(0, 1fr) auto; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .hero { padding: 112px 0 32px; background: radial-gradient(ellipse 70% 60% at 50% 100%, #123a8c, transparent 70%), #020a2c; text-align: center; }
+  .c { position: relative; z-index: 1; display: grid; justify-items: center; gap: 16px; } h1 { max-width: 13em; font-size: clamp(38px, 4.6vw, 62px); } .lead { opacity: .9; } .c :global(.big) { width: min(100%, 720px); margin-top: 6px; }
+  .earth { width: 130vw; margin: 28px -15vw -86vw; } .ec { position: relative; z-index: 1; display: grid; gap: 14px; } h2 { font-size: clamp(22px, 2vw, 26px); letter-spacing: -.02em; line-height: 1.16; text-wrap: balance; text-shadow: 0 1px 14px #020a2c; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } li { min-width: 0; } li a { display: grid; justify-items: center; align-content: start; gap: 6px; height: 100%; padding: 12px 8px; border-radius: 16px; transition: background .2s var(--ease); } li a:hover { background: color-mix(in srgb, var(--c) 24%, transparent); } li img { width: 60px; height: 60px; object-fit: contain; filter: saturate(1.4) drop-shadow(0 0 12px color-mix(in srgb, var(--c) 55%, transparent)); transition: transform .35s var(--ease); } li a:hover img { transform: scale(1.1); } li b { font-weight: 500; font-size: 14.5px; line-height: 1.2; letter-spacing: -.005em; text-wrap: balance; text-shadow: 0 1px 10px #020a2c, 0 0 3px #020a2c; }
+  @media (min-width: 1000px) { .hero { height: 880px; overflow: clip; } .earth { position: absolute; z-index: 0; left: 50%; top: 500px; width: 1500px; margin: 0; translate: -50% 0; } .ec { position: absolute; left: 0; right: 0; top: 436px; display: block; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: start; gap: 12px; } li { margin-top: var(--d); } li a { height: auto; } h2 { position: absolute; left: 50%; top: 118px; width: 520px; translate: -50% 0; } }
 </style>
