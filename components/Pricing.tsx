@@ -453,7 +453,24 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
 
   if (phase === "initializing") {
     return (
-      <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
+      <>
+        <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
+        {/* The plans in the server's response, for what reads a page without running it. Gone once the page is drawn. */}
+        <div className="sr-only">
+          <h1>{t("chooseYourPlan")}</h1>
+          {PLANS.map((plan) => (
+            <section key={plan.id}>
+              <h2>{plan.name}</h2>
+              {plan.description ? <p>{plan.description}</p> : null}
+              <ul>
+                {plan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </>
     );
   }
 
