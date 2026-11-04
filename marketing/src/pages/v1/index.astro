@@ -1,29 +1,32 @@
 ---
-// Hero to compare: the button to OpenScholar in the centre, the site's rainbow ribbon behind, and every community as a glass tile along the foot. Delete once one is picked.
+// Hero to compare: the look you liked from wall type, standing still. Each product is one huge name in its own material and colour, with its own actions on the line beneath. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
-import Art from "../../components/Art.astro";
 import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
+import Fill from "../../components/Fill.astro";
 import { APP, COMMUNITIES } from "../../data/site.mjs";
 ---
-<Base top="#040b2e" title="Hero 1: OpenScholar" description="Hero option">
-  <section class="bleed hero">
-    <Art name="dark-ribbon" eager pos="50% 100%" />
-    <div class="inner c">
-      <h1>The evidence workspace for research teams</h1>
-      <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
-      <div class="acts"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /><a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a></div>
-    </div>
-    <div class="inner"><div class="ec">
-      <h2>Or read the evidence in a live community</h2>
-      <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b><Arrow /></a></li>)}</ul>
+<Base top="#01072c" title="Hero 1: OpenScholar" description="Hero option">
+  <link rel="preload" as="image" href="/img/art-sea.avif" />
+  <section class="bleed os">
+    <div class="inner"><div class="cq">
+      <h1><Fill tex="sea" class="w">OpenScholar</Fill> <span>is where your team works through the evidence</span></h1>
+      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+      <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
     </div></div>
+  </section>
+  <section class="bleed ec">
+    <div class="inner"><div class="cq">
+      <h2><Fill tex="tx-tvet-960" base="#e11d48" class="e">Evidence Communities</Fill> <span>are where anyone can read it</span></h2>
+      <a class="btn cta rose" href="/evidence-communities/">Explore communities<Arrow /></a>
+    </div>
+    <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul></div>
   </section>
 </Base>
 <style>
-  .hero { padding: 128px 0 32px; background: #040b2e; } .hero > :global(.art) { z-index: -1; -webkit-mask-image: linear-gradient(transparent 22%, #000 52%); mask-image: linear-gradient(transparent 22%, #000 52%); }
-  .c { display: grid; justify-items: center; gap: 20px; text-align: center; } h1 { max-width: 13em; } .acts { display: grid; gap: 10px; width: min(100%, 780px); margin-top: 4px; justify-items: center; } .acts :global(.big) { width: 100%; } .cta { height: 64px; padding-inline: 26px 12px; font-size: 18px; white-space: nowrap; }
-  .ec { display: grid; gap: 14px; margin-top: 112px; } h2 { font-size: 22px; letter-spacing: -.015em; line-height: 1.2; text-align: center; }
-  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } li { min-width: 0; } li a { display: grid; grid-template-rows: auto 1fr auto; justify-items: start; gap: 10px; height: 100%; padding: 16px; border-radius: 18px; background: rgb(6 12 48 / .72); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4); box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .12); transition: background .2s var(--ease); } li a:hover { background: rgb(20 30 86 / .86); } li img { width: 52px; height: 52px; object-fit: contain; filter: saturate(1.4); } li b { font-weight: 500; font-size: 15px; line-height: 1.22; letter-spacing: -.005em; } li a :global(i) { display: grid; transition: transform .25s var(--ease); } li a:hover :global(i) { transform: translateX(4px); }
-  @media (min-width: 1000px) { .acts { grid-template-columns: minmax(0, 1fr) auto; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  .cq { container-type: inline-size; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; } h1, h2 { display: grid; gap: 8px; font-weight: 500; } :global(.w) { font-size: calc(100cqw / 5.35); } :global(.e) { font-size: calc(100cqw / 9.42); } h1 > span, h2 > span { font-size: clamp(22px, 2.2vw, 28px); letter-spacing: -.02em; line-height: 1.14; text-wrap: balance; } .cq :global(.big) { width: 100%; } .cta { justify-self: start; height: 64px; padding-inline: 26px 12px; font-size: 18px; white-space: nowrap; } .rose { --chip: #be123c; }
+  .os { padding: 112px 0 36px; background: #01072c; } h1 > span { color: #a9bbe6; }
+  .ec { margin-top: calc(var(--gap) * -1); padding: 28px 0 32px; background: #2e020d; } h2 > span { color: #fda4af; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 20px; } li { min-width: 0; } li a { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: center; gap: 10px; height: 100%; padding: 10px 12px 10px 8px; border-radius: 14px; background: rgb(255 255 255 / .06); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: background .2s var(--ease); } li a:hover { background: rgb(255 255 255 / .15); } li img { width: 44px; height: 44px; object-fit: contain; filter: saturate(1.4); } li b { font-weight: 500; font-size: 14px; line-height: 1.2; letter-spacing: -.005em; }
+  @media (min-width: 1000px) { .cq { grid-template-columns: 360px minmax(0, 1fr) auto; column-gap: 20px; align-items: center; } h1, h2 { display: contents; } :global(.w), :global(.e) { grid-column: 1 / -1; } .ec .cq { grid-template-columns: minmax(0, 1fr) auto; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 </style>

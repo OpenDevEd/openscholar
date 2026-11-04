@@ -1,0 +1,9 @@
+---
+// Type filled with a material: two layers of the same picture drift against each other, so it shimmers. `flat` shows the picture once and holds still. Steps keep the repaints to a few a second.
+const { tex, as: Tag = "span", base = "#3f6bff", flat = false, class: cls = "" } = Astro.props;
+---
+<Tag class:list={["fill", { flat }, cls]} style={`--tx:url(/img/art-${tex}.avif);--base:${base}`}><slot /></Tag>
+<style>
+  .fill { display: block; background-image: var(--tx), var(--tx); background-size: 140% auto, 190% auto; background-position: 28% 40%, 72% 62%; background-color: var(--base); background-blend-mode: var(--blend, screen); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 500; line-height: .96; letter-spacing: -.055em; white-space: nowrap; animation: shimmer 70s steps(560) infinite alternate; } @keyframes shimmer { to { background-position: 62% 68%, 34% 30%; } }
+  .flat { background-image: var(--tx); background-size: 100% auto; background-position: 50% 50%; animation: none; }
+</style>
