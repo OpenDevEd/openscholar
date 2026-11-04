@@ -1,0 +1,123 @@
+---
+// One assistant panel that never moves, with the real pages of the product passing beneath it, one on each side. The chat, the "Sees" chip and the draft in the composer follow whichever page is open.
+// src/mark/orbit.js and orbit.css are the assistant's own icon and gestures, copied unchanged from the app's public/assistant-branding: change them there and copy them again, don't fork them here.
+import { orbitShape } from "../mark/orbit.js";
+import "../mark/orbit.css";
+const stops = [
+  ["library", "Library", "Library", "Add similar papers to Peer tutoring trials.", "The assistant's chat beside the Library. It checked the library, made a collection, saved 8 papers and extracted from all 8, with Undo on the changes."],
+  ["screening", "Screening", "Screening", "", "The assistant's chat beside a screening. Before it starts an extraction it asks, with Allow once and Always allow in this chat."],
+  ["job", "Extraction", "Extraction job", "How many of these papers used each study design?", "The assistant's chat beside an extraction. It lists the papers to check by hand, with the reason for each."],
+  ["search", "Search results", "Search results", "Keep trials since 2015. Save the ten most cited.", "The assistant's chat beside the search results. It ranks the countries that publish the most on the topic."],
+  ["community", "Community settings", "Community settings", "What's in Early Literacy Evidence so far?", "The assistant's chat beside a community's settings. It lists three communities and what you can do in each."],
+];
+// The rest of what people ask, in their own words.
+const more = [
+  "What cites this paper, and what does it cite?",
+  "How has this literature grown since 2010?",
+  "Read the methods section. How did they measure reading?",
+  "Here's a report I was sent. Do others disagree?",
+  "What's in my Zotero group on tutoring?",
+  "Which communities can I edit?",
+  "Move this collection to our project workspace.",
+];
+---
+<section class="bleed beside" id="assistant" data-beside>
+  <div class="b-head"><h2>From any page, the work is one message away</h2><p class="lead">The assistant sits beside whatever you have open, so "these papers" means the ones on that page. Ask for the search, the collection, the screening and the extraction in one go, and follow each step in the chat.</p></div>
+  <div class="b-stage" data-stage>
+    <svg class="assistant-mark b-mark" viewBox="0 0 128 128" data-motion="still" aria-hidden="true" set:html={orbitShape} />
+    <ol class="b-band" data-band data-asks={JSON.stringify(stops.map((s) => s[3]))} aria-label="Pages of Openscholar with the assistant beside them">
+      {stops.map(([id, name], i) => <li class:list={["sheet", { on: !i }]}><button type="button" aria-label={`Show the assistant beside ${name}`}><img src={`/img/beside/page-${id}.avif`} srcset={`/img/beside/page-${id}-1040.avif 1040w, /img/beside/page-${id}.avif 2000w`} sizes="(max-width: 1000px) 480px, (max-width: 1180px) 560px, (max-width: 1360px) 640px, (max-width: 1599px) 720px, 880px" width="2000" height="1250" loading="lazy" decoding="async" alt="" /></button></li>)}
+    </ol>
+    <div class="b-panel" data-panel>
+      {stops.map(([id, , sees, , alt], i) => <div class:list={["b-state", { on: !i }]}><img src={`/img/beside/panel-${id}.avif`} width="800" height="1195" loading="lazy" decoding="async" alt={alt} /><span class="b-sees"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 5C6.5 5 3 9.7 2 12c1 2.3 4.5 7 10 7s9-4.7 10-7c-1-2.3-4.5-7-10-7Zm0 10.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z" /></svg>Sees {sees}</span></div>)}
+      <p class:list={["b-draft", { empty: !stops[0][3] }]} data-draft aria-hidden="true">{stops[0][3]}</p>
+    </div>
+  </div>
+  <div class="b-more"><h3>Nearly all the work in the app, you can ask for.</h3><ul>{stops.filter((s) => s[3]).map(([, name, , ask]) => <li class="b-ask">On the {name} page: "{ask}"</li>)}{more.map((m) => <li>{m}</li>)}</ul></div>
+  <div class="b-more"><h3>The decisions stay yours.</h3><p>It asks before a job or a change that's hard to undo, you can undo a bulk change in one step, and it names the results to check when you ask.</p></div>
+</section>
+<script>
+  import { orbitSeconds } from "../mark/orbit.js";
+  const root = document.querySelector("[data-beside]");
+  if (root) {
+    const band = root.querySelector("[data-band]"), panel = root.querySelector("[data-panel]"), states = [...root.querySelectorAll(".b-state")], draft = root.querySelector("[data-draft]"), mark = root.querySelector(".b-mark");
+    const words = JSON.parse(band.dataset.asks), real = [...band.children], count = real.length, calm = matchMedia("(prefers-reduced-motion: reduce)").matches, GLIDE = 1300, HOLD = GLIDE + 6000;
+    // The band is a ring: a copy of the last page before the first, and of the first two after the last, so it always moves forward.
+    const copy = (el) => { const c = el.cloneNode(true); c.setAttribute("aria-hidden", "true"); c.querySelector("button").tabIndex = -1; return c; };
+    band.prepend(copy(real[count - 1])); band.append(copy(real[0]), copy(real[1]));
+    const ring = [...band.children], left = (r) => ring[r].offsetLeft - parseFloat(getComputedStyle(band).scrollPaddingInlineStart), stopOf = (r) => (r - 1 + count) % count;
+    let at = -1, spot = 1, timer, typing, frame, settle, gliding = false, seen = false, held = false, touching = false, taken = false, typedFirst = calm;
+    // What the icon does at each page: it searches for papers, waits on your approval, writes up the extraction, searches again, and thinks over your communities.
+    const GESTURE = ["searching", "idle", "writing", "searching", "thinking"], POSE = ["transform", "opacity", "strokeDashoffset"], pose = (n) => Object.fromEntries(POSE.map((k) => [k, getComputedStyle(n)[k]]));
+    // A new gesture starts from the pose on screen, the way the app's panel does it.
+    const act = (gesture) => { if (calm || !seen) return; clearTimeout(settle); const parts = [...mark.querySelectorAll(".motion-part")], from = parts.map(pose); mark.dataset.motion = "still"; parts.forEach((n, i) => { const to = pose(n); if (POSE.some((k) => from[i][k] !== to[k])) n.animate([from[i], to], { duration: 360, easing: "cubic-bezier(.22, .7, .25, 1)" }); }); settle = setTimeout(() => { mark.style.setProperty("--cycle", `${orbitSeconds[gesture]}s`); mark.dataset.motion = gesture; }, 360); };
+    const nearest = () => { let best = 0, gap = Infinity; ring.forEach((_, r) => { const d = Math.abs(left(r) - band.scrollLeft); if (d < gap) { gap = d; best = r; } }); return best; };
+    const type = (text) => { typedFirst = true; clearInterval(typing); draft.classList.toggle("empty", !text); draft.classList.remove("typing"); if (calm || !text) { draft.textContent = text; act(GESTURE[at]); return; } let n = 0; draft.textContent = ""; draft.classList.add("typing"); act("listening"); typing = setInterval(() => { draft.textContent = text.slice(0, ++n); if (n >= text.length) { clearInterval(typing); draft.classList.remove("typing"); act(GESTURE[at]); } }, 26); };
+    const show = (stop) => { if (stop === at) return; const opening = at < 0; at = stop; ring.forEach((s, r) => { const on = stopOf(r) === stop; s.classList.toggle("on", on); s.querySelector("button").ariaCurrent = on ? "true" : null; }); states.forEach((s, i) => s.classList.toggle("on", i === stop)); if (!opening) type(words[stop]); };
+    const home = () => { if (spot === 0) spot = count; else if (spot > count) spot -= count; band.scrollLeft = left(spot); };
+    const glide = (r) => { spot = r; cancelAnimationFrame(frame); if (calm) { band.scrollLeft = left(r); home(); show(stopOf(spot)); return; } const from = band.scrollLeft, to = left(r), t0 = performance.now(); gliding = true; band.style.scrollSnapType = "none"; const tick = (t) => { const k = Math.min(1, (t - t0) / GLIDE), e = k < .5 ? 4 * k ** 3 : 1 - (-2 * k + 2) ** 3 / 2; band.scrollLeft = from + (to - from) * e; if (k < 1) frame = requestAnimationFrame(tick); else { home(); band.style.scrollSnapType = ""; gliding = false; } }; frame = requestAnimationFrame(tick); };
+    // The loop runs while the stage is on screen, unless the pointer is reading the panel or a finger is down. A click, a tab or a sideways swipe hands it to the reader for good.
+    const wake = () => { clearTimeout(timer); if (seen && !held && !touching && !taken && !calm) timer = setTimeout(() => { glide(spot + 1); wake(); }, HOLD); };
+    const take = () => { taken = true; clearTimeout(timer); };
+    const stop = () => { take(); cancelAnimationFrame(frame); gliding = false; band.style.scrollSnapType = ""; };
+    band.scrollLeft = left(1); show(0);
+    if (!calm) { draft.textContent = ""; draft.classList.add("empty"); }
+    band.addEventListener("scroll", () => { if (touching && !gliding) take(); show(stopOf(nearest())); }, { passive: true });
+    band.addEventListener("scrollend", () => { if (!gliding) { spot = nearest(); home(); } });
+    // A mostly sideways wheel moves the band. A slightly diagonal scroll is the page's: the browser would otherwise hand all of it to the band.
+    band.addEventListener("wheel", (e) => { if (!e.deltaX) return; if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) stop(); else { e.preventDefault(); scrollBy({ top: e.deltaY, behavior: "instant" }); } }, { passive: false });
+    band.addEventListener("touchstart", () => { touching = true; clearTimeout(timer); }, { passive: true });
+    for (const e of ["touchend", "touchcancel"]) band.addEventListener(e, () => { touching = false; wake(); }, { passive: true });
+    ring.forEach((s, r) => s.querySelector("button").addEventListener("click", () => { take(); glide(r); }));
+    band.addEventListener("focusin", (e) => { if (e.target.matches(":focus-visible")) { take(); glide(ring.indexOf(e.target.closest("li"))); } });
+    // Only a pointer that really moved over the panel holds it. A page scroll also lands a resting pointer there, and that must not stop the loop.
+    panel.addEventListener("pointermove", (e) => { if (!held && e.pointerType === "mouse" && (e.movementX || e.movementY)) { held = true; clearTimeout(timer); } });
+    panel.addEventListener("pointerleave", () => { if (held) { held = false; wake(); } });
+    mark.addEventListener("pointerenter", () => act("listening")); mark.addEventListener("pointerleave", () => act(GESTURE[at]));
+    // Everything loads a screen before it's needed, so no page pops in mid-glide.
+    new IntersectionObserver(([e]) => { if (e.isIntersecting) root.querySelectorAll("img").forEach((i) => { i.loading = "eager"; }); }, { rootMargin: "100% 0px" }).observe(root);
+    // The icon rises from behind the panel once enough of it is in view to see it happen.
+    if (calm) root.classList.add("lit"); else { const first = new IntersectionObserver(([e]) => { if (e.isIntersecting) { root.classList.add("lit"); first.disconnect(); } }, { threshold: .4 }); first.observe(mark); }
+    new IntersectionObserver(([e]) => { seen = e.isIntersecting; if (seen) { if (typedFirst) act(GESTURE[at]); else type(words[at]); wake(); } else { clearTimeout(timer); clearTimeout(settle); mark.dataset.motion = "still"; } }, { threshold: .5 }).observe(root.querySelector("[data-stage]"));
+  }
+</script>
+<style>
+  /* The section's colours: one edit here retargets the backdrop and the edges it needs. */
+  .beside { --back: #0a1529; --edge-line: rgb(255 255 255 / .13); --copy: rgb(255 255 255 / .74); --mark-a: #ffb347; --mark-b: #ff8c00; --mark-c: #ff6b35; --eye: #ededed; }
+  /* Every size in one place, in fixed steps. Everything hangs off the page's centre line: the mark, the panel under it, the open page running in under the panel from the left, and the next page starting just past its right edge. */
+  .beside { --side: max(72px, calc((100vw - 1280px) / 2 + 72px)); --sheet-w: 720px; --sheet-h: 450px; --panel-w: 396px; --panel-h: 592px; --mark: 340px; --rise: 256px; --head: 268px; --rest: max(24px, calc(50vw - var(--panel-w) / 2 + 200px - var(--sheet-w))); --gap: calc(50vw + var(--panel-w) / 2 + 20px - var(--rest) - var(--sheet-w)); --band-top: calc((var(--panel-h) - var(--sheet-h)) / 2); background: var(--back); padding-bottom: 72px; scroll-margin-top: 64px; }
+  /* The head overlaps the mark's box, so only its words take the pointer and the mark can still be hovered. */
+  .b-head { position: relative; z-index: 2; pointer-events: none; height: var(--head); padding-inline: var(--side); display: grid; grid-template-columns: 1fr var(--mark) 1fr; column-gap: 32px; align-items: center; } .b-head h2, .b-head .lead { pointer-events: auto; } .b-head h2 { font-size: 44px; line-height: 1.08; text-wrap: balance; } .b-head .lead { grid-column: 3; font-size: 17px; color: var(--copy); }
+  .b-stage { position: relative; z-index: 1; height: var(--panel-h); }
+  /* The mark stands behind the panel and rises out of it. */
+  .b-mark { position: absolute; left: calc(50% - var(--mark) / 2); top: calc(var(--rise) * -1); width: var(--mark); height: var(--mark); transition: opacity .9s var(--ease), translate 1.4s var(--ease); } :global(.has-js) .beside:not(.lit) .b-mark { opacity: 0; translate: 0 40px; }
+  /* The band of pages: a native scroller, so it also works by touch, trackpad and with no script at all. */
+  .b-band { position: absolute; z-index: 1; left: 0; right: 0; top: var(--band-top); display: flex; gap: var(--gap); overflow-x: auto; overflow-y: hidden; padding-inline: var(--rest) 100vw; scroll-padding-inline: var(--rest); scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; } .b-band::-webkit-scrollbar { display: none; }
+  .sheet { flex: none; width: var(--sheet-w); scroll-snap-align: start; transition: opacity .7s var(--ease); } :global(.has-js) .sheet:not(.on) { opacity: .5; } :global(.has-js) .sheet:not(.on):hover { opacity: 1; }
+  .sheet button { display: block; width: 100%; height: var(--sheet-h); padding: 0; border-radius: 12px; overflow: clip; box-shadow: inset 0 0 0 1px var(--edge-line); background: #000; } .sheet img { width: 100%; height: 100%; object-fit: cover; object-position: top left; } .sheet.on button { cursor: default; } .sheet button:focus-visible { outline-offset: -4px; }
+  /* The panel stands proud of the band, top and bottom, and stays put. Only the chat on show reaches a screen reader. */
+  .b-panel { --u: calc(100cqw / 438); position: absolute; z-index: 2; top: 0; left: calc(50% - var(--panel-w) / 2); width: var(--panel-w); height: var(--panel-h); container-type: inline-size; border-radius: 16px; overflow: clip; background: #0a0a0a; box-shadow: 0 0 0 1px var(--edge-line), 0 40px 90px -20px #000; }
+  /* The old chat is gone before the new one comes, so text never lands on text. */
+  .b-state { position: absolute; left: 0; bottom: 0; width: 100%; opacity: 0; visibility: hidden; transition: opacity .14s linear, visibility 0s .14s; } .b-state.on { z-index: 1; opacity: 1; visibility: visible; transition: opacity .24s var(--ease) .14s; } .b-state img { display: block; width: 100%; height: auto; max-width: none; }
+  /* The draft and the chip are real text, set where the app's composer sets them. The capture is 438 wide, cropped inside the app's own edge. */
+  .b-sees { position: absolute; left: calc(var(--u) * 57); bottom: calc(var(--u) * 22); height: calc(var(--u) * 30); display: flex; align-items: center; gap: calc(var(--u) * 6); padding-inline: calc(var(--u) * 11); border-radius: 99px; background: rgb(255 157 54 / .13); color: #ff9d36; font-size: calc(var(--u) * 14); font-weight: 500; white-space: nowrap; } .b-sees svg { width: calc(var(--u) * 15); height: calc(var(--u) * 15); flex: none; }
+  .b-draft, :global(html:not(.has-js)) .b-state::after { position: absolute; z-index: 2; left: calc(var(--u) * 29); bottom: calc(var(--u) * 73); width: calc(var(--u) * 380); font-size: calc(var(--u) * 14); line-height: calc(var(--u) * 20); color: #fafafa; white-space: nowrap; } .b-draft.empty::before, :global(html:not(.has-js)) .b-state::after { content: "Ask, or type @ to point at something"; color: #a1a1a1; } .b-draft.typing::after { content: ""; display: inline-block; width: 1px; height: 1em; margin-left: 1px; vertical-align: -.12em; background: #ff9d36; }
+  /* With no script every chat is there to swipe through, each with the composer's placeholder and the edge of the next one showing. */
+  :global(html:not(.has-js)) .b-panel { --u: calc((100cqw - 28px) / 438); display: flex; align-items: flex-end; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; } :global(html:not(.has-js)) .b-state { position: relative; flex: none; width: calc(100% - 28px); opacity: 1; visibility: visible; scroll-snap-align: start; } :global(html:not(.has-js)) .b-draft { display: none; }
+  /* Under the stage, a plain statement on the left and what backs it from the panel's left edge on: first what people ask, then the promise. They sit above the panel's shadow, which would dim them. */
+  .b-more { position: relative; z-index: 2; padding: 56px var(--side) 0; display: grid; grid-template-columns: 1fr var(--panel-w) 1fr; } .b-more + .b-more { padding-top: 48px; } .b-more h3 { padding-right: 32px; font-size: 28px; line-height: 1.15; letter-spacing: -.015em; text-wrap: balance; } .b-more ul, .b-more p { grid-column: 2 / 4; } .b-more li { font-size: 24px; line-height: 1.3; letter-spacing: -.01em; color: #fff; text-wrap: balance; } .b-more li + li { margin-top: 12px; } .b-more p { max-width: 640px; font-size: 20px; line-height: 1.4; letter-spacing: -.01em; color: var(--copy); }
+  /* The typed requests are already on the stage, so with a script this list only speaks them. */
+  :global(.has-js) .b-ask { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
+  /* A big window has room for the panel at the app's own size. */
+  @media (min-width: 1600px) { .beside { --sheet-w: 880px; --sheet-h: 550px; --panel-w: 440px; --panel-h: 657px; --mark: 380px; --rise: 284px; --head: 298px; } }
+  @media (max-width: 1360px) { .beside { --sheet-w: 640px; --sheet-h: 400px; } }
+  @media (max-width: 1180px) { .beside { --side: 56px; --sheet-w: 560px; --sheet-h: 350px; --panel-w: 340px; --panel-h: 508px; --mark: 280px; --rise: 212px; --head: 230px; } .b-head h2 { font-size: 36px; } .b-head .lead { font-size: 16px; } .b-more h3 { font-size: 26px; } .b-more li { font-size: 22px; } }
+  /* The words go above in two columns, and the mark rises out of the panel in the space under them. */
+  @media (max-width: 1000px) { .beside { --side: 32px; --sheet-w: 460px; --sheet-h: 288px; --rest: 24px; --head: auto; padding-bottom: 56px; } .b-head { padding-block: 32px 28px; grid-template-columns: 1fr 1fr; align-items: start; } .b-head .lead { grid-column: 2; } .b-stage { margin-top: var(--rise); } .b-more { grid-template-columns: 1fr 1fr; } .b-more ul, .b-more p { grid-column: 2; } .b-more li { font-size: 20px; } .b-more p { font-size: 18px; } }
+  /* One column: words, mark, the page in front of it, then the whole panel over the page's lower edge, all on the centre line. */
+  @media (max-width: 720px) { .beside { --side: 20px; --sheet-w: 480px; --sheet-h: 300px; --mark: 260px; --rise: 202px; --rest: calc(50vw - var(--sheet-w) / 2); --gap: 16px; padding-bottom: 48px; } .b-head { display: block; padding-block: 28px 20px; } .b-head h2 { font-size: 34px; } .b-head .lead { margin-top: 16px; font-size: 17px; } .b-stage { height: auto; } .b-band { position: relative; top: 0; } .sheet button { border-radius: 10px; } .b-panel { position: relative; top: auto; left: auto; width: min(100% - 40px, 440px); height: auto; aspect-ratio: 800 / 1195; margin: -32px auto 0; } .b-more { display: block; padding-top: 40px; } .b-more + .b-more { padding-top: 36px; } .b-more h3 { padding-right: 0; font-size: 26px; margin-bottom: 16px; } .b-more li { font-size: 19px; } .b-more li + li { margin-top: 10px; } .b-more p { font-size: 17px; } }
+  /* A phone's page shows at a size you can read its title at: the same real page, cropped to its left side. */
+  @media (max-width: 500px) { .beside { --sheet-w: 340px; --sheet-h: 236px; --gap: 12px; } .sheet img { width: 140%; height: auto; max-width: none; } }
+  @media (max-width: 360px) { .beside { --sheet-w: 280px; } .sheet img { width: 170%; } }
+  @media (prefers-reduced-motion: reduce) { .sheet, .b-state, .b-state.on, .b-mark { transition: none; } }
+</style>
