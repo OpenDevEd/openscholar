@@ -5454,7 +5454,8 @@
     "strip": "Openbare alfa vir toetsing.",
     "stripDetail": "Dinge kan verander of breek.",
     "contactUs": "Kontak ons",
-    "plansNotice": "Openscholar is gratis tydens die openbare alfa, met elke funksie ingesluit. Planne sal daarna verander.",
+    "plansNoticeTitle": "Gratis tydens die openbare alfa",
+    "plansNoticeDetail": "Elke funksie ingesluit. Planne sal daarna verander.",
     "emailAddress": "E-pos {email}"
   }
 }

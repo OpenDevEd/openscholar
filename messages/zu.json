@@ -5453,7 +5453,8 @@
     "strip": "I-alpha yomphakathi yokuhlola.",
     "stripDetail": "Izinto zingashintsha noma zingasebenzi.",
     "contactUs": "Xhumana nathi",
-    "plansNotice": "I-Openscholar imahhala ngesikhathi se-alpha yomphakathi, nazo zonke izici zifakiwe. Amapulani azoshintsha ngemva kwalokho.",
+    "plansNoticeTitle": "Imahhala ngesikhathi se-alpha yomphakathi",
+    "plansNoticeDetail": "Zonke izici zifakiwe. Amapulani azoshintsha ngemva kwalokho.",
     "emailAddress": "Thumela i-imeyili ku-{email}"
   }
 }

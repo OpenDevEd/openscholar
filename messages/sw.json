@@ -5454,7 +5454,8 @@
     "strip": "Alfa ya umma kwa majaribio.",
     "stripDetail": "Mambo yanaweza kubadilika au kuharibika.",
     "contactUs": "Wasiliana nasi",
-    "plansNotice": "Openscholar ni bure wakati wa alfa ya umma, ikiwa na vipengele vyote. Mipango itabadilika baada ya hapo.",
+    "plansNoticeTitle": "Bure wakati wa alfa ya umma",
+    "plansNoticeDetail": "Vipengele vyote vimejumuishwa. Mipango itabadilika baada ya hapo.",
     "emailAddress": "Tuma barua pepe kwa {email}"
   }
 }

@@ -5454,7 +5454,8 @@
     "strip": "Alfa pública para testes.",
     "stripDetail": "Algumas coisas podem mudar ou falhar.",
     "contactUs": "Contacte-nos",
-    "plansNotice": "O Openscholar é gratuito durante a alfa pública, com todas as funcionalidades incluídas. Os planos vão mudar depois.",
+    "plansNoticeTitle": "Gratuito durante a alfa pública",
+    "plansNoticeDetail": "Todas as funcionalidades incluídas. Os planos vão mudar depois.",
     "emailAddress": "Enviar email para {email}"
   }
 }
