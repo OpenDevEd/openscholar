@@ -12,8 +12,8 @@ describe("workspaceHref", () => {
     expect(workspaceHref("lab", "/")).toBe("/o/lab");
   });
 
-  it("leaves the deployment's admin pages, other pages and your own workspace as they are", () => {
-    expect(workspaceHref("lab", "/settings/admin/models")).toBe("/settings/admin/models");
+  it("keeps the deployment's admin pages in the organization, and leaves other pages and your own workspace as they are", () => {
+    expect(workspaceHref("lab", "/settings/admin/models")).toBe("/o/lab/settings/admin/models");
     expect(workspaceHref("lab", "/settingsx")).toBe("/settingsx");
     expect(workspaceHref(undefined, "/settings")).toBe("/settings");
   });
