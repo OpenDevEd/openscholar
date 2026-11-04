@@ -288,8 +288,9 @@
    "actionLink__use_username": "Use username",
    "actionText": "Don’t have an account?",
    "actionText__join_waitlist": "Want early access?",
-   "subtitle": "Welcome back! Please sign in to continue",
-   "title": "Sign in to Openscholar"
+   "subtitle": "Sign in to your searches, library and screenings.",
+   "title": "Sign in to Openscholar",
+   "subtitleCombined": "Sign in to your searches, library and screenings."
   },
   "totpMfa": {
    "formTitle": "Verification code",
@@ -370,8 +371,8 @@
    "actionLink__use_email": "Use email instead",
    "actionLink__use_phone": "Use phone instead",
    "actionText": "Already have an account?",
-   "subtitle": "Welcome! Please fill in the details to get started.",
-   "subtitleCombined": "Welcome! Please fill in the details to get started.",
+   "subtitle": "Free during the public alpha. No card required.",
+   "subtitleCombined": "Free during the public alpha. No card required.",
    "title": "Create your account",
    "titleCombined": "Create your account"
   },

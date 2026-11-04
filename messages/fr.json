@@ -215,7 +215,7 @@
     "calendarNavigation": "Navigation du calendrier"
   },
   "home": {
-    "tagline": "Recherchez des millions d'articles académiques et de recherche",
+    "tagline": "Recherchez, filtrez et extrayez des preuves de la recherche académique",
     "searchPlaceholder": "Saisissez des mots-clés (ex. machine learning AND réseaux de neurones)",
     "researchPlaceholder": "Décrivez ce que vous recherchez en langage naturel",
     "searchMode": "Mots-clés",
@@ -1043,7 +1043,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar - Recherche d'articles académiques",
-    "defaultDescription": "Recherchez des millions d'articles académiques et de recherche",
+    "defaultDescription": "Recherchez, filtrez et extrayez des preuves de la recherche académique",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

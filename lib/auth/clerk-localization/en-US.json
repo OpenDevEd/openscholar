@@ -31,7 +31,9 @@
         "title": "Sign in to Openscholar with {{provider}}"
       },
       "title": "Sign in to Openscholar",
-      "titleCombined": "Continue to Openscholar"
+      "titleCombined": "Continue to Openscholar",
+      "subtitle": "Sign in to your searches, library and screenings.",
+      "subtitleCombined": "Sign in to your searches, library and screenings."
     }
   },
   "signUp": {
@@ -41,7 +43,9 @@
     "start": {
       "alternativePhoneCodeProvider": {
         "title": "Sign up to Openscholar with {{provider}}"
-      }
+      },
+      "subtitle": "Free during the public alpha. No card required.",
+      "subtitleCombined": "Free during the public alpha. No card required."
     }
   }
 }

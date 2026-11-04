@@ -215,7 +215,7 @@
     "calendarNavigation": "Calendar navigation"
   },
   "home": {
-    "tagline": "Search millions of academic papers and research articles",
+    "tagline": "Search, screen and extract evidence from academic research",
     "searchPlaceholder": "Type keywords (e.g. machine learning AND neural networks)",
     "researchPlaceholder": "Describe what you're looking for in plain language",
     "searchMode": "Keywords",
@@ -1043,7 +1043,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar | Academic paper search",
-    "defaultDescription": "Search millions of academic papers and research articles",
+    "defaultDescription": "Search, screen and extract evidence from academic research",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

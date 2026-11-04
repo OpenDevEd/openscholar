@@ -215,7 +215,7 @@
     "calendarNavigation": "カレンダーのナビゲーション"
   },
   "home": {
-    "tagline": "数百万の学術論文と研究記事を検索",
+    "tagline": "学術研究を検索・スクリーニングし、エビデンスを抽出",
     "searchPlaceholder": "キーワードを入力（例：machine learning AND neural networks）",
     "researchPlaceholder": "探している内容をわかりやすく説明してください",
     "searchMode": "キーワード",
@@ -1043,7 +1043,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar - 学術論文検索",
-    "defaultDescription": "数百万の学術論文と研究記事を検索",
+    "defaultDescription": "学術研究を検索・スクリーニングし、エビデンスを抽出",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

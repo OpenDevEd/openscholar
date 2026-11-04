@@ -369,9 +369,10 @@
     "subtitle": "أدخل رقم هاتفك لتلقي رمز التحقق عبر {{provider}}.",
     "title": "سجّل الدخول إلى Openscholar عبر {{provider}}"
    },
-   "subtitle": "للمتابعة إلى Openscholar",
+   "subtitle": "سجّل الدخول للوصول إلى عمليات البحث والمكتبة وعمليات الفرز.",
    "title": "تسجيل الدخول",
-   "titleCombined": "المتابعة إلى Openscholar"
+   "titleCombined": "المتابعة إلى Openscholar",
+   "subtitleCombined": "سجّل الدخول للوصول إلى عمليات البحث والمكتبة وعمليات الفرز."
   },
   "totpMfa": {
    "formTitle": "رمز التحقق",
@@ -473,8 +474,8 @@
     "subtitle": "أدخل رقم هاتفك لتلقي رمز التحقق عبر {{provider}}.",
     "title": "أنشئ حساباً في Openscholar عبر {{provider}}"
    },
-   "subtitle": "للمتابعة إلى Openscholar",
-   "subtitleCombined": "مرحباً بك! يُرجى ملء البيانات للبدء.",
+   "subtitle": "مجاني خلال إصدار ألفا العام. لا حاجة إلى بطاقة.",
+   "subtitleCombined": "مجاني خلال إصدار ألفا العام. لا حاجة إلى بطاقة.",
    "title": "أنشاء حساب جديد",
    "titleCombined": "أنشاء حساب جديد"
   },

@@ -215,7 +215,7 @@
     "calendarNavigation": "कैलेंडर नेविगेशन"
   },
   "home": {
-    "tagline": "लाखों अकादमिक पेपर और शोध लेख खोजें",
+    "tagline": "अकादमिक शोध खोजें, स्क्रीन करें और उससे साक्ष्य निकालें",
     "searchPlaceholder": "कीवर्ड लिखें (जैसे machine learning AND neural networks)",
     "researchPlaceholder": "सादी भाषा में बताएं कि आप क्या ढूंढ रहे हैं",
     "searchMode": "कीवर्ड",
@@ -1043,7 +1043,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar - अकादमिक पेपर खोज",
-    "defaultDescription": "लाखों अकादमिक पेपर और शोध लेख खोजें",
+    "defaultDescription": "अकादमिक शोध खोजें, स्क्रीन करें और उससे साक्ष्य निकालें",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

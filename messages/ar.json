@@ -215,7 +215,7 @@
     "calendarNavigation": "التنقل في التقويم"
   },
   "home": {
-    "tagline": "ابحث في ملايين الأوراق الأكاديمية ومقالات البحث",
+    "tagline": "ابحث وافرز واستخلص الأدلة من البحوث الأكاديمية",
     "searchPlaceholder": "اكتب كلمات مفتاحية (مثال: machine learning AND neural networks)",
     "researchPlaceholder": "صِف ما تبحث عنه بلغة عادية",
     "searchMode": "كلمات مفتاحية",
@@ -1044,7 +1044,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar | البحث في الأوراق الأكاديمية",
-    "defaultDescription": "ابحث في ملايين الأوراق الأكاديمية ومقالات البحث",
+    "defaultDescription": "ابحث وافرز واستخلص الأدلة من البحوث الأكاديمية",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

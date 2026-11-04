@@ -215,7 +215,7 @@
     "calendarNavigation": "Navegação do calendário"
   },
   "home": {
-    "tagline": "Pesquise milhões de artigos académicos e de investigação",
+    "tagline": "Pesquise, faça a triagem e extraia evidências da investigação académica",
     "searchPlaceholder": "Escreva palavras-chave (ex.: machine learning AND neural networks)",
     "researchPlaceholder": "Descreva em linguagem simples o que procura",
     "searchMode": "Palavras-chave",
@@ -1044,7 +1044,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar | Pesquisa de artigos académicos",
-    "defaultDescription": "Pesquise milhões de artigos académicos e de investigação",
+    "defaultDescription": "Pesquise, faça a triagem e extraia evidências da investigação académica",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

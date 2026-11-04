@@ -215,7 +215,7 @@
     "calendarNavigation": "日历导航"
   },
   "home": {
-    "tagline": "搜索数百万学术论文和研究文章",
+    "tagline": "搜索、筛选学术研究并提取证据",
     "searchPlaceholder": "输入关键词（例如：机器学习 AND 神经网络）",
     "researchPlaceholder": "用通俗语言描述您要查找的内容",
     "searchMode": "关键词",
@@ -1043,7 +1043,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar - 学术论文搜索",
-    "defaultDescription": "搜索数百万学术论文和研究文章",
+    "defaultDescription": "搜索、筛选学术研究并提取证据",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

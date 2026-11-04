@@ -215,7 +215,7 @@
     "calendarNavigation": "Kalendernavigation"
   },
   "home": {
-    "tagline": "Durchsuchen Sie Millionen wissenschaftlicher Artikel und Forschungsbeiträge",
+    "tagline": "Wissenschaftliche Forschung durchsuchen, screenen und Evidenz extrahieren",
     "searchPlaceholder": "Stichwörter eingeben (z. B. machine learning AND neural networks)",
     "researchPlaceholder": "Beschreiben Sie in einfachen Worten, wonach Sie suchen",
     "searchMode": "Stichwörter",
@@ -1044,7 +1044,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar | Suche nach wissenschaftlichen Artikeln",
-    "defaultDescription": "Durchsuchen Sie Millionen wissenschaftlicher Artikel und Forschungsbeiträge",
+    "defaultDescription": "Wissenschaftliche Forschung durchsuchen, screenen und Evidenz extrahieren",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

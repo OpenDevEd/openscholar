@@ -369,9 +369,10 @@
     "subtitle": "Tik jou foonnommer in om ’n verifikasiekode op {{provider}} te ontvang.",
     "title": "Meld aan by Openscholar met {{provider}}"
    },
-   "subtitle": "Welkom terug! Meld asseblief aan om voort te gaan",
+   "subtitle": "Meld aan by jou soektogte, biblioteek en sifterings.",
    "title": "Meld aan by Openscholar",
-   "titleCombined": "Gaan voort na Openscholar"
+   "titleCombined": "Gaan voort na Openscholar",
+   "subtitleCombined": "Meld aan by jou soektogte, biblioteek en sifterings."
   },
   "totpMfa": {
    "formTitle": "Verifikasiekode",
@@ -473,8 +474,8 @@
     "subtitle": "Tik jou foonnommer in om ’n verifikasiekode op {{provider}} te ontvang.",
     "title": "Registreer by Openscholar met {{provider}}"
    },
-   "subtitle": "Welkom! Vul asseblief die besonderhede in om te begin.",
-   "subtitleCombined": "Welkom! Vul asseblief die besonderhede in om te begin.",
+   "subtitle": "Gratis tydens die openbare alfa. Geen kaart nodig nie.",
+   "subtitleCombined": "Gratis tydens die openbare alfa. Geen kaart nodig nie.",
    "title": "Skep jou rekening",
    "titleCombined": "Skep jou rekening"
   },

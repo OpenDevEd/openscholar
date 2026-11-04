@@ -215,7 +215,7 @@
     "calendarNavigation": "Urambazaji wa kalenda"
   },
   "home": {
-    "tagline": "Tafuta mamilioni ya makala za kitaaluma na machapisho ya utafiti",
+    "tagline": "Tafuta, chuja na uchimbue ushahidi kutoka kwa utafiti wa kitaaluma",
     "searchPlaceholder": "Andika maneno muhimu (mfano: machine learning AND neural networks)",
     "researchPlaceholder": "Eleza unachotafuta kwa lugha ya kawaida",
     "searchMode": "Maneno muhimu",
@@ -1044,7 +1044,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar | Utafutaji wa makala za kitaaluma",
-    "defaultDescription": "Tafuta mamilioni ya makala za kitaaluma na machapisho ya utafiti",
+    "defaultDescription": "Tafuta, chuja na uchimbue ushahidi kutoka kwa utafiti wa kitaaluma",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

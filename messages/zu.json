@@ -215,7 +215,7 @@
     "calendarNavigation": "Ukuzulazula kwekhalenda"
   },
   "home": {
-    "tagline": "Sesha izinkulungwane zamaphepha emfundo nezihloko zocwaningo",
+    "tagline": "Sesha, skrina futhi ukhiphe ubufakazi ocwaningweni lwezemfundo",
     "searchPlaceholder": "Bhala amagama angukhiye (isibonelo: machine learning AND neural networks)",
     "researchPlaceholder": "Chaza ngolimi olulula okufunayo",
     "searchMode": "Amagama angukhiye",
@@ -1043,7 +1043,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar | Ukusesha amaphepha emfundo",
-    "defaultDescription": "Sesha izinkulungwane zamaphepha emfundo nezihloko zocwaningo",
+    "defaultDescription": "Sesha, skrina futhi ukhiphe ubufakazi ocwaningweni lwezemfundo",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

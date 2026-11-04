@@ -369,9 +369,10 @@
     "subtitle": "Weka namba yako ya simu ili upate msimbo wa uthibitisho kwenye {{provider}}.",
     "title": "Ingia kwenye Openscholar ukitumia {{provider}}"
    },
-   "subtitle": "Karibu tena! Tafadhali ingia ili kuendelea",
+   "subtitle": "Ingia ili kufikia utafutaji, maktaba na uchujaji wako.",
    "title": "Ingia kwenye Openscholar",
-   "titleCombined": "Endelea kwenye Openscholar"
+   "titleCombined": "Endelea kwenye Openscholar",
+   "subtitleCombined": "Ingia ili kufikia utafutaji, maktaba na uchujaji wako."
   },
   "totpMfa": {
    "formTitle": "Msimbo wa uthibitisho",
@@ -473,8 +474,8 @@
     "subtitle": "Weka namba yako ya simu ili upate msimbo wa uthibitisho kwenye {{provider}}.",
     "title": "Jisajili kwenye Openscholar ukitumia {{provider}}"
    },
-   "subtitle": "Karibu! Tafadhali jaza taarifa ili kuanza.",
-   "subtitleCombined": "Karibu! Tafadhali jaza taarifa ili kuanza.",
+   "subtitle": "Bure wakati wa alfa ya umma. Hakuna kadi inayohitajika.",
+   "subtitleCombined": "Bure wakati wa alfa ya umma. Hakuna kadi inayohitajika.",
    "title": "Unda akaunti yako",
    "titleCombined": "Unda akaunti yako"
   },
