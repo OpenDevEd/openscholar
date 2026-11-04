@@ -26,9 +26,11 @@ Siqoqa noma sisebenzise imininingwane yomuntu elandelayo **ukuze sisebenzise i-a
 * Igama lakho, ikheli le-imeyili nesithombe sephrofayela, nezinhlangano oyilungu lazo
 * Okwenzayo ku-Openscholar: ukusesha, imibuzo, amaphepha agciniwe, izilinganiso, amaqoqo, ukuskrina, ukukhishwa nezingxoxo nomsizi
 * Amafayela owalayishayo, nezinhlelo ozixhumayo, njenge-Zotero
-* Amakhredithi owasebenzisayo nowathengayo. I-Stripe iphatha imininingwane yekhadi, futhi asiyiboni noma siyigcine
+* Amakhredithi owasebenzisayo nowathengayo. I-Stripe iphatha imininingwane yekhadi, futhi sigcina kuphela uhlobo lwekhadi nezinombolo zalo ezine zokugcina
 
 Uma usebenzisa isici se-AI, isicelo sakho nombhalo wephepha odingekayo kuthunyelwa kumhlinzeki we-AI owenza umsebenzi.
+
+Noma wamukela amakhukhi okuhlaziya noma cha, sithumela ku-PostHog irekhodi lesicelo ngasinye se-AI ngaphansi kwe-ID ye-akhawunti yakho, ngaphandle kombhalo waso, ukuze silandele izindleko nokwethembeka.
 
 Siqoqa noma siyasebenzisa ulwazi lomuntu siqu olulandelayo **ngokuphatha imibuzo, izikhalo noma izimangalo**:
 
@@ -88,6 +90,8 @@ Isisekelo sethu sezomthetho sokuqoqa noma ukusebenzisa imininingwane yomuntu **u
 
 * **Inkontileka** – siyayidinga ukuze sinikeze insizakalo obhalisele yona. Wonke amalungelo akho okuvikelwa kwedatha angasebenza, ngaphandle kwelungelo lokuphikisa.
 
+* **Izithakazelo ezisemthethweni** – kulawo marekhodi ezicelo ze-AI. Siyawadinga ukuze sigcine izici ze-AI zithembekile nezindleko zazo zilawulwa.
+
 Izisekelo zethu ezisemthethweni zokuqoqa noma zokusebenzisa ulwazi lomuntu siqu ngokuphatha imibuzo, izikhalo noma izimangalo yilezi:
 
 * **Izintshisekelo ezisemthethweni** – siqoqa noma sisebenzisa ulwazi lwakho ngoba luzuzisa wena, inhlangano yethu noma omunye umuntu, ngaphandle kokudala ingozi engadingekile yokulimala kunoma ubani. Onke amalungelo akho okuvikelwa kwedatha angasebenza, ngaphandle kwelungelo lokudlulisa. Izintshisekelo zethu ezisemthethweni yilezi:
@@ -140,7 +144,8 @@ Ukuthola ulwazi oluningi ngokusebenzisa kwethu izintshisekelo ezisemthethweni nj
 | **Ama-cookie okuhlaziya**            | Izinsuku ezingu-365 kusukela ekuvakashelweni kokugcina | Ukulandela abavakashi ababuyayo nokugcina ukuqhubeka kweseshini                             |
 | **Izimpendulo zezinhlolovo**         | Unyaka owodwa kusukela ngosuku lokuthunyelwa | Ukuthuthukisa umkhiqizo nokulandela amaphethini empendulo ngokuhamba kwesikhathi            |
 | **Amalogi amakheli e-IP**            | Amahora angu-24 kusukela ngosuku kuqoqwe ngalo | Ukuqapha ukuphepha nokuvimbela ukukhohlisa                                                    |
-| **Idatha ye-akhawunti neyocwaningo** | Uze uyisuse noma ususe i-akhawunti yakho | Ukunikeza insizakalo |
+| **Idatha ye-akhawunti neyocwaningo** | Uze uyisuse noma ususe i-akhawunti yakho, bese cishe izinsuku ezingama-30 | Ukunikeza insizakalo |
+| **Okwengeza enhlanganweni** | Kuhlala enhlanganweni, negama lakho, ngemva kokuthi uhambe noma ususe i-akhawunti yakho | Ukuze inhlangano igcine umsebenzi wayo |
 | **Amarekhodi okukhokha** | Iminyaka eyi-6 kusukela ngosuku lokuthenga | Ukulandela imithetho yentela neyokubalwa kwezimali |
 
 
@@ -249,7 +254,7 @@ Sisebenzisa izindlela zobuchwepheshe nezohlelo ezifanele ukuvikela ulwazi lwakho
 * **Ukufihla igama:** Idatha yokuhlaziya ifihlwa igama ngangokunokwenzeka
 * **Ukubuyekezwa kokuphepha njalo:** Siyaqapha futhi sibuyekeze izindlela zethu zokuphepha
 * **Abacubunguli bedatha abaphephile:** Sisebenza kuphela nabacubunguli abahlangabezana namazinga aphezulu okuphepha
-* **Ukuphathwa kwemvume ye-cookie:** Ukuhlaziya kusebenza kuphela ngemvume yakho
+* **Ukuphatha imvume yamakhukhi:** Amakhukhi okuhlaziya nokuphindwa kwezikhathi kusebenza kuphela ngemvume yakho
 
 # **Ama-cookie**
 

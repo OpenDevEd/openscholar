@@ -26,9 +26,11 @@ Tunakusanya au kutumia taarifa binafsi zifuatazo **ili kuendesha akaunti yako na
 * Jina lako, anwani ya barua pepe na picha ya wasifu, na mashirika unayoyahusu
 * Unachofanya katika Openscholar: utafutaji, maswali, makala zilizohifadhiwa, ukadiriaji, mikusanyo, uchujaji, uchimbaji na mazungumzo na msaidizi
 * Faili unazopakia, na programu unazounganisha, kama Zotero
-* Krediti unazotumia na kununua. Stripe hushughulikia taarifa za kadi, na sisi hatuzioni wala kuzihifadhi
+* Krediti unazotumia na kununua. Stripe hushughulikia taarifa za kadi, na sisi tunaweka tu aina ya kadi na tarakimu zake nne za mwisho
 
 Unapotumia kipengele cha AI, ombi lako na maandishi ya makala yanayohitajika hutumwa kwa mtoa huduma wa AI anayefanya kazi hiyo.
+
+Iwe unakubali vidakuzi vya uchanganuzi au la, tunatuma kwa PostHog rekodi ya kila ombi la AI chini ya kitambulisho cha akaunti yako, bila maandishi yake, ili kufuatilia gharama na uaminifu.
 
 Tunakusanya au kutumia taarifa binafsi zifuatazo kwa **kushughulikia maswali, malalamiko au madai**:
 
@@ -88,6 +90,8 @@ Msingi wetu wa kisheria wa kukusanya au kutumia taarifa binafsi **ili kuendesha 
 
 * **Mkataba** – tunazihitaji ili kutoa huduma uliyojisajili. Haki zako zote za ulinzi wa data zinaweza kutumika, isipokuwa haki ya kupinga.
 
+* **Maslahi halali** – kwa rekodi hizo za maombi ya AI. Tunazihitaji ili vipengele vya AI viwe vya kuaminika na gharama zake zidhibitiwe.
+
 Misingi yetu halali ya kukusanya au kutumia taarifa binafsi kwa **kushughulikia maswali, malalamiko au madai** ni:
 
 * **Maslahi halali** – tunakusanya au kutumia taarifa zako kwa sababu zinakunufaisha wewe, shirika letu au mtu mwingine, bila kuleta hatari isiyo ya lazima ya madhara kwa yeyote. Haki zako zote za ulinzi wa data zinaweza kutumika, isipokuwa haki ya kuhamisha data. Maslahi yetu halali ni:
@@ -140,7 +144,8 @@ Kwa maelezo zaidi kuhusu matumizi yetu ya maslahi halali kama msingi halali, una
 | **Vidakuzi vya uchambuzi**           | siku 365 kuanzia ziara ya mwisho            | Kufuatilia wageni wanaorudi na kudumisha mwendelezo wa kipindi                                |
 | **Majibu ya tafiti**                 | mwaka 1 kuanzia tarehe ya kuwasilisha       | Kuboresha bidhaa na kufuatilia mwelekeo wa maoni kwa muda                                     |
 | **Kumbukumbu za anwani ya IP**       | saa 24 kuanzia tarehe ya ukusanyaji         | Kwa ufuatiliaji wa usalama na kuzuia udanganyifu                                              |
-| **Data ya akaunti na utafiti** | Hadi uifute au ufute akaunti yako | Ili kutoa huduma |
+| **Data ya akaunti na utafiti** | Hadi uifute au ufute akaunti yako, kisha takriban siku 30 | Ili kutoa huduma |
+| **Unachoongeza kwenye shirika** | Kinabaki kwenye shirika, pamoja na jina lako, baada ya kuondoka au kufuta akaunti yako | Ili shirika lihifadhi kazi yake |
 | **Rekodi za malipo** | Miaka 6 tangu tarehe ya ununuzi | Ili kufuata sheria za kodi na uhasibu |
 
 
@@ -249,7 +254,7 @@ Tunatekeleza hatua zinazofaa za kiufundi na kiutawala kulinda taarifa zako binaf
 * **Kuficha utambulisho:** Data ya uchambuzi inafichwa utambulisho pale inapowezekana
 * **Mapitio ya usalama ya mara kwa mara:** Tunafuatilia na kusasisha taratibu zetu za usalama
 * **Wachakataji salama wa data:** Tunafanya kazi na wachakataji wanaokidhi viwango vya juu vya usalama pekee
-* **Usimamizi wa idhini ya vidakuzi:** Uchambuzi unaendeshwa kwa idhini yako pekee
+* **Usimamizi wa idhini ya vidakuzi:** Vidakuzi vya uchanganuzi na marudio ya vipindi hufanya kazi tu kwa idhini yako
 
 # **Vidakuzi**
 

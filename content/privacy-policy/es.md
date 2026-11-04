@@ -26,9 +26,11 @@ Recopilamos o utilizamos la siguiente información personal **para que funcionen
 * Su nombre, dirección de correo electrónico y foto de perfil, y las organizaciones a las que pertenece
 * Lo que hace en Openscholar: búsquedas, preguntas, artículos guardados, valoraciones, colecciones, cribados, extracciones y conversaciones con el asistente
 * Los archivos que sube y las aplicaciones que conecta, como Zotero
-* Los créditos que utiliza y compra. Stripe gestiona los datos de la tarjeta; nosotros no los vemos ni los almacenamos
+* Los créditos que utiliza y compra. Stripe gestiona los datos de la tarjeta; solo conservamos la marca de la tarjeta y sus cuatro últimos dígitos
 
 Cuando utiliza una función de IA, su solicitud y el texto del artículo necesario se envían al proveedor de IA que realiza el trabajo.
+
+Acepte o no las cookies analíticas, enviamos a PostHog un registro de cada solicitud de IA con su ID de cuenta, sin su texto, para controlar el coste y la fiabilidad.
 
 Recopilamos o usamos los siguientes datos personales para **atender consultas, reclamaciones o solicitudes**:
 
@@ -88,6 +90,8 @@ Nuestra base legal para recopilar o utilizar información personal **para que fu
 
 * **Contrato**: la necesitamos para prestar el servicio en el que se ha registrado. Pueden aplicarse todos sus derechos de protección de datos, excepto el derecho de oposición.
 
+* **Intereses legítimos**: para esos registros de solicitudes de IA. Los necesitamos para mantener la fiabilidad de las funciones de IA y controlar sus costes.
+
 Nuestras bases jurídicas para recopilar o usar datos personales con el fin de **atender consultas, reclamaciones o solicitudes** son:
 
 * **Intereses legítimos** – recopilamos o usamos su información porque le beneficia a usted, a nuestra organización o a otra persona, sin causar un riesgo indebido de perjuicio para nadie. Pueden aplicarse todos sus derechos de protección de datos, excepto el derecho a la portabilidad. Nuestros intereses legítimos son:
@@ -140,7 +144,8 @@ Para más información sobre nuestro uso de los intereses legítimos como base j
 | **Cookies de analítica**             | 365 días desde la última visita             | Para identificar a los visitantes que regresan y mantener la continuidad de la sesión         |
 | **Respuestas a encuestas**           | 1 año desde la fecha de envío               | Para mejorar el producto y seguir las tendencias de opinión a lo largo del tiempo             |
 | **Registros de direcciones IP**      | 24 horas desde la fecha de recopilación     | Para la supervisión de la seguridad y la prevención del fraude                                |
-| **Datos de la cuenta y de investigación** | Hasta que los elimine o elimine su cuenta | Para prestar el servicio |
+| **Datos de la cuenta y de investigación** | Hasta que los elimine o elimine su cuenta, y después unos 30 días | Para prestar el servicio |
+| **Lo que añade a una organización** | Permanece en la organización, con su nombre, después de que se marche o elimine su cuenta | Para que la organización conserve su trabajo |
 | **Registros de pago** | 6 años desde la fecha de compra | Para cumplir las normas fiscales y contables |
 
 
@@ -249,7 +254,7 @@ Aplicamos medidas técnicas y organizativas adecuadas para proteger sus datos pe
 * **Seudonimización:** los datos de analítica se seudonimizan siempre que es posible
 * **Revisiones periódicas de seguridad:** supervisamos y actualizamos nuestras prácticas de seguridad
 * **Encargados seguros:** solo trabajamos con encargados que cumplen estándares de seguridad elevados
-* **Gestión del consentimiento de cookies:** la analítica solo se ejecuta con su consentimiento
+* **Gestión del consentimiento de cookies:** Las cookies analíticas y las grabaciones de sesión solo funcionan con su consentimiento
 
 # **Cookies**
 

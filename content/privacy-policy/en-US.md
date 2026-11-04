@@ -26,9 +26,11 @@ We collect or use the following personal information **to run your account and t
 * Your name, email address and profile photo, and the organizations you belong to
 * What you do in Openscholar: searches, questions, saved papers, ratings, collections, screenings, extractions and assistant chats
 * Files you upload, and apps you connect, such as Zotero
-* Credits you use and buy. Stripe handles card details, and we don't see or store them
+* Credits you use and buy. Stripe handles card details, and we only keep the card's brand and last four digits
 
 When you use an AI feature, your request and the paper text it needs are sent to the AI provider that does the work.
+
+Whether or not you accept analytics cookies, we send PostHog a record of each AI request under your account ID, without its text, to track cost and reliability.
 
 We collect or use the following personal information for **dealing with queries, complaints or claims**:
 
@@ -88,6 +90,8 @@ Our lawful basis for collecting or using personal information **to run your acco
 
 * **Contract** – we need it to provide the service you signed up for. All of your data protection rights may apply, except the right to object.
 
+* **Legitimate interests** – for those records of AI requests. We need them to keep AI features reliable and their costs under control.
+
 Our lawful bases for collecting or using personal information for **dealing with queries, complaints or claims** are:
 
 * **Legitimate interests** – we’re collecting or using your information because it benefits you, our organisation or someone else, without causing an undue risk of harm to anyone. All of your data protection rights may apply, except the right to portability. Our legitimate interests are:
@@ -140,7 +144,8 @@ For more information on our use of legitimate interests as a lawful basis, you c
 | **Analytics cookies**                | 365 days from the last visit                | To track returning visitors and maintain session continuity                                   |
 | **Survey responses**                 | 1 year from the date of submission          | To improve the product and track feedback trends over time                                    |
 | **IP address logs**                  | 24 hours from the date of collection         | For security monitoring and fraud prevention                                                  |
-| **Account and research data** | Until you delete it or your account | To provide the service |
+| **Account and research data** | Until you delete it or your account, then about 30 days | To provide the service |
+| **What you add to an organization** | Stays with the organization, with your name, after you leave or delete your account | So the organization keeps its work |
 | **Payment records** | 6 years from the date of purchase | To meet tax and accounting rules |
 
 
@@ -249,7 +254,7 @@ We implement appropriate technical and organisational measures to protect your p
 * **Pseudonymisation:** Analytics data is pseudonymised where possible
 * **Regular security reviews:** We monitor and update our security practices
 * **Secure data processors:** We only work with processors who meet high security standards
-* **Cookie consent management:** Analytics only runs with your consent
+* **Cookie consent management:** Analytics cookies and session replays only run with your consent
 
 # **Cookies**
 

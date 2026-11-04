@@ -26,9 +26,11 @@ Nous collectons ou utilisons les informations personnelles suivantes **pour fair
 * Votre nom, votre adresse e-mail et votre photo de profil, ainsi que les organisations auxquelles vous appartenez
 * Ce que vous faites dans Openscholar : recherches, questions, articles enregistrés, évaluations, collections, criblages, extractions et conversations avec l'assistant
 * Les fichiers que vous importez et les applications que vous connectez, comme Zotero
-* Les crédits que vous utilisez et achetez. Stripe gère les données de carte ; nous ne les voyons pas et ne les stockons pas
+* Les crédits que vous utilisez et achetez. Stripe gère les données de carte ; nous ne conservons que la marque de la carte et ses quatre derniers chiffres
 
 Lorsque vous utilisez une fonctionnalité d'IA, votre demande et le texte d'article nécessaire sont envoyés au fournisseur d'IA qui effectue le travail.
+
+Que vous acceptiez ou non les cookies d'analyse, nous envoyons à PostHog un enregistrement de chaque demande d'IA sous votre identifiant de compte, sans son texte, pour suivre les coûts et la fiabilité.
 
 Nous collectons ou utilisons les informations personnelles suivantes pour **traiter les demandes de renseignements, les réclamations ou les demandes d'indemnisation** :
 
@@ -88,6 +90,8 @@ Notre base légale pour collecter ou utiliser des informations personnelles **po
 
 * **Contrat** – nous en avons besoin pour fournir le service auquel vous vous êtes inscrit. Tous vos droits en matière de protection des données peuvent s'appliquer, sauf le droit d'opposition.
 
+* **Intérêts légitimes** – pour ces enregistrements de demandes d'IA. Nous en avons besoin pour garder les fonctionnalités d'IA fiables et maîtriser leurs coûts.
+
 Nos bases légales pour la collecte ou l'utilisation d'informations personnelles pour **traiter les demandes de renseignements, les réclamations ou les demandes d'indemnisation** sont :
 
 * **Intérêts légitimes** – nous collectons ou utilisons vos informations parce qu'elles vous bénéficient, à notre organisation ou à quelqu'un d'autre, sans causer de risque excessif de préjudice à quiconque. Tous vos droits en matière de protection des données peuvent s'appliquer, sauf le droit à la portabilité. Nos intérêts légitimes sont :
@@ -140,7 +144,8 @@ Pour plus d'informations sur notre utilisation des intérêts légitimes comme b
 | **Cookies d'analyse**                | 365 jours à compter de la dernière visite                | Pour suivre les visiteurs récurrents et maintenir la continuité de la session                                   |
 | **Réponses aux enquêtes**                 | 1 an à compter de la date de soumission          | Pour améliorer le produit et suivre les tendances des commentaires au fil du temps                                    |
 | **Journaux d'adresses IP**                  | 24 heures à compter de la date de collecte         | Pour la surveillance de la sécurité et la prévention de la fraude                                                  |
-| **Données de compte et de recherche** | Jusqu'à ce que vous les supprimiez ou supprimiez votre compte | Pour fournir le service |
+| **Données de compte et de recherche** | Jusqu'à ce que vous les supprimiez ou supprimiez votre compte, puis environ 30 jours | Pour fournir le service |
+| **Ce que vous ajoutez à une organisation** | Reste dans l'organisation, avec votre nom, après votre départ ou la suppression de votre compte | Pour que l'organisation conserve son travail |
 | **Justificatifs de paiement** | 6 ans à compter de la date d'achat | Pour respecter les règles fiscales et comptables |
 
 
@@ -249,7 +254,7 @@ Nous mettons en œuvre des mesures techniques et organisationnelles appropriées
 * **Pseudonymisation :** Les données d'analyse sont pseudonymisées dans la mesure du possible
 * **Révisions de sécurité régulières :** Nous surveillons et mettons à jour nos pratiques de sécurité
 * **Responsables du traitement des données sécurisés :** Nous ne collaborons qu'avec des responsables du traitement qui répondent à des normes de sécurité élevées
-* **Gestion du consentement aux cookies :** L'analyse ne fonctionne qu'avec votre consentement
+* **Gestion du consentement aux cookies :** Les cookies d'analyse et les enregistrements de session ne fonctionnent qu'avec votre consentement
 
 # **Cookies**
 

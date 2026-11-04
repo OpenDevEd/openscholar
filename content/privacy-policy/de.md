@@ -26,9 +26,11 @@ Wir erheben oder verwenden die folgenden personenbezogenen Daten, **um Ihr Konto
 * Ihren Namen, Ihre E-Mail-Adresse und Ihr Profilfoto sowie die Organisationen, denen Sie angehören
 * Was Sie in Openscholar tun: Suchen, Fragen, gespeicherte Artikel, Bewertungen, Sammlungen, Screenings, Extraktionen und Assistenten-Chats
 * Dateien, die Sie hochladen, und Apps, die Sie verbinden, etwa Zotero
-* Credits, die Sie verwenden und kaufen. Kartendaten verarbeitet Stripe; wir sehen und speichern sie nicht
+* Credits, die Sie verwenden und kaufen. Kartendaten verarbeitet Stripe; wir speichern nur die Kartenmarke und die letzten vier Ziffern
 
 Wenn Sie eine KI-Funktion nutzen, werden Ihre Anfrage und der dafür nötige Artikeltext an den KI-Anbieter gesendet, der die Arbeit ausführt.
+
+Unabhängig davon, ob Sie Analyse-Cookies akzeptieren, senden wir PostHog zu jeder KI-Anfrage einen Eintrag unter Ihrer Konto-ID, ohne deren Text, um Kosten und Zuverlässigkeit zu verfolgen.
 
 Wir erheben oder verwenden die folgenden personenbezogenen Daten für **die Bearbeitung von Anfragen, Beschwerden oder Ansprüchen**:
 
@@ -88,6 +90,8 @@ Unsere Rechtsgrundlage für die Erhebung oder Verwendung personenbezogener Daten
 
 * **Vertrag** – wir benötigen sie, um den Dienst bereitzustellen, für den Sie sich angemeldet haben. Alle Ihre Datenschutzrechte können gelten, außer dem Widerspruchsrecht.
 
+* **Berechtigte Interessen** – für diese Einträge zu KI-Anfragen. Wir benötigen sie, um KI-Funktionen zuverlässig zu halten und ihre Kosten zu kontrollieren.
+
 Unsere Rechtsgrundlagen für die Erhebung oder Verwendung personenbezogener Daten für **die Bearbeitung von Anfragen, Beschwerden oder Ansprüche** sind:
 
 * **Berechtigte Interessen** – Wir erheben oder verwenden Ihre Informationen, weil sie Ihnen, unserer Organisation oder einer anderen Person nützen, ohne jemandem ein unangemessenes Risiko eines Schadens aufzubürden. Alle Ihre Datenschutzrechte können gelten, außer dem Recht auf Datenübertragbarkeit. Unsere berechtigten Interessen sind:
@@ -140,7 +144,8 @@ Weitere Informationen zu unserer Nutzung berechtigter Interessen als Rechtsgrund
 | **Analyse-Cookies**                  | 365 Tage ab dem letzten Besuch              | Um wiederkehrende Besucher nachzuverfolgen und die Sitzungskontinuität zu erhalten            |
 | **Umfrageantworten**                 | 1 Jahr ab dem Datum der Einreichung         | Um das Produkt zu verbessern und Feedback-Trends über die Zeit zu verfolgen                   |
 | **IP-Adressprotokolle**              | 24 Stunden ab dem Datum der Erhebung        | Für Sicherheitsüberwachung und Betrugsprävention                                              |
-| **Konto- und Forschungsdaten** | Bis Sie diese oder Ihr Konto löschen | Um den Dienst bereitzustellen |
+| **Konto- und Forschungsdaten** | Bis Sie diese oder Ihr Konto löschen, danach etwa 30 Tage | Um den Dienst bereitzustellen |
+| **Was Sie einer Organisation hinzufügen** | Bleibt mit Ihrem Namen bei der Organisation, nachdem Sie sie verlassen oder Ihr Konto löschen | Damit die Organisation ihre Arbeit behält |
 | **Zahlungsbelege** | 6 Jahre ab Kaufdatum | Um Steuer- und Buchhaltungsvorschriften einzuhalten |
 
 
@@ -249,7 +254,7 @@ Wir ergreifen angemessene technische und organisatorische Maßnahmen, um Ihre pe
 * **Pseudonymisierung:** Analysedaten werden, wo möglich, pseudonymisiert
 * **Regelmäßige Sicherheitsprüfungen:** Wir überwachen unsere Sicherheitspraktiken und aktualisieren sie
 * **Sichere Auftragsverarbeiter:** Wir arbeiten nur mit Auftragsverarbeitern zusammen, die hohe Sicherheitsstandards erfüllen
-* **Verwaltung der Cookie-Einwilligung:** Analysen laufen nur mit Ihrer Einwilligung
+* **Verwaltung der Cookie-Einwilligung:** Analyse-Cookies und Sitzungsaufzeichnungen laufen nur mit Ihrer Einwilligung
 
 # **Cookies**
 

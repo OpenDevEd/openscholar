@@ -26,9 +26,11 @@ Ons versamel of gebruik die volgende persoonlike inligting **om jou rekening en 
 * Jou naam, e-posadres en profielfoto, en die organisasies waaraan jy behoort
 * Wat jy in Openscholar doen: soektogte, vrae, gestoorde artikels, graderings, versamelings, sifterings, ekstraksies en assistentgesprekke
 * Lêers wat jy oplaai, en toepassings wat jy koppel, soos Zotero
-* Krediete wat jy gebruik en koop. Stripe hanteer kaartbesonderhede, en ons sien of stoor dit nie
+* Krediete wat jy gebruik en koop. Stripe hanteer kaartbesonderhede, en ons hou net die kaart se handelsmerk en laaste vier syfers
 
 Wanneer jy 'n KI-funksie gebruik, word jou versoek en die artikelteks wat daarvoor nodig is, gestuur na die KI-verskaffer wat die werk doen.
+
+Of jy analitiese koekies aanvaar of nie, ons stuur vir PostHog 'n rekord van elke KI-versoek onder jou rekening-ID, sonder die teks daarvan, om koste en betroubaarheid te volg.
 
 Ons versamel of gebruik die volgende persoonlike inligting vir **die hantering van navrae, klagtes of eise**:
 
@@ -88,6 +90,8 @@ Ons wettige grondslag om persoonlike inligting te versamel of te gebruik **om jo
 
 * **Kontrak** – ons het dit nodig om die diens te lewer waarvoor jy ingeteken het. Al jou databeskermingsregte kan geld, behalwe die reg om beswaar te maak.
 
+* **Regmatige belange** – vir daardie rekords van KI-versoeke. Ons het dit nodig om KI-funksies betroubaar en hul koste onder beheer te hou.
+
 Ons wettige grondslae vir die versameling of gebruik van persoonlike inligting vir **die hantering van navrae, klagtes of eise** is:
 
 * **Legitieme belange** – ons versamel of gebruik jou inligting omdat dit jou, ons organisasie of iemand anders bevoordeel, sonder om ’n onnodige risiko van skade vir enigiemand te veroorsaak. Al jou databeskermingsregte kan geld, behalwe die reg op oordraagbaarheid. Ons legitieme belange is:
@@ -140,7 +144,8 @@ Vir meer inligting oor ons gebruik van legitieme belange as wettige grondslag, k
 | **Ontledingskoekies**                | 365 dae vanaf die laaste besoek             | Om terugkerende besoekers na te spoor en sessiekontinuïteit te handhaaf                       |
 | **Opnameantwoorde**                  | 1 jaar vanaf die datum van indiening        | Om die produk te verbeter en terugvoertendense oor tyd na te spoor                            |
 | **IP-adreslogboeke**                 | 24 uur vanaf die datum van insameling       | Vir sekuriteitsmonitering en bedrogvoorkoming                                                 |
-| **Rekening- en navorsingsdata** | Totdat jy dit of jou rekening uitvee | Om die diens te lewer |
+| **Rekening- en navorsingsdata** | Totdat jy dit of jou rekening uitvee, dan sowat 30 dae | Om die diens te lewer |
+| **Wat jy by 'n organisasie voeg** | Bly by die organisasie, met jou naam, nadat jy weggaan of jou rekening uitvee | Sodat die organisasie sy werk behou |
 | **Betalingsrekords** | 6 jaar vanaf die aankoopdatum | Om aan belasting- en rekeningkundige reëls te voldoen |
 
 
@@ -249,7 +254,7 @@ Ons implementeer gepaste tegniese en organisatoriese maatreëls om jou persoonli
 * **Pseudonimisering:** Ontledingsdata word waar moontlik gepseudonimiseer
 * **Gereelde sekuriteitsoorsigte:** Ons monitor en werk ons sekuriteitspraktyke op
 * **Veilige dataverwerkers:** Ons werk net met verwerkers wat aan hoë sekuriteitstandaarde voldoen
-* **Bestuur van koekietoestemming:** Ontledings loop net met jou toestemming
+* **Bestuur van koekietoestemming:** Analitiese koekies en sessieherhalings loop slegs met jou toestemming
 
 # **Koekies**
 
