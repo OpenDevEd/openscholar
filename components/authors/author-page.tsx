@@ -645,7 +645,7 @@ export default function AuthorPage({
               tabs={[
                 {value: "selected", label: t("selectedPublications"), icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length},
                 // The OpenAlex total is known once its first page arrives.
-                {value: "openalex", label: onOpenAlex ? t("fromOpenalex") : "All publications", icon: <source.icon className="size-3.5 shrink-0" />, count: openAlexPapers.length ? workCount : undefined},
+                {value: "openalex", label: onOpenAlex ? t("fromOpenalex") : source.name, icon: <source.icon className="size-3.5 shrink-0" />, count: openAlexPapers.length ? workCount : undefined},
               ]}
             />
           }

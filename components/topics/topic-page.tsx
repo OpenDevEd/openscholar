@@ -55,7 +55,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
       catch { toast.error(t("copyFailed")); }
     }}><Copy aria-hidden /><span className={BAR_LABEL}>{t("copyLink")}</span></Button>
-    <Button variant="outline" size="sm" className={BAR_ACTION} asChild><a href={`https://openalex.org/${topic.id}`} target="_blank" rel="noreferrer"><OpenAlexIcon className="size-4 shrink-0" /><span className={BAR_LABEL}>OpenAlex</span><ArrowUpRight aria-hidden className="@max-3xl:hidden" /></a></Button>
+    {source.id === "openalex" && <Button variant="outline" size="sm" className={BAR_ACTION} asChild><a href={`https://openalex.org/${topic.id}`} target="_blank" rel="noreferrer"><OpenAlexIcon className="size-4 shrink-0" /><span className={BAR_LABEL}>OpenAlex</span><ArrowUpRight aria-hidden className="@max-3xl:hidden" /></a></Button>}
   </>} tabs={<ListViewTabs label={t("publicationsView")} value={tab} onChange={setTab} tabs={[
     {value: "libraries", label: tc("evidenceLibraries"), icon: <BookOpen aria-hidden className="size-3.5" />, count: library.count},
     {value: "openalex", label: source.name, icon: <source.icon className="size-3.5 shrink-0" />, count: detail.data?.worksCount.toLocaleString(locale)},
