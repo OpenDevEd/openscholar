@@ -289,6 +289,30 @@ describe("useBatchTranslation — auto-translate", () => {
   });
 });
 
+describe("useBatchTranslation — Undo translation", () => {
+  const paper = { id: "p1", title: "Title 1", abstract: "Abstract 1" };
+
+  it("stops counting a paper as translated, and running again shows it without paying twice", async () => {
+    executeMock.mockResolvedValue({ results: { p1: { translatedTitle: "T", translatedAbstract: "A", noTranslationNeeded: false } }, errors: [] });
+    const props = { searchId: "s1", papers: [paper], canStart: true, manualRunRequestId: 1 };
+    const { result, rerender } = pressRun(props);
+    await settle();
+    expect(result.current.translatedPaperCount).toBe(1);
+
+    act(() => useTranslationStore.getState().undoTranslations());
+    expect(result.current.translatedPaperCount).toBe(0);
+    expect(useTranslationStore.getState().getShowTranslated("p1")).toBe(false);
+
+    // As the menu's Run does.
+    act(() => useTranslationStore.getState().showAllTranslations());
+    rerender({ ...props, manualRunRequestId: 2 });
+    await settle();
+    expect(result.current.translatedPaperCount).toBe(1);
+    expect(useTranslationStore.getState().getShowTranslated("p1")).toBe(true);
+    expect(executeMock).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("useBatchTranslation — Run clicks", () => {
   // The results page mounts again on a new search, and the run count outlives it.
   it("takes no run from before it mounted for its own", async () => {

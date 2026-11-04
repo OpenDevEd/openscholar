@@ -1158,7 +1158,7 @@
     "useCurrentLocaleTarget": "Gebruik huidige landinstelling as teiken",
     "runResultsTranslation": "Begin vertaling",
     "translatingResults": "Vertaal resultate...",
-    "resultsTranslated": "Vertaald",
+    "undoTranslation": "Maak vertaling ongedaan",
     "translated": "Vertaald",
     "targetLanguageValue": "Teiken: {language}",
     "enhanceWithAI": "Verbeter met KI",

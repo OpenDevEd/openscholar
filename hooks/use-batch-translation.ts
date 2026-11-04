@@ -203,13 +203,13 @@ export function useBatchTranslation({
     }
   }, [hasPendingManualRun, papersNeedingTranslation.length, effectiveCanStart, manualRunRequestId]);
 
-  // Reactive count of papers already translated for the current target language.
+  // Reactive count of papers translated for the current target language, leaving out any undone.
   // Uses a store selector so it re-renders when new translations land.
   const translatedPaperCount = useTranslationStore(
     useCallback(
       (state) =>
         papers.filter(
-          (p) => state.translations[translationKey(p.id, targetLanguage)] != null
+          (p) => state.translations[translationKey(p.id, targetLanguage)] != null && p.id in state.showTranslations
         ).length,
       [papers, targetLanguage]
     )

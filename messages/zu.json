@@ -1157,7 +1157,7 @@
     "useCurrentLocaleTarget": "Sebenzisa ulimi lwesifunda lwamanje njengelokugcina",
     "runResultsTranslation": "Qalisa ukuhumusha",
     "translatingResults": "Ihumusha imiphumela...",
-    "resultsTranslated": "Kuhunyushiwe",
+    "undoTranslation": "Hlehlisa ukuhumusha",
     "translated": "Kuhunyushiwe",
     "targetLanguageValue": "Okokugcina: {language}",
     "enhanceWithAI": "Thuthukisa nge-AI",

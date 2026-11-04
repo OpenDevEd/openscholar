@@ -952,6 +952,10 @@ interface TranslationState {
   setShowTranslated: (id: string, show: boolean) => void;
   clearTranslation: (id: string) => void;
   clearAllTranslations: () => void;
+  /** Puts every paper back as it was before any translation, keeping what was paid for. */
+  undoTranslations: () => void;
+  /** Shows every translation held, without paying for any of them again. */
+  showAllTranslations: () => void;
 }
 
 export const useTranslationStore = create<TranslationState>()(
@@ -1006,6 +1010,18 @@ export const useTranslationStore = create<TranslationState>()(
 
     clearAllTranslations: () => {
       set({ translations: {} });
+    },
+
+    undoTranslations: () => {
+      set({ showTranslations: {} });
+    },
+
+    showAllTranslations: () => {
+      set((state) => ({
+        showTranslations: Object.fromEntries(
+          Object.keys(state.translations).map((key) => [key.slice(0, key.lastIndexOf(":")), true])
+        ),
+      }));
     },
   })
 );
