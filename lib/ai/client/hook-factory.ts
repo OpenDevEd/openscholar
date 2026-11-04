@@ -34,6 +34,8 @@ export interface AIHookResult<TParams, TResult> {
   isLoading: boolean
   error: Error | null
   isConfigured: boolean
+  /** Whether it's known who pays: until then `execute` could choose wrongly, which only matters to work no one pressed a button for. */
+  isReady: boolean
 }
 
 export interface AIHookOptions<TParams> {
@@ -86,6 +88,7 @@ function useKeyConfigs(isAuthenticated: boolean, signedOut: boolean, creditsEnab
     const loading = isAuthenticated && settings.settlement !== 'ready'
     return {
       configFor,
+      settled: presets !== undefined && (signedOut || settings.settlement === 'ready'),
       onCredits: isAuthenticated && (inOrganization || (creditsEnabled && (loading || choice !== 'custom'))),
     }
   }, [provider, apiKey, providerApiKeys, picks, settings.data, settings.settlement, presets, isAuthenticated, signedOut, creditsEnabled, inOrganization])
@@ -109,7 +112,7 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
     // Known to be signed out, not still signing in: a signed-in person never runs on keys meant for signed out.
     const signedOut = phase === 'anonymous'
     const creditsEnabled = useFeatureFlag("credits.enabled")
-    const { configFor, onCredits } = useKeyConfigs(isAuthenticated, signedOut, creditsEnabled)
+    const { configFor, settled, onCredits } = useKeyConfigs(isAuthenticated, signedOut, creditsEnabled)
     // Setup checks the task this hook usually runs; a search hook's task depends on its call.
     const defaultTask = typeof options.task === 'function' ? options.task({} as TParams) : options.task
     // Presets run on credits; paying with your own key is part of Custom. Signed out, only a key can pay.
@@ -129,6 +132,8 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
     const convexAction = useAction(actionRef)
     // Work on credits is paid by the page's workspace (#650).
     const workspaceId = useWorkspace()
+
+    const isReady = settled && (signedOut || (workspaceId !== undefined && creditsQuery.settlement === 'ready' && figures.settlement === 'ready'))
 
     const execute = useCallback(
       async (params: TParams) => {
@@ -223,8 +228,8 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
     )
 
     return useMemo(
-      () => ({ execute, isLoading, error, isConfigured }),
-      [execute, isLoading, error, isConfigured]
+      () => ({ execute, isLoading, error, isConfigured, isReady }),
+      [execute, isLoading, error, isConfigured, isReady]
     )
   }
 }

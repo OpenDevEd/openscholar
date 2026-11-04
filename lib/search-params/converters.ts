@@ -10,6 +10,7 @@
 import { format, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
+import { MIN_YEAR } from '../constants';
 import { OQL_FIELD } from '../openalex/oql';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
@@ -56,6 +57,11 @@ export type NewSearchResultData = {
   page?: number;
 };
 
+/** An address may name one end of a year range: the other is as far as the range goes. */
+function yearRangeOf({ yf, yt }: ParsedSearchParams): [number, number] | undefined {
+  return yf || yt ? [yf || MIN_YEAR, yt || new Date().getFullYear()] : undefined;
+}
+
 /**
  * Convert URL params to SearchResult data
  * Used when creating a new history entry from shared URL
@@ -78,9 +84,9 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     sortBy: params.sort,
     
     // Year range
-    yearRange: params.yf && params.yt ? [params.yf, params.yt] : undefined,
+    yearRange: yearRangeOf(params),
     isYearRangeEnabled: !!(params.yf || params.yt),
-    
+
     // Date range
     dateRange,
     filterType: params.ft as 'date' | 'year',
@@ -240,9 +246,9 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     sortBy: params.sort,
     filterType: params.ft as 'date' | 'year',
     
-    yearRange: params.yf && params.yt ? [params.yf, params.yt] : undefined,
+    yearRange: yearRangeOf(params),
     isYearRangeEnabled: !!(params.yf || params.yt),
-    
+
     dateRange: params.df || params.dt ? {
       from: params.df ? parseISO(params.df) : undefined,
       to: params.dt ? parseISO(params.dt) : undefined,

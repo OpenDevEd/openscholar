@@ -5,7 +5,8 @@
  * 
  * Usage:
  * 
- * 1. Wrap your results layout:
+ * 1. Wrap your results layout, with SearchInitializer from './initializer': it loads the AI SDK, so
+ * it stays out of this module:
  * ```tsx
  * <SearchInitializer>
  *   <SearchProvider>
@@ -28,9 +29,6 @@
 
 // Provider and hooks
 export { SearchProvider, useSearch, useSearchOptional } from './provider';
-
-// Initializer for shared link handling
-export { SearchInitializer } from './initializer';
 
 // Actions
 export { submitNewSearch, createCitationSearch } from './actions';
