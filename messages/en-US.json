@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "Nothing matched \"{query}\"",
-    "queryErrorTitle": "OpenAlex could not run this query",
+    "queryErrorTitle": "{source} could not run this query",
     "oqlUnknownFieldFix": "Check the field name, or put search words inside a text clause, as in title/abstract has (chatgpt). The OQL reference lists every field.",
     "noResultsNoFilter": "We couldn't find any papers with your current filters",
     "tryBroaderTerms": "Try broader terms",
@@ -478,7 +478,7 @@
       "action_timeout": "The server took too long to respond. We'll try again.",
       "pdf_download_failed": "We couldn't fetch this paper's PDF. Often temporary — retry in a moment.",
       "pdf_invalid": "This document is corrupted, password-protected, or scanned without text. We'll skip it.",
-      "paper_not_found": "We couldn't locate this paper in OpenAlex. It may have been removed or misindexed.",
+      "paper_not_found": "We couldn't locate this paper in Openscholar. It may have been removed or misindexed.",
       "indexing_failed": "Something went wrong while preparing this paper for extraction.",
       "llm_content_refusal": "The model declined to answer this question. Try rephrasing or pick a different model.",
       "schema_validation": "The model's answer didn't match the expected structure.",
@@ -567,7 +567,7 @@
         "dismiss": "Dismiss",
         "body": {
           "pdf_invalid": "Invalid or unreadable PDF",
-          "paper_not_found": "Paper not found in OpenAlex",
+          "paper_not_found": "Paper not found in Openscholar",
           "moderation": "Blocked by content moderation",
           "context_too_long": "Content too long for the model's context window",
           "llm_content_refusal": "Model refused to answer",
@@ -804,8 +804,8 @@
     "authorsUnavailable": "Authors could not be loaded. Try again.",
     "filterByAuthor": "Only works by {name}",
     "authorByName": "Any author with this name",
-    "authorsAndNames": "A work needs one of the OpenAlex authors and one of the typed names.",
-    "authorsAndNamesWhy": "OpenAlex searches its author records and the names written on works separately. Within each, matching any one of your choices is enough, but across the two it can only require both.",
+    "authorsAndNames": "A work needs one of the {source} authors and one of the typed names.",
+    "authorsAndNamesWhy": "{source} searches its author records and the names written on works separately. Within each, matching any one of your choices is enough, but across the two it can only require both.",
     "minCitations": "Minimum citations",
     "anyNumber": "Any number",
     "atLeastCitations": "{count, plural, one {At least # citation} other {At least # citations}}",
@@ -1338,9 +1338,9 @@
     "workIdLabel": "Work ID",
     "placeholder": "e.g., W2741809807 or https://openalex.org/W2741809807",
     "applyFilter": "Apply filter",
-    "descriptionCites": "Enter an OpenAlex work ID to find papers that cite that work",
-    "descriptionCitedBy": "Enter an OpenAlex work ID to find papers that are cited by that work",
-    "descriptionRelated": "Enter an OpenAlex work ID to find papers related to that work",
+    "descriptionCites": "Enter an {source} work ID to find papers that cite that work",
+    "descriptionCitedBy": "Enter an {source} work ID to find papers that are cited by that work",
+    "descriptionRelated": "Enter an {source} work ID to find papers related to that work",
     "statusCites": "Finding papers that cite: ",
     "statusCitedBy": "Finding papers cited by: ",
     "statusRelated": "Finding papers related to: ",
@@ -1567,7 +1567,7 @@
     "progress": "Progress",
     "beingRead": "<n></n> being read",
     "startsAfter": "Starts after {name}",
-    "gettingPapers": "Getting papers from OpenAlex",
+    "gettingPapers": "Getting papers from {source}",
     "ofTotal": "{done, number} of {total, number}",
     "papersAtOnce": "Papers at once",
     "slotsInUse": "{running} of {limit} slots in use",
@@ -2849,7 +2849,7 @@
     "publicationsFailed": "Publications could not be loaded.",
     "loadingPublications": "Loading publications",
     "publicationsView": "Publication sources",
-    "noOpenAlex": "No OpenAlex publications found.",
+    "noPublications": "No {source} publications found.",
     "progress": "{loaded, number} of {total, number}",
     "searchLibrary": "Search community publications",
     "searchPlaceholder": "Search publications",
@@ -3060,6 +3060,14 @@
           "label": "Full PDFs",
           "hint": "Read each paper's PDF, not just the abstract"
         }
+      },
+      "searchSource": {
+        "group": "Search",
+        "label": "Search source",
+        "hint": "Every search on the site reads from this source.",
+        "confirmTitle": "Search with {name}?",
+        "confirmMessage": "Search changes for everyone straight away. Jobs already running finish on the source they started with.",
+        "confirmAction": "Use {name}"
       }
     },
     "models": {
@@ -3404,12 +3412,12 @@
       "lookPapers": {
         "doing": "Looking papers up",
         "did": "Looked papers up",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "Reading a paper",
         "did": "Read a paper",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "Checking your credits",
@@ -3715,7 +3723,7 @@
       "readPaperPdf": {
         "doing": "Reading a paper’s PDF",
         "did": "Read a paper’s PDF",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Read a paper’s PDF",
         "askMany": "Read {count, plural, one {# paper’s PDF} other {# papers’ PDFs}}",
         "doingMany": "Reading {count, plural, one {# paper’s PDF} other {# papers’ PDFs}}",
@@ -3919,7 +3927,7 @@
       "readAuthor": {
         "doing": "Reading an author",
         "did": "Read an author",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Read an author",
         "askMany": "Read {count, plural, one {# author} other {# authors}}",
         "doingMany": "Reading {count, plural, one {# author} other {# authors}}",
@@ -3937,7 +3945,7 @@
       "nameFilters": {
         "doing": "Naming a search’s filters",
         "did": "Named a search’s filters",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Name a search’s filters"
       },
       "cite": {
@@ -5360,8 +5368,7 @@
     "publications": "Publications",
     "noPublicationsMatchYourSearch": "No publications match your search.",
     "noPublicationsSelectedYet": "No publications selected yet.",
-    "loadingOpenalexPublications": "Loading OpenAlex publications",
-    "noOpenalexPublicationsToDisplay": "No OpenAlex publications to display.",
+    "noPublicationsToDisplay": "No {source} publications to display.",
     "showMore": "Show more",
     "confirmAuthorMatch": "Confirm author match",
     "findAuthorOnOpenalex": "Find author on OpenAlex",

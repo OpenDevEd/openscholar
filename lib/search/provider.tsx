@@ -25,6 +25,8 @@ import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
+import type { SearchSource } from './source';
+import { useSearchSource } from './use-search-source';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
@@ -127,6 +129,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
 export function SearchProvider({ children, local }: SearchProviderProps) {
   const toast = useAppToast();
   const tValidation = useTranslations("validation");
+  const source = useSearchSource();
   const searchId = getEffectiveSearchId(usePathname(), local?.searchId) ?? '';
   
   const account = useContext(ResearchContext);
@@ -329,11 +332,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const swrKey = useMemo(() => {
     if (!paramsKey) return null;
     
-    return ['search', paramsKey] as const;
-  }, [paramsKey]);
+    return ['search', paramsKey, source] as const;
+  }, [paramsKey, source]);
   
   // Single SWR fetcher - all data comes from the key
-  const fetcher = useCallback(async ([, paramsJson]: readonly [string, string]) => {
+  const fetcher = useCallback(async ([, paramsJson, searched]: readonly [string, string, SearchSource]) => {
     const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams>;
     const snapshotParams = paramsSnapshotByKey.get(paramsJson);
     const params: SearchParams = snapshotParams
@@ -436,7 +439,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       const result = await getSearchResultsWithFilters(searchParams, {
         getMessage: (key, params) =>
           tValidation(key as "bookmarkNotFound", params as Record<string, string>),
-      });
+      }, searched);
       captureSearchExecuted(basePayload);
       captureSearchSucceeded({
         ...basePayload,

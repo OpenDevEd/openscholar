@@ -1,6 +1,8 @@
 "use client";
 
 import React from "react";
+import { UNSERVED_FILTER_PANELS } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { Button } from "@/components/ui/button";
 import {
   SortAsc,
@@ -767,6 +769,7 @@ export const SidebarContent = React.memo(function SidebarContent({
 }: SidebarContentProps) {
   const tf = useTranslations("searchFilters");
   const tc = useTranslations("common");
+  const source = useSearchSource();
   return (
     <div className={cn("space-y-4", isMobileSheet ? "p-4" : "p-4 pt-15")}>
       {/* Simple Header - hidden when using panel mode with external header */}
@@ -812,7 +815,7 @@ export const SidebarContent = React.memo(function SidebarContent({
 
       <WorkTypeFilterPanel />
       <WorkLanguageFilterPanel />
-      <StudyDesignFilterPanel />
+      {!UNSERVED_FILTER_PANELS[source].includes("studyDesign") && <StudyDesignFilterPanel />}
       <ResearchAreaFilterPanel />
       <SdgFilterPanel />
       <JournalFilterPanel />

@@ -2,7 +2,9 @@ import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/uti
 import type { Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { describeQueryError, type QueryErrorDetail } from "@/lib/search/search-error";
 import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
-import { openAlexUrl } from "./request-url";
+import type { SearchSource } from "../search/source";
+import { searchUrl } from "./request-url";
+import { appWork } from "./work-id";
 
 type OqlResponse = Works & {
   validation?: { errors?: { type?: string; message?: string; position?: number | null }[] };
@@ -22,8 +24,9 @@ export type OqlWorksResult =
 export async function fetchOqlWorks(
   oql: string,
   view: { perPage: number; sort?: string; cursor?: string },
+  source: SearchSource = "openalex",
 ): Promise<OqlWorksResult> {
-  const url = openAlexUrl("", { "per-page": String(view.perPage), cursor: view.cursor, sort: view.sort });
+  const url = searchUrl(source, "", { "per-page": String(view.perPage), cursor: view.cursor, sort: view.sort });
 
   let response: Response;
   try {
@@ -61,7 +64,7 @@ export async function fetchOqlWorks(
     ok: true,
     data: {
       meta: body.meta,
-      results: body.results.map(({ abstract_inverted_index, ...work }: Work) => ({
+      results: body.results.map(({ abstract_inverted_index, ...work }: Work) => appWork({
         ...work,
         ...(abstract_inverted_index ? { abstract: convertAbstractArrayToString(abstract_inverted_index) } : {}),
       })),

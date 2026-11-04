@@ -13,14 +13,15 @@ import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
-import { openalexAddress, openalexWorkOf } from "../../lib/papers/paper-ref";
+import { openalexAddress, openalexWorkOf, ownWork } from "../../lib/papers/paper-ref";
+import { SEARCH_SOURCE_NAMES, sourceForId } from "../../lib/search/source";
 import { collectionHome, followed, shownOutside } from "./followed";
 import { editableCollection } from "./collectionMembership";
 import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
 import { findItem, requirePaperKey } from "./find";
 
-/** The OpenAlex work's address an ID or key names, which this action reads; null for anything else. */
-const workOf = (id: string) => openalexAddress(openalexWorkOf(id));
+/** The address of the work an ID or key names, OpenAlex's or our index's, which this action reads; null for anything else. */
+const workOf = (id: string) => openalexAddress(openalexWorkOf(id)) ?? (ownWork(id.replace(/^openscholar:/, "")) ? `https://openscholar.ai/${ownWork(id.replace(/^openscholar:/, ""))}` : null);
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -48,8 +49,9 @@ export const saveAction = defineUserAction({
     if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its OpenAlex ID, such as W2741809807, as results give it, or its key, such as openalex:W2741809807.");
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
-    const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId));
-    if (!read) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
+    const source = sourceForId(openalexId, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
+    const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId, source), source);
+    if (!read) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     // The record as the results page holds it: the abstract as text, in place of the index OpenAlex sends.
     const { abstract_inverted_index: index, ...rest } = read;
     const work: WorkInput = { ...rest, id: openalexId, ...(index ? { abstract: convertAbstractArrayToString(index) } : {}) };

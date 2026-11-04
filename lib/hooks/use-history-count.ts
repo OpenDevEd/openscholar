@@ -23,6 +23,7 @@ import type { OpenAlexWorksQuery } from "@/lib/openalex/search-params";
 import { toSearchFilters } from "@/lib/openalex/to-search-filters";
 import type { SearchResult } from "@/lib/types";
 import { unlessLimited } from "@/lib/openalex/limited";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 const COUNT_OPTIONS = {
   revalidateIfStale: false,
@@ -44,8 +45,9 @@ type UseHistoryCountResult = {
 export function useHistoryCount(
   entry: SearchResult | null,
 ): UseHistoryCountResult {
+  const source = useSearchSource();
   const key = entry
-    ? (["openalex-count", hashSearchFilters(entry)] as const)
+    ? (["openalex-count", source, hashSearchFilters(entry)] as const)
     : null;
 
   const { data, error, isLoading, mutate } = useSWR<number>(
@@ -55,6 +57,7 @@ export function useHistoryCount(
       const { count } = await unlessLimited(searchOpenAlexCount(
         entry.query,
         toSearchFilters(entry),
+        source === "openalex",
       ));
       return count;
     },

@@ -20,6 +20,7 @@ import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } f
 import { paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useWatchedSearch } from "@/lib/research/reads";
+import { PinSearchSource } from "@/lib/search/use-search-source";
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
@@ -306,6 +307,8 @@ export function OpenAlexSearchDialog({
       >
         <DialogTitle className="sr-only">{initial ? t("changeTitle") : t("addTitle")}</DialogTitle>
         <DialogDescription className="sr-only">{t("dialogDescription")}</DialogDescription>
+        {/* A community's source is an OpenAlex query, whichever source the site's own searches read. */}
+        <PinSearchSource value="openalex">
         <SearchProvider local={{searchId, params,
           onParamsChange: (updates) => setParams((value) => ({...value, ...updates})),
         }}>
@@ -315,6 +318,7 @@ export function OpenAlexSearchDialog({
             onClose={onClose} onSave={save}
           />
         </SearchProvider>
+        </PinSearchSource>
       </DialogContent>
     </Dialog>
   );

@@ -19,7 +19,8 @@ import { convertUsdToCredits, PAPER_PDF_CREDITS } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
 import { paperPdf } from "../lib/paperPdfs";
 import { requirePdfModel } from "../assistant/files";
-import { paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
+import { ownWork, paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
+import { SEARCH_SOURCE_NAMES, sourceForId } from "../../lib/search/source";
 import { parseSourceAddress } from "../../lib/evidence-libraries/source-address";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
@@ -86,7 +87,7 @@ export const countAction = defineUserAction({
     if (!found.request) throw createError("VALIDATION_ERROR", "This query isn't one OpenAlex can read. Check its brackets and quotes.");
     // Which papers a person rated is theirs, not OpenAlex's, so it can't count them.
     if (found.ratingRange) throw createError("VALIDATION_ERROR", "Papers kept by the person's ratings can't be counted this way. Leave `ratedOnly`, `minRating` and `maxRating` out.");
-    const spend = spender(ctx, found.clerkId);
+    const spend = spender(ctx, found.clerkId, found.request?.source);
     if (!by) return { total: await countSearch(found.request, spend) };
     const { total, groups } = await groupSearch(found.request, GROUPINGS[by], spend);
     // Years read in order, and the latest are the ones asked about; anything else, largest first, as OpenAlex returns them.
@@ -110,6 +111,8 @@ function workPath(id: string) {
   const given = id.trim();
   const work = workUrl(given);
   if (work) return work.split("/").at(-1)!;
+  const own = ownWork(given);
+  if (own) return own;
   // A DOI goes into the address as it is, so one that would change the address isn't taken: a "?" or "#", or a ".." that climbs out of the work's path.
   const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s?#]+)$/i)?.[1];
   if (doi && !doi.split("/").some((part) => part === "." || part === "..")) return `https://doi.org/${doi}`;
@@ -132,8 +135,9 @@ export const getAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
-    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, spender(ctx, clerkId));
-    if (!work) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
+    const source = sourceForId(path, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
+    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, spender(ctx, clerkId, source), source);
+    if (!work) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     const paper = toPaper(work);
     const authors = (work.authorships ?? []).flatMap(({ author, institutions }) => {
       if (!author?.display_name) return [];
@@ -205,8 +209,9 @@ export const readPdfAction = defineUserAction({
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
-    const work = await readWork<Work>(path, "id,display_name,title,doi,best_oa_location,primary_location,has_content", spender(ctx, person.clerkId));
-    if (!work) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
+    const source = sourceForId(path, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
+    const work = await readWork<Work>(path, "id,display_name,title,doi,best_oa_location,primary_location,has_content", spender(ctx, person.clerkId, source), source);
+    if (!work) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     const { paper, title, pdfUrl } = toPaper(work);
     const openalexId = paperIdOf(paper);
     // The person was asked about the paper by the title the model gave: one that isn't this ID's reads nothing.

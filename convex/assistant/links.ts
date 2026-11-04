@@ -1,4 +1,4 @@
-import { paperPage } from "../../lib/papers/paper-ref";
+import { paperPage, ownWork } from "../../lib/papers/paper-ref";
 
 /**
  * The link to each record a read returns, written the way a reply writes it: `[name](address)`.
@@ -12,7 +12,10 @@ const text = (value: unknown) => (typeof value === "string" && value.trim() ? va
 const paperUrl = (id: unknown) => {
   const value = text(id);
   const page = value ? paperPage(value) : null;
-  return page?.startsWith("https://") ? page : undefined;
+  if (page?.startsWith("https://")) return page;
+  // A paper only our index has opens in focus mode from this address, which the panel reads as that paper.
+  const own = value ? ownWork(value.replace(/^openscholar:/, "")) : null;
+  return own ? `https://openscholar.ai/${own}` : undefined;
 };
 
 /** A saved search's page. An imported search keeps its outside ID, which may hold a `/`, a space or a bracket. */

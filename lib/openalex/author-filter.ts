@@ -1,5 +1,5 @@
-/** Whether an author in the filter is an OpenAlex author id, such as A5023888391, and not a name. */
-export const isAuthorId = (value: string) => /^A\d+$/.test(value);
+/** Whether an author in the filter is an author id, OpenAlex's such as A5023888391 or our index's such as OSA2259683, and not a name. */
+export const isAuthorId = (value: string) => /^(?:A|OSA)\d+$/.test(value);
 
 /**
  * An author as the search keeps it. One OpenAlex has a record for is its bare
@@ -10,7 +10,7 @@ export const isAuthorId = (value: string) => /^A\d+$/.test(value);
  * and in OpenAlex's filter.
  */
 export function authorFilterValue(value: string): string | null {
-  const id = value.trim().match(/^(?:https?:\/\/openalex\.org\/(?:authors\/)?)?(a\d+)$/i)?.[1];
+  const id = value.trim().match(/^(?:https?:\/\/openalex\.org\/(?:authors\/)?)?(a\d+)$/i)?.[1] ?? value.trim().match(/^(?:https?:\/\/openscholar\.ai\/)?(osa\d+)$/i)?.[1];
   if (id) return id.toUpperCase();
   return value.replace(/[",|]/g, " ").replace(/\s+/g, " ").trim().slice(0, 200).trim() || null;
 }

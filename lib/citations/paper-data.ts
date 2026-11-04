@@ -15,7 +15,7 @@ export function normalizeCitationType(type: string) {
 
 export function paperToCitationData(paper: PaperResult): CitationData | null {
   const title = (paper.title || paper.display_name)?.trim();
-  const id = paper.id.match(/(?:^|\/)W\d+$/)?.[0].replace(/^\//, "");
+  const id = paper.id.match(/(?:^|\/)(?:W|OS)\d+$/)?.[0].replace(/^\//, "");
   if (!title || !id) return null;
   const source = paper.primary_location?.source;
   const data: CitationData = {

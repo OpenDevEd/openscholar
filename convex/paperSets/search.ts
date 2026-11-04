@@ -19,7 +19,9 @@ import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { findSearch, ratingsAmong, shortcutExpansions } from "../research/records";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
-import { readSearchRun, searchRequestValidator, type SearchSnapshot } from "./openalex";
+import { readSearchRun, searchRequestValidator, searchSourceValidator, type SearchSnapshot } from "./openalex";
+import { activeSource } from "../lib/searchSource";
+import type { SearchSource } from "../../lib/search/source";
 import { toPaperKey } from "../../lib/papers/paper-ref";
 
 /** The fields a screening paper keeps. */
@@ -43,7 +45,9 @@ export async function filtersOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, sa
   const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
   // The workspace's shortcuts this query uses, as the results page expands them.
   const expansions = await shortcutExpansions(ctx, workspaceId, shortcutNames(saved.query));
-  return { params, filters: paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) }) };
+  const filters = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) });
+  // The source it reads goes with the request, so what's kept of it, a job's snapshot among them, stays on that source.
+  return { params, filters: filters && { ...filters, openAlexQuery: { ...filters.openAlexQuery, source: await activeSource(ctx) } } };
 }
 
 /** The request a search's results page makes for it, and its rating filter: a saved search's, or one that's only being tried. */
@@ -80,9 +84,9 @@ export const ratingsOf = internalQuery({
 
 /** Counts requests against the account's OpenAlex allowance, the one its searches spend too. */
 export const spendRequests = internalMutation({
-  args: { clerkId: v.string(), count: v.number() },
+  args: { clerkId: v.string(), count: v.number(), source: v.optional(searchSourceValidator) },
   returns: v.boolean(),
-  handler: async (ctx, { clerkId, count }) => spendOpenAlexRequests(ctx, clerkId, count),
+  handler: async (ctx, { clerkId, count, source }) => spendOpenAlexRequests(ctx, clerkId, count, source),
 });
 
 /** Times a count that lost a race for the counter is tried, and the longest wait before the first retry. */
@@ -94,11 +98,11 @@ const SPEND_WAIT_MS = 300;
  * keep losing the race fail: each is tried again a moment later, further apart each time.
  */
 export const spender =
-  (ctx: Pick<ActionCtx, "runMutation">, clerkId: string) =>
+  (ctx: Pick<ActionCtx, "runMutation">, clerkId: string, source: SearchSource = "openalex") =>
   async (count: number): Promise<boolean> => {
     for (let tries = 1; ; tries += 1) {
       try {
-        return await ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count });
+        return await ctx.runMutation(internal.paperSets.search.spendRequests, { clerkId, count, source });
       } catch (error) {
         if (tries >= SPEND_TRIES || !/changed while this mutation was being run/.test(String(error))) throw error;
         await new Promise((resolve) => setTimeout(resolve, Math.random() * SPEND_WAIT_MS * tries));
@@ -184,7 +188,7 @@ export async function searchPapers(
   const taken = snapshot ?? snapshotOf(found);
   const { request, rating } = taken;
 
-  const { works, ended, resume } = await readSearchRun<Work>(request, { first, last, select: SCREENING_FIELDS, ...run }, spender(ctx, found.clerkId));
+  const { works, ended, resume } = await readSearchRun<Work>(request, { first, last, select: SCREENING_FIELDS, ...run }, spender(ctx, found.clerkId, request.source));
   // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice.
   const ids = new Set<string>();
   const papers = works.map(toPaper).filter((paper) => !ids.has(paper.paper) && ids.add(paper.paper));

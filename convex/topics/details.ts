@@ -7,7 +7,9 @@ import { requireAppUrl } from "../lib/env";
 import { topicIdSchema, type TopicNode } from "../../lib/topics/contract";
 import { CATALOG_REVISION } from "../../lib/topics/catalog";
 import type { Doc } from "../_generated/dataModel";
-import { openAlexUrl } from "../../lib/openalex/request-url";
+import {openAlexFetch} from "../../lib/openalex/fetch";
+import {searchUrl} from "../../lib/openalex/request-url";
+import type {SearchSource} from "../../lib/search/source";
 import { MAX_TOPIC_KEYWORDS } from "../lib/listCaps";
 import { topicKeywordsValidator, topicPathValidator } from "./validators";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
@@ -55,9 +57,9 @@ export const requestRefresh = internalMutation({
     return null;
   },
 });
-async function fetchTopicDetail(id: string) {
-  const response = await fetch(openAlexUrl(`topics/${id}`), {signal: AbortSignal.timeout(10000)});
-  if (!response.ok) throw new Error(`OpenAlex topic returned ${response.status}`);
+async function fetchTopicDetail(id: string, source: SearchSource) {
+  const response = await openAlexFetch(searchUrl(source, `topics/${id}`), {timeoutMs: 10000});
+  if (!response.ok) throw new Error(`${source} topic returned ${response.status}`);
   const topic = provider.parse(await response.json());
   if (topic.id.replace("https://openalex.org/", "") !== id) throw new Error("OpenAlex returned a different topic");
   return {id, description: topic.description, keywords: topic.keywords.slice(0, MAX_TOPIC_KEYWORDS), worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
@@ -66,7 +68,7 @@ async function fetchTopicDetail(id: string) {
 export const refresh = internalAction({
   args: {id: v.string()},
   handler: async (ctx, {id}) => {
-    try { await ctx.runMutation(internal.topics.details.save, await fetchTopicDetail(id)); }
+    try { await ctx.runMutation(internal.topics.details.save, await fetchTopicDetail(id, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}))); }
     catch (error) { console.error("Topic details refresh failed", {topicId: id, revision: CATALOG_REVISION, operation: "refresh", error}); }
   },
 });
@@ -84,7 +86,7 @@ export async function readTopicDetail(ctx: ActionCtx, args: {id: string; library
     if (!detail) {
       if (args.spend && !(await args.spend(1))) throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
       try {
-        const fetched = await fetchTopicDetail(args.id);
+        const fetched = await fetchTopicDetail(args.id, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
         await ctx.runMutation(internal.topics.details.save, fetched);
         detail = fetched;
       } catch (error) {

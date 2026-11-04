@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "未找到与 \"{query}\" 匹配的内容",
-    "queryErrorTitle": "OpenAlex 无法运行此查询",
+    "queryErrorTitle": "{source} 无法运行此查询",
     "oqlUnknownFieldFix": "请检查字段名，或把搜索词放在文本子句中，例如 title/abstract has (chatgpt)。OQL 参考列出了所有字段。",
     "noResultsNoFilter": "无法找到符合当前筛选条件的论文",
     "tryBroaderTerms": "尝试使用更广泛的术语",
@@ -478,7 +478,7 @@
       "action_timeout": "服务器响应时间过长。我们将重试。",
       "pdf_download_failed": "无法获取此论文的 PDF。通常是暂时性问题，请稍后重试。",
       "pdf_invalid": "此文档已损坏、受密码保护，或为无文本的扫描件。我们将跳过它。",
-      "paper_not_found": "无法在 OpenAlex 中找到此论文。它可能已被移除或索引有误。",
+      "paper_not_found": "无法在 Openscholar 中找到此论文。它可能已被移除或索引有误。",
       "indexing_failed": "在为此论文准备提取时出现问题。",
       "llm_content_refusal": "模型拒绝回答此问题。请尝试改写问题或选择其他模型。",
       "schema_validation": "模型的回答与预期结构不匹配。",
@@ -567,7 +567,7 @@
         "dismiss": "关闭",
         "body": {
           "pdf_invalid": "无效或无法读取的 PDF",
-          "paper_not_found": "在 OpenAlex 中未找到该论文",
+          "paper_not_found": "在 Openscholar 中未找到该论文",
           "moderation": "被内容审核拦截",
           "context_too_long": "内容超过模型的上下文窗口",
           "llm_content_refusal": "模型拒绝回答",
@@ -804,8 +804,8 @@
     "authorsUnavailable": "无法加载作者，请重试。",
     "filterByAuthor": "仅显示 {name} 的作品",
     "authorByName": "任何使用此名称的作者",
-    "authorsAndNames": "作品须同时包含所选 OpenAlex 作者之一和所输入名称之一。",
-    "authorsAndNamesWhy": "OpenAlex 分别检索作者记录和作品上所写的名称。在每一类中匹配任意一项即可，但两类之间只能要求同时满足。",
+    "authorsAndNames": "作品须同时包含所选 {source} 作者之一和所输入名称之一。",
+    "authorsAndNamesWhy": "{source} 分别检索作者记录和作品上所写的名称。在每一类中匹配任意一项即可，但两类之间只能要求同时满足。",
     "minCitations": "最少被引次数",
     "anyNumber": "不限",
     "atLeastCitations": "{count, plural, other {至少被引 # 次}}",
@@ -1338,9 +1338,9 @@
     "workIdLabel": "作品 ID",
     "placeholder": "例如：W2741809807 或 https://openalex.org/W2741809807",
     "applyFilter": "应用筛选",
-    "descriptionCites": "输入 OpenAlex 作品 ID 以查找引用该作品的论文",
-    "descriptionCitedBy": "输入 OpenAlex 作品 ID 以查找被该作品引用的论文",
-    "descriptionRelated": "输入 OpenAlex 作品 ID 以查找与该作品相关的论文",
+    "descriptionCites": "输入 {source} 作品 ID 以查找引用该作品的论文",
+    "descriptionCitedBy": "输入 {source} 作品 ID 以查找被该作品引用的论文",
+    "descriptionRelated": "输入 {source} 作品 ID 以查找与该作品相关的论文",
     "statusCites": "正在查找引用以下内容的论文：",
     "statusCitedBy": "正在查找被以下内容引用的论文：",
     "statusRelated": "正在查找与以下内容相关的论文：",
@@ -1567,7 +1567,7 @@
     "progress": "进度",
     "beingRead": "<n></n> 篇正在阅读",
     "startsAfter": "在 {name} 之后开始",
-    "gettingPapers": "正在从 OpenAlex 获取论文",
+    "gettingPapers": "正在从 {source} 获取论文",
     "ofTotal": "{done, number} / {total, number}",
     "papersAtOnce": "同时处理的论文",
     "slotsInUse": "已使用 {running} / {limit} 个名额",
@@ -2849,7 +2849,7 @@
     "publicationsFailed": "无法加载文献。",
     "loadingPublications": "正在加载文献",
     "publicationsView": "出版物来源",
-    "noOpenAlex": "未找到 OpenAlex 文献。",
+    "noPublications": "未找到 {source} 文献。",
     "progress": "{loaded, number} / {total, number}",
     "searchLibrary": "搜索文献社区中的文献",
     "searchPlaceholder": "搜索文献",
@@ -3060,6 +3060,14 @@
           "label": "完整 PDF",
           "hint": "读取每篇论文的 PDF，而不只是摘要"
         }
+      },
+      "searchSource": {
+        "group": "搜索",
+        "label": "搜索来源",
+        "hint": "网站上的所有搜索都使用此来源。",
+        "confirmTitle": "使用 {name} 搜索?",
+        "confirmMessage": "搜索会立即对所有人更改。正在运行的任务将在开始时使用的来源上完成。",
+        "confirmAction": "使用 {name}"
       }
     },
     "models": {
@@ -3404,12 +3412,12 @@
       "lookPapers": {
         "doing": "正在查找论文",
         "did": "已查找论文",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "正在读取论文",
         "did": "已读取论文",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "正在检查你的积分",
@@ -3715,7 +3723,7 @@
       "readPaperPdf": {
         "doing": "正在阅读论文 PDF",
         "did": "已阅读论文 PDF",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "阅读论文 PDF",
         "askMany": "阅读 {count, number} 篇论文的 PDF",
         "doingMany": "正在阅读 {count, number} 篇论文的 PDF",
@@ -3919,7 +3927,7 @@
       "readAuthor": {
         "doing": "正在读取作者",
         "did": "已读取作者",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "读取作者",
         "askMany": "读取 {count, number} 位作者",
         "doingMany": "正在读取 {count, number} 位作者",
@@ -3937,7 +3945,7 @@
       "nameFilters": {
         "doing": "正在为搜索的筛选条件命名",
         "did": "已为搜索的筛选条件命名",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "为搜索的筛选条件命名"
       },
       "cite": {
@@ -5360,8 +5368,7 @@
     "publications": "出版物",
     "noPublicationsMatchYourSearch": "没有符合搜索的出版物。",
     "noPublicationsSelectedYet": "尚未选择任何出版物。",
-    "loadingOpenalexPublications": "正在加载 OpenAlex 出版物",
-    "noOpenalexPublicationsToDisplay": "没有可显示的 OpenAlex 出版物。",
+    "noPublicationsToDisplay": "没有可显示的 {source} 出版物。",
     "showMore": "显示更多",
     "confirmAuthorMatch": "确认作者匹配",
     "findAuthorOnOpenalex": "在 OpenAlex 上查找作者",

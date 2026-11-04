@@ -1,5 +1,6 @@
 "use client";
 
+import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useState } from "react";
 import { useConvex } from "convex/react";
@@ -209,7 +210,7 @@ export function JobView({
             ) : phase === "reading" ? (
               // The job's papers haven't come from its search yet: the row is the one its slots take once they have.
               <div className="space-y-2">
-                <p className="flex items-center gap-1.5 text-xs font-medium"><FileSearch className="size-3.5 shrink-0 text-primary" /><span className="truncate">{t("gettingPapers")}</span></p>
+                <p className="flex items-center gap-1.5 text-xs font-medium"><FileSearch className="size-3.5 shrink-0 text-primary" /><span className="truncate">{t("gettingPapers", { source: SEARCH_SOURCE_NAMES[job.snapshot?.request.source ?? "openalex"] })}</span></p>
                 <Meter value={0} max={1} />
               </div>
             ) : phase === "running" ? (

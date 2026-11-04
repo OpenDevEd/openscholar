@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "Niks het by “{query}” ooreengestem nie",
-    "queryErrorTitle": "OpenAlex kon nie hierdie navraag uitvoer nie",
+    "queryErrorTitle": "{source} kon nie hierdie navraag uitvoer nie",
     "oqlUnknownFieldFix": "Kontroleer die veldnaam, of plaas soekwoorde binne ’n teksklousule, soos in title/abstract has (chatgpt). Die OQL-verwysing lys elke veld.",
     "noResultsNoFilter": "Ons kon geen artikels met jou huidige filters vind nie",
     "tryBroaderTerms": "Probeer breër terme",
@@ -479,7 +479,7 @@
       "action_timeout": "Die bediener het te lank geneem om te antwoord. Ons sal weer probeer.",
       "pdf_download_failed": "Ons kon nie hierdie artikel se PDF haal nie. Dit is dikwels tydelik — probeer oor ’n oomblik weer.",
       "pdf_invalid": "Hierdie dokument is beskadig, met ’n wagwoord beskerm, of geskandeer sonder teks. Ons sal dit oorslaan.",
-      "paper_not_found": "Ons kon hierdie artikel nie in OpenAlex vind nie. Dit kan verwyder of verkeerd geïndekseer gewees het.",
+      "paper_not_found": "Ons kon hierdie artikel nie in Openscholar vind nie. Dit kan verwyder of verkeerd geïndekseer gewees het.",
       "indexing_failed": "Iets het misgegaan terwyl hierdie artikel voorberei is vir ekstraksie.",
       "llm_content_refusal": "Die model het geweier om hierdie vraag te beantwoord. Probeer die vraag anders stel, of kies ’n ander model.",
       "schema_validation": "Die model se antwoord het nie by die verwagte struktuur gepas nie.",
@@ -568,7 +568,7 @@
         "dismiss": "Sluit",
         "body": {
           "pdf_invalid": "Ongeldige of onleesbare PDF",
-          "paper_not_found": "Artikel nie in OpenAlex gevind nie",
+          "paper_not_found": "Artikel nie in Openscholar gevind nie",
           "moderation": "Geblokkeer deur inhoudsmoderasie",
           "context_too_long": "Inhoud te lank vir die model se konteksvenster",
           "llm_content_refusal": "Model het geweier om te antwoord",
@@ -805,8 +805,8 @@
     "authorsUnavailable": "Outeurs kon nie gelaai word nie. Probeer weer.",
     "filterByAuthor": "Werk net deur {name}",
     "authorByName": "Enige outeur met hierdie naam",
-    "authorsAndNames": "’n Werk moet een van die OpenAlex-outeurs en een van die getikte name hê.",
-    "authorsAndNamesWhy": "OpenAlex soek sy outeurrekords en die name op werke afsonderlik. Binne elk is dit genoeg om enige een van jou keuses te pas, maar oor die twee heen kan dit net albei vereis.",
+    "authorsAndNames": "’n Werk moet een van die {source}-outeurs en een van die getikte name hê.",
+    "authorsAndNamesWhy": "{source} soek sy outeurrekords en die name op werke afsonderlik. Binne elk is dit genoeg om enige een van jou keuses te pas, maar oor die twee heen kan dit net albei vereis.",
     "minCitations": "Minimum aanhalings",
     "anyNumber": "Enige getal",
     "atLeastCitations": "{count, plural, one {Ten minste # aanhaling} other {Ten minste # aanhalings}}",
@@ -1339,9 +1339,9 @@
     "workIdLabel": "Werk-ID",
     "placeholder": "bv. W2741809807 of https://openalex.org/W2741809807",
     "applyFilter": "Pas filter toe",
-    "descriptionCites": "Voer ’n OpenAlex-werk-ID in om artikels te vind wat daardie werk aanhaal",
-    "descriptionCitedBy": "Voer ’n OpenAlex-werk-ID in om artikels te vind wat deur daardie werk aangehaal word",
-    "descriptionRelated": "Voer ’n OpenAlex-werk-ID in om artikels te vind wat verwant is aan daardie werk",
+    "descriptionCites": "Voer ’n {source}-werk-ID in om artikels te vind wat daardie werk aanhaal",
+    "descriptionCitedBy": "Voer ’n {source}-werk-ID in om artikels te vind wat deur daardie werk aangehaal word",
+    "descriptionRelated": "Voer ’n {source}-werk-ID in om artikels te vind wat verwant is aan daardie werk",
     "statusCites": "Soek artikels wat aanhaal: ",
     "statusCitedBy": "Soek artikels wat aangehaal word deur: ",
     "statusRelated": "Soek artikels wat verwant is aan: ",
@@ -1568,7 +1568,7 @@
     "progress": "Vordering",
     "beingRead": "<n></n> word gelees",
     "startsAfter": "Begin na {name}",
-    "gettingPapers": "Haal artikels van OpenAlex",
+    "gettingPapers": "Haal artikels van {source}",
     "ofTotal": "{done, number} van {total, number}",
     "papersAtOnce": "Artikels op een slag",
     "slotsInUse": "{running} van {limit} gleuwe in gebruik",
@@ -2850,7 +2850,7 @@
     "publicationsFailed": "Publikasies kon nie gelaai word nie.",
     "loadingPublications": "Laai publikasies",
     "publicationsView": "Publikasiebronne",
-    "noOpenAlex": "Geen OpenAlex-publikasies gevind nie.",
+    "noPublications": "Geen {source}-publikasies gevind nie.",
     "progress": "{loaded, number} van {total, number}",
     "searchLibrary": "Soek gemeenskapspublikasies",
     "searchPlaceholder": "Soek publikasies",
@@ -3061,6 +3061,14 @@
           "label": "Volledige PDF’s",
           "hint": "Lees elke artikel se PDF, nie net die opsomming nie"
         }
+      },
+      "searchSource": {
+        "group": "Soek",
+        "label": "Soekbron",
+        "hint": "Elke soektog op die werf gebruik hierdie bron.",
+        "confirmTitle": "Soek met {name}?",
+        "confirmMessage": "Soek verander dadelik vir almal. Take wat reeds loop, eindig op die bron waarmee hulle begin het.",
+        "confirmAction": "Gebruik {name}"
       }
     },
     "models": {
@@ -3405,12 +3413,12 @@
       "lookPapers": {
         "doing": "Soek artikels op",
         "did": "Het artikels opgesoek",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "Lees ’n artikel",
         "did": "Het ’n artikel gelees",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "Gaan jou krediete na",
@@ -3716,7 +3724,7 @@
       "readPaperPdf": {
         "doing": "Lees ’n artikel se PDF",
         "did": "Het ’n artikel se PDF gelees",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Lees ’n artikel se PDF",
         "askMany": "Lees {count, plural, one {# artikel se PDF} other {# artikels se PDF’s}}",
         "doingMany": "Lees {count, plural, one {# artikel se PDF} other {# artikels se PDF’s}}",
@@ -3920,7 +3928,7 @@
       "readAuthor": {
         "doing": "Lees ’n outeur",
         "did": "Het ’n outeur gelees",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Lees ’n outeur",
         "askMany": "Lees {count, plural, one {# outeur} other {# outeurs}}",
         "doingMany": "Lees {count, plural, one {# outeur} other {# outeurs}}",
@@ -3938,7 +3946,7 @@
       "nameFilters": {
         "doing": "Gee ’n soektog se filters ’n naam",
         "did": "Het ’n soektog se filters ’n naam gegee",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Gee ’n soektog se filters ’n naam"
       },
       "cite": {
@@ -5361,8 +5369,7 @@
     "publications": "Publikasies",
     "noPublicationsMatchYourSearch": "Geen publikasies pas by jou soektog nie.",
     "noPublicationsSelectedYet": "Nog geen publikasies gekies nie.",
-    "loadingOpenalexPublications": "Laai OpenAlex-publikasies",
-    "noOpenalexPublicationsToDisplay": "Geen OpenAlex-publikasies om te wys nie.",
+    "noPublicationsToDisplay": "Geen {source}-publikasies om te wys nie.",
     "showMore": "Wys meer",
     "confirmAuthorMatch": "Bevestig outeurpassing",
     "findAuthorOnOpenalex": "Vind outeur op OpenAlex",

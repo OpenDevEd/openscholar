@@ -4,14 +4,18 @@
  * assistant from Convex (convex/paperSets/openalex.ts); both read the answer here.
  */
 
+import type { SearchSource } from "../search/source";
+
 export type LookupEntity = "authors" | "funders" | "sources" | "institutions";
 export type LookupOption = { id: string; name: string; detail?: string };
 
-/** The ID letter each kind of record has, such as S for a source. */
-export const LOOKUP_ID_LETTER: Record<LookupEntity, string> = { authors: "A", funders: "F", sources: "S", institutions: "I" };
+/** The IDs each kind of record has, such as S… on OpenAlex and OSV… on our index for a source. */
+export const LOOKUP_ID: Record<LookupEntity, RegExp> = { authors: /^(?:A|OSA)\d+$/, funders: /^F\d+$/, sources: /^(?:S|OSV)\d+$/, institutions: /^I\d+$/ };
 
 /** Only records with papers: OpenAlex keeps empty duplicates beside some, such as a second "Research square". */
-export const autocompleteParameters = (query: string) => ({ q: query, filter: "works_count:>0" });
+export const autocompleteParameters = (query: string, entity: LookupEntity, source: SearchSource): Record<string, string> =>
+  // Our index filters its authors and institutions by works, but refuses it on funders and sources.
+  source === "openscholar" && (entity === "funders" || entity === "sources") ? { q: query } : { q: query, filter: "works_count:>0" };
 
 export function autocompleteOptions(body: unknown): LookupOption[] {
   const results = (body as { results?: unknown } | null)?.results;

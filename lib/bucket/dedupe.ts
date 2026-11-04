@@ -5,6 +5,7 @@ function normalizeOpenalexId(openalexId?: string): string | null {
   if (!openalexId) return null;
   const trimmed = openalexId.trim();
   if (!trimmed) return null;
+  if (trimmed.startsWith("https://openscholar.ai/")) return trimmed.slice("https://openscholar.ai/".length) || null;
   if (trimmed.startsWith(OPENALEX_PREFIX)) {
     const rest = trimmed.slice(OPENALEX_PREFIX.length);
     return rest || null;

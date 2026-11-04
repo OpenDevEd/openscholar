@@ -113,6 +113,45 @@ const readsOver = (t: ReturnType<typeof convexTest>) =>
 /** Those for the search's papers: the one that counts the search before the job is made asks for a single work. */
 const pages = () => requests.filter(({ url }) => url.searchParams.get("per-page") === "200");
 
+describe("Screen all with our own index as the active source", () => {
+  it("reads our index with its key, keeps the OpenAlex ID where there is one, and stays on our index once the job has begun", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search.test");
+    vi.stubEnv("OPENSCHOLAR_API_KEY", "own-key");
+    const asked: Array<{ url: URL; authorization: string | null }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.hostname !== "search.test") throw new Error(`Unexpected request to ${url.hostname}`);
+      asked.push({ url, authorization: new Headers(init?.headers).get("authorization") });
+      const results = url.searchParams.get("per-page") === "1"
+        ? [{ id: "https://openscholar.ai/OS1", ids: {} }]
+        : [
+            { id: "https://openscholar.ai/OS1", ids: { openalex: "https://openalex.org/W7" }, display_name: "Known to OpenAlex" },
+            { id: "https://openscholar.ai/OS2", ids: {}, display_name: "Only in our index" },
+          ];
+      return new Response(JSON.stringify({ meta: { count: 2, next_cursor: null }, results }), { status: 200 });
+    }));
+    const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    await t.run((ctx) => ctx.db.insert("featureFlags", { key: "search.openscholar", enabled: true, updatedAt: 1 }));
+
+    const { jobId, made } = await screen({ first: 1, last: 2 });
+
+    expect(made.snapshot?.request.source).toBe("openscholar");
+    for (const request of asked) {
+      expect(request.authorization).toBe("Bearer own-key");
+      expect(request.url.searchParams.get("api_key")).toBeNull();
+    }
+    // What decides a paper's ID has to be read back even when the job asks for fewer fields.
+    expect(asked.find(({ url }) => url.searchParams.get("per-page") === "200")?.url.searchParams.get("select")?.split(",")).toContain("ids");
+    const { results, limits } = await t.run(async (ctx) => ({
+      results: await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3),
+      limits: await ctx.db.query("rateLimits").collect(),
+    }));
+    expect(results.map((result) => result.paperKey).sort()).toEqual(["openalex:W7", "openscholar:OS2"]);
+    expect(limits.find((row) => row.name === "openscholar-day")).toBeDefined();
+    expect(limits.find((row) => row.name === "openalex-day")).toBeUndefined();
+  });
+});
+
 describe("Screen all on a saved search, read on the server", () => {
   it("reads the range from the results page's request, a numbered page each, with the key and only the fields it keeps", async () => {
     const { t, alice, read, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });
@@ -458,7 +497,7 @@ describe("counting OpenAlex requests from an action", () => {
     await vi.runAllTimersAsync();
     expect(await spending).toBe(true);
     expect(runMutation).toHaveBeenCalledTimes(3);
-    expect(runMutation.mock.calls[2][1]).toEqual({ clerkId: "clerk_1", count: 3 });
+    expect(runMutation.mock.calls[2][1]).toEqual({ clerkId: "clerk_1", count: 3, source: "openalex" });
     // An allowance that's used up is an answer, not a collision.
     expect(await spender({ runMutation: vi.fn().mockResolvedValue(false) } as never, "clerk_1")(1)).toBe(false);
     // Any other failure is the caller's to hear about, at once.

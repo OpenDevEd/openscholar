@@ -1,5 +1,7 @@
 "use client";
 
+import { paperIdOf, toPaperKey } from "@/lib/papers/paper-ref";
+
 // An AI overview of the search on screen (#967), read through a lens the person picks and written by the Cheap preset's
 // model in Convex (convex/research/overviewsAction.ts). On a plan with free overviews the open lens writes itself, and
 // past them, or without them, it waits for Write overview and costs credits. Folded, nothing is written: that's how a
@@ -327,7 +329,7 @@ function Written({ blocks, overview }: { blocks: Block[]; overview: Overview }) 
   const works = Array.isArray(records) ? records : null;
   const open = (index: number) => {
     // Until the records are read, a paper opens with what the overview knows of it.
-    const papers: PaperResult[] = works?.length === cited.length ? works : cited.map((paper) => ({ id: `https://openalex.org/${paper.id}`, title: paper.title, display_name: paper.title, publication_year: paper.year, cited_by_count: paper.cited }) as PaperResult);
+    const papers: PaperResult[] = works?.length === cited.length ? works : cited.map((paper) => ({ id: paperIdOf(toPaperKey(paper.id) ?? paper.id), title: paper.title, display_name: paper.title, publication_year: paper.year, cited_by_count: paper.cited }) as PaperResult);
     openCited(papers, index);
   };
   const openId = (id: string) => open(cited.findIndex((paper) => paper.id === id));

@@ -30,8 +30,8 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   }
   next.orcid = next.orcid.replace(/^https:\/\/orcid.org\//, "");
   if (next.orcid && !/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(next.orcid)) throw createError("VALIDATION_ERROR", "Enter a valid ORCID");
-  next.openalex = next.openalex.replace(/^https:\/\/openalex.org\//, "");
-  if (next.openalex && !/^A\d+$/.test(next.openalex)) throw createError("VALIDATION_ERROR", "Choose an OpenAlex author");
+  next.openalex = next.openalex.replace(/^https:\/\/(?:openalex\.org|openscholar\.ai)\//, "");
+  if (next.openalex && !/^(?:A|OSA)\d+$/.test(next.openalex)) throw createError("VALIDATION_ERROR", "Choose an author from the list");
   return next;
 }
 

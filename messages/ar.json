@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "لا توجد نتائج تطابق “{query}”",
-    "queryErrorTitle": "تعذّر على OpenAlex تنفيذ هذا الاستعلام",
+    "queryErrorTitle": "تعذّر على {source} تنفيذ هذا الاستعلام",
     "oqlUnknownFieldFix": "تحقّق من اسم الحقل، أو ضع كلمات البحث داخل بند نصي، كما في title/abstract has (chatgpt). يسرد مرجع OQL جميع الحقول.",
     "noResultsNoFilter": "لم نعثر على أي أوراق بحثية باستخدام عوامل التصفية الحالية",
     "tryBroaderTerms": "جرّب مصطلحات أعم",
@@ -479,7 +479,7 @@
       "action_timeout": "استغرق الخادم وقتًا طويلًا للرد. سنحاول مرة أخرى.",
       "pdf_download_failed": "تعذّر جلب ملف PDF لهذه الورقة. غالبًا ما يكون ذلك مؤقتًا، فأعد المحاولة بعد لحظة.",
       "pdf_invalid": "هذا المستند تالف، أو محمي بكلمة مرور، أو ممسوح ضوئيًا دون نص. سنتجاوزه.",
-      "paper_not_found": "تعذّر العثور على هذه الورقة في OpenAlex. ربما أُزيلت أو فُهرست بشكل خاطئ.",
+      "paper_not_found": "تعذّر العثور على هذه الورقة في Openscholar. ربما أُزيلت أو فُهرست بشكل خاطئ.",
       "indexing_failed": "حدث خطأ أثناء تجهيز هذه الورقة للاستخلاص.",
       "llm_content_refusal": "رفض النموذج الإجابة عن هذا السؤال. جرّب إعادة صياغته أو اختر نموذجًا آخر.",
       "schema_validation": "لم تطابق إجابة النموذج البنية المتوقعة.",
@@ -568,7 +568,7 @@
         "dismiss": "تجاهل",
         "body": {
           "pdf_invalid": "ملف PDF غير صالح أو غير قابل للقراءة",
-          "paper_not_found": "الورقة غير موجودة في OpenAlex",
+          "paper_not_found": "الورقة غير موجودة في Openscholar",
           "moderation": "حجبه فلتر المحتوى",
           "context_too_long": "المحتوى أطول من نافذة سياق النموذج",
           "llm_content_refusal": "رفض النموذج الإجابة",
@@ -805,8 +805,8 @@
     "authorsUnavailable": "تعذّر تحميل المؤلفين. حاول مرة أخرى.",
     "filterByAuthor": "يعمل فقط للأعمال التي كتبها {name}",
     "authorByName": "أي مؤلف بهذا الاسم",
-    "authorsAndNames": "يجب أن يتطابق العمل مع أحد مؤلفي OpenAlex وأحد الأسماء المكتوبة.",
-    "authorsAndNamesWhy": "يبحث OpenAlex في سجلات المؤلفين وفي الأسماء المكتوبة على الأعمال بشكل منفصل. وضمن كل منهما يكفي التطابق مع أحد خياراتك، لكن عبر المصدرين لا يمكن إلا اشتراط الاثنين معًا.",
+    "authorsAndNames": "يجب أن يتطابق العمل مع أحد مؤلفي {source} وأحد الأسماء المكتوبة.",
+    "authorsAndNamesWhy": "يبحث {source} في سجلات المؤلفين وفي الأسماء المكتوبة على الأعمال بشكل منفصل. وضمن كل منهما يكفي التطابق مع أحد خياراتك، لكن عبر المصدرين لا يمكن إلا اشتراط الاثنين معًا.",
     "minCitations": "الحد الأدنى للاستشهادات",
     "anyNumber": "أي عدد",
     "atLeastCitations": "{count, plural, zero {لا استشهادات} one {استشهاد واحد على الأقل} two {استشهادان على الأقل} few {# استشهادات على الأقل} many {# استشهادًا على الأقل} other {# استشهاد على الأقل}}",
@@ -1339,9 +1339,9 @@
     "workIdLabel": "معرّف العمل",
     "placeholder": "مثال: W2741809807 أو https://openalex.org/W2741809807",
     "applyFilter": "تطبيق عامل التصفية",
-    "descriptionCites": "أدخل معرّف عمل من OpenAlex للعثور على الأوراق التي تستشهد بهذا العمل",
-    "descriptionCitedBy": "أدخل معرّف عمل من OpenAlex للعثور على الأوراق التي استشهد بها هذا العمل",
-    "descriptionRelated": "أدخل معرّف عمل من OpenAlex للعثور على الأوراق ذات الصلة بهذا العمل",
+    "descriptionCites": "أدخل معرّف عمل من {source} للعثور على الأوراق التي تستشهد بهذا العمل",
+    "descriptionCitedBy": "أدخل معرّف عمل من {source} للعثور على الأوراق التي استشهد بها هذا العمل",
+    "descriptionRelated": "أدخل معرّف عمل من {source} للعثور على الأوراق ذات الصلة بهذا العمل",
     "statusCites": "جارٍ البحث عن الأوراق التي تستشهد بـ: ",
     "statusCitedBy": "جارٍ البحث عن الأوراق المُستشهَد بها من: ",
     "statusRelated": "جارٍ البحث عن الأوراق ذات الصلة بـ: ",
@@ -1568,7 +1568,7 @@
     "progress": "التقدم",
     "beingRead": "<n></n> قيد القراءة",
     "startsAfter": "يبدأ بعد {name}",
-    "gettingPapers": "جارٍ جلب الأوراق من OpenAlex",
+    "gettingPapers": "جارٍ جلب الأوراق من {source}",
     "ofTotal": "{done, number} من {total, number}",
     "papersAtOnce": "أوراق في آنٍ واحد",
     "slotsInUse": "{running} من أصل {limit} مواقع مستخدمة",
@@ -2850,7 +2850,7 @@
     "publicationsFailed": "تعذّر تحميل المنشورات.",
     "loadingPublications": "جارٍ تحميل المنشورات",
     "publicationsView": "مصادر المنشورات",
-    "noOpenAlex": "لم يُعثر على منشورات في OpenAlex.",
+    "noPublications": "لم يُعثر على منشورات في {source}.",
     "progress": "{loaded, number} من {total, number}",
     "searchLibrary": "ابحث في منشورات المجتمع",
     "searchPlaceholder": "ابحث في المنشورات",
@@ -3061,6 +3061,14 @@
           "label": "ملفات PDF الكاملة",
           "hint": "قراءة ملف PDF لكل ورقة، لا الملخص فقط"
         }
+      },
+      "searchSource": {
+        "group": "البحث",
+        "label": "مصدر البحث",
+        "hint": "تستخدم كل عمليات البحث في الموقع هذا المصدر.",
+        "confirmTitle": "البحث باستخدام {name}؟",
+        "confirmMessage": "يتغير البحث للجميع فورًا. تكتمل المهام الجارية على المصدر الذي بدأت به.",
+        "confirmAction": "استخدام {name}"
       }
     },
     "models": {
@@ -3405,12 +3413,12 @@
       "lookPapers": {
         "doing": "جارٍ البحث عن الأوراق",
         "did": "بحث عن الأوراق",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "قراءة ورقة",
         "did": "قرأ ورقة",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "جارٍ التحقق من أرصدتك",
@@ -3716,7 +3724,7 @@
       "readPaperPdf": {
         "doing": "قراءة ملف PDF لورقة",
         "did": "قرأ ملف PDF لورقة",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "قراءة ملف PDF لورقة",
         "askMany": "قراءة ملفات PDF لـ {count, plural, zero {لا أوراق} one {ورقة واحدة} two {ورقتين} few {# أوراق} many {# ورقة} other {# ورقة}}",
         "doingMany": "جارٍ قراءة ملفات PDF لـ {count, plural, zero {لا أوراق} one {ورقة واحدة} two {ورقتين} few {# أوراق} many {# ورقة} other {# ورقة}}",
@@ -3920,7 +3928,7 @@
       "readAuthor": {
         "doing": "قراءة مؤلف",
         "did": "قرأ مؤلفًا",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "قراءة مؤلف",
         "askMany": "قراءة {count, plural, zero {لا مؤلفين} one {مؤلف واحد} two {مؤلفين} few {# مؤلفين} many {# مؤلفًا} other {# مؤلف}}",
         "doingMany": "جارٍ قراءة {count, plural, zero {لا مؤلفين} one {مؤلف واحد} two {مؤلفين} few {# مؤلفين} many {# مؤلفًا} other {# مؤلف}}",
@@ -3938,7 +3946,7 @@
       "nameFilters": {
         "doing": "جارٍ تسمية عوامل تصفية بحث",
         "did": "سمّى عوامل تصفية بحث",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "تسمية عوامل تصفية بحث"
       },
       "cite": {
@@ -5361,8 +5369,7 @@
     "publications": "المنشورات",
     "noPublicationsMatchYourSearch": "لا توجد منشورات تطابق بحثك.",
     "noPublicationsSelectedYet": "لم تُختر أي منشورات بعد.",
-    "loadingOpenalexPublications": "جارٍ تحميل منشورات OpenAlex",
-    "noOpenalexPublicationsToDisplay": "لا توجد منشورات OpenAlex للعرض.",
+    "noPublicationsToDisplay": "لا توجد منشورات {source} للعرض.",
     "showMore": "عرض المزيد",
     "confirmAuthorMatch": "تأكيد مطابقة المؤلف",
     "findAuthorOnOpenalex": "ابحث عن المؤلف في OpenAlex",

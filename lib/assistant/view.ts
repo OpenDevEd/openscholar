@@ -95,6 +95,8 @@ export type LinkedRecord = { kind: "search" | "collection" | "paper" | "extracti
 export function recordOf(address: string): LinkedRecord | null {
   const paper = /^https:\/\/openalex\.org\/(?:works\/)?(W\d+)$/i.exec(address)?.[1];
   if (paper) return { kind: "paper", paperId: paper.toUpperCase() };
+  const own = /^https:\/\/openscholar\.ai\/(OS\d+)$/i.exec(address)?.[1];
+  if (own) return { kind: "paper", paperId: own.toUpperCase() };
   // A topic on OpenAlex has its page here too.
   const topic = /^https:\/\/openalex\.org\/(T[1-9]\d*)$/i.exec(address)?.[1];
   if (topic) return { kind: "topic", page: topicHref(topic.toUpperCase(), "") };

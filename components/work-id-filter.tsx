@@ -9,6 +9,8 @@ import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
+import { isOwnId, SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 interface WorkIdFilterProps {
   type: 'cites' | 'cited_by' | 'related';
@@ -27,6 +29,7 @@ export function WorkIdFilter({
 }: WorkIdFilterProps) {
   const toast = useAppToast();
   const t = useTranslations("workId");
+  const source = useSearchSource();
   
   const {
     citesItemId,
@@ -38,7 +41,7 @@ export function WorkIdFilter({
 
   const config = {
     cites: {
-      description: t("descriptionCites"),
+      description: t("descriptionCites", { source: SEARCH_SOURCE_NAMES[source] }),
       applyText: t("applyFilter"),
       successDescription: (id: string) => t("successCites", { id }),
       statusText: t("statusCites"),
@@ -48,7 +51,7 @@ export function WorkIdFilter({
       updateField: 'citesItemId',
     },
     cited_by: {
-      description: t("descriptionCitedBy"),
+      description: t("descriptionCitedBy", { source: SEARCH_SOURCE_NAMES[source] }),
       applyText: t("applyFilter"),
       successDescription: (id: string) => t("successCitedBy", { id }),
       statusText: t("statusCitedBy"),
@@ -58,7 +61,7 @@ export function WorkIdFilter({
       updateField: 'citedByItemId',
     },
     related: {
-      description: t("descriptionRelated"),
+      description: t("descriptionRelated", { source: SEARCH_SOURCE_NAMES[source] }),
       applyText: t("applyFilter"),
       successDescription: (id: string) => t("successRelated", { id }),
       statusText: t("statusRelated"),
@@ -107,7 +110,10 @@ export function WorkIdFilter({
     }
     
     // Validate the ID format (should start with 'W' for works)
-    if (!validatedId.match(/^W\d+$/)) {
+    if (cleanId.startsWith('https://openscholar.ai/')) {
+      validatedId = cleanId.replace('https://openscholar.ai/', '');
+    }
+    if (!validatedId.match(/^(?:W|OS)\d+$/)) {
       toast.validation.failed(t("workIdFormatHint"));
       return;
     }
@@ -195,14 +201,14 @@ export function WorkIdFilter({
            <div className="flex items-center gap-2">
              <Icon className={cn("h-3 w-3 flex-shrink-0", colors.icon)} />
              <span className="flex-shrink-0">{currentConfig.statusText}</span>
-             <a
+             {source === "openalex" && !isOwnId(itemId) && <a
                href={itemId.startsWith('https://') ? itemId : `https://openalex.org/${itemId}`}
                target="_blank"
                rel="noopener noreferrer"
                className={cn("ms-auto flex-shrink-0 hover:opacity-80", colors.link)}
              >
                <ExternalLink className="h-3 w-3" />
-             </a>
+             </a>}
            </div>
            <div className="w-full">
              <code className={cn(

@@ -7,7 +7,9 @@ import type { Infer } from "convex/values";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { openAlexFetch, openAlexReason } from "../../lib/openalex/fetch";
-import { openAlexUrl } from "../../lib/openalex/request-url";
+import { searchUrl } from "../../lib/openalex/request-url";
+import { appWork, selectWithIds } from "../../lib/openalex/work-id";
+import { SEARCH_SOURCE_NAMES, type SearchSource } from "../../lib/search/source";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { autocompleteOptions, autocompleteParameters, sourceTypesParameters, withSourceTypes, type LookupEntity, type LookupOption } from "../../lib/openalex/autocomplete";
 
@@ -35,11 +37,15 @@ export const PAGE_ORDERED_SORT = "relevance_score:desc";
 const PAGED_MAX = 10_000;
 
 /** A search's request as the results page makes it (lib/openalex/works-query.ts), with its sort. */
+export const searchSourceValidator = v.union(v.literal("openalex"), v.literal("openscholar"));
+
 export const searchRequestValidator = v.object({
   search: v.optional(v.string()),
   filter: v.optional(v.string()),
   oql: v.optional(v.string()),
   sort: v.string(),
+  /** The source it reads. Kept with the request, so a job finishes on the source it started on. A request kept before there was a choice read OpenAlex. */
+  source: v.optional(searchSourceValidator),
 });
 export type SearchRequest = Infer<typeof searchRequestValidator>;
 
@@ -52,6 +58,8 @@ export type SearchSnapshot = Infer<typeof searchSnapshotValidator>;
 
 type Page = { page: number } | { cursor: string };
 
+const sourceOf = (request: SearchRequest): SearchSource => request.source ?? "openalex";
+
 /** How many of a character the search's text holds, outside its quoted phrases. */
 const countOf = (request: SearchRequest, character: string) => `${request.search ?? ""}${request.filter ?? ""}${request.oql ?? ""}`.replace(/"[^"]*"/g, "").split(character).length;
 
@@ -63,15 +71,16 @@ const countOf = (request: SearchRequest, character: string) => `${request.search
  */
 async function refused(response: Response, request: SearchRequest, doing: "return" | "count", what: string) {
   const body = await response.text().catch(() => "");
-  console.error(`[paperSets] OpenAlex ${what} failed: ${response.status} ${body.slice(0, 500)}`);
-  if (response.status >= 500 && countOf(request, "(") !== countOf(request, ")")) return createError("VALIDATION_ERROR", "OpenAlex couldn't read this search: its brackets don't match.");
+  const name = SEARCH_SOURCE_NAMES[sourceOf(request)];
+  console.error(`[paperSets] ${name} ${what} failed: ${response.status} ${body.slice(0, 500)}`);
+  if (response.status >= 500 && countOf(request, "(") !== countOf(request, ")")) return createError("VALIDATION_ERROR", `${name} couldn't read this search: its brackets don't match.`);
   let reason: string | undefined;
   try {
     reason = response.status === 400 ? openAlexReason(JSON.parse(body)) : undefined;
   } catch {
     // Not the answer OpenAlex gives for a search it won't take.
   }
-  return createError("VALIDATION_ERROR", reason ? `OpenAlex didn't take this search: ${reason.slice(0, REASON_SHOWN)}` : `OpenAlex couldn't ${doing} these papers (${response.status}). Try again in a moment.`);
+  return createError("VALIDATION_ERROR", reason ? `${name} didn't take this search: ${reason.slice(0, REASON_SHOWN)}` : `${name} couldn't ${doing} these papers (${response.status}). Try again in a moment.`);
 }
 
 /** One page of the search, by number or cursor. An OQL search goes in a POST body: it outgrows the URL limit. */
@@ -80,11 +89,12 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
     "per-page": String(size),
     ...("page" in at ? { page: String(at.page) } : { cursor: at.cursor }),
     sort: request.sort,
-    select,
+    select: selectWithIds(select),
   };
+  const source = sourceOf(request);
   const url = request.oql
-    ? openAlexUrl("", parameters)
-    : openAlexUrl("works", { ...parameters, search: request.search, filter: request.filter });
+    ? searchUrl(source, "", parameters)
+    : searchUrl(source, "works", { ...parameters, search: request.search, filter: request.filter });
   let response: Response;
   try {
     response = await openAlexFetch(url, {
@@ -92,12 +102,12 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
       ...(request.oql ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql: request.oql }) } : {}),
     });
   } catch (error) {
-    console.error(`[paperSets] OpenAlex page ${JSON.stringify(at)} didn't answer`, error);
-    throw createError("VALIDATION_ERROR", "OpenAlex didn't return these papers in time. Try again in a moment.");
+    console.error(`[paperSets] ${SEARCH_SOURCE_NAMES[source]} page ${JSON.stringify(at)} didn't answer`, error);
+    throw createError("VALIDATION_ERROR", `${SEARCH_SOURCE_NAMES[source]} didn't return these papers in time. Try again in a moment.`);
   }
   if (!response.ok) throw await refused(response, request, "return", `page ${JSON.stringify(at)}`);
   const body = (await response.json()) as { results?: Work[]; meta?: { next_cursor?: string | null; count?: number } };
-  return { works: body.results ?? [], nextCursor: body.meta?.next_cursor || null, total: body.meta?.count ?? 0 };
+  return { works: (body.results ?? []).map((work) => appWork(work as Work & { id?: string })), nextCursor: body.meta?.next_cursor || null, total: body.meta?.count ?? 0 };
 }
 
 const limited = () => createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
@@ -184,8 +194,8 @@ async function readWorks<Work>(
   return { works, offset: first - 1, total };
 }
 
-const contact = () => {
-  if (!process.env.OPENALEX_CONTACT_EMAIL) throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
+const contact = (source: SearchSource) => {
+  if (source === "openalex" && !process.env.OPENALEX_CONTACT_EMAIL) throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
 };
 
 /**
@@ -201,7 +211,7 @@ export async function readSearchPage<Work>(
   { page, size, select }: { page: number; size: number; select: string },
   spend: (pages: number) => Promise<boolean>,
 ): Promise<{ works: Work[]; total: number }> {
-  contact();
+  contact(sourceOf(request));
   if (request.sort !== PAGE_ORDERED_SORT) {
     const { works, total } = await readWorks<Work>(request, (page - 1) * size + 1, page * size, select, spend);
     return { works, total };
@@ -217,58 +227,71 @@ export async function readSearchPage<Work>(
  * acting person's allowance: one request, and a second for journals' types. The page's own
  * lookup (lib/openalex/lookup.ts) makes the same requests from the Next server.
  */
-export async function autocomplete(entity: LookupEntity, text: string, spend: (pages: number) => Promise<boolean>): Promise<LookupOption[]> {
-  contact();
+export async function autocomplete(entity: LookupEntity, text: string, spend: (pages: number) => Promise<boolean>, source: SearchSource = "openalex"): Promise<LookupOption[]> {
+  contact(source);
   if (!(await spend(entity === "sources" ? 2 : 1))) throw limited();
-  const options = autocompleteOptions(await readLookup(`autocomplete/${entity}`, autocompleteParameters(text)));
+  const options = autocompleteOptions(await readLookup(`autocomplete/${entity}`, autocompleteParameters(text, entity, source), source));
   if (entity !== "sources" || !options.length) return options;
-  return withSourceTypes(options, await readLookup("sources", sourceTypesParameters(options.map((option) => option.id))));
+  return withSourceTypes(options, await readLookup("sources", sourceTypesParameters(options.map((option) => option.id)), source));
 }
 
-async function readLookup(path: string, parameters: Record<string, string>): Promise<unknown> {
+async function readLookup(path: string, parameters: Record<string, string>, source: SearchSource): Promise<unknown> {
+  const name = SEARCH_SOURCE_NAMES[source];
   let response: Response;
   try {
-    response = await fetch(openAlexUrl(path, parameters), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+    response = await openAlexFetch(searchUrl(source, path, parameters), { timeoutMs: PAGE_TIMEOUT_MS });
   } catch (error) {
-    console.error(`[paperSets] OpenAlex ${path} didn't answer`, error);
-    throw createError("VALIDATION_ERROR", "OpenAlex didn't answer in time. Try again in a moment.");
+    console.error(`[paperSets] ${name} ${path} didn't answer`, error);
+    throw createError("VALIDATION_ERROR", `${name} didn't answer in time. Try again in a moment.`);
   }
   if (!response.ok) {
-    console.error(`[paperSets] OpenAlex ${path} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
-    throw createError("VALIDATION_ERROR", `OpenAlex couldn't look that up (${response.status}). Try again in a moment.`);
+    console.error(`[paperSets] ${name} ${path} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
+    throw createError("VALIDATION_ERROR", `${name} couldn't look that up (${response.status}). Try again in a moment.`);
   }
   return await response.json();
 }
 
 /** One record by its address, such as works/W1 or authors/A1, or null when OpenAlex has none by it. One request, counted against the acting person's allowance. `what` names it in errors. */
-async function readRecord<Record>(path: string, select: string, spend: (pages: number) => Promise<boolean>, what: string): Promise<Record | null> {
-  contact();
+async function readRecord<Record>(path: string, select: string, spend: (pages: number) => Promise<boolean>, what: string, source: SearchSource): Promise<Record | null> {
+  contact(source);
   if (!(await spend(1))) throw limited();
+  const name = SEARCH_SOURCE_NAMES[source];
   let response: Response;
   try {
-    response = await fetch(openAlexUrl(path, { select }), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+    response = await openAlexFetch(searchUrl(source, path, { select }), { timeoutMs: PAGE_TIMEOUT_MS });
   } catch (error) {
-    console.error(`[paperSets] OpenAlex ${path} didn't answer`, error);
-    throw createError("VALIDATION_ERROR", `OpenAlex didn't return ${what} in time. Try again in a moment.`);
+    console.error(`[paperSets] ${name} ${path} didn't answer`, error);
+    throw createError("VALIDATION_ERROR", `${name} didn't return ${what} in time. Try again in a moment.`);
   }
   if (response.status === 404) return null;
   if (!response.ok) {
-    console.error(`[paperSets] OpenAlex ${path} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
-    throw createError("VALIDATION_ERROR", `OpenAlex couldn't return ${what} (${response.status}). Try again in a moment.`);
+    console.error(`[paperSets] ${name} ${path} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
+    throw createError("VALIDATION_ERROR", `${name} couldn't return ${what} (${response.status}). Try again in a moment.`);
   }
   return (await response.json()) as Record;
 }
 /** One work by its ID, or null when OpenAlex has none by it. */
-export const readWork = <Work>(id: string, select: string, spend: (pages: number) => Promise<boolean>) => readRecord<Work>(`works/${id}`, select, spend, "this paper");
+export const readWork = async <Work>(id: string, select: string, spend: (pages: number) => Promise<boolean>, source: SearchSource = "openalex") => {
+  const work = await readRecord<Work & { id?: string }>(`works/${id}`, selectWithIds(select), spend, "this paper", source);
+  return work && (appWork(work) as Work);
+};
 /** One author by their ID, or null when OpenAlex has none by it. */
-export const readAuthor = <Author>(id: string, select: string, spend: (pages: number) => Promise<boolean>) => readRecord<Author>(`authors/${id}`, select, spend, "this author");
+export const readAuthor = <Author>(id: string, select: string, spend: (pages: number) => Promise<boolean>, source: SearchSource = "openalex") => readRecord<Author>(`authors/${id}`, select, spend, "this author", source);
 
 /** The names of up to 100 authors, funders, journals or institutions by their IDs, such as A1: one request, counted against the acting person's allowance. One OpenAlex has none for is left out. */
-export async function readNames(entity: LookupEntity, ids: readonly string[], spend: (pages: number) => Promise<boolean>): Promise<Array<{ id: string; name: string }>> {
-  contact();
+export async function readNames(entity: LookupEntity, ids: readonly string[], spend: (pages: number) => Promise<boolean>, source: SearchSource = "openalex"): Promise<Array<{ id: string; name: string }>> {
+  contact(source);
   if (!(await spend(1))) throw limited();
-  const body = (await readLookup(entity, { filter: `openalex_id:${ids.join("|")}`, select: "id,display_name", "per-page": "100" })) as { results?: Array<{ id?: unknown; display_name?: unknown }> };
-  return (body.results ?? []).flatMap(({ id, display_name: name }) => (typeof id === "string" && typeof name === "string" ? [{ id: id.split("/").at(-1)!, name }] : []));
+  const body = (await readLookup(entity, { filter: `openalex_id:${ids.join("|")}`, select: source === "openscholar" ? "id,display_name,ids" : "id,display_name", "per-page": "100" }, source)) as { results?: Array<{ id?: unknown; display_name?: unknown; ids?: { openalex?: unknown } | null }> };
+  // Our index answers an OpenAlex ID with its own record, so the name goes back under the ID that was asked for.
+  const named = (body.results ?? []).flatMap(({ id, display_name: name, ids: paired }) => {
+    if (typeof id !== "string" || typeof name !== "string") return [];
+    const own = id.split("/").at(-1)!;
+    const openalex = typeof paired?.openalex === "string" ? paired.openalex.split("/").at(-1)! : null;
+    return [{ id: openalex && ids.includes(openalex) && !ids.includes(own) ? openalex : own, name }];
+  });
+  // One OpenAlex author can stand for several of our records: the ID comes back once.
+  return [...new Map(named.map((record) => [record.id, record])).values()];
 }
 
 /**
@@ -277,15 +300,16 @@ export async function readNames(entity: LookupEntity, ids: readonly string[], sp
  * allowance. An OQL search isn't a request OpenAlex groups.
  */
 export async function groupSearch(request: SearchRequest, by: string, spend: (pages: number) => Promise<boolean>): Promise<{ total: number; groups: Array<{ key: string; name: string; count: number }> }> {
-  contact();
+  const source = sourceOf(request);
+  contact(source);
   if (request.oql) throw createError("VALIDATION_ERROR", "A search written in OQL can't be counted by group.");
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {
-    response = await openAlexFetch(openAlexUrl("works", { search: request.search, filter: request.filter, group_by: by, "per-page": String(PAGE_SIZE) }), { timeoutMs: PAGE_TIMEOUT_MS });
+    response = await openAlexFetch(searchUrl(source, "works", { search: request.search, filter: request.filter, group_by: by, "per-page": String(PAGE_SIZE) }), { timeoutMs: PAGE_TIMEOUT_MS });
   } catch (error) {
-    console.error(`[paperSets] OpenAlex count by ${by} didn't answer`, error);
-    throw createError("VALIDATION_ERROR", "OpenAlex didn't count these papers in time. Try again in a moment.");
+    console.error(`[paperSets] ${SEARCH_SOURCE_NAMES[source]} count by ${by} didn't answer`, error);
+    throw createError("VALIDATION_ERROR", `${SEARCH_SOURCE_NAMES[source]} didn't count these papers in time. Try again in a moment.`);
   }
   if (!response.ok) throw await refused(response, request, "count", `count by ${by}`);
   const body = (await response.json()) as { meta?: { count?: unknown }; group_by?: Array<{ key?: unknown; key_display_name?: unknown; count?: unknown }> };
@@ -297,7 +321,7 @@ export async function groupSearch(request: SearchRequest, by: string, spend: (pa
 
 /** How many works the search has: one request for one work, counted against the acting person's allowance. */
 export async function countSearch(request: SearchRequest, spend: (pages: number) => Promise<boolean>): Promise<number> {
-  contact();
+  contact(sourceOf(request));
   if (!(await spend(1))) throw limited();
   return (await readPage(request, { page: 1 }, "id", 1)).total;
 }
@@ -313,9 +337,7 @@ export async function readSearchWorks<Work>(
   spend: (pages: number) => Promise<boolean>,
 ): Promise<Work[]> {
   // OpenAlex's polite pool needs a contact address; without one the deployment is misconfigured.
-  if (!process.env.OPENALEX_CONTACT_EMAIL) {
-    throw new Error("OPENALEX_CONTACT_EMAIL is not configured. Set this env var in the Convex dashboard.");
-  }
+  contact(sourceOf(request));
   const { works, offset } = await readWorks<Work>(request, first, last, select, spend);
   return works.slice(first - 1 - offset, last - offset);
 }
@@ -333,7 +355,7 @@ export async function readSearchRun<Work>(
   { first, last, select, resume, goesOn }: { first: number; last: number; select: string; resume?: string; goesOn: boolean },
   spend: (pages: number) => Promise<boolean>,
 ): Promise<{ works: Work[]; ended: boolean; resume?: string }> {
-  contact();
+  contact(sourceOf(request));
   if (!resume && !goesOn) {
     const { works, offset, total } = await readWorks<Work>(request, first, last, select, spend);
     // A short page isn't the search's end: its count is.

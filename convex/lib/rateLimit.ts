@@ -9,7 +9,8 @@
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
 import { internalMutation, type MutationCtx } from "./functions";
 import { v } from "convex/values";
-import { OPENALEX_REQUEST_LIMITS } from "../../lib/openalex/request-limiter";
+import { OPENALEX_REQUEST_LIMITS, OWN_INDEX_REQUEST_LIMITS } from "../../lib/openalex/request-limiter";
+import type { SearchSource } from "../../lib/search/source";
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -105,14 +106,27 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
     period: DAY,
     start: 0,
   },
+  // The same on our own index's key, which allows far fewer searches a day.
+  "openscholar-minute": {
+    kind: "token bucket",
+    rate: OWN_INDEX_REQUEST_LIMITS.account.perMinute,
+    period: MINUTE,
+    capacity: OWN_INDEX_REQUEST_LIMITS.account.perMinute,
+  },
+  "openscholar-day": {
+    kind: "fixed window",
+    rate: OWN_INDEX_REQUEST_LIMITS.account.perDay,
+    period: DAY,
+    start: 0,
+  },
 });
 
 /**
  * Counts `count` OpenAlex requests against an account, by its Clerk user ID. False,
  * counting none, when its minute or its day doesn't have that many left.
  */
-export async function spendOpenAlexRequests(ctx: MutationCtx, clerkId: string, count: number): Promise<boolean> {
-  const limits = [{ name: "openalex-minute", key: clerkId, count }, { name: "openalex-day", key: clerkId, count }] as const;
+export async function spendOpenAlexRequests(ctx: MutationCtx, clerkId: string, count: number, source: SearchSource = "openalex"): Promise<boolean> {
+  const limits = [{ name: `${source}-minute`, key: clerkId, count }, { name: `${source}-day`, key: clerkId, count }] as const;
   for (const limit of limits) if (!(await checkRateLimit(ctx, limit)).ok) return false;
   for (const limit of limits) await rateLimit(ctx, { ...limit, throws: true });
   return true;

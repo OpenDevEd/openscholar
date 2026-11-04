@@ -8,6 +8,7 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { searchOpenAlexRecords } from "@/app/actions/openalex-lookup";
 import type { LookupEntity } from "@/lib/openalex/autocomplete";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 type Option = { id: string; name: string; detail?: string };
 
@@ -36,7 +37,8 @@ export function OpenAlexLookupFilter({
   const tToast = useTranslations("toast");
   const [search, setSearch] = useState("");
   const query = useDebouncedValue(search.trim());
-  const results = useSWR(query ? [`${lookup.entity}-search`, query] : null, () => unlessLimited(searchOpenAlexRecords(lookup.entity, query)), {
+  const source = useSearchSource();
+  const results = useSWR(query ? [`${lookup.entity}-search`, source, query] : null, () => unlessLimited(searchOpenAlexRecords(lookup.entity, query, source === "openalex")), {
     revalidateOnFocus: false,
     keepPreviousData: true,
   });
