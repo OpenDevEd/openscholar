@@ -1,43 +1,113 @@
 ---
-// Two products, two bands, each name wall to wall: the workspace a team signs in to on navy, and the public sites anyone can visit in daylight. The search box belongs to the workspace alone.
+// A living Earth under the search box, with the communities as satellites you can catch as they go round. NASA Blue Marble, Black Marble and cloud imagery, drawn by a small shader, so the planet really turns, with day, night, weather and sea glint.
 import AskBar from "./AskBar.astro";
-import SiteGems from "./SiteGems.astro";
-import SiteWindow from "./SiteWindow.astro";
+import { COMMUNITIES } from "../data/site.mjs";
+const HEAD = "The world's research, one question away".split(" ");
+const QUESTIONS = ["Does peer tutoring improve reading?", "How do cities adapt to extreme heat?", "Do apprenticeships help people get jobs?", "What keeps girls in secondary school?", "Can AI score essays fairly?", "Does wealth shape social mobility?"];
+// Stars are fixed, so they never pop or shift between loads.
+const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
+const stars = Array.from({ length: 150 }, () => [+(rng() * 1440).toFixed(1), +(rng() * 620).toFixed(1), +(.5 + rng() * rng() * 1.3).toFixed(2), +(.2 + rng() * .7).toFixed(2), Math.floor(rng() * 3)]);
 ---
-<link rel="preload" as="image" href="/img/art-sea-960.avif" media="(max-width: 999px)" />
-<link rel="preload" as="image" href="/img/art-sea.avif" media="(min-width: 1000px)" fetchpriority="high" />
-<section class="bleed wall">
-  <div class="band os">
-    <h1><b>OpenScholar</b> <span>is where your team works through the evidence</span></h1>
-    <div class="ask-w"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /></div>
+<link rel="preload" as="image" href="/img/earth-day.avif" fetchpriority="high" />
+<section class="bleed sky" data-orbit>
+  <svg class="stars" viewBox="0 0 1440 620" preserveAspectRatio="xMidYMin slice" aria-hidden="true">{[0, 1, 2].map((g) => <g class={`tw t${g}`}>{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} fill="#dbe7ff" />)}</g>)}</svg>
+  <div class="inner say">
+    <h1 aria-label={HEAD.join(" ")}>{HEAD.map((w, i) => <span aria-hidden="true" style={`--i:${i}`}>{w}</span>)}</h1>
+    <p class="lead">Find it, screen it and pull out the data, with your whole team.</p>
+    <div class="halo"><AskBar id="ask-hero" class="big" typing questions={QUESTIONS} mark label="Search with OpenScholar" /></div>
   </div>
-  <div class="band ec light" data-sites>
-    <h2><b>Evidence Communities</b> <span>are where anyone can read it</span></h2>
-    <div class="pick"><SiteGems /></div>
-    <div class="w"><SiteWindow /></div>
+  <div class="space">
+    <svg class="ring back" aria-hidden="true"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3b82f6" /><stop offset=".2" stop-color="#22d3ee" /><stop offset=".42" stop-color="#34d399" /><stop offset=".6" stop-color="#fde047" /><stop offset=".8" stop-color="#fb923c" /><stop offset="1" stop-color="#fb7185" /></linearGradient></defs><g data-ring="back"></g></svg>
+    <canvas class="earth" data-day="/img/earth-day.avif" data-night="/img/earth-night.avif" data-clouds="/img/earth-clouds.avif" data-water="/img/earth-water.avif" aria-hidden="true"></canvas>
+    <svg class="ring front" aria-hidden="true"><g data-ring="front"></g></svg>
+    <ul aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <li style={`--c:${c.color};--i:${i}`} data-sat><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><b>{c.name}</b></a></li>)}</ul>
+    <p class="who"><b>Evidence Communities</b> <span>A public home for each field, open to anyone</span></p>
   </div>
 </section>
-<style>
-  .wall { --hu: 1px; --strip: calc(100vw - var(--pad) * 2); display: grid; grid-template-columns: minmax(0, 1fr); }
-  .band { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: calc(var(--hu) * 18); padding-inline: var(--pad); overflow: clip; min-height: 0; }
-
-  /* Both names measure the full strip, whatever the window. */
-  h1, h2 { display: grid; font-weight: 500; letter-spacing: -.02em; } h1 b, h2 b { font-weight: 500; line-height: .96; letter-spacing: -.055em; white-space: nowrap; } h1 span, h2 span { font-size: max(19px, calc(var(--hu) * 26)); letter-spacing: -.02em; line-height: 1.15; }
-  h1 b { font-size: calc(var(--strip) / 5.35); background: url(/img/art-sea-960.avif) 40% 55% / 120% auto #3f6bff; background-blend-mode: screen; -webkit-background-clip: text; background-clip: text; color: transparent; animation: drift 40s ease-in-out infinite alternate; } @keyframes drift { to { background-position: 60% 72%; } }
-  h2 b { font-size: calc(var(--strip) / 9.42); }
-
-  .os { padding-top: 96px; padding-bottom: 32px; background: #01072c; color: #fff; } .os span { color: #a9bbe6; } .ask-w :global(.big) { width: 100%; } .ask-w :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); }
-  .ec { padding-top: 32px; background: var(--soft); color: var(--ink); } .ec span { color: var(--t2); } .pick :global(.gems), .pick :global(.cap) { width: 100%; }
-  .w { aspect-ratio: 16 / 10; margin-top: 8px; margin-bottom: -20px; border-radius: 14px 14px 0 0; overflow: clip; box-shadow: 0 0 0 1px var(--line), 0 36px 60px -30px rgb(10 26 63 / .6); }
-  .os > *, .ec > * { animation: up .9s var(--ease) backwards; } .ec > * { animation-delay: .12s; } @keyframes up { from { opacity: 0; transform: translateY(16px); } }
-
-  /* From a small laptop up: fixed sizes, on the page width the nav uses. The top band is exactly as tall as what it holds, and leaning into the daylight band tucks its second row away. */
-  @media (min-width: 1000px) {
-    .wall { --strip: min(100vw - var(--pad) * 2, 1248px); --edge: calc((100vw - var(--strip)) / 2); --pt: 112px; --name: calc(var(--pt) + var(--strip) / 5.35 * .96); --top: calc(var(--name) + var(--hu) * 18 + max(58px, var(--hu) * 72) + var(--hu) * 36); height: 860px; grid-template-rows: var(--top) minmax(0, 1fr); transition: grid-template-rows .75s .1s var(--ease); } .wall:has(.ec:hover), .wall:has(.ec:focus-within) { --top: calc(var(--name) + var(--hu) * 12); --fade: 0; --cap: 1; }
-    h1 b { background-image: url(/img/art-sea.avif); }
-    .band { padding-inline: var(--edge); }
-    .os { padding-top: var(--pt); padding-bottom: 0; grid-template-columns: minmax(0, 1fr) calc(var(--hu) * 620); column-gap: calc(var(--hu) * 40); align-items: center; } .os h1 { display: contents; } .os h1 b { grid-column: 1 / -1; } .os h1 span { font-size: calc(var(--hu) * 30); max-width: 19em; text-wrap: balance; } .os h1 span, .ask-w { opacity: var(--fade, 1); transition: opacity .35s var(--ease); }
-    .ec { padding-top: calc(var(--hu) * 22); grid-template-columns: calc(var(--hu) * 460) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); column-gap: calc(var(--hu) * 40); } .ec h2 { display: contents; } .ec h2 b { grid-column: 1 / -1; } .ec h2 span { grid-column: 1; font-size: calc(var(--hu) * 24); text-wrap: balance; } .pick { grid-column: 1; }
-    .w { grid-area: 2 / 2 / span 2; aspect-ratio: auto; height: calc(100% + 24px); margin: 0; }
+<script>
+  const root = document.querySelector("[data-orbit]");
+  if (root) {
+    const scene = root.querySelector(".space"), cv = scene.querySelector(".earth"), sats = [...scene.querySelectorAll("[data-sat]")], calm = matchMedia("(prefers-reduced-motion: reduce)"), TAU = Math.PI * 2, NS = "http://www.w3.org/2000/svg";
+    const backG = scene.querySelector('[data-ring="back"]'), frontG = scene.querySelector('[data-ring="front"]'), grad = scene.querySelector("#spectrum");
+    let W = 0, H = 0, R = 0, cx = 0, cy = 0, rx = 0, ry = 0, tilt = -.1, phase = 1.1, speed = 1, want = 1, seen = true, px = 0, py = 0, tx = 0, ty = 0, last = 0, cometF = null, cometB = null;
+    // The ring is a bundle of hair-thin filaments, split where it passes behind the planet.
+    const arc = (a, b, front) => `M ${-a} 0 A ${a} ${b} 0 0 ${front ? 0 : 1} ${a} 0`;
+    const stroke = (g, d, w, op, extra = {}) => { const p = document.createElementNS(NS, "path"); p.setAttribute("d", d); p.setAttribute("fill", "none"); p.setAttribute("stroke", extra.stroke || "url(#spectrum)"); p.setAttribute("stroke-width", w); p.setAttribute("opacity", op); for (const k of ["filter", "style", "pathLength", "stroke-dasharray", "stroke-linecap"]) if (extra[k]) p.setAttribute(k, extra[k]); g.append(p); return p; };
+    const buildRing = () => {
+      backG.replaceChildren(); frontG.replaceChildren();
+      stroke(backG, arc(rx, ry, false), 14, .08, { filter: "blur(9px)" }); stroke(frontG, arc(rx, ry, true), 14, .22, { filter: "blur(9px)" });
+      for (const [dr, op, w] of [[-8.5, .13, .6], [8.5, .13, .6], [-5, .26, .7], [5, .26, .7], [-2.4, .5, .8], [2.4, .5, .8], [0, 1, 1.6]]) { stroke(backG, arc(rx + dr, ry + dr * .34, false), w, op * .5); stroke(frontG, arc(rx + dr, ry + dr * .34, true), w, op); }
+      const c = { stroke: "#fff", pathLength: 1000, "stroke-dasharray": "80 1920", "stroke-linecap": "round", style: "filter:drop-shadow(0 0 5px #fff)" }; cometB = stroke(backG, arc(rx, ry, false), 2.2, 0, c); cometF = stroke(frontG, arc(rx, ry, true), 2.2, 0, c);
+      grad.setAttribute("x1", -rx); grad.setAttribute("x2", rx); grad.setAttribute("y1", 0); grad.setAttribute("y2", 0);
+      const tf = `translate(${cx} ${cy}) rotate(${tilt * 180 / Math.PI})`; backG.setAttribute("transform", tf); frontG.setAttribute("transform", tf);
+    };
+    const size = () => { W = scene.clientWidth; H = scene.clientHeight; const narrow = W < 700; R = narrow ? W * .36 : W < 1000 ? W * .28 : Math.min(300, W * .215); cx = W / 2; cy = narrow ? R + 52 : R + 34; rx = narrow ? W * .45 : W < 1000 ? W * .46 : Math.min(640, W * .43); ry = rx * (narrow ? .3 : .165); buildRing(); glSize(); };
+    // One slow turn of the satellites. Behind the planet they dim and go under it; pointing at one calms the whole orbit so it can be caught.
+    const placeSats = () => {
+      const c = Math.cos(tilt), s = Math.sin(tilt);
+      sats.forEach((li, i) => {
+        const half = li.offsetWidth / 2 + 4, th = -phase + i * TAU / sats.length, ox = rx * Math.cos(th), oy = ry * Math.sin(th), x = Math.min(W - half, Math.max(half, cx + ox * c - oy * s + px * 10)), y = cy + ox * s + oy * c + py * 6, depth = Math.sin(th), near = (depth + 1) / 2, hid = depth < 0 && Math.hypot(x - cx, y - cy) < R * 1.02;
+        li.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -30px) scale(${(.74 + near * .34).toFixed(3)})`;
+        li.style.zIndex = depth >= 0 ? 5 : 1; li.style.opacity = hid ? 0 : (.46 + near * .54).toFixed(3); li.style.pointerEvents = hid ? "none" : "auto";
+      });
+    };
+    // The planet
+    const gl = cv.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" }); let U, ready = false;
+    function glSize() { if (!gl) return; const d = Math.min(devicePixelRatio || 1, 1.75); cv.width = Math.round(W * d); cv.height = Math.round(H * d); gl.viewport(0, 0, cv.width, cv.height); const g = R * 1.55; gl.enable(gl.SCISSOR_TEST); gl.scissor(Math.max(0, (cx - g) * d), Math.max(0, cv.height - (cy + g) * d), g * 2 * d, g * 2 * d); }
+    const VS = `#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+    const FS = `#version 300 es
+precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c; uniform float r, t;
+const float PI = 3.14159265;
+vec2 ll(vec3 n, float spin){ float lon = atan(n.x, n.z) - spin, lat = asin(clamp(n.y, -1., 1.)), u = lon / (2. * PI); float u1 = fract(u), u2 = fract(u + .5) - .5; return vec2(fwidth(u1) <= fwidth(u2) ? u1 : u2, .5 - lat / PI); }
+vec3 halo(float d, float sun){ float lit = smoothstep(-.55, .75, sun), g = exp(-max(d - 1., 0.) * 15.) * .85 + exp(-max(d - 1., 0.) * 4.2) * .16; return mix(vec3(.05, .18, .55), vec3(.34, .68, 1.), lit) * g * (.14 + lit); }
+void main(){
+  vec2 p = (gl_FragCoord.xy - c) / r; float d = length(p); vec3 L = normalize(vec3(-.62, .5, .6)); float sun = dot(normalize(vec3(p, .001)), L); vec3 h = halo(d, sun); float ha = clamp(max(h.r, max(h.g, h.b)), 0., 1.);
+  if (d > 1.) { o = vec4(h, ha); return; }
+  float z = sqrt(1. - d * d); vec3 n0 = vec3(p, z);
+  float ax = .4, ay = .22; mat3 lean = mat3(cos(ax), sin(ax), 0., -sin(ax), cos(ax), 0., 0., 0., 1.) * mat3(1., 0., 0., 0., cos(ay), -sin(ay), 0., sin(ay), cos(ay)); vec3 n = lean * n0;
+  vec2 uv = ll(n, t * .05), uvc = ll(n, t * .058);
+  vec3 dc = pow(texture(day, uv).rgb, vec3(.92)) * vec3(.94, 1.03, 1.16); float wet = texture(water, uv).r; vec3 nc = texture(night, uv).rgb; float cl = texture(clouds, uvc).r, sh = texture(clouds, uvc + vec2(.0028, -.0018)).r;
+  float dif = dot(n0, L), lit = smoothstep(-.08, .46, dif), dusk = smoothstep(-.14, .08, dif) * (1. - smoothstep(.08, .34, dif));
+  vec3 col = dc * (.08 + 1.08 * lit) * (1. - pow(sh, 1.5) * .3 * lit);
+  col += pow(max(dot(reflect(-L, n0), vec3(0., 0., 1.)), 0.), 90.) * wet * vec3(.7, .85, 1.) * .42 * lit;
+  col += nc * nc * vec3(1.5, 1.14, .72) * 2.3 * (1. - smoothstep(-.2, .06, dif)) * (1. - cl * .8);
+  col = mix(col, mix(vec3(.03, .05, .11), vec3(1., 1., 1.02), lit), pow(cl, 1.5) * .9);
+  col += dusk * vec3(.62, .22, .1) * .34;
+  col += vec3(.3, .62, 1.) * pow(1. - z, 2.6) * (.12 + 1.12 * smoothstep(-.3, .7, dif));
+  col = col / (1. + col * .14); float a = 1. - smoothstep(1. - 2.2 / r, 1., d);
+  o = vec4(col, 1.) * a + vec4(h, ha) * (1. - a);
+}`;
+    const start = () => {
+      if (!gl) { root.classList.add("flat"); return; }
+      const sh = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+      const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); gl.useProgram(pr);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); const al = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(al); gl.vertexAttribPointer(al, 2, gl.FLOAT, false, 0, 0);
+      U = { c: gl.getUniformLocation(pr, "c"), r: gl.getUniformLocation(pr, "r"), t: gl.getUniformLocation(pr, "t") };
+      const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
+      return Promise.all(["day", "night", "clouds", "water"].map((n, i) => new Promise((ok, no) => { const im = new Image(); im.onload = () => { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, gl.createTexture()); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8); gl.uniform1i(gl.getUniformLocation(pr, n), i); ok(); }; im.onerror = no; im.src = cv.dataset[n]; }))).then(() => { ready = true; draw(0); root.classList.add("lit"); });
+    };
+    const draw = (now) => { if (!ready) return; const d = cv.width / W; gl.uniform2f(U.c, (cx + px * 4) * d, cv.height - (cy + py * 3) * d); gl.uniform1f(U.r, R * d); gl.uniform1f(U.t, 18 + now / 1000); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLES, 0, 3); };
+    // A spark of light runs round the ring the same way the satellites go: left to right in front, back again behind.
+    const comet = (now) => { if (!cometF) return; const k = (now / 15000) % 1, front = k < .5, u = front ? k * 2 : 1 - (k - .5) * 2, on = front ? cometF : cometB, off = front ? cometB : cometF; on.setAttribute("opacity", front ? 1 : .5); off.setAttribute("opacity", 0); on.setAttribute("stroke-dashoffset", (40 - u * 1000).toFixed(1)); };
+    const loop = (now) => { requestAnimationFrame(loop); if (!seen || calm.matches) return; const dt = Math.min(64, now - last); last = now; speed += (want - speed) * .07; phase += dt * .00007 * speed; px += (tx - px) * .05; py += (ty - py) * .05; placeSats(); comet(now); draw(now); };
+    new ResizeObserver(() => { size(); placeSats(); if (ready && calm.matches) draw(0); }).observe(scene);
+    new IntersectionObserver(([e]) => { seen = e.isIntersecting; last = performance.now(); }).observe(root);
+    scene.addEventListener("pointerover", (e) => { if (e.target.closest("[data-sat]")) want = 0; }); scene.addEventListener("pointerout", (e) => { if (e.target.closest("[data-sat]")) want = 1; }); scene.addEventListener("focusin", () => { want = 0; }); scene.addEventListener("focusout", () => { want = 1; });
+    root.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = root.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; }, { passive: true });
+    size(); placeSats(); start()?.catch(() => root.classList.add("flat")); requestAnimationFrame((n) => { last = n; loop(n); });
   }
+</script>
+<style>
+  .sky { --bg: #040b2e; padding: 116px 0 0; background: radial-gradient(ellipse 34% 26% at 18% 62%, rgb(34 211 238 / .07), transparent), radial-gradient(ellipse 34% 26% at 84% 60%, rgb(251 113 133 / .07), transparent), var(--bg); text-align: center; }
+  .stars { position: absolute; left: 0; top: 0; z-index: -1; width: 100%; height: 620px; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); } .tw { animation: tw 6s ease-in-out infinite alternate; } .t1 { animation-duration: 9s; animation-delay: -3s; } .t2 { animation-duration: 13s; animation-delay: -6s; } @keyframes tw { to { opacity: .35; } }
+
+  .say { position: relative; z-index: 6; display: grid; justify-items: center; gap: 14px; } h1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .26em; font-size: clamp(38px, 4.8vw, 64px); letter-spacing: -.04em; line-height: 1.06; } h1 span { display: inline-block; animation: rise 1s var(--ease) calc(.1s + var(--i) * 70ms) backwards; } @keyframes rise { from { opacity: 0; transform: translateY(26px); filter: blur(6px); } } .lead { color: #c8d3ee; animation: rise 1s var(--ease) .55s backwards; }
+  .halo { position: relative; width: min(100%, 700px); margin-top: 8px; border-radius: 20px; animation: rise 1s var(--ease) .7s backwards; } .halo::before, .halo::after { content: ""; position: absolute; z-index: -1; inset: -2px; border-radius: 20px; background: conic-gradient(from var(--a), #3b82f6, #22d3ee, #34d399, #fde047, #fb923c, #fb7185, #3b82f6); animation: orbit 9s linear infinite; } .halo::after { inset: 6px -10px -14px; filter: blur(26px); opacity: .55; } .halo :global(.big) { width: 100%; box-shadow: none; }
+
+  .space { position: relative; isolation: isolate; height: 556px; overflow: clip visible; } .space::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; height: 150px; background: linear-gradient(transparent, var(--bg)); pointer-events: none; }
+  .earth { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; opacity: 0; transform: translateY(70px) scale(.97); transition: opacity 1.4s var(--ease), transform 2s var(--ease); } :global(.lit) .earth { opacity: 1; transform: none; } .ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; opacity: 0; transition: opacity 1.6s var(--ease) .5s; } .back { z-index: 1; } .front { z-index: 4; } :global(.lit) .ring { opacity: 1; }
+  ul { position: absolute; inset: 0; z-index: 5; pointer-events: none; display: contents; } li { position: absolute; left: 0; top: 0; width: 170px; will-change: transform, opacity; transition: opacity .5s var(--ease); pointer-events: auto; } li a { display: grid; justify-items: center; gap: 4px; padding: 4px; animation: arrive 1.2s var(--ease) calc(.9s + var(--i) * 120ms) backwards; } @keyframes arrive { from { opacity: 0; } } li img { width: 60px; height: 60px; object-fit: contain; filter: saturate(1.45) drop-shadow(0 0 14px color-mix(in srgb, var(--c) 70%, transparent)); transition: transform .4s var(--ease), filter .3s var(--ease); } li a:hover img, li a:focus-visible img { transform: scale(1.28); filter: saturate(1.6) drop-shadow(0 0 22px var(--c)); } li b { font-weight: 500; font-size: 13.5px; line-height: 1.18; letter-spacing: -.005em; text-wrap: balance; text-shadow: 0 1px 2px rgb(2 6 30 / .95), 0 0 12px rgb(2 6 30 / .95), 0 0 26px rgb(2 6 30 / .8); transition: color .2s var(--ease); } li a:hover b { color: color-mix(in srgb, var(--c) 40%, #fff); }
+  .who { position: absolute; z-index: 6; left: max(var(--pad), calc(50% - 624px)); top: 28px; display: grid; gap: 2px; max-width: 240px; text-align: left; animation: arrive 1.4s var(--ease) 1.5s backwards; } .who b { font-weight: 500; font-size: 18px; letter-spacing: -.015em; } .who span { font-size: 14.5px; line-height: 1.35; color: #c8d3ee; }
+  :global(.flat) .ring, :global(.flat) .earth, :global(html:not(.has-js)) .ring, :global(html:not(.has-js)) .earth { display: none; } :global(.flat) .space, :global(html:not(.has-js)) .space { height: auto; } :global(.flat) ul, :global(html:not(.has-js)) ul { position: static; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 32px var(--pad); } :global(.flat) li, :global(html:not(.has-js)) li { position: static; width: auto; transform: none !important; opacity: 1 !important; } :global(.flat) .who, :global(html:not(.has-js)) .who { position: static; max-width: none; margin-top: 28px; padding-inline: var(--pad); text-align: center; }
+  @media (max-width: 699px) { .sky { padding-top: 100px; } .space { height: 470px; margin-top: 8px; } li { width: 104px; } li img { width: 40px; height: 40px; } li b { font-size: 11.5px; } .who { left: 0; right: 0; top: auto; bottom: 14px; max-width: none; padding-inline: var(--pad); text-align: center; } .space::after { height: 60px; } }
 </style>
