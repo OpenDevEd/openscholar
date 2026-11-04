@@ -1,19 +1,32 @@
 ---
 // How a community comes together, drawn as what it is. The gem is a prism: white light crosses on its way in, what doesn't fit bounces off its corner and fades, and the rest comes out sorted, every kind of study its own colour. One strand stays white, and becomes the underline of its sentence.
-const sources = [["Zotero groups", "Two-way sync and PDF publishing"], ["Openscholar collections", "What your team has gathered"], ["Saved searches", "Fetch only what changed"], ["Your team", "Records you write wait as drafts"]];
-const outs = [["Search", "and filter"], ["Maps of", "your field"], ["Ask AI,", "with sources"], ["Digests of", "new work"], ["Citations", "and exports"]];
+import Icon from "./Icon.astro";
+const sources = [["Zotero groups", "Two-way sync and PDF publishing", "zotero"], ["Openscholar collections", "What your team has gathered", "hub"], ["Saved searches", "Fetch only what changed", "search"], ["Your team", "Records you write wait as drafts", "pen"]];
+const outs = [["Search", "and filter", "search"], ["Maps of", "your field", "globe"], ["Ask AI,", "with sources", "ai"], ["Digests of", "new work", "mail"], ["Citations", "and exports", "cite"]];
+// Each source and each thing readers get has its mark on a tile floating on its strand, each a different size, tilt and pace.
+const TILE = [[58, -7, 6.2], [50, 6, 7.4], [56, -4, 5.6], [48, 8, 8], [54, -6, 6.8]];
+const tile = (i) => `--s:${TILE[i][0]};--r:${TILE[i][1]};--t:${TILE[i][2]}s;--i:${i}`;
 ---
 <div class="graph" data-in>
-  <div class="col from"><h3>Connect your sources</h3><ul>{sources.map(([t, d], i) => <li style={`--y:${[-210, -70, 70, 210][i]}`}><b>{t}</b><span>{d}</span></li>)}</ul></div>
+  <div class="col from"><h3>Connect your sources</h3><ul>{sources.map(([t, d, k], i) => <li style={`--y:${[-210, -70, 70, 210][i]}`}><i class="tile" style={tile(i)} aria-hidden="true">{k === "zotero" ? <svg viewBox="0 0 24 24" fill="#e0474f"><path d="M21.231 2.462 7.18 20.923h14.564V24H2.256v-2.462L16.308 3.076H2.975V0h18.256v2.462z" /></svg> : k === "hub" ? <img src="/favicon-dark.svg" width="64" height="64" alt="" /> : <Icon name={k} size={64} />}</i><b>{t}</b><span>{d}</span></li>)}</ul></div>
   <div class="note screened"><h3>Screened against your subject</h3><p>Judged by AI on title and abstract.<br />What fits publishes as it syncs.</p><p class="off">A literacy community leaves out soil carbon.</p></div>
   <div class="stone">
     {["rays", "rays sheen"].map((cls) => <picture><source media="(max-width: 699px)" srcset="/img/art-prism-phone.avif" width="1440" height="2040" /><source media="(max-width: 1059px)" srcset="/img/art-prism-tall.avif" width="2080" height="1530" /><img class={cls} src="/img/art-prism-1x.avif" srcset="/img/art-prism-1x.avif 1x, /img/art-prism.avif 2x" width="2600" height="680" loading="lazy" decoding="async" alt="" aria-hidden="true" /></picture>)}
     <div class="core" data-in><img class="gem" src="/img/gem-prism.avif" width="768" height="424" loading="lazy" decoding="async" alt="" aria-hidden="true" /><div class="name"><img src="/favicon-dark.svg" width="30" height="30" alt="" aria-hidden="true" /><b>Your community</b></div></div>
   </div>
   <div class="note labelled"><h3>Labelled by AI</h3><ul class="kinds"><li class="k1">Randomised trial</li><li class="k2">Narrative review</li><li class="k3">Modelling study</li></ul><p>Editors can correct labels. <span class="flag">Anything uncertain is flagged.</span></p></div>
-  <div class="col to"><h3>Go live, and readers get</h3><ul>{outs.map(([a, b], i) => <li style={`--y:${[-210, -105, 0, 105, 210][i]}`}><b>{a} <span>{b}</span></b></li>)}</ul></div>
+  <div class="col to"><h3>Go live, and readers get</h3><ul>{outs.map(([a, b, k], i) => <li style={`--y:${[-210, -105, 0, 105, 210][i]}`}><i class="tile" style={tile(4 - i)} aria-hidden="true">{k === "ai" ? <svg viewBox="28 28 72 72" fill="currentColor"><path d="M64 31C70.6 54.1 73.9 57.4 97 64C73.9 70.6 70.6 73.9 64 97C57.4 73.9 54.1 70.6 31 64C54.1 57.4 57.4 54.1 64 31Z" /></svg> : <Icon name={k} size={64} />}</i><b>{a} <span>{b}</span></b></li>)}</ul></div>
 </div>
 <style>
+  /* A tile is sized from its --s, so one step scales them all. It tilts, and floats on its own slow rhythm. It sits above the art, so the light passes behind it. */
+  .tile { --k: 1; position: relative; z-index: 1; display: grid; place-items: center; width: calc(var(--s) * var(--k) * 1px); aspect-ratio: 1; border-radius: 28%; background: linear-gradient(160deg, #1a1f2e, #0c0f18); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), inset 0 1px 0 rgb(255 255 255 / .1), 0 14px 30px -10px #000; color: #f1f3f8; rotate: calc(var(--r) * 1deg); animation: tile-float var(--t) ease-in-out calc(var(--i) * -1.3s) infinite alternate; } .to .tile { color: var(--st-k2); } .tile > :global(*) { width: 52%; height: 52%; } .tile > img { width: 68%; height: 68%; }
+  @keyframes tile-float { from { translate: 0 -5px; rotate: calc(var(--r) * 1deg - 2deg); } to { translate: 0 5px; rotate: calc(var(--r) * 1deg + 2deg); } }
+  @media (prefers-reduced-motion: reduce) { .tile { animation: none; } }
+  @media (min-width: 1360px) { .col .tile { --k: 1.25; } }
+  /* Stacked, a source's tile sits beside its words, and on the tablet each ribbon lands on its output's tile. */
+  @media (max-width: 1059px) { .from li { display: grid; grid-template-columns: 46px minmax(0, 1fr); column-gap: 14px; align-items: center; } .from .tile { --k: .8; grid-row: 1 / 3; justify-self: center; } .from b { align-self: end; } .from li > span { align-self: start; } .to .tile { --k: .9; margin: 0 auto 12px; } }
+  /* On a phone the output rows keep their height, so they stay on the ribbons that land on them. */
+  @media (max-width: 699px) { .to li { position: relative; padding-left: 46px; } .to .tile { --k: .62; position: absolute; left: 0; top: 50%; margin: calc(var(--s) * var(--k) * -.5px) 0 0; } }
   .col b { display: block; font-weight: 500; font-size: 17px; line-height: 1.3; letter-spacing: -.005em; white-space: nowrap; } .col li > span { display: block; font-size: 14px; line-height: 1.35; color: var(--st-dim); }
   .col h3 { font-size: 15px; font-weight: 400; letter-spacing: 0; line-height: 20px; color: var(--st-dim); }
   .note { position: relative; z-index: 1; } .note h3 { font-size: 19px; line-height: 24px; letter-spacing: -.01em; margin-bottom: 8px; } .note p { font-size: 14px; line-height: 21px; color: var(--st-dim); } .note .off { color: #fff; }
@@ -34,7 +47,7 @@ const outs = [["Search", "and filter"], ["Maps of", "your field"], ["Ask AI,", "
   /* Wide: the art, the notes and the output words all hang off the gem's centre, measured in --u, so the same picture steps down without the words leaving their strands. */
   @media (min-width: 1060px) {
     .graph { position: relative; height: calc(600 * var(--u)); margin-block: 40px -44px; }
-    .col { position: absolute; top: 0; bottom: 0; width: 210px; } .from { left: 0; } .to { left: calc(50% + 350 * var(--u)); } .col li { position: absolute; left: 0; top: calc(50% + var(--y) * var(--u)); translate: 0 -100%; padding-bottom: 7px; white-space: nowrap; } .to li { padding-bottom: 13px; }
+    .col { position: absolute; z-index: 1; top: 0; bottom: 0; width: 210px; } .from { left: 0; } .to { left: calc(50% + 350 * var(--u)); } .col li { position: absolute; left: 0; top: calc(50% + var(--y) * var(--u)); translate: 0 -100%; padding-bottom: 7px; white-space: nowrap; } .to li { padding-bottom: 13px; } .tile { --k: .9; position: absolute; top: 100%; margin-top: calc(var(--s) * var(--k) * -.5px); } .from .tile { right: calc(100% + 12px); } .to .tile { left: calc(150 * var(--u) + 66px); }
     .note { position: absolute; left: calc(50% - 250px); width: 500px; text-align: center; } .screened { bottom: calc(50% + 139 * var(--u)); } .labelled { top: calc(50% + 240 * var(--u) - 80px); }
     .kinds { display: flex; justify-content: center; gap: 18px; margin-bottom: 8px; }
     .flag::after { right: calc(178px - 238 * var(--u)); }
