@@ -138,6 +138,9 @@ void main(){
       placeSats(orbitAt ? 2.4 * (1 - clamp01((now - orbitAt) / 2800)) ** 4 : 2.4); comet(now);
       const w = (now - waveAt) / 1800; if (now - lastDraw >= 30 || now - dawnAt < 3600 || (w > 0 && w < 1)) draw(now);
     };
+    // Wrapped text leaves its box wider than the words, so each name's box is set to its words and the gaps between the six come out equal.
+    const fitNames = () => rows.forEach((li) => { const a = li.querySelector("a"); a.style.width = ""; if (innerWidth < 1000) return; const t = document.createRange(); t.selectNodeContents(a.lastChild); a.style.width = `${Math.ceil(t.getBoundingClientRect().width) + 1}px`; });
+    document.fonts?.ready.then(fitNames); addEventListener("resize", fitNames, { passive: true });
     new ResizeObserver(() => { size(); placeSats(calm.matches || orbitAt ? 0 : 2.4); if (ready) draw(performance.now()); }).observe(scene);
     new IntersectionObserver(([e]) => { seen = e.isIntersecting; root.classList.toggle("away", !seen); last = performance.now(); run(); }).observe(root);
     // Reduced motion turned on mid-visit settles everything into the still scene.
