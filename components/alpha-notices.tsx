@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { FlaskConical, Mail } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
+import { cn } from "@/lib/utils";
 
 /**
  * Across the top of every page, where it stays as the page scrolls. The layout counts its height in `--app-navbar-height`.
@@ -27,11 +28,11 @@ export function AlphaStrip() {
   );
 }
 
-/** At the top of the Pricing page, in the notice style it already uses. */
-export function AlphaPlansNotice() {
+/** On the Pricing page, in the notice style it already uses. */
+export function AlphaPlansNotice({ className }: { className?: string }) {
   const t = useTranslations("alpha");
   return (
-    <div className="flex items-start gap-2.5 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info">
+    <div className={cn("flex items-start gap-2.5 rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info", className)}>
       <FlaskConical className="mt-0.5 size-4 shrink-0" />
       <span>{t("plansNotice")}</span>
     </div>

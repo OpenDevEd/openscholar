@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAction } from "convex/react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
 import type { CatalogPlan } from "@/convex/billing/validators";
@@ -97,9 +98,9 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Under an organization's address its plans show first (#652); either tab shows the other's.
+  // Under an organization's address its plans show first (#652); either tab shows the other's, and the address can name one.
   const inOrganization = Boolean(useParams<{ slug?: string }>().slug);
-  const [audience, setAudience] = useState<"me" | "org">(inOrganization ? "org" : "me");
+  const [audience, setAudience] = useQueryState("audience", parseAsStringLiteral(["me", "org"] as const).withDefault(inOrganization ? "org" : "me"));
 
   const { phase, retryUserSync } = useAuthReadiness();
   // Your own plans are your own whichever workspace the page is in.
@@ -487,17 +488,14 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
   return (
     <div className="@container w-full pb-16">
       <StickyPageHeader>
-        <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} tabs={audienceTabs} />
+        <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} tabs={audienceTabs}>
+          <AlphaPlansNotice className="hidden max-w-2xl gap-2 px-3 py-1.5 text-xs leading-5 @6xl:flex" />
+        </PanelHeader>
       </StickyPageHeader>
 
       <div className="container mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
         {/* A narrow bar has no room for the tabs. */}
         <div className="@3xl:hidden">{audienceTabs}</div>
-
-        {/* As wide as the row of plans under it. */}
-        <div className={audience === "me" ? "mx-auto max-w-3xl" : undefined}>
-          <AlphaPlansNotice />
-        </div>
 
         {audience === "org" ? (
           <OrganizationPlans featureName={featureName} initial={organization} libraries={libraries} />
@@ -612,6 +610,11 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
         />
           </>
         )}
+
+        {/* Where the header has no room for it. As wide as the row of plans above it. */}
+        <div className={cn("@6xl:hidden", audience === "me" && "mx-auto max-w-3xl")}>
+          <AlphaPlansNotice />
+        </div>
       </div>
     </div>
   );

@@ -357,8 +357,6 @@
     "verifySave": "確認して保存"
   },
   "auth": {
-    "organizationFeatureTitle": "アクセスできません",
-    "organizationFeatureDescription": "Evidence Communities はリクエストに応じて組織で有効にします。{email} にメールしてください。",
     "backToSearch": "検索に戻る",
     "loadingTitle": "ワークスペースを読み込み中",
     "loadingDescription": "認証済みワークスペースを準備しています。",
