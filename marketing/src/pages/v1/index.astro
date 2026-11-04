@@ -24,7 +24,7 @@ import { COMMUNITIES } from "../../data/site.mjs";
   </section>
 </Base>
 <style>
-  .hero, .ec { margin-block: 0; }
+  .ec { margin-top: calc(var(--gap) * -1); }
   h1, h2, li b { font-family: "Instrument Serif", Georgia, serif; font-weight: 400; } em { font-style: italic; }
   .hero { position: relative; isolation: isolate; overflow: clip; padding: 112px 0 340px; background: #d98a3d; color: #2c1405; } .p { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 100%; }
   .c { display: grid; justify-items: center; gap: 18px; text-align: center; } h1 { max-width: 12em; font-size: clamp(52px, 7.2vw, 96px); letter-spacing: -.02em; line-height: .98; text-wrap: balance; } .c > p { max-width: 32em; font-size: 18px; font-weight: 500; line-height: 1.4; } .c :global(.big) { width: min(100%, 640px); margin-top: 8px; box-shadow: 0 24px 50px -22px rgb(90 40 0 / .6); }

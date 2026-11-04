@@ -27,7 +27,7 @@ const COLS = [["Find", "Ask in plain language and keep control of the query. Sea
   </section>
 </Base>
 <style>
-  .hero, .ec { margin-block: 0; }
+  .ec { margin-top: calc(var(--gap) * -1); }
   h1, h2, h3 { font-family: "Schibsted Grotesk", var(--sans); font-weight: 500; }
   .hero { padding: 112px 0 72px; background: #f98a76; color: #24100c; } .inner { position: relative; } .m { display: none; position: absolute; top: -8px; width: 14px; height: 14px; border-top: 1.5px solid; } .tl { left: calc(var(--gap) + var(--pad)); border-left: 1.5px solid; } .tr { right: calc(var(--gap) + var(--pad)); border-right: 1.5px solid; }
   h1 { font-size: clamp(56px, 11vw, 148px); letter-spacing: -.05em; line-height: .9; text-align: center; text-wrap: balance; } .hero :global(.big) { width: min(100%, 820px); margin: 40px auto 0; border-radius: 4px; box-shadow: none; }

@@ -29,7 +29,7 @@ const strip = (seed) => { const r = rng(seed); return Array.from({ length: 34 },
   </section>
 </Base>
 <style>
-  .hero, .ec { margin-block: 0; }
+  .ec { margin-top: calc(var(--gap) * -1); }
   h1, h2, .c > p, .s, li { font-family: "JetBrains Mono", var(--mono); }
   .hero { position: relative; isolation: isolate; overflow: clip; padding: 136px 0 96px; background: #0c0c0c; color: #1a1205; } .mx { position: absolute; z-index: -1; left: 16px; top: 80px; width: calc(100% - 32px); height: calc(100% - 96px); }
   .c { display: grid; justify-items: center; gap: 20px; text-align: center; } h1 { max-width: 14em; font-weight: 500; font-size: clamp(36px, 5.4vw, 72px); letter-spacing: -.045em; line-height: 1.04; text-wrap: balance; } .c > p { max-width: 36em; font-size: 16px; line-height: 1.5; } .c :global(.big) { width: min(100%, 640px); margin-top: 6px; border-radius: 6px; box-shadow: 0 0 0 1.5px #1a1205, 0 24px 40px -20px rgb(60 30 0 / .6); }
