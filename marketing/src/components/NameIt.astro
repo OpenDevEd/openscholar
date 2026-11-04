@@ -4,7 +4,7 @@ import Device from "./Device.astro";
 import Arrow from "./Arrow.astro";
 import { APP } from "../data/site.mjs";
 const first = "Early childhood education";
-const colours = [["Orange", "var(--brand)", "var(--brand-on)"], ["Blue", "#2563eb", "#fff"], ["Teal", "#0f766e", "#fff"], ["Forest", "#15803d", "#fff"], ["Crimson", "#be123c", "#fff"]];
+const colours = [["Orange", "#c9500a", "#fff"], ["Blue", "#2563eb", "#fff"], ["Teal", "#0f766e", "#fff"], ["Forest", "#15803d", "#fff"], ["Crimson", "#be123c", "#fff"]];
 const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "");
 ---
 <section class="panel nameit" id="yours" data-name style={`--acc:${colours[0][1]};--acc-on:${colours[0][2]}`}>
