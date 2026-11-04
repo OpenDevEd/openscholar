@@ -54,9 +54,13 @@ Ons versamel of gebruik die volgende inligting om **te ontleed hoe besoekers ons
 * Sessieherhalings (opnames van muisbewegings, klikke, rolbewegings en bladsyinteraksies: sensitiewe data soos wagwoorde en betaalbesonderhede word outomaties versteek)
 
 **Wat ons NIE versamel nie:**
-* Ons versamel nie vormveldwaardes, wagwoorde of betaalbesonderhede deur ontledings nie
-* Ons gebruik nie derdeparty-advertensie- of opsporingskoekies nie
+* Behalwe wat jy soek, versamel ons nie vormveldwaardes, wagwoorde of betaalbesonderhede deur ontledings nie
+* Ons gebruik nie advertensiekoekies nie
 * Ons verkoop nie jou data aan adverteerders nie
+
+As jy ontledingskoekies aanvaar en aangemeld is, koppel PostHog hierdie inligting aan jou rekening, met jou naam en e-posadres, en ontvang dit wat jy soek. Google Analytics ontvang ook die bladsye wat jy besoek, hoe jy by ons uitgekom het, jou toesteltipe en jou benaderde ligging. Dit ontvang nie wat jy soek nie, en sy advertensiefunksies is af.
+
+Voordat jy kies, of as jy ontledingskoekies weier, tel ons net besoeke, sonder koekies en sonder om iets behalwe jou keuse op jou toestel te stoor: die bladsy, die webwerf waarvandaan jy kom, jou blaaiertipe en aksies soos om 'n soektog te doen. Ons teken nie jou klikke, wat jy tik, jou ligging of jou rekening aan nie. Jou IP-adres en blaaiertipe word 'n kode wat elke dag verander, en ons hou nie jou IP-adres nie.
 
 Ons versamel of gebruik die volgende inligting vir **die insameling van gebruikersterugvoer deur opnames**:
 
@@ -112,6 +116,7 @@ Vir meer inligting oor ons gebruik van legitieme belange as wettige grondslag, k
 
 Ons wettige grondslae vir die versameling of gebruik van inligting vir **die insameling van gebruikersterugvoer deur opnames** is:
 
+* **Legitieme belange** – vir die telling sonder koekies wat hierbo beskryf word, steun ons op regmatige belange.
 * **Legitieme belange** – ons versamel of gebruik jou inligting omdat dit jou, ons organisasie of iemand anders bevoordeel, sonder om ’n onnodige risiko van skade vir enigiemand te veroorsaak. Al jou databeskermingsregte kan geld, behalwe die reg op oordraagbaarheid. Ons legitieme belange is:
   * Die insameling van anonieme terugvoer help ons om gebruikersbehoeftes te verstaan en ons webwerf vir alle besoekers te verbeter. Opnames is opsioneel en vra nie om direk identifiseerbare inligting nie. Antwoorde kan aan ’n pseudonieme sessie-identifiseerder gekoppel word om ons te help om konteks te verstaan en ons dienste te verbeter. Gebruikers trek voordeel uit verbeterings wat op gesamentlike terugvoer gebaseer is.
 
@@ -132,6 +137,7 @@ Vir meer inligting oor ons gebruik van legitieme belange as wettige grondslag, k
   * Van jou interaksies met ons webwerf (bladsye besoek, klikke, tyd deurgebring)
 
 * **Van PostHog-ontledings** – ons webwerfontledingsplatform wat namens ons pseudonieme gebruiksdata versamel
+* **Google Analytics** – as jy ontledingskoekies aanvaar, die ontledingsplatform wat namens ons gebruiksdata versamel
 
 # **Hoe lank ons inligting bewaar**
 
@@ -140,8 +146,10 @@ Vir meer inligting oor ons gebruik van legitieme belange as wettige grondslag, k
 | **E-poskorrespondensie**             | 3 jaar vanaf die datum van laaste kommunikasie | Om opvolgnavrae te beantwoord, kommunikasiegeskiedenis te bewaar en geskille op te los     |
 | **Ondersteuningsrekords van kaartjies** | 3 jaar vanaf die datum van oplossing      | Om soortgelyke probleme na te slaan en die gehalte van ondersteuning te verbeter               |
 | **Webwerfontledingsdata** (PostHog)  | 1 jaar vanaf die datum van insameling       | Om tendense te ontleed, langtermynpatrone te identifiseer en die produk te verbeter           |
+| **Webwerfontledingsdata** (Google Analytics) | Tot 14 maande vanaf die datum van insameling | Om te sien hoeveel mense ons besoek en hoe hulle by ons uitkom |
 | **Sessieherhalings** (PostHog)       | 30 dae vanaf die datum van opname           | Om tegniese probleme te ontfout, gebruikerservaringsprobleme te verstaan en webwerfbruikbaarheid te verbeter |
 | **Ontledingskoekies**                | 365 dae vanaf die laaste besoek             | Om terugkerende besoekers na te spoor en sessiekontinuïteit te handhaaf                       |
+| **Google Analytics-koekies** | 400 dae vanaf die laaste besoek | Om terugkerende besoekers te herken |
 | **Opnameantwoorde**                  | 1 jaar vanaf die datum van indiening        | Om die produk te verbeter en terugvoertendense oor tyd na te spoor                            |
 | **IP-adreslogboeke**                 | 24 uur vanaf die datum van insameling       | Vir sekuriteitsmonitering en bedrogvoorkoming                                                 |
 | **Rekening- en navorsingsdata** | Totdat jy dit of jou rekening uitvee, dan sowat 30 dae | Om die diens te lewer |
@@ -166,6 +174,13 @@ Hierdie dataverwerker doen die volgende aktiwiteite vir ons:
 * Huisves opnameantwoorde
 
 **Ligging:** Duitsland (EU-hosting)
+
+**Google Ireland Limited**
+
+Hierdie dataverwerker doen die volgende aktiwiteite vir ons:
+* Versamel en stoor webwerfontledingsdata, as jy ontledingskoekies aanvaar
+
+**Ligging:** Ierland en die Verenigde State
 
 **Hetzner Online GmbH**
 
@@ -235,6 +250,18 @@ Data word hoofsaaklik binne die Europese Ekonomiese Ruimte (EER) verwerk, spesif
 
 ---
 
+**Organisasienaam:** Google LLC
+
+**Kategorie ontvanger:** Ontledingsplatform en dataverwerker
+
+**Land waar die data hoofsaaklik verwerk word:** Verenigde State
+
+**Hoe die oordrag aan die VK se databeskermingswetgewing voldoen:**
+
+Oordragte na Google LLC berus op sy sertifisering onder die VK-uitbreiding van die EU-VS-dataprivaatheidsraamwerk.
+
+---
+
 **Organisasiename:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
 **Kategorie ontvanger:** Verskaffers van aanmelding, betalings, KI en webwerflewering
@@ -261,8 +288,8 @@ Ons implementeer gepaste tegniese en organisatoriese maatreëls om jou persoonli
 Ons gebruik koekies om sommige van die ontledingsinligting wat in hierdie privaatheidskennisgewing beskryf word, in te samel. Vir gedetailleerde inligting oor die koekies wat ons gebruik, sien ons [Koekiebeleid](/cookie-policy).
 
 Kernpunte:
-* Ons gebruik een ontledingskoekie van PostHog (wat 365 dae gestoor word)
-* Geen derdeparty-advertensie- of opsporingskoekies nie
+* Ons gebruik ontledingskoekies van PostHog (365 dae gestoor) en Google Analytics (400 dae gestoor)
+* Geen advertensiekoekies nie
 * Jy kan koekies aanvaar of weier via ons koekietoestemmingsbanier
 * Jy kan jou voorkeure enige tyd verander via "Koekievoorkeure" in die voetstuk
 

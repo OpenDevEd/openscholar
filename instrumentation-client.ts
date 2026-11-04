@@ -1,4 +1,5 @@
 import posthog from "posthog-js";
+import { reduceWithoutConsent } from "@/lib/analytics-without-consent";
 
 /** Session replays show no text inside an element with this attribute. */
 const REPLAY_MASK_ATTRIBUTE = "data-ph-mask";
@@ -18,7 +19,7 @@ if (process.env.NEXT_PUBLIC_POSTHOG_KEY && !/^(localhost|127\.0\.0\.1)$/.test(wi
     api_host: "/data",
     ui_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
     defaults: "2026-08-30",
-    // GDPR: No cookies until user consents; use privacy-preserving hash if denied
+    // No cookies until someone accepts. Until then, and after a rejection, a reduced count with a daily hash.
     cookieless_mode: "on_reject",
     opt_out_capturing_by_default: true,
     // Enables capturing unhandled exceptions via Error Tracking
@@ -30,8 +31,9 @@ if (process.env.NEXT_PUBLIC_POSTHOG_KEY && !/^(localhost|127\.0\.0\.1)$/.test(wi
     // Every event names the site it came from, as the server's do (convex/lib/analytics.ts). Set here, not
     // with register(), whose properties don't survive the switch to cookies when someone accepts them.
     before_send: (event) => {
-      if (event) event.properties.environment = window.location.host;
-      return event;
+      const kept = event && reduceWithoutConsent(event);
+      if (kept) kept.properties.environment = window.location.host;
+      return kept;
     },
     session_recording: {
       // Replays show no email address anywhere, as text or in an attribute such as a mailto link, and no

@@ -54,9 +54,13 @@ Tunakusanya au kutumia taarifa zifuatazo ili **kuchambua jinsi wageni wanavyotum
 * Marudio ya vipindi (rekodi za miondoko ya kipanya, mibofyo, kusogeza, na mwingiliano wa kurasa - data nyeti kama nenosiri na taarifa za malipo hufichwa kiotomatiki)
 
 **Tusichokikusanya:**
-* Hatukusanyi thamani za fomu, nenosiri, wala taarifa za malipo kupitia uchambuzi
-* Hatutumii vidakuzi vya matangazo au ufuatiliaji vya watu wengine
+* Isipokuwa unachotafuta, hatukusanyi thamani za fomu, nenosiri, wala taarifa za malipo kupitia uchambuzi
+* Hatutumii vidakuzi vya matangazo
 * Hatuuzi data yako kwa watangazaji
+
+Ukikubali vidakuzi vya uchambuzi na umeingia, PostHog huunganisha taarifa hizi na akaunti yako, pamoja na jina lako na barua pepe yako, na hupokea unachotafuta. Google Analytics pia hupokea kurasa unazotembelea, jinsi ulivyotufikia, aina ya kifaa chako na eneo lako la takriban. Haipokei unachotafuta, na vipengele vyake vya matangazo vimezimwa.
+
+Kabla hujachagua, au ukikataa vidakuzi vya uchambuzi, tunahesabu tu ziara, bila vidakuzi na bila kuhifadhi chochote kwenye kifaa chako isipokuwa chaguo lako: ukurasa, tovuti uliyotoka, aina ya kivinjari chako, na vitendo kama kufanya utafutaji. Haturekodi mibofyo yako, unachoandika, eneo lako wala akaunti yako. Anwani yako ya IP na aina ya kivinjari hugeuka kuwa msimbo unaobadilika kila siku, na hatuhifadhi anwani yako ya IP.
 
 Tunakusanya au kutumia taarifa zifuatazo kwa **kukusanya maoni ya watumiaji kupitia tafiti**:
 
@@ -112,6 +116,7 @@ Kwa maelezo zaidi kuhusu matumizi yetu ya maslahi halali kama msingi halali, una
 
 Misingi yetu halali ya kukusanya au kutumia taarifa kwa **kukusanya maoni ya watumiaji kupitia tafiti** ni:
 
+* **Maslahi halali** – kwa hesabu tunayofanya bila vidakuzi, iliyoelezwa hapo juu, tunategemea maslahi halali.
 * **Maslahi halali** – tunakusanya au kutumia taarifa zako kwa sababu zinakunufaisha wewe, shirika letu au mtu mwingine, bila kuleta hatari isiyo ya lazima ya madhara kwa yeyote. Haki zako zote za ulinzi wa data zinaweza kutumika, isipokuwa haki ya kuhamisha data. Maslahi yetu halali ni:
   * Kukusanya maoni yasiyotambulisha mtu husaidia kuelewa mahitaji ya watumiaji na kuboresha tovuti yetu kwa wageni wote. Tafiti ni za hiari na hazaombi taarifa zinazotambulisha mtu moja kwa moja. Majibu yanaweza kuunganishwa na kitambulisho bandia cha kipindi ili kutusaidia kuelewa muktadha na kuboresha huduma zetu. Watumiaji wananufaika na maboresho yanayotokana na maoni ya pamoja.
 
@@ -132,6 +137,7 @@ Kwa maelezo zaidi kuhusu matumizi yetu ya maslahi halali kama msingi halali, una
   * Kutokana na mwingiliano wako na tovuti yetu (kurasa zilizotembelewa, mibofyo, muda uliotumika)
 
 * **Kutoka uchambuzi wa PostHog** – jukwaa letu la uchambuzi wa tovuti linalokusanya data bandia ya matumizi kwa niaba yetu
+* **Google Analytics** – ukikubali vidakuzi vya uchambuzi, jukwaa la uchambuzi linalokusanya data ya matumizi kwa niaba yetu
 
 # **Tunahifadhi taarifa kwa muda gani**
 
@@ -140,8 +146,10 @@ Kwa maelezo zaidi kuhusu matumizi yetu ya maslahi halali kama msingi halali, una
 | **Mawasiliano ya barua pepe**        | miaka 3 kuanzia tarehe ya mawasiliano ya mwisho | Kujibu maswali ya ufuatiliaji, kudumisha historia ya mawasiliano, na kutatua mizozo         |
 | **Kumbukumbu za tiketi za msaada**   | miaka 3 kuanzia tarehe ya kutatuliwa         | Kurejelea matatizo yanayofanana na kuboresha ubora wa msaada                                  |
 | **Data ya uchambuzi wa tovuti** (PostHog) | mwaka 1 kuanzia tarehe ya ukusanyaji    | Kuchambua mwelekeo, kutambua mifumo ya muda mrefu, na kuboresha bidhaa                       |
+| **Data ya uchambuzi wa tovuti** (Google Analytics) | Hadi miezi 14 kuanzia tarehe ya kukusanywa | Kuona watu wangapi hututembelea na jinsi wanavyotufikia |
 | **Marudio ya vipindi** (PostHog)     | siku 30 kuanzia tarehe ya kurekodiwa        | Kurekebisha matatizo ya kiufundi, kuelewa changamoto za uzoefu wa mtumiaji, na kuboresha urahisi wa kutumia tovuti |
 | **Vidakuzi vya uchambuzi**           | siku 365 kuanzia ziara ya mwisho            | Kufuatilia wageni wanaorudi na kudumisha mwendelezo wa kipindi                                |
+| **Vidakuzi vya Google Analytics** | siku 400 kuanzia ziara ya mwisho | Kutambua wageni wanaorudi |
 | **Majibu ya tafiti**                 | mwaka 1 kuanzia tarehe ya kuwasilisha       | Kuboresha bidhaa na kufuatilia mwelekeo wa maoni kwa muda                                     |
 | **Kumbukumbu za anwani ya IP**       | saa 24 kuanzia tarehe ya ukusanyaji         | Kwa ufuatiliaji wa usalama na kuzuia udanganyifu                                              |
 | **Data ya akaunti na utafiti** | Hadi uifute au ufute akaunti yako, kisha takriban siku 30 | Ili kutoa huduma |
@@ -166,6 +174,13 @@ Mchakataji huyu wa data hufanya shughuli zifuatazo kwa niaba yetu:
 * Huhifadhi majibu ya tafiti
 
 **Mahali:** Ujerumani (upangishaji wa EU)
+
+**Google Ireland Limited**
+
+Mchakataji huyu wa data hufanya shughuli zifuatazo kwa niaba yetu:
+* Hukusanya na kuhifadhi data ya uchambuzi wa tovuti, ukikubali vidakuzi vya uchambuzi
+
+**Mahali:** Ayalandi na Marekani
 
 **Hetzner Online GmbH**
 
@@ -235,6 +250,18 @@ Data inachakatwa zaidi ndani ya Eneo la Uchumi la Ulaya (EEA), hasa nchini Ujeru
 
 ---
 
+**Jina la shirika:** Google LLC
+
+**Aina ya mpokeaji:** Jukwaa la uchambuzi na mchakataji wa data
+
+**Nchi ambako data inachakatwa zaidi:** Marekani
+
+**Uhamisho unavyozingatia sheria ya ulinzi wa data ya Uingereza:**
+
+Uhamisho kwenda Google LLC unategemea uthibitisho wake chini ya Nyongeza ya Uingereza ya Mfumo wa Faragha ya Data wa EU na Marekani.
+
+---
+
 **Majina ya mashirika:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
 **Aina ya mpokeaji:** Watoa huduma za kuingia, malipo, AI na uwasilishaji wa tovuti
@@ -261,8 +288,8 @@ Tunatekeleza hatua zinazofaa za kiufundi na kiutawala kulinda taarifa zako binaf
 Tunatumia vidakuzi kukusanya baadhi ya taarifa za uchambuzi zilizoelezwa katika notisi hii ya faragha. Kwa maelezo ya kina kuhusu vidakuzi tunavyotumia, tafadhali tazama [Sera yetu ya vidakuzi](/cookie-policy).
 
 Mambo muhimu:
-* Tunatumia kidakuzi kimoja cha uchambuzi kutoka PostHog (kinahifadhiwa kwa siku 365)
-* Hakuna vidakuzi vya matangazo au ufuatiliaji vya watu wengine
+* Tunatumia vidakuzi vya uchambuzi kutoka PostHog (vinahifadhiwa kwa siku 365) na Google Analytics (vinahifadhiwa kwa siku 400)
+* Hakuna vidakuzi vya matangazo
 * Unaweza kukubali au kukataa vidakuzi kupitia bango letu la idhini ya vidakuzi
 * Unaweza kubadilisha mapendeleo yako wakati wowote kupitia "Mapendeleo ya vidakuzi" chini ya ukurasa
 

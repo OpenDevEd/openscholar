@@ -6,13 +6,20 @@ Wenn Sie openscholar.ai besuchen, können auf Ihrem Gerät kleine Datendateien g
 
 ## Unbedingt erforderliche Cookies
 
-Openscholar.ai setzt derzeit keine Cookies, die für das Funktionieren der Website erforderlich sind.
+| **Name** | **Zweck** | **Ablauf** |
+| --- | --- | --- |
+| `__session`, `__client_uat`, `__client` | Halten Sie angemeldet | Bis zu 1 Jahr |
+| `NEXT_LOCALE` | Merkt sich Ihre Sprache | 1 Jahr |
+| `__cf_bm`, `_cfuvid` | Cloudflare schützt damit die Website vor automatisiertem Datenverkehr | 30 Minuten oder bis Sie Ihren Browser schließen |
+
+Ihre Cookie-Entscheidung und Anzeigeeinstellungen, etwa geöffnete Bereiche, bleiben im lokalen Speicher Ihres Browsers.
 
 ## Leistungs- und Analyse-Cookies (optional)
 
 | **Name** | **Zweck** | **Ablauf** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Wir verwenden die Analysesoftware PostHog, um zu erfahren, wie Menschen mit unserer Website interagieren. Das hilft uns, bessere Berichte zu erstellen und die Nutzererfahrung zu verbessern. Das Cookie enthält eine anonyme Geräte-Kennung, Ihre Sitzungsdetails beim Surfen und Ihre erste Landeseite. Alle Daten werden anonym erhoben. Wir identifizieren Sie nie persönlich. Openscholar.ai setzt keine Tracking-Technologien von Dritten ein und verkauft Ihre Informationen nicht an Werbeunternehmen. | 365 Tage |
+| `ph_phc_[token]_posthog`, `ph_phc_[token]_posthog_cpm` | Wir verwenden PostHog, um zu erfahren, wie Menschen Openscholar nutzen, und um Probleme zu beheben. Diese Cookies enthalten eine zufällige Geräte-ID, Ihre Sitzungsdetails und die Seite, auf der Sie zuerst gelandet sind. Wenn Sie sich anmelden, enthalten sie Ihre Konto-ID, und PostHog verknüpft Ihre Aktivität mit Ihrem Namen und Ihrer E-Mail-Adresse. Wir verkaufen Ihre Informationen nie. | 365 Tage |
+| `_ga`, `_ga_[id]` | Wir verwenden Google Analytics, um zu sehen, wie viele Menschen uns besuchen und wie sie zu uns kommen. Diese Cookies enthalten eine zufällige ID und Ihre Sitzungsdetails. | 400 Tage |
 
 ### Welche Daten enthält das PostHog-Cookie?
 
@@ -24,7 +31,7 @@ Das PostHog-Cookie speichert die folgenden Angaben in einem strukturierten Forma
 - **$epp**: Technische Markierungen, die PostHog intern für Funktionen verwendet
 - **$initial_person_info**: Angaben dazu, wie Sie auf unsere Website gekommen sind (zum Beispiel über eine Suchmaschine oder direkt) und auf welcher Seite Sie zuerst gelandet sind
 
-Dieses Cookie enthält keine Informationen, mit denen Sie persönlich identifiziert werden können, etwa Ihren Namen, Ihre E-Mail-Adresse oder andere private Angaben.
+Dieses Cookie enthält weder Ihren Namen noch Ihre E-Mail-Adresse oder andere private Angaben.
 
 ### Weitere Daten, die PostHog erhebt
 
@@ -50,12 +57,20 @@ Neben dem Cookie selbst erhebt PostHog automatisch ergänzende Informationen:
 - Wie weit Sie auf der Seite nach unten scrollen
 
 **Informationen, die wir bewusst ausschließen:**
-- In Formulare eingegebene Texte
+- Text, den Sie in Formulare eingeben, außer Ihren Suchanfragen
 - Anmeldedaten oder Passwörter
 - Zahlungs- oder Kreditkartendaten
 - Alle anderen privaten oder sensiblen personenbezogenen Informationen
 - Werbe-Cookies von Dritten werden nicht verwendet
 - Ihre Daten werden niemals an Werbetreibende oder Marketingunternehmen verkauft
+
+### Google Analytics
+
+Wenn Sie akzeptieren, erhält Google Analytics die von Ihnen besuchten Seiten, wie Sie zu uns gekommen sind, Ihren Gerätetyp und Ihren ungefähren Standort. Es erhält Ihre Suchanfragen nicht, und seine Werbefunktionen sind deaktiviert. Wenn Sie es sich anders überlegen, stoppen wir es und entfernen seine Cookies.
+
+### Wenn Sie nicht akzeptieren
+
+Bevor Sie sich entscheiden oder wenn Sie Analyse-Cookies ablehnen, zählen wir Besuche nur, ohne Cookies und ohne außer Ihrer Entscheidung etwas auf Ihrem Gerät zu speichern: die Seite, die Website, von der Sie kommen, Ihren Browsertyp und Aktionen wie das Ausführen einer Suche. Wir erfassen weder Ihre Klicks noch Ihre Eingaben, Ihren Standort oder Ihr Konto. Aus Ihrer IP-Adresse und Ihrem Browsertyp entsteht ein Code, der sich täglich ändert, und wir speichern Ihre IP-Adresse nicht.
 
 ## Ihre Cookie-Einstellungen verwalten
 
@@ -121,4 +136,4 @@ Bei Fragen zu unserem Umgang mit Cookies wenden Sie sich bitte an uns:
 
 **E-Mail**: support@openscholar.ai
 
-**Zuletzt aktualisiert**: 13. Februar 2026
+**Zuletzt aktualisiert**: 4. November 2026

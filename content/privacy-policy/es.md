@@ -54,9 +54,13 @@ Recopilamos o usamos la siguiente información para **analizar cómo usan los vi
 * Repeticiones de sesión (grabaciones de movimientos del ratón, clics, desplazamientos e interacciones con la página; los datos sensibles, como contraseñas e información de pago, se ocultan automáticamente)
 
 **Lo que NO recopilamos:**
-* No recopilamos los valores introducidos en formularios, contraseñas ni información de pago a través de la analítica
-* No usamos cookies publicitarias ni de seguimiento de terceros
+* Salvo lo que busca, no recopilamos los valores introducidos en formularios, contraseñas ni información de pago a través de la analítica
+* No usamos cookies de publicidad
 * No vendemos sus datos a anunciantes
+
+Si acepta las cookies de analítica y ha iniciado sesión, PostHog vincula esta información a su cuenta, con su nombre y correo electrónico, y recibe lo que busca. Google Analytics también recibe las páginas que visita, cómo llegó hasta nosotros, su tipo de dispositivo y su ubicación aproximada. No recibe lo que busca, y sus funciones de publicidad están desactivadas.
+
+Antes de que elija, o si rechaza las cookies de analítica, solo contamos las visitas, sin cookies y sin guardar en su dispositivo nada más que su elección: la página, el sitio del que viene, su tipo de navegador y acciones como hacer una búsqueda. No registramos sus clics, lo que escribe, su ubicación ni su cuenta. Su dirección IP y su tipo de navegador se convierten en un código que cambia cada día, y no conservamos su dirección IP.
 
 Recopilamos o usamos la siguiente información para **recoger la opinión de los usuarios mediante encuestas**:
 
@@ -112,6 +116,7 @@ Para más información sobre nuestro uso de los intereses legítimos como base j
 
 Nuestras bases jurídicas para recopilar o usar información con el fin de **recoger la opinión de los usuarios mediante encuestas** son:
 
+* **Intereses legítimos** – para el recuento sin cookies descrito arriba, nos basamos en intereses legítimos.
 * **Intereses legítimos** – recopilamos o usamos su información porque le beneficia a usted, a nuestra organización o a otra persona, sin causar un riesgo indebido de perjuicio para nadie. Pueden aplicarse todos sus derechos de protección de datos, excepto el derecho a la portabilidad. Nuestros intereses legítimos son:
   * Recoger opiniones anónimas nos ayuda a comprender las necesidades de los usuarios y a mejorar nuestro sitio web para todos los visitantes. Las encuestas son opcionales y no piden información que identifique directamente a nadie. Las respuestas pueden vincularse a un identificador de sesión seudónimo para ayudarnos a entender el contexto y mejorar nuestros servicios. Los usuarios se benefician de las mejoras basadas en la opinión colectiva.
 
@@ -132,6 +137,7 @@ Para más información sobre nuestro uso de los intereses legítimos como base j
   * A partir de sus interacciones con nuestro sitio (páginas visitadas, clics, tiempo dedicado)
 
 * **Desde PostHog Analytics**: nuestra plataforma de analítica web, que recopila datos de uso seudónimos en nuestro nombre
+* **Google Analytics**: si acepta las cookies de analítica, la plataforma de analítica que recopila datos de uso en nuestro nombre
 
 # **Durante cuánto tiempo conservamos la información**
 
@@ -140,8 +146,10 @@ Para más información sobre nuestro uso de los intereses legítimos como base j
 | **Correspondencia por correo electrónico** | 3 años desde la fecha de la última comunicación | Para responder a consultas de seguimiento, mantener el historial de comunicaciones y resolver litigios |
 | **Registros de tickets de soporte**  | 3 años desde la fecha de resolución         | Para consultar problemas similares y mejorar la calidad del soporte                           |
 | **Datos de analítica web** (PostHog) | 1 año desde la fecha de recopilación        | Para analizar tendencias, identificar patrones a largo plazo y mejorar el producto            |
+| **Datos de analítica web** (Google Analytics) | Hasta 14 meses desde la fecha de recopilación | Para ver cuántas personas nos visitan y cómo llegan |
 | **Repeticiones de sesión** (PostHog) | 30 días desde la fecha de grabación         | Para depurar problemas técnicos, entender problemas de experiencia de usuario y mejorar la usabilidad del sitio web |
 | **Cookies de analítica**             | 365 días desde la última visita             | Para identificar a los visitantes que regresan y mantener la continuidad de la sesión         |
+| **Cookies de Google Analytics** | 400 días desde la última visita | Para reconocer a quienes vuelven |
 | **Respuestas a encuestas**           | 1 año desde la fecha de envío               | Para mejorar el producto y seguir las tendencias de opinión a lo largo del tiempo             |
 | **Registros de direcciones IP**      | 24 horas desde la fecha de recopilación     | Para la supervisión de la seguridad y la prevención del fraude                                |
 | **Datos de la cuenta y de investigación** | Hasta que los elimine o elimine su cuenta, y después unos 30 días | Para prestar el servicio |
@@ -166,6 +174,13 @@ Este encargado del tratamiento realiza las siguientes actividades por nuestra cu
 * Aloja las respuestas a las encuestas
 
 **Ubicación:** Alemania (alojamiento en la UE)
+
+**Google Ireland Limited**
+
+Este encargado del tratamiento realiza las siguientes actividades por nuestra cuenta:
+* Recopila y almacena datos de analítica web, si acepta las cookies de analítica
+
+**Ubicación:** Irlanda y Estados Unidos
 
 **Hetzner Online GmbH**
 
@@ -235,6 +250,18 @@ Los datos se tratan principalmente dentro del Espacio Económico Europeo (EEE), 
 
 ---
 
+**Nombre de la organización:** Google LLC
+
+**Categoría del destinatario:** Plataforma de analítica y encargado del tratamiento
+
+**País donde se tratan principalmente los datos:** Estados Unidos
+
+**Cómo cumple la transferencia la legislación británica de protección de datos:**
+
+Las transferencias a Google LLC se basan en su certificación conforme a la Extensión del Reino Unido del Marco de Privacidad de Datos UE-EE. UU.
+
+---
+
 **Nombres de las organizaciones:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
 **Categoría del destinatario:** Proveedores de inicio de sesión, pagos, IA y entrega del sitio web
@@ -261,8 +288,8 @@ Aplicamos medidas técnicas y organizativas adecuadas para proteger sus datos pe
 Usamos cookies para recopilar parte de la información de analítica descrita en este aviso de privacidad. Para obtener información detallada sobre las cookies que usamos, consulte nuestra [Política de cookies](/cookie-policy).
 
 Puntos clave:
-* Usamos una cookie de analítica de PostHog (almacenada durante 365 días)
-* No hay cookies publicitarias ni de seguimiento de terceros
+* Usamos cookies de analítica de PostHog (almacenadas durante 365 días) y de Google Analytics (almacenadas durante 400 días)
+* Sin cookies de publicidad
 * Puede aceptar o rechazar las cookies a través de nuestro banner de consentimiento de cookies
 * Puede cambiar sus preferencias en cualquier momento mediante «Preferencias de cookies» en el pie de página
 

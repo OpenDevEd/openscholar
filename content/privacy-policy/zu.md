@@ -54,9 +54,13 @@ Siqoqa noma siyasebenzisa ulwazi olulandelayo ukuze **sihlaziye ukuthi abavakash
 * Okuphindwayo kweseshini (okurekhodwe ngokunyakaza kwesilo, ukuchofoza, ukuskrola, nokusebenzisana namakhasi; idatha ebucayi njengamaphasiwedi nolwazi lokukhokha ifihlwa ngokuzenzakalelayo)
 
 **Lokho esingakuqoqi:**
-* Asiqoqi amanani okufakwa ezimweni, amaphasiwedi, noma ulwazi lokukhokha ngokuhlaziya
-* Asisebenzisi ama-cookie okukhangisa noma okulandela abahlinzeki bangaphandle
+* Ngaphandle kwalokho okufunayo, asiqoqi amanani okufakwa ezimweni, amaphasiwedi, noma ulwazi lokukhokha ngokuhlaziya
+* Asisebenzisi ama-cookie okukhangisa
 * Asidayisi idatha yakho kubakhangisi
+
+Uma wamukela ama-cookie okuhlaziya futhi ungene ngemvume, i-PostHog ixhumanisa lolu lwazi ne-akhawunti yakho, negama lakho nekheli lakho le-imeyili, futhi ithola lokho okufunayo. I-Google Analytics nayo ithola amakhasi owavakashelayo, indlela ofike ngayo kithi, uhlobo lwedivayisi yakho nendawo yakho ecishe ibe yiyo. Ayitholi lokho okufunayo, futhi izici zayo zokukhangisa zicishiwe.
+
+Ngaphambi kokuthi ukhethe, noma uma wenqaba ama-cookie okuhlaziya, sibala kuphela ukuvakasha, ngaphandle kwama-cookie futhi singagcini lutho edivayisini yakho ngaphandle kokukhetha kwakho: ikhasi, iwebhusayithi ovela kuyo, uhlobo lwesiphequluli sakho, nezenzo ezifana nokusesha. Asirekhodi ukuchofoza kwakho, lokho okubhalayo, indawo yakho noma i-akhawunti yakho. Ikheli lakho le-IP nohlobo lwesiphequluli kuba yikhodi eshintsha nsuku zonke, futhi asiligcini ikheli lakho le-IP.
 
 Siqoqa noma siyasebenzisa ulwazi olulandelayo ngokuqoqa impendulo yabasebenzisi ngezinhlolovo:
 
@@ -112,6 +116,7 @@ Ukuthola ulwazi oluningi ngokusebenzisa kwethu izintshisekelo ezisemthethweni nj
 
 Izisekelo zethu ezisemthethweni zokuqoqa noma zokusebenzisa ulwazi ngokuqoqa impendulo yabasebenzisi ngezinhlolovo yilezi:
 
+* **Izintshisekelo ezisemthethweni** – ekubaleni esikwenza ngaphandle kwama-cookie, okuchazwe ngenhla, sithembele ezithakazelweni ezisemthethweni.
 * **Izintshisekelo ezisemthethweni** – siqoqa noma sisebenzisa ulwazi lwakho ngoba luzuzisa wena, inhlangano yethu noma omunye umuntu, ngaphandle kokudala ingozi engadingekile yokulimala kunoma ubani. Onke amalungelo akho okuvikelwa kwedatha angasebenza, ngaphandle kwelungelo lokudlulisa. Izintshisekelo zethu ezisemthethweni yilezi:
   * Ukuqoqa impendulo engaziwa kusisiza siqonde izidingo zabasebenzisi futhi sithuthukise iwebhusayithi yethu bonke abavakashi. Izinhlolovo azidingekile futhi azicele ulwazi oluqondile olubonisa umuntu. Izimpendulo zingahlanganiswa nesihlonzi seseshini esingabizwa ngegama ukuze sisize siqonde umongo nokuthuthukisa izinsizakalo zethu. Abasebenzisi bazuzisa ekuthuthukisweni okusekelwe kumbono oqoqiwe.
 
@@ -132,6 +137,7 @@ Ukuthola ulwazi oluningi ngokusebenzisa kwethu izintshisekelo ezisemthethweni nj
   * Ekusebenzisaneni kwakho nesayithi lethu (amakhasi avakashelwe, ukuchofoza, isikhathi esichithiwe)
 
 * **Ku-PostHog analytics** – uhlelo lwethu lokuhlaziya iwebhusayithi oluqoqa idatha yokusebenza engabizwa ngegama lakho thina esikhundleni sethu
+* **Google Analytics** – uma wamukela ama-cookie okuhlaziya, uhlelo lokuhlaziya oluqoqa idatha yokusebenza esikhundleni sethu
 
 # **Isikhathi esigcina ngaso ulwazi**
 
@@ -140,8 +146,10 @@ Ukuthola ulwazi oluningi ngokusebenzisa kwethu izintshisekelo ezisemthethweni nj
 | **Izincwadi ze-imeyili**             | Iminyaka emi-3 kusukela ngosuku lokuxhumana kokugcina | Ukuphendula imibuzo elandelayo, ukugcina umlando wokuxhumana, nokuxazulula izingxabano         |
 | **Amarekhodi ezicelo zosekelo**      | Iminyaka emi-3 kusukela ngosuku kuxazululwe ngalo | Ukubhekisela ezinkingeni ezifanayo nokuthuthukisa ikhwalithi yosekelo                       |
 | **Idatha yokuhlaziya iwebhusayithi** (PostHog) | Unyaka owodwa kusukela ngosuku kuqoqwe ngalo | Ukuhlaziya izindlela, ukuthola amaphethini esikhathi eside, nokuthuthukisa umkhiqizo        |
+| **Idatha yokuhlaziya iwebhusayithi** (Google Analytics) | Kufika ezinyangeni ezingu-14 kusukela ngosuku lokuqoqwa | Ukubona ukuthi bangaki abantu abasivakashelayo nokuthi bafika kanjani |
 | **Okuphindwayo kweseshini** (PostHog) | Izinsuku ezingu-30 kusukela ngosuku kurekhodwe ngalo | Ukuhlola izinkinga zobuchwepheshe, ukuqonda izinkinga zesipiliyoni somsebenzisi, nokuthuthukisa ukusebenza kwewebhusayithi |
 | **Ama-cookie okuhlaziya**            | Izinsuku ezingu-365 kusukela ekuvakashelweni kokugcina | Ukulandela abavakashi ababuyayo nokugcina ukuqhubeka kweseshini                             |
+| **Ama-cookie e-Google Analytics** | Izinsuku ezingu-400 kusukela ekuvakasheni kokugcina | Ukubona izivakashi ezibuyayo |
 | **Izimpendulo zezinhlolovo**         | Unyaka owodwa kusukela ngosuku lokuthunyelwa | Ukuthuthukisa umkhiqizo nokulandela amaphethini empendulo ngokuhamba kwesikhathi            |
 | **Amalogi amakheli e-IP**            | Amahora angu-24 kusukela ngosuku kuqoqwe ngalo | Ukuqapha ukuphepha nokuvimbela ukukhohlisa                                                    |
 | **Idatha ye-akhawunti neyocwaningo** | Uze uyisuse noma ususe i-akhawunti yakho, bese cishe izinsuku ezingama-30 | Ukunikeza insizakalo |
@@ -166,6 +174,13 @@ Lo mcubunguli wedatha wenza lezi zenzo esikhundleni sethu:
 * Ufaka izimpendulo zezinhlolovo
 
 **Indawo:** I-Germany (ukufakwa kwe-EU)
+
+**Google Ireland Limited**
+
+Lo mcubunguli wedatha wenza lezi zenzo esikhundleni sethu:
+* Iqoqa futhi igcine idatha yokuhlaziya iwebhusayithi, uma wamukela ama-cookie okuhlaziya
+
+**Indawo:** I-Ireland ne-United States
 
 **Hetzner Online GmbH**
 
@@ -235,6 +250,18 @@ Idatha icutshungulwa kakhulu ngaphakathi kwe-European Economic Area (EEA), ikakh
 
 ---
 
+**Igama lenhlangano:** Google LLC
+
+**Uhlobo lomamukeli:** Uhlelo lokuhlaziya nomcubunguli wedatha
+
+**Izwe lapho idatha icutshungulwa khona kakhulu:** I-United States
+
+**Indlela ukudluliswa okuhambisana ngayo nomthetho we-UK wokuvikelwa kwedatha:**
+
+Ukudluliswa ku-Google LLC kwenziwa ngokuthembela esitifiketini sayo ngaphansi kwe-UK Extension ye-EU-U.S. Data Privacy Framework.
+
+---
+
 **Amagama ezinhlangano:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
 **Uhlobo lomamukeli:** Abahlinzeki bokungena, izinkokhelo, i-AI nokulethwa kwewebhusayithi
@@ -261,8 +288,8 @@ Sisebenzisa izindlela zobuchwepheshe nezohlelo ezifanele ukuvikela ulwazi lwakho
 Sisebenzisa ama-cookie ukuqoqa ezinye zolwazi lokuhlaziya oluchazwe kulesi saziso sobumfihlo. Ulwazi oluningiliziwe ngama-cookie esiwasebenzisayo, sicela ubheke [Inqubomgomo yama-cookie](/cookie-policy).
 
 Izinqaku ezibalulekile:
-* Sisebenzisa i-cookie eyodwa yokuhlaziya evela ku-PostHog (igcinwa izinsuku ezingu-365)
-* Asikho ama-cookie okukhangisa noma okulandela abahlinzeki bangaphandle
+* Sisebenzisa ama-cookie okuhlaziya avela ku-PostHog (agcinwa izinsuku ezingu-365) nakuGoogle Analytics (agcinwa izinsuku ezingu-400)
+* Awekho ama-cookie okukhangisa
 * Ungamukela noma wenqabe ama-cookie ngebhena yethu yemvume ye-cookie
 * Ungashintsha izintandokazi zakho noma nini ngokusebenzisa "Izintandokazi zama-cookie" esiphethweni
 

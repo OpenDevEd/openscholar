@@ -6,13 +6,20 @@ Unapovinjari openscholar.ai, faili ndogo za data zinazoitwa vidakuzi zinaweza ku
 
 ## Vidakuzi muhimu kabisa
 
-Kwa sasa Openscholar.ai haiweki vidakuzi vyovyote vinavyohitajika ili tovuti ifanye kazi.
+| **Jina** | **Madhumuni** | **Muda wa kuisha** |
+| --- | --- | --- |
+| `__session`, `__client_uat`, `__client` | Hukuweka umeingia | Hadi mwaka 1 |
+| `NEXT_LOCALE` | Hukumbuka lugha yako | Mwaka 1 |
+| `__cf_bm`, `_cfuvid` | Cloudflare huvitumia kulinda tovuti dhidi ya trafiki ya kiotomatiki | Dakika 30, au hadi ufunge kivinjari chako |
+
+Chaguo lako la vidakuzi na mipangilio ya onyesho, kama paneli zilizo wazi, hubaki kwenye hifadhi ya ndani ya kivinjari chako.
 
 ## Vidakuzi vya utendaji na uchambuzi (hiari)
 
 | **Jina** | **Madhumuni** | **Muda wa kuisha** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | Tunatumia programu ya uchambuzi ya PostHog kujifunza jinsi watu wanavyoingiliana na tovuti yetu. Hii inatusaidia kuunda ripoti bora zaidi na kuboresha uzoefu wa mtumiaji. Kidakuzi kina kitambulisho kisichojulikana cha kifaa, maelezo ya kipindi chako cha kuvinjari, na ukurasa wa kwanza uliofunguliwa. Data yote inakusanywa bila kukutambulisha - hatukutambui binafsi kamwe. Openscholar.ai haitumii teknolojia za ufuatiliaji za watu wengine wala kuuza taarifa zako kwa makampuni ya matangazo. | siku 365 |
+| `ph_phc_[token]_posthog`, `ph_phc_[token]_posthog_cpm` | Tunatumia PostHog kujifunza jinsi watu wanavyotumia Openscholar na kurekebisha matatizo. Vidakuzi hivi vina kitambulisho cha nasibu cha kifaa, maelezo ya kipindi chako na ukurasa uliotua kwanza. Ukiingia, vina kitambulisho cha akaunti yako, na PostHog huunganisha shughuli zako na jina lako na barua pepe yako. Hatuuzi taarifa zako kamwe. | siku 365 |
+| `_ga`, `_ga_[id]` | Tunatumia Google Analytics kuona watu wangapi hututembelea na jinsi wanavyotufikia. Vidakuzi hivi vina kitambulisho cha nasibu na maelezo ya kipindi chako. | siku 400 |
 
 ### Kidakuzi cha PostHog kina data gani?
 
@@ -24,7 +31,7 @@ Kidakuzi cha PostHog kinahifadhi maelezo yafuatayo katika muundo uliopangwa:
 - **$epp**: Alama za kiufundi zinazotumiwa na PostHog kwa vipengele vyake vya ndani
 - **$initial_person_info**: Rekodi zinazoonyesha jinsi ulivyofika kwenye tovuti yetu (kama kutoka injini ya utafutaji au ziara ya moja kwa moja) na ukurasa wa kwanza uliotua
 
-Kidakuzi hiki hakina taarifa zinazoweza kukutambulisha binafsi, kama jina lako, barua pepe, au maelezo mengine ya faragha.
+Kidakuzi hiki hakina jina lako, barua pepe yako wala maelezo mengine ya faragha.
 
 ### Data ya ziada inayokusanywa na PostHog
 
@@ -50,12 +57,20 @@ Mbali na kidakuzi chenyewe, PostHog inakusanya taarifa za ziada kiotomatiki:
 - Umbali unaosogeza chini ya ukurasa
 
 **Taarifa tunazozitenga kwa makusudi:**
-- Maandishi unayoandika kwenye fomu
+- Maandishi unayoandika kwenye fomu, isipokuwa unachotafuta
 - Vitambulisho vya kuingia au nenosiri
 - Maelezo ya malipo au kadi ya mkopo
 - Taarifa nyingine yoyote binafsi au nyeti
 - Vidakuzi vya matangazo vya watu wengine havitumiki
 - Data yako haiuzwi kamwe kwa watangazaji au makampuni ya masoko
+
+### Google Analytics
+
+Ukikubali, Google Analytics hupokea kurasa unazotembelea, jinsi ulivyotufikia, aina ya kifaa chako na eneo lako la takriban. Haipokei unachotafuta, na vipengele vyake vya matangazo vimezimwa. Ukibadili uamuzi, tunaisimamisha na kuondoa vidakuzi vyake.
+
+### Usipokubali
+
+Kabla hujachagua, au ukikataa vidakuzi vya uchambuzi, tunahesabu tu ziara, bila vidakuzi na bila kuhifadhi chochote kwenye kifaa chako isipokuwa chaguo lako: ukurasa, tovuti uliyotoka, aina ya kivinjari chako, na vitendo kama kufanya utafutaji. Haturekodi mibofyo yako, unachoandika, eneo lako wala akaunti yako. Anwani yako ya IP na aina ya kivinjari hugeuka kuwa msimbo unaobadilika kila siku, na hatuhifadhi anwani yako ya IP.
 
 ## Kusimamia mapendeleo yako ya vidakuzi
 
@@ -121,4 +136,4 @@ Kwa maswali kuhusu taratibu zetu za vidakuzi, tafadhali wasiliana nasi:
 
 **Barua pepe**: support@openscholar.ai
 
-**Ilisasishwa mara ya mwisho**: 13 Februari 2026
+**Ilisasishwa mara ya mwisho**: 4 Novemba 2026

@@ -1,71 +1,46 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
-import { GoogleAnalytics, sendGAEvent } from "@next/third-parties/google";
-import {
-  getStoredConsent,
-  CONSENT_UPDATED_EVENT,
-} from "@/lib/consent-storage";
+import { useEffect } from "react";
+import Script from "next/script";
+import { useAnalyticsConsent } from "@/lib/consent-storage";
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
-function hasAnalyticsConsent(): boolean {
-  return getStoredConsent()?.choice === "granted";
-}
-
-function useShouldCollectAnalytics() {
-  const [shouldCollect, setShouldCollect] = useState(false);
-
-  useEffect(() => {
-    setShouldCollect(hasAnalyticsConsent());
-
-    const handler = () => setShouldCollect(hasAnalyticsConsent());
-    window.addEventListener(CONSENT_UPDATED_EVENT, handler);
-    return () => window.removeEventListener(CONSENT_UPDATED_EVENT, handler);
-  }, []);
-
-  return shouldCollect;
-}
-
-/** Tracks page views on client-side navigation (App Router). Skips initial load since gtag config sends it. */
-function PageViewTracker() {
-  const pathname = usePathname();
-  const isInitial = useRef(true);
-
-  useEffect(() => {
-    if (!pathname || typeof window === "undefined") return;
-    if (!hasAnalyticsConsent()) return;
-
-    if (isInitial.current) {
-      isInitial.current = false;
-      return;
-    }
-
-    sendGAEvent("event", "page_view", {
-      page_path: pathname,
-      page_title: document.title,
-    });
-  }, [pathname]);
-
-  return null;
+/** A withdrawn consent stops the tag that's already loaded and removes its cookies, which sit on a parent domain. */
+function setGoogleAnalyticsAllowed(allowed: boolean) {
+  (window as unknown as Record<string, boolean>)[`ga-disable-${GA_ID}`] = !allowed;
+  if (allowed) return;
+  const domains = window.location.hostname.split(".").map((_, i, parts) => parts.slice(i).join("."));
+  for (const cookie of document.cookie.split("; ")) {
+    const name = cookie.split("=")[0];
+    if (!/^_ga(_|$)/.test(name)) continue;
+    for (const domain of domains) document.cookie = `${name}=; Max-Age=0; path=/; domain=.${domain}`;
+  }
 }
 
 /**
- * Consent-aware Google Analytics 4 component.
- * Only loads GA when user has accepted analytics cookies (GDPR).
- * Tracks page views on route changes for App Router.
+ * Google Analytics loads only once someone accepts analytics cookies, and advertising stays off, as the privacy
+ * policy says. The tag counts page changes itself. The property's own settings keep search text away from
+ * Google: the launch plan lists them (plans/production-launch/README.md).
  */
 export function ConsentAwareGoogleAnalytics() {
-  const shouldCollect = useShouldCollectAnalytics();
+  const shouldCollect = useAnalyticsConsent();
   const isProduction = process.env.NODE_ENV === "production";
+
+  useEffect(() => setGoogleAnalyticsAllowed(shouldCollect), [shouldCollect]);
 
   if (!GA_ID || !isProduction || !shouldCollect) return null;
 
   return (
     <>
-      <GoogleAnalytics gaId={GA_ID} />
-      <PageViewTracker />
+      <Script id="google-analytics-setup">
+        {`window.dataLayer = window.dataLayer || [];
+function gtag() { dataLayer.push(arguments); }
+gtag("consent", "default", { ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied", analytics_storage: "granted" });
+gtag("js", new Date());
+gtag("config", "${GA_ID}", { allow_google_signals: false, allow_ad_personalization_signals: false });`}
+      </Script>
+      <Script id="google-analytics" src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
     </>
   );
 }

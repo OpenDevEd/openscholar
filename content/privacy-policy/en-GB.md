@@ -54,9 +54,13 @@ We collect or use the following information to **analyse how visitors use our we
 * Session replays (recordings of mouse movements, clicks, scrolls, and page interactions - sensitive data like passwords and payment information are automatically masked)
 
 **What we do NOT collect:**
-* We do not collect form input values, passwords, or payment information through analytics
-* We do not use third-party advertising or tracking cookies
+* Apart from what you search for, we do not collect form input values, passwords, or payment information through analytics
+* We do not use advertising cookies
 * We do not sell your data to advertisers
+
+If you accept analytics cookies and are signed in, PostHog links this information to your account, with your name and email address, and receives what you search for. Google Analytics also receives the pages you visit, how you reached us, your device type and your approximate location. It doesn't receive what you search for, and its advertising features are off.
+
+Before you choose, or if you reject analytics cookies, we only count visits, without cookies and without storing anything on your device except your choice: the page, the site you came from, your browser type, and actions such as running a search. We don't record your clicks, what you type, your location or your account. Your IP address and browser type become a code that changes every day, and we don't keep your IP address.
 
 We collect or use the following information for **gathering user feedback through surveys**:
 
@@ -112,6 +116,7 @@ For more information on our use of legitimate interests as a lawful basis, you c
 
 Our lawful bases for collecting or using information for **gathering user feedback through surveys** are:
 
+* **Legitimate interests** – for the count we make without cookies, described above, we rely on legitimate interests.
 * **Legitimate interests** – we're collecting or using your information because it benefits you, our organisation or someone else, without causing an undue risk of harm to anyone. All of your data protection rights may apply, except the right to portability. Our legitimate interests are:
   * Gathering anonymous feedback helps us understand user needs and improve our website for all visitors. Surveys are optional and do not request directly identifying information. Responses may be linked to a pseudonymous session identifier to help us understand context and improve our services. Users benefit from improvements based on collective feedback.
 
@@ -132,6 +137,7 @@ For more information on our use of legitimate interests as a lawful basis, you c
   * From your interactions with our site (pages visited, clicks, time spent)
 
 * **From PostHog analytics** – our website analytics platform that collects pseudonymous usage data on our behalf
+* **Google Analytics** – if you accept analytics cookies, the analytics platform that collects usage data on our behalf
 
 # **How long we keep information**
 
@@ -140,8 +146,10 @@ For more information on our use of legitimate interests as a lawful basis, you c
 | **Email correspondence**             | 3 years from the date of last communication | To respond to follow-up queries, maintain communication history, and resolve disputes         |
 | **Support ticket records**           | 3 years from the date of resolution         | To reference similar issues and improve support quality                                       |
 | **Website analytics data** (PostHog) | 1 year from the date of collection          | To analyse trends, identify long-term patterns, and improve the product                       |
+| **Website analytics data** (Google Analytics) | Up to 14 months from the date of collection | To see how many people visit and how they reach us |
 | **Session replays** (PostHog)        | 30 days from the date of recording          | To debug technical issues, understand user experience problems, and improve website usability |
 | **Analytics cookies**                | 365 days from the last visit                | To track returning visitors and maintain session continuity                                   |
+| **Google Analytics cookies** | 400 days from the last visit | To recognise returning visitors |
 | **Survey responses**                 | 1 year from the date of submission          | To improve the product and track feedback trends over time                                    |
 | **IP address logs**                  | 24 hours from the date of collection         | For security monitoring and fraud prevention                                                  |
 | **Account and research data** | Until you delete it or your account, then about 30 days | To provide the service |
@@ -166,6 +174,13 @@ This data processor does the following activities for us:
 * Hosts survey responses
 
 **Location:** Germany (EU hosting)
+
+**Google Ireland Limited**
+
+This data processor does the following activities for us:
+* Collects and stores website analytics data, if you accept analytics cookies
+
+**Location:** Ireland and the United States
 
 **Hetzner Online GmbH**
 
@@ -235,6 +250,18 @@ Data is primarily processed within the European Economic Area (EEA), specificall
 
 ---
 
+**Organisation name:** Google LLC
+
+**Category of recipient:** Analytics platform and data processor
+
+**Country where data is primarily processed:** United States
+
+**How the transfer complies with UK data protection law:**
+
+Transfers to Google LLC are made in reliance on its certification under the UK Extension to the EU-U.S. Data Privacy Framework.
+
+---
+
 **Organisation names:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
 
 **Category of recipient:** Providers of sign-in, payments, AI and website delivery
@@ -261,8 +288,8 @@ We implement appropriate technical and organisational measures to protect your p
 We use cookies to collect some of the analytics information described in this privacy notice. For detailed information about the cookies we use, please see our [Cookie Policy](/cookie-policy).
 
 Key points:
-* We use one analytics cookie from PostHog (stored for 365 days)
-* No third-party advertising or tracking cookies
+* We use analytics cookies from PostHog (stored for 365 days) and Google Analytics (stored for 400 days)
+* No advertising cookies
 * You can accept or decline cookies via our cookie consent banner
 * You can change your preferences any time via "Cookie Settings" in the footer
 

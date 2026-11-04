@@ -6,6 +6,7 @@ import posthog from "posthog-js";
 import { useUser } from "@clerk/nextjs";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
+import { useAnalyticsConsent } from "@/lib/consent-storage";
 
 export function PostHogIdentify() {
   const { data: convexUser } = useOptionalAuthQuery(api.users.queries.me, {});
@@ -13,6 +14,8 @@ export function PostHogIdentify() {
   const syncProfile = useMutation(api.users.mutations.syncProfileFromSession);
   const lastIdentifiedRef = useRef<string | null>(null);
   const hasSyncedRef = useRef(false);
+  // Identifying sends the name and email to PostHog, cookies or not, so it waits for Accept.
+  const consented = useAnalyticsConsent();
 
   const clerkHasProfile =
     clerkUser &&
@@ -66,7 +69,7 @@ export function PostHogIdentify() {
   }, [convexHasEmptyProfile, clerkHasProfile, clerkUser, syncProfile]);
 
   useEffect(() => {
-    if (effectiveProfile) {
+    if (effectiveProfile && consented) {
       const signature = `${effectiveProfile.distinctId}|${effectiveProfile.email}|${effectiveProfile.updatedAt}`;
       if (lastIdentifiedRef.current !== signature) {
         const name =
@@ -100,7 +103,7 @@ export function PostHogIdentify() {
       lastIdentifiedRef.current = null;
       hasSyncedRef.current = false;
     }
-  }, [effectiveProfile]);
+  }, [effectiveProfile, consented]);
 
   return null;
 }
