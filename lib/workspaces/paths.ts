@@ -16,11 +16,6 @@ export const ADDRESS_HEADER = "x-page-address";
 export const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-communities", "/authors", "/topics", "/settings", "/pricing", "/from-library"];
 const within = (path: string, section: string) => path === section || path.startsWith(`${section}/`);
 
-/**
- * Pages inside those sections that are no organization's: the deployment's own settings, and an
- * invitation to an author profile, which is the invitee's to answer. Their paths take no prefix.
- */
-const ownOnly = (path: string) => within(path, "/settings/admin");
 /** An organization's own settings, which a person's own workspace has no page for. */
 const ORGANIZATION_ONLY = "/settings/workspace";
 
@@ -29,7 +24,7 @@ export function workspaceHref(slug: string | undefined, path: string) {
   if (!slug || !path.startsWith("/") || path.startsWith(`/o/`)) return path;
   const bare = path.split(/[?#]/)[0]!;
   if (bare === "/") return `/o/${slug}${path.slice(1)}`;
-  return SECTIONS.some((section) => within(bare, section)) && !ownOnly(bare) ? `/o/${slug}${path}` : path;
+  return SECTIONS.some((section) => within(bare, section)) ? `/o/${slug}${path}` : path;
 }
 
 type Item = { kind: "search" | "screening" | "extraction" | "collection" | "library" | "profile"; id: string };
