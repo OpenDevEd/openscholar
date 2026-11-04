@@ -1156,7 +1156,7 @@
     "useCurrentLocaleTarget": "استخدم لغة الواجهة الحالية هدفًا",
     "runResultsTranslation": "تشغيل الترجمة",
     "translatingResults": "جارٍ ترجمة النتائج...",
-    "resultsTranslated": "تمت الترجمة",
+    "undoTranslation": "إلغاء الترجمة",
     "translated": "مترجم",
     "targetLanguageValue": "الهدف: {language}",
     "enhanceWithAI": "تحسين بالذكاء الاصطناعي",

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useContext, useId, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, TranslateIcon } from "@/components/icons";
+import { Check, TranslateIcon, Undo2 } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -186,6 +186,10 @@ export function TranslationSettingsMenu({
     (state) => state.clearTargetLanguageOverride
   );
 
+  const setTranslationsUndone = useResultsTranslationSettingsStore(
+    (state) => state.setTranslationsUndone
+  );
+
   const isUsingLocaleTarget = targetLanguageOverride === null;
   const targetMode = isUsingLocaleTarget ? "locale" : "manual";
   const targetBadgeLabel = effectiveTargetLanguage.toUpperCase();
@@ -215,8 +219,23 @@ export function TranslationSettingsMenu({
       toast.ai.configRequired(t("configureAISettings"));
       return;
     }
+    setTranslationsUndone(false);
     onRun();
-  }, [isConfigured, isRunDisabled, onRun, t, toast]);
+  }, [isConfigured, isRunDisabled, onRun, setTranslationsUndone, t, toast]);
+
+  // Off as well, or the next page of results would translate itself straight away.
+  const handleUndoTranslation = useCallback(() => {
+    setAutoTranslateResults(false);
+    setTranslationsUndone(true);
+  }, [setAutoTranslateResults, setTranslationsUndone]);
+
+  const handleAutoTranslateChange = useCallback(
+    (enabled: boolean) => {
+      setAutoTranslateResults(enabled);
+      if (enabled) setTranslationsUndone(false);
+    },
+    [setAutoTranslateResults, setTranslationsUndone]
+  );
 
   return (
     <PopoverContent
@@ -251,7 +270,7 @@ export function TranslationSettingsMenu({
             <Switch
               size="sm"
               checked={autoTranslateResults}
-              onCheckedChange={setAutoTranslateResults}
+              onCheckedChange={handleAutoTranslateChange}
               disabled={disabled}
             />
           </div>
@@ -311,12 +330,11 @@ export function TranslationSettingsMenu({
           size="sm"
           className={cn(
             "w-full",
-            allTranslated &&
-              "border-success/40 ink-success hover:ink-success"
+            allTranslated && "group/undo hover:bg-primary hover:text-primary-foreground hover:border-primary"
           )}
-          variant={allTranslated || autoTranslateResults ? "outline" : "default"}
-          onClick={handleRunTranslation}
-          disabled={isRunDisabled}
+          variant={allTranslated ? "ai" : autoTranslateResults ? "outline" : "default"}
+          onClick={allTranslated ? handleUndoTranslation : handleRunTranslation}
+          disabled={allTranslated ? disabled : isRunDisabled}
         >
           {isTranslating ? (
             <>
@@ -324,12 +342,15 @@ export function TranslationSettingsMenu({
               {t("translatingResults")}
             </>
           ) : allTranslated ? (
-            <>
-              <Check className="h-3.5 w-3.5" />
-              {t("resultsTranslated")}
-            </>
+            <span key="undo" className="inline-flex items-center gap-2 font-semibold animate-in fade-in-0 slide-in-from-bottom-1 duration-200">
+              <span className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors group-hover/undo:bg-primary-foreground group-hover/undo:text-primary">
+                {/* The arrow swings back the way the text will go, further under the press. */}
+                <Undo2 className="size-3.5 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] rtl:-scale-x-100 group-hover/undo:-rotate-45 rtl:group-hover/undo:rotate-45 group-active/undo:-rotate-90 rtl:group-active/undo:rotate-90 motion-reduce:transition-none" />
+              </span>
+              {t("undoTranslation")}
+            </span>
           ) : (
-            t("runResultsTranslation")
+            <span key="run" className="animate-in fade-in-0 slide-in-from-top-1 duration-200">{t("runResultsTranslation")}</span>
           )}
         </Button>
       </div>

@@ -1014,6 +1014,12 @@ interface ResultsTranslationSettingsState {
   autoTranslateResults: boolean;
   targetLanguageOverride: string | null;
   manualRunRequestId: number;
+  /**
+   * Undo translation was pressed: every paper reads as never translated, whatever comes back from a batch still
+   * running. What was paid for stays held, so Run or auto-translate brings it back without paying twice.
+   */
+  translationsUndone: boolean;
+  setTranslationsUndone: (undone: boolean) => void;
   setAutoTranslateResults: (enabled: boolean) => void;
   setTargetLanguageOverride: (language: string | null) => void;
   clearTargetLanguageOverride: () => void;
@@ -1026,6 +1032,8 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
       autoTranslateResults: false,
       targetLanguageOverride: null,
       manualRunRequestId: 0,
+      translationsUndone: false,
+      setTranslationsUndone: (undone) => set({ translationsUndone: undone }),
       setAutoTranslateResults: (enabled) => set({ autoTranslateResults: enabled }),
       setTargetLanguageOverride: (language) => set({ targetLanguageOverride: language }),
       clearTargetLanguageOverride: () => set({ targetLanguageOverride: null }),

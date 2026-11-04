@@ -1156,7 +1156,7 @@
     "useCurrentLocaleTarget": "Tumia lugha ya sasa kama lengo",
     "runResultsTranslation": "Endesha tafsiri",
     "translatingResults": "Inatafsiri matokeo...",
-    "resultsTranslated": "Imetafsiriwa",
+    "undoTranslation": "Tendua tafsiri",
     "translated": "Imetafsiriwa",
     "targetLanguageValue": "Lengo: {language}",
     "enhanceWithAI": "Boresha kwa AI",

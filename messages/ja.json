@@ -1155,7 +1155,7 @@
     "useCurrentLocaleTarget": "現在のロケールを翻訳先にする",
     "runResultsTranslation": "翻訳を実行",
     "translatingResults": "結果を翻訳中...",
-    "resultsTranslated": "翻訳済み",
+    "undoTranslation": "翻訳を元に戻す",
     "translated": "翻訳済み",
     "targetLanguageValue": "翻訳先: {language}",
     "enhanceWithAI": "AIで強化",

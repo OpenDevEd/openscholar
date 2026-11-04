@@ -1156,7 +1156,7 @@
     "useCurrentLocaleTarget": "Usar o idioma atual como destino",
     "runResultsTranslation": "Executar tradução",
     "translatingResults": "A traduzir resultados...",
-    "resultsTranslated": "Traduzido",
+    "undoTranslation": "Desfazer a tradução",
     "translated": "Traduzido",
     "targetLanguageValue": "Destino: {language}",
     "enhanceWithAI": "Melhorar com IA",

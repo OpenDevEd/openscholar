@@ -41,10 +41,11 @@ export function useTranslate(
     (state) => state.targetLanguageOverride
   );
   const targetLanguage = targetLanguageOverride ?? localeToLanguageCode(locale);
+  const translationsUndone = useResultsTranslationSettingsStore((state) => state.translationsUndone);
 
   // Use selectors to subscribe to specific translation data (composite key: paperId:target)
   const translatedContent = useTranslationStore(
-    (state) => (data?.id && targetLanguage
+    (state) => (data?.id && targetLanguage && !translationsUndone
       ? state.getTranslation(data.id, targetLanguage)
       : null)
   );

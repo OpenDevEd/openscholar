@@ -1156,7 +1156,7 @@
     "useCurrentLocaleTarget": "Zielsprache der aktuellen Oberfläche verwenden",
     "runResultsTranslation": "Übersetzung starten",
     "translatingResults": "Ergebnisse werden übersetzt...",
-    "resultsTranslated": "Übersetzt",
+    "undoTranslation": "Übersetzung rückgängig machen",
     "translated": "Übersetzt",
     "targetLanguageValue": "Ziel: {language}",
     "enhanceWithAI": "Mit KI verbessern",
