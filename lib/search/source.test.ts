@@ -5,6 +5,7 @@ import { appWork, selectWithIds } from "../openalex/work-id";
 import { paperIdOf, paperKey, paperPage, parsePaperKey, toPaperKey } from "../papers/paper-ref";
 import { autocompleteParameters } from "../openalex/autocomplete";
 import { authorFilterValue, isAuthorId } from "../openalex/author-filter";
+import { fetchOqlWorks } from "../openalex/oql-works";
 import { sourceForId } from "./source";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -98,5 +99,42 @@ describe("IDs and lookups by source", () => {
     expect(autocompleteParameters("wellcome", "funders", "openscholar")).toEqual({ q: "wellcome" });
     expect(autocompleteParameters("duflo", "authors", "openscholar")).toEqual({ q: "duflo", filter: "works_count:>0" });
     expect(autocompleteParameters("nature", "sources", "openalex")).toEqual({ q: "nature", filter: "works_count:>0" });
+  });
+});
+
+describe("sending OQL", () => {
+  const sent = () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response(JSON.stringify({ meta: { count: 1 }, results: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    return () => JSON.parse(String(fetcher.mock.calls[0]![1]!.body)).oql as string;
+  };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("writes a query as our index reads it, and leaves OpenAlex's as typed", async () => {
+    ownApi();
+    const ours = sent();
+    await fetchOqlWorks("works where type is article", { perPage: 1 }, "openscholar");
+    expect(ours()).toBe("works where type is (article)");
+    const theirs = sent();
+    await fetchOqlWorks("works where type is article", { perPage: 1 }, "openalex");
+    expect(theirs()).toBe("works where type is article");
+  });
+
+  it("says how to write a sentence on either source, and asks neither", async () => {
+    ownApi();
+    const fetcher = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetcher);
+    for (const source of ["openscholar", "openalex"] as const) {
+      const result = await fetchOqlWorks("works where (get works about kelp) and is_retracted is (false)", { perPage: 1 }, source);
+      expect(result).toMatchObject({ ok: false, status: 400, detail: { fix: expect.stringContaining("works where") } });
+    }
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("points an error at the query that was sent", async () => {
+    ownApi();
+    vi.stubGlobal("fetch", vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ validation: { errors: [{ message: "this field is unknown", position: 12 }] } }), { status: 400 })));
+    const result = await fetchOqlWorks("works where nope is value", { perPage: 1 }, "openscholar");
+    expect(result).toMatchObject({ ok: false, detail: { problem: "this field is unknown", near: { token: "nope", after: " is (value)" } } });
   });
 });

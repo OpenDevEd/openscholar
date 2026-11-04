@@ -9,6 +9,7 @@ import { createError } from "../lib/errors";
 import { openAlexFetch, openAlexReason } from "../../lib/openalex/fetch";
 import { searchUrl } from "../../lib/openalex/request-url";
 import { appWork, selectWithIds } from "../../lib/openalex/work-id";
+import { oqlForOwnIndex } from "../../lib/openalex/oql-for-own-index";
 import { SEARCH_SOURCE_NAMES, type SearchSource } from "../../lib/search/source";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { autocompleteOptions, autocompleteParameters, sourceTypesParameters, withSourceTypes, type LookupEntity, type LookupOption } from "../../lib/openalex/autocomplete";
@@ -99,7 +100,7 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
   try {
     response = await openAlexFetch(url, {
       timeoutMs: PAGE_TIMEOUT_MS,
-      ...(request.oql ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql: request.oql }) } : {}),
+      ...(request.oql ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ oql: source === "openscholar" ? oqlForOwnIndex(request.oql) : request.oql }) } : {}),
     });
   } catch (error) {
     console.error(`[paperSets] ${SEARCH_SOURCE_NAMES[source]} page ${JSON.stringify(at)} didn't answer`, error);

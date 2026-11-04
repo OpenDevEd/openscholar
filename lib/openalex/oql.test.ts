@@ -74,4 +74,9 @@ describe("worksOql", () => {
       "works where (year is (2020)) and type is (article) sample 50 seed 7",
     );
   });
+
+  it("takes the general form's get works where, so filters join it", () => {
+    expect(worksOql("get works where year is (2024)", { type: "article" })).toBe("works where (year is (2024)) and type is (article)");
+    expect(worksOql("get works", { type: "article" })).toBe("works where type is (article)");
+  });
 });

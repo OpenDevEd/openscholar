@@ -21,12 +21,12 @@ export function filterPaths(value: object, path: string[] = [], result: Record<s
 }
 
 /**
- * The typed query's filter part, without the `works where` OpenAlex's examples
+ * The typed query's filter part, without the `works where` or `get works where` OpenAlex's examples
  * start with, and any trailing `sample N seed N`, which must stay outside the
  * filters when more clauses are added.
  */
 function splitOql(query: string): { where: string; sample: string } {
-  const match = query.trim().match(/^(?:works\b\s*(?:where\b)?)?\s*([\s\S]*?)\s*(sample\s+\d+(?:\s+seed\s+\d+)?)?$/i);
+  const match = query.trim().match(/^(?:(?:get\s+)?works\b\s*(?:where\b)?)?\s*([\s\S]*?)\s*(sample\s+\d+(?:\s+seed\s+\d+)?)?$/i);
   return { where: match?.[1] ?? "", sample: match?.[2] ?? "" };
 }
 

@@ -5,6 +5,7 @@ import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
 import type { SearchSource } from "../search/source";
 import { searchUrl } from "./request-url";
 import { appWork } from "./work-id";
+import { isOqlSentence, OQL_SENTENCE_REFUSAL, oqlForOwnIndex } from "./oql-for-own-index";
 
 type OqlResponse = Works & {
   validation?: { errors?: { type?: string; message?: string; position?: number | null }[] };
@@ -26,6 +27,9 @@ export async function fetchOqlWorks(
   view: { perPage: number; sort?: string; cursor?: string },
   source: SearchSource = "openalex",
 ): Promise<OqlWorksResult> {
+  if (isOqlSentence(oql)) return { ok: false, status: 400, message: OQL_SENTENCE_REFUSAL.problem, detail: OQL_SENTENCE_REFUSAL };
+  // Our index is strict about how a query is written: errors point into what it was sent.
+  const sent = source === "openscholar" ? oqlForOwnIndex(oql) : oql;
   const url = searchUrl(source, "", { "per-page": String(view.perPage), cursor: view.cursor, sort: view.sort });
 
   let response: Response;
@@ -34,7 +38,7 @@ export async function fetchOqlWorks(
       timeoutMs: OPENALEX_TIMEOUT_MS,
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ oql }),
+      body: JSON.stringify({ oql: sent }),
     });
   } catch (error) {
     console.error("OpenAlex OQL request failed:", error);
@@ -50,7 +54,7 @@ export async function fetchOqlWorks(
       ok: false,
       status: response.status,
       message,
-      ...(response.status === 400 ? { detail: describeQueryError(oql, errors[0] ?? { message }) } : {}),
+      ...(response.status === 400 ? { detail: describeQueryError(sent, errors[0] ?? { message }) } : {}),
     };
   }
 
