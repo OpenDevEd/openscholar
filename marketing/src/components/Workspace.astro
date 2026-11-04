@@ -3,10 +3,10 @@
 import Device from "./Device.astro";
 import Icon from "./Icon.astro";
 const tabs = [
-  { label: "Search", color: "#60a5fa", icon: "search", lap: "search", tab: "search2", ph: "search2", alt: "Search results with an overview of the field, on a laptop, a tablet and a phone" },
+  { label: "Search", color: "#4fc3d9", icon: "search", lap: "search", tab: "search2", ph: "search2", alt: "Search results with an overview of the field, on a laptop, a tablet and a phone" },
   { label: "Screen", color: "#34d399", icon: "sieve", lap: "screen", tab: "screen", ph: "screen2", alt: "A screening's progress, questions and papers, on a laptop, a tablet and a phone" },
-  { label: "Extract", color: "#fbbf24", icon: "table", lap: "extract-detail", tab: "extract", ph: "extract", alt: "An extraction table with an answer and a confidence score for each paper" },
-  { label: "Assistant", color: "#22d3ee", icon: "spark", lap: "assistant", tab: "assistant", ph: "assistant", alt: "The research assistant reporting on an extraction and listing papers to check by hand" },
+  { label: "Extract", color: "#a9c7ec", icon: "table", lap: "extract-detail", tab: "extract", ph: "extract", alt: "An extraction table with an answer and a confidence score for each paper" },
+  { label: "Assistant", color: "#7da7e6", icon: "spark", lap: "assistant", tab: "assistant", ph: "assistant", alt: "The research assistant reporting on an extraction and listing papers to check by hand" },
   { label: "Publish", color: "#fb7185", icon: "globe", lap: "c-home", tab: "c-map", ph: "c-search", alt: "A live Evidence Community under its own name" },
 ];
 ---
@@ -62,7 +62,7 @@ const tabs = [
   .pane :global(.lap .scr.dark) { clip-path: inset(0 100% 0 0); } [data-theme="dark"] .pane :global(.lap .scr.dark) { clip-path: inset(0); }
   /* The dock sits on the laptop's screen, the way a real one would. */
   :global(html:not(.has-js)) .dock { display: none; }
-  .dock { position: absolute; z-index: 3; left: 50%; bottom: 7%; translate: -50% 0; width: max-content; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 20px; background: rgb(10 16 46 / .78); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 24px 50px -16px rgb(4 8 30 / .7); color: #fff; }
+  .dock { position: absolute; z-index: 3; left: 50%; bottom: 7%; translate: -50% 0; width: max-content; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 20px; background: rgb(14 19 33 / .78); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 24px 50px -16px rgb(4 7 16 / .7); color: #fff; }
   .fan, .ws-go { display: none; } .ws > :global(h2) { margin-bottom: clamp(20px, 2.6vw, 36px); }
   .tabs { display: flex; gap: 2px; } @media (min-width: 701px) { .tabs { flex: none; } }
   [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 46px; padding-inline: 14px; border-radius: 14px; color: rgb(255 255 255 / .72); font-size: 15px; white-space: nowrap; flex: none; transition: color .2s var(--ease), background-color .2s var(--ease); } [role="tab"]:hover { color: #fff; background: rgb(255 255 255 / .09); } [role="tab"][aria-selected="true"] { color: #fff; background: rgb(255 255 255 / .14); } [role="tab"][aria-selected="true"] :global(svg) { color: var(--c); }
@@ -94,7 +94,7 @@ const tabs = [
   /* Phones get the same lid and the phone sliding in, without the pause. */
   @supports (animation-timeline: view()) { @media (prefers-reduced-motion: no-preference) and (max-width: 700px) {
     .ws { view-timeline: --wsp block; }
-    .pane :global(.lap .body) { transform-origin: 50% 100%; animation: lid-p linear both; animation-range: cover 6% cover 36%; } .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #03061c; pointer-events: none; animation: wake-p linear both; animation-range: cover 14% cover 38%; } .pane :global(.ph) { animation: out-p linear both; animation-range: cover 30% cover 46%; }
+    .pane :global(.lap .body) { transform-origin: 50% 100%; animation: lid-p linear both; animation-range: cover 6% cover 36%; } .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #070b1a; pointer-events: none; animation: wake-p linear both; animation-range: cover 14% cover 38%; } .pane :global(.ph) { animation: out-p linear both; animation-range: cover 30% cover 46%; }
     .pane :global(.lap .body), .pane :global(.lap .glass)::after, .pane :global(.ph) { animation-timeline: --wsp; }
     @keyframes lid-p { from { transform: perspective(1200px) rotateX(-80deg); } to { transform: perspective(1200px) rotateX(0); } } @keyframes wake-p { from { opacity: 1; } to { opacity: 0; } } @keyframes out-p { from { translate: 130% 0; } to { translate: 0 0; } }
   } }

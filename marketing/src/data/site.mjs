@@ -11,15 +11,15 @@ export const COMMUNITIES = [
 ];
 export const NAV = [
   { id: "product", href: "/#product", label: "Product", rows: [
-    { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#22d3ee", field: "ocean", art: "sea", img: "search2-laptop-dark" },
+    { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#4fc3d9", field: "ocean", art: "sea", img: "search2-laptop-dark" },
     { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve-front", img: "screen-laptop-dark" },
-    { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", color: "#fbbf24", field: "amber", art: "grid", img: "extract-laptop-dark" },
-    { href: "/#assistant", title: "Delegate to the assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#60a5fa", field: "cobalt", art: "gate", img: "assistant-laptop-dark" },
-    { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", color: "#f59e0b", field: "night", art: "thread" },
+    { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", color: "#a9c7ec", field: "glacier", art: "grid", img: "extract-laptop-dark" },
+    { href: "/#assistant", title: "Delegate to the assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#7da7e6", field: "steel", art: "gate", img: "assistant-laptop-dark" },
+    { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", color: "#ff9d36", field: "night", art: "thread" },
   ] },
   { id: "communities", href: "/evidence-communities/", label: "Evidence Communities", rows: [
     { href: "/evidence-communities/#readers", title: "Search and read", text: "Everything your readers need to use the evidence", icon: "search", color: "#fb7185", field: "rose", art: "globe", img: "c-search-laptop-light" },
-    { href: "/evidence-communities/#answers", title: "Answers readers can check", text: "Linked to the record and the page", icon: "thread", color: "#fbbf24", field: "amber", art: "grid", img: "c-home2-laptop-dark" },
+    { href: "/evidence-communities/#answers", title: "Answers readers can check", text: "Linked to the record and the page", icon: "thread", color: "#ff9d36", field: "night", art: "ask-lantern", img: "c-home2-laptop-dark" },
     { href: "/evidence-communities/#map", title: "Maps of your field", text: "Who's working on what, and where", icon: "globe", color: "#38bdf8", field: "night", art: "thread", img: "c-map-laptop-dark" },
     { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", color: "#fb7185", field: "rose", art: "globe", img: "c-home-laptop-light" },
   ], live: true },
@@ -27,15 +27,15 @@ export const NAV = [
     { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "team-merge", img: "screen-laptop-light" },
     { href: "/teams/#activity", title: "See who did what", text: "A record of the changes, with a name beside each", icon: "list", color: "#34d399", field: "emerald", art: "team-merge", img: "extract-laptop-dark" },
     { href: "/teams/#publish", title: "Review before you publish", text: "Creators submit, editors decide", icon: "check", color: "#34d399", field: "emerald", art: "gates", img: "c-search-laptop-light" },
-    { href: "/teams/#roles", title: "The right access for each person", text: "In your workspace and your community", icon: "key", color: "#fbbf24", field: "night", art: "team-merge" },
+    { href: "/teams/#roles", title: "The right access for each person", text: "In your workspace and your community", icon: "key", color: "#7da7e6", field: "night", art: "team-merge" },
   ] },
   { id: "docs", href: "/docs/", label: "Docs" },
 ];
 // Each page's sections, for the map of the page in the header once you scroll.
 export const SECTIONS = {
-  "/": [["tour", "Tour", "#60a5fa"], ["product", "Find", "#22d3ee"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fbbf24"], ["assistant", "Assistant", "#60a5fa"], ["trust", "Trust", "#f59e0b"], ["community", "Communities", "#fb7185"]],
-  "/evidence-communities/": [["readers", "Readers", "#22d3ee"], ["answers", "Answers", "#fbbf24"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
-  "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#fbbf24"], ["publish", "Review", "#34d399"]],
+  "/": [["tour", "Tour", "#7da7e6"], ["product", "Find", "#4fc3d9"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#a9c7ec"], ["assistant", "Assistant", "#7da7e6"], ["trust", "Trust", "#ff9d36"], ["community", "Communities", "#fb7185"]],
+  "/evidence-communities/": [["readers", "Readers", "#4fc3d9"], ["answers", "Answers", "#ff9d36"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
+  "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#7da7e6"], ["publish", "Review", "#34d399"]],
 };
 export const ICONS = {
   search: "M9 16a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm5-2 5 5",

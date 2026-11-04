@@ -12,14 +12,14 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
 <section class="bleed sky" data-orbit>
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" />
-  {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#dbe7ff">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
+  {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
   <div class="inner say">
     <h1>{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
     <p class="lead">Less time sorting papers, more time on what they mean.</p>
     <div class="halo"><AskBar id="ask-hero" class="big" questions={QUESTIONS} mark label="Search with Openscholar" go="Search Openscholar" /></div>
   </div>
   <div class="space">
-    <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#3b82f6" /><stop offset=".2" stop-color="#22d3ee" /><stop offset=".42" stop-color="#34d399" /><stop offset=".6" stop-color="#fde047" /><stop offset=".8" stop-color="#fb923c" /><stop offset="1" stop-color="#fb7185" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg><svg class="cometsvg"><g data-comet="back" opacity="0"></g></svg></div>
+    <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6b35" /><stop offset=".16" stop-color="#ff9d36" /><stop offset=".34" stop-color="#ffd9ae" /><stop offset=".52" stop-color="#8fd3d8" /><stop offset=".76" stop-color="#5a9be6" /><stop offset="1" stop-color="#3c62b8" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg><svg class="cometsvg"><g data-comet="back" opacity="0"></g></svg></div>
     <canvas class="earth" data-day="/img/earth-day.avif" data-night="/img/earth-night.avif" data-clouds="/img/earth-clouds.avif" data-water="/img/earth-water.avif" aria-hidden="true"></canvas>
     <script is:inline>if (!document.querySelector("[data-orbit] .earth").getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" })) document.documentElement.classList.add("flat")</script>
     <div class="orb front" aria-hidden="true"><svg class="ringsvg"><g data-ring="front"></g></svg><svg class="cometsvg"><g data-comet="front" opacity="0"></g></svg></div>
@@ -53,7 +53,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
         g.replaceChildren(); comet.replaceChildren();
         stroke(g, arc(rx, ry, front), 14, front ? .16 : .08, { filter: "url(#ringsoft)" }); stroke(g, arc(rx, ry, front), 1, .85 * o);
         fill(g, band(rx, ry, body * k, front), .06 * o); fill(g, band(rx, ry, 2.2 * k, front), o); fill(g, band(rx, ry - inset * k, 1.2 * k, front), .55 * o); fill(g, band(rx, ry - inset * .5 * k, .8 * k, front), .35 * o); if (!narrow) fill(g, band(rx, ry + 7 * k, .8 * k, front), .3 * o);
-        for (const [len, w, opacity] of COMET) add(comet, arc(rx, ry, front), { fill: "none", stroke: "#fff", "stroke-width": w, opacity, pathLength: 1000, "stroke-dasharray": `${len} ${2000 - len}`, "stroke-linecap": "round" });
+        for (const [len, w, opacity] of COMET) add(comet, arc(rx, ry, front), { fill: "none", stroke: "#fff1e0", "stroke-width": w, opacity, pathLength: 1000, "stroke-dasharray": `${len} ${2000 - len}`, "stroke-linecap": "round" });
       }
       grad.setAttribute("x1", -rx); grad.setAttribute("x2", rx); grad.setAttribute("y1", 0); grad.setAttribute("y2", 0);
       const tf = `translate(${cx} ${cy}) rotate(${tilt * 180 / Math.PI})`; for (const g of [backG, frontG, cometB, cometF]) g.setAttribute("transform", tf);
@@ -84,7 +84,7 @@ precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; 
 const float PI = 3.14159265;
 float gs(float x){ return exp(-x * x); }
 vec2 ll(vec3 n, float spin){ float lon = atan(n.x, n.z) - spin, lat = asin(clamp(n.y, -1., 1.)), u = lon / (2. * PI); float u1 = fract(u), u2 = fract(u + .5) - .5; return vec2(fwidth(u1) < fwidth(u2) - .001 ? u1 : u2, .5 - lat / PI); }
-vec3 halo(float d, float sun){ float lit = smoothstep(-.55, .75, sun), e = max(d - 1., 0.), g = (exp(-e * 22.) * .7 + exp(-e * 5.) * .08) * (1. - smoothstep(1.2, 1.5, d)); return mix(vec3(.05, .18, .55), vec3(.34, .68, 1.), lit) * g * (.42 + lit) + vec3(.85, .93, 1.) * smoothstep(.55, .92, sun) * exp(-e * 26.) * .9; }
+vec3 halo(float d, float sun){ float lit = smoothstep(-.55, .75, sun), e = max(d - 1., 0.), g = (exp(-e * 22.) * .7 + exp(-e * 5.) * .08) * (1. - smoothstep(1.2, 1.5, d)); return mix(mix(vec3(.06, .16, .42), vec3(.36, .62, .95), lit), vec3(1., .56, .24), smoothstep(.5, .93, sun) * .8) * g * (.42 + lit) + vec3(1., .68, .36) * smoothstep(.55, .92, sun) * exp(-e * 26.) + vec3(1., .92, .8) * smoothstep(.82, .95, sun) * exp(-e * 70.) * .7; }
 void main(){
   vec2 p = (gl_FragCoord.xy - c) / r; float d = length(p), sun = dot(normalize(vec3(p, .001)), L); vec3 h = halo(d, sun);
   if (wv > 0.) h *= 1. + 1.6 * smoothstep(0., .08, wv) * max(0., 1. - wv * 2.) * smoothstep(.1, .9, p.y);
@@ -99,10 +99,10 @@ void main(){
   col += pow(max(dot(reflect(-L, n0), vec3(0., 0., 1.)), 0.), 90.) * wet * vec3(.7, .85, 1.) * .42 * lit;
   float city = max(nc.r - .05, 0.); col += (nc * 1.1 + city * vec3(1.6, 1.1, .55) * 4.5 * (1. - cl * .8)) * (1. - smoothstep(-.2, .06, dif));
   col = mix(col, mix(vec3(.07, .11, .2), vec3(1., 1., 1.02), lit), pow(cl, 1.5) * .9);
-  col += dusk * vec3(.9, .5, .25) * .07;
-  col += vec3(.3, .62, 1.) * pow(1. - z, 3.2) * (.24 + .9 * smoothstep(0., .8, dif));
+  col += dusk * vec3(1., .5, .22) * .2;
+  col += mix(vec3(.3, .6, .95), vec3(1., .6, .3), smoothstep(.55, .93, sun) * .8) * pow(1. - z, 3.2) * (.24 + .9 * smoothstep(0., .8, dif));
   vec2 q = mat2(cos(rg.z), sin(rg.z), -sin(rg.z), cos(rg.z)) * p; float yr = -rg.y * sqrt(max(0., 1. - q.x * q.x / (rg.x * rg.x))); col *= 1. - .3 * gs((q.y - yr + .035) / .018);
-  if (wv > 0.) { float g = acos(clamp(dot(n0, vec3(0., .96, .28)), -1., 1.)), f = wv * 3.2 - .2, e = smoothstep(0., .1, wv) * (1. - wv), b = gs((g - f) / .2) * e; col *= 1. + b * .75; col += b * (vec3(.2, .45, 1.) * .1 + city * vec3(1.6, 1.15, .6) * 9.) * (1. - cl * .7) + gs((g - f) / .06) * e * vec3(.5, .75, 1.) * .4 + vec3(.5, .8, 1.) * pow(1. - z, 2.5) * smoothstep(.1, .9, p.y) * max(0., 1. - wv * 2.) * .6; }
+  if (wv > 0.) { float g = acos(clamp(dot(n0, vec3(0., .96, .28)), -1., 1.)), f = wv * 3.2 - .2, e = smoothstep(0., .1, wv) * (1. - wv), b = gs((g - f) / .2) * e; col *= 1. + b * .75; col += b * (vec3(1., .55, .2) * .1 + city * vec3(1.6, 1.15, .6) * 9.) * (1. - cl * .7) + gs((g - f) / .06) * e * vec3(1., .7, .4) * .4 + vec3(1., .72, .42) * pow(1. - z, 2.5) * smoothstep(.1, .9, p.y) * max(0., 1. - wv * 2.) * .6; }
   col = col / (1. + col * .14); float a = 1. - smoothstep(1. - 2.2 / r, 1., d);
   o = (vec4(col, 1.) * a + vec4(h, ha) * (1. - a)) * fade;
 }`;
@@ -164,18 +164,18 @@ void main(){
   }
 </script>
 <style>
-  .sky { padding: 146px 0 0; background: #040b2e; text-align: center; }
+  .sky { padding: 146px 0 0; background: var(--sky); text-align: center; }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; animation: arrive 1.2s var(--ease) backwards; }
   .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; animation: tw var(--tw) ease-in-out var(--twd) infinite alternate; } .s0 { --tw: 6s; --twd: 0s; } .s1 { --tw: 9s; --twd: -3s; } .s2 { --tw: 13s; --twd: -6s; } @keyframes tw { to { opacity: .35; } }
 
   .say { position: relative; z-index: 6; display: grid; justify-items: center; gap: 14px; }
   h1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .26em; font-size: 38px; letter-spacing: -.04em; line-height: 1.06; } h1 span { display: inline-block; animation: rise 700ms var(--ease) calc(.05s + var(--i) * 45ms) backwards; } @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
   @media (min-width: 600px) { h1 { font-size: 56px; } } @media (min-width: 1100px) { h1 { font-size: 64px; } } @media (min-width: 1400px) { h1 { font-size: 72px; } } @media (max-width: 1099px) { h1 { max-width: 9em; } }
-  /* The headline is filled with the same Earth: pale sky blue over the oceans, near white over land and ice, so every letter stays bright. */
-  @supports (background-clip: text) or (-webkit-background-clip: text) { h1 span { padding: .08em .05em; margin: -.08em -.05em; color: transparent; background: linear-gradient(#a9d8ff, #a9d8ff), url(/img/earth-day.avif) calc(var(--i) * -3.2em - 6em) -2.6em / 20em 10em #a9d8ff; background-blend-mode: screen, normal; -webkit-background-clip: text; background-clip: text; } }
-  .lead { font-size: 20px; color: #c8d3ee; animation: rise 800ms var(--ease) .36s backwards; }
+  /* The headline is filled with the same Earth under the sunrise: warm cream over the oceans, near white over land and ice, so every letter stays bright. */
+  @supports (background-clip: text) or (-webkit-background-clip: text) { h1 span { padding: .08em .05em; margin: -.08em -.05em; color: transparent; background: linear-gradient(#ffe6cf, #ffe6cf), url(/img/earth-day.avif) calc(var(--i) * -3.2em - 6em) -2.6em / 20em 10em #ffe6cf; background-blend-mode: screen, normal; -webkit-background-clip: text; background-clip: text; } }
+  .lead { font-size: 20px; color: #c9cfdc; animation: rise 800ms var(--ease) .36s backwards; }
 
-  /* Openscholar's box wears the brand orange, and only the ring and the communities hold the spectrum, so the two never read as one thing. */
+  /* Openscholar's box is the one warm thing in the sky, lit like the sunrise on the planet below it. */
   /* Two lights run round the box's rim. The box clips them, so they only ever show in its 2px edge. */
   .halo { position: relative; isolation: isolate; overflow: clip; width: min(100%, 700px); margin-top: 8px; padding: 2px; border-radius: 20px; background: linear-gradient(90deg, var(--brand-deep), var(--brand) 30%, var(--brand-bright) 70%, var(--brand-deep)); box-shadow: inset 0 0 0 2px transparent, 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); transition: box-shadow .5s var(--ease); animation: rise 800ms var(--ease) .46s backwards; } .halo :global(.big) { width: 100%; box-shadow: none; } .halo:focus-within { box-shadow: inset 0 0 0 2px transparent, 0 0 0 3px rgb(255 255 255 / .7), 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); } .halo:global(.fired) { box-shadow: inset 0 0 0 2px #fff1e0, 0 0 24px 2px color-mix(in srgb, var(--brand-bright) 85%, transparent); }
   @supports (offset-path: inset(0 round 1px)) { .halo::before, .halo::after { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(closest-side, #fff1e0, var(--brand-bright) 34%, transparent); offset-path: inset(0 round 20px); offset-rotate: 0deg; animation: lap 11s linear infinite; pointer-events: none; } .halo::after { background: radial-gradient(closest-side, #ffd9b0, var(--brand-deep) 34%, transparent); animation-delay: -5.5s; } @keyframes lap { from { offset-distance: 0%; } to { offset-distance: 100%; } } .halo:focus-within::before, .halo:focus-within::after { animation-play-state: paused; } }
@@ -183,7 +183,7 @@ void main(){
   @media (max-width: 500px) { .halo { width: calc(100% + 32px); margin-inline: -16px; } }
 
   .space { position: relative; isolation: isolate; height: 562px; margin-top: -132px; overflow: clip visible; }
-  .space::before { content: ""; position: absolute; left: var(--sx, 50%); top: var(--sy, 0); z-index: 0; width: 1400px; height: var(--sh, 900px); transform: translate(-50%, -50%); pointer-events: none; background: radial-gradient(closest-side, rgb(219 234 254 / .4), rgb(59 130 246 / .2) 16%, rgb(34 211 238 / .08) 44%, transparent); opacity: 0; transition: opacity 1.2s var(--ease); } :global(.lit) .space::before { opacity: 1; animation: sun 14s ease-in-out 1.2s infinite alternate; } @keyframes sun { to { opacity: .72; } }
+  .space::before { content: ""; position: absolute; left: var(--sx, 50%); top: var(--sy, 0); z-index: 0; width: 1400px; height: var(--sh, 900px); transform: translate(-50%, -50%); pointer-events: none; background: radial-gradient(closest-side, rgb(255 226 190 / .42), rgb(255 150 70 / .22) 16%, rgb(190 90 60 / .09) 44%, transparent); opacity: 0; transition: opacity 1.2s var(--ease); } :global(.lit) .space::before { opacity: 1; animation: sun 14s ease-in-out 1.2s infinite alternate; } @keyframes sun { to { opacity: .72; } }
   .earth { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; opacity: 0; transform: scale(.98); transition: opacity 1.2s var(--ease), transform 2.4s var(--ease); } :global(.lit) .earth { opacity: 1; transform: none; }
   .orb { position: absolute; inset: 0; pointer-events: none; will-change: transform; } .back { z-index: 1; } .front { z-index: 4; } .orb svg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; overflow: visible; } .cometsvg { will-change: transform; }
   /* The ring draws itself on: left to right in front, then right to left behind, the way the satellites travel. */
@@ -194,13 +194,13 @@ void main(){
   .sat { position: absolute; left: 0; top: 0; width: 88px; height: 88px; opacity: 0; will-change: transform; }
   .sat img { width: 100%; height: 100%; object-fit: contain; will-change: transform; transition: opacity .9s var(--ease) calc(.7s + var(--i) * 100ms), scale .4s var(--ease); } :global(.js) [data-orbit]:not(.orbiting) .sat img { opacity: 0; } .sat:hover img, .sat:global(.held) img { scale: 1.18; } .sat:hover, .sat:global(.caught) { z-index: 7 !important; }
   /* The link's own label, above its emblem so it stays clear of the strip below, and only one ever shows. */
-  .sat b { position: absolute; left: 50%; bottom: 100%; width: 220px; translate: calc(-50% + var(--nudge, 0px)) -4px; font: 500 14px/1.25 var(--sans); text-wrap: balance; text-align: center; opacity: 0; transition: opacity .25s var(--ease), translate .25s var(--ease); pointer-events: none; text-shadow: 0 1px 2px rgb(2 6 30 / .95), 0 0 6px rgb(2 6 30 / .95), 0 0 16px rgb(2 6 30 / .95); } .sat:hover b { opacity: 1; translate: calc(-50% + var(--nudge, 0px)) -10px; }
+  .sat b { position: absolute; left: 50%; bottom: 100%; width: 220px; translate: calc(-50% + var(--nudge, 0px)) -4px; font: 500 14px/1.25 var(--sans); text-wrap: balance; text-align: center; opacity: 0; transition: opacity .25s var(--ease), translate .25s var(--ease); pointer-events: none; text-shadow: 0 1px 2px rgb(4 7 16 / .95), 0 0 6px rgb(4 7 16 / .95), 0 0 16px rgb(4 7 16 / .95); } .sat:hover b { opacity: 1; translate: calc(-50% + var(--nudge, 0px)) -10px; }
 
   .hub { position: relative; z-index: 6; padding-bottom: 48px; }
   .hubline, .fields { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
-  .hubline { font-size: 16px; color: #c8d3ee; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
+  .hubline { font-size: 16px; color: #c9cfdc; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
   /* A quiet index. As a satellite passes the front, its name takes the community's colour and an underline draws in. */
-  .fields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 8px -6px 0; padding: 0; list-style: none; } .fields a { position: relative; display: grid; justify-items: center; align-content: start; gap: 4px; max-width: 16em; margin-inline: auto; font: 500 14px/1.22 var(--sans); color: #e6ecfb; text-wrap: balance; transition: color .6s var(--ease); } .fields a::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 32px; height: 2px; margin-left: -16px; border-radius: 2px; background: var(--c); scale: 0 1; transition: scale .6s var(--ease); } .fields img { width: 40px; height: 40px; object-fit: contain; filter: saturate(1.35) drop-shadow(0 0 7px color-mix(in srgb, var(--c) 42%, transparent)); transition: transform .6s var(--ease), filter .6s var(--ease); }
+  .fields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 8px -6px 0; padding: 0; list-style: none; } .fields a { position: relative; display: grid; justify-items: center; align-content: start; gap: 4px; max-width: 16em; margin-inline: auto; font: 500 14px/1.22 var(--sans); color: #e8ebf2; text-wrap: balance; transition: color .6s var(--ease); } .fields a::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 32px; height: 2px; margin-left: -16px; border-radius: 2px; background: var(--c); scale: 0 1; transition: scale .6s var(--ease); } .fields img { width: 40px; height: 40px; object-fit: contain; filter: saturate(1.35) drop-shadow(0 0 7px color-mix(in srgb, var(--c) 42%, transparent)); transition: transform .6s var(--ease), filter .6s var(--ease); }
   .fields :global(li.on) a, .fields li:hover a, .fields li:focus-within a { color: var(--c); } .fields :global(li.on) a::after, .fields li:hover a::after, .fields li:focus-within a::after { scale: 1; } .fields :global(li.on) img, .fields li:hover img, .fields li:focus-within img { transform: translateY(-3px) scale(1.14); filter: drop-shadow(0 0 10px var(--c)); }
 
   /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */

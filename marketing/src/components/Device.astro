@@ -12,7 +12,7 @@ const themes = theme === "both" ? ["light", "dark"] : [theme];
 <style>
   .dev { position: relative; margin: 0; transform-style: preserve-3d; }
   .glass { position: relative; overflow: hidden; background: #0b0d12; } .scr { position: absolute; inset: 0; } .scr img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; max-width: none; }
-  .phone .scr.light { color: #0a1a3f; } .phone .scr.dark { color: #fff; } .status { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 6.7%; }
+  .phone .scr.light { color: var(--ink); } .phone .scr.dark { color: #fff; } .status { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 6.7%; }
   .status { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 9% 2px 11%; font: 500 3.6cqw/1 var(--sans); }
   .sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgb(255 255 255 / .1), transparent 26%, transparent 70%, rgb(255 255 255 / .04)); }
   /* Laptop: a thin black lid on an aluminium deck. */

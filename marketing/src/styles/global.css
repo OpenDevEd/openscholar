@@ -6,12 +6,12 @@
 @view-transition { navigation: auto; }
 :root {
   color-scheme: light;
-  --ink: #0a1a3f; --t2: #47557a; --t3: #5d698a; --line: rgb(10 26 63 / .1); --line2: rgb(10 26 63 / .18); --soft: #f3f6fb;
+  --ink: #171717; --t2: #525252; --t3: #6a6a6a; --line: rgb(0 0 0 / .1); --line2: rgb(0 0 0 / .18); --soft: #f5f5f5;
   /* The brand orange, with the app's brighter and deeper stops. White on it is only 2.82:1, so text on a brand fill takes --brand-on, and brand-coloured text, icons and focus rings on white take --brand-ink. */
   --brand: oklch(0.7 0.17 54); --brand-bright: #ff9d36; --brand-deep: #e0650a; --brand-on: #361307; --brand-ink: #b2440a;
   --ease: cubic-bezier(.22, 1, .36, 1);
   --sans: Ubuntu, "Ubuntu Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Ubuntu Mono", ui-monospace, Menlo, monospace;
-  --spectrum: linear-gradient(90deg, #2563eb, #06b6d4, #10b981, #f59e0b, #f43f5e); --night: #010827;
+  --night: #070b1a; --sky: #091026;
   --gap: 16px; --pad: clamp(24px, 4.4vw, 64px); --r: 28px;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -33,10 +33,10 @@ p { text-wrap: pretty; }
 .strip { max-width: 1280px; margin-inline: auto; padding-inline: var(--gap); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
 
 /* A colour field panel. */
-.panel { position: relative; isolation: isolate; overflow: clip; border-radius: var(--r); background: var(--bg, #0b1f6b); color: #fff; }
+.panel { position: relative; isolation: isolate; overflow: clip; border-radius: var(--r); background: var(--bg, #0d1d3a); color: #fff; }
 .panel > .field { position: absolute; inset: 0; z-index: -1; }
 /* Light follows the pointer across a colour field. */
-.panel::after { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 1040px; height: 1040px; pointer-events: none; background: radial-gradient(closest-side, rgb(255 255 255 / .14), transparent); opacity: 0; transform: translate(calc(var(--mx, 520px) - 520px), calc(var(--my, 520px) - 520px)); transition: opacity .3s var(--ease); }
+.panel::after { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 1040px; height: 1040px; pointer-events: none; background: radial-gradient(closest-side, rgb(255 226 196 / .15), transparent); opacity: 0; transform: translate(calc(var(--mx, 520px) - 520px), calc(var(--my, 520px) - 520px)); transition: opacity .3s var(--ease); }
 @media (hover: hover) { .panel:hover::after { opacity: 1; will-change: transform; } }
 
 /* A section whose art runs to the edges of the window while its content keeps to the strip. */
@@ -45,7 +45,7 @@ p { text-wrap: pretty; }
 .panel > .art { z-index: -1; }
 .art { position: absolute; inset: 0; z-index: -2; overflow: clip; }
 .art img { width: 100%; height: 100%; object-fit: cover; }
-.art.dim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(var(--dir, 90deg), rgb(var(--sc, 3 44 66) / .94), rgb(var(--sc, 3 44 66) / .7) 45%, rgb(var(--sc, 3 44 66) / 0) 70%); }
+.art.dim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(var(--dir, 90deg), rgb(var(--sc, 6 36 54) / .94), rgb(var(--sc, 6 36 54) / .7) 45%, rgb(var(--sc, 6 36 54) / 0) 70%); }
 /* A scene: art and interface share one coordinate system, 1672 units wide, so they stay locked together at any size. */
 .scene { position: relative; container-type: inline-size; aspect-ratio: 1672 / 941; } .scene > * { --u: calc(100cqw / 1672); } .scene > .art { z-index: 0; }
 /* Glass laid over art, tinted by the section's --g. */
@@ -55,30 +55,30 @@ p { text-wrap: pretty; }
 .js [data-in].in { opacity: 1; transform: none; transition: opacity .8s var(--ease) var(--d, 0s), transform .9s var(--ease) var(--d, 0s); }
 
 /* The colour fields behind each panel: drawn by the browser, so they cost nothing to load. */
-.f-cobalt { background: radial-gradient(ellipse 22% 34% at 98% 98%, #0284c7, transparent), radial-gradient(ellipse 45% 71% at 12% 86%, #1e40af, transparent), radial-gradient(ellipse 37% 60% at 62% 76%, #0369a1, transparent), radial-gradient(ellipse 40% 64% at 81% 18%, #1d4ed8, transparent), radial-gradient(ellipse 45% 71% at 19% 12%, #2563eb, transparent), #1036a8; }
-.f-amber { background: radial-gradient(ellipse 37% 60% at 61% 82%, #c43a10, transparent), radial-gradient(ellipse 40% 64% at 15% 88%, #c2410c, transparent), radial-gradient(ellipse 40% 64% at 78% 16%, #c2410c, transparent), radial-gradient(ellipse 46% 74% at 19% 18%, #c2410c, transparent), #b23a0c; }
-.f-emerald { background: radial-gradient(ellipse 37% 60% at 8% 88%, #065f46, transparent), radial-gradient(ellipse 40% 64% at 54% 86%, #0f766e, transparent), radial-gradient(ellipse 42% 67% at 75% 24%, #047857, transparent), radial-gradient(ellipse 45% 71% at 16% 16%, #047857, transparent), #065f46; }
-.f-rose { background: radial-gradient(ellipse 39% 62% at 11% 88%, #be123c, transparent), radial-gradient(ellipse 37% 60% at 62% 86%, #e11d48, transparent), radial-gradient(ellipse 40% 64% at 78% 14%, #db2777, transparent), radial-gradient(ellipse 45% 71% at 18% 22%, #be123c, transparent), #9f1239; }
-.f-ocean { background: radial-gradient(ellipse 37% 60% at 8% 86%, #155e75, transparent), radial-gradient(ellipse 40% 64% at 56% 88%, #1d4ed8, transparent), radial-gradient(ellipse 40% 64% at 78% 20%, #0369a1, transparent), radial-gradient(ellipse 43% 69% at 16% 18%, #0e7490, transparent), #0e5a7a; }
-.f-night { background: radial-gradient(ellipse 17% 28% at 96% 98%, #0369a1, transparent), radial-gradient(ellipse 45% 71% at 55% 90%, #172554, transparent), radial-gradient(ellipse 34% 55% at 82% 12%, #155e75, transparent), radial-gradient(ellipse 40% 64% at 14% 12%, #1e3a8a, transparent), #070d2b; }
+.f-steel { background: radial-gradient(ellipse 22% 34% at 98% 98%, #2b6f9e, transparent), radial-gradient(ellipse 45% 71% at 12% 86%, #173a6e, transparent), radial-gradient(ellipse 37% 60% at 62% 76%, #1c4d7e, transparent), radial-gradient(ellipse 40% 64% at 81% 18%, #1e4a86, transparent), radial-gradient(ellipse 45% 71% at 19% 12%, #20508f, transparent), #14335f; }
+.f-glacier { background: radial-gradient(ellipse 37% 60% at 61% 82%, #24405f, transparent), radial-gradient(ellipse 40% 64% at 15% 88%, #1b3350, transparent), radial-gradient(ellipse 40% 64% at 78% 16%, #2a4a6b, transparent), radial-gradient(ellipse 46% 74% at 19% 18%, #1f3a59, transparent), #14233c; }
+.f-emerald { background: radial-gradient(ellipse 37% 60% at 8% 88%, #0a4f40, transparent), radial-gradient(ellipse 40% 64% at 54% 86%, #0f665c, transparent), radial-gradient(ellipse 42% 67% at 75% 24%, #0d5f4c, transparent), radial-gradient(ellipse 45% 71% at 16% 16%, #0d5f4c, transparent), #0a4438; }
+.f-rose { background: radial-gradient(ellipse 39% 62% at 11% 88%, #8f1238, transparent), radial-gradient(ellipse 37% 60% at 62% 86%, #a9183f, transparent), radial-gradient(ellipse 40% 64% at 78% 14%, #a61e4d, transparent), radial-gradient(ellipse 45% 71% at 18% 22%, #8f1238, transparent), #6f0f2e; }
+.f-ocean { background: radial-gradient(ellipse 37% 60% at 8% 86%, #12506a, transparent), radial-gradient(ellipse 40% 64% at 56% 88%, #1b4a78, transparent), radial-gradient(ellipse 40% 64% at 78% 20%, #15628a, transparent), radial-gradient(ellipse 43% 69% at 16% 18%, #116a84, transparent), #0f4a66; }
+.f-night { background: radial-gradient(ellipse 17% 28% at 96% 98%, #1c4a6e, transparent), radial-gradient(ellipse 45% 71% at 55% 90%, #121c38, transparent), radial-gradient(ellipse 34% 55% at 82% 12%, #123d52, transparent), radial-gradient(ellipse 40% 64% at 14% 12%, #1a2a55, transparent), #091026; }
 
 /* Buttons: the arrow's chip floods the whole button on hover. */
-.btn { --face: #fff; --text: var(--ink); --chip: var(--tint, var(--ink)); --chipt: #fff; position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(10 26 63 / .18); }
+.btn { --face: #fff; --text: var(--ink); --chip: var(--brand); --chipt: var(--brand-on); position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(12 16 28 / .18); }
 .btn::before { content: ""; position: absolute; z-index: -1; inset: 0; background: var(--chip); clip-path: inset(calc(50% - 18px) 8px calc(50% - 18px) calc(100% - 44px) round 10px); transition: clip-path .4s var(--ease), background-color .2s var(--ease); }
 .btn i { display: grid; place-items: center; width: 36px; height: 36px; color: var(--chipt); flex: none; overflow: hidden; transition: color .2s var(--ease); } .btn i svg { transition: transform .35s var(--ease); } .btn:hover i svg { transform: translateX(3px); }
-.btn:not(.ghost, .line):hover { color: var(--chipt); box-shadow: 0 10px 26px -8px rgb(10 26 63 / .45); } .btn:not(.ghost, .line):hover::before { clip-path: inset(0 round 14px); } .btn:active { transform: translateY(1px); }
+.btn:not(.ghost, .line):hover { color: var(--chipt); box-shadow: 0 10px 26px -8px rgb(12 16 28 / .45); } .btn:not(.ghost, .line):hover::before { clip-path: inset(0 round 14px); } .btn:active { transform: translateY(1px); }
 .btn.brand { --face: var(--brand); --text: var(--brand-on); --chip: #fff; --chipt: var(--brand-ink); } .btn.brand:hover { --chip: var(--ink); --chipt: #fff; }
 .btn.ghost, .btn.line { padding-inline: 20px; } .btn.ghost::before, .btn.line::before { display: none; }
 .btn.ghost { --face: rgb(255 255 255 / .14); --text: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); } .btn.ghost:hover { background: #fff; color: var(--ink); }
 .btn.line { --face: transparent; --text: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); } .btn.line:hover { background: var(--ink); color: #fff; box-shadow: none; }
 /* A point of light runs around the edge of a card. */
 @property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-.edge { position: relative; } .edge::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--a), transparent 62%, rgb(255 255 255 / .9) 82%, transparent 92%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
+.edge { position: relative; } .edge::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--a), transparent 62%, rgb(255 232 208 / .95) 82%, transparent 92%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
 .edge:hover::before { opacity: 1; animation: orbit 2.8s linear infinite; } @keyframes orbit { to { --a: 360deg; } }
 /* Text rolls up to a copy of itself. */
 .roll { position: relative; display: inline-block; overflow: hidden; vertical-align: top; line-height: 1.35; } .roll > span { display: block; transition: transform .32s var(--ease); } .roll::after { content: attr(data-t); position: absolute; left: 0; top: 100%; white-space: nowrap; transition: transform .32s var(--ease); } a:hover > .roll > span, a:hover > .roll::after { transform: translateY(-100%); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } @view-transition { navigation: none; } }
-@media (max-width: 900px) { .panel > .art img, .hero > .art img { opacity: .24; } .art.dim::after { background: rgb(var(--sc, 3 44 66) / .74); } }
+@media (max-width: 900px) { .panel > .art img, .hero > .art img { opacity: .24; } .art.dim::after { background: rgb(var(--sc, 6 36 54) / .74); } }
 @media (max-width: 700px) { :root { --gap: 10px; --r: 22px; } }
 @media (max-width: 400px) { .btn { height: auto; min-height: 52px; padding-block: 8px; white-space: normal; line-height: 1.2; } }
 /* Blur is the most expensive thing on the page to repaint, and phones gain nothing from it. */

@@ -15,8 +15,8 @@ import Arrow from "../components/Arrow.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const teams = [
   ["ocean", "review-card", "2 38 29", "screen-laptop-light-1000", 1000, 625, "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export.", "/#screening"],
-  ["rose", "thread", "2 10 34", "panel-citation-light", 880, 1349, "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
-  ["emerald", "globe", "82 1 22", "c-home-laptop-light-1000", 1000, 625, "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
+  ["rose", "thread", "6 9 20", "panel-citation-light", 880, 1349, "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
+  ["emerald", "globe", "76 6 32", "c-home-laptop-light-1000", 1000, 625, "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
 ];
 const others = COMMUNITIES.filter((c) => c.key !== "wi");
 const questions = [["Is this an intervention study?", 11, 1, 3], ["Is it about reading or literacy?", 15, 0, 0], ["Is it in primary school?", 13, 1, 1]];
@@ -29,7 +29,7 @@ const faq = [
   ["Who can see our work?", "Members of an organization see its work. To bring someone in from outside, share a single item with them as a viewer or an editor."],
 ];
 ---
-<Base top="#040b2e" title="Openscholar: the evidence workspace for research teams" description="The evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
+<Base top="#091026" title="Openscholar: the evidence workspace for research teams" description="The evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
   <HomeHero />
 
   <section class="tour" id="tour"><Workspace><h2 aria-label="Every step of the work, on every screen">{"Every step of the work, on every screen".split(" ").map((w, i) => <><span aria-hidden="true" style={`--i:${i}`}>{w}</span>{" "}</>)}</h2></Workspace></section>
@@ -38,7 +38,7 @@ const faq = [
     <div class="teams">{teams.map(([f, a, sc, img, w, h, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><Art name={a} class="card-art" style={`--sc:${sc}`} /><img class:list={["shot", { tall: h > w }]} src={`/img/screens/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt="" /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>
   </section>
 
-  <Feature id="product" class="find" field="ocean" art="sea" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it.">
+  <Feature id="product" class="find" field="ocean" art="sea" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it.">
     <Literature />
   </Feature>
 
@@ -73,12 +73,12 @@ const faq = [
     <div class="inner t-head"><h2>Built for the moment someone asks how you know</h2><p class="lead">Follow a cited answer back through its sentence to its paper. Your criteria are written down, changes carry a name, and people make the final call.</p></div>
     <div class="inner proof" data-in>
       <div class="proof-copy" aria-hidden="true"><span>What was the main finding?</span><b>Nearly all children showed improved reading fluency</b><em>93% confidence, grounded in the abstract</em></div>
-      <svg class="tie" viewBox="0 0 160 700" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M0 350C90 350 70 606 160 606" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke" pathLength="1" /></svg>
+      <svg class="tie" viewBox="0 0 160 700" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M0 350C90 350 70 606 160 606" stroke="#ff9d36" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke" pathLength="1" /></svg>
       <div class="proof-page"><img src="/img/screens/panel-citation-light.avif" width="880" height="1349" loading="lazy" decoding="async" alt="An extracted answer with its confidence and reasoning, above the paper's abstract with the source sentence highlighted" /></div>
           </div>
   </section>
 
-  <section class="panel publish" id="community" style="--tint:#be123c">
+  <section class="panel publish" id="community">
     <Art name="globe" pos="100% 50%" />
     <div class="p-copy"><h2>Turn your evidence into a living community</h2><p class="lead">Give your field a public home with your own branding and address. You choose the sources that keep it current, and readers can search it, explore it and ask it questions.</p><a class="btn" href="/evidence-communities/">Explore Evidence Communities<Arrow /></a></div>
     <div class="p-devices" data-in>
@@ -101,8 +101,8 @@ const faq = [
 </script>
 <style>
   /* The dark carries on from the hero, and the devices glow against it, before the page opens up to white. */
-  .tour { --bg: #040b2e; position: relative; overflow: clip; margin-top: calc(var(--gap) * -1); display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(20px, 2.6vw, 36px); width: 100vw; margin-inline: calc(50% - 50vw); padding: clamp(32px, 4vw, 56px) calc(var(--gap) + var(--pad)) clamp(40px, 4.4vw, 64px); background: var(--bg); color: #fff; border-radius: 0 0 clamp(28px, 4vw, 56px) clamp(28px, 4vw, 56px); text-align: center; scroll-margin-top: 64px; } .tour h2 { margin-inline: auto; font-size: clamp(30px, 3.6vw, 52px); } .tour :global(.ws) { width: min(100%, calc((100svh - 190px) * 1.733)); max-width: 1248px; margin-inline: auto; } @media (max-height: 519px) { .tour :global(.ws) { width: min(100%, 760px); } }
-  .band { display: grid; gap: 28px; padding: var(--pad); background: #fff6ea; color: var(--ink); --tint: #b45309; } .band .lead { color: var(--t2); } .band > :global(.art img) { opacity: 1; } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
+  .tour { --bg: var(--sky); position: relative; overflow: clip; margin-top: calc(var(--gap) * -1); display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(20px, 2.6vw, 36px); width: 100vw; margin-inline: calc(50% - 50vw); padding: clamp(32px, 4vw, 56px) calc(var(--gap) + var(--pad)) clamp(40px, 4.4vw, 64px); background: var(--bg); color: #fff; border-radius: 0 0 clamp(28px, 4vw, 56px) clamp(28px, 4vw, 56px); text-align: center; scroll-margin-top: 64px; } .tour h2 { margin-inline: auto; font-size: clamp(30px, 3.6vw, 52px); } .tour :global(.ws) { width: min(100%, calc((100svh - 190px) * 1.733)); max-width: 1248px; margin-inline: auto; } @media (max-height: 519px) { .tour :global(.ws) { width: min(100%, 760px); } }
+  .band { display: grid; gap: 28px; padding: var(--pad); background: #eaf1f9; color: var(--ink); } .band .lead { color: var(--t2); } .band > :global(.art img) { opacity: 1; } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .stack { grid-template-columns: minmax(0, 1fr); width: min(50%, 580px); } .band > :global(.art) { z-index: 0; } .band > :global(.x), .band > .b-head { position: relative; z-index: 1; } .band :global(.art) { left: 34%; height: 400px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 34%), linear-gradient(#000 62%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 34%), linear-gradient(#000 62%, transparent); mask-composite: intersect; }
   /* Find: the field for one real query, floating on the sea. */
   :global(.find) :global(.view) { display: grid; align-items: center; padding-right: var(--pad); }
@@ -136,14 +136,14 @@ const faq = [
   /* Touch screens have no hover to open a panel, so all three stay open side by side. */
   @media (hover: none) and (min-width: 901px) { .teams { height: auto; } .teams a, .teams a:first-child, .teams:has(a:is(:hover, :focus-visible)) a { --o: 1; flex: 1 1 0; display: grid; align-content: start; gap: 10px; padding: 16px; } .shot, .shot.tall { position: relative; left: 0; top: 0; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; } .teams h3, .teams p { position: static; width: auto; white-space: normal; } }
   /* Trust: the real citation view at its real size, and one thread of light from an answer to the sentence behind it. */
-  .trust { background: #00081a; padding-block: clamp(64px, 8vw, 120px) clamp(56px, 7vw, 96px); } .trust > :global(.art) { z-index: -2; opacity: .5; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); } .t-head { display: grid; gap: clamp(16px, 2vw, 28px); } .t-head h2 { max-width: none; font-size: clamp(40px, 7.4vw, 112px); line-height: .98; letter-spacing: -.035em; } .t-head .lead { justify-self: end; width: min(100%, 560px); }
+  .trust { background: var(--night); padding-block: clamp(64px, 8vw, 120px) clamp(56px, 7vw, 96px); } .trust > :global(.art) { z-index: -2; opacity: .5; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); } .t-head { display: grid; gap: clamp(16px, 2vw, 28px); } .t-head h2 { max-width: none; font-size: clamp(40px, 7.4vw, 112px); line-height: .98; letter-spacing: -.035em; } .t-head .lead { justify-self: end; width: min(100%, 560px); }
   .proof { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(56px, 11vw, 160px) minmax(0, 460px); align-items: stretch; margin-top: clamp(28px, 4vw, 48px); }
-  .proof-copy { display: grid; gap: 8px; padding: 24px 26px; border-radius: 18px; background: rgb(12 22 58 / .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(251 191 36 / .4); align-self: center; } .proof-copy span { font-size: 15px; opacity: .8; } .proof-copy b { font-weight: 500; font-size: clamp(24px, 2.4vw, 34px); line-height: 1.15; letter-spacing: -.02em; } .proof-copy em { font-style: normal; font: 400 14px/1.3 var(--mono); color: #6ee7b7; }
-  .proof-page { position: relative; z-index: 1; border-radius: 16px; overflow: hidden; box-shadow: 0 0 120px 6px rgb(251 191 36 / .22), 0 40px 80px -30px #000; } .proof-page img { width: 100%; height: auto; }
-  .tie { width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; } .tie path { stroke-dasharray: 1; filter: drop-shadow(0 0 6px #f59e0b); }
+  .proof-copy { display: grid; gap: 8px; padding: 24px 26px; border-radius: 18px; background: rgb(16 22 38 / .72); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 157 54 / .45); align-self: center; } .proof-copy span { font-size: 15px; opacity: .8; } .proof-copy b { font-weight: 500; font-size: clamp(24px, 2.4vw, 34px); line-height: 1.15; letter-spacing: -.02em; } .proof-copy em { font-style: normal; font: 400 14px/1.3 var(--mono); color: #6ee7b7; }
+  .proof-page { position: relative; z-index: 1; border-radius: 16px; overflow: hidden; box-shadow: 0 0 120px 6px rgb(255 157 54 / .2), 0 40px 80px -30px #000; } .proof-page img { width: 100%; height: auto; }
+  .tie { width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 2; } .tie path { stroke-dasharray: 1; filter: drop-shadow(0 0 6px var(--brand-deep)); }
   .js .proof[data-in] { opacity: 1; transform: none; } .js .proof .proof-copy, .js .proof .proof-page { opacity: 0; } .js .proof .tie path { stroke-dashoffset: 1; } .js .proof.in .proof-copy { opacity: 1; transition: opacity .6s var(--ease); } .js .proof.in .proof-page { opacity: 1; transition: opacity .7s var(--ease) .15s; } .js .proof.in .tie path { stroke-dashoffset: 0; transition: stroke-dashoffset 1.2s cubic-bezier(.45, 0, .2, 1) .45s; }
   /* Community: a laptop on the globe and a phone in front of it, each on a different theme. */
-  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: 0 0 0 var(--pad); min-height: 660px; background: #520116; } .p-copy { display: grid; gap: 18px; justify-items: start; padding-block: var(--pad); max-width: 440px; } .publish :global(.btn) { --chip: var(--tint); } .publish > :global(.art) { z-index: -1; } .publish > :global(.art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #520116 34%, rgb(82 1 22 / 0) 62%); }
+  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: 0 0 0 var(--pad); min-height: 660px; background: #4c0620; } .p-copy { display: grid; gap: 18px; justify-items: start; padding-block: var(--pad); max-width: 440px; } .publish > :global(.art) { z-index: -1; } .publish > :global(.art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #4c0620 34%, rgb(76 6 32 / 0) 62%); }
   /* The laptop keeps moving between real communities, each one's own site under its own name. */
   .cyc { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; animation: cyc 24s var(--ease) calc(4s + var(--i) * 4s) infinite; } @keyframes cyc { 0% { opacity: 0; } 3% { opacity: 1; } 17% { opacity: 1; } 20% { opacity: 0; } }
   .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }

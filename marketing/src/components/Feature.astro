@@ -1,9 +1,9 @@
 ---
 // One capability: art or a colour field, the case for it, and whatever shows it, passed in as the default slot.
 import Art from "./Art.astro";
-const { id, field, art, scrim = "--sc:3 44 66", chip, title, text, flip = false, class: cls = "" } = Astro.props;
+const { id, field, art, scrim = "--sc:6 36 54", title, text, flip = false, class: cls = "" } = Astro.props;
 ---
-<section id={id} class:list={["panel", "f", cls, { flip }]} style={`--tint:${chip}`}>
+<section id={id} class:list={["panel", "f", cls, { flip }]}>
   <i class={`field f-${field}`} aria-hidden="true"></i>{art && <Art name={art} class="dim" style={scrim} sizes="(max-width: 1280px) 100vw, 1280px" />}
   <div class="copy"><h2>{title}</h2><p class="lead">{text}</p><slot name="extra" /></div>
   <div class="view" data-in><slot /></div>

@@ -29,7 +29,7 @@ const faq = [
   <RoleDoors />
   <section class="panel rev" id="publish"><Art name="back-loop" pos="50% 100%" /><div class="r-copy"><h2>Review it together before anyone reads it</h2><p class="lead">Publishing to your community is a team decision. Creators submit what they've written, and an editor publishes it or sends it back.</p></div><ReviewFlow story="back" /></section>
   <Faq items={faq} />
-  <section class="bleed close" style="--tint:#047857"><Art name="close-green" pos="50% 100%" /><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
+  <section class="bleed close"><Art name="close-green" pos="50% 100%" /><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
 </Base>
 <style>
   .merge { display: grid; gap: 28px; padding: var(--pad); } .m-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
@@ -40,7 +40,7 @@ const faq = [
     @keyframes file-go { to { translate: 440px calc((2.5 - var(--i)) * 50px); scale: .5; opacity: 0; visibility: hidden; } } @keyframes gone { to { opacity: 0; } } @keyframes one-grows { to { translate: -170px 0; scale: 1.18; } } }
   @media (max-width: 900px) { .m-head, .m-flow { grid-template-columns: minmax(0, 1fr); } .lines { display: none; } .files { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin-bottom: 12px; } .files li { font-size: 13px; padding-inline: 8px; gap: 6px; } }
   @media (max-width: 480px) { .files { grid-template-columns: minmax(0, 1fr); } }
-  .rev { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding: var(--pad); min-height: 560px; } .r-copy { display: grid; gap: 18px; } .rev { background: #240d03; min-height: min(56vw, 720px); align-items: start; padding-top: clamp(32px, 3.4vw, 48px); padding-bottom: clamp(200px, 15vw, 220px); } @media (max-width: 1100px) { .rev { padding-bottom: var(--pad); align-items: center; } .rev > :global(.art) { opacity: .4; } } @media (max-width: 900px) { .rev { grid-template-columns: minmax(0, 1fr); } }
+  .rev { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding: var(--pad); min-height: 560px; } .r-copy { display: grid; gap: 18px; } .rev { background: #021206; min-height: min(56vw, 720px); align-items: start; padding-top: clamp(32px, 3.4vw, 48px); padding-bottom: clamp(200px, 15vw, 220px); } @media (max-width: 1100px) { .rev { padding-bottom: var(--pad); align-items: center; } .rev > :global(.art) { opacity: .4; } } @media (max-width: 900px) { .rev { grid-template-columns: minmax(0, 1fr); } }
   /* Every copy of the spreadsheet drifts into the one shared screening. */
   :global(.js) .m-flow[data-in] { opacity: 1; transform: none; } :global(.js) .m-flow .files li { opacity: 0; transform: translateX(-24px); } :global(.js) .m-flow.in .files li { opacity: 1; transform: none; transition: opacity .6s var(--ease) calc(var(--i) * .07s), transform .7s var(--ease) calc(var(--i) * .07s); } :global(.js) .m-flow .lines { clip-path: inset(0 100% 0 0); } :global(.js) .m-flow.in .lines { clip-path: inset(0); transition: clip-path 1s var(--ease) .4s; } :global(.js) .m-flow :global(.one) { opacity: 0; transform: translateX(30px) scale(.98); } :global(.js) .m-flow.in :global(.one) { opacity: 1; transform: none; transition: opacity .8s var(--ease) .7s, transform 1s var(--ease) .7s; }
 </style>
