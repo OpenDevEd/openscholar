@@ -1,0 +1,47 @@
+---
+// Hero to compare: seven full-height panels side by side. The workspace takes the wide one; each community is a pillar with its word running up it. Delete once one is picked.
+import Base from "../../layouts/Base.astro";
+import Art from "../../components/Art.astro";
+import AskBar from "../../components/AskBar.astro";
+import Arrow from "../../components/Arrow.astro";
+import Fill from "../../components/Fill.astro";
+import { COMMUNITIES } from "../../data/site.mjs";
+---
+<Base top="#01072c" title="Hero 8: OpenScholar" description="Hero option">
+  <section class="bleed h">
+    <div class="left">
+      <div class="os">
+        <Art name="hero-deep" eager />
+        <h1><Fill tex="sea" class="w">OpenScholar</Fill> <span>is where your team works through the evidence</span></h1>
+        <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+      </div>
+      <div class="ec light">
+        <Art name="ec-light" />
+        <h2><Fill tex="tx-glass" flat base="#0a1a4f" class="e">Evidence Communities</Fill> <span>are where anyone can read it</span></h2>
+        <a class="all" href="/evidence-communities/">How they work<Arrow /></a>
+      </div>
+    </div>
+    <ul>{COMMUNITIES.map((c) => <li><a href={c.url}><img src={`/img/art-scene-${c.key}-960.avif`} width="960" height="960" decoding="async" alt="" />{c.name !== c.word && <b>{c.name}</b>}<Fill tex={`tx-${c.key}-960`} base={c.color} class="v">{c.word}</Fill></a></li>)}</ul>
+  </section>
+</Base>
+<style>
+  .h { --hu: 1px; display: grid; grid-template-columns: minmax(0, 1fr); background: #01072c; }
+  .left { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  .os { position: relative; isolation: isolate; overflow: clip; display: grid; justify-items: start; align-content: end; gap: calc(var(--hu) * 18); padding: 104px var(--pad) 32px; background: #01072c; color: #fff; container-type: inline-size; } .os > :global(.art) { inset: 0; z-index: -1; }
+  h1 { display: grid; gap: calc(var(--hu) * 10); font-weight: 500; } :global(.w) { font-size: calc((100cqw - var(--pad) * 2) / 5.35); } h1 span { font-size: max(22px, calc(var(--hu) * 34)); letter-spacing: -.025em; line-height: 1.12; color: #a9bbe6; text-wrap: balance; } .os :global(.big) { width: 100%; } .os :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); }
+  .ec { position: relative; isolation: isolate; overflow: clip; display: grid; justify-items: start; align-content: center; gap: calc(var(--hu) * 8); padding: 28px var(--pad); background: var(--soft); color: var(--ink); container-type: inline-size; } .ec > :global(.art) { inset: 0 -70% 0 0; z-index: -1; }
+  h2 { display: grid; gap: calc(var(--hu) * 6); font-weight: 500; } :global(.e) { --blend: normal; font-size: calc((100cqw - var(--pad) * 2) / 9.42); } h2 span { font-size: max(19px, calc(var(--hu) * 26)); letter-spacing: -.02em; line-height: 1.15; color: var(--t2); } .all { display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: max(14px, calc(var(--hu) * 15)); transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
+  ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; padding-top: 2px; } li { min-width: 0; min-height: 0; } li a { position: relative; isolation: isolate; display: grid; align-content: space-between; gap: 8px; height: 100%; min-height: 62vw; padding: 12px; overflow: clip; color: #fff; } li img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 30%; transition: transform .7s var(--ease), filter .4s var(--ease); } li a::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(rgb(1 7 44 / .55), transparent 34%, transparent 50%, rgb(1 7 44 / .75)); } li a:hover img { transform: scale(1.05); filter: brightness(1.12); }
+  li b { font-weight: 500; font-size: 13px; line-height: 1.2; letter-spacing: -.005em; text-wrap: balance; } :global(.v) { grid-row: 2; font-size: 8vw; }
+  @media (min-width: 1000px) {
+    .h { --strip: min(100vw - var(--pad) * 2, max(1248px, (100svh - 32px) * 1.44)); --edge: calc((100vw - var(--strip)) / 2); --hu: max(.62px, min(var(--strip) / 1248, (100svh - 32px) / 868)); height: max(620px, calc(100svh - 32px)); grid-template-columns: minmax(0, 47fr) minmax(0, 53fr); grid-template-rows: minmax(0, 1fr); }
+    .left { grid-template-rows: minmax(0, 1fr) auto; }
+    .os { padding: max(88px, calc(var(--hu) * 96)) calc(var(--hu) * 40) calc(var(--hu) * 36) var(--edge); } :global(.w) { font-size: calc((100cqw) / 5.35); }
+    .ec { padding: calc(var(--hu) * 26) calc(var(--hu) * 40) calc(var(--hu) * 26) var(--edge); } :global(.e) { font-size: calc((100cqw) / 9.42); }
+    h1 span { font-size: calc(var(--hu) * 32); } h2 span { font-size: calc(var(--hu) * 24); }
+    .os :global(.big .mk), .os :global(.big .btn) { zoom: max(1, tan(atan2(var(--hu), 1px))); }
+    ul { grid-template-columns: repeat(6, minmax(0, 1fr)); padding: 0 0 0 2px; } li a { min-height: 0; align-content: stretch; grid-template-rows: auto minmax(0, 1fr); padding: max(84px, calc(var(--hu) * 92)) calc(var(--hu) * 10) calc(var(--hu) * 16); }
+    li b { font-size: max(11px, calc(var(--hu) * 13)); }
+    :global(.v) { align-self: end; justify-self: center; writing-mode: vertical-rl; rotate: 180deg; font-size: calc(var(--hu) * 92); line-height: 1; }
+  }
+</style>

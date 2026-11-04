@@ -1,0 +1,39 @@
+---
+// Hero to compare: an index set in type. The workspace on navy, and the communities as six huge words on paper, each printed in its own material, with the scene behind it when you point at the line. Delete once one is picked.
+import Base from "../../layouts/Base.astro";
+import Art from "../../components/Art.astro";
+import AskBar from "../../components/AskBar.astro";
+import Arrow from "../../components/Arrow.astro";
+import Fill from "../../components/Fill.astro";
+import { COMMUNITIES } from "../../data/site.mjs";
+---
+<Base top="#01072c" title="Hero 9: OpenScholar" description="Hero option">
+  <section class="bleed h">
+    <div class="os">
+      <Art name="hero-deep" eager />
+      <h1><Fill tex="sea" class="w">OpenScholar</Fill> <span>is where your team works through the evidence</span></h1>
+      <p>Find the literature, screen it against your criteria and extract the data you need.</p>
+      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+    </div>
+    <div class="ec light">
+      <div class="t"><h2><b>Evidence Communities</b> are where anyone can read it</h2><a class="all" href="/evidence-communities/">How they work<Arrow /></a></div>
+      <ul>{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url}><img src={`/img/art-scene-${c.key}-960.avif`} width="960" height="960" loading="lazy" decoding="async" alt="" /><Fill tex={`tx-${c.key}-960`} base={`color-mix(in srgb, ${c.color} 58%, #071238)`} class="word">{c.word}</Fill><span class="n"><b>{c.name}</b><span>{c.host}</span></span></a></li>)}</ul>
+    </div>
+  </section>
+</Base>
+<style>
+  .h { --hu: 1px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  .os { position: relative; isolation: isolate; overflow: clip; display: grid; justify-items: start; align-content: center; gap: calc(var(--hu) * 18); padding: 104px var(--pad) 36px; background: #01072c; color: #fff; container-type: inline-size; } .os > :global(.art) { inset: 0; z-index: -1; }
+  h1 { display: grid; gap: calc(var(--hu) * 10); font-weight: 500; } :global(.w) { font-size: calc((100cqw - var(--pad) * 2) / 5.35); } h1 span { font-size: max(24px, calc(var(--hu) * 36)); letter-spacing: -.025em; line-height: 1.12; color: #a9bbe6; text-wrap: balance; } .os p { font-size: max(15px, calc(var(--hu) * 18)); line-height: 1.35; opacity: .86; } .os :global(.big) { width: 100%; } .os :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); }
+  .ec { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; background: var(--soft); color: var(--ink); min-width: 0; } .t { display: grid; justify-items: start; gap: 6px; padding: 28px var(--pad) 12px; } h2 { font-weight: 500; font-size: clamp(22px, 5.4vw, calc(var(--hu) * 28)); letter-spacing: -.025em; line-height: 1.1; color: var(--t2); } h2 b { font-weight: inherit; color: var(--ink); } .all { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--t2); font-size: max(14px, calc(var(--hu) * 15)); transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
+  ul { display: grid; min-height: 0; } li { min-height: 0; } li a { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; gap: 2px; height: 100%; padding: 8px var(--pad); overflow: clip; }
+  li img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 40%; opacity: 0; transition: opacity .3s var(--ease); }
+  :global(.word) { --blend: multiply; font-size: 14.4vw; line-height: 1.02; transition: filter .3s var(--ease); } .n { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; } .n b { font-weight: 500; font-size: 13px; letter-spacing: -.005em; } .n span { color: var(--t2); font: 400 11px/1.2 var(--mono); transition: color .25s var(--ease); } .n b { transition: color .25s var(--ease); }
+  @media (hover: hover) { li a:hover img { opacity: 1; } li a:hover :global(.word) { --blend: screen; } li a:hover .n b, li a:hover .n span { color: #fff; } }
+  @media (min-width: 1000px) {
+    .h { --strip: min(100vw - var(--pad) * 2, max(1248px, (100svh - 32px) * 1.44)); --edge: calc((100vw - var(--strip)) / 2); --hu: max(.62px, min(var(--strip) / 1248, (100svh - 32px) / 868)); height: max(620px, calc(100svh - 32px)); grid-template-columns: minmax(0, 46fr) minmax(0, 54fr); grid-template-rows: minmax(0, 1fr); }
+    .os { padding: max(88px, calc(var(--hu) * 96)) calc(var(--hu) * 44) calc(var(--hu) * 36) var(--edge); } :global(.w) { font-size: calc(100cqw / 5.35); } .os :global(.big .mk), .os :global(.big .btn) { zoom: max(1, tan(atan2(var(--hu), 1px))); }
+    .ec { grid-template-rows: auto minmax(0, 1fr); } .t { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: max(88px, calc(var(--hu) * 92)) var(--edge) calc(var(--hu) * 6) calc(var(--hu) * 40); }
+    ul { grid-template-rows: repeat(6, minmax(0, 1fr)); } li a { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: calc(var(--hu) * 24); padding: 0 var(--edge) 0 calc(var(--hu) * 40); } :global(.word) { font-size: calc(var(--hu) * 84); line-height: 1; } .n { display: grid; justify-self: end; justify-items: end; gap: 2px; max-width: calc(var(--hu) * 190); text-align: right; } .n b { font-size: max(12px, calc(var(--hu) * 14)); line-height: 1.2; text-wrap: balance; } .n span { font-size: max(10px, calc(var(--hu) * 11)); white-space: nowrap; overflow: clip; text-overflow: ellipsis; max-width: 100%; }
+  }
+</style>
