@@ -111,10 +111,11 @@ finish, assistant, plans, `/connect` and Zotero. Note how long each step takes.
 1. Holding page on the apex and stop Stripe's webhook. Wait until no screening job is
    `processing`: the upgrade marks any paper still running as skipped.
 2. Export live and keep it. Note who bought credits.
-3. Merge `dev` into `main`. Import, then push to prod with validation off, by editing
-   `convex/schema.ts` the way `push-dev.sh` does. Run the upgrade and `screeningOutcomes`,
-   `screeningSearch`, `makerCounts`, `pagedAccountLists` and `placeRatings`. Push again with
-   validation on.
+3. Push old `main`'s code to prod with validation off and import with `--replace-all`, as
+   `rehearse.sh` does: the rehearsal leaves `dev`'s schema there, which refuses live's rows.
+   Merge `dev` into `main`, then push it with validation off, by editing `convex/schema.ts`
+   the way `push-dev.sh` does. Run the upgrade and `screeningOutcomes`, `screeningSearch`,
+   `makerCounts`, `pagedAccountLists` and `placeRatings`. Push again with validation on.
 4. Copy `aiModelConfig` and `featureFlags` from shared dev with
    `npx convex import --table <table> --format jsonLines --replace`, without `_id` or
    `_creationTime`. Don't use `featureFlags/internal:seed`: it leaves the assistant off.
