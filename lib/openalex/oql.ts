@@ -26,7 +26,7 @@ export function filterPaths(value: object, path: string[] = [], result: Record<s
  * filters when more clauses are added.
  */
 function splitOql(query: string): { where: string; sample: string } {
-  const match = query.trim().match(/^(?:(?:get\s+)?works\b\s*(?:where\b)?)?\s*([\s\S]*?)\s*(sample\s+\d+(?:\s+seed\s+\d+)?)?$/i);
+  const match = query.trim().match(/^(?:get\s+works\b\s*(?:where\b|(?=sample\b|$))|works\b\s*(?:where\b)?)?\s*([\s\S]*?)\s*(sample\s+\d+(?:\s+seed\s+\d+)?)?$/i);
   return { where: match?.[1] ?? "", sample: match?.[2] ?? "" };
 }
 

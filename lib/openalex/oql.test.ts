@@ -78,5 +78,7 @@ describe("worksOql", () => {
   it("takes the general form's get works where, so filters join it", () => {
     expect(worksOql("get works where year is (2024)", { type: "article" })).toBe("works where (year is (2024)) and type is (article)");
     expect(worksOql("get works", { type: "article" })).toBe("works where type is (article)");
+    // A sentence stays whole, for the search to say how to write it.
+    expect(worksOql("get works about kelp", { type: "article" })).toBe("works where (get works about kelp) and type is (article)");
   });
 });
