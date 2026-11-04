@@ -357,8 +357,6 @@
     "verifySave": "Verify and save"
   },
   "auth": {
-    "organizationFeatureTitle": "Not allowed",
-    "organizationFeatureDescription": "Evidence Communities are turned on for an organisation by request. Email {email}.",
     "backToSearch": "Back to search",
     "loadingTitle": "Loading workspace",
     "loadingDescription": "Preparing your authenticated workspace.",

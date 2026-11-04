@@ -357,8 +357,6 @@
     "verifySave": "Gaan na en stoor"
   },
   "auth": {
-    "organizationFeatureTitle": "Nie toegelaat nie",
-    "organizationFeatureDescription": "Evidence Communities word op versoek vir ’n organisasie aangeskakel. E-pos {email}.",
     "backToSearch": "Terug na soektog",
     "loadingTitle": "Laai werkruimte",
     "loadingDescription": "Berei jou geverifieerde werkruimte voor.",

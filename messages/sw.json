@@ -357,8 +357,6 @@
     "verifySave": "Thibitisha na uhifadhi"
   },
   "auth": {
-    "organizationFeatureTitle": "Hairuhusiwi",
-    "organizationFeatureDescription": "Evidence Communities huwashwa kwa shirika kwa ombi. Tuma barua pepe kwa {email}.",
     "backToSearch": "Rudi kwenye utafutaji",
     "loadingTitle": "Inapakia nafasi kazi",
     "loadingDescription": "Inaandaa nafasi yako kazi iliyothibitishwa.",

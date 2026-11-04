@@ -357,8 +357,6 @@
     "verifySave": "Qinisekisa bese ugcina"
   },
   "auth": {
-    "organizationFeatureTitle": "Akuvunyelwe",
-    "organizationFeatureDescription": "I-Evidence Communities ivulelwa inhlangano ngesicelo. Thumela i-imeyili ku-{email}.",
     "backToSearch": "Buyela ekusesheni",
     "loadingTitle": "Iyalayisha isikhala sokusebenzela",
     "loadingDescription": "Silungiselela isikhala sakho sokusebenzela esiqinisekisiwe.",

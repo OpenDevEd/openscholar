@@ -357,8 +357,6 @@
     "verifySave": "Verificar y guardar"
   },
   "auth": {
-    "organizationFeatureTitle": "No permitido",
-    "organizationFeatureDescription": "Las Evidence Communities se activan para una organización a petición. Escribe a {email}.",
     "backToSearch": "Volver a la búsqueda",
     "loadingTitle": "Cargando el espacio de trabajo",
     "loadingDescription": "Preparando su espacio de trabajo autenticado.",

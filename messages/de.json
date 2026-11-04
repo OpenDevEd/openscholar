@@ -357,8 +357,6 @@
     "verifySave": "Prüfen und speichern"
   },
   "auth": {
-    "organizationFeatureTitle": "Nicht erlaubt",
-    "organizationFeatureDescription": "Evidence Communities werden auf Anfrage für eine Organisation aktiviert. E-Mail an {email}.",
     "backToSearch": "Zurück zur Suche",
     "loadingTitle": "Arbeitsbereich wird geladen",
     "loadingDescription": "Ihr angemeldeter Arbeitsbereich wird vorbereitet.",

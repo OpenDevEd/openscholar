@@ -357,8 +357,6 @@
     "verifySave": "验证并保存"
   },
   "auth": {
-    "organizationFeatureTitle": "无权访问",
-    "organizationFeatureDescription": "Evidence Communities 按申请为组织开启。请发送邮件至 {email}。",
     "backToSearch": "返回搜索",
     "loadingTitle": "加载工作区",
     "loadingDescription": "准备您的认证工作区。",
