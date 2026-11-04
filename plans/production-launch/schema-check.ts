@@ -33,3 +33,4 @@ for (const n of names) {
   if (b) { console.log(`BAD ${n}: ${b} of ${lines.length}`); for (const [k, c] of [...out].slice(0, 6)) console.log(`   ${c}x ${k}`); }
 }
 console.log(`checked ${rows} rows in ${names.length} tables, ${bad} fail`);
+if (bad > 0) process.exitCode = 1;
