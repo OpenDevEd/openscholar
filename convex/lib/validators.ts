@@ -73,10 +73,7 @@ export const apiKeyProviderValidator = v.union(
 /** Most API keys one person stores: saving a provider's key replaces the one before. */
 export const MAX_API_KEYS_PER_USER = apiKeyProviderValidator.members.length;
 
-export const analyticsConsentValidator = v.object({
-  choice: v.union(v.literal("granted"), v.literal("denied")),
-  at: v.number(),
-});
+export const analyticsChoiceValidator = v.union(v.literal("granted"), v.literal("denied"));
 
 export const userFields = {
   clerkId: v.string(),
@@ -89,7 +86,7 @@ export const userFields = {
   state: userStateValidator,
   lastLoginAt: v.optional(v.number()),
   /** Their latest answer to the cookie banner, on any device. Without "granted", analytics from the server don't name them (./analytics.ts). */
-  analyticsConsent: v.optional(analyticsConsentValidator),
+  analyticsConsent: v.optional(v.object({ choice: analyticsChoiceValidator, at: v.number() })),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

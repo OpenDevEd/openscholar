@@ -1,6 +1,7 @@
 import { mutation } from "../lib/functions";
-import { v } from "convex/values";
-import { analyticsConsentValidator } from "../lib/validators";
+import { v, type Infer } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
+import { analyticsChoiceValidator } from "../lib/validators";
 import { requireAuth } from "../lib/auth";
 import { createUserWithDefaults, ensureBillingAccount } from "../lib/userCreation";
 import { createError } from "../lib/errors";
@@ -23,10 +24,19 @@ export const updateProfile = mutation({
   },
 });
 
+/**
+ * A browser's stored cookie banner answer as someone signs in. A rejection always holds. An acceptance only fills an
+ * account with no answer, since it may be older than a rejection made elsewhere: when unsure, they aren't named.
+ */
+function consentAtSignIn(saved: Doc<"users">["analyticsConsent"], stored?: Infer<typeof analyticsChoiceValidator>) {
+  if (!stored || stored === saved?.choice || (saved && stored === "granted")) return saved;
+  return { choice: stored, at: Date.now() };
+}
+
 export const ensureUser = mutation({
-  args: {},
+  args: { analyticsConsent: v.optional(analyticsChoiceValidator) },
   returns: v.id("users"),
-  handler: async (ctx) => {
+  handler: async (ctx, { analyticsConsent }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw createError("UNAUTHENTICATED", "Authentication required");
 
@@ -51,7 +61,8 @@ export const ensureUser = mutation({
         lastName?: string;
         avatarUrl?: string;
         updatedAt?: number;
-      } = { lastLoginAt };
+        analyticsConsent?: Doc<"users">["analyticsConsent"];
+      } = { lastLoginAt, analyticsConsent: consentAtSignIn(existing.analyticsConsent, analyticsConsent) };
 
       if (!existing.email && identity.email) patch.email = identity.email;
       if (!existing.firstName && identity.givenName) patch.firstName = identity.givenName;
@@ -72,18 +83,18 @@ export const ensureUser = mutation({
       firstName: identity.givenName,
       lastName: identity.familyName,
       avatarUrl: identity.pictureUrl,
+      analyticsConsent: consentAtSignIn(undefined, analyticsConsent),
     });
   },
 });
 
-/** Keeps someone's cookie banner answer on their account. An older answer from another device doesn't replace a newer one. */
+/** Someone just answered the cookie banner while signed in: that's their answer now, on every device. */
 export const saveAnalyticsConsent = mutation({
-  args: analyticsConsentValidator.fields,
+  args: { choice: analyticsChoiceValidator },
   returns: v.null(),
-  handler: async (ctx, { choice, at }) => {
+  handler: async (ctx, { choice }) => {
     const user = await requireAuth(ctx);
-    if (user.analyticsConsent && user.analyticsConsent.at >= at) return null;
-    await ctx.db.patch("users", user._id, { analyticsConsent: { choice, at } });
+    await ctx.db.patch("users", user._id, { analyticsConsent: { choice, at: Date.now() } });
     return null;
   },
 });

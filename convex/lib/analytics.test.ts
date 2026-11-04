@@ -100,17 +100,28 @@ describe("analytics.capture", () => {
     }
   });
 
-  it("keeps the latest banner answer, whichever device sends it last", async () => {
+  it("takes a new banner answer as it comes, and at sign-in lets a rejection hold over an older acceptance", async () => {
     const t = convexTest(schema);
-    await addUser(t, "user_a");
     const person = t.withIdentity({ subject: "user_a" });
-    const saved = () => t.run(async (ctx) => (await ctx.db.query("users").first())?.analyticsConsent);
+    const saved = async () => (await t.run(async (ctx) => (await ctx.db.query("users").first())?.analyticsConsent))?.choice;
 
-    await person.mutation(api.users.mutations.saveAnalyticsConsent, { choice: "granted", at: 10 });
-    await person.mutation(api.users.mutations.saveAnalyticsConsent, { choice: "denied", at: 20 });
-    await person.mutation(api.users.mutations.saveAnalyticsConsent, { choice: "granted", at: 15 });
-
-    expect(await saved()).toEqual({ choice: "denied", at: 20 });
+    // A new account takes what the browser already holds.
+    await person.mutation(api.users.mutations.ensureUser, { analyticsConsent: "granted" });
+    expect(await saved()).toBe("granted");
+    // Rejected in a browser while signed out, then signed in.
+    await person.mutation(api.users.mutations.ensureUser, { analyticsConsent: "denied" });
+    expect(await saved()).toBe("denied");
+    // Another browser's older acceptance doesn't undo that.
+    await person.mutation(api.users.mutations.ensureUser, { analyticsConsent: "granted" });
+    expect(await saved()).toBe("denied");
+    // Pressing Accept does, and so does pressing Reject again.
+    await person.mutation(api.users.mutations.saveAnalyticsConsent, { choice: "granted" });
+    expect(await saved()).toBe("granted");
+    await person.mutation(api.users.mutations.saveAnalyticsConsent, { choice: "denied" });
+    expect(await saved()).toBe("denied");
+    // A browser with no answer changes nothing.
+    await person.mutation(api.users.mutations.ensureUser, {});
+    expect(await saved()).toBe("denied");
   });
 
   it("sends nothing where PostHog isn't set up", async () => {
