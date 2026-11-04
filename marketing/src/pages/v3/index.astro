@@ -1,6 +1,7 @@
 ---
 // Hero to compare: headline and button on the left, a real product screen on the right, and the real site of every community along the foot, each opening it. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
+import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
 import { APP, COMMUNITIES } from "../../data/site.mjs";
 ---
@@ -11,7 +12,7 @@ import { APP, COMMUNITIES } from "../../data/site.mjs";
       <div class="c">
         <h1>The evidence workspace for research teams</h1>
         <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
-        <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
+        <div class="acts"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /><a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a></div>
       </div>
       <a class="w" href={APP} aria-label="Try OpenScholar"><img src="/img/screens/screen-laptop-dark-1000.avif" width="1000" height="625" fetchpriority="high" alt="" /></a>
     </div>
@@ -23,9 +24,9 @@ import { APP, COMMUNITIES } from "../../data/site.mjs";
 </Base>
 <style>
   .hero { padding-top: 112px; background: #040b2e; } .hero > .field { position: absolute; inset: 0; z-index: -2; }
-  .top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; } .c { display: grid; justify-items: start; align-content: center; gap: 20px; padding-bottom: 32px; } .cta { height: 60px; padding-inline: 26px 10px; font-size: 18px; margin-top: 4px; } h1 { font-size: clamp(40px, 4.6vw, 62px); }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; } .c { display: grid; justify-items: start; align-content: center; gap: 20px; padding-bottom: 32px; } .acts { display: grid; justify-items: start; gap: 10px; width: 100%; margin-top: 4px; } .acts :global(.big) { width: 100%; } .cta { height: 64px; padding-inline: 26px 12px; font-size: 18px; } h1 { font-size: clamp(40px, 4.6vw, 62px); }
   .w { display: block; max-height: 300px; overflow: clip; border-radius: 16px 16px 0 0; box-shadow: 0 0 0 1px rgb(255 255 255 / .18), 0 40px 70px -30px #000; } .w img { display: block; width: 100%; height: auto; max-width: none; }
   .ec { padding: 24px 0 28px; background: var(--soft); color: var(--ink); } .t { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; } h2 { font-size: 24px; letter-spacing: -.02em; line-height: 1.2; } .all { display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
   ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; margin-top: 14px; } li { min-width: 0; } li a { display: grid; gap: 8px; } .f { display: block; aspect-ratio: 16 / 10; border-radius: 10px; overflow: clip; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 16px 26px -20px rgb(10 26 63 / .55); transition: box-shadow .2s var(--ease); } li a:hover .f { box-shadow: 0 0 0 2px var(--brand), 0 16px 26px -20px rgb(10 26 63 / .55); } .f img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 0 0; max-width: none; } li b { font-weight: 500; font-size: 14px; line-height: 1.22; letter-spacing: -.005em; }
-  @media (min-width: 1000px) { .top { grid-template-columns: minmax(0, 1fr) 600px; gap: 48px; } .c { padding-bottom: 48px; } .w { height: 360px; max-height: none; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  @media (min-width: 1000px) { .top { grid-template-columns: minmax(0, 1fr) 600px; gap: 48px; } .c { padding-bottom: 48px; } .w { height: 400px; max-height: none; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 </style>

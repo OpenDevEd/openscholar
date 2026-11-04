@@ -26,5 +26,5 @@ const { id = "ask", typing = false, mark = false, class: cls = "", label = "Sear
   .ask { display: flex; align-items: center; gap: 8px; width: min(600px, 100%); padding: 6px 6px 6px 18px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 20px 40px -18px rgb(10 20 60 / .55); } .ask:focus-within { box-shadow: 0 0 0 3px rgb(255 255 255 / .7), 0 20px 40px -18px rgb(10 20 60 / .55); }
   .mk { flex: none; width: 28px; height: 28px; }
   input { flex: 1; min-width: 0; height: 52px; background: none; border: 0; outline: 0; font-size: 16px; text-overflow: ellipsis; } input::placeholder { color: var(--t3); }
-  @media (max-width: 500px) { input::placeholder { font-size: 13.5px; } .ask { padding-left: 14px; } .ask button { padding-left: 8px; } .ask button span { display: none; } }
+  @media (max-width: 500px) { input::placeholder { font-size: 13px; } .ask { padding-left: 12px; gap: 6px; } .mk { width: 24px; height: 24px; } .ask button { padding-left: 8px; } .ask button span { display: none; } }
 </style>

@@ -2,6 +2,7 @@
 // Hero to compare: the button to OpenScholar in the centre, the site's rainbow ribbon behind, and every community as a glass tile along the foot. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import Art from "../../components/Art.astro";
+import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
 import { APP, COMMUNITIES } from "../../data/site.mjs";
 ---
@@ -11,7 +12,7 @@ import { APP, COMMUNITIES } from "../../data/site.mjs";
     <div class="inner c">
       <h1>The evidence workspace for research teams</h1>
       <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
-      <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
+      <div class="acts"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /><a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a></div>
     </div>
     <div class="inner"><div class="ec">
       <h2>Or read the evidence in a live community</h2>
@@ -21,8 +22,8 @@ import { APP, COMMUNITIES } from "../../data/site.mjs";
 </Base>
 <style>
   .hero { padding: 128px 0 32px; background: #040b2e; } .hero > :global(.art) { z-index: -1; -webkit-mask-image: linear-gradient(transparent 22%, #000 52%); mask-image: linear-gradient(transparent 22%, #000 52%); }
-  .c { display: grid; justify-items: center; gap: 20px; text-align: center; } h1 { max-width: 13em; } .cta { height: 60px; padding-inline: 26px 10px; font-size: 18px; margin-top: 4px; }
-  .ec { display: grid; gap: 14px; margin-top: 148px; } h2 { font-size: 22px; letter-spacing: -.015em; line-height: 1.2; text-align: center; }
+  .c { display: grid; justify-items: center; gap: 20px; text-align: center; } h1 { max-width: 13em; } .acts { display: grid; gap: 10px; width: min(100%, 780px); margin-top: 4px; justify-items: center; } .acts :global(.big) { width: 100%; } .cta { height: 64px; padding-inline: 26px 12px; font-size: 18px; white-space: nowrap; }
+  .ec { display: grid; gap: 14px; margin-top: 112px; } h2 { font-size: 22px; letter-spacing: -.015em; line-height: 1.2; text-align: center; }
   ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } li { min-width: 0; } li a { display: grid; grid-template-rows: auto 1fr auto; justify-items: start; gap: 10px; height: 100%; padding: 16px; border-radius: 18px; background: rgb(6 12 48 / .72); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4); box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .12); transition: background .2s var(--ease); } li a:hover { background: rgb(20 30 86 / .86); } li img { width: 52px; height: 52px; object-fit: contain; filter: saturate(1.4); } li b { font-weight: 500; font-size: 15px; line-height: 1.22; letter-spacing: -.005em; } li a :global(i) { display: grid; transition: transform .25s var(--ease); } li a:hover :global(i) { transform: translateX(4px); }
-  @media (min-width: 1000px) { ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+  @media (min-width: 1000px) { .acts { grid-template-columns: minmax(0, 1fr) auto; } ul { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 </style>

@@ -2,6 +2,7 @@
 // Hero to compare: OpenScholar on the left with its button and search, every community on a glass panel on the right. Built like the Communities and Teams heroes. Delete once one is picked.
 import Base from "../../layouts/Base.astro";
 import Art from "../../components/Art.astro";
+import AskBar from "../../components/AskBar.astro";
 import Arrow from "../../components/Arrow.astro";
 import { APP, COMMUNITIES } from "../../data/site.mjs";
 ---
@@ -12,7 +13,7 @@ import { APP, COMMUNITIES } from "../../data/site.mjs";
       <div class="c">
         <h1>The evidence workspace for research teams</h1>
         <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
-        <a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a>
+        <div class="acts"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /><a class="btn cta" href={APP}>Try OpenScholar<Arrow /></a></div>
       </div>
       <div class="ec">
         <h2>Evidence Communities</h2>
@@ -24,7 +25,7 @@ import { APP, COMMUNITIES } from "../../data/site.mjs";
 </Base>
 <style>
   .hero { padding: 120px 0 64px; background: #040b2e; } .hero > .field { position: absolute; inset: 0; z-index: -2; } .hero > :global(.art) { z-index: -1; -webkit-mask-image: linear-gradient(90deg, transparent 30%, #000 72%); mask-image: linear-gradient(90deg, transparent 30%, #000 72%); }
-  .g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; } .c { display: grid; justify-items: start; align-content: center; gap: 20px; } .cta { height: 60px; padding-inline: 26px 10px; font-size: 18px; margin-top: 4px; }
+  .g { display: grid; grid-template-columns: minmax(0, 1fr); gap: 36px; } .c { display: grid; justify-items: start; align-content: center; gap: 20px; } .acts { display: grid; justify-items: start; gap: 10px; width: 100%; margin-top: 4px; } .acts :global(.big) { width: 100%; } .cta { height: 64px; padding-inline: 26px 12px; font-size: 18px; }
   .ec { padding: 24px; border-radius: 24px; background: rgb(4 12 50 / .74); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .12), 0 40px 80px -30px rgb(0 8 40 / .9); } h2 { font-size: 26px; letter-spacing: -.02em; line-height: 1.15; } .ec > p { margin-top: 4px; font-size: 15px; line-height: 1.4; color: #c8d3ee; }
   ul { display: grid; gap: 2px; margin: 12px -8px -8px; } li a { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px; border-radius: 14px; transition: background .2s var(--ease); } li a:hover { background: rgb(255 255 255 / .1); } li a > img { width: 44px; height: 44px; object-fit: contain; filter: saturate(1.4); } .n { display: grid; gap: 1px; min-width: 0; } .n b { font-weight: 500; font-size: 16px; line-height: 1.2; letter-spacing: -.01em; } .n span { font: 400 12px/1.3 var(--mono); color: #a9bbe6; overflow: clip; text-overflow: ellipsis; white-space: nowrap; } li a :global(i) { display: grid; transition: transform .25s var(--ease); } li a:hover :global(i) { transform: translateX(4px); }
   @media (min-width: 1000px) { .g { grid-template-columns: minmax(0, 1fr) 500px; gap: 56px; } }
