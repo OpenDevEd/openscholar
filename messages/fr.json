@@ -727,6 +727,8 @@
     "aiInsufficientCredits": "Vous n'avez pas assez de crédits IA.",
     "aiPlanEntitlement": "Cette fonctionnalité IA nécessite un plan supérieur.",
     "aiApiKeyRequired": "Connectez-vous pour des crédits gratuits, ou ajoutez une clé API dans les paramètres.",
+    "aiFreeLimit": "Vous avez utilisé vos questions de recherche gratuites du jour. Ajoutez des crédits pour continuer, ou réessayez demain.",
+    "aiFreeLimitSignedOut": "Vous avez utilisé vos questions de recherche gratuites du jour. Connectez-vous pour continuer, ou ajoutez une clé API dans les paramètres.",
     "aiProviderError": "Le fournisseur IA est indisponible pour le moment. Réessayez.",
     "aiKeyUnreachable": "Le fournisseur IA de votre clé est injoignable. Vérifiez votre connexion et réessayez.",
     "aiValidationError": "La réponse IA n'a pas pu être validée. Réessayez.",
@@ -3095,7 +3097,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# modèle} other {# modèles}}",
-      "creditsOrKey": "Crédits, ou la clé de l'utilisateur"
+      "creditsOrKey": "Crédits, ou la clé de l'utilisateur",
+      "free": {
+        "title": "Questions de recherche gratuites",
+        "today": "Aujourd'hui : {calls, plural, one {# appel} other {# appels}}, {cost}",
+        "switch": "Gratuit pour ceux qui ne peuvent pas payer",
+        "switchHint": "Rédiger gratuitement une requête à partir d'une question de recherche pour les visiteurs non connectés, sans crédits ou dont la clé a échoué",
+        "model": "Modèle",
+        "modelHint": "Fonctionne sur notre clé. Toute personne ayant des crédits garde son modèle et paie",
+        "modelMissing": "Ce modèle n'est plus disponible : les questions gratuites s'arrêtent tant que vous n'en choisissez pas un autre",
+        "pickModel": "Choisir un modèle",
+        "limits": {
+          "perAddress": "Par adresse, par jour (non connecté)",
+          "perPerson": "Par personne, par jour (connecté)",
+          "signedOutPerDay": "Tous les non-connectés, par jour",
+          "signedInPerDay": "Tous les connectés, par jour"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Accès à l'Evidence Community",

@@ -24,7 +24,7 @@ import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react'
 import { useSearchParams, usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { useEnhanceSearchQuery } from '@/lib/ai/client/router';
+import { useQuestionToQuery } from '@/lib/ai/client/question-query';
 import { localeToLanguageCode } from '@/lib/i18n/locale-map';
 import { useAppToast } from '@/lib/toast';
 import { getEffectiveSearchId } from '../utils';
@@ -50,7 +50,7 @@ interface SearchInitializerProps {
  * opens with no query and the question in its box, to try again from there.
  */
 function QuestionSearch({ question, entry, onWritten }: { question: string; entry: NewSearchResultData; onWritten: (query: string) => void }) {
-  const { execute, isReady } = useEnhanceSearchQuery();
+  const { write: writeQuery, isReady } = useQuestionToQuery();
   const locale = useLocale();
   const toast = useAppToast();
   const tToast = useTranslations('toast');
@@ -70,13 +70,11 @@ function QuestionSearch({ question, entry, onWritten }: { question: string; entr
     const write = async () => {
       let query = '';
       try {
-        const result = await execute({
-          query: question,
+        query = await writeQuery({
+          question,
           language: entry.language ?? localeToLanguageCode(locale),
           syntax: entry.field === OQL_FIELD ? 'oql' : undefined,
-          task: 'questionToQuery',
         });
-        query = result.enhancedQuery;
       } catch (error) {
         console.error('Failed to convert research question:', error);
         if (!left.current) toast.ai.failed(tToast('questionConversion'), error);
@@ -84,7 +82,7 @@ function QuestionSearch({ question, entry, onWritten }: { question: string; entr
       if (!left.current) onWritten(query);
     };
     void write();
-  }, [isReady, execute, question, entry, locale, toast, tToast, onWritten]);
+  }, [isReady, writeQuery, question, entry, locale, toast, tToast, onWritten]);
 
   return null;
 }

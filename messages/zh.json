@@ -727,6 +727,8 @@
     "aiInsufficientCredits": "AI 积分不足。",
     "aiPlanEntitlement": "此 AI 功能需要更高套餐。",
     "aiApiKeyRequired": "登录获取免费积分，或在设置中添加 API 密钥。",
+    "aiFreeLimit": "您今天的免费研究问题已用完。请添加积分以继续,或明天再试。",
+    "aiFreeLimitSignedOut": "您今天的免费研究问题已用完。请登录以继续,或在设置中添加 API 密钥。",
     "aiProviderError": "AI 提供商暂时不可用，请稍后重试。",
     "aiKeyUnreachable": "无法连接到您密钥对应的 AI 提供商。请检查网络连接后重试。",
     "aiValidationError": "AI 响应校验失败，请重试。",
@@ -3095,7 +3097,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, other {# 个模型}}",
-      "creditsOrKey": "积分，或用户的密钥"
+      "creditsOrKey": "积分，或用户的密钥",
+      "free": {
+        "title": "免费研究问题",
+        "today": "今天:{calls, plural, other {# 次调用}},{cost}",
+        "switch": "无法付费时免费",
+        "switchHint": "为未登录、没有积分或密钥调用失败的访客,免费根据研究问题撰写搜索查询",
+        "model": "模型",
+        "modelHint": "使用我们的密钥运行。有积分的用户继续使用自己的模型并付费",
+        "modelMissing": "该模型已不可用,在您选择其他模型之前,免费问题将暂停",
+        "pickModel": "选择模型",
+        "limits": {
+          "perAddress": "每个地址每天(未登录)",
+          "perPerson": "每人每天(已登录)",
+          "signedOutPerDay": "所有未登录用户每天",
+          "signedInPerDay": "所有已登录用户每天"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Evidence Community 访问权限",

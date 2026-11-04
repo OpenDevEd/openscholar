@@ -47,8 +47,7 @@ export interface OperationConfig<TInput, TOutput> {
 // A query-validation error worth re-prompting on (vs a hard failure).
 const isRetryableQueryError = (error: Error): boolean =>
   error.message.includes('unbalanced parentheses') ||
-  error.message.includes('incomplete operator') ||
-  error.message.includes('wildcard')
+  error.message.includes('incomplete operator')
 
 export function getEnhanceQueryConfig(
   input: EnhanceSearchQueryInput

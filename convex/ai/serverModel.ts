@@ -27,12 +27,16 @@ export async function presetPick(ctx: QueryCtx | MutationCtx, preset: PresetKey,
     .query("aiModelConfig")
     .withIndex("by_key", (q) => q.eq("key", presetConfigKey(preset, task)))
     .unique();
-  if (!cfg) return null;
+  return cfg ? await slugPick(ctx, cfg.modelId, cfg.effort, task) : null;
+}
+
+/** The model a catalog slug names and the effort it runs at, if users can pick it for the task. */
+export async function slugPick(ctx: QueryCtx | MutationCtx, modelId: string, effort: Effort | undefined, task: AiTask): Promise<TaskPick | null> {
   const model = await ctx.db
     .query("models")
-    .withIndex("by_model_id", (q) => q.eq("modelId", cfg.modelId))
+    .withIndex("by_model_id", (q) => q.eq("modelId", modelId))
     .unique();
-  return offered(model, task) ? withEffort(model, cfg.effort) : null;
+  return offered(model, task) ? withEffort(model, effort) : null;
 }
 
 /** A stored pick, if its model is still offered for the task. */

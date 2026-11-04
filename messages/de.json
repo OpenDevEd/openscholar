@@ -728,6 +728,8 @@
     "aiInsufficientCredits": "Sie haben nicht genug KI-Credits.",
     "aiPlanEntitlement": "Diese KI-Funktion erfordert einen höheren Tarif.",
     "aiApiKeyRequired": "Melden Sie sich für kostenlose Credits an oder hinterlegen Sie einen API-Schlüssel in den Einstellungen.",
+    "aiFreeLimit": "Du hast deine kostenlosen Forschungsfragen für heute aufgebraucht. Lade Credits auf, um weiterzumachen, oder versuche es morgen wieder.",
+    "aiFreeLimitSignedOut": "Du hast deine kostenlosen Forschungsfragen für heute aufgebraucht. Melde dich an, um weiterzumachen, oder füge in den Einstellungen einen API-Schlüssel hinzu.",
     "aiProviderError": "Der KI-Anbieter ist gerade nicht erreichbar. Bitte versuchen Sie es erneut.",
     "aiKeyUnreachable": "Der KI-Anbieter Ihres Schlüssels ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "aiValidationError": "Die Antwort der KI konnte nicht geprüft werden. Bitte versuchen Sie es erneut.",
@@ -3096,7 +3098,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# Modell} other {# Modelle}}",
-      "creditsOrKey": "Credits oder der Schlüssel des Nutzers"
+      "creditsOrKey": "Credits oder der Schlüssel des Nutzers",
+      "free": {
+        "title": "Kostenlose Forschungsfragen",
+        "today": "Heute: {calls, plural, one {# Aufruf} other {# Aufrufe}}, {cost}",
+        "switch": "Kostenlos, wenn nicht bezahlt werden kann",
+        "switchHint": "Aus einer Forschungsfrage kostenlos eine Suchanfrage schreiben, für Besucher ohne Anmeldung, ohne Credits oder mit fehlgeschlagenem Schlüssel",
+        "model": "Modell",
+        "modelHint": "Läuft über unseren Schlüssel. Wer Credits hat, behält sein Modell und bezahlt",
+        "modelMissing": "Dieses Modell ist nicht mehr verfügbar. Kostenlose Fragen pausieren, bis du ein anderes auswählst",
+        "pickModel": "Modell auswählen",
+        "limits": {
+          "perAddress": "Pro Adresse, pro Tag (abgemeldet)",
+          "perPerson": "Pro Person, pro Tag (angemeldet)",
+          "signedOutPerDay": "Alle Abgemeldeten, pro Tag",
+          "signedInPerDay": "Alle Angemeldeten, pro Tag"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Zugang zur Evidence Community",

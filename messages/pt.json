@@ -728,6 +728,8 @@
     "aiInsufficientCredits": "Não tem créditos de IA suficientes.",
     "aiPlanEntitlement": "Esta funcionalidade de IA exige um plano superior.",
     "aiApiKeyRequired": "Inicie sessão para obter créditos gratuitos ou adicione uma chave de API nas definições.",
+    "aiFreeLimit": "Você usou as perguntas de pesquisa gratuitas de hoje. Adicione créditos para continuar ou tente novamente amanhã.",
+    "aiFreeLimitSignedOut": "Você usou as perguntas de pesquisa gratuitas de hoje. Entre para continuar ou adicione uma chave de API nas configurações.",
     "aiProviderError": "O fornecedor de IA não está disponível neste momento. Tente novamente.",
     "aiKeyUnreachable": "Não foi possível contactar o fornecedor de IA da sua chave. Verifique a ligação e tente novamente.",
     "aiValidationError": "Não foi possível validar a resposta da IA. Tente novamente.",
@@ -3096,7 +3098,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# modelo} other {# modelos}}",
-      "creditsOrKey": "Créditos ou a chave do utilizador"
+      "creditsOrKey": "Créditos ou a chave do utilizador",
+      "free": {
+        "title": "Perguntas de pesquisa gratuitas",
+        "today": "Hoje: {calls, plural, one {# chamada} other {# chamadas}}, {cost}",
+        "switch": "Grátis para quem não pode pagar",
+        "switchHint": "Escrever gratuitamente uma consulta a partir de uma pergunta de pesquisa para visitantes sem sessão, sem créditos ou com uma chave que falhou",
+        "model": "Modelo",
+        "modelHint": "Funciona com a nossa chave. Quem tem créditos mantém o seu modelo e paga",
+        "modelMissing": "Esse modelo já não está disponível, por isso as perguntas gratuitas param até escolher outro",
+        "pickModel": "Escolher um modelo",
+        "limits": {
+          "perAddress": "Por endereço, por dia (sem sessão)",
+          "perPerson": "Por pessoa, por dia (com sessão)",
+          "signedOutPerDay": "Todos sem sessão, por dia",
+          "signedInPerDay": "Todos com sessão, por dia"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Acesso à Evidence Community",

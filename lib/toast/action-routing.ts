@@ -8,7 +8,7 @@ export type ToastActionRoute =
 
 const SIGN_IN_CODES = new Set<string>(["UNAUTHENTICATED", "AI_UNAUTHENTICATED"]);
 
-const SIGN_IN_OR_SETTINGS_CODES = new Set<string>(["AI_API_KEY_REQUIRED"]);
+const SIGN_IN_OR_SETTINGS_CODES = new Set<string>(["AI_API_KEY_REQUIRED", "AI_FREE_LIMIT_SIGNED_OUT"]);
 
 const AI_SETTINGS_CODES = new Set<string>([
   "AI_CREDITS_DISABLED",
@@ -24,6 +24,7 @@ const AI_SETTINGS_CODES = new Set<string>([
 ]);
 
 const BILLING_CODES = new Set<string>([
+  "AI_FREE_LIMIT",
   "CREDITS_TOPUP_BUNDLE_INVALID",
   "CREDITS_PRODUCT_NOT_CONFIGURED",
 ]);

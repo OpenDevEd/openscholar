@@ -11,7 +11,7 @@ const CONVEX_COUNT_TIMEOUT_MS = 2_000;
 const limiter = new RequestLimiter();
 
 /** The address a request came from: Cloudflare's header first, then the proxies'. */
-function clientAddress(list: Headers) {
+export function clientAddress(list: Headers) {
   return list.get("cf-connecting-ip") ?? list.get("x-forwarded-for")?.split(",")[0]?.trim() ?? list.get("x-real-ip") ?? "unknown";
 }
 

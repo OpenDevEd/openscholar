@@ -727,6 +727,8 @@
     "aiInsufficientCredits": "AIクレジットが不足しています。",
     "aiPlanEntitlement": "このAI機能には上位プランが必要です。",
     "aiApiKeyRequired": "サインインして無料クレジットを取得するか、設定でAPIキーを追加してください。",
+    "aiFreeLimit": "本日分の無料リサーチクエスチョンを使い切りました。続けるにはクレジットを追加するか、明日もう一度お試しください。",
+    "aiFreeLimitSignedOut": "本日分の無料リサーチクエスチョンを使い切りました。続けるにはサインインするか、設定で API キーを追加してください。",
     "aiProviderError": "AIプロバイダーは現在利用できません。再試行してください。",
     "aiKeyUnreachable": "キーのAIプロバイダーに接続できませんでした。接続を確認して、もう一度お試しください。",
     "aiValidationError": "AI応答を検証できませんでした。再試行してください。",
@@ -3095,7 +3097,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, other {# 個のモデル}}",
-      "creditsOrKey": "クレジット、またはユーザーのキー"
+      "creditsOrKey": "クレジット、またはユーザーのキー",
+      "free": {
+        "title": "無料のリサーチクエスチョン",
+        "today": "本日: {calls, plural, other {# 回の呼び出し}}、{cost}",
+        "switch": "支払えない場合は無料",
+        "switchHint": "サインインしていない、クレジットがない、またはキーが失敗した訪問者のために、リサーチクエスチョンから検索クエリを無料で作成します",
+        "model": "モデル",
+        "modelHint": "当社のキーで実行します。クレジットがあるユーザーは自分のモデルのまま支払います",
+        "modelMissing": "このモデルは利用できなくなりました。別のモデルを選ぶまで無料の質問は停止します",
+        "pickModel": "モデルを選択",
+        "limits": {
+          "perAddress": "アドレスごと、1 日あたり(サインインなし)",
+          "perPerson": "1 人あたり、1 日あたり(サインイン済み)",
+          "signedOutPerDay": "サインインしていない全員、1 日あたり",
+          "signedInPerDay": "サインイン済みの全員、1 日あたり"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Evidence Community へのアクセス",

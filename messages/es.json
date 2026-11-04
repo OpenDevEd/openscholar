@@ -728,6 +728,8 @@
     "aiInsufficientCredits": "No tiene suficientes créditos de IA.",
     "aiPlanEntitlement": "Esta función de IA requiere un plan superior.",
     "aiApiKeyRequired": "Inicie sesión para obtener créditos gratis o añada una clave de API en la configuración.",
+    "aiFreeLimit": "Has usado tus preguntas de investigación gratuitas de hoy. Añade créditos para continuar o vuelve a intentarlo mañana.",
+    "aiFreeLimitSignedOut": "Has usado tus preguntas de investigación gratuitas de hoy. Inicia sesión para continuar o añade una clave de API en los ajustes.",
     "aiProviderError": "El proveedor de IA no está disponible en este momento. Inténtelo de nuevo.",
     "aiKeyUnreachable": "No se pudo contactar con el proveedor de IA de su clave. Revise su conexión e inténtelo de nuevo.",
     "aiValidationError": "No se pudo validar la respuesta de la IA. Reintente.",
@@ -3096,7 +3098,23 @@
     },
     "ai": {
       "modelCount": "{count, plural, one {# modelo} other {# modelos}}",
-      "creditsOrKey": "Créditos, o la clave del usuario"
+      "creditsOrKey": "Créditos, o la clave del usuario",
+      "free": {
+        "title": "Preguntas de investigación gratuitas",
+        "today": "Hoy: {calls, plural, one {# llamada} other {# llamadas}}, {cost}",
+        "switch": "Gratis para quien no puede pagar",
+        "switchHint": "Redactar gratis una consulta a partir de una pregunta de investigación para visitantes sin sesión, sin créditos o con una clave que falló",
+        "model": "Modelo",
+        "modelHint": "Funciona con nuestra clave. Quien tiene créditos conserva su modelo y paga",
+        "modelMissing": "Ese modelo ya no está disponible, así que las preguntas gratuitas se detienen hasta que elijas otro",
+        "pickModel": "Elegir un modelo",
+        "limits": {
+          "perAddress": "Por dirección, al día (sin sesión)",
+          "perPerson": "Por persona, al día (con sesión)",
+          "signedOutPerDay": "Todos sin sesión, al día",
+          "signedInPerDay": "Todos con sesión, al día"
+        }
+      }
     },
     "evidenceLibraries": {
       "title": "Acceso a Evidence Community",

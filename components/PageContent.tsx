@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
-import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
+import { useQuestionToQuery } from "@/lib/ai/client/question-query";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { AISetupGate } from "@/components/ai/ai-setup-gate";
@@ -52,9 +52,7 @@ function PageContent() {
   // AI configuration and research question state
   const { apiKeyMode } = useAIConfigStore();
 
-  // Use the new router hook that respects apiKeyMode
-  const { execute: enhanceQuery, isConfigured: isAIConfigured } =
-    useEnhanceSearchQuery();
+  const { write: writeQuery, isConfigured: isAIConfigured } = useQuestionToQuery();
 
   const createSearchFilters = useCreateSearchFilters();
   const searched = useHasSearched();
@@ -82,15 +80,7 @@ function PageContent() {
         setIsEnhancingQuestion(true);
 
         // Convert research question to search query using AI
-        // The router hook respects apiKeyMode - local mode uses store's API key, credits mode uses Convex
-        const result = await enhanceQuery({
-          query: originalQuery,
-          language: localeToLanguageCode(locale),
-          task: "questionToQuery",
-        });
-
-        // Use the enhanced query for searching
-        searchQuery = result.enhancedQuery;
+        searchQuery = await writeQuery({ question: originalQuery, language: localeToLanguageCode(locale) });
       } catch (error) {
         console.error("Failed to convert research question:", error);
         toast.ai.failed(tToast("questionConversion"), error);
