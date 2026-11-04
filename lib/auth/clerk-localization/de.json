@@ -369,9 +369,10 @@
     "subtitle": "Geben Sie Ihre Telefonnummer ein, um einen Bestätigungscode per {{provider}} zu erhalten.",
     "title": "In Openscholar mit {{provider}} einloggen"
    },
-   "subtitle": "weiter zu Openscholar",
+   "subtitle": "Melden Sie sich an, um auf Ihre Suchen, Bibliothek und Screenings zuzugreifen.",
    "title": "In Openscholar einloggen",
-   "titleCombined": "Weiter zu Openscholar"
+   "titleCombined": "Weiter zu Openscholar",
+   "subtitleCombined": "Melden Sie sich an, um auf Ihre Suchen, Bibliothek und Screenings zuzugreifen."
   },
   "totpMfa": {
    "formTitle": "Bestätigungscode",
@@ -473,8 +474,8 @@
     "subtitle": "Geben Sie Ihre Telefonnummer ein, um einen Bestätigungscode per {{provider}} zu erhalten.",
     "title": "In Openscholar mit {{provider}} anmelden"
    },
-   "subtitle": "weiter zu Openscholar",
-   "subtitleCombined": "weiter zu Openscholar",
+   "subtitle": "Kostenlos während der öffentlichen Alpha. Keine Karte erforderlich.",
+   "subtitleCombined": "Kostenlos während der öffentlichen Alpha. Keine Karte erforderlich.",
    "title": "Erstellen Sie Ihr Konto",
    "titleCombined": "Erstellen Sie Ihr Konto"
   },

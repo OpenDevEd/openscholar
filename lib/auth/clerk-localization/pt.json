@@ -369,9 +369,10 @@
     "subtitle": "Introduza o seu número de telemóvel para receber um código de verificação no {{provider}}.",
     "title": "Inicie sessão em Openscholar com {{provider}}"
    },
-   "subtitle": "para continuar em Openscholar",
+   "subtitle": "Inicie sessão para aceder às suas pesquisas, biblioteca e triagens.",
    "title": "Entrar",
-   "titleCombined": "Continuar em Openscholar"
+   "titleCombined": "Continuar em Openscholar",
+   "subtitleCombined": "Inicie sessão para aceder às suas pesquisas, biblioteca e triagens."
   },
   "totpMfa": {
    "formTitle": "Código de verificação",
@@ -473,8 +474,8 @@
     "subtitle": "Introduza o seu número de telemóvel para receber um código de verificação no {{provider}}.",
     "title": "Registe-se em Openscholar com {{provider}}"
    },
-   "subtitle": "para continuar em Openscholar",
-   "subtitleCombined": "para continuar em Openscholar",
+   "subtitle": "Gratuito durante a alfa pública. Não é preciso cartão.",
+   "subtitleCombined": "Gratuito durante a alfa pública. Não é preciso cartão.",
    "title": "Criar a sua conta",
    "titleCombined": "Criar a sua conta"
   },

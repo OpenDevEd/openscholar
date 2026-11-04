@@ -369,9 +369,10 @@
     "subtitle": "Faka inombolo yakho yefoni ukuze uthole ikhodi yokuqinisekisa ku-{{provider}}.",
     "title": "Ngena ku-Openscholar nge-{{provider}}"
    },
-   "subtitle": "Siyakwamukela futhi! Sicela ungene ukuze uqhubeke",
+   "subtitle": "Ngena ukuze ufinyelele ukusesha kwakho, umtapo wolwazi nokuskrina.",
    "title": "Ngena ku-Openscholar",
-   "titleCombined": "Qhubeka ku-Openscholar"
+   "titleCombined": "Qhubeka ku-Openscholar",
+   "subtitleCombined": "Ngena ukuze ufinyelele ukusesha kwakho, umtapo wolwazi nokuskrina."
   },
   "totpMfa": {
    "formTitle": "Ikhodi yokuqinisekisa",
@@ -473,8 +474,8 @@
     "subtitle": "Faka inombolo yakho yefoni ukuze uthole ikhodi yokuqinisekisa ku-{{provider}}.",
     "title": "Bhalisa ku-Openscholar nge-{{provider}}"
    },
-   "subtitle": "Siyakwamukela! Sicela ugcwalise imininingwane ukuze uqale.",
-   "subtitleCombined": "Siyakwamukela! Sicela ugcwalise imininingwane ukuze uqale.",
+   "subtitle": "Mahhala ngesikhathi se-alpha yomphakathi. Akudingeki ikhadi.",
+   "subtitleCombined": "Mahhala ngesikhathi se-alpha yomphakathi. Akudingeki ikhadi.",
    "title": "Dala i-akhawunti yakho",
    "titleCombined": "Dala i-akhawunti yakho"
   },

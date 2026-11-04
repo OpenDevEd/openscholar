@@ -215,7 +215,7 @@
     "calendarNavigation": "Kalendernavigasie"
   },
   "home": {
-    "tagline": "Soek miljoene akademiese artikels en navorsingsartikels",
+    "tagline": "Soek, sif en onttrek bewyse uit akademiese navorsing",
     "searchPlaceholder": "Tik sleutelwoorde (bv. machine learning AND neural networks)",
     "researchPlaceholder": "Beskryf wat jy soek in gewone taal",
     "searchMode": "Sleutelwoorde",
@@ -1044,7 +1044,7 @@
   },
   "metadata": {
     "defaultTitle": "Openscholar | Soek akademiese artikels",
-    "defaultDescription": "Soek miljoene akademiese artikels en navorsingsartikels",
+    "defaultDescription": "Soek, sif en onttrek bewyse uit akademiese navorsing",
     "siteName": "Openscholar",
     "siteUrl": "https://openscholar.ai",
     "twitterCreator": "@OpenScholarAI",

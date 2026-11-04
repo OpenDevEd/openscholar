@@ -369,9 +369,10 @@
     "subtitle": "{{provider}} で検証コードを受け取るための電話番号を入力してください。",
     "title": "{{provider}} を使って Openscholar にサインイン"
    },
-   "subtitle": "お帰りなさい！続行するにはサインインしてください",
+   "subtitle": "検索、ライブラリ、スクリーニングにアクセスするにはサインインしてください。",
    "title": "Openscholar にサインイン",
-   "titleCombined": "Openscholar へ進む"
+   "titleCombined": "Openscholar へ進む",
+   "subtitleCombined": "検索、ライブラリ、スクリーニングにアクセスするにはサインインしてください。"
   },
   "totpMfa": {
    "formTitle": "検証コード",
@@ -473,8 +474,8 @@
     "subtitle": "{{provider}} で検証コードを受け取るための電話番号を入力してください。",
     "title": "{{provider}} を使って Openscholar にサインアップ"
    },
-   "subtitle": "ようこそ！始めるには詳細を入力してください",
-   "subtitleCombined": "ようこそ！始めるには詳細を入力してください",
+   "subtitle": "公開アルファ版の間は無料です。カードは不要です。",
+   "subtitleCombined": "公開アルファ版の間は無料です。カードは不要です。",
    "title": "アカウントを作成",
    "titleCombined": "アカウントを作成"
   },

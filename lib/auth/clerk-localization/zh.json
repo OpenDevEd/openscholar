@@ -369,9 +369,10 @@
     "subtitle": "输入您的手机号码，以便通过 {{provider}} 接收验证码。",
     "title": "通过 {{provider}} 登录 Openscholar"
    },
-   "subtitle": "欢迎回来！请登录您的账户以继续。",
+   "subtitle": "登录以查看您的搜索、文献库和筛选。",
    "title": "登录 Openscholar",
-   "titleCombined": "继续使用 Openscholar"
+   "titleCombined": "继续使用 Openscholar",
+   "subtitleCombined": "登录以查看您的搜索、文献库和筛选。"
   },
   "totpMfa": {
    "formTitle": "验证码",
@@ -473,8 +474,8 @@
     "subtitle": "输入您的手机号码，以便通过 {{provider}} 接收验证码。",
     "title": "通过 {{provider}} 注册 Openscholar"
    },
-   "subtitle": "继续使用 Openscholar",
-   "subtitleCombined": "继续使用 Openscholar",
+   "subtitle": "公开 Alpha 期间免费。无需银行卡。",
+   "subtitleCombined": "公开 Alpha 期间免费。无需银行卡。",
    "title": "创建您的账户",
    "titleCombined": "创建您的账户"
   },

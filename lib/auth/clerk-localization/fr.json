@@ -369,9 +369,10 @@
     "subtitle": "Entrez votre numéro de téléphone pour recevoir un code de vérification sur {{provider}}.",
     "title": "Se connecter à Openscholar avec {{provider}}"
    },
-   "subtitle": "pour continuer vers Openscholar",
+   "subtitle": "Connectez-vous pour accéder à vos recherches, votre bibliothèque et vos criblages.",
    "title": "Se connecter",
-   "titleCombined": "Continuer vers Openscholar"
+   "titleCombined": "Continuer vers Openscholar",
+   "subtitleCombined": "Connectez-vous pour accéder à vos recherches, votre bibliothèque et vos criblages."
   },
   "totpMfa": {
    "formTitle": "Le code de vérification",
@@ -473,8 +474,8 @@
     "subtitle": "Entrez votre numéro de téléphone pour recevoir un code de vérification sur {{provider}}.",
     "title": "S’inscrire à Openscholar avec {{provider}}"
    },
-   "subtitle": "pour continuer vers Openscholar",
-   "subtitleCombined": "pour continuer vers Openscholar",
+   "subtitle": "Gratuit pendant l'alpha publique. Aucune carte requise.",
+   "subtitleCombined": "Gratuit pendant l'alpha publique. Aucune carte requise.",
    "title": "Créez votre compte",
    "titleCombined": "Créez votre compte"
   },
