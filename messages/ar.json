@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "غير مسموح",
-    "organizationFeatureDescription": "لا تتضمن باقة مساحة العمل هذه Evidence Communities.",
+    "organizationFeatureDescription": "تُفعَّل Evidence Communities للمؤسسة عند الطلب. راسل {email}.",
     "backToSearch": "العودة إلى البحث",
     "loadingTitle": "جارٍ تحميل مساحة العمل",
     "loadingDescription": "جارٍ تجهيز مساحة العمل الموثّقة الخاصة بك.",

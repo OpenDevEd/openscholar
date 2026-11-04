@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "अनुमति नहीं है",
-    "organizationFeatureDescription": "इस वर्कस्पेस के प्लान में Evidence Communities शामिल नहीं हैं।",
+    "organizationFeatureDescription": "Evidence Communities अनुरोध पर किसी संगठन के लिए चालू की जाती हैं। {email} पर ईमेल करें।",
     "backToSearch": "खोज पर वापस जाएँ",
     "loadingTitle": "वर्कस्पेस लोड हो रहा है",
     "loadingDescription": "आपका प्रमाणित वर्कस्पेस तैयार हो रहा है।",

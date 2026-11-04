@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Nicht erlaubt",
-    "organizationFeatureDescription": "Der Tarif dieses Arbeitsbereichs umfasst keine Evidence Communities.",
+    "organizationFeatureDescription": "Evidence Communities werden auf Anfrage für eine Organisation aktiviert. E-Mail an {email}.",
     "backToSearch": "Zurück zur Suche",
     "loadingTitle": "Arbeitsbereich wird geladen",
     "loadingDescription": "Ihr angemeldeter Arbeitsbereich wird vorbereitet.",

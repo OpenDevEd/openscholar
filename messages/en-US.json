@@ -358,7 +358,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Not allowed",
-    "organizationFeatureDescription": "This workspace's plan doesn't include Evidence Communities.",
+    "organizationFeatureDescription": "Evidence Communities are turned on for an organization by request. Email {email}.",
     "backToSearch": "Back to search",
     "loadingTitle": "Loading workspace",
     "loadingDescription": "Preparing your authenticated workspace.",

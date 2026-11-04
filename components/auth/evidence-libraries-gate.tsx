@@ -8,6 +8,7 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { useItemHome } from "@/components/workspaces/item-home";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { bareWorkspacePath, pageItem } from "@/lib/workspaces/paths";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { AuthStatePanel } from "./auth-state-panel";
 
@@ -39,7 +40,7 @@ export function EvidenceLibrariesGate({ fallback, children }: { fallback?: React
     onRetry={retryUserSync}
     {...(variant === "no_access" ? {
       title: t("organizationFeatureTitle"),
-      description: t("organizationFeatureDescription"),
+      description: t("organizationFeatureDescription", { email: CONTACT_EMAIL }),
       primaryHref: "/", primaryLabel: t("backToSearch"),
     } : {})}
   /></PageWrapper>;
