@@ -74,7 +74,7 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   const records = useQuery(api.authors.links.records, {profileId}) ?? firstRecords ?? [];
   const ids = [...new Set([record?.openalex, ...records].filter((id): id is string => Boolean(id)))];
   const works = useSWRInfinite((page, previous) => {
-    if (!record?.openalex || (previous && previous.results.length < 10)) return null;
+    if (!ids.length || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", ids.join("|"), page + 1, source] as const;
   }, ([, id, page, reading]) => unlessLimited(readProfileAuthorWorks(id, page, reading)));
   if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title={t("loadingAuthorProfile")} /></PageWrapper>;

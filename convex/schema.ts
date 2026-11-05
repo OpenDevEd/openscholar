@@ -191,6 +191,7 @@ export default defineSchema({
     revision: v.number(),
     updatedAt: v.number(),
   }).index("by_workspace", ["workspaceId"])
+    .index("by_openalex", ["openalex"])
     .searchIndex("search_name", {searchField: "name"}),
 
   // The author records that are a profile's person (./authors/links.ts). A record belongs to one profile at most.

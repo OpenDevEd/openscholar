@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, useContext, type ReactElement, type ReactNode } from "react";
+import { cloneElement, useContext, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactElement, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { readAuthorCard, readInstitutionCard, type AuthorCard } from "@/app/actions/author-card";
@@ -10,7 +10,7 @@ import { ArrowUpRight, Building, ChevronRight, Filter, Globe, Search, TopicsIcon
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useAuthorFilter, useInstitutionFilter, useTopicFilter } from "@/components/paper-card/hooks";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import Link from "@/components/workspace-link";
 import { useNoHover } from "@/lib/hooks";
 import { isOwnId } from "@/lib/search/source";
@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 import { useUIStore } from "@/lib/store";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { isAuthorId } from "@/lib/openalex/author-filter";
@@ -34,36 +33,82 @@ export function useCloseFocus() {
   return closeFocus ?? (() => useUIStore.getState().setIsFocusModeOpen(false));
 }
 
+/** How long the pointer rests before a card opens, and how long it may be away before it closes, so it can reach the card. */
+const OPEN_MS = 250;
+const CLOSE_MS = 80;
+
 /**
- * A card that opens over a name after a short hover, holding what the name is and what can be
- * done with it. Its clicks stay inside it: React carries a portal's events up to the paper card
- * the name sits in, which would open focus mode.
+ * A card that opens over a name after a short hover, holding what the name is and what can be done with it. It's a popover so
+ * that its links take Tab: Down opens it from the name, and moves into it. A screen that can't hover opens it on a tap, in
+ * place of what the name does on a click, which the card holds too. Its clicks stay inside it: React carries a portal's
+ * events up to the paper card the name sits in, which would open focus mode.
  */
 function EntityHoverCard({ trigger, children }: { trigger: ReactElement; children: ReactNode }) {
   const touch = useNoHover();
-  // A screen that can't hover opens the card on a tap, in place of what the name does on a click: the card holds that too.
-  if (touch) return (
-    <Popover>
-      <PopoverTrigger asChild>{cloneElement(trigger as ReactElement<{ onToggle?: () => void }>, { onToggle: () => {} })}</PopoverTrigger>
-      <PopoverContent align="start" className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0" onClick={(event) => event.stopPropagation()}>
+  const [open, setOpen] = useState(false);
+  const fromKeyboard = useRef(false);
+  // The name that a keyboard opened the card from, which focus goes back to.
+  const openedFrom = useRef<HTMLElement | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const after = (ms: number, next: boolean) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setOpen(next), ms);
+  };
+  const name = cloneElement(trigger as ReactElement<NameProps>, touch
+    ? { onToggle: () => {}, onClick: () => setOpen((shown) => !shown), "aria-expanded": open, "aria-haspopup": "dialog" }
+    : {
+        onPointerEnter: () => after(OPEN_MS, true),
+        onPointerLeave: () => after(CLOSE_MS, false),
+        onKeyDown: (event) => {
+          if (event.key !== "ArrowDown") return;
+          event.preventDefault();
+          fromKeyboard.current = true;
+          openedFrom.current = event.currentTarget as HTMLElement;
+          clearTimeout(timer.current);
+          setOpen(true);
+        },
+        "aria-expanded": open,
+        "aria-haspopup": "dialog",
+      });
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>{name}</PopoverAnchor>
+      <PopoverContent
+        align="start"
+        className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0"
+        onClick={(event) => event.stopPropagation()}
+        // Escape goes on up, to what closes the card.
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") event.stopPropagation();
+        }}
+        onPointerEnter={() => clearTimeout(timer.current)}
+        onPointerLeave={() => !touch && after(CLOSE_MS, false)}
+        // Only Down moves focus into it: a card opened by hovering leaves focus where it was.
+        onOpenAutoFocus={(event) => {
+          if (!fromKeyboard.current && !touch) event.preventDefault();
+          fromKeyboard.current = false;
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          openedFrom.current?.focus();
+          openedFrom.current = null;
+        }}
+      >
         {children}
       </PopoverContent>
     </Popover>
   );
-  return (
-    <HoverCard openDelay={250} closeDelay={80}>
-      <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
-      <HoverCardContent
-        align="start"
-        className="w-88 overflow-hidden p-0"
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => event.stopPropagation()}
-      >
-        {children}
-      </HoverCardContent>
-    </HoverCard>
-  );
 }
+
+type NameProps = {
+  onToggle?: () => void;
+  onClick?: (event: MouseEvent) => void;
+  onPointerEnter?: (event: PointerEvent) => void;
+  onPointerLeave?: (event: PointerEvent) => void;
+  onKeyDown?: (event: KeyboardEvent) => void;
+  "aria-expanded"?: boolean;
+  "aria-haspopup"?: "dialog";
+};
 
 function CardHeader({ icon, name, line }: { icon: ReactNode; name: string; line: ReactNode }) {
   return (

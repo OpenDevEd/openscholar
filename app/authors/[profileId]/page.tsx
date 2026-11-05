@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
-import { preloadedQueryResult, preloadQuery } from "convex/nextjs";
+import { fetchQuery, preloadedQueryResult, preloadQuery } from "convex/nextjs";
 import { notFound, redirect } from "next/navigation";
 import { readAuthorCard, type AuthorCard } from "@/app/actions/author-card";
 import { readProfileAuthorWorks, type AuthorWorksPage } from "@/app/actions/authors";
@@ -10,12 +10,11 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isAuthorId } from "@/lib/openalex/author-filter";
 
+/** An author's record. Null for one the source doesn't have. A read that failed, or a visitor at their limit, goes to the error page, which says to try again. */
 const cardOf = async (id: string): Promise<AuthorCard | null> => {
-  const card = await readAuthorCard(id).catch((error) => {
-    console.error("[authors] couldn't read an author", id, error);
-    return null;
-  });
-  return card && "id" in card ? card : null;
+  const card = await readAuthorCard(id);
+  if (card && !("id" in card)) throw new Error("Too many requests");
+  return card;
 };
 
 /** A page's first papers, with the page, so their count is there from the first frame. Its own read tries again if this one can't. */
@@ -37,6 +36,9 @@ export default async function Page({params}: {params: Promise<{profileId: string
   const {profileId} = await params;
   // An author's ID opens their profile when one links it, the page of the OpenAlex author it's paired with when there is one, or a page of its own.
   if (isAuthorId(profileId)) {
+    // Asked first: a linked ID opens its profile whether or not the source can read the record just now.
+    const linked = await fetchQuery(api.authors.links.profileFor, {ids: [profileId]});
+    if (linked) redirect(`/authors/${linked}`);
     const card = await cardOf(profileId);
     if (!card) notFound();
     if (card.profileId) redirect(`/authors/${card.profileId}`);
@@ -53,5 +55,9 @@ export default async function Page({params}: {params: Promise<{profileId: string
     preloadQuery(api.authors.links.records, {profileId}, {token}),
   ]);
   const main = preloadedQueryResult(preloadedRecord)?.openalex;
-  return <PreloadedAuthorProfile profileId={profileId as Id<"authorProfiles">} preloadedRecord={preloadedRecord} preloadedReferences={preloadedReferences} preloadedRecords={preloadedRecords} card={main ? await cardOf(main) : null} />;
+  return <PreloadedAuthorProfile profileId={profileId as Id<"authorProfiles">} preloadedRecord={preloadedRecord} preloadedReferences={preloadedReferences} preloadedRecords={preloadedRecords} card={main ? await cardOf(main).catch((error) => {
+    // The profile stands without its record's details.
+    console.error("[authors] couldn't read a profile's record", main, error);
+    return null;
+  }) : null} />;
 }

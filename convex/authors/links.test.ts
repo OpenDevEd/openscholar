@@ -69,6 +69,24 @@ describe("a profile's author records", () => {
     expect(await t.query(api.authors.links.records, { profileId })).toEqual([]);
   });
 
+  it("treats a main record from before links as held, so no one can take it before the move runs", async () => {
+    const { t, ben } = await setup();
+    const held = await t.run((ctx) => ctx.db.insert("authorProfiles", { ...content, openalex: "A1", revision: 1, updatedAt: 1 }));
+    await expect(ben.mutation(api.authors.links.claim, { authorId: "A1", name: "Someone" })).rejects.toThrow(/another profile/);
+    expect(await t.query(api.authors.links.profileFor, { ids: ["A1"] })).toBe(held);
+  });
+
+  it("changes the main record of a profile at its cap", async () => {
+    const { t, ada } = await setup();
+    const profileId = await ada.mutation(api.authors.links.claim, { authorId: "A1", name: "Susan Athey" });
+    for (let n = 10; n < 10 + MAX_PROFILE_RECORDS - 1; n++) await ada.mutation(api.authors.links.add, { profileId, authorId: `OSA${n}` });
+    await ada.action(api.authors.photos.save, { profileId, expectedRevision: 1, content: { ...content, openalex: "A2" } });
+    const records = await t.query(api.authors.links.records, { profileId });
+    expect(records).toHaveLength(MAX_PROFILE_RECORDS);
+    expect(records).toContain("A2");
+    expect(records).not.toContain("A1");
+  });
+
   it("moves today's values across once, leaving a record two profiles name with the first", async () => {
     const { t } = await setup();
     const [first, second, none] = await t.run(async (ctx) =>

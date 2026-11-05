@@ -49,6 +49,8 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   const limited = await spendOpenAlexRequests();
   if (limited) return limited;
   const response = await openAlexFetch(searchUrl(source, `authors/${id}`, {}), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
+  // The source doesn't know them, which a page says differently from a read that failed.
+  if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
   const author = authorSchema.parse(await response.json());
   const institution = author.last_known_institutions?.[0];
@@ -63,7 +65,11 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
     institution: institution?.display_name ? { id: institution.id ? lastPart(institution.id) : null, name: institution.display_name, country: institution.country_code ?? null } : null,
     topics: (author.topics ?? []).slice(0, TOP_TOPICS).map((topic) => ({ id: lastPart(topic.id), name: topic.display_name, papers: topic.count ?? 0 })),
     paired,
-    profileId: await fetchQuery(api.authors.links.profileFor, { ids: [...new Set([id, lastPart(author.id), ...(paired ? [paired] : [])])] }),
+    // The card stands without it: it only says where the author's page goes.
+    profileId: await fetchQuery(api.authors.links.profileFor, { ids: [...new Set([id, lastPart(author.id), ...(paired ? [paired] : [])])] }).catch((error) => {
+      console.error("[authors] couldn't look up an author's profile", id, error);
+      return null;
+    }),
   } satisfies AuthorCard;
 }
 

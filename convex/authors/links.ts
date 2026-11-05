@@ -23,11 +23,18 @@ const authorIdOf = (given: string) => {
 const linkOf = (ctx: QueryCtx, authorId: string) => ctx.db.query("authorRecordLinks").withIndex("by_authorId", (q) => q.eq("authorId", authorId)).first();
 const recordsOf = (ctx: QueryCtx, profileId: Id<"authorProfiles">) => ctx.db.query("authorRecordLinks").withIndex("by_profileId", (q) => q.eq("profileId", profileId)).take(MAX_PROFILE_RECORDS);
 
+/** The profile that holds a record: by a link, or as its main record, which a profile may have from before links. */
+async function holderOf(ctx: QueryCtx, authorId: string) {
+  const link = await linkOf(ctx, authorId);
+  if (link) return link.profileId;
+  return (await ctx.db.query("authorProfiles").withIndex("by_openalex", (q) => q.eq("openalex", authorId)).first())?._id ?? null;
+}
+
 /** Links a record to a profile, unless it's already this profile's. Another profile's stays theirs. */
 export async function linkRecord(ctx: MutationCtx, profileId: Id<"authorProfiles">, authorId: string) {
-  const held = await linkOf(ctx, authorId);
-  if (held?.profileId === profileId) return;
-  if (held) throw createError("CONFLICT", "That author record is linked to another profile.");
+  const holder = await holderOf(ctx, authorId);
+  if (holder && holder !== profileId) throw createError("CONFLICT", "That author record is linked to another profile.");
+  if (await linkOf(ctx, authorId)) return;
   if ((await recordsOf(ctx, profileId)).length >= MAX_PROFILE_RECORDS) throw createError("VALIDATION_ERROR", `A profile links at most ${MAX_PROFILE_RECORDS} author records.`);
   await ctx.db.insert("authorRecordLinks", { profileId, authorId });
 }
@@ -35,9 +42,9 @@ export async function linkRecord(ctx: MutationCtx, profileId: Id<"authorProfiles
 /** Keeps the links in step with a profile's main record as it changes. */
 export async function moveMainRecord(ctx: MutationCtx, profileId: Id<"authorProfiles">, from: string, to: string) {
   if (from === to) return;
-  if (to) await linkRecord(ctx, profileId, to);
   const old = from ? await linkOf(ctx, from) : null;
   if (old?.profileId === profileId) await ctx.db.delete("authorRecordLinks", old._id);
+  if (to) await linkRecord(ctx, profileId, to);
 }
 
 /** The IDs of the records a profile links, the main one among them. Public, as its page is. */
@@ -57,8 +64,8 @@ export const profileFor = query({
   handler: async (ctx, { ids }) => {
     if (ids.length > AUTHOR_IDS_LOOKED_UP) throw createError("VALIDATION_ERROR", `At most ${AUTHOR_IDS_LOOKED_UP} IDs at once.`);
     for (const id of ids) {
-      const link = await linkOf(ctx, id);
-      if (link) return link.profileId;
+      const holder = await holderOf(ctx, id);
+      if (holder) return holder;
     }
     return null;
   },
@@ -120,7 +127,7 @@ export const claimAction = defineUserMutation({
   run: async (ctx, { userId, workspaceId, author }, { authorId, name }) => {
     await requireAuthorProfiles(ctx, workspaceId);
     const id = authorIdOf(authorId);
-    if (await linkOf(ctx, id)) throw createError("CONFLICT", "That author record is linked to another profile.");
+    if (await holderOf(ctx, id)) throw createError("CONFLICT", "That author record is linked to another profile.");
     const profileId = await createProfile(ctx, userId, workspaceId, name, author === "assistant");
     await ctx.db.patch("authorProfiles", profileId, { openalex: id });
     await linkRecord(ctx, profileId, id);

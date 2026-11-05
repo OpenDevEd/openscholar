@@ -7,6 +7,7 @@ import { chosenSource } from "@/lib/search/active-source";
 import { isOwnId, sourceForId, type SearchSource } from "@/lib/search/source";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import type { OpenAlexMatch } from "@/components/authors/types";
+import { MAX_PROFILE_RECORDS } from "@/convex/authors/validators";
 import type { OpenAlexLimited } from "@/lib/openalex/limited";
 import type { Author } from "@sickrin/openalex-sdk/dist/src/types/author";
 
@@ -33,7 +34,7 @@ export async function searchProfileAuthors(search: string, given?: SearchSource)
   return authors.map((author): OpenAlexMatch => ({id: author.id, name: author.name, affiliation: author.detail ?? "", topics: topics[author.id] ?? "", works: []}));
 }
 
-const AUTHOR_ID = /^(?:A|OSA)\d+$/;
+const AUTHOR_ID = /^(?:A|OSA)\d{1,20}$/;
 
 export async function readProfileAuthor(id: string, given?: SearchSource) {
   if (!AUTHOR_ID.test(id)) throw new Error("Invalid author");
@@ -56,7 +57,7 @@ export type AuthorWorksPage = Exclude<Awaited<ReturnType<typeof readProfileAutho
 /** A page of an author's papers, newest first, across the IDs of every record they go by, joined with `|` as the filter takes them. */
 export async function readProfileAuthorWorks(id: string, page: number, given?: SearchSource) {
   const ids = id.split("|");
-  if (!ids.every(one => AUTHOR_ID.test(one)) || !Number.isInteger(page) || page < 1 || page > 1000) throw new Error("Invalid author page");
+  if (ids.length > MAX_PROFILE_RECORDS || !ids.every(one => AUTHOR_ID.test(one)) || !Number.isInteger(page) || page < 1 || page > 1000) throw new Error("Invalid author page");
   // OpenAlex can't read our index's IDs: while it's active it reads the rest, and our index only when there's nothing else.
   const active = await chosenSource(given);
   const readable = active === "openalex" ? ids.filter(one => !isOwnId(one)) : ids;
