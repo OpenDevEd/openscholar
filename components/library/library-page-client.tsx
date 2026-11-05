@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { parsePaperKey } from "@/lib/papers/paper-ref";
+import { useSearchSource } from "@/lib/search/use-search-source";
+import { similarSearchHref } from "@/lib/search/actions";
 import { ItemPresence } from "@/components/workspaces/presence";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Compass } from "@/components/icons";
+import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -71,6 +75,7 @@ const GRID_CLASSES: Record<ViewMode, string> = {
 export function LibraryPageClient() {
   const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
+  const ts = useTranslations("similarPapers");
   const tf = useTranslations("searchFilters");
   const format = useFormatter();
   const [params, setParams] = useQueryStates(librarySearchParams);
@@ -222,6 +227,15 @@ export function LibraryPageClient() {
   );
 
   // In an organization's library, who saved each paper (#656), by the paper.
+  // Papers like what's on screen, on our index only: the saved papers it can name.
+  const ownIndex = useSearchSource() === "openscholar";
+  const likeHref = useMemo(() => {
+    const papers = pageItems.flatMap((item) => {
+      const ref = parsePaperKey(item.paperKey);
+      return ref?.source === "openalex" || ref?.source === "openscholar" ? [ref.work] : [];
+    });
+    return ownIndex && papers.length ? similarSearchHref(papers) : null;
+  }, [ownIndex, pageItems]);
   const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[libraryCardId(item), item.by] as const] : []))), [pageItems]);
 
   // In an organization's library outside a collection, how its members rated each paper themselves (#801): their average and who gave what.
@@ -536,13 +550,17 @@ export function LibraryPageClient() {
                   actions={
                     selectedCollection && !guest ? (
                       <>
+                        {likeHref && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg px-2 text-muted-foreground hover:text-foreground" asChild><Link href={likeHref}><Compass className="h-3.5 w-3.5" />{ts("likeCollection")}</Link></Button>}
                         <ItemPresence kind="collection" id={selectedCollection._id} />
                         <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
                         <MoveButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
                         <ShareButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} guests={selectedCollection.guests ?? 0} />
                       </>
                     ) : !params.col && workspaceId ? (
-                      <ItemPresence kind="library" id={workspaceId} />
+                      <>
+                        {likeHref && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg px-2 text-muted-foreground hover:text-foreground" asChild><Link href={likeHref}><Compass className="h-3.5 w-3.5" />{ts("likeLibrary")}</Link></Button>}
+                        <ItemPresence kind="library" id={workspaceId} />
+                      </>
                     ) : undefined
                   }
                   rawSearch={rawSearch}

@@ -16,7 +16,7 @@ export const LAST_PAGE = 10_000 / RESULTS_PAGE;
  */
 export const LAST_PAGE_FROM_START = 2_000 / RESULTS_PAGE;
 
-const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"), v.literal("oql"));
+const fieldValidator = v.union(v.literal("default"), v.literal("semantic"), v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"), v.literal("oql"));
 const sortValidator = v.union(v.literal("relevance"), v.literal("most_cited"), v.literal("newest"), v.literal("oldest"));
 const numberValidator = v.optional(v.union(v.number(), v.null()));
 /** A day or a paper's ID, or null to take it off. */
@@ -52,6 +52,7 @@ export const searchSettings = {
   citationsOf: textValidator,
   referencesOf: textValidator,
   relatedTo: textValidator,
+  similarTo: listValidator,
   openAccessOnly: v.optional(v.boolean()),
   withAbstractOnly: v.optional(v.boolean()),
   reviewsOnly: v.optional(v.boolean()),
@@ -88,6 +89,7 @@ export const SETTINGS =
   "`studyDesigns` are such as systematic-review or randomized-controlled-trial (clinical trials too); only 1 paper in 15 has one, mostly medical. " +
   "`topCitedOnly` keeps the top 10% of a field and year by citations, `venuesOnly` papers in journals, conferences and book series. " +
   "`citationsOf`, `referencesOf` and `relatedTo` take one paper's ID: papers citing it, its references, papers like it. " +
+  "On our own index, `field` semantic searches by meaning with the query as a question, and `field` default reads title, abstract and full text together; `similarTo` takes papers' IDs and finds the closest in meaning. Both list closest first, at most 300, and can't be counted by group. " +
   "`ratedOnly` keeps papers the person rated; `minRating` and `maxRating` (0 to 5) narrow those and turn it on.";
 
 /** Authors of a paper the results name, each with its ID to filter by. */

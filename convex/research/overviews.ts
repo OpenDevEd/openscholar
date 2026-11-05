@@ -105,10 +105,11 @@ async function searchFor(ctx: QueryCtx, actor: Pick<Acting, "workspaceId" | "use
   const row = await findSearch(ctx, actor.workspaceId, searchId);
   if (!row) return { reason: "missing" as const };
   const { request, ratingRange } = await requestOf(ctx, actor, currentSearch(row.data), row.revision);
-  if (!request || request.oql) return { reason: "oql" as const };
+  // Our index can't group a search by meaning, and an overview is built on those counts.
+  if (!request || request.oql || (request.source === "openscholar" && (request.semantic || request.similarTo))) return { reason: "oql" as const };
   if (ratingRange) return { reason: "ratings" as const };
   // An overview written from one source isn't the same search's on another. OpenAlex's keep the keys they were stored by.
-  return { request, key: digest(JSON.stringify([request.search ?? "", request.filter ?? "", ...(request.source === "openscholar" ? [request.source] : [])])) };
+  return { request, key: digest(JSON.stringify([request.search ?? request.semantic ?? "", request.filter ?? "", ...(request.source === "openscholar" ? [request.source] : [])])) };
 }
 
 /** The languages the app speaks, which an overview is written in: the page's. */

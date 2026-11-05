@@ -956,7 +956,10 @@
       "melanesia": "Melanesia",
       "micronesia": "Mikronesia",
       "polynesia": "Polinesia"
-    }
+    },
+    "searchFieldDefault": "Kichwa, muhtasari, maandishi kamili",
+    "searchFieldSemantic": "Kwa maana",
+    "filterSimilarTo": "Inafanana na"
   },
   "paperCard": {
     "screeningResponses": "Majibu ya uchujaji",
@@ -5464,5 +5467,24 @@
     "plansNoticeTitle": "Bure wakati wa alfa ya umma",
     "plansNoticeDetail": "Vipengele vyote vimejumuishwa. Mipango itabadilika baada ya hapo.",
     "emailAddress": "Tuma barua pepe kwa {email}"
+  },
+  "similarPapers": {
+    "closestOf": "zilizo karibu zaidi kati ya {count}",
+    "similarTo": "Inafanana na {count, plural, one {makala #} other {makala #}}",
+    "clear": "Ondoa",
+    "moreLike": "Zaidi kama {count, plural, one {makala uliyokadiria} other {makala # ulizokadiria}}",
+    "likelyFirst": "Zinazoelekea kufaa kwanza",
+    "resort": "Panga upya kwa ukadiriaji wako mpya",
+    "orderFailed": "Imeshindwa kupanga matokeo",
+    "title": "Makala zinazofanana",
+    "similar": "Zinazofanana",
+    "seeAll": "Ona zote",
+    "finding": "Inatafuta makala zinazofanana",
+    "failed": "Makala zinazofanana hazikuweza kupakiwa.",
+    "none": "Hakuna makala zinazofanana zilizopatikana.",
+    "likeCollection": "Makala kama mkusanyiko huu",
+    "likeLibrary": "Makala kama maktaba yako",
+    "yourQuestion": "Swali lako",
+    "questionPlaceholder": "Nini huwasaidia walimu kubaki katika shule za vijijini?"
   }
 }

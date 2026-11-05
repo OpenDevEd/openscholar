@@ -955,7 +955,10 @@
     "filterRatingRangeMulti": "{min}-{max} stars",
     "filterSortPublicationDate": "Publication date",
     "filterSortCitations": "Citations",
-    "filterSortWorksCount": "Works count"
+    "filterSortWorksCount": "Works count",
+    "searchFieldDefault": "Title, abstract, full text",
+    "searchFieldSemantic": "By meaning",
+    "filterSimilarTo": "Similar to"
   },
   "paperCard": {
     "screeningResponses": "Screening responses",
@@ -5463,5 +5466,24 @@
     "plansNoticeTitle": "Free during the public alpha",
     "plansNoticeDetail": "Every feature included. Plans will change after it.",
     "emailAddress": "Email {email}"
+  },
+  "similarPapers": {
+    "closestOf": "closest of {count}",
+    "similarTo": "Similar to {count, plural, one {# paper} other {# papers}}",
+    "clear": "Clear",
+    "moreLike": "More like the {count, plural, one {paper} other {# papers}} you rated",
+    "likelyFirst": "Likely relevant first",
+    "resort": "Re-sort with your new ratings",
+    "orderFailed": "Couldn't order the results",
+    "title": "Similar papers",
+    "similar": "Similar",
+    "seeAll": "See all",
+    "finding": "Finding similar papers",
+    "failed": "Similar papers couldn't be loaded.",
+    "none": "No similar papers found.",
+    "likeCollection": "Papers like this collection",
+    "likeLibrary": "Papers like your library",
+    "yourQuestion": "Your question",
+    "questionPlaceholder": "What helps teachers stay in rural schools?"
   }
 }

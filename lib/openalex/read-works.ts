@@ -40,11 +40,11 @@ export type OwnWorksResult = { ok: true; data: Works } | { ok: false; status: nu
  * A page of works from our index, shaped as the SDK shapes OpenAlex's, with the abstract as text. A fetch, not the SDK,
  * which only speaks to OpenAlex and drops the reason a request was refused. `at` is a numbered page, or the first page of a list that goes on by cursor.
  */
-export async function fetchOwnWorks(parameters: SearchParameters, at: { page: number; perPage: number } | { perPage: number }): Promise<OwnWorksResult> {
+export async function fetchOwnWorks(parameters: SearchParameters, at: { page: number; perPage: number } | { perPage: number }, extra: Record<string, string | undefined> = {}): Promise<OwnWorksResult> {
   let response: Response;
   try {
     // Inside the try: a request that can't be built, with our index's address unset, is answered like one that failed.
-    const url = worksUrl(parameters, { "per-page": String(at.perPage), ...("page" in at ? { page: String(at.page) } : { cursor: "*" }) }, "openscholar");
+    const url = worksUrl(parameters, { "per-page": String(at.perPage), ...("page" in at ? { page: String(at.page) } : { cursor: "*" }), ...extra }, "openscholar");
     response = await openAlexFetch(url, { timeoutMs: OPENALEX_TIMEOUT_MS });
   } catch (error) {
     console.error("[search] our index didn't answer", error);

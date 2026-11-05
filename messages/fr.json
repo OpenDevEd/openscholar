@@ -955,7 +955,10 @@
       "melanesia": "Mélanésie",
       "micronesia": "Micronésie",
       "polynesia": "Polynésie"
-    }
+    },
+    "searchFieldDefault": "Titre, résumé, texte intégral",
+    "searchFieldSemantic": "Par le sens",
+    "filterSimilarTo": "Similaire à"
   },
   "paperCard": {
     "screeningResponses": "Réponses de sélection",
@@ -5463,5 +5466,24 @@
     "plansNoticeTitle": "Gratuit pendant l'alpha publique",
     "plansNoticeDetail": "Toutes les fonctionnalités incluses. Les plans changeront ensuite.",
     "emailAddress": "Écrire à {email}"
+  },
+  "similarPapers": {
+    "closestOf": "les plus proches parmi {count}",
+    "similarTo": "Similaire à {count, plural, one {# article} other {# articles}}",
+    "clear": "Retirer",
+    "moreLike": "Plus comme {count, plural, one {l'article noté} other {les # articles notés}}",
+    "likelyFirst": "Le plus probablement pertinent d'abord",
+    "resort": "Retrier avec vos nouvelles notes",
+    "orderFailed": "Impossible de trier les résultats",
+    "title": "Articles similaires",
+    "similar": "Similaires",
+    "seeAll": "Tout voir",
+    "finding": "Recherche d'articles similaires",
+    "failed": "Impossible de charger les articles similaires.",
+    "none": "Aucun article similaire trouvé.",
+    "likeCollection": "Articles comme cette collection",
+    "likeLibrary": "Articles comme votre bibliothèque",
+    "yourQuestion": "Votre question",
+    "questionPlaceholder": "Qu'est-ce qui aide les enseignants à rester dans les écoles rurales ?"
   }
 }

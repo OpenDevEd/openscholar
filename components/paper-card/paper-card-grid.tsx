@@ -13,7 +13,8 @@ import { openFocusMode } from "@/lib/search-actions";
 import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Quote, Network, Users, BookOpen } from "@/components/icons";
+import { Compass, Quote, Network, Users, BookOpen } from "@/components/icons";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { useAuthorFilter, useJournalFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -44,7 +45,9 @@ export function PaperCardGrid({
   const { isFocusModeOpen } = useUIStore();
   const isMobile = useIsTablet();
 
-  const { handleCitesSearch, handleRelatedSearch } = useCitationHandlers(result.id);
+  const { handleCitesSearch, handleRelatedSearch, handleSimilarSearch } = useCitationHandlers(result.id);
+  const ownIndex = useSearchSource() === "openscholar";
+  const ts = useTranslations("similarPapers");
 
   const { 
     translatedContent, 
@@ -243,9 +246,24 @@ export function PaperCardGrid({
               </TooltipHint>
 
               {/* Related count - hidden in compact */}
-              {!isCompact && (
+              {!isCompact && (ownIndex ? (
+                <TooltipHint label={ts("title")}>
+                  <button
+                    type="button"
+                    aria-label={ts("title")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSimilarSearch();
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium ink-related hover:bg-related/10 transition-colors"
+                  >
+                    <Compass className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipHint>
+              ) : (
                 <TooltipHint label={tp("relatedCount", { count: format.number(result.related_works?.length ?? 0) })}>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRelatedSearch();
@@ -256,7 +274,7 @@ export function PaperCardGrid({
                     <span>{format.number(result.related_works?.length ?? 0)}</span>
                   </button>
                 </TooltipHint>
-              )}
+              ))}
             </div>
           </div>
         </div>

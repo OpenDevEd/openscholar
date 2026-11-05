@@ -82,6 +82,7 @@ const createSearchMetadata = (
     citesItemId: '',
     citedByItemId: '',
     relatedToItemId: '',
+    similarTo: [],
     reviewFilter: false,
     researchAreas: [],
     sdgs: [],

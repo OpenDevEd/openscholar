@@ -282,6 +282,7 @@ const legacySearchFiltersValidator = v.object({
   citesItemId: v.optional(v.string()),
   citedByItemId: v.optional(v.string()),
   relatedToItemId: v.optional(v.string()),
+  similarTo: capped(v.optional(v.array(v.string())), MAX_FILTER_VALUES),
   isYearRangeEnabled: v.optional(v.boolean()),
   filterType: v.optional(v.string()),
   ratingRange: capped(v.optional(v.array(v.number())), RANGE_ENDS),

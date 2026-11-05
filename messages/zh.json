@@ -955,7 +955,10 @@
       "melanesia": "美拉尼西亚",
       "micronesia": "密克罗尼西亚",
       "polynesia": "波利尼西亚"
-    }
+    },
+    "searchFieldDefault": "标题、摘要、全文",
+    "searchFieldSemantic": "按含义",
+    "filterSimilarTo": "相似于"
   },
   "paperCard": {
     "screeningResponses": "筛选响应",
@@ -5463,5 +5466,24 @@
     "plansNoticeTitle": "公开 Alpha 期间免费",
     "plansNoticeDetail": "包含所有功能。之后方案会有变化。",
     "emailAddress": "发送邮件至 {email}"
+  },
+  "similarPapers": {
+    "closestOf": "{count} 篇中最接近的",
+    "similarTo": "与 {count, plural, other {# 篇论文}}相似",
+    "clear": "清除",
+    "moreLike": "更多类似您评分的 {count, plural, other {# 篇论文}}",
+    "likelyFirst": "可能相关的优先",
+    "resort": "按新评分重新排序",
+    "orderFailed": "无法排序结果",
+    "title": "相似论文",
+    "similar": "相似",
+    "seeAll": "查看全部",
+    "finding": "正在查找相似论文",
+    "failed": "无法加载相似论文。",
+    "none": "未找到相似论文。",
+    "likeCollection": "与此合集相似的论文",
+    "likeLibrary": "与您的文库相似的论文",
+    "yourQuestion": "您的问题",
+    "questionPlaceholder": "什么能帮助教师留在乡村学校?"
   }
 }

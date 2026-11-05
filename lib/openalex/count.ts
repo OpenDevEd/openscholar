@@ -24,14 +24,15 @@ import { fetchOqlWorks } from "./oql-works";
 import { openAlexUrl } from "./request-url";
 import type { OpenAlexWorksQuery } from "./search-params";
 import { fetchOwnWorks } from "./read-works";
-import type { SearchSource } from "../search/source";
+import { asKeywords, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "../search/source";
 
 export async function fetchOpenAlexCount(
   query: string,
   filters: SearchFilters,
   source: SearchSource = "openalex",
 ): Promise<{ count: number }> {
-  const params = createSearchParameters(query, filters, {
+  if (source === "openalex" && filters.similarTo?.length) throw new Error(`OpenAlex API error: ${SIMILAR_NEEDS_OWN_INDEX}`);
+  const params = createSearchParameters(query, source === "openalex" ? asKeywords(filters) : filters, {
     perPageOverride: 1,
   });
   if (filters.searchField === OQL_FIELD) {
@@ -41,7 +42,7 @@ export async function fetchOpenAlexCount(
   }
   if (source === "openscholar") {
     // Without its sort: a count has no order, and our index refuses a relevance sort where no text is searched.
-    const result = await fetchOwnWorks({ search: params.search, filter: params.filter as never }, { perPage: 1 });
+    const result = await fetchOwnWorks({ search: params.search, filter: params.filter as never }, { perPage: 1 }, { "search.semantic": params.semantic, similar_to: params.similar });
     if (!result.ok) throw new Error(`Search error: ${result.message}`);
     return { count: result.data.meta.count };
   }

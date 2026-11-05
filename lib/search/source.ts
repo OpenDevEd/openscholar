@@ -21,6 +21,17 @@ export const isOwnId = (id: string) => OWN_ID.test(id.trim());
 /** Which source reads a record by its ID: only ours knows our IDs, and any other ID goes to the active source. */
 export const sourceForId = (id: string, active: SearchSource): SearchSource => (isOwnId(id) ? "openscholar" : active);
 
+/** Ways to search only our index has. They aren't offered while OpenAlex is active. */
+export const OWN_ONLY_FIELDS: readonly string[] = ["default", "semantic"];
+export const SEMANTIC_FIELD = "semantic";
+
+/** What a saved search for similar papers says on OpenAlex, which has no such search. */
+export const SIMILAR_NEEDS_OWN_INDEX = "Similar papers need our own index, and search is on OpenAlex right now.";
+
+/** Filters as OpenAlex reads them: a search saved in a way only our index has runs on the words it holds. */
+export const asKeywords = <Filters extends { searchField: string }>(filters: Filters): Filters =>
+  OWN_ONLY_FIELDS.includes(filters.searchField) ? { ...filters, searchField: "title_and_abstract" } : filters;
+
 /** Filters a source can't serve, by their panel in the search sidebar. They aren't offered while it's active. */
 export const UNSERVED_FILTER_PANELS: Record<SearchSource, readonly string[]> = {
   openalex: [],

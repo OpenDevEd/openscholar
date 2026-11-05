@@ -2,6 +2,7 @@
 "use no memo"; // try/finally in handlers
 
 import { useSearchAccess } from "@/lib/research/reads";
+import { RatedActions } from "./components/rated-actions";
 import React, { useState } from "react";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
@@ -234,20 +235,18 @@ Return a more targeted version of this query.`;
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
-        "border-t border-border-subtle"
-      )}
-    >
+    <div className="border-t border-border-subtle">
+    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       {/* Left: Results count */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
           <AnimatedCount
             value={totalCount}
             className="text-lg font-semibold text-foreground"
           />
-          <span className="text-muted-foreground">{t("common.results").toLowerCase()}</span>
+          <span className="text-muted-foreground">
+            {search?.searchedCount ? t("similarPapers.closestOf", { count: format.number(search.searchedCount) }) : t("common.results").toLowerCase()}
+          </span>
         </div>
       </div>
 
@@ -431,6 +430,8 @@ Return a more targeted version of this query.`;
         </motion.div>
       </div>
 
+    </div>
+    <RatedActions />
     </div>
   );
 }

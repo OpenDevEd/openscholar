@@ -24,6 +24,7 @@ export type FilterType =
   | "cites"
   | "citedBy"
   | "relatedTo"
+  | "similarTo"
   | "workType"
   | "researchArea"
   | "sdg"
@@ -104,6 +105,7 @@ export interface FilterParams {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  similarTo?: string[];
   researchAreas?: string[];
   sdgs?: string[];
   openAccessOnly?: boolean;

@@ -74,7 +74,7 @@ export function FilterChips({
 }
 
 /** Filters whose value is a paper's ID. The ID alone says nothing, so these keep their name beside it. */
-const NAMED_BY_ID = new Set<FilterItem["type"]>(["cites", "citedBy", "relatedTo"]);
+const NAMED_BY_ID = new Set<FilterItem["type"]>(["cites", "citedBy", "relatedTo", "similarTo"]);
 
 function FilterChip({ item, compact, singleLine, valuesOnly }: { item: FilterItem; compact: boolean; singleLine: boolean; valuesOnly: boolean }) {
   const Icon = item.icon;
