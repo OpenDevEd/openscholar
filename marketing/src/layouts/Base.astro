@@ -15,6 +15,9 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  {/* The page's colour comes first, so the browser never shows white while the rest of the page arrives. */}
+  {top !== "#ffffff" && <meta name="color-scheme" content="dark" />}
+  <style is:inline set:html={`html{background:${top}}`} />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{title}</title>
   <meta name="description" content={description} />
