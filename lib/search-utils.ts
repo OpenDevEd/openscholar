@@ -1,5 +1,5 @@
 import { OQL_FIELD, joinOql } from './openalex/oql';
-import { SEMANTIC_FIELD } from './search/source';
+import { doiOfQuery, SEMANTIC_FIELD } from './search/source';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
 import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
 import { validateAndExpandKeywords, type ExpandShortcuts } from './keyword-validation';
@@ -100,12 +100,9 @@ export function prepareOpenAlexSearch(
   if (filters.searchField === SEMANTIC_FIELD) {
     return { validation: { isValid: true, expandedQuery: query, warnings: [] }, countryNames: [], finalApiQuery: query, effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId };
   }
-
-  // Said here in words about the search box: past this, the API refuses it in terms of its own fields.
-  if (filters.searchField !== OQL_FIELD && query.length > MAX_QUERY_LENGTH) {
-    const warning = options.getMessage?.("validation.queryTooLong", { max: String(MAX_QUERY_LENGTH) }) ?? `A search can be at most ${MAX_QUERY_LENGTH} characters.`;
-    options.onWarning?.(warning);
-    return { validation: { isValid: false, expandedQuery: query, warnings: [warning] }, countryNames: [], finalApiQuery: null, effectiveFilters };
+  // A pasted DOI names one paper: terms added to it would only stop it being read as a DOI.
+  if (doiOfQuery(query)) {
+    return { validation: { isValid: true, expandedQuery: query, warnings: [] }, countryNames: [], finalApiQuery: query, effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId };
   }
 
   // Validate and expand keywords on the original query first
@@ -136,6 +133,13 @@ export function prepareOpenAlexSearch(
       finalApiQuery,
       oql ? '(review or synthesis or stemmed "meta-analysis")' : '(review OR synthesis OR "meta-analysis")',
     );
+  }
+
+  // Said here in words about the search box: past this, the API refuses it in terms of its own fields. Checked on what's sent, shortcuts expanded and terms added.
+  if (!oql && finalApiQuery.length > MAX_QUERY_LENGTH) {
+    const warning = options.getMessage?.("validation.queryTooLong", { max: String(MAX_QUERY_LENGTH) }) ?? `A search can be at most ${MAX_QUERY_LENGTH} characters.`;
+    options.onWarning?.(warning);
+    return { validation: { isValid: false, expandedQuery: query, warnings: [warning] }, countryNames, finalApiQuery: null, effectiveFilters };
   }
 
   return {

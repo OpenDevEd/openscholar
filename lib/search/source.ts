@@ -40,3 +40,9 @@ export const UNSERVED_FILTER_PANELS: Record<SearchSource, readonly string[]> = {
   openalex: [],
   openscholar: ["studyDesign"],
 };
+
+/** The DOI a whole query is, with or without its address, in the form a filter takes it; null for anything else. */
+export function doiOfQuery(query: string): string | null {
+  const doi = query.trim().match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)?(10\.\d{4,9}\/\S+)$/i)?.[1];
+  return doi ? `https://doi.org/${doi.toLowerCase()}` : null;
+}

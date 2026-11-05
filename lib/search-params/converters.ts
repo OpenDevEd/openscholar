@@ -8,7 +8,7 @@
  */
 
 import { format, parseISO } from 'date-fns';
-import { SEMANTIC_FIELD } from '../search/source';
+import { doiOfQuery, SEMANTIC_FIELD } from '../search/source';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
 import { MIN_YEAR } from '../constants';
@@ -231,7 +231,7 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
 }
 
 /**
- * Relevance needs a text search, so a search without one is sorted newest first.
+ * Relevance needs a text search, so a search without one, or for one DOI, is sorted newest first.
  * An OQL query searches text only through a `has` or `is similar to` clause;
  * country focus and the review filter add one.
  */
@@ -242,7 +242,7 @@ export function effectiveSort(
   if ((params.field === SEMANTIC_FIELD && params.q.trim()) || params.like?.length) return 'relevance_score:desc';
   const searchesText = params.field === OQL_FIELD
     ? /\b(has|is similar to)\b/i.test(params.q) || params.review || params.focus.length > 0
-    : Boolean(params.q.trim());
+    : Boolean(params.q.trim()) && !doiOfQuery(params.q);
   return params.sort === 'relevance_score:desc' && !searchesText ? 'publication_date:desc' : params.sort;
 }
 

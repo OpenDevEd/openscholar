@@ -130,6 +130,8 @@ describe("a DOI pasted as the query", () => {
     expect(params.filter?.doi).toBe("https://doi.org/10.1016/j.cub.2020.06.053");
     expect(params.search).toBeUndefined();
     expect(params.filter?.title_and_abstract).toBeUndefined();
+    // Relevance needs words to be relevant to.
+    expect(params.sortBy).toBeUndefined();
   });
 
   it("leaves a DOI among other words, and other scopes, as a search", () => {

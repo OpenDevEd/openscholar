@@ -1,3 +1,4 @@
+import { doiOfQuery } from './search/source';
 import { type ClassValue, clsx } from "clsx"
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { extendTailwindMerge } from "tailwind-merge"
@@ -320,12 +321,6 @@ export async function downloadWithMetadata(
 const COUNTRIES_OQL_REFUSES = new Set(['EH', 'TF', 'UM']);
 const KEYWORD_FIELDS = new Set<string>(['title_and_abstract', 'default', 'title', 'abstract', 'fulltext', 'display_name']);
 
-/** The DOI a whole query is, with or without its address, in the form a filter takes it; null for anything else. */
-export function doiOfQuery(query: string): string | null {
-  const doi = query.trim().match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)?(10\.\d{4,9}\/\S+)$/i)?.[1];
-  return doi ? `https://doi.org/${doi.toLowerCase()}` : null;
-}
-
 /** A work as a cites, cited_by or related_to filter takes it: its address, or our index's ID as it is. */
 const workFilterValue = (id: string) => (id.startsWith('https://') || id.startsWith('OS') ? id : `https://openalex.org/${id}`);
 
@@ -505,13 +500,13 @@ export function createSearchParameters(
   // Add sorting. Closeness is the only order a search by meaning has.
   if (searchParams.semantic || searchParams.similar) {
     searchParams.sortBy = { field: 'relevance_score' as SortByWork['field'], order: 'desc' };
-  } else if (filters.sortBy) {
+  } else if (filters.sortBy && !(doi && filters.sortBy === 'relevance_score:desc')) {
     const [field, order] = filters.sortBy.split(':');
     searchParams.sortBy = {
       field: field as SortByWork['field'],
       order: order as 'asc' | 'desc'
     };
-  } else {
+  } else if (!doi) {
     // Default sorting
     searchParams.sortBy = {
       field: 'relevance_score',

@@ -141,7 +141,7 @@ export function FocusModeHeader({
                     <div className="w-3 h-px bg-muted-foreground/60 rotate-45"></div>
                   </div>
                 </button>
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                   X
                 </span>
               </div>
@@ -159,7 +159,7 @@ export function FocusModeHeader({
                     )}
                   />
                 </button>
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                   0
                 </span>
               </div>
@@ -188,7 +188,7 @@ export function FocusModeHeader({
                       )}
                     />
                   </button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                     {star}
                   </span>
                 </div>
@@ -243,7 +243,7 @@ export function FocusModeHeader({
               >
                 <Settings className="h-3 w-3" />
               </Button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                 S
               </span>
             </div>
@@ -254,13 +254,13 @@ export function FocusModeHeader({
                 <div className="hidden lg:flex items-center gap-1">
                   <div className="flex items-center gap-1">
                     {previous}
-                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                       &larr;
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     {next}
-                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                       &rarr;
                     </span>
                   </div>
@@ -278,7 +278,7 @@ export function FocusModeHeader({
                   >
                     <ExternalLink className="h-3 w-3" />
                   </Button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                     O
                   </span>
                 </div>
@@ -296,7 +296,7 @@ export function FocusModeHeader({
                     onDownloadEssentialItem(currentPaper, "csv")
                   }
                 />
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                   D
                 </span>
               </div>
@@ -304,7 +304,7 @@ export function FocusModeHeader({
               {/* Closes as the rest of the row acts: an outline button with its key beside it. */}
               <div className="hidden lg:flex items-center gap-1">
                 {close}
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                   Esc
                 </span>
               </div>

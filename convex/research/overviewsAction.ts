@@ -111,7 +111,6 @@ export const run = internalAction({
         },
       });
       let text = "";
-      let stored = 0;
       let usd = 0;
       // OpenRouter's cost for every step, or tokens at the model's price when a step didn't report one.
       let reported = true;
@@ -123,25 +122,15 @@ export const run = internalAction({
           if (!writing) await progress({ step: "writing" });
           writing = true;
           text += part.text;
-          // Whole lines only, so a paragraph shows once and never grows in place. None until something's been read: it can't be findings yet.
-          const end = text.lastIndexOf("\n") + 1;
-          if (end > stored && counts + lists > 0) {
-            stored = end;
-            await progress({ text: text.slice(0, end) });
-          }
         } else if (part.type === "start-step") {
           // A step that writes after a tool call starts a paragraph of its own.
           if (text && !text.endsWith("\n")) text += "\n";
           stepFrom = text.length;
           writing = false;
         } else if (part.type === "finish-step") {
-          if (part.finishReason === "tool-calls") {
-            text = text.slice(0, stepFrom);
-            if (stored > text.length) {
-              stored = text.length;
-              await progress({ text });
-            }
-          }
+          // Shown when its step ends, once it's known not to be planning, so nothing shown is ever taken back.
+          if (part.finishReason === "tool-calls") text = text.slice(0, stepFrom);
+          else if (text) await progress({ text });
           const cost = pickProviderCostUsd(part.providerMetadata);
           if (cost === null) reported = false;
           else usd += cost;

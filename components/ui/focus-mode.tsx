@@ -1,4 +1,4 @@
-import { focusOpener } from "@/lib/search-actions";
+import { focusOpener } from "@/lib/store";
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import posthog from "posthog-js";
 

@@ -49,6 +49,9 @@ const removeQuestionFromResponses = (
     ])
   );
 
+/** What had the keyboard when focus mode opened. */
+export const focusOpener: { element: HTMLElement | null } = { element: null };
+
 export interface RatingsState {
   ratings: Record<string, number>
   setRating: (paperId: string, rating: number | null) => void
@@ -647,7 +650,11 @@ export const useUIStore = create<UIState>()(
       screeningPanelOpenBySearchId: {},
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
-      setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
+      setIsFocusModeOpen: (open) => {
+        // What has the keyboard as it opens, whichever way it's opened, which focus goes back to when it closes.
+        if (open && !get().isFocusModeOpen) focusOpener.element = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        set({ isFocusModeOpen: open });
+      },
       setFocusModeIndex: (indexOrUpdater) =>
         set((state) => ({
           focusModeIndex:
