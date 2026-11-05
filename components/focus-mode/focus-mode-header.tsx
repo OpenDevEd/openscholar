@@ -97,31 +97,31 @@ export function FocusModeHeader({
 
   return (
     <SheetHeader className="flex-shrink-0 p-3 border-b">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2 md:gap-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between w-full gap-2 lg:gap-0">
         {/* First row: where the paper is in its list, and the rating. Phones step and close here, Close in the corner. */}
-        <div className="flex items-center gap-1 md:gap-3">
+        <div className="flex items-center gap-1 lg:gap-3">
           {/* Named for screen readers only: the row shows the paper's controls. Out of the flow, so it takes no gap. */}
           <SheetTitle className="sr-only">{tAccessibility('focusMode')}</SheetTitle>
           {totalPapers > 1 ? (
             <>
               {/* The count sits after both arrows, so its width never moves an arrow from under a finger. */}
-              <div className="flex items-center gap-1 md:hidden">
+              <div className="flex items-center gap-1 lg:hidden">
                 {previous}
                 {next}
               </div>
-              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums whitespace-nowrap max-md:ms-1">
+              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums whitespace-nowrap max-lg:ms-1">
                 {currentIndex + 1} / {totalPapers}
               </div>
             </>
           ) : null}
           {/* Who else is reading it sits beside Close on a phone and first among the tools on a wider screen, where it keeps the person in the paper's room; here it only reads. Faces arriving grow into the free space, so nothing moves. */}
-          <div className="ms-auto flex items-center gap-2 md:hidden">
+          <div className="ms-auto flex items-center gap-2 lg:hidden">
             {key ? <ItemPresence kind="paper" id={key} join={false} /> : null}
             {close}
           </div>
           {/* Star rating buttons - hidden on mobile */}
           {saveable ? (
-            <div className="hidden md:flex items-center gap-0.5">
+            <div className="hidden lg:flex items-center gap-0.5">
               <div className="flex items-center gap-1">
                 <button
                   onClick={() =>
@@ -141,7 +141,7 @@ export function FocusModeHeader({
                     <div className="w-3 h-px bg-muted-foreground/60 rotate-45"></div>
                   </div>
                 </button>
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                   X
                 </span>
               </div>
@@ -159,7 +159,7 @@ export function FocusModeHeader({
                     )}
                   />
                 </button>
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                   0
                 </span>
               </div>
@@ -188,7 +188,7 @@ export function FocusModeHeader({
                       )}
                     />
                   </button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                     {star}
                   </span>
                 </div>
@@ -204,19 +204,19 @@ export function FocusModeHeader({
         </div>
 
         {/* Second row: actions. Phones show the rating and save on the left and the tools on the right. */}
-        <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:me-8">
+        <div className="flex flex-wrap items-center gap-1 lg:flex-nowrap lg:justify-end lg:me-8">
           {/* Compact rating selector - only on mobile */}
           {saveable ? (
-            <div className="flex items-center gap-1 md:hidden">
+            <div className="flex items-center gap-1 lg:hidden">
               <RatingSelector paper={currentPaper} variant="compact" />
               <SaveControl paper={currentPaper} compact />
             </div>
           ) : null}
 
           {/* The tools stay together, so a row too narrow for them moves them to a line of their own. */}
-          <div className="ms-auto flex items-center gap-1 md:ms-0">
+          <div className="ms-auto flex items-center gap-1 lg:ms-0">
             {key ? (
-              <span className="me-2 hidden md:flex">
+              <span className="me-2 hidden lg:flex">
                 <ItemPresence kind="paper" id={key} />
               </span>
             ) : null}
@@ -235,7 +235,7 @@ export function FocusModeHeader({
               <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden xl:inline">
                 T
               </span>
-              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+              <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
               <Button
                 variant={showSettings ? "outline-primary" : "outline"}
                 size="icon-sm"
@@ -243,31 +243,31 @@ export function FocusModeHeader({
               >
                 <Settings className="h-3 w-3" />
               </Button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                 S
               </span>
             </div>
             {/* One paper has nothing to step to. */}
             {totalPapers > 1 ? (
               <>
-                <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
-                <div className="hidden md:flex items-center gap-1">
+                <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
+                <div className="hidden lg:flex items-center gap-1">
                   <div className="flex items-center gap-1">
                     {previous}
-                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                       &larr;
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     {next}
-                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                       &rarr;
                     </span>
                   </div>
                 </div>
               </>
             ) : null}
-            <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+            <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
             <div className="flex items-center gap-1">
               {page ? (
                 <div className="flex items-center gap-1">
@@ -278,7 +278,7 @@ export function FocusModeHeader({
                   >
                     <ExternalLink className="h-3 w-3" />
                   </Button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                     O
                   </span>
                 </div>
@@ -296,15 +296,15 @@ export function FocusModeHeader({
                     onDownloadEssentialItem(currentPaper, "csv")
                   }
                 />
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                   D
                 </span>
               </div>
-              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+              <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
               {/* Closes as the rest of the row acts: an outline button with its key beside it. */}
-              <div className="hidden md:flex items-center gap-1">
+              <div className="hidden lg:flex items-center gap-1">
                 {close}
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden lg:inline">
                   Esc
                 </span>
               </div>

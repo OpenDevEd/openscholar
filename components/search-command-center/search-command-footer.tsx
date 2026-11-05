@@ -312,7 +312,7 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")}
                   </span>
                 </Button>
-                {!queryOnly && <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden sm:mx-1" />}
+                {!queryOnly && <div className="mx-1 hidden h-6 w-px bg-border/70 @3xl:block" />}
               </motion.div>
             )}
           </AnimatePresence>
@@ -327,7 +327,7 @@ Return a more targeted version of this query.`;
                 triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 sm:px-2.5 sm:has-[>svg]:px-2.5"
               />
 
-              <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden sm:mx-1" />
+              <div className="mx-1 hidden h-6 w-px bg-border/70 @3xl:block" />
 
               {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
               <div
@@ -384,7 +384,7 @@ Return a more targeted version of this query.`;
                 )}
               </div>
 
-              <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden sm:mx-1" />
+              <div className="mx-1 hidden h-6 w-px bg-border/70 @3xl:block" />
 
               {/* Right: Screen toggle */}
               <Button
