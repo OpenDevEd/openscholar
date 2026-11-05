@@ -132,7 +132,10 @@ export function useCitationHandlers(paperId: string) {
     handleCitesSearch: () => handleFilteredSearch("cites"),
     handleCitedBySearch: () => handleFilteredSearch("citedBy"),
     handleRelatedSearch: () => handleFilteredSearch("related"),
-    handleSimilarSearch: () => router.push(similarSearchHref([paperId.split("/").at(-1)!])),
+    handleSimilarSearch: () => {
+      const href = similarSearchHref([paperId]);
+      if (href) router.push(href);
+    },
   };
 }
 

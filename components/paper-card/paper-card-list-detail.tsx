@@ -96,7 +96,10 @@ export function PaperCardListDetail({
   const handleCitedBySearch = () => handleFilteredSearch("citedBy");
   const handleRelatedSearch = () => handleFilteredSearch("related");
   const ownIndex = useSearchSource() === "openscholar";
-  const handleSimilarSearch = () => router.push(similarSearchHref([result.id.split("/").at(-1)!]));
+  const similarHref = ownIndex ? similarSearchHref([result.id]) : null;
+  const handleSimilarSearch = () => {
+    if (similarHref) router.push(similarHref);
+  };
 
   // Handle paper opened
   const handlePaperOpened = () => {
@@ -430,7 +433,7 @@ export function PaperCardListDetail({
                 <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-cited-by opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
-              <button
+              {(!ownIndex || similarHref) && <button
                 onClick={ownIndex ? handleSimilarSearch : handleRelatedSearch}
                 className="bg-related/10 hover:bg-related/15 border border-related/30 rounded-xl p-3 text-start transition-all group/cite relative"
               >
@@ -443,7 +446,7 @@ export function PaperCardListDetail({
                   {format.number(result.related_works?.length ?? 0)}
                 </div>}
                 <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
-              </button>
+              </button>}
             </div>
           </div>
         ) : (
@@ -496,7 +499,7 @@ export function PaperCardListDetail({
                 onClick={handleCitedBySearch}
               />
               {ownIndex
-                ? <CitationBadge label={ts("similar")} color="similar" onClick={handleSimilarSearch} />
+                ? similarHref && <CitationBadge label={ts("similar")} color="similar" onClick={handleSimilarSearch} />
                 : <CitationBadge count={result.related_works?.length ?? 0} label={tc("related")} color="blue" onClick={handleRelatedSearch} />}
             </div>
           </div>

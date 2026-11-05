@@ -234,7 +234,7 @@ export function LibraryPageClient() {
       const ref = parsePaperKey(item.paperKey);
       return ref?.source === "openalex" || ref?.source === "openscholar" ? [ref.work] : [];
     });
-    return ownIndex && papers.length ? similarSearchHref(papers) : null;
+    return ownIndex ? similarSearchHref(papers) : null;
   }, [ownIndex, pageItems]);
   const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[libraryCardId(item), item.by] as const] : []))), [pageItems]);
 

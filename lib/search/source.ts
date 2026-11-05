@@ -28,6 +28,9 @@ export const SEMANTIC_FIELD = "semantic";
 /** What a saved search for similar papers says on OpenAlex, which has no such search. */
 export const SIMILAR_NEEDS_OWN_INDEX = "Similar papers need our own index, and search is on OpenAlex right now.";
 
+/** A question as OpenAlex's search of the words in a title and abstract reads it, without what would make it an operator or split the filter. */
+export const questionAsWords = (question: string) => question.replace(/[,|*?()"]/g, " ").replace(/\s+/g, " ").trim();
+
 /** Filters as OpenAlex reads them: a search saved in a way only our index has runs on the words it holds. */
 export const asKeywords = <Filters extends { searchField: string }>(filters: Filters): Filters =>
   OWN_ONLY_FIELDS.includes(filters.searchField) ? { ...filters, searchField: "title_and_abstract" } : filters;

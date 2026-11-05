@@ -5,7 +5,7 @@
  * These are the only places that write to the history store.
  */
 
-import { bareWork } from '../openalex/ids';
+import { bareWork, workId } from '../openalex/ids';
 import { useSearchHistoryStore } from '../store';
 import type { SearchFilters, SearchField, SearchResult, QuestionHistoryEntry } from '../types';
 import { searchResultToParams } from '../search-params/converters';
@@ -77,9 +77,10 @@ export function restoreFromHistory(entry: SearchResult): string {
   return buildResultsUrl(entry.id, params);
 }
 
-/** The address of a search for the papers closest in meaning to these, on our index. Saved searches don't hold it yet. */
+/** The address of a search for the papers closest in meaning to these, on our index. Only works it can name count; null when there are none, since a search with no papers would list everything. */
 export function similarSearchHref(paperIds: readonly string[]) {
-  return `/results?like=${[...new Set(paperIds)].slice(0, 100).join(",")}`;
+  const works = [...new Set(paperIds.flatMap((id) => workId(id) ?? []))].slice(0, 100);
+  return works.length ? `/results?like=${works.join(",")}` : null;
 }
 
 /**

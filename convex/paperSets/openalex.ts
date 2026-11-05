@@ -10,7 +10,7 @@ import { openAlexFetch, openAlexReason } from "../../lib/openalex/fetch";
 import { searchUrl } from "../../lib/openalex/request-url";
 import { appWork, selectWithIds } from "../../lib/openalex/work-id";
 import { oqlForOwnIndex } from "../../lib/openalex/oql-for-own-index";
-import { SEARCH_SOURCE_NAMES, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "../../lib/search/source";
+import { questionAsWords, SEARCH_SOURCE_NAMES, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "../../lib/search/source";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { autocompleteOptions, autocompleteParameters, sourceTypesParameters, withSourceTypes, type LookupEntity, type LookupOption } from "../../lib/openalex/autocomplete";
 
@@ -68,7 +68,8 @@ const sourceOf = (request: SearchRequest): SearchSource => request.source ?? "op
 function asked(request: SearchRequest): Record<string, string | undefined> {
   if (sourceOf(request) === "openscholar") return { search: request.search, filter: request.filter, "search.semantic": request.semantic, similar_to: request.similarTo };
   if (request.similarTo) throw createError("VALIDATION_ERROR", SIMILAR_NEEDS_OWN_INDEX);
-  return { search: request.search ?? request.semantic, filter: request.filter };
+  const words = request.semantic && questionAsWords(request.semantic);
+  return { search: request.search, filter: [request.filter, words && `title_and_abstract.search:${words}`].filter(Boolean).join(",") || undefined };
 }
 
 /** How many of a character the search's text holds, outside its quoted phrases. */

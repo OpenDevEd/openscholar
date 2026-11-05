@@ -24,7 +24,7 @@ import { fetchOqlWorks } from "./oql-works";
 import { openAlexUrl } from "./request-url";
 import type { OpenAlexWorksQuery } from "./search-params";
 import { fetchOwnWorks } from "./read-works";
-import { asKeywords, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "../search/source";
+import { asKeywords, questionAsWords, SEMANTIC_FIELD, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "../search/source";
 
 export async function fetchOpenAlexCount(
   query: string,
@@ -32,7 +32,8 @@ export async function fetchOpenAlexCount(
   source: SearchSource = "openalex",
 ): Promise<{ count: number }> {
   if (source === "openalex" && filters.similarTo?.length) throw new Error(`OpenAlex API error: ${SIMILAR_NEEDS_OWN_INDEX}`);
-  const params = createSearchParameters(query, source === "openalex" ? asKeywords(filters) : filters, {
+  const words = source === "openalex" && filters.searchField === SEMANTIC_FIELD ? questionAsWords(query) : query;
+  const params = createSearchParameters(words, source === "openalex" ? asKeywords(filters) : filters, {
     perPageOverride: 1,
   });
   if (filters.searchField === OQL_FIELD) {

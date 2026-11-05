@@ -1,5 +1,6 @@
 import { TopicLink } from "@/components/topics/topic-link";
 import { SimilarPapers } from "./similar-papers";
+import { similarSearchHref } from "@/lib/search/actions";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import React from "react";
 import { QueryMatchText } from "@/components/query-highlight";
@@ -332,7 +333,7 @@ export function PaperContent({
           </div>
         </div>
       )}
-      {!isPreview && ownIndex && <SimilarPapers paperId={paper.id} />}
+      {!isPreview && ownIndex && similarSearchHref([paper.id]) && <SimilarPapers paperId={paper.id} />}
     </div>
   );
 }

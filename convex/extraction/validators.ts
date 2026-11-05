@@ -250,6 +250,9 @@ export const searchFiltersValidator = v.object({
     filter: v.optional(v.string()),
     /** An OQL search, filters included, run as a POST instead of search and filter. */
     oql: v.optional(v.string()),
+    /** A question asked by meaning, and the papers whose closest works are asked for, on our index. */
+    semantic: v.optional(v.string()),
+    similarTo: v.optional(v.string()),
     sort: v.string(),
     /** The source it reads, kept so a job finishes on the source it started on. OpenAlex when left out. */
     source: v.optional(v.union(v.literal("openalex"), v.literal("openscholar"))),

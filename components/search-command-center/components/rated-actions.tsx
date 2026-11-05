@@ -33,10 +33,12 @@ export function RatedActions() {
   const { ratings } = useRatingsStore();
   const [ordering, setOrdering] = useState(false);
   const searchId = search?.searchId;
-  const order = useLikelyOrder((state) => (searchId ? state.orders[searchId] : undefined));
+  const kept = useLikelyOrder((state) => (searchId ? state.orders[searchId] : undefined));
   const setOrder = useLikelyOrder((state) => state.set);
   if (!search || !searchId) return null;
   const own = source === "openscholar";
+  // An order is our index's: after a switch to OpenAlex it isn't used, and it can't be redone.
+  const order = own ? kept : undefined;
   const papers = search.results as Array<{ id: string; openscholar_id?: string }>;
   const rated = (keep: (rating: number) => boolean) => papers.filter((paper) => ratings[paper.id] !== undefined && keep(ratings[paper.id]));
   const liked = own ? rated((rating) => rating >= LIKED_RATING).slice(0, MOST_SEEDS) : [];
@@ -83,7 +85,7 @@ export function RatedActions() {
             )}
             {liked.length > 0 && (
               <Button variant="ghost" size="sm" className={QUIET} asChild>
-                <Link href={similarSearchHref(liked.map((paper) => shortId(paper.id)))}>
+                <Link href={similarSearchHref(liked.map((paper) => paper.id)) ?? "/results"}>
                   <Target className="h-3.5 w-3.5" />
                   {t("moreLike", { count: liked.length })}
                 </Link>

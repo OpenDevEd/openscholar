@@ -172,7 +172,7 @@ describe("Screen all on a search only our index has", () => {
     const { screen } = await setup({ ...search, field: "semantic", query: "teachers", sortBy: "relevance_score:desc" });
     await screen({ first: 1, last: 1 });
     expect(asked.at(-1)!.searchParams.get("search.semantic")).toBeNull();
-    expect(asked.at(-1)!.search).toContain("teachers");
+    expect(asked.at(-1)!.searchParams.get("filter")).toContain("title_and_abstract.search:teachers");
 
     const { screen: similar } = await setup({ ...search, query: "", similarTo: ["W1"], sortBy: "relevance_score:desc" });
     await expect(similar({ first: 1, last: 1 })).rejects.toThrow(/our own index/);

@@ -295,6 +295,7 @@ export function ResultsList({
     query: search.params.q,
     field: search.params.field,
     oql: search.oql,
+    similarTo: search.params.like,
     dateRange:
       search.params.df || search.params.dt
         ? {
@@ -364,7 +365,7 @@ export function ResultsList({
     }
 
     return true;
-  }), likelyOrder);
+  }), source === "openscholar" ? likelyOrder : undefined);
 
   const totalPages = useMemo(
     () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),

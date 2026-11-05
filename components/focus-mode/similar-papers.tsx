@@ -22,7 +22,7 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
       <div className="mb-1 flex min-h-8 items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-muted-foreground">{t("title")}</h3>
         <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" asChild>
-          <Link href={similarSearchHref([paperId.split("/").at(-1)!])}>
+          <Link href={similarSearchHref([paperId]) ?? "/results"}>
             <Compass className="h-3.5 w-3.5" />
             {t("seeAll")}
           </Link>
