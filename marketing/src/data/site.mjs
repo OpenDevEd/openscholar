@@ -1,4 +1,4 @@
-export const APP = "https://dev.openscholar.ai";
+export const APP = "https://discover.openscholar.ai";
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
 // Live Evidence Communities, shown in the home hero and the menu.
 export const COMMUNITIES = [
