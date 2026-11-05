@@ -57,13 +57,13 @@ async function personOf(ctx: QueryCtx, userId: Id<"users">) {
 async function signedInFor<Ctx extends QueryCtx>(ctx: Ctx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<Ctx> {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   const here = library !== null && (library.workspaceId === actor.workspaceId || ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null));
-  if (!here) throw createError("NOT_FOUND", "Evidence Library not found");
+  if (!here) throw createError("NOT_FOUND", "Evidence Community not found");
   return await asSignedIn(ctx, await personOf(ctx, actor.userId));
 }
 
 /** Refuses, before the person is asked, what only an owner of a library the reply reaches does. */
 async function ownerHere(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
-  if (!(await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "manage"))) throw createError("FORBIDDEN", "Only an owner of the library does this.");
+  if (!(await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "manage"))) throw createError("FORBIDDEN", "Only an owner of the community does this.");
 }
 
 /** The invitation to a library a call names, while it still waits. */
@@ -78,8 +78,8 @@ async function waitingInvitation(ctx: QueryCtx, invitationId: Id<"itemInvitation
 export const librariesAction = defineUserQuery({
   path: "evidenceLibraries/assistant:libraries",
   description:
-    `Lists the Evidence Libraries the person can see here, ${LIBRARIES_LISTED} a page from \`start\` (0 first): the workspace's, and in their own workspace the ones shared with them. Each one's ID, name, address name, state, and whether they can change its settings; \`next\` is where the next \`start\` is, when there are more. ` +
-    "A library's settings are evidenceLibraries/assistant:draft; putting a draft live is done on the library's page.",
+    `Lists the Evidence Communities the person can see here, ${LIBRARIES_LISTED} a page from \`start\` (0 first): the workspace's, and in their own workspace the ones shared with them. Each one's ID, name, address name, state, and whether they can change its settings; \`next\` is where the next \`start\` is, when there are more. ` +
+    "A community's settings are evidenceLibraries/assistant:draft; putting a draft live is done on the community's page.",
   args: { start: v.optional(v.union(v.number(), v.null())) },
   returns: assistantLibrariesValidator,
   run: async (ctx, actor, { start }) => {
@@ -110,7 +110,7 @@ export const librariesForAssistant = assistantQuery(librariesAction);
 export const draftAction = defineUserQuery({
   path: "evidenceLibraries/assistant:draft",
   description:
-    "Reads an Evidence Library's draft settings, as its configuration page shows them: each section by its key (identity, home, features, ai, sources and the rest) with its settings, its `editVersion`, whether it has changes not yet live, where it answers, and whether the person can change it. " +
+    "Reads an Evidence Community's draft settings, as its configuration page shows them: each section by its key (identity, home, features, ai, sources and the rest) with its settings, its `editVersion`, whether it has changes not yet live, where it answers, and whether the person can change it. " +
     "Give `sections` to read only those, and with one section named, `path` to read only the value there: for a section too long to read whole. Change values with evidenceLibraries/assistant:editDraft. " +
     "`problems` is what the page flags on its cards, the whole draft's, by the card and the page's name for each (nameMissing, linkUrl, badColour and the like): the draft can't be put live with any. For an owner, `failed` is the last check, attempt to put it live or restore of a version, when that failed: why, and what the full check found, each by where in the settings.",
   args: { libraryId: v.id("evidenceLibraries"), sections: v.optional(v.union(v.array(v.string()), v.null())), path: v.optional(draftPathValidator) },
@@ -141,7 +141,7 @@ export const draftForAssistant = assistantQuery(draftAction);
 
 export const revisionAction = defineUserQuery({
   path: "evidenceLibraries/assistant:revision",
-  description: "Reads one revision of an Evidence Library's settings, a version that was put live, with its sections, for an owner. Its draft is evidenceLibraries/assistant:draft.",
+  description: "Reads one revision of an Evidence Community's settings, a version that was put live, with its sections, for an owner. Its draft is evidenceLibraries/assistant:draft.",
   args: { libraryId: v.id("evidenceLibraries"), revisionId: v.id("evidenceLibraryConfigRevisions") },
   returns: revisionReadValidator,
   run: async (ctx, actor, args) => await readEvidenceLibraryRevision(await signedInFor(ctx, actor, args.libraryId), args),
@@ -151,7 +151,7 @@ export const revisionForAssistant = assistantQuery(revisionAction);
 
 export const teamAction = defineUserQuery({
   path: "evidenceLibraries/assistant:team",
-  description: "Reads an Evidence Library's team: its owners, editors and creators, and for an owner the invitations still waiting, as the library's team page shows them.",
+  description: "Reads an Evidence Community's team: its owners, editors and creators, and for an owner the invitations still waiting, as the community's team page shows them.",
   args: { libraryId: v.id("evidenceLibraries") },
   returns: libraryTeamValidator,
   run: async (ctx, actor, args) => await readLibraryTeam(await signedInFor(ctx, actor, args.libraryId), args),
@@ -174,7 +174,7 @@ async function problemsOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, row
 const DRAFT_OPERATIONS = new Set(["setup", "publish", "validate", "rollback"]);
 
 /** A failed attempt to put a draft live, as the page tells its owner: hosting details stay in the operation's record. */
-const HOSTING_FAILED = "The hosting step failed. It can be tried again on the library's page.";
+const HOSTING_FAILED = "The hosting step failed. It can be tried again on the community's page.";
 function failureOf(operation: { kind: string; error?: { code?: string; message?: string }; issues?: Array<{ pointer: string; message: string; code?: string }> }) {
   const error = publicOperationErrorMessage(operation.error, HOSTING_FAILED);
   return {
@@ -187,7 +187,7 @@ function failureOf(operation: { kind: string; error?: { code?: string; message?:
 /** A library's draft as the person can read it. */
 async function draftOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
   const read = await readEvidenceLibraryDraft(ctx, { libraryId });
-  if (!read) throw createError("NOT_FOUND", "Evidence Library not found");
+  if (!read) throw createError("NOT_FOUND", "Evidence Community not found");
   return read;
 }
 
@@ -233,7 +233,7 @@ function changed(libraryId: Id<"evidenceLibraries">, draft: Awaited<ReturnType<t
     const was = valueAt(after.get(sectionKey), path, sectionKey);
     // The library's uploaded files are changed on its page, which also deletes the one a file replaces.
     if (holdsUpload(was, libraryId) || holdsUpload(value, libraryId)) {
-      throw createError("VALIDATION_ERROR", `Uploaded files (logos, photos, documents) in the ${sectionKey} section are changed on the library's configuration page. Change the values around them instead.`);
+      throw createError("VALIDATION_ERROR", `Uploaded files (logos, photos, documents) in the ${sectionKey} section are changed on the community's configuration page. Change the values around them instead.`);
     }
     if (path.length === 0) {
       if (value === undefined) throw createError("VALIDATION_ERROR", "A section stays in the draft. Set its settings instead.");
@@ -265,10 +265,10 @@ const undoFits = (libraryId: Id<"evidenceLibraries">, undo: Change[]) => JSON.st
 export const editDraftAction = defineUserMutation({
   path: EDIT_PATH,
   description:
-    "Changes an Evidence Library's draft settings, for an owner. Each change sets the value at a `path` inside one section (its keys and list places, as evidenceLibraries/assistant:draft shows the section), or with no `value` takes that key out; an empty path sets the section whole, and a list item is added or taken out by setting the list whole. " +
+    "Changes an Evidence Community's draft settings, for an owner. Each change sets the value at a `path` inside one section (its keys and list places, as evidenceLibraries/assistant:draft shows the section), or with no `value` takes that key out; an empty path sets the section whole, and a list item is added or taken out by setting the list whole. " +
     "The homepage's text is `home.intro`; `identity.tagline` and `identity.description` only feed page titles and search results. " +
     "Give the draft's `expectedEditVersion` from that read (`unchanged` is Undo's own). The result is checked as the configuration page checks it, and a refusal says what's wrong. " +
-    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live, on the library's page. Undo puts the values back. " +
+    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live, on the community's page. Undo puts the values back. " +
     "Returns `problems`, what the page flags on the draft after the change: fix any it made.",
   args: { libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, expectedEditVersion: v.optional(v.number()), unchanged: v.optional(v.string()) },
   returns: assistantEditResultValidator,
@@ -287,7 +287,7 @@ export const editDraftAction = defineUserMutation({
     // An undo checks the places it puts back, not the draft's version: other edits undone before it, newest first, moved that on.
     if (unchanged !== undefined) {
       const held = await heldAt((key) => draft.sections.find((section) => section.sectionKey === key)?.payload, changes).catch(() => null);
-      if (held !== unchanged) throw createError("CONFLICT", "The library's draft has changed there since, so this can't be undone. Change it on its configuration page.");
+      if (held !== unchanged) throw createError("CONFLICT", "The community's draft has changed there since, so this can't be undone. Change it on its configuration page.");
     }
     const { rows, after, undo } = changed(libraryId, draft, changes);
     const { editVersion } = await saveEvidenceLibraryDraftSections(signedIn, { libraryId, sections: rows, expectedEditVersion: expectedEditVersion ?? draft.draft.editVersion });
@@ -307,17 +307,17 @@ const teamChange = { spendsCredits: false, outsideEffect: true, undoable: false 
 export const addMemberAction = defineUserMutation({
   path: "evidenceLibraries/assistant:addMember",
   description:
-    "Gives a member of the library's organization a role on it, for an owner: editor (changes its records) or creator (adds them), by the email organizations/queries:members lists them with. " +
-    "Someone outside the organization is invited on the library's page. Asks the person first.",
+    "Gives a member of the community's organization a role on it, for an owner: editor (changes its records) or creator (adds them), by the email organizations/queries:members lists them with. " +
+    "Someone outside the organization is invited on the community's page. Asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator },
   returns: v.null(),
   ...teamChange,
   run: async (ctx, actor, { libraryId, email, role }) => {
     const signedIn = await signedInFor(ctx, actor, libraryId);
     const access = await readEvidenceLibraryAccess(signedIn, libraryId, "manage");
-    if (!access?.organization) throw createError("FORBIDDEN", "Only an owner of the library changes its team.");
+    if (!access?.organization) throw createError("FORBIDDEN", "Only an owner of the community changes its team.");
     const clerkUserId = await memberIdWithEmail(ctx, access.organization._id, email);
-    if (!clerkUserId) throw createError("NOT_FOUND", "No member of the library's organization has that email. Someone outside it is invited on the library's page.");
+    if (!clerkUserId) throw createError("NOT_FOUND", "No member of the community's organization has that email. Someone outside it is invited on the community's page.");
     return await addLibraryMember(signedIn, { libraryId, clerkUserId, role });
   },
 });
@@ -326,7 +326,7 @@ export const addMemberForAssistant = assistantMutation(addMemberAction);
 
 export const changeRoleAction = defineUserMutation({
   path: "evidenceLibraries/assistant:changeRole",
-  description: "Changes the role of someone the library's team lists, for an owner: editor or creator, by the `clerkUserId` evidenceLibraries/assistant:team gives. Its owners' access is the organization's to change. Asks the person first.",
+  description: "Changes the role of someone the community's team lists, for an owner: editor or creator, by the `clerkUserId` evidenceLibraries/assistant:team gives. Its owners' access is the organization's to change. Asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), clerkUserId: v.string(), role: roleValidator },
   returns: v.null(),
   ...teamChange,
@@ -337,7 +337,7 @@ export const changeRoleForAssistant = assistantMutation(changeRoleAction);
 
 export const removeMemberAction = defineUserMutation({
   path: "evidenceLibraries/assistant:removeMember",
-  description: "Takes someone's role on the library away, for an owner, by the `clerkUserId` evidenceLibraries/assistant:team gives. Its owners' access is the organization's to change. Asks the person first.",
+  description: "Takes someone's role on the community away, for an owner, by the `clerkUserId` evidenceLibraries/assistant:team gives. Its owners' access is the organization's to change. Asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), clerkUserId: v.string() },
   returns: v.null(),
   ...teamChange,
@@ -365,7 +365,7 @@ export const organizationHere = internalQuery({
   returns: v.id("organizations"),
   handler: async (ctx, { workspaceId }) => {
     const workspace = await ctx.db.get("workspaces", workspaceId);
-    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Libraries are made in an organization. Switch to one, then ask again.");
+    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Communities are made in an organization. Switch to one, then ask again.");
     return workspace.organizationId;
   },
 });
@@ -375,8 +375,8 @@ const roleOrNone = v.optional(v.union(roleValidator, v.null()));
 export const inviteAction = defineChangingAction({
   path: "evidenceLibraries/assistant:invite",
   description:
-    "Invites someone to a library's team by email, for an owner: editor (changes its records) or creator (adds them). They get an email, and see it under invitations once they sign in with that address. " +
-    "A member of the library's organization is added directly with evidenceLibraries/assistant:addMember. Asks the person first.",
+    "Invites someone to a community's team by email, for an owner: editor (changes its records) or creator (adds them). They get an email, and see it under invitations once they sign in with that address. " +
+    "A member of the community's organization is added directly with evidenceLibraries/assistant:addMember. Asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator },
   returns: v.null(),
   ...teamChange,
@@ -391,7 +391,7 @@ export const inviteForAssistant = assistantAction(inviteAction);
 
 export const changeInvitationAction = defineUserMutation({
   path: "evidenceLibraries/assistant:changeInvitation",
-  description: "Changes the role an invitation to a library still waiting gives, or with `cancel` withdraws it, for an owner, by the invitation's ID evidenceLibraries/assistant:team lists. Asks the person first.",
+  description: "Changes the role an invitation to a community still waiting gives, or with `cancel` withdraws it, for an owner, by the invitation's ID evidenceLibraries/assistant:team lists. Asks the person first.",
   args: { invitationId: v.id("itemInvitations"), role: roleOrNone, cancel: v.optional(v.union(v.boolean(), v.null())) },
   returns: v.null(),
   ...teamChange,
@@ -406,7 +406,7 @@ export const changeInvitationForAssistant = assistantMutation(changeInvitationAc
 export const invitationsAction = defineUserQuery({
   path: "evidenceLibraries/assistant:invitations",
   description:
-    "Lists the invitations to Evidence Libraries waiting for the person: each one's ID, the library, its organization and the role it gives. Answer one with evidenceLibraries/assistant:answerInvitation. " +
+    "Lists the invitations to Evidence Communities waiting for the person: each one's ID, the community, its organization and the role it gives. Answer one with evidenceLibraries/assistant:answerInvitation. " +
     "Empty in an organization: what's offered to someone is in their own workspace.",
   args: {},
   returns: pendingInvitationsValidator,
@@ -417,7 +417,7 @@ export const invitationsForAssistant = assistantQuery(invitationsAction);
 
 export const answerInvitationAction = defineChangingAction({
   path: "evidenceLibraries/assistant:answerInvitation",
-  description: "Accepts or declines an invitation to an Evidence Library waiting for the person, by its ID evidenceLibraries/assistant:invitations gives. It must be to an address their account has verified. Done in their own workspace; asks the person first.",
+  description: "Accepts or declines an invitation to an Evidence Community waiting for the person, by its ID evidenceLibraries/assistant:invitations gives. It must be to an address their account has verified. Done in their own workspace; asks the person first.",
   args: { invitationId: v.id("itemInvitations"), accept: v.boolean() },
   returns: v.null(),
   spendsCredits: false,
@@ -447,8 +447,8 @@ export const ownWorkspace = internalQuery({
 export const startLibraryAction = defineChangingAction({
   path: "evidenceLibraries/assistant:startLibrary",
   description:
-    "Starts a new Evidence Library as a draft, for an admin of the organization the reply runs in whose plan has Evidence Libraries: reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
-    "Nothing is public until the draft is put live, on the library's page. Asks the person first.",
+    "Starts a new Evidence Community as a draft, for an admin of the organization the reply runs in whose plan has Evidence Communities: reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
+    "Nothing is public until the draft is put live, on the community's page. Asks the person first.",
   args: { name: v.string() },
   returns: addressReservedValidator,
   spendsCredits: false,
@@ -457,7 +457,7 @@ export const startLibraryAction = defineChangingAction({
   undoable: false,
   check: async (ctx, actor) => {
     const workspace = await ctx.db.get("workspaces", actor.workspaceId);
-    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Libraries are made in an organization. Switch to one, then ask again.");
+    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Communities are made in an organization. Switch to one, then ask again.");
     await requireLibraryOrganization(await asSignedIn(ctx, await personOf(ctx, actor.userId)), workspace.organizationId);
   },
   run: async (ctx, actor, { name }): Promise<Infer<typeof addressReservedValidator>> => {
@@ -468,7 +468,7 @@ export const startLibraryAction = defineChangingAction({
     throw createError(
       "CONFLICT",
       reserved.status === "name-taken"
-        ? "The organization already has a library with that name. Pick another."
+        ? "The organization already has a community with that name. Pick another."
         : reserved.status === "address-taken"
           ? "Someone took that address while it was being reserved. Try again."
           : reserved.reason === "check-failed"
@@ -482,7 +482,7 @@ export const startLibraryForAssistant = assistantAction(startLibraryAction);
 
 export const sourcesAction = defineUserQuery({
   path: "evidenceLibraries/assistant:sources",
-  description: "Reads how a library's sources last ran, as the running library reported it: each source's key, state, counts and error. Retry one with evidenceLibraries/assistant:syncSource. Null before its first report.",
+  description: "Reads how a community's sources last ran, as the running community reported it: each source's key, state, counts and error. Retry one with evidenceLibraries/assistant:syncSource. Null before its first report.",
   args: { libraryId: v.id("evidenceLibraries") },
   returns: sourceStatusReadValidator,
   run: async (ctx, actor, { libraryId }) => await readSourceStatus(await signedInFor(ctx, actor, libraryId), libraryId),
@@ -502,7 +502,7 @@ const publicationRead = v.union(reviewedPublicationValidator, v.null());
 
 export const runningCollectionsAction = defineUserAction({
   path: "evidenceLibraries/assistant:runningCollections",
-  description: `Lists the collections the running library shows, ${RUNTIME_READ_PAGE_SIZE} a page, searched by \`query\`: each one's ID, title, record count, source and the collection it sits in. \`reason: "not-set-up"\` when the library isn't running yet.`,
+  description: `Lists the collections the running community shows, ${RUNTIME_READ_PAGE_SIZE} a page, searched by \`query\`: each one's ID, title, record count, source and the collection it sits in. \`reason: "not-set-up"\` when the community isn't running yet.`,
   args: pageArgs,
   returns: collectionsPage,
   ...running,
@@ -516,7 +516,7 @@ export const runningCollectionsForAssistant = assistantAction(runningCollections
 
 export const runningInstitutionsAction = defineUserAction({
   path: "evidenceLibraries/assistant:runningInstitutions",
-  description: `Lists the institutions named on the running library's records, ${RUNTIME_READ_PAGE_SIZE} a page, searched by \`query\`, most records first or by \`sort\` "name": each one's name and record count.`,
+  description: `Lists the institutions named on the running community's records, ${RUNTIME_READ_PAGE_SIZE} a page, searched by \`query\`, most records first or by \`sort\` "name": each one's name and record count.`,
   args: { ...pageArgs, sort: v.optional(v.union(v.literal("count"), v.literal("name"), v.null())) },
   returns: institutionsPage,
   ...running,
@@ -530,7 +530,7 @@ export const runningInstitutionsForAssistant = assistantAction(runningInstitutio
 
 export const runningPublicationsAction = defineUserAction({
   path: "evidenceLibraries/assistant:runningPublications",
-  description: `Lists the running library's publications with a PDF, ${RUNTIME_READ_PAGE_SIZE} a page, searched by \`query\`: each one's key, title, date, reviewer and whether it's reviewed. One by its key is evidenceLibraries/assistant:runningPublication.`,
+  description: `Lists the running community's publications with a PDF, ${RUNTIME_READ_PAGE_SIZE} a page, searched by \`query\`: each one's key, title, date, reviewer and whether it's reviewed. One by its key is evidenceLibraries/assistant:runningPublication.`,
   args: pageArgs,
   returns: publicationsPage,
   ...running,
@@ -544,7 +544,7 @@ export const runningPublicationsForAssistant = assistantAction(runningPublicatio
 
 export const runningPublicationAction = defineUserAction({
   path: "evidenceLibraries/assistant:runningPublication",
-  description: "Reads one of the running library's publications by its key: its title, date, reviewer and whether it's reviewed. Null when the library has none with that key.",
+  description: "Reads one of the running community's publications by its key: its title, date, reviewer and whether it's reviewed. Null when the community has none with that key.",
   args: { libraryId: v.id("evidenceLibraries"), key: v.string() },
   returns: publicationRead,
   ...running,
@@ -558,7 +558,7 @@ export const runningPublicationForAssistant = assistantAction(runningPublication
 
 export const syncSourceAction = defineChangingAction({
   path: "evidenceLibraries/assistant:syncSource",
-  description: "Asks the running library to run one of its sources again now, by the key evidenceLibraries/assistant:sources gives: an import that failed is retried within seconds. For an owner; asks the person first.",
+  description: "Asks the running community to run one of its sources again now, by the key evidenceLibraries/assistant:sources gives: an import that failed is retried within seconds. For an owner; asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
   returns: v.null(),
   spendsCredits: false,
@@ -569,7 +569,7 @@ export const syncSourceAction = defineChangingAction({
   run: async (ctx, actor, args): Promise<null> => {
     await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId: args.libraryId });
     const ran: { reason?: "not-set-up" } = await ctx.runAction(internal.zotero.runtimeReadActions.requestSourceRunFor, { ...args, actingAs: actor.userId });
-    if (ran.reason) throw createError("CONFLICT", "The library isn't running yet, so there's no import to retry.");
+    if (ran.reason) throw createError("CONFLICT", "The community isn't running yet, so there's no import to retry.");
     return null;
   },
 });
@@ -585,7 +585,7 @@ function screeningSubject(subject: string) {
 
 export const screeningRequestAction = defineUserQuery({
   path: "evidenceLibraries/assistant:screeningRequest",
-  description: "Reads an owner's request to grade a screening source's records: the subject it asked for, whether the library took it (`sent`), and why the library refused it, if it did. Null when none waits. Progress once the library grades shows in evidenceLibraries/assistant:sources.",
+  description: "Reads an owner's request to grade a screening source's records: the subject it asked for, whether the community took it (`sent`), and why the community refused it, if it did. Null when none waits. Progress once the community grades shows in evidenceLibraries/assistant:sources.",
   args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
   returns: v.union(v.null(), v.object({ subject: v.string(), sent: v.boolean(), error: v.union(v.string(), v.null()) })),
   run: async (ctx, actor, { libraryId, sourceKey }) => {
@@ -599,7 +599,7 @@ export const screeningRequestForAssistant = assistantQuery(screeningRequestActio
 
 export const gradeSourceAction = defineUserMutation({
   path: "evidenceLibraries/assistant:gradeSource",
-  description: "Asks the running library to grade a screening source's records against `subject`, the source's subject in the settings: the records it held before it screened, or all of them after a new subject. A new subject reaches the library when the settings are activated; the request waits until the library reports it, then goes. Spends on the library's own OpenRouter key. For an owner; asks the person first.",
+  description: "Asks the running community to grade a screening source's records against `subject`, the source's subject in the settings: the records it held before it screened, or all of them after a new subject. A new subject reaches the community when the settings are activated; the request waits until the community reports it, then goes. Spends on the community's own OpenRouter key. For an owner; asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string(), subject: v.string() },
   returns: v.null(),
   spendsCredits: false,
@@ -618,7 +618,7 @@ export const gradeSourceForAssistant = assistantMutation(gradeSourceAction);
 const trialResult = v.union(screeningTrialValidator, v.object({ reason: notSetUpValidator }));
 export const trySourceSubjectAction = defineUserAction({
   path: "evidenceLibraries/assistant:trySourceSubject",
-  description: "Has the running library grade 200 of a source's records, picked at random, against a proposed screening subject, and keep nothing: their grades now and with it (about, touches, passing, notAbout) and how many would change. Takes about a minute and spends a few cents at most on the library's own OpenRouter key. For an owner. `reason: \"not-set-up\"` when the library isn't running yet.",
+  description: "Has the running community grade 200 of a source's records, picked at random, against a proposed screening subject, and keep nothing: their grades now and with it (about, touches, passing, notAbout) and how many would change. Takes about a minute and spends a few cents at most on the community's own OpenRouter key. For an owner. `reason: \"not-set-up\"` when the community isn't running yet.",
   args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string(), subject: v.string() },
   returns: trialResult,
   spendsCredits: false,

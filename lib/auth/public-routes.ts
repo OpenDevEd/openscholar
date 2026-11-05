@@ -1,22 +1,26 @@
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 
-const PUBLIC_UNAUTHENTICATED_PATHS = [
-  "/",
-  "/pricing",
-  "/topics/:path*",
-  "/authors",
-  "/privacy",
-  "/cookie-policy",
-  "/credits",
-  "/results/:path*",
-  "/sign-in/:path*",
-  "/sign-up/:path*",
-  "/bookmarks",
-  "/history",
-  "/settings/ai",
-  "/data/:path*", // PostHog proxy - must work when signed out
-  "/connect", // Wallet connection consent flow
+/**
+ * Pages that need an account. Everything else is open, so an address that names no page reaches
+ * the not-found page instead of sign-in. tests/public-routes-auth.test.ts lists the pages that are
+ * open, and fails on a new page until it's on one list or the other.
+ */
+const PRIVATE_PATHS = [
+  "/library/:path*",
+  "/screening/:path*",
+  "/extraction/:path*",
+  "/evidence-communities/:path*",
+  "/settings/:path*",
+  "/shared/:path*",
+  "/join/:path*",
+  "/from-library/:path*",
+  "/o/:path*",
+  "/api/:path*",
+  "/trpc/:path*",
 ] as const;
+
+/** Open pages inside a private section. */
+const OPEN_INSIDE_PRIVATE = ["/settings/ai"] as const;
 
 function normalizePathname(pathname: string) {
   if (!pathname) return "/";
@@ -27,7 +31,7 @@ function normalizePathname(pathname: string) {
   return withoutQuery.replace(/\/+$/, "") || "/";
 }
 
-function matchesPublicPattern(pathname: string, pattern: string) {
+function matchesPattern(pathname: string, pattern: string) {
   if (!pattern.includes(":path*")) {
     return pathname === pattern;
   }
@@ -39,11 +43,10 @@ function matchesPublicPattern(pathname: string, pattern: string) {
 export function isPublicPath(pathname: string) {
   const normalizedPath = normalizePathname(pathname);
 
-  if (/^\/authors\/[^/]+$/.test(normalizedPath)) return true;
+  if ((OPEN_INSIDE_PRIVATE as readonly string[]).includes(normalizedPath)) return true;
+  if (/^\/authors\/[^/]+\/configuration$/.test(normalizedPath)) return false;
 
-  return PUBLIC_UNAUTHENTICATED_PATHS.some((pattern) =>
-    matchesPublicPattern(normalizedPath, pattern),
-  );
+  return !PRIVATE_PATHS.some((pattern) => matchesPattern(normalizedPath, pattern));
 }
 
 /**
@@ -51,7 +54,7 @@ export function isPublicPath(pathname: string) {
  * route gate skips its full-screen loader for them. Each one must stay
  * correct before access is known (see EvidenceLibrariesGate's fallback).
  */
-const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
+const PAGES_WITH_OWN_LOADING = ["/evidence-communities", "/authors"] as const;
 /** Every page in these sections draws its own frame while loading; a hand-off's page arrives whole from the server. */
 const SECTIONS_WITH_OWN_LOADING = ["/extraction", "/from-library"] as const;
 

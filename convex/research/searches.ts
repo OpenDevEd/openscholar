@@ -15,7 +15,7 @@ import { ASSISTANT_FIELDS, keptByRating, requestOf, savedSearchValidator, spende
 import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
 import { withoutQuotedQuestionMarks } from "../../lib/search/wildcard";
 import { authorFilterValue } from "../../lib/openalex/author-filter";
-import { institutionId, openAlexId, sourceId } from "../../lib/openalex/ids";
+import { institutionId, openAlexId, sourceId, workId } from "../../lib/openalex/ids";
 import { INSTITUTION_TYPES, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, restoreSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { buildShareableUrl } from "../../lib/search-params";
@@ -48,7 +48,7 @@ type Settings = ObjectType<typeof searchSettings>;
 
 const needsQuery = () => createError("VALIDATION_ERROR", "A search needs a query, or a filter to search by.");
 /** The fields that narrow a search by themselves, so it can do without a query: its page searches by a filter alone too. */
-const NARROWS = ["authors", "funders", "journals", "institutions", "studyDesigns", "topCitedOnly", "venuesOnly", "researchAreas", "selectedRegions", "selectedCountryFocus", "workTypes", "workLanguages", "institutionTypes", "sdgs", "citesItemId", "citedByItemId", "relatedToItemId", "dateRange", "yearRange", "minCitations", "openAccessOnly", "hasAbstract", "reviewFilter", "onlyRatedPapers"] as const;
+const NARROWS = ["authors", "funders", "journals", "institutions", "studyDesigns", "topCitedOnly", "venuesOnly", "researchAreas", "selectedRegions", "selectedCountryFocus", "workTypes", "workLanguages", "institutionTypes", "sdgs", "similarTo", "citesItemId", "citedByItemId", "relatedToItemId", "dateRange", "yearRange", "minCitations", "openAccessOnly", "hasAbstract", "reviewFilter", "onlyRatedPapers"] as const;
 // A citation minimum of none is no filter: the request leaves it out.
 const off = (value: unknown) => value === undefined || value === false || value === 0 || value === "" || (Array.isArray(value) && !value.length);
 const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim()) || NARROWS.some((field) => !off(search[field]));
@@ -172,7 +172,6 @@ const isDay = (day: string) => {
   return Number.isFinite(at) && new Date(at).toISOString().slice(0, 10) === day;
 };
 
-const workId = openAlexId("W");
 const funderId = openAlexId("F");
 /** A research area as the page's filter keeps it: a domain, field or subfield by its path, a topic by its ID. */
 const AREA = /^(?:(?:domains|fields|subfields)\/\d+|T\d+)$/;
@@ -191,6 +190,7 @@ const LISTS = [
   ["types", "workTypes", among(WORK_TYPES.map((type) => type.id), "types")],
   ["languages", "workLanguages", among(WORK_LANGUAGES, "languages")],
   ["institutionTypes", "institutionTypes", among(INSTITUTION_TYPES.map((type) => type.id), "institutionTypes")],
+  ["similarTo", "similarTo", (given: string[]) => given.map((value) => workId(value) ?? invalid(`"${value}" isn't a paper's ID, such as W2741809807, as a search's results give it.`))],
 ] as const;
 
 
@@ -514,7 +514,7 @@ function shownPaper(work: Work, paper: SearchPaper) {
 
 /**
  * A page of the papers a request finds, as the model reads them, in the order its results
- * page lists them. Each request counts against the person's OpenAlex allowance.
+ * page lists them. Each request counts against the person's search allowance.
  */
 export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: SavedSearchRequest, page: number, notValid: string): Promise<Infer<typeof resultsValidator>> {
   if (!Number.isInteger(page) || page < 1) throw createError("VALIDATION_ERROR", "Pages count from 1.");
@@ -567,9 +567,9 @@ export const recount = internalAction({
 export const resultsAction = defineUserAction({
   path: "research/searches:results",
   description:
-    `Reads a page of a saved search's results from OpenAlex, ${RESULTS_PAGE} papers a page: each paper's ID, title, first authors with their IDs, the countries they work in, year, venue, type, DOI, whether it's open access, citations and the start of its abstract, with how many results the search has in all. ` +
+    `Reads a page of a saved search's results from the index, ${RESULTS_PAGE} papers a page: each paper's ID, title, first authors with their IDs, the countries they work in, year, venue, type, DOI, whether it's open access, citations and the start of its abstract, with how many results the search has in all. ` +
     "The papers come in the order the search's own page lists them. A search that keeps only papers the person rated returns those of each page's papers, and its total counts the papers before that filter. " +
-    "Reading counts against the person's OpenAlex allowance: one request a page by relevance, and under any other sort one for every 200 results up to the page.",
+    "Reading counts against the person's search allowance: one request a page by relevance, and under any other sort one for every 200 results up to the page.",
   args: { id: v.string(), page: pageValidator },
   returns: resultsValidator,
   spendsCredits: false,

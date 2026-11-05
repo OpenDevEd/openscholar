@@ -36,7 +36,7 @@ export async function readSourcesRevisions(ctx: Pick<QueryCtx, "db">, libraryId:
     .query("evidenceLibraryConfigSections")
     .withIndex("by_libraryId_and_kind_and_sectionKey", (q) => q.eq("libraryId", libraryId).eq("kind", "revision").eq("sectionKey", "sources"))
     .take(UNRECORDED_REVISIONS_MAX + 1);
-  if (revisions.length > UNRECORDED_REVISIONS_MAX) throw new Error(`Library ${libraryId} has more than ${UNRECORDED_REVISIONS_MAX} sources revisions; run migrations/recordApprovedQueries`);
+  if (revisions.length > UNRECORDED_REVISIONS_MAX) throw new Error(`Community ${libraryId} has more than ${UNRECORDED_REVISIONS_MAX} sources revisions; run migrations/recordApprovedQueries`);
   return revisions.map((section) => section.payload);
 }
 

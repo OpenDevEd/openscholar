@@ -1,3 +1,4 @@
+import { bareWork } from './openalex/ids';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
@@ -14,6 +15,8 @@ export type DownloadSearchState = {
   searchId?: string;
   /** An OQL search's full request, filters included, as it ran. */
   oql?: string | null;
+  /** The papers a similar search is closest to. */
+  similarTo?: string[];
 };
 
 type ItemScreeningResults = Record<string, boolean | null>;
@@ -66,6 +69,7 @@ const createSearchMetadata = (
   dateRange?: DateRange,
   yearRange?: [number, number],
   oql?: string | null,
+  similarTo: string[] = [],
 ) => {
   // Create unified filters object for metadata
   const filters: SearchFilters = {
@@ -82,6 +86,7 @@ const createSearchMetadata = (
     citesItemId: '',
     citedByItemId: '',
     relatedToItemId: '',
+    similarTo,
     reviewFilter: false,
     researchAreas: [],
     sdgs: [],
@@ -131,7 +136,7 @@ const getEssentialInfo = (
   format: 'json' | 'csv'
 ) => {
   const essentialInfo = {
-    id: item.id,
+    id: bareWork(item.id),
     title: item.title,
     authors: item.authorships?.map((a: { author: { display_name: string } }) => a.author.display_name).join(', ') || '',
     year: item.publication_year,
@@ -179,13 +184,14 @@ export const downloadItem = async (
     const itemWithRating = withScreeningResults(
       {
         ...item,
+        id: bareWork(item.id),
         rating: getRatingOrNull(ratings, item.id)
       },
       item.id,
       screeningResponses,
       format
     );
-    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql, searchState.similarTo);
     await downloadWithMetadata(itemWithRating, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading item:', error);
@@ -216,7 +222,7 @@ export const downloadEssentialItem = async (
     
     const essentialInfo = getEssentialInfo(item, ratings, screeningResponses, format);
     const filename = generateFilename(item.title || '', 'essential', format);
-    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql, searchState.similarTo);
     await downloadWithMetadata(essentialInfo, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading essential item:', error);
@@ -253,6 +259,7 @@ export const downloadAll = async (
           withScreeningResults(
             {
               ...item,
+              id: bareWork(item.id),
               rating: getRatingOrNull(ratings, item.id)
             },
             item.id,
@@ -261,7 +268,7 @@ export const downloadAll = async (
           )
         );
     
-    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(expandedQuery, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql, searchState.similarTo);
     await downloadWithMetadata(dataToDownload, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading all results:', error);

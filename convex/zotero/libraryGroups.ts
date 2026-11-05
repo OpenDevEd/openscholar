@@ -203,7 +203,7 @@ export const saveLibraryZoteroGroup = internalMutation({
       args.groupId,
     );
     if (!existing && (await libraryZoteroGroups(ctx, args.libraryId)).length >= MAX_ZOTERO_GROUPS_PER_LIBRARY) {
-      throw createError("VALIDATION_ERROR", `A library connects at most ${MAX_ZOTERO_GROUPS_PER_LIBRARY} Zotero groups. Remove one to connect another.`);
+      throw createError("VALIDATION_ERROR", `A community connects at most ${MAX_ZOTERO_GROUPS_PER_LIBRARY} Zotero groups. Remove one to connect another.`);
     }
     const groupRowId = existing
       ? (await ctx.db.replace("evidenceLibraryZoteroGroups", existing._id, groupFields),

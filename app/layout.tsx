@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Ubuntu } from "next/font/google";
+import { DirectionProvider } from "@/components/ui/direction";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
+import { clerkLocalizationFor } from "@/lib/auth/clerk-localization";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QuerySyncProvider } from "@/components/query-sync-provider";
@@ -8,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ConfirmationHost } from "@/lib/confirmation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNavbar } from "@/components/mobile-navbar";
+import { AlphaStrip } from "@/components/alpha-notices";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
@@ -28,6 +32,7 @@ import { WorkspacesProvider } from "@/components/workspaces/parts";
 import { QueryHighlightProvider } from "@/components/query-highlight";
 import { QUERY_HIGHLIGHT_COOKIE } from "@/lib/search/boolean-query";
 import { api } from "@/convex/_generated/api";
+import { previewDefaults, SITE_URL } from "@/lib/seo/page-metadata";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
 // --font-sans in globals.css.
@@ -39,36 +44,19 @@ const appFont = Ubuntu({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("metadata");
+  const [t, defaults] = await Promise.all([getTranslations("metadata"), previewDefaults()]);
 
   return {
-    metadataBase: new URL(t("siteUrl")),
-    title: t("defaultTitle"),
+    metadataBase: new URL(SITE_URL),
+    title: { default: t("defaultTitle"), template: `%s | ${t("siteName")}` },
     description: t("defaultDescription"),
     appleWebApp: {
       title: t("siteName"),
     },
-    openGraph: {
-      title: t("defaultTitle"),
-      description: t("defaultDescription"),
-      url: t("siteUrl"),
-      siteName: t("siteName"),
-      locale: t("locale"),
-      type: "website",
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: t("defaultTitle"),
-      description: t("defaultDescription"),
-      creator: t("twitterCreator"),
-    },
-    robots: {
-      index: true,
-      follow: true,
-    },
-    alternates: {
-      canonical: "/",
-    },
+    openGraph: { ...defaults.openGraph, title: t("defaultTitle"), description: t("defaultDescription") },
+    twitter: { ...defaults.twitter, title: t("defaultTitle"), description: t("defaultDescription") },
+    // Out of search engines unless a page says otherwise (lib/seo/page-metadata.ts).
+    robots: { index: false, follow: false },
   };
 }
 
@@ -91,12 +79,16 @@ export default async function RootLayout({
   const { me, looks } = readCache(requestCookies.get(LOOK_COOKIE)?.value, userId);
   const look = looks[lookKey(slug)];
 
+  const clerkLocalization = await clerkLocalizationFor(locale);
+  const direction = isRightToLeft(locale) ? "rtl" : "ltr";
+
   return (
-    <html lang={locale} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
+    <html lang={locale} dir={direction} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
       <body>
+        <DirectionProvider dir={direction}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
-            <ConvexClientProvider preloadedFlags={preloadedFlags} preloadedCatalog={preloadedCatalog}>
+            <ConvexClientProvider preloadedFlags={preloadedFlags} preloadedCatalog={preloadedCatalog} clerkLocalization={clerkLocalization}>
               <ConfigProvider>
                 <NuqsAdapter>
                   <QuerySyncProvider>
@@ -108,7 +100,8 @@ export default async function RootLayout({
                             <AppSidebar firstWorkspace={{ slug, ...(userId ? { user: userId } : {}), ...(me ? { me } : {}), ...(look ? { look } : {}) }} />
 
                             {/* Main Content Area */}
-                            <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">
+                            <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:5.5rem] md:[--app-navbar-height:2rem]">
+                              <AlphaStrip />
                               {/* Mobile Navbar */}
                               <MobileNavbar />
 
@@ -134,6 +127,7 @@ export default async function RootLayout({
             </ConvexClientProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
+        </DirectionProvider>
       </body>
     </html>
   );

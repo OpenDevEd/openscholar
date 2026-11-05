@@ -35,7 +35,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
   return (
     <div className="flex h-[calc(100dvh-300px)] min-h-[480px] min-w-0 flex-col lg:flex-row">
       {/* Papers */}
-      <ul className="h-56 w-full shrink-0 divide-y divide-border-subtle overflow-y-auto border-b border-border-subtle lg:h-full lg:w-80 lg:border-b-0 lg:border-r">
+      <ul className="h-56 w-full shrink-0 divide-y divide-border-subtle overflow-y-auto border-b border-border-subtle lg:h-full lg:w-80 lg:border-b-0 lg:border-e">
         {papers.map((paper) => {
           const isSelected = selectedPaperId === paper._id;
           return (
@@ -44,7 +44,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
                 type="button"
                 aria-current={isSelected || undefined}
                 onClick={() => setSelectedPaperId(paper._id)}
-                className={cn("w-full space-y-1 px-4 py-3 text-left transition-colors hover:bg-muted", isSelected && "bg-muted hover:bg-muted")}
+                className={cn("w-full space-y-1 px-4 py-3 text-start transition-colors hover:bg-muted", isSelected && "bg-muted hover:bg-muted")}
               >
                 <p className="line-clamp-2 text-sm font-medium leading-snug">{paper.title}</p>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -74,7 +74,7 @@ export const SplitView = memo(function SplitView({ papers, questions, onOpenAnsw
                 // The citation column exists only when there is a citation to show.
                 <section key={q.key} className={cn("grid gap-4 p-4 md:px-6", citations.length > 0 && result && "xl:grid-cols-[1fr_280px]")}>
                   <div className="min-w-0 space-y-2">
-                    <h3 className="text-xs text-muted-foreground">{q.question}</h3>
+                    <h3 dir="auto" className="text-xs text-muted-foreground">{q.question}</h3>
                     <ResultAnswer result={result} type={q.type} clamp="" />
                     <ResultMeta result={result} />
                     {result?.reasoning ? <p className="text-xs leading-relaxed text-muted-foreground">{result.reasoning}</p> : null}
@@ -117,7 +117,7 @@ function CitationPreview({
   return (
     <button
       type="button"
-      className="w-full space-y-2 rounded-lg bg-inset p-3 text-left transition-colors hover:bg-muted"
+      className="w-full space-y-2 rounded-lg bg-inset p-3 text-start transition-colors hover:bg-muted"
       onClick={onClick}
     >
       <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

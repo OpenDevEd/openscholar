@@ -16,6 +16,7 @@ import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { BookOpen, Quote } from "@/components/icons";
 import { useAuthorFilter, useJournalFilter, useTranslate, useCitationHandlers } from "./hooks";
+import { SimilarIconButton } from "./similar-button";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -76,7 +77,7 @@ export function PaperCardListSimple({
         tabIndex={hide?.focusMode ? undefined : 0}
         onClick={hide?.focusMode ? undefined : () => openFocusMode(isMobile, resultIndex, result.id)}
         onKeyDown={hide?.focusMode ? undefined : (e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
-        className={cn("w-full text-left", !hide?.focusMode && "cursor-pointer")}
+        className={cn("w-full text-start", !hide?.focusMode && "cursor-pointer")}
       >
         <div className="flex items-center gap-3 p-3 @sm/card:p-4">
           {/* Rating - always visible */}
@@ -99,9 +100,9 @@ export function PaperCardListSimple({
           <div className="flex-1 min-w-0 flex flex-col @sm/card:flex-row @sm/card:items-center gap-1 @sm/card:gap-3">
             {/* Title and year */}
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+              <h3 dir="auto" className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                 <QueryMatchText text={displayTitle} />
-                {result.publication_year != null && <span className="ml-1.5 text-muted-foreground font-normal">
+                {result.publication_year != null && <span className="ms-1.5 text-muted-foreground font-normal">
                   ({result.publication_year})
                 </span>}
               </h3>
@@ -188,6 +189,7 @@ export function PaperCardListSimple({
                 compact
               />
               <DOIBadge doi={result.doi} compact />
+              <SimilarIconButton paperId={result.id} />
               {!hide?.download && (
                 <DownloadMenuCompact
                   onDownloadJSON={() => onDownloadItem(result, "json")}

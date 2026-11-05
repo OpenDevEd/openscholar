@@ -179,7 +179,7 @@ describe("deleting an OpenScholar account", () => {
       clerkUserId: "reader_2",
       state: "failed",
       attempts: READER_DELETION_MAX_ATTEMPTS,
-      lastError: { status: 502, message: "The library answered 502" },
+      lastError: { status: 502, message: "The community answered 502" },
     })]);
   });
 });

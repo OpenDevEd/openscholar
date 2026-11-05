@@ -6,10 +6,21 @@ import { Popover as PopoverPrimitive } from "radix-ui"
 import { cn } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 
+const PopoverIsModal = React.createContext(false)
+
+const stopPropagation = (event: React.SyntheticEvent) => event.stopPropagation()
+// A dialog's scroll lock cancels these once they reach the document, and a popover's portal sits outside the dialog.
+// A modal popover keeps them: its own lock has to see them.
+const outOfDialogLock = { onWheel: stopPropagation, onTouchMove: stopPropagation }
+
 function Popover({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <TrackOpen {...props}>{(root) => <PopoverPrimitive.Root data-slot="popover" {...props} {...root} />}</TrackOpen>
+  return (
+    <PopoverIsModal.Provider value={props.modal ?? false}>
+      <TrackOpen {...props}>{(root) => <PopoverPrimitive.Root data-slot="popover" {...props} {...root} />}</TrackOpen>
+    </PopoverIsModal.Provider>
+  )
 }
 
 function PopoverTrigger({
@@ -27,6 +38,7 @@ function PopoverContent({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   const closing = useClosing()
+  const modal = React.useContext(PopoverIsModal)
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -39,6 +51,7 @@ function PopoverContent({
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-popover-content-available-height) w-72 origin-(--radix-popover-content-transform-origin) overflow-y-auto rounded-md border p-4 shadow-md outline-hidden",
           className
         )}
+        {...(modal ? undefined : outOfDialogLock)}
         {...props}
       >
         {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}

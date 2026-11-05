@@ -73,7 +73,7 @@ export default function ModelListPage() {
                 aria-pressed={active}
                 onClick={() => setProvider(chip.key)}
                 className={cn(
-                  "flex h-9 items-center gap-2 rounded-full border pl-2.5 pr-3.5 text-sm font-medium transition-colors",
+                  "flex h-9 items-center gap-2 rounded-full border ps-2.5 pe-3.5 text-sm font-medium transition-colors",
                   active ? "border-transparent" : "border-border-subtle bg-inset text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
                 style={active ? { backgroundColor: `color-mix(in oklab, ${tint} 18%, transparent)`, color: tint } : undefined}
@@ -88,13 +88,13 @@ export default function ModelListPage() {
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute start-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("search")}
                 aria-label={t("search")}
-                className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
+                className="h-11 rounded-2xl border border-border-subtle bg-inset ps-11"
               />
             </div>
             <Segmented
@@ -117,9 +117,9 @@ export default function ModelListPage() {
                     <span className="block truncate text-sm font-semibold">{stripProviderPrefix(m.name)}</span>
                     <span className="block truncate font-mono text-2xs text-muted-foreground">{m.modelId}</span>
                   </span>
-                  {m.contextLength ? <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">{context(m.contextLength)}</span> : null}
+                  {m.contextLength ? <span className="w-12 text-end text-xs tabular-nums text-muted-foreground">{context(m.contextLength)}</span> : null}
                   <IntelligenceMeter index={m.intelligenceIndex} className="w-24" />
-                  <span className="w-[5.5rem] text-right text-xs tabular-nums text-muted-foreground">
+                  <span className="w-[5.5rem] text-end text-xs tabular-nums text-muted-foreground">
                     {m.inputPricePerMillion + m.outputPricePerMillion === 0 ? t("free") : priceLabel(m.inputPricePerMillion, m.outputPricePerMillion)}
                   </span>
                   <Switch

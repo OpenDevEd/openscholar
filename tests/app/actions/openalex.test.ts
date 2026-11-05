@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Request limits are tested in tests/openalex-request-limit.test.ts.
+vi.mock("@/lib/search/active-source", () => ({ chosenSource: async () => "openalex", activeSearchSource: async () => "openalex" }));
 vi.mock("@/lib/openalex/spend-requests", () => ({ spendOpenAlexRequests: async () => {}, OpenAlexRequestLimitError: class extends Error {} }));
 vi.mock("@/lib/openalex", () => ({ default: { works: vi.fn() } }));
 

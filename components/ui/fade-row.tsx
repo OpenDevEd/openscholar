@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils";
 /**
  * A row that may run past its edges: each edge fades while more of the row is past it, and not once the row is
  * scrolled to that edge or all of it fits. `scrolls`: the row scrolls sideways, its bar shown on hover (`scrollbar`
- * "hover") or never ("none"); otherwise what runs past stays cut, and the full record is a hover away.
+ * "hover") or never ("none"); otherwise what runs past stays cut, and the full record is a hover away. `keepInView`
+ * names, as a selector, what scrolls back into the row when its width changes.
  */
-export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover", className, children }: { as?: ElementType; scrolls?: boolean; scrollbar?: "hover" | "none"; className?: string; children: ReactNode }) {
+export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover", keepInView, className, children }: { keepInView?: string;  as?: ElementType; scrolls?: boolean; scrollbar?: "hover" | "none"; className?: string; children: ReactNode }) {
   const row = useRef<HTMLElement>(null);
   const [past, setPast] = useState({ start: false, end: false });
   // A ResizeObserver, a MutationObserver and the row's scroll: what's past its edges changes with its width, what it
@@ -17,11 +18,18 @@ export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover",
     const element = row.current;
     if (!element) return;
     const measure = () => {
-      const start = element.scrollLeft > 1;
-      const end = element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
+      const scrolled = Math.abs(element.scrollLeft);
+      const start = scrolled > 1;
+      const end = scrolled + element.clientWidth < element.scrollWidth - 1;
       setPast((was) => (was.start === start && was.end === end ? was : { start, end }));
     };
-    const resize = new ResizeObserver(measure);
+    const resize = new ResizeObserver(() => {
+      const kept = keepInView ? element.querySelector(keepInView)?.getBoundingClientRect() : null;
+      const edges = element.getBoundingClientRect();
+      if (kept && kept.left < edges.left) element.scrollLeft -= edges.left - kept.left;
+      else if (kept && kept.right > edges.right) element.scrollLeft += kept.right - edges.right;
+      measure();
+    });
     const watch = () => {
       resize.disconnect();
       resize.observe(element);
@@ -39,7 +47,7 @@ export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover",
       added.disconnect();
       element.removeEventListener("scroll", measure);
     };
-  }, []);
+  }, [keepInView]);
   return (
     <Tag
       ref={row}
@@ -47,8 +55,8 @@ export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover",
         "min-w-0",
         scrolls ? (scrollbar === "none" ? "overflow-x-auto [scrollbar-width:none]" : "scrollbar-hover overflow-x-auto") : "overflow-hidden",
         // Written out whole, so Tailwind finds them: each edge fades over its last 1.5rem.
-        past.start && "mask-l-from-[calc(100%-1.5rem)]",
-        past.end && "mask-r-from-[calc(100%-1.5rem)]",
+        past.start && "ltr:mask-l-from-[calc(100%-1.5rem)] rtl:mask-r-from-[calc(100%-1.5rem)]",
+        past.end && "ltr:mask-r-from-[calc(100%-1.5rem)] rtl:mask-l-from-[calc(100%-1.5rem)]",
         className,
       )}
     >

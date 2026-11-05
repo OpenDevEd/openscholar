@@ -98,7 +98,7 @@ export function MembersAverage({ workspace, libraryItemId, average, ratings }: {
   return (
     <span className="flex items-center rounded-xl bg-inset p-0.5">
       <RatersList heading={t("headingIn", { organization: workspace.name })} paper={{ libraryItemId }} ratings={ratings}>
-        <button type="button" aria-label={t("average", { organization: workspace.name, average: average.toFixed(1) })} className="flex h-7 items-center gap-2 rounded-lg pl-1 pr-2 transition-colors hover:bg-muted">
+        <button type="button" aria-label={t("average", { organization: workspace.name, average: average.toFixed(1) })} className="flex h-7 items-center gap-2 rounded-lg ps-1 pe-2 transition-colors hover:bg-muted">
           <WorkspaceTile workspace={workspace} size="xs" />
           <span className="flex items-center gap-1 text-xs font-semibold tabular-nums">
             <Star className="size-3.5 fill-rating text-rating" />

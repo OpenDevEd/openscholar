@@ -2,17 +2,14 @@
 
 import { useState } from "react";
 import Link from "@/components/workspace-link";
-import { useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
 import { useQueryState } from "nuqs";
 import posthog from "posthog-js";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { toast as sonnerToast } from "sonner";
 import {
   AlertCircle,
   ArrowRight,
   CalendarClock,
-  CheckCircle2,
   Coins,
   CreditCard,
   FileSearch,
@@ -23,24 +20,23 @@ import {
   Repeat,
   Search,
   Undo2,
-  X,
   type AppIcon,
   TranslateIcon,
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { PaymentReceived, TopUpBundles, useTopUps } from "@/components/billing/top-up-bundles";
 import { Button } from "@/components/ui/button";
 import { useAppToast } from "@/lib/toast";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
-import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/billing/catalog";
+import { defaultPlanId, findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { DAYS_TO_PAY } from "@/lib/billing/plans";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
-import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 type Kind = "chat" | "extraction" | "screening" | "search" | "translation" | "wallet_api" | "refund";
 const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
@@ -64,19 +60,15 @@ export default function BillingPage() {
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const toast = useAppToast();
-  const router = useWorkspaceRouter();
-  const searchParams = useSearchParams();
   const [jobId, setJobId] = useQueryState("jobId");
   const state = useSharedSubscriptionState();
   const account = state.account;
   const catalog = state.catalog;
   const creditsEnabled = useFeatureFlagForPlan("credits.enabled", state.planFeatures);
-  const topupsEnabled = useFeatureFlagForPlan("credits.topups", state.planFeatures);
   const subscriptionsEnabled = useFeatureFlagForPlan("subscriptions.enabled", state.planFeatures);
   const keepPlan = useAction(api.billing.actions.keepPlan);
-  const buyCredits = useAction(api.billing.actions.buyCredits);
+  const topUps = useTopUps();
   const openPortal = useAction(api.billing.actions.openPortal);
-  const [buying, setBuying] = useState<number | null>(null);
   const [keeping, setKeeping] = useState(false);
   const [openingPortal, setOpeningPortal] = useState(false);
   const [hover, setHover] = useState<Kind | null>(null);
@@ -112,8 +104,6 @@ export default function BillingPage() {
   const date = (ms: number) => format.dateTime(new Date(ms), { month: "short", day: "numeric" });
   const money = (amount: number) =>
     format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
-  const bundles = topUpBundles(catalog);
-  const returnedFrom = searchParams.get("checkout") === "success" || searchParams.get("topup") === "success";
 
   // The current billing period, as Autumn reports it.
   const periodEnd = account.renewsAt ?? account.changesAt;
@@ -158,39 +148,10 @@ export default function BillingPage() {
     }
   };
 
-  const buy = async (credits: number) => {
-    if (buying) return;
-    posthog.capture("credit_topup_clicked", { credits });
-    setBuying(credits);
-    try {
-      const { url } = await buyCredits({ credits });
-      if (url) {
-        window.location.href = url;
-        return;
-      }
-      sonnerToast.success(t("creditsAddedTitle"), { description: t("creditsAddedDescription", { amount: format.number(credits) }) });
-    } catch (error) {
-      console.error("[BILLING] Failed to buy credits:", error);
-      toast.billing.checkoutFailed(error);
-    } finally {
-      setBuying(null);
-    }
-  };
-
   return (
     <Enter ready={ready}>
       <div className="space-y-8">
-        {returnedFrom ? (
-          <div role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-success/30 bg-success/10 py-2 pl-4 pr-2 text-sm ink-success">
-            <span className="flex items-center gap-2">
-              <CheckCircle2 className="size-4" />
-              {t("paymentReceived")}
-            </span>
-            <Button variant="ghost" size="icon" className="size-7" aria-label={tc("close")} onClick={() => router.replace("/settings/billing")}>
-              <X />
-            </Button>
-          </div>
-        ) : null}
+        <PaymentReceived />
 
         {creditsEnabled ? (
           <section className="grid overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
@@ -227,31 +188,7 @@ export default function BillingPage() {
                 </div>
               ) : null}
             </div>
-            {topupsEnabled && bundles.length > 0 ? (
-              <div className="flex flex-col border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
-                <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
-                <div className="flex flex-1 flex-col justify-center p-2">
-                  {bundles.map((bundle) => (
-                    <button
-                      key={bundle.credits}
-                      type="button"
-                      disabled={buying !== null}
-                      onClick={() => buy(bundle.credits)}
-                      aria-label={t("buyBundle", { credits: format.number(bundle.credits), price: money(bundle.amount) })}
-                      className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:opacity-60"
-                    >
-                      <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
-                      <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
-                      {buying === bundle.credits ? (
-                        <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                      ) : (
-                        <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+            {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>
         ) : null}
 
@@ -309,7 +246,7 @@ export default function BillingPage() {
                 ))}
               </div>
             ) : (
-              <p className="pl-1 text-xs text-muted-foreground">{tu("empty")}</p>
+              <p className="ps-1 text-xs text-muted-foreground">{tu("empty")}</p>
             )}
           </Zone>
         ) : null}
@@ -339,7 +276,7 @@ export default function BillingPage() {
                     ) : null}
                   </p>
                   <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                    {onPaidPlan && monthly > 0 ? (
+                    {monthly > 0 ? (
                       <span className="inline-flex items-center gap-1.5">
                         <Coins className="size-3.5" />
                         {t("creditsAMonth", { amount: format.number(monthly) })}
@@ -351,7 +288,6 @@ export default function BillingPage() {
                         {account.card.brand} {account.card.last4}
                       </span>
                     ) : null}
-                    {!onPaidPlan ? <span>{t("upgradeDescription")}</span> : null}
                   </p>
                 </div>
                 {change ? (
@@ -362,7 +298,7 @@ export default function BillingPage() {
                 ) : null}
               </div>
               {account.pastDue ? (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 ps-3 pe-2 text-sm text-destructive">
                   <span className="flex items-center gap-2">
                     <AlertCircle className="size-4 shrink-0" />
                     {/* The payment that failed, and the day Stripe stops retrying and the plan ends (#40). */}
@@ -384,7 +320,7 @@ export default function BillingPage() {
                 <div className="space-y-1.5">
                   <div className="relative h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                      className="absolute inset-y-0 start-0 rounded-full bg-primary"
                       style={{ width: `${Math.min(100, Math.max(0, ((now.getTime() - periodStart) / (periodEnd - periodStart)) * 100))}%` }}
                     />
                   </div>
@@ -454,7 +390,7 @@ export default function BillingPage() {
                         {/* `now` ticks once a minute: a charge made since is just now, not in the future. */}
                         {format.relativeTime(c.createdAt, Math.max(now.getTime(), c.createdAt))}
                       </time>
-                      <span className="w-20 text-right font-mono text-sm tabular-nums">
+                      <span className="w-20 text-end font-mono text-sm tabular-nums">
                         −{format.number(c.credits)}
                       </span>
                     </li>

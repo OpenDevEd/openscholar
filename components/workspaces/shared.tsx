@@ -33,7 +33,7 @@ import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } f
 import { Chip, Hero, Landing, Point } from "./join";
 import { useCurrentWorkspace, WorkspaceTag, WorkspaceTile } from "./parts";
 
-/** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). `open` is what following its address inside the app does besides, where the address alone opens nothing. */
+/** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). `open` opens one that has no page of its own, over whatever page the person is on. */
 export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; open?: (id: string) => void; roles: readonly GuestRole[] }> = {
   collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer", "editor"] },
   screening: { icon: ListFilter, tint: "#34d399", href: (id) => `/screening?job=${id}`, roles: ["viewer"] },
@@ -42,7 +42,7 @@ export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; hre
   search: { icon: Search, tint: "#60a5fa", href: (id) => `/results/${id}`, roles: ["viewer", "editor"] },
   // An author profile is public: what's shared is editing it, from its own page.
   author: { icon: UserRound, tint: "#f472b6", href: (id) => `/authors/${id}`, roles: ["editor"] },
-  // A chat opens in the assistant's panel, over the search page. The panel reads the address once a page load, so a link followed inside the app opens it too.
+  // A chat opens in the assistant's panel. The panel reads the address once a page load, so its address only opens it from outside the app or in a new tab.
   chat: { icon: MessageSquare, tint: "#a78bfa", href: (id) => `/?chat=${id}`, open: openChat, roles: ["viewer", "editor"] },
 };
 
@@ -86,7 +86,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
       }
       intro={
         <div className="space-y-3 px-4 py-3">
-          <FadeRow scrolls scrollbar="none" className="flex h-8 gap-1.5 pr-8">
+          <FadeRow scrolls scrollbar="none" className="flex h-8 gap-1.5 pe-8">
             {counts ? (
               <>
                 <KindChip on={kind === null} onClick={() => setKind(null)} count={counts.total}>
@@ -194,7 +194,16 @@ function Row({ item }: { item: SharedItem }) {
     <Entry viewMode="list-detail">
       <Tile icon={kind.icon} tint={kind.tint} className="size-10 rounded-xl" />
       <div className="min-w-0 flex-1 space-y-2">
-        <Link href={kind.href(item.id)} onClick={() => kind.open?.(item.id)} className={cn(ENTRY_OPEN, "line-clamp-2")}>
+        <Link
+          href={kind.href(item.id)}
+          onClick={(event) => {
+            // A click asking for a new tab or window follows the address, which loads a page that opens it there.
+            if (!kind.open || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            kind.open(item.id);
+          }}
+          className={cn(ENTRY_OPEN, "line-clamp-2")}
+        >
           {item.name}
         </Link>
         <div className="flex flex-wrap items-center gap-1.5">

@@ -1,3 +1,5 @@
+import { searchHeaders } from "./request-url";
+
 /** How long a search or a count may take before it fails, as the results page's reads do. */
 export const OPENALEX_TIMEOUT_MS = 12_000;
 /** Times a request OpenAlex throttles is made in all. */
@@ -6,6 +8,8 @@ const TRIES = 4;
 const RETRY_WAIT_MAX_S = 5;
 /** Spread added to the wait, so requests refused together don't come back together. */
 const RETRY_SPREAD_MS = 300;
+/** How long to wait before asking our index again after a passing failure. */
+const PASSING_FAILURE_WAIT_S = 0.5;
 
 /**
  * A request to OpenAlex, made again when OpenAlex throttles it. A search with more than 5
@@ -13,13 +17,18 @@ const RETRY_SPREAD_MS = 300;
  * search on OpenScholar's key, whoever sent that one, so spacing one's own requests doesn't
  * prevent it. OpenAlex says how long to wait: 1 s for that limit. Measured on 2026-10-05,
  * five pages of a 19-operator search all refused at once came back within three tries each.
- * Each try gets its own `timeoutMs`.
+ * Each try gets its own `timeoutMs`. A request to our index carries its key and Access's token (`searchHeaders`).
  */
 export async function openAlexFetch(url: URL | string, { timeoutMs, ...init }: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
+  const { headers: own, redirect } = searchHeaders(url);
+  const headers = new Headers(init.headers);
+  for (const [name, value] of Object.entries(own)) headers.set(name, value);
   for (let tries = 1; ; tries += 1) {
-    const response = await fetch(url, { ...init, ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
-    const wait = Number(response.headers.get("retry-after"));
-    if (response.status !== 429 || tries === TRIES || !(wait <= RETRY_WAIT_MAX_S)) return response;
+    const response = await fetch(url, { ...init, headers, ...(redirect ? { redirect } : {}), ...(timeoutMs ? { signal: AbortSignal.timeout(timeoutMs) } : {}) });
+    // Our index can also answer with a passing failure while a node restarts, which is worth asking again a moment later.
+    const passing = redirect !== undefined && (response.status === 502 || response.status === 503 || response.status === 504);
+    const wait = passing ? PASSING_FAILURE_WAIT_S : Number(response.headers.get("retry-after"));
+    if ((response.status !== 429 && !passing) || tries === TRIES || !(wait <= RETRY_WAIT_MAX_S)) return response;
     await response.body?.cancel();
     await new Promise((resolve) => setTimeout(resolve, wait * 1000 + Math.random() * RETRY_SPREAD_MS));
   }

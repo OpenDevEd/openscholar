@@ -2,12 +2,11 @@ import { paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
-import { hasPlanFeature } from "./billing/accounts";
+import { opensLibraries } from "./billing/accounts";
 import { getCurrentUser } from "./lib/auth";
 import { createError } from "./lib/errors";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { hasDirectLibraryAccess } from "./evidenceLibraries/access";
-import { EVIDENCE_LIBRARIES_FEATURE } from "../lib/billing/plans";
 import { workspaceQuery } from "./lib/userActions";
 import type { InWorkspace } from "./workspaces/actor";
 
@@ -23,7 +22,7 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
     .take(MAX_ORGANIZATIONS_PER_PERSON + 1);
   // Clerk's webhooks write memberships, so no write here can refuse one more.
   if (memberships.length > MAX_ORGANIZATIONS_PER_PERSON) {
-    throw createError("VALIDATION_ERROR", `This account belongs to more than ${MAX_ORGANIZATIONS_PER_PERSON} organizations, more than OpenScholar reads. Leave some to continue.`);
+    throw createError("VALIDATION_ERROR", `This account belongs to more than ${MAX_ORGANIZATIONS_PER_PERSON} organizations, more than Openscholar reads. Leave some to continue.`);
   }
   const rows = await Promise.all(
     memberships.map(async (membership) => ({
@@ -39,25 +38,25 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
   );
 }
 
-/** Whether the plan of an organization's workspace includes Evidence Libraries. */
+/** Whether an organization's workspace opens Evidence Libraries. */
 async function planGrants(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">) {
   const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
-  return workspace !== null && (await hasPlanFeature(ctx, workspace._id, EVIDENCE_LIBRARIES_FEATURE));
+  return workspace !== null && (await opensLibraries(ctx, workspace._id));
 }
 
 /**
- * Whether the workspace a person acts in opens Evidence Libraries for them: its plan includes
- * them, or, in their own workspace, a library of another's was shared with them. A plan is its
+ * Whether the workspace a person acts in opens Evidence Libraries for them: it has them
+ * (`opensLibraries`), or, in their own workspace, a library of another's was shared with them. A plan is its
  * workspace's alone: one of their organizations' opens nothing in another, nor in their own.
  */
 export async function opensEvidenceLibraries(ctx: QueryCtx | MutationCtx, { userId, workspaceId }: InWorkspace) {
-  if (await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) return true;
+  if (await opensLibraries(ctx, workspaceId)) return true;
   if ((await ctx.db.get("workspaces", workspaceId))?.kind !== "personal") return false;
   const user = await ctx.db.get("users", userId);
   return user !== null && (await hasDirectLibraryAccess(ctx, user));
 }
 
-/** The organizations the person may create a library in: those they're an admin of whose plan includes Evidence Libraries. */
+/** The organizations the person may create a library in: those they're an admin of that have Evidence Libraries. */
 export async function readLibraryOrganizations(ctx: QueryCtx | MutationCtx) {
   const admin = (await readMemberOrganizations(ctx)).filter(({ membership }) => membership.role === "org:admin");
   const granted = await Promise.all(admin.map(({ organization }) => planGrants(ctx, organization._id)));
@@ -69,28 +68,28 @@ export async function requireLibraryOrganization(
   organizationId: string,
 ) {
   if (!(await ctx.auth.getUserIdentity()))
-    throw createError("UNAUTHENTICATED", "Sign in to create a library.");
+    throw createError("UNAUTHENTICATED", "Sign in to create a community.");
   const entry = (await readLibraryOrganizations(ctx)).find(
     (row) => row.organization._id === organizationId,
   );
   if (!entry)
     throw createError(
       "FORBIDDEN",
-      "Choose an organization you're an admin of whose plan includes Evidence Libraries.",
+      "Choose an organization you're an admin of that has Evidence Communities.",
     );
   return { ...entry, clerkUserId: entry.membership.clerkUserId };
 }
 
 /**
  * What the workspace the page is in opens for the person: Evidence Libraries (see
- * `opensEvidenceLibraries`), and the managing of author profiles, which takes the plan itself.
+ * `opensEvidenceLibraries`), and the managing of author profiles, which takes them in the workspace itself.
  */
 export const opens = workspaceQuery({
   args: {},
   returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean() }),
   signedOut: { evidenceLibraries: false, authors: false },
   handler: async (ctx, actor) => {
-    const authors = await hasPlanFeature(ctx, actor.workspaceId, EVIDENCE_LIBRARIES_FEATURE);
+    const authors = await opensLibraries(ctx, actor.workspaceId);
     return { authors, evidenceLibraries: authors || (await opensEvidenceLibraries(ctx, actor)) };
   },
 });

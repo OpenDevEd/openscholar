@@ -51,6 +51,13 @@ function PaginationLink({
   return (
     <a
       aria-current={isActive ? "page" : undefined}
+      // Most lists page with a click and no address: it still takes the keyboard, unless it's disabled.
+      role={props.href ? undefined : "link"}
+      tabIndex={props.href || props["aria-disabled"] ? undefined : 0}
+      onKeyDown={(event) => {
+        if (!props.href && !props["aria-disabled"] && event.key === "Enter") event.currentTarget.click();
+        props.onKeyDown?.(event);
+      }}
       data-slot="pagination-link"
       data-active={isActive}
       className={cn(
@@ -75,7 +82,7 @@ function PaginationPrevious({
     <PaginationLink
       aria-label={t("goToPreviousPage")}
       size="default"
-      className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
+      className={cn("gap-1 px-2.5 sm:ps-2.5", className)}
       {...props}
     >
       <ChevronLeftIcon />
@@ -94,7 +101,7 @@ function PaginationNext({
     <PaginationLink
       aria-label={t("goToNextPage")}
       size="default"
-      className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
+      className={cn("gap-1 px-2.5 sm:pe-2.5", className)}
       {...props}
     >
       <span className="hidden sm:block">{tc("next")}</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
 import { FadeRow } from "@/components/ui/fade-row";
 import { useState } from "react";
 import { useConvex } from "convex/react";
@@ -145,7 +146,7 @@ export function JobView({
             </div>
           </FadeRow>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {/* A screening of the person's Zotero is run again from a chat: the page has no Zotero to pick. */}
           {guest ? null : job.status === "processing" ? (
             <Button variant="outline" size="sm" onClick={() => cancel({ jobId: job._id }).catch((error) => toast.error(t("cancelFailed"), getErrorMessage(error, t("cancelFailed"))))}>
@@ -189,7 +190,7 @@ export function JobView({
               );
             })}
             {phase === "running" ? (
-              <span className="ml-auto inline-flex items-center gap-1.5 text-muted-foreground">
+              <span className="ms-auto inline-flex items-center gap-1.5 text-muted-foreground">
                 <span className="size-2.5 rounded-sm" style={{ backgroundImage: "repeating-linear-gradient(-45deg, var(--primary) 0 2px, color-mix(in oklab, var(--primary) 30%, transparent) 2px 4px)" }} />
                 {t.rich("beingRead", { n: () => <span className="font-semibold tabular-nums text-foreground"><AnimatedNumber value={job.running} /></span> })}
               </span>
@@ -209,7 +210,7 @@ export function JobView({
             ) : phase === "reading" ? (
               // The job's papers haven't come from its search yet: the row is the one its slots take once they have.
               <div className="space-y-2">
-                <p className="flex items-center gap-1.5 text-xs font-medium"><FileSearch className="size-3.5 shrink-0 text-primary" /><span className="truncate">{t("gettingPapers")}</span></p>
+                <p className="flex items-center gap-1.5 text-xs font-medium"><FileSearch className="size-3.5 shrink-0 text-primary" /><span className="truncate">{t("gettingPapers", { source: SEARCH_SOURCE_NAMES[job.snapshot?.request.source ?? "openalex"] })}</span></p>
                 <Meter value={0} max={1} />
               </div>
             ) : phase === "running" ? (
@@ -236,7 +237,7 @@ export function JobView({
                 {libraryDest && job.libraryMissing ? <Chip icon={TriangleAlert}>{t.rich("notInLibrary", { count: job.libraryMissing, library: libraryDest.library, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
                 {libraryDest && job.libraryWriteProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`libraryProblem.${job.libraryWriteProblem}`, { name: libraryDest.name, library: libraryDest.library })}</ClippedChip> : null}
                 {pruned && job.libraryPruneProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`pruneProblem.${job.libraryPruneProblem.problem}`, { name: pruned, library: job.libraryPruneProblem.library })}</ClippedChip> : null}
-                {!savedTo && !pruned && !libraryDest ? <Chip icon={Ban}>{t("noCollectionChanged")}</Chip> : null}
+                {!savedTo && !pruned && !libraryDest ? <Chip icon={Ban} className="h-auto min-h-6 shrink whitespace-normal py-1">{t("noCollectionChanged")}</Chip> : null}
               </div>
             )}
             {spent === undefined ? null : (
@@ -375,8 +376,8 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
             </Button>
           ) : null}
           <div className="relative w-56">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(e) => { setHeld(null); setQuery(e.target.value); }} placeholder={t("findPaper")} aria-label={t("findPaper")} className="h-8 rounded-full pl-8 text-sm" />
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(e) => { setHeld(null); setQuery(e.target.value); }} placeholder={t("findPaper")} aria-label={t("findPaper")} className="h-8 rounded-full ps-8 text-sm" />
           </div>
         </div>
       }
@@ -555,7 +556,7 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
                   ) : null}
                 </div>
               </div>
-              <span className={cn("col-start-3 row-start-1 text-right text-xs font-semibold tabular-nums md:col-start-auto md:row-start-auto", earned)} aria-label={t("points", { points })}>
+              <span className={cn("col-start-3 row-start-1 text-end text-xs font-semibold tabular-nums md:col-start-auto md:row-start-auto", earned)} aria-label={t("points", { points })}>
                 +{points}
               </span>
             </li>

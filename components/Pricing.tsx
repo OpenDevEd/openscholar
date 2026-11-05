@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useAction } from "convex/react";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
 import type { CatalogPlan } from "@/convex/billing/validators";
@@ -41,6 +42,8 @@ import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { OrganizationPlans, type CurrentWorkspace } from "@/components/workspaces/org-plans";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { PlanCard } from "@/components/billing/plan-card";
+import { AlphaPlansNotice, ContactButton } from "@/components/alpha-notices";
+import { CONTACT_EMAIL, SOUTHERN_REQUEST } from "@/lib/billing/contact";
 
 type PlanCard = {
   id: string;
@@ -52,6 +55,8 @@ type PlanCard = {
   popular: boolean;
   /** The plan every customer starts on. */
   isDefault: boolean;
+  /** Listed, not sold: asked for by email. */
+  byRequest: boolean;
 };
 
 /** Enterprise is sold by contract, so it only appears as a contact card. */
@@ -64,16 +69,16 @@ const ENTERPRISE_CREDITS_PER_MONTH = 150_000;
  * Autumn's text.
  */
 const PLAN_COPY = {
-  free: { description: "freeDescription", highlights: ["freeFeature2", "freeFeature3"] },
-  go: { description: "goDescription", highlights: ["goFeature2", "goFeature3"] },
-  pro: { description: "proDescription", highlights: ["proFeature3", "proFeature4"] },
+  free: { description: "freeDescription", highlights: ["everyFeature", "papersRunning", "papersInRequest", "unlimitedCollectionsAndGuests"] },
+  southern: { description: "southernDescription", highlights: ["southernFeature1", "southernFeature2"] },
 } as const;
 
 /** Translated names for Autumn features; others show the name set in Autumn. */
-const FEATURE_NAMES = { extraction: "features.extraction" } as const;
+const FEATURE_NAMES = { extraction: "features.extraction", authors: "features.authors" } as const;
 
-/** `organization`: the organization whose address the page is under, as the server read it. */
-export function Pricing({ organization }: { organization?: CurrentWorkspace } = {}) {
+/** `organization`: the organization whose address the page is under, as the server read it; `libraries`: whether it has Evidence Libraries. */
+export function Pricing({ organization, libraries }: { organization?: CurrentWorkspace; libraries?: boolean } = {}) {
+  const tLabels = useTranslations("pricing");
   const toast = useAppToast();
   const t = useTranslations("pricing");
   const tb = useTranslations("billingPage");
@@ -93,9 +98,9 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Under an organization's address its plans show first (#652); either tab shows the other's.
+  // Under an organization's address its plans show first (#652); either tab shows the other's, and the address can name one.
   const inOrganization = Boolean(useParams<{ slug?: string }>().slug);
-  const [audience, setAudience] = useState<"me" | "org">(inOrganization ? "org" : "me");
+  const [audience, setAudience] = useQueryState("audience", parseAsStringLiteral(["me", "org"] as const).withDefault(inOrganization ? "org" : "me"));
 
   const { phase, retryUserSync } = useAuthReadiness();
   // Your own plans are your own whichever workspace the page is in.
@@ -124,13 +129,9 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
   const PLANS: PlanCard[] = useMemo(() => {
     if (!catalog) return [];
     const creditsLine = (plan: CatalogPlan) => {
-      if (plan.autoEnable) {
-        const credits = signupCredits(catalog);
-        return credits > 0 ? [t("creditsOnce", { credits })] : [];
-      }
-      return plan.credits?.interval === "month"
-        ? [t("creditsPerMonth", { credits: plan.credits.included })]
-        : [];
+      if (plan.credits?.interval === "month") return [t("creditsPerMonth", { credits: plan.credits.included })];
+      const credits = plan.autoEnable ? signupCredits(catalog) : 0;
+      return credits > 0 ? [t("creditsOnce", { credits })] : [];
     };
     const cards: PlanCard[] = mainPlans(catalog).map((plan) => {
       const copy = plan.id in PLAN_COPY ? PLAN_COPY[plan.id as keyof typeof PLAN_COPY] : undefined;
@@ -142,11 +143,12 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         features: [
           ...creditsLine(plan),
           ...plan.features.map(featureName),
-          ...(plan.highlights ?? copy?.highlights.map((key) => t(key)) ?? []),
+          ...(plan.highlights ?? copy?.highlights.map((key) => t(key, { running: plan.limits?.concurrency ?? 0, request: plan.limits?.request_papers ?? 0 })) ?? []),
         ],
         price: plan.price,
         popular: plan.popular,
         isDefault: plan.autoEnable,
+        byRequest: plan.byRequest === true,
       };
     });
     if (showEnterprise) {
@@ -157,12 +159,13 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         description: t("enterpriseDescription"),
         features: [
           t("enterpriseFeature1", { credits: ENTERPRISE_CREDITS_PER_MONTH }),
-          t("enterpriseFeature2"),
+          t("southernFeature1"),
           t("enterpriseFeature3"),
           t("enterpriseFeature4"),
         ],
         popular: false,
         isDefault: false,
+        byRequest: false,
       });
     }
     return cards;
@@ -358,7 +361,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (isAnonymous || phase !== "authenticated") {
       return {
         disabled: false,
-        label: tc("signInToSubscribe"),
+        label: tc("signIn"),
         variant: "default" as const,
         onClick: goToSignIn,
       };
@@ -379,7 +382,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (isCurrent && hasPendingDowngrade) {
       return {
         disabled: false,
-        label: "Cancel scheduled downgrade",
+        label: tLabels("cancelScheduledDowngrade"),
         variant: "outline" as const,
         onClick: handleKeepCurrentPlan,
       };
@@ -397,16 +400,26 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (isScheduledTarget) {
       return {
         disabled: true,
-        label: "Scheduled",
+        label: tLabels("scheduled"),
         variant: "outline" as const,
         onClick: () => {},
+      };
+    }
+
+    // Leaving a plan given by request is asked for the same way.
+    if (plan.isDefault && findPlan(catalog, resolvedPlan)?.byRequest) {
+      return {
+        disabled: false,
+        label: tc("contactSupport"),
+        variant: "outline" as const,
+        onClick: () => window.location.assign(`mailto:${CONTACT_EMAIL}`),
       };
     }
 
     if (plan.isDefault) {
       return {
         disabled: false,
-        label: "Manage in billing portal",
+        label: tLabels("manageInBillingPortal"),
         variant: "outline" as const,
         onClick: handleOpenPortal,
       };
@@ -417,14 +430,14 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         disabled: false,
         label: tc("contactSupport"),
         variant: "outline" as const,
-        onClick: handleOpenPortal,
+        onClick: () => window.location.assign(`mailto:${CONTACT_EMAIL}`),
       };
     }
 
     if (!isUpgrade(catalog, resolvedPlan, plan.id)) {
       return {
         disabled: false,
-        label: `Downgrade to ${plan.name}`,
+        label: tLabels("downgradeTo", { name: plan.name }),
         variant: "outline" as const,
         onClick: () => handleSubscribe(plan.id),
       };
@@ -440,7 +453,24 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
 
   if (phase === "initializing") {
     return (
-      <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
+      <>
+        <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />
+        {/* The plans in the server's response, for what reads a page without running it. Gone once the page is drawn. */}
+        <div className="sr-only">
+          <h1>{t("chooseYourPlan")}</h1>
+          {PLANS.map((plan) => (
+            <section key={plan.id}>
+              <h2>{plan.name}</h2>
+              {plan.description ? <p>{plan.description}</p> : null}
+              <ul>
+                {plan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      </>
     );
   }
 
@@ -475,7 +505,9 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
   return (
     <div className="@container w-full pb-16">
       <StickyPageHeader>
-        <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} tabs={audienceTabs} />
+        <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} tabs={audienceTabs}>
+          <AlphaPlansNotice className="hidden @6xl:flex" />
+        </PanelHeader>
       </StickyPageHeader>
 
       <div className="container mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
@@ -483,7 +515,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         <div className="@3xl:hidden">{audienceTabs}</div>
 
         {audience === "org" ? (
-          <OrganizationPlans featureName={featureName} initial={organization} />
+          <OrganizationPlans featureName={featureName} initial={organization} libraries={libraries} />
         ) : (
           <>
         {hasPendingDowngrade && account?.changesAt !== undefined && (
@@ -513,11 +545,11 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
 
         <div
           className={cn(
-            "grid gap-6",
+            "mx-auto grid gap-6",
             "grid-cols-1",
             "md:grid-cols-2",
-            // One row for however many plans Autumn offers, while they fit.
-            "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]",
+            // Two plans sit side by side at a card's width; more share one row, while they fit.
+            orderedPlans.length > 2 ? "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]" : "max-w-3xl",
           )}
         >
           {orderedPlans.map((plan, index) => {
@@ -534,12 +566,14 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
                 badges={[
                   ...(isCurrent ? [{ tone: "success" as const, label: tc("currentPlan"), testId: "pricing-current-badge" }] : []),
                   ...(plan.popular && !isCurrent ? [{ tone: "primary" as const, label: tc("mostPopular") }] : []),
-                  ...(isScheduledTarget && !isCurrent ? [{ tone: "info" as const, label: "Scheduled", testId: "pricing-scheduled-badge" }] : []),
+                  ...(isScheduledTarget && !isCurrent ? [{ tone: "info" as const, label: tLabels("scheduled"), testId: "pricing-scheduled-badge" }] : []),
                 ]}
                 icon={plan.icon}
                 name={plan.name}
                 price={
-                  plan.id === ENTERPRISE_ID ? (
+                  plan.byRequest ? (
+                    <div className="text-4xl font-bold">{t("onRequest")}</div>
+                  ) : plan.id === ENTERPRISE_ID ? (
                     <div className="text-4xl font-bold">{tc("custom")}</div>
                   ) : plan.price ? (
                     <div className="text-4xl font-bold">
@@ -553,13 +587,13 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
                       </span>
                     </div>
                   ) : (
-                    <div className="text-4xl font-bold">{t("freePrice")}</div>
+                    <div className="text-4xl font-bold break-words">{t("freePrice")}</div>
                   )
                 }
                 description={plan.description}
                 features={plan.features}
               >
-                <Button
+                {plan.byRequest && !isCurrent ? <ContactButton href={SOUTHERN_REQUEST} /> : <Button
                   data-testid={`pricing-button-${plan.id}`}
                   className="w-full"
                   variant={buttonConfig.variant}
@@ -571,7 +605,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
                   ) : (
                     (buttonConfig.label ?? <Spinner aria-label={tc("loading")} />)
                   )}
-                </Button>
+                </Button>}
               </PlanCard>
             );
           })}
@@ -593,6 +627,11 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         />
           </>
         )}
+
+        {/* Where the header has no room for it. As wide as the row of plans above it. */}
+        <div className={cn("@6xl:hidden", audience === "me" && "mx-auto max-w-3xl")}>
+          <AlphaPlansNotice />
+        </div>
       </div>
     </div>
   );

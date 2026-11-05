@@ -13,6 +13,10 @@ import {
   MapSummary, NodeCard, PresetSwitch, RoutingMap, usePresetModels, useRouting, type Hover, type MapModel, type PresetPick,
 } from "@/components/settings/model-map";
 import { ModelPicker } from "@/components/models/model-picker";
+import { FreeQuestionsZone } from "@/components/settings/free-questions-zone";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { FREE_QUESTIONS_FLAG } from "@/lib/ai/free-queries";
+import { FLAG_REGISTRY } from "@/lib/feature-flags/registry";
 
 /** Each preset's model and effort for every task, drawn as the map users see. Click a task or a model card to change it. */
 export default function AdminAiModelsPage() {
@@ -25,6 +29,9 @@ export default function AdminAiModelsPage() {
   const setPresetPick = useMutation(api.aiModelConfig.admin.setPresetPick);
   const modelOf = (task: AiTask) => presetModel?.(preset, task) ?? null;
   const routing = useRouting({ modelFor: modelOf });
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  const { data: free } = useProtectedQuery(api.ai.freeQueries.settings, { day: today });
+  const { data: flags } = useProtectedQuery(api.featureFlags.queries.list, {});
 
   const route = (tasks: AiTask[], model: MapModel, effort?: Effort) => {
     for (const task of tasks) {
@@ -45,8 +52,9 @@ export default function AdminAiModelsPage() {
     });
 
   return (
-    <Enter ready={presetModel !== undefined}>
+    <Enter ready={presetModel !== undefined && free !== undefined && flags !== undefined}>
       <div className="space-y-6">
+        <FreeQuestionsZone key={free ? "read" : "reading"} settings={free} on={flags?.page.find((flag) => flag.key === FREE_QUESTIONS_FLAG)?.enabled ?? FLAG_REGISTRY[FREE_QUESTIONS_FLAG].enabled} />
         <PresetSwitch value={preset} onChange={setPreset} modelsOf={(p) => AI_TASKS.flatMap((task) => presetModel?.(p, task) ?? [])} />
         <MapSummary
           routing={routing}
@@ -69,7 +77,7 @@ export default function AdminAiModelsPage() {
               presets={presetPicks([task])}
               tasks={[task]}
               trigger={
-                <button type="button" className="w-full rounded-l-xl">
+                <button type="button" className="w-full rounded-s-xl">
                   {row}
                 </button>
               }

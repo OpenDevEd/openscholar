@@ -46,7 +46,7 @@ function RecordChip({ kind, children }: { kind: keyof typeof KIND; children: Rea
   const { icon: Icon, tint } = KIND[kind];
   return (
     <span className={RECORD_CHIP} style={recordChipStyle(tint)}>
-      <Icon className="mr-1 inline size-3 -translate-y-px" />
+      <Icon className="me-1 inline size-3 -translate-y-px" />
       {children}
     </span>
   );
@@ -187,7 +187,7 @@ export function MentionComposer({
                   onMouseEnter={() => setActive(i)}
                   onClick={() => choose(option)}
                   disabled={stale}
-                  className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-opacity", i === active && "bg-muted", stale && "opacity-50")}
+                  className={cn("flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-start transition-opacity", i === active && "bg-muted", stale && "opacity-50")}
                 >
                   <KindTile kind={option.kind} size="sm" />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{option.label}</span>

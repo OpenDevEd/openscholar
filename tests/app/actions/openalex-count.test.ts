@@ -56,7 +56,7 @@ describe("searchOpenAlexCount (server action)", () => {
     const out = await searchOpenAlexCount("brains", f);
     expect(out).toEqual({ count: 777 });
     expect(fetchCountMock).toHaveBeenCalledTimes(1);
-    expect(fetchCountMock).toHaveBeenCalledWith("brains", f);
+    expect(fetchCountMock).toHaveBeenCalledWith("brains", f, "openalex");
   });
 
   it("passes the resolved count through without mutation", async () => {

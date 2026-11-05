@@ -191,7 +191,15 @@ export default defineSchema({
     revision: v.number(),
     updatedAt: v.number(),
   }).index("by_workspace", ["workspaceId"])
+    .index("by_openalex", ["openalex"])
     .searchIndex("search_name", {searchField: "name"}),
+
+  // The author records that are a profile's person (./authors/links.ts). A record belongs to one profile at most.
+  authorRecordLinks: defineTable({
+    profileId: v.id("authorProfiles"),
+    authorId: v.string(),
+  }).index("by_authorId", ["authorId"])
+    .index("by_profileId", ["profileId"]),
 
   clerkEventLogs: defineTable(clerkEventLogFields)
     .index("by_instanceId_and_eventId", ["instanceId", "eventId"])
@@ -208,7 +216,10 @@ export default defineSchema({
     .index("by_clerkOrganizationId", ["clerkOrganizationId"])
     // A deleted organization keeps its row, and Clerk lets another take its address: one at an address is its active one.
     .index("by_slug_and_state", ["slug", "state"])
-    .index("by_state", ["state"]),
+    .index("by_state", ["state"])
+    .index("by_state_and_name", ["state", "name"])
+    .index("by_state_and_evidenceLibraries_and_name", ["state", "evidenceLibraries", "name"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["state", "evidenceLibraries"] }),
 
   // Invitations to organizations, as Clerk's webhook and the actions that send them project them (#651).
   organizationInvitations: defineTable(organizationInvitationFields)
@@ -552,6 +563,25 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 
+  // What the free writing of queries from questions runs on and may spend (lib/ai/free-queries.ts). One row, once an admin changes something.
+  freeQuerySettings: defineTable({
+    modelId: v.string(),
+    effort: v.optional(effortValidator),
+    perAddress: v.number(),
+    perPerson: v.number(),
+    signedOutPerDay: v.number(),
+    signedInPerDay: v.number(),
+    updatedAt: v.number(),
+  }),
+  // That writing's calls and real cost, a row per audience per UTC day.
+  freeQueryDays: defineTable({
+    day: v.string(),
+    audience: v.union(v.literal("signedIn"), v.literal("signedOut")),
+    calls: v.number(),
+    failed: v.number(),
+    costUsd: v.number(),
+  }).index("by_day_and_audience", ["day", "audience"]),
+
   // ═══════════════════════════════════════════════════════════════
   // USER_AI_CONFIG - what a user's AI tasks run on: a preset, or Custom
   // with their own pick for each task.
@@ -572,7 +602,9 @@ export default defineSchema({
     .index("by_email", ["email"])
     // Active users by email, for the picker that adds an admin (admins/queries.ts).
     .index("by_state_and_email", ["state", "email"])
-    .index("by_state", ["state"]),
+    .index("by_state", ["state"])
+    // Deleted accounts past retention, for the daily cleanup (maintenance/mutations.ts).
+    .index("by_state_and_updated_at", ["state", "updatedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // WORKSPACES (#650) - where work lives: one per account, its own,

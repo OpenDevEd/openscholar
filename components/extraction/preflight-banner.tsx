@@ -1,7 +1,7 @@
 "use client";
 
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Coins } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
@@ -21,7 +21,7 @@ export interface ExtractionPreflightBannerProps {
 
 /**
  * Pre-submission credit-balance banner for the extraction job creator: a
- * Coins icon, the {estimate}/{total} display and a deep link to billing top-up.
+ * Coins icon, the {estimate}/{total} display and a link to billing.
  *
  * Exposes data-preflight-ok + role="status" so tests can assert on
  * behaviour (sufficient vs insufficient) without coupling to Tailwind
@@ -32,6 +32,7 @@ export function ExtractionPreflightBanner({
   balance,
   onBeforeNavigate,
 }: ExtractionPreflightBannerProps) {
+  const locale = useLocale();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const router = useWorkspaceRouter();
@@ -62,18 +63,18 @@ export function ExtractionPreflightBanner({
             <>
               <span className="font-semibold">
                 {t("preflight.sufficient", {
-                  estimate: credits.toLocaleString(),
+                  estimate: credits.toLocaleString(locale),
                 })}
               </span>
               <span className="text-muted-foreground">
                 {" "}
-                / {total.toLocaleString()}
+                / {total.toLocaleString(locale)}
               </span>
             </>
           ) : (
             t("preflight.insufficient", {
-              estimate: credits.toLocaleString(),
-              balance: total.toLocaleString(),
+              estimate: credits.toLocaleString(locale),
+              balance: total.toLocaleString(locale),
             })
           )}
         </span>
@@ -85,7 +86,7 @@ export function ExtractionPreflightBanner({
           className="h-6 shrink-0 gap-1.5 px-2 text-2xs font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
           onClick={() => {
             onBeforeNavigate?.();
-            router.push("/settings/billing#topup-section");
+            router.push("/settings/billing");
           }}
         >
           {tc("buyCredits")}

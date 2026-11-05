@@ -48,7 +48,7 @@ export function MemberSpending({ spending, admin, team, members }: { spending: R
   return (
     <Zone
       label={admin ? t("spendingThisMonth") : t("yourSpendingThisMonth")}
-      aside={<span className="pr-1 text-xs tabular-nums text-muted-foreground">{t("creditsCount", { count: allowance?.total ?? 0 })}</span>}
+      aside={<span className="pe-1 text-xs tabular-nums text-muted-foreground">{t("creditsCount", { count: allowance?.total ?? 0 })}</span>}
     >
       <Paged pager={{ list, size: PER_PAGE, total: admin ? members : 1 }} rowHeight={ROW_HEIGHT} label={t("membersLabel")}>
         <ul key={list.page} className={LIST}>
@@ -65,9 +65,9 @@ export function MemberSpending({ spending, admin, team, members }: { spending: R
                     </p>
                   </div>
                   <div className="relative h-1.5 rounded-full bg-muted">
-                    {row.cap !== undefined ? <span className="absolute inset-y-0 left-0 rounded-full bg-foreground/8" style={{ width: `${(row.cap / top) * 100}%` }} /> : null}
+                    {row.cap !== undefined ? <span className="absolute inset-y-0 start-0 rounded-full bg-foreground/8" style={{ width: `${(row.cap / top) * 100}%` }} /> : null}
                     <motion.span
-                      className={cn("absolute inset-y-0 left-0 rounded-full", near ? "bg-warning" : "bg-primary")}
+                      className={cn("absolute inset-y-0 start-0 rounded-full", near ? "bg-warning" : "bg-primary")}
                       initial={{ width: 0 }}
                       animate={{ width: `${(row.spent / top) * 100}%` }}
                       transition={reduce ? { duration: 0 } : { duration: 0.6, ease: EASE, delay: 0.1 + i * 0.03 }}

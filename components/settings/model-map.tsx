@@ -3,11 +3,12 @@
 // The tasks-to-models map shared by the AI settings page and the admin AI models
 // page, and the cost meter.
 
+import { EASE } from "@/components/ui/opening";
 import { type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { ArrowUpDown, Brain, ChevronsUpDown, Cloud, Filter, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon, TranslateIcon } from "@/components/icons";
+import { ArrowUpDown, Brain, ChevronsUpDown, Cloud, FileText, Filter, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon, TranslateIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ export const PRESET_ICONS: Record<PresetKey, Ico> = { cheap: PiggyBank, fast: Za
 
 const TASK_ICONS: Record<AiTask, Ico> = {
   chat: MessageSquare,
+  overview: FileText,
   extraction: ExtractionIcon,
   screenAll: ListChecks,
   screening: Filter,
@@ -114,7 +116,7 @@ const TASK_Y = Object.fromEntries([
   ...CLOUD_TASKS.map((t, i) => [t, LABEL + i * ROW + ROW / 2]),
   ...BROWSER_TASKS.map((t, i) => [t, BROWSER_TOP + LABEL + i * ROW + ROW / 2]),
 ]) as Record<AiTask, number>;
-export const EASE = [0.32, 0.72, 0, 1] as const;
+export { EASE };
 
 export type MapNode = { id: string; model: MapModel; paidBy: "credits" | "key"; tasks: AiTask[]; target: number };
 type Edge = { task: AiTask; node: string; y0: number };
@@ -237,7 +239,7 @@ export function RoutingMap({
         onMouseEnter={() => setHover({ task })}
         onMouseLeave={() => setHover(null)}
         className={cn(
-          "flex h-11 w-full items-center gap-3 rounded-l-xl pl-3 text-left transition-colors",
+          "flex h-11 w-full items-center gap-3 rounded-s-xl ps-3 text-start transition-colors",
           !runs && "text-muted-foreground/60",
           hover?.task === task && "bg-inset",
           pick && "cursor-pointer",
@@ -249,7 +251,7 @@ export function RoutingMap({
         <span className={cn("truncate text-sm font-medium transition-colors", hover && !edges.some((e) => e.task === task && lit(e)) && "text-muted-foreground")}>
           {tm(`tasks.${task}`)}
         </span>
-        {pick ? <ChevronsUpDown className="ml-auto mr-2 size-3.5 shrink-0 text-muted-foreground/60" /> : null}
+        {pick ? <ChevronsUpDown className="ms-auto me-2 size-3.5 shrink-0 text-muted-foreground/60" /> : null}
       </div>
     );
     return <div key={task}>{pick ? pick(task, row) : row}</div>;
@@ -265,13 +267,13 @@ export function RoutingMap({
         transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE }}
       >
         <div>
-          <div className="flex items-center justify-between gap-2 whitespace-nowrap pl-3 text-xs font-medium text-muted-foreground" style={{ height: LABEL }}>
+          <div className="flex items-center justify-between gap-2 whitespace-nowrap ps-3 text-xs font-medium text-muted-foreground" style={{ height: LABEL }}>
             {tm("cloudOnly")}
             {cloudAside}
           </div>
           {CLOUD_TASKS.map(taskRow)}
           <div style={{ height: GAP }} />
-          <div className={cn("flex items-center pl-3 text-xs font-medium transition-colors", browserActive ? "text-primary" : "text-muted-foreground")} style={{ height: LABEL }}>
+          <div className={cn("flex items-center ps-3 text-xs font-medium transition-colors", browserActive ? "text-primary" : "text-muted-foreground")} style={{ height: LABEL }}>
             {(wrapBrowserLabel ?? ((label: ReactNode) => label))(
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span key={browserLabel} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
@@ -302,7 +304,7 @@ export function RoutingMap({
         <div className="relative">
           {/* Named only when something runs there; the row stays, so the cards keep their places. */}
           <div
-            className={cn("flex items-center gap-1.5 pl-1 text-xs font-medium text-muted-foreground", !nodes.some((n) => n.paidBy === "credits") && "invisible")}
+            className={cn("flex items-center gap-1.5 ps-1 text-xs font-medium text-muted-foreground", !nodes.some((n) => n.paidBy === "credits") && "invisible")}
             style={{ height: LABEL }}
           >
             <Cloud className="size-3.5" /> {tm("openScholarCloud")}
@@ -348,8 +350,8 @@ export function NodeCard({
       type="button"
       {...props}
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl px-3 text-left transition-[background-color,border-color]",
-        key ? "rounded-tl-none bg-primary/10 hover:bg-primary/15" : "border border-border-subtle bg-inset",
+        "flex w-full items-center gap-3 rounded-2xl px-3 text-start transition-[background-color,border-color]",
+        key ? "rounded-ss-none bg-primary/10 hover:bg-primary/15" : "border border-border-subtle bg-inset",
         interactive ? "cursor-pointer" : "cursor-default",
         interactive && !key && "hover:border-border hover:bg-muted",
       )}
@@ -400,7 +402,7 @@ export function MapSummary({
   const step = shown.length > 1 ? Math.min(36, 144 / (shown.length - 1)) : 36;
   return (
     <div className="flex items-center justify-between gap-6 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start">
-      <div className="flex min-w-0 items-center gap-4 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start">
+      <div className="flex min-w-0 max-w-full items-center gap-4 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start">
         <div className="flex shrink-0">
           <AnimatePresence initial={false} mode="popLayout">
             {shown.map((n, i) => {
@@ -425,7 +427,7 @@ export function MapSummary({
             })}
           </AnimatePresence>
         </div>
-        <div className="min-w-0 space-y-2">
+        <div className="min-w-0 max-w-full space-y-2">
           <h2 className="flex items-baseline gap-2 truncate">
             <span className="text-2xl font-semibold tracking-tight">{title}</span>
           </h2>
@@ -472,7 +474,7 @@ export function PresetSwitch<T extends PresetKey | "custom">({
   const mean = (values: number[]) => (values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : undefined);
   // Intelligence averages the scored models only; an unscored model says nothing about it.
   const summary = (models: MapModel[]) => (
-    <span className="flex w-full items-center gap-4">
+    <span className="flex w-full items-center gap-4 overflow-hidden">
       <IntelligenceMeter index={mean(models.flatMap((m) => (m.intelligenceIndex == null ? [] : [m.intelligenceIndex])))} className="flex-1" />
       <PriceScale input={mean(models.map((m) => m.inputPricePerMillion)) ?? 0} output={mean(models.map((m) => m.outputPricePerMillion)) ?? 0} />
     </span>

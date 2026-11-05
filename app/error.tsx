@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "@/components/workspace-link";
 import { AlertTriangle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
+import { useChunkReload } from "@/lib/chunk-reload";
+import { useReportPageError } from "@/lib/report-page-error";
 
 export default function ErrorPage({
   error,
@@ -15,10 +16,10 @@ export default function ErrorPage({
 }) {
   const t = useTranslations("errors");
   const tc = useTranslations("common");
+  useReportPageError("app/error", error);
+  const { reloading, retry } = useChunkReload(error, reset);
 
-  useEffect(() => {
-    console.error("[app/error]", error);
-  }, [error]);
+  if (reloading) return null;
 
   return (
     <div className="container mx-auto flex min-h-[60vh] items-center justify-center p-6">
@@ -29,7 +30,7 @@ export default function ErrorPage({
           {t("unexpectedIssue")}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={reset}>{tc("retry")}</Button>
+          <Button onClick={retry}>{tc("retry")}</Button>
           <Button variant="outline" asChild>
             <Link href="/">{tc("goHome")}</Link>
           </Button>

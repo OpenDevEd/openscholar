@@ -25,7 +25,7 @@ export function LibraryNotFound() {
           </p>
           <div className="mt-6">
             <Button asChild variant="outline" className="rounded-xl">
-              <Link href="/evidence-libraries">
+              <Link href="/evidence-communities">
                 <ArrowLeft />
                 {t("back")}
               </Link>

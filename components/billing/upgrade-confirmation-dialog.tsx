@@ -85,6 +85,8 @@ export function UpgradeConfirmationDialog({
             if (isConfirming) e.preventDefault();
           }}
           showCloseButton={!isConfirming}
+          // With large text on a phone one long word is wider than the dialog.
+          className="[overflow-wrap:anywhere]"
         >
         <DialogHeader>
           <DialogTitle>
@@ -101,7 +103,7 @@ export function UpgradeConfirmationDialog({
         <div className="space-y-4 py-2">
           {/* Payment method */}
           {cardLast4 && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               <CreditCard className="w-4 h-4 text-muted-foreground" />
               <span className="text-muted-foreground">
                 {t("paymentMethod")}:
@@ -117,7 +119,7 @@ export function UpgradeConfirmationDialog({
           )}
 
           {/* Plan change */}
-          <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg border p-3">
             <div className="text-sm">
               <span className="text-muted-foreground">{labels?.from ?? t("currentPlan")}: </span>
               <span className="font-medium">{preview.currentPlan}</span>
@@ -136,7 +138,7 @@ export function UpgradeConfirmationDialog({
                 {preview.lineItems.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-sm">
                     {/* A long line wraps on a phone rather than pushing the amounts past the dialog's edge (#858). */}
-                    <span className="min-w-0 mr-2 text-muted-foreground">
+                    <span className="min-w-0 me-2 text-muted-foreground">
                       {item.description}
                     </span>
                     <span className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
@@ -150,7 +152,7 @@ export function UpgradeConfirmationDialog({
                 ))}
               </>
             )}
-            <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex items-center justify-between" : "flex items-center justify-between"}>
+            <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex flex-wrap items-center justify-between gap-x-2" : "flex flex-wrap items-center justify-between gap-x-2"}>
               <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
                 {totalLabel ?? ((preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge"))}
               </span>
@@ -166,7 +168,7 @@ export function UpgradeConfirmationDialog({
                   {t("creditsGranted", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground pl-6">
+              <p className="text-xs text-muted-foreground ps-6">
                 {t("monthlyCreditsAfter", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
               </p>
             </div>
@@ -177,16 +179,17 @@ export function UpgradeConfirmationDialog({
           <Button
             data-testid="upgrade-cancel-button"
             variant="outline"
+            className="h-auto min-h-9 py-1 whitespace-normal"
             onClick={() => onOpenChange(false)}
             disabled={isConfirming}
           >
             {t("cancel")}
           </Button>
-          <Button data-testid="upgrade-confirm-button" onClick={onConfirm} disabled={isConfirming}>
+          <Button data-testid="upgrade-confirm-button" className="h-auto min-h-9 py-1 whitespace-normal" onClick={onConfirm} disabled={isConfirming}>
             {/* An action the caller names, such as removing seats, keeps its name while it runs (#858). */}
             {isConfirming ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 {confirmLabel ?? t("upgrading")}
               </>
             ) : (

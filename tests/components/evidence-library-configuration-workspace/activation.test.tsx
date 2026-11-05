@@ -101,7 +101,7 @@ describe("<ConfigurationWorkspace>", () => {
     await user.click(screen.getByRole("button", { name: "activateDraftConfirm" }));
 
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith("/evidence-libraries/library_123/setup"),
+      expect(pushMock).toHaveBeenCalledWith("/evidence-communities/library_123/setup"),
     );
   });
 
@@ -274,6 +274,6 @@ describe("<ConfigurationWorkspace>", () => {
     await waitFor(() =>
       expect(teardowns).toEqual([{ libraryId: "library_123", confirmationName: "Saved Library" }]),
     );
-    expect(pushMock).toHaveBeenCalledWith("/evidence-libraries");
+    expect(pushMock).toHaveBeenCalledWith("/evidence-communities");
   });
 });

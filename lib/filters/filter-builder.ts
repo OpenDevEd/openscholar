@@ -24,6 +24,7 @@ import {
   FilterSectionType,
 } from "./filter-types";
 import { SECTION_TITLES, FILTER_ICONS, SORT_OPTIONS } from "./filter-config";
+import { bareWork } from "@/lib/openalex/ids";
 import { INSTITUTION_TYPES, SDGS, STUDY_DESIGNS, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
 /** Translation function for filter strings (from useTranslations("searchFilters")) */
@@ -38,6 +39,8 @@ const FIELD_KEY_MAP: Record<string, string> = {
   fulltext: "searchFieldFulltext",
   display_name: "searchFieldDisplayName",
   oql: "searchFieldOql",
+  default: "searchFieldDefault",
+  semantic: "searchFieldSemantic",
 };
 
 /** Maps sortBy values (e.g. relevance_score:desc) to searchFilters translation keys */
@@ -444,7 +447,7 @@ export function buildFilterData(
       createFilterItem(
         "cites",
         "cites",
-        params.citesItemId!,
+        bareWork(params.citesItemId!),
         t ? t("filterCites") : "Cites"
       )
     );
@@ -454,7 +457,7 @@ export function buildFilterData(
       createFilterItem(
         "citedBy",
         "citedBy",
-        params.citedByItemId!,
+        bareWork(params.citedByItemId!),
         t ? t("filterCitedBy") : "Cited by"
       )
     );
@@ -464,8 +467,18 @@ export function buildFilterData(
       createFilterItem(
         "relatedTo",
         "relatedTo",
-        params.relatedToItemId!,
+        bareWork(params.relatedToItemId!),
         t ? t("filterRelatedTo") : "Related to"
+      )
+    );
+  }
+  if (params.similarTo?.length) {
+    citationItems.push(
+      createFilterItem(
+        "similarTo",
+        "similarTo",
+        params.similarTo.join(", "),
+        t ? t("filterSimilarTo") : "Similar to"
       )
     );
   }

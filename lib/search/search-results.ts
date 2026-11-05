@@ -1,4 +1,5 @@
 import { getSearchResults } from '@/app/actions/openalex';
+import type { SearchSource } from './source';
 import type { Works } from '@sickrin/openalex-sdk/dist/src/types/work';
 import { SearchError } from './search-error';
 import {
@@ -25,7 +26,8 @@ export interface EnhancedSearchResult {
  */
 export async function getSearchResultsWithFilters(
   params: SearchWithFiltersParams,
-  options?: Omit<GetSearchResultsWithFiltersOptions, "expand">
+  options?: Omit<GetSearchResultsWithFiltersOptions, "expand">,
+  source?: SearchSource,
 ): Promise<EnhancedSearchResult> {
   const { query } = params;
   // An account reads the shortcuts the query names before expanding it.
@@ -34,10 +36,12 @@ export async function getSearchResultsWithFilters(
     validation,
     countryNames,
     finalApiQuery,
+    tooLong,
     effectiveFilters,
     effectiveCitesItemId,
     effectiveRelatedToItemId,
   } = prepareOpenAlexSearch(params, { ...options, expand: browserExpand });
+  if (tooLong) throw new SearchError(validation.warnings[0], 400);
   if (finalApiQuery === null) {
     // Return early with error state instead of throwing
     return {
@@ -53,6 +57,7 @@ export async function getSearchResultsWithFilters(
   const result = await getSearchResults(
     finalApiQuery,
     requestFilters(effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId),
+    source,
   );
 
   if (!result.ok) {

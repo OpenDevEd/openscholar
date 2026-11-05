@@ -113,6 +113,72 @@ const readsOver = (t: ReturnType<typeof convexTest>) =>
 /** Those for the search's papers: the one that counts the search before the job is made asks for a single work. */
 const pages = () => requests.filter(({ url }) => url.searchParams.get("per-page") === "200");
 
+describe("Screen all with our own index as the active source", () => {
+  it("reads our index with its key, keeps the OpenAlex ID where there is one, and stays on our index once the job has begun", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search.test");
+    vi.stubEnv("OPENSCHOLAR_API_KEY", "own-key");
+    const asked: Array<{ url: URL; authorization: string | null }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.hostname !== "search.test") throw new Error(`Unexpected request to ${url.hostname}`);
+      asked.push({ url, authorization: new Headers(init?.headers).get("authorization") });
+      const results = url.searchParams.get("per-page") === "1"
+        ? [{ id: "https://openscholar.ai/OS1", ids: {} }]
+        : [
+            { id: "https://openscholar.ai/OS1", ids: { openalex: "https://openalex.org/W7" }, display_name: "Known to OpenAlex" },
+            { id: "https://openscholar.ai/OS2", ids: {}, display_name: "Only in our index" },
+          ];
+      return new Response(JSON.stringify({ meta: { count: 2, next_cursor: null }, results }), { status: 200 });
+    }));
+    const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
+    await t.run((ctx) => ctx.db.insert("featureFlags", { key: "search.openscholar", enabled: true, updatedAt: 1 }));
+
+    const { jobId, made } = await screen({ first: 1, last: 2 });
+
+    expect(made.snapshot?.request.source).toBe("openscholar");
+    for (const request of asked) {
+      expect(request.authorization).toBe("Bearer own-key");
+      expect(request.url.searchParams.get("api_key")).toBeNull();
+    }
+    // What decides a paper's ID has to be read back even when the job asks for fewer fields.
+    expect(asked.find(({ url }) => url.searchParams.get("per-page") === "200")?.url.searchParams.get("select")?.split(",")).toContain("ids");
+    const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3));
+    expect(results.map((result) => result.paperKey).sort()).toEqual(["openalex:W7", "openscholar:OS2"]);
+  });
+});
+
+describe("Screen all on a search only our index has", () => {
+  const answering = (asked: URL[]) => vi.fn(async (input: string | URL) => {
+    const url = new URL(String(input));
+    asked.push(url);
+    return new Response(JSON.stringify({ meta: { count: 1, next_cursor: null }, results: [{ id: "https://openalex.org/W7", display_name: "Paper" }] }), { status: 200 });
+  });
+
+  it("asks our index the question, or for the similar papers, with nothing else in their place", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search.test");
+    const asked: URL[] = [];
+    vi.stubGlobal("fetch", answering(asked));
+    const { t, screen } = await setup({ ...search, field: "semantic", query: "What helps teachers stay?", sortBy: "relevance_score:desc" });
+    await t.run((ctx) => ctx.db.insert("featureFlags", { key: "search.openscholar", enabled: true, updatedAt: 1 }));
+    await screen({ first: 1, last: 1 });
+    const read = asked.at(-1)!;
+    expect(read.searchParams.get("search.semantic")).toBe("What helps teachers stay?");
+    expect(read.searchParams.get("search")).toBeNull();
+  });
+
+  it("reads a question as words on OpenAlex, and says similar papers need our index", async () => {
+    const asked: URL[] = [];
+    vi.stubGlobal("fetch", answering(asked));
+    const { screen } = await setup({ ...search, field: "semantic", query: "teachers", sortBy: "relevance_score:desc" });
+    await screen({ first: 1, last: 1 });
+    expect(asked.at(-1)!.searchParams.get("search.semantic")).toBeNull();
+    expect(asked.at(-1)!.searchParams.get("filter")).toContain("title_and_abstract.search:teachers");
+
+    const { screen: similar } = await setup({ ...search, query: "", similarTo: ["W1"], sortBy: "relevance_score:desc" });
+    await expect(similar({ first: 1, last: 1 })).rejects.toThrow(/our own index/);
+  });
+});
+
 describe("Screen all on a saved search, read on the server", () => {
   it("reads the range from the results page's request, a numbered page each, with the key and only the fields it keeps", async () => {
     const { t, alice, read, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });

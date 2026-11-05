@@ -10,8 +10,9 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "../lib/functions";
-import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import { api, internal } from "../_generated/api";
+import type { Doc, Id } from "../_generated/dataModel";
+import { captureLater, UNNAMED_ACCOUNT } from "../lib/analyticsEvents";
 import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { createError } from "../lib/errors";
@@ -21,7 +22,7 @@ import {
   billingAccountSnapshotValidator,
   type BillingAccountSnapshot,
 } from "./validators";
-import { ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
@@ -71,7 +72,8 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     ...(current ? { plan: current.plan_id } : {}),
     pastDue: current?.past_due ?? false,
     periodStart: onPaidPlan ? (current?.current_period_start ?? undefined) : undefined,
-    renewsAt: onPaidPlan && !current?.canceled_at ? periodEnd : undefined,
+    // A plan that bills renews with its period; a free one's credits come back when Autumn resets them.
+    renewsAt: current?.canceled_at ? undefined : ((onPaidPlan ? periodEnd : undefined) ?? customer.balances.credits?.next_reset_at ?? undefined),
     changesAt: current?.canceled_at ? periodEnd : undefined,
     nextPlan: scheduled?.plan_id,
     features: Object.keys(customer.flags ?? {}),
@@ -89,6 +91,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
       : undefined,
     signupGranted: customer.subscriptions.some((s) => s.plan_id === SIGNUP_PLAN),
     hasPaid: onPaidPlan || (customer.purchases ?? []).length > 0,
+    paying: (onPaidPlan && current?.plan_id !== ORGANIZATION_PLAN && current?.status !== "trialing") || (customer.purchases ?? []).length > 0,
     stripeCustomerId: customer.stripe_id ?? undefined,
     ...(unpaid ? { unpaid: { amount: unpaid.total, currency: unpaid.currency, since: unpaid.created_at, ...(unpaid.hosted_invoice_url ? { url: unpaid.hosted_invoice_url } : {}) } } : {}),
   };
@@ -130,7 +133,7 @@ export async function planLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"wo
 export async function checkRequestPapers(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, papers: number, what: "screening" | "extraction") {
   const most = await planLimit(ctx, workspaceId, "request_papers");
   if (most !== undefined && papers > most) {
-    throw createError("VALIDATION_ERROR", `Your plan takes up to ${most.toLocaleString("en")} papers in one ${what}. Pick fewer, or change plan for more.`);
+    throw createError("VALIDATION_ERROR", `Your plan takes up to ${most.toLocaleString("en")} papers in one ${what}. Pick fewer.`);
   }
 }
 
@@ -141,6 +144,21 @@ export async function hasPlanFeature(
   featureId: string,
 ): Promise<boolean> {
   return (await readAccount(ctx, workspaceId))?.features?.includes(featureId) ?? false;
+}
+
+/**
+ * Whether the workspace opens Evidence Libraries and the managing of author profiles: its plan
+ * grants them, or it's an organization OpenScholar's admins switched them on for.
+ */
+export async function opensLibraries(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">): Promise<boolean> {
+  if (await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) return true;
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  return workspace?.kind === "organization" && (await ctx.db.get("organizations", workspace.organizationId))?.evidenceLibraries === true;
+}
+
+/** Whether the Team plan and its seats are on sale. Off, an organization has no member limit and every one has member caps. */
+export async function seatBillingOn(ctx: Pick<QueryCtx, "db">): Promise<boolean> {
+  return (await ctx.db.query("featureFlags").withIndex("by_key", (q) => q.eq("key", "subscriptions.team")).unique())?.enabled === true;
 }
 
 /**
@@ -166,11 +184,13 @@ export const writeSnapshot = internalMutation({
       ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       workspaceId,
+      firstPaidAt: existing?.firstPaidAt ?? (snapshot.paying ? fetchedAt : undefined),
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,
       fetchedAt,
     };
     if (existing) await ctx.db.replace(existing._id, row);
     else await ctx.db.insert("billingAccounts", row);
+    await captureBillingChanges(ctx, workspace, existing, snapshot, fetchedAt);
     return null;
   },
 });
@@ -196,6 +216,27 @@ export const zeroBalance = internalMutation({
     return null;
   },
 });
+
+/** A first payment and a change of plan, read from what Autumn just said: every way of paying ends up here. */
+async function captureBillingChanges(
+  ctx: MutationCtx,
+  workspace: Doc<"workspaces">,
+  before: Doc<"billingAccounts"> | null,
+  after: BillingAccountSnapshot,
+  timestamp: number,
+) {
+  if (!before) return;
+  const person = workspace.kind === "personal" ? await ctx.db.get("users", workspace.userId) : null;
+  const shared = { distinctId: person?.clerkId ?? UNNAMED_ACCOUNT, timestamp };
+  const workspaceKind = { workspace_kind: workspace.kind };
+  await captureLater(ctx, [
+    // A row cached before `paying` existed says so through `hasPaid`, so someone who already paid isn't counted as new.
+    ...(after.paying && !(before.paying ?? before.hasPaid) && before.firstPaidAt === undefined ? [{ ...shared, event: "first_payment", properties: { ...workspaceKind, plan: after.plan } }] : []),
+    ...(before.plan && after.plan && before.plan !== after.plan
+      ? [{ ...shared, event: "plan_changed", properties: { ...workspaceKind, from_plan: before.plan, to_plan: after.plan } }]
+      : []),
+  ]);
+}
 
 /**
  * Fetches the customer from Autumn and stores the snapshot. The card costs
@@ -257,7 +298,9 @@ export const provision = internalAction({
     const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId });
     const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined;
     const snapshot = await refreshAccount(ctx, workspaceId, { email: user.email, name });
-    if (!snapshot.signupGranted) {
+    // Which plans exist is Autumn's to say: signup credits are given while its catalog has them.
+    const catalog = await ctx.runQuery(api.billing.catalog.get, {});
+    if (!snapshot.signupGranted && (!catalog || catalog.plans.some((plan) => plan.id === SIGNUP_PLAN))) {
       await autumn.attach({
         customerId: userId,
         planId: SIGNUP_PLAN,

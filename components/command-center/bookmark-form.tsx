@@ -10,6 +10,11 @@ import { useKeywordExpansionStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 import { useResearchStatus } from "@/lib/research/provider";
 import { cn } from "@/lib/utils";
+import { OQL_FIELD } from "@/lib/openalex/oql";
+import { SEMANTIC_FIELD } from "@/lib/search/source";
+
+/** A bookmark is a name for words typed in a search, so a question by meaning, an OQL query, a search for what's similar or one with no words has nothing it can keep. */
+export const bookmarkable = (query: string, field?: string, similarTo?: string[]) => field !== SEMANTIC_FIELD && field !== OQL_FIELD && !similarTo?.length && query.trim() !== "";
 
 /**
  * Names a query so it can be reused: one field and a save button. The field

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useChunkReload } from "@/lib/chunk-reload";
+import { useReportPageError } from "@/lib/report-page-error";
 
 export default function GlobalError({
   error,
@@ -9,9 +10,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  useEffect(() => {
-    console.error("[app/global-error]", error);
-  }, [error]);
+  useReportPageError("app/global-error", error);
+  const { reloading, retry } = useChunkReload(error, reset);
+
+  if (reloading) return <html lang="en"><body /></html>;
 
   return (
     <html lang="en">
@@ -21,7 +23,7 @@ export default function GlobalError({
             <h1 style={{ marginBottom: 8 }}>Something went wrong</h1>
             <p style={{ marginBottom: 16, color: "#666" }}>An unexpected error occurred.</p>
             <button
-              onClick={() => reset()}
+              onClick={retry}
               style={{ padding: "10px 16px", borderRadius: 8, border: "1px solid #ccc", cursor: "pointer" }}
             >
               Retry

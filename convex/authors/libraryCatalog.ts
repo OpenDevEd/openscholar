@@ -27,7 +27,7 @@ export const resolve = internalQuery({
     if (!libraryId || args.profileIds.length > 100) throw createError("VALIDATION_ERROR", "Invalid profile request");
     await authenticateLibraryServiceCredential(ctx, {libraryId, credentialDigest: args.credentialDigest});
     const library = await ctx.db.get("evidenceLibraries", libraryId);
-    if (library?.state !== "active" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Library is unavailable");
+    if (library?.state !== "active" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Community is unavailable");
     const profiles = await Promise.all([...new Set(args.profileIds)].map(async value => {
       const id = ctx.db.normalizeId("authorProfiles", value);
       const profile = id ? await ctx.db.get("authorProfiles", id) : null;
@@ -39,9 +39,9 @@ export const resolve = internalQuery({
 
 const serviceArgs = {libraryId: v.string(), clerkUserId: v.string(), credentialDigest: v.string()};
 async function requireLibraryUser(ctx: QueryCtx | MutationCtx, args: {libraryId: string; clerkUserId: string; credentialDigest: string}) {
-  if (!await readLibrarySessionAccess(ctx, args)) throw createError("FORBIDDEN", "Library access required");
+  if (!await readLibrarySessionAccess(ctx, args)) throw createError("FORBIDDEN", "Community access required");
   const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkUserId)).unique();
-  if (!user || user.state !== "active") throw createError("FORBIDDEN", "Active OpenScholar account required");
+  if (!user || user.state !== "active") throw createError("FORBIDDEN", "Active Openscholar account required");
   return user;
 }
 

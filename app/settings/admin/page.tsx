@@ -9,6 +9,7 @@ import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { FLAG_REGISTRY, type FlagName } from "@/lib/feature-flags/registry";
 import { Enter, LIST, Zone } from "@/components/settings/parts";
+import { SearchSourceZone } from "@/components/settings/search-source-zone";
 
 /** Which message holds each flag's label and hint. */
 const GROUPS = [
@@ -45,6 +46,7 @@ export default function SwitchesPage() {
   return (
     <Enter ready={rows !== undefined}>
       <div className="space-y-8">
+        <SearchSourceZone />
         {GROUPS.map((group) => (
           <Zone key={group.title} label={t(`groups.${group.title}`)}>
             <ul className={LIST}>

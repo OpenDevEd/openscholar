@@ -46,7 +46,8 @@
       "MAX_PROFILE_MEMBERS": "convex/sharing/items.ts",
       "MAX_LIBRARIES_PER_WORKSPACE": "convex/evidenceLibraries/mutations.ts",
       "MAX_LIBRARY_SOURCES": "convex/evidenceLibraries/screeningRequests.ts:requestScreeningGrade",
-      "KEYS_PAGES": "convex/paperSets/libraryKeys.ts:keepKeys"
+      "KEYS_PAGES": "convex/paperSets/libraryKeys.ts:keepKeys",
+      "MAX_PROFILE_RECORDS": "convex/authors/links.ts:linkRecord"
     },
     "refused": {
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",
@@ -61,6 +62,7 @@
       "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"
     },
     "windows": {
+      "COUNT_READ": "organizations an admin page counts or a one-off pass switches on; one organization gets a row per customer, and the count says it stops there",
       "RECENT_CHARGES_READ": "a leaver's newest charges, read for one the ledger worker hasn't counted yet; it counts within seconds, so older ones are in the aggregate",
       "PREVIEW_READ": "the first ratings of a paper a collection preview reads for the few raters it names; the count and the full list come from elsewhere",
       "JOBS_DOCKED": "the few jobs a chat docks at once; older ones are on the jobs page",
@@ -114,7 +116,8 @@
       "FOLLOW_STEP": "a renamed or deleted item's guest rows, a step at a time; it reschedules itself until all are renamed or gone",
       "PURGE_READERS": "a purged person's libraries, a step at a time; the cleanup runs again until none are left",
       "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left",
-      "LIBRARY_CHANGE_MAX": "a screening's queued library writes, a batch at a time: the flush schedules itself again while more wait"
+      "LIBRARY_CHANGE_MAX": "a screening's queued library writes, a batch at a time: the flush schedules itself again while more wait",
+      "MOST_ROWS": "One run over the live deployment, whose largest workspace or job is a few hundred rows; the file is deleted once it has run."
     }
   }
 }

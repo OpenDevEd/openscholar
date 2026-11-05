@@ -47,16 +47,18 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-vi.mock("next-intl", () => ({
-  // Keys under the page namespace come back as-is ("identity.nameLabel").
+vi.mock("next-intl", async () => { const messages = (await import("@/messages/en-US.json")).default as unknown as Record<string, unknown>; const english = (namespace: string, key: string) => `${namespace}.${key}`.split(".").reduce<unknown>((at, part) => (at as Record<string, unknown>)?.[part], messages); return ({
+  useLocale: () => "en-US",
+  // Keys under the page namespace come back as-is ("identity.nameLabel"); the sections with their own namespace read in English.
   useTranslations: (namespace: string) => (key: string) => {
+    if (/^(library(Home|Team|Notification)|richText|sharedControls)/.test(namespace)) return english(namespace, key) as string;
     const full = `${namespace}.${key}`;
     const prefix = "evidenceLibraryConfiguration.";
     return full.startsWith(prefix) ? full.slice(prefix.length) : full;
   },
   useFormatter: () => ({ dateTime: (date: Date) => date.toISOString() }),
   useNow: () => new Date("2026-09-27T12:10:00.000Z"),
-}));
+}); });;
 
 vi.mock("sonner", () => ({ toast: toastMock }));
 

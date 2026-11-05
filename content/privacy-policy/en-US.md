@@ -1,6 +1,6 @@
 # **Privacy policy**
 
-**OpenScholar.ai customer privacy notice**
+**Openscholar.ai customer privacy notice**
 
 Open Development & Education are the data controller for the personal information described in this notice.
 
@@ -17,9 +17,20 @@ This privacy notice tells you what to expect us to do with your personal informa
 
 # **Contact details**
 
-Email: contact@opendeved.net
+Email: support@openscholar.ai
 
 # **What information we collect, use, and why**
+
+We collect or use the following personal information **to run your account and the features you use**:
+
+* Your name, email address and profile photo, and the organizations you belong to
+* What you do in Openscholar: searches, questions, saved papers, ratings, collections, screenings, extractions and assistant chats
+* Files you upload, and apps you connect, such as Zotero
+* Credits you use and buy. Stripe handles card details, and we only keep the card's brand and last four digits
+
+When you use an AI feature, your request and the paper text it needs are sent to the AI provider that does the work.
+
+We send PostHog a record of each AI request and screening job, without its text, and of each sign-up, first payment and change of plan, to track cost, reliability and growth. It carries your account ID only if you accepted analytics cookies.
 
 We collect or use the following personal information for **dealing with queries, complaints or claims**:
 
@@ -43,9 +54,13 @@ We collect or use the following information to **analyse how visitors use our we
 * Session replays (recordings of mouse movements, clicks, scrolls, and page interactions - sensitive data like passwords and payment information are automatically masked)
 
 **What we do NOT collect:**
-* We do not collect form input values, passwords, or payment information through analytics
-* We do not use third-party advertising or tracking cookies
+* Apart from what you search for, we do not collect form input values, passwords, or payment information through analytics
+* We do not use advertising cookies
 * We do not sell your data to advertisers
+
+If you accept analytics cookies and are signed in, PostHog links this information to your account, with your name and email address, and receives what you search for. Google Analytics also receives the pages you visit, how you reached us, your device type and your approximate location. It doesn't receive what you search for, and its advertising features are off.
+
+Before you choose, or if you reject analytics cookies, we only count visits, without cookies and without storing anything on your device except your choice: the page, the site you came from, your browser type, and actions such as running a search. We don't record your clicks, what you type, your location or your account. Your IP address and browser type become a code that changes every day, and we don't keep your IP address.
 
 We collect or use the following information for **gathering user feedback through surveys**:
 
@@ -75,6 +90,12 @@ To make a data protection rights request, please contact us using the contact de
 
 # **Our lawful bases for the collection and use of your data**
 
+Our lawful basis for collecting or using personal information **to run your account and the features you use** is:
+
+* **Contract** – we need it to provide the service you signed up for. All of your data protection rights may apply, except the right to object.
+
+* **Legitimate interests** – for those records of AI requests. We need them to keep AI features reliable and their costs under control.
+
 Our lawful bases for collecting or using personal information for **dealing with queries, complaints or claims** are:
 
 * **Legitimate interests** – we’re collecting or using your information because it benefits you, our organisation or someone else, without causing an undue risk of harm to anyone. All of your data protection rights may apply, except the right to portability. Our legitimate interests are:
@@ -95,12 +116,15 @@ For more information on our use of legitimate interests as a lawful basis, you c
 
 Our lawful bases for collecting or using information for **gathering user feedback through surveys** are:
 
+* **Legitimate interests** – for the count we make without cookies, described above, we rely on legitimate interests.
 * **Legitimate interests** – we’re collecting or using your information because it benefits you, our organisation or someone else, without causing an undue risk of harm to anyone. All of your data protection rights may apply, except the right to portability. Our legitimate interests are:
   * Gathering anonymous feedback helps us understand user needs and improve our website for all visitors. Surveys are optional and do not request directly identifying information. Responses may be linked to a pseudonymous session identifier to help us understand context and improve our services. Users benefit from improvements based on collective feedback.
 
 For more information on our use of legitimate interests as a lawful basis, you can contact us using the contact details set out above.
 
 # **Where we get personal information from**
+
+* **From sign-in and connected services**: Clerk when you sign in, Google if you sign in with Google, and Zotero if you connect it
 
 * **Directly from you** when you:
   * Send us an email
@@ -113,6 +137,7 @@ For more information on our use of legitimate interests as a lawful basis, you c
   * From your interactions with our site (pages visited, clicks, time spent)
 
 * **From PostHog analytics** – our website analytics platform that collects pseudonymous usage data on our behalf
+* **Google Analytics** – if you accept analytics cookies, the analytics platform that collects usage data on our behalf
 
 # **How long we keep information**
 
@@ -121,10 +146,15 @@ For more information on our use of legitimate interests as a lawful basis, you c
 | **Email correspondence**             | 3 years from the date of last communication | To respond to follow-up queries, maintain communication history, and resolve disputes         |
 | **Support ticket records**           | 3 years from the date of resolution         | To reference similar issues and improve support quality                                       |
 | **Website analytics data** (PostHog) | 1 year from the date of collection          | To analyse trends, identify long-term patterns, and improve the product                       |
+| **Website analytics data** (Google Analytics) | Up to 14 months from the date of collection | To see how many people visit and how they reach us |
 | **Session replays** (PostHog)        | 30 days from the date of recording          | To debug technical issues, understand user experience problems, and improve website usability |
 | **Analytics cookies**                | 365 days from the last visit                | To track returning visitors and maintain session continuity                                   |
+| **Google Analytics cookies** | 400 days from the last visit | To recognise returning visitors |
 | **Survey responses**                 | 1 year from the date of submission          | To improve the product and track feedback trends over time                                    |
 | **IP address logs**                  | 24 hours from the date of collection         | For security monitoring and fraud prevention                                                  |
+| **Account and research data** | Until you delete it or your account, then about 30 days | To provide the service |
+| **What you add to an organization** | Stays with the organization, with your name, after you leave or delete your account | So the organization keeps its work |
+| **Payment records** | 6 years from the date of purchase | To meet tax and accounting rules |
 
 
 After these periods, we securely delete or anonymise personal information so it can no longer identify you.
@@ -145,14 +175,62 @@ This data processor does the following activities for us:
 
 **Location:** Germany (EU hosting)
 
-**Vercel Inc.**
+**Google Ireland Limited**
 
 This data processor does the following activities for us:
-* Hosts our website
-* Provides content delivery network (CDN) services
-* Processes server logs and connection data
+* Collects and stores website analytics data, if you accept analytics cookies
 
-**Location:** United States and globally distributed edge network
+**Location:** Ireland and the United States
+
+**Hetzner Online GmbH**
+
+This data processor does the following activities for us:
+* Hosts our website and database
+
+**Location:** Germany
+
+**Cloudflare, Inc.**
+
+This data processor does the following activities for us:
+* Protects and delivers traffic to our website
+* Stores copies of some paper PDFs
+
+**Location:** Globally distributed network
+
+**Clerk, Inc.**
+
+This data processor does the following activities for us:
+* Manages sign-in and accounts
+
+**Location:** United States
+
+**Stripe**
+
+This data processor does the following activities for us:
+* Processes payments for credits
+
+**Location:** United States and Europe
+
+**OpenRouter, Inc.**
+
+This data processor does the following activities for us:
+* Sends AI requests to the model providers that answer them, such as Anthropic, OpenAI and Google
+
+**Location:** United States
+
+**Brevo**
+
+This data processor does the following activities for us:
+* Sends invitation emails
+
+**Location:** France
+
+**Supabase, Inc.**
+
+This data processor does the following activities for us:
+* Stores files for Evidence Communities
+
+**Location:** United Kingdom
 
 # **Sharing information outside the UK**
 
@@ -172,15 +250,27 @@ Data is primarily processed within the European Economic Area (EEA), specificall
 
 ---
 
-**Organisation name:** Vercel Inc.
+**Organisation name:** Google LLC
 
-**Category of recipient:** Website hosting provider
+**Category of recipient:** Analytics platform and data processor
 
-**Country the personal information is sent to:** United States (and globally distributed edge network)
+**Country where data is primarily processed:** United States
+
+**How the transfer complies with UK data protection law:**
+
+Transfers to Google LLC are made in reliance on its certification under the UK Extension to the EU-U.S. Data Privacy Framework.
+
+---
+
+**Organisation names:** Cloudflare, Inc., Clerk, Inc., Stripe, OpenRouter, Inc.
+
+**Category of recipient:** Providers of sign-in, payments, AI and website delivery
+
+**Country the personal information is sent to:** United States, and the countries where AI providers run their models
 
 **How the transfer complies with UK data protection law:** 
 
-Transfers to Vercel Inc. are made in reliance on its certification under the UK Extension to the EU-U.S. Data Privacy Framework.
+These transfers rely on the UK Extension to the EU-U.S. Data Privacy Framework where the recipient is certified, or otherwise on the UK's International Data Transfer Addendum.
 
 # **How we protect personal information**
 
@@ -191,15 +281,15 @@ We implement appropriate technical and organisational measures to protect your p
 * **Pseudonymisation:** Analytics data is pseudonymised where possible
 * **Regular security reviews:** We monitor and update our security practices
 * **Secure data processors:** We only work with processors who meet high security standards
-* **Cookie consent management:** Analytics only runs with your consent
+* **Cookie consent management:** Analytics cookies and session replays only run with your consent
 
 # **Cookies**
 
 We use cookies to collect some of the analytics information described in this privacy notice. For detailed information about the cookies we use, please see our [Cookie Policy](/cookie-policy).
 
 Key points:
-* We use one analytics cookie from PostHog (stored for 365 days)
-* No third-party advertising or tracking cookies
+* We use analytics cookies from PostHog (stored for 365 days) and Google Analytics (stored for 400 days)
+* No advertising cookies
 * You can accept or decline cookies via our cookie consent banner
 * You can change your preferences anytime via "Cookie Settings" in the footer
 
@@ -233,4 +323,4 @@ We encourage you to review this privacy notice periodically to stay informed abo
 
 # **Last updated**
 
-17 February 2026
+4 November 2026

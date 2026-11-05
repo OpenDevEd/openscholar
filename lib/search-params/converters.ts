@@ -8,8 +8,11 @@
  */
 
 import { format, parseISO } from 'date-fns';
+import { doiOfQuery, SEMANTIC_FIELD } from '../search/source';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
+import { MIN_YEAR } from '../constants';
+import { bareWork } from '../openalex/ids';
 import { OQL_FIELD } from '../openalex/oql';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
@@ -35,6 +38,7 @@ export type NewSearchResultData = {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  similarTo?: string[];
   reviewFilter?: boolean;
   researchAreas?: string[];
   sdgs?: string[];
@@ -55,6 +59,11 @@ export type NewSearchResultData = {
   language?: string;
   page?: number;
 };
+
+/** An address may name one end of a year range: the other is as far as the range goes. */
+function yearRangeOf({ yf, yt }: ParsedSearchParams): [number, number] | undefined {
+  return yf || yt ? [yf || MIN_YEAR, yt || new Date().getFullYear()] : undefined;
+}
 
 /**
  * Convert URL params to SearchResult data
@@ -78,9 +87,9 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     sortBy: params.sort,
     
     // Year range
-    yearRange: params.yf && params.yt ? [params.yf, params.yt] : undefined,
+    yearRange: yearRangeOf(params),
     isYearRangeEnabled: !!(params.yf || params.yt),
-    
+
     // Date range
     dateRange,
     filterType: params.ft as 'date' | 'year',
@@ -97,6 +106,7 @@ export function paramsToSearchResult(params: ParsedSearchParams): NewSearchResul
     citesItemId: params.cites,
     citedByItemId: params.citedBy,
     relatedToItemId: params.rel,
+    similarTo: params.like,
     
     // Content
     reviewFilter: params.review,
@@ -174,13 +184,16 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   
   // References - only include if non-empty
   if (result.citesItemId) {
-    params.cites = result.citesItemId;
+    params.cites = bareWork(result.citesItemId);
   }
   if (result.citedByItemId) {
-    params.citedBy = result.citedByItemId;
+    params.citedBy = bareWork(result.citedByItemId);
   }
   if (result.relatedToItemId) {
-    params.rel = result.relatedToItemId;
+    params.rel = bareWork(result.relatedToItemId);
+  }
+  if (result.similarTo?.length) {
+    params.like = result.similarTo;
   }
   
   // Content
@@ -218,16 +231,18 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
 }
 
 /**
- * Relevance needs a text search, so a search without one is sorted newest first.
+ * Relevance needs a text search, so a search without one, or for one DOI, is sorted newest first.
  * An OQL query searches text only through a `has` or `is similar to` clause;
  * country focus and the review filter add one.
  */
 export function effectiveSort(
-  params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus'>,
+  params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus'> & { like?: string[] },
 ): string {
+  // Closeness is the only order a search by meaning has.
+  if ((params.field === SEMANTIC_FIELD && params.q.trim()) || params.like?.length) return 'relevance_score:desc';
   const searchesText = params.field === OQL_FIELD
     ? /\b(has|is similar to)\b/i.test(params.q) || params.review || params.focus.length > 0
-    : Boolean(params.q.trim());
+    : Boolean(params.q.trim()) && !doiOfQuery(params.q);
   return params.sort === 'relevance_score:desc' && !searchesText ? 'publication_date:desc' : params.sort;
 }
 
@@ -240,9 +255,9 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     sortBy: params.sort,
     filterType: params.ft as 'date' | 'year',
     
-    yearRange: params.yf && params.yt ? [params.yf, params.yt] : undefined,
+    yearRange: yearRangeOf(params),
     isYearRangeEnabled: !!(params.yf || params.yt),
-    
+
     dateRange: params.df || params.dt ? {
       from: params.df ? parseISO(params.df) : undefined,
       to: params.dt ? parseISO(params.dt) : undefined,
@@ -257,6 +272,7 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     citesItemId: params.cites,
     citedByItemId: params.citedBy,
     relatedToItemId: params.rel,
+    similarTo: params.like,
     
     reviewFilter: params.review,
     researchAreas: params.area,
@@ -330,9 +346,10 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   if (!arraysEqual(params.focus, stateFocus)) return false;
   
   // References
-  if (params.cites !== (state.citesItemId || '')) return false;
-  if (params.citedBy !== (state.citedByItemId || '')) return false;
-  if (params.rel !== (state.relatedToItemId || '')) return false;
+  if (params.cites !== bareWork(state.citesItemId || '')) return false;
+  if (params.citedBy !== bareWork(state.citedByItemId || '')) return false;
+  if (params.rel !== bareWork(state.relatedToItemId || '')) return false;
+  if (!arraysEqual(params.like, state.similarTo ?? [])) return false;
   
   // Content
   if (params.review !== (state.reviewFilter ?? false)) return false;

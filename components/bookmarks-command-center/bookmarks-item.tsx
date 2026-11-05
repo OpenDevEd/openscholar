@@ -38,7 +38,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
   const format = useFormatter();
   const router = useWorkspaceRouter();
   const [editValue, setEditValue] = useState(bookmark.expansion);
-  const expansionText = useFullText<HTMLButtonElement>(`${viewMode}|${isEditing}|${bookmark.expansion}`);
+  const expansionText = useFullText<HTMLSpanElement>(`${viewMode}|${isEditing}|${bookmark.expansion}`);
   const grid = isGrid(viewMode);
   const simple = viewMode === "list-simple";
 
@@ -97,13 +97,15 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
   // What the bookmark expands to, cut to `clamp` until it is asked for in full.
   const open = (clamp: string, shape?: string) => (
     <button
-      ref={expansionText.ref}
       type="button"
       aria-label={`${tb("useInSearchTooltip")}: ${bookmark.name}`}
-      className={cn(ENTRY_OPEN, "font-normal", shape, !expansionText.expanded && clamp)}
+      className={cn(ENTRY_OPEN, "font-normal", shape)}
       onClick={useInSearch}
     >
+      {/* The cut goes on the text: Safari doesn't cut a button's own lines. */}
+      <span ref={expansionText.ref} className={cn("block min-w-0", !expansionText.expanded && clamp)}>
       {bookmark.expansion}
+      </span>
     </button>
   );
 
@@ -159,7 +161,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
           {isEditing ? editor : (
             <>
               {open(viewMode === "grid-2" ? "line-clamp-4" : "line-clamp-3")}
-              <FullTextToggle text={expansionText} className="-ml-1.5 self-start" />
+              <FullTextToggle text={expansionText} className="-ms-1.5 self-start" />
             </>
           )}
         </>
@@ -177,7 +179,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
               ) : (
                 <div className="min-w-0 flex-1">
                   {open("line-clamp-3")}
-                  <FullTextToggle text={expansionText} className="-ml-1.5 mt-1 flex" />
+                  <FullTextToggle text={expansionText} className="-ms-1.5 mt-1 flex" />
                 </div>
               )}
               {addedBy ? <span className="flex shrink-0 self-start">{addedBy}</span> : null}

@@ -39,7 +39,7 @@ export const readReaderStatus = internalQuery({
   handler: async (ctx, args) => {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
     if (!libraryId || !await findMatchingLibraryServiceCredential(ctx, { libraryId, credentialDigest: args.credentialDigest })) {
-      throw createError("UNAUTHENTICATED", "Invalid library service credential");
+      throw createError("UNAUTHENTICATED", "Invalid community service credential");
     }
     const deleted = await ctx.db.query("clerkDeletedUsers").withIndex("by_clerkId", q => q.eq("clerkId", args.clerkUserId)).unique();
     if (deleted) return "deleted";
@@ -51,9 +51,9 @@ export const readReaderStatus = internalQuery({
 
 export async function readLibrarySessionAccess(ctx: QueryCtx | MutationCtx, args: {libraryId: string; clerkUserId: string; credentialDigest: string}) {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-    if (!libraryId) throw createError("UNAUTHENTICATED", "Invalid library service credential");
+    if (!libraryId) throw createError("UNAUTHENTICATED", "Invalid community service credential");
     const credential = await findMatchingLibraryServiceCredential(ctx, { libraryId, credentialDigest: args.credentialDigest });
-    if (!credential) throw createError("UNAUTHENTICATED", "Invalid library service credential");
+    if (!credential) throw createError("UNAUTHENTICATED", "Invalid community service credential");
     const library = await ctx.db.get("evidenceLibraries", libraryId);
     if (!library || library.state === "disabled") return null;
     const role = await readLibraryRole(ctx, library, args.clerkUserId);

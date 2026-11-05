@@ -119,7 +119,7 @@ async function readGithub(
         headers: {
           accept: "application/vnd.github+json",
           authorization: `Bearer ${token}`,
-          "user-agent": "OpenScholar",
+          "user-agent": "Openscholar",
           "x-github-api-version": "2022-11-28",
         },
         signal: controller.signal,
@@ -223,7 +223,7 @@ async function readPublishedReleases(input: {
   if (!newest) {
     throw new RuntimeReleaseError(
       "GITHUB_UNAVAILABLE",
-      "The latest Evidence Library release could not be read",
+      "The latest Evidence Community release could not be read",
     );
   }
   const latest = newest.commit;
@@ -243,7 +243,7 @@ async function readPublishedReleases(input: {
   if (!image) {
     throw new RuntimeReleaseError(
       "RUNTIME_IMAGE_UNAVAILABLE",
-      "The Evidence Library software image could not be read right now",
+      "The Evidence Community software image could not be read right now",
     );
   }
   return { latest, image, published };
@@ -285,7 +285,7 @@ async function readPlacement(
   ) {
     throw new RuntimeReleaseError(
       "GITHUB_UNAVAILABLE",
-      "The Evidence Library software history could not be read",
+      "The Evidence Community software history could not be read",
     );
   }
   const made = compare.body.base_commit;
@@ -329,7 +329,7 @@ async function readChanges(
     if (listed.status !== 200 || !Array.isArray(listed.body)) {
       throw new RuntimeReleaseError(
         "GITHUB_UNAVAILABLE",
-        "The Evidence Library change list could not be read",
+        "The Evidence Community change list could not be read",
       );
     }
     const reached = listed.body.findIndex(

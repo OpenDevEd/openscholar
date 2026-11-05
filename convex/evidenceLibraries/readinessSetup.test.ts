@@ -87,7 +87,7 @@ describe("Evidence Library readiness completion", () => {
         internal.evidenceLibraries.readinessSetup.completeReadinessSetup,
         args,
       ),
-    ).rejects.toThrow(/changed while the library was publishing/);
+    ).rejects.toThrow(/changed while the community was publishing/);
     expect(
       await fixture.t.run((ctx) => ctx.db.get(libraryId)),
     ).not.toMatchObject({ state: "active" });
@@ -523,7 +523,7 @@ describe("Evidence Library address recovery during setup", () => {
       status: "failed",
       error: {
         code: "ADDRESS_NOT_OURS",
-        message: "Another site answers this Evidence Library address",
+        message: "Another site answers this Evidence Community address",
       },
     });
   });

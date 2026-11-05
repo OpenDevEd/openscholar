@@ -275,7 +275,7 @@ function TagChip({ children }: { children: string }) {
 }
 
 /** A count's place keeps its width while the counts are read, then the count fades in. */
-const COUNT_SLOT = "w-24 shrink-0 text-right";
+const COUNT_SLOT = "w-24 shrink-0 text-end";
 
 function RecordCount({ tag, counts }: { tag: string; counts: Promise<TagCounts> }) {
   const t = useTranslations("evidenceLibraryConfiguration.search.tagFilters");

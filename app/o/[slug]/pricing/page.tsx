@@ -1,10 +1,15 @@
+import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
+import { getTranslations } from "next-intl/server";
 import { fetchAction, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Pricing } from "@/components/Pricing";
 
-export { metadata } from "@/app/pricing/page";
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("pricing");
+  return { title: t("metadataTitle") };
+}
 
 /**
  * An organization's plans (#652), drawn from the organization as the server reads it, so its cards
@@ -19,10 +24,10 @@ export default async function OrganizationPricingPage({ params, searchParams }: 
       console.error("[billing] couldn't refresh the organization's account from Autumn", error);
     });
   }
-  const organization = workspaceId ? await fetchQuery(api.organizations.queries.workspace, { workspaceId }, { token }) : null;
+  const [organization, opens] = workspaceId ? await Promise.all([fetchQuery(api.organizations.queries.workspace, { workspaceId }, { token }), fetchQuery(api.organizationFeatures.opens, { workspaceId }, { token })]) : [null, null];
   return (
     <PageWrapper>
-      <Pricing organization={organization ?? undefined} />
+      <Pricing organization={organization ?? undefined} libraries={opens?.evidenceLibraries} />
     </PageWrapper>
   );
 }

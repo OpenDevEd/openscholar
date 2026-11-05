@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import { focusOpener } from "@/lib/store";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import posthog from "posthog-js";
 
 import { motion, AnimatePresence, PanInfo } from "motion/react";
@@ -13,10 +14,11 @@ import {
   useUIStore,
 } from "@/lib/store";
 import { useTheme } from "next-themes";
-import { useIsMobile } from "@/lib/hooks";
+import { useIsMobile, useIsTablet } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { useTranslate } from "../paper-card";
+import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { useAuthorFilter, useInstitutionFilter, useJournalFilter, type FilterValue } from "../paper-card/hooks";
 
 import { PaperContent } from "@/components/focus-mode/paper-content";
@@ -49,6 +51,7 @@ export function FocusMode({
   // One paper, such as one a chat names, is read on its own: the index the page's list keeps is for that list.
   const currentIndex = papers.length === 1 ? 0 : focusModeIndex;
   const [showSettings, setShowSettings] = useState(false);
+  const [translationMenuOpen, setTranslationMenuOpen] = useState(false);
   // It stays mounted while closed, so it can slide out: each opening starts on the paper, not on the settings left open.
   const [openedBefore, setOpenedBefore] = useState(isOpen);
   if (isOpen !== openedBefore) {
@@ -61,6 +64,7 @@ export function FocusMode({
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const ratePaper = useRatePaper();
 
   const tLabels = useTranslations("labels");
@@ -79,6 +83,9 @@ export function FocusMode({
   const wasOpenRef = useRef(isOpen);
 
   const currentPaper = papers[currentIndex];
+  // What the translation menu's run and auto-translate cover: the page of the list this paper is on.
+  const listedStart = Math.floor(currentIndex / ITEMS_PER_PAGE) * ITEMS_PER_PAGE;
+  const listedPapers = useMemo(() => papers.slice(listedStart, listedStart + ITEMS_PER_PAGE), [papers, listedStart]);
   const savePaper = useSavePaper(currentPaper);
   // Any paper named by its source but an upload is rated and saved (a rating saves it; an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = currentPaper ? saveablePaper(currentPaper.id) : false;
@@ -266,7 +273,8 @@ export function FocusMode({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+      // The menu keeps its keys, and Escape shuts only what handled it.
+      if (!isOpen || translationMenuOpen || e.defaultPrevented) return;
 
       switch (e.key) {
         case "ArrowLeft":
@@ -350,8 +358,11 @@ export function FocusMode({
         case "t":
         case "T":
           e.preventDefault();
+          // As its button does: switch the text, or with nothing to switch to, open the menu.
           if (translatedContent) {
             setShowTranslated(!showTranslated);
+          } else {
+            setTranslationMenuOpen(true);
           }
           break;
       }
@@ -361,6 +372,7 @@ export function FocusMode({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     isOpen,
+    translationMenuOpen,
     currentIndex,
     papers.length,
     currentPaper,
@@ -452,6 +464,11 @@ export function FocusMode({
         side="right"
         // The header closes it with a button of its own row.
         showCloseButton={false}
+        onCloseAutoFocus={(event) => {
+          if (!focusOpener.element?.isConnected) return;
+          event.preventDefault();
+          focusOpener.element.focus();
+        }}
         className="w-full sm:max-w-none p-0 overflow-hidden !outline-none"
       >
         <FocusModeClose.Provider value={onClose}>
@@ -465,7 +482,11 @@ export function FocusMode({
             showTranslated={showTranslated}
             translatedContent={translatedContent}
             isTranslating={isTranslating}
-            isMobile={isMobile}
+            listedPapers={listedPapers}
+            translationMenuOpen={translationMenuOpen}
+            onTranslationMenuOpenChange={setTranslationMenuOpen}
+            // A tablet hasn't the width for the full row of controls: it takes the phone's.
+            isMobile={isTablet}
             onRatingChange={handleRatingChange}
             onToggleTranslation={() => setShowTranslated(!showTranslated)}
             onToggleSettings={() => setShowSettings(!showSettings)}

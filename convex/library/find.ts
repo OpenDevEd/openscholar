@@ -6,7 +6,7 @@ import { toPaperKey } from "../../lib/papers/paper-ref";
 /** A paper's key from how a caller names it: its key, or an ID kept before keys, such as an OpenAlex ID in any form. */
 export function requirePaperKey(paper: string): string {
   const key = toPaperKey(paper);
-  if (!key) throw createError("VALIDATION_ERROR", "Name a paper by its key, such as openalex:W2741809807 or library:<library ID>:<record key>, or by its OpenAlex ID.");
+  if (!key) throw createError("VALIDATION_ERROR", "Name a paper by its key, such as openalex:W2741809807 or library:<library ID>:<record key>, or by its ID in the index.");
   return key;
 }
 

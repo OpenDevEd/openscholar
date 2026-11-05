@@ -358,13 +358,13 @@ function CollectionsPanel({
         ) : null}
       </div>
       <div className="relative mb-1">
-        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={picker.query}
           onChange={(event) => picker.setQuery(event.target.value)}
           placeholder={tl("searchCollections")}
           aria-label={tl("searchCollections")}
-          className="h-8 pl-8 text-sm"
+          className="h-8 ps-8 text-sm"
         />
       </div>
       {/* The list is read once the popover opens: the frame slides to its height and the rows fade in, in place of a jump. */}

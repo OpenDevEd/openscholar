@@ -51,7 +51,7 @@ function StyleOption({
       onPointerMove={onFocus}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onSelect}
-      className={`flex min-h-10 w-full items-start gap-3 rounded-lg px-3 py-2 text-left text-sm leading-5 text-popover-foreground hover:bg-accent hover:text-accent-foreground ${active ? "bg-accent text-accent-foreground" : ""}`}
+      className={`flex min-h-10 w-full items-start gap-3 rounded-lg px-3 py-2 text-start text-sm leading-5 text-popover-foreground hover:bg-accent hover:text-accent-foreground ${active ? "bg-accent text-accent-foreground" : ""}`}
     >
       <span className="min-w-0 flex-1 whitespace-normal break-words">
         {style.label}
@@ -182,7 +182,7 @@ function StyleMenu({
                 data-index={virtual.index}
                 ref={virtualizer.measureElement}
                 role="presentation"
-                className="absolute left-0 top-0 w-full"
+                className="absolute start-0 top-0 w-full"
                 style={{ transform: `translateY(${virtual.start}px)` }}
               >
                 {"heading" in row ? (

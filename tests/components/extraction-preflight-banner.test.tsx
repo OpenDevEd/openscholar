@@ -16,6 +16,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations:
     () =>
     (key: string, params?: Record<string, unknown>) => {
@@ -69,7 +71,7 @@ describe("<ExtractionPreflightBanner>", () => {
     expect(screen.getByRole("button", { name: /buyCredits/i })).toBeTruthy();
   });
 
-  it("clicking Buy Credits routes to /settings/billing#topup-section and fires onBeforeNavigate", () => {
+  it("clicking Buy Credits routes to /settings/billing and fires onBeforeNavigate", () => {
     pushMock.mockClear();
     const onBeforeNavigate = vi.fn();
     render(
@@ -81,7 +83,7 @@ describe("<ExtractionPreflightBanner>", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /buyCredits/i }));
     expect(onBeforeNavigate).toHaveBeenCalledTimes(1);
-    expect(pushMock).toHaveBeenCalledWith("/settings/billing#topup-section");
+    expect(pushMock).toHaveBeenCalledWith("/settings/billing");
   });
 
   it("null balance (unauthenticated / query returns null) is treated as insufficient when estimate > 0", () => {

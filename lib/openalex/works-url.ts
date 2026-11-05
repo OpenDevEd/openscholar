@@ -1,6 +1,7 @@
 import { buildUrl } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import type { SearchParameters } from "@sickrin/openalex-sdk/dist/src/types/work";
-import { openAlexUrl } from "./request-url";
+import type { SearchSource } from "../search/source";
+import { searchUrl } from "./request-url";
 
 const encoded = (value: unknown): unknown =>
   typeof value === "string" ? encodeURIComponent(value)
@@ -18,7 +19,7 @@ export function withEncodedValues<T extends { search?: string; filter?: object }
 }
 
 /** A works search URL with OpenScholar's key, from the SDK's search parameters. */
-export function worksUrl(parameters: SearchParameters, extra: Record<string, string | undefined> = {}) {
+export function worksUrl(parameters: SearchParameters, extra: Record<string, string | undefined> = {}, source: SearchSource = "openalex") {
   const { search, searchField, filter, groupBy, sortBy } = withEncodedValues(parameters);
-  return openAlexUrl(buildUrl("", "works", search, searchField, filter, groupBy, sortBy), extra);
+  return searchUrl(source, buildUrl("", "works", search, searchField, filter, groupBy, sortBy), extra);
 }

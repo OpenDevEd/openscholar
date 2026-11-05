@@ -1,13 +1,15 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { ArrowUpRight, FileText, Library } from "@/components/icons";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { AuthorPublication } from "@/components/authors/types";
+import { typeName } from "@/lib/evidence-libraries/reader-sources";
 
 export function PublicationMetadata({year, type, className}: Pick<AuthorPublication, "year" | "type"> & {className: string}) {
   const publicationYear = year.trim();
-  const publicationType = type.trim();
+  const publicationType = typeName(type.trim());
   if (!publicationYear && !publicationType) return null;
   return <span className={className}>
     {publicationYear && <span className="font-medium tabular-nums">{publicationYear}</span>}
@@ -21,13 +23,14 @@ export function PublicationListItem({ publication: p, locations }: {
   publication: AuthorPublication;
   locations?: { name: string; url: string }[];
 }) {
+  const t = useTranslations("libraryList");
   return (
     <article
       className="fade-enter group grid grid-cols-[64px_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle px-4 py-4 transition-colors hover:bg-muted last:border-b-0 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:gap-6"
     >
       <button
         className="rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-        aria-label={`Preview ${p.title} cover`}
+        aria-label={t("previewCover", { title: p.title })}
         onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
       >
         <Avatar className="h-[92px] w-16 rounded-sm border border-border-subtle shadow-sm transition-transform group-hover:-translate-y-0.5 sm:h-28 sm:w-20">
@@ -44,7 +47,7 @@ export function PublicationListItem({ publication: p, locations }: {
       <div className="min-w-0">
         <PublicationMetadata year={p.year} type={p.type} className="mb-2 flex items-center gap-2 text-xs text-muted-foreground" />
         <button
-          className="text-left text-base font-semibold leading-snug hover:text-primary sm:text-lg"
+          className="text-start text-base font-semibold leading-snug hover:text-primary sm:text-lg"
           onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
         >
           {p.title}
@@ -74,7 +77,7 @@ export function PublicationListItem({ publication: p, locations }: {
         variant="ghost"
         size="icon-sm"
         className="hidden sm:inline-flex"
-        aria-label={`Preview ${p.title}`}
+        aria-label={t("preview", { title: p.title })}
         onClick={() => window.open(p.url, "_blank", "noopener,noreferrer")}
       >
         <ArrowUpRight />

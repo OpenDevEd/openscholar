@@ -20,6 +20,7 @@ import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { findSearch, ratingsAmong, shortcutExpansions } from "../research/records";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { readSearchRun, searchRequestValidator, type SearchSnapshot } from "./openalex";
+import { activeSource } from "../lib/searchSource";
 import { toPaperKey } from "../../lib/papers/paper-ref";
 
 /** The fields a screening paper keeps. */
@@ -43,7 +44,9 @@ export async function filtersOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, sa
   const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
   // The workspace's shortcuts this query uses, as the results page expands them.
   const expansions = await shortcutExpansions(ctx, workspaceId, shortcutNames(saved.query));
-  return { params, filters: paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) }) };
+  const filters = paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) });
+  // The source it reads goes with the request, so what's kept of it, a job's snapshot among them, stays on that source.
+  return { params, filters: filters && { ...filters, openAlexQuery: { ...filters.openAlexQuery, source: await activeSource(ctx) } } };
 }
 
 /** The request a search's results page makes for it, and its rating filter: a saved search's, or one that's only being tried. */

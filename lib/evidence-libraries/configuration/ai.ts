@@ -75,7 +75,7 @@ export function aiProviderIssues(
       return [
         issue(
           "/ai/providers",
-          "This library saves exactly one AI provider, OpenRouter.",
+          "This community saves exactly one AI provider, OpenRouter.",
         ),
       ];
     }
@@ -87,7 +87,7 @@ export function aiProviderIssues(
     return [
       issue(
         "/ai/providers",
-        "This library saves exactly one AI provider, OpenRouter.",
+        "This community saves exactly one AI provider, OpenRouter.",
       ),
     ];
   }
@@ -97,7 +97,7 @@ export function aiProviderIssues(
     issues.push(
       issue(
         "/ai/providers/0/provider",
-        "OpenRouter is the only AI provider this library can use.",
+        "OpenRouter is the only AI provider this community can use.",
       ),
     );
   }
@@ -117,7 +117,7 @@ export function aiProviderIssues(
     issues.push(
       issue(
         "/ai/providers/0/models",
-        "OpenRouter models have not synced to OpenScholar yet. Try again shortly.",
+        "OpenRouter models have not synced to Openscholar yet. Try again shortly.",
       ),
     );
   }
@@ -137,7 +137,7 @@ export function aiProviderIssues(
         issues.push(
           issue(
             `/ai/providers/0/models/${index}`,
-            `${String(model)} is not in OpenScholar's synced OpenRouter catalog.`,
+            `${String(model)} is not in Openscholar's synced OpenRouter catalog.`,
           ),
         );
       } else if (seen.has(model)) {

@@ -74,7 +74,7 @@ export const readRunningRelease = internalQuery({
       binding.libraryId !== args.libraryId ||
       !("runtimeCommit" in binding)
     ) {
-      throw createError("CONFLICT", "This library is not running yet");
+      throw createError("CONFLICT", "This community is not running yet");
     }
     const running = binding.runtimeCommit;
     const cached = await ctx.db
@@ -307,7 +307,7 @@ export async function requirePublishRuntime(
   if (runtime.kind === "unreleased") {
     throw createError(
       "CONFLICT",
-      "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
+      "These changes need Evidence Community software that is still being released. Try again in a few minutes.",
     );
   }
   return runtime;

@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { HelpCircle } from "@/components/icons";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -15,6 +17,7 @@ const AUTHORS = { entity: "authors" as const, useNames: useAuthorNames, remember
  */
 export function AuthorFilter({ selected, onChange }: { selected: string[]; onChange: (ids: string[]) => void }) {
   const tf = useTranslations("searchFilters");
+  const source = useSearchSource();
   const typed = (query: string) => {
     const name = authorFilterValue(query);
     return name && !isAuthorId(name) ? { id: name, name, detail: tf("authorByName") } : null;
@@ -31,11 +34,11 @@ export function AuthorFilter({ selected, onChange }: { selected: string[]; onCha
       />
       {mixed && (
         <p className="text-xs text-subtle-foreground">
-          {tf("authorsAndNames")}{" "}
-          <TooltipHint label={<span className="block max-w-64">{tf("authorsAndNamesWhy")}</span>}>
+          {tf("authorsAndNames", { source: SEARCH_SOURCE_NAMES[source] })}{" "}
+          <TooltipHint label={<span className="block max-w-64">{tf("authorsAndNamesWhy", { source: SEARCH_SOURCE_NAMES[source] })}</span>}>
             <button
               type="button"
-              aria-label={tf("authorsAndNamesWhy")}
+              aria-label={tf("authorsAndNamesWhy", { source: SEARCH_SOURCE_NAMES[source] })}
               className="inline-flex rounded-sm align-text-bottom text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
             >
               <HelpCircle aria-hidden className="size-3.5" />

@@ -99,7 +99,7 @@ export async function decideYesNo({
 }): Promise<{ answers: YesNo[]; usage: Usage }> {
   const response = await fetch(DECISIONS_URL, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'OpenScholar' },
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'Openscholar' },
     body: JSON.stringify({
       model,
       state,

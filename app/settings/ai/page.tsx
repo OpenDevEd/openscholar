@@ -215,7 +215,7 @@ export default function AISettingsPage() {
               presets={signedOut ? undefined : presetPicks([task])}
               tasks={[task]}
               trigger={
-                <button type="button" className="w-full rounded-l-xl">
+                <button type="button" className="w-full rounded-s-xl">
                   {row}
                 </button>
               }
@@ -237,7 +237,7 @@ export default function AISettingsPage() {
             return n.id === routing.firstKey ? (
               <div className="relative">
                 <div
-                  className="absolute left-0 flex items-center gap-1.5 rounded-t-xl bg-primary/10 pl-3 pr-4 text-xs font-medium text-primary"
+                  className="absolute start-0 flex items-center gap-1.5 rounded-t-xl bg-primary/10 ps-3 pe-4 text-xs font-medium text-primary"
                   style={{ top: -ZONE_LABEL + 2, height: ZONE_LABEL - 2 }}
                 >
                   <Monitor className="size-3.5" /> {t("yourBrowser")}
@@ -276,7 +276,7 @@ function PayMenu({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <button type="button" className="-ml-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted">
+        <button type="button" className="-ms-1.5 flex items-center gap-1.5 rounded-md px-1.5 py-1 transition-colors hover:bg-muted">
           {children}
           {saved.length ? (
             <span className="flex -space-x-1">
@@ -290,7 +290,7 @@ function PayMenu({
           <ChevronsUpDown className="size-3 text-muted-foreground/60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[26rem] space-y-3 p-3">
+      <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] space-y-3 p-3">
         {pay ? (
           <Segmented
             label={t("payWith")}
@@ -317,7 +317,7 @@ function PayMenu({
               )}
             >
               <p.icon className="size-4" /> {getProviderConfig(p.id).name}
-              {keys[p.id] ? <Check aria-label={t("saved")} className="absolute right-1.5 top-1.5 size-3 text-primary" /> : null}
+              {keys[p.id] ? <Check aria-label={t("saved")} className="absolute end-1.5 top-1.5 size-3 text-primary" /> : null}
             </button>
           ))}
         </div>
@@ -377,7 +377,7 @@ function KeyInput({
             onKeyDown={(e) => {
               if (e.key === "Enter" && dirty && !checking && canSave) void save();
             }}
-            className="h-10 pr-10 font-mono text-sm"
+            className="h-10 pe-10 font-mono text-sm"
           />
           <TooltipHint label={t("getKey", { provider: name })}>
             <a
@@ -385,7 +385,7 @@ function KeyInput({
               target="_blank"
               rel="noopener noreferrer"
               aria-label={t("getKey", { provider: name })}
-              className="absolute right-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="absolute end-1.5 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
             >
               <ExternalLink className="size-3.5" />
             </a>

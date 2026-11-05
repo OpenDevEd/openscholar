@@ -203,7 +203,7 @@ const SECTION_COMPONENTS: Record<
   analytics: AnalyticsSection,
 };
 
-const LIBRARIES_HREF = "/evidence-libraries";
+const LIBRARIES_HREF = "/evidence-communities";
 
 /** What the platform refused and where it belongs, or null when it said nothing useful. */
 function readRefusal(error: unknown): SaveRefusal | null {
@@ -460,7 +460,7 @@ function Workspace({
         activateConfiguration({ libraryId, expectedEditVersion: version }),
       )
       .then((result) => {
-        if (result.kind === "setup") router.push(`/evidence-libraries/${libraryId}/setup`);
+        if (result.kind === "setup") router.push(`/evidence-communities/${libraryId}/setup`);
       })
       .catch((error: unknown) => showRefusal(error, t("activationError")))
       .finally(() => setActivating(false));
@@ -620,7 +620,7 @@ function Workspace({
         <Button
           variant="outline"
           size="sm"
-          className="fixed bottom-6 right-6 z-20 shadow-lg [body:has([data-assistant-launcher])_&]:right-24"
+          className="fixed bottom-6 end-6 z-20 shadow-lg [body:has([data-assistant-launcher])_&]:end-24"
           onClick={() => jumpTo("identity")}
         >
           <ArrowUp />

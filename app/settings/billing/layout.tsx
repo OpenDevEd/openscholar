@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { fetchAction, fetchQuery } from "convex/nextjs";
+import { getTranslations } from "next-intl/server";
 import { api } from "@/convex/_generated/api";
+import { namedTitle } from "@/lib/seo/page-metadata";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("workspaces");
+  return { title: await namedTitle(t("planAndCredits")) };
+}
 
 /**
  * Re-reads the workspace's account from Autumn as the billing page opens, so edits

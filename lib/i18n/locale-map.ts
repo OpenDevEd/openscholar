@@ -9,6 +9,13 @@ const NEXT_INTL_TO_BCP47: Record<string, string> = {
   "en-US": "en-US",
   "en-GB": "en-GB",
   "fr": "fr-FR",
+  "ar": "ar",
+  "sw": "sw",
+  "pt": "pt-PT",
+  "es": "es-ES",
+  "de": "de-DE",
+  "af": "af-ZA",
+  "zu": "zu-ZA",
 };
 
 /**
@@ -32,4 +39,9 @@ export function localeToLanguageCode(locale: string): string {
     ja: "ja",
   };
   return map[locale] ?? locale.split("-")[0] ?? "en";
+}
+
+/** Whether a language reads right to left. */
+export function isRightToLeft(locale: string): boolean {
+  return locale === "ar";
 }

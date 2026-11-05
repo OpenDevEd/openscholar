@@ -20,6 +20,7 @@ import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } f
 import { paramsToSearchResult, searchResultToParams } from "@/lib/search-params";
 import { useSearchHistoryStore } from "@/lib/store";
 import { useWatchedSearch } from "@/lib/research/reads";
+import { PinSearchSource } from "@/lib/search/use-search-source";
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { sidebarSpring } from "@/lib/ui/sidebar-motion";
 import { isCitedByFilterActive, isCitesFilterActive, isRelatedToFilterActive } from "@/lib/utils";
@@ -138,7 +139,7 @@ function SearchWorkspace({
                 maxLength={80}
                 placeholder={t("namePlaceholder")}
                 onChange={(event) => setName(event.target.value)}
-                className="-ml-2 min-w-40 max-w-full field-sizing-content rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
+                className="-ms-2 min-w-40 max-w-full field-sizing-content rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
               />
               <Button
                 type="button"
@@ -306,6 +307,8 @@ export function OpenAlexSearchDialog({
       >
         <DialogTitle className="sr-only">{initial ? t("changeTitle") : t("addTitle")}</DialogTitle>
         <DialogDescription className="sr-only">{t("dialogDescription")}</DialogDescription>
+        {/* A community's source is an OpenAlex query, whichever source the site's own searches read. */}
+        <PinSearchSource value="openalex">
         <SearchProvider local={{searchId, params,
           onParamsChange: (updates) => setParams((value) => ({...value, ...updates})),
         }}>
@@ -315,6 +318,7 @@ export function OpenAlexSearchDialog({
             onClose={onClose} onSave={save}
           />
         </SearchProvider>
+        </PinSearchSource>
       </DialogContent>
     </Dialog>
   );

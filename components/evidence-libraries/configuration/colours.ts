@@ -16,8 +16,8 @@ export const COLOUR_PRESETS: {
   key: ColourPresetKey;
   colors: ThemeDraft["colors"];
 }[] = [
-  // OpenScholar's own blues: the primary for the accent, the brand navy, and a deeper blue for links.
-  { key: "openscholar", colors: { ...THEME_DEFAULTS.colors, accent: "#2563eb", tertiary: "#172554", link: "#1d4ed8" } },
+  // The brand orange: deep enough for the white text on a community's buttons, the brand ink, and a deeper orange for links.
+  { key: "openscholar", colors: { ...THEME_DEFAULTS.colors, accent: "#c9500a", tertiary: "#361307", link: "#b2440a" } },
   { key: "sunrise", colors: { ...THEME_DEFAULTS.colors, accent: "#e68124", tertiary: "#2b4c7e", link: "#c2410c" } },
   { key: "forest", colors: { ...THEME_DEFAULTS.colors, accent: "#1d9a6c", tertiary: "#0f3d3e", link: "#047857" } },
   { key: "ocean", colors: { ...THEME_DEFAULTS.colors, accent: "#2563eb", tertiary: "#1e293b", link: "#1d4ed8" } },

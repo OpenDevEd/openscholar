@@ -1,10 +1,10 @@
 /**
  * AI overviews of a search (#967). The results page shows one for the lens the person has open; ./overviewsAction.ts
- * writes it on the Cheap preset's chat model, from counts and papers of the search it reads itself. An overview is
+ * writes it on the person's model for overviews, from counts and papers of the search it reads itself. An overview is
  * stored by the search's OpenAlex request and the lens, so a search that asks the same reads it again for nothing.
  *
- * Go and above write the open lens free, up to the plan's `overviews_per_day` a day. Past it, and on a plan without
- * it, an overview waits for the person to ask and is paid in credits, up to PAID_PER_DAY a day. Folded, the page asks
+ * Go and above write the open lens free, up to the plan's `overviews_per_day` a day, for people on a preset. Past it,
+ * on a plan without it, and on Custom, an overview waits for the person to ask and is paid in credits, up to PAID_PER_DAY a day. Folded, the page asks
  * for nothing: that's how a person pauses them.
  */
 import { v, type Infer } from "convex/values";
@@ -14,8 +14,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Acting } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
-import { readCatalog } from "../billing/catalog";
-import { presetPick } from "../ai/serverModel";
+import { organizationPreset, resolveTaskPick, userAiConfig } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requestOf } from "../paperSets/search";
 import { searchRequestValidator } from "../paperSets/openalex";
@@ -106,9 +105,11 @@ async function searchFor(ctx: QueryCtx, actor: Pick<Acting, "workspaceId" | "use
   const row = await findSearch(ctx, actor.workspaceId, searchId);
   if (!row) return { reason: "missing" as const };
   const { request, ratingRange } = await requestOf(ctx, actor, currentSearch(row.data), row.revision);
-  if (!request || request.oql) return { reason: "oql" as const };
+  // Our index can't group a search by meaning, and an overview is built on those counts.
+  if (!request || request.oql || (request.source === "openscholar" && (request.semantic || request.similarTo))) return { reason: "oql" as const };
   if (ratingRange) return { reason: "ratings" as const };
-  return { request, key: digest(JSON.stringify([request.search ?? "", request.filter ?? ""])) };
+  // An overview written from one source isn't the same search's on another. OpenAlex's keep the keys they were stored by.
+  return { request, key: digest(JSON.stringify([request.search ?? request.semantic ?? "", request.filter ?? "", ...(request.source === "openscholar" ? [request.source] : [])])) };
 }
 
 /** The languages the app speaks, which an overview is written in: the page's. */
@@ -122,11 +123,20 @@ const storedOf = (ctx: QueryCtx, workspaceId: Id<"workspaces">, request: string,
 /** Today in UTC, as a person's day counts are kept: it starts at midnight UTC, as Autumn resets a daily limit. */
 const today = () => new Date().toISOString().slice(0, 10);
 
-/** What one overview paid in credits costs, at the Cheap preset's chat model's price; null without one. */
-async function paidCredits(ctx: QueryCtx) {
-  const pick = await presetPick(ctx, "cheap", "chat");
+/** What one overview paid in credits costs, at the price of the model it would run on for this person; null without one. */
+async function paidCredits(ctx: QueryCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
+  const pick = await resolveTaskPick(ctx, actor, "overview");
   const model = pick ? await ctx.db.get("models", pick.modelId) : null;
   return model ? estimateCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, CALL_TOKENS.overview) : null;
+}
+
+/**
+ * Free overviews a person gets a day: the plan's, or none on Custom. An organization's work always runs on its preset,
+ * so only a person's own workspace can be on Custom. Undefined when the plan has no limit.
+ */
+async function freePerDay(ctx: QueryCtx, { userId, workspaceId }: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
+  const onCustom = (await organizationPreset(ctx, workspaceId)) === null && (await userAiConfig(ctx, userId))?.choice === "custom";
+  return onCustom ? 0 : await planLimit(ctx, workspaceId, "overviews_per_day");
 }
 
 export const viewAction = defineUserQuery({
@@ -138,7 +148,7 @@ export const viewAction = defineUserQuery({
   run: async (ctx, { userId, workspaceId }) => {
     const prefs = await prefsOf(ctx, workspaceId, userId);
     const lenses = lensesOn(prefs, await sharedOf(ctx, workspaceId), userId);
-    const perDay = await planLimit(ctx, workspaceId, "overviews_per_day");
+    const perDay = await freePerDay(ctx, { userId, workspaceId });
     return {
       lenses,
       open: lenses.some((lens) => lens.id === prefs?.open) ? prefs!.open : DEFAULT_LENS,
@@ -148,9 +158,7 @@ export const viewAction = defineUserQuery({
       paid: prefs?.paid ?? 0,
       perDay: perDay ?? null,
       paidPerDay: PAID_PER_DAY,
-      // Where today's free ones run out, the page names what Pro gives, when it's more.
-      proPerDay: (await readCatalog(ctx))?.plans.find((plan) => plan.id === "pro")?.limits?.overviews_per_day ?? null,
-      credits: await paidCredits(ctx),
+      credits: await paidCredits(ctx, { userId, workspaceId }),
     };
   },
 });
@@ -189,7 +197,7 @@ export const ensureAction = defineUserMutation({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  estimate: async (ctx, _actor, { pay }) => (pay ? ((await paidCredits(ctx)) ?? 0) : 0),
+  estimate: async (ctx, actor, { pay }) => (pay ? ((await paidCredits(ctx, actor)) ?? 0) : 0),
   run: async (ctx, actor, { searchId, lens: lensId, locale, pay, again }): Promise<Infer<typeof ensured>> => {
     const search = await searchFor(ctx, actor, searchId);
     if ("reason" in search) return "unavailable";
@@ -201,11 +209,11 @@ export const ensureAction = defineUserMutation({
     const prefs = await ownPrefs(ctx, actor);
     const day = today();
     const counts = prefs.day === day ? { free: prefs.free ?? 0, paid: prefs.paid ?? 0 } : { free: 0, paid: 0 };
-    const perDay = await planLimit(ctx, actor.workspaceId, "overviews_per_day");
+    const perDay = await freePerDay(ctx, actor);
     const free = perDay === undefined || counts.free < perDay;
     if (!free && !pay) return "ask";
     if (!free && counts.paid >= PAID_PER_DAY) return "limit";
-    const pick = await presetPick(ctx, "cheap", "chat");
+    const pick = await resolveTaskPick(ctx, actor, "overview");
     if (!pick) throw createError("VALIDATION_ERROR", "No model writes overviews right now. Try again later.");
     await ctx.db.patch("overviewPrefs", prefs._id, { day, ...(free ? { free: counts.free + 1, paid: counts.paid } : { free: counts.free, paid: counts.paid + 1 }) });
     const startedAt = Date.now();

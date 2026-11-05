@@ -204,7 +204,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
 function Suggestion({ active, onHover, onPick, avatar, name, detail }: { active: boolean; onHover: () => void; onPick: () => void; avatar: ReactNode; name: string; detail?: string }) {
   return (
     <li role="option" aria-selected={active}>
-      <button type="button" onMouseDown={(e) => e.preventDefault()} onMouseEnter={onHover} onClick={onPick} className={cn("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left", active && "bg-muted")}>
+      <button type="button" onMouseDown={(e) => e.preventDefault()} onMouseEnter={onHover} onClick={onPick} className={cn("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start", active && "bg-muted")}>
         {avatar}
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{name}</span>

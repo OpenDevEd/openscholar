@@ -53,7 +53,7 @@ describe("library invitations", () => {
       await ctx.db.delete("itemAccess", assignment!._id);
     });
     expect(await features()).toEqual({ evidenceLibraries: false, authors: false });
-    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries?view=invitations") });
+    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-communities?view=invitations") });
   });
 
   it("finds an invitation sent to another address Clerk verified on the account, and lets them answer it", async () => {

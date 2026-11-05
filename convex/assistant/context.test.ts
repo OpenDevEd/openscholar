@@ -62,7 +62,7 @@ async function chatOf(t: Test) {
   /** Sends a message and waits until the chat is free again: its reply written, and any compaction after it done. */
   const say = async (text: string, view?: string) => {
     await who.asAda.mutation(api.assistant.replies.send, { threadId, text, ...(view ? { view } : {}) });
-    await waitFor(async () => !(await thread(threadId))?.reply, { timeoutMs: 5_000 });
+    await waitFor(async () => !(await thread(threadId))?.reply);
   };
   return { ...who, threadId, say, thread: () => thread(threadId) };
 }
@@ -132,7 +132,7 @@ describe("what the assistant's model is sent", () => {
     await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 100_000 }));
     await say("Back to this", "/library?col=collection-9");
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "I'm here too", view: "/library?col=collection-9" });
-    await waitFor(async () => !(await thread())?.reply, { timeoutMs: 5_000 });
+    await waitFor(async () => !(await thread())?.reply);
     expect(asked(requests.at(-1) as Sent).slice(-2)).toEqual([`user: Back to this${note("/library?col=collection-9")}`, `user: I'm here too${note("/library?col=collection-9")}`]);
 
     // A summary takes the place of the messages that said it, so the next one says it again, once.
@@ -153,7 +153,7 @@ describe("what the assistant's model is sent", () => {
     expect(asked(requests.at(-1) as Sent).at(-1)).toBe(`user: Good morning${note("/library?col=collection-9")}`);
     const fresh = await asAda.mutation(api.assistant.threads.create, {});
     await asAda.mutation(api.assistant.replies.send, { threadId: fresh, text: "Hello" });
-    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", fresh)))?.reply, { timeoutMs: 5_000 });
+    await waitFor(async () => !(await t.run(async (ctx) => ctx.db.get("assistantThreads", fresh)))?.reply);
     expect(asked(requests.at(-1) as Sent)).toEqual([`user: Hello<app_context>today: ${today}; chat: ${fresh}</app_context>`]);
   });
 
@@ -261,7 +261,7 @@ describe("what the assistant's model is sent", () => {
     expect(requests).toHaveLength(2);
     // Carried on, it answers from the summary.
     await asAda.mutation(api.assistant.replies.carryOn, { threadId });
-    await waitFor(async () => !(await thread())?.reply && !(await thread())?.asking, { timeoutMs: 5_000 });
+    await waitFor(async () => !(await thread())?.reply && !(await thread())?.asking);
     const { page } = await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage });
     expect(page[0]).toMatchObject({ role: "assistant", text: "Answer", status: "done" });
   });

@@ -15,9 +15,11 @@ import { WorkspacePicker } from "@/components/workspaces/workspace-picker";
 type ConnectState = "consent" | "creating" | "show_key" | "done" | "error";
 
 export default function ConnectPage() {
+  const tLabels = useTranslations("connectApp");
+  const t = useTranslations("connectApp");
   const searchParams = useSearchParams();
   const redirectUri = searchParams.get("redirect_uri");
-  const appName = searchParams.get("app_name") || "Unknown app";
+  const appName = searchParams.get("app_name") || tLabels("unknownApp");
   const isManualMode = !redirectUri || searchParams.get("mode") === "manual";
   const { phase, canRunProtectedQueries } = useAuthReadiness();
 
@@ -55,7 +57,7 @@ export default function ConnectPage() {
     }
 
     if (!isManualMode && isOriginAllowed === false) {
-      setError("This application's origin is not registered");
+      setError(tLabels("thisApplicationSOriginIsNot"));
       setState("error");
       return;
     }
@@ -84,7 +86,7 @@ export default function ConnectPage() {
       }
     } catch (e) {
       console.error("[connect] Failed to create wallet key:", e);
-      setError(e instanceof Error ? e.message : "Failed to create connection");
+      setError(e instanceof Error ? e.message : tLabels("failedToCreateConnection"));
       setState("error");
     }
   }, [redirectUri, redirectOrigin, appName, isManualMode, isOriginAllowed, approveConnection, finalizeConnection, picked]);
@@ -111,15 +113,15 @@ export default function ConnectPage() {
   const waiting = phase === "initializing" || (phase === "authenticated" && workspaces.list === undefined);
   if (phase === "anonymous" || waiting) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
         {waiting ? (
           <AuthStatePanel variant="loading" />
         ) : (
           <div className="flex flex-col items-center gap-6">
             <div className="text-center space-y-2">
-              <h1 className="text-2xl font-semibold">Sign in to continue</h1>
+              <h1 className="text-2xl font-semibold">{t("signInToContinue")}</h1>
               <p className="text-muted-foreground">
-                <strong>{appName}</strong> wants to connect to your OpenScholar wallet.
+                {t.rich("wantsToConnect", { appName, strong: (chunks) => <strong>{chunks}</strong> })}
               </p>
             </div>
             <SignIn
@@ -135,20 +137,19 @@ export default function ConnectPage() {
   // ── Key created — show for manual copy ─────────────────────
   if (state === "show_key" && generatedKey) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
         <div className="max-w-md w-full space-y-6">
           <div className="text-center space-y-2">
             <div className="text-3xl">&#x2713;</div>
-            <h1 className="text-2xl font-semibold">Connection created</h1>
+            <h1 className="text-2xl font-semibold">{t("connectionCreated")}</h1>
             <p className="text-muted-foreground">
-              Copy this API key and paste it into <strong>{appName}</strong>.
-              It will only be shown once.
+              {t.rich("copyKey", { appName, strong: (chunks) => <strong>{chunks}</strong> })}
             </p>
           </div>
 
           <div className="rounded-lg border p-4 space-y-3 bg-inset">
             <label className="text-xs font-medium text-muted-foreground">
-              API key
+              {t("apiKey")}
             </label>
             <div className="flex gap-2">
               <code className="flex-1 rounded-md border bg-background px-3 py-2.5 text-sm font-mono break-all select-all">
@@ -158,21 +159,20 @@ export default function ConnectPage() {
                 onClick={handleCopy}
                 className="shrink-0 rounded-md border px-3 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
               >
-                {copied ? "Copied!" : "Copy"}
+                {copied ? t("copied") : t("copy")}
               </button>
             </div>
           </div>
 
           <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 text-xs ink-warning">
-            This key grants access to AI generation using your credits.
-            Store it securely. You can revoke it from Settings at any time.
+            {t("thisKeyGrantsAccessToAi")}
           </div>
 
           <button
             onClick={() => window.close()}
             className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
-            Close this window
+            {t("closeThisWindow")}
           </button>
         </div>
       </div>
@@ -182,30 +182,28 @@ export default function ConnectPage() {
   // ── Origin not allowed ──────────────────────────────────────
   if (!isManualMode && isOriginAllowed === false) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
+      <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
         <div className="max-w-md w-full space-y-6 text-center">
           <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mx-auto">
             <span className="text-2xl">&#x26D4;</span>
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold">Origin not registered</h1>
+            <h1 className="text-2xl font-semibold">{t("originNotRegistered")}</h1>
             <p className="text-muted-foreground">
-              The application at <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{redirectOrigin}</code> is
-              not registered to connect to OpenScholar.
+              {t.rich("originUnregisteredBody", { origin: redirectOrigin, code: (chunks) => <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{chunks}</code> })}
             </p>
           </div>
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-muted-foreground text-left space-y-2">
-            <p className="font-medium text-foreground">What does this mean?</p>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-muted-foreground text-start space-y-2">
+            <p className="font-medium text-foreground">{t("whatDoesThisMean")}</p>
             <p>
-              Only pre-approved origins can create wallet connections. If you are the developer of <strong>{appName}</strong>,
-              contact the OpenScholar team to register your origin.
+              {t.rich("originHelp", { appName, strong: (chunks) => <strong>{chunks}</strong> })}
             </p>
           </div>
           <button
             onClick={() => window.close()}
             className="w-full rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors"
           >
-            Close this window
+            {t("closeThisWindow")}
           </button>
         </div>
       </div>
@@ -214,31 +212,30 @@ export default function ConnectPage() {
 
   // ── Consent screen ─────────────────────────────────────────
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
+    <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
       <div className="max-w-md w-full space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold">Connect app</h1>
+          <h1 className="text-2xl font-semibold">{t("connectApp")}</h1>
           <p className="text-muted-foreground">
-            <strong>{appName}</strong> wants to use AI generation through your OpenScholar credits.
+            {t.rich("wantsToUseCredits", { appName, strong: (chunks) => <strong>{chunks}</strong> })}
           </p>
         </div>
 
         <div className="rounded-lg border p-4 space-y-3 bg-inset">
           <div className="text-sm space-y-2">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">App</span>
+              <span className="text-muted-foreground">{t("app")}</span>
               <span className="font-medium">{appName}</span>
             </div>
             {!isManualMode && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Origin</span>
+                <span className="text-muted-foreground">{t("origin")}</span>
                 <span className="font-mono text-xs">{redirectOrigin}</span>
               </div>
             )}
           </div>
           <div className="text-xs text-muted-foreground border-t pt-3">
-            This app will be able to make AI generation requests using your credits.
-            You can revoke access at any time from Settings.
+            {t("thisAppWillBeAbleTo")}
           </div>
         </div>
 
@@ -259,7 +256,7 @@ export default function ConnectPage() {
             disabled={state === "creating" || state === "done"}
             className="flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
           >
-            {isManualMode ? "Cancel" : "Reject"}
+            {isManualMode ? t("cancel") : t("reject")}
           </button>
           <button
             onClick={handleApprove}
@@ -267,10 +264,10 @@ export default function ConnectPage() {
             className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {state === "creating"
-              ? "Creating key..."
+              ? t("creatingKey")
               : state === "done"
-                ? "Redirecting..."
-                : "Approve"}
+                ? t("redirecting")
+                : t("approve")}
           </button>
         </div>
       </div>

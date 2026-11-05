@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { sidebarSpring, hoverSpring } from "@/lib/ui/sidebar-motion";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { useIsMobile } from "@/lib/hooks";
 import type { StoreApi } from "zustand";
 import type { UseBoundStore } from "zustand";
@@ -64,6 +65,7 @@ export function FilterSidebar({
   const { isCollapsed, _hasHydrated, toggle } = useStore();
   const { expandedWidth, collapsedWidth } = getDimensions(isCollapsed);
   const t = useTranslations("sidebarLayout");
+  const locale = useLocale();
   const isMobileView = useIsMobile();
 
   // Keyboard shortcut: Ctrl+Shift+F (or Cmd+Shift+F) to toggle sidebar
@@ -85,8 +87,9 @@ export function FilterSidebar({
   // Don't render until hydrated or on mobile
   if (!_hasHydrated || isMobileView) return null;
 
-  // Calculate translateX - when collapsed, slide left so only collapsedWidth is visible
-  const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;
+  // When collapsed it slides towards the page's edge, so only collapsedWidth is visible.
+  const offset = expandedWidth - collapsedWidth;
+  const translateX = isCollapsed ? (isRightToLeft(locale) ? offset : -offset) : 0;
 
   return (
     <div
@@ -99,9 +102,9 @@ export function FilterSidebar({
       {/* Sidebar that translates */}
       <motion.aside
         className={cn(
-          "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
+          "h-full flex flex-col overflow-hidden absolute end-0 top-0 bottom-0",
           "bg-background",
-          "border-l border-border-subtle"
+          "border-s border-border-subtle"
         )}
         initial={false}
         animate={{ x: translateX }}
@@ -112,7 +115,7 @@ export function FilterSidebar({
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
         {/* Floating controls in top-right corner */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
+        <div className="absolute top-3 end-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
           <AnimatePresence>
             {activeFilterCount > 0 && (
               <FilterCountControl
@@ -133,6 +136,7 @@ export function FilterSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={toggle}
+                  aria-label={isCollapsed ? t("expandFilters") : t("collapseFilters")}
                   className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                 >
                   <motion.div
@@ -165,7 +169,7 @@ export function FilterSidebar({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-4 right-0 z-20 flex flex-col items-center gap-2"
+            className="absolute top-4 end-0 z-20 flex flex-col items-center gap-2"
           >
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
@@ -178,6 +182,7 @@ export function FilterSidebar({
                     variant="ghost"
                     size="icon"
                     onClick={toggle}
+                    aria-label={t("expandFilters")}
                     className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                   >
                     <motion.div

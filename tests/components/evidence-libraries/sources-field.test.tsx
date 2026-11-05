@@ -344,7 +344,7 @@ describe("<SourcesField>", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
     await userEvent.click(screen.getByRole("tab", { name: /OpenAlex/ }));
-    await userEvent.click(screen.getByRole("tab", { name: /OpenScholar/ }));
+    await userEvent.click(screen.getByRole("tab", { name: /Openscholar/ }));
     expect(mocks.removeOpenAlexKey).not.toHaveBeenCalled();
   });
 

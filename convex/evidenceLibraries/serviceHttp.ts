@@ -49,7 +49,7 @@ async function answerLibraryUserRequest(
 
 /** Machine-authenticated revalidation of an already signed runtime session. */
 export const checkAdminSession = httpAction(async (ctx, request) =>
-  answerLibraryUserRequest(request, "Library session check", async (input) => {
+  answerLibraryUserRequest(request, "Community session check", async (input) => {
     const result = await ctx.runQuery(internal.evidenceLibraries.sessionAccess.readSessionAccess, input);
     return "role" in result
       ? jsonResponse(200, { role: result.role })
@@ -61,7 +61,7 @@ export const checkAdminSession = httpAction(async (ctx, request) =>
  * A library removes a reader's data only on `deleted`.
  */
 export const checkReaderStatus = httpAction(async (ctx, request) =>
-  answerLibraryUserRequest(request, "Library reader status check", async (input) =>
+  answerLibraryUserRequest(request, "Community reader status check", async (input) =>
     jsonResponse(200, {
       status: await ctx.runQuery(internal.evidenceLibraries.sessionAccess.readReaderStatus, input),
     })));
@@ -69,7 +69,7 @@ export const checkReaderStatus = httpAction(async (ctx, request) =>
 /** Answers in the library sources contract (plans/evidence-library-sources): every answer, a refusal too, says the version it speaks. */
 async function inContract(request: Request, answer: () => Promise<Response>) {
   const response = request.headers.get("OpenScholar-Contract") !== "1"
-    ? jsonResponse(400, { error: "contract", message: "This OpenScholar speaks contract 1: send it in OpenScholar-Contract." })
+    ? jsonResponse(400, { error: "contract", message: "This Openscholar speaks contract 1: send it in OpenScholar-Contract." })
     : await answer();
   response.headers.set("OpenScholar-Contract", "1");
   return response;
@@ -81,7 +81,7 @@ async function inContract(request: Request, answer: () => Promise<Response>) {
  */
 export const noteReaderSeen = httpAction(async (ctx, request) =>
   inContract(request, () =>
-    answerLibraryUserRequest(request, "Library reader report", async (input) => {
+    answerLibraryUserRequest(request, "Community reader report", async (input) => {
       await ctx.runMutation(internal.evidenceLibraries.readers.seen, input);
       return new Response(null, { status: 204 });
     })));

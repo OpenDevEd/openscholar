@@ -11,6 +11,7 @@ import {
 } from "@/lib/store";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { createCitationSearch, useSearchOptional } from "@/lib/search";
+import { similarSearchHref } from "@/lib/search/similar-href";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { rememberAuthorNames } from "@/lib/openalex/use-author-names";
 import { rememberInstitutionNames, rememberJournalNames } from "@/lib/openalex/use-record-names";
@@ -29,7 +30,7 @@ export interface TranslationContent {
 
 /**
  * Hook for reading translation state from the store and context.
- * Translation is triggered by useBatchTranslation in results-list.tsx.
+ * Translation is triggered by useBatchTranslation in results-list.tsx and focus mode.
  * This hook is now a pure "reader" - it doesn't trigger translations.
  */
 export function useTranslate(
@@ -41,10 +42,11 @@ export function useTranslate(
     (state) => state.targetLanguageOverride
   );
   const targetLanguage = targetLanguageOverride ?? localeToLanguageCode(locale);
+  const translationsUndone = useResultsTranslationSettingsStore((state) => state.translationsUndone);
 
   // Use selectors to subscribe to specific translation data (composite key: paperId:target)
   const translatedContent = useTranslationStore(
-    (state) => (data?.id && targetLanguage
+    (state) => (data?.id && targetLanguage && !translationsUndone
       ? state.getTranslation(data.id, targetLanguage)
       : null)
   );
@@ -130,6 +132,10 @@ export function useCitationHandlers(paperId: string) {
     handleCitesSearch: () => handleFilteredSearch("cites"),
     handleCitedBySearch: () => handleFilteredSearch("citedBy"),
     handleRelatedSearch: () => handleFilteredSearch("related"),
+    handleSimilarSearch: () => {
+      const href = similarSearchHref([paperId]);
+      if (href) router.push(href);
+    },
   };
 }
 
@@ -149,7 +155,7 @@ export type FilterValue = { value: string; name: string };
  * adds or drops one. On a page with no search to narrow, such as the library or a
  * paper a chat names, `toggle` starts a new search by that record instead.
  */
-function useRecordFilter(field: "authors" | "journals" | "institutions", param: "author" | "journal" | "inst", remember: (names: Record<string, string>) => void) {
+function useRecordFilter(field: "authors" | "journals" | "institutions" | "researchAreas", param: "author" | "journal" | "inst" | "area", remember: (names: Record<string, string>) => void) {
   const router = useWorkspaceRouter();
   // A search provider is the search to narrow. Focus mode in the assistant's panel has none, even over a results page.
   const canFilter = Boolean(useSearchOptional());
@@ -162,7 +168,7 @@ function useRecordFilter(field: "authors" | "journals" | "institutions", param: 
     if (canFilter) updateFilter({ [field]: [...selected, value] });
     else router.push(buildShareableUrl("", { [param]: [value] }));
   };
-  return { selected: canFilter ? selected : ([] as string[]), toggle };
+  return { selected: canFilter ? selected : ([] as string[]), toggle, canFilter };
 }
 
 // An author kept by name is its own name, so only an id's is saved.
@@ -172,3 +178,5 @@ const rememberAuthorIds = (names: Record<string, string>) =>
 export const useAuthorFilter = () => useRecordFilter("authors", "author", rememberAuthorIds);
 export const useJournalFilter = () => useRecordFilter("journals", "journal", rememberJournalNames);
 export const useInstitutionFilter = () => useRecordFilter("institutions", "inst", rememberInstitutionNames);
+// A topic's chip is named from the bundled catalog, so there is nothing to remember.
+export const useTopicFilter = () => useRecordFilter("researchAreas", "area", () => {});

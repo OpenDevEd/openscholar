@@ -28,10 +28,10 @@ const jobArgs = {libraryId: v.string(), editionId: v.string(), credentialDigest:
 
 async function authorizeLibrary(ctx: MutationCtx, args: {libraryId: string; credentialDigest: string}) {
   const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-  if (!libraryId) throw createError("FORBIDDEN", "Invalid library credential");
+  if (!libraryId) throw createError("FORBIDDEN", "Invalid community credential");
   await authenticateLibraryServiceCredential(ctx, {libraryId, credentialDigest: args.credentialDigest});
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  if (!library || library.state !== "active") throw createError("FORBIDDEN", "Library is unavailable");
+  if (!library || library.state !== "active") throw createError("FORBIDDEN", "Community is unavailable");
   return libraryId;
 }
 
@@ -148,14 +148,14 @@ export const run = internalAction({
       const request = await storedRequest(ctx, job.requestId);
       ({digest: written, repairs} = await writeLibraryDigest(request, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started))));
     } catch (error) {
-      console.error("Library digest generation failed", {libraryId: job.libraryId, editionId: job.editionId, error});
+      console.error("Community digest generation failed", {libraryId: job.libraryId, editionId: job.editionId, error});
       await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: null});
       return null;
     }
     try {
       await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.check, {jobId, written, repairs});
     } catch (error) {
-      console.error("Library digest review could not be queued; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
+      console.error("Community digest review could not be queued; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
       await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: written, citationRepairs: {written: repairs, corrected: []}});
     }
     return null;
@@ -176,7 +176,7 @@ export const check = internalAction({
       result = {...written, ...reviewed};
       corrected = correctionRepairs;
     } catch (error) {
-      console.error("Library digest review did not start; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
+      console.error("Community digest review did not start; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
     }
     await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result, citationRepairs: {written: repairs, corrected}});
     return null;
@@ -217,7 +217,7 @@ export const generate = httpAction(async (ctx, request) => {
     }
     const data = readConvexErrorData(error);
     if (data?.code === "FORBIDDEN" || data?.code === "UNAUTHENTICATED") return jsonResponse(403, {error: "invalid_service_credential"});
-    console.error("Library digest request failed", {libraryId: body.data.libraryId, editionId: body.data.editionId, error});
+    console.error("Community digest request failed", {libraryId: body.data.libraryId, editionId: body.data.editionId, error});
     return jsonResponse(503, {error: "digest_generation_failed"});
   }
 });

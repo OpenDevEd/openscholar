@@ -71,7 +71,7 @@ const finishReply = (t: Test, threadId: Id<"assistantThreads">) =>
   waitFor(async () => {
     await drain(t);
     return !(await t.run(async (ctx) => ctx.db.get("assistantThreads", threadId)))?.reply;
-  }, { timeoutMs: 15_000 });
+  });
 
 beforeEach(() => {
   // This suite proves the assistant starts screening jobs. Screening owns their workers' tests.
@@ -408,7 +408,7 @@ describe("the assistant's tools", () => {
     // One Undo puts all twelve back, and nothing is left to undo it twice with.
     expect(await undos()).toBe(12);
     await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [removal._id] });
-    await waitFor(async () => (await saved()).length === 12 && (await steps())[0].reverting !== true, { timeoutMs: 5_000 });
+    await waitFor(async () => (await saved()).length === 12 && (await steps())[0].reverting !== true);
     expect(await undos()).toBe(0);
     expect((await steps())[0]).toMatchObject({ undone: true });
     await expect(asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [removal._id] })).rejects.toThrow(/nothing left to undo/);
@@ -568,7 +568,7 @@ describe("the assistant's tools", () => {
     // One Undo of the thirty takes back the saves and their places. The three taken out since were changed, so they stay saved, and the step says so.
     const [saving] = await steps();
     await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [saving._id] });
-    await waitFor(async () => (await steps())[0].error !== undefined, { timeoutMs: 5_000 });
+    await waitFor(async () => (await steps())[0].error !== undefined);
     expect(await held()).toEqual({ saved: 3, collected: 0 });
     expect((await steps())[0]).toMatchObject({ undone: true, error: expect.stringMatching(/^3 of these couldn't be put back/) });
 
@@ -894,7 +894,7 @@ describe("the assistant's tools", () => {
     await say("Screen my trials into a new collection, and extract sample sizes from 1,500 of them");
 
     expect(told(1, "screen")).toEqual({ error: "Collection name cannot be empty" });
-    expect(told(1, "extract")).toEqual({ error: "Your plan takes up to 1,000 papers in one extraction. Pick fewer, or change plan for more." });
+    expect(told(1, "extract")).toEqual({ error: "Your plan takes up to 1,000 papers in one extraction. Pick fewer." });
     expect(await steps()).toEqual([]);
   });
 
@@ -1660,7 +1660,7 @@ describe("the assistant's tools", () => {
     expect(await limitIn(threadId)).toEqual({ replyLimit: null });
     // A deleted chat's limit goes with it.
     await asAda.mutation(api.assistant.threads.remove, { threadId: second });
-    await waitFor(async () => (await t.run(async (ctx) => ctx.db.query("assistantLimits").collect())).every((row) => row.threadId !== second), { timeoutMs: 5_000 });
+    await waitFor(async () => (await t.run(async (ctx) => ctx.db.query("assistantLimits").collect())).every((row) => row.threadId !== second));
   });
 
   it("bring a long reply's steps with the chat's newest page, though the message it answers is pages back", async () => {
@@ -1866,6 +1866,6 @@ describe("the assistant's tools", () => {
     await say("Save that paper");
     expect(await steps()).toHaveLength(1);
     await asAda.mutation(api.assistant.threads.remove, { threadId: threadId as Id<"assistantThreads"> });
-    await waitFor(async () => (await steps()).length === 0 && (await results()).length === 0, { timeoutMs: 5_000 });
+    await waitFor(async () => (await steps()).length === 0 && (await results()).length === 0);
   });
 });

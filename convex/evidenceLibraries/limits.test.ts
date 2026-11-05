@@ -53,7 +53,7 @@ describe("Evidence Library limits", () => {
     const everywhere = await fixture.t.run((ctx) => account(ctx, "user_everywhere"));
     await insertMany(fixture.t, "itemAccess", Array.from({ length: MAX_LIBRARY_GRANTS_PER_PERSON }, (_, i) => role(others[i % others.length], everywhere)), 100);
     await fixture.t.run(async (ctx) => ctx.db.insert("organizationMemberships", { organizationId: await organizationOfLibrary(ctx, libraryId), clerkMembershipId: "orgmem_everywhere", clerkUserId: "user_everywhere", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
-    await expect(fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_everywhere", role: "editor" })).rejects.toThrow(/already has access to 200 libraries/);
+    await expect(fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_everywhere", role: "editor" })).rejects.toThrow(/already has access to 200 communities/);
   }, 120_000);
 
   it("takes away every grant in an organization someone leaves, however many grants they hold (#427)", async () => {
@@ -180,6 +180,6 @@ describe("Evidence Library limits", () => {
     const template = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!);
     const { _id, _creationTime, ...library } = template;
     await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_WORKSPACE - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
-    await expect(reserveLibraryAddressByName(fixture.admin, "One More", await fixture.t.run((ctx) => organizationOfLibrary(ctx, fixture.created.libraryId)))).rejects.toThrow(/up to 200 libraries/);
+    await expect(reserveLibraryAddressByName(fixture.admin, "One More", await fixture.t.run((ctx) => organizationOfLibrary(ctx, fixture.created.libraryId)))).rejects.toThrow(/up to 200 communities/);
   });
 });

@@ -20,8 +20,8 @@ const KEPT: ReadonlyArray<readonly [page: RegExp, parameters: readonly string[]]
   [/^\/extraction\/new$/, ["step", "tab"]],
   [/^\/topics$/, ["q", "domain", "field", "subfield"]],
   [/^\/topics\/[^/]+$/, ["libraryQuery"]],
-  [/^\/evidence-libraries$/, ["view"]],
-  [/^\/evidence-libraries\/[^/]+\/configuration$/, ["section"]],
+  [/^\/evidence-(?:communities|libraries)$/, ["view"]],
+  [/^\/evidence-(?:communities|libraries)\/[^/]+\/configuration$/, ["section"]],
 ];
 /** Characters of an address that is read at all, of a path, and of a parameter's value. */
 const ADDRESS_MAX = 4_000;
@@ -95,6 +95,8 @@ export type LinkedRecord = { kind: "search" | "collection" | "paper" | "extracti
 export function recordOf(address: string): LinkedRecord | null {
   const paper = /^https:\/\/openalex\.org\/(?:works\/)?(W\d+)$/i.exec(address)?.[1];
   if (paper) return { kind: "paper", paperId: paper.toUpperCase() };
+  const own = /^https:\/\/openscholar\.ai\/(OS\d+)$/i.exec(address)?.[1];
+  if (own) return { kind: "paper", paperId: own.toUpperCase() };
   // A topic on OpenAlex has its page here too.
   const topic = /^https:\/\/openalex\.org\/(T[1-9]\d*)$/i.exec(address)?.[1];
   if (topic) return { kind: "topic", page: topicHref(topic.toUpperCase(), "") };
@@ -107,7 +109,7 @@ export function recordOf(address: string): LinkedRecord | null {
   if (path === "/library" && has("col")) return { kind: "collection" };
   if (/^\/extraction\/[^/]+$/.test(path) && path !== "/extraction/new") return { kind: "extraction" };
   if (path === "/screening" && has("job")) return { kind: "screening" };
-  if (/^\/evidence-libraries\/[^/]+(\/.*)?$/.test(path)) return { kind: "library" };
+  if (/^\/evidence-(?:communities|libraries)\/[^/]+(\/.*)?$/.test(path)) return { kind: "library" };
   if (/^\/topics\/[^/]+$/.test(path)) return { kind: "topic" };
   return null;
 }

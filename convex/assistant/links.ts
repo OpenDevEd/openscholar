@@ -1,4 +1,4 @@
-import { paperPage } from "../../lib/papers/paper-ref";
+import { paperPage, ownWork } from "../../lib/papers/paper-ref";
 
 /**
  * The link to each record a read returns, written the way a reply writes it: `[name](address)`.
@@ -12,7 +12,10 @@ const text = (value: unknown) => (typeof value === "string" && value.trim() ? va
 const paperUrl = (id: unknown) => {
   const value = text(id);
   const page = value ? paperPage(value) : null;
-  return page?.startsWith("https://") ? page : undefined;
+  if (page?.startsWith("https://")) return page;
+  // A paper only our index has opens in focus mode from this address, which the panel reads as that paper.
+  const own = value ? ownWork(value.replace(/^openscholar:/, "")) : null;
+  return own ? `https://openscholar.ai/${own}` : undefined;
 };
 
 /** A saved search's page. An imported search keeps its outside ID, which may hold a `/`, a space or a bracket. */
@@ -63,17 +66,17 @@ const OPENS: Record<string, (args: Row) => string | undefined> = {
   "extraction/queries/costs:getJobCost": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "screening/mutations:cancelScreeningJob": (args) => KINDS.screening.href({ _id: args.jobId }),
   // An Evidence Library's settings, on its configuration page.
-  "evidenceLibraries/assistant:draft": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:editDraft": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:team": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:invite": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:sources": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:runningCollections": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:runningInstitutions": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:runningPublications": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:runningPublication": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:syncSource": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:invitations": () => "/evidence-libraries?view=invitations",
+  "evidenceLibraries/assistant:draft": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:editDraft": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:team": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:invite": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:sources": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningCollections": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningInstitutions": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningPublications": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningPublication": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:syncSource": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:invitations": () => "/evidence-communities?view=invitations",
   // A research area, by its topic ID as the read checked it.
   "authors/assistant:directory": () => "/authors",
   "authors/assistant:invitations": () => "/authors",

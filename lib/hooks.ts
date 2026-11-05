@@ -24,6 +24,9 @@ const useQueryHistoryIndexStore = create<{
     set((state) => ({ indices: { ...state.indices, [searchId]: index } })),
 }));
 
+/** Whether this screen can't hover, so what opens on hover has to open on a tap. */
+export const useNoHover = () => useMediaQuery("(hover: none)");
+
 function useMediaQuery(query: string): boolean {
   const subscribe = useCallback((onChange: () => void) => {
     const media = window.matchMedia(query);
@@ -219,6 +222,7 @@ function formStateOf(params: NonNullable<ReturnType<typeof useSearchOptional>>["
     citesItemId: params.cites,
     citedByItemId: params.citedBy,
     relatedToItemId: params.rel,
+    similarTo: params.like,
     reviewFilter: params.review,
     researchAreas: params.area,
     sdgs: params.sdg,
@@ -267,6 +271,7 @@ function useCurrentSearchFormStateFromStore() {
     citesItemId: searchResult?.citesItemId || '',
     citedByItemId: searchResult?.citedByItemId || '',
     relatedToItemId: searchResult?.relatedToItemId || '',
+    similarTo: searchResult?.similarTo ?? [],
     reviewFilter: searchResult?.reviewFilter || false,
     researchAreas: searchResult?.researchAreas ?? [],
     sdgs: searchResult?.sdgs ?? [],
@@ -383,6 +388,9 @@ function useUpdateSearchFilterFromUrl() {
       batchUpdates.citedBy = updates.citedByItemId as string;
       shouldResetPage = true;
     }
+    if ('similarTo' in updates) {
+      batchUpdates.like = updates.similarTo as string[];
+    }
     if ('relatedToItemId' in updates) {
       batchUpdates.rel = updates.relatedToItemId as string;
       shouldResetPage = true;
@@ -490,6 +498,7 @@ export function useCreateSearchFilters() {
     citesItemId,
     citedByItemId,
     relatedToItemId,
+    similarTo,
     reviewFilter,
     researchAreas,
     sdgs,
@@ -523,6 +532,7 @@ export function useCreateSearchFilters() {
     citesItemId: citesItemId || '',
     citedByItemId: citedByItemId || '',
     relatedToItemId: relatedToItemId || '',
+    similarTo: similarTo ?? [],
     reviewFilter: reviewFilter || false,
     researchAreas,
     sdgs,

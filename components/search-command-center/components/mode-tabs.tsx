@@ -35,6 +35,7 @@ export function ModeTabs({ mode, onChange, disabled }: ModeTabsProps) {
 
         return (
           <button
+            aria-label={tab.label}
             key={tab.id}
             onClick={() => onChange(tab.id)}
             disabled={disabled}

@@ -322,7 +322,7 @@ function requireValidSnapshot(
   const result = validateSnapshotShape(value, options, migrations);
   if (result.issues.length > 0 || !result.snapshot) {
     throw new OwnerConfigurationMigrationError(
-      "Evidence Library configuration snapshot is invalid",
+      "Evidence Community configuration snapshot is invalid",
       result.issues,
     );
   }
@@ -927,7 +927,7 @@ function requireValidMigrationRegistry(
   );
   if (issues.length > 0) {
     throw new OwnerConfigurationMigrationError(
-      "Evidence Library configuration migration registry is invalid",
+      "Evidence Community configuration migration registry is invalid",
       issues,
     );
   }
@@ -1023,7 +1023,7 @@ export function migrateOwnerConfiguration(
   const initial = validateSnapshotEnvelope(value);
   if (initial.issues.length > 0 || !initial.snapshot) {
     throw new OwnerConfigurationMigrationError(
-      "Evidence Library configuration snapshot is invalid",
+      "Evidence Community configuration snapshot is invalid",
       initial.issues,
     );
   }
@@ -1034,7 +1034,7 @@ export function migrateOwnerConfiguration(
   if (typeof rawVersion === "number" && Number.isSafeInteger(rawVersion)) {
     if (rawVersion > targetVersion) {
       throw new OwnerConfigurationMigrationError(
-        "Evidence Library configuration snapshot is newer than this code",
+        "Evidence Community configuration snapshot is newer than this code",
         [
           issue(
             "/ownerConfigurationVersion",
@@ -1046,7 +1046,7 @@ export function migrateOwnerConfiguration(
     }
     if (rawVersion < 1) {
       throw new OwnerConfigurationMigrationError(
-        "Evidence Library configuration snapshot has an unknown version",
+        "Evidence Community configuration snapshot has an unknown version",
         [
           issue(
             "/ownerConfigurationVersion",
@@ -1066,7 +1066,7 @@ export function migrateOwnerConfiguration(
     );
     if (!migration || migration.to !== migration.from + 1) {
       throw new OwnerConfigurationMigrationError(
-        "Evidence Library configuration migration path is incomplete",
+        "Evidence Community configuration migration path is incomplete",
         [
           issue(
             "/ownerConfigurationVersion",
@@ -1083,7 +1083,7 @@ export function migrateOwnerConfiguration(
     } catch (error) {
       if (error instanceof OwnerConfigurationMigrationError) throw error;
       throw new OwnerConfigurationMigrationError(
-        "Evidence Library configuration migration failed",
+        "Evidence Community configuration migration failed",
         [
           issue(
             "/sections",
@@ -1098,7 +1098,7 @@ export function migrateOwnerConfiguration(
       migrated.ownerConfigurationVersion !== migration.to
     ) {
       throw new OwnerConfigurationMigrationError(
-        "Evidence Library configuration migration returned an invalid snapshot",
+        "Evidence Community configuration migration returned an invalid snapshot",
         [
           issue(
             "/ownerConfigurationVersion",
@@ -1111,7 +1111,7 @@ export function migrateOwnerConfiguration(
     const checked = validateSnapshotEnvelope(migrated);
     if (checked.issues.length > 0 || !checked.snapshot) {
       throw new OwnerConfigurationMigrationError(
-        "Evidence Library configuration migration returned an invalid snapshot",
+        "Evidence Community configuration migration returned an invalid snapshot",
         checked.issues,
       );
     }

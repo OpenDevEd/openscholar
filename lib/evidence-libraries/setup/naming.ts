@@ -73,7 +73,7 @@ export function createEvidenceLibrarySlugCandidate(
     position < 1 ||
     position > MAX_EVIDENCE_LIBRARY_ADDRESS_CANDIDATES
   ) {
-    throw new RangeError("Library address position must be between 1 and 100");
+    throw new RangeError("Community address position must be between 1 and 100");
   }
 
   const suffix = position === 1 ? "" : `-${position}`;
@@ -92,12 +92,12 @@ export function createEvidenceLibraryPublicAddress(
     slug.length > MAX_EVIDENCE_LIBRARY_SLUG_LENGTH ||
     !EVIDENCE_LIBRARY_SLUG_PATTERN.test(slug)
   ) {
-    throw new RangeError("Evidence Library slug is not a valid DNS label");
+    throw new RangeError("Evidence Community slug is not a valid DNS label");
   }
   const hostname = `${slug}-lib.${validateEvidenceLibraryPlatformDomain(platformDomain)}`;
   if (hostname.length > 253) {
     throw new RangeError(
-      "Evidence Library hostname must not exceed 253 characters",
+      "Evidence Community hostname must not exceed 253 characters",
     );
   }
   return `https://${hostname}`;

@@ -42,18 +42,20 @@ export type PaperResult = Omit<Work, 'sustainable_development_goals' | 'open_acc
 /**
  * Search field options
  */
-export type SearchField = 'title_and_abstract' | 'title' | 'abstract' | 'fulltext' | 'display_name' | 'oql';
+export type SearchField = 'title_and_abstract' | 'default' | 'title' | 'abstract' | 'fulltext' | 'display_name' | 'oql' | 'semantic';
 
 /**
  * Available search fields with labels
  */
 export const SEARCH_FIELDS = [
   { value: 'title_and_abstract', label: 'Title, abstract' },
+  { value: 'default', label: 'Title, abstract, full text' },
   { value: 'title', label: 'Title' },
   { value: 'abstract', label: 'Abstract' },
   { value: 'fulltext', label: 'Fulltext' },
   { value: 'display_name', label: 'Display name' },
   { value: 'oql', label: 'OQL query' },
+  { value: 'semantic', label: 'By meaning' },
 ] as const;
 
 /**
@@ -119,6 +121,8 @@ export interface SearchFilters {
   citesItemId: string;
   citedByItemId: string;
   relatedToItemId: string;
+  /** Papers the works should be closest to by meaning, on our index. */
+  similarTo?: string[];
   
   // Content type filters
   reviewFilter: boolean;
@@ -176,6 +180,7 @@ export interface SearchResult {
   citesItemId?: string;
   citedByItemId?: string;
   relatedToItemId?: string;
+  similarTo?: string[];
   reviewFilter?: boolean;
   researchAreas?: string[];
   sdgs?: string[];

@@ -2,7 +2,10 @@ import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/uti
 import type { Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { describeQueryError, type QueryErrorDetail } from "@/lib/search/search-error";
 import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
-import { openAlexUrl } from "./request-url";
+import type { SearchSource } from "../search/source";
+import { searchUrl } from "./request-url";
+import { appWork } from "./work-id";
+import { isOqlSentence, OQL_SENTENCE_REFUSAL, oqlForOwnIndex } from "./oql-for-own-index";
 
 type OqlResponse = Works & {
   validation?: { errors?: { type?: string; message?: string; position?: number | null }[] };
@@ -22,16 +25,20 @@ export type OqlWorksResult =
 export async function fetchOqlWorks(
   oql: string,
   view: { perPage: number; sort?: string; cursor?: string },
+  source: SearchSource = "openalex",
 ): Promise<OqlWorksResult> {
-  const url = openAlexUrl("", { "per-page": String(view.perPage), cursor: view.cursor, sort: view.sort });
-
+  if (isOqlSentence(oql)) return { ok: false, status: 400, message: OQL_SENTENCE_REFUSAL.problem, detail: OQL_SENTENCE_REFUSAL };
+  // Our index is strict about how a query is written: errors point into what it was sent.
+  const sent = source === "openscholar" ? oqlForOwnIndex(oql) : oql;
   let response: Response;
   try {
+    // Inside the try: a request that can't be built, with our index's address unset, is answered like one that failed.
+    const url = searchUrl(source, "", { "per-page": String(view.perPage), cursor: view.cursor, sort: view.sort });
     response = await openAlexFetch(url, {
       timeoutMs: OPENALEX_TIMEOUT_MS,
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ oql }),
+      body: JSON.stringify({ oql: sent }),
     });
   } catch (error) {
     console.error("OpenAlex OQL request failed:", error);
@@ -47,7 +54,7 @@ export async function fetchOqlWorks(
       ok: false,
       status: response.status,
       message,
-      ...(response.status === 400 ? { detail: describeQueryError(oql, errors[0] ?? { message }) } : {}),
+      ...(response.status === 400 ? { detail: describeQueryError(sent, errors[0] ?? { message }) } : {}),
     };
   }
 
@@ -61,7 +68,7 @@ export async function fetchOqlWorks(
     ok: true,
     data: {
       meta: body.meta,
-      results: body.results.map(({ abstract_inverted_index, ...work }: Work) => ({
+      results: body.results.map(({ abstract_inverted_index, ...work }: Work) => appWork({
         ...work,
         ...(abstract_inverted_index ? { abstract: convertAbstractArrayToString(abstract_inverted_index) } : {}),
       })),

@@ -34,7 +34,7 @@ const summary = (profile: Doc<"authorProfiles">) => ({ profileId: profile._id, n
 export const directoryAction = defineUserQuery({
   path: "authors/assistant:directory",
   description:
-    `Lists author profiles, ${AUTHORS_LISTED} a page from \`cursor\`, newest first or the ones whose name matches \`search\`: each one's ID, name, headline, affiliation, ORCID and OpenAlex author ID; \`continueCursor\` is the next page's \`cursor\` until \`isDone\`. ` +
+    `Lists author profiles, ${AUTHORS_LISTED} a page from \`cursor\`, newest first or the ones whose name matches \`search\`: each one's ID, name, headline, affiliation, ORCID and author record ID; \`continueCursor\` is the next page's \`cursor\` until \`isDone\`. ` +
     "Public, as the Authors page is. One profile whole is authors/assistant:profile.",
   args: { search: v.optional(v.union(v.string(), v.null())), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: authorDirectoryValidator,
@@ -49,7 +49,7 @@ export const directoryForAssistant = assistantQuery(directoryAction);
 export const profileAction = defineUserQuery({
   path: "authors/assistant:profile",
   description:
-    "Reads an author profile by its ID, as its public page shows it: name, headline, affiliation, bio, website, LinkedIn, ORCID and OpenAlex author ID, and for one of this workspace whether the person owns or edits it. Null when there's none. " +
+    "Reads an author profile by its ID, as its public page shows it: name, headline, affiliation, bio, website, LinkedIn, ORCID and author record ID, and for one of this workspace whether the person owns or edits it. Null when there's none. " +
     "Its publications are authors/assistant:publications, and who has it authors/assistant:editors.",
   args: { profileId: v.string() },
   returns: authorProfileReadValidator,
@@ -98,7 +98,7 @@ export const invitationsForAssistant = assistantQuery(invitationsAction);
 export const createAction = defineUserMutation({
   path: "authors/assistant:create",
   description:
-    "Makes an author profile with this name, owned by the workspace the reply runs in, whose plan must have Evidence Libraries. Returns its ID and name: its page, public, is /authors/<profileId>, and the Authors directory lists it. The rest of it is filled in on its page. Asks the person first.",
+    "Makes an author profile with this name, owned by the workspace the reply runs in, whose plan must have Evidence Communities. Returns its ID and name: its page, public, is /authors/<profileId>, and the Authors directory lists it. The rest of it is filled in on its page. Asks the person first.",
   args: { name: v.string() },
   returns: v.object({ profileId: v.id("authorProfiles"), name: v.string() }),
   spendsCredits: false,
@@ -117,8 +117,8 @@ export const createForAssistant = assistantMutation(createAction);
 export const publicationsAction = defineUserAction({
   path: "authors/assistant:publications",
   description:
-    `Reads an author profile's publications, ${AUTHOR_PUBLICATIONS_READ} at a time from \`cursor\`, each from the Evidence Library it's in: title, type, year, authors, its page and the library's name. ` +
-    "`next` is the next page's `cursor`, and `unavailable` counts the ones a library couldn't answer for now.",
+    `Reads an author profile's publications, ${AUTHOR_PUBLICATIONS_READ} at a time from \`cursor\`, each from the Evidence Community it's in: title, type, year, authors, its page and the community's name. ` +
+    "`next` is the next page's `cursor`, and `unavailable` counts the ones a community couldn't answer for now.",
   args: { profileId: v.string(), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: authorPublicationsReadValidator,
   spendsCredits: false,

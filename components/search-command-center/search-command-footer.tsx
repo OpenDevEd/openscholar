@@ -2,6 +2,7 @@
 "use no memo"; // try/finally in handlers
 
 import { useSearchAccess } from "@/lib/research/reads";
+import { RatedActions } from "./components/rated-actions";
 import React, { useState } from "react";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
@@ -42,6 +43,7 @@ import { chatAbout } from "@/lib/assistant/place";
 
 interface SearchCommandFooterProps {
   totalCount: number;
+  shownCount?: number;
   currentQuery: string;
   isScreeningOpen: boolean;
   onScreeningToggle: () => void;
@@ -54,6 +56,7 @@ interface SearchCommandFooterProps {
 
 export function SearchCommandFooter({
   totalCount,
+  shownCount,
   currentQuery,
   isScreeningOpen,
   onScreeningToggle,
@@ -234,30 +237,29 @@ Return a more targeted version of this query.`;
   };
 
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
-        "border-t border-border-subtle"
-      )}
-    >
+    <div className="@container border-t border-border-subtle">
+    {/* By its own width: a tablet with the filters open has less room than a phone turned sideways. */}
+    <div className="flex flex-col gap-3 px-4 py-3 @3xl:flex-row @3xl:items-center @3xl:justify-between">
       {/* Left: Results count */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
           <AnimatedCount
-            value={totalCount}
+            value={shownCount ?? totalCount}
             className="text-lg font-semibold text-foreground"
           />
-          <span className="text-muted-foreground">{t("common.results").toLowerCase()}</span>
+          <span className="text-muted-foreground">
+            {search?.searchedCount ? t("similarPapers.closestOf", { count: format.number(search.searchedCount) }) : t("common.resultWord", { count: shownCount ?? totalCount })}
+          </span>
         </div>
       </div>
 
-      {/* On a phone the strip spans the card, its buttons spread across it, so none falls off its edge; below 360px it drops its dividers and the toggle's chevron to fit. */}
-      <div className="w-full sm:w-auto">
+      {/* On a phone the strip spans the card, its buttons spread across it, so none falls off its edge; in a card under 330px it drops its dividers and the toggle's chevron to fit. */}
+      <div className="w-full @3xl:w-auto">
         <motion.div
           layout
           transition={contextualTransition}
           className={cn(
-            "flex w-full items-center justify-between rounded-2xl border border-border bg-field p-1 shadow-sm sm:inline-flex sm:w-auto sm:justify-start"
+            "flex w-full items-center justify-between rounded-2xl border border-border bg-field p-1 shadow-sm @3xl:inline-flex @3xl:w-auto @3xl:justify-start"
           )}
         >
           <AnimatePresence initial={false} mode="popLayout">
@@ -295,7 +297,7 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")
                   }
                   className={cn(
-                    "h-9 gap-1.5 rounded-xl border border-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 sm:px-2.5 sm:has-[>svg]:px-2.5",
+                    "h-9 gap-1.5 rounded-xl border border-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5",
                     isContextualActionLoading && "text-foreground"
                   )}
                 >
@@ -306,13 +308,13 @@ Return a more targeted version of this query.`;
                   ) : (
                     <Minimize2 className="h-3.5 w-3.5" />
                   )}
-                  <span className="hidden text-sm font-medium sm:inline">
+                  <span className="hidden text-sm font-medium @3xl:inline">
                     {contextualAction === "broaden"
                       ? tsc("makeBroader")
                       : tsc("makeSpecific")}
                   </span>
                 </Button>
-                {!queryOnly && <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden sm:mx-1" />}
+                {!queryOnly && <div className="mx-0.5 h-6 w-px bg-border/70 @max-[330px]:hidden @3xl:mx-1" />}
               </motion.div>
             )}
           </AnimatePresence>
@@ -324,14 +326,14 @@ Return a more targeted version of this query.`;
                 disabled={isLoading}
                 triggerVariant="ghost"
                 compactTrigger
-                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 sm:px-2.5 sm:has-[>svg]:px-2.5"
+                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5"
               />
 
-              <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden sm:mx-1" />
+              <div className="mx-0.5 h-6 w-px bg-border/70 @max-[330px]:hidden @3xl:mx-1" />
 
               {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
               <div
-                className={cn("items-center gap-0.5 rounded-xl bg-accent pr-1.5", assistantEnabled || !guest ? "inline-flex" : "hidden")}
+                className={cn("items-center gap-0.5 rounded-xl bg-accent pe-1.5", assistantEnabled || !guest ? "inline-flex" : "hidden")}
                 data-group="ai-actions"
               >
                 {assistantEnabled && (
@@ -341,10 +343,10 @@ Return a more targeted version of this query.`;
                     type="button"
                     onClick={handleStartChat}
                     aria-label={tsc("startChat")}
-                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 sm:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <MessageSquare className="h-3.5 w-3.5" />
-                    <span className="hidden text-sm font-medium sm:inline">{tsc("startChat")}</span>
+                    <span className="hidden text-sm font-medium @3xl:inline">{tsc("startChat")}</span>
                   </Button>
                 )}
 
@@ -357,10 +359,10 @@ Return a more targeted version of this query.`;
                   onClick={() => phase === "authenticated" ? router.push(`/screening?search=${encodeURIComponent(searchId)}`) : goToSignIn()}
                   disabled={Boolean(isLoading)}
                   aria-label={tsc("screenAll")}
-                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 sm:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <ListChecks className="h-3.5 w-3.5" />
-                  <span className="hidden text-sm font-medium sm:inline">
+                  <span className="hidden text-sm font-medium @3xl:inline">
                     {tsc("screenAll")}
                   </span>
                 </Button>
@@ -370,7 +372,7 @@ Return a more targeted version of this query.`;
                     <button
                       type="button"
                       aria-label={tsc("screenAllCredits")}
-                      className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className="ms-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Coins className="h-3.5 w-3.5" />
                     </button>
@@ -384,7 +386,7 @@ Return a more targeted version of this query.`;
                 )}
               </div>
 
-              <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden sm:mx-1" />
+              <div className="mx-0.5 h-6 w-px bg-border/70 @max-[330px]:hidden @3xl:mx-1" />
 
               {/* Right: Screen toggle */}
               <Button
@@ -395,7 +397,7 @@ Return a more targeted version of this query.`;
                 aria-expanded={isScreeningOpen}
                 aria-controls={screeningPanelId}
                 className={cn(
-                  "h-9 justify-between gap-2 rounded-xl border border-transparent px-2 max-[359px]:gap-1 max-[359px]:px-1.5 sm:min-w-[130px] sm:px-2.5",
+                  "h-9 justify-between gap-2 rounded-xl border border-transparent px-2 @max-[330px]:gap-1 @max-[330px]:px-1.5 @3xl:min-w-[130px] @3xl:px-2.5",
                   "text-muted-foreground hover:bg-muted hover:text-foreground",
                   isScreeningOpen &&
                     "border-border bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
@@ -403,7 +405,7 @@ Return a more targeted version of this query.`;
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Eye className="h-4 w-4" />
-                  <span className="sr-only text-sm font-medium sm:not-sr-only">{t("common.screen")}</span>
+                  <span className="sr-only text-sm font-medium @3xl:not-sr-only">{t("common.screen")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Badge
@@ -420,7 +422,7 @@ Return a more targeted version of this query.`;
                   <motion.div
                     animate={{ rotate: isScreeningOpen ? 180 : 0 }}
                     transition={subtleSpring}
-                    className="max-[359px]:hidden"
+                    className="@max-[330px]:hidden"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </motion.div>
@@ -431,6 +433,8 @@ Return a more targeted version of this query.`;
         </motion.div>
       </div>
 
+    </div>
+    <RatedActions />
     </div>
   );
 }

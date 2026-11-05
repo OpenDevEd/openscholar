@@ -874,7 +874,7 @@
 			"properties": {
 				"locales": {
 					"minItems": 1,
-					"maxItems": 9,
+					"maxItems": 12,
 					"type": "array",
 					"items": {
 						"type": "string",
@@ -887,7 +887,10 @@
 							"fr",
 							"cn",
 							"sw",
-							"pt"
+							"pt",
+							"es",
+							"af",
+							"zu"
 						]
 					}
 				},
@@ -902,7 +905,10 @@
 						"fr",
 						"cn",
 						"sw",
-						"pt"
+						"pt",
+						"es",
+						"af",
+						"zu"
 					]
 				},
 				"detectLocale": {
@@ -910,7 +916,7 @@
 					"type": "boolean"
 				},
 				"localePriority": {
-					"maxItems": 9,
+					"maxItems": 12,
 					"type": "array",
 					"items": {
 						"type": "string",
@@ -923,7 +929,10 @@
 							"fr",
 							"cn",
 							"sw",
-							"pt"
+							"pt",
+							"es",
+							"af",
+							"zu"
 						]
 					}
 				}

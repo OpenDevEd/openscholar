@@ -22,6 +22,9 @@ export function useFeatureFlag(name: FlagName): boolean {
   return useFeatureFlagForPlan(name, planFeatures);
 }
 
+/** Whether the Team plan and its seats are on sale. */
+export const useSeatBilling = () => useFeatureFlagForPlan("subscriptions.team", null);
+
 /** Like useFeatureFlag, for callers that already hold the subscription state. */
 export function useFeatureFlagForPlan(
   name: FlagName,

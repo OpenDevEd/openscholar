@@ -7,9 +7,9 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
-import { hasPlanFeature, readAccount } from "../billing/accounts";
+import { opensLibraries, readAccount } from "../billing/accounts";
 import { readEvidenceLibraryAccess } from "../evidenceLibraries/access";
-import { EVIDENCE_LIBRARIES_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { TEAM_PLAN } from "../../lib/billing/plans";
 import { spentThisPeriod } from "../billing/memberCaps";
 import { seatSyncRow } from "../billing/seatSyncs";
 import { collectionCountRow } from "../library/counter";
@@ -286,8 +286,8 @@ async function removableOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
 export const summaryAction = defineUserQuery({
   path: "organizations/queries:summary",
   description:
-    "Counts what's in the workspace the person is in: its collections, searches, screenings, extractions and Evidence Libraries, with the first library's name. " +
-    "In an organization, also how many admins it has. `removable` is that first library for one of its owners to delete, when the workspace's plan no longer includes Evidence Libraries and their own pages are shut: `state` says whether it's still there, being deleted, or its deletion stopped part-way.",
+    "Counts what's in the workspace the person is in: its collections, searches, screenings, extractions and Evidence Communities, with the first community's name. " +
+    "In an organization, also how many admins it has. `removable` is that first community for one of its owners to delete, when the workspace's plan no longer includes Evidence Communities and their own pages are shut: `state` says whether it's still there, being deleted, or its deletion stopped part-way.",
   args: {},
   returns: v.object({
     collections: v.number(),
@@ -314,7 +314,7 @@ export const summaryAction = defineUserQuery({
       extractions: await counted("extractionJobs"),
       libraries: libraries.length,
       ...(libraries[0] ? { library: libraries[0].name } : {}),
-      ...(libraries[0] && !(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) && (await readEvidenceLibraryAccess(ctx, libraries[0]._id, "remove")) ? { removable: await removableOf(ctx, libraries[0]) } : {}),
+      ...(libraries[0] && !(await opensLibraries(ctx, workspaceId)) && (await readEvidenceLibraryAccess(ctx, libraries[0]._id, "remove")) ? { removable: await removableOf(ctx, libraries[0]) } : {}),
       ...(admins ? { admins: admins.length } : {}),
     };
   },

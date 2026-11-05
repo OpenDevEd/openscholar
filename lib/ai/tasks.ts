@@ -5,7 +5,7 @@ import { isDecisionModel } from "./decisions";
  * effort for every task (`aiModelConfig` key `preset.<preset>.<task>`); Custom
  * holds the user's own pick for each.
  */
-export const CLOUD_TASKS = ["chat", "extraction", "screenAll"] as const;
+export const CLOUD_TASKS = ["chat", "extraction", "screenAll", "overview"] as const;
 /** Tasks that run in the browser when the user pays with their own key. */
 export const BROWSER_TASKS = ["screening", "questionToQuery", "refine", "translate", "broadenNarrow"] as const;
 export const AI_TASKS = [...CLOUD_TASKS, ...BROWSER_TASKS] as const;
@@ -37,11 +37,13 @@ export const DECISION_TASKS: readonly AiTask[] = ["screening", "screenAll"];
 
 /**
  * Whether a model can do a task: a decision model (Jev) only screens, and every
- * task but chat asks for a JSON-schema answer, which needs `structured_outputs`
+ * task but chat and overviews asks for a JSON-schema answer, which needs `structured_outputs`
  * (`response_format` alone is plain JSON mode). The server enforces it; pickers
  * filter with it.
  */
 export function usableFor(model: { modelId: string; supportedParameters?: string[] }, task: AiTask) {
   if (isDecisionModel(model.modelId)) return DECISION_TASKS.includes(task);
+  // An overview reads its numbers and papers through tools, and a run that reads nothing is refused.
+  if (task === "overview") return model.supportedParameters?.includes("tools") === true;
   return task === "chat" || model.supportedParameters?.includes("structured_outputs") === true;
 }

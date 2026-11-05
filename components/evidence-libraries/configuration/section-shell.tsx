@@ -125,7 +125,7 @@ export function SectionShell({
       ) : null}
       {problems.length > 0 ? (
         <InlineNotice tone="danger" data-problems>
-          <ul className="list-disc space-y-0.5 pl-4">
+          <ul className="list-disc space-y-0.5 ps-4">
             {problems.map((problem) => (
               <li key={problem}>{t(`problems.${problem}`)}</li>
             ))}

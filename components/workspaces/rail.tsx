@@ -31,6 +31,7 @@ import {
   Share2,
   Sun,
   type AppIcon,
+  UpgradeIcon,
 } from "@/components/icons";
 import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
 import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
@@ -45,13 +46,15 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "@/components/workspace-link";
+import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
-import { useFeatureFlag, useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
+import { useFeatureFlag, useFeatureFlagForPlan, useSeatBilling } from "@/lib/feature-flags/hook";
+import { TEAM_PLAN } from "@/lib/billing/plans";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { findPlan } from "@/lib/billing/catalog";
+import { findPlan, mainPlans } from "@/lib/billing/catalog";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { useCurrentQueryStore, useKeywordExpansionStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
@@ -160,7 +163,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const read = { extracts: liveExtracts ?? held.extracts, publishes: livePublishes ?? held.publishes };
   if (read.extracts !== held.extracts || read.publishes !== held.publishes) setHeld(read);
   const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : held.extracts);
-  const publishes = (livePublishes ?? (cached.look ? cached.look.publish === true : held.publishes)) ? "/evidence-libraries" : null;
+  const publishes = (livePublishes ?? (cached.look ? cached.look.publish === true : held.publishes)) ? "/evidence-communities" : null;
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
@@ -222,7 +225,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           transition={CARD_SPRING}
           style={{ backgroundColor: tint ? `color-mix(in oklab, ${tint} 7%, var(--sidebar))` : undefined, transformOrigin: "50% 50%" }}
         >
-          <Link href="/" onClick={onClose} aria-label="OpenScholar" className="mb-2 flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
+          <Link href="/" onClick={onClose} aria-label="Openscholar" className="mb-2 flex size-10 items-center justify-center rounded-xl transition-colors hover:bg-foreground/[0.06]">
             <LogoMark className="size-7" />
           </Link>
           {/* The workspace button's place. */}
@@ -263,7 +266,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                     })}
                   </Opening>
                 ) : null}
-                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") })}</Opening> : null}
+                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-communities") })}</Opening> : null}
                 {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
                 {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
               </AnimatePresence>
@@ -433,7 +436,7 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
           />
           {/* The frame never moves: the tile or photo flying in lands on a fixed spot in it, while
               the card's surface slides and scales into place underneath. */}
-          <div key="frame" className={cn("pointer-events-none fixed left-2 z-[61] w-[19rem]", from === "bottom" ? "bottom-2" : "top-2")}>
+          <div key="frame" className={cn("pointer-events-none fixed start-2 z-[61] w-[19rem]", from === "bottom" ? "bottom-2" : "top-2")}>
             <motion.div
               role="dialog"
               aria-label={label}
@@ -474,7 +477,7 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
             >
               {children}
             </motion.div>
-            <div className="pointer-events-none absolute left-4 top-4" style={scrolled ? { transform: `translateY(${-scrolled}px)`, opacity: Math.max(0, 1 - scrolled / 24) } : undefined}>
+            <div className="pointer-events-none absolute start-4 top-4" style={scrolled ? { transform: `translateY(${-scrolled}px)`, opacity: Math.max(0, 1 - scrolled / 24) } : undefined}>
               {head}
             </div>
           </div>
@@ -515,7 +518,7 @@ const WorkspaceButtonFace = React.forwardRef<HTMLButtonElement, { workspace: Wor
             </motion.span>
           )}
           {waiting > 0 ? (
-            <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{waiting}</span>
+            <span className="absolute end-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{waiting}</span>
           ) : null}
         </button>
       </TooltipTrigger>
@@ -553,17 +556,17 @@ function RailItem({
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       aria-label={running ? t("runningLabel", { label, what: running.what, done: running.done, total: running.total }) : label}
-      className="group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="group flex w-full flex-col items-center gap-1 rounded-xl py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
     >
       <span className={cn("relative flex size-10 items-center justify-center rounded-xl transition-colors", active ? "text-foreground" : "text-muted-foreground group-hover:bg-foreground/[0.06] group-hover:text-foreground")}>
         {active ? <motion.span layoutId="rail-active" transition={SLIDE} className={cn("absolute inset-0 rounded-xl", RAISED)} /> : null}
         <Icon className="relative size-[18px]" />
         {running ? <ProgressRing value={share * 100} /> : null}
         {badge ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{badge > 9 ? "9+" : badge}</span>
+          <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{badge > 9 ? "9+" : badge}</span>
         ) : null}
       </span>
-      <span className={cn("text-[10px] font-medium leading-none tracking-tight tabular-nums transition-colors", running ? "text-primary" : active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
+      <span className={cn("text-center text-[10px] font-medium leading-none tracking-tight tabular-nums transition-colors", running ? "text-primary" : active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
         {running ? (running.percent !== undefined ? format.number(share, { style: "percent" }) : `${format.number(running.done)}/${format.number(running.total)}`) : label}
       </span>
     </Link>
@@ -618,8 +621,13 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
   const tc = useTranslations("common");
   const format = useFormatter();
   const { user } = useUser();
-  const { account, catalog, resolvedPlan } = useSubscriptionState();
+  const { account, catalog, resolvedPlan, planFeatures } = useSubscriptionState();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
+  const subscriptions = useFeatureFlagForPlan("subscriptions.enabled", planFeatures);
+  const seatBilling = useSeatBilling();
+  // An organization's highest plan is Team while it's on sale; otherwise the plans anyone picks between, cheapest first.
+  const highestPlan = workspace?.kind === "organization" && seatBilling ? TEAM_PLAN : catalog ? mainPlans(catalog).at(-1)?.id : undefined;
+  const canUpgrade = subscriptions && resolvedPlan !== null && resolvedPlan !== highestPlan;
   const email = user?.primaryEmailAddress?.emailAddress;
   const billing = settingsHref(workspace, "/billing");
   const catalogPlan = catalog && resolvedPlan ? findPlan(catalog, resolvedPlan) : undefined;
@@ -644,18 +652,27 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
       <AnimatePresence>
         {hasCredits ? (
           <Opening key="credits" instant={creditsFromStart}>
-            <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
-              <span className="flex items-baseline justify-between gap-2">
-                <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
-                <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
-              </span>
-              {/* Against the month's credits, on a plan that grants them each month. */}
-              {share !== null ? (
-                <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
-                  <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+            <div className="mx-1 mb-1 space-y-1">
+              <Link href={billing} onClick={onNavigate} className="block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
+                  <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
                 </span>
+                {/* Against the month's credits, on a plan that grants them each month. */}
+                {share !== null ? (
+                  <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
+                    <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+                  </span>
+                ) : null}
+              </Link>
+              {canUpgrade ? (
+                <Button asChild size="sm" className="w-full">
+                  <Link href="/pricing" onClick={onNavigate}>
+                    <UpgradeIcon /> {tc("upgrade")}
+                  </Link>
+                </Button>
               ) : null}
-            </Link>
+            </div>
           </Opening>
         ) : null}
       </AnimatePresence>
@@ -694,7 +711,7 @@ function GuestCard({ onNavigate }: { onNavigate: () => void }) {
           onNavigate();
           goToSignIn();
         }}
-        className="flex w-full items-start gap-3 rounded-2xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
+        className="flex w-full items-start gap-3 rounded-2xl px-2.5 py-2.5 text-start transition-colors hover:bg-muted"
       >
         {/* The photo flying in lands at the row's top, so the row lines up with it however its text wraps. */}
         <span aria-hidden className="size-10 shrink-0 rounded-full" />
@@ -733,11 +750,11 @@ function Preferences() {
           { id: "system", label: t("auto"), icon: Monitor },
         ]}
       />
-      <div className="flex items-center justify-between gap-2 pl-1.5">
+      <div className="flex items-center justify-between gap-2 ps-1.5">
         <span className="text-xs text-muted-foreground">{tc("language")}</span>
         <LanguageSwitcher isCollapsed={false} />
       </div>
-      <label className="flex h-8 cursor-pointer items-center justify-between gap-2 pl-1.5 pr-2">
+      <label className="flex h-8 cursor-pointer items-center justify-between gap-2 ps-1.5 pe-2">
         <span className="text-xs text-muted-foreground">{tc("highlightSearchTerms")}</span>
         <Switch checked={highlight.on} onCheckedChange={highlight.setOn} />
       </label>

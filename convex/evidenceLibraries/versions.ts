@@ -119,7 +119,7 @@ async function requireRunningLibrary(
     binding.state !== "ready" ||
     !("runtimeCommit" in binding)
   ) {
-    throw createError("CONFLICT", "This library is not running yet");
+    throw createError("CONFLICT", "This community is not running yet");
   }
   return {
     ...access,
@@ -156,7 +156,7 @@ function snapshotWithIdentityAddress(
     ) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library identity configuration is invalid",
+        "Evidence Community identity configuration is invalid",
       );
     }
     return {
@@ -170,7 +170,7 @@ function snapshotWithIdentityAddress(
   if (!found) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library identity configuration is missing",
+      "Evidence Community identity configuration is missing",
     );
   }
   return {
@@ -422,7 +422,7 @@ export async function startEvidenceLibraryRuntimeUpdate(
   if (release.latest === from) {
     throw createError(
       "CONFLICT",
-      "This library already runs the latest software",
+      "This community already runs the latest software",
     );
   }
   await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
@@ -479,7 +479,7 @@ export async function startEvidenceLibraryAddressMove(
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   const movedFrom = running.binding.targetBaseUrl;
   const movedTo = await requireFreeEvidenceLibraryAddress(ctx, {
@@ -535,7 +535,7 @@ export async function restoreEvidenceLibraryRevision(
   const running = await requireRunningLibrary(ctx, args.libraryId);
   const source = await ctx.db.get(args.revisionId);
   if (!source || source.libraryId !== args.libraryId) {
-    throw createError("NOT_FOUND", "Evidence Library version not found");
+    throw createError("NOT_FOUND", "Evidence Community version not found");
   }
   await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
   const draft = await ctx.db
@@ -543,7 +543,7 @@ export async function restoreEvidenceLibraryRevision(
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   const sourceSnapshot = await loadRevisionConfigurationSnapshot(
     ctx,
@@ -837,7 +837,7 @@ export const startRuntimeRollback = internalMutation({
       binding.libraryId !== args.libraryId ||
       binding.state !== "ready"
     ) {
-      throw createError("CONFLICT", "This library is not running yet");
+      throw createError("CONFLICT", "This community is not running yet");
     }
     const previous = binding.previousRuntime;
     if (
@@ -847,7 +847,7 @@ export const startRuntimeRollback = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "This library does not have an earlier software release to restore",
+        "This community does not have an earlier software release to restore",
       );
     }
     if (
@@ -878,7 +878,7 @@ export const startRuntimeRollback = internalMutation({
     if (!arrival && arrivals.length > RUNTIME_ARRIVALS_READ) {
       throw createError(
         "CONFLICT",
-        `This library has moved onto its current software more than ${RUNTIME_ARRIVALS_READ} times, too many to check its settings against the earlier software`,
+        `This community has moved onto its current software more than ${RUNTIME_ARRIVALS_READ} times, too many to check its settings against the earlier software`,
       );
     }
     const arrivalRevision = arrival?.revisionId
@@ -1175,7 +1175,7 @@ export const setDomainPrimary = mutation({
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);
     if (!row || row.libraryId !== args.libraryId) {
-      throw createError("NOT_FOUND", "That domain is not on this library");
+      throw createError("NOT_FOUND", "That domain is not on this community");
     }
     // Switching one on needs a working domain. Switching the current one
     // off must always be possible: a domain that stopped working is exactly
@@ -1187,7 +1187,7 @@ export const setDomainPrimary = mutation({
       );
     }
     if (!args.primary && row.role !== "primary") {
-      throw createError("CONFLICT", "That domain is not the library's address");
+      throw createError("CONFLICT", "That domain is not the community's address");
     }
     // The same lease every other change to this domain takes, so becoming
     // the library's address cannot race a check or a removal. It is held

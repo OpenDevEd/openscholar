@@ -124,7 +124,7 @@ export function SearchCommandHeader({
   return (
     <div
       className={cn(
-        "relative flex items-center justify-between gap-4 px-4 py-3",
+        "relative flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3",
         "border-b border-border-subtle"
       )}
     >
@@ -142,7 +142,7 @@ export function SearchCommandHeader({
       </div>
 
       {/* Global actions */}
-      <div className="flex items-center gap-2">
+      <div className="ms-auto flex items-center gap-2">
         {/* Who else has the search open (#657): first in this right-aligned group, so arriving faces move none of its controls. */}
         {hasActivity && searchId ? <ItemPresence kind="search" id={searchId} /> : null}
         {/* View mode toggle - desktop only */}
@@ -211,12 +211,15 @@ export function SearchCommandHeader({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={tc("download")}
                 className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex"
               >
                 <Download className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* It downloads what's loaded, not the whole search. */}
+              {search?.results.length ? <DropdownMenuLabel className="font-normal text-muted-foreground">{td("pageOnly", { count: search.results.length })}</DropdownMenuLabel> : null}
               {onDownloadAllJSON && (
                 <DropdownMenuItem onClick={onDownloadAllJSON}>
                   {tc("downloadAsJson")}

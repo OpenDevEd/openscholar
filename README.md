@@ -1,6 +1,6 @@
-# OpenScholar
+# Openscholar
 
-OpenScholar is an academic search engine built on top of OpenAlex. It combines a 250M+ paper database with AI tools to help researchers find, screen, and organize literature.
+Openscholar is an academic search engine built on top of OpenAlex. It combines a 250M+ paper database with AI tools to help researchers find, screen, and organize literature.
 
 It's designed for systematic reviews and complex queries, not just keyword matching.
 
@@ -68,7 +68,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
    - **Clerk (Next.js):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`
    - **Clerk (Convex):** `CLERK_JWT_ISSUER_DOMAIN`, `CLERK_WEBHOOK_SIGNING_SECRET`
    - **App URL (for billing + redirects):** `NEXT_PUBLIC_APP_URL` (or `NEXT_PUBLIC_URL`)
-   - **Billing (Convex):** `AUTUMN_URL` and `AUTUMN_SECRET_KEY` for the self-hosted Autumn server, `AUTUMN_WEBHOOK_SECRET` for Autumn's webhook, and `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` for OpenScholar's own Stripe webhook
+   - **Billing (Convex):** `AUTUMN_URL` and `AUTUMN_SECRET_KEY` for the self-hosted Autumn server, `AUTUMN_WEBHOOK_SECRET` for Autumn's webhook, and `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` for Openscholar's own Stripe webhook
    - **Feature flags:** optional `NEXT_PUBLIC_CREDIT_TOPUPS_ENABLED` (set to `false` to disable top-ups), `NEXT_PUBLIC_EXTRACTION_PDF_ENABLED` (set to `false` for abstract-only extraction mode)
 
    Clerk notes for this repo:
@@ -111,7 +111,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
      changes made in the dashboard reach the app in seconds. Autumn sends no
      event for a balance edit; the billing page refreshes the copy when it
      opens.
-   - Autumn's own Stripe webhook points at the Autumn server. OpenScholar's
+   - Autumn's own Stripe webhook points at the Autumn server. Openscholar's
      Stripe webhook (`POST /webhooks/stripe` on the Convex HTTP URL) refreshes
      the cached card and removes credits for refunded top-ups. Subscribe it
      to: `customer.updated`, `payment_method.attached`,
@@ -142,7 +142,7 @@ It's designed for systematic reviews and complex queries, not just keyword match
      a user's Screen All pick is Jev, their extraction jobs send yes/no questions
      to it too. The catalog sync adds Jev, which isn't in OpenRouter's model list.
 
-4. **Run OpenScholar against the hosted development services**
+4. **Run Openscholar against the hosted development services**
 
    ```bash
    npm run dev

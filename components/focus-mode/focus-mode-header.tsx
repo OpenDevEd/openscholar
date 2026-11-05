@@ -1,4 +1,5 @@
 import { CitationControl } from "@/components/citation-control";
+import { useTranslations } from "next-intl";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +14,6 @@ import {
   ExternalLink,
   Settings,
   X,
-  TranslateIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
@@ -24,6 +24,7 @@ import type { PaperResult } from "@/lib/types";
 import { saveablePaper, toPaperKey } from "@/lib/papers/paper-ref";
 import { ItemPresence } from "@/components/workspaces/presence";
 import { usePaperPage } from "@/lib/papers/use-paper-page";
+import { FocusTranslationControl } from "./focus-translation-control";
 
 export interface FocusModeHeaderProps {
   currentPaper: PaperResult;
@@ -33,6 +34,9 @@ export interface FocusModeHeaderProps {
   showTranslated: boolean;
   translatedContent: { translatedTitle: string; translatedAbstract: string; noTranslationNeeded?: boolean } | null;
   isTranslating: boolean;
+  listedPapers: PaperResult[];
+  translationMenuOpen: boolean;
+  onTranslationMenuOpenChange: (open: boolean) => void;
   isMobile: boolean;
   onRatingChange: (paperId: string, rating: string) => void;
   onToggleTranslation: () => void;
@@ -53,6 +57,9 @@ export function FocusModeHeader({
   showTranslated,
   translatedContent,
   isTranslating,
+  listedPapers,
+  translationMenuOpen,
+  onTranslationMenuOpenChange,
   isMobile,
   onRatingChange,
   onToggleTranslation,
@@ -64,6 +71,8 @@ export function FocusModeHeader({
   tFocus,
   tAccessibility,
 }: FocusModeHeaderProps) {
+  const tCommon = useTranslations("common");
+  const tRating = useTranslations("rating");
   const effectiveRating = useEffectiveRating(currentPaper.id);
   // Any paper named by its source but an upload is rated and saved (an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = saveablePaper(currentPaper.id);
@@ -72,12 +81,12 @@ export function FocusModeHeader({
   const page = usePaperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
   const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
   const previous = (
-    <Button variant="outline" size="icon-sm" onClick={onGoToPrevious} disabled={currentIndex === 0}>
+    <Button variant="outline" size="icon-sm" aria-label={tCommon("previous")} onClick={onGoToPrevious} disabled={currentIndex === 0}>
       <ChevronLeft className="h-3 w-3" />
     </Button>
   );
   const next = (
-    <Button variant="outline" size="icon-sm" onClick={onGoToNext} disabled={currentIndex === totalPapers - 1}>
+    <Button variant="outline" size="icon-sm" aria-label={tCommon("next")} onClick={onGoToNext} disabled={currentIndex === totalPapers - 1}>
       <ChevronRight className="h-3 w-3" />
     </Button>
   );
@@ -91,33 +100,34 @@ export function FocusModeHeader({
 
   return (
     <SheetHeader className="flex-shrink-0 p-3 border-b">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2 md:gap-0">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between w-full gap-2 lg:gap-0">
         {/* First row: where the paper is in its list, and the rating. Phones step and close here, Close in the corner. */}
-        <div className="flex items-center gap-1 md:gap-3">
+        <div className="flex items-center gap-1 lg:gap-3">
           {/* Named for screen readers only: the row shows the paper's controls. Out of the flow, so it takes no gap. */}
           <SheetTitle className="sr-only">{tAccessibility('focusMode')}</SheetTitle>
           {totalPapers > 1 ? (
             <>
               {/* The count sits after both arrows, so its width never moves an arrow from under a finger. */}
-              <div className="flex items-center gap-1 md:hidden">
+              <div className="flex items-center gap-1 lg:hidden">
                 {previous}
                 {next}
               </div>
-              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums max-md:ml-1">
+              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums whitespace-nowrap max-lg:ms-1">
                 {currentIndex + 1} / {totalPapers}
               </div>
             </>
           ) : null}
           {/* Who else is reading it sits beside Close on a phone and first among the tools on a wider screen, where it keeps the person in the paper's room; here it only reads. Faces arriving grow into the free space, so nothing moves. */}
-          <div className="ml-auto flex items-center gap-2 md:hidden">
+          <div className="ms-auto flex items-center gap-2 lg:hidden">
             {key ? <ItemPresence kind="paper" id={key} join={false} /> : null}
             {close}
           </div>
           {/* Star rating buttons - hidden on mobile */}
           {saveable ? (
-            <div className="hidden md:flex items-center gap-0.5">
+            <div className="hidden lg:flex items-center gap-0.5">
               <div className="flex items-center gap-1">
                 <button
+                  aria-label={tRating("noRating")}
                   onClick={() =>
                     onRatingChange(currentPaper.id, "no-rating")
                   }
@@ -141,6 +151,7 @@ export function FocusModeHeader({
               </div>
               <div className="flex items-center gap-1">
                 <button
+                  aria-label={tRating("nStars", { count: 0 })}
                   onClick={() => onRatingChange(currentPaper.id, "0")}
                   className="hover:scale-110 transition-transform"
                 >
@@ -160,6 +171,7 @@ export function FocusModeHeader({
               {[1, 2, 3, 4, 5].map((star) => (
                 <div key={star} className="flex items-center gap-1">
                   <button
+                    aria-label={tRating("nStars", { count: star })}
                     onClick={() => {
                       if (effectiveRating === star) {
                         onRatingChange(currentPaper.id, "no-rating");
@@ -187,7 +199,7 @@ export function FocusModeHeader({
                   </span>
                 </div>
               ))}
-              <div className="ml-3 flex items-center gap-1">
+              <div className="ms-3 flex items-center gap-1">
                 <SaveControl paper={currentPaper} />
                 <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
                   B
@@ -198,52 +210,42 @@ export function FocusModeHeader({
         </div>
 
         {/* Second row: actions. Phones show the rating and save on the left and the tools on the right. */}
-        <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
+        <div className="flex flex-wrap items-center gap-1 lg:flex-nowrap lg:justify-end lg:me-8">
           {/* Compact rating selector - only on mobile */}
           {saveable ? (
-            <div className="flex items-center gap-1 md:hidden">
+            <div className="flex items-center gap-1 lg:hidden">
               <RatingSelector paper={currentPaper} variant="compact" />
               <SaveControl paper={currentPaper} compact />
             </div>
           ) : null}
 
           {/* The tools stay together, so a row too narrow for them moves them to a line of their own. */}
-          <div className="ml-auto flex items-center gap-1 md:ml-0">
+          <div className="ms-auto flex items-center gap-1 lg:ms-0">
             {key ? (
-              <span className="mr-2 hidden md:flex">
+              <span className="me-2 hidden lg:flex">
                 <ItemPresence kind="paper" id={key} />
               </span>
             ) : null}
             <div className="flex items-center gap-1">
-              {/* Shown while the paper is translating or once it has a translation; a paper already in the reader's language has nothing to switch. */}
-              {hasTranslation || isTranslating ? (
-                <>
-                  <Button
-                    variant={showTranslated ? "outline-primary" : "outline"}
-                    size="sm"
-                    className="max-sm:w-8 max-sm:px-0"
-                    onClick={onToggleTranslation}
-                    aria-label={
-                      showTranslated
-                        ? tFocus("showOriginal")
-                        : tFocus("showTranslation")
-                    }
-                    disabled={!hasTranslation}
-                  >
-                    <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:mr-1" />
-                    <span className="hidden sm:inline">
-                      {showTranslated ? tFocus("original") : tFocus("translation")}
-                    </span>
-                  </Button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                    T
-                  </span>
-                  <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
-                </>
-              ) : null}
+              <FocusTranslationControl
+                paper={currentPaper}
+                listedPapers={listedPapers}
+                open={translationMenuOpen}
+                onOpenChange={onTranslationMenuOpenChange}
+                hasTranslation={hasTranslation}
+                showTranslated={showTranslated}
+                isTranslating={isTranslating}
+                onToggleTranslation={onToggleTranslation}
+                tFocus={tFocus}
+              />
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden xl:inline">
+                T
+              </span>
+              <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
               <Button
                 variant={showSettings ? "outline-primary" : "outline"}
                 size="icon-sm"
+                aria-label={tCommon("settings")}
                 onClick={onToggleSettings}
               >
                 <Settings className="h-3 w-3" />
@@ -255,8 +257,8 @@ export function FocusModeHeader({
             {/* One paper has nothing to step to. */}
             {totalPapers > 1 ? (
               <>
-                <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
-                <div className="hidden md:flex items-center gap-1">
+                <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
+                <div className="hidden lg:flex items-center gap-1">
                   <div className="flex items-center gap-1">
                     {previous}
                     <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
@@ -272,13 +274,14 @@ export function FocusModeHeader({
                 </div>
               </>
             ) : null}
-            <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+            <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
             <div className="flex items-center gap-1">
               {page ? (
                 <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
                     size="icon-sm"
+                    aria-label={tAccessibility("openPaperPage")}
                     onClick={() => window.open(page!, "_blank")}
                   >
                     <ExternalLink className="h-3 w-3" />
@@ -305,9 +308,9 @@ export function FocusModeHeader({
                   D
                 </span>
               </div>
-              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+              <div className="w-px h-4 bg-border mx-1 hidden lg:block"></div>
               {/* Closes as the rest of the row acts: an outline button with its key beside it. */}
-              <div className="hidden md:flex items-center gap-1">
+              <div className="hidden lg:flex items-center gap-1">
                 {close}
                 <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
                   Esc

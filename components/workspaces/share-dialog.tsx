@@ -19,7 +19,6 @@ import { EmailAvatar } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
-import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -73,7 +72,7 @@ export function ShareButton({ guests, compact = false, className, open: given, o
       <Button variant="outline" size="sm" className={cn("h-8 shrink-0", !guests && (compact ? "w-8 px-0" : "max-sm:w-8 max-sm:px-0"), className)} aria-label={t(`shareThis.${item.kind}`)}>
         <Share2 />
         {compact ? null : <span className="max-sm:sr-only">{t("share")}</span>}
-        {guests ? <span className="ml-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{guests}</span> : null}
+        {guests ? <span className="ms-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{guests}</span> : null}
       </Button>
     </DialogTrigger>
   );
@@ -237,11 +236,6 @@ function GuestMeter({ room }: { room: { used: number; limit: number | null } | u
             </div>
           ) : null}
         </div>
-        {room && room.limit !== null && room.used >= room.limit ? (
-          <Button asChild size="sm" variant="outline" className="fade-enter h-8 shrink-0">
-            <Link href="/pricing">{t("moreGuests")}</Link>
-          </Button>
-        ) : null}
       </div>
     </AutoHeight>
   );

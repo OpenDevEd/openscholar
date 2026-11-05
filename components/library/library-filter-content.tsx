@@ -363,12 +363,12 @@ function CollectionFilterSection({
           {/* Inline search (only when 8+ collections) */}
           {showSearch && (
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Search className="absolute start-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("searchCollections")}
-                className="h-8 pl-8 text-sm"
+                className="h-8 ps-8 text-sm"
               />
             </div>
           )}
@@ -453,7 +453,7 @@ function CollectionRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-sm transition-colors text-left",
+        "flex items-center gap-2 w-full rounded-lg px-2.5 py-2 text-sm transition-colors text-start",
         isActive
           ? "bg-primary/10 text-foreground"
           : "text-muted-foreground hover:bg-muted hover:text-foreground",

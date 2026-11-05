@@ -146,6 +146,8 @@ export const organizationFields = {
   aiPreset: v.optional(presetKeyValidator),
   /** The colour its admins picked (#651), which tints the rail while someone is in it. Clerk doesn't keep it. */
   colour: v.optional(v.string()),
+  /** Evidence Libraries are switched on for it (convex/organizations/libraryAccess.ts); absent, off. */
+  evidenceLibraries: v.optional(v.literal(true)),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

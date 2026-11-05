@@ -65,7 +65,7 @@ export async function readPublicationProviderPayload(
   )
     throw createError(
       "VALIDATION_ERROR",
-      "Verify the publishing credentials before activating this library.",
+      "Verify the publishing credentials before activating this community.",
     );
   return {
     settings: record.publicationSettings,
@@ -87,7 +87,7 @@ export async function requireUnchangedPublicationProviders(
   )
     throw createError(
       "CONFLICT",
-      "Publishing settings changed during activation. Activate the library again.",
+      "Publishing settings changed during activation. Activate the community again.",
     );
 }
 

@@ -1,5 +1,5 @@
-import { hasPlanFeature } from "../billing/accounts";
-import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { CONTACT_EMAIL } from "../../lib/billing/contact";
+import { opensLibraries } from "../billing/accounts";
 import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
@@ -12,6 +12,7 @@ import { authorContentFields } from "./validators";
 import { profileViewer, requireProfileAccess } from "./access";
 import { workspaceMutation } from "../lib/userActions";
 import { noteActivity } from "../activity/notes";
+import { moveMainRecord } from "./links";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
@@ -30,8 +31,8 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   }
   next.orcid = next.orcid.replace(/^https:\/\/orcid.org\//, "");
   if (next.orcid && !/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(next.orcid)) throw createError("VALIDATION_ERROR", "Enter a valid ORCID");
-  next.openalex = next.openalex.replace(/^https:\/\/openalex.org\//, "");
-  if (next.openalex && !/^A\d+$/.test(next.openalex)) throw createError("VALIDATION_ERROR", "Choose an OpenAlex author");
+  next.openalex = next.openalex.replace(/^https:\/\/(?:openalex\.org|openscholar\.ai)\//, "");
+  if (next.openalex && !/^(?:A|OSA)\d+$/.test(next.openalex)) throw createError("VALIDATION_ERROR", "Choose an author from the list");
   return next;
 }
 
@@ -52,7 +53,7 @@ const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union
  * a library shared with the person isn't that. A plan is its workspace's alone.
  */
 export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
-  if (!(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE))) throw createError("FORBIDDEN", "This workspace's plan doesn't include Evidence Libraries, which author profiles come with.");
+  if (!(await opensLibraries(ctx, workspaceId))) throw createError("FORBIDDEN", `Author profiles come with Evidence Communities, which are turned on for an organization by request. Email ${CONTACT_EMAIL}.`);
 }
 
 /** Makes a profile owned by the page's workspace. */
@@ -116,6 +117,7 @@ async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfile
   }
   const revision = profile.revision + 1;
   const content = cleanContent(args.content);
+  await moveMainRecord(ctx, args.profileId, profile.openalex, content.openalex);
   await ctx.db.patch("authorProfiles", args.profileId, {...content, revision, updatedAt: Date.now(), ...(args.photo ? {photoId: args.photo.storageId} : {})});
   // Its Activity (#656), kept by the workspace that owns it: a new name says the one it had.
   if (profile.workspaceId) await noteActivity(ctx, {workspaceId: profile.workspaceId, by: user._id, viaAssistant: false}, {kind: "author", id: args.profileId, ...(content.name === profile.name ? {happened: "edited"} : {happened: "renamed", detail: profile.name})});

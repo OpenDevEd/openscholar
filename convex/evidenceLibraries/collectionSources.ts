@@ -93,7 +93,7 @@ export const connectCollectionSource = mutation({
     const user = await requireAuth(ctx);
     const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection || collection.createdBy !== user._id) {
-      throw createError("FORBIDDEN", "Only the collection's owner can add it to a library");
+      throw createError("FORBIDDEN", "Only the collection's owner can add it to a community");
     }
     const fields = {
       libraryId: args.libraryId,
@@ -164,7 +164,7 @@ export const readForLibrary = internalQuery({
   ),
   handler: async (ctx, args) => {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-    if (!libraryId) throw createError("UNAUTHENTICATED", "Invalid library service credential");
+    if (!libraryId) throw createError("UNAUTHENTICATED", "Invalid community service credential");
     await authenticateLibraryServiceCredential(ctx, { libraryId, credentialDigest: args.credentialDigest });
     const library = await ctx.db.get("evidenceLibraries", libraryId);
     const collectionId = ctx.db.normalizeId("collections", args.collectionId);

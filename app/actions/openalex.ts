@@ -9,6 +9,9 @@ import { fetchOqlWorks } from "@/lib/openalex/oql-works";
 import { worksUrl } from "@/lib/openalex/works-url";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import { OpenAlexLimitedError } from "@/lib/openalex/limited";
+import { fetchOwnWorks } from "@/lib/openalex/read-works";
+import { chosenSource } from "@/lib/search/active-source";
+import { asKeywords, questionAsWords, SEMANTIC_FIELD, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "@/lib/search/source";
 
 /**
  * Result of a search action. We return a structured error instead of throwing:
@@ -54,9 +57,12 @@ async function spendOne(): Promise<{ ok: false; status: number; message: string 
 }
 
 async function callOpenAlexSDK(
-  query: string,
-  filters: SearchFilters
+  asked: string,
+  given: SearchFilters
 ): Promise<SearchActionResult> {
+  if (given.similarTo?.length) return { ok: false, status: 400, message: SIMILAR_NEEDS_OWN_INDEX };
+  const filters = asKeywords(given);
+  const query = given.searchField === SEMANTIC_FIELD ? questionAsWords(asked) : asked;
   const limited = await spendOne();
   if (limited) return limited;
   const searchParams = createSearchParameters(query, filters);
@@ -79,9 +85,30 @@ async function callOpenAlexSDK(
   }
 }
 
+/** The same search on our index, which the SDK can't reach. */
+async function searchOwnIndex(query: string, filters: SearchFilters): Promise<SearchActionResult> {
+  const limited = await spendOne();
+  if (limited) return limited;
+  const searchParams = createSearchParameters(query, filters);
+  if (filters.searchField === OQL_FIELD) {
+    return fetchOqlWorks(worksOql(query, searchParams.filter ?? {}), { perPage: searchParams.perPage, sort: filters.sortBy }, "openscholar");
+  }
+  const parameters = { search: searchParams.search, filter: searchParams.filter as never };
+  const extra = { "search.semantic": searchParams.semantic, similar_to: searchParams.similar };
+  if (!searchParams.semantic && !searchParams.similar) return fetchOwnWorks({ ...parameters, sortBy: searchParams.sortBy }, { perPage: searchParams.perPage }, extra);
+  // These find at most 300, more than a page holds, so all of them are read: they're the whole of what the search found.
+  const first = await fetchOwnWorks(parameters, { page: 1, perPage: searchParams.perPage }, extra);
+  if (!first.ok || first.data.meta.count <= searchParams.perPage) return first;
+  if (await spendOne()) return first;
+  const second = await fetchOwnWorks(parameters, { page: 2, perPage: searchParams.perPage }, extra);
+  return second.ok ? { ...first, data: { ...first.data, results: [...first.data.results, ...second.data.results] } } : first;
+}
+
 export async function getSearchResults(
   query: string,
   filters: SearchFilters,
+  source?: SearchSource,
 ): Promise<SearchActionResult> {
+  if ((await chosenSource(source)) === "openscholar") return searchOwnIndex(query, filters);
   return callOpenAlexSDK(query, filters);
 }

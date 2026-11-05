@@ -123,3 +123,27 @@ describe("createSearchParameters research, goal, access and type filters", () =>
     expect(params.search).toBeUndefined();
   });
 });
+
+describe("a DOI pasted as the query", () => {
+  it.each(["10.1016/j.cub.2020.06.053", " https://doi.org/10.1016/J.CUB.2020.06.053 ", "doi: 10.1016/j.cub.2020.06.053", "http://dx.doi.org/10.1016/j.cub.2020.06.053"])("%s finds that paper", (query) => {
+    const params = createSearchParameters(query, baseFilters);
+    expect(params.filter?.doi).toBe("https://doi.org/10.1016/j.cub.2020.06.053");
+    expect(params.search).toBeUndefined();
+    expect(params.filter?.title_and_abstract).toBeUndefined();
+    // Relevance needs words to be relevant to.
+    expect(params.sortBy).toBeUndefined();
+  });
+
+  it("leaves a DOI among other words, and other scopes, as a search", () => {
+    expect(createSearchParameters("kelp 10.1016/j.cub.2020.06.053", baseFilters).filter?.doi).toBeUndefined();
+    expect(createSearchParameters("10.1016/j.cub.2020.06.053", { ...baseFilters, searchField: "oql" }).filter?.doi).toBeUndefined();
+  });
+});
+
+describe("Institution location in OQL", () => {
+  it("leaves out the countries the query language refuses", () => {
+    const countries = (searchField: "oql" | "title_and_abstract") => (createSearchParameters("kelp", { ...baseFilters, searchField, selectedRegions: ["africa"] }).filter?.authorships as { countries: string }).countries;
+    expect(countries("oql")).not.toContain("EH");
+    expect(countries("title_and_abstract")).toContain("EH");
+  });
+});

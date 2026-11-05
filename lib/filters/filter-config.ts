@@ -58,6 +58,7 @@ export const FILTER_ICONS: Record<FilterType, AppIcon> = {
   cites: ArrowDownRight,
   citedBy: ArrowUpRight,
   relatedTo: GitCompare,
+  similarTo: GitCompare,
   workType: Library,
   researchArea: Shapes,
   sdg: Globe2,

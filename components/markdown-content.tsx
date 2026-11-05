@@ -26,12 +26,12 @@ const markdownComponents: Components = {
     <p className="text-muted-foreground leading-relaxed mb-4">{children}</p>
   ),
   ul: ({ children }) => (
-    <ul className="list-disc pl-6 my-4 space-y-1 text-muted-foreground">
+    <ul className="list-disc ps-6 my-4 space-y-1 text-muted-foreground">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal pl-6 my-4 space-y-1 text-muted-foreground">
+    <ol className="list-decimal ps-6 my-4 space-y-1 text-muted-foreground">
       {children}
     </ol>
   ),
@@ -69,7 +69,7 @@ const markdownComponents: Components = {
     <tr className="border-b border-border last:border-b-0">{children}</tr>
   ),
   th: ({ children }) => (
-    <th className="px-4 py-3 text-left font-medium text-foreground">
+    <th className="px-4 py-3 text-start font-medium text-foreground">
       {children}
     </th>
   ),
@@ -85,7 +85,7 @@ interface MarkdownContentProps {
 
 export function MarkdownContent({ content, className }: MarkdownContentProps) {
   return (
-    <article className={cn("text-sm sm:text-base", className)}>
+    <article className={cn("text-sm break-words sm:text-base", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>

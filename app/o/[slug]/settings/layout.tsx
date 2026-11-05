@@ -1,1 +1,1 @@
-export { default } from "@/app/settings/layout";
+export { default, generateMetadata } from "@/app/settings/layout";

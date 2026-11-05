@@ -182,7 +182,7 @@ async function checkEvidenceLibraryAddress(
   try {
     free = await findFreeEvidenceLibraryAddress(ctx, state.candidates);
   } catch (error) {
-    console.warn("Evidence Library address check failed", error instanceof Error ? error.message : "Unknown error");
+    console.warn("Evidence Community address check failed", error instanceof Error ? error.message : "Unknown error");
     return { status: "unavailable", reason: "check-failed" };
   }
   if (free) {

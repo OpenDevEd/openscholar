@@ -9,6 +9,9 @@ import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
+import { bareWork, workId } from "@/lib/openalex/ids";
+import { isOwnId, SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 interface WorkIdFilterProps {
   type: 'cites' | 'cited_by' | 'related';
@@ -27,6 +30,7 @@ export function WorkIdFilter({
 }: WorkIdFilterProps) {
   const toast = useAppToast();
   const t = useTranslations("workId");
+  const source = useSearchSource();
   
   const {
     citesItemId,
@@ -38,7 +42,7 @@ export function WorkIdFilter({
 
   const config = {
     cites: {
-      description: t("descriptionCites"),
+      description: t("descriptionCites", { source: SEARCH_SOURCE_NAMES[source] }),
       applyText: t("applyFilter"),
       successDescription: (id: string) => t("successCites", { id }),
       statusText: t("statusCites"),
@@ -48,7 +52,7 @@ export function WorkIdFilter({
       updateField: 'citesItemId',
     },
     cited_by: {
-      description: t("descriptionCitedBy"),
+      description: t("descriptionCitedBy", { source: SEARCH_SOURCE_NAMES[source] }),
       applyText: t("applyFilter"),
       successDescription: (id: string) => t("successCitedBy", { id }),
       statusText: t("statusCitedBy"),
@@ -58,7 +62,7 @@ export function WorkIdFilter({
       updateField: 'citedByItemId',
     },
     related: {
-      description: t("descriptionRelated"),
+      description: t("descriptionRelated", { source: SEARCH_SOURCE_NAMES[source] }),
       applyText: t("applyFilter"),
       successDescription: (id: string) => t("successRelated", { id }),
       statusText: t("statusRelated"),
@@ -74,7 +78,7 @@ export function WorkIdFilter({
   const Icon = icon || typeConfig.icon;
   
   // Get the appropriate store values and methods based on type
-  const itemId: string = typeConfig.itemId;
+  const itemId: string = bareWork(typeConfig.itemId);
   const isActive = typeConfig.isActive;
   
   const setItemId = (id: string) => {
@@ -97,24 +101,15 @@ export function WorkIdFilter({
       return;
     }
     
-    // Clean and validate the input
-    const cleanId = inputValue.trim();
-    let validatedId = cleanId;
-    
-    // If it's a full URL, extract the ID
-    if (cleanId.startsWith('https://openalex.org/')) {
-      validatedId = cleanId.replace('https://openalex.org/', '');
-    }
-    
-    // Validate the ID format (should start with 'W' for works)
-    if (!validatedId.match(/^W\d+$/)) {
+    // A pasted address becomes the ID it names.
+    const id = workId(inputValue);
+    if (!id) {
       toast.validation.failed(t("workIdFormatHint"));
       return;
     }
-    
-    // Update the filter in the store
-    setItemId(validatedId);
-    
+
+    setInputValue(id);
+    setItemId(id);
   };
   
   const handleClearFilter = () => {
@@ -146,14 +141,14 @@ export function WorkIdFilter({
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="pr-10"
+            className="pe-10"
           />
           {inputValue && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setInputValue('')}
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+              className="absolute end-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
             >
               <X className="h-3 w-3" />
             </Button>
@@ -171,7 +166,7 @@ export function WorkIdFilter({
           size="sm"
           className="flex-1"
         >
-          <Icon className="h-3 w-3 mr-2" />
+          <Icon className="h-3 w-3 me-2" />
           {currentConfig.applyText}
         </Button>
         
@@ -195,21 +190,21 @@ export function WorkIdFilter({
            <div className="flex items-center gap-2">
              <Icon className={cn("h-3 w-3 flex-shrink-0", colors.icon)} />
              <span className="flex-shrink-0">{currentConfig.statusText}</span>
-             <a
-               href={itemId.startsWith('https://') ? itemId : `https://openalex.org/${itemId}`}
+             {source === "openalex" && !isOwnId(itemId) && <a
+               href={`https://openalex.org/${itemId}`}
                target="_blank"
                rel="noopener noreferrer"
-               className={cn("ml-auto flex-shrink-0 hover:opacity-80", colors.link)}
+               className={cn("ms-auto flex-shrink-0 hover:opacity-80", colors.link)}
              >
                <ExternalLink className="h-3 w-3" />
-             </a>
+             </a>}
            </div>
            <div className="w-full">
              <code className={cn(
                "block w-full px-1 py-0.5 rounded text-xs break-all word-break-all",
                colors.code
              )}>
-               {itemId.startsWith('https://openalex.org/') ? itemId.replace('https://openalex.org/', '') : itemId}
+               {itemId}
              </code>
            </div>
          </div>

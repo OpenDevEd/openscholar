@@ -5,6 +5,7 @@
 
 export type PaperRef =
   | { source: "openalex"; work: string }
+  | { source: "openscholar"; work: string }
   | { source: "library"; libraryId: string; key: string }
   | { source: "zotero"; library: "user" | "group"; owner: string; key: string }
   | { source: "upload"; file: string };
@@ -17,6 +18,8 @@ export function paperKey(ref: PaperRef): string {
   switch (ref.source) {
     case "openalex":
       return `openalex:${ref.work}`;
+    case "openscholar":
+      return `openscholar:${ref.work}`;
     case "library":
       return `library:${ref.libraryId}:${ref.key}`;
     case "zotero":
@@ -27,12 +30,14 @@ export function paperKey(ref: PaperRef): string {
 }
 
 const WORK = /^W\d+$/;
+const OWN_WORK = /^OS\d+$/;
 // Library IDs and record keys, Zotero owners and keys, and storage IDs hold no colon.
 const PART = /^[^:\s]+$/;
 
 export function parsePaperKey(key: string): PaperRef | null {
   const [source, ...parts] = key.split(":");
   if (source === "openalex" && parts.length === 1 && WORK.test(parts[0]!)) return { source, work: parts[0]! };
+  if (source === "openscholar" && parts.length === 1 && OWN_WORK.test(parts[0]!)) return { source, work: parts[0]! };
   if (source === "library" && parts.length === 2 && parts.every((part) => PART.test(part))) return { source, libraryId: parts[0]!, key: parts[1]! };
   if (source === "zotero" && parts.length === 3 && (parts[0] === "user" || parts[0] === "group") && PART.test(parts[1]!) && PART.test(parts[2]!)) {
     return { source, library: parts[0], owner: parts[1]!, key: parts[2]! };
@@ -44,6 +49,11 @@ export function parsePaperKey(key: string): PaperRef | null {
 /** The bare OpenAlex work (W2741809807) in its address, its page's address or the ID itself; null for anything else. */
 export function openalexWork(id: string): string | null {
   return id.trim().match(/^(?:https?:\/\/openalex\.org\/(?:works\/)?)?(W\d+)$/i)?.[1]?.toUpperCase() ?? null;
+}
+
+/** The bare work on our index (OS79563844) in its address, or the ID itself; null for anything else. A paper only our index has goes by this. */
+export function ownWork(id: string): string | null {
+  return id.trim().match(/^(?:https?:\/\/openscholar\.ai\/)?(OS\d+)$/i)?.[1]?.toUpperCase() ?? null;
 }
 
 /** A DOI in one form, lower case and without its address; null when there is none. */
@@ -71,6 +81,8 @@ export function legacyPaperRef(id: string, hints: { pdfUrl?: string } = {}): Pap
   if (keyed) return keyed;
   const work = openalexWork(id) ?? (id.startsWith("openalex:") ? openalexWork(id.slice("openalex:".length)) : null);
   if (work) return { source: "openalex", work };
+  const own = ownWork(id);
+  if (own) return { source: "openscholar", work: own };
   const zotero = id.match(/^zotero:(?:(user|group):)?([^:\s]+)$/);
   if (zotero) {
     const library = zotero[1] as "user" | "group" | undefined;
@@ -92,7 +104,8 @@ export function toPaperKey(id: string, hints: { pdfUrl?: string } = {}): string 
  */
 export function paperIdOf(key: string): string {
   const ref = parsePaperKey(key);
-  return ref?.source === "openalex" ? `https://openalex.org/${ref.work}` : key;
+  if (ref?.source === "openalex") return `https://openalex.org/${ref.work}`;
+  return ref?.source === "openscholar" ? `https://openscholar.ai/${ref.work}` : key;
 }
 
 /** Whether a paper can be saved to a library: any but an uploaded PDF, whose file stays with its job. */

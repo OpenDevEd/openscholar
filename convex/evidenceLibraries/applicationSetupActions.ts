@@ -243,7 +243,7 @@ export const runApplicationSetup = internalAction({
       );
     } catch (error) {
       if (error instanceof RuntimeReleaseError) {
-        console.error("Evidence Library runtime release lookup failed", {
+        console.error("Evidence Community runtime release lookup failed", {
           code: error.code,
           message: error.message,
         });
@@ -255,26 +255,26 @@ export const runApplicationSetup = internalAction({
         !(error instanceof OAuthClientBusyError)
       ) {
         // Owners see a generic message; keep the real cause in the logs.
-        console.error("Evidence Library application setup failed", error);
+        console.error("Evidence Community application setup failed", error);
       }
       const safeError =
         error instanceof RuntimeReleaseError
           ? {
               code: error.code,
-              message: "Evidence Library software could not be prepared",
+              message: "Evidence Community software could not be prepared",
             }
           : error instanceof CoolifyClientError
             ? { code: error.code, message: error.message }
             : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
               ? {
                   code: "OAUTH_CLIENT_SYNC_FAILED",
-                  message: "OpenScholar sign-in could not be set up for this library",
+                  message: "Openscholar sign-in could not be set up for this community",
                 }
             : error instanceof ConfigurationAssemblyError
               ? {
                   code: "APPLICATION_CONFIG_INVALID",
                   message:
-                    "Evidence Library configuration could not be assembled",
+                    "Evidence Community configuration could not be assembled",
                   issues: error.issues.map(({ pointer, message }) => ({
                     pointer,
                     message,

@@ -50,8 +50,14 @@ export const seed = internalMutation({
     let written = 0;
     for (const preset of PRESET_KEYS) {
       for (const task of AI_TASKS) {
-        if (await insertPickIfMissing(ctx, preset, task, defaultPick(preset, task))) written++;
+        if (task !== "overview" && (await insertPickIfMissing(ctx, preset, task, defaultPick(preset, task)))) written++;
       }
+    }
+    // Overviews start on what they've always run on, the Cheap preset's chat model, in every preset.
+    const cheapChat = await ctx.db.query("aiModelConfig").withIndex("by_key", (q) => q.eq("key", presetConfigKey("cheap", "chat"))).unique();
+    if (cheapChat) {
+      const pick = { modelId: cheapChat.modelId, ...(cheapChat.effort ? { effort: cheapChat.effort } : {}) };
+      for (const preset of PRESET_KEYS) if (await insertPickIfMissing(ctx, preset, "overview", pick)) written++;
     }
     return written;
   },

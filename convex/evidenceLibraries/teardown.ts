@@ -33,7 +33,7 @@ function requireTeardownAttempt(
   if (operation.teardownAttemptToken !== attemptToken) {
     throw createError(
       "CONFLICT",
-      "Another attempt is running this Evidence Library teardown",
+      "Another attempt is running this Evidence Community teardown",
     );
   }
 }
@@ -80,7 +80,7 @@ function requireDevelopmentTeardownEnabled() {
   ) {
     throw createError(
       "FORBIDDEN",
-      "Development Evidence Library teardown is not enabled",
+      "Development Evidence Community teardown is not enabled",
     );
   }
 }
@@ -101,7 +101,7 @@ async function requestTeardown(
   if (args.confirmationName !== access.library.name) {
     throw createError(
       "VALIDATION_ERROR",
-      "Enter the full library name to confirm deletion",
+      "Enter the full community name to confirm deletion",
     );
   }
   // The teardown's own operation, and running or retrying work, are found through their
@@ -146,7 +146,7 @@ async function requestTeardown(
   if (busy) {
     throw createError(
       "CONFLICT",
-      "A change to one of this library's domains is still running. Wait for it to finish, then delete the library.",
+      "A change to one of this community's domains is still running. Wait for it to finish, then delete the community.",
     );
   }
   if (teardown?.status === "queued" || teardown?.status === "running") {
@@ -161,14 +161,14 @@ async function requestTeardown(
   if (activeOperation) {
     throw createError(
       "CONFLICT",
-      "Wait for the current library operation to finish before deleting it",
+      "Wait for the current community operation to finish before deleting it",
     );
   }
   const now = Date.now();
   let operationId: Id<"evidenceLibraryConfigOperations">;
   if (teardown) {
     if (teardown.status !== "failed") {
-      throw createError("CONFLICT", "This library teardown cannot be retried");
+      throw createError("CONFLICT", "This community teardown cannot be retried");
     }
     operationId = teardown._id;
     await ctx.db.patch(operationId, {
@@ -299,7 +299,7 @@ export const restartDevelopmentTeardown = mutation({
     if (operation?.kind !== "teardown" || operation.status !== "failed") {
       throw createError(
         "CONFLICT",
-        "That library is not waiting to be deleted",
+        "That community is not waiting to be deleted",
       );
     }
     await ctx.db.patch(operation._id, {
@@ -336,7 +336,7 @@ export const holdDevelopmentTeardown = internalMutation({
       args.operationId,
     );
     if (!operation || operation.kind !== "teardown") {
-      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+      throw createError("NOT_FOUND", "Evidence Community teardown not found");
     }
     requireTeardownAttempt(operation, args.attemptToken);
     await ctx.db.patch(operation._id, {
@@ -373,7 +373,7 @@ export const retryDevelopmentTeardown = internalMutation({
       args.operationId,
     );
     if (!operation || operation.kind !== "teardown") {
-      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+      throw createError("NOT_FOUND", "Evidence Community teardown not found");
     }
     requireTeardownAttempt(operation, args.attemptToken);
     if (operation.attemptCount >= MAX_TEARDOWN_RETRIES) {
@@ -464,14 +464,14 @@ export const prepareDevelopmentTeardown = internalMutation({
       operation.libraryId !== args.libraryId ||
       operation.kind !== "teardown"
     ) {
-      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+      throw createError("NOT_FOUND", "Evidence Community teardown not found");
     }
     const held =
       operation.status === "running" &&
       (operation.teardownLeaseExpiresAt ?? 0) > Date.now();
     if (held) return { claimed: false as const };
     if (operation.status !== "queued" && operation.status !== "running") {
-      throw createError("CONFLICT", "Evidence Library teardown is not queued");
+      throw createError("CONFLICT", "Evidence Community teardown is not queued");
     }
     const binding = library.runtimeBindingId
       ? await ctx.db.get(
@@ -544,7 +544,7 @@ export const rememberDevelopmentTeardownApplication = internalMutation({
       args.operationId,
     );
     if (!operation || operation.kind !== "teardown") {
-      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+      throw createError("NOT_FOUND", "Evidence Community teardown not found");
     }
     requireTeardownAttempt(operation, args.attemptToken);
     if (
@@ -553,7 +553,7 @@ export const rememberDevelopmentTeardownApplication = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "The Evidence Library teardown resolved a different application",
+        "The Evidence Community teardown resolved a different application",
       );
     }
     await ctx.db.patch(operation._id, {
@@ -580,7 +580,7 @@ export const setDevelopmentTeardownStage = internalMutation({
       args.operationId,
     );
     if (!operation || operation.kind !== "teardown") {
-      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+      throw createError("NOT_FOUND", "Evidence Community teardown not found");
     }
     requireTeardownAttempt(operation, args.attemptToken);
     await ctx.db.patch(operation._id, {
@@ -602,7 +602,7 @@ export const deferDevelopmentTeardown = internalMutation({
       args.operationId,
     );
     if (!operation || operation.kind !== "teardown") {
-      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+      throw createError("NOT_FOUND", "Evidence Community teardown not found");
     }
     requireTeardownAttempt(operation, args.attemptToken);
     // The claim is given back, so the next attempt takes its own.
@@ -668,7 +668,7 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       operation.kind !== "teardown" ||
       operation.status !== "running"
     ) {
-      throw createError("NOT_FOUND", "Evidence Library teardown not found");
+      throw createError("NOT_FOUND", "Evidence Community teardown not found");
     }
     requireTeardownAttempt(operation, args.attemptToken);
     if (await deleteLibraryTopicsBatch(ctx, args.libraryId)) {

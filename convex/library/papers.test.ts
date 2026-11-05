@@ -42,6 +42,15 @@ afterEach(() => {
 });
 
 describe("saving a paper by its ID", () => {
+  it("keeps OpenAlex's key for a paper asked for by our index's ID, so it's the same paper its ratings and screenings name", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search.test");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ id: "https://openscholar.ai/OS7", ids: { openalex: "https://openalex.org/W7" }, display_name: "Tutoring at scale" }), { status: 200 })));
+    const t = convexTest(schema);
+    await t.run(async (ctx) => ctx.db.insert("users", { clerkId: "ada", email: "ada@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
+    await t.withIdentity({ subject: "ada" }).action(api.library.papers.save, { id: "OS7" });
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(10)).map((item) => item.paperKey))).toEqual(["openalex:W7"]);
+  });
+
   it("puts the paper in a collection as it saves it, and one undo takes back what the call did", async () => {
     const t = convexTest(schema);
     await t.run(async (ctx) => ctx.db.insert("users", { clerkId: "ada", email: "ada@example.com", state: "active", createdAt: 1, updatedAt: 1 }));
@@ -173,7 +182,7 @@ describe("saving a paper by its ID", () => {
     await ada.mutation(api.library.mutations.removeFromLibrary, { paper: "W9" });
 
     // What isn't a paper's ID, a paper OpenAlex doesn't have, and a rating off the scale are refused, and save nothing.
-    await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its OpenAlex ID/);
+    await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its ID/);
     await expect(ada.action(save, { id: "W404" })).rejects.toThrow(/no paper by that ID/);
     await expect(ada.action(save, { id: "W9", rating: 9 })).rejects.toThrow(/0 to 5/);
     expect((await items()).map((row) => row.paperKey).sort()).toEqual(["openalex:W7", "openalex:W8"]);

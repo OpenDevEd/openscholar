@@ -3,9 +3,9 @@
 import { readOpenAlexRecordNames } from "@/app/actions/openalex-lookup";
 import { createNameLookup } from "./use-entity-names";
 
-const funders = createNameLookup("funder", (ids) => readOpenAlexRecordNames("funders", ids));
-const journals = createNameLookup("journal", (ids) => readOpenAlexRecordNames("sources", ids));
-const institutions = createNameLookup("institution", (ids) => readOpenAlexRecordNames("institutions", ids));
+const funders = createNameLookup("funder", (ids, source) => readOpenAlexRecordNames("funders", ids, source));
+const journals = createNameLookup("journal", (ids, source) => readOpenAlexRecordNames("sources", ids, source));
+const institutions = createNameLookup("institution", (ids, source) => readOpenAlexRecordNames("institutions", ids, source));
 
 /** Names for funder ids such as F4320311904. */
 export const useFunderNames = funders.useNames;

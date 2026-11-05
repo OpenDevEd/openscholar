@@ -75,13 +75,13 @@ function parseServiceError(payload: unknown): VolumeDeletionClientError {
   if (code === "volume_in_use") {
     return new VolumeDeletionClientError(
       "VOLUME_IN_USE",
-      "The library runtime is still releasing its data volume",
+      "The community runtime is still releasing its data volume",
     );
   }
   if (code === "volume_deletion_failed") {
     return new VolumeDeletionClientError(
       "VOLUME_DELETION_FAILED",
-      "The library data volume could not be deleted",
+      "The community data volume could not be deleted",
     );
   }
   return new VolumeDeletionClientError(

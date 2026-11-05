@@ -227,7 +227,7 @@ describe("Evidence Library readiness client", () => {
     expect(error).toMatchObject({
       code: "RUNTIME_ROUTE_UNAVAILABLE",
       message:
-        "Evidence Library traffic could not be updated: runtime_route_not_loaded: The proxy has not loaded the route.",
+        "Evidence Community traffic could not be updated: runtime_route_not_loaded: The proxy has not loaded the route.",
     });
     expect(isRetryableReadinessError(error)).toBe(true);
     expect(fetchImpl).toHaveBeenCalledTimes(1);
@@ -366,7 +366,7 @@ describe("Evidence Library readiness client", () => {
     ).rejects.toMatchObject({
       code: "RUNTIME_NOT_READY",
       message:
-        "The Evidence Library services are not ready: runtime_service_not_ready: The web service is restarting. (web)",
+        "The Evidence Community services are not ready: runtime_service_not_ready: The web service is restarting. (web)",
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
@@ -383,7 +383,7 @@ describe("Evidence Library readiness client", () => {
     const readiness = requireLibraryRuntimeReady(input(fetchImpl));
     const result = expect(readiness).rejects.toMatchObject({
       code: "CONFIG_NOT_READY",
-      message: "The Evidence Library has not activated the requested revision",
+      message: "The Evidence Community has not activated the requested revision",
     });
     await vi.runAllTimersAsync();
     await result;
@@ -464,7 +464,7 @@ describe("Evidence Library readiness client", () => {
     const readiness = requireLibraryRuntimeReady(input(fetchImpl));
     const result = expect(readiness).rejects.toMatchObject({
       code: "CONFIG_NOT_READY",
-      message: "The Evidence Library traffic route is not active",
+      message: "The Evidence Community traffic route is not active",
     });
     await vi.runAllTimersAsync();
     await result;
@@ -575,7 +575,7 @@ describe("Evidence Library readiness client", () => {
       requireLibraryRuntimeReady(input(adminAnswer(answer))),
     ).rejects.toMatchObject({
       code: "PAGE_NOT_READY",
-      message: "The Evidence Library admin page is not ready",
+      message: "The Evidence Community admin page is not ready",
     });
   });
 
@@ -599,7 +599,7 @@ describe("Evidence Library readiness client", () => {
       requireLibraryRuntimeReady(input(fetchImpl)),
     ).rejects.toMatchObject({
       code: "PAGE_NOT_READY",
-      message: "The Evidence Library public page is not ready",
+      message: "The Evidence Community public page is not ready",
     });
   });
 
@@ -618,7 +618,7 @@ describe("Evidence Library readiness client", () => {
       requireLibraryRuntimeReady(input(fetchImpl)),
     ).rejects.toMatchObject({
       code: "ADDRESS_NOT_OURS",
-      message: "Another site answers this Evidence Library address",
+      message: "Another site answers this Evidence Community address",
     });
   });
 
@@ -775,7 +775,7 @@ describe("Evidence Library readiness client", () => {
     const readiness = requireLibraryRuntimeReady(input(fetchImpl));
     const result = expect(readiness).rejects.toMatchObject({
       code: "READINESS_UNAVAILABLE",
-      message: "Evidence Library readiness could not be checked",
+      message: "Evidence Community readiness could not be checked",
     });
     await vi.advanceTimersByTimeAsync(15_000);
     await result;

@@ -23,13 +23,13 @@ async function setup() {
   const t = convexTest(schema);
   const ids = await t.run(async (ctx) => {
     const [alice, bob] = await Promise.all(["alice", "bob"].map((clerkId) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.com`, state: "active", createdAt: 1, updatedAt: 1 })));
-    // The Cheap preset's chat model, which writes overviews.
+    // The overview entry of the person's preset, Balanced.
     await ctx.db.insert("models", {
       modelId: "acme/cheap", name: "Cheap", provider: "acme", inputPricePerMillion: 1, outputPricePerMillion: 5,
       isServed: false, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1,
       supportedParameters: ["tools", "reasoning"], reasoningEfforts: ["low", "medium"], defaultEffort: "medium",
     });
-    await ctx.db.insert("aiModelConfig", { key: "preset.cheap.chat", modelId: "acme/cheap", effort: "medium", updatedAt: 1 });
+    await ctx.db.insert("aiModelConfig", { key: "preset.balanced.overview", modelId: "acme/cheap", effort: "medium", updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId: alice });
     // An organization both are in, on its own plan.
     const team = await grantPlanFeaturesForTest(ctx, await seedOrganizationFeatures(ctx, ["alice", "bob"], {}), []);
@@ -69,6 +69,43 @@ describe("AI overviews of a search", () => {
     expect((await stored()).filter((row) => row.paid)).toHaveLength(1);
   });
 
+  it("writes none free on Custom, where they're paid, but an organization's work runs on its preset, so its members' stay free", async () => {
+    const { as, search, ensure, view, stored, setPerDay, team } = await setup();
+    await setPerDay(2);
+    await as("alice").mutation(api.userAiConfig.mutations.choose, { choice: "custom" });
+    const mine = await search("teacher training");
+
+    expect(await view()).toMatchObject({ perDay: 0 });
+    expect(await ensure(mine)).toBe("ask");
+    expect(await ensure(mine, { pay: true })).toBe("started");
+    expect((await stored()).map((row) => row.paid)).toEqual([true]);
+
+    const theirs = await search("school meals", team);
+    expect(await ensure(theirs, {}, team)).toBe("started");
+    expect((await stored()).find((row) => row.workspaceId === team)?.paid).toBe(false);
+
+    // Back on a preset, the plan's free ones return.
+    await as("alice").mutation(api.userAiConfig.mutations.choose, { choice: "balanced" });
+    expect(await view()).toMatchObject({ perDay: 2 });
+  });
+
+  it("prices and writes a Custom person's overview on the model they picked", async () => {
+    const { t, as, search, ensure, view } = await setup();
+    const dearer = await t.run((ctx) =>
+      ctx.db.insert("models", {
+        modelId: "acme/dear", name: "Dear", provider: "acme", inputPricePerMillion: 10, outputPricePerMillion: 50,
+        isServed: false, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1, supportedParameters: ["tools"],
+      }),
+    );
+    const balanced = (await view()).credits!;
+    await as("alice").mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "overview", modelId: dearer }] });
+    expect((await view()).credits).toBeGreaterThan(balanced);
+
+    expect(await ensure(await search("teacher training"), { pay: true })).toBe("started");
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").take(10));
+    expect(scheduled.map((run) => (run.args[0] as { modelId?: string }).modelId)).toContain(dearer);
+  });
+
   it("writes none free on a plan without them, and no more than PAID_PER_DAY paid ones a day, until the next day in UTC", async () => {
     const { search, ensure, view, setPerDay } = await setup();
     await setPerDay(0);
@@ -80,6 +117,19 @@ describe("AI overviews of a search", () => {
     vi.setSystemTime(new Date("2026-10-30T00:00:01Z"));
     expect(await ensure(searches[PAID_PER_DAY], { pay: true })).toBe("started");
     expect(await view()).toMatchObject({ day: "2026-10-30", free: 0, paid: 1 });
+  });
+
+  it("doesn't take an overview written from one source for another's", async () => {
+    const { t, search, ensure } = await setup();
+    const asked = await search("teacher training");
+    expect(await ensure(asked)).toBe("started");
+    await t.run(async (ctx) => {
+      const [row] = await ctx.db.query("searchOverviews").take(1);
+      await ctx.db.patch("searchOverviews", row._id, { status: "done" });
+    });
+    expect(await ensure(asked)).toBe("written");
+    await t.run((ctx) => ctx.db.insert("featureFlags", { key: "search.openscholar", enabled: true, updatedAt: 1 }));
+    expect(await ensure(asked)).toBe("started");
   });
 
   it("reads a written overview again for a search with the same request, and writes it anew only when asked", async () => {

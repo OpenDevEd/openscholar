@@ -1,4 +1,7 @@
 import { TopicLink } from "@/components/topics/topic-link";
+import { SimilarPapers } from "./similar-papers";
+import { similarSearchHref } from "@/lib/search/similar-href";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import React from "react";
 import { QueryMatchText } from "@/components/query-highlight";
 import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
@@ -62,6 +65,7 @@ export function PaperContent({
   selectedInstitutions,
   onToggleInstitution,
 }: PaperContentProps) {
+  const ownIndex = useSearchSource() === "openscholar";
   return (
     <div className={contentClasses}>
       {/* COINS metadata span - only render for the currently focused paper (not preview) */}
@@ -153,7 +157,7 @@ export function PaperContent({
             <span className="flex items-center gap-1">
               <span className="text-muted-foreground">{tLabels("refs")}:</span>
               <span className="font-medium">
-                {isPreview ? "127" : paper.referenced_works_count || 0}
+                {isPreview ? "127" : paper.referenced_works_count ?? tCommon("notAvailable")}
               </span>
             </span>
             <span className="flex items-center gap-1">
@@ -251,7 +255,7 @@ export function PaperContent({
                   className="flex items-center gap-1 text-xs ink-info hover:underline cursor-pointer"
                 >
                   <ExternalLink className="h-3 w-3" />
-                  <span className="font-mono">
+                  <span dir="ltr" className="font-mono">
                     {paper.doi!.replace("https://doi.org/", "")}
                   </span>
                 </button>
@@ -322,13 +326,14 @@ export function PaperContent({
           <div className="text-sm font-medium text-muted-foreground mb-1">
             {tCommon("abstract")}
           </div>
-          <div className={cn("pr-2", fontSizeClass, lineHeightClass)}>
+          <div dir="auto" className={cn("pe-2", fontSizeClass, lineHeightClass)}>
             {isPreview
               ? tFocus("abstractPreview")
               : <QueryMatchText text={showTranslated && translatedContent ? translatedContent.translatedAbstract : paper.abstract} />}
           </div>
         </div>
       )}
+      {!isPreview && ownIndex && similarSearchHref([paper.id]) && <SimilarPapers paperId={paper.id} />}
     </div>
   );
 }

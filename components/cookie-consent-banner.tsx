@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Cookie, Settings2 } from "@/components/icons";
 import posthog from "posthog-js";
+import { useConvexAuth, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,10 +17,9 @@ import {
 import {
   getStoredConsent,
   storeConsent,
-  hasConsentDecision,
-  CONSENT_UPDATED_EVENT,
 } from "@/lib/consent-storage";
 import { PolicyLinks } from "@/components/legal-links";
+import { api } from "@/convex/_generated/api";
 import { subtleSpring } from "@/lib/animation-config";
 import { cn } from "@/lib/utils";
 
@@ -98,19 +98,31 @@ export function CookieConsentBanner() {
     }
   }, []);
 
+  // The server's own analytics read the answer from the account. Someone signed out brings theirs when they sign in.
+  const { isAuthenticated } = useConvexAuth();
+  const saveConsent = useMutation(api.users.mutations.saveAnalyticsConsent);
+  const saveToAccount = useCallback(
+    (choice: "granted" | "denied") => {
+      if (isAuthenticated) saveConsent({ choice }).catch((error) => console.error("[consent] saving to the account failed", error));
+    },
+    [isAuthenticated, saveConsent],
+  );
+
   const handleAccept = useCallback(() => {
     posthog.opt_in_capturing();
     storeConsent("granted");
+    saveToAccount("granted");
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, []);
+  }, [saveToAccount]);
 
   const handleReject = useCallback(() => {
     posthog.opt_out_capturing();
     storeConsent("denied");
+    saveToAccount("denied");
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, []);
+  }, [saveToAccount]);
 
   useEffect(() => {
     setMounted(true);
@@ -133,14 +145,14 @@ export function CookieConsentBanner() {
   return (
     <>
       <AnimatePresence>
-        {showBanner && (
+        {showBanner && !showPreferencesDialog && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={subtleSpring}
             className={cn(
-              "fixed bottom-0 left-0 right-0 z-[100]",
+              "fixed bottom-0 start-0 end-0 z-[100]",
               "pb-[max(1rem,env(safe-area-inset-bottom))]",
               "px-4 sm:px-6 pt-4 sm:pt-5",
               "bg-card border-t border-border shadow-lg",
@@ -210,26 +222,11 @@ const COOKIE_PREFERENCES_EVENT = "openscholar-open-cookie-preferences";
 
 export function CookiePreferencesTrigger() {
   const t = useTranslations("footer");
-  const [mounted, setMounted] = useState(false);
-  const [hasDecision, setHasDecision] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    setHasDecision(hasConsentDecision());
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setHasDecision(true);
-    window.addEventListener(CONSENT_UPDATED_EVENT, handler);
-    return () => window.removeEventListener(CONSENT_UPDATED_EVENT, handler);
-  }, []);
-
   const handleClick = () => {
     window.dispatchEvent(new CustomEvent(COOKIE_PREFERENCES_EVENT));
   };
 
-  if (!mounted || !hasDecision) return null;
-
+  // Always there, so the footer's other links don't move once the page has read the decision.
   return (
     <button
       type="button"

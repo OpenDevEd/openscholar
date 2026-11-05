@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations, useLocale } from "next-intl";
 import { useState } from "react";
 import { useAction } from "convex/react";
 import { BadgeCheck, BookOpen, CalendarDays, Check, ChevronDown, Clock3, Pause, PenLine, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
@@ -16,6 +17,9 @@ import { FieldGroup, PanelRow, ToggleRow } from "../fields";
 import type { SectionProps } from "../section-shell";
 
 export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps, "libraryId" | "draft" | "patch">) {
+  const tLabels = useTranslations("libraryNotificationSettings");
+  const locale = useLocale();
+  const t = useTranslations("libraryNotificationSettings");
   const canSend = useProtectedQuery(api.evidenceLibraries.digests.manual.available, {libraryId}).data === true;
   const send = useAction(api.evidenceLibraries.digests.manualActions.send);
   const [sending, setSending] = useState(false);
@@ -24,11 +28,11 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
     setSending(true);
     try {
       const result = await send({libraryId});
-      if (result.status === "queued") toast.success(`Digest queued for ${result.publicationCount} ${result.publicationCount === 1 ? "publication" : "publications"}.`);
-      else if (result.status === "empty") toast.info("No publications in the period. Nothing was sent.");
-      else toast.error("Publish the library configuration with reader subscriptions enabled first.");
+      if (result.status === "queued") toast.success(t("digestQueuedFor", { count: result.publicationCount }));
+      else if (result.status === "empty") toast.info(t("noPublicationsInThePeriodNothing"));
+      else toast.error(t("publishTheLibraryConfigurationWithReader"));
     } catch {
-      toast.error("The digest request could not be confirmed. Try again; existing editions will not be sent twice.");
+      toast.error(t("theDigestRequestCouldNotBe"));
     } finally {
       setSending(false);
     }
@@ -37,68 +41,68 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
   const schedule = notifications.schedule;
   const setSchedule = (value: typeof schedule) => patch(draft => {draft.notifications.schedule = value;return draft;});
   let timezoneError: string | null = null;
-  try {new Intl.DateTimeFormat("en", {timeZone: schedule.timezone});} catch {timezoneError = "Choose a timezone.";}
-  return <FieldGroup title={<span className="inline-flex items-center gap-2"><Mail className="size-4 text-primary" />Email updates</span>}>
-    <ToggleRow label="Reader subscriptions" hint="Readers can choose new publications, library digests, or both. Empty editions are skipped." checked={notifications.enabled} onChange={enabled => patch(draft => {draft.notifications.enabled = enabled;return draft;})} />
+  try {new Intl.DateTimeFormat("en", {timeZone: schedule.timezone});} catch {timezoneError = tLabels("chooseATimezone");}
+  return <FieldGroup title={<span className="inline-flex items-center gap-2"><Mail className="size-4 text-primary" />{t("emailUpdates")}</span>}>
+    <ToggleRow label={t("readerSubscriptions")} hint={t("readersCanChooseNewPublicationsLibrary")} checked={notifications.enabled} onChange={enabled => patch(draft => {draft.notifications.enabled = enabled;return draft;})} />
     {notifications.enabled && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      <Field className="sm:col-span-2 xl:col-span-4" label={<span className="inline-flex items-center gap-2"><BookOpen className="size-4 text-muted-foreground" />Digest covers</span>} hint={notifications.digestCovers === "published" ? "A publication without a full date belongs to no period." : "An older publication counts when it is new to the library."}>
+      <Field className="sm:col-span-2 xl:col-span-4" label={<span className="inline-flex items-center gap-2"><BookOpen className="size-4 text-muted-foreground" />{t("digestCovers")}</span>} hint={notifications.digestCovers === "published" ? t("aPublicationWithoutAFullDate") : t("anOlderPublicationCountsWhenIt")}>
         {id => <Select value={notifications.digestCovers} onValueChange={value => patch(draft => {draft.notifications.digestCovers = value === "added" ? "added" : "published";return draft;})}>
           <SelectTrigger id={id} aria-describedby={hintId(id)} className="w-full bg-background"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="published">Publications published in the period</SelectItem><SelectItem value="added">Publications added to the library in the period</SelectItem></SelectContent>
+          <SelectContent><SelectItem value="published">{t("publicationsPublishedInThePeriod")}</SelectItem><SelectItem value="added">{t("publicationsAddedToTheLibraryIn")}</SelectItem></SelectContent>
         </Select>}
       </Field>
-      <Field label={<span className="inline-flex items-center gap-2"><Repeat2 className="size-4 text-muted-foreground" />Frequency</span>}>
+      <Field label={<span className="inline-flex items-center gap-2"><Repeat2 className="size-4 text-muted-foreground" />{t("frequency")}</span>}>
         {id => <Select value={schedule.frequency} onValueChange={frequency => setSchedule(frequency === "monthly"
           ? {frequency, dayOfMonth: 1, time: schedule.time, timezone: schedule.timezone}
           : {frequency: "weekly", weekday: 1, time: schedule.time, timezone: schedule.timezone})}>
           <SelectTrigger id={id} className="w-full bg-background"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="weekly">Weekly</SelectItem><SelectItem value="monthly">Monthly</SelectItem></SelectContent>
+          <SelectContent><SelectItem value="weekly">{t("weekly")}</SelectItem><SelectItem value="monthly">{t("monthly")}</SelectItem></SelectContent>
         </Select>}
       </Field>
-      <Field label={<span className="inline-flex items-center gap-2"><CalendarDays className="size-4 text-muted-foreground" />{schedule.frequency === "weekly" ? "Day of the week" : "Day of the month"}</span>} hint={schedule.frequency === "monthly" && schedule.dayOfMonth > 28 ? "Shorter months use their last day." : undefined}>
+      <Field label={<span className="inline-flex items-center gap-2"><CalendarDays className="size-4 text-muted-foreground" />{schedule.frequency === "weekly" ? t("dayOfTheWeek") : t("dayOfTheMonth")}</span>} hint={schedule.frequency === "monthly" && schedule.dayOfMonth > 28 ? t("shorterMonthsUseTheirLastDay") : undefined}>
         {id => schedule.frequency === "weekly"
-          ? <Select value={String(schedule.weekday)} onValueChange={value => setSchedule({...schedule, weekday: Number(value)})}><SelectTrigger id={id} className="w-full bg-background"><SelectValue /></SelectTrigger><SelectContent>{["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => <SelectItem key={day} value={String(index)}>{day}</SelectItem>)}</SelectContent></Select>
+          ? <Select value={String(schedule.weekday)} onValueChange={value => setSchedule({...schedule, weekday: Number(value)})}><SelectTrigger id={id} className="w-full bg-background"><SelectValue /></SelectTrigger><SelectContent>{[tLabels("sunday"), tLabels("monday"), tLabels("tuesday"), tLabels("wednesday"), tLabels("thursday"), tLabels("friday"), tLabels("saturday")].map((day, index) => <SelectItem key={day} value={String(index)}>{day}</SelectItem>)}</SelectContent></Select>
           : <Select value={String(schedule.dayOfMonth)} onValueChange={value => setSchedule({...schedule, dayOfMonth: Number(value)})}><SelectTrigger id={id} aria-describedby={schedule.dayOfMonth > 28 ? hintId(id) : undefined} className="w-full bg-background"><SelectValue /></SelectTrigger><SelectContent>{Array.from({length: 31}, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>{index + 1}</SelectItem>)}</SelectContent></Select>}
       </Field>
-      <Field label={<span className="inline-flex items-center gap-2"><Clock3 className="size-4 text-muted-foreground" />Time</span>} error={!/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time) ? "Choose a valid time." : null}>
+      <Field label={<span className="inline-flex items-center gap-2"><Clock3 className="size-4 text-muted-foreground" />{t("time")}</span>} error={!/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time) ? tLabels("chooseAValidTime") : null}>
         {(id, invalid) => <Input id={id} type="time" className="bg-background" value={schedule.time} aria-invalid={invalid || undefined} onChange={event => setSchedule({...schedule, time: event.target.value})} />}
       </Field>
-      <Field label={<span className="inline-flex items-center gap-2"><Globe2 className="size-4 text-muted-foreground" />Timezone</span>} error={timezoneError}>
+      <Field label={<span className="inline-flex items-center gap-2"><Globe2 className="size-4 text-muted-foreground" />{t("timezone")}</span>} error={timezoneError}>
         {(id, invalid) => <TimezonePicker id={id} invalid={invalid} value={schedule.timezone} onChange={timezone => setSchedule({...schedule, timezone})} />}
       </Field>
     </div>}
     {notifications.enabled && <Field
-      label={<span className="inline-flex items-center gap-2"><BadgeCheck className="size-4 text-muted-foreground" />Before a digest goes out</span>}
+      label={<span className="inline-flex items-center gap-2"><BadgeCheck className="size-4 text-muted-foreground" />{t("beforeADigestGoesOut")}</span>}
       hint={notifications.approval
-        ? "It waits in the library's admin panel, where Creators can edit it and an Editor or Owner publishes it."
-        : "It is published and emailed as soon as it is written. It can still be corrected in the library's admin panel."}
+        ? t("itWaitsInTheLibraryS")
+        : t("itIsPublishedAndEmailedAs")}
     >
       {id => <Select value={notifications.approval ? "editor" : "none"} onValueChange={value => patch(draft => {draft.notifications.approval = value === "editor";return draft;})}>
         <SelectTrigger id={id} aria-describedby={hintId(id)} className="w-full bg-background"><SelectValue /></SelectTrigger>
-        <SelectContent><SelectItem value="editor">An editor approves it</SelectItem><SelectItem value="none">It is sent as AI wrote it</SelectItem></SelectContent>
+        <SelectContent><SelectItem value="editor">{t("anEditorApprovesIt")}</SelectItem><SelectItem value="none">{t("itIsSentAsAiWrote")}</SelectItem></SelectContent>
       </Select>}
     </Field>}
     {notifications.enabled && <ToggleRow
-      label={<span className="inline-flex items-center gap-2"><PenLine className="size-4 text-muted-foreground" />Name who checked it</span>}
-      hint="On the digest, in the list of digests and in the email, with any note they wrote. A digest nobody checked says it was written by AI."
+      label={<span className="inline-flex items-center gap-2"><PenLine className="size-4 text-muted-foreground" />{t("nameWhoCheckedIt")}</span>}
+      hint={t("onTheDigestInTheList")}
       checked={notifications.attribution}
       onChange={attribution => patch(draft => {draft.notifications.attribution = attribution;return draft;})}
     />}
     {notifications.enabled && <ToggleRow
-      label={<span className="inline-flex items-center gap-2"><Pause className="size-4 text-muted-foreground" />Pause digests</span>}
+      label={<span className="inline-flex items-center gap-2"><Pause className="size-4 text-muted-foreground" />{t("pauseDigests")}</span>}
       hint={notifications.pausedSince
-        ? `Paused since ${new Date(notifications.pausedSince).toLocaleDateString("en-GB", {day: "numeric", month: "long"})}. The first digest after you resume covers everything since the last one, up to a month back.`
-        : "New publication emails keep going out."}
+        ? t("pausedSinceTheFirstDigestAfter", { value: new Date(notifications.pausedSince).toLocaleDateString(locale, {day: "numeric", month: "long"}) })
+        : t("newPublicationEmailsKeepGoingOut")}
       checked={notifications.pausedSince !== null}
       onChange={paused => patch(draft => {draft.notifications.pausedSince = paused ? new Date().toISOString() : null;return draft;})}
     />}
     {canSend && notifications.enabled && <PanelRow
       className="flex-col items-stretch sm:flex-row sm:items-center"
-      title={<span className="inline-flex items-center gap-2"><TimerReset className="size-4 text-muted-foreground" />Manual digest</span>}
-      hint="Covers the period since the last digest. The next scheduled edition starts from this one."
+      title={<span className="inline-flex items-center gap-2"><TimerReset className="size-4 text-muted-foreground" />{t("manualDigest")}</span>}
+      hint={t("coversThePeriodSinceTheLast")}
       action={<Button type="button" variant="outline" className="w-full sm:w-auto" onClick={sendNow} disabled={sending}>
         {sending ? <Spinner className="size-4" /> : <Send className="size-4" />}
-        {sending ? "Queuing digest" : "Send digest now"}
+        {sending ? t("queuingDigest") : t("sendDigestNow")}
       </Button>}
     />}
   </FieldGroup>;
@@ -126,6 +130,7 @@ function listTimezones() {
 }
 
 function TimezonePicker({id, invalid, value, onChange}: {id: string; invalid: boolean; value: string; onChange: (timezone: string) => void}) {
+  const t = useTranslations("libraryNotificationSettings");
   const [open, setOpen] = useState(false);
   const current = currentNames[value] ?? value;
   return <Popover open={open} onOpenChange={setOpen}>
@@ -135,11 +140,11 @@ function TimezonePicker({id, invalid, value, onChange}: {id: string; invalid: bo
         <ChevronDown className="size-4 shrink-0 opacity-50" />
       </Button>
     </PopoverTrigger>
-    <PopoverContent align="start" aria-label="Timezone" className="w-(--radix-popover-trigger-width) p-0">
-      <Command label="Search city or region" defaultValue={current.replaceAll("_", " ")}>
-        <CommandInput placeholder="Search city or region" />
+    <PopoverContent align="start" aria-label={t("timezone")} className="w-(--radix-popover-trigger-width) p-0">
+      <Command label={t("searchCityOrRegion")} defaultValue={current.replaceAll("_", " ")}>
+        <CommandInput placeholder={t("searchCityOrRegion")} />
         <CommandList>
-          <CommandEmpty>No timezone found.</CommandEmpty>
+          <CommandEmpty>{t("noTimezoneFound")}</CommandEmpty>
           <CommandGroup>
             {listTimezones().map(timezone => <CommandItem key={timezone.id} value={timezone.name} keywords={[timezone.id]} onSelect={() => {onChange(timezone.id);setOpen(false);}}>
               <Check className={current === timezone.id ? "size-4" : "size-4 opacity-0"} />

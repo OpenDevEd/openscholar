@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withPostHogConfig } from "@posthog/nextjs-config";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
@@ -50,6 +51,16 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // The old addresses: running communities still send their admins through /evidence-libraries (convex/evidenceLibraries/runtimeConfiguration.ts).
+  async redirects() {
+    return [
+      { source: "/evidence-libraries", destination: "/evidence-communities", permanent: true },
+      { source: "/evidence-libraries/:path*", destination: "/evidence-communities/:path*", permanent: true },
+      { source: "/o/:slug/evidence-libraries", destination: "/o/:slug/evidence-communities", permanent: true },
+      { source: "/o/:slug/evidence-libraries/:path*", destination: "/o/:slug/evidence-communities/:path*", permanent: true },
+      { source: "/settings/admin/evidence-libraries", destination: "/settings/admin/evidence-communities", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       {
@@ -66,4 +77,17 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
-export default withNextIntl(nextConfig);
+// Errors in PostHog read as our code: a build with POSTHOG_API_KEY uploads its source maps and deletes them, so
+// they're never served. A build without the key, on a laptop or in CI, uploads nothing.
+const postHogApiKey = process.env.POSTHOG_API_KEY ?? "";
+
+export default withPostHogConfig(withNextIntl(nextConfig), {
+  personalApiKey: postHogApiKey,
+  projectId: "125154",
+  host: "https://eu.posthog.com",
+  sourcemaps: {
+    enabled: postHogApiKey !== "",
+    releaseName: "openscholar",
+    releaseVersion: process.env.SOURCE_COMMIT || "unversioned",
+  },
+});

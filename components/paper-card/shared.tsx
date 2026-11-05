@@ -17,11 +17,11 @@ import {
   Building,
   Table,
   AiIcon,
-  TranslateIcon,
-} from "@/components/icons";
+  TranslateIcon, Compass } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { authorValue, useScreening, type FilterValue } from "./hooks";
 import { institutionId, sourceId } from "@/lib/openalex/ids";
+import { AuthorHoverCard, InstitutionHoverCard } from "@/components/entity-cards";
 import type { TranslationContent } from "./hooks";
 import { useUIStore } from "@/lib/store";
 import { useTranslations, useFormatter } from "next-intl";
@@ -315,13 +315,13 @@ export function ScreeningResponses({
             <table className={variant === "mobile" ? "w-full text-xs" : "w-full text-xs min-w-full"}>
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-8">
+                  <th className="text-start py-2 px-2 font-medium text-muted-foreground w-8">
                     #
                   </th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                  <th className="text-start py-2 px-2 font-medium text-muted-foreground">
                     {tc("question")}
                   </th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">
+                  <th className="text-start py-2 px-2 font-medium text-muted-foreground w-16">
                     {tc("response")}
                   </th>
                 </tr>
@@ -436,9 +436,10 @@ export function CitationBadge({
   onClick,
   compact = false,
 }: {
-  count: number;
+  /** None where a source has no number for it. */
+  count?: number;
   label: string;
-  color: "orange" | "green" | "blue";
+  color: "orange" | "green" | "blue" | "similar";
   onClick?: () => void;
   compact?: boolean;
 }) {
@@ -447,9 +448,10 @@ export function CitationBadge({
     orange: "ink-cites hover:bg-cites/10",
     green: "ink-cited-by hover:bg-cited-by/10",
     blue: "ink-related hover:bg-related/10",
+    similar: "ink-related hover:bg-related/10",
   };
 
-  const Icon = color === "blue" ? Network : Quote;
+  const Icon = color === "similar" ? Compass : color === "blue" ? Network : Quote;
 
   if (compact) {
     return (
@@ -462,7 +464,7 @@ export function CitationBadge({
           )}
         >
           <Icon className="h-3 w-3" />
-          <span>{format.number(count)}</span>
+          {count !== undefined && <span>{format.number(count)}</span>}
         </button>
       </TooltipHint>
     );
@@ -477,7 +479,7 @@ export function CitationBadge({
     >
       <Icon className="h-4 w-4" />
       <span className="text-sm">
-        {label} <span className="font-semibold tabular-nums">{format.number(count)}</span>
+        {label}{count !== undefined && <> <span className="font-semibold tabular-nums">{format.number(count)}</span></>}
       </span>
     </Button>
   );
@@ -593,7 +595,7 @@ export function DOIBadge({
         )}
       >
         <ExternalLink className="h-3 w-3" />
-        <span className="truncate text-xs font-mono">{shortDoi}</span>
+        <span dir="ltr" className="truncate text-xs font-mono">{shortDoi}</span>
       </Button>
     </TooltipHint>
   );
@@ -636,22 +638,25 @@ interface AuthorNamesProps {
 /**
  * A name that filters the search by what it names, or stops filtering by it. It
  * keeps its click and its Enter or Space to itself, since it sits inside cards
- * that open on both.
+ * that open on both. Other props, such as a hover card's, pass to the button.
  */
-function FilterName({ pressed, label, onToggle, className, children }: { pressed: boolean; label: string; onToggle: () => void; className?: string; children: React.ReactNode }) {
+export function FilterName({ pressed, label, onToggle, className, children, ...props }: React.ComponentProps<"button"> & { pressed: boolean; label: string; onToggle: () => void }) {
   return (
     <button
       type="button"
+      {...props}
       aria-pressed={pressed}
       aria-label={label}
       onClick={(event) => {
         event.stopPropagation();
+        props.onClick?.(event);
         onToggle();
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+        props.onKeyDown?.(event);
       }}
-      className={cn("rounded-sm text-left underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary", className)}
+      className={cn("rounded-sm text-start underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary", className)}
     >
       {children}
     </button>
@@ -668,18 +673,21 @@ export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selec
     <>
       {authorships.slice(0, shown).map(({ author }, index) => {
         const value = authorValue(author);
+        const name = value && onToggleAuthor ? (
+          <FilterName
+            pressed={selected?.includes(value) ?? false}
+            label={tf("filterByAuthor", { name: author.display_name })}
+            onToggle={() => onToggleAuthor({ value, name: author.display_name })}
+          >
+            {author.display_name}
+          </FilterName>
+        ) : null;
         return (
           <React.Fragment key={`${value}-${index}`}>
             {index > 0 && ", "}
-            {value && onToggleAuthor ? (
-              <FilterName
-                pressed={selected?.includes(value) ?? false}
-                label={tf("filterByAuthor", { name: author.display_name })}
-                onToggle={() => onToggleAuthor({ value, name: author.display_name })}
-              >
-                {author.display_name}
-              </FilterName>
-            ) : (
+            {name && value ? (
+              <AuthorHoverCard value={value} name={author.display_name}>{name}</AuthorHoverCard>
+            ) : name ?? (
               author.display_name
             )}
           </React.Fragment>
@@ -749,9 +757,11 @@ export function InstitutionsLine({
           <React.Fragment key={id}>
             {index > 0 && ", "}
             {onToggle ? (
-              <FilterName pressed={selected?.includes(id) ?? false} label={tf("filterByThisInstitution", { name })} onToggle={() => onToggle({ value: id, name })}>
-                {name}
-              </FilterName>
+              <InstitutionHoverCard id={id} name={name}>
+                <FilterName pressed={selected?.includes(id) ?? false} label={tf("filterByThisInstitution", { name })} onToggle={() => onToggle({ value: id, name })}>
+                  {name}
+                </FilterName>
+              </InstitutionHoverCard>
             ) : (
               name
             )}
@@ -788,7 +798,7 @@ export function AuthorsLine({
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
       {/* With controls it is not cut to one line: a name hidden by the cut would still take keyboard focus. */}
-      <span className={cn(!onToggleAuthor && "line-clamp-1")}>
+      <span dir="auto" className={cn(!onToggleAuthor && "line-clamp-1")}>
         <AuthorNames authorships={authorships ?? []} unparsed={unparsed} maxLength={maxLength} selected={selected} onToggleAuthor={onToggleAuthor} />
       </span>
     </div>
@@ -814,7 +824,7 @@ export function JournalLine({
   return (
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <BookOpen className="h-4 w-4 flex-shrink-0 mt-0.5" />
-      <span className="italic line-clamp-1">
+      <span dir="auto" className="italic line-clamp-1">
         <JournalName source={source} selected={selected} onToggle={onToggle} />
         {biblio?.volume && `, ${tp("vol")} ${biblio.volume}`}
         {biblio?.issue && ` (${biblio.issue})`}
@@ -870,7 +880,7 @@ export function CardContainer({
     return (
       <button
         type="button"
-        className={cn(containerClassName, "w-full text-left appearance-none")}
+        className={cn(containerClassName, "w-full text-start appearance-none")}
         onClick={onClick}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {

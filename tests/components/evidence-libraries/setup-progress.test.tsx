@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn(), retrySetup: vi.fn() }));
 
 vi.mock("convex/react", () => ({ useMutation: () => mocks.retrySetup }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
   useTranslations: () => (key: string) => key,
   useFormatter: () => ({ dateTime: (date: Date) => date.toISOString() }),
 }));
@@ -250,7 +251,7 @@ describe("<SetupProgress>", () => {
     expect(pageStatus()).toHaveAttribute("data-setup-status", "draft");
     expect(
       screen.getAllByRole("link", { name: "configure" })[0],
-    ).toHaveAttribute("href", "/evidence-libraries/lib_1/configuration");
+    ).toHaveAttribute("href", "/evidence-communities/lib_1/configuration");
   });
 
   it("only says so while the library is being deleted", () => {

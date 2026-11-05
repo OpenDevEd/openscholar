@@ -29,6 +29,13 @@ the other.
   admin", "the admin page", and "the admin panel" mean new-el's `/admin`.
   "Evidence Library" on its own means new-el unless the request is about
   configuration or setup.
+- People read "Evidence Community" and "community". "Library" on its own means
+  the saved papers in OpenScholar. Code, tables, service APIs and older plans
+  still say Evidence Library (`evidenceLibraries`, `/api/v1/evidence-libraries`,
+  `new-el`), and "Evidence Community" in a request means that same thing. Never
+  write "library" in text people read when the community is meant.
+- People read the product's name as "Openscholar". Code names, HTTP headers such
+  as `X-OpenScholar-Route`, comments and older plans still say OpenScholar.
 - Before touching code, decide which repository the request is about from what
   it names, not from the current directory. Work in that repository's checkout
   or a worktree of it, even when the session started in the other one.
@@ -135,6 +142,11 @@ workflow.
 - When a change needs runtime proof, test the unmerged commit in an isolated or
   preview deployment before merge. Merge must not be the first way to exercise
   the real boundary.
+- `convex-e2e` (`convex-e2e.opendev.space`) belongs to OpenScholar CI's
+  `e2e-auth` job. Never deploy an unmerged branch to it, or point a preview,
+  `npm run verify`, or a script at it: a row saved in a new shape fails every
+  other CI run with `Schema validation failed`. Test an unmerged Convex change
+  on a throwaway Convex project of its own.
 - Run one final browser, deployment, or live-service gate when the changed
   boundary needs one.
 - A change a person sees is done when `npm run verify -- shift` passes for

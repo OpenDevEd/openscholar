@@ -25,6 +25,8 @@ import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
+import { paramsAsRun, SEMANTIC_FIELD, type SearchSource } from './source';
+import { useSearchSource } from './use-search-source';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
 import { buildOpenAlexWorksQuery } from '../openalex/works-query';
@@ -127,6 +129,7 @@ function cloneSearchParams(params: SearchParams): SearchParams {
 export function SearchProvider({ children, local }: SearchProviderProps) {
   const toast = useAppToast();
   const tValidation = useTranslations("validation");
+  const source = useSearchSource();
   const searchId = getEffectiveSearchId(usePathname(), local?.searchId) ?? '';
   
   const account = useContext(ResearchContext);
@@ -142,7 +145,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     (state) => state.searchHistory.find((entry) => entry.id === searchId),
   );
   const storedQuery = storedSearch?.query ?? '';
-  const savedParams = useMemo(() => account && storedSearch ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(storedSearch), q: storedQuery } : null, [account, storedSearch, storedQuery]);
+  const savedParams = useMemo(() => account && storedSearch ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(storedSearch), q: storedQuery } : null, [account, storedSearch, storedQuery, routeUrlParams.field, routeUrlParams.like]);
   const routeIsOql = (savedParams ?? routeUrlParams).field === OQL_FIELD;
   const routeSearchParams = useMemo(
     () => savedParams ?? (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
@@ -257,6 +260,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       cites: urlParams.cites,
       citedBy: urlParams.citedBy,
       rel: urlParams.rel,
+      like: urlParams.like,
       review: urlParams.review,
       area: urlParams.area,
       sdg: urlParams.sdg,
@@ -301,6 +305,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.cites,
     urlParams.citedBy,
     urlParams.rel,
+    urlParams.like,
     urlParams.review,
     urlParams.area,
     urlParams.sdg,
@@ -329,14 +334,14 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const swrKey = useMemo(() => {
     if (!paramsKey) return null;
     
-    return ['search', paramsKey] as const;
-  }, [paramsKey]);
+    return ['search', paramsKey, source] as const;
+  }, [paramsKey, source]);
   
   // Single SWR fetcher - all data comes from the key
-  const fetcher = useCallback(async ([, paramsJson]: readonly [string, string]) => {
+  const fetcher = useCallback(async ([, paramsJson, searched]: readonly [string, string, SearchSource]) => {
     const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams>;
     const snapshotParams = paramsSnapshotByKey.get(paramsJson);
-    const params: SearchParams = snapshotParams
+    const saved: SearchParams = snapshotParams
       ? cloneSearchParams(snapshotParams)
       : {
           ...DEFAULT_SEARCH_PARAMS,
@@ -359,6 +364,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           rated: DEFAULT_SEARCH_PARAMS.rated,
           lang: DEFAULT_SEARCH_PARAMS.lang,
         };
+    const params = paramsAsRun(saved, searched);
 
     const previousParams = previousTrackedParamsRef.current;
     const changedParamKeys = getChangedParamKeys(previousParams, params);
@@ -406,6 +412,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citesItemId: params.cites || '',
       citedByItemId: params.citedBy || '',
       relatedToItemId: params.rel || '',
+      similarTo: params.like ?? [],
       reviewFilter: params.review || false,
       researchAreas: params.area,
       sdgs: params.sdg,
@@ -436,7 +443,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       const result = await getSearchResultsWithFilters(searchParams, {
         getMessage: (key, params) =>
           tValidation(key as "bookmarkNotFound", params as Record<string, string>),
-      });
+      }, searched);
       captureSearchExecuted(basePayload);
       captureSearchSucceeded({
         ...basePayload,
@@ -470,6 +477,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       keepPreviousData: true,
       dedupingInterval: 5000,
       errorRetryCount: 2,
+      shouldRetryOnError: (err) => !(err instanceof SearchError && err.status === 400),
       errorRetryInterval: 1000,
       onSuccess: (data) => {
         if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === paramsKey) {
@@ -481,9 +489,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       },
       onError: (err) => {
         console.error('Search failed:', err);
-        // An OQL query OpenAlex rejects shows its reason under the query box instead.
-        const rejectedOql = currentParams.field === OQL_FIELD && err instanceof SearchError && err.status === 400;
-        if (!rejectedOql) toast.search.failed(err);
+        // A query the source refuses says why on the page, in place of its results, and found nothing.
+        if (!(err instanceof SearchError && err.status === 400)) toast.search.failed(err);
+        else if (searchId && getSearchResult(searchId)?.count && getSearchResult(searchId)?.query === currentParams.q) updateSearchResult(searchId, { count: 0 });
       },
     }
   );
@@ -583,8 +591,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // Get current query from store to check if it changed
     const existing = getSearchResult(searchId);
     const currentQuery = existing?.query ?? '';
-    // A query-history step onto a query from the other scope (keywords or OQL) brings its scope.
-    const field = options?.field && (options.field === OQL_FIELD) !== (urlParams.field === OQL_FIELD)
+    // A query-history step onto a query of another kind (keywords, OQL or a question by meaning) brings its scope.
+    const kind = (scope: string) => (scope === OQL_FIELD || scope === SEMANTIC_FIELD ? scope : "keywords");
+    const field = options?.field && kind(options.field) !== kind(urlParams.field)
       ? options.field
       : urlParams.field;
     const oqlInvolved = !local && (field === OQL_FIELD || routeIsOql);
@@ -728,6 +737,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     if ('cites' in updates) storeUpdates.citesItemId = updates.cites;
     if ('citedBy' in updates) storeUpdates.citedByItemId = updates.citedBy;
     if ('rel' in updates) storeUpdates.relatedToItemId = updates.rel;
+    if ('like' in updates) storeUpdates.similarTo = updates.like;
     if ('review' in updates) storeUpdates.reviewFilter = updates.review;
     if ('area' in updates) storeUpdates.researchAreas = updates.area;
     if ('sdg' in updates) storeUpdates.sdgs = updates.sdg;
@@ -769,6 +779,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       cites: '',
       citedBy: '',
       rel: '',
+      like: [],
       review: false,
       area: [],
       sdg: [],
@@ -801,6 +812,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citesItemId: '',
       citedByItemId: '',
       relatedToItemId: '',
+      similarTo: [],
       reviewFilter: false,
       researchAreas: [],
       sdgs: [],
@@ -856,6 +868,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     citesItemId: urlParams.cites,
     citedByItemId: urlParams.citedBy,
     relatedToItemId: urlParams.rel,
+    similarTo: urlParams.like,
     reviewFilter: urlParams.review,
     researchAreas: urlParams.area,
     sdgs: urlParams.sdg,
@@ -893,6 +906,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // A rejected query ran nothing, so the last search's results are not shown as its own.
     results: (rejected ? [] : data?.results?.results || []) as PaperResult[],
     totalCount: rejected ? 0 : data?.results?.meta?.count || 0,
+    searchedCount: rejected ? null : (data?.results?.meta as { searched_count?: number } | undefined)?.searched_count ?? null,
     apiUrl: data?.results?.meta?.url || '',
     oql,
     originalQuery: data?.originalQuery || '',

@@ -7,6 +7,8 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
     `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
 }));

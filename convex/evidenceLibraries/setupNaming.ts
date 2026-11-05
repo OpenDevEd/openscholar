@@ -34,7 +34,7 @@ export function validateEvidenceLibrarySetupName(value: string): string {
   if (!name || Array.from(name).length > MAX_EVIDENCE_LIBRARY_NAME_LENGTH) {
     throw createError(
       "VALIDATION_ERROR",
-      "Evidence Library name must be between 1 and 100 characters",
+      "Evidence Community name must be between 1 and 100 characters",
     );
   }
   return name;
@@ -56,7 +56,7 @@ export function readEvidenceLibraryIdentityNames(
   ) {
     throw createError(
       errorCode,
-      "Evidence Library identity needs a name and a short name",
+      "Evidence Community identity needs a name and a short name",
     );
   }
   return { name: value.name, shortName: value.shortName };
@@ -186,7 +186,7 @@ export async function readEvidenceLibrarySetupIdentity(
   if (!identitySection) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library setup identity is incomplete",
+      "Evidence Community setup identity is incomplete",
     );
   }
   const payload = readEvidenceLibraryIdentityNames(

@@ -26,7 +26,7 @@ export const seedAddressState = internalMutation({
   handler: async (ctx, args) => {
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     if (!library?.runtimeBindingId) {
-      throw createError("NOT_FOUND", "This library has no runtime binding");
+      throw createError("NOT_FOUND", "This community has no runtime binding");
     }
     await ctx.db.patch(library.runtimeBindingId, {
       addressState: args.forget ? undefined : args.addressState,
@@ -51,7 +51,7 @@ export const seedAddressMove = internalMutation({
   handler: async (ctx, args) => {
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     if (!library?.setupOperationId) {
-      throw createError("NOT_FOUND", "This library has no setup operation");
+      throw createError("NOT_FOUND", "This community has no setup operation");
     }
     await ctx.db.patch(library.setupOperationId, { addressMove: args.move });
     return null;

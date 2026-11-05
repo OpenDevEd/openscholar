@@ -35,6 +35,7 @@ import { answerAction as screeningAnswerAction, getAction as screeningPaperActio
 import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
+import { countAction as countLibraryAccessAction, listAction as listLibraryAccessAction } from "../organizations/libraryAccess";
 import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
 import { balanceAction, countChargesAction, listChargesAction, planAction, spendingAction } from "../billing/usage";
 import { allowanceAction, setCapAction, spendingAction as memberSpendingAction } from "../billing/caps";
@@ -51,6 +52,7 @@ import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
 import { addMemberAction as libraryAddMemberAction, changeRoleAction as libraryChangeRoleAction, removeMemberAction as libraryRemoveMemberAction, draftAction as libraryDraftAction, librariesAction as librariesListAction, revisionAction as libraryRevisionAction, editDraftAction as libraryEditDraftAction, teamAction as libraryTeamAction, inviteAction as libraryInviteAction, changeInvitationAction as libraryChangeInvitationAction, invitationsAction as libraryInvitationsAction, answerInvitationAction as libraryAnswerInvitationAction, startLibraryAction as libraryStartLibraryAction, sourcesAction as librarySourcesAction, runningCollectionsAction as libraryRunningCollectionsAction, runningInstitutionsAction as libraryRunningInstitutionsAction, runningPublicationsAction as libraryRunningPublicationsAction, runningPublicationAction as libraryRunningPublicationAction, syncSourceAction as librarySyncSourceAction, screeningRequestAction as libraryScreeningRequestAction, gradeSourceAction as libraryGradeSourceAction, trySourceSubjectAction as libraryTrySourceSubjectAction } from "../evidenceLibraries/assistant";
 import { createAction as authorCreateAction, directoryAction as authorDirectoryAction, editorsAction as authorEditorsAction, invitationsAction as authorInvitationsAction, profileAction as authorProfileAction, publicationsAction as authorPublicationsAction } from "../authors/assistant";
+import { addAction as authorRecordAddAction, claimAction as authorClaimAction, removeAction as authorRecordRemoveAction } from "../authors/links";
 import { publicationsAction as topicPublicationsAction } from "../topics/assistant";
 import { listAction as readLibrariesAction } from "../evidenceLibraries/readers";
 import { addressAction as readerSourceAddressAction, changeRecordsAction as readerChangeRecordsAction, createCollectionAction as readerCreateCollectionAction, deleteCollectionAction as readerDeleteCollectionAction, recordsAction as readerRecordsAction, sourceAction as readerSourceAction, sourcesAction as readerSourcesAction } from "../evidenceLibraries/library";
@@ -63,6 +65,9 @@ export const USER_ACTIONS: readonly UserAction[] = [
   authorEditorsAction,
   authorInvitationsAction,
   authorCreateAction,
+  authorClaimAction,
+  authorRecordAddAction,
+  authorRecordRemoveAction,
   authorPublicationsAction,
   topicPublicationsAction,
   zoteroGroupsAction,
@@ -245,6 +250,8 @@ export const USER_ACTIONS: readonly UserAction[] = [
   walletKeyCountAction,
   listAdminsAction,
   countAdminsAction,
+  listLibraryAccessAction,
+  countLibraryAccessAction,
   listCandidatesAction,
   adminModelsAction,
   adminModelSummaryAction,

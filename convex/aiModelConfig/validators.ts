@@ -20,6 +20,7 @@ const customPickFields: Record<AiTask, typeof optionalPick> = {
   chat: optionalPick,
   extraction: optionalPick,
   screenAll: optionalPick,
+  overview: optionalPick,
   screening: optionalPick,
   questionToQuery: optionalPick,
   refine: optionalPick,

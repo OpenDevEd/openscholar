@@ -348,7 +348,7 @@ describe("Evidence Library database setup", () => {
     expect(failed).toMatchObject({
       error: {
         code: "database_owner_conflict",
-        message: "The library database is owned by another login.",
+        message: "The community database is owned by another login.",
         stage: "database",
       },
       status: "failed",

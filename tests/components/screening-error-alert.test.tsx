@@ -11,6 +11,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations: (namespace?: string) => (key: string) => {
     return namespace ? `${namespace}:${key}` : key;
   },

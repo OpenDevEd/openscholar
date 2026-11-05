@@ -250,7 +250,12 @@ export const searchFiltersValidator = v.object({
     filter: v.optional(v.string()),
     /** An OQL search, filters included, run as a POST instead of search and filter. */
     oql: v.optional(v.string()),
+    /** A question asked by meaning, and the papers whose closest works are asked for, on our index. */
+    semantic: v.optional(v.string()),
+    similarTo: v.optional(v.string()),
     sort: v.string(),
+    /** The source it reads, kept so a job finishes on the source it started on. OpenAlex when left out. */
+    source: v.optional(v.union(v.literal("openalex"), v.literal("openscholar"))),
   }),
   /** The search's result its papers start from, from 1 (#690); from its first when left out. */
   first: v.optional(v.number()),
@@ -280,6 +285,7 @@ const legacySearchFiltersValidator = v.object({
   citesItemId: v.optional(v.string()),
   citedByItemId: v.optional(v.string()),
   relatedToItemId: v.optional(v.string()),
+  similarTo: capped(v.optional(v.array(v.string())), MAX_FILTER_VALUES),
   isYearRangeEnabled: v.optional(v.boolean()),
   filterType: v.optional(v.string()),
   ratingRange: capped(v.optional(v.array(v.number())), RANGE_ENDS),

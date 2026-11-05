@@ -2,8 +2,7 @@ import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL }
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { hasPlanFeature } from "../billing/accounts";
-import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { opensLibraries } from "../billing/accounts";
 import { addressesOf } from "../lib/people";
 
 /**
@@ -17,7 +16,7 @@ export type EvidenceLibraryAdminRole = "owner" | "editor" | "creator";
 type OrganizationAccessCtx = Pick<QueryCtx | MutationCtx, "auth" | "db">;
 
 function denyOrganizationAccess(): never {
-  throw createError("FORBIDDEN", "Evidence Library access denied");
+  throw createError("FORBIDDEN", "Evidence Community access denied");
 }
 
 /**
@@ -38,7 +37,7 @@ export type LibraryOwner = NonNullable<Awaited<ReturnType<typeof libraryOwner>>>
 
 /** The workspace a library is in, which every one has once its backfill has run. */
 export function requireLibraryWorkspace(library: Doc<"evidenceLibraries">) {
-  if (!library.workspaceId) throw createError("CONFLICT", "This library isn't in a workspace yet. Try again in a moment.");
+  if (!library.workspaceId) throw createError("CONFLICT", "This community isn't in a workspace yet. Try again in a moment.");
   return library.workspaceId;
 }
 
@@ -173,13 +172,13 @@ export async function readEvidenceLibraryAccess(
   if (!role || ((action === "manage" || action === "remove") && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
-  // Managing takes the feature, which the plan of the workspace that owns the library grants (#652).
-  if (action === "manage" && !(await hasPlanFeature(ctx, owner.workspace._id, EVIDENCE_LIBRARIES_FEATURE))) return null;
+  // Managing takes Evidence Libraries in the workspace that owns the library (#652).
+  if (action === "manage" && !(await opensLibraries(ctx, owner.workspace._id))) return null;
   return { clerkUserId: identity.subject, owner, organization: owner.organization, role, library };
 }
 
 export async function requireEvidenceLibraryAccess(ctx: OrganizationAccessCtx, libraryId: Id<"evidenceLibraries">, action: OrganizationAction) {
-  if (!await ctx.auth.getUserIdentity()) throw createError("UNAUTHENTICATED", "Sign in to access this library");
+  if (!await ctx.auth.getUserIdentity()) throw createError("UNAUTHENTICATED", "Sign in to access this community");
   const access = await readEvidenceLibraryAccess(ctx, libraryId, action);
   if (!access) return denyOrganizationAccess();
   return access;

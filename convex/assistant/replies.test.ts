@@ -137,7 +137,7 @@ describe("assistant replies", () => {
     await expect(asCy.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/Chat not found/);
 
     // Ben watches it arrive.
-    await waitFor(async () => (await asBen.query(api.assistant.replies.live, { threadId }))?.text.includes("three") === true, { timeoutMs: 5_000 });
+    await waitFor(async () => (await asBen.query(api.assistant.replies.live, { threadId }))?.text.includes("three") === true);
     const live = await asBen.query(api.assistant.replies.live, { threadId });
     expect(live!.activity).toEqual({ phase: "writing", order: live!.order });
     expect(live).toMatchObject({ senderId: ada, stopping: false, text: "One two three " });
@@ -185,7 +185,7 @@ describe("assistant replies", () => {
     // Stopped mid-reply: the stream fails, and what was written is kept.
     mockDoStream.mockImplementation(erroringOnAbortDoStream(["One ", "two "], 300));
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Count" });
-    await waitFor(async () => (await asAda.query(api.assistant.replies.live, { threadId }))?.text.includes("two") === true, { timeoutMs: 5_000 });
+    await waitFor(async () => (await asAda.query(api.assistant.replies.live, { threadId }))?.text.includes("two") === true);
     const late = await stopping();
     expect(late).toMatchObject({ role: "assistant", status: "stopped" });
     expect("text" in late && late.text.trim()).toBe("One two");

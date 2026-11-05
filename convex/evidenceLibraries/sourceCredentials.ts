@@ -38,8 +38,8 @@ export function createSourceCredentials(
               keyword: "credential",
               message:
                 mode === "custom"
-                  ? "Add an OpenAlex API key or use OpenScholar access."
-                  : "OpenScholar OpenAlex access is not configured.",
+                  ? "Add an OpenAlex API key or use Openscholar access."
+                  : "Openscholar OpenAlex access is not configured.",
             },
           ]);
         }

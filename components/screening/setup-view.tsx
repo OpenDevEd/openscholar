@@ -620,7 +620,7 @@ export function SetupView({
             {/* Five across once a five-star cell (about 8rem) fits in each. */}
             <div className="grid gap-2 @min-[43rem]:grid-cols-5">
               {stars.map((value, i) => (
-                <label key={i} className={cn("flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-1.5 transition-colors duration-300", unscored ? "bg-foreground/[0.02]" : "bg-foreground/[0.04]")}>
+                <label key={i} className={cn("flex items-center gap-2 rounded-xl py-1.5 ps-2.5 pe-1.5 transition-colors duration-300", unscored ? "bg-foreground/[0.02]" : "bg-foreground/[0.04]")}>
                   <span className="flex flex-1 items-center gap-0.5" aria-hidden>
                     {Array.from({ length: i + 1 }, (_, j) => (
                       <Star key={j} className={cn("size-2.5 transition-colors duration-300", unscored ? "text-muted-foreground/40" : "fill-rating text-rating")} />
@@ -769,7 +769,7 @@ export function SetupView({
 
         {/* Stops short of the assistant's button in the screen's corner from the first frame, where the page's column reaches
             it (below 1320px). On a phone its Start button wraps to the left, clear of it, and the bar keeps its width. */}
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg sm:max-[82.5rem]:mr-18">
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg sm:max-[82.5rem]:me-18">
           <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           <div className="flex flex-wrap items-center gap-1.5 empty:hidden max-sm:basis-full">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
@@ -790,7 +790,7 @@ export function SetupView({
 /** One place the included papers can go, as the chat offers them: none, a new collection, or one you have. */
 function DestinationRow({ on, onPick, icon: Icon, name, facts, children }: { on: boolean; onPick: () => void; icon: AppIcon; name?: string; facts?: ReactNode; children?: ReactNode }) {
   return (
-    <div role="radio" aria-checked={on} tabIndex={0} onClick={onPick} onKeyDown={(e) => (e.key === " " || e.key === "Enter") && e.target === e.currentTarget && onPick()} className={cn("flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition-colors", on ? "bg-primary/5" : "hover:bg-muted")}>
+    <div role="radio" aria-checked={on} tabIndex={0} onClick={onPick} onKeyDown={(e) => (e.key === " " || e.key === "Enter") && e.target === e.currentTarget && onPick()} className={cn("flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-start transition-colors", on ? "bg-primary/5" : "hover:bg-muted")}>
       <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
         <Icon className="size-4" />
       </span>

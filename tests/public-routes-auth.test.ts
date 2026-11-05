@@ -1,3 +1,5 @@
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { isPublicPath } from "../lib/auth/public-routes";
 
@@ -24,7 +26,7 @@ describe("public route auth matrix", () => {
   it("makes topic browsing public while keeping library configuration protected", () => {
     expect(isPublicPath("/topics")).toBe(true);
     expect(isPublicPath("/topics/T12260")).toBe(true);
-    expect(isPublicPath("/evidence-libraries/library-id/configuration")).toBe(false);
+    expect(isPublicPath("/evidence-communities/library-id/configuration")).toBe(false);
   });
 
   it("normalizes trailing slashes and hash/query segments", () => {
@@ -36,5 +38,45 @@ describe("public route auth matrix", () => {
   it("keeps API routes signed in", () => {
     expect(isPublicPath("/api/openalex/search")).toBe(false);
     expect(isPublicPath("/api/private")).toBe(false);
+  });
+
+  it("sends an address that names no page to the not-found page, not sign-in", () => {
+    expect(isPublicPath("/this-does-not-exist")).toBe(true);
+    expect(isPublicPath("/sitemap.xml")).toBe(true);
+    expect(isPublicPath("/robots.txt")).toBe(true);
+  });
+
+  // The gate names private pages, so a new page is open until it's named: this makes that a choice.
+  it("opens exactly these pages to someone signed out", () => {
+    const pages: string[] = [];
+    const walk = (dir: string, route: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+          const part = /^\[+\.*(.*?)\]+$/.test(entry.name) ? "x" : entry.name;
+          walk(join(dir, entry.name), `${route}/${part}`);
+        } else if (/^(page|route)\.tsx?$/.test(entry.name)) pages.push(route || "/");
+      }
+    };
+    walk(join(__dirname, "../app"), "");
+    expect(pages.filter(isPublicPath).sort()).toEqual([
+      "/",
+      "/authors",
+      "/authors/x",
+      "/bookmarks",
+      "/connect",
+      "/cookie-policy",
+      "/credits",
+      "/history",
+      "/pricing",
+      "/privacy",
+      "/results",
+      "/results/x",
+      "/settings/ai",
+      "/sign-in/x",
+      "/sign-up/x",
+      "/terms",
+      "/topics",
+      "/topics/x",
+    ]);
   });
 });

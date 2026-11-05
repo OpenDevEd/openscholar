@@ -1,4 +1,5 @@
-import { internalMutation } from "../lib/functions";
+import { internalMutation, internalQuery } from "../lib/functions";
+import { activeSource } from "../lib/searchSource";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_FEATURE_FLAGS } from "../lib/queryBounds";
 import { v } from "convex/values";
@@ -10,6 +11,13 @@ export async function assertFlagRoom(ctx: Pick<QueryCtx, "db">) {
     throw new Error(`There are already ${MAX_FEATURE_FLAGS} feature flags; remove a retired one first.`);
   }
 }
+
+/** The source the site's searches read, for an action. */
+export const searchSource = internalQuery({
+  args: {},
+  returns: v.union(v.literal("openalex"), v.literal("openscholar")),
+  handler: async (ctx) => activeSource(ctx),
+});
 
 /**
  * Upsert a feature flag. Used for seeding and admin operations.

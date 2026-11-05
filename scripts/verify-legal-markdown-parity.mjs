@@ -5,7 +5,7 @@ import path from "node:path";
 
 const CONTENT_ROOT = path.join(process.cwd(), "content");
 const DEFAULT_LOCALE = "en-US";
-const LOCALES = ["en-US", "en-GB", "fr", "hi", "ja", "zh"];
+const LOCALES = ["en-US", "en-GB", "fr", "hi", "ja", "zh", "ar", "sw", "pt", "es", "de", "af", "zu"];
 
 const DOCS = [
   { key: "privacy", folder: "privacy-policy" },
@@ -106,9 +106,9 @@ async function main() {
         );
       }
 
-      if (!current.content.includes("contact@opendeved.net")) {
+      if (!current.content.includes("support@openscholar.ai")) {
         failures.push(
-          `${current.filePath}: required contact marker contact@opendeved.net is missing`
+          `${current.filePath}: required contact marker support@openscholar.ai is missing`
         );
       }
 

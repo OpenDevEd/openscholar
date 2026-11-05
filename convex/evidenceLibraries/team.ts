@@ -52,7 +52,7 @@ export const addOrganizationMember = mutation({
 export async function changeLibraryRole(ctx: MutationCtx, args: ObjectType<typeof grantArgs>) {
   const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
   const assignment = await grantFor(ctx, access.library, args.clerkUserId);
-  if (!assignment) throw createError("NOT_FOUND", "Library member not found");
+  if (!assignment) throw createError("NOT_FOUND", "Community member not found");
   await ctx.db.patch("itemAccess", assignment._id, { role: args.role });
   return null;
 }

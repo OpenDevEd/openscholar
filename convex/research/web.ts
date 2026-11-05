@@ -32,7 +32,7 @@ async function searchWeb(query: string): Promise<{ results: Result[]; usd: numbe
   for (let attempt = 0; ; attempt += 1) {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "OpenScholar assistant web search" },
+      headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json", "X-Title": "Openscholar assistant web search" },
       body: JSON.stringify({
         model: WEB_SEARCH_MODEL,
         max_tokens: WEB_SEARCH_MODEL_TOKENS,
@@ -65,7 +65,7 @@ export const searchAction = defineUserAction({
   path: "research/web:search",
   description:
     "Searches the web for pages outside the scholarly literature: reports, policy documents, guidance, statistics, news and organisations' own pages. " +
-    "Returns up to 5 pages, each with its title, address and an excerpt of what it says. Search OpenAlex for papers instead. " +
+    "Returns up to 5 pages, each with its title, address and an excerpt of what it says. Use research_papers_search for papers instead. " +
     "Cite what you use as a link to its address. The person is asked first, with what a search costs.",
   args: { query: v.string() },
   returns: v.object({ query: v.string(), results: webResultsValidator }),

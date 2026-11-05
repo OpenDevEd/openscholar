@@ -43,7 +43,7 @@ export function SourceRow({
   const Row = onToggle ? "button" : "div";
   return (
     <div className={cn("transition-colors", on && "bg-primary/5")}>
-      <Row {...(onToggle ? { type: "button", role: many ? "checkbox" : "radio", "aria-checked": on, disabled, onClick: onToggle } : {})} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50", onToggle && !on && "enabled:hover:bg-muted")}>
+      <Row {...(onToggle ? { type: "button", role: many ? "checkbox" : "radio", "aria-checked": on, disabled, onClick: onToggle } : {})} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-50", onToggle && !on && "enabled:hover:bg-muted")}>
         <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
           <Icon className="size-4" />
         </span>
@@ -57,7 +57,7 @@ export function SourceRow({
       <AnimatePresence initial={false}>
         {on && children ? (
           <motion.div key="open" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
-            <div className="space-y-4 pb-4 pl-15 pr-4">{children}</div>
+            <div className="space-y-4 pb-4 ps-15 pe-4">{children}</div>
           </motion.div>
         ) : null}
       </AnimatePresence>

@@ -330,7 +330,7 @@ function ApprovalCard({ threadId, steps }: { threadId: Id<"assistantThreads">; /
             aria-label={t("asks.decline")}
             disabled={sent}
             onClick={() => say(false)}
-            className="-mr-1 -mt-1 flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+            className="-me-1 -mt-1 flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
             <X className="size-4" />
           </button>
@@ -366,7 +366,7 @@ function Drawn({ have, take, known, className }: { have: number; take: number; k
     <span className={cn("flex min-w-0 items-center gap-1.5 tabular-nums transition-opacity duration-200", !known && "opacity-0", className)} aria-hidden={!known}>
       <AnimatedNumber value={have} />
       <ArrowRight className="size-3" />
-      <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-right">
+      <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-end">
         <motion.span initial={false} animate={{ opacity: short ? 1 : 0 }} aria-hidden={!short} className="text-amber-600 dark:text-amber-400">
           {t("short", { credits: Math.max(0, take - have) })}
         </motion.span>
@@ -431,7 +431,7 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Coins className="size-3.5 text-primary" />
             <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
-            <span className="ml-auto flex min-w-0 items-center gap-1.5">
+            <span className="ms-auto flex min-w-0 items-center gap-1.5">
               <WorkspaceTile workspace={organization} size="xs" />
               <span className="min-w-0 truncate">{organization.name}</span>
             </span>
@@ -444,7 +444,7 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Coins className="size-3.5 text-primary" />
             <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
-            <Drawn have={balance} take={credits} known={known} className="ml-auto" />
+            <Drawn have={balance} take={credits} known={known} className="ms-auto" />
           </div>
           <Bar have={balance} take={credits} known={known} />
         </div>
@@ -553,7 +553,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
       animate={{ height: Math.max(0, height) }}
       transition={slide}
     >
-      <span className="absolute left-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/10">
+      <span className="absolute start-0.5 top-0 flex size-5 items-center justify-center rounded-md bg-primary/10">
         <OrbitMark size={14} />
       </span>
       {earlier ? (
@@ -562,7 +562,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
           type="button"
           disabled={earlier === "loading"}
           onClick={earlier === "loading" ? undefined : earlier}
-          className="absolute left-9 top-0 z-10 flex h-5 items-center rounded-full px-2 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
+          className="absolute start-9 top-0 z-10 flex h-5 items-center rounded-full px-2 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
           {t("steps.earlier")}
         </button>
@@ -683,13 +683,13 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                   </div>
                   {opens ? (
                     // Each step of the run as a line, under the card's text: what it was about, how many it found, why it failed, and its own Undo.
-                    <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
+                    <ol inert={!open} className="ps-[60px] pe-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
                           {unqueried(one) ? (
-                            <Unqueried step={one} chips={told ? (told.filters[at] ?? {}) : undefined} className="mr-auto min-w-0 truncate" />
+                            <Unqueried step={one} chips={told ? (told.filters[at] ?? {}) : undefined} className="me-auto min-w-0 truncate" />
                           ) : (
-                            <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className={cn("mr-auto min-w-0 truncate", one.undone && "line-through")} />
+                            <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className={cn("me-auto min-w-0 truncate", one.undone && "line-through")} />
                           )}
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
@@ -708,7 +708,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                                 aria-label={t("steps.undo")}
                                 disabled={undoing.has(one.id)}
                                 onClick={() => undoSteps([one])}
-                                className="-mr-1 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                                className="-me-1 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                               >
                                 <Undo2 className="size-3" />
                               </button>

@@ -1,18 +1,25 @@
 # Cookies
 
-## How OpenScholar.ai uses cookies
+## How Openscholar.ai uses cookies
 
 When you browse openscholar.ai, small data files called cookies may be stored on your device. These files help websites function properly and provide insights to website owners about how their sites are being used. Below, we explain which cookies openscholar.ai uses and their purposes.
 
 ## Strictly necessary cookies
 
-OpenScholar.ai does not currently set any cookies that are required for the website to function.
+| **Name** | **Purpose** | **Expires** |
+| --- | --- | --- |
+| `__session`, `__client_uat`, `__client` | Keep you signed in | Up to 1 year |
+| `NEXT_LOCALE` | Remembers your language | 1 year |
+| `__cf_bm`, `_cfuvid` | Cloudflare uses these to protect the site from automated traffic | 30 minutes, or until you close your browser |
+
+Your cookie choice and display settings, such as open panels, stay in your browser's local storage.
 
 ## Performance and analytics cookies (optional)
 
 | **Name** | **Purpose** | **Expires** |
 | --- | --- | --- |
-| ph_phc_[token]_posthog | We use PostHog analytics software to learn how people interact with our website. This helps us create better reports and enhance user experience. The cookie contains an anonymous device identifier, your browsing session details, and your initial landing page. All data is collected anonymously - we never identify you personally. OpenScholar.ai doesn't employ third-party tracking technologies or sell your information to advertising companies. | 365 days |
+| `ph_phc_[token]_posthog`, `ph_phc_[token]_posthog_cpm` | We use PostHog to learn how people use Openscholar and to fix problems. These cookies hold a random device ID, your session details and the page you first landed on. If you sign in, they hold your account ID, and PostHog links your activity to your name and email address. We never sell your information. | 365 days |
+| `_ga`, `_ga_[id]` | We use Google Analytics to see how many people visit and how they reach us. These cookies hold a random ID and your session details. | 400 days |
 
 ### What data is contained in the PostHog cookie?
 
@@ -24,7 +31,7 @@ The PostHog cookie saves the following details in a structured format:
 - **$epp**: Technical flags used by PostHog for internal features
 - **$initial_person_info**: Records showing how you arrived at our site (such as from a search engine or direct visit) and which page you landed on first
 
-This cookie contains no information that can identify you personally, such as your name, email, or other private details.
+This cookie doesn't contain your name, email address or other private details.
 
 ### Additional data collected by PostHog
 
@@ -50,12 +57,20 @@ Beyond the cookie itself, PostHog gathers supplementary information automaticall
 - How far down the page you scroll
 
 **Information we deliberately exclude:**
-- Text you type into forms
+- Text you type into forms, except what you search for
 - Login credentials or passwords
 - Payment or credit card details
 - Any other private or sensitive personal information
 - Third-party advertising cookies are not used
 - Your data is never sold to advertisers or marketing companies
+
+### Google Analytics
+
+If you accept, Google Analytics receives the pages you visit, how you reached us, your device type and your approximate location. It doesn't receive what you search for, and its advertising features are off. If you change your mind, we stop it and remove its cookies.
+
+### If you don't accept
+
+Before you choose, or if you reject analytics cookies, we only count visits, without cookies and without storing anything on your device except your choice: the page, the site you came from, your browser type, and actions such as running a search. We don't record your clicks, what you type, your location or your account. Your IP address and browser type become a code that changes every day, and we don't keep your IP address.
 
 ## Managing your cookie preferences
 
@@ -74,7 +89,7 @@ Additionally, all major web browsers provide settings to control cookies. For co
 
 For other browsers, check the support documentation provided by your browser's developer.
 
-### Removing the OpenScholar.ai cookie from your device
+### Removing the Openscholar.ai cookie from your device
 
 You can remove our analytics cookie whenever you like using your browser's settings:
 
@@ -119,6 +134,6 @@ If you'd prefer to stop our analytics cookie from being created:
 
 For questions about our cookie practices, please reach out to us:
 
-**Email**: contact@opendeved.net
+**Email**: support@openscholar.ai
 
-**Last updated**: February 13, 2026
+**Last updated**: 4 November 2026

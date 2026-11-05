@@ -360,7 +360,7 @@ function coolifyApplication(composeDomains: string, tag: string) {
     docker_compose_domains: JSON.stringify({ web: { domain: composeDomains } }),
     source_type: "App\\Models\\GithubApp",
     source_id: 7,
-    environment: { name: "development", project: { uuid: "project-1" } },
+    environment_id: 17,
     destination: { server: { uuid: "server-1" } },
     settings: {
       is_auto_deploy_enabled: false,

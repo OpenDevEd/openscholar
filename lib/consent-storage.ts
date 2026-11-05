@@ -3,6 +3,8 @@
  * Stores consent records with timestamp and version for audit purposes.
  */
 
+import { useSyncExternalStore } from "react";
+
 const CONSENT_STORAGE_KEY = "openscholar_cookie_consent";
 const POLICY_VERSION = "1.0";
 
@@ -26,7 +28,7 @@ export function getStoredConsent(): ConsentRecord | null {
   }
 }
 
-export const CONSENT_UPDATED_EVENT = "openscholar-consent-updated";
+const CONSENT_UPDATED_EVENT = "openscholar-consent-updated";
 
 export function storeConsent(choice: "granted" | "denied"): void {
   if (typeof window === "undefined") return;
@@ -42,6 +44,12 @@ export function storeConsent(choice: "granted" | "denied"): void {
   window.dispatchEvent(new CustomEvent(CONSENT_UPDATED_EVENT));
 }
 
-export function hasConsentDecision(): boolean {
-  return getStoredConsent() !== null;
+function subscribeToConsent(onChange: () => void) {
+  window.addEventListener(CONSENT_UPDATED_EVENT, onChange);
+  return () => window.removeEventListener(CONSENT_UPDATED_EVENT, onChange);
+}
+
+/** Whether someone has accepted analytics in this browser. */
+export function useAnalyticsConsent(): boolean {
+  return useSyncExternalStore(subscribeToConsent, () => getStoredConsent()?.choice === "granted", () => false);
 }

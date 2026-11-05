@@ -352,7 +352,7 @@ function UploadSurface({
       ) : filled ? (
         children
       ) : (
-        <div className="flex items-center gap-3 p-4 text-center sm:text-left">
+        <div className="flex items-center gap-3 p-4 text-center sm:text-start">
           <Upload className="h-5 w-5 shrink-0 text-muted-foreground" />
           <p className="text-sm">
             <span className="font-medium">{isDragActive ? t("dropHere") : t("dropOrClick")}</span>
@@ -801,14 +801,14 @@ export function NestedList({
   children?: ReactNode;
 }) {
   return (
-    <div className="ml-1 space-y-2 border-l-2 border-border-subtle pl-4" role="group" aria-label={label}>
+    <div className="ms-1 space-y-2 border-s-2 border-border-subtle ps-4" role="group" aria-label={label}>
       {children}
       <Button
         type="button"
         variant="ghost"
         size="sm"
         disabled={disabled}
-        className="-ml-2 h-7 text-xs text-muted-foreground hover:text-foreground"
+        className="-ms-2 h-7 text-xs text-muted-foreground hover:text-foreground"
         onClick={onAdd}
       >
         <Plus className="h-3.5 w-3.5" />

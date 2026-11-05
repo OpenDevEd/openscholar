@@ -39,7 +39,7 @@ const KINDS = {
   search: { table: "searches", name: (row: Doc<"searches">) => row.data.query || "Search", size: (row: Doc<"searches">) => row.data.count ?? 0, word: "search", roles: ["viewer", "editor"] },
   author: { table: "authorProfiles", name: (row: Doc<"authorProfiles">) => row.name, word: "author profile", roles: ["editor"], ownersShare: true, ownersHold: true, most: MAX_PROFILE_MEMBERS },
   chat: { table: "assistantThreads", name: (row: Doc<"assistantThreads">) => row.title, word: "chat", roles: ["viewer", "editor"], ownersShare: true, most: MAX_ASSISTANT_THREAD_GRANTS },
-  library: { table: "evidenceLibraries", name: (row: Doc<"evidenceLibraries">) => row.name, word: "Evidence Library", roles: ["editor", "creator"] },
+  library: { table: "evidenceLibraries", name: (row: Doc<"evidenceLibraries">) => row.name, word: "Evidence Community", roles: ["editor", "creator"] },
 } as const satisfies {
   [K in AccessKind]: {
     table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly AccessRole[];

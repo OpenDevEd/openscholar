@@ -92,8 +92,9 @@ export function SearchHoverCard({ children, side, delay, ...search }: SearchTool
   return (
     <Tooltip delayDuration={delay}>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side={side} className="w-80 bg-background text-foreground border shadow-lg p-0 max-h-96 overflow-y-auto" arrowClassName="bg-background fill-background">
-        <div className="p-3">
+      <TooltipContent side={side} className="w-80 bg-background text-foreground border shadow-lg p-0" arrowClassName="bg-background fill-background">
+        {/* Scrolls inside the card: while the card animates, its arrow counts as overflow of the card itself. */}
+        <div className="max-h-96 overflow-y-auto rounded-[inherit] p-3">
           <SearchTooltipContent {...search} />
         </div>
       </TooltipContent>

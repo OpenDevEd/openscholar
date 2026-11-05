@@ -23,6 +23,13 @@ const LOCALE_TO_LABEL_KEY: Record<Locale, string> = {
   fr: "fr",
   hi: "hi",
   ja: "ja",
+  ar: "ar",
+  sw: "sw",
+  pt: "pt",
+  es: "es",
+  de: "de",
+  af: "af",
+  zu: "zu",
 };
 
 interface LanguageSwitcherProps {
@@ -59,7 +66,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
       >
         <Globe className="h-[1.2rem] w-[1.2rem]" />
         {!isCollapsed && (
-          <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
+          <span className="ms-2 text-sm">{getLocaleLabel(currentLocale)}</span>
         )}
       </Button>
     );
@@ -86,7 +93,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
             >
               <Globe className="h-[1.2rem] w-[1.2rem]" />
               {!isCollapsed && (
-                <span className="ml-2 text-sm">{getLocaleLabel(currentLocale)}</span>
+                <span className="ms-2 text-sm">{getLocaleLabel(currentLocale)}</span>
               )}
             </Button>
           </PopoverTrigger>
@@ -112,7 +119,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="flex-1 text-left">{getLocaleLabel(locale)}</span>
+              <span className="flex-1 text-start">{getLocaleLabel(locale)}</span>
               <AnimatePresence>
                 {currentLocale === locale && (
                   <motion.div

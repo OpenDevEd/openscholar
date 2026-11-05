@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Every OpenAlex API request carries OpenScholar's key: through openAlexUrl in
+# Every OpenAlex API request carries Openscholar's key: through openAlexUrl in
 # lib/openalex/request-url.ts, worksUrl in lib/openalex/works-url.ts, or the SDK client
 # in lib/openalex.ts. Fails when code builds an OpenAlex request any other way.
 set -u

@@ -5,6 +5,7 @@ import { libraryOf } from "../evidenceLibraries/access";
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import { ensureWorkspace } from "../workspaces/create";
 import { TEAM_PLAN } from "../../lib/billing/plans";
+import { seatBillingOn } from "../billing/accounts";
 import { endWhatsLeft } from "../billing/seatSyncs";
 import { v } from "convex/values";
 import {
@@ -291,10 +292,10 @@ export async function applyMembershipProjection(
           createdAt: args.processedAt,
         });
       }
-      // On the Team plan, a member who joins gets a seat and one who leaves gives theirs up (#652).
+      // With caps, a member who joins gets a seat and one who leaves gives theirs up (#652).
       const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
       const account = workspace && await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).unique();
-      if (workspace && account?.plan === TEAM_PLAN) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: workspace._id });
+      if (workspace && (account?.plan === TEAM_PLAN || !(await seatBillingOn(ctx)))) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: workspace._id });
     },
   );
 }

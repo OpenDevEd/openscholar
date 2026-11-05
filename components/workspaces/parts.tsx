@@ -7,7 +7,6 @@ import type { FunctionReturnType } from "convex/server";
 import { createContext, use, type ReactElement, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Home } from "@/components/icons";
-import { EASE } from "@/components/settings/model-map";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
@@ -61,7 +60,7 @@ export function useCurrentWorkspace() {
 }
 
 /** Your own workspace's colour, the brand's; an organization takes another until its admins pick one. */
-const OWN_TINT = "#2563eb";
+const OWN_TINT = "#d97706";
 const TINTS = ORGANIZATION_COLOURS.filter((colour) => colour !== OWN_TINT);
 
 /** A workspace's colour, which tints the rail while you're in it. */
@@ -118,7 +117,7 @@ function GeneratedLogo({ seed, tint, className }: { seed: string; tint: string; 
 /** A chip led by a workspace's tile and named for it, or saying what `children` say of it; a long name is cut. */
 export function WorkspaceTag({ workspace, size = "md", strong = false, children }: { workspace: WorkspaceLook; size?: "sm" | "md"; strong?: boolean; children?: React.ReactNode }) {
   return (
-    <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pr-2.5 text-xs", size === "sm" ? "h-6 pl-0.5" : "h-7 pl-1", strong && "font-medium text-foreground")}>
+    <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pe-2.5 text-xs", size === "sm" ? "h-6 ps-0.5" : "h-7 ps-1", strong && "font-medium text-foreground")}>
       <WorkspaceTile workspace={workspace} size="xs" />
       <span className="min-w-0 truncate">{children ?? workspace.name}</span>
     </span>
@@ -159,29 +158,6 @@ export function Framed({ children }: { children: React.ReactNode }) {
   return <span className="flex shrink-0 rounded-lg shadow-[0_1px_2px_rgb(0_0_0/0.08),inset_0_0_0_1px_rgb(0_0_0/0.06)]">{children}</span>;
 }
 
-/**
- * Something that opens its place as it comes, and closes it as it goes: a rail section, or a part
- * of a card that's read after the card has opened. What is already there when its card opens is
- * `instant`: simply there. That says so for this part only, where an `AnimatePresence` with
- * `initial={false}` would also stop what's inside it from animating in. `across` opens it in a
- * row, by its width.
- */
-export function Opening({ instant = false, across = false, className, children }: { instant?: boolean; across?: boolean; className?: string; children: ReactNode }) {
-  const reduceMotion = useReducedMotion();
-  const size = across ? "width" : "height";
-  return (
-    <motion.div
-      className={cn(across ? "shrink-0 overflow-hidden" : "w-full overflow-hidden", className)}
-      initial={instant ? false : reduceMotion ? { opacity: 0 } : { [size]: 0, opacity: 0 }}
-      animate={{ [size]: "auto", opacity: 1 }}
-      exit={reduceMotion ? { opacity: 0 } : { [size]: 0, opacity: 0 }}
-      transition={{ duration: 0.3, ease: EASE }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
 /** A workspace's plan: its name, and whether it's one that's paid for. Empty while the catalog loads. */
 export function usePlanOf(workspace: WorkspaceLook) {
   const catalog = useBillingCatalog();
@@ -212,3 +188,5 @@ export function Guarded({ reason, children }: { reason: string | null; children:
     </TooltipHint>
   );
 }
+
+export { Opening } from "@/components/ui/opening";

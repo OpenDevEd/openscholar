@@ -1,0 +1,954 @@
+{
+ "locale": "zu-ZA",
+ "actionBlocked": {
+  "subtitle": "Ngokuphepha kwakho, lesi sicelo asikwazanga ukuqedwa.",
+  "title": "Asikwazanga ukuqeda lesi sicelo",
+  "traceIdLabel": "Inkomba"
+ },
+ "backButton": "Emuva",
+ "badge__activePlan": "Iyasebenza",
+ "badge__banned": "Ivinjiwe",
+ "badge__canceledEndsAt": "Ikhanseliwe, Iphela {{ date | shortDate('zu-ZA') }}",
+ "badge__currentPlan": "Uhlelo lwamanje",
+ "badge__default": "Okuzenzakalelayo",
+ "badge__deprovisioned": "Ukufinyelela kususiwe",
+ "badge__endsAt": "Iphela {{ date | shortDate('zu-ZA') }}",
+ "badge__expired": "Iphelelwe yisikhathi",
+ "badge__freeTrial": "Ukuhlola mahhala",
+ "badge__otherImpersonatorDevice": "Enye idivayisi elingisa umsebenzisi",
+ "badge__pastDueAt": "Ibilile kusukela {{ date | shortDate('zu-ZA') }}",
+ "badge__pastDuePlan": "Ibilile",
+ "badge__primary": "Okuyinhloko",
+ "badge__renewsAt": "Izovuselelwa {{ date | shortDate('zu-ZA') }}",
+ "badge__requiresAction": "Idinga isenzo",
+ "badge__startsAt": "Iqala {{ date | shortDate('zu-ZA') }}",
+ "badge__thisDevice": "Le divayisi",
+ "badge__trialEndsAt": "Ukuhlola kuphela {{ date | shortDate('zu-ZA') }}",
+ "badge__unverified": "Akugunyaziwe",
+ "badge__upcomingPlan": "Okuzayo",
+ "badge__userDevice": "Idivayisi yomsebenzisi",
+ "badge__you": "Wena",
+ "createOrganization": {
+  "formButtonSubmit": "Dala inhlangano",
+  "invitePage": {
+   "formButtonReset": "Yeqa"
+  },
+  "title": "Dala inhlangano"
+ },
+ "dates": {
+  "lastDay": "Izolo ngo-{{ date | timeString('zu-ZA') }}",
+  "next6Days": "{{ date | weekday('en-US','long') }} ngo-{{ date | timeString('zu-ZA') }}",
+  "nextDay": "Kusasa ngo-{{ date | timeString('zu-ZA') }}",
+  "numeric": "{{ date | numeric('zu-ZA') }}",
+  "previous6Days": "{{ date | weekday('en-US','long') }} edlule ngo-{{ date | timeString('zu-ZA') }}",
+  "sameDay": "Namuhla ngo-{{ date | timeString('zu-ZA') }}"
+ },
+ "dividerText": "noma",
+ "footerActionLink__alternativePhoneCodeProvider": "Thumela ikhodi nge-SMS esikhundleni salokho",
+ "footerActionLink__useAnotherMethod": "Sebenzisa enye indlela",
+ "footerPageLink__help": "Usizo",
+ "footerPageLink__privacy": "Ubumfihlo",
+ "footerPageLink__terms": "Imigomo",
+ "formButtonPrimary": "Qhubeka",
+ "formButtonPrimary__verify": "Qinisekisa",
+ "formFieldAction__forgotPassword": "Ukhohlwe iphasiwedi?",
+ "formFieldAction__hidePassword": "Fihla iphasiwedi",
+ "formFieldAction__showPassword": "Bonisa iphasiwedi",
+ "formFieldError__matchingPasswords": "Amaphasiwedi ayafana.",
+ "formFieldError__notMatchingPasswords": "Amaphasiwedi awafani.",
+ "formFieldError__verificationLinkExpired": "Isixhumanisi sokuqinisekisa siphelelwe yisikhathi. Sicela wenze isicelo sesixhumanisi esisha.",
+ "formFieldHintText__optional": "Okuzikhethela",
+ "formFieldHintText__slug": "I-slug iwukuhlonza okufundeka kalula umuntu okumele kube yingqikithi. Ivamise ukusetshenziswa ku-URL.",
+ "formFieldInputPlaceholder__apiKeyDescription": "Chaza ukuthi kungani usungula lo khiye",
+ "formFieldInputPlaceholder__apiKeyExpirationDate": "Khetha usuku",
+ "formFieldInputPlaceholder__apiKeyName": "Faka igama lakho lokhiye oyimfihlo",
+ "formFieldInputPlaceholder__backupCode": "Faka ikhodi yokusekela",
+ "formFieldInputPlaceholder__confirmDeletionUserAccount": "Susa i-akhawunti",
+ "formFieldInputPlaceholder__emailAddress": "Faka ikheli lakho le-imeyili",
+ "formFieldInputPlaceholder__emailAddress_username": "Faka imeyili noma igama lomsebenzisi",
+ "formFieldInputPlaceholder__emailAddresses": "example@email.com, example2@email.com",
+ "formFieldInputPlaceholder__firstName": "Igama lokuqala",
+ "formFieldInputPlaceholder__lastName": "Isibongo",
+ "formFieldInputPlaceholder__organizationDomain": "example.com",
+ "formFieldInputPlaceholder__organizationDomainEmailAddress": "you@example.com",
+ "formFieldInputPlaceholder__organizationName": "Igama lenhlangano",
+ "formFieldInputPlaceholder__organizationSlug": "my-org",
+ "formFieldInputPlaceholder__password": "Faka iphasiwedi yakho",
+ "formFieldInputPlaceholder__phoneNumber": "Faka inombolo yakho yefoni",
+ "formFieldInputPlaceholder__signUpPassword": "Dala iphasiwedi",
+ "formFieldInputPlaceholder__username": "Faka igama lakho lomsebenzisi",
+ "formFieldInput__emailAddress_format": "Ifomethi yesibonelo: name@example.com",
+ "formFieldLabel__apiKey": "Ukhiye we-API",
+ "formFieldLabel__apiKeyDescription": "Incazelo",
+ "formFieldLabel__apiKeyExpiration": "Ukuphelelwa yisikhathi",
+ "formFieldLabel__apiKeyName": "Igama lokhiye oyimfihlo",
+ "formFieldLabel__automaticInvitations": "Vula izimemo ezizenzakalelayo kule domain",
+ "formFieldLabel__backupCode": "Ikhodi yokusekela",
+ "formFieldLabel__confirmDeletion": "Ukuqinisekisa",
+ "formFieldLabel__confirmPassword": "Qinisekisa iphasiwedi",
+ "formFieldLabel__currentPassword": "Iphasiwedi yamanje",
+ "formFieldLabel__emailAddress": "Ikheli le-imeyili",
+ "formFieldLabel__emailAddress_username": "Ikheli le-imeyili noma igama lomsebenzisi",
+ "formFieldLabel__emailAddresses": "Amakheli e-imeyili",
+ "formFieldLabel__firstName": "Igama lokuqala",
+ "formFieldLabel__lastName": "Isibongo",
+ "formFieldLabel__newPassword": "Iphasiwedi entsha",
+ "formFieldLabel__organizationDomain": "Domain",
+ "formFieldLabel__organizationDomainDeletePending": "Susa izimemo nezincomo ezilindile",
+ "formFieldLabel__organizationDomainEmailAddress": "Ikheli le-imeyili lokuqinisekisa",
+ "formFieldLabel__organizationDomainEmailAddressDescription": "Faka ikheli le-imeyili ngaphansi kwale domain ukuze uthole ikhodi uqinisekise le domain.",
+ "formFieldLabel__organizationName": "Igama",
+ "formFieldLabel__organizationSlug": "Ukuhlonza kwe-URL",
+ "formFieldLabel__passkeyName": "Igama le-passkey",
+ "formFieldLabel__password": "Iphasiwedi",
+ "formFieldLabel__phoneNumber": "Inombolo yefoni",
+ "formFieldLabel__role": "Indima",
+ "formFieldLabel__signOutOfOtherSessions": "Phuma kuzo zonke ezinye idivayisi",
+ "formFieldLabel__username": "Igama lomsebenzisi",
+ "identityPreviewEditButton__emailAddress": "Hlela ikheli le-imeyili",
+ "identityPreviewEditButton__identifier": "Hlela ukuhlonza",
+ "identityPreviewEditButton__phoneNumber": "Hlela inombolo yefoni",
+ "lastAuthenticationStrategy": "Kusetshenziswe ekugcineni",
+ "maintenanceMode": "Okwamanje sisenza ukulungisa, kodwa ungakhathazeki. Akufanele kuthathe imizuzu embalwa.",
+ "membershipRole__admin": "Umphathi",
+ "membershipRole__basicMember": "Ilungu",
+ "membershipRole__guestMember": "Isihambi",
+ "paginationButton__next": "Olandelayo",
+ "paginationButton__previous": "Owandulelayo",
+ "paginationRowText__displaying": "Kubonisa",
+ "paginationRowText__of": "kwe",
+ "reverification": {
+  "alternativeMethods": {
+   "actionLink": "Thola usizo",
+   "actionText": "Awunayo noma yimuphi walezi?",
+   "blockButton__backupCode": "Sebenzisa ikhodi yokusekela",
+   "blockButton__emailCode": "Thumela ikhodi ku-{{identifier}}",
+   "blockButton__passkey": "Sebenzisa i-passkey yakho",
+   "blockButton__password": "Qhubeka nge-iphasiwedi yakho",
+   "blockButton__phoneCode": "Thumela ikhodi ye-SMS ku-{{identifier}}",
+   "blockButton__totp": "Sebenzisa uhlelo lwakho lokuqinisekisa",
+   "getHelp": {
+    "blockButton__emailSupport": "Ukusekela nge-imeyili",
+    "content": "Uma unenkinga yokuqinisekisa i-akhawunti yakho, sithumele i-imeyili sizosebenza nawe ukuze sibuyisele ukufinyelela ngokushesha okukhulu.",
+    "title": "Thola usizo"
+   },
+   "subtitle": "Unezinkinga? Ungasebenzisa noma yimiphi yalezi ndlela ukuze uqinisekise.",
+   "title": "Sebenzisa enye indlela"
+  },
+  "backupCodeMfa": {
+   "subtitle": "Faka ikhodi yokusekela oyithole lapho usetha ukuqinisekisa ngezinyathelo ezimbili",
+   "title": "Faka ikhodi yokusekela"
+  },
+  "emailCode": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "Faka ikhodi ethunyelwe ku-imeyili yakho ukuze uqhubeke",
+   "title": "Kudingeka ukuqinisekiswa"
+  },
+  "noAvailableMethods": {
+   "message": "Akukwazi ukuqhubeka nokuqinisekisa. Asikho isici sokuqinisekisa esifanele esisethiwe",
+   "subtitle": "Kukhona iphutha elenzekile",
+   "title": "Akukwazi ukuqinisekisa i-akhawunti yakho"
+  },
+  "passkey": {
+   "blockButton__passkey": "Sebenzisa i-passkey yakho",
+   "subtitle": "Ukusebenzisa i-passkey yakho kuqinisekisa ukuthi ungubani. Idivayisi yakho ingacela isigxivizo somunwe, ubuso noma ukhiye wesikrini.",
+   "title": "Sebenzisa i-passkey yakho"
+  },
+  "password": {
+   "actionLink": "Sebenzisa enye indlela",
+   "subtitle": "Faka iphasiwedi yakho yamanje ukuze uqhubeke",
+   "title": "Kudingeka ukuqinisekiswa"
+  },
+  "phoneCode": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "Faka ikhodi ethunyelwe efonini yakho ukuze uqhubeke",
+   "title": "Kudingeka ukuqinisekiswa"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "Faka ikhodi ethunyelwe efonini yakho ukuze uqhubeke",
+   "title": "Kudingeka ukuqinisekiswa"
+  },
+  "totpMfa": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "subtitle": "Faka ikhodi enziwe uhlelo lwakho lokuqinisekisa ukuze uqhubeke",
+   "title": "Kudingeka ukuqinisekiswa"
+  }
+ },
+ "searchInput": {
+  "action__clear": "Sula ukusesha"
+ },
+ "signIn": {
+  "accountSwitcher": {
+   "action__addAccount": "Engeza i-akhawunti",
+   "action__signOutAll": "Phuma kuzo zonke ii-akhawunti",
+   "subtitle": "Khetha i-akhawunti ofuna ukuqhubeka nayo.",
+   "title": "Khetha i-akhawunti"
+  },
+  "alternativeMethods": {
+   "actionLink": "Thola usizo",
+   "actionText": "Awunayo noma yimuphi walezi?",
+   "blockButton__backupCode": "Sebenzisa ikhodi yokusekela",
+   "blockButton__emailCode": "Thumela ikhodi ku-{{identifier}}",
+   "blockButton__emailLink": "Thumela isixhumanisi ku-{{identifier}}",
+   "blockButton__passkey": "Ngena nge-passkey yakho",
+   "blockButton__password": "Ngena nge-iphasiwedi yakho",
+   "blockButton__phoneCode": "Thumela ikhodi ye-SMS ku-{{identifier}}",
+   "blockButton__totp": "Sebenzisa uhlelo lwakho lokuqinisekisa",
+   "getHelp": {
+    "blockButton__emailSupport": "Ukusekela nge-imeyili",
+    "content": "Uma unenkinga yokungena ku-akhawunti yakho, sithumele i-imeyili sizosebenza nawe ukuze sibuyisele ukufinyelela ngokushesha okukhulu.",
+    "title": "Thola usizo"
+   },
+   "subtitle": "Unezinkinga? Ungasebenzisa noma yimiphi yalezi ndlela ukuze ungene.",
+   "title": "Sebenzisa enye indlela"
+  },
+  "alternativePhoneCodeProvider": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
+   "title": "Hlola i-{{provider}} yakho"
+  },
+  "backupCodeMfa": {
+   "subtitle": "Ikhodi yakho yokusekela yileyo oyithole lapho usetha ukuqinisekisa ngezinyathelo ezimbili.",
+   "title": "Faka ikhodi yokusekela"
+  },
+  "emailCode": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
+   "title": "Hlola i-imeyili yakho"
+  },
+  "emailCodeMfa": {
+   "formTitle": "Hlola i-imeyili yakho",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
+   "title": "Hlola i-imeyili yakho"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "Ukuze uqhubeke, vula isixhumanisi sokuqinisekisa kudivayisi nakusiphequluli lapho uqale khona ukungena ngakho",
+    "title": "Isixhumanisi sokuqinisekisa asisebenzi kule divayisi"
+   },
+   "expired": {
+    "subtitle": "Buyela kuthebhu yokuqala ukuze uqhubeke.",
+    "title": "Lesi sixhumanisi sokuqinisekisa siphelelwe yisikhathi"
+   },
+   "failed": {
+    "subtitle": "Buyela kuthebhu yokuqala ukuze uqhubeke.",
+    "title": "Lesi sixhumanisi sokuqinisekisa asisebenzi"
+   },
+   "formSubtitle": "Sebenzisa isixhumanisi sokuqinisekisa esithunyelwe ku-imeyili yakho",
+   "formTitle": "Isixhumanisi sokuqinisekisa",
+   "loading": {
+    "subtitle": "Uzoqondiswa kabusha maduze",
+    "title": "Uyangena..."
+   },
+   "resendButton": "Awuthole isixhumanisi? Thumela futhi",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
+   "title": "Hlola i-imeyili yakho",
+   "unusedTab": {
+    "title": "Ungavala le thebhu"
+   },
+   "verified": {
+    "subtitle": "Uzoqondiswa kabusha maduze",
+    "title": "Ungene ngempumelelo"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "Buyela kuthebhu yokuqala ukuze uqhubeke",
+    "subtitleNewTab": "Buyela kuthebhu entsha evuliwe ukuze uqhubeke",
+    "titleNewTab": "Ungene kwesinye isithebhu"
+   },
+   "verifiedTransferable": {
+    "subtitle": "Buyela kuthebhu yokuqala ukuze uqhubeke",
+    "title": "I-imeyili iqinisekisiwe"
+   }
+  },
+  "emailLinkMfa": {
+   "formSubtitle": "Sebenzisa isixhumanisi sokuqinisekisa esithunyelwe ku-imeyili yakho",
+   "resendButton": "Awuthole isixhumanisi? Thumela futhi",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
+   "title": "Hlola i-imeyili yakho"
+  },
+  "enterpriseConnections": {
+   "subtitle": "Khetha i-akhawunti yenkampani ukuze uqhubeke.",
+   "title": "Khetha i-akhawunti"
+  },
+  "enterpriseSSO": {
+   "formButtonPrimary": "Qhubeka nge-SSO"
+  },
+  "forgotPassword": {
+   "formTitle": "Ikhodi yokusetha kabusha iphasiwedi",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "ukuze usethe kabusha iphasiwedi yakho",
+   "subtitle_email": "Okokuqala, faka ikhodi ethunyelwe ekhelini lakho le-imeyili",
+   "subtitle_phone": "Okokuqala, faka ikhodi ethunyelwe efonini yakho",
+   "title": "Setha kabusha iphasiwedi"
+  },
+  "forgotPasswordAlternativeMethods": {
+   "blockButton__resetPassword": "Setha kabusha iphasiwedi yakho",
+   "label__alternativeMethods": "Noma, ngena ngenye indlela",
+   "title": "Ukhohlwe iphasiwedi?"
+  },
+  "newDeviceVerificationNotice": "Ungena kusukela kudivayisi entsha. Sicela ukuqinisekiswa ukuze silondoloze i-akhawunti yakho iphephile.",
+  "noAvailableMethods": {
+   "message": "Akukwazi ukuqhubeka nokungena. Asikho isici sokuqinisekisa esitholakalayo.",
+   "subtitle": "Kukhona iphutha elenzekile",
+   "title": "Akukwazi ukungena"
+  },
+  "passkey": {
+   "subtitle": "Ukusebenzisa i-passkey yakho kuqinisekisa ukuthi ungubani. Idivayisi yakho ingacela isigxivizo somunwe, ubuso noma ukhiye wesikrini.",
+   "title": "Sebenzisa i-passkey yakho"
+  },
+  "password": {
+   "actionLink": "Sebenzisa enye indlela",
+   "subtitle": "Faka iphasiwedi ehlobene ne-akhawunti yakho",
+   "title": "Faka iphasiwedi yakho"
+  },
+  "passwordCompromised": {
+   "title": "Iphasiwedi idalulwe"
+  },
+  "passwordPwned": {
+   "title": "Iphasiwedi idalulwe"
+  },
+  "passwordUntrusted": {
+   "title": "Iphasiwedi ayethembeki"
+  },
+  "phoneCode": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
+   "title": "Hlola ifoni yakho"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "Ukuze uqhubeke, faka ikhodi yokuqinisekisa ethunyelwe efonini yakho",
+   "title": "Hlola ifoni yakho"
+  },
+  "protectCheck": {
+   "loading": "Iyalayisha…",
+   "retryButton": "Zama futhi",
+   "subtitle": "Sicelaulinde sisaqinisekisa isicelo sakho.",
+   "title": "Siqinisekisa isicelo sakho"
+  },
+  "resetPassword": {
+   "formButtonPrimary": "Setha kabusha iphasiwedi",
+   "requiredMessage": "Ngezizathu zokuphepha, kuyadingeka ukuthi usethe kabusha iphasiwedi yakho.",
+   "successMessage": "Iphasiwedi yakho ishintshiwe ngempumelelo. Sikungenisa, sicelaulinde okwesikhashana.",
+   "title": "Setha iphasiwedi entsha"
+  },
+  "resetPasswordMfa": {
+   "detailsLabel": "Kudingeka sihlole ukuthi ungubani ngaphambi kokusetha kabusha iphasiwedi yakho."
+  },
+  "ssoBypass": {
+   "actionLink": "Awukwazi ukusebenzisa i-SSO?",
+   "code": {
+    "resendButton": "Awuthole ikhodi? Thumela futhi",
+    "subtitle": "ukuze uqhubeke ku-Openscholar",
+    "title": "Hlola i-imeyili yakho"
+   },
+   "notice": "Inhlangano yakho idinga i-SSO. Ukuqhubeka ngaphandle kwayo kuyarekhodwa."
+  },
+  "start": {
+   "actionLink": "Bhalisa",
+   "actionLink__join_waitlist": "Joyina uhlu lokulinda",
+   "actionLink__use_email": "Sebenzisa i-imeyili",
+   "actionLink__use_email_username": "Sebenzisa i-imeyili noma igama lomsebenzisi",
+   "actionLink__use_passkey": "Sebenzisa i-passkey esikhundleni salokho",
+   "actionLink__use_phone": "Sebenzisa ifoni",
+   "actionLink__use_username": "Sebenzisa igama lomsebenzisi",
+   "actionText": "Awunayo i-akhawunti?",
+   "actionText__join_waitlist": "Ufuna ukufinyelela kusenesikhathi?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "Sebenzisa enye indlela",
+    "label": "Inombolo yefoni ye-{{provider}}",
+    "subtitle": "Faka inombolo yakho yefoni ukuze uthole ikhodi yokuqinisekisa ku-{{provider}}.",
+    "title": "Ngena ku-Openscholar nge-{{provider}}"
+   },
+   "subtitle": "Ngena ukuze ufinyelele ukusesha kwakho, umtapo wolwazi nokuskrina.",
+   "title": "Ngena ku-Openscholar",
+   "titleCombined": "Qhubeka ku-Openscholar",
+   "subtitleCombined": "Ngena ukuze ufinyelele ukusesha kwakho, umtapo wolwazi nokuskrina."
+  },
+  "totpMfa": {
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "subtitle": "Ukuze uqhubeke, faka ikhodi yokuqinisekisa enziwe uhlelo lwakho lokuqinisekisa",
+   "title": "Ukuqinisekisa ngezinyathelo ezimbili"
+  },
+  "web3Solana": {
+   "subtitle": "Khetha isikhwama esingezansi ukuze ungene",
+   "title": "Ngena nge-Solana"
+  }
+ },
+ "signInEnterPasswordTitle": "Faka iphasiwedi yakho",
+ "signUp": {
+  "alternativePhoneCodeProvider": {
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "Faka ikhodi yokuqinisekisa ethunyelwe ku-{{provider}} yakho",
+   "title": "Qinisekisa i-{{provider}} yakho"
+  },
+  "continue": {
+   "actionLink": "Ngena",
+   "actionText": "Sesivele unayo i-akhawunti?",
+   "subtitle": "Sicela ugcwalise imininingwane esele ukuze uqhubeke.",
+   "title": "Gcwalisa izinkundla ezingekho"
+  },
+  "emailCode": {
+   "formSubtitle": "Faka ikhodi yokuqinisekisa ethunyelwe ekhelini lakho le-imeyili",
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "Faka ikhodi yokuqinisekisa ethunyelwe ku-imeyili yakho",
+   "title": "Qinisekisa i-imeyili yakho"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "Ukuze uqhubeke, vula isixhumanisi sokuqinisekisa kudivayisi nakusiphequluli lapho uqale khona ukubhalisa ngakho",
+    "title": "Isixhumanisi sokuqinisekisa asisebenzi kule divayisi"
+   },
+   "formSubtitle": "Sebenzisa isixhumanisi sokuqinisekisa esithunyelwe ekhelini lakho le-imeyili",
+   "formTitle": "Isixhumanisi sokuqinisekisa",
+   "loading": {
+    "title": "Uyabhalisa..."
+   },
+   "resendButton": "Awuthole isixhumanisi? Thumela futhi",
+   "subtitle": "ukuze uqhubeke ku-Openscholar",
+   "title": "Qinisekisa i-imeyili yakho",
+   "verified": {
+    "title": "Ubhalise ngempumelelo"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "Buyela kuthebhu entsha evuliwe ukuze uqhubeke",
+    "subtitleNewTab": "Buyela kuthebhu yangaphambili ukuze uqhubeke",
+    "title": "I-imeyili iqinisekisiwe ngempumelelo"
+   }
+  },
+  "enterpriseConnections": {
+   "subtitle": "Khetha i-akhawunti yenkampani ukuze uqhubeke.",
+   "title": "Khetha i-akhawunti"
+  },
+  "legalConsent": {
+   "checkbox": {
+    "label__onlyPrivacyPolicy": "Ngiyavuma ku-{{ privacyPolicyLink || link(\"Inqubomgomo Yobumfihlo\") }}",
+    "label__onlyTermsOfService": "Ngiyavuma ku-{{ termsOfServiceLink || link(\"Imigomo Yesevisi\") }}",
+    "label__termsOfServiceAndPrivacyPolicy": "Ngiyavuma ku-{{ termsOfServiceLink || link(\"Imigomo Yesevisi\") }} nakwi-{{ privacyPolicyLink || link(\"Inqubomgomo Yobumfihlo\") }}"
+   },
+   "continue": {
+    "subtitle": "Sicela ufunde uvume imigomo ukuze uqhubeke",
+    "title": "Imvume yezomthetho"
+   }
+  },
+  "phoneCode": {
+   "formSubtitle": "Faka ikhodi yokuqinisekisa ethunyelwe enombolweni yakho yefoni",
+   "formTitle": "Ikhodi yokuqinisekisa",
+   "resendButton": "Awuthole ikhodi? Thumela futhi",
+   "subtitle": "Faka ikhodi yokuqinisekisa ethunyelwe efonini yakho",
+   "title": "Qinisekisa ifoni yakho"
+  },
+  "protectCheck": {
+   "loading": "Iyalayisha…",
+   "retryButton": "Zama futhi",
+   "subtitle": "Sicela ulinde sisaqinisekisa isicelo sakho.",
+   "title": "Siqinisekisa isicelo sakho"
+  },
+  "restrictedAccess": {
+   "actionLink": "Ngena",
+   "actionText": "Sesivele unayo i-akhawunti?",
+   "blockButton__emailSupport": "Ukusekela nge-imeyili",
+   "blockButton__joinWaitlist": "Joyina uhlu lokulinda",
+   "subtitle": "Ukubhalisa akuvulekile okwamanje. Uma ukholelwa ukuthi kufanele ube nokufinyelela, sicela uxhumane nokusekela.",
+   "subtitleWaitlist": "Ukubhalisa akuvulekile okwamanje. Ukuze ube ngowokuqala ukwazi lapho sethula khona, joyina uhlu lokulinda.",
+   "title": "Ukufinyelela kuvinjiwe"
+  },
+  "start": {
+   "actionLink": "Ngena",
+   "actionLink__use_email": "Sebenzisa i-imeyili esikhundleni salokho",
+   "actionLink__use_phone": "Sebenzisa ifoni esikhundleni salokho",
+   "actionText": "Sesivele unayo i-akhawunti?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "Sebenzisa enye indlela",
+    "label": "Inombolo yefoni ye-{{provider}}",
+    "subtitle": "Faka inombolo yakho yefoni ukuze uthole ikhodi yokuqinisekisa ku-{{provider}}.",
+    "title": "Bhalisa ku-Openscholar nge-{{provider}}"
+   },
+   "subtitle": "Mahhala ngesikhathi se-alpha yomphakathi. Akudingeki ikhadi.",
+   "subtitleCombined": "Mahhala ngesikhathi se-alpha yomphakathi. Akudingeki ikhadi.",
+   "title": "Dala i-akhawunti yakho",
+   "titleCombined": "Dala i-akhawunti yakho"
+  },
+  "web3Solana": {
+   "subtitle": "Khetha isikhwama esingezansi ukuze ubhalise",
+   "title": "Bhalisa nge-Solana"
+  }
+ },
+ "socialButtonsBlockButton": "Qhubeka nge-{{provider|titleize}}",
+ "socialButtonsBlockButtonManyInView": "{{provider|titleize}}",
+ "unstable__errors": {
+  "action_blocked": "Lesi senzo asikwazanga ukuqedwa. Sicela uzame futhi ngemva kwesikhathi, noma uxhumane nokusekela uma le nkinga iqhubeka.",
+  "already_a_member_in_organization": "{{email}} sekuyilungu lenhlangano.",
+  "api_key_name_already_exists": "Igama lokhiye we-API seliyekhona.",
+  "api_key_usage_exceeded": "Ufinyelele umkhawulo wakho wokusetshenziswa. Ungawususa umkhawulo ngokuthuthukisela uhlelo olukhokhelwayo.",
+  "avatar_file_size_exceeded": "Usayizi wefayela udlula umkhawulo omkhulu we-10MB. Sicela ukhethe ifayela elincane.",
+  "avatar_file_type_invalid": "Uhlobo lwefayela aluxhaswa. Sicela ulayishe isithombe se-JPG, PNG, GIF noma WEBP.",
+  "captcha_invalid": "Ukubhalisa akuphumelelanga ngoba ukuhlolwa kokuphepha kwehlulekile. Sicela uvuselele ikhasi uzame futhi, noma uxhumane nosizo.",
+  "captcha_unavailable": "Ukubhalisa kehlulekile ngenxa yokuhlola kwe-bot okungaphumelelanga. Sicela uvuselele ikhasi ukuze uzame futhi, noma uxhumane nokusekela ukuze uthole usizo olwengeziwe.",
+  "form_code_incorrect": "Ikhodi ayilungile",
+  "form_email_address_blocked": "Izinsiza ze-imeyili zesikhashana azamukelwa. Sicela usebenzise ikheli lakho le-imeyili elijwayelekile.",
+  "form_identifier_exists__email_address": "Leli kheli le-imeyili selivele lisetshenziswa. Sicela uzame elinye.",
+  "form_identifier_not_found": "Asikwazanga ukuthola i-akhawunti yakho.",
+  "form_new_password_matches_current": "Iphasiwedi entsha ayikwazi ukufana nephasiwedi yamanje.",
+  "form_param_format_invalid": "Ifomethi ayilungile.",
+  "form_param_format_invalid__email_address": "Ikheli le-imeyili kumele libe yikheli elivumelekile.",
+  "form_param_nil": "Le ndawo iyadingeka.",
+  "form_password_incorrect": "Iphasiwedi ayilungile. Zama futhi, noma usebenzise enye indlela.",
+  "form_password_length_too_short": "Iphasiwedi yakho imfishane kakhulu. Kufanele ibe nezinhlamvu ezingu-8 noma ngaphezulu.",
+  "form_password_matches_identifier": "Iphasiwedi ayikwazi ukufana nekheli lakho le-imeyili, inombolo yefoni noma igama lomsebenzisi. Ukuze i-akhawunti iphephe, sicela usebenzise iphasiwedi ehlukile.",
+  "form_password_not_strong_enough": "Iphasiwedi yakho ayiqinile ngokwanele.",
+  "form_password_or_identifier_incorrect": "Iphasiwedi noma ikheli le-imeyili akulungile. Zama futhi, noma usebenzise enye indlela.",
+  "form_password_pwned": "Le phasiwedi itholakele njengengxenye yokuphulwa kwedatha futhi ayikwazi ukusetshenziswa. Sicela uzame enye iphasiwedi.",
+  "form_password_pwned__sign_in": "Le phasiwedi itholakele njengengxenye yokuphulwa kwedatha futhi ayikwazi ukusetshenziswa. Sicela usethe kabusha iphasiwedi yakho.",
+  "form_password_untrusted__sign_in": "Iphasiwedi yakho ingase idalulwe. Ukuze uvikele i-akhawunti yakho, sicela uqhubeke ngenye indlela yokungena. Uzodingeka ukusetha kabusha iphasiwedi yakho ngemva kokungena.",
+  "form_password_validation_failed": "Iphasiwedi ayilungile.",
+  "form_username_invalid_length": "Igama lakho lomsebenzisi kufanele libe phakathi kwezinhlamvu ezingu-{{min_length}} nezingu-{{max_length}}.",
+  "form_username_needs_non_number_char": "Igama lakho lomsebenzisi kufanele liqukethe okungenani uhlamvu olulodwa olungeyona inombolo.",
+  "identification_deletion_failed": "Awukwazi ukususa ukuhlonza kwakho kokugcina.",
+  "insufficient_seats_change_plan": "Inhlangano yakho ayinazo izikhala ezanele zokumema inani lamalungu oyifunayo. Sicela ushintshele kuhlelo oluxhasa inani lamalungu ozama ukuwamema.",
+  "insufficient_seats_contact_support": "Inhlangano yakho ayinazo izikhala ezanele zokumema inani lamalungu oyifunayo. Sicela uxhumane nokusekela.",
+  "not_allowed_access": "Leli kheli le-imeyili alivunyelwe ukubhalisa. Xhumana nosizo uma ucabanga ukuthi leli yiphutha.",
+  "oauth_access_denied": "Awuvumelanga ukufinyelela ku-akhawunti yakho.",
+  "organization_membership_quota_exceeded": "Ufinyelele umkhawulo wakho wobulungu benhlangano, okufaka phakathi nezimemo ezilindile.",
+  "organization_not_found_or_unauthorized": "Awusayilungu lale nhlangano. Sicela ukhethe noma udale enye.",
+  "organization_not_found_or_unauthorized_with_create_organization_disabled": "Awusayilungu lale nhlangano. Sicela ukhethe enye.",
+  "passkey_already_exists": "I-passkey seyibhalisiwe kule divayisi.",
+  "passkey_not_supported": "Ama-passkey awasekelwa kule divayisi.",
+  "passkey_pa_not_supported": "Ukubhalisa kudinga i-authenticator yeplatifomu kodwa idivayisi ayiyisekeli.",
+  "passkey_registration_cancelled": "Ukubhalisa kwe-passkey kukhanseliwe noma kuphelelwe yisikhathi.",
+  "passkey_retrieval_cancelled": "Ukuqinisekiswa kwe-passkey kukhanseliwe noma kuphelelwe yisikhathi.",
+  "passwordComplexity": {
+   "maximumLength": "ngaphansi kwezinhlamvu ezingu-{{length}}",
+   "minimumLength": "izinhlamvu ezingu-{{length}} noma ngaphezulu",
+   "requireLowercase": "uhlamvu olulodwa oluncane",
+   "requireNumbers": "inombolo",
+   "requireSpecialCharacter": "uphawu olukhethekile",
+   "requireUppercase": "uhlamvu olukhulu",
+   "sentencePrefix": "Iphasiwedi yakho kufanele iqukethe"
+  },
+  "protect_check_execution_failed": "Ukuqinisekisa akuqedanga. Sicela uzame futhi.",
+  "protect_check_invalid_script": "Ayikwazanga ukulayisha ukuqinisekisa. Sicela uxhumane nokusekela uma le nkinga iqhubeka.",
+  "protect_check_invalid_sdk_url": "Ukuqinisekisa akukwazanga ukuqala. Sicela uxhumane nokusekela.",
+  "protect_check_required": "Lokhu kungena kudinga esinye isinyathelo sokuqinisekisa esingeke sibonakale lapha. Sicela uzame futhi noma usebenzise enye indlela yokungena.",
+  "protect_check_script_load_failed": "Ayikwazanga ukulayisha ukuqinisekisa. Lokhu kungabangelwa inkinga yenethiwekhi noma i-Content Security Policy evimbela isikripthi sokuqinisekisa. Sicela uzame futhi noma uxhumane nokusekela.",
+  "protect_check_timed_out": "Ukuqinisekisa akuqedanga ngesikhathi. Sicela uzame futhi.",
+  "protect_check_unsupported_environment": "Ukuqinisekisa akusekelwa kule ndawo. Sicela uqhubeke kusiphequluli esijwayelekile noma uxhumane nokusekela.",
+  "session_exists": "Usungenile kakade.",
+  "sso_bypass_domain_not_served": "Leli lungu alikwazanga ukungezwa ngoba ikheli lalo le-imeyili aliphethwe yisixhumanisi esisodwa.",
+  "ticket_expired_code": "Lesi sixhumanisi siphelelwe yisikhathi. Sicela uqale kabusha noma wenze isicelo sesixhumanisi esisha.",
+  "ticket_invalid_code": "Lesi sixhumanisi asisasebenzi noma sesisetshenzisiwe. Sicela uqale kabusha noma wenze isicelo sesixhumanisi esisha.",
+  "too_many_requests": "Izicelo ziningi kakhulu. Sicela uzame futhi emva kwesikhashana.",
+  "too_many_unverified_identifications": "Kunokuqinisekiswa okuningi okulindile kule akhawunti. Susa ikheli le-imeyili, inombolo yefoni noma isikhwama esingasadingeki, noma linda imizuzu embalwa ukuze ukusetha okungaphelele kwe-passkey kuphelelwe yisikhathi, bese uzama futhi.",
+  "verification_expired": "Lokhu kuqinisekisa kuphelelwe yisikhathi. Sicela uzame futhi.",
+  "verification_failed": "Imizamo eyehlulekile iningi kakhulu. Zama futhi ngendlela efanayo noma ngenye.",
+  "web3_missing_identifier": "I-Web3 Wallet extension ayitholakali. Sicela uyifake ukuze uqhubeke.",
+  "web3_signature_request_rejected": "Wenqabile isicelo sesignature. Sicela uzame futhi ukuze uqhubeke.",
+  "web3_solana_signature_generation_failed": "Kube nephutha ekukhiqizeni i-signature. Sicela uzame futhi ukuze uqhubeke.",
+  "zxcvbn": {
+   "couldBeStronger": "Iphasiwedi yakho iyasebenza, kodwa ingaba namandla amakhulu. Zama ukungeza izinhlamvu eziningi.",
+   "goodPassword": "Iphasiwedi yakho ihlangabezana nazo zonke izidingo ezidingekayo.",
+   "notEnough": "Iphasiwedi yakho ayiqinile ngokwanele.",
+   "suggestions": {
+    "allUppercase": "Enza amanye amanye ahlamvu abe amakhulu, kodwa hhayi onke.",
+    "anotherWord": "Engeza amagama amaningi angajwayelekile kangako.",
+    "associatedYears": "Gwema iminyaka ehlobene nawe.",
+    "capitalization": "Enza ukuthi kube nezinhlamvu ezinkulu ngaphezu kohlamvu lokuqala.",
+    "dates": "Gwema usuku neminyaka ehlobene nawe.",
+    "l33t": "Gwema ukushintsha izinhlamvu ngendlela ebikezelekayo, njenga ‘@’ esikhundleni sika ‘a’.",
+    "longerKeyboardPattern": "Sebenzisa amaphethini amade wekhibhodi bese ushintsha uhlangothi lokuthayipha kaningi.",
+    "noNeed": "Ungakha amaphasiwedi aqinile ngaphandle kokusebenzisa izimpawu, izinombolo noma izinhlamvu ezinkulu.",
+    "pwned": "Uma usebenzisa le phasiwedi kwenye indawo, kufanele uyishintshe.",
+    "recentYears": "Gwema iminyaka yakamuva.",
+    "repeated": "Gwema amagama nezinhlamvu eziphindaphindwayo.",
+    "reverseWords": "Gwema ukubhalwa kwamagama avamile ngemuva.",
+    "sequences": "Gwema ukulandelana kwezinhlamvu ezivamile.",
+    "useWords": "Sebenzisa amagama amaningana, kodwa gwema izinkulumo ezivamile."
+   },
+   "warnings": {
+    "common": "Lena iphasiwedi evame ukusetshenziswa.",
+    "commonNames": "Amagama nezibongo ezivamile kulula ukuzibheka.",
+    "dates": "Usuku kulula ukubheka.",
+    "extendedRepeat": "Amaphethini ezinhlamvu aphindaphindwayo afana ne-“abcabcabc” kulula ukuwabheka.",
+    "keyPattern": "Amaphethini amafushane ekhibhodi kulula ukuwabheka.",
+    "namesByThemselves": "Amagama noma izibongo ezodwa kulula ukuzibheka.",
+    "pwned": "Iphasiwedi yakho yembulwa ukuphulwa kwedatha ku-inthanethi.",
+    "recentYears": "Iminyaka yakamuva kulula ukuyibheka.",
+    "sequences": "Ukulandelana kwezinhlamvu okuvamile njenge-“abc” kulula ukukubheka.",
+    "similarToCommon": "Lokhu kufana nephasiwedi evame ukusetshenziswa.",
+    "simpleRepeat": "Izinhlamvu eziphindaphindwayo njenge-“aaa” kulula ukuzibheka.",
+    "straightRow": "Imigqa eqondile yezinkinobho ekhibhodini yakho kulula ukuyibheka.",
+    "topHundred": "Lena iphasiwedi esetshenziswa kaningi.",
+    "topTen": "Lena iphasiwedi esetshenziswa kakhulu.",
+    "userInputs": "Akufanele kube nedatha yomuntu siqu noma yekhasi.",
+    "wordByItself": "Igama elodwa kulula ukulibheka."
+   }
+  }
+ },
+ "userButton": {
+  "action__addAccount": "Engeza i-akhawunti",
+  "action__closeUserMenu": "Vala imenyu yomsebenzisi",
+  "action__manageAccount": "Phatha i-akhawunti",
+  "action__openUserMenu": "Vula imenyu yomsebenzisi",
+  "action__signOut": "Phuma",
+  "action__signOutAll": "Phuma kuzo zonke ii-akhawunti",
+  "label__accountActions": "Izenzo ze-akhawunti",
+  "label__activeSessions": "Izikhathi ezisebenzayo",
+  "label__userButtonPopover": "Iphaneli ye-akhawunti"
+ },
+ "userProfile": {
+  "apiKeysPage": {
+   "title": "Okhiye be-API"
+  },
+  "backupCodePage": {
+   "actionLabel__copied": "Kukopishiwe!",
+   "actionLabel__copy": "Kopisha konke",
+   "actionLabel__download": "Landa i-.txt",
+   "actionLabel__print": "Phrinta",
+   "infoText1": "Amakhodi okusekela azovulwa le akhawunti.",
+   "infoText2": "Gcina amakhodi okusekela eyimfihlo futhi uwagcine ephephile. Ungasungula kabusha amakhodi okusekela uma usola ukuthi avuziwe.",
+   "subtitle__codelist": "Awagcine ephephile futhi uwagcine eyimfihlo.",
+   "successMessage": "Amakhodi okusekela manje avuliwe. Ungasebenzisa enye yalawa ukuze ungene ku-akhawunti yakho uma ulahlekelwa ukufinyelela kwidivayisi yakho yokuqinisekisa. Ikhodi ngayinye ingasetshenziswa kanye kuphela.",
+   "successSubtitle": "Ungasebenzisa enye yalawa ukuze ungene ku-akhawunti yakho uma ulahlekelwa ukufinyelela kwidivayisi yakho yokuqinisekisa.",
+   "title": "Engeza ukuqinisekiswa ngekhodi yokusekela",
+   "title__codelist": "Amakhodi okusekela"
+  },
+  "billingPage": {
+   "accountCreditsSection": {
+    "title": "Izikweleti ze-akhawunti",
+    "viewHistory": "Bona umlando wezikweleti"
+   },
+   "creditHistoryPage": {
+    "tableHeader__amount": "Inani",
+    "tableHeader__date": "Usuku",
+    "title": "Umlando wezikweleti ze-akhawunti"
+   },
+   "paymentHistorySection": {
+    "empty": "Asikho umlando wokukhokha",
+    "notFound": "Umzamo wokukhokha awutholakalanga",
+    "tableHeader__amount": "Inani",
+    "tableHeader__date": "Usuku",
+    "tableHeader__status": "Isimo"
+   },
+   "paymentMethodsSection": {
+    "actionLabel__default": "Yenza okuzenzakalelayo",
+    "actionLabel__remove": "Susa",
+    "add": "Engeza indlela entsha yokukhokha",
+    "addSubtitle": "Engeza indlela entsha yokukhokha ku-akhawunti yakho.",
+    "cancelButton": "Khansela",
+    "formButtonPrimary__add": "Engeza indlela yokukhokha",
+    "formButtonPrimary__pay": "Khokha {{amount}}",
+    "payWithTestCardButton": "Khokha ngekhadi lokuhlola",
+    "removeMethod": {
+     "messageLine1": "{{identifier}} izosuswa kule akhawunti.",
+     "messageLine2": "Ngeke usakwazi ukusebenzisa lo mthombo wokukhokha, nanoma yiziphi izinhlelo zokukhokha ezincike kuwo zeke zisebenze.",
+     "successMessage": "{{paymentMethod}} isusiwe ku-akhawunti yakho.",
+     "title": "Susa indlela yokukhokha"
+    },
+    "title": "Izindlela zokukhokha"
+   },
+   "start": {
+    "headerTitle__payments": "Izinkokhelo",
+    "headerTitle__plans": "Izinhlelo",
+    "headerTitle__statements": "Izitatimende",
+    "headerTitle__subscriptions": "Ukubhalisela"
+   },
+   "statementsSection": {
+    "empty": "Azikho izitatimende zokubonisa",
+    "itemCaption__paidForPlan": "Ikhokhelwe uhlelo lwe-{{plan}} {{period}}",
+    "itemCaption__payerCredit": "Ikhredithi evela ebhalansini ye-akhawunti",
+    "itemCaption__proratedCredit": "Ikhredithi ehlukaniswe ngokusetshenziswa okungaphelele kokubhalisela okwedlule",
+    "itemCaption__subscribedAndPaidForPlan": "Ubhalisele futhi wakhokhela uhlelo lwe-{{plan}} {{period}}",
+    "notFound": "Isitatimende asitholakalanga",
+    "tableHeader__amount": "Inani",
+    "tableHeader__date": "Usuku",
+    "title": "Izitatimende",
+    "totalPaid": "Konke okukhokhiwe"
+   },
+   "subscriptionsListSection": {
+    "actionLabel__manageSubscription": "Phatha",
+    "actionLabel__newSubscription": "Bhalisela uhlelo",
+    "actionLabel__switchPlan": "Shintsha izinhlelo",
+    "overview": "Ukubuka konke",
+    "tableHeader__edit": "Hlela",
+    "tableHeader__plan": "Uhlelo",
+    "tableHeader__startDate": "Usuku lokuqala",
+    "title": "Ukubhalisela"
+   },
+   "subscriptionsSection": {
+    "actionLabel__default": "Phatha"
+   },
+   "switchPlansSection": {
+    "title": "Shintsha izinhlelo"
+   },
+   "title": "Ukukhokha"
+  },
+  "connectedAccountPage": {
+   "formHint": "Khetha umhlinzeki ukuze uxhumanise i-akhawunti yakho.",
+   "formHint__noAccounts": "Azikho izinhlinzeki ze-akhawunti yangaphandle ezitholakalayo.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} izosuswa kule akhawunti.",
+    "messageLine2": "Ngeke usakwazi ukusebenzisa le akhawunti exhunyiwe, nanoma yiziphi izici ezincike kuyo zeke zisebenze.",
+    "successMessage": "{{connectedAccount}} isusiwe ku-akhawunti yakho.",
+    "title": "Susa i-akhawunti exhunyiwe"
+   },
+   "socialButtonsBlockButton": "{{provider|titleize}}",
+   "successMessage": "Umhlinzeki ungezwe ku-akhawunti yakho",
+   "title": "Engeza i-akhawunti exhunyiwe"
+  },
+  "deletePage": {
+   "actionDescription": "Bhala “Susa i-akhawunti” ngezansi ukuze uqhubeke.",
+   "confirm": "Susa i-akhawunti",
+   "messageLine1": "Uqinisekile ukuthi ufuna ukususa i-akhawunti yakho? Eminye imininingwane ehlobene ingagcinwa. Ukuze ucele ukususwa kwedatha ngokuphelele, sicela uxhumane nokusekela.",
+   "messageLine2": "Lesi senzo sihlala njalo futhi asibuyiseki.",
+   "title": "Susa i-akhawunti"
+  },
+  "emailAddressPage": {
+   "emailCode": {
+    "formHint": "I-imeyili equkethe ikhodi yokuqinisekisa izothunyelwa kule kheli le-imeyili.",
+    "formSubtitle": "Faka ikhodi yokuqinisekisa ethunyelwe ku-{{identifier}}",
+    "formTitle": "Ikhodi yokuqinisekisa",
+    "resendButton": "Awuthole ikhodi? Thumela futhi",
+    "successMessage": "I-imeyili {{identifier}} yengezwe ku-akhawunti yakho."
+   },
+   "emailLink": {
+    "formHint": "I-imeyili equkethe isixhumanisi sokuqinisekisa izothunyelwa kule kheli le-imeyili.",
+    "formSubtitle": "Chofoza isixhumanisi sokuqinisekisa ku-imeyili ethunyelwe ku-{{identifier}}",
+    "formTitle": "Isixhumanisi sokuqinisekisa",
+    "resendButton": "Awuthole isixhumanisi? Thumela futhi",
+    "successMessage": "I-imeyili {{identifier}} yengezwe ku-akhawunti yakho."
+   },
+   "enterpriseSSOLink": {
+    "formButton": "Chofoza ukuze ungene",
+    "formSubtitle": "Qedela ukungena nge-{{identifier}}"
+   },
+   "formHint": "Kuzodingeka uqinisekise le kheli le-imeyili ngaphambi kokuthi lingezwe ku-akhawunti yakho.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} izosuswa kule akhawunti.",
+    "messageLine2": "Ngeke usakwazi ukungena usebenzisa le kheli le-imeyili.",
+    "successMessage": "{{emailAddress}} isusiwe ku-akhawunti yakho.",
+    "title": "Susa ikheli le-imeyili"
+   },
+   "title": "Engeza ikheli le-imeyili",
+   "verifyTitle": "Qinisekisa ikheli le-imeyili"
+  },
+  "formButtonPrimary__add": "Engeza",
+  "formButtonPrimary__continue": "Qhubeka",
+  "formButtonPrimary__finish": "Qedela",
+  "formButtonPrimary__remove": "Susa",
+  "formButtonPrimary__save": "Gcina",
+  "formButtonReset": "Khansela",
+  "mfaPage": {
+   "formHint": "Khetha indlela yokungeza.",
+   "title": "Engeza ukuqinisekiswa ngezinyathelo ezimbili"
+  },
+  "mfaPhoneCodePage": {
+   "backButton": "Sebenzisa inombolo ekhona",
+   "primaryButton__addPhoneNumber": "Engeza inombolo yefoni",
+   "removeResource": {
+    "messageLine1": "{{identifier}} ngeke isathola amakhodi okuqinisekisa uma ungena.",
+    "messageLine2": "I-akhawunti yakho ingase ingabe ivikeleke kangako. Uqinisekile ukuthi ufuna ukuqhubeka?",
+    "successMessage": "Ukuqinisekiswa ngezinyathelo ezimbili ngekhodi ye-SMS kususiwe ku-{{mfaPhoneCode}}",
+    "title": "Susa ukuqinisekiswa ngezinyathelo ezimbili"
+   },
+   "subtitle__availablePhoneNumbers": "Khetha inombolo yefoni ekhona ukuze ubhalise ukuqinisekiswa ngekhodi ye-SMS noma wengeze enye entsha.",
+   "subtitle__unavailablePhoneNumbers": "Azikho izinombolo zefoni ezitholakalayo zokubhalisa ukuqinisekiswa ngekhodi ye-SMS, sicela wengeze enye entsha.",
+   "successMessage1": "Uma ungena, uzodinga ukufaka ikhodi yokuqinisekisa ethunyelwe kule nombolo yefoni njengesinyathelo esengeziwe.",
+   "successMessage2": "Gcina lawa makhodi okusekela endaweni ephephile. Uma ulahlekelwa ukufinyelela kwidivayisi yakho yokuqinisekisa, ungasebenzisa amakhodi okusekela ukuze ungene.",
+   "successTitle": "Ukuqinisekiswa ngekhodi ye-SMS kuvuliwe",
+   "title": "Engeza ukuqinisekiswa ngekhodi ye-SMS"
+  },
+  "mfaTOTPPage": {
+   "authenticatorApp": {
+    "buttonAbleToScan__nonPrimary": "Skena ikhodi ye-QR esikhundleni salokho",
+    "buttonUnableToScan__nonPrimary": "Awukwazi ukuskena ikhodi ye-QR?",
+    "infoText__ableToScan": "Setha indlela entsha yokungena ku-app yakho yokuqinisekisa bese uskena ikhodi ye-QR elandelayo ukuze uyixhumanise ne-akhawunti yakho.",
+    "infoText__unableToScan": "Setha indlela entsha yokungena kumqinisekisi wakho bese ufaka ukhiye onikezwe ngezansi.",
+    "inputLabel__unableToScan1": "Qinisekisa ukuthi i-Time-based noma i-One-time passwords ivuliwe, bese uqedela ukuxhumanisa i-akhawunti yakho.",
+    "inputLabel__unableToScan2": "Noma, uma umqinisekisi wakho esekela ama-TOTP URI, ungakopisha ne-URI ephelele."
+   },
+   "removeResource": {
+    "messageLine1": "Amakhodi okuqinisekisa avela kulo mqinisekisi ngeke adingeke uma ungena.",
+    "messageLine2": "I-akhawunti yakho ingase ingabe ivikeleke kangako. Uqinisekile ukuthi ufuna ukuqhubeka?",
+    "successMessage": "Ukuqinisekiswa ngezinyathelo ezimbili ngohlelo lwe-app yokuqinisekisa kususiwe.",
+    "title": "Susa ukuqinisekiswa ngezinyathelo ezimbili"
+   },
+   "successMessage": "Ukuqinisekiswa ngezinyathelo ezimbili sekuvuliwe. Uma ungena, uzodinga ukufaka ikhodi yokuqinisekisa evela kulo mqinisekisi njengesinyathelo esengeziwe.",
+   "title": "Engeza i-app yokuqinisekisa",
+   "verifySubtitle": "Faka ikhodi yokuqinisekisa eyenziwe umqinisekisi wakho",
+   "verifyTitle": "Ikhodi yokuqinisekisa"
+  },
+  "mobileButton__menu": "Imenyu",
+  "navbar": {
+   "account": "Iprofayela",
+   "apiKeys": "Okhiye be-API",
+   "billing": "Ukukhokha",
+   "description": "Phatha ulwazi lwe-akhawunti yakho.",
+   "security": "Ukuphepha",
+   "title": "I-akhawunti"
+  },
+  "passkeyScreen": {
+   "removeResource": {
+    "messageLine1": "{{name}} izosuswa kule akhawunti.",
+    "title": "Susa i-passkey"
+   },
+   "subtitle__rename": "Ungashintsha igama le-passkey ukuze lilula ukulithola.",
+   "title__rename": "Qamba kabusha i-passkey"
+  },
+  "passwordPage": {
+   "checkboxInfoText__signOutOfOtherSessions": "Kuyanconyelwa ukuphuma kuzo zonke ezinye idivayisi ezingase zisebenzise iphasiwedi yakho endala.",
+   "readonly": "Iphasiwedi yakho ayikwazi ukuhlelwa manje ngoba ungangena kuphela ngokuxhumana kwenkampani.",
+   "successMessage__set": "Iphasiwedi yakho isethiwe.",
+   "successMessage__signOutOfOtherSessions": "Zonke ezinye idivayisi siphumile.",
+   "successMessage__update": "Iphasiwedi yakho ibuyekeziwe.",
+   "title__set": "Setha iphasiwedi",
+   "title__update": "Buyekeza iphasiwedi"
+  },
+  "phoneNumberPage": {
+   "infoText": "Umyalezo wombhalo onekhodi yokuqinisekisa uzothunyelwa kule nombolo yefoni. Izinga lomyalezo nedatha lingasebenza.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} izosuswa kule akhawunti.",
+    "messageLine2": "Ngeke usakwazi ukungena usebenzisa le nombolo yefoni.",
+    "successMessage": "{{phoneNumber}} isusiwe ku-akhawunti yakho.",
+    "title": "Susa inombolo yefoni"
+   },
+   "successMessage": "{{identifier}} yengezwe ku-akhawunti yakho.",
+   "title": "Engeza inombolo yefoni",
+   "verifySubtitle": "Faka ikhodi yokuqinisekisa ethunyelwe ku-{{identifier}}",
+   "verifyTitle": "Qinisekisa inombolo yefoni"
+  },
+  "plansPage": {
+   "title": "Izinhlelo"
+  },
+  "profilePage": {
+   "fileDropAreaHint": "Usayizi onconyiwe ngu-1:1, kuya ku-10MB.",
+   "imageFormDestructiveActionSubtitle": "Susa",
+   "imageFormSubtitle": "Layisha",
+   "imageFormTitle": "Isithombe sephrofayela",
+   "readonly": "Ulwazi lwakho lwephrofayela lunikezwe ukuxhumana kwenkampani futhi alikwazi ukuhlelwa.",
+   "successMessage": "Iphrofayela yakho ibuyekeziwe.",
+   "title": "Buyekeza iphrofayela"
+  },
+  "start": {
+   "activeDevicesSection": {
+    "destructiveAction": "Phuma kwidivayisi",
+    "title": "Amadivayisi asebenzayo"
+   },
+   "connectedAccountsSection": {
+    "actionLabel__connectionFailed": "Xhuma kabusha",
+    "actionLabel__reauthorize": "Vumela manje",
+    "destructiveActionTitle": "Susa",
+    "primaryButton": "Xhuma i-akhawunti",
+    "subtitle__disconnected": "Le akhawunti inqanyuliwe.",
+    "subtitle__reauthorize": "Izimvume ezidingekayo sezibuyekeziwe, futhi ungase ubhekane nemisebenzi enqunyiwe. Sicela uvumele kabusha lolu hlelo ukuze ugweme izinkinga.",
+    "title": "Ama-akhawunti axhunyiwe"
+   },
+   "dangerSection": {
+    "deleteAccountButton": "Susa i-akhawunti",
+    "title": "Susa i-akhawunti"
+   },
+   "emailAddressesSection": {
+    "destructiveAction": "Susa i-imeyili",
+    "detailsAction__nonPrimary": "Setha njengeyokuqala",
+    "detailsAction__primary": "Qedela ukuqinisekisa",
+    "detailsAction__unverified": "Qinisekisa",
+    "primaryButton": "Engeza ikheli le-imeyili",
+    "title": "Amakheli e-imeyili"
+   },
+   "enterpriseAccountsSection": {
+    "primaryButton": "Xhuma i-akhawunti",
+    "title": "Ama-akhawunti enkampani"
+   },
+   "headerTitle__account": "Imininingwane yephrofayela",
+   "headerTitle__security": "Ukuphepha",
+   "mfaSection": {
+    "backupCodes": {
+     "actionLabel__regenerate": "Sungula kabusha",
+     "headerTitle": "Amakhodi okusekela",
+     "subtitle__regenerate": "Thola isethi entsha yamakhodi okusekela aphephile. Amakhodi okusekela angaphambilini azosuswa futhi ngeke asasebenza.",
+     "title__regenerate": "Sungula kabusha amakhodi okusekela"
+    },
+    "phoneCode": {
+     "actionLabel__setDefault": "Setha njengokuzenzakalelayo",
+     "destructiveActionLabel": "Susa"
+    },
+    "primaryButton": "Engeza ukuqinisekiswa ngezinyathelo ezimbili",
+    "title": "Ukuqinisekiswa ngezinyathelo ezimbili",
+    "totp": {
+     "destructiveActionTitle": "Susa",
+     "headerTitle": "I-app yokuqinisekisa"
+    }
+   },
+   "passkeysSection": {
+    "menuAction__destructive": "Susa",
+    "menuAction__rename": "Qamba kabusha",
+    "primaryButton": "Engeza i-passkey",
+    "title": "Ama-passkey"
+   },
+   "passwordSection": {
+    "primaryButton__setPassword": "Setha iphasiwedi",
+    "primaryButton__updatePassword": "Buyekeza iphasiwedi",
+    "title": "Iphasiwedi"
+   },
+   "phoneNumbersSection": {
+    "destructiveAction": "Susa inombolo yefoni",
+    "detailsAction__nonPrimary": "Setha njengeyokuqala",
+    "detailsAction__primary": "Qedela ukuqinisekisa",
+    "detailsAction__unverified": "Qinisekisa inombolo yefoni",
+    "primaryButton": "Engeza inombolo yefoni",
+    "title": "Izinombolo zefoni"
+   },
+   "profileSection": {
+    "primaryButton": "Buyekeza iphrofayela",
+    "title": "Iphrofayela"
+   },
+   "usernameSection": {
+    "primaryButton__setUsername": "Setha igama lomsebenzisi",
+    "primaryButton__updateUsername": "Buyekeza igama lomsebenzisi",
+    "title": "Igama lomsebenzisi"
+   },
+   "web3WalletsSection": {
+    "destructiveAction": "Susa isikhwama",
+    "detailsAction__nonPrimary": "Setha njengeyokuqala",
+    "primaryButton": "Xhuma isikhwama",
+    "title": "Izikhwama ze-Web3",
+    "web3SelectSolanaWalletScreen": {
+     "subtitle": "Khetha isikhwama se-Solana ukuze uxhume ku-akhawunti yakho.",
+     "title": "Engeza isikhwama se-Solana"
+    }
+   }
+  },
+  "usernamePage": {
+   "successMessage": "Igama lakho lomsebenzisi libuyekeziwe.",
+   "title__set": "Setha igama lomsebenzisi",
+   "title__update": "Buyekeza igama lomsebenzisi"
+  },
+  "web3WalletPage": {
+   "removeResource": {
+    "messageLine1": "{{identifier}} izosuswa kule akhawunti.",
+    "messageLine2": "Ngeke usakwazi ukungena usebenzisa lo sikhwama se-Web3.",
+    "successMessage": "{{web3Wallet}} isusiwe ku-akhawunti yakho.",
+    "title": "Susa isikhwama se-Web3"
+   },
+   "subtitle__availableWallets": "Khetha isikhwama se-Web3 ukuze uxhume ku-akhawunti yakho.",
+   "subtitle__unavailableWallets": "Azikho izikhwama ze-Web3 ezitholakalayo.",
+   "successMessage": "Isikhwama sengezwe ku-akhawunti yakho.",
+   "title": "Engeza isikhwama se-Web3",
+   "web3WalletButtonsBlockButton": "{{provider|titleize}}"
+  }
+ },
+ "web3SolanaWalletButtons": {
+  "connect": "Xhuma nge-{{walletName}}",
+  "continue": "Qhubeka nge-{{walletName}}",
+  "noneAvailable": "Azikho izikhwama ze-Solana Web3 ezitholakele. Sicela ufake {{ solanaWalletsLink || link(\"i-wallet extension\") }} exhasa i-Web3."
+ }
+}

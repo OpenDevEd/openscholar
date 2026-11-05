@@ -107,7 +107,7 @@ export async function loadDraftConfigurationSnapshot(
   options: OwnerConfigurationValidationOptions,
 ): Promise<LoadedConfigurationSnapshot> {
   const header = await ctx.db.get("evidenceLibraryConfigDrafts", draftId);
-  if (!header) throw new Error("Evidence Library draft not found");
+  if (!header) throw new Error("Evidence Community draft not found");
   const sections = await loadConfigurationSections(ctx, "draft", draftId);
   const snapshot = {
     ownerConfigurationVersion: header.ownerConfigurationVersion,
@@ -129,7 +129,7 @@ export async function loadRevisionConfigurationSnapshot(
   options: OwnerConfigurationValidationOptions,
 ): Promise<LoadedConfigurationSnapshot> {
   const header = await ctx.db.get("evidenceLibraryConfigRevisions", revisionId);
-  if (!header) throw new Error("Evidence Library revision not found");
+  if (!header) throw new Error("Evidence Community revision not found");
   const sections = await loadConfigurationSections(ctx, "revision", revisionId);
   const snapshot = {
     ownerConfigurationVersion: header.ownerConfigurationVersion,

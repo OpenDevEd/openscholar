@@ -40,3 +40,6 @@ export function hasWildcardInQuotedPhrase(query: string): boolean {
  * takes (see {@link hasUnquotedWildcard}).
  */
 export const withoutQuotedQuestionMarks = (query: string) => query.replace(/"[^"]*"/g, (phrase) => phrase.replace(/\?/g, ""));
+
+/** A query with the wildcards taken out of its quoted phrases, which OpenAlex refuses (see {@link hasWildcardInQuotedPhrase}). */
+export const withoutQuotedWildcards = (query: string) => query.replace(/"[^"]*"/g, (phrase) => phrase.replace(/[*?]/g, ""));

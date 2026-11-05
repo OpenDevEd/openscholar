@@ -21,7 +21,7 @@ describe("researcher export contents", () => {
     expect(row["Paper Source Type"]).toBe("screening");
     expect(row["Paper Source ID"]).toBe("screening-origin");
     expect(row["Screening Decision Revision"]).toBe("2:completed:3");
-    expect(row["OpenAlex ID"]).toBe("https://openalex.org/W123");
+    expect(row["OpenAlex ID"]).toBe("W123");
     expect(row["Paper Title"]).toBe(exportPapers[0].title);
     expect(row["[zero] Reported outcome"]).toBe("0");
     expect(row["[false] Reported outcome"]).toBe("No");

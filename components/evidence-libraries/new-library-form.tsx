@@ -204,13 +204,13 @@ function OwnerForm({ organizationId, organization }: {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!reserved) return;
-    router.push(`/evidence-libraries/${reserved.libraryId}/configuration`);
+    router.push(`/evidence-communities/${reserved.libraryId}/configuration`);
   }
 
   return (
     <LibraryPageShell
       title={t("title")}
-      backHref="/evidence-libraries"
+      backHref="/evidence-communities"
       backLabel={t("backToLibraries")}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-5 p-4 md:p-6">
@@ -229,7 +229,7 @@ function OwnerForm({ organizationId, organization }: {
                   {t("nameTaken", { name: trimmed })}{" "}
                   <Link
                     className="underline underline-offset-2"
-                    href={`/evidence-libraries/${current.libraryId}/configuration`}
+                    href={`/evidence-communities/${current.libraryId}/configuration`}
                   >
                     {t("openExisting")}
                   </Link>
@@ -336,7 +336,7 @@ function OwnerForm({ organizationId, organization }: {
 
         <div className="flex justify-end gap-2 border-t border-border-subtle pt-5">
           <Button asChild type="button" variant="ghost">
-            <Link href="/evidence-libraries">{tc("cancel")}</Link>
+            <Link href="/evidence-communities">{tc("cancel")}</Link>
           </Button>
           <Button type="submit" disabled={!reserved}>
             {tc("continue")}

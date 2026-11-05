@@ -1,6 +1,4 @@
-import { enGB, enUS, frFR, hiIN, jaJP, zhCN } from "@clerk/localizations";
 import { dark } from "@clerk/ui/themes";
-import type { LocalizationResource } from "@clerk/nextjs/types";
 import type { Appearance } from "@clerk/ui";
 
 // Clerk's own screens take their colours and typeface from the app's tokens,
@@ -18,42 +16,16 @@ const variables = {
   fontFamily: "var(--font-sans)",
 } satisfies NonNullable<Appearance["variables"]>;
 
-const CLERK_LOCALIZATION_BY_LOCALE: Record<string, LocalizationResource> = {
-  "en-us": enUS,
-  "en-gb": enGB,
-  zh: zhCN,
-  "zh-cn": zhCN,
-  fr: frFR,
-  "fr-fr": frFR,
-  hi: hiIN,
-  "hi-in": hiIN,
-  ja: jaJP,
-  "ja-jp": jaJP,
-};
-
-function normalizeLocale(locale: string | null | undefined): string {
-  return (locale ?? "en-US").trim().replace("_", "-").toLowerCase();
-}
-
-export function resolveClerkLocalization(
-  locale: string | null | undefined,
-): LocalizationResource {
-  const normalized = normalizeLocale(locale);
-  const exact = CLERK_LOCALIZATION_BY_LOCALE[normalized];
-  if (exact) {
-    return exact;
-  }
-
-  const language = normalized.split("-")[0] ?? "en";
-  return CLERK_LOCALIZATION_BY_LOCALE[language] ?? enUS;
-}
+// Links are text in the brand colour, so they take its readable stop.
+const link = { color: "var(--primary-ink)" };
+const elements = { footerActionLink: link, formFieldAction: link, formResendCodeLink: link, identityPreviewEditButton: link } satisfies NonNullable<Appearance["elements"]>;
 
 export function resolveClerkAppearance(
   resolvedTheme: string | null | undefined,
 ): Appearance {
-  // The mark as the brand guidelines draw it on white and on black. Sign-up keeps
+  // The mark for white and for black. Sign-up keeps
   // offering the optional first and last name, which other members see.
   return resolvedTheme === "dark"
-    ? { theme: dark, variables, options: { logoImageUrl: "/icon-black.svg", showOptionalFields: true } }
-    : { variables, options: { logoImageUrl: "/icon.svg", showOptionalFields: true } };
+    ? { theme: dark, variables, elements, options: { logoImageUrl: "/icon-black.svg", showOptionalFields: true } }
+    : { variables, elements, options: { logoImageUrl: "/icon.svg", showOptionalFields: true } };
 }

@@ -6,6 +6,8 @@ import { SearchX, ArrowRight, Loader2, CircleAlert, BookOpen } from "@/component
 import { useTranslations } from "next-intl";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";
+import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 type NoResultsVariant = "search" | "filter";
 
@@ -102,9 +104,10 @@ export function NoResults({ query, variant = "search", onTryNewSearch }: NoResul
   );
 }
 
-/** Why OpenAlex rejected the query, where it stopped, and how to fix it. */
+/** Why the search source rejected the query, where it stopped, and how to fix it. */
 export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql: boolean }) {
   const t = useTranslations("search");
+  const source = useSearchSource();
   const tsc = useTranslations("searchCommand");
   const problem = detail.problem.charAt(0).toUpperCase() + detail.problem.slice(1);
   // OpenAlex's own fix for this one points at an internal registry.
@@ -121,11 +124,11 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
       >
         <CircleAlert className="mb-6 h-12 w-12 text-destructive opacity-60" aria-hidden />
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-          {t("queryErrorTitle")}
+          {t("queryErrorTitle", { source: SEARCH_SOURCE_NAMES[source] })}
         </h2>
         <p className="mt-2 text-base text-foreground">{problem}</p>
         {detail.near && (
-          <pre className="mt-5 w-full whitespace-pre-wrap break-all rounded-lg bg-inset px-4 py-3 text-left font-mono text-xs leading-relaxed text-muted-foreground">
+          <pre className="mt-5 w-full whitespace-pre-wrap break-all rounded-lg bg-inset px-4 py-3 text-start font-mono text-xs leading-relaxed text-muted-foreground">
             {detail.near.before}
             <mark className="rounded-sm bg-destructive/15 px-0.5 text-destructive">{detail.near.token}</mark>
             {detail.near.after}
@@ -159,22 +162,9 @@ export function LoadingResults({ variant = "full" }: LoadingResultsProps) {
 
   if (variant === "banner") {
     return (
-      <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 relative overflow-hidden">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" />
-          <div className="flex-1">
-            <p className="font-medium text-foreground">{t("updatingResults")}</p>
-            <p className="text-sm text-muted-foreground">
-              {t("applyingParameters")}
-            </p>
-          </div>
-        </div>
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: "100%" }}
-          transition={{ duration: 2, ease: "easeInOut" }}
-          className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"
-        />
+      <div role="status" className="fade-enter inline-flex items-center gap-2 rounded-full border border-border-subtle bg-card px-3 py-1.5 text-sm shadow-sm">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        {t("updatingResults")}
       </div>
     );
   }

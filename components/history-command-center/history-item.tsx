@@ -11,7 +11,7 @@ import { useSearchHistoryStore } from "@/lib/store";
 import type { SearchResult, ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
-import { BookmarkForm } from "@/components/command-center";
+import { BookmarkForm, bookmarkable } from "@/components/command-center";
 import { Entry, EntryAction, EntryAside, EntryTile, ENTRY_OPEN, FullTextToggle, isGrid, isRoomy } from "@/components/command-center/entry";
 import { useFullText } from "@/components/evidence-libraries/configuration/disclosure-button";
 import { QueryText } from "@/components/ui/query-text";
@@ -47,7 +47,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
   const [isHistoryWanted, setIsHistoryWanted] = useState(false);
   const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen || isHistoryWanted);
   const removeSearchResult = useSearchHistoryStore((state) => state.removeSearchResult);
-  const queryText = useFullText<HTMLButtonElement>(`${viewMode}|${item.query}`);
+  const queryText = useFullText<HTMLSpanElement>(`${viewMode}|${item.query}`);
 
   const handleCopy = async () => {
     try {
@@ -93,8 +93,11 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
 
   // The query, cut to `clamp` until it is asked for in full.
   const open = (clamp: string, shape?: string) => (
-    <button ref={queryText.ref} type="button" className={cn(ENTRY_OPEN, shape, !queryText.expanded && clamp)} onClick={openSearch}>
-      <QueryText query={item.query} oql={item.field === OQL_FIELD} />
+    <button type="button" className={cn(ENTRY_OPEN, shape)} onClick={openSearch}>
+      {/* The cut goes on the text: Safari doesn't cut a button's own lines. */}
+      <span ref={queryText.ref} className={cn("block min-w-0", !queryText.expanded && clamp)}>
+        <QueryText query={item.query} oql={item.field === OQL_FIELD} />
+      </span>
     </button>
   );
 
@@ -143,6 +146,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
         }}
       >
         <QueryVersions
+          similarTo={item.similarTo}
           queryHistory={history.entries}
           total={history.total}
           onLoadOlder={history.hasOlder ? history.loadOlder : undefined}
@@ -155,7 +159,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
 
   const chips = (
     <div className="flex flex-wrap items-center gap-1.5 empty:hidden">
-      <FullTextToggle text={queryText} className="-ml-1.5" />
+      <FullTextToggle text={queryText} className="-ms-1.5" />
       {versions}
       {languageInfo && (
         <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2 text-xs text-secondary-foreground">
@@ -177,7 +181,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
       }
     >
       <EntryAction label={tc("copyQuery")} icon={Copy} onClick={handleCopy} />
-      {!choosing && (
+      {!choosing && bookmarkable(item.query, item.field, item.similarTo) && (
         <Popover open={isBookmarking} onOpenChange={setIsBookmarking}>
           <PopoverTrigger asChild>
             <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} />
@@ -204,7 +208,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
             {aside()}
           </div>
           {open(roomy ? "line-clamp-3" : "line-clamp-2")}
-          {!roomy && <FullTextToggle text={queryText} className="-ml-1.5 self-start" />}
+          {!roomy && <FullTextToggle text={queryText} className="-ms-1.5 self-start" />}
           {roomy && question}
           {roomy && chips}
         </>
@@ -218,7 +222,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
           </div>
           {runBy ? <span className="flex shrink-0 self-start">{runBy}</span> : null}
           {/* Beside the query's first line; on a narrow screen, a line of its own under the text. */}
-          {aside("h-7 self-start max-sm:basis-full max-sm:flex-row-reverse max-sm:justify-between max-sm:pl-[5.25rem]")}
+          {aside("h-7 self-start max-sm:basis-full max-sm:flex-row-reverse max-sm:justify-between max-sm:ps-[5.25rem]")}
         </>
       ) : (
         <>

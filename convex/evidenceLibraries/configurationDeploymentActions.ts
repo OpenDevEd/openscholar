@@ -108,7 +108,7 @@ function requireTargetRuntimeImage(
 ): RuntimeImageReference {
   if (!isRuntimeImageReference(value)) {
     throw invalidConfiguration(
-      "The saved Evidence Library runtime image is missing or invalid",
+      "The saved Evidence Community runtime image is missing or invalid",
     );
   }
   return value;
@@ -499,7 +499,7 @@ export const runConfigurationDeployment = internalAction({
       if (runtimeConfigSha256 !== target.runtimeConfigSha256) {
         throw new CoolifyClientError(
           "CONFIGURATION_TARGET_INVALID",
-          "The saved Evidence Library configuration target is invalid",
+          "The saved Evidence Community configuration target is invalid",
         );
       }
       // A retry reuses the configuration it saved. If Clerk's application
@@ -507,7 +507,7 @@ export const runConfigurationDeployment = internalAction({
       if (!namesCurrentOAuthClient(runtimeConfigJson, signIn, encryptionKey)) {
         throw new CoolifyClientError(
           "CONFIGURATION_TARGET_INVALID",
-          "OpenScholar sign-in for this library changed after this publish was prepared. Publish again.",
+          "Openscholar sign-in for this community changed after this publish was prepared. Publish again.",
         );
       }
       const runtimeImage = requireTargetRuntimeImage(target.runtimeImage);
@@ -582,7 +582,7 @@ export const runConfigurationDeployment = internalAction({
           ) {
             throw new ReadinessClientError(
               "CONFIGURATION_ACTIVATION_FAILED",
-              "The new address does not answer as this library",
+              "The new address does not answer as this community",
             );
           }
         }
@@ -713,7 +713,7 @@ export const runConfigurationDeployment = internalAction({
         ) {
           throw new CoolifyClientError(
             "COOLIFY_DEPLOYMENT_CONFLICT",
-            "Coolify did not save the requested Evidence Library configuration",
+            "Coolify did not save the requested Evidence Community configuration",
           );
         }
       }
@@ -727,7 +727,7 @@ export const runConfigurationDeployment = internalAction({
           if (args.attemptCount < 2) {
             throw new CoolifyClientError(
               "COOLIFY_DEPLOYMENT_FAILED",
-              "Coolify could not deploy the Evidence Library",
+              "Coolify could not deploy the Evidence Community",
             );
           }
           const replacedDeploymentId = deploymentId;
@@ -805,7 +805,7 @@ export const runConfigurationDeployment = internalAction({
       if (deployment.state !== "finished") {
         throw new CoolifyClientError(
           "COOLIFY_DEPLOYMENT_FAILED",
-          "Coolify could not deploy the Evidence Library",
+          "Coolify could not deploy the Evidence Community",
         );
       }
       const boundApplication =
@@ -836,7 +836,7 @@ export const runConfigurationDeployment = internalAction({
       );
       if (!readiness.deploymentId || !readiness.coolifyConfigHash) {
         throw invalidConfiguration(
-          "Evidence Library deployment receipt is incomplete",
+          "Evidence Community deployment receipt is incomplete",
         );
       }
       await coolify.requireFinishedDeployment({
@@ -936,7 +936,7 @@ export const runConfigurationDeployment = internalAction({
           : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
             ? {
                 code: "OAUTH_CLIENT_SYNC_FAILED",
-                message: "OpenScholar sign-in could not be prepared for this library",
+                message: "Openscholar sign-in could not be prepared for this community",
               }
           : error instanceof DomainEgressRefused
             ? // Written for the owner: it says what is wrong with their domain.
@@ -947,7 +947,7 @@ export const runConfigurationDeployment = internalAction({
             ? {
                 code: "CONFIGURATION_ASSEMBLY_FAILED",
                 message:
-                  "Evidence Library configuration could not be assembled",
+                  "Evidence Community configuration could not be assembled",
                 issues: error.issues.map(({ pointer, message }) => ({
                   pointer,
                   message,
@@ -955,7 +955,7 @@ export const runConfigurationDeployment = internalAction({
               }
             : {
                 code: "CONFIGURATION_DEPLOYMENT_FAILED",
-                message: "Evidence Library configuration could not be deployed",
+                message: "Evidence Community configuration could not be deployed",
               };
       if (safeError.code === "CONFIGURATION_DEPLOYMENT_FAILED") {
         console.error("[evidence-library] configuration deployment failed", {

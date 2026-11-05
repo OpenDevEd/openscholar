@@ -17,6 +17,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
   useTranslations: () => (key: string) => key,
   useFormatter: () => ({ number: (value: number, options?: { style?: string }) => (options?.style === "percent" ? `${Math.round(value * 100)}%` : String(value)) }),
 }));
@@ -105,7 +106,7 @@ describe("<AppSidebar>", () => {
   it("opens Extract and Publish only where the workspace has them", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: "extract" })).toHaveAttribute("href", "/extraction");
-    expect(screen.getByRole("link", { name: "publish" })).toHaveAttribute("href", "/evidence-libraries");
+    expect(screen.getByRole("link", { name: "publish" })).toHaveAttribute("href", "/evidence-communities");
   });
 
   it("hydrates as the server drew it when the look cookie changed after the request", async () => {

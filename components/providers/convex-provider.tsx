@@ -3,8 +3,9 @@
 
 import { useConvexAuth, useMutation, type Preloaded } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { getStoredConsent } from "@/lib/consent-storage";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
-import { useLocale } from "next-intl";
+import type { LocalizationResource } from "@clerk/nextjs/types";
 import { useTheme } from "next-themes";
 import {
   createContext,
@@ -18,7 +19,6 @@ import { api } from "@/convex/_generated/api";
 import { PostHogIdentify } from "@/components/posthog-identify";
 import {
   resolveClerkAppearance,
-  resolveClerkLocalization,
 } from "@/lib/auth/clerk-ui-config";
 import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
 import { BillingCatalogProvider } from "@/lib/billing/catalog-provider";
@@ -50,17 +50,15 @@ export function ConvexClientProvider({
   children,
   preloadedFlags,
   preloadedCatalog,
+  clerkLocalization,
 }: {
   children: ReactNode;
+  /** Clerk's screens in the page's language, read on the server. */
+  clerkLocalization: LocalizationResource | undefined;
   preloadedFlags: Preloaded<typeof api.featureFlags.queries.list>;
   preloadedCatalog: Preloaded<typeof api.billing.catalog.get>;
 }) {
-  const locale = useLocale();
   const { resolvedTheme } = useTheme();
-  const clerkLocalization = useMemo(
-    () => resolveClerkLocalization(locale),
-    [locale],
-  );
   const clerkAppearance = useMemo(
     () => resolveClerkAppearance(resolvedTheme),
     [resolvedTheme],
@@ -95,7 +93,7 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
   const ensureUser = useMutation(api.users.mutations.ensureUser);
   const sessionKey = `${userId ?? "anonymous"}:${sessionId ?? "initializing"}`;
   const sync = useMemo(
-    () => new UserSync(sessionKey, () => ensureUser({})),
+    () => new UserSync(sessionKey, () => ensureUser({ analyticsConsent: getStoredConsent()?.choice })),
     [sessionKey, ensureUser],
   );
   const canSync = Boolean(isLoaded && isSignedIn && userId && isAuthenticated && !isLoading);

@@ -12,17 +12,25 @@
  *  B. Known id, no URL params → restore stored state to a canonical URL.
  *  C. Known id, URL params → sync the store if they changed, then canonicalize.
  *
+ * A new search whose address asks a research question (`?question=`) and has no
+ * query waits for AI to write its query, then goes on as in A. The redirect drops
+ * the question from the address, so reloading never writes or pays for it again.
+ *
  * Uses useEffect because the router cannot be called during render, and the
  * id is minted by the client-side history store (localStorage).
  */
 
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useQuestionToQuery } from '@/lib/ai/client/question-query';
+import { localeToLanguageCode } from '@/lib/i18n/locale-map';
+import { useAppToast } from '@/lib/toast';
 import { getEffectiveSearchId } from '../utils';
 import { useSearchHistoryStore } from '../store';
-import { searchResultToParams } from '../search-params/converters';
-import { buildResultsUrl, parseSearchParamsFromUrl, readSharedOql } from '../search-params';
+import { searchResultToParams, type NewSearchResultData } from '../search-params/converters';
+import { buildResultsUrl, parseSearchParamsFromUrl, readSharedOql, readUrlQuestion } from '../search-params';
 import { OQL_FIELD } from '../openalex/oql';
 import { resolveSearchInit } from './resolve-search-init';
 import { useCopiedSearches } from './copied';
@@ -30,9 +38,56 @@ import type { SearchField, SearchResult } from '../types';
 
 interface SearchInitializerProps {
   children: ReactNode;
+  /** Told the ID of each search this makes, before the server has answered. */
+  onMade?: (id: string) => void;
 }
 
-export function SearchInitializer({ children }: SearchInitializerProps) {
+/**
+ * Writes the query of a search made from a research question in its address, once the AI hook
+ * knows who pays for it. An effect because nobody pressed anything: opening the address is the
+ * request. It runs once however often React renders or re-runs it, and a person who has left by
+ * the time it answers gets no search and isn't sent back. If it can't be written, the search
+ * opens with no query and the question in its box, to try again from there.
+ */
+function QuestionSearch({ question, entry, onWritten }: { question: string; entry: NewSearchResultData; onWritten: (query: string) => void }) {
+  const { write: writeQuery, isReady } = useQuestionToQuery();
+  const locale = useLocale();
+  const toast = useAppToast();
+  const tToast = useTranslations('toast');
+  const started = useRef(false);
+  const left = useRef(false);
+
+  useEffect(() => {
+    left.current = false;
+    return () => {
+      left.current = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isReady || started.current) return;
+    started.current = true;
+    const write = async () => {
+      let query = '';
+      try {
+        query = await writeQuery({
+          question,
+          language: entry.language ?? localeToLanguageCode(locale),
+          syntax: entry.field === OQL_FIELD ? 'oql' : undefined,
+        });
+      } catch (error) {
+        console.error('Failed to convert research question:', error);
+        if (!left.current) toast.ai.failed(tToast('questionConversion'), error);
+      }
+      if (!left.current) onWritten(query);
+    };
+    void write();
+  }, [isReady, writeQuery, question, entry, locale, toast, tToast, onWritten]);
+
+  return null;
+}
+
+export function SearchInitializer({ children, onMade }: SearchInitializerProps) {
   const router = useWorkspaceRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -44,12 +99,43 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
   const updateSearchResult = useSearchHistoryStore((state) => state.updateSearchResult);
   const addQueryToHistory = useSearchHistoryStore((state) => state.addQueryToHistory);
 
-  const [status, setStatus] = useState<'pending' | 'redirecting' | 'ready'>('pending');
+  const [status, setStatus] = useState<'pending' | 'writing' | 'redirecting' | 'ready'>('pending');
+  const [unwritten, setUnwritten] = useState<{ address: string; question: string; entry: NewSearchResultData } | null>(null);
+  const address = `${pathname}?${searchParams?.toString() ?? ''}`;
+  // React re-runs an effect on mount in development, before the status it set has arrived.
+  const decidedToCreate = useRef(false);
+  // A link within the app to an address that names no search yet (Similar's) finds this already settled on the last one: it decides again.
+  const [settledOn, setSettledOn] = useState(address);
+  if (address !== settledOn) {
+    setSettledOn(address);
+    if (!searchId && status !== 'writing') {
+      decidedToCreate.current = false;
+      setStatus('pending');
+    }
+  }
+
+  const createSearch = useCallback((entry: NewSearchResultData, question: string) => {
+    setStatus('redirecting');
+    const newId = addSearchResult({
+      ...entry,
+      ...(question ? { questionHistory: [{ question, timestamp: new Date().toISOString() }] } : {}),
+    });
+    onMade?.(newId);
+    router.replace(buildResultsUrl(newId, searchResultToParams({ ...entry, id: newId } as SearchResult)));
+    return newId;
+  }, [addSearchResult, onMade, router]);
 
   // Reconcile URL <-> stored history. Pure decision in resolveSearchInit();
   // this effect only performs the resulting side effects.
   useEffect(() => {
     if (!searchParams) return; // SSR
+    // The address changed while its question was being written: what it says now decides.
+    if (status === 'writing' && unwritten?.address !== address) {
+      decidedToCreate.current = false;
+      setUnwritten(null);
+      setStatus('pending');
+      return;
+    }
     if (status !== 'pending') return;
 
     const urlParams = parseSearchParamsFromUrl(searchParams);
@@ -70,15 +156,17 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
 
     switch (decision.kind) {
       case 'create': {
-        setStatus('redirecting');
-        const newId = addSearchResult(decision.entry);
+        if (decidedToCreate.current) return;
+        decidedToCreate.current = true;
+        const question = readUrlQuestion(searchParams);
+        if (question && !decision.entry.query.trim()) {
+          setUnwritten({ address, question, entry: decision.entry });
+          setStatus('writing');
+          return;
+        }
+        const newId = createSearch(decision.entry, question);
         // A link that named a search this person can't open made them their own copy of it, and its page says so. An address that names one and carries no query of it copied nothing.
         if (searchId && parsedParams.q?.trim()) useCopiedSearches.setState((state) => ({ ids: [...state.ids, newId] }));
-        const url = buildResultsUrl(
-          newId,
-          searchResultToParams({ ...decision.entry, id: newId } as SearchResult),
-        );
-        router.replace(url);
         return;
       }
       case 'redirect':
@@ -104,8 +192,10 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
   }, [
     searchId,
     status,
+    unwritten,
+    address,
     getSearchResult,
-    addSearchResult,
+    createSearch,
     updateSearchResult,
     addQueryToHistory,
     pathname,
@@ -126,6 +216,13 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-foreground" />
+        {status === 'writing' && unwritten?.address === address && (
+          <QuestionSearch
+            question={unwritten.question}
+            entry={unwritten.entry}
+            onWritten={(query) => createSearch({ ...unwritten.entry, query }, unwritten.question)}
+          />
+        )}
       </div>
     );
   }

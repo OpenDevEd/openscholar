@@ -142,7 +142,7 @@ export function NewBookmarkDialog() {
                 {/* The bookmark as it is typed in a search, in the colour its name gives it everywhere. It
                     sits on the edge of the query it stands for, and hides the edge behind it: its upper half
                     is over the dialog and its lower half over the field, so it takes each one's colour. */}
-                <div className="relative z-10 -mb-5 ml-3 flex w-fit max-w-[calc(100%-1.5rem)] items-center bg-[linear-gradient(to_bottom,var(--background)_50%,var(--field)_50%)] pr-2 font-mono text-xl font-semibold">
+                <div className="relative z-10 -mb-5 ms-3 flex w-fit max-w-[calc(100%-1.5rem)] items-center bg-[linear-gradient(to_bottom,var(--background)_50%,var(--field)_50%)] pe-2 font-mono text-xl font-semibold">
                   <input
                     aria-label={tb("bookmarkName")}
                     aria-invalid={taken}
@@ -160,9 +160,9 @@ export function NewBookmarkDialog() {
                     )}
                     style={color ? { backgroundColor: color.bg, color: color.text, borderColor: color.border } : undefined}
                   />
-                  <span aria-hidden className="shrink-0 pl-1.5 text-subtle-foreground">...</span>
+                  <span aria-hidden className="shrink-0 ps-1.5 text-subtle-foreground">...</span>
                   {taken && (
-                    <span role="alert" className="ml-3 flex shrink-0 items-center gap-1.5 font-sans text-xs font-medium ink-destructive">
+                    <span role="alert" className="ms-3 flex shrink-0 items-center gap-1.5 font-sans text-xs font-medium ink-destructive">
                       <CircleAlert aria-hidden className="size-3.5" />
                       {tv("bookmarkNameExists", { name })}
                     </span>
@@ -205,7 +205,7 @@ export function NewBookmarkDialog() {
                   keeps one height from the moment a bookmark is named, so a lookup that returns moves nothing. */}
               {reuses && (
                 <div className="fade-enter space-y-1.5">
-                  <p className="pl-1 text-xs font-medium text-muted-foreground">{tb("expandsTo")}</p>
+                  <p className="ps-1 text-xs font-medium text-muted-foreground">{tb("expandsTo")}</p>
                   <p className="h-36 overflow-y-auto whitespace-pre-wrap rounded-xl bg-inset p-3 font-mono text-xs leading-6 [overflow-wrap:anywhere]">
                     {pieces.map((piece, key) => {
                       if (!piece.shortcut) return piece.text;
@@ -214,7 +214,7 @@ export function NewBookmarkDialog() {
                       if (!known) return piece.text;
                       return (
                         <Missing key={key} label={tv("bookmarkNotFound", { keyword: piece.shortcut })}>
-                          <TriangleAlert aria-hidden className="mr-1 inline size-3.5 align-[-0.2em]" />
+                          <TriangleAlert aria-hidden className="me-1 inline size-3.5 align-[-0.2em]" />
                           {piece.text}
                         </Missing>
                       );

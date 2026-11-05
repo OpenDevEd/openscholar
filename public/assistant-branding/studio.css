@@ -2,18 +2,18 @@
 @font-face { font-family: Ubuntu; src: url(Ubuntu-Medium.woff2) format("woff2"); font-weight: 500; font-display: block; }
 @font-face { font-family: Ubuntu; src: url(Ubuntu-Bold.woff2) format("woff2"); font-weight: 700; font-display: block; }
 :root {
-  --bg: #fff; --surface: #f5f7fb; --raised: #fff; --ink: #172554; --muted: #596579; --line: #dce3ee; --soft-line: #e8edf4;
-  --accent: #2563eb; --on-accent: #fff; --selected: #eaf2ff; --mark-a: #60a5fa; --mark-b: #2563eb; --mark-c: #bfdbfe; --eye: #172554; --rate: 1;
+  --bg: #fff; --surface: #f5f7fb; --raised: #fff; --ink: #361307; --muted: #596579; --line: #dce3ee; --soft-line: #e8edf4;
+  --accent: #ed7b15; --on-accent: #fff; --selected: #fff7ed; --mark-a: #ffb347; --mark-b: #ed7b15; --mark-c: #ffdbac; --eye: #361307; --rate: 1;
   color-scheme: light;
 }
 html[data-theme="navy"] {
-  --bg: #172554; --surface: #1e3a8a; --raised: #172554; --ink: #fff; --muted: #bfdbfe; --line: #4663a5; --soft-line: #304b90;
-  --accent: #bfdbfe; --on-accent: #172554; --selected: #254593; --mark-a: #60a5fa; --mark-b: #3b82f6; --mark-c: #bfdbfe; --eye: #fff;
+  --bg: #361307; --surface: #893411; --raised: #361307; --ink: #fff; --muted: #ffdbac; --line: #b2440a; --soft-line: #893411;
+  --accent: #ffdbac; --on-accent: #361307; --selected: #b2440a; --mark-a: #ffb347; --mark-b: #ff9d36; --mark-c: #ffdbac; --eye: #fff;
   color-scheme: dark;
 }
 html[data-theme="blue"] {
-  --bg: #2563eb; --surface: #1e3a8a; --raised: #1e3a8a; --ink: #fff; --muted: #dbeafe; --line: #72a4fa; --soft-line: #5587ef;
-  --accent: #fff; --on-accent: #172554; --selected: #1e3a8a; --mark-a: #fff; --mark-b: #fff; --mark-c: #fff; --eye: #fff;
+  --bg: #ed7b15; --surface: #893411; --raised: #893411; --ink: #fff; --muted: #ffedd5; --line: #ff9d36; --soft-line: #d75b01;
+  --accent: #fff; --on-accent: #361307; --selected: #893411; --mark-a: #fff; --mark-b: #fff; --mark-c: #fff; --eye: #fff;
   color-scheme: dark;
 }
 html[data-theme="black"] {

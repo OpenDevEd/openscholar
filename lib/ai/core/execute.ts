@@ -30,6 +30,10 @@ export interface ExecuteAIOperationConfig<TInput, TOutput> {
   effort?: Effort
   /** Keeps the calls of one job on the same upstream host. */
   sessionId?: string
+  /** The most a call may write, reasoning included. */
+  maxOutputTokens?: number
+  /** Told what each call used, a retried one too: the answer's `usage` is only the last call's. */
+  onUsage?: (usage: Usage) => void
 }
 
 export async function executeAIOperation<TInput, TOutput>(
@@ -47,6 +51,8 @@ export async function executeAIOperation<TInput, TOutput>(
     postProcess,
     effort,
     sessionId,
+    maxOutputTokens,
+    onUsage,
   } = config
 
   const { maxRetries, shouldRetry, onRetry } = retryConfig
@@ -80,9 +86,11 @@ export async function executeAIOperation<TInput, TOutput>(
         experimental_repairToolCall: repairToolCall,
         providerOptions: callOptions(model, { effort, sessionId }),
         temperature,
+        ...(maxOutputTokens !== undefined && { maxOutputTokens }),
         instructions: prompts.system,
         prompt: prompts.prompt,
       })
+      onUsage?.(usageOf(result.finalStep))
 
       const { output: object } = result
 

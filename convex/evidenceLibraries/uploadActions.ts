@@ -157,7 +157,7 @@ export const remove = action({
       url: args.url,
     });
     if (!key) {
-      throw createError("FORBIDDEN", "This file does not belong to the library");
+      throw createError("FORBIDDEN", "This file does not belong to the community");
     }
     try {
       await deleteLibraryUpload({ ...config, key });

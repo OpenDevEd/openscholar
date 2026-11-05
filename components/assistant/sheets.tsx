@@ -10,7 +10,8 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Loader2, Lock, MessageSquare, Move, Radio, Search, Share2, ShieldCheck, SquarePen, UserRound } from "@/components/icons";
 import { Pills } from "@/components/ui/pills";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations, useLocale } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { EASE } from "@/components/settings/model-map";
@@ -24,7 +25,8 @@ import { EmailAvatar } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ASSISTANT_JOB_CAPS } from "@/convex/lib/constants";
 import { viewOf } from "@/lib/assistant/actions";
-import { topUpBundles } from "@/lib/billing/catalog";
+import { TopUpConfirmation } from "@/components/billing/top-up-bundles";
+import { topUpBundles, type TopUpBundle } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -50,11 +52,13 @@ export type OpenSheet =
 type Role = "owner" | "write" | "read";
 
 
-/** Where a card sits with `depth` cards on top of it: smaller, and nudged left so its edge shows. */
-export const stackedUnder = (depth: number) => ({ scale: 1 - depth * 0.07, x: depth * -22 });
+/** Where a card sits with `depth` cards on top of it: smaller, and nudged towards the reading start so its edge shows. */
+export const stackedUnder = (depth: number, locale: string) => ({ scale: 1 - depth * 0.07, x: depth * (isRightToLeft(locale) ? 22 : -22) });
 
 /** One stacked layer. `depth` counts the sheets above it; 0 is the top. */
 export function Sheet({ index, depth, children }: { index: number; depth: number; children: ReactNode }) {
+  const locale = useLocale();
+  const offstage = isRightToLeft(locale) ? "calc(-100% - 24px)" : "calc(100% + 24px)";
   return (
     <motion.div
       role="dialog"
@@ -63,10 +67,10 @@ export function Sheet({ index, depth, children }: { index: number; depth: number
       // eslint-disable-next-line jsx-a11y/no-autofocus -- a new sheet takes focus, like a dialog
       autoFocus
       className="absolute inset-0 flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[-18px_0_48px_-18px_rgb(0_0_0/0.55)] outline-none"
-      style={{ transformOrigin: "0% 50%", zIndex: 20 + index }}
-      initial={{ x: "calc(100% + 24px)", scale: 1 }}
-      animate={stackedUnder(depth)}
-      exit={{ x: "calc(100% + 24px)", scale: 1 }}
+      style={{ transformOrigin: isRightToLeft(locale) ? "100% 50%" : "0% 50%", zIndex: 20 + index }}
+      initial={{ x: offstage, scale: 1 }}
+      animate={stackedUnder(depth, locale)}
+      exit={{ x: offstage, scale: 1 }}
       transition={SHEET_SPRING}
     >
       {children}
@@ -168,7 +172,7 @@ function ChatRow({ chat, index, current, when, onOpen, onShare, onMove }: { chat
       transition={{ duration: 0.3, ease: EASE, delay: 0.06 + Math.min(index, 12) * 0.03 }}
       className={cn("group relative rounded-2xl", current ? "bg-primary/[0.07] ring-1 ring-inset ring-primary/25" : "hover:bg-muted/50")}
     >
-      <button type="button" onClick={onOpen} aria-current={current ? "true" : undefined} className="block w-full rounded-2xl px-3 py-3 text-left">
+      <button type="button" onClick={onOpen} aria-current={current ? "true" : undefined} className="block w-full rounded-2xl px-3 py-3 text-start">
         <span className="flex items-baseline gap-3">
           <span className="min-w-0 flex-1 truncate text-sm font-semibold">{chat.title}</span>
           <span className="shrink-0 text-xs tabular-nums text-muted-foreground group-focus-within:invisible group-hover:invisible">{current ? t("openNow") : when}</span>
@@ -185,12 +189,12 @@ function ChatRow({ chat, index, current, when, onOpen, onShare, onMove }: { chat
             {chat.jobs.map((job) => (
               <JobLine key={job.id} job={job} />
             ))}
-            {chat.moreJobs ? <span className="flex h-6 items-center pl-7 text-xs text-muted-foreground">{t("moreJobs", { count: chat.moreJobs })}</span> : null}
+            {chat.moreJobs ? <span className="flex h-6 items-center ps-7 text-xs text-muted-foreground">{t("moreJobs", { count: chat.moreJobs })}</span> : null}
           </span>
         ) : null}
       </button>
       {/* Out of the flow, so the hover action never adds height to the row. */}
-      <div className="absolute right-2 top-2 hidden gap-1 group-focus-within:flex group-hover:flex">
+      <div className="absolute end-2 top-2 hidden gap-1 group-focus-within:flex group-hover:flex">
         {/* A chat you started moves to another of your workspaces (#654). */}
         {onMove ? (
           <TooltipHint label={tm("toAnother")}>
@@ -493,7 +497,7 @@ function LimitPicker({ label, listed, value, onChange }: { label: string; listed
   const field = useRef<HTMLInputElement>(null);
   return (
     <div>
-      <div className="flex items-center gap-3 pl-1">
+      <div className="flex items-center gap-3 ps-1">
         <span className="shrink-0 text-xs text-muted-foreground">{t("upTo")}</span>
         <div className="min-w-0 flex-1">
           <Segmented
@@ -790,6 +794,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
   const catalog = useBillingCatalog();
   const bundles = catalog && topUps ? topUpBundles(catalog) : [];
   const { buying, bought, buy } = purchase;
+  const [asking, setAsking] = useState<TopUpBundle | null>(null);
   const balance = Math.floor(account?.balance ?? 0);
   const need = Math.max(0, waiting.credits - balance);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
@@ -837,12 +842,12 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
                   key={bundle.credits}
                   type="button"
                   disabled={buying !== null}
-                  onClick={() => buy(bundle.credits)}
+                  onClick={() => setAsking(bundle)}
                   aria-label={t("buy", { credits: bundle.credits, price: money(bundle.amount) })}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: EASE, delay: 0.08 + i * 0.05 }}
-                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted/60 disabled:hover:bg-transparent"
+                  className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-start transition-colors hover:bg-muted/60 disabled:hover:bg-transparent"
                 >
                   <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
                   <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
@@ -860,7 +865,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
             </div>
           ) : (
             // An account that can't buy bundles here adds credits with its plan.
-            <button type="button" onClick={() => router.push("/settings/billing")} className="group flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-muted/60">
+            <button type="button" onClick={() => router.push("/settings/billing")} className="group flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-start text-sm font-medium transition-colors hover:bg-muted/60">
               <span className="flex-1">{t("plans")}</span>
               <ArrowRight className="size-4 text-muted-foreground/50 transition-colors group-hover:text-foreground" />
             </button>
@@ -868,6 +873,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
           <p className="px-1 text-xs leading-relaxed text-muted-foreground">{t("note")}</p>
         </div>
       </ScrollArea>
+      <TopUpConfirmation bundle={asking} account={account} onClose={() => setAsking(null)} onConfirm={buy} />
     </>
   );
 }

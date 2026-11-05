@@ -42,11 +42,21 @@ import { FocusMode } from "./ui/focus-mode";
 import { usePhoneView } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
+import { useAppToast } from "@/lib/toast";
+import { useFormatter, useTranslations } from "next-intl";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
-import { AiOverview } from "@/components/ai-overview/overview-card";
+import { AiOverview, useOverviewView } from "@/components/ai-overview/overview-card";
+import { inLikelyOrder, useLikelyOrder } from "@/lib/search/likely-order";
+import { SEMANTIC_FIELD } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { useCitedFocus } from "@/components/ai-overview/focus";
 
+/** The most papers one search request gives. */
+const ONE_REQUEST = 200;
+
 interface PapersListProps {
+  /** How many the search found, of which `results` are what one request gave. */
+  totalCount?: number | null;
   results: PaperResult[];
   filteredResults: PaperResult[];
   paginatedResults: PaperResult[];
@@ -99,7 +109,12 @@ function PapersGrid({
   resultsContainerRef,
   viewMode,
   hide,
+  ratingRange,
+  onlyRatedPapers,
+  totalCount,
 }: PapersListProps) {
+  const t = useTranslations("search");
+  const format = useFormatter();
   const gridClasses = {
     "list-simple": "flex flex-col gap-2",
     "list-detail": "flex flex-col gap-4",
@@ -135,6 +150,7 @@ function PapersGrid({
               <PaginationItem>
                 <PaginationPrevious
                   onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                  aria-disabled={currentPage === 1 || undefined}
                   className={cn(
                     "cursor-pointer",
                     currentPage === 1 && "pointer-events-none opacity-50"
@@ -233,6 +249,7 @@ function PapersGrid({
                   onClick={() =>
                     onPageChange(Math.min(totalPages, currentPage + 1))
                   }
+                  aria-disabled={currentPage === totalPages || undefined}
                   className={cn(
                     "cursor-pointer",
                     currentPage === totalPages &&
@@ -243,6 +260,10 @@ function PapersGrid({
             </PaginationContent>
           </Pagination>
         </div>
+      )}
+      {/* A results page holds what one request can, which a big search outgrows: says so where the pages run out. */}
+      {currentPage === totalPages && results.length === ONE_REQUEST && (totalCount ?? 0) > ONE_REQUEST && !isRatingFilterActive(ratingRange, onlyRatedPapers) && (
+        <p className="pt-4 text-center text-sm text-muted-foreground">{t("firstOnly", { shown: format.number(results.length), total: format.number(totalCount ?? 0) })}</p>
       )}
     </div>
   );
@@ -275,6 +296,11 @@ export function ResultsList({
   const rated = useRatedPapers(search.results);
   const answered = useAnsweredPapers(searchId ?? undefined, rated.papers);
   const results = answered.papers;
+  const overview = useOverviewView(!preview);
+  // Once it's shown it stays while the next results' ratings are read, so it doesn't leave and come back.
+  const [overviewShown, setOverviewShown] = useState(false);
+  const overviewNow = search.results.length > 0 && (results.length > 0 || overviewShown);
+  if (overviewNow !== overviewShown) setOverviewShown(overviewNow);
   const isLoading = searching || rated.loading || answered.loading;
   const totalCount = search.totalCount;
   
@@ -290,6 +316,7 @@ export function ResultsList({
     query: search.params.q,
     field: search.params.field,
     oql: search.oql,
+    similarTo: search.params.like,
     dateRange:
       search.params.df || search.params.dt
         ? {
@@ -334,12 +361,6 @@ export function ResultsList({
   );
 
   const { setScreeningResponse, setScreeningResponses } = useSearchHistoryStore();
-  const autoTranslateResults = useResultsTranslationSettingsStore(
-    (state) => state.autoTranslateResults
-  );
-  const targetLanguageOverride = useResultsTranslationSettingsStore(
-    (state) => state.targetLanguageOverride
-  );
   const manualRunRequestId = useResultsTranslationSettingsStore(
     (state) => state.manualRunRequestId
   );
@@ -348,7 +369,9 @@ export function ResultsList({
   const urlQuery = search.params.q;
 
   // Filter results based on rating filter
-  const filteredResults = results.filter((result) => {
+  const source = useSearchSource();
+  const likelyOrder = useLikelyOrder((state) => (searchId ? state.orders[searchId]?.ids : undefined));
+  const filteredResults = inLikelyOrder(results.filter((result) => {
     // Rating filter
     if (!preview && isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];
@@ -363,7 +386,7 @@ export function ResultsList({
     }
 
     return true;
-  });
+  }), source === "openscholar" ? likelyOrder : undefined);
 
   const totalPages = useMemo(
     () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),
@@ -457,6 +480,8 @@ export function ResultsList({
   }, []);
 
   const papersForBatchTranslation = paginatedResults;
+  const toast = useAppToast();
+  const tSearchCommand = useTranslations("searchCommand");
 
   // Use batch translation hook
   const {
@@ -468,11 +493,11 @@ export function ResultsList({
   } = useBatchTranslation({
     searchId: searchId || "",
     papers: papersForBatchTranslation,
-    canStart: !preview && !!searchId,
+    // Focus mode translates the paper being read, and a person has one batch at a time.
+    canStart: !preview && !!searchId && !isFocusModeOpen,
     isSearchLoading: isLoading || isValidating,
-    autoTranslateResults,
     manualRunRequestId,
-    targetLanguageOverride,
+    onBatchRejected: (error) => toast.ai.failed(tSearchCommand("translate"), error),
   });
 
   // Notify Zotero when results change
@@ -537,6 +562,7 @@ export function ResultsList({
           <SearchCommandCenter
             searchId={searchId || ""}
             totalCount={totalCount}
+            shownCount={!preview && isRatingFilterActive(ratingRange, onlyRatedPapers) ? filteredResults.length : undefined}
             currentQuery={urlQuery}
             isLoading={isLoading}
             isValidating={isValidating}
@@ -548,7 +574,8 @@ export function ResultsList({
           />
         </div>
 
-        {!preview && searchId && results.length > 0 ? <AiOverview searchId={searchId} total={totalCount} /> : null}
+        {/* An overview is built on counts by group, which our index doesn't serve for these two kinds of search. */}
+        {overview && searchId && overviewNow && !(source === "openscholar" && (search.params.field === SEMANTIC_FIELD || search.params.like.length)) ? <AiOverview read={overview} searchId={searchId} total={totalCount} /> : null}
 
         {/* Inline alert for batch-screening errors. Sits above the
             results area so the user sees it whether the screening panel
@@ -581,23 +608,6 @@ export function ResultsList({
 
           return (
             <>
-              {showValidatingBanner && (
-                <AnimatePresence>
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 400,
-                      damping: 30,
-                    }}
-                    className="overflow-hidden"
-                  >
-                    <LoadingResults variant="banner" />
-                  </motion.div>
-                </AnimatePresence>
-              )}
               {queryError ? (
                 <QueryErrorState detail={queryError} oql={search.params.field === OQL_FIELD} />
               ) : isSearching || isInitialLoading ? (
@@ -616,25 +626,36 @@ export function ResultsList({
                   onTryNewSearch={onBackToHome}
                 />
               ) : (
-                <PapersGrid
-                  results={results}
-                  filteredResults={filteredResults}
-                  paginatedResults={paginatedResults}
-                  ratingRange={ratingRange}
-                  onlyRatedPapers={onlyRatedPapers}
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  isLoading={isLoading}
-                  isValidating={isValidating}
-                  currentQuery={currentQuery}
-                  onBackToHome={onBackToHome}
-                  onDownloadItem={onDownloadItem}
-                  onDownloadEssentialItem={onDownloadEssentialItem}
-                  onPageChange={handlePageChange}
-                  resultsContainerRef={resultsContainerRef}
-                  viewMode={effectiveViewMode}
-                  hide={preview ? { rating: true, download: true, focusMode: true } : undefined}
-                />
+                // The results of the last search stay until the next arrive, dimmed and out of reach, with a note that takes no room.
+                <div className="relative">
+                  {showValidatingBanner && (
+                    <div className="pointer-events-none sticky top-3 z-10 h-0 text-center">
+                      <LoadingResults variant="banner" />
+                    </div>
+                  )}
+                  <div inert={showValidatingBanner} className={cn("transition-opacity duration-200", showValidatingBanner && "opacity-50")}>
+                    <PapersGrid
+                      results={results}
+                      totalCount={totalCount}
+                      filteredResults={filteredResults}
+                      paginatedResults={paginatedResults}
+                      ratingRange={ratingRange}
+                      onlyRatedPapers={onlyRatedPapers}
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      isLoading={isLoading}
+                      isValidating={isValidating}
+                      currentQuery={currentQuery}
+                      onBackToHome={onBackToHome}
+                      onDownloadItem={onDownloadItem}
+                      onDownloadEssentialItem={onDownloadEssentialItem}
+                      onPageChange={handlePageChange}
+                      resultsContainerRef={resultsContainerRef}
+                      viewMode={effectiveViewMode}
+                      hide={preview ? { rating: true, download: true, focusMode: true } : undefined}
+                    />
+                  </div>
+                </div>
               )}
             </>
           );

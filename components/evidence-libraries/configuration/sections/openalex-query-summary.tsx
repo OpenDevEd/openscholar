@@ -26,7 +26,7 @@ function QueryLine({ query, scope, oql }: { query: string; scope: string | null;
         <span
           ref={queryRef}
           id={queryId}
-          className={cn("min-w-0", expanded ? "max-h-72 overflow-y-auto pr-2" : "line-clamp-3")}
+          className={cn("min-w-0", expanded ? "max-h-72 overflow-y-auto pe-2" : "line-clamp-3")}
         >
           <QueryText query={query} oql={oql} className="break-words font-medium [overflow-wrap:anywhere]" />
         </span>
@@ -37,7 +37,7 @@ function QueryLine({ query, scope, oql }: { query: string; scope: string | null;
         <DisclosureButton
           aria-expanded={expanded}
           aria-controls={queryId}
-          className="-my-1 ml-0 h-6"
+          className="-my-1 ms-0 h-6"
           onClick={toggle}
         >
           {t(expanded ? "showLessQuery" : "showFullQuery")}

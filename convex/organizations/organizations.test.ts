@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { fakeAutumn, fakeAutumnFetch } from "../billing/billing.test-support";
+import { fakeAutumn, fakeAutumnFetch, sellTeamForTest } from "../billing/billing.test-support";
 import { ORGANIZATION_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
 import { paperOf } from "../lib/paperRef.test-support";
 
@@ -104,6 +104,7 @@ afterEach(() => {
 
 async function people() {
   const t = convexTest(schema);
+  await t.run(sellTeamForTest);
   const ids = await t.run(async (ctx) => {
     const add = (clerkId: string, firstName: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, firstName, state: "active", createdAt: 1, updatedAt: 1 });
     return { alice: await add("alice", "Alice"), bob: await add("bob", "Bob") };
@@ -198,7 +199,7 @@ describe("an organization", () => {
     // Bob renames it, with an undo, and can't delete it while it has an Evidence Library.
     expect((await bobAs.action(api.organizations.manage.rename, { ...inLab, name: "Learning Lab" })).undo).toEqual({ path: "organizations/manage:rename", args: { name: "Lab", expect: "Learning Lab" } });
     const libraryId = await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: lab.workspaceId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "bob", updatedByClerkUserId: "bob", createdAt: 1, updatedAt: 1 }));
-    await expect(bobAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow(/Evidence Library, Library/);
+    await expect(bobAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow(/Evidence Community, Library/);
     await t.run((ctx) => ctx.db.delete("evidenceLibraries", libraryId));
     await bobAs.action(api.organizations.manage.deleteOrganization, inLab);
     expect((await bobAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Bob"]);
@@ -285,7 +286,7 @@ describe("an organization", () => {
     expect(await refusal(bob)).toMatch(/Only an admin/);
     expect(await refusal(alice)).toBeNull();
     await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: lab.workspaceId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "alice", updatedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 }));
-    expect(await refusal(alice)).toMatch(/Evidence Library, Library/);
+    expect(await refusal(alice)).toMatch(/Evidence Community, Library/);
   });
 
   it("takes its workspace and what's in it with it when it's deleted", async () => {

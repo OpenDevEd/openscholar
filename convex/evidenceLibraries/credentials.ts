@@ -27,7 +27,7 @@ export function resolveCredentialPath(
   if (!pathPattern) {
     throw createError(
       "VALIDATION_ERROR",
-      "Invalid Evidence Library credential path",
+      "Invalid Evidence Community credential path",
     );
   }
   return {
@@ -72,7 +72,7 @@ export async function authenticateLibraryServiceCredential(
   if (!credential) {
     throw createError(
       "FORBIDDEN",
-      "Evidence Library service authentication failed",
+      "Evidence Community service authentication failed",
     );
   }
   return credential;
@@ -245,7 +245,7 @@ export async function assertCredentialRoom(ctx: Pick<QueryCtx, "db">, libraryId:
   const room = MAX_CREDENTIALS_PER_LIBRARY - SETUP_CREDENTIALS_RESERVED;
   const stored = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (query) => query.eq("libraryId", libraryId)).take(room);
   if (stored.length >= room) {
-    throw createError("VALIDATION_ERROR", `A library can store up to ${room} credentials for its sources. Remove one to add another.`);
+    throw createError("VALIDATION_ERROR", `A community can store up to ${room} credentials for its sources. Remove one to add another.`);
   }
 }
 

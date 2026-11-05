@@ -24,6 +24,16 @@ interface LanguageSelectorProps {
   className?: string;
 }
 
+/** The rows of every language dropdown. */
+export function LanguageSelectItems() {
+  const tl = useTranslations("languages");
+  return languageOptions.map((language) => (
+    <SelectItem key={language.code} value={language.code}>
+      {tl(language.code as never) || language.name}
+    </SelectItem>
+  ));
+}
+
 /**
  * Picks the language to search in. Choosing one rewrites the keywords into it, so the search finds papers
  * written in that language. It says so in words, since the results' Translate button does the reverse.
@@ -53,11 +63,7 @@ export function LanguageSelector({ value, onValueChange, disabled = false, worki
         </span>
       </SelectTrigger>
       <SelectContent position="popper" align="start" className="z-[200] max-h-80 overflow-y-auto">
-        {languageOptions.map((language) => (
-          <SelectItem key={language.code} value={language.code}>
-            {tl(language.code as never) || language.name}
-          </SelectItem>
-        ))}
+        <LanguageSelectItems />
       </SelectContent>
     </Select>
   );

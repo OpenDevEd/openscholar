@@ -34,6 +34,7 @@ function useIsChromeless() {
 
 /** `firstWorkspace`: the workspace the page was asked for, and how it looked last time, so the rail is drawn as it from the first frame. */
 export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace }) {
+  const tLabels = useTranslations("sharedControls");
   const isMobile = useIsMobile();
   const { isOpen, setOpen } = useSidebarStore();
   const isChromeless = useIsChromeless();
@@ -48,7 +49,7 @@ export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace 
     return (
       <Sheet open={isOpen} onOpenChange={setOpen}>
         <SheetContent side="left" showCloseButton={false} className="w-20 gap-0 bg-sidebar p-0">
-          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <SheetTitle className="sr-only">{tLabels("navigation")}</SheetTitle>
           <Suspense fallback={null}>
             <SidebarContent firstWorkspace={firstWorkspace} onClose={() => setOpen(false)} />
           </Suspense>
@@ -58,7 +59,7 @@ export function AppSidebar({ firstWorkspace }: { firstWorkspace: FirstWorkspace 
   }
 
   return (
-    <aside className="sticky left-0 top-0 z-40 hidden h-screen w-20 shrink-0 border-r border-sidebar-border bg-sidebar md:block">
+    <aside className="sticky start-0 top-0 z-40 hidden h-screen w-20 shrink-0 border-e border-sidebar-border bg-sidebar md:block">
       <Suspense fallback={null}>
         <SidebarContent firstWorkspace={firstWorkspace} />
       </Suspense>

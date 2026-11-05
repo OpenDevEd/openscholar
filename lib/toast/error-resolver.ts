@@ -15,6 +15,8 @@ export type ToastErrorMessageKey =
   | "aiCreditsDisabled"
   | "aiPlanEntitlement"
   | "aiApiKeyRequired"
+  | "aiFreeLimit"
+  | "aiFreeLimitSignedOut"
   | "aiProviderError"
   | "aiKeyUnreachable"
   | "aiValidationError"
@@ -96,6 +98,8 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   AI_CREDITS_DISABLED: "aiCreditsDisabled",
   AI_PLAN_ENTITLEMENT: "aiPlanEntitlement",
   AI_API_KEY_REQUIRED: "aiApiKeyRequired",
+  AI_FREE_LIMIT: "aiFreeLimit",
+  AI_FREE_LIMIT_SIGNED_OUT: "aiFreeLimitSignedOut",
   AI_PROVIDER_ERROR: "aiProviderError",
   AI_KEY_UNREACHABLE: "aiKeyUnreachable",
   AI_VALIDATION_ERROR: "aiValidationError",

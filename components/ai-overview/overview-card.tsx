@@ -1,5 +1,7 @@
 "use client";
 
+import { paperIdOf, toPaperKey } from "@/lib/papers/paper-ref";
+
 // An AI overview of the search on screen (#967), read through a lens the person picks and written by the Cheap preset's
 // model in Convex (convex/research/overviewsAction.ts). On a plan with free overviews the open lens writes itself, and
 // past them, or without them, it waits for Write overview and costs credits. Folded, nothing is written: that's how a
@@ -18,7 +20,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { Grouping } from "@/convex/research/searchValidators";
 import type { Locale } from "@/i18n/config";
 import { readCitedPapers } from "@/app/actions/overview-papers";
-import { AiIcon, ChevronDown, Coins, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, UpgradeIcon, Users } from "@/components/icons";
+import { AiIcon, ChevronDown, Coins, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, Users } from "@/components/icons";
 import { WorkingText } from "@/components/assistant/parts";
 import { RECORD_CHIP, recordChipStyle } from "@/components/assistant/mentions";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
@@ -71,12 +73,15 @@ function subscribeEnsure(convex: ReturnType<typeof useConvex>) {
   };
 }
 
-export function AiOverview({ searchId, total }: { searchId: string; total: number }) {
+/** What every overview here reads, from whatever stays on the page, so a card's row is there the moment it's shown. Signed out there's no account to keep lenses in, and no overview. */
+export function useOverviewView(wanted: boolean) {
   const scope = useResearchScope();
-  const { data: view } = useProtectedQuery(api.research.overviews.view, scope ?? "skip");
-  // Signed out there's no account to keep lenses in, and no overview.
-  if (!scope || !view) return null;
-  return <Card scope={scope} view={view} searchId={searchId} total={total} />;
+  const { data: view } = useProtectedQuery(api.research.overviews.view, wanted && scope ? scope : "skip");
+  return scope && view ? { scope, view } : null;
+}
+
+export function AiOverview({ read, searchId, total }: { read: { scope: Scope; view: View }; searchId: string; total: number }) {
+  return <Card scope={read.scope} view={read.view} searchId={searchId} total={total} />;
 }
 
 function Card({ scope, view, searchId, total }: { scope: Scope; view: View; searchId: string; total: number }) {
@@ -138,9 +143,9 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   if (missing) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="flex items-center gap-2 pt-3 pr-3 pb-2.5 pl-4">
+      <header className="@container flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
         <AiIcon size={18} working={working} className="shrink-0" />
-        <FadeRow scrolls scrollbar="none" className="flex-1">
+        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="flex-1">
           <div className="w-max">
             <Pills
               label={t("lens")}
@@ -154,7 +159,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
         {/* Named in words where there's room, so it needs no tooltip. */}
         <button type="button" aria-label={t("newLens")} onClick={() => setEditing({ lens: null })} className="flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2.5">
           <Plus className="size-4" />
-          <span className="hidden sm:inline">{t("newLens")}</span>
+          <span className="hidden @lg:inline">{t("newLens")}</span>
         </button>
         <DropdownMenu>
           <TooltipHint label={t("options")}>
@@ -302,16 +307,8 @@ function Ask({ view, total, freePlan, paidUsed, onWrite }: { view: View; total: 
       )}
       <span className="text-sm text-muted-foreground">{atLimit ? reason : freePlan ? t("reads", { count: format.number(total) }) : t("back", { time })}</span>
       {noCredits && !atLimit ? (
-        <Link href={href("/settings/billing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+        <Link href={href("/settings/billing")} className="ms-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           <Coins className="size-4" /> {t("getCredits")}
-        </Link>
-      ) : !freePlan && view.proPerDay !== null && view.perDay !== null && view.proPerDay > view.perDay ? (
-        <Link href={href("/pricing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          <UpgradeIcon className="size-4" /> {t("pro", { count: view.proPerDay })}
-        </Link>
-      ) : freePlan ? (
-        <Link href={href("/pricing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-          <UpgradeIcon className="size-4" /> {t("go")}
         </Link>
       ) : null}
     </div>
@@ -335,7 +332,7 @@ function Written({ blocks, overview }: { blocks: Block[]; overview: Overview }) 
   const works = Array.isArray(records) ? records : null;
   const open = (index: number) => {
     // Until the records are read, a paper opens with what the overview knows of it.
-    const papers: PaperResult[] = works?.length === cited.length ? works : cited.map((paper) => ({ id: `https://openalex.org/${paper.id}`, title: paper.title, display_name: paper.title, publication_year: paper.year, cited_by_count: paper.cited }) as PaperResult);
+    const papers: PaperResult[] = works?.length === cited.length ? works : cited.map((paper) => ({ id: paperIdOf(toPaperKey(paper.id) ?? paper.id), title: paper.title, display_name: paper.title, publication_year: paper.year, cited_by_count: paper.cited }) as PaperResult);
     openCited(papers, index);
   };
   const openId = (id: string) => open(cited.findIndex((paper) => paper.id === id));

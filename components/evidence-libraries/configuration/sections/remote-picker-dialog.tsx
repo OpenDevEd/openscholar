@@ -350,14 +350,14 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
 
         <div className="space-y-2.5 border-b border-border-subtle bg-inset px-5 py-3">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               autoFocus
               value={query}
               maxLength={SEARCH_MAX}
               aria-label={searchLabel}
               placeholder={searchLabel}
-              className="bg-background pl-8"
+              className="bg-background ps-8"
               onChange={(event) => search(event.target.value)}
             />
             {/* The rows of the last answer stay while the next one loads, so the wait is said here. */}
@@ -368,7 +368,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
               <button
                 type="button"
                 aria-label={t("clear")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 onClick={() => search("")}
               >
                 <X className="h-4 w-4" />
@@ -416,7 +416,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                       sort={sortFor("count")}
                       active={sort}
                       onSort={sortBy}
-                      className="w-28 text-right"
+                      className="w-28 text-end"
                     >
                       {columns.count}
                     </SortHead>
@@ -560,7 +560,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                           </TableCell>
                         ) : null}
                         {columns.count ? (
-                          <TableCell className="text-right font-mono text-xs tabular-nums">
+                          <TableCell className="text-end font-mono text-xs tabular-nums">
                             {row.count}
                           </TableCell>
                         ) : null}

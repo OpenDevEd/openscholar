@@ -13,7 +13,7 @@ export default function SignInPage() {
       : "/";
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
+    <div className="flex min-h-[calc(100dvh-2rem)] items-center justify-center p-6">
       <SignIn
         fallbackRedirectUrl={redirectUrl}
         signUpFallbackRedirectUrl={redirectUrl}

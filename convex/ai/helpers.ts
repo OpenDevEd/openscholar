@@ -199,7 +199,12 @@ export async function withCredits<T>(
     target.under !== undefined ||
     (target.hold === false
       ? (target.balance ?? (await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId: target.workspaceId }))?.balance ?? 0) > 0
-      : await reserveCredits(ctx, { userId: target.userId, workspaceId: target.workspaceId, chargeId: target.chargeId, credits: target.estimate }));
+      : await reserveCredits(ctx, { userId: target.userId, workspaceId: target.workspaceId, chargeId: target.chargeId, credits: target.estimate }).catch((error: unknown) => {
+          // The hold itself failed, Autumn answering badly or not at all, which callers tell apart from a model failing: no AI has run.
+          if (hasStructuredConvexCode(error)) throw error;
+          console.error("[ai] holding credits failed", error);
+          throw createError("BILLING_NETWORK_ERROR", "Billing can't be reached");
+        }));
   if (!allowed) {
     throw createError(
       "AI_INSUFFICIENT_CREDITS",

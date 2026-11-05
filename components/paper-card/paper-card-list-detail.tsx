@@ -1,5 +1,7 @@
 "use client";
 import { TopicLink } from "@/components/topics/topic-link";
+import { similarSearchHref } from "@/lib/search/similar-href";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 import { CitationControl } from "@/components/citation-control";
 
@@ -31,8 +33,7 @@ import {
   Quote,
   Network,
   BookOpen,
-  TranslateIcon,
-} from "@/components/icons";
+  TranslateIcon, Compass } from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useAuthorFilter, useJournalFilter, useTranslate } from "./hooks";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ export function PaperCardListDetail({
 }: PaperCardProps) {
   const tp = useTranslations("paperCard");
   const tc = useTranslations("common");
+  const ts = useTranslations("similarPapers");
   const format = useFormatter();
   const router = useWorkspaceRouter();
   const pathname = usePathname();
@@ -93,6 +95,11 @@ export function PaperCardListDetail({
   const handleCitesSearch = () => handleFilteredSearch("cites");
   const handleCitedBySearch = () => handleFilteredSearch("citedBy");
   const handleRelatedSearch = () => handleFilteredSearch("related");
+  const ownIndex = useSearchSource() === "openscholar";
+  const similarHref = ownIndex ? similarSearchHref([result.id]) : null;
+  const handleSimilarSearch = () => {
+    if (similarHref) router.push(similarHref);
+  };
 
   // Handle paper opened
   const handlePaperOpened = () => {
@@ -156,13 +163,13 @@ export function PaperCardListDetail({
           {/* Title Button */}
           <TitleContainer
             onClick={hide?.focusMode ? undefined : handlePaperOpened}
-            className={cn("text-left w-full", !hide?.focusMode && "group/title")}
+            className={cn("text-start w-full", !hide?.focusMode && "group/title")}
           >
-            <h3 className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">
+            <h3 dir="auto" className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">
               <QueryMatchText
                 text={showTranslated && translatedContent ? translatedContent.translatedTitle : result.title}
               />
-              {result.publication_year != null && <span className="ml-2 text-muted-foreground font-normal">
+              {result.publication_year != null && <span className="ms-2 text-muted-foreground font-normal">
                 ({result.publication_year})
               </span>}
             </h3>
@@ -190,7 +197,7 @@ export function PaperCardListDetail({
         {/* Abstract */}
         {result.abstract && (
           <div className="mb-4">
-            <p className="text-sm text-foreground leading-relaxed text-wrap-anywhere">
+            <p dir="auto" className="text-sm text-foreground leading-relaxed text-wrap-anywhere">
               <QueryMatchText text={isExpanded
                 ? showTranslated && translatedContent
                   ? translatedContent.translatedAbstract
@@ -400,7 +407,7 @@ export function PaperCardListDetail({
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={handleCitesSearch}
-                className="bg-cites/10 hover:bg-cites/15 border border-cites/30 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-cites/10 hover:bg-cites/15 border border-cites/30 rounded-xl p-3 text-start transition-all group/cite relative"
               >
                 <div className="flex items-center gap-1.5 ink-cites mb-1">
                   <Quote className="h-3.5 w-3.5" />
@@ -409,12 +416,12 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-cites">
                   {format.number(result.cited_by_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cites opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-cites opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
               <button
                 onClick={handleCitedBySearch}
-                className="bg-cited-by/10 hover:bg-cited-by/15 border border-cited-by/30 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-cited-by/10 hover:bg-cited-by/15 border border-cited-by/30 rounded-xl p-3 text-start transition-all group/cite relative"
               >
                 <div className="flex items-center gap-1.5 ink-cited-by mb-1">
                   <Quote className="h-3.5 w-3.5" />
@@ -423,22 +430,23 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-cited-by">
                   {format.number(result.referenced_works_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cited-by opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-cited-by opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
-              <button
-                onClick={handleRelatedSearch}
-                className="bg-related/10 hover:bg-related/15 border border-related/30 rounded-xl p-3 text-left transition-all group/cite relative"
+              {(!ownIndex || similarHref) && <button
+                onClick={ownIndex ? handleSimilarSearch : handleRelatedSearch}
+                className="bg-related/10 hover:bg-related/15 border border-related/30 rounded-xl p-3 text-start transition-all group/cite relative"
               >
                 <div className="flex items-center gap-1.5 ink-related mb-1">
-                  <Network className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">{tc("related")}</span>
+                  {ownIndex ? <Compass className="h-3.5 w-3.5" /> : <Network className="h-3.5 w-3.5" />}
+                  <span className="text-xs font-medium">{ownIndex ? ts("similar") : tc("related")}</span>
                 </div>
-                <div className="text-lg font-bold ink-related">
+                {/* Our index names no related papers on a paper: its button finds the closest in meaning, which has no number to show. */}
+                {!ownIndex && <div className="text-lg font-bold ink-related">
                   {format.number(result.related_works?.length ?? 0)}
-                </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
-              </button>
+                </div>}
+                <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+              </button>}
             </div>
           </div>
         ) : (
@@ -490,12 +498,9 @@ export function PaperCardListDetail({
                 color="green"
                 onClick={handleCitedBySearch}
               />
-              <CitationBadge
-                count={result.related_works?.length ?? 0}
-                label={tc("related")}
-                color="blue"
-                onClick={handleRelatedSearch}
-              />
+              {ownIndex
+                ? similarHref && <CitationBadge label={ts("similar")} color="similar" onClick={handleSimilarSearch} />
+                : <CitationBadge count={result.related_works?.length ?? 0} label={tc("related")} color="blue" onClick={handleRelatedSearch} />}
             </div>
           </div>
         )}

@@ -166,7 +166,7 @@ describe("Evidence Library machine credentials", () => {
             .digest("hex"),
         }),
       ),
-    ).rejects.toThrow(/Evidence Library service authentication failed/);
+    ).rejects.toThrow(/Evidence Community service authentication failed/);
     await expect(
       t.run((ctx) =>
         authenticateLibraryServiceCredential(ctx, {
@@ -196,7 +196,7 @@ describe("Evidence Library machine credentials", () => {
             .digest("hex"),
         }),
       ),
-    ).rejects.toThrow(/Evidence Library service authentication failed/);
+    ).rejects.toThrow(/Evidence Community service authentication failed/);
 
     const rows = await t.run(async (ctx) =>
       ctx.db.query("evidenceLibraryCredentials").take(3),
@@ -229,7 +229,7 @@ describe("Evidence Library machine credentials", () => {
         api.evidenceLibraries.credentialActions.rotateServiceCredential,
         { libraryId },
       ),
-    ).rejects.toThrow(/Evidence Library access denied/);
+    ).rejects.toThrow(/Evidence Community access denied/);
 
     const rows = await t.run(async (ctx) =>
       ctx.db.query("evidenceLibraryCredentials").take(1),

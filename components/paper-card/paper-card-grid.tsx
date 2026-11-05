@@ -14,6 +14,8 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Quote, Network, Users, BookOpen } from "@/components/icons";
+import { SimilarIconButton } from "./similar-button";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { useAuthorFilter, useJournalFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";
 import {
@@ -45,6 +47,7 @@ export function PaperCardGrid({
   const isMobile = useIsTablet();
 
   const { handleCitesSearch, handleRelatedSearch } = useCitationHandlers(result.id);
+  const ownIndex = useSearchSource() === "openscholar";
 
   const { 
     translatedContent, 
@@ -87,7 +90,7 @@ export function PaperCardGrid({
         tabIndex={hide?.focusMode ? undefined : 0}
         onClick={hide?.focusMode ? undefined : () => openFocusMode(isMobile, resultIndex, result.id)}
         onKeyDown={hide?.focusMode ? undefined : (e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
-        className={cn("flex-1 w-full text-left flex flex-col", !hide?.focusMode && "cursor-pointer")}
+        className={cn("flex-1 w-full text-start flex flex-col", !hide?.focusMode && "cursor-pointer")}
       >
         <div className={cn("flex flex-col h-full", isCompact ? "p-3" : "p-4")}>
           {/* Header: Year badge and quick actions */}
@@ -131,7 +134,7 @@ export function PaperCardGrid({
           </div>
 
           {/* Title */}
-          <h3 className={cn(
+          <h3 dir="auto" className={cn(
             "font-semibold leading-snug text-wrap-anywhere group-hover:text-primary transition-colors mb-2",
             isCompact ? "text-sm line-clamp-2" : "text-base line-clamp-3"
           )}>
@@ -223,7 +226,7 @@ export function PaperCardGrid({
             )}
             {extra ? <div className="basis-full">{extra}</div> : null}
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ms-auto flex items-center gap-2">
               {/* Cited by count */}
               <TooltipHint label={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}>
                 <button
@@ -242,10 +245,11 @@ export function PaperCardGrid({
                 </button>
               </TooltipHint>
 
-              {/* Related count - hidden in compact */}
-              {!isCompact && (
+              {/* Similar in every grid; the related count is hidden in compact */}
+              {ownIndex ? <SimilarIconButton paperId={result.id} /> : !isCompact && (
                 <TooltipHint label={tp("relatedCount", { count: format.number(result.related_works?.length ?? 0) })}>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleRelatedSearch();

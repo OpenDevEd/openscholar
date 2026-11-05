@@ -49,6 +49,9 @@ const removeQuestionFromResponses = (
     ])
   );
 
+/** What had the keyboard when focus mode opened. */
+export const focusOpener: { element: HTMLElement | null } = { element: null };
+
 export interface RatingsState {
   ratings: Record<string, number>
   setRating: (paperId: string, rating: number | null) => void
@@ -647,7 +650,11 @@ export const useUIStore = create<UIState>()(
       screeningPanelOpenBySearchId: {},
       setIsDialogOpen: (open) => set({ isDialogOpen: open }),
       setLoadingResultIndex: (index) => set({ loadingResultIndex: index }),
-      setIsFocusModeOpen: (open) => set({ isFocusModeOpen: open }),
+      setIsFocusModeOpen: (open) => {
+        // What has the keyboard as it opens, whichever way it's opened, which focus goes back to when it closes.
+        if (open && !get().isFocusModeOpen) focusOpener.element = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        set({ isFocusModeOpen: open });
+      },
       setFocusModeIndex: (indexOrUpdater) =>
         set((state) => ({
           focusModeIndex:
@@ -1014,6 +1021,12 @@ interface ResultsTranslationSettingsState {
   autoTranslateResults: boolean;
   targetLanguageOverride: string | null;
   manualRunRequestId: number;
+  /**
+   * Undo translation was pressed: every paper reads as never translated, whatever comes back from a batch still
+   * running. What was paid for stays held, so Run or auto-translate brings it back without paying twice.
+   */
+  translationsUndone: boolean;
+  setTranslationsUndone: (undone: boolean) => void;
   setAutoTranslateResults: (enabled: boolean) => void;
   setTargetLanguageOverride: (language: string | null) => void;
   clearTargetLanguageOverride: () => void;
@@ -1026,6 +1039,8 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
       autoTranslateResults: false,
       targetLanguageOverride: null,
       manualRunRequestId: 0,
+      translationsUndone: false,
+      setTranslationsUndone: (undone) => set({ translationsUndone: undone }),
       setAutoTranslateResults: (enabled) => set({ autoTranslateResults: enabled }),
       setTargetLanguageOverride: (language) => set({ targetLanguageOverride: language }),
       clearTargetLanguageOverride: () => set({ targetLanguageOverride: null }),

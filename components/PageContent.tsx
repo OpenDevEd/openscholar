@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
-import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
+import { useQuestionToQuery } from "@/lib/ai/client/question-query";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { AISetupGate } from "@/components/ai/ai-setup-gate";
@@ -52,9 +52,7 @@ function PageContent() {
   // AI configuration and research question state
   const { apiKeyMode } = useAIConfigStore();
 
-  // Use the new router hook that respects apiKeyMode
-  const { execute: enhanceQuery, isConfigured: isAIConfigured } =
-    useEnhanceSearchQuery();
+  const { write: writeQuery, isConfigured: isAIConfigured } = useQuestionToQuery();
 
   const createSearchFilters = useCreateSearchFilters();
   const searched = useHasSearched();
@@ -82,15 +80,7 @@ function PageContent() {
         setIsEnhancingQuestion(true);
 
         // Convert research question to search query using AI
-        // The router hook respects apiKeyMode - local mode uses store's API key, credits mode uses Convex
-        const result = await enhanceQuery({
-          query: originalQuery,
-          language: localeToLanguageCode(locale),
-          task: "questionToQuery",
-        });
-
-        // Use the enhanced query for searching
-        searchQuery = result.enhancedQuery;
+        searchQuery = await writeQuery({ question: originalQuery, language: localeToLanguageCode(locale) });
       } catch (error) {
         console.error("Failed to convert research question:", error);
         toast.ai.failed(tToast("questionConversion"), error);
@@ -118,7 +108,7 @@ function PageContent() {
 
       {/* AI setup gate — top-right on desktop, top-center on mobile */}
       {!isAIConfigured && (
-        <div className="absolute top-4 right-4 z-20 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md">
+        <div className="absolute top-4 end-4 z-20 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md">
           <AISetupGate />
         </div>
       )}
@@ -153,4 +143,16 @@ function PageContent() {
   );
 }
 
-export default dynamic(() => Promise.resolve(PageContent), { ssr: false });
+/** The page's words in the server's response, for what reads a page without running it. Gone once the page is drawn. */
+function FirstResponse() {
+  const t = useTranslations("home");
+  const tm = useTranslations("metadata");
+  return (
+    <div className="sr-only">
+      <h1>{tm("siteName")}</h1>
+      <p>{t("tagline")}</p>
+    </div>
+  );
+}
+
+export default dynamic(() => Promise.resolve(PageContent), { ssr: false, loading: FirstResponse });

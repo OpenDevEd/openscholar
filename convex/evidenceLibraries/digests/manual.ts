@@ -23,7 +23,7 @@ export const target = internalQuery({
     if (access.organization?.devEnabled !== true)
       throw createError("FORBIDDEN", "Manual digests are not enabled for this organization.");
     const target = await readLibraryRuntimeTarget(ctx, access.library);
-    if (!target) throw createError("CONFLICT", "The library is not running yet.");
+    if (!target) throw createError("CONFLICT", "The community is not running yet.");
     return target;
   },
 });

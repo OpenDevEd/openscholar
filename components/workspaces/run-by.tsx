@@ -99,55 +99,58 @@ function RunByFilter({ people, total: kept, more, noun, label, compact, value, o
   // The thumb under the picked segment; one shared layout id, so it slides between them.
   const thumb = <motion.span layoutId={`run-by-thumb-${label}`} aria-hidden className="absolute inset-0 rounded-full bg-segment-active shadow-sm" transition={reduce ? { duration: 0 } : SHEET_SPRING} />;
   return (
-    <div className="flex min-w-0 items-center gap-3">
-      {compact ? null : <span className="shrink-0 text-xs font-medium text-muted-foreground">{t(label)}</span>}
-      <div role="radiogroup" aria-label={t(label)} className={cn("inline-flex shrink-0 items-center gap-0.5 rounded-full bg-segment p-0.5", compact ? "h-9" : "h-10")}>
-        <button
-          type="button"
-          role="radio"
-          aria-checked={value === null}
-          onClick={() => onChange(null)}
-          className={cn("relative rounded-full text-xs font-medium transition-colors", compact ? "h-8 px-3" : "h-9 px-3.5", value === null ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
-        >
-          {value === null ? thumb : null}
-          <span className="relative">{t("everyone")}</span>
-        </button>
-        {/* The members arrive into the row, each face fading in. */}
-        <AnimatePresence initial={false}>
-          {faces.map((member) => {
-            // The one picked stands out; with no one picked, only those who made nothing step back.
-            const back = value ? value !== member.userId : !member.count;
-            return (
-              <motion.span key={member.userId} className="flex" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={reduce ? { duration: 0 } : SHEET_SPRING}>
-                <TooltipHint label={member.name}>
-                  <button type="button" role="radio" aria-checked={value === member.userId} aria-label={`${member.name}, ${t(noun, { count: member.count })}`} onClick={() => onChange(value === member.userId ? null : member.userId)} className={cn("relative flex rounded-full", compact ? "size-8" : "size-9")}>
-                    {value === member.userId ? thumb : null}
-                    <motion.span
-                      className={cn("relative flex items-center justify-center", compact ? "size-8" : "size-9")}
-                      initial={false}
-                      animate={{ opacity: back ? 0.4 : 1 }}
-                      whileHover={reduce ? { opacity: 1 } : { opacity: 1, scale: 1.08 }}
-                      whileTap={reduce ? undefined : { scale: 0.94 }}
-                      transition={reduce ? { duration: 0 } : SHEET_SPRING}
-                    >
-                      <Ring value={total ? member.count / total : 0} color={tintOf(member.userId)} />
-                      <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className={compact ? "size-6" : "size-7"} />
-                    </motion.span>
-                  </button>
-                </TooltipHint>
-              </motion.span>
-            );
-          })}
-        </AnimatePresence>
-        {others.length || more ? <Everyone people={others} more={more} noun={noun} onPick={onChange} compact={compact} /> : null}
+    // In rem, so only large text wraps: at normal text the row keeps its one line while members arrive.
+    <div className={compact ? "min-w-0" : "@container w-full min-w-0"}>
+      <div className={cn("flex min-w-0 items-center gap-3", !compact && "@max-[15rem]:flex-wrap")}>
+        {compact ? null : <span className="shrink-0 text-xs font-medium text-muted-foreground">{t(label)}</span>}
+        <div role="radiogroup" aria-label={t(label)} className={cn("inline-flex shrink-0 items-center gap-0.5 rounded-full bg-segment p-0.5", compact ? "h-9" : "h-10")}>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={value === null}
+            onClick={() => onChange(null)}
+            className={cn("relative rounded-full text-xs font-medium transition-colors", compact ? "h-8 px-3" : "h-9 px-3.5", value === null ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            {value === null ? thumb : null}
+            <span className="relative">{t("everyone")}</span>
+          </button>
+          {/* The members arrive into the row, each face fading in. */}
+          <AnimatePresence initial={false}>
+            {faces.map((member) => {
+              // The one picked stands out; with no one picked, only those who made nothing step back.
+              const back = value ? value !== member.userId : !member.count;
+              return (
+                <motion.span key={member.userId} className="flex" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={reduce ? { duration: 0 } : SHEET_SPRING}>
+                  <TooltipHint label={member.name}>
+                    <button type="button" role="radio" aria-checked={value === member.userId} aria-label={`${member.name}, ${t(noun, { count: member.count })}`} onClick={() => onChange(value === member.userId ? null : member.userId)} className={cn("relative flex rounded-full", compact ? "size-8" : "size-9")}>
+                      {value === member.userId ? thumb : null}
+                      <motion.span
+                        className={cn("relative flex items-center justify-center", compact ? "size-8" : "size-9")}
+                        initial={false}
+                        animate={{ opacity: back ? 0.4 : 1 }}
+                        whileHover={reduce ? { opacity: 1 } : { opacity: 1, scale: 1.08 }}
+                        whileTap={reduce ? undefined : { scale: 0.94 }}
+                        transition={reduce ? { duration: 0 } : SHEET_SPRING}
+                      >
+                        <Ring value={total ? member.count / total : 0} color={tintOf(member.userId)} />
+                        <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className={compact ? "size-6" : "size-7"} />
+                      </motion.span>
+                    </button>
+                  </TooltipHint>
+                </motion.span>
+              );
+            })}
+          </AnimatePresence>
+          {others.length || more ? <Everyone people={others} more={more} noun={noun} onPick={onChange} compact={compact} /> : null}
+        </div>
+        {/* One readout that changes with the pick, so nothing beside the control moves. */}
+        {compact || !people ? null : (
+          <span key={value ?? "everyone"} className="fade-enter flex min-w-0 items-baseline gap-1.5 truncate text-xs" aria-live="polite">
+            {chosen ? <PersonName name={chosen.name} you={chosen.you} className="font-medium text-foreground" /> : null}
+            <span className="shrink-0 tabular-nums text-muted-foreground">{t(noun, { count: shown })}</span>
+          </span>
+        )}
       </div>
-      {/* One readout that changes with the pick, so nothing beside the control moves. */}
-      {compact || !people ? null : (
-        <span key={value ?? "everyone"} className="fade-enter flex min-w-0 items-baseline gap-1.5 truncate text-xs" aria-live="polite">
-          {chosen ? <PersonName name={chosen.name} you={chosen.you} className="font-medium text-foreground" /> : null}
-          <span className="shrink-0 tabular-nums text-muted-foreground">{t(noun, { count: shown })}</span>
-        </span>
-      )}
     </div>
   );
 }
@@ -186,7 +189,7 @@ function Everyone({ people, more: moreToRead, noun, onPick, compact }: { people:
                   setOpen(false);
                   setText("");
                 }}
-                className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-start text-sm hover:bg-muted"
               >
                 <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-6" />
                 <PersonName name={member.name} you={member.you} className="flex-1" />

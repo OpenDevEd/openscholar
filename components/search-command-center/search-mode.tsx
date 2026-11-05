@@ -2,6 +2,8 @@
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
 import React, { useState, useEffect, useCallback } from "react";
+import { SEMANTIC_FIELD } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { Search, AiIcon } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
@@ -21,7 +23,8 @@ import {
 } from "@/lib/store";
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
-import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
+import { useTranslateQuery } from "@/lib/ai/client/router";
+import { useQuestionToQuery } from "@/lib/ai/client/question-query";
 import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { cn } from "@/lib/utils";
@@ -41,6 +44,7 @@ const originals = new Map<string, Map<string, string>>();
 export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const toast = useAppToast();
   const t = useTranslations("searchCommand");
+  const ts = useTranslations('similarPapers');
   const tc = useTranslations("common");
   const te = useTranslations("errors");
   const tValidation = useTranslations("validation");
@@ -70,13 +74,16 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   }, [urlQuery, setCurrentQuery]);
 
   // Use the new router hooks
-  const { execute: enhanceQuery, isConfigured: isEnhanceConfigured } = useEnhanceSearchQuery();
+  const { write: writeQuery, isConfigured: isEnhanceConfigured } = useQuestionToQuery();
   const { execute: translateQueryFn, isConfigured: isTranslateConfigured } = useTranslateQuery();
 
   const selectedLanguage = search?.params?.lang ?? "";
 
   const isFormDisabled = isLoading || isValidating || isTranslating || isEnhancing;
   const isOql = search?.params?.field === OQL_FIELD;
+  const source = useSearchSource();
+  // A question saved on our index runs as words on OpenAlex, and reads that way here.
+  const byMeaning = search?.params?.field === SEMANTIC_FIELD && source === "openscholar";
   // AI writes and translates in the search's own query language.
   const syntax = isOql ? ('oql' as const) : undefined;
   const isLanguageSelectorDisabled = isTranslating || isEnhancing;
@@ -139,21 +146,20 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     try {
       setIsEnhancing(true);
       const currentSearchResult = getSearchResult(effectiveSearchId);
-      const result = await enhanceQuery({
-        query: questionToProcess,
+      const enhancedQuery = await writeQuery({
+        question: questionToProcess,
         language: currentSearchResult?.language ?? localeToLanguageCode(locale),
         syntax,
-        task: "questionToQuery",
       });
 
       if (search) {
-        search.setQuery(result.enhancedQuery);
+        search.setQuery(enhancedQuery);
       }
 
       // Track AI query enhancement event
       posthog.capture("ai_query_enhanced", {
         original_question: questionToProcess,
-        enhanced_query: result.enhancedQuery,
+        enhanced_query: enhancedQuery,
         language: currentSearchResult?.language || "en",
       });
 
@@ -284,9 +290,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
 
       {/* Keywords Input */}
-      <form onSubmit={handleSearchSubmit}>
+      <form onSubmit={handleSearchSubmit} className="@container">
         <FloatingInput
-          label={isOql ? t('oqlQuery') : t('keywords')}
+          label={isOql ? t('oqlQuery') : byMeaning ? ts('yourQuestion') : t('keywords')}
           labelAddon={
             <QueryHistoryNav
               historyIndex={historyIndex}
@@ -298,9 +304,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
               disabled={isFormDisabled}
             />
           }
-          placeholder={isTranslating ? tc('translating') : t(isOql ? 'placeholder.oql' : 'placeholder.keywords')}
+          placeholder={isTranslating ? tc('translating') : byMeaning ? ts('questionPlaceholder') : t(isOql ? 'placeholder.oql' : 'placeholder.keywords')}
           value={localInputValue.replace(/[\r\n]+/g, " ")}
-          highlightQuery={!isOql}
+          highlightQuery={!isOql && !byMeaning}
           onChange={(e) => handleQueryChange(e.target.value)}
           disabled={isFormDisabled}
           icon={<Search className="h-4 w-4" />}
@@ -315,20 +321,21 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 isTranslating={isTranslating}
               />
               <Button
+                aria-label={tc('search')}
                 type="submit"
                 size="sm"
                 disabled={isFormDisabled}
                 className="px-3"
               >
                 <>
-                  <Search className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">{tc('search')}</span>
+                  <Search className="h-4 w-4 @lg:me-1" />
+                  <span className="hidden @lg:inline">{tc('search')}</span>
                 </>
               </Button>
             </div>
           }
         />
-        {isOql && <OqlQueryStatus error={search?.error ?? null} />}
+        {isOql && <OqlQueryStatus />}
       </form>
     </div>
   );

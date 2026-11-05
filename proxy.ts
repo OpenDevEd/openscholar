@@ -3,6 +3,7 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 import { locales } from "@/i18n/config";
 import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
 import { shouldProtectPath } from "@/lib/auth/proxy-policy";
+import { bareWorkLink } from "@/lib/search-params/bare-work-link";
 import { slugOf, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { ADDRESS_HEADER } from "@/lib/workspaces/paths";
 
@@ -38,6 +39,9 @@ export default async function proxy(
   request: NextRequest,
   event: NextFetchEvent
 ) {
+  const bareLink = bareWorkLink(request.nextUrl);
+  if (bareLink) return NextResponse.redirect(bareLink);
+
   const needsLocaleCookie = !hasValidLocaleCookie(request);
   const detectedLocale = needsLocaleCookie
     ? detectLocaleFromAcceptLanguage(request.headers.get("accept-language"))

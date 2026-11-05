@@ -28,7 +28,7 @@ Report an issue only when one of these holds:
 - not_in_record: the digest states a specific fact about the paper (a number, a finding, a method, a place, who was studied) that the record does not contain.
 - another_paper: the passage describes a different study from the linked record.
 
-A record's studyType is the design its library read it as, such as a randomised trial or a survey. A design the digest gives that matches it is supported.
+A record's studyType is the design its community read it as, such as a randomised trial or a survey. A design the digest gives that matches it is supported.
 
 Do not report rewording, a value rounded without changing it, a detail the digest left out, a cautious remark about what a study design can show, a sentence that links or compares papers without stating a fact about one of them, or anything about style. When in doubt, do not report.
 

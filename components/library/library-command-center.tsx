@@ -90,7 +90,7 @@ export function LibraryCommandCenter({
                   ))}
                 </div>
               ) : null}
-              {actions ? <div className="ml-auto flex items-center gap-1">{actions}</div> : null}
+              {actions ? <div className="ms-auto flex max-w-full flex-wrap items-center gap-1">{actions}</div> : null}
             </>
           )}
         </div>
@@ -99,7 +99,7 @@ export function LibraryCommandCenter({
           <LibrarySearchBar
             value={rawSearch}
             onChange={onSearchChange}
-            className="min-w-56 flex-1"
+            className="min-w-[min(14rem,100%)] flex-1"
             inputClassName="h-10 rounded-xl border-border-subtle bg-field text-sm shadow-sm"
             clearButtonClassName="h-7 w-7 rounded-lg"
           />
