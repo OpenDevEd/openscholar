@@ -143,6 +143,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
         }}
       >
         <QueryVersions
+          similarTo={item.similarTo}
           queryHistory={history.entries}
           total={history.total}
           onLoadOlder={history.hasOlder ? history.loadOlder : undefined}
@@ -177,7 +178,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
       }
     >
       <EntryAction label={tc("copyQuery")} icon={Copy} onClick={handleCopy} />
-      {!choosing && bookmarkable(item.query, item.field) && (
+      {!choosing && bookmarkable(item.query, item.field, item.similarTo) && (
         <Popover open={isBookmarking} onOpenChange={setIsBookmarking}>
           <PopoverTrigger asChild>
             <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} />

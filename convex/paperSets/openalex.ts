@@ -293,7 +293,7 @@ export const readWork = async <Work>(id: string, select: string, spend: (pages: 
 export const readPairedAuthors = async <Author extends { ids?: { openalex?: string | null } | null }>(id: string, select: string, spend: (pages: number) => Promise<boolean>) => {
   contact("openscholar");
   if (!(await spend(1))) throw limited();
-  const body = (await readLookup("authors", { filter: `openalex:${id}`, select, "per-page": "50" }, "openscholar")) as { results?: Author[] };
+  const body = (await readLookup("authors", { filter: `openalex:${id}`, select, "per-page": "200" }, "openscholar")) as { results?: Author[] };
   return pairedRecords(id, body.results ?? []);
 };
 

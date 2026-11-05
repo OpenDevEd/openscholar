@@ -2,6 +2,7 @@
 import { fetchQuery } from "convex/nextjs";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
+import { AUTHOR_IDS_LOOKED_UP } from "@/convex/authors/validators";
 import { isAuthorId } from "@/lib/openalex/author-filter";
 import { pairedRecords, wholePerson } from "@/lib/openalex/whole-person";
 import { openAlexFetch } from "@/lib/openalex/fetch";
@@ -24,8 +25,6 @@ const authorSchema = z.object({
   topics: z.array(z.object({ id: z.string(), display_name: z.string(), count: z.number().nullish() })).nullish(),
 });
 
-type AuthorRecord = z.infer<typeof authorSchema>;
-
 export type AuthorCard = {
   id: string;
   name: string;
@@ -46,7 +45,7 @@ export type AuthorCard = {
 
 /** Every record our index pairs with an OpenAlex author: the one person, split. */
 async function readPairedRecords(id: string) {
-  const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "50" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
+  const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "200" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
   if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
   return pairedRecords(id, indexPageSchema.parse(await response.json()).results);
 }
@@ -65,16 +64,19 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   // The source doesn't know them, which a page says differently from a read that failed.
   if (records?.length === 0 || response?.status === 404) return null;
   if (response && !response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  const author = records ? wholePerson(records) : authorSchema.parse(await response!.json());
-  const institution = author.last_known_institutions?.[0];
-  const paired = author.ids?.openalex ? lastPart(author.ids.openalex) : null;
+  const record = records ? wholePerson(records) : authorSchema.parse(await response!.json());
+  const paired = record.ids?.openalex ? lastPart(record.ids.openalex) : null;
   // The others split from this person, whichever of them this page opened from, and whichever source is on: a profile may hold any of them. The card stands without them.
   const pairedId = id.startsWith("A") ? id : paired;
   const split = records ?? (pairedId && !(await spendOpenAlexRequests()) ? await readPairedRecords(pairedId).catch((error) => {
     console.error("[authors] couldn't read an author's paired records", id, error);
     return [];
   }) : []);
-  const known = [...new Set([id, lastPart(author.id), ...(paired ? [paired] : []), ...split.map((record) => lastPart(record.id))])];
+  // ponytail: a person with more records than a lookup takes is checked by the first of them; none seen tonight has over 50.
+  const known = [...new Set([id, lastPart(record.id), ...(paired ? [paired] : []), ...split.map((one) => lastPart(one.id))])].slice(0, AUTHOR_IDS_LOOKED_UP);
+  // Any of their IDs reads the one person.
+  const author = source === "openscholar" && !records && split.length ? wholePerson(split) : record;
+  const institution = author.last_known_institutions?.[0];
   return {
     id,
     name: author.display_name,
@@ -111,10 +113,7 @@ export async function searchIndexAuthors(search: string, page: number, given?: S
   const pasted = (query.includes("/") ? query.replace(/\/$/, "").split("/").at(-1)! : query).toUpperCase();
   if (isAuthorId(pasted)) {
     if (page > 1) return { authors: [] as IndexAuthor[], more: false };
-    // Any of their IDs is the one person: the one their page goes by reads them whole.
-    const named = await readAuthorCard(pasted, source);
-    if (named && !("id" in named)) return named;
-    const card = named?.paired && named.paired !== pasted ? await readAuthorCard(named.paired, source) : named;
+    const card = await readAuthorCard(pasted, source);
     if (card && !("id" in card)) return card;
     return {
       authors: card ? [{ id: card.paired ?? card.id, name: card.name, institution: card.institution?.name ?? null, country: card.institution?.country ?? null, works: card.works, citations: card.citations, largest: card.works }] : [],
