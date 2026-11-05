@@ -955,7 +955,8 @@
     "filterRatingRangeMulti": "{min}-{max} stars",
     "filterSortPublicationDate": "Publication date",
     "filterSortCitations": "Citations",
-    "filterSortWorksCount": "Works count"
+    "filterSortWorksCount": "Works count",
+    "filterByTopic": "Only works on {name}"
   },
   "paperCard": {
     "screeningResponses": "Screening responses",
@@ -5463,5 +5464,38 @@
     "plansNoticeTitle": "Free during the public alpha",
     "plansNoticeDetail": "Every feature included. Plans will change after it.",
     "emailAddress": "Email {email}"
+  },
+  "entityCards": {
+    "papers": "Papers",
+    "citations": "Citations",
+    "hIndex": "h-index",
+    "noInstitution": "No current institution",
+    "noTopics": "No topics listed",
+    "authorFailed": "This author could not be loaded.",
+    "topicFailed": "The description could not be loaded.",
+    "institutionFailed": "This institution could not be loaded.",
+    "noDescription": "No description yet.",
+    "tryAgain": "Try again",
+    "filterResults": "Filter results",
+    "removeFilter": "Remove filter",
+    "searchPapers": "Search papers",
+    "authorPage": "Author page",
+    "topicPage": "Topic page",
+    "browseTopics": "Browse topics",
+    "website": "Website",
+    "openOnOpenAlex": "Open on OpenAlex",
+    "level": {
+      "topic": "Topic",
+      "subfield": "Subfield",
+      "field": "Field",
+      "domain": "Domain"
+    },
+    "below": {
+      "domain": "Fields",
+      "field": "Subfields",
+      "subfield": "Topics"
+    },
+    "topicPapers": "{name}, {count, plural, one {# paper} other {# papers}}",
+    "noAuthorRecord": "No author record"
   }
 }

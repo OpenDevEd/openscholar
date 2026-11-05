@@ -51,8 +51,9 @@ export async function readProfileAuthor(id: string, given?: SearchSource) {
 }
 
 export async function readProfileAuthorWorks(id: string, page: number, given?: SearchSource) {
-  if (!AUTHOR_ID.test(id) || !Number.isInteger(page) || page < 1 || page > 1000) throw new Error("Invalid author page");
-  const source = sourceForId(id, await chosenSource(given));
+  // ponytail: several IDs joined with |, the filter's OR; the real build takes the list.
+  if (!id.split("|").every(one => AUTHOR_ID.test(one)) || !Number.isInteger(page) || page < 1 || page > 1000) throw new Error("Invalid author page");
+  const source = id.includes("|") ? await chosenSource(given) : sourceForId(id, await chosenSource(given));
   const limited = await spendOpenAlexRequests();
   if (limited) return limited;
   const sortBy = {field: "publication_date", order: "desc"} as const;

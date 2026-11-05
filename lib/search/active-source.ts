@@ -15,6 +15,8 @@ export const chosenSource = async (given: unknown): Promise<SearchSource> => (gi
 
 /** The source the site's searches read. When Convex can't say, the last one it said, and OpenAlex before it has said any. */
 export async function activeSearchSource(): Promise<SearchSource> {
+  // ponytail: mock only, so the preview shows our index with the site's flag left alone.
+  if (process.env.NEXT_PUBLIC_MOCK_SEARCH_SOURCE) return process.env.NEXT_PUBLIC_MOCK_SEARCH_SOURCE as SearchSource;
   if (known && Date.now() - known.at < KEPT_MS) return known.source;
   try {
     const flags = await fetchQuery(api.featureFlags.queries.list);

@@ -13,5 +13,6 @@ export const PinSearchSource = Pinned.Provider;
 export function useSearchSource(): SearchSource {
   const pinned = useContext(Pinned);
   const flags = useDbFlags();
-  return pinned ?? sourceFromFlag(flags?.find((flag) => flag.key === SEARCH_SOURCE_FLAG)?.enabled);
+  // ponytail: mock only, so the preview shows our index with the site's flag left alone.
+  return pinned ?? (process.env.NEXT_PUBLIC_MOCK_SEARCH_SOURCE as SearchSource | undefined) ?? sourceFromFlag(flags?.find((flag) => flag.key === SEARCH_SOURCE_FLAG)?.enabled);
 }

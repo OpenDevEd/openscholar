@@ -150,7 +150,7 @@ export type FilterValue = { value: string; name: string };
  * adds or drops one. On a page with no search to narrow, such as the library or a
  * paper a chat names, `toggle` starts a new search by that record instead.
  */
-function useRecordFilter(field: "authors" | "journals" | "institutions", param: "author" | "journal" | "inst", remember: (names: Record<string, string>) => void) {
+function useRecordFilter(field: "authors" | "journals" | "institutions" | "researchAreas", param: "author" | "journal" | "inst" | "area", remember: (names: Record<string, string>) => void) {
   const router = useWorkspaceRouter();
   // A search provider is the search to narrow. Focus mode in the assistant's panel has none, even over a results page.
   const canFilter = Boolean(useSearchOptional());
@@ -163,7 +163,7 @@ function useRecordFilter(field: "authors" | "journals" | "institutions", param: 
     if (canFilter) updateFilter({ [field]: [...selected, value] });
     else router.push(buildShareableUrl("", { [param]: [value] }));
   };
-  return { selected: canFilter ? selected : ([] as string[]), toggle };
+  return { selected: canFilter ? selected : ([] as string[]), toggle, canFilter };
 }
 
 // An author kept by name is its own name, so only an id's is saved.
@@ -173,3 +173,5 @@ const rememberAuthorIds = (names: Record<string, string>) =>
 export const useAuthorFilter = () => useRecordFilter("authors", "author", rememberAuthorIds);
 export const useJournalFilter = () => useRecordFilter("journals", "journal", rememberJournalNames);
 export const useInstitutionFilter = () => useRecordFilter("institutions", "inst", rememberInstitutionNames);
+// A topic's chip is named from the bundled catalog, so there is nothing to remember.
+export const useTopicFilter = () => useRecordFilter("researchAreas", "area", () => {});
