@@ -35,8 +35,9 @@ const TOPICS = [["start", "flag", "#ff9d36", "Get started", "Your first search t
   // Matching words light up where they appear, without touching the page's markup.
   if (window.Highlight) input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(), ranges = []; if (q.length > 1) for (const root of document.querySelectorAll("[data-guide]:not([hidden])")) { const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); while (walk.nextNode()) { const n = walk.currentNode, t = n.nodeValue.toLowerCase(); if (n.parentElement.closest("[hidden]")) continue; for (let i = t.indexOf(q); i >= 0; i = t.indexOf(q, i + q.length)) { const r = new Range(); r.setStart(n, i); r.setEnd(n, i + q.length); ranges.push(r); } } } CSS.highlights.set("find", new Highlight(...ranges)); });
   // A screen opens large, and any click or Escape closes it.
-  const zoomed = document.querySelector("[data-zoomed]"), big = zoomed.querySelector("img");
-  document.querySelectorAll("[data-zoom]").forEach((b) => b.addEventListener("click", () => { big.src = b.dataset.zoom; big.alt = b.querySelector("img").alt; zoomed.showModal(); }));
+  // It opens on the picture already loaded, and the larger one replaces it once it's ready.
+  const zoomed = document.querySelector("[data-zoomed]"), big = zoomed.querySelector("img"); let wanted;
+  document.querySelectorAll("[data-zoom]").forEach((b) => b.addEventListener("click", () => { const small = b.querySelector("img"), full = new Image(); big.src = small.currentSrc || small.src; big.alt = small.alt; zoomed.showModal(); wanted = b.dataset.zoom; full.src = wanted; full.decode().then(() => { if (zoomed.open && wanted === b.dataset.zoom) big.src = full.src; }).catch(() => {}); }));
   zoomed.addEventListener("click", () => zoomed.close());
   // The sidebar shows which guide you're reading.
   const side = [...document.querySelectorAll("aside nav a")]; const io = new IntersectionObserver((list) => { for (const e of list) if (e.isIntersecting) side.forEach((a) => (a.getAttribute("href") === `#${e.target.id}` ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"))); }, { rootMargin: "-20% 0px -70% 0px" }); guides.forEach((g) => io.observe(g));
