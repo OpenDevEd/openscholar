@@ -166,6 +166,10 @@
     "authors/links:profileFor": "authors/assistant:directory"
   },
   "manual": {
+    "evidenceLibraries/releases:overview": "Site administration, for Openscholar's own admins on the admin pages.",
+    "evidenceLibraries/releases:setChannel": "Site administration, for Openscholar's own admins on the admin pages.",
+    "evidenceLibraries/releases:startRollout": "Site administration, for Openscholar's own admins on the admin pages.",
+    "evidenceLibraries/releases:steerRollout": "Site administration, for Openscholar's own admins on the admin pages.",
     "admins/invitations:invite": "Site administration, for Openscholar's own admins on the admin pages.",
     "admins/invitations:resend": "Site administration, for Openscholar's own admins on the admin pages.",
     "admins/mutations:addUser": "Site administration, for Openscholar's own admins on the admin pages.",

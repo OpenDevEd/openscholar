@@ -130,13 +130,12 @@ the hour.
 ### 6. After launch
 
 - Marketing on the apex, with `WebSite` and `Organization` data, then job and comparison pages.
-- Community releases, before the first community moves. new-el publishes each release as a
-  GitHub prerelease; dev's OpenScholar can see prereleases, and promoting one offers it to
-  prod. A page at `/settings/admin/community-releases`, agreed as a mock on
-  `mock/community-releases`, lists releases and communities, with Promote, Pull back, Update all
-  and Roll back all. Updates run one at a time, smallest first, stopping at the first failure,
-  and we may update anyone's community. Rollback uses `startRuntimeRollback` and only appears
-  when no database change is in the way. There are no manual rollbacks.
+- Community releases, before the first community moves: built in #1063. new-el publishes each
+  release as a GitHub prerelease; shared dev offers it at once (`EL_OFFER_PRERELEASES=true`), and
+  promoting it offers it to prod. `/settings/admin/community-releases` lists releases and
+  communities, with Promote, Pull back and Update all. A rollout runs on the server, one community
+  at a time, smallest first, stopping at the first failure, and we may update anyone's community.
+  Updates only go forward. Rollbacks are done by hand on the server.
 - Move the existing communities: see Moving communities.
 - Delete `upgradeLiveData.ts` and this folder.
 

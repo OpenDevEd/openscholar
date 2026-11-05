@@ -50,6 +50,8 @@ import {
   evidenceLibraryOperationFields,
   evidenceLibraryRuntimeBindingValidator,
   evidenceLibraryRuntimeReleaseFields,
+  evidenceLibraryReleaseCatalogFields,
+  evidenceLibraryRolloutFields,
   organizationFields,
   organizationMembershipFields,
   organizationInvitationFields,
@@ -376,6 +378,13 @@ export default defineSchema({
   evidenceLibraryRuntimeReleases: defineTable(
     evidenceLibraryRuntimeReleaseFields,
   ).index("by_running", ["running"]),
+
+  evidenceLibraryReleaseCatalog: defineTable(evidenceLibraryReleaseCatalogFields)
+    .index("by_publishedAt", ["publishedAt"])
+    .index("by_commit", ["commit"]),
+
+  // One row at most: the rollout under way, or the last one until an admin dismisses it.
+  evidenceLibraryRollouts: defineTable(evidenceLibraryRolloutFields),
 
   // One digest written for a library edition. The library polls until the
   // result is ready; the row expires a day after it was started.

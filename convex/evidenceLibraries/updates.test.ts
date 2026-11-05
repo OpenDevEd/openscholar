@@ -147,24 +147,28 @@ function createGithub(input: {
           { tag_name: `runtime-${"9".repeat(40)}`, draft: true, body: "Draft" },
           { tag_name: "v1.0.0", draft: false, body: "Not a runtime release" },
           {
+            id: 1,
             tag_name: `runtime-${RUNNING}`,
             draft: false,
             published_at: "2026-09-08T10:00:00Z",
             body: "Older notes.\n\n- Records: Older note.\n",
           },
           {
+            id: 2,
             tag_name: `runtime-${"8".repeat(40)}`,
             prerelease: true,
             published_at: "2026-09-10T10:00:00Z",
             body: "Not ready",
           },
           {
+            id: 3,
             tag_name: `runtime-${input.latest}`,
             draft: false,
             published_at: "2026-09-09T10:00:00Z",
             body: LATEST_NOTES,
           },
-          ...(input.releases ?? []).map(({ commit, publishedAt }) => ({
+          ...(input.releases ?? []).map(({ commit, publishedAt }, index) => ({
+            id: 10 + index,
             tag_name: `runtime-${commit}`,
             draft: false,
             published_at: publishedAt,

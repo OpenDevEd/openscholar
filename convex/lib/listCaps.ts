@@ -137,6 +137,8 @@ export const MAX_REDIRECT_URIS = 20;
 export const MAX_RELEASE_CHANGES = 250;
 export const MAX_RELEASES = 100;
 export const MAX_RELEASE_NOTES = 40;
+/** Communities one rollout goes through: as many as the releases page lists (evidenceLibraries/releases.ts). */
+export const MAX_ROLLOUT_COMMUNITIES = 500;
 /** Sources one Evidence Library reports a status for. */
 export const MAX_LIBRARY_SOURCES = 200;
 /** Kinds of issue one source reports. */

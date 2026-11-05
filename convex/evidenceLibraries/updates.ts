@@ -20,6 +20,7 @@ import { probeEvidenceLibraryAddress } from "./readinessClient";
 import {
   fetchRuntimeRelease,
   isFreshRuntimeRelease,
+  RELEASE_CHECK_WITHDRAWN,
   RuntimeReleaseError,
   runtimeIncludesCommit,
 } from "./runtimeReleases";
@@ -281,7 +282,13 @@ export async function readPublishRuntime(
   if (!release || support?.commit !== CONTRACT_COMMIT || support.running) {
     return { kind: "current" };
   }
-  if (!support.latest || release.latest === binding.runtimeCommit) {
+  // A withdrawn check may name a release that was just pulled back. Its answer
+  // comes when the configuration page next opens, or "Check again".
+  if (
+    !support.latest ||
+    release.latest === binding.runtimeCommit ||
+    release.checkedAt === RELEASE_CHECK_WITHDRAWN
+  ) {
     return { kind: "unreleased" };
   }
   return {
