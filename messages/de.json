@@ -958,7 +958,8 @@
     },
     "searchFieldDefault": "Titel, Abstract, Volltext",
     "searchFieldSemantic": "Nach Bedeutung",
-    "filterSimilarTo": "Ähnlich wie"
+    "filterSimilarTo": "Ähnlich wie",
+    "filterByTopic": "Nur Werke zu {name}"
   },
   "paperCard": {
     "screeningResponses": "Screening-Antworten",
@@ -4249,6 +4250,24 @@
         "doing": "Der Zugang zur Evidence Community wird angesehen",
         "did": "Der Zugang zur Evidence Community wurde angesehen",
         "where": "Admin"
+      },
+      "linkAuthorRecord": {
+        "doing": "Autoreneintrag wird verknüpft",
+        "did": "Autoreneintrag verknüpft",
+        "where": "Autoren",
+        "ask": "Autoreneintrag verknüpfen"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Autoreneintrag wird entfernt",
+        "did": "Autoreneintrag entfernt",
+        "where": "Autoren",
+        "ask": "Autoreneintrag entfernen"
+      },
+      "claimAuthor": {
+        "doing": "Autor wird beansprucht",
+        "did": "Autor beansprucht",
+        "where": "Autoren",
+        "ask": "Autor beanspruchen"
       }
     },
     "asks": {
@@ -5421,8 +5440,20 @@
     "sectionProfile": "Profil",
     "sectionLinks": "Links und Kennungen",
     "sectionPublications": "Publikationen",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "Zugriff"
+    "sectionOpenAlex": "Autoreneinträge",
+    "sectionAccess": "Zugriff",
+    "authorRecords": "Autoreneinträge",
+    "authorRecordsDescription": "Jeder Eintrag, der diese Person ist. Die Artikelsuche liest alle.",
+    "changeMainRecord": "Haupteintrag ändern",
+    "mainRecord": "Haupt",
+    "claimAuthor": "Diesen Autor beanspruchen",
+    "otherRecordsWithThisName": "Weitere Einträge mit diesem Namen",
+    "addRecord": "Hinzufügen",
+    "removeRecord": "Diesen Eintrag entfernen",
+    "recordPapers": "{count, plural, one {{shown} Artikel} other {{shown} Artikel}}",
+    "authorsIn": "In {source}",
+    "couldNotSearchAuthors": "Autoren konnten nicht gesucht werden. Versuche es gleich noch einmal.",
+    "searchingAuthors": "Autoren werden gesucht"
   },
   "connectApp": {
     "signInToContinue": "Melden Sie sich an, um fortzufahren",
@@ -5486,5 +5517,38 @@
     "likeLibrary": "Artikel wie deine Bibliothek",
     "yourQuestion": "Deine Frage",
     "questionPlaceholder": "Was hilft Lehrkräften, an ländlichen Schulen zu bleiben?"
+  },
+  "entityCards": {
+    "papers": "Artikel",
+    "citations": "Zitationen",
+    "hIndex": "h-Index",
+    "noInstitution": "Keine aktuelle Einrichtung",
+    "noTopics": "Keine Themen angegeben",
+    "authorFailed": "Dieser Autor konnte nicht geladen werden.",
+    "topicFailed": "Die Beschreibung konnte nicht geladen werden.",
+    "institutionFailed": "Diese Einrichtung konnte nicht geladen werden.",
+    "noDescription": "Noch keine Beschreibung.",
+    "tryAgain": "Erneut versuchen",
+    "filterResults": "Ergebnisse filtern",
+    "removeFilter": "Filter entfernen",
+    "searchPapers": "Artikel suchen",
+    "authorPage": "Autorenseite",
+    "topicPage": "Themenseite",
+    "browseTopics": "Themen durchsuchen",
+    "website": "Website",
+    "openOnOpenAlex": "Auf OpenAlex öffnen",
+    "level": {
+      "topic": "Thema",
+      "subfield": "Teilgebiet",
+      "field": "Fachgebiet",
+      "domain": "Bereich"
+    },
+    "below": {
+      "domain": "Fachgebiete",
+      "field": "Teilgebiete",
+      "subfield": "Themen"
+    },
+    "topicPapers": "{name}, {count, plural, one {# Artikel} other {# Artikel}}",
+    "noAuthorRecord": "Kein Autoreneintrag"
   }
 }

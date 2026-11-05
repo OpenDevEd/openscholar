@@ -957,7 +957,8 @@
     },
     "searchFieldDefault": "Titre, résumé, texte intégral",
     "searchFieldSemantic": "Par le sens",
-    "filterSimilarTo": "Similaire à"
+    "filterSimilarTo": "Similaire à",
+    "filterByTopic": "Uniquement les travaux sur {name}"
   },
   "paperCard": {
     "screeningResponses": "Réponses de sélection",
@@ -4248,6 +4249,24 @@
         "doing": "Consultation de l'accès à l'Evidence Community",
         "did": "Accès à l'Evidence Community consulté",
         "where": "Administration"
+      },
+      "linkAuthorRecord": {
+        "doing": "Association d'une fiche d'auteur",
+        "did": "Fiche d'auteur associée",
+        "where": "Auteurs",
+        "ask": "Associer une fiche d'auteur"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Retrait d'une fiche d'auteur",
+        "did": "Fiche d'auteur retirée",
+        "where": "Auteurs",
+        "ask": "Retirer une fiche d'auteur"
+      },
+      "claimAuthor": {
+        "doing": "Revendication d'un auteur",
+        "did": "Auteur revendiqué",
+        "where": "Auteurs",
+        "ask": "Revendiquer un auteur"
       }
     },
     "asks": {
@@ -5420,8 +5439,20 @@
     "sectionProfile": "Profil",
     "sectionLinks": "Liens et identifiants",
     "sectionPublications": "Publications",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "Accès"
+    "sectionOpenAlex": "Fiches de l'auteur",
+    "sectionAccess": "Accès",
+    "authorRecords": "Fiches de l'auteur",
+    "authorRecordsDescription": "Chaque fiche qui correspond à cette personne. La recherche d'articles les lit toutes.",
+    "changeMainRecord": "Changer la fiche principale",
+    "mainRecord": "Principale",
+    "claimAuthor": "Revendiquer cet auteur",
+    "otherRecordsWithThisName": "Autres fiches avec ce nom",
+    "addRecord": "Ajouter",
+    "removeRecord": "Retirer cette fiche",
+    "recordPapers": "{count, plural, one {{shown} article} other {{shown} articles}}",
+    "authorsIn": "Dans {source}",
+    "couldNotSearchAuthors": "Impossible de rechercher des auteurs. Réessayez dans un instant.",
+    "searchingAuthors": "Recherche d'auteurs"
   },
   "connectApp": {
     "signInToContinue": "Connectez-vous pour continuer",
@@ -5485,5 +5516,38 @@
     "likeLibrary": "Articles comme votre bibliothèque",
     "yourQuestion": "Votre question",
     "questionPlaceholder": "Qu'est-ce qui aide les enseignants à rester dans les écoles rurales ?"
+  },
+  "entityCards": {
+    "papers": "Articles",
+    "citations": "Citations",
+    "hIndex": "indice h",
+    "noInstitution": "Aucun établissement actuel",
+    "noTopics": "Aucun thème",
+    "authorFailed": "Impossible de charger cet auteur.",
+    "topicFailed": "Impossible de charger la description.",
+    "institutionFailed": "Impossible de charger cet établissement.",
+    "noDescription": "Pas encore de description.",
+    "tryAgain": "Réessayer",
+    "filterResults": "Filtrer les résultats",
+    "removeFilter": "Retirer le filtre",
+    "searchPapers": "Rechercher des articles",
+    "authorPage": "Page de l'auteur",
+    "topicPage": "Page du thème",
+    "browseTopics": "Parcourir les thèmes",
+    "website": "Site web",
+    "openOnOpenAlex": "Ouvrir sur OpenAlex",
+    "level": {
+      "topic": "Thème",
+      "subfield": "Sous-domaine",
+      "field": "Domaine",
+      "domain": "Grand domaine"
+    },
+    "below": {
+      "domain": "Domaines",
+      "field": "Sous-domaines",
+      "subfield": "Thèmes"
+    },
+    "topicPapers": "{name}, {count, plural, one {# article} other {# articles}}",
+    "noAuthorRecord": "Aucune fiche d'auteur"
   }
 }

@@ -24,6 +24,9 @@ const useQueryHistoryIndexStore = create<{
     set((state) => ({ indices: { ...state.indices, [searchId]: index } })),
 }));
 
+/** Whether this screen can't hover, so what opens on hover has to open on a tap. */
+export const useNoHover = () => useMediaQuery("(hover: none)");
+
 function useMediaQuery(query: string): boolean {
   const subscribe = useCallback((onChange: () => void) => {
     const media = window.matchMedia(query);

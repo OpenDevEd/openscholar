@@ -957,7 +957,8 @@
     },
     "searchFieldDefault": "タイトル、抄録、全文",
     "searchFieldSemantic": "意味で検索",
-    "filterSimilarTo": "類似の対象"
+    "filterSimilarTo": "類似の対象",
+    "filterByTopic": "{name}に関する研究のみ"
   },
   "paperCard": {
     "screeningResponses": "スクリーニング回答",
@@ -4248,6 +4249,24 @@
         "doing": "Evidence Community へのアクセスを確認しています",
         "did": "Evidence Community へのアクセスを確認しました",
         "where": "管理"
+      },
+      "linkAuthorRecord": {
+        "doing": "著者レコードをリンク中",
+        "did": "著者レコードをリンクしました",
+        "where": "著者",
+        "ask": "著者レコードをリンク"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "著者レコードを削除中",
+        "did": "著者レコードを削除しました",
+        "where": "著者",
+        "ask": "著者レコードを削除"
+      },
+      "claimAuthor": {
+        "doing": "著者を申請中",
+        "did": "著者を申請しました",
+        "where": "著者",
+        "ask": "著者を申請"
       }
     },
     "asks": {
@@ -5420,8 +5439,20 @@
     "sectionProfile": "プロフィール",
     "sectionLinks": "リンクと識別子",
     "sectionPublications": "出版物",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "アクセス"
+    "sectionOpenAlex": "著者レコード",
+    "sectionAccess": "アクセス",
+    "authorRecords": "著者レコード",
+    "authorRecordsDescription": "この人物に該当するすべてのレコード。論文検索はそのすべてを読みます。",
+    "changeMainRecord": "メインレコードを変更",
+    "mainRecord": "メイン",
+    "claimAuthor": "この著者を申請",
+    "otherRecordsWithThisName": "同じ名前の他のレコード",
+    "addRecord": "追加",
+    "removeRecord": "このレコードを削除",
+    "recordPapers": "{count, plural, other {{shown} 件の論文}}",
+    "authorsIn": "{source}内",
+    "couldNotSearchAuthors": "著者を検索できませんでした。少し後でもう一度お試しください。",
+    "searchingAuthors": "著者を検索中"
   },
   "connectApp": {
     "signInToContinue": "続けるにはサインインしてください",
@@ -5485,5 +5516,38 @@
     "likeLibrary": "ライブラリに似た論文",
     "yourQuestion": "質問",
     "questionPlaceholder": "農村部の学校に教員が定着するには何が役立ちますか?"
+  },
+  "entityCards": {
+    "papers": "論文",
+    "citations": "被引用数",
+    "hIndex": "h指数",
+    "noInstitution": "現在の所属なし",
+    "noTopics": "トピックなし",
+    "authorFailed": "この著者を読み込めませんでした。",
+    "topicFailed": "説明を読み込めませんでした。",
+    "institutionFailed": "この機関を読み込めませんでした。",
+    "noDescription": "説明はまだありません。",
+    "tryAgain": "再試行",
+    "filterResults": "結果を絞り込む",
+    "removeFilter": "絞り込みを解除",
+    "searchPapers": "論文を検索",
+    "authorPage": "著者ページ",
+    "topicPage": "トピックページ",
+    "browseTopics": "トピックを見る",
+    "website": "ウェブサイト",
+    "openOnOpenAlex": "OpenAlexで開く",
+    "level": {
+      "topic": "トピック",
+      "subfield": "サブ分野",
+      "field": "分野",
+      "domain": "領域"
+    },
+    "below": {
+      "domain": "分野",
+      "field": "サブ分野",
+      "subfield": "トピック"
+    },
+    "topicPapers": "{name}、{count, plural, other {# 件の論文}}",
+    "noAuthorRecord": "著者レコードなし"
   }
 }

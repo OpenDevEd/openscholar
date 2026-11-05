@@ -957,7 +957,8 @@
     },
     "searchFieldDefault": "Isihloko, isifinyezo, umbhalo ogcwele",
     "searchFieldSemantic": "Ngencazelo",
-    "filterSimilarTo": "Kufana no"
+    "filterSimilarTo": "Kufana no",
+    "filterByTopic": "Imisebenzi nge-{name} kuphela"
   },
   "paperCard": {
     "screeningResponses": "Izimpendulo zokuskrini",
@@ -4248,6 +4249,24 @@
         "doing": "Ibheka ukufinyelela ku-Evidence Community",
         "did": "Ibheke ukufinyelela ku-Evidence Community",
         "where": "Umphathi"
+      },
+      "linkAuthorRecord": {
+        "doing": "Kuxhunywa irekhodi lombhali",
+        "did": "Kuxhunyiwe irekhodi lombhali",
+        "where": "Ababhali",
+        "ask": "Xhuma irekhodi lombhali"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Kususwa irekhodi lombhali",
+        "did": "Kususiwe irekhodi lombhali",
+        "where": "Ababhali",
+        "ask": "Susa irekhodi lombhali"
+      },
+      "claimAuthor": {
+        "doing": "Kufakwa isicelo sombhali",
+        "did": "Kufakiwe isicelo sombhali",
+        "where": "Ababhali",
+        "ask": "Faka isicelo sombhali"
       }
     },
     "asks": {
@@ -5420,8 +5439,20 @@
     "sectionProfile": "Iphrofayili",
     "sectionLinks": "Amaxhumanisi nezinkomba",
     "sectionPublications": "Okushicilelwe",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "Ukufinyelela"
+    "sectionOpenAlex": "Amarekhodi ombhali",
+    "sectionAccess": "Ukufinyelela",
+    "authorRecords": "Amarekhodi ombhali",
+    "authorRecordsDescription": "Yonke irekhodi yalo muntu. Ukusesha amaphepha kuwafunda wonke.",
+    "changeMainRecord": "Shintsha irekhodi eliyinhloko",
+    "mainRecord": "Inhloko",
+    "claimAuthor": "Faka isicelo salo mbhali",
+    "otherRecordsWithThisName": "Amanye amarekhodi analeli gama",
+    "addRecord": "Engeza",
+    "removeRecord": "Susa leli rekhodi",
+    "recordPapers": "{count, plural, one {iphepha elingu-{shown}} other {amaphepha angu-{shown}}}",
+    "authorsIn": "Ku-{source}",
+    "couldNotSearchAuthors": "Akwenzekanga ukusesha ababhali. Zama futhi maduze.",
+    "searchingAuthors": "Kufunwa ababhali"
   },
   "connectApp": {
     "signInToContinue": "Ngena ukuze uqhubeke",
@@ -5485,5 +5516,38 @@
     "likeLibrary": "Amaphepha afana nomtapo wakho",
     "yourQuestion": "Umbuzo wakho",
     "questionPlaceholder": "Yini esiza othisha ukuthi bahlale ezikoleni zasemakhaya?"
+  },
+  "entityCards": {
+    "papers": "Amaphepha",
+    "citations": "Izingcaphuno",
+    "hIndex": "i-h-index",
+    "noInstitution": "Asikho isikhungo samanje",
+    "noTopics": "Azikho izihloko",
+    "authorFailed": "Lo mbhali akakwazanga ukulayishwa.",
+    "topicFailed": "Incazelo ayikwazanga ukulayishwa.",
+    "institutionFailed": "Lesi sikhungo asikwazanga ukulayishwa.",
+    "noDescription": "Ayikho incazelo okwamanje.",
+    "tryAgain": "Zama futhi",
+    "filterResults": "Hlunga imiphumela",
+    "removeFilter": "Susa isihlungi",
+    "searchPapers": "Sesha amaphepha",
+    "authorPage": "Ikhasi lombhali",
+    "topicPage": "Ikhasi lesihloko",
+    "browseTopics": "Bheka izihloko",
+    "website": "Iwebhusayithi",
+    "openOnOpenAlex": "Vula ku-OpenAlex",
+    "level": {
+      "topic": "Isihloko",
+      "subfield": "Umkhakha omncane",
+      "field": "Umkhakha",
+      "domain": "Isizinda"
+    },
+    "below": {
+      "domain": "Imikhakha",
+      "field": "Imikhakha emincane",
+      "subfield": "Izihloko"
+    },
+    "topicPapers": "{name}, {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}}",
+    "noAuthorRecord": "Ayikho irekhodi lombhali"
   }
 }
