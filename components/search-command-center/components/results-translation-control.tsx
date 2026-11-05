@@ -333,7 +333,12 @@ export function TranslationSettingsMenu({
             allTranslated && "group/undo hover:bg-primary hover:text-primary-foreground hover:border-primary"
           )}
           variant={allTranslated ? "ai" : autoTranslateResults ? "outline" : "default"}
-          onClick={allTranslated ? handleUndoTranslation : handleRunTranslation}
+          // The press swaps Undo and Run under the pointer, so the second click of a double click would take it back.
+          onClick={(event) => {
+            if (event.detail > 1) return;
+            if (allTranslated) handleUndoTranslation();
+            else handleRunTranslation();
+          }}
           disabled={allTranslated ? disabled : isRunDisabled}
         >
           {isTranslating ? (
