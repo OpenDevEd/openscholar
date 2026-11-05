@@ -93,7 +93,7 @@ import { readProfileAuthor } from "@/app/actions/authors";
 import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
-import { authorFilterValue } from "@/lib/openalex/author-filter";
+import { authorFilterValue, isAuthorId } from "@/lib/openalex/author-filter";
 import { buildShareableUrl } from "@/lib/search-params";
 
 const safeUrl = (value?: string) => {
@@ -209,7 +209,9 @@ export default function AuthorPage({
   const filtered = featured.filter((p) =>
     p.title.toLowerCase().includes(search.toLowerCase()),
   );
-  const matches = openAlexAuthors.filter((p) =>
+  // Searched by an ID, what came back is that record, whatever ID it goes by there.
+  const searchedById = isAuthorId(matchSearch.trim().replace(/^https?:\/\/(?:openalex\.org|openscholar\.ai)\/(?:authors\/)?/, "").toUpperCase());
+  const matches = searchedById ? openAlexAuthors : openAlexAuthors.filter((p) =>
     `${p.name} ${p.affiliation} ${p.id}`
       .toLowerCase()
       .includes(

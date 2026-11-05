@@ -42,7 +42,8 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
                 {paper.doi ? (
                   <a href={paper.doi} target="_blank" rel="noopener noreferrer" className="min-w-0 hover:underline">{paper.title}</a>
                 ) : (
-                  <span className="min-w-0">{paper.title}</span>
+                  // No DOI to open: what's like it is the next best place to go.
+                  <Link href={similarSearchHref([paper.id]) ?? "/results"} className="min-w-0 hover:underline">{paper.title}</Link>
                 )}
                 <span className="flex shrink-0 items-center gap-3 text-xs tabular-nums text-muted-foreground">
                   {paper.year ? <span>{paper.year}</span> : null}

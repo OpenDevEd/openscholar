@@ -5455,7 +5455,8 @@
     "recordPapers": "{count, plural, other {{shown} 件の論文}}",
     "authorsIn": "{source}内",
     "couldNotSearchAuthors": "著者を検索できませんでした。少し後でもう一度お試しください。",
-    "searchingAuthors": "著者を検索中"
+    "searchingAuthors": "著者を検索中",
+    "recordsFull": "このプロフィールのレコードは上限の {max} 件です。追加するには1件削除してください。"
   },
   "connectApp": {
     "signInToContinue": "続けるにはサインインしてください",

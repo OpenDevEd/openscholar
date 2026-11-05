@@ -8,6 +8,7 @@ import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
+import { MAX_PROFILE_RECORDS } from "@/convex/authors/validators";
 import type { Id } from "@/convex/_generated/dataModel";
 import { readConvexErrorData } from "@/convex/lib/errors";
 import { useAppToast } from "@/lib/toast";
@@ -61,6 +62,7 @@ export function LinkedRecords({ profileId, main, name, suggestions }: { profileI
   const remove = useWorkspaceMutation(api.authors.links.remove);
   const failed = (error: unknown) => toast.error(readConvexErrorData(error)?.message ?? t("couldNotSaveThisProfile"));
   const extras = (linked ?? []).filter((id) => !main.includes(id));
+  const full = (linked?.length ?? 0) >= MAX_PROFILE_RECORDS;
   // The search matches any word, so only records sharing the surname are offered as this person.
   const surname = name.trim().split(/\s+/).at(-1)?.toLowerCase();
   const others = linked ? suggestions.filter((other) => !main.includes(other.id) && !linked.includes(other.id) && other.name.trim().split(/\s+/).at(-1)?.toLowerCase() === surname).slice(0, 5) : [];
@@ -73,7 +75,7 @@ export function LinkedRecords({ profileId, main, name, suggestions }: { profileI
       )}
       {!!others.length && (
         <div className="fade-enter">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">{t("otherRecordsWithThisName")}</p>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">{full ? t("recordsFull", { max: MAX_PROFILE_RECORDS }) : t("otherRecordsWithThisName")}</p>
           <ul className="divide-y divide-border-subtle rounded-xl border border-border-subtle">
             {others.map((other) => (
               <RecordRow
@@ -83,7 +85,7 @@ export function LinkedRecords({ profileId, main, name, suggestions }: { profileI
                 name={<Link href={`/authors/${other.id}`} target="_blank" rel="noreferrer" className="hover:underline">{other.name}</Link>}
                 detail={[other.affiliation, other.topics].filter(Boolean).join("  ")}
                 action={
-                  <Button type="button" variant="outline" size="sm" onClick={() => void add({ profileId, authorId: other.id }).catch(failed)}>
+                  <Button type="button" variant="outline" size="sm" disabled={full} onClick={() => void add({ profileId, authorId: other.id }).catch(failed)}>
                     <Plus aria-hidden />
                     {t("addRecord")}
                   </Button>

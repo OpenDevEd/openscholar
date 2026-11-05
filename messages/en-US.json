@@ -5455,7 +5455,8 @@
     "recordPapers": "{count, plural, one {{shown} paper} other {{shown} papers}}",
     "authorsIn": "In {source}",
     "couldNotSearchAuthors": "Couldn't search authors. Try again in a moment.",
-    "searchingAuthors": "Searching authors"
+    "searchingAuthors": "Searching authors",
+    "recordsFull": "This profile has its {max} records. Remove one to add another."
   },
   "connectApp": {
     "signInToContinue": "Sign in to continue",

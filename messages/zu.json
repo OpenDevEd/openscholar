@@ -5455,7 +5455,8 @@
     "recordPapers": "{count, plural, one {iphepha elingu-{shown}} other {amaphepha angu-{shown}}}",
     "authorsIn": "Ku-{source}",
     "couldNotSearchAuthors": "Akwenzekanga ukusesha ababhali. Zama futhi maduze.",
-    "searchingAuthors": "Kufunwa ababhali"
+    "searchingAuthors": "Kufunwa ababhali",
+    "recordsFull": "Le phrofayela inamarekhodi angu-{max}. Susa elilodwa ukuze wengeze elinye."
   },
   "connectApp": {
     "signInToContinue": "Ngena ukuze uqhubeke",

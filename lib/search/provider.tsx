@@ -25,7 +25,7 @@ import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
-import { SEMANTIC_FIELD, type SearchSource } from './source';
+import { questionAsWords, SEMANTIC_FIELD, type SearchSource } from './source';
 import { useSearchSource } from './use-search-source';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
@@ -151,7 +151,11 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     () => savedParams ?? (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
     [savedParams, routeIsOql, routeUrlParams, storedQuery],
   );
-  const urlParams = local ? local.params : routeSearchParams;
+  // A question saved on our index runs as its words on OpenAlex, so that's how it shows: the scope, its label and its filter count.
+  const urlParams = useMemo(() => {
+    const params = local ? local.params : routeSearchParams;
+    return source === 'openalex' && params.field === SEMANTIC_FIELD ? { ...params, field: 'title_and_abstract' as const, q: questionAsWords(params.q) } : params;
+  }, [local, routeSearchParams, source]);
   const onLocalParamsChange = local?.onParamsChange;
 
   // Back and Forward. The address cannot say what a history entry showed: an OQL query is not in

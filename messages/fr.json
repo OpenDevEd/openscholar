@@ -5455,7 +5455,8 @@
     "recordPapers": "{count, plural, one {{shown} article} other {{shown} articles}}",
     "authorsIn": "Dans {source}",
     "couldNotSearchAuthors": "Impossible de rechercher des auteurs. Réessayez dans un instant.",
-    "searchingAuthors": "Recherche d'auteurs"
+    "searchingAuthors": "Recherche d'auteurs",
+    "recordsFull": "Ce profil a déjà {max} fiches. Retirez-en une pour en ajouter une autre."
   },
   "connectApp": {
     "signInToContinue": "Connectez-vous pour continuer",

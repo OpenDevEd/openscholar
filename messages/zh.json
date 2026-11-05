@@ -5455,7 +5455,8 @@
     "recordPapers": "{count, plural, other {{shown} 篇论文}}",
     "authorsIn": "在 {source} 中",
     "couldNotSearchAuthors": "无法搜索作者。请稍后再试。",
-    "searchingAuthors": "正在搜索作者"
+    "searchingAuthors": "正在搜索作者",
+    "recordsFull": "此资料已有 {max} 条记录。移除一条才能添加另一条。"
   },
   "connectApp": {
     "signInToContinue": "登录以继续",

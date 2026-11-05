@@ -5455,7 +5455,8 @@
     "recordPapers": "{count, plural, one {{shown} शोधपत्र} other {{shown} शोधपत्र}}",
     "authorsIn": "{source} में",
     "couldNotSearchAuthors": "लेखक नहीं खोजे जा सके। थोड़ी देर में फिर प्रयास करें।",
-    "searchingAuthors": "लेखक खोजे जा रहे हैं"
+    "searchingAuthors": "लेखक खोजे जा रहे हैं",
+    "recordsFull": "इस प्रोफ़ाइल में {max} रिकॉर्ड हैं। दूसरा जोड़ने के लिए एक हटाएँ।"
   },
   "connectApp": {
     "signInToContinue": "जारी रखने के लिए साइन इन करें",

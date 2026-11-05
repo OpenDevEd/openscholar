@@ -5456,7 +5456,8 @@
     "recordPapers": "{count, plural, one {{shown} Artikel} other {{shown} Artikel}}",
     "authorsIn": "In {source}",
     "couldNotSearchAuthors": "Autoren konnten nicht gesucht werden. Versuche es gleich noch einmal.",
-    "searchingAuthors": "Autoren werden gesucht"
+    "searchingAuthors": "Autoren werden gesucht",
+    "recordsFull": "Dieses Profil hat bereits {max} Einträge. Entferne einen, um einen anderen hinzuzufügen."
   },
   "connectApp": {
     "signInToContinue": "Melden Sie sich an, um fortzufahren",

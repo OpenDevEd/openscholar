@@ -5456,7 +5456,8 @@
     "recordPapers": "{count, plural, one {makala {shown}} other {makala {shown}}}",
     "authorsIn": "Katika {source}",
     "couldNotSearchAuthors": "Imeshindwa kutafuta waandishi. Jaribu tena baada ya muda.",
-    "searchingAuthors": "Inatafuta waandishi"
+    "searchingAuthors": "Inatafuta waandishi",
+    "recordsFull": "Wasifu huu una rekodi {max}. Ondoa moja ili kuongeza nyingine."
   },
   "connectApp": {
     "signInToContinue": "Ingia ili uendelee",

@@ -37,7 +37,9 @@ describe("a search for similar papers", () => {
     const saved = paramsToSearchResult({ ...DEFAULT_SEARCH_PARAMS, like: ["W1", "OS2"] });
     expect(saved.similarTo).toEqual(["W1", "OS2"]);
     expect(searchResultToParams(saved)).toMatchObject({ like: ["W1", "OS2"] });
-    expect(parseSearchParamsFromUrl(new URLSearchParams("like=https://openalex.org/W1,OS2,nonsense")).like).toEqual(["W1", "OS2"]);
+    expect(parseSearchParamsFromUrl(new URLSearchParams("like=https://openalex.org/W1,OS2")).like).toEqual(["W1", "OS2"]);
+    // Kept, so the search refuses it: without it this would be a search of everything.
+    expect(parseSearchParamsFromUrl(new URLSearchParams("like=nonsense")).like).toEqual(["nonsense"]);
   });
 });
 

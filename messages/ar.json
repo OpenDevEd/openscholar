@@ -5456,7 +5456,8 @@
     "recordPapers": "{count, plural, one {{shown} ورقة} other {{shown} أوراق}}",
     "authorsIn": "في {source}",
     "couldNotSearchAuthors": "تعذر البحث عن المؤلفين. حاول بعد قليل.",
-    "searchingAuthors": "جارٍ البحث عن المؤلفين"
+    "searchingAuthors": "جارٍ البحث عن المؤلفين",
+    "recordsFull": "لهذا الملف {max} سجلات كحد أقصى. أزل واحدًا لإضافة آخر."
   },
   "connectApp": {
     "signInToContinue": "سجّل الدخول للمتابعة",
