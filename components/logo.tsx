@@ -34,6 +34,8 @@ export function LogoMark({ className, label }: { className?: string; label?: str
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
+  /** For the name, which a narrow bar can move to screen readers only. */
+  nameClassName?: string;
   clickable?: boolean;
   iconOnly?: boolean; // Force icon-only mode
   context?: "navbar" | "home" | "general"; // Context for automatic mobile behavior
@@ -45,6 +47,7 @@ const WORDMARK_SIZE = { sm: "text-lg", md: "text-2xl", lg: "text-4xl", xl: "text
 export function Logo({
   size = "md",
   className,
+  nameClassName,
   clickable = true,
   iconOnly = false,
   context = "general",
@@ -68,7 +71,7 @@ export function Logo({
     <div className={cn("flex items-center gap-2 sm:gap-3 shrink-0", className)}>
       <LogoMark className={MARK_SIZE[effectiveSize]} label={shouldShowIconOnly ? t("logoAlt") : undefined} />
       {!shouldShowIconOnly && (
-        <span className={cn("font-medium text-brand-ink leading-tight whitespace-nowrap", WORDMARK_SIZE[effectiveSize])}>
+        <span className={cn("font-medium text-brand-ink leading-tight whitespace-nowrap", WORDMARK_SIZE[effectiveSize], nameClassName)}>
           Openscholar
         </span>
       )}

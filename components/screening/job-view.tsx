@@ -146,7 +146,7 @@ export function JobView({
             </div>
           </FadeRow>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
           {/* A screening of the person's Zotero is run again from a chat: the page has no Zotero to pick. */}
           {guest ? null : job.status === "processing" ? (
             <Button variant="outline" size="sm" onClick={() => cancel({ jobId: job._id }).catch((error) => toast.error(t("cancelFailed"), getErrorMessage(error, t("cancelFailed"))))}>
@@ -237,7 +237,7 @@ export function JobView({
                 {libraryDest && job.libraryMissing ? <Chip icon={TriangleAlert}>{t.rich("notInLibrary", { count: job.libraryMissing, library: libraryDest.library, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
                 {libraryDest && job.libraryWriteProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`libraryProblem.${job.libraryWriteProblem}`, { name: libraryDest.name, library: libraryDest.library })}</ClippedChip> : null}
                 {pruned && job.libraryPruneProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`pruneProblem.${job.libraryPruneProblem.problem}`, { name: pruned, library: job.libraryPruneProblem.library })}</ClippedChip> : null}
-                {!savedTo && !pruned && !libraryDest ? <Chip icon={Ban}>{t("noCollectionChanged")}</Chip> : null}
+                {!savedTo && !pruned && !libraryDest ? <Chip icon={Ban} className="h-auto min-h-6 shrink whitespace-normal py-1">{t("noCollectionChanged")}</Chip> : null}
               </div>
             )}
             {spent === undefined ? null : (

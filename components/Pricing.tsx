@@ -587,7 +587,7 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
                       </span>
                     </div>
                   ) : (
-                    <div className="text-4xl font-bold">{t("freePrice")}</div>
+                    <div className="text-4xl font-bold break-words">{t("freePrice")}</div>
                   )
                 }
                 description={plan.description}

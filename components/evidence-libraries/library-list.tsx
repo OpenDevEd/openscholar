@@ -278,7 +278,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                     </div>
                   </div>
                   {/* On phones the actions take their own line under the name, lined up with it, so the name keeps the row's width. */}
-                  <div className="flex w-full shrink-0 items-center gap-2 ps-14 sm:ms-auto sm:w-auto sm:ps-0">
+                  <div className="flex w-full shrink-0 flex-wrap items-center gap-2 ps-[min(3.5rem,20%)] sm:ms-auto sm:w-auto sm:ps-0">
                     {library.pending ? (
                       <>
                         <Button
@@ -326,7 +326,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       )
                     ) : library.role === "Viewer" ? (
                       // A viewer has no role in the library's admin: its settings are theirs to read (#653), and its public address theirs to open.
-                      <ButtonGroup aria-label={t("actionsFor", { name: library.name })}>
+                      <ButtonGroup className="max-w-full flex-wrap" aria-label={t("actionsFor", { name: library.name })}>
                         <Button asChild size="sm" variant="outline">
                           <Link href={library.configuration!}>
                             <Settings2 />
@@ -341,7 +341,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         </Button>
                       </ButtonGroup>
                     ) : (
-                      <ButtonGroup aria-label={t("actionsFor", { name: library.name })}>
+                      <ButtonGroup className="max-w-full flex-wrap" aria-label={t("actionsFor", { name: library.name })}>
                         {library.configuration && (
                           <Button asChild size="sm" variant="outline">
                             <Link href={library.configuration}>
