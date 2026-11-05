@@ -20,8 +20,10 @@ DEV = dict(re.findall(r'^(CONVEX_SELF_HOSTED_\w+)="?([^"\n]*)"?$', open(ENV_FILE
 
 # Everything a community keeps. Left out: OAuth clients (the publish makes new ones on production Clerk), hand-offs, digest
 # jobs, leases, deletions and screening requests (short-lived work), and author publications (their profiles stay on dev).
-BY_LIBRARY = ["evidenceLibraryApprovedQueries", "evidenceLibraryCollectionSources", "evidenceLibraryConfigDrafts", "evidenceLibraryConfigOperations", "evidenceLibraryConfigRevisions", "evidenceLibraryConfigSections", "evidenceLibraryCredentials", "evidenceLibraryDomains", "evidenceLibraryReaders", "evidenceLibraryRuntimeBindings", "evidenceLibrarySourceStatus", "evidenceLibraryZoteroGroups", "topicLocations", "topicDeliveryReceipts", "authorPublicationReceipts"]
-BY_INDEX = {"topicLocations": "by_libraryId_and_itemKey", "topicDeliveryReceipts": "by_libraryId_and_idempotencyKey", "authorPublicationReceipts": "by_libraryId_and_itemKey"}
+# Topic delivery receipts stay too: over a million rows, needed only to answer a delivery retried across the move, which the
+# stored generation then refuses for that one record.
+BY_LIBRARY = ["evidenceLibraryApprovedQueries", "evidenceLibraryCollectionSources", "evidenceLibraryConfigDrafts", "evidenceLibraryConfigOperations", "evidenceLibraryConfigRevisions", "evidenceLibraryConfigSections", "evidenceLibraryCredentials", "evidenceLibraryDomains", "evidenceLibraryReaders", "evidenceLibraryRuntimeBindings", "evidenceLibrarySourceStatus", "evidenceLibraryZoteroGroups", "topicLocations", "authorPublicationReceipts"]
+BY_INDEX = {"topicLocations": "by_libraryId_and_itemKey", "authorPublicationReceipts": "by_libraryId_and_itemKey"}
 
 
 def data(table, keep=lambda row: True):
@@ -78,10 +80,12 @@ rows = {"evidenceLibraries": libraries}
 for table in BY_LIBRARY:
     rows[table] = sum((indexed(table, BY_INDEX[table], library) for library in ids), []) if table in BY_INDEX else data(table, lambda row: row.get("libraryId") in ids)
 
-# A source following a collection needs that collection, which stays on dev.
-following = rows["evidenceLibraryCollectionSources"]
-if following:
-    sys.exit(f"these communities follow collections on dev, so move those first or remove the sources: {sorted({row['libraryId'] for row in following})}")
+# A source following a collection needs that collection on prod, which copy-collection.py puts there.
+copied_path = f"{R}/copied-collections.json"
+copied = json.load(open(copied_path)) if os.path.exists(copied_path) else {}
+missing_collections = {row["collectionId"] for row in rows["evidenceLibraryCollectionSources"]} - set(copied)
+if missing_collections:
+    sys.exit(f"copy these collections to prod first (copy-collection.py): {sorted(missing_collections)}")
 
 # The organizations that own them, with their workspaces and memberships.
 workspaces = {row["_id"]: row for row in data("workspaces")}
@@ -139,7 +143,7 @@ def rewrite(value):
     if isinstance(value, list):
         return [rewrite(item) for item in value]
     if isinstance(value, str):
-        return user_ids.get(value) or clerk_ids.get(value) or value
+        return user_ids.get(value) or clerk_ids.get(value) or copied.get(value) or value
     return value
 
 

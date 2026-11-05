@@ -16,11 +16,11 @@ import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
 import { authenticate } from "./auth";
 
 type Location = Doc<"topicLocations">;
-async function linkedDois(ctx: Pick<QueryCtx, "db">, id: string | null) {
+export async function linkedDois(ctx: Pick<QueryCtx, "db">, id: string | null) {
   if (!id) return [];
   return (await ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", id)).take(2)).map(row => row.doi);
 }
-async function changeDoiLink(ctx: MutationCtx, row: Pick<Location, "openalexId" | "doi" | "state">, delta: number) {
+export async function changeDoiLink(ctx: MutationCtx, row: Pick<Location, "openalexId" | "doi" | "state">, delta: number) {
   if (!row.openalexId || !row.doi || row.state !== "published") return;
   const link = await ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", row.openalexId!).eq("doi", row.doi!)).unique();
   const count = (link?.count ?? 0) + delta;
@@ -29,7 +29,7 @@ async function changeDoiLink(ctx: MutationCtx, row: Pick<Location, "openalexId" 
     else await ctx.db.patch("topicOpenAlexDois", link._id, {count});
   } else if (count > 0) await ctx.db.insert("topicOpenAlexDois", {openalexId: row.openalexId, doi: row.doi, count});
 }
-async function changeGroups(ctx: MutationCtx, row: Pick<Location, "state" | "topicIds" | "groupKey">, delta: number) {
+export async function changeGroups(ctx: MutationCtx, row: Pick<Location, "state" | "topicIds" | "groupKey">, delta: number) {
   if (row.state !== "published") return;
   for (const topicId of row.topicIds) {
     const group = await ctx.db.query("topicPublicationGroups").withIndex("by_topicId_and_groupKey", q => q.eq("topicId", topicId).eq("groupKey", row.groupKey)).unique();
@@ -40,7 +40,7 @@ async function changeGroups(ctx: MutationCtx, row: Pick<Location, "state" | "top
     } else if (count > 0) await ctx.db.insert("topicPublicationGroups", {topicId, groupKey: row.groupKey, count});
   }
 }
-async function pendingReconciliation(ctx: MutationCtx, delta: number) {
+export async function pendingReconciliation(ctx: MutationCtx, delta: number) {
   const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
   if (state) await ctx.db.patch("topicProjectionState", state._id, {pending: Math.max(0, state.pending + delta)});
   else await ctx.db.insert("topicProjectionState", {key: "publications", pending: Math.max(0, delta)});
@@ -101,6 +101,8 @@ export const replaceFromLibrary = internalMutation({
       if (receipt.digest !== digest) throw createError("CONFLICT", "Idempotency key reused with different content");
       return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: receipt.generation, status: receipt.status};
     }
+    const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
+    if (state?.rebuilding) throw createError("CONFLICT", "Topic counts are being rebuilt; try again shortly");
     const previous = await ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", input.itemKey)).unique();
     if (previous && previous.generation === input.generation) throw createError("CONFLICT", "Generation already used");
     const status = previous && previous.generation > input.generation ? "superseded" as const : "applied" as const;
