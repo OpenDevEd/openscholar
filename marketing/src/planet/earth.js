@@ -57,6 +57,9 @@ void main(){
   var clamp01 = function (v) { return Math.min(1, Math.max(0, v)); };
   var unit = function (v) { var l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
 
+  // Diagnostics for the app's stage only, so the marketing page's console stays quiet.
+  var log = function () { if (document.documentElement.dataset.questionStage !== undefined) console.info.apply(console, arguments); };
+
   var OPTIONS = { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" };
 
   // The quality ladder, cheapest first. Level 0 is the still image. Each step up costs a real amount more: measured on
@@ -82,15 +85,20 @@ void main(){
     if (connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType || ""))) return 0;
     var memory = navigator.deviceMemory, cores = navigator.hardwareConcurrency || 8;
     // A context that refuses to be made when performance would be poor means software rendering or a blocklisted GPU.
-    var probe = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", { failIfMajorPerformanceCaveat: true });
-    if (typeof OffscreenCanvas !== "undefined" && !probe) return 1;
+    var probe = document.createElement("canvas").getContext("webgl2", { failIfMajorPerformanceCaveat: true });
+    if (!probe) return 1;
+    // The GPU's name. Firefox gives it as the renderer; Chromium masks that and gives it through the extension.
+    var name = String(probe.getParameter(probe.RENDERER));
+    var info = /^webkit webgl$/i.test(name) && probe.getExtension("WEBGL_debug_renderer_info");
+    if (info) name = String(probe.getParameter(info.UNMASKED_RENDERER_WEBGL));
+    var lose = probe.getExtension("WEBGL_lose_context");
+    if (lose) lose.loseContext();
     // A software renderer by name: the planet draws on the CPU there, and only the light level keeps up.
-    var info = probe && probe.getExtension("WEBGL_debug_renderer_info");
-    var name = info ? String(probe.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
     if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(name)) return 1;
     // Old GPUs by name, from the list Stripe's home page ships (read 2026-11-05): these start on the light level. Any other
-    // GPU is taken to be capable, as Stripe does, and the monitor corrects a wrong guess within a couple of seconds.
-    if (/powervr sgx|powervr series ?[4-6]|adreno \(?tm\)? ?(2\d\d|3\d\d|4\d\d|50[0-6])\b|mali-(2|3|4)\d\d|mali-t[678]\d\d|mali-g(31|51)\b|intel.*(gma|g4[15]|q45|hd graphics 3000)|geforce (8|9)\d{3}|geforce gt [1-3]\d\d(?!\d)|radeon hd [2-5]\d{3}/i.test(name)) return 1;
+    // GPU is taken to be capable, as Stripe does, and the monitor corrects a wrong guess within a couple of seconds. The
+    // older GeForce GT and Intel HD parts are added to Stripe's list.
+    if (/powervr sgx|powervr series ?[4-6]|adreno \(?tm\)? ?(2\d\d|3\d\d|4\d\d|50[0-6])\b|mali-(2|3|4)\d\d|mali-t[678]\d\d|mali-g(31|51)\b|intel.*(gma|g4[15]|q45|hd graphics [234]000|hd graphics 2500)|geforce (8|9)\d{3}|geforce gt [1-7]\d\d(?!\d)|radeon hd [2-5]\d{3}/i.test(name)) return 1;
     if ((memory && memory <= 2) || cores <= 2) return 1;
     if ((memory && memory <= 4) || cores <= 4) return 3;
     return 4;
@@ -98,14 +106,18 @@ void main(){
 
   /**
    * Watches the frame rate the way drei's PerformanceMonitor does (pmndrs/drei): averages over 250 ms, ten of them, and a
-   * move when three in four agree. The bounds follow the screen's own highest rate, so Safari's 30 fps cap in Low Power
-   * Mode isn't taken for a weak device. After three changes of direction it stays where it is.
+   * move when three in four agree, against drei's fixed bounds (hold 60 on a 120 Hz screen, else 40). Fixed, because bounds
+   * taken from the frame rate it's judging would excuse a device that was slow from its first frame. In WebKit a steady 30
+   * is the Low Power Mode cap, not the planet, so it holds there. After three changes of direction it stays where it is.
    */
+  // Only WebKit caps frames for Low Power Mode, and on iOS every browser is WebKit. Elsewhere a steady 30 is just slow.
+  var CAPPED_AT_30 = /AppleWebKit/.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent);
   function monitor(onMove) {
     var windowStart = 0, frames = 0, averages = [], refresh = 0, turns = 0, lastMove = 0, settled = false;
     return function (now, level, ceiling) {
       if (settled) return;
-      if (!windowStart) { windowStart = now; return; }
+      // A window that spans a pause (the page hidden or scrolled away, or back from another page) says nothing of speed.
+      if (!windowStart || now - windowStart > 1000) { windowStart = now; frames = 0; return; }
       frames++;
       if (now - windowStart < 250) return;
       var fps = (frames * 1000) / (now - windowStart);
@@ -113,11 +125,14 @@ void main(){
       refresh = Math.max(refresh, fps);
       averages.push(fps);
       if (averages.length > 10) averages.shift();
-      var upper = refresh > 100 ? 100 : Math.min(55, refresh * 0.92), lower = refresh > 100 ? 60 : Math.min(40, refresh * 0.8);
+      // The upper bound is a touch lenient, as a 60 Hz screen measures just under 60.
+      var lower = refresh > 100 ? 60 : 40, upper = refresh > 100 ? 95 : 57;
+      var recent = averages.slice(-4);
+      var capped = CAPPED_AT_30 && recent.length === 4 && recent.every(function (a) { return Math.abs(a - 30) < 3; });
       // Far too slow drops sooner and further: a second of frames at under half the lower bound is enough to go down two.
-      var recent = averages.slice(-4), drowning = recent.length === 4 && recent.every(function (a) { return a < lower / 2; });
+      var drowning = recent.length === 4 && recent.every(function (a) { return a < lower / 2; });
       var low = averages.filter(function (a) { return a < lower; }).length, high = averages.filter(function (a) { return a >= upper; }).length;
-      var move = drowning ? -2 : averages.length < 10 ? 0 : low > 7 ? -1 : high > 7 && level < ceiling ? 1 : 0;
+      var move = capped ? 0 : drowning ? -2 : averages.length < 10 ? 0 : low > 7 ? -1 : high > 7 && level < ceiling ? 1 : 0;
       if (!move) return;
       if (lastMove && Math.sign(move) !== Math.sign(lastMove)) turns++;
       lastMove = move;
@@ -160,7 +175,7 @@ void main(){
       if (programs[key]) return programs[key];
       var made = gl.createProgram();
       gl.attachShader(made, compile(gl.VERTEX_SHADER, VERTEX));
-      gl.attachShader(made, compile(gl.FRAGMENT_SHADER, lite ? FRAGMENT.replace("precision highp float;", "precision mediump float;\n#define LIGHT") : FRAGMENT));
+      gl.attachShader(made, compile(gl.FRAGMENT_SHADER, lite ? FRAGMENT.replace("precision highp float;", "precision highp float;\n#define LIGHT\n") : FRAGMENT));
       gl.linkProgram(made);
       if (!gl.getProgramParameter(made, gl.LINK_STATUS)) return null;
       gl.useProgram(made);
@@ -191,8 +206,16 @@ void main(){
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
       });
-    })).then(function () { self.loaded = true; console.info("[earth] maps ready at", Math.round(performance.now()) + "ms"); });
-    console.info("[earth] shader ready at", Math.round(performance.now()) + "ms");
+    })).then(function () { self.loaded = true; log("[earth] maps ready at", Math.round(performance.now()) + "ms"); });
+    log("[earth] shader ready at", Math.round(performance.now()) + "ms");
+    // A lost context (a GPU reset, or the browser reclaiming it) can't draw again: whoever drew with it falls back to the
+    // still, and the next start makes a new one.
+    var lost = [];
+    self.onLost = function (callback) { lost.push(callback); };
+    gl.canvas.addEventListener("webglcontextlost", function () {
+      if (prepared === self) prepared = null;
+      lost.forEach(function (callback) { callback(); });
+    });
     prepared = self;
     return self;
   }
@@ -249,6 +272,7 @@ void main(){
     var level = Math.max(1, Math.min(TOP, o.level));
     var ready = prepare(canvas, level <= 2, o.base);
     if (!ready) return null;
+    if (o.onLost) ready.onLost(o.onLost);
     var gl = ready.gl;
     var buffer = ready.offscreen ? gl.canvas : canvas;
     var shown = ready.offscreen ? canvas.getContext("2d") : null;
@@ -305,7 +329,7 @@ void main(){
   function start(o) {
     var canvas = o.canvas, layout = o.layout, turn = o.turn;
     var none = { wave: function () {}, sunBehind: function () {}, stop: function () {}, level: 0 };
-    var planet = renderer({ canvas: canvas, layout: layout, width: o.width, height: o.height, level: o.level });
+    var planet = renderer({ canvas: canvas, layout: layout, width: o.width, height: o.height, level: o.level, onLost: function () { level = 0; o.onLevel(0); } });
     if (!planet) { o.ready(false); return none; }
     var level = planet.level, frameNo = 0, lastDrawn = 0;
 
@@ -330,7 +354,7 @@ void main(){
 
     // Down to the still, the canvas gives way to the image, and the ring's spark keeps going so the page doesn't look stuck.
     var watch = monitor(function (next) {
-      console.info("[earth] level", level, "to", next);
+      log("[earth] level", level, "to", next);
       if (next === 0) { level = 0; o.onLevel(0); return; }
       level = next;
       planet.setLevel(level);
@@ -344,8 +368,8 @@ void main(){
       last = now;
       speed += (CRUISE - speed) * (1 - Math.exp(-dt / 2000));
       phase += (speed * dt) / 1000;
-      // The first second after it starts is the page still settling, so the monitor waits it out.
-      if (now - liveAt > 1000) watch(now, level, o.ceiling);
+      // The first second after it starts is the page still settling, so the monitor waits it out. The still is final.
+      if (level > 0 && now - liveAt > 1000) watch(now, level, o.ceiling);
       comet(now - liveAt);
       // At most 60 planet frames a second, even on a 120 Hz screen: a slow turn looks the same, for half the work. Stripe's
       // globe draws every other frame for the same reason.
@@ -414,15 +438,17 @@ void main(){
     stage.dataset.level = String(config.level);
     // Level 0 never starts WebGL: the still is the planet, and only the ring's spark moves.
     if (config.level === 0) {
-      release();
+      // The page paints once the still can be drawn, so the planet's place is never empty.
+      var picture = image.querySelector("img");
+      (picture ? picture.decode() : Promise.resolve()).then(release, release);
       var resting = still({ stage: stage, layout: config.layout, calm: matchMedia("(prefers-reduced-motion: reduce)").matches });
       resting.canvas = canvas;
       window.questionStageEarthRun = resting;
       return resting;
     }
-    console.info("[earth] stage arrived at", Math.round(performance.now()) + "ms");
+    log("[earth] stage arrived at", Math.round(performance.now()) + "ms");
     var begun = performance.now();
-    console.info("[earth] starting", config.turn ? "from the hero" : "from rest");
+    log("[earth] starting", config.turn ? "from the hero" : "from rest");
     var run = start({
       stage: stage, canvas: canvas,
       layout: config.layout, width: config.width, height: config.height, turn: config.turn,
@@ -433,7 +459,7 @@ void main(){
       },
       calm: matchMedia("(prefers-reduced-motion: reduce)").matches,
       ready: function (ok) {
-        console.info("[earth]", ok ? "drawing" : "can't draw, showing the still", Math.round(performance.now() - begun) + "ms after starting");
+        log("[earth]", ok ? "drawing" : "can't draw, showing the still", Math.round(performance.now() - begun) + "ms after starting");
         if (ok) { canvas.dataset.live = ""; image.dataset.live = ""; } else image.dataset.failed = "";
         release();
       },
@@ -445,8 +471,12 @@ void main(){
 
   // Loaded early by the page's first script (lib/search/question-stage-script.ts), it gets the planet ready while the page is
   // still arriving, and starts it the moment the stage is there, before the app's own scripts.
-  console.info("[earth] script ran at", Math.round(performance.now()) + "ms");
-  if (location.search.indexOf("hero=") !== -1) prepare(null);
+  log("[earth] script ran at", Math.round(performance.now()) + "ms");
+  // Coming from the hero, the maps are fetched now, the smaller day map for the light levels, unless the hero had come to
+  // rest on the still (its level is the 8th number).
+  var handed = new URLSearchParams(location.search).get("hero");
+  var handedLevel = handed ? Number(handed.split(",")[7]) : 0;
+  if (handedLevel > 0) prepare(null, handedLevel <= 2);
   // The page arrives in pieces, so it waits for the stage's last part, the ring in front, before starting.
   var find = function () {
     var stage = document.querySelector("#question-stage[data-earth-config]");
@@ -460,5 +490,5 @@ void main(){
     setTimeout(function () { watching.disconnect(); }, 20000);
   }
 
-  window.questionStageEarth = { boot: boot, renderer: renderer, monitor: monitor, spark: spark, startLevel: startLevel, memory: MEMORY, sunUp: SUN_UP };
+  window.questionStageEarth = { boot: boot, renderer: renderer, monitor: monitor, spark: spark, startLevel: startLevel, memory: MEMORY };
 })();

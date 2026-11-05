@@ -8,7 +8,7 @@ import { join } from "node:path";
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 // The question stage's planet script is cached, so its address carries a hash of its contents: an old copy is never used.
-const earthScriptVersion = createHash("sha256").update(readFileSync(join(process.cwd(), "public/question-stage/earth.js"))).digest("hex").slice(0, 10);
+const earthScriptVersion = createHash("sha256").update(readFileSync(join(process.cwd(), "marketing/src/planet/earth.js"))).digest("hex").slice(0, 10);
 
 const nextConfig: NextConfig = {
   reactCompiler: true,

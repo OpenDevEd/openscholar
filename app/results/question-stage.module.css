@@ -46,8 +46,11 @@
   );
 }
 
+/* Placed by a transform when the sun comes up, so placing it moves nothing. */
 .sun {
   position: absolute;
+  left: 0;
+  top: 0;
   width: min(70vmin, 620px);
   aspect-ratio: 1;
   opacity: 0;
@@ -158,7 +161,7 @@
   opacity: 1;
   transition: none;
 }
-.stage[data-handover] .stillBox:not([data-failed]) {
+.stage[data-handover]:not([data-level="0"]) .stillBox:not([data-failed]) {
   display: none;
 }
 /* The ring's spark: a short tapering streak whose head is the element's right end. earth.js moves it round the ring with a
@@ -227,21 +230,25 @@
   opacity: 1;
 }
 
-.question {
+/* The question and the line under it saying what's under way. */
+.head {
   position: absolute;
   left: 0;
   top: var(--question-top, clamp(84px, 15vh, 146px));
   width: var(--page, 100%);
+  padding-inline: max(24px, calc((var(--page, 100vw) - 1240px) / 2));
+  pointer-events: none;
+}
+
+.question {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  padding-inline: max(24px, calc((var(--page, 100vw) - 1240px) / 2));
   color: #ffe6cf;
   font-weight: 500;
   letter-spacing: -0.04em;
   line-height: 1.06;
   text-align: center;
-  pointer-events: none;
 }
 
 .question[data-size="large"] { font-size: 38px; }
@@ -271,7 +278,8 @@
   transform-origin: 0 0;
   background: linear-gradient(var(--m, transparent), var(--m, transparent)) no-repeat 0 100% / 0 0.05em;
   animation: stage-rise 700ms var(--ease) calc(0.05s + var(--i) * 45ms) backwards;
-  transition: background-size 0.6s var(--ease);
+  /* The underlines follow the reading wave across, word by word. */
+  transition: background-size 0.6s var(--ease) calc(var(--i) * var(--step, 0ms));
 }
 .stage[data-handover] .word {
   animation: none;
@@ -288,6 +296,60 @@
 .question[data-flying] .word {
   background-size: 0 0.05em;
   transition-duration: 0.2s;
+  transition-delay: 0s;
+}
+
+.status {
+  margin-top: 18px;
+  color: rgb(255 230 207 / 0.62);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.3s linear;
+}
+.status[data-shown] {
+  opacity: 1;
+}
+/* A new step fades in over the old one's place. */
+.step {
+  position: relative;
+  animation: stage-in 0.3s linear backwards;
+}
+/* The seconds hang off the step's end, so the step stays centred as they arrive and grow. */
+.seconds {
+  position: absolute;
+  left: 100%;
+  margin-inline-start: 0.7em;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+/* A few bright stars twinkle in turn at the lowest levels, where the sky-wide twinkle is off. */
+.glints {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+.stage[data-level="0"] .glints,
+.stage[data-level="1"] .glints {
+  display: block;
+}
+.glints i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, #fff, rgb(230 234 245 / 0.5) 35%, transparent);
+  opacity: 0;
+  animation: glint linear infinite;
+}
+
+/* Its turn is the first eighth: up and back down, then dark until it comes round again. */
+@keyframes glint {
+  0%, 12.5%, 100% { opacity: 0; animation-timing-function: ease-in-out; }
+  6.25% { opacity: 1; animation-timing-function: ease-in-out; }
 }
 
 @keyframes stage-rise {
@@ -300,7 +362,8 @@
 @media (prefers-reduced-motion: reduce) {
   .stars,
   .space,
-  .word {
+  .word,
+  .glints i {
     animation: none;
   }
 }

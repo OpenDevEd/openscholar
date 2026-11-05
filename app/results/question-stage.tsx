@@ -32,6 +32,20 @@ const RISE_MAX = 170;
 const SETTLE_DOWN_MAX = 120;
 /** How small a word has got as it fades into the planet. */
 const WORD_END = 0.4;
+/**
+ * The wave that reads across the question while the query is written: one pass every READ_MS, its front crossing the
+ * question in READ_SPAN_MS, each word dim for a quarter of the pass. A word dims about twice in five seconds, far from a
+ * flicker, and three or four are dim at once, so it travels and the question stays readable.
+ */
+const READ_MS = 2400;
+const READ_SPAN_MS = 1600;
+/** How long one underline takes to draw: the transition on `.word` in the stylesheet. */
+const UNDERLINE_MS = 600;
+/** The glints take turns, one slot each, a twinkle lasting half a slot. */
+const GLINT_SLOTS = 8;
+const GLINT_SLOT_S = 1.2;
+/** Seconds into the wait before the status line counts them. */
+const COUNT_AFTER_S = 8;
 
 // The marketing hero's stars, from the same seed: fixed in size and place, and none behind its headline or box.
 const STARS = (() => {
@@ -48,16 +62,38 @@ const STARS = (() => {
   }).filter(({ x, y, opacity }) => opacity > 0 && (x < 720 || x > 1840 || y < 136 || y > 390));
 })();
 
-/** Where things are on the screen: the page width, the sky's top, the planet's box, and the question's top. */
-type Frame = { width: number; skyTop?: number; spaceTop: number; spaceHeight: number; questionTop?: number; turn: EarthConfig["turn"] };
+/**
+ * Up to eight bright stars in open sky on this screen, clear of the question and the planet, which twinkle one at a time
+ * where the whole sky's twinkle costs too much. One at a time, because two far apart make the browser redraw everything
+ * between them on every frame: on a software renderer that took the page from 120 frames a second to 70.
+ */
+function pickGlints(frame: Frame, layout: ReturnType<typeof earthLayout>) {
+  const left = frame.width / 2 - 1280;
+  const top = frame.skyTop ?? 0;
+  const head = frame.questionTop ?? 146;
+  const planetTop = frame.spaceTop + layout.cy - layout.R;
+  return STARS.filter((star) => star.opacity >= 0.6)
+    .map((star) => ({ x: left + star.x, y: top + star.y }))
+    .filter(({ x, y }) => x > 16 && x < frame.width - 16 && y > 32)
+    .filter(({ x, y }) => y < planetTop - 40 || Math.abs(x - layout.cx) > layout.R * 1.4)
+    .filter(({ x, y }) => Math.abs(x - frame.width / 2) > 600 || y < head - 20 || y > head + 200)
+    .filter((spot, i, spots) => spots.slice(0, i).every((other) => Math.hypot(spot.x - other.x, spot.y - other.y) > 120))
+    .slice(0, GLINT_SLOTS);
+}
+
+/**
+ * Where things are on the screen: the page width, the sky's top, the planet's box, and the question's top. `level` is the
+ * quality level the hero's planet had got to, as the app's address can't read what the marketing site remembered.
+ */
+type Frame = { width: number; skyTop?: number; spaceTop: number; spaceHeight: number; questionTop?: number; turn: EarthConfig["turn"]; level?: number };
 
 /** The hero's measurements, sent in the address so the first paint lands exactly on its last frame. */
 function readHandover(value: string | null): Frame | null {
   const numbers = value?.split(",").map(Number) ?? [];
-  if (numbers.length !== 7 || numbers.some((n) => !Number.isFinite(n))) return null;
-  const [width, skyTop, spaceTop, height, questionTop, t, at] = numbers;
-  if ([width, skyTop, spaceTop, height, questionTop].some((n) => Math.abs(n) > 10000)) return null;
-  return width > 0 && height > 0 ? { width, skyTop, spaceTop, spaceHeight: height, questionTop, turn: { t, at } } : null;
+  if (numbers.length !== 8 || numbers.some((n) => !Number.isFinite(n))) return null;
+  const [width, skyTop, spaceTop, height, questionTop, t, at, level] = numbers;
+  if ([width, skyTop, spaceTop, height, questionTop].some((n) => Math.abs(n) > 10000) || !Number.isInteger(level) || level < 0 || level > 5) return null;
+  return width > 0 && height > 0 ? { width, skyTop, spaceTop, spaceHeight: height, questionTop, turn: { t, at }, level } : null;
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -121,14 +157,20 @@ export function QuestionStage() {
   const dawn = useRef<HTMLDivElement>(null);
   const wash = useRef<HTMLDivElement>(null);
   const stars = useRef<SVGSVGElement[]>([]);
+  const glints = useRef<HTMLDivElement>(null);
   const words = useMemo(() => questionWords(question, lit ? query : null), [question, lit, query]);
   const layout = useMemo(() => (frame ? earthLayout(frame.width) : null), [frame]);
+  const glintSpots = useMemo(() => (frame && layout ? pickGlints(frame, layout) : []), [frame, layout]);
   const rings = useMemo(() => (layout ? { back: ringMarkup(layout, false), front: ringMarkup(layout, true) } : null), [layout]);
 
   if (question) {
     preload(SKY_PLATE, { as: "image", fetchPriority: "high" });
-    if (!handover) preload(EARTH_STILL, { as: "image", fetchPriority: "high" });
-    for (const src of EARTH_IMAGES) preload(src, { as: "image", fetchPriority: "high" });
+    // The maps are fetched early only for a level known to be live: the hero's, or a pinned one. Otherwise earth.js fetches
+    // them once it has chosen a level, so a visitor saving data, who gets the still, never downloads them. The light
+    // levels use the smaller day map.
+    const known = pinnedLevel ?? handover?.level;
+    if (!handover || known === 0) preload(EARTH_STILL, { as: "image", fetchPriority: "high" });
+    if (known) for (const src of EARTH_IMAGES) preload(known <= 2 ? src.replace("earth-day.", "earth-day-2048.") : src, { as: "image", fetchPriority: "high" });
   }
 
   // WebGL, the frame clock and the page behind are all outside React: this reads the page's field
@@ -155,7 +197,7 @@ export function QuestionStage() {
     else planetEl.animate([{ transform: "none" }, { transform: settled }], { duration: 1800, delay: 100, easing: "cubic-bezier(.45,0,.2,1)", fill: "both" });
     const stillImage = stage.current!.querySelector<HTMLImageElement>("[data-still] img");
     for (const image of [plate.current!, stillImage]) void image?.decode().then(() => (image.dataset.in = ""), () => {});
-    // Coming through the hero the planet is already going: public/question-stage/earth.js started it as the stage arrived.
+    // Coming through the hero the planet is already going: marketing/src/planet/earth.js started it as the stage arrived.
     // If it isn't going in this stage (a visitor who came straight here, or a stage React has built afresh), it starts now.
     const stageEl = stage.current!;
     let earth: Earth | undefined;
@@ -171,6 +213,16 @@ export function QuestionStage() {
         document.head.append(script);
       }
     }
+    // While the query is written a slow wave of light reads across the question, where the eye already is, at every quality
+    // level. When the query arrives it finishes the pass it's on, and the underlines follow it across.
+    const spans = [...headline.current!.children] as HTMLElement[];
+    const step = READ_SPAN_MS / spans.length;
+    // The underlines cross faster than the wave when the question is long, so the last is drawn before the question leaves.
+    headline.current!.style.setProperty("--step", `${Math.min(step, (LIT_MS - UNDERLINE_MS) / spans.length)}ms`);
+    const read = [{ opacity: 1, easing: "ease-in-out" }, { opacity: 0.55, offset: 0.12, easing: "ease-in-out" }, { opacity: 1, offset: 0.25 }, { opacity: 1 }];
+    // Coming straight here the words rise in first.
+    const readFrom = handover ? 0 : 750 + spans.length * 45;
+    const reading = calm ? [] : spans.map((span, i) => span.animate(read, { duration: READ_MS, delay: readFrom + i * step, iterations: Infinity }));
     const started = performance.now();
     let litAt = 0;
     let raf = 0;
@@ -232,14 +284,12 @@ export function QuestionStage() {
 
       // The sun starts behind the planet's edge, so the planet uncovers it as it comes up.
       const sunrise = sun.current!;
-      sunrise.style.left = `${x}px`;
-      sunrise.style.top = `${y}px`;
       const light = { delay: SETTLE_MS * 0.7, fill: "forwards" as const };
       sunrise.animate(
         [
-          { opacity: 0, transform: `translate(-50%, -50%) translateY(${layout.R * zoom * 0.3}px) scale(.45)` },
+          { opacity: 0, transform: `translate(${x}px, ${y}px) translate(-50%, -50%) translateY(${layout.R * zoom * 0.3}px) scale(.45)` },
           { opacity: 1, offset: 0.2 },
-          { opacity: 1, transform: `translate(-50%, -50%) translateY(${-layout.R * 0.28}px) scale(2.3)` },
+          { opacity: 1, transform: `translate(${x}px, ${y}px) translate(-50%, -50%) translateY(${-layout.R * 0.28}px) scale(2.3)` },
         ],
         { ...light, duration: DAWN_MS, easing: "cubic-bezier(.25,.5,.25,1)" },
       );
@@ -247,7 +297,7 @@ export function QuestionStage() {
       sky.style.setProperty("--sun-x", `${x}px`);
       sky.style.setProperty("--sun-y", `${y}px`);
       sky.animate([{ opacity: 0 }, { opacity: 1 }], { ...light, duration: DAWN_MS * 0.8, easing: "cubic-bezier(.4,0,.5,1)" });
-      for (const layer of [plate.current!, ...stars.current]) layer.animate({ opacity: 0 }, { delay: SETTLE_MS * 0.8, duration: DAWN_MS * 0.6, easing: "ease-in", fill: "forwards" });
+      for (const layer of [plate.current!, ...stars.current, glints.current!]) layer.animate({ opacity: 0 }, { delay: SETTLE_MS * 0.8, duration: DAWN_MS * 0.6, easing: "ease-in", fill: "forwards" });
 
       // The light becomes the page: cream over a light page, and over a dark one the sky simply fades into it.
       if (!document.documentElement.classList.contains("dark")) wash.current!.animate([{ opacity: 0 }, { opacity: 1 }], { delay: SETTLE_MS + DAWN_MS * 0.4, duration: DAWN_MS * 0.5, easing: "cubic-bezier(.5,0,.6,1)", fill: "forwards" });
@@ -262,6 +312,11 @@ export function QuestionStage() {
       if (!litAt) {
         if (useQuestionStage.getState().query !== null && now - started >= Math.max(LEAST_MS - LIT_MS, holdMs)) {
           litAt = now;
+          const pass = reading[0]?.effect?.getComputedTiming().currentIteration;
+          for (const word of reading) word.effect?.updateTiming({ iterations: pass == null ? 0 : pass + 1 });
+          // The pass speeds up to end before the question leaves, as a pace that quickens reads as nearing the end.
+          const left = Math.max(0, ...reading.map((word) => Number(word.effect?.getComputedTiming().endTime ?? 0) - Number(word.currentTime ?? 0)));
+          if (left > LIT_MS - 100) for (const word of reading) word.updatePlaybackRate(left / (LIT_MS - 100));
           setLit(true);
           earth?.wave();
         }
@@ -279,14 +334,15 @@ export function QuestionStage() {
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(finish);
+      for (const word of reading) word.cancel();
     };
-  }, [question, holdMs, frame, layout]);
+  }, [question, holdMs, frame, layout, handover]);
 
   if (!question || done) return null;
 
   const size = question.length <= 40 ? "large" : question.length <= 90 ? "medium" : "small";
   const handedOver = handover !== null;
-  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, level: pinnedLevel, ...(pinnedLevel === null ? {} : { ceiling: pinnedLevel }) }) : undefined;
+  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, level: pinnedLevel ?? frame.level ?? null, ...(pinnedLevel === null ? {} : { ceiling: pinnedLevel }) }) : undefined;
   const variables = {
     "--page": frame && handedOver ? `${frame.width}px` : undefined,
     "--sky-top": handover?.skyTop === undefined ? undefined : `${handover.skyTop}px`,
@@ -300,7 +356,7 @@ export function QuestionStage() {
       // earth.js marks the level it chose here before React takes the page over.
       suppressHydrationWarning
       className={styles.stage}
-      style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
+      style={variables} data-handover={handedOver ? "" : undefined}>
       <div className={styles.scene}>
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed backdrop, sized by the stage */}
         <img ref={plate} className={styles.plate} src={SKY_PLATE} width={2560} height={820} alt="" decoding={handedOver ? "sync" : "async"} fetchPriority="high" />
@@ -317,6 +373,12 @@ export function QuestionStage() {
             ))}
           </svg>
         ))}
+        {/* Only at the lowest levels, where the sky's own twinkle is off. */}
+        <div ref={glints} className={styles.glints} aria-hidden>
+          {glintSpots.map((glint, i) => (
+            <i key={`${glint.x}-${glint.y}`} style={{ left: glint.x, top: glint.y, animationDuration: `${GLINT_SLOTS * GLINT_SLOT_S}s`, animationDelay: `${-i * GLINT_SLOT_S}s` }} />
+          ))}
+        </div>
         <div ref={dawn} className={styles.dawn} aria-hidden />
         <div ref={sun} className={styles.sun} aria-hidden />
         {frame && layout && rings && (
@@ -348,7 +410,8 @@ export function QuestionStage() {
         )}
       </div>
       <div ref={wash} className={styles.wash} aria-hidden />
-      <h1 ref={headline} className={styles.question} data-size={size} data-flying={flying ? "" : undefined} role="status">
+      <div className={styles.head}>
+      <h1 ref={headline} className={styles.question} data-size={size} data-flying={flying ? "" : undefined}>
         {words.map((word, i) => (
           <span
             key={i}
@@ -360,6 +423,35 @@ export function QuestionStage() {
           </span>
         ))}
       </h1>
+      <StageStatus lit={lit} gone={flying} />
+      </div>
     </div>
+  );
+}
+
+/**
+ * What's under way, in plain words: only real steps, shown once the wait is long enough to need them, with the seconds
+ * once it's long. It's the stage's live region, so a screen reader hears the steps and not the question.
+ */
+function StageStatus({ lit, gone }: { lit: boolean; gone: boolean }) {
+  const [seconds, setSeconds] = useState(0);
+  // The clock is the outside system: the wait counted in whole seconds.
+  useEffect(() => {
+    const started = Date.now();
+    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const step = lit ? "Finding papers" : "Writing a search query";
+  return (
+    <p className={styles.status} role="status" data-shown={seconds >= 1 && !gone ? "" : undefined}>
+      <span key={step} className={styles.step}>
+        {step}
+        {seconds >= COUNT_AFTER_S && (
+          <span aria-hidden className={styles.seconds}>
+            {seconds}s
+          </span>
+        )}
+      </span>
+    </p>
   );
 }
