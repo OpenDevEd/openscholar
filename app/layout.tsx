@@ -32,7 +32,7 @@ import { WorkspacesProvider } from "@/components/workspaces/parts";
 import { QueryHighlightProvider } from "@/components/query-highlight";
 import { QUERY_HIGHLIGHT_COOKIE } from "@/lib/search/boolean-query";
 import { api } from "@/convex/_generated/api";
-import { previewDefaults } from "@/lib/seo/page-metadata";
+import { previewDefaults, SITE_URL } from "@/lib/seo/page-metadata";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
 // --font-sans in globals.css.
@@ -47,7 +47,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const [t, defaults] = await Promise.all([getTranslations("metadata"), previewDefaults()]);
 
   return {
-    metadataBase: new URL(t("siteUrl")),
+    metadataBase: new URL(SITE_URL),
     title: { default: t("defaultTitle"), template: `%s | ${t("siteName")}` },
     description: t("defaultDescription"),
     appleWebApp: {
