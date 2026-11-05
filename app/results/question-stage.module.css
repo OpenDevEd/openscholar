@@ -9,6 +9,15 @@
   overflow: hidden;
   /* It stays up while the page behind is held back. */
   visibility: visible;
+  /* If the app's scripts never run, nothing would ever close it. */
+  animation: stage-give-up 0.3s linear 25s forwards;
+}
+
+@keyframes stage-give-up {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 
 /* Coming from the hero, --page is its width, so a scrollbar it had doesn't move anything here. */

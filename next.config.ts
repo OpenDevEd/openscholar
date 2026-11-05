@@ -18,6 +18,8 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react"],
     turbopackFileSystemCacheForBuild: true,
   },
+  // A second local address for testing, as the free question limit counts each address on its own.
+  allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return [
       // The marketing site fetches these ahead, so they're on hand the moment someone searches from it.

@@ -18,8 +18,14 @@ const LEAST_MS = 1300;
 const LIT_MS = 900;
 /** The page gets this long to finish loading its results behind the stage. */
 const PAGE_MS = 8000;
-const FLIGHT_MS = 1000;
+/** How long the question takes to fall into the planet. The sky opens as it arrives. */
+const FALL_MS = 650;
 const OPEN_MS = 1150;
+/** How much of the gap between them the planet covers, and its most in pixels. The words cover the rest. */
+const RISE_SHARE = 0.5;
+const RISE_MAX = 170;
+/** How small a word has got as it enters the planet. */
+const WORD_END = 0.18;
 
 // The marketing hero's stars, from the same seed: fixed in size and place, and none behind its headline or box.
 const STARS = (() => {
@@ -62,8 +68,8 @@ function questionWords(question: string, query: string | null) {
 /**
  * In front of the results page while AI writes the query for a question in the address: the
  * marketing hero's Earth and sky go on, with the question as the headline. When the query is
- * written the words it uses light up, and once the page behind has its results the question's words
- * fly into the real research question field as the sky opens around it.
+ * written the words it uses light up, and once the page behind has its results the question falls
+ * into the planet as it rises to meet it, and the sky opens from where they touch.
  */
 export function QuestionStage() {
   const params = useSearchParams();
@@ -120,73 +126,73 @@ export function QuestionStage() {
       setDone(true);
     };
 
+    // The question falls into the planet as the planet rises to meet it, and the sky opens from where they touch.
     const land = () => {
-      delete document.documentElement.dataset.questionStage;
-      const field = document.querySelector<HTMLElement>("[data-question-field]");
-      const input = field?.querySelector("input") ?? null;
-      const box = input?.getBoundingClientRect();
-      const target = box && box.width > 0 && box.top < innerHeight ? box : null;
       setFlying(true);
 
-      if (calm) {
+      if (calm || !layout) {
+        delete document.documentElement.dataset.questionStage;
         stage.current!.style.transition = "opacity .3s";
         stage.current!.style.opacity = "0";
         finish = window.setTimeout(end, 320);
         return;
       }
 
-      const x = target ? target.left + Math.min(180, target.width / 2) : innerWidth / 2;
-      const y = target ? target.top + target.height / 2 : innerHeight / 2;
       const root = stage.current!;
-      root.style.setProperty("--rx", `${x}px`);
-      root.style.setProperty("--ry", `${y}px`);
-      root.dataset.opening = "";
-      const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 300;
-      const openedAt = performance.now();
-      const open = (now: number) => {
-        const k = Math.min(1, (now - openedAt) / OPEN_MS);
-        root.style.setProperty("--r", `${(k ** 2.2 * far).toFixed(1)}px`);
-        rim.current!.style.opacity = String(Math.min(1, k * 5) * (1 - k ** 6));
-        if (k < 1) raf = requestAnimationFrame(open);
-      };
-      raf = requestAnimationFrame(open);
-      earth.leave(OPEN_MS);
-
-      // Each word goes to the place it has in the field's one line, at the field's own size and colour.
+      const planet = space.current!;
+      for (const motion of planet.getAnimations()) motion.pause();
+      const box = planet.getBoundingClientRect();
       const spans = [...headline.current!.children] as HTMLElement[];
-      if (!target || !input) {
-        for (const span of spans) span.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: "forwards" });
-      } else {
-        const font = getComputedStyle(input);
-        const ruler = document.createElement("div");
-        ruler.style.cssText = `position:fixed;left:${target.left}px;top:${target.top}px;height:${target.height}px;display:flex;align-items:center;white-space:pre;visibility:hidden;font:${font.font};letter-spacing:${font.letterSpacing}`;
-        const marks = spans.map((span, i) => {
-          const mark = document.createElement("span");
-          mark.textContent = `${span.textContent}${i < spans.length - 1 ? " " : ""}`;
-          return ruler.appendChild(mark);
-        });
-        document.body.append(ruler);
-        const space = marks.length > 1 ? marks[0].getBoundingClientRect().width - measure(ruler, spans[0].textContent ?? "") : 0;
-        spans.forEach((span, i) => {
-          const from = span.getBoundingClientRect();
-          const pad = parseFloat(getComputedStyle(span).paddingLeft);
-          const to = marks[i].getBoundingClientRect();
-          const scale = (to.width - (i < spans.length - 1 ? space : 0)) / (from.width - pad * 2);
-          const dx = to.left - from.left - pad * scale;
-          const dy = to.top + to.height / 2 - (from.top + (from.height * scale) / 2);
-          const past = to.left > target.right - 8;
-          span.animate(
-            [
-              { transform: "none", color: "#ffe6cf", opacity: 1, offset: 0 },
-              { color: font.color, opacity: past ? 0 : 1, offset: 0.9 },
-              { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, color: font.color, opacity: 0, offset: 1 },
-            ],
-            { duration: FLIGHT_MS, delay: Math.min(i * 16, 200), easing: "cubic-bezier(.55,0,.15,1)", fill: "both" },
-          );
-        });
-        ruler.remove();
-      }
-      finish = window.setTimeout(end, OPEN_MS + 60);
+      const question = headline.current!.getBoundingClientRect();
+      const top = box.top + layout.cy - layout.R;
+      const rise = Math.min(Math.max(0, top - question.bottom) * RISE_SHARE, RISE_MAX);
+      const x = box.left + layout.cx;
+      // A little inside the planet's edge, so the words go into it rather than stopping at it.
+      const y = top - rise + layout.R * 0.07;
+
+      const lead = Math.min(spans.length * 10, 120);
+      spans.forEach((span, i) => {
+        const from = span.getBoundingClientRect();
+        const dx = x - from.left - (from.width * WORD_END) / 2;
+        const dy = y - from.top - (from.height * WORD_END) / 2;
+        span.animate(
+          [
+            { transform: "none", opacity: 1, offset: 0 },
+            { opacity: 1, offset: 0.72 },
+            { transform: `translate(${dx}px, ${dy}px) scale(${WORD_END})`, opacity: 0, offset: 1 },
+          ],
+          { duration: FALL_MS - lead, delay: (i / Math.max(1, spans.length - 1)) * lead, easing: "cubic-bezier(.5,0,.8,.45)", fill: "both" },
+        );
+      });
+
+      const meet = FALL_MS / (FALL_MS + OPEN_MS);
+      planet.style.transformOrigin = `${layout.cx}px ${y - box.top}px`;
+      planet.animate(
+        [
+          { transform: "none", easing: "cubic-bezier(.5,0,.8,.45)", offset: 0 },
+          { transform: `translateY(${-rise}px) scale(1.03)`, easing: "cubic-bezier(.3,0,.6,1)", offset: meet },
+          { transform: `translateY(${-rise}px) scale(1.4)`, offset: 1 },
+        ],
+        { duration: FALL_MS + OPEN_MS, fill: "forwards" },
+      );
+
+      finish = window.setTimeout(() => {
+        delete document.documentElement.dataset.questionStage;
+        earth.wave();
+        root.style.setProperty("--rx", `${x}px`);
+        root.style.setProperty("--ry", `${y}px`);
+        root.dataset.opening = "";
+        const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 300;
+        const openedAt = performance.now();
+        const open = (now: number) => {
+          const k = Math.min(1, (now - openedAt) / OPEN_MS);
+          root.style.setProperty("--r", `${(k ** 2.2 * far).toFixed(1)}px`);
+          rim.current!.style.opacity = String(Math.min(1, k * 5) * (1 - k ** 6));
+          if (k < 1) raf = requestAnimationFrame(open);
+          else end();
+        };
+        raf = requestAnimationFrame(open);
+      }, FALL_MS);
     };
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
@@ -212,7 +218,7 @@ export function QuestionStage() {
       clearTimeout(finish);
       earth.stop();
     };
-  }, [question, holdMs, frame]);
+  }, [question, holdMs, frame, layout]);
 
   if (!question || done) return null;
 
@@ -275,14 +281,4 @@ export function QuestionStage() {
       </h1>
     </div>
   );
-}
-
-/** How wide a piece of text is in the ruler's font. */
-function measure(ruler: HTMLElement, text: string) {
-  const span = document.createElement("span");
-  span.textContent = text;
-  ruler.append(span);
-  const width = span.getBoundingClientRect().width;
-  span.remove();
-  return width;
 }

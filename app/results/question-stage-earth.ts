@@ -93,7 +93,7 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /** Starts the live planet over the still. `onLive` runs once its first frame is drawn. */
 export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, ringFront: SVGSVGElement, space: HTMLElement, calm: boolean, onLive: () => void) {
-  const none = { wave() {}, leave() {}, stop() {} };
+  const none = { wave() {}, stop() {} };
   // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing
   // can reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas,
   // which it leaves alone. A browser without WebGL off screen draws straight to the canvas.
@@ -147,8 +147,6 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
   let raf = 0;
   let stopped = false;
   let waveAt = -1e9;
-  let leaveAt = 0;
-  let leaveMs = 1;
   let liveAt = 0;
   let turned = 0;
   let speed = 0;
@@ -201,11 +199,6 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
     turned += (speed * dt) / 1000;
     draw(now);
     comet(now);
-    // Leaving, the planet sinks away as the sky opens.
-    if (leaveAt) {
-      const k = clamp01((now - leaveAt) / leaveMs);
-      space.style.transform = `translate3d(0, ${(k * k * innerHeight * 0.22).toFixed(1)}px, 0) scale(${(1 + k * 0.06).toFixed(3)})`;
-    }
   };
 
   void Promise.all(
@@ -240,10 +233,6 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
     /** A wave of light runs down the planet from the question, lighting the cities it passes. */
     wave() {
       waveAt = performance.now();
-    },
-    leave(ms: number) {
-      leaveMs = ms;
-      leaveAt = performance.now();
     },
     stop() {
       stopped = true;
