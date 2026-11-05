@@ -322,6 +322,7 @@ import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_authorRecordLinks from "../migrations/authorRecordLinks.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
+import type * as migrations_communityMoveCounts from "../migrations/communityMoveCounts.js";
 import type * as migrations_copyCollection from "../migrations/copyCollection.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
@@ -786,6 +787,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/authorRecordLinks": typeof migrations_authorRecordLinks;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
+  "migrations/communityMoveCounts": typeof migrations_communityMoveCounts;
   "migrations/copyCollection": typeof migrations_copyCollection;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;

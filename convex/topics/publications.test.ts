@@ -245,3 +245,30 @@ it("lists a full page of groups that each hold many long copies (#427)", async (
   expect(page.page).toHaveLength(50);
   expect(page.isDone).toBe(false);
 });
+it("rebuilds what topic pages read after locations arrive without their counts, and again without doubling", async () => {
+  vi.useFakeTimers();
+  try {
+    const {t, b, request, send} = await fixture();
+    await send(request());
+    await send(request(b.libraryId), "second-credential");
+    const counts = () => t.run(async ctx => {
+      const strip = <Row extends {_id: unknown; _creationTime: unknown}>({_id, _creationTime, ...row}: Row) => row;
+      return {groups: (await ctx.db.query("topicPublicationGroups").take(50)).map(strip), links: (await ctx.db.query("topicOpenAlexDois").take(50)).map(strip)};
+    });
+    const delivered = await counts();
+    expect(delivered.groups.length).toBeGreaterThan(0);
+    const rebuild = async () => {
+      await t.mutation(internal.migrations.communityMoveCounts.rebuildTopics, {});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    };
+    await t.run(async ctx => { for (const row of await ctx.db.query("topicPublicationGroups").take(50)) await ctx.db.delete("topicPublicationGroups", row._id); });
+    await rebuild();
+    expect(await counts()).toEqual(delivered);
+    await rebuild();
+    expect(await counts()).toEqual(delivered);
+    expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).updating).toBe(false);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+

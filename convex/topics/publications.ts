@@ -20,7 +20,7 @@ async function linkedDois(ctx: Pick<QueryCtx, "db">, id: string | null) {
   if (!id) return [];
   return (await ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", id)).take(2)).map(row => row.doi);
 }
-async function changeDoiLink(ctx: MutationCtx, row: Pick<Location, "openalexId" | "doi" | "state">, delta: number) {
+export async function changeDoiLink(ctx: MutationCtx, row: Pick<Location, "openalexId" | "doi" | "state">, delta: number) {
   if (!row.openalexId || !row.doi || row.state !== "published") return;
   const link = await ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", row.openalexId!).eq("doi", row.doi!)).unique();
   const count = (link?.count ?? 0) + delta;
@@ -29,7 +29,7 @@ async function changeDoiLink(ctx: MutationCtx, row: Pick<Location, "openalexId" 
     else await ctx.db.patch("topicOpenAlexDois", link._id, {count});
   } else if (count > 0) await ctx.db.insert("topicOpenAlexDois", {openalexId: row.openalexId, doi: row.doi, count});
 }
-async function changeGroups(ctx: MutationCtx, row: Pick<Location, "state" | "topicIds" | "groupKey">, delta: number) {
+export async function changeGroups(ctx: MutationCtx, row: Pick<Location, "state" | "topicIds" | "groupKey">, delta: number) {
   if (row.state !== "published") return;
   for (const topicId of row.topicIds) {
     const group = await ctx.db.query("topicPublicationGroups").withIndex("by_topicId_and_groupKey", q => q.eq("topicId", topicId).eq("groupKey", row.groupKey)).unique();
@@ -40,7 +40,7 @@ async function changeGroups(ctx: MutationCtx, row: Pick<Location, "state" | "top
     } else if (count > 0) await ctx.db.insert("topicPublicationGroups", {topicId, groupKey: row.groupKey, count});
   }
 }
-async function pendingReconciliation(ctx: MutationCtx, delta: number) {
+export async function pendingReconciliation(ctx: MutationCtx, delta: number) {
   const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
   if (state) await ctx.db.patch("topicProjectionState", state._id, {pending: Math.max(0, state.pending + delta)});
   else await ctx.db.insert("topicProjectionState", {key: "publications", pending: Math.max(0, delta)});

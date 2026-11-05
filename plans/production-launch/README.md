@@ -140,9 +140,10 @@ A community's app, Postgres, search, files and domains stay put. Only its Convex
 3. Publish it from prod, which writes the new Openscholar address and a production Clerk sign-in into the community. Publish refuses when nothing changed, so run `versions:startRuntimeUpdate` if an update is waiting, or save a change first.
 4. Readers: in the community's database, change `reader_account."accountId"` and `reader_user.email` from the dev Clerk ID to the production one, matched by email, before they sign in on prod. Otherwise they get a new empty reader. There are about 16 real ones. Everyone signs in once more.
 
-5. Rebuild what copying rows doesn't, neither built yet, both needed before moving a community:
-   - Topic counts: `topicPublicationGroups` and `topicOpenAlexDois`, which topic pages read, so a moved community's papers don't list there until then.
-   - List counts: the `listCounts` entries for `evidenceLibraries` and `evidenceLibraryConfigOperations`, kept by triggers and not by an import, so a moved community's version count reads zero and the workspace's community limit undercounts. Demo has both gaps today.
+5. Rebuild what copying rows doesn't, which runs no triggers. All three are safe to run again:
+   - `npx convex run migrations/communityMoveCounts:countLibraries`, the workspace's count of communities.
+   - `npx convex run migrations/pagedLibraryVersions:run '{"cursor": null}'`, each community's count of versions.
+   - `npx convex run migrations/communityMoveCounts:rebuildTopics`, what topic pages read. Run it after the last move of a batch: it reads every community's locations.
 
 Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script until `copy-collection.py <export> <collection ID>` has put it on prod, through `migrations/copyCollection`: AIED follows one, 1,611 papers.
 
