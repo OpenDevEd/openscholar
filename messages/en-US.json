@@ -5016,14 +5016,16 @@
       "back": "Free overviews back at {time}",
       "noCredits": "No credits left",
       "getCredits": "Get credits",
-      "limit": "Today's {count} paid overviews are used. More at {time}"
+      "limit": "Today's {count} paid overviews are used. More at {time}",
+      "signIn": "Today's {count} free overviews are used. Sign in for more"
     },
     "left": "{left} of {perDay} free overviews left today",
     "noneLeft": "No free overviews left today. They're back at {time}",
     "failed": {
       "credits": "There weren't enough credits for this overview.",
       "failed": "The overview couldn't be written.",
-      "timeout": "The overview took too long."
+      "timeout": "The overview took too long.",
+      "verify": "We couldn't check that you're a person."
     },
     "tryAgain": "Try again",
     "unavailable": {

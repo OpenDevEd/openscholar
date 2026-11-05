@@ -9,6 +9,7 @@ import { autumnWebhook } from "./billing/autumnWebhook";
 import { clerkWebhook } from "./webhooks/clerk";
 import { checkAdminSession, checkReaderStatus, handOff, noteReaderSeen } from "./evidenceLibraries/serviceHttp";
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
+import { stream as signedOutOverview } from "./research/signedOutOverviews";
 import { readCollectionItems } from "./evidenceLibraries/collectionSources";
 import { COLLECTION_INVITATION_CALLS, serveCollectionInvitations } from "./evidenceLibraries/collectionInvitations";
 import { download as downloadExport } from "./exports";
@@ -24,6 +25,8 @@ import {
 
 const http = httpRouter();
 http.route({path: "/export", method: "GET", handler: downloadExport});
+// A signed-out visitor's AI overview, streamed to the Next app that vouches for them (convex/research/signedOutOverviews.ts).
+http.route({path: "/overviews/signed-out", method: "POST", handler: signedOutOverview});
 // Files attached to assistant chats: their bytes, sent with a one-time token (convex/assistant/files.ts).
 http.route({path: "/assistant/upload", method: "POST", handler: uploadAssistantFile});
 http.route({path: "/assistant/upload", method: "OPTIONS", handler: uploadAssistantFileOptions});

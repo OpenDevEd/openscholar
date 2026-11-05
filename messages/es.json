@@ -5017,14 +5017,16 @@
       "back": "Los resúmenes gratuitos vuelven a las {time}",
       "noCredits": "No quedan créditos",
       "getCredits": "Obtener créditos",
-      "limit": "Hoy se han usado los {count} resúmenes de pago. Habrá más a las {time}"
+      "limit": "Hoy se han usado los {count} resúmenes de pago. Habrá más a las {time}",
+      "signIn": "Hoy se han usado los {count} resúmenes gratuitos. Inicia sesión para tener más"
     },
     "left": "Le quedan {left} de {perDay} resúmenes gratuitos hoy",
     "noneLeft": "No le quedan resúmenes gratuitos hoy. Vuelven a las {time}",
     "failed": {
       "credits": "No había suficientes créditos para este resumen.",
       "failed": "No se pudo escribir el resumen.",
-      "timeout": "El resumen tardó demasiado."
+      "timeout": "El resumen tardó demasiado.",
+      "verify": "No pudimos comprobar que eres una persona."
     },
     "tryAgain": "Inténtelo de nuevo",
     "unavailable": {

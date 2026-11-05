@@ -60,6 +60,8 @@ describe("public route auth matrix", () => {
     walk(join(__dirname, "../app"), "");
     expect(pages.filter(isPublicPath).sort()).toEqual([
       "/",
+      // A signed-out visitor's AI overview (#1070), which checks for itself who's asking.
+      "/api/overviews",
       "/authors",
       "/authors/x",
       "/bookmarks",

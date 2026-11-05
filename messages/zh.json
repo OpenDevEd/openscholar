@@ -5016,14 +5016,16 @@
       "back": "免费概览将于 {time} 恢复",
       "noCredits": "积分已用完",
       "getCredits": "获取积分",
-      "limit": "今天的 {count} 篇付费概览已用完。{time} 后可再用"
+      "limit": "今天的 {count} 篇付费概览已用完。{time} 后可再用",
+      "signIn": "今天的 {count} 篇免费概览已用完。登录可获得更多"
     },
     "left": "今天剩余 {left} 篇免费概览（共 {perDay} 篇）",
     "noneLeft": "今天没有免费概览了。将于 {time} 恢复",
     "failed": {
       "credits": "积分不足，无法撰写这篇概览。",
       "failed": "概览未能撰写。",
-      "timeout": "概览耗时过长。"
+      "timeout": "概览耗时过长。",
+      "verify": "无法确认你是真人。"
     },
     "tryAgain": "重试",
     "unavailable": {
