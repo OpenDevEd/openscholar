@@ -5,8 +5,8 @@ import {parseAsString, useQueryState} from "nuqs";
 import {useState} from "react";
 import { ArrowUpRight, HealthSciencesIcon, LifeSciencesIcon, PhysicalSciencesIcon, SearchX, SocialSciencesIcon, TopicsIcon, type AppIcon } from "@/components/icons";
 import {LibraryPageShell} from "@/components/evidence-libraries/library-page-shell";
-import {useExploreHeader} from "./explore-header";
-import {LIST_FILTER, LIST_TILE, ListEmpty, ListSearch} from "@/components/evidence-libraries/list-controls";
+import {ExploreSearch, useExploreHeader} from "./explore-header";
+import {LIST_FILTER, LIST_TILE, ListEmpty} from "@/components/evidence-libraries/list-controls";
 import {catalogAncestors, catalogChildren, catalogNode, searchCatalogTopics} from "@/lib/topics/search";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/button";
@@ -36,14 +36,14 @@ export function TopicList() {
   const more = matches.length > count;
   const clear = () => {void setSearch(""); void setDomain("all"); void setField("all"); void setSubfield("all");};
   return <LibraryPageShell {...explore} filters={<>
-    <ListSearch aria-label={t("find")} placeholder={t("findPlaceholder")} className="w-56" value={search} maxLength={200} onChange={event => void setSearch(event.target.value)} />
     <Select value={domain} onValueChange={value => {void setDomain(value); void setField("all"); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("domain")} className={cn("w-40", LIST_FILTER)}><SelectValue placeholder={t("allDomains")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allDomains")}</SelectItem>{domains.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
     <Select value={field} onValueChange={value => {void setField(value); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("field")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allFields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allFields")}</SelectItem>{fields.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
     <Select value={subfield} disabled={!subfields.length} onValueChange={value => void setSubfield(value)}><SelectTrigger size="sm" aria-label={t("subfield")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allSubfields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allSubfields")}</SelectItem>{subfields.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
   </>}>
+    <ExploreSearch label={t("find")} placeholder={t("findPlaceholder")} value={search} maxLength={200} onChange={value => void setSearch(value)} />
     {/* Appears when you filter, as the list changes anyway, so the bar never moves. */}
-    {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border-subtle px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
-    {!!topics.length && <ul className="divide-y divide-border-subtle">{topics.map(topic => {const Domain = DOMAIN_ICONS[catalogAncestors(topic.id)[0]?.id ?? ""] ?? TopicsIcon; return <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
+    {ancestor && <div className="fade-enter flex justify-end border-t border-border-subtle px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
+    {!!topics.length && <ul className="divide-y divide-border-subtle border-t border-border-subtle">{topics.map(topic => {const Domain = DOMAIN_ICONS[catalogAncestors(topic.id)[0]?.id ?? ""] ?? TopicsIcon; return <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
       <div className={cn(LIST_TILE, "me-1 shrink-0")}><Domain aria-hidden className="size-5" /></div>
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />

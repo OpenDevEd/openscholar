@@ -28,7 +28,7 @@ export function getStoredConsent(): ConsentRecord | null {
   }
 }
 
-export const CONSENT_UPDATED_EVENT = "openscholar-consent-updated";
+const CONSENT_UPDATED_EVENT = "openscholar-consent-updated";
 
 export function storeConsent(choice: "granted" | "denied"): void {
   if (typeof window === "undefined") return;
@@ -42,10 +42,6 @@ export function storeConsent(choice: "granted" | "denied"): void {
 
   localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(record));
   window.dispatchEvent(new CustomEvent(CONSENT_UPDATED_EVENT));
-}
-
-export function hasConsentDecision(): boolean {
-  return getStoredConsent() !== null;
 }
 
 function subscribeToConsent(onChange: () => void) {
