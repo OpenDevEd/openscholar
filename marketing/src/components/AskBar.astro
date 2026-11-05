@@ -6,16 +6,14 @@ const { id = "ask", questions, mark = false, class: cls = "", label = "Search th
   <label class="sr" for={id}>Ask a research question</label>
   {mark && <img class="mk" src="/favicon.svg" width="28" height="28" alt="" />}
   <span class="fld">
-    <input id={id} name="q" autocomplete="off" required placeholder={questions?.[0] ?? "Ask a research question"} />
+    <input id={id} name="question" autocomplete="off" required placeholder={questions?.[0] ?? "Ask a research question"} />
     {questions && <span class="typed" aria-hidden="true"><span class="now"></span></span>}
   </span>
   <button class="btn brand" aria-label="Search"><span>Search</span><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
 </form>
 <script>
-  // The app reads `q` as keywords, so a sentence loses the words that only make it a sentence. A query stays exactly as typed.
-  const FILLER = /^(a|an|and|are|as|at|be|by|can|did|do|does|for|from|good|has|have|how|if|in|is|it|of|on|or|really|than|that|the|their|there|these|this|to|was|were|what|when|where|which|who|why|will|with|would)$/;
-  const QUESTION = /\?\s*$|^(what|why|how|who|when|where|which|is|are|do|does|did|can|could|should|will|would)\b/i, QUERY = /"|\b(AND|OR|NOT)\b/;
-  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const input = form.querySelector("input"), typed = input.value.trim() || form.dataset.q || ""; if (!input.value.trim() && typed) input.value = typed; if (QUERY.test(typed) || !QUESTION.test(typed)) return; const words = typed.replace(/[?.!,]/g, " ").split(/\s+/).filter((w, i) => w && !FILLER.test(i === 0 ? w.toLowerCase() : w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
+  // An empty box runs the question showing in it.
+  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", () => { const input = form.querySelector("input"); if (!input.value.trim() && form.dataset.q) input.value = form.dataset.q; });
   const still = matchMedia("(prefers-reduced-motion: reduce)"), wait = (ms) => new Promise((go) => setTimeout(go, ms));
   // Questions type themselves one after another, so Search always has a whole one to run. The box still takes whatever you type instead.
   for (const form of document.querySelectorAll("[data-questions]")) {
