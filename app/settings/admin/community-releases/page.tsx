@@ -140,6 +140,8 @@ export default function CommunityReleasesPage() {
   return (
     <MotionConfig reducedMotion="user">
       <Enter ready>
+        {/* Taller than the settings card it's in, and sized by data that arrives after the card shows: it opens the card. */}
+        <Opening className="overflow-clip [overflow-clip-margin:8px]">
         <div className="space-y-8">
           <Zone
             label={t("releases")}
@@ -402,6 +404,7 @@ export default function CommunityReleasesPage() {
             </div>
           </Zone>
         </div>
+        </Opening>
 
         <AlertDialog open={confirming} onOpenChange={setConfirming}>
           <AlertDialogContent>
