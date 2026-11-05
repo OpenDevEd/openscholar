@@ -11,7 +11,14 @@ cd $R/main || exit 1
 cp convex/schema.ts /tmp/m.bak; perl -0pi -e 's/\}\);\s*$/}, { schemaValidation: false });\n/' convex/schema.ts
 npx convex dev --once --typecheck disable --tail-logs disable 2>&1 | tail -1 | cut -c1-200
 rm -f $R/prod-export.zip; live export --prod --include-file-storage --path $R/prod-export.zip 2>&1 | tail -1 | cut -c1-120; stamp "exported live"
-npx convex import --replace-all --yes $R/prod-export.zip 2>&1 | tail -1 | cut -c1-200; stamp "imported"
+# Communities listed in $R/communities.txt, one a line, come along with their row IDs (merge-communities.py).
+IMPORT=$R/prod-export.zip
+if [ -s "$R/communities.txt" ]; then
+  IFS=$'\n' read -d '' -r -a COMMUNITIES < "$R/communities.txt"
+  python3 -I "$HERE/merge-communities.py" "$R/prod-export.zip" "$R/merged.zip" "${COMMUNITIES[@]}" || exit 1
+  IMPORT=$R/merged.zip; stamp "merged communities"
+fi
+npx convex import --replace-all --yes "$IMPORT" 2>&1 | tail -1 | cut -c1-200; stamp "imported"
 cp /tmp/m.bak convex/schema.ts; rm /tmp/m.bak
 npx convex dev --once --typecheck disable --tail-logs disable 2>&1 | tail -1 | cut -c1-200; stamp "main on the copy, validated"
 $HERE/push-dev.sh off 1 || exit 1; stamp "dev pushed, validation off"

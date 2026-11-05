@@ -21,10 +21,7 @@ Agreed with the user on 2026-11-04.
 - Autumn stays one server, using its live environment.
 - Credits: everyone is on Free with its 20,000 a month. Only credits people
   bought carry over: 10 people, 423,521 credits on 2026-11-04.
-- Communities are left out. The `organizations.evidenceLibraries` switch stays
-  off in prod, and they keep running against shared dev until moved after launch.
-  Until then their Open in Openscholar button opens `dev.openscholar.ai`, on dev
-  Clerk's separate accounts, capped at 100 people (56 on 2026-11-05).
+- Communities are on at launch: an organization opens one under the organization plans, by request (`/pricing?audience=org`, switched on at Settings > Admin). The existing ones move after launch (AIED, TVET, ECCAR, USAID, Wealth Inequality and `aievidencehub.org`), once Demo's move is accepted. The other 120 are tests and stay on dev. Until each moves, its Open in Openscholar button opens `dev.openscholar.ai`, on dev Clerk's separate accounts, capped at 100 people (56 on 2026-11-05).
 - Search-engine and marketing pages beyond the basics come after launch.
 
 ## The data upgrade
@@ -61,7 +58,8 @@ Then, with a production Clerk login mapped onto a copied account, on `discover`:
 | Production Clerk | Organizations and slugs on, `force_organization_selection` off, `convex` template has `o` and `email`. Member caps are set per organization in code, so the instance's 5 doesn't matter. `home_url` is still `openscholar.ai` |
 | Autumn live | Live Stripe key, catalog copied, key `am_sk_live` on prod Convex, Svix webhook to `convex-site.openscholar.ai/webhooks/autumn`. Holds the rehearsal's customers |
 | Live Stripe | 0 active subscriptions. Autumn added a webhook of its own and its products; the old site's webhook and products are untouched |
-| Cloudflare | Holds DNS. Reach it with the `cf` CLI (`CLOUDFLARE_ACCOUNT_ID=47478c682fae9ae095d6c89858ea0d67`). Prepared and switched off: holding page, two redirects. A response rule sends `X-Robots-Tag: noindex` on `discover` until launch |
+| `openscholar-marketing` on Coolify | The marketing site from `marketing/`, built by its Dockerfile, at `marketing.openscholar.ai` |
+| Cloudflare | Holds DNS. Reach it with the `cf` CLI (`CLOUDFLARE_ACCOUNT_ID=47478c682fae9ae095d6c89858ea0d67`). Prepared and switched off: holding page, `www` to the apex, and every apex path that isn't the marketing site's to `discover`. A response rule sends `X-Robots-Tag: noindex` on `discover` and the marketing preview until launch |
 | Coolify | Auto-update off. Port 8000 closed to the outside by `close-coolify-port.service`; the dashboard is `coolify.opendeved.net` |
 | PostHog | One project, as the free plan allows. Server events carry `environment`, browser events `$host` |
 
@@ -88,11 +86,13 @@ Still to do: one top-up with a real card. `discover` reaches Stripe's live check
 
 ### 4. Rehearse on the real stack
 
-`rehearse.sh`, then `carry-credits.mjs`, have run: see The data upgrade. Open in Openscholar was proven on `launch-check-lib.opendev.space`, a test community published from prod with 13 papers: signed out, the button lands on `discover`'s sign-in; a reader signs in through production Clerk without a second login; the button opens `discover` with the 13 papers. Stripe, Clerk and Autumn webhooks answer on prod Convex, both directly and for `api.openscholar.ai` at the origin.
+`rehearse.sh`, then `carry-credits.mjs`, have run: see The data upgrade. On 2026-11-05 a real $1 top-up went through Autumn's live environment and added its credits.
 
-Left: screening and extraction start to finish, assistant, Zotero, and a person's Google sign-in on `discover`. Rerun `rehearse.sh` after the product freeze.
+Demo moved to prod the way the others will (see Moving communities), and on prod: a reader signs in through production Clerk, Open in Openscholar brings its 4 papers to `discover`, and `/admin` and the configuration page open for an organization admin. Signed Stripe and Clerk deliveries, with the real secrets, are accepted on prod Convex and bad signatures are refused; `api.openscholar.ai` routes to the same handlers at the origin. Autumn's webhook delivers there too.
 
-**Before launch, clear the rehearsal:** delete Autumn live's customers, or `carry-credits.mjs` skips people whose balances have since changed; delete the Clerk users `mohammed+launch-check*` and organization `launch-check`, and that community's Coolify app and database.
+Left: screening and extraction start to finish, assistant and Zotero. Rerun `rehearse.sh` after the product freeze.
+
+**Before launch, clear the rehearsal:** delete Autumn live's customers, or `carry-credits.mjs` skips people whose balances have since changed; delete the Clerk user `mohammed+launch-check@opendeved.net` and the Clerk organization `launch-check`.
 
 ### 5. Launch
 
@@ -100,7 +100,7 @@ Left: screening and extraction start to finish, assistant, Zotero, and a person'
    `processing`: the upgrade marks any paper still running as skipped.
 2. Export live and keep it. Note who bought credits.
 3. Push old `main`'s code to prod with validation off and import with `--replace-all`, as
-   `rehearse.sh` does: the rehearsal leaves `dev`'s schema there, which refuses live's rows.
+   `rehearse.sh` does, from `merge-communities.py`'s export with Demo in it, whatever else moves later: this is the one chance to give prod's community tables dev's numbers: the rehearsal leaves `dev`'s schema there, which refuses live's rows.
    Merge `dev` into `main`, then push it with validation off, by editing `convex/schema.ts`
    the way `push-dev.sh` does. Run the upgrade and `screeningOutcomes`, `screeningSearch`,
    `makerCounts`, `pagedAccountLists` and `placeRatings`. Push again with validation on.
@@ -110,8 +110,8 @@ Left: screening and extraction start to finish, assistant, Zotero, and a person'
    Add the admins.
 5. Give the people who bought credits their balances as top-ups: `AUTUMN_URL=... AUTUMN_SECRET_KEY=... node carry-credits.mjs <export.zip> --apply`. On 2026-11-05 that was 10 people and 423,521 credits. It stops with an error if any balance comes out wrong.
 6. Point `api.openscholar.ai` at prod Convex with `cf`: A `178.63.162.33` and AAAA `2a01:4f8:2210:1224::2`, proxied, so Stripe's and Clerk's webhooks keep their address. Point the frontend at `main` (it builds from `dev` now) and deploy it.
-7. Clerk: set `home_url` to `discover`. Doing it earlier would move the live site's hosted-page links.
-8. Apex: swap the holding page for the two prepared redirects, permanent for app paths with the query string kept, temporary for `/` until marketing is ready. Remove the `noindex` rule on `discover`. Fix `www`. Stop Vercel deploys.
+7. Clerk: set `home_url` to `discover`, and add `organization.*`, `organizationMembership.*` and `organizationInvitation.*` to the production webhook `ep_3BzL7D0RtQXqKG4Pec1h6RLTq7c`, which only sends `user.*`. Without them, changes made in Clerk don't reach prod's organizations. Doing either earlier would touch the live site.
+8. Marketing: merge `marketing/` to `main`, give `openscholar-marketing` the domains `openscholar.ai` and `www.openscholar.ai` and deploy it. Point both names at the host with `cf` (A `178.63.162.33`, AAAA `2a01:4f8:2210:1224::2`, proxied; `www` is a CNAME to Vercel now, so replace it). Swap the holding page for the two prepared redirects. Remove the `noindex` rule. Stop Vercel deploys.
 9. Check `/` on `discover` says `index, follow` with no `X-Robots-Tag`. Check sign-in, a search and a charge. A new account must show 20,000 credits straight away.
 
 **Going back:** before step 6 nothing public has moved. After it, point DNS back at
@@ -128,10 +128,21 @@ the hour.
   and Roll back all. Updates run one at a time, smallest first, stopping at the first failure,
   and we may update anyone's community. Rollback uses `startRuntimeRollback` and only appears
   when no database change is in the way. There are no manual rollbacks.
-- Communities: copy each one's Convex rows to prod with owner and organization remapped,
-  recreate its organization on production Clerk by email, publish from prod. About 6 are real.
-  Readers (37) are keyed by dev Clerk ID and need matching by email. Try it on Demo first.
+- Move the existing communities: see Moving communities.
 - Delete `upgradeLiveData.ts` and this folder.
+
+## Moving communities
+
+A community's app, Postgres, search, files and domains stay put. Only its Convex rows move, and they keep their IDs: `merge-communities.py` explains why. Credentials stay readable because `ENCRYPTION_KEY` is the same on both.
+
+1. Once, per organization: create it on production Clerk and name it in `$R/clerk-organizations.json`. OpenDevEd is `org_3Lggka7qmtNGSSsrLp6a0hHK3Ax`.
+2. `npx convex export` from prod, then `merge-communities.py --rows-only <export> <rows.zip> "<name>"`, then `npx convex import --append <rows.zip>`.
+3. Publish it from prod, which writes the new Openscholar address and a production Clerk sign-in into the community. Publish refuses when nothing changed, so run `versions:startRuntimeUpdate` if an update is waiting, or save a change first.
+4. Readers: in the community's database, change `reader_account."accountId"` and `reader_user.email` from the dev Clerk ID to the production one, matched by email, before they sign in on prod. Otherwise they get a new empty reader. There are about 16 real ones. Everyone signs in once more.
+
+5. Topics: copying `topicLocations` doesn't rebuild the counts topic pages read (`topicPublicationGroups`, `topicOpenAlexDois`), so a moved community's papers don't list there until they're rebuilt. Not built yet: add it before moving a community with topics.
+
+**Going back:** the community's rows stay on dev for a week, so publishing it from dev undoes the move, once step 4 is reversed with the mapping kept from it. Then delete those rows. Never tear it down from dev: that deletes its app.
 
 ## Backups
 
@@ -158,8 +169,6 @@ Tested 2026-11-05: `kenya` restored into a throwaway pgvector container and its 
 
 ## Not rehearsed yet
 
-- Real sign-in by a person, with Google, through the production Clerk on `discover`.
-- A real payment through Autumn live.
 - A screening or extraction run start to finish on the new stack.
 - Load: on 2026-11-05 the host ran at load 45 to 140 during CI.
 - Importing one of the backups' Convex zips.
