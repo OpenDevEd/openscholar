@@ -1,6 +1,6 @@
 /**
  * AI overviews of a search (#967). The results page shows one for the lens the person has open; ./overviewsAction.ts
- * writes it on the model the person's preset sets for overviews, from counts and papers of the search it reads itself. An overview is
+ * writes it on the person's model for overviews, from counts and papers of the search it reads itself. An overview is
  * stored by the search's OpenAlex request and the lens, so a search that asks the same reads it again for nothing.
  *
  * Go and above write the open lens free, up to the plan's `overviews_per_day` a day, for people on a preset. Past it,
@@ -14,7 +14,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { accountMutation, accountQuery, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, type Acting } from "../lib/userActions";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
-import { organizationPreset, overviewPick, userAiConfig } from "../ai/serverModel";
+import { organizationPreset, resolveTaskPick, userAiConfig } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { requestOf } from "../paperSets/search";
 import { searchRequestValidator } from "../paperSets/openalex";
@@ -125,7 +125,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 /** What one overview paid in credits costs, at the price of the model it would run on for this person; null without one. */
 async function paidCredits(ctx: QueryCtx, actor: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
-  const pick = await overviewPick(ctx, actor);
+  const pick = await resolveTaskPick(ctx, actor, "overview");
   const model = pick ? await ctx.db.get("models", pick.modelId) : null;
   return model ? estimateCredits({ input: model.inputPricePerMillion, output: model.outputPricePerMillion }, CALL_TOKENS.overview) : null;
 }
@@ -213,7 +213,7 @@ export const ensureAction = defineUserMutation({
     const free = perDay === undefined || counts.free < perDay;
     if (!free && !pay) return "ask";
     if (!free && counts.paid >= PAID_PER_DAY) return "limit";
-    const pick = await overviewPick(ctx, actor);
+    const pick = await resolveTaskPick(ctx, actor, "overview");
     if (!pick) throw createError("VALIDATION_ERROR", "No model writes overviews right now. Try again later.");
     await ctx.db.patch("overviewPrefs", prefs._id, { day, ...(free ? { free: counts.free + 1, paid: counts.paid } : { free: counts.free, paid: counts.paid + 1 }) });
     const startedAt = Date.now();

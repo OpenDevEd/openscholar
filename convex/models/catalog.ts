@@ -2,7 +2,7 @@ import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { isDecisionModel } from "../../lib/ai/decisions";
-import { usableFor, type AiTask, type PresetTask } from "../../lib/ai/tasks";
+import { usableFor, type AiTask } from "../../lib/ai/tasks";
 import { createError } from "../lib/errors";
 
 // ponytail: one transaction handles up to 2,000 active models. Increase only
@@ -36,7 +36,7 @@ export function requireEffort(model: Doc<"models">, effort: Effort | undefined) 
 }
 
 /** Refuses a model for a task it can't do. */
-export function requireTaskModel(model: Doc<"models">, task: PresetTask) {
+export function requireTaskModel(model: Doc<"models">, task: AiTask) {
   if (usableFor(model, task)) return;
   throw createError(
     "VALIDATION_ERROR",

@@ -89,6 +89,23 @@ describe("AI overviews of a search", () => {
     expect(await view()).toMatchObject({ perDay: 2 });
   });
 
+  it("prices and writes a Custom person's overview on the model they picked", async () => {
+    const { t, as, search, ensure, view } = await setup();
+    const dearer = await t.run((ctx) =>
+      ctx.db.insert("models", {
+        modelId: "acme/dear", name: "Dear", provider: "acme", inputPricePerMillion: 10, outputPricePerMillion: 50,
+        isServed: false, costMarkup: 1, sortOrder: 0, syncedAt: 1, createdAt: 1, updatedAt: 1, supportedParameters: ["tools"],
+      }),
+    );
+    const balanced = (await view()).credits!;
+    await as("alice").mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "overview", modelId: dearer }] });
+    expect((await view()).credits).toBeGreaterThan(balanced);
+
+    expect(await ensure(await search("teacher training"), { pay: true })).toBe("started");
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").take(10));
+    expect(scheduled.map((run) => (run.args[0] as { modelId?: string }).modelId)).toContain(dearer);
+  });
+
   it("writes none free on a plan without them, and no more than PAID_PER_DAY paid ones a day, until the next day in UTC", async () => {
     const { search, ensure, view, setPerDay } = await setup();
     await setPerDay(0);

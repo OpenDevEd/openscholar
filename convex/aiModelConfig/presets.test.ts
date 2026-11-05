@@ -6,7 +6,6 @@ import { usableFor, type AiTask } from "../../lib/ai/tasks";
 import type { Id } from "../_generated/dataModel";
 import { ensureWorkspace } from "../workspaces/create";
 import { assistantPick, chatModel } from "../assistant/threads";
-import { overviewPick } from "../ai/serverModel";
 
 async function setup() {
   const t = convexTest(schema);
@@ -121,26 +120,35 @@ describe("presets", () => {
 });
 
 describe("overviews", () => {
-  const overviewOn = (t: Awaited<ReturnType<typeof setup>>["t"], userId: Id<"users">, workspaceId: Id<"workspaces">) => t.run((ctx) => overviewPick(ctx, { userId, workspaceId }));
-
-  it("run on the overview entry of the person's preset, and Custom reads Balanced's, since nobody picks their own", async () => {
-    const { t, model, admin, user, sonnet, chatOnly, userId, own } = await setup();
+  it("run on the overview entry of the person's preset, and on Custom on their own pick, else Balanced's", async () => {
+    const { t, model, admin, user, sonnet, chatOnly, userId, runsOn } = await setup();
     const other = await model("acme/reader", ["low"], ["tools"]);
+    const picked = await model("acme/picked", undefined, ["tools"]);
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "overview", modelId: other, effort: "low" });
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "overview", modelId: chatOnly });
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: sonnet });
 
-    expect(await overviewOn(t, userId, own)).toEqual({ modelId: other, effort: "low" });
+    expect(await runsOn("overview")).toEqual({ modelId: other, effort: "low" });
     await user.mutation(api.userAiConfig.mutations.choose, { choice: "fast" });
     // Its own entry, not the preset's chat model.
-    expect(await overviewOn(t, userId, own)).toEqual({ modelId: chatOnly });
+    expect(await runsOn("overview")).toEqual({ modelId: chatOnly });
+    // Custom starts on what they were running, then runs what they pick.
     await user.mutation(api.userAiConfig.mutations.choose, { choice: "custom" });
-    expect(await overviewOn(t, userId, own)).toEqual({ modelId: other, effort: "low" });
+    expect(await runsOn("overview")).toEqual({ modelId: chatOnly });
+    await user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "overview", modelId: picked }] });
+    expect(await runsOn("overview")).toEqual({ modelId: picked });
+    // A Custom saved with no pick for overviews reads Balanced's.
+    await t.run(async (ctx) => {
+      const config = await ctx.db.query("userAiConfig").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+      await ctx.db.patch("userAiConfig", config!._id, { custom: {} });
+    });
+    expect(await runsOn("overview")).toEqual({ modelId: other, effort: "low" });
   });
 
   it("refuse a model that can't call tools, since an overview reads through them", async () => {
-    const { admin, sonnet } = await setup();
+    const { admin, user, sonnet } = await setup();
     await expect(admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "balanced", task: "overview", modelId: sonnet })).rejects.toThrow();
+    await expect(user.mutation(api.userAiConfig.mutations.setCustom, { picks: [{ task: "overview", modelId: sonnet }] })).rejects.toThrow();
   });
 
   it("start in every preset on what they've always run on, the Cheap preset's chat model, and seeding again keeps an admin's change", async () => {

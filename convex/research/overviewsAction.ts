@@ -45,7 +45,7 @@ const abstractOf = (index: Work["abstract_inverted_index"]) => {
 };
 
 /**
- * Writes an AI overview of a search through a lens (#967) on the Cheap preset's chat model: it counts the search and
+ * Writes an AI overview of a search through a lens (#967) on the person's model for overviews: it counts the search and
  * reads its papers with two tools, and its whole lines are stored as they're written, so the page shows each
  * paragraph as it ends. A paid one holds its estimate first and is charged what it cost. ./overviews.ts decides
  * whether it runs.

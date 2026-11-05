@@ -17,7 +17,7 @@ import { getProviderConfig } from "@/lib/ai-models";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { resolveCreditsAvailability } from "@/lib/credits/availability";
 import { useAppToast } from "@/lib/toast";
-import { AI_TASKS, BROWSER_TASKS, isAiTask, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
+import { AI_TASKS, BROWSER_TASKS, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
 import { checkKey, keyFor, modelForKey, serves, type KeyProvider } from "@/lib/ai/keys";
 import type { AIKeyMode } from "@/lib/types/ai.types";
 import { Enter, Segmented, type Ico } from "@/components/settings/parts";
@@ -78,8 +78,8 @@ export default function AISettingsPage() {
 
   const routing = useRouting({
     // Cloud tasks only run on credits, which need an account.
-    modelFor: (task) => (isAiTask(task) && (onBrowser(task) || (signedIn && creditsEnabled)) ? modelOf(task) : null),
-    onKey: (task) => browserOn === "local" && isAiTask(task) && onBrowser(task),
+    modelFor: (task) => (onBrowser(task) || (signedIn && creditsEnabled) ? modelOf(task) : null),
+    onKey: (task) => browserOn === "local" && onBrowser(task),
   });
 
   const choosePay = (next: AIKeyMode) => {
@@ -125,7 +125,7 @@ export default function AISettingsPage() {
         </span>
       );
     }
-    return pay === "smart" && n.tasks.filter(isAiTask).some(onBrowser) && keyFor(n.model.id, keys) ? (
+    return pay === "smart" && n.tasks.some(onBrowser) && keyFor(n.model.id, keys) ? (
       <span className="flex items-center gap-1">
         <Coins className="size-3" /> {t("pay.smart")}
       </span>
@@ -206,7 +206,7 @@ export default function AISettingsPage() {
                     </span>
                   )
           }
-          wrapTask={!isCustom ? undefined : (task, row) => !isAiTask(task) ? row : (
+          wrapTask={!isCustom ? undefined : (task, row) => (
             <ModelPicker
               align="start"
               current={modelOf(task) ?? undefined}
@@ -225,9 +225,9 @@ export default function AISettingsPage() {
             const card = isCustom ? (
               <ModelPicker
                 current={n.model}
-                onChange={(m, effort) => pickAll(n.tasks.filter(isAiTask), m, effort)}
+                onChange={(m, effort) => pickAll(n.tasks, m, effort)}
                 efforts
-                presets={signedOut ? undefined : presetPicks(n.tasks.filter(isAiTask))}
+                presets={signedOut ? undefined : presetPicks(n.tasks)}
                 tasks={n.tasks}
                 trigger={<NodeCard model={n.model} paidBy={n.paidBy} interactive note={note(n)} />}
               />

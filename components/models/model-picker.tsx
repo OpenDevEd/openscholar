@@ -19,7 +19,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
 import { isVariant } from "@/lib/ai/native-model-id";
-import { usableFor, type PresetTask } from "@/lib/ai/tasks";
+import { usableFor, type AiTask } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Segmented } from "@/components/settings/parts";
 import { EffortMeter, IntelligenceMeter, priceLabel } from "@/components/models/meters";
@@ -239,7 +239,7 @@ export function ModelPicker({
   /** Quick picks listed first: what each preset runs for the same tasks. */
   presets?: PresetPick[];
   /** The tasks this pick is for; only models that can do all of them are offered. Chat when empty. */
-  tasks?: PresetTask[];
+  tasks?: AiTask[];
   /** Slugs to leave out, such as models already added. */
   exclude?: string[];
 }) {

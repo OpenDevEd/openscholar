@@ -1,6 +1,6 @@
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
-import { AI_TASKS, DECISION_TASKS, PRESET_KEYS, presetConfigKey, type AiTask, type PresetKey, type PresetTask } from "../../lib/ai/tasks";
+import { AI_TASKS, DECISION_TASKS, PRESET_KEYS, presetConfigKey, type AiTask, type PresetKey } from "../../lib/ai/tasks";
 import { JEV_MODEL } from "../../lib/ai/decisions";
 import type { Effort } from "../../lib/ai/core/call-options";
 
@@ -31,7 +31,7 @@ function defaultPick(preset: PresetKey, task: AiTask): Pick {
 }
 
 /** Writes a preset pick unless one exists; returns whether it wrote. */
-async function insertPickIfMissing(ctx: MutationCtx, preset: PresetKey, task: PresetTask, pick: Pick) {
+async function insertPickIfMissing(ctx: MutationCtx, preset: PresetKey, task: AiTask, pick: Pick) {
   const key = presetConfigKey(preset, task);
   const existing = await ctx.db
     .query("aiModelConfig")
@@ -50,7 +50,7 @@ export const seed = internalMutation({
     let written = 0;
     for (const preset of PRESET_KEYS) {
       for (const task of AI_TASKS) {
-        if (await insertPickIfMissing(ctx, preset, task, defaultPick(preset, task))) written++;
+        if (task !== "overview" && (await insertPickIfMissing(ctx, preset, task, defaultPick(preset, task)))) written++;
       }
     }
     // Overviews start on what they've always run on, the Cheap preset's chat model, in every preset.
