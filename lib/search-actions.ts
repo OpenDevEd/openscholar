@@ -184,6 +184,7 @@ export const downloadItem = async (
     const itemWithRating = withScreeningResults(
       {
         ...item,
+        id: bareWork(item.id),
         rating: getRatingOrNull(ratings, item.id)
       },
       item.id,
@@ -258,6 +259,7 @@ export const downloadAll = async (
           withScreeningResults(
             {
               ...item,
+              id: bareWork(item.id),
               rating: getRatingOrNull(ratings, item.id)
             },
             item.id,

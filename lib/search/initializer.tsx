@@ -104,6 +104,15 @@ export function SearchInitializer({ children, onMade }: SearchInitializerProps) 
   const address = `${pathname}?${searchParams?.toString() ?? ''}`;
   // React re-runs an effect on mount in development, before the status it set has arrived.
   const decidedToCreate = useRef(false);
+  // A link within the app to an address that names no search yet (Similar's) finds this already settled on the last one: it decides again.
+  const [settledOn, setSettledOn] = useState(address);
+  if (address !== settledOn) {
+    setSettledOn(address);
+    if (!searchId && status !== 'writing') {
+      decidedToCreate.current = false;
+      setStatus('pending');
+    }
+  }
 
   const createSearch = useCallback((entry: NewSearchResultData, question: string) => {
     setStatus('redirecting');
