@@ -3,6 +3,8 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { snapshotFromCustomer } from "../billing/accounts";
+import type { AutumnCustomer } from "../billing/autumn";
 
 /** What PostHog's batch endpoint received, gzipped or not. */
 async function sentEvents(fetchMock: ReturnType<typeof vi.fn>) {
@@ -80,6 +82,7 @@ describe("analytics.capture", () => {
       $ai_session_id: "job_1",
       $ai_trace_id: "trace_1",
       feature: "Screening",
+      to_plan: "pro",
       credits_deducted: 2,
       credits_remaining: 90,
       job_id: "job_1",
@@ -95,7 +98,7 @@ describe("analytics.capture", () => {
     expect(others).toHaveLength(2);
     for (const event of others) {
       expect(event.distinct_id).toBe("no-analytics-consent");
-      expect(event.properties).toMatchObject({ $ai_model: "m", $ai_input_tokens: 10, feature: "Screening", credits_deducted: 2, $process_person_profile: false });
+      expect(event.properties).toMatchObject({ $ai_model: "m", $ai_input_tokens: 10, feature: "Screening", to_plan: "pro", credits_deducted: 2, $process_person_profile: false });
       for (const key of ["$ai_session_id", "$ai_trace_id", "credits_remaining", "job_id"]) expect(event.properties).not.toHaveProperty(key);
     }
   });
@@ -122,6 +125,65 @@ describe("analytics.capture", () => {
     // A browser with no answer changes nothing.
     await person.mutation(api.users.mutations.ensureUser, {});
     expect(await saved()).toBe("denied");
+  });
+
+  it("records a sign-up, a first payment and a change of plan, each once", async () => {
+    const t = convexTest(schema);
+    const person = t.withIdentity({ subject: "user_a" });
+    await person.mutation(api.users.mutations.ensureUser, {});
+    const workspaceId = await t.run(async (ctx) => (await ctx.db.query("workspaces").first())!._id);
+    let fetchedAt = 0;
+    const write = (plan: string, paying: boolean) =>
+      t.mutation(internal.billing.accounts.writeSnapshot, {
+        workspaceId,
+        withCard: false,
+        fetchedAt: ++fetchedAt,
+        snapshot: { plan, paying, hasPaid: paying, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
+      });
+    await write("free", false);
+    await write("free", false);
+    await write("pro", true);
+    await write("pro", true);
+    // Cancelling and coming back isn't a first payment again.
+    await write("free", false);
+    await write("pro", true);
+
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    const sent = scheduled.flatMap((job) => (job.args[0] as { events?: Array<{ event: string; distinctId: string; properties: string }> }).events ?? []);
+    expect(sent.filter(({ event }) => event !== "plan_changed").map(({ event, distinctId, properties }) => [event, distinctId, JSON.parse(properties)])).toEqual([
+      ["account_created", "user_a", {}],
+      ["first_payment", "user_a", { workspace_kind: "personal", plan: "pro" }],
+    ]);
+    expect(sent.filter(({ event }) => event === "plan_changed").map(({ properties }) => JSON.parse(properties).to_plan)).toEqual(["pro", "free", "pro"]);
+  });
+
+  it("knows real payment from a free organization plan, a trial, and a row cached before it could tell", async () => {
+    const customer = (status: string, plan_id: string, auto_enable: boolean, purchases: Array<{ plan_id: string }> = []) =>
+      snapshotFromCustomer({ id: "c", balances: {}, purchases, subscriptions: [{ plan_id, status, auto_enable }] } as unknown as AutumnCustomer).paying;
+    expect(customer("active", "free_organization", false)).toBe(false);
+    expect(customer("trialing", "pro", false)).toBe(false);
+    expect(customer("active", "free", true)).toBe(false);
+    expect(customer("active", "pro", false)).toBe(true);
+    expect(customer("active", "free_organization", false, [{ plan_id: "top_up" }])).toBe(true);
+
+    const t = convexTest(schema);
+    await t.withIdentity({ subject: "user_a" }).mutation(api.users.mutations.ensureUser, {});
+    const workspaceId = await t.run(async (ctx) => (await ctx.db.query("workspaces").first())!._id);
+    const row = { workspaceId, plan: "pro", hasPaid: true, pastDue: false, balance: 0, purchased: 0, signupGranted: true, refreshedAt: 1, fetchedAt: 1 };
+    await t.run(async (ctx) => {
+      const existing = await ctx.db.query("billingAccounts").first();
+      if (existing) await ctx.db.delete("billingAccounts", existing._id);
+      await ctx.db.insert("billingAccounts", row);
+    });
+    await t.mutation(internal.billing.accounts.writeSnapshot, {
+      workspaceId,
+      withCard: false,
+      fetchedAt: 2,
+      snapshot: { plan: "pro", paying: true, hasPaid: true, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
+    });
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    const events = scheduled.flatMap((job) => (job.args[0] as { events?: Array<{ event: string }> }).events ?? []).map(({ event }) => event);
+    expect(events).not.toContain("first_payment");
   });
 
   it("sends nothing where PostHog isn't set up", async () => {

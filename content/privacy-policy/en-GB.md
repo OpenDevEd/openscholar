@@ -30,7 +30,7 @@ We collect or use the following personal information **to run your account and t
 
 When you use an AI feature, your request and the paper text it needs are sent to the AI provider that does the work.
 
-We send PostHog a record of each AI request and screening job, without its text, to track cost and reliability. It carries your account ID only if you accepted analytics cookies.
+We send PostHog a record of each AI request and screening job, without its text, and of each sign-up, first payment and change of plan, to track cost, reliability and growth. It carries your account ID only if you accepted analytics cookies.
 
 We collect or use the following personal information for **dealing with queries, complaints or claims**:
 

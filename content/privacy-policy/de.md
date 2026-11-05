@@ -30,7 +30,7 @@ Wir erheben oder verwenden die folgenden personenbezogenen Daten, **um Ihr Konto
 
 Wenn Sie eine KI-Funktion nutzen, werden Ihre Anfrage und der dafür nötige Artikeltext an den KI-Anbieter gesendet, der die Arbeit ausführt.
 
-Wir senden PostHog zu jeder KI-Anfrage und jedem Screening-Auftrag einen Eintrag ohne deren Text, um Kosten und Zuverlässigkeit zu verfolgen. Er enthält Ihre Konto-ID nur, wenn Sie Analyse-Cookies akzeptiert haben.
+Wir senden PostHog zu jeder KI-Anfrage und jedem Screening-Auftrag einen Eintrag ohne deren Text sowie zu jeder Registrierung, ersten Zahlung und jedem Tarifwechsel, um Kosten, Zuverlässigkeit und Wachstum zu verfolgen. Er enthält Ihre Konto-ID nur, wenn Sie Analyse-Cookies akzeptiert haben.
 
 Wir erheben oder verwenden die folgenden personenbezogenen Daten für **die Bearbeitung von Anfragen, Beschwerden oder Ansprüchen**:
 
