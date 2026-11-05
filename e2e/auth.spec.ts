@@ -23,16 +23,19 @@ async function signIn(page: Page) {
   });
 }
 
-test("library year filtering can be enabled, edited, reopened and reset", async ({ page }) => {
+test("library year filtering turns on with a range, reopens and clears", async ({ page }) => {
   await signIn(page);
   await page.getByRole("link", { name: "Library", exact: true }).click();
   const currentYear = new Date().getFullYear();
+  const noYearFilter = (url: URL) => !url.searchParams.has("yf") && !url.searchParams.has("yt");
   await page.getByRole("button", { name: "Choose year range", exact: true }).click();
-  const toggle = page.getByRole("switch", { name: "Filter by year range", exact: true });
-  await toggle.check();
-  await expect(toggle).toBeChecked();
   const inputs = page.getByRole("spinbutton");
   await expect(inputs).toHaveCount(2);
+  // Passing through the fields is not picking a range.
+  await inputs.nth(0).focus();
+  await inputs.nth(0).press("Tab");
+  await inputs.nth(1).press("Tab");
+  await expect(page).toHaveURL(noYearFilter);
   await inputs.nth(0).fill("2000");
   await inputs.nth(0).press("Enter");
   await inputs.nth(1).fill("2010");
@@ -40,26 +43,19 @@ test("library year filtering can be enabled, edited, reopened and reset", async 
   await expect(page).toHaveURL(url => url.searchParams.get("yf") === "2000" && url.searchParams.get("yt") === "2010");
   await page.reload();
   await page.getByRole("button", { name: "2000 → 2010", exact: true }).click();
-  await expect(toggle).toBeChecked();
   await expect(inputs.nth(0)).toHaveValue("2000");
   await expect(inputs.nth(1)).toHaveValue("2010");
-  await page.getByRole("button", { name: "Reset", exact: true }).click();
-  await expect(toggle).not.toBeChecked();
-  await expect(page).toHaveURL(url => !url.searchParams.has("yf") && !url.searchParams.has("yt"));
-  await page.getByRole("radio", { name: "This year", exact: true }).click();
-  await expect(toggle).toBeChecked();
-  await expect(inputs.nth(0)).toHaveValue(String(currentYear));
-  await expect(inputs.nth(1)).toHaveValue(String(currentYear));
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Clear", exact: true }).click();
-  await expect(page).toHaveURL(url => !url.searchParams.has("yf") && !url.searchParams.has("yt"));
+  await expect(page).toHaveURL(noYearFilter);
   await page.getByRole("button", { name: "Choose year range", exact: true }).click();
-  await expect(toggle).not.toBeChecked();
-  await toggle.check();
-  await expect(toggle).toBeChecked();
-  await toggle.uncheck();
-  await expect(inputs).toHaveCount(0);
-  await expect(page).toHaveURL(url => !url.searchParams.has("yf") && !url.searchParams.has("yt"));
+  await page.getByRole("radio", { name: "This year", exact: true }).click();
+  await expect(inputs.nth(0)).toHaveValue(String(currentYear));
+  await expect(inputs.nth(1)).toHaveValue(String(currentYear));
+  await expect(page).toHaveURL(url => url.searchParams.get("yf") === String(currentYear) && url.searchParams.get("yt") === String(currentYear));
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(page).toHaveURL(noYearFilter);
 });
 
 test("an imported search keeps its identity, filters and questions after reopen, reload and repeated upload", async ({ page }) => {

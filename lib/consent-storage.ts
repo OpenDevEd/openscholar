@@ -53,7 +53,7 @@ function subscribeToConsent(onChange: () => void) {
   return () => window.removeEventListener(CONSENT_UPDATED_EVENT, onChange);
 }
 
-/** Whether someone has accepted analytics, as they accept or withdraw it. */
+/** Whether someone has accepted analytics in this browser. */
 export function useAnalyticsConsent(): boolean {
   return useSyncExternalStore(subscribeToConsent, () => getStoredConsent()?.choice === "granted", () => false);
 }

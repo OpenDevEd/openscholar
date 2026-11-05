@@ -5,10 +5,11 @@ const NEEDS_CONSENT = new Set([
   "$autocapture", "$copy_autocapture", "$rageclick", "$dead_click", "$$heatmap",
   "$exception", "$web_vitals", "$identify", "$set",
 ]);
-/** Read from the device. What a browser sends with any request, such as its type, can stay. */
-const DEVICE = new Set([
+/** Read from the device, or leading to someone's work. What a browser sends with any request, such as its type, can stay. */
+const REMOVED = new Set([
   "$screen_height", "$screen_width", "$viewport_height", "$viewport_width",
   "$timezone", "$timezone_offset", "$browser_language", "$browser_language_prefix",
+  "$ai_session_id", "$ai_trace_id", "credits_remaining",
 ]);
 const ADDRESSES = ["$current_url", "$pathname", "$prev_pageview_pathname", "$referrer"];
 /** PostHog needs these to accept the event. Any other text or list an event carries may be what someone typed. */
@@ -32,7 +33,7 @@ export function reduceWithoutConsent(event: CaptureResult): CaptureResult | null
   if (NEEDS_CONSENT.has(event.event)) return null;
   for (const [key, value] of Object.entries(properties)) {
     const mayBeTyped = !key.startsWith("$") && !REQUIRED.has(key) && typeof value !== "number" && typeof value !== "boolean";
-    if (mayBeTyped || DEVICE.has(key)) delete properties[key];
+    if (mayBeTyped || REMOVED.has(key)) delete properties[key];
   }
   for (const key of ADDRESSES) {
     if (typeof properties[key] === "string") properties[key] = withoutIds(properties[key]);

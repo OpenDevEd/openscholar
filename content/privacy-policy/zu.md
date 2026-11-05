@@ -30,7 +30,7 @@ Siqoqa noma sisebenzise imininingwane yomuntu elandelayo **ukuze sisebenzise i-a
 
 Uma usebenzisa isici se-AI, isicelo sakho nombhalo wephepha odingekayo kuthunyelwa kumhlinzeki we-AI owenza umsebenzi.
 
-Noma wamukela amakhukhi okuhlaziya noma cha, sithumela ku-PostHog irekhodi lesicelo ngasinye se-AI ngaphansi kwe-ID ye-akhawunti yakho, ngaphandle kombhalo waso, ukuze silandele izindleko nokwethembeka.
+Sithumela ku-PostHog irekhodi lesicelo ngasinye se-AI nomsebenzi ngamunye wokuhlunga, ngaphandle kombhalo waso, nelokubhalisa ngakunye, inkokhelo yokuqala nokushintsha kohlelo, ukuze silandele izindleko, ukwethembeka nokukhula. Liqukethe i-ID ye-akhawunti yakho kuphela uma wamukele amakhukhi okuhlaziya.
 
 Siqoqa noma siyasebenzisa ulwazi lomuntu siqu olulandelayo **ngokuphatha imibuzo, izikhalo noma izimangalo**:
 

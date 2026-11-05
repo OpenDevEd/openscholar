@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Cookie, Settings2 } from "@/components/icons";
 import posthog from "posthog-js";
+import { useConvexAuth, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,7 @@ import {
   CONSENT_UPDATED_EVENT,
 } from "@/lib/consent-storage";
 import { PolicyLinks } from "@/components/legal-links";
+import { api } from "@/convex/_generated/api";
 import { subtleSpring } from "@/lib/animation-config";
 import { cn } from "@/lib/utils";
 
@@ -98,19 +100,31 @@ export function CookieConsentBanner() {
     }
   }, []);
 
+  // The server's own analytics read the answer from the account. Someone signed out brings theirs when they sign in.
+  const { isAuthenticated } = useConvexAuth();
+  const saveConsent = useMutation(api.users.mutations.saveAnalyticsConsent);
+  const saveToAccount = useCallback(
+    (choice: "granted" | "denied") => {
+      if (isAuthenticated) saveConsent({ choice }).catch((error) => console.error("[consent] saving to the account failed", error));
+    },
+    [isAuthenticated, saveConsent],
+  );
+
   const handleAccept = useCallback(() => {
     posthog.opt_in_capturing();
     storeConsent("granted");
+    saveToAccount("granted");
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, []);
+  }, [saveToAccount]);
 
   const handleReject = useCallback(() => {
     posthog.opt_out_capturing();
     storeConsent("denied");
+    saveToAccount("denied");
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, []);
+  }, [saveToAccount]);
 
   useEffect(() => {
     setMounted(true);
