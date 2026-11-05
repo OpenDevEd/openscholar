@@ -106,14 +106,22 @@ export function QuestionStage() {
       return;
     }
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    stage.current!.dataset.moving = "";
     for (const image of [plate.current!, still.current!]) void image.decode().then(() => (image.dataset.in = ""), () => {});
     const earth = startEarth(canvas.current!, ringBack.current!, ringFront.current!, space.current!, calm, () => setLive(true));
     const started = performance.now();
     let litAt = 0;
     let raf = 0;
     let finish = 0;
+    // The component stays mounted once it's done, so the planet has to be stopped here.
+    const end = () => {
+      cancelAnimationFrame(raf);
+      earth.stop();
+      setDone(true);
+    };
 
     const land = () => {
+      delete document.documentElement.dataset.questionStage;
       const field = document.querySelector<HTMLElement>("[data-question-field]");
       const input = field?.querySelector("input") ?? null;
       const box = input?.getBoundingClientRect();
@@ -123,7 +131,7 @@ export function QuestionStage() {
       if (calm) {
         stage.current!.style.transition = "opacity .3s";
         stage.current!.style.opacity = "0";
-        finish = window.setTimeout(() => setDone(true), 320);
+        finish = window.setTimeout(end, 320);
         return;
       }
 
@@ -178,7 +186,7 @@ export function QuestionStage() {
         });
         ruler.remove();
       }
-      finish = window.setTimeout(() => setDone(true), OPEN_MS + 60);
+      finish = window.setTimeout(end, OPEN_MS + 60);
     };
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
@@ -216,7 +224,7 @@ export function QuestionStage() {
     "--question-top": handover?.questionTop === undefined ? undefined : `${handover.questionTop}px`,
   } as React.CSSProperties;
   return (
-    <div ref={stage} className={styles.stage} style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
+    <div ref={stage} id="question-stage" className={styles.stage} style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
       <div className={styles.scene}>
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed backdrop, sized by the stage */}
         <img ref={plate} className={styles.plate} src={SKY_PLATE} width={2560} height={820} alt="" decoding={handedOver ? "sync" : "async"} fetchPriority="high" />

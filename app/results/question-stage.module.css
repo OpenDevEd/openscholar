@@ -7,6 +7,8 @@
   inset: 0;
   z-index: 200;
   overflow: hidden;
+  /* It stays up while the page behind is held back. */
+  visibility: visible;
 }
 
 /* Coming from the hero, --page is its width, so a scrollbar it had doesn't move anything here. */
@@ -89,6 +91,13 @@
 }
 .stage[data-handover] .space {
   animation: stage-settle 1.8s cubic-bezier(0.45, 0, 0.2, 1) 0.1s both;
+}
+/* Motion gives things layers of their own, which can finish drawing after the sky's colour has already gone up. So the
+   first paint is one flat layer, whole, and the motion starts once it's there. */
+.stage[data-handover]:not([data-moving]) .space,
+.stage[data-handover]:not([data-moving]) .stars {
+  animation: none;
+  will-change: auto;
 }
 
 @keyframes stage-in {

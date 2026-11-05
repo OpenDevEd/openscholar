@@ -21,7 +21,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   <div class="space">
     <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6b35" /><stop offset=".16" stop-color="#ff9d36" /><stop offset=".34" stop-color="#ffd9ae" /><stop offset=".52" stop-color="#8fd3d8" /><stop offset=".76" stop-color="#5a9be6" /><stop offset="1" stop-color="#3c62b8" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg><svg class="cometsvg"><g data-comet="back" opacity="0"></g></svg></div>
     <canvas class="earth" data-day="/img/earth-day.avif" data-night="/img/earth-night.avif" data-clouds="/img/earth-clouds.avif" data-water="/img/earth-water.avif" aria-hidden="true"></canvas>
-    <script is:inline>if (!document.querySelector("[data-orbit] .earth").getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" })) document.documentElement.classList.add("flat")</script>
+    <script is:inline>if (!document.createElement("canvas").getContext("webgl2")) document.documentElement.classList.add("flat")</script>
     <div class="orb front" aria-hidden="true"><svg class="ringsvg"><g data-ring="front"></g></svg><svg class="cometsvg"><g data-comet="front" opacity="0"></g></svg></div>
     <div class="sats" aria-hidden="true">{COMMUNITIES.map((c, i) => <a class="sat" data-sat tabindex="-1" href={c.url} style={`--c:${c.color};--i:${i}`}><img src={`/img/comm-${c.key}.avif`} width="96" height="96" alt="" decoding="async" /><b>{c.name}</b></a>)}</div>
   </div>
@@ -76,8 +76,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { rows[lit]?.classList.remove("on"); rows[best].classList.add("on"); lit = best; }
     };
     // The planet
-    const gl = cv.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" }); let U, ready = false;
-    function glSize() { const d = Math.min(devicePixelRatio || 1, 1.75); cv.width = Math.round(W * d); cv.height = Math.round(H * d); gl.viewport(0, 0, cv.width, cv.height); const g = R * 1.55; gl.enable(gl.SCISSOR_TEST); gl.scissor(Math.max(0, (cx - g) * d), Math.max(0, cv.height - (cy + g) * d), g * 2 * d, g * 2 * d); }
+    // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas, which it leaves alone. A browser without WebGL off screen draws straight to the canvas.
+    const glOptions = { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" }, offGl = window.OffscreenCanvas ? new OffscreenCanvas(1, 1).getContext("webgl2", glOptions) : null, gl = offGl ?? cv.getContext("webgl2", glOptions), buffer = offGl ? offGl.canvas : cv, shown = offGl ? cv.getContext("2d") : null; let U, ready = false;
+    function glSize() { const d = Math.min(devicePixelRatio || 1, 1.75); cv.width = buffer.width = Math.round(W * d); cv.height = buffer.height = Math.round(H * d); gl.viewport(0, 0, cv.width, cv.height); const g = R * 1.55; gl.enable(gl.SCISSOR_TEST); gl.scissor(Math.max(0, (cx - g) * d), Math.max(0, cv.height - (cy + g) * d), g * 2 * d, g * 2 * d); }
     const VS = `#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
     const FS = `#version 300 es
 precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c; uniform float r, t, tc, sd, wv, fd; uniform vec3 L, rg;
@@ -147,6 +148,7 @@ void main(){
       if (!ready) return; lastDraw = now; const d = cv.width / W, k = clamp01((now - dawnAt - 300) / 3200), h = leaving ? clamp01((now - leaving.at) / HAND_MS) : 0, s = h * h * (3 - 2 * h), e0 = calm.matches ? 1 : k * k * (3 - 2 * k), e = e0 + (1 - e0) * s, Lv = LA.map((a, i) => a + (LB[i] - a) * e), Ln = Math.hypot(...Lv), w0 = (now - waveAt) / 1800, w = w0 > 0 && w0 < 1 ? w0 + (1 - w0) * s : w0;
       gl.uniform2f(U.c, cx * d, cv.height - (cy + 40 * (1 - e)) * d); gl.uniform1f(U.r, R * d); gl.uniform1f(U.t, leaving ? leaving.t + leaving.dt * s : 18 + spin); gl.uniform1f(U.tc, leaving ? leaving.t + leaving.dtc * s : 18 + spin); gl.uniform1f(U.sd, 1 - s); gl.uniform3f(U.L, Lv[0] / Ln, Lv[1] / Ln, Lv[2] / Ln); gl.uniform3f(U.rg, rx / R, ry / R, tilt); gl.uniform1f(U.wv, w > 0 && w < 1 ? w : 0); gl.uniform1f(U.fd, (W < 700 ? 56 : 96) * d);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (shown) { shown.clearRect(0, 0, cv.width, cv.height); shown.drawImage(buffer, 0, 0); }
     };
     // A spark of light runs round the ring the same way the satellites go: left to right in front, back again behind.
     const comet = (now) => { if (!orbitAt || now - orbitAt < 2200) return; const k = (now / 15000) % 1, front = k < .5, head = (front ? k * 2 : 1 - (k - .5) * 2) * 1000, on = front ? cometF : cometB, off = front ? cometB : cometF; on.setAttribute("opacity", front ? 1 : .5); off.setAttribute("opacity", 0); COMET.forEach(([len], i) => on.children[i].setAttribute("stroke-dashoffset", (front ? len - head : -head).toFixed(1))); };
@@ -185,7 +187,7 @@ void main(){
     // Each finished question, or real typing, sends light down the planet from under the box. No satellite reacts, on purpose: the box searches the literature, not the communities.
     const wave = () => { const n = performance.now(); if (!seen || calm.matches || n - waveAt < 1800) return; waveAt = n + 200; halo.classList.add("fired"); clearTimeout(firedT); firedT = setTimeout(() => halo.classList.remove("fired"), 900); }; root.addEventListener("asked", wave); root.addEventListener("input", wave);
     // If the planet can't draw, the art leaves and the page keeps its shape. A lost GPU context comes back with the planet.
-    const bare = () => { dead = true; ready = false; root.classList.add("bare"); }; cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); ready = false; }); cv.addEventListener("webglcontextrestored", () => { size(); start().catch(bare); });
+    const bare = () => { dead = true; ready = false; root.classList.add("bare"); }; buffer.addEventListener("webglcontextlost", (e) => { e.preventDefault(); ready = false; }); buffer.addEventListener("webglcontextrestored", () => { size(); start().catch(bare); });
     setTimeout(orbit, 2000); size(); placeSats(calm.matches ? 0 : 2.4); for (const a of sats) a.style.opacity = 1; start().catch(bare); last = performance.now(); run();
   }
 </script>

@@ -94,8 +94,15 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 /** Starts the live planet over the still. `onLive` runs once its first frame is drawn. */
 export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, ringFront: SVGSVGElement, space: HTMLElement, calm: boolean, onLive: () => void) {
   const none = { wave() {}, leave() {}, stop() {} };
-  const gl = canvas.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" });
+  // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing
+  // can reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas,
+  // which it leaves alone. A browser without WebGL off screen draws straight to the canvas.
+  const options: WebGLContextAttributes = { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" };
+  const offscreen = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", options);
+  const gl = offscreen ?? canvas.getContext("webgl2", options);
   if (!gl) return none;
+  const buffer = offscreen ? offscreen.canvas : canvas;
+  const shown = offscreen ? canvas.getContext("2d") : null;
 
   const compile = (type: number, source: string) => {
     const shader = gl.createShader(type)!;
@@ -124,8 +131,8 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
   const size = () => {
     layout = earthLayout(space.clientWidth);
     const d = Math.min(devicePixelRatio || 1, 1.75);
-    canvas.width = Math.round(space.clientWidth * d);
-    canvas.height = Math.round(space.clientHeight * d);
+    canvas.width = buffer.width = Math.round(space.clientWidth * d);
+    canvas.height = buffer.height = Math.round(space.clientHeight * d);
     gl.viewport(0, 0, canvas.width, canvas.height);
     const g = layout.R * STILL_REACH;
     gl.enable(gl.SCISSOR_TEST);
@@ -163,6 +170,10 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (shown) {
+      shown.clearRect(0, 0, canvas.width, canvas.height);
+      shown.drawImage(buffer, 0, 0);
+    }
   };
 
   const cometsFront = [...ringFront.querySelectorAll<SVGPathElement>("[data-comet]")];

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { QUESTION_STAGE_SCRIPT } from "@/lib/search/question-stage-script";
 import { Ubuntu } from "next/font/google";
 import { DirectionProvider } from "@/components/ui/direction";
 import { isRightToLeft } from "@/lib/i18n/locale-map";
@@ -85,6 +86,8 @@ export default async function RootLayout({
   return (
     <html lang={locale} dir={direction} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
       <body>
+        {/* eslint-disable-next-line react/no-danger -- has to run before the first paint */}
+        <script dangerouslySetInnerHTML={{ __html: QUESTION_STAGE_SCRIPT }} />
         <DirectionProvider dir={direction}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
