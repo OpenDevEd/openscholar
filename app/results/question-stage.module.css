@@ -153,6 +153,14 @@
 .earth[data-live] {
   opacity: 1;
 }
+/* Coming through the hero the planet is already drawn, and the still would be in another place. */
+.stage[data-handover] .earth {
+  opacity: 1;
+  transition: none;
+}
+.stage[data-handover] .stillBox:not([data-failed]) {
+  display: none;
+}
 
 .stillBox {
   position: absolute;

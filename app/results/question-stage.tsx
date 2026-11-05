@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { parseSearchParamsFromUrl, readUrlQuestion } from "@/lib/search-params";
 import { highlightSegments, queryMatcher } from "@/lib/search/boolean-query";
 import { useQuestionStage } from "@/lib/search/question-stage";
-import { earthLayout, ringMarkup, spaceHeight, startEarth, EARTH_IMAGES, EARTH_STILL, SKY_PLATE, STILL_REACH } from "./question-stage-earth";
+import { earthLayout, ringMarkup, spaceHeight, EARTH_IMAGES, EARTH_SCRIPT, EARTH_STILL, SKY_PLATE, STILL_REACH, type Earth, type EarthConfig } from "./question-stage-earth";
 import styles from "./question-stage.module.css";
 
 /** The query box's concepts, in the order it colours them, lightened for the night sky. */
@@ -48,14 +48,15 @@ const STARS = (() => {
 })();
 
 /** Where things are on the screen: the page width, the sky's top, the planet's box, and the question's top. */
-type Frame = { width: number; skyTop?: number; spaceTop: number; spaceHeight: number; questionTop?: number };
+type Frame = { width: number; skyTop?: number; spaceTop: number; spaceHeight: number; questionTop?: number; turn: EarthConfig["turn"] };
 
 /** The hero's measurements, sent in the address so the first paint lands exactly on its last frame. */
 function readHandover(value: string | null): Frame | null {
   const numbers = value?.split(",").map(Number) ?? [];
-  if (numbers.length !== 5 || numbers.some((n) => !Number.isFinite(n) || Math.abs(n) > 10000)) return null;
-  const [width, skyTop, spaceTop, height, questionTop] = numbers;
-  return width > 0 && height > 0 ? { width, skyTop, spaceTop, spaceHeight: height, questionTop } : null;
+  if (numbers.length !== 7 || numbers.some((n) => !Number.isFinite(n))) return null;
+  const [width, skyTop, spaceTop, height, questionTop, t, at] = numbers;
+  if ([width, skyTop, spaceTop, height, questionTop].some((n) => Math.abs(n) > 10000)) return null;
+  return width > 0 && height > 0 ? { width, skyTop, spaceTop, spaceHeight: height, questionTop, turn: { t, at } } : null;
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -102,7 +103,6 @@ export function QuestionStage() {
   const [holdMs] = useState(() => Number(params.get("hold") ?? 0) * 1000);
   const [handover] = useState(() => readHandover(params.get("hero")));
   const [frame, setFrame] = useState<Frame | null>(handover);
-  const [live, setLive] = useState(false);
   const [lit, setLit] = useState(false);
   const [flying, setFlying] = useState(false);
   const [done, setDone] = useState(false);
@@ -110,10 +110,6 @@ export function QuestionStage() {
   const stage = useRef<HTMLDivElement>(null);
   const space = useRef<HTMLDivElement>(null);
   const plate = useRef<HTMLImageElement>(null);
-  const still = useRef<HTMLImageElement>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const ringBack = useRef<SVGSVGElement>(null);
-  const ringFront = useRef<SVGSVGElement>(null);
   const headline = useRef<HTMLHeadingElement>(null);
   const sun = useRef<HTMLDivElement>(null);
   const dawn = useRef<HTMLDivElement>(null);
@@ -124,8 +120,9 @@ export function QuestionStage() {
   const rings = useMemo(() => (layout ? { back: ringMarkup(layout, false), front: ringMarkup(layout, true) } : null), [layout]);
 
   if (question) {
-    for (const src of [SKY_PLATE, EARTH_STILL]) preload(src, { as: "image", fetchPriority: "high" });
-    for (const src of EARTH_IMAGES) preload(src, { as: "image" });
+    preload(SKY_PLATE, { as: "image", fetchPriority: "high" });
+    if (!handover) preload(EARTH_STILL, { as: "image", fetchPriority: "high" });
+    for (const src of EARTH_IMAGES) preload(src, { as: "image", fetchPriority: "high" });
   }
 
   // WebGL, the frame clock and the page behind are all outside React: this reads the page's field
@@ -135,7 +132,7 @@ export function QuestionStage() {
     // Nobody measured the screen for a visitor who came straight here, so it's done now and the planet fades in.
     if (!frame) {
       const height = spaceHeight(innerWidth);
-      setFrame({ width: innerWidth, spaceTop: Math.max(innerWidth < 700 ? 230 : 200, innerHeight - height - 70), spaceHeight: height });
+      setFrame({ width: innerWidth, spaceTop: Math.max(innerWidth < 700 ? 230 : 200, innerHeight - height - 70), spaceHeight: height, turn: null });
       return;
     }
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -150,8 +147,20 @@ export function QuestionStage() {
     const settled = `translateY(${down}px) scale(${zoomToClear(planetTop + down, planetFoot + down)})`;
     if (calm) planetEl.style.transform = settled;
     else planetEl.animate([{ transform: "none" }, { transform: settled }], { duration: 1800, delay: 100, easing: "cubic-bezier(.45,0,.2,1)", fill: "both" });
-    for (const image of [plate.current!, still.current!]) void image.decode().then(() => (image.dataset.in = ""), () => {});
-    const earth = startEarth(canvas.current!, ringBack.current!, ringFront.current!, space.current!, calm, () => setLive(true));
+    const stillImage = stage.current!.querySelector<HTMLImageElement>("[data-still] img");
+    for (const image of [plate.current!, stillImage]) void image?.decode().then(() => (image.dataset.in = ""), () => {});
+    // Coming through the hero the planet is already going, started by the tags below. Otherwise it starts here.
+    let earth: Earth | undefined = window.questionStageEarthRun;
+    if (!handover && !earth) {
+      const stageEl = stage.current!;
+      const script = document.createElement("script");
+      script.src = EARTH_SCRIPT;
+      script.onload = () => {
+        window.questionStageEarth!.boot(stageEl, { layout: layout!, width: frame.width, height: frame.spaceHeight, turn: null });
+        earth = window.questionStageEarthRun;
+      };
+      document.head.append(script);
+    }
     const started = performance.now();
     let litAt = 0;
     let raf = 0;
@@ -159,7 +168,7 @@ export function QuestionStage() {
     // The component stays mounted once it's done, so the planet has to be stopped here.
     const end = () => {
       cancelAnimationFrame(raf);
-      earth.stop();
+      earth?.stop();
       setDone(true);
     };
 
@@ -200,7 +209,7 @@ export function QuestionStage() {
         span.animate(wordSettle(x - centres[i].x, y - centres[i].y), { duration: SETTLE_MS - WORD_STAGGER_MS, delay: near * WORD_STAGGER_MS, fill: "both" });
       });
 
-      earth.sunBehind(SETTLE_MS + 200);
+      earth?.sunBehind(SETTLE_MS + 200);
       const whole = SETTLE_MS + DAWN_MS;
       planet.animate(
         [
@@ -244,7 +253,7 @@ export function QuestionStage() {
         if (useQuestionStage.getState().query !== null && now - started >= Math.max(LEAST_MS - LIT_MS, holdMs)) {
           litAt = now;
           setLit(true);
-          earth.wave();
+          earth?.wave();
         }
         return;
       }
@@ -260,7 +269,6 @@ export function QuestionStage() {
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(finish);
-      earth.stop();
     };
   }, [question, holdMs, frame, layout]);
 
@@ -274,7 +282,7 @@ export function QuestionStage() {
     "--question-top": handover?.questionTop === undefined ? undefined : `${handover.questionTop}px`,
   } as React.CSSProperties;
   return (
-    <div ref={stage} id="question-stage" className={styles.stage} style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
+    <div ref={stage} id="question-stage" data-earth className={styles.stage} style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
       <div className={styles.scene}>
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed backdrop, sized by the stage */}
         <img ref={plate} className={styles.plate} src={SKY_PLATE} width={2560} height={820} alt="" decoding={handedOver ? "sync" : "async"} fetchPriority="high" />
@@ -300,11 +308,10 @@ export function QuestionStage() {
               style={{ left: layout.cx - layout.R * 0.75, top: layout.cy - layout.R * 0.66, width: layout.narrow ? 800 : 1400, height: 2 * (frame.spaceHeight - layout.cy + layout.R * 0.66) }}
               aria-hidden
             />
-            <svg ref={ringBack} className={styles.ring} aria-hidden dangerouslySetInnerHTML={{ __html: rings.back }} />
-            <div className={styles.stillBox} data-live={live ? "" : undefined} style={{ "--fade": `${layout.narrow ? 56 : 96}px` } as React.CSSProperties}>
+            <svg data-ring="back" className={styles.ring} aria-hidden dangerouslySetInnerHTML={{ __html: rings.back }} />
+            <div data-still className={styles.stillBox} style={{ "--fade": `${layout.narrow ? 56 : 96}px` } as React.CSSProperties}>
               {/* eslint-disable-next-line @next/next/no-img-element -- a frame of the shader, placed to the pixel */}
               <img
-                ref={still}
                 className={styles.still}
                 src={EARTH_STILL}
                 alt=""
@@ -313,8 +320,19 @@ export function QuestionStage() {
                 style={{ left: layout.cx - layout.R * STILL_REACH, top: layout.cy - layout.R * STILL_REACH, width: layout.R * STILL_REACH * 2 }}
               />
             </div>
-            <canvas ref={canvas} className={styles.earth} data-live={live ? "" : undefined} aria-hidden />
-            <svg ref={ringFront} className={styles.ring} aria-hidden dangerouslySetInnerHTML={{ __html: rings.front }} />
+            <canvas className={styles.earth} aria-hidden />
+            <svg data-ring="front" className={styles.ring} aria-hidden dangerouslySetInnerHTML={{ __html: rings.front }} />
+            {handover && (
+              <>
+                {/* A plain script and a tag to start it, so the planet is going before the app's own scripts have loaded. */}
+                <script src={EARTH_SCRIPT} />
+                <script
+                  dangerouslySetInnerHTML={{
+                    __html: `window.questionStageEarth.boot(document.currentScript,${JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn } satisfies EarthConfig)})`,
+                  }}
+                />
+              </>
+            )}
           </div>
         )}
       </div>

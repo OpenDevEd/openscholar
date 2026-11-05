@@ -81,7 +81,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     function glSize() { const d = Math.min(devicePixelRatio || 1, 1.75); cv.width = buffer.width = Math.round(W * d); cv.height = buffer.height = Math.round(H * d); gl.viewport(0, 0, cv.width, cv.height); const g = R * 1.55; gl.enable(gl.SCISSOR_TEST); gl.scissor(Math.max(0, (cx - g) * d), Math.max(0, cv.height - (cy + g) * d), g * 2 * d, g * 2 * d); }
     const VS = `#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
     const FS = `#version 300 es
-precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c; uniform float r, t, tc, sd, wv, fd; uniform vec3 L, rg;
+precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c; uniform float r, t, sd, wv, fd; uniform vec3 L, rg;
 const float PI = 3.14159265;
 float gs(float x){ return exp(-x * x); }
 vec2 ll(vec3 n, float spin, out vec2 gx, out vec2 gy){ float lon = atan(n.x, n.z) - spin, lat = asin(clamp(n.y, -1., 1.)), u = lon / (2. * PI), v = .5 - lat / PI; float u1 = fract(u), u2 = fract(u + .5) - .5, x1 = dFdx(u1), x2 = dFdx(u2), y1 = dFdy(u1), y2 = dFdy(u2); gx = vec2(abs(x1) < abs(x2) ? x1 : x2, dFdx(v)); gy = vec2(abs(y1) < abs(y2) ? y1 : y2, dFdy(v)); return vec2(u1, v); }
@@ -93,7 +93,7 @@ void main(){
   float fade = smoothstep(0., fd, gl_FragCoord.y); if (d > 1.) { o = vec4(h, ha) * fade; return; }
   float z = sqrt(1. - d * d); vec3 n0 = vec3(p, z);
   float ax = .4, ay = .22; mat3 lean = mat3(cos(ax), sin(ax), 0., -sin(ax), cos(ax), 0., 0., 0., 1.) * mat3(1., 0., 0., 0., cos(ay), -sin(ay), 0., sin(ay), cos(ay)); vec3 n = lean * n0;
-  vec2 gx, gy, gxc, gyc, uv = ll(n, t * .05, gx, gy), uvc = ll(n, tc * .058, gxc, gyc);
+  vec2 gx, gy, gxc, gyc, uv = ll(n, t * .05, gx, gy), uvc = ll(n, t * .058, gxc, gyc);
   float wet = textureGrad(water, uv, gx, gy).r; vec3 dc = (textureGrad(day, uv, gx, gy).rgb + wet * vec3(0., .022, .06) + (1. - wet) * vec3(.03, .04, .03)) * vec3(.97, 1., 1.05); vec3 nc = textureGrad(night, uv, gx, gy).rgb; float cl = textureGrad(clouds, uvc, gxc, gyc).r, sh = textureGrad(clouds, uvc + vec2(.0028, -.0018), gxc, gyc).r;
   float dif = dot(n0, L), lit = smoothstep(-.08, .46, dif), dusk = smoothstep(-.14, .08, dif) * (1. - smoothstep(.06, .22, dif));
   vec3 col = dc * (vec3(.05, .075, .13) + 1.12 * lit) * (1. - pow(sh, 1.5) * .3 * lit) + vec3(.012, .032, .085) * (1. - lit);
@@ -111,29 +111,34 @@ void main(){
       const sh = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
       const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr)); gl.useProgram(pr);
       gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); const al = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(al); gl.vertexAttribPointer(al, 2, gl.FLOAT, false, 0, 0);
-      U = Object.fromEntries(["c", "r", "t", "tc", "sd", "wv", "fd", "L", "rg"].map((n) => [n, gl.getUniformLocation(pr, n)]));
+      U = Object.fromEntries(["c", "r", "t", "sd", "wv", "fd", "L", "rg"].map((n) => [n, gl.getUniformLocation(pr, n)]));
       const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
       await Promise.all(["day", "night", "clouds", "water"].map(async (n, i) => { const im = new Image(); im.src = cv.dataset[n]; await im.decode(); gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, gl.createTexture()); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8); gl.uniform1i(gl.getUniformLocation(pr, n), i); }));
       ready = true; dawnAt ||= performance.now(); draw(performance.now()); root.classList.add("lit"); orbit(); (window.requestIdleCallback ?? setTimeout)(appImages);
     };
-    // Searching hands over to the app's first frame: its sky, its stars, the question where the headline is, and the planet spun to where a still of it stands in the app. The browser can't animate between two sites, so nothing can be seen to change when the page does.
-    const HAND_MS = 480, HAND_GO_MS = 340, HAND_PHASE = 30; let leaving = null, handed = [];
-    const nearest = (d, period) => (((d % period) + period * 1.5) % period) - period / 2;
+    // Searching hands over to the app's first frame: its sky, its stars, and the words typed rising out of the box to be the headline. The planet just keeps turning, and the address says how far it had got and when, so the app's carries on from there. The browser can't animate between two sites, so nothing can be seen to change when the page does.
+    const HAND_MS = 620, HAND_GO_MS = 480; let leaving = null, handed = [];
     // The app's images, on hand for when it's needed.
-    const form = root.querySelector("[data-ask]"), appImages = () => { for (const n of ["sky-plate", "earth-still", "earth-day", "earth-night", "earth-clouds", "earth-water"]) new Image().src = `${new URL(form.action).origin}/question-stage/${n}.avif`; };
-    const fade = (el, delay = 0) => { if (el) handed.push(el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 0 }], { duration: 240, delay, easing: "ease-out", fill: "forwards" })); };
+    const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; for (const n of ["sky-plate", "earth-day", "earth-night", "earth-clouds", "earth-water"]) new Image().src = `${at}${n}.avif`; const script = document.createElement("link"); script.rel = "prefetch"; script.as = "script"; script.href = `${at}earth.js`; document.head.append(script); };
+    const fade = (el, delay = 0, move = 0) => { if (el) handed.push(el.animate([{ opacity: getComputedStyle(el).opacity, translate: "0 0" }, { opacity: 0, translate: `0 ${move}px` }], { duration: 340, delay, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" })); };
     form.addEventListener("submit", (e) => {
       const q = form.querySelector("input").value.trim() || form.dataset.q || "";
       if (!q || leaving || !ready || calm.matches || scrollY > 40) return;
       e.preventDefault();
-      const top = root.getBoundingClientRect(), space = scene.getBoundingClientRect(), head = root.querySelector("h1"), start = 18 + spin, words = q.match(/\S+/g), shown = words.length > 30 ? [...words.slice(0, 30), "..."] : words;
+      const top = root.getBoundingClientRect(), space = scene.getBoundingClientRect(), head = root.querySelector("h1"), input = form.querySelector("input"), words = q.match(/\S+/g), shown = words.length > 30 ? [...words.slice(0, 30), "..."] : words;
       const question = document.createElement("div"); question.className = "handq"; question.ariaHidden = "true"; question.dataset.size = q.length <= 40 ? "large" : q.length <= 90 ? "medium" : "small"; question.style.top = `${head.getBoundingClientRect().top - top.top}px`;
-      question.append(...shown.map((w, i) => { const span = document.createElement("span"); span.textContent = w; span.style.setProperty("--i", i); return span; })); root.append(question);
+      question.append(...shown.map((w) => { const span = document.createElement("span"); span.textContent = w; return span; })); root.append(question);
       const qTop = Math.round(question.getBoundingClientRect().top);
-      leaving = { at: performance.now(), t: start, dt: nearest(HAND_PHASE - start, 2 * Math.PI / .05), dtc: nearest(HAND_PHASE - start, 2 * Math.PI / .058), sent: false, url: `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop].join(",")}` };
+      leaving = { at: performance.now(), sent: false, send: () => `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop, (18 + spin).toFixed(3), Date.now()].join(",")}` };
       tx = ty = 0; mouse = null; onSat = -1; setHold(-1); run();
-      head.querySelectorAll("span").forEach((w) => handed.push(w.animate([{ opacity: 1, translate: "0 0" }, { opacity: 0, translate: "0 -14px" }], { duration: 220, easing: "ease-in", fill: "forwards" })));
-      fade(root.querySelector(".lead")); fade(halo); fade(root.querySelector(".hub")); fade(document.querySelector(".top")); sats.forEach((a) => fade(a)); [cometB, cometF].forEach((c) => fade(c));
+      // What was typed lifts out of the box and grows into the headline, from exactly where it was.
+      const first = question.firstElementChild.getBoundingClientRect(), box = input.getBoundingClientRect(), blockRect = question.getBoundingClientRect(), small = parseFloat(getComputedStyle(input).fontSize) / parseFloat(getComputedStyle(question).fontSize), inset = parseFloat(getComputedStyle(question.firstElementChild).paddingLeft);
+      question.style.transformOrigin = `${first.left - blockRect.left + inset}px ${first.top - blockRect.top + first.height / 2}px`;
+      handed.push(question.animate([{ transform: `translate(${box.left - first.left - inset}px, ${box.top + box.height / 2 - first.top - first.height / 2}px) scale(${small})`, color: getComputedStyle(input).color }, { color: "#ffe6cf", offset: .35 }, { transform: "none", color: "#ffe6cf" }], { duration: 560, easing: "cubic-bezier(.3,.05,.15,1)", fill: "both" }));
+      const typed = input.style.color; input.style.color = "transparent"; handed.push({ cancel: () => { input.style.color = typed; } });
+      // The old headline is gone upwards before the question rises into its place.
+      head.querySelectorAll("span").forEach((w, i) => handed.push(w.animate([{ opacity: 1, translate: "0 0", filter: "blur(0)" }, { opacity: 0, translate: "0 -28px", filter: "blur(3px)" }], { duration: 190, delay: i * 10, easing: "cubic-bezier(.5,0,.75,0)", fill: "both" })));
+      fade(root.querySelector(".lead"), 20, -10); fade(halo, 60, 10); fade(root.querySelector(".hub"), 0, 14); fade(document.querySelector(".top"), 0, -10); sats.forEach((a, i) => fade(a, i * 20)); [cometB, cometF].forEach((c) => fade(c));
       // The sun's slow pulse and the stars' twinkle settle, and whatever the sky doesn't reach is covered.
       skies.forEach((el) => handed.push(el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 1 }], { duration: HAND_MS, fill: "forwards" })));
       handed.push(scene.animate([{ opacity: getComputedStyle(scene, "::before").opacity }, { opacity: 1 }], { duration: HAND_MS, pseudoElement: "::before", fill: "forwards" }));
@@ -146,7 +151,7 @@ void main(){
     const clamp01 = (v) => Math.min(1, Math.max(0, v)), LA = [-.72, .5, -.48], LB = [-.7, .62, .3];
     const draw = (now) => {
       if (!ready) return; lastDraw = now; const d = cv.width / W, k = clamp01((now - dawnAt - 300) / 3200), h = leaving ? clamp01((now - leaving.at) / HAND_MS) : 0, s = h * h * (3 - 2 * h), e0 = calm.matches ? 1 : k * k * (3 - 2 * k), e = e0 + (1 - e0) * s, Lv = LA.map((a, i) => a + (LB[i] - a) * e), Ln = Math.hypot(...Lv), w0 = (now - waveAt) / 1800, w = w0 > 0 && w0 < 1 ? w0 + (1 - w0) * s : w0;
-      gl.uniform2f(U.c, cx * d, cv.height - (cy + 40 * (1 - e)) * d); gl.uniform1f(U.r, R * d); gl.uniform1f(U.t, leaving ? leaving.t + leaving.dt * s : 18 + spin); gl.uniform1f(U.tc, leaving ? leaving.t + leaving.dtc * s : 18 + spin); gl.uniform1f(U.sd, 1 - s); gl.uniform3f(U.L, Lv[0] / Ln, Lv[1] / Ln, Lv[2] / Ln); gl.uniform3f(U.rg, rx / R, ry / R, tilt); gl.uniform1f(U.wv, w > 0 && w < 1 ? w : 0); gl.uniform1f(U.fd, (W < 700 ? 56 : 96) * d);
+      gl.uniform2f(U.c, cx * d, cv.height - (cy + 40 * (1 - e)) * d); gl.uniform1f(U.r, R * d); gl.uniform1f(U.t, 18 + spin); gl.uniform1f(U.sd, 1); gl.uniform3f(U.L, Lv[0] / Ln, Lv[1] / Ln, Lv[2] / Ln); gl.uniform3f(U.rg, rx / R, ry / R, tilt); gl.uniform1f(U.wv, w > 0 && w < 1 ? w : 0); gl.uniform1f(U.fd, (W < 700 ? 56 : 96) * d);
       gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLES, 0, 3);
       if (shown) { shown.clearRect(0, 0, cv.width, cv.height); shown.drawImage(buffer, 0, 0); }
     };
@@ -164,7 +169,7 @@ void main(){
       kick *= Math.exp(-dt / 400); spin += dt / 1000 * (1 + kick * .8);
       const moving = Math.abs(tx - px) > .002 || Math.abs(ty - py) > .002, ease = 1 - Math.exp(-dt / 220); px += (tx - px) * ease; py += (ty - py) * ease; if (moving) camera();
       placeSats(orbitAt ? 2.4 * (1 - clamp01((now - orbitAt) / 2800)) ** 4 : 2.4); comet(now);
-      const w = (now - waveAt) / 1800; if (leaving || now - lastDraw >= 30 || now - dawnAt < 3600 || (w > 0 && w < 1)) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; location.href = leaving.url; }
+      const w = (now - waveAt) / 1800; if (leaving || now - lastDraw >= 30 || now - dawnAt < 3600 || (w > 0 && w < 1)) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; location.href = leaving.send(); }
     };
     // Wrapped text leaves its box wider than the words, so each name's box is set to its words and the gaps between the six come out equal.
     const fitNames = () => rows.forEach((li) => { const a = li.querySelector("a"); a.style.width = ""; if (innerWidth < 1000) return; const t = document.createRange(); t.selectNodeContents(a.lastChild); a.style.width = `${Math.ceil(t.getBoundingClientRect().width) + 1}px`; });
@@ -195,7 +200,7 @@ void main(){
   /* The question as the app's first frame sets it (app/results/question-stage.module.css). */
   :global(.handq) { position: absolute; left: 0; width: 100vw; z-index: 7; display: flex; flex-wrap: wrap; justify-content: center; padding-inline: max(24px, calc((100vw - 1240px) / 2)); color: #ffe6cf; font-weight: 500; letter-spacing: -.04em; line-height: 1.06; text-align: center; pointer-events: none; font-size: 38px; } :global(.handq[data-size="medium"]) { font-size: 30px; } :global(.handq[data-size="small"]) { font-size: 22px; line-height: 1.2; letter-spacing: -.02em; }
   @media (min-width: 600px) { :global(.handq) { font-size: 56px; } :global(.handq[data-size="medium"]) { font-size: 44px; } :global(.handq[data-size="small"]) { font-size: 30px; } } @media (min-width: 1100px) { :global(.handq) { font-size: 64px; } :global(.handq[data-size="medium"]) { font-size: 52px; } :global(.handq[data-size="small"]) { font-size: 36px; } } @media (min-width: 1400px) { :global(.handq) { font-size: 72px; } }
-  :global(.handq span) { display: inline-block; padding-inline: .13em; animation: rise 340ms var(--ease) calc(.06s + var(--i) * 18ms) backwards; }
+  :global(.handq span) { display: inline-block; padding-inline: .13em; }
   :global(.handcover) { position: fixed; inset: 0; z-index: 40; background: var(--sky); pointer-events: none; animation: arrive 240ms ease-out backwards; }
   .sky { padding: 146px 0 0; background: var(--sky); text-align: center; }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; animation: arrive 1.2s var(--ease) backwards; }

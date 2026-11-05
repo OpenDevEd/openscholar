@@ -22,9 +22,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   async headers() {
     return [
-      // The marketing site fetches these ahead, so they're on hand the moment someone searches from it.
+      // The marketing site fetches these ahead, so they're on hand the moment someone searches from it. Images only: the script changes.
       {
-        source: "/question-stage/:file",
+        source: "/question-stage/:file([\\w-]+\\.avif)",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
