@@ -90,7 +90,11 @@ async function searchOwnIndex(query: string, filters: SearchFilters): Promise<Se
   if (filters.searchField === OQL_FIELD) {
     return fetchOqlWorks(worksOql(query, searchParams.filter ?? {}), { perPage: searchParams.perPage, sort: filters.sortBy }, "openscholar");
   }
-  return fetchOwnWorks({ search: searchParams.search, filter: searchParams.filter as never, sortBy: searchParams.sortBy }, { perPage: searchParams.perPage });
+  return fetchOwnWorks(
+    { search: searchParams.search, filter: searchParams.filter as never, ...(searchParams.semantic || searchParams.similar ? {} : { sortBy: searchParams.sortBy }) },
+    { perPage: searchParams.perPage },
+    { "search.semantic": searchParams.semantic, similar_to: searchParams.similar },
+  );
 }
 
 export async function getSearchResults(
