@@ -58,7 +58,7 @@ export function ringMarkup({ rx: a, ry: b, cx, cy, tilt, narrow }: Layout, front
 }
 
 export type Earth = { wave(): void; sunBehind(ms: number): void; stop(): void; canvas?: HTMLCanvasElement };
-export type EarthConfig = { layout: Layout; width: number; height: number; turn: { t: number; at: number } | null };
+export type EarthConfig = { layout: Layout; width: number; height: number; turn: { t: number; at: number } | null; quality: "full" | "light" | "still" };
 declare global {
   interface Window {
     questionStageEarth?: { boot(stage: HTMLElement): Earth };

@@ -102,6 +102,8 @@ export function QuestionStage() {
   const [question] = useState(() => (parseSearchParamsFromUrl(params).q?.trim() ? "" : readUrlQuestion(params)));
   // Mock only: seconds to hold the stage, to watch it longer than a real answer takes.
   const [holdMs] = useState(() => Number(params.get("hold") ?? 0) * 1000);
+  // Mock only: which quality level to show, to compare them.
+  const [quality] = useState<"full" | "light" | "still">(() => (["light", "still"].includes(params.get("quality") ?? "") ? (params.get("quality") as "light" | "still") : "full"));
   const [handover] = useState(() => readHandover(params.get("hero")));
   const [frame, setFrame] = useState<Frame | null>(handover);
   const [lit, setLit] = useState(false);
@@ -155,7 +157,8 @@ export function QuestionStage() {
     const stageEl = stage.current!;
     let earth: Earth | undefined;
     const begin = () => (earth = window.questionStageEarth!.boot(stageEl));
-    if (window.questionStageEarth) begin();
+    if (quality === "still") stageEl.querySelector<HTMLElement>("[data-still]")!.dataset.failed = "";
+    else if (window.questionStageEarth) begin();
     else {
       const loading = document.querySelector<HTMLScriptElement>(`script[src="${EARTH_SCRIPT}"]`);
       if (loading) loading.addEventListener("load", begin);
@@ -281,7 +284,7 @@ export function QuestionStage() {
 
   const size = question.length <= 40 ? "large" : question.length <= 90 ? "medium" : "small";
   const handedOver = handover !== null;
-  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn } satisfies EarthConfig) : undefined;
+  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, quality } satisfies EarthConfig) : undefined;
   const variables = {
     "--page": frame && handedOver ? `${frame.width}px` : undefined,
     "--sky-top": handover?.skyTop === undefined ? undefined : `${handover.skyTop}px`,

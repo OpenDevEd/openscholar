@@ -19,10 +19,24 @@ void main(){
   float z = sqrt(1. - d * d); vec3 n0 = vec3(p, z);
   float ax = .4, ay = .22; mat3 lean = mat3(cos(ax), sin(ax), 0., -sin(ax), cos(ax), 0., 0., 0., 1.) * mat3(1., 0., 0., 0., cos(ay), -sin(ay), 0., sin(ay), cos(ay)); vec3 n = lean * n0;
   vec2 gx, gy, gxc, gyc, uv = ll(n, t * .05, gx, gy), uvc = ll(n, t * .058, gxc, gyc);
-  float wet = textureGrad(water, uv, gx, gy).r; vec3 dc = (textureGrad(day, uv, gx, gy).rgb + wet * vec3(0., .022, .06) + (1. - wet) * vec3(.03, .04, .03)) * vec3(.97, 1., 1.05); vec3 nc = textureGrad(night, uv, gx, gy).rgb; float cl = textureGrad(clouds, uvc, gxc, gyc).r, sh = textureGrad(clouds, uvc + vec2(.0028, -.0018), gxc, gyc).r;
+  #ifdef LIGHT
+  float wet = 0.;
+  #else
+  float wet = textureGrad(water, uv, gx, gy).r;
+  #endif
+ vec3 dc = (textureGrad(day, uv, gx, gy).rgb + wet * vec3(0., .022, .06) + (1. - wet) * vec3(.03, .04, .03)) * vec3(.97, 1., 1.05); vec3 nc = textureGrad(night, uv, gx, gy).rgb; float cl = textureGrad(clouds, uvc, gxc, gyc).r;
+  #ifdef LIGHT
+  float sh = 0.;
+  #else
+  float sh = textureGrad(clouds, uvc + vec2(.0028, -.0018), gxc, gyc).r;
+  #endif
+
   float dif = dot(n0, L), lit = smoothstep(-.08, .46, dif), dusk = smoothstep(-.14, .08, dif) * (1. - smoothstep(.06, .22, dif));
   vec3 col = dc * (vec3(.05, .075, .13) + 1.12 * lit) * (1. - pow(sh, 1.5) * .3 * lit) + vec3(.012, .032, .085) * (1. - lit);
+  #ifndef LIGHT
   col += pow(max(dot(reflect(-L, n0), vec3(0., 0., 1.)), 0.), 90.) * wet * vec3(.7, .85, 1.) * .42 * lit;
+  #endif
+
   float city = max(nc.r - .05, 0.); col += (nc * 1.1 + city * vec3(1.6, 1.1, .55) * 4.5 * (1. - cl * .8)) * (1. - smoothstep(-.2, .06, dif));
   col = mix(col, mix(vec3(.07, .11, .2), vec3(1., 1., 1.02), lit), pow(cl, 1.5) * .9);
   col += dusk * vec3(.9, .5, .25) * .07;
@@ -51,8 +65,8 @@ void main(){
    * screen, which has to draw straight to the canvas on the page.
    */
   var prepared = null;
-  function prepare(canvas) {
-    if (prepared && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
+  function prepare(canvas, light) {
+    if (prepared && prepared.light === !!light && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
     // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can
     // reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas.
     var gl = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", OPTIONS);
@@ -68,7 +82,7 @@ void main(){
     };
     var program = gl.createProgram();
     gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX));
-    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, light ? FRAGMENT.replace("precision highp float;", "precision mediump float;\n#define LIGHT") : FRAGMENT));
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
     gl.useProgram(program);
@@ -80,12 +94,12 @@ void main(){
     var uniform = function (name) { return gl.getUniformLocation(program, name); };
     var aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     var self = {
-      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false,
+      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false, light: !!light,
       U: { c: uniform("c"), r: uniform("r"), t: uniform("t"), sd: uniform("sd"), wv: uniform("wv"), fd: uniform("fd"), L: uniform("L"), rg: uniform("rg") },
     };
     self.textures = Promise.all(IMAGES.map(function (name, i) {
       var image = new Image();
-      image.src = DIR + name + ".avif";
+      image.src = DIR + name + (light && name === "day" ? "-2048" : "") + ".avif";
       return image.decode().then(function () {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
@@ -110,14 +124,17 @@ void main(){
   function start(o) {
     var canvas = o.canvas, layout = o.layout, turn = o.turn;
     var none = { wave: function () {}, sunBehind: function () {}, stop: function () {} };
-    var ready = prepare(canvas);
+    var light = o.quality === "light";
+    var ready = prepare(canvas, light);
     if (!ready) { o.ready(false); return none; }
     var gl = ready.gl, U = ready.U;
     var buffer = ready.offscreen ? gl.canvas : canvas;
     var shown = ready.offscreen ? canvas.getContext("2d") : null;
 
     // A little sharper than the hero, as the planet gets zoomed. The width comes from the caller: the stage may be hidden still.
-    var d = Math.min(devicePixelRatio || 1, 2);
+    // The light level draws at half the resolution and half the frame rate.
+    var d = light ? Math.min(devicePixelRatio || 1, 2) / 2 : Math.min(devicePixelRatio || 1, 2);
+    var lastDrawn = 0;
     canvas.width = buffer.width = Math.round(o.width * d);
     canvas.height = buffer.height = Math.round(o.height * d);
     gl.viewport(0, 0, canvas.width, canvas.height);
@@ -170,6 +187,8 @@ void main(){
       // A stage taken off the page before it finished stops with it.
       if (stopped || (o.stage && !o.stage.isConnected && liveAt && now - liveAt > 2000)) return;
       raf = requestAnimationFrame(loop);
+      if (light && now - lastDrawn < 30) return;
+      lastDrawn = now;
       var dt = Math.min(64, now - last);
       last = now;
       speed += (CRUISE - speed) * (1 - Math.exp(-dt / 2000));
@@ -225,7 +244,7 @@ void main(){
     var run = start({
       stage: stage, canvas: canvas,
       ringBack: stage.querySelector("[data-ring=back]"), ringFront: stage.querySelector("[data-ring=front]"),
-      layout: config.layout, width: config.width, height: config.height, turn: config.turn,
+      layout: config.layout, width: config.width, height: config.height, turn: config.turn, quality: config.quality,
       calm: matchMedia("(prefers-reduced-motion: reduce)").matches,
       ready: function (ok) {
         console.info("[earth]", ok ? "drawing" : "can't draw, showing the still", Math.round(performance.now() - begun) + "ms after starting");
