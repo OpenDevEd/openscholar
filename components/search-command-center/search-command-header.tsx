@@ -211,12 +211,15 @@ export function SearchCommandHeader({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={tc("download")}
                 className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex"
               >
                 <Download className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* It downloads what's loaded, not the whole search. */}
+              {search?.results.length ? <DropdownMenuLabel className="font-normal text-muted-foreground">{td("pageOnly", { count: search.results.length })}</DropdownMenuLabel> : null}
               {onDownloadAllJSON && (
                 <DropdownMenuItem onClick={onDownloadAllJSON}>
                   {tc("downloadAsJson")}

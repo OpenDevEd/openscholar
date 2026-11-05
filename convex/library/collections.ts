@@ -414,7 +414,7 @@ const collectionRow = v.object({
 export const listCollectionsAction = defineUserQuery({
   path: "library/collections:listCollections",
   description:
-    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With \`paper\`, a paper's key or OpenAlex ID, each also says whether that paper is in it. In an organization each names who made it, and \`by\` keeps only that member's (their \`userId\` from workspaces/makers:counts).`,
+    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With \`paper\`, a paper's key or its ID in the index, each also says whether that paper is in it. In an organization each names who made it, and \`by\` keeps only that member's (their \`userId\` from workspaces/makers:counts).`,
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),

@@ -240,7 +240,8 @@
     "searchingDescription": "Millionen Artikel werden durchsucht...",
     "noResultsMatchFilters": "Keine Ergebnisse passen zu Ihren Filtern",
     "updatingResults": "Ergebnisse werden aktualisiert...",
-    "adjustTab": "Anpassen"
+    "adjustTab": "Anpassen",
+    "firstOnly": "Die ersten {shown} von {total} werden gezeigt. Grenze die Suche ein, um den Rest zu erreichen."
   },
   "pricing": {
     "chooseYourPlan": "Tarife",
@@ -488,7 +489,8 @@
   "downloads": {
     "downloadAll": "Alle herunterladen",
     "downloadEssentialJSON": "Wesentliche Informationen als JSON herunterladen",
-    "downloadEssentialCSV": "Wesentliche Informationen als CSV herunterladen"
+    "downloadEssentialCSV": "Wesentliche Informationen als CSV herunterladen",
+    "pageOnly": "Die {count} Artikel auf dieser Seite"
   },
   "extraction": {
     "searchJobs": "Aufträge suchen...",
@@ -1033,7 +1035,8 @@
     "queryHistory": "Abfrageverlauf",
     "queryEvolution": "Entwicklung der Abfrage",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "Letzte Suchen"
+    "recentSearches": "Letzte Suchen",
+    "clearAllHistoryConfirmWhole": "Möchtest du deinen gesamten Suchverlauf wirklich löschen? Das lässt sich nicht rückgängig machen."
   },
   "commandCenter": {
     "searchesLabel": "Suchen",
@@ -1098,6 +1101,7 @@
     "searchWithQuery": "Mit dieser Abfrage suchen",
     "removeFromHistory": "Aus dem Verlauf entfernen",
     "openDoi": "DOI öffnen",
+    "openPaperPage": "Seite des Artikels öffnen",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Auf Standard zurücksetzen",
     "focusMode": "Fokusmodus",
@@ -4969,7 +4973,7 @@
     },
     "tryAgain": "Erneut versuchen",
     "unavailable": {
-      "oql": "Eine Suche in OQL kann nicht gezählt werden, deshalb gibt es dafür keinen Überblick.",
+      "oql": "Für eine in OQL geschriebene Suche gibt es keine Übersicht.",
       "ratings": "Ein Überblick liest die gesamte Suche. Solange die Ergebnisse nach Ihren Bewertungen gefiltert sind, wird keiner geschrieben."
     },
     "dialog": {
@@ -5369,7 +5373,7 @@
     "loadingPublications": "Publikationen werden geladen",
     "noPublishedWorksAreLinkedTo": "Mit dieser Autorin bzw. diesem Autor sind noch keine veröffentlichten Werke verknüpft.",
     "connectTheAuthorSResearchRecord": "Verbinden Sie den Forschungsnachweis der Autorin bzw. des Autors, um deren Publikationen anzuzeigen.",
-    "linkAnAuthorToDisplayTheir": "Verknüpfen Sie eine Autorin oder einen Autor, um deren OpenAlex-Publikationen anzuzeigen.",
+    "linkAnAuthorToDisplayTheir": "Verknüpfe einen Autor, um seine Publikationen zu zeigen.",
     "changeMatch": "Zuordnung ändern",
     "findAuthor": "Autor finden",
     "unlink": "Verknüpfung aufheben",
@@ -5390,22 +5394,22 @@
     "noPublicationsToDisplay": "Keine {source}-Publikationen zum Anzeigen.",
     "showMore": "Mehr anzeigen",
     "confirmAuthorMatch": "Zuordnung der Autorin bzw. des Autors bestätigen",
-    "findAuthorOnOpenalex": "Autor auf OpenAlex finden",
+    "findAuthorOnOpenalex": "Autoreneintrag finden",
     "checkTheAffiliationAndResearchBefore": "Prüfen Sie Zugehörigkeit und Forschung, bevor Sie diesen Datensatz verknüpfen.",
-    "searchByNameAffiliationOrOpenalex": "Suchen Sie nach Name, Zugehörigkeit oder OpenAlex-Autoren-ID.",
+    "searchByNameAffiliationOrOpenalex": "Suche nach Name, Einrichtung oder Autoren-ID.",
     "yourNameBiographyLinksAndSelected": "Ihr Name, Ihre Biografie, Links und ausgewählten Publikationen bleiben so, wie Sie sie eingegeben haben.",
-    "searchOpenalexAuthors": "OpenAlex-Autoren suchen",
+    "searchOpenalexAuthors": "Autoreneinträge suchen",
     "nameAffiliationOrAuthorId": "Name, Zugehörigkeit oder Autoren-ID",
-    "openalexSearchIsUnavailableYourProfile": "Die OpenAlex-Suche ist nicht verfügbar. Ihr Profil und die aktuelle Zuordnung bleiben unverändert.",
+    "openalexSearchIsUnavailableYourProfile": "Die Autorensuche ist nicht verfügbar. Dein Profil und die aktuelle Verknüpfung bleiben unverändert.",
     "tryAgain": "Erneut versuchen",
     "couldNotLoadThisAuthorS": "Die Publikationen dieser Autorin bzw. dieses Autors konnten nicht geladen werden",
     "searchingOpenalexAuthors": "OpenAlex-Autoren werden durchsucht",
     "noAuthorsMatchYourSearch": "Keine Autoren passen zu Ihrer Suche.",
-    "searchForAnAuthorByName": "Suchen Sie eine Autorin bzw. einen Autor nach Name, Zugehörigkeit oder OpenAlex-ID.",
+    "searchForAnAuthorByName": "Suche einen Autor nach Name, Einrichtung oder ID.",
     "back": "Zurück",
     "confirmMatch": "Zuordnung bestätigen",
-    "unlinkOpenalexAuthor": "Verknüpfung mit OpenAlex-Autor aufheben?",
-    "thisRemovesTheImportedResearchFrom": "Dadurch wird die importierte Forschung aus diesem Profil entfernt. Ihre Profildetails und ausgewählten Publikationen bleiben erhalten.",
+    "unlinkOpenalexAuthor": "Haupteintrag entfernen?",
+    "thisRemovesTheImportedResearchFrom": "Seine Artikel verlassen dieses Profil, außer ein anderer verknüpfter Eintrag enthält sie. Andere verknüpfte Einträge, deine Profilangaben und ausgewählten Publikationen bleiben.",
     "unlinkAuthor": "Verknüpfung aufheben",
     "createAuthor": "Autor erstellen",
     "findAuthors": "Autoren finden",
@@ -5443,17 +5447,18 @@
     "sectionOpenAlex": "Autoreneinträge",
     "sectionAccess": "Zugriff",
     "authorRecords": "Autoreneinträge",
-    "authorRecordsDescription": "Jeder Eintrag, der diese Person ist. Die Artikelsuche liest alle.",
+    "authorRecordsDescription": "Eine Person kann im Index auf mehrere Einträge verteilt sein. Füge die hinzu, die diese Person sind; die Artikelsuche liest sie alle.",
     "changeMainRecord": "Haupteintrag ändern",
     "mainRecord": "Haupt",
     "claimAuthor": "Diesen Autor beanspruchen",
-    "otherRecordsWithThisName": "Weitere Einträge mit diesem Namen",
+    "otherRecordsWithThisName": "Weitere Einträge mit diesem Namen: Prüfe, ob es jeweils dieselbe Person ist",
     "addRecord": "Hinzufügen",
     "removeRecord": "Diesen Eintrag entfernen",
     "recordPapers": "{count, plural, one {{shown} Artikel} other {{shown} Artikel}}",
     "authorsIn": "In {source}",
     "couldNotSearchAuthors": "Autoren konnten nicht gesucht werden. Versuche es gleich noch einmal.",
-    "searchingAuthors": "Autoren werden gesucht"
+    "searchingAuthors": "Autoren werden gesucht",
+    "recordsFull": "Dieses Profil hat bereits {max} Einträge. Entferne einen, um einen anderen hinzuzufügen."
   },
   "connectApp": {
     "signInToContinue": "Melden Sie sich an, um fortzufahren",

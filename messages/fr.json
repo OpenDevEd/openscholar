@@ -240,7 +240,8 @@
     "searchingDescription": "Recherche dans des millions d'articles...",
     "noResultsMatchFilters": "Aucun résultat ne correspond à vos filtres",
     "updatingResults": "Mise à jour des résultats...",
-    "adjustTab": "Ajuster"
+    "adjustTab": "Ajuster",
+    "firstOnly": "Affichage des {shown} premiers sur {total}. Affinez la recherche pour atteindre le reste."
   },
   "pricing": {
     "chooseYourPlan": "Choisissez votre forfait",
@@ -487,7 +488,8 @@
   "downloads": {
     "downloadAll": "Tout télécharger",
     "downloadEssentialJSON": "Télécharger les infos essentielles en JSON",
-    "downloadEssentialCSV": "Télécharger les infos essentielles en CSV"
+    "downloadEssentialCSV": "Télécharger les infos essentielles en CSV",
+    "pageOnly": "Les {count} articles de cette page"
   },
   "extraction": {
     "searchJobs": "Rechercher des tâches...",
@@ -1032,7 +1034,8 @@
     "queryHistory": "Historique des requêtes",
     "queryEvolution": "Évolution de la requête",
     "bookmarkNamePlaceholder": "nom-du-favori",
-    "recentSearches": "Recherches récentes"
+    "recentSearches": "Recherches récentes",
+    "clearAllHistoryConfirmWhole": "Voulez-vous vraiment supprimer tout votre historique de recherche ? Cette action est irréversible."
   },
   "commandCenter": {
     "searchesLabel": "recherches",
@@ -1097,6 +1100,7 @@
     "searchWithQuery": "Rechercher avec cette requête",
     "removeFromHistory": "Retirer de l'historique",
     "openDoi": "Ouvrir le DOI",
+    "openPaperPage": "Ouvrir la page de l'article",
     "doiTooltip": "DOI : {doi}",
     "resetToDefaults": "Réinitialiser par défaut",
     "focusMode": "Mode focus",
@@ -4968,7 +4972,7 @@
     },
     "tryAgain": "Réessayer",
     "unavailable": {
-      "oql": "Une recherche écrite en OQL ne peut pas être comptée, elle n'a donc pas d'aperçu.",
+      "oql": "Aucune synthèse n'est disponible pour une recherche écrite en OQL.",
       "ratings": "Un aperçu lit toute la recherche, il n'est donc pas rédigé tant que les résultats sont filtrés par vos notes."
     },
     "dialog": {
@@ -5368,7 +5372,7 @@
     "loadingPublications": "Chargement des publications",
     "noPublishedWorksAreLinkedTo": "Aucun travail publié n’est encore lié à cet auteur.",
     "connectTheAuthorSResearchRecord": "Reliez le dossier de recherche de l’auteur pour afficher ses publications.",
-    "linkAnAuthorToDisplayTheir": "Reliez un auteur pour afficher ses publications OpenAlex.",
+    "linkAnAuthorToDisplayTheir": "Associez un auteur pour afficher ses publications.",
     "changeMatch": "Modifier la correspondance",
     "findAuthor": "Trouver un auteur",
     "unlink": "Dissocier",
@@ -5389,22 +5393,22 @@
     "noPublicationsToDisplay": "Aucune publication {source} à afficher.",
     "showMore": "Afficher plus",
     "confirmAuthorMatch": "Confirmer la correspondance de l’auteur",
-    "findAuthorOnOpenalex": "Trouver l’auteur sur OpenAlex",
+    "findAuthorOnOpenalex": "Trouver une fiche d'auteur",
     "checkTheAffiliationAndResearchBefore": "Vérifiez l’affiliation et les travaux avant de relier cette fiche.",
-    "searchByNameAffiliationOrOpenalex": "Recherchez par nom, affiliation ou identifiant d’auteur OpenAlex.",
+    "searchByNameAffiliationOrOpenalex": "Recherchez par nom, établissement ou identifiant d'auteur.",
     "yourNameBiographyLinksAndSelected": "Votre nom, votre biographie, vos liens et vos publications sélectionnées resteront tels que vous les avez saisis.",
-    "searchOpenalexAuthors": "Rechercher des auteurs OpenAlex",
+    "searchOpenalexAuthors": "Rechercher des fiches d'auteur",
     "nameAffiliationOrAuthorId": "Nom, affiliation ou identifiant d’auteur",
-    "openalexSearchIsUnavailableYourProfile": "La recherche OpenAlex est indisponible. Votre profil et la correspondance actuelle ne sont pas modifiés.",
+    "openalexSearchIsUnavailableYourProfile": "La recherche d'auteurs est indisponible. Votre profil et le lien actuel ne changent pas.",
     "tryAgain": "Réessayer",
     "couldNotLoadThisAuthorS": "Impossible de charger les publications de cet auteur",
     "searchingOpenalexAuthors": "Recherche d’auteurs OpenAlex",
     "noAuthorsMatchYourSearch": "Aucun auteur ne correspond à votre recherche.",
-    "searchForAnAuthorByName": "Recherchez un auteur par nom, affiliation ou identifiant OpenAlex.",
+    "searchForAnAuthorByName": "Recherchez un auteur par nom, établissement ou identifiant.",
     "back": "Retour",
     "confirmMatch": "Confirmer la correspondance",
-    "unlinkOpenalexAuthor": "Dissocier l’auteur OpenAlex ?",
-    "thisRemovesTheImportedResearchFrom": "Cela retire de ce profil les travaux importés. Les détails de votre profil et vos publications sélectionnées restent.",
+    "unlinkOpenalexAuthor": "Retirer la fiche principale ?",
+    "thisRemovesTheImportedResearchFrom": "Ses articles quittent ce profil, sauf si une autre fiche associée les contient. Les autres fiches associées, les détails du profil et les publications choisies restent.",
     "unlinkAuthor": "Dissocier l’auteur",
     "createAuthor": "Créer un auteur",
     "findAuthors": "Trouver des auteurs",
@@ -5442,17 +5446,18 @@
     "sectionOpenAlex": "Fiches de l'auteur",
     "sectionAccess": "Accès",
     "authorRecords": "Fiches de l'auteur",
-    "authorRecordsDescription": "Chaque fiche qui correspond à cette personne. La recherche d'articles les lit toutes.",
+    "authorRecordsDescription": "Une personne peut être répartie sur plusieurs fiches dans l'index. Ajoutez celles qui sont cette personne : la recherche d'articles les lit toutes.",
     "changeMainRecord": "Changer la fiche principale",
     "mainRecord": "Principale",
     "claimAuthor": "Revendiquer cet auteur",
-    "otherRecordsWithThisName": "Autres fiches avec ce nom",
+    "otherRecordsWithThisName": "Autres fiches avec ce nom : vérifiez que chacune est bien la même personne",
     "addRecord": "Ajouter",
     "removeRecord": "Retirer cette fiche",
     "recordPapers": "{count, plural, one {{shown} article} other {{shown} articles}}",
     "authorsIn": "Dans {source}",
     "couldNotSearchAuthors": "Impossible de rechercher des auteurs. Réessayez dans un instant.",
-    "searchingAuthors": "Recherche d'auteurs"
+    "searchingAuthors": "Recherche d'auteurs",
+    "recordsFull": "Ce profil a déjà {max} fiches. Retirez-en une pour en ajouter une autre."
   },
   "connectApp": {
     "signInToContinue": "Connectez-vous pour continuer",

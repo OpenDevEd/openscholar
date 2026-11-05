@@ -25,7 +25,7 @@ import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
-import { SEMANTIC_FIELD, type SearchSource } from './source';
+import { paramsAsRun, SEMANTIC_FIELD, type SearchSource } from './source';
 import { useSearchSource } from './use-search-source';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
@@ -341,7 +341,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const fetcher = useCallback(async ([, paramsJson, searched]: readonly [string, string, SearchSource]) => {
     const parsedParams = JSON.parse(paramsJson) as Partial<SearchParams>;
     const snapshotParams = paramsSnapshotByKey.get(paramsJson);
-    const params: SearchParams = snapshotParams
+    const saved: SearchParams = snapshotParams
       ? cloneSearchParams(snapshotParams)
       : {
           ...DEFAULT_SEARCH_PARAMS,
@@ -364,6 +364,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
           rated: DEFAULT_SEARCH_PARAMS.rated,
           lang: DEFAULT_SEARCH_PARAMS.lang,
         };
+    const params = paramsAsRun(saved, searched);
 
     const previousParams = previousTrackedParamsRef.current;
     const changedParamKeys = getChangedParamKeys(previousParams, params);
@@ -476,6 +477,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       keepPreviousData: true,
       dedupingInterval: 5000,
       errorRetryCount: 2,
+      shouldRetryOnError: (err) => !(err instanceof SearchError && err.status === 400),
       errorRetryInterval: 1000,
       onSuccess: (data) => {
         if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === paramsKey) {
@@ -487,9 +489,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       },
       onError: (err) => {
         console.error('Search failed:', err);
-        // An OQL query OpenAlex rejects shows its reason under the query box instead.
-        const rejectedOql = currentParams.field === OQL_FIELD && err instanceof SearchError && err.status === 400;
-        if (!rejectedOql) toast.search.failed(err);
+        // A query the source refuses says why on the page, in place of its results.
+        if (!(err instanceof SearchError && err.status === 400)) toast.search.failed(err);
       },
     }
   );

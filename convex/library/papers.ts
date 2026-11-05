@@ -26,10 +26,10 @@ const workOf = (id: string) => openalexAddress(openalexWorkOf(id)) ?? (ownWork(i
 export const saveAction = defineUserAction({
   path: "library/papers:save",
   description:
-    "Saves a paper to the person's library by its ID alone, as results give it (such as W2741809807): its record is read from OpenAlex here, so nothing else about the paper is needed. " +
+    "Saves a paper to the person's library by its ID alone, as results give it (such as W2741809807): its record is read from the index here, so nothing else about the paper is needed. " +
     "`rating`, 0 to 5, rates it as well; left out or null, a new paper has no rating and one already saved keeps its own. " +
     "With `collectionId`, the paper also goes into that collection of theirs, in this one call: to save papers into a collection, this is the only action needed. " +
-    "Returns the paper's title, and `undo`: the action to run and the arguments to run it with to put things back. One request against the person's OpenAlex allowance.",
+    "Returns the paper's title, and `undo`: the action to run and the arguments to run it with to put things back. One request against the person's search allowance.",
   // null is what a model that fills in every argument sends for the ones it doesn't mean.
   args: { id: v.string(), rating: v.optional(v.union(v.number(), v.null())), collectionId: v.optional(v.union(v.id("collections"), v.null())) },
   returns: savedByIdValidator,
@@ -46,7 +46,7 @@ export const saveAction = defineUserAction({
   },
   run: async (ctx, { userId, workspaceId, author }, { id, rating, collectionId }, call) => {
     const openalexId = workOf(id);
-    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its OpenAlex ID, such as W2741809807, as results give it, or its key, such as openalex:W2741809807.");
+    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its ID in the index, such as W2741809807, as results give it, or its key, such as openalex:W2741809807.");
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const source = sourceForId(openalexId, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));

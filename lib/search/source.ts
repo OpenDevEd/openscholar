@@ -35,6 +35,10 @@ export const questionAsWords = (question: string) => question.replace(/[,|*?()"]
 export const asKeywords = <Filters extends { searchField: string }>(filters: Filters): Filters =>
   filters.searchField === SEMANTIC_FIELD ? { ...filters, searchField: "title_and_abstract" } : filters;
 
+/** Search params as a source runs them: a question saved on our index runs on OpenAlex as its words, with the filters and sort words take. What's saved and shared stays the question. */
+export const paramsAsRun = <Params extends { field: string; q: string }>(params: Params, source: SearchSource): Params =>
+  source === "openalex" && params.field === SEMANTIC_FIELD ? { ...params, field: "title_and_abstract", q: questionAsWords(params.q) } : params;
+
 /** Filters a source can't serve, by their panel in the search sidebar. They aren't offered while it's active. */
 export const UNSERVED_FILTER_PANELS: Record<SearchSource, readonly string[]> = {
   openalex: [],

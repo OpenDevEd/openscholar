@@ -36,6 +36,8 @@ export interface PreparedOpenAlexSearch {
   countryNames: string[];
   /** The query OpenAlex is asked, after keyword expansion, country focus and the review filter. Null when the query is invalid. */
   finalApiQuery: string | null;
+  /** It's past what either source reads, which the results page says in place of results. */
+  tooLong?: boolean;
   effectiveFilters: SearchFilters;
   effectiveCitesItemId?: string;
   effectiveRelatedToItemId?: string;
@@ -137,9 +139,9 @@ export function prepareOpenAlexSearch(
 
   // Said here in words about the search box: past this, the API refuses it in terms of its own fields. Checked on what's sent, shortcuts expanded and terms added.
   if (!oql && finalApiQuery.length > MAX_QUERY_LENGTH) {
-    const warning = options.getMessage?.("validation.queryTooLong", { max: String(MAX_QUERY_LENGTH) }) ?? `A search can be at most ${MAX_QUERY_LENGTH} characters.`;
+    const warning = options.getMessage?.("queryTooLong", { max: String(MAX_QUERY_LENGTH) }) ?? `A search can be at most ${MAX_QUERY_LENGTH} characters.`;
     options.onWarning?.(warning);
-    return { validation: { isValid: false, expandedQuery: query, warnings: [warning] }, countryNames, finalApiQuery: null, effectiveFilters };
+    return { validation: { isValid: false, expandedQuery: query, warnings: [warning] }, countryNames, finalApiQuery: null, effectiveFilters, tooLong: true };
   }
 
   return {

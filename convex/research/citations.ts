@@ -22,7 +22,7 @@ export const citeAction = defineUserAction({
   path: "research/citations:cite",
   description:
     "Cites one paper in a citation style, by its ID as results give it, such as W2741809807: apa, harvard, chicago, mla, vancouver or bibtex, or any of the citation picker's other styles by its ID, such as ieee or nature. " +
-    "`language` is the language the person writes to you in, as en-US, en-GB, fr, hi, ja or zh, for the style's own words and dates; English otherwise. Returns the citation as text, with the paper's title and the style's name. The paper's record is one request against the person's OpenAlex allowance; its DOI's metadata comes from the publisher where there is some.",
+    "`language` is the language the person writes to you in, as en-US, en-GB, fr, hi, ja or zh, for the style's own words and dates; English otherwise. Returns the citation as text, with the paper's title and the style's name. The paper's record is one request against the person's search allowance; its DOI's metadata comes from the publisher where there is some.",
   args: { id: v.string(), style: v.string(), language: v.optional(v.union(v.string(), v.null())) },
   returns: citedValidator,
   spendsCredits: false,

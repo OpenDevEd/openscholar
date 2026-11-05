@@ -15,6 +15,7 @@ import {
 import { shortcutExpansions, useKeywordExpansionStore } from "@/lib/store";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { SEMANTIC_FIELD } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 /** One colour per concept, the same in the query box and in the results. */
 const CONCEPT_STYLES = [
@@ -166,9 +167,10 @@ const QueryMatchContext = createContext<QueryMatcher | null>(null);
 export function QueryMatchProvider({ query, field, children }: { query: string; field: string; children: ReactNode }) {
   const expansions = useShortcutExpansions();
   const { on } = useQueryHighlight();
+  const source = useSearchSource();
   const matcher = useMemo(
-    () => (!on || field === OQL_FIELD || field === SEMANTIC_FIELD || !query.trim() ? null : queryMatcher(query, expansions)),
-    [on, query, field, expansions],
+    () => (!on || field === OQL_FIELD || (field === SEMANTIC_FIELD && source === "openscholar") || !query.trim() ? null : queryMatcher(query, expansions)),
+    [source, on, query, field, expansions],
   );
   return <QueryMatchContext.Provider value={matcher}>{children}</QueryMatchContext.Provider>;
 }

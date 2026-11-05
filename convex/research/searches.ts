@@ -514,7 +514,7 @@ function shownPaper(work: Work, paper: SearchPaper) {
 
 /**
  * A page of the papers a request finds, as the model reads them, in the order its results
- * page lists them. Each request counts against the person's OpenAlex allowance.
+ * page lists them. Each request counts against the person's search allowance.
  */
 export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: SavedSearchRequest, page: number, notValid: string): Promise<Infer<typeof resultsValidator>> {
   if (!Number.isInteger(page) || page < 1) throw createError("VALIDATION_ERROR", "Pages count from 1.");
@@ -567,9 +567,9 @@ export const recount = internalAction({
 export const resultsAction = defineUserAction({
   path: "research/searches:results",
   description:
-    `Reads a page of a saved search's results from OpenAlex, ${RESULTS_PAGE} papers a page: each paper's ID, title, first authors with their IDs, the countries they work in, year, venue, type, DOI, whether it's open access, citations and the start of its abstract, with how many results the search has in all. ` +
+    `Reads a page of a saved search's results from the index, ${RESULTS_PAGE} papers a page: each paper's ID, title, first authors with their IDs, the countries they work in, year, venue, type, DOI, whether it's open access, citations and the start of its abstract, with how many results the search has in all. ` +
     "The papers come in the order the search's own page lists them. A search that keeps only papers the person rated returns those of each page's papers, and its total counts the papers before that filter. " +
-    "Reading counts against the person's OpenAlex allowance: one request a page by relevance, and under any other sort one for every 200 results up to the page.",
+    "Reading counts against the person's search allowance: one request a page by relevance, and under any other sort one for every 200 results up to the page.",
   args: { id: v.string(), page: pageValidator },
   returns: resultsValidator,
   spendsCredits: false,

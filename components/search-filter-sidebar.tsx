@@ -2,6 +2,8 @@
 
 import { FilterCountControl } from "@/components/shared/filter-count-control";
 import React from "react";
+import { SEMANTIC_FIELD } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { FilterSidebar } from "@/components/shared/filter-sidebar";
 import { useFilterSidebarStore, getFilterSidebarDimensions } from "@/lib/store";
 import {
@@ -16,10 +18,12 @@ import {
   clearedFilterUpdates,
 } from "@/lib/utils";
 import { countActiveFilters } from "@/lib/filters";
+import { DEFAULT_FILTERS } from "@/lib/utils";
 import { SidebarContent } from "./search-sidebar";
 
 export function SearchFilterSidebar() {
   const isMobile = useIsMobile();
+  const source = useSearchSource();
 
   const formState = useCurrentSearchFormState();
   const { citesItemId, citedByItemId, relatedToItemId } = formState;
@@ -36,7 +40,7 @@ export function SearchFilterSidebar() {
   }, [updateFilter]);
 
   // Active filter count
-  const activeFiltersCount = countActiveFilters({ ...formState, field: formState.currentSearchField });
+  const activeFiltersCount = countActiveFilters({ ...formState, field: formState.currentSearchField === SEMANTIC_FIELD && source === "openalex" ? DEFAULT_FILTERS.field : formState.currentSearchField });
 
   // The filter content rendered by both desktop and mobile paths
   const filterContent = (

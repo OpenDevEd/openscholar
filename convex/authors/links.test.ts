@@ -32,6 +32,14 @@ describe("a profile's author records", () => {
     expect(await t.query(api.authors.links.profileFor, { ids: ["OSA1"] })).toBeNull();
   });
 
+  it("refuses a claim when another profile holds any ID the person goes by", async () => {
+    const { t, ada, ben } = await setup();
+    const held = await ada.mutation(api.authors.links.claim, { authorId: "OSA2", name: "Susan Athey" });
+    await expect(ben.mutation(api.authors.links.claim, { authorId: "A1", knownAs: ["A1", "OSA2"], name: "Someone" })).rejects.toThrow(/another profile/);
+    expect(await t.query(api.authors.links.profileFor, { ids: ["A1"] })).toBeNull();
+    expect(await t.query(api.authors.links.profileFor, { ids: ["A1", "OSA2"] })).toBe(held);
+  });
+
   it("links more of the person's records, each to one profile at most, and up to its cap", async () => {
     const { t, ada, ben } = await setup();
     const profileId = await ada.mutation(api.authors.links.claim, { authorId: "A1", name: "Susan Athey" });

@@ -34,7 +34,7 @@ const summary = (profile: Doc<"authorProfiles">) => ({ profileId: profile._id, n
 export const directoryAction = defineUserQuery({
   path: "authors/assistant:directory",
   description:
-    `Lists author profiles, ${AUTHORS_LISTED} a page from \`cursor\`, newest first or the ones whose name matches \`search\`: each one's ID, name, headline, affiliation, ORCID and OpenAlex author ID; \`continueCursor\` is the next page's \`cursor\` until \`isDone\`. ` +
+    `Lists author profiles, ${AUTHORS_LISTED} a page from \`cursor\`, newest first or the ones whose name matches \`search\`: each one's ID, name, headline, affiliation, ORCID and author record ID; \`continueCursor\` is the next page's \`cursor\` until \`isDone\`. ` +
     "Public, as the Authors page is. One profile whole is authors/assistant:profile.",
   args: { search: v.optional(v.union(v.string(), v.null())), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: authorDirectoryValidator,
@@ -49,7 +49,7 @@ export const directoryForAssistant = assistantQuery(directoryAction);
 export const profileAction = defineUserQuery({
   path: "authors/assistant:profile",
   description:
-    "Reads an author profile by its ID, as its public page shows it: name, headline, affiliation, bio, website, LinkedIn, ORCID and OpenAlex author ID, and for one of this workspace whether the person owns or edits it. Null when there's none. " +
+    "Reads an author profile by its ID, as its public page shows it: name, headline, affiliation, bio, website, LinkedIn, ORCID and author record ID, and for one of this workspace whether the person owns or edits it. Null when there's none. " +
     "Its publications are authors/assistant:publications, and who has it authors/assistant:editors.",
   args: { profileId: v.string() },
   returns: authorProfileReadValidator,

@@ -24,11 +24,17 @@ function match(author: Author & { topics?: { display_name: string }[] | null }):
 
 /** Authors to link a profile to: the filters' own lookup, which also takes a pasted ID, with each author's topics. */
 export async function searchProfileAuthors(search: string, given?: SearchSource) {
-  const query = search.trim().slice(0, 200).replace(/^https:\/\/(?:openalex\.org|openscholar\.ai)\//, "");
+  const query = search.trim().slice(0, 200).replace(/^https:\/\/(?:openalex\.org|openscholar\.ai)\/(?:authors\/)?/, "");
   if (!query) return [];
   const source = await chosenSource(given);
   const limited = await spendOpenAlexRequests(lookupRequests("authors") + 1);
   if (limited) return limited;
+  // An ID finds that record, which the autocomplete behind the names doesn't. Our index's IDs are read from our index whichever is active.
+  if (AUTHOR_ID.test(query.toUpperCase())) {
+    const id = query.toUpperCase();
+    const record = await readOpenAlexAuthor(id, sourceForId(id, source)).catch(() => null);
+    return record ? [{...match(record as Author), id, works: []}] : [];
+  }
   const authors = await searchOpenAlex("authors", query, source);
   const topics = authors.length ? await readOpenAlexAuthorTopics(authors.map(author => author.id), source) : {};
   return authors.map((author): OpenAlexMatch => ({id: author.id, name: author.name, affiliation: author.detail ?? "", topics: topics[author.id] ?? "", works: []}));

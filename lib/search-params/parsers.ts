@@ -75,13 +75,16 @@ const parseAsAuthor = createParser({ parse: authorFilterValue, serialize: String
 const parseAsSource = createParser({ parse: (value) => sourceId(value) ?? null, serialize: String });
 const parseAsInstitution = createParser({ parse: (value) => institutionId(value) ?? null, serialize: String });
 const parseAsWork = createParser({ parse: (value) => workId(value) ?? null, serialize: String });
+// Not dropped when it isn't an ID: leaving it out would turn a similar search into a search of everything, so the search says it can't read it.
+const similarSeed = (value: string) => workId(value) ?? value.trim().slice(0, 100);
+const parseAsSeed = createParser({ parse: (value) => similarSeed(value) || null, serialize: String });
 
 export const searchParamsParsers = {
   // Core search
   q: parseAsString.withDefault(''),
   field: parseAsString.withDefault('title_and_abstract'),
   // Papers a search finds the closest to by meaning, on our index.
-  like: parseAsArrayOf(parseAsWork).withDefault([]),
+  like: parseAsArrayOf(parseAsSeed).withDefault([]),
   sort: parseAsString.withDefault('relevance_score:desc'),
   
   // Pagination
@@ -228,7 +231,7 @@ export function parseSearchParamsFromUrl(
   return {
     q: searchParams.get('q') ?? DEFAULT_SEARCH_PARAMS.q,
     field: field !== null && SEARCH_FIELDS.some(({ value }) => value === field) ? field : DEFAULT_SEARCH_PARAMS.field,
-    like: parseListParam(searchParams, 'like').map(workId).filter((id) => id !== undefined),
+    like: parseListParam(searchParams, 'like').map(similarSeed).filter(Boolean),
     sort: searchParams.get('sort') ?? DEFAULT_SEARCH_PARAMS.sort,
     page:
       parseIntegerParam(searchParams, 'page', DEFAULT_SEARCH_PARAMS.page) ??

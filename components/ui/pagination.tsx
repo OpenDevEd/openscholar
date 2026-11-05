@@ -51,6 +51,13 @@ function PaginationLink({
   return (
     <a
       aria-current={isActive ? "page" : undefined}
+      // Most lists page with a click and no address: it still takes the keyboard, unless it's disabled.
+      role={props.href ? undefined : "link"}
+      tabIndex={props.href || props["aria-disabled"] ? undefined : 0}
+      onKeyDown={(event) => {
+        if (!props.href && !props["aria-disabled"] && event.key === "Enter") event.currentTarget.click();
+        props.onKeyDown?.(event);
+      }}
       data-slot="pagination-link"
       data-active={isActive}
       className={cn(

@@ -35,6 +35,8 @@ export async function generateMetadata({params}: {params: Promise<{profileId: st
 
 export default async function Page({params}: {params: Promise<{profileId: string; slug?: string}>}) {
   const {profileId, slug} = await params;
+  // IDs are written in capitals; a link written otherwise goes to the same place.
+  if (isAuthorId(profileId.toUpperCase()) && profileId !== profileId.toUpperCase()) redirect(workspaceHref(slug, `/authors/${profileId.toUpperCase()}`));
   // An author's ID opens their profile when one links it, the page of the OpenAlex author it's paired with when there is one, or a page of its own.
   if (isAuthorId(profileId)) {
     // Asked first: a linked ID opens its profile whether or not the source can read the record just now.
@@ -55,6 +57,8 @@ export default async function Page({params}: {params: Promise<{profileId: string
     preloadQuery(api.authors.publications.list, {profileId}, {token}),
     preloadQuery(api.authors.links.records, {profileId}, {token}),
   ]);
+  // An address that names nothing is the site's own not-found page, with a way back.
+  if (preloadedQueryResult(preloadedRecord) === null) notFound();
   const main = preloadedQueryResult(preloadedRecord)?.openalex;
   return <PreloadedAuthorProfile profileId={profileId as Id<"authorProfiles">} preloadedRecord={preloadedRecord} preloadedReferences={preloadedReferences} preloadedRecords={preloadedRecords} card={main ? await cardOf(main).catch((error) => {
     // The profile stands without its record's details.

@@ -49,6 +49,7 @@ function EntityHoverCard({ trigger, children }: { trigger: ReactElement; childre
   const fromKeyboard = useRef(false);
   // The name that a keyboard opened the card from, which focus goes back to.
   const openedFrom = useRef<HTMLElement | null>(null);
+  const card = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const after = (ms: number, next: boolean) => {
     clearTimeout(timer.current);
@@ -62,10 +63,14 @@ function EntityHoverCard({ trigger, children }: { trigger: ReactElement; childre
         onKeyDown: (event) => {
           if (event.key !== "ArrowDown") return;
           event.preventDefault();
-          fromKeyboard.current = true;
           openedFrom.current = event.currentTarget as HTMLElement;
           clearTimeout(timer.current);
-          setOpen(true);
+          // Open already, from a hover: nothing will move focus for it.
+          if (open) card.current?.querySelector<HTMLElement>("a, button")?.focus();
+          else {
+            fromKeyboard.current = true;
+            setOpen(true);
+          }
         },
         "aria-expanded": open,
         "aria-haspopup": "dialog",
@@ -74,6 +79,7 @@ function EntityHoverCard({ trigger, children }: { trigger: ReactElement; childre
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverAnchor asChild>{name}</PopoverAnchor>
       <PopoverContent
+        ref={card}
         align="start"
         className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0"
         onClick={(event) => event.stopPropagation()}
@@ -146,7 +152,8 @@ function CardFilterButton({ filter, value, name }: { filter: ReturnType<typeof u
   const closeFocus = useCloseFocus();
   return (
     <Button size="sm" variant={pressed ? "outline" : "default"} className="min-w-0" aria-pressed={pressed} onClick={() => {
-      if (!filter.canFilter) closeFocus();
+      // Filtering changes the list behind focus mode, so that's what it goes back to.
+      closeFocus();
       filter.toggle({ value, name });
     }}>
       {filter.canFilter ? <Filter aria-hidden /> : <Search aria-hidden />}

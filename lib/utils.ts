@@ -356,7 +356,7 @@ export function createSearchParameters(
   const doi = KEYWORD_FIELDS.has(filters.searchField) ? doiOfQuery(query) : null;
   if (doi) {
     apiFilters.doi = doi;
-  } else if (filters.searchField === 'semantic') {
+  } else if (filters.searchField === 'semantic' && !searchParams.similar) {
     if (query) searchParams.semantic = query;
   } else if (query) {
     // Map search fields to SDK filter format
@@ -378,7 +378,7 @@ export function createSearchParameters(
       apiFilters[filterKey] = buildSearchSubfilter(query);
     } else {
       // Fallback to main search. Our index takes no search beside similar papers, only a filter on the words.
-      if (searchParams.similar) apiFilters[filters.searchField] = buildSearchSubfilter(query);
+      if (searchParams.similar) apiFilters[filters.searchField === 'semantic' ? 'title_and_abstract' : filters.searchField] = buildSearchSubfilter(query);
       else searchParams.search = query;
     }
   }

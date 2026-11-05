@@ -1,4 +1,5 @@
 import { CitationControl } from "@/components/citation-control";
+import { useTranslations } from "next-intl";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,6 +71,7 @@ export function FocusModeHeader({
   tFocus,
   tAccessibility,
 }: FocusModeHeaderProps) {
+  const tCommon = useTranslations("common");
   const effectiveRating = useEffectiveRating(currentPaper.id);
   // Any paper named by its source but an upload is rated and saved (an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = saveablePaper(currentPaper.id);
@@ -78,12 +80,12 @@ export function FocusModeHeader({
   const page = usePaperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
   const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
   const previous = (
-    <Button variant="outline" size="icon-sm" onClick={onGoToPrevious} disabled={currentIndex === 0}>
+    <Button variant="outline" size="icon-sm" aria-label={tCommon("previous")} onClick={onGoToPrevious} disabled={currentIndex === 0}>
       <ChevronLeft className="h-3 w-3" />
     </Button>
   );
   const next = (
-    <Button variant="outline" size="icon-sm" onClick={onGoToNext} disabled={currentIndex === totalPapers - 1}>
+    <Button variant="outline" size="icon-sm" aria-label={tCommon("next")} onClick={onGoToNext} disabled={currentIndex === totalPapers - 1}>
       <ChevronRight className="h-3 w-3" />
     </Button>
   );
@@ -239,6 +241,7 @@ export function FocusModeHeader({
               <Button
                 variant={showSettings ? "outline-primary" : "outline"}
                 size="icon-sm"
+                aria-label={tCommon("settings")}
                 onClick={onToggleSettings}
               >
                 <Settings className="h-3 w-3" />
@@ -274,6 +277,7 @@ export function FocusModeHeader({
                   <Button
                     variant="outline"
                     size="icon-sm"
+                    aria-label={tAccessibility("openPaperPage")}
                     onClick={() => window.open(page!, "_blank")}
                   >
                     <ExternalLink className="h-3 w-3" />

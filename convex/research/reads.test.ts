@@ -59,7 +59,7 @@ describe("the assistant's reads of OpenAlex", () => {
     });
     await expect(alice.action(api.research.authors.get, { id: "A404" })).rejects.toThrow(/no author by that ID/);
     requests = [];
-    await expect(alice.action(api.research.authors.get, { id: "../works/W1" })).rejects.toThrow(/OpenAlex ID, such as A5023888391/);
+    await expect(alice.action(api.research.authors.get, { id: "../works/W1" })).rejects.toThrow(/ID, such as A5023888391/);
     expect(requests).toEqual([]);
   });
 

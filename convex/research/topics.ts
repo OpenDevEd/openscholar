@@ -18,7 +18,7 @@ export const getAction = defineUserAction({
   path: "research/topics:get",
   description:
     "Reads a research area by its ID, such as T10011, as research/lookup:find gives it with kind researchArea: its name, what it covers, its keywords, the subfield, field and domain it sits under, and how many papers it has, with its page in the app. " +
-    "Its papers are research/papers:search with `researchAreas`. One OpenAlex hasn't been asked about before is one request against the person's OpenAlex allowance.",
+    "Its papers are research/papers:search with `researchAreas`. One the index hasn't been asked about before is one request against the person's search allowance.",
   args: { id: v.string() },
   returns: topicValidator,
   spendsCredits: false,

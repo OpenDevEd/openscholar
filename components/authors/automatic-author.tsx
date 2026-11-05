@@ -35,7 +35,7 @@ function ClaimAuthor({ card }: { card: AuthorCard }) {
       onClick={async () => {
         setClaiming(true);
         try {
-          const id = await claim({ authorId: card.paired ?? card.id, name: card.name });
+          const id = await claim({ authorId: card.paired ?? card.id, knownAs: card.records, name: card.name });
           router.push(`/authors/${id}/configuration`);
         } catch (error) {
           toast.error(readConvexErrorData(error)?.message ?? t("couldNotCreateProfile"));
@@ -56,7 +56,7 @@ export function AutomaticAuthor({ card, firstWorks }: { card: AuthorCard; firstW
   const works = useSWRInfinite((page, previous: { results: unknown[] } | null) => {
     if (previous && previous.results.length < 10) return null;
     return ["author-profile-works", card.id, page + 1, source] as const;
-  }, ([, id, page, reading]) => unlessLimited(readProfileAuthorWorks(id, page, reading)), firstWorks ? { fallbackData: [firstWorks], revalidateFirstPage: false, revalidateOnMount: false } : undefined);
+  }, ([, id, page, reading]) => unlessLimited(readProfileAuthorWorks(id, page, reading)), firstWorks ? { fallbackData: [firstWorks], revalidateFirstPage: false, revalidateIfStale: false } : undefined);
   const profile: AuthorProfile = {
     id: card.id as Id<"authorProfiles">,
     revision: 0,
