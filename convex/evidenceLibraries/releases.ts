@@ -42,7 +42,7 @@ async function readCommunities(ctx: QueryCtx) {
   const communities = await Promise.all(
     libraries.filter((library) => library.state === "active" && library.runtimeBindingId).map((library) => readCommunity(ctx, library)),
   );
-  return communities.filter((community) => community !== null).toSorted((a, b) => a.records - b.records);
+  return communities.filter((community) => community !== null).sort((a, b) => a.records - b.records);
 }
 
 async function readCommunity(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
