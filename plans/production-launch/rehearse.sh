@@ -3,7 +3,9 @@
 # Needs checkouts of main and dev at $R/main and $R/dev, with no .env.local, and prod Convex's URL and admin key in $R/prod-convex.env.
 R="${R:-$HOME/.os-rehearsal}"; t0=$(date +%s); stamp(){ echo "[$(( $(date +%s)-t0 )) s] $*"; }
 HERE="$(cd "$(dirname "$0")" && pwd)"
-set -a; . "$R/prod-convex.env"; set +a
+unset CONVEX_DEPLOYMENT CONVEX_SELF_HOSTED_URL CONVEX_SELF_HOSTED_ADMIN_KEY
+set -a; . "$R/prod-convex.env" || exit 1; set +a
+[ -n "$CONVEX_SELF_HOSTED_URL" ] && [ -n "$CONVEX_SELF_HOSTED_ADMIN_KEY" ] || { echo "$R/prod-convex.env needs CONVEX_SELF_HOSTED_URL and CONVEX_SELF_HOSTED_ADMIN_KEY"; exit 1; }
 live(){ CONVEX_DEPLOYMENT=dev:formal-rabbit-271 CONVEX_SELF_HOSTED_URL= CONVEX_SELF_HOSTED_ADMIN_KEY= npx convex "$@"; }
 cd $R/main || exit 1
 cp convex/schema.ts /tmp/m.bak; perl -0pi -e 's/\}\);\s*$/}, { schemaValidation: false });\n/' convex/schema.ts
