@@ -1,12 +1,14 @@
 ---
 // The real sites of our live communities on one flat strip: one large in the middle, its neighbours cut off by the edges of the window.
 import { COMMUNITIES } from "../data/site.mjs";
-const { eager = true } = Astro.props;
+// `follow`: no timer of its own; the page says which community is in front (the home hero's satellites) with a
+// `community:front` event, and a window chosen here is passed back as `community:pick`.
+const { eager = true, follow = false } = Astro.props;
 ---
-<nav class="rg" data-rg aria-label="Live Evidence Communities">
+<nav class:list={["rg", { follow }]} data-rg data-follow={follow || undefined} aria-label="Live Evidence Communities">
   <div class="stage3d"><ul class="track" data-track>{COMMUNITIES.map((c, i) => <li style={`--d:${((i + 9) % 6) - 3};--c:${c.color}`} class:list={{ on: i === 0 }}><a href={c.url} aria-label={`${c.name}: ${c.text}`}><span class="bar">{c.host}</span><img src={`/img/site-${c.key}.avif`} width="960" height="600" loading={eager && (i < 2 || i === 5) ? "eager" : "lazy"} decoding="async" alt="" /></a></li>)}</ul></div>
   <div class="cap" aria-hidden="true">{COMMUNITIES.map((c, i) => <div class:list={["about", { on: i === 0 }]} style={`--c:${c.color}`}><b>{c.name}</b><span>{c.text}</span></div>)}</div>
-  <i class="timer" data-timer aria-hidden="true"></i>
+  {!follow && <i class="timer" data-timer aria-hidden="true"></i>}
 </nav>
 <script>
   const root = document.querySelector("[data-rg]");
@@ -14,9 +16,11 @@ const { eager = true } = Astro.props;
     const track = root.querySelector("[data-track]"), items = [...track.children], caps = [...root.querySelectorAll(".about")], timer = root.querySelector("[data-timer]"); let at = 0;
     const idx = (k) => ((k % items.length) + items.length) % items.length;
     // The ring only ever turns the short way round.
-    const go = (n) => { const d = ((n - idx(at) + 9) % 6) - 3; at += d; items.forEach((li, i) => { const next = ((i - n + 9) % 6) - 3, wraps = Math.abs(next - +li.style.getPropertyValue("--d")) > 3; /* A frame going round from one end to the other jumps while it's off screen, instead of flying across the strip. */ if (wraps) li.style.transition = "none"; li.style.setProperty("--d", next); if (wraps) { void li.offsetWidth; li.style.transition = ""; } li.classList.toggle("on", i === n); caps[i].classList.toggle("on", i === n); }); timer.style.animation = "none"; void timer.offsetWidth; timer.style.animation = ""; };
-    timer.addEventListener("animationend", () => go(idx(at + 1)));
-    items.forEach((li, i) => { const a = li.querySelector("a"); a.addEventListener("click", (e) => { if (i !== idx(at)) { e.preventDefault(); root.classList.add("held"); go(i); } }); a.addEventListener("focus", () => { if (i !== idx(at) && a.matches(":focus-visible")) go(i); }); });
+    const go = (n) => { const d = ((n - idx(at) + 9) % 6) - 3; at += d; items.forEach((li, i) => { const next = ((i - n + 9) % 6) - 3, wraps = Math.abs(next - +li.style.getPropertyValue("--d")) > 3; /* A frame going round from one end to the other jumps while it's off screen, instead of flying across the strip. */ if (wraps) li.style.transition = "none"; li.style.setProperty("--d", next); if (wraps) { void li.offsetWidth; li.style.transition = ""; } li.classList.toggle("on", i === n); caps[i].classList.toggle("on", i === n); }); if (timer) { timer.style.animation = "none"; void timer.offsetWidth; timer.style.animation = ""; } };
+    const pick = (i) => { go(i); root.dispatchEvent(new CustomEvent("community:pick", { bubbles: true, detail: i })); };
+    if (timer) timer.addEventListener("animationend", () => go(idx(at + 1)));
+    if (root.hasAttribute("data-follow")) document.addEventListener("community:front", (e) => { if (e.detail !== idx(at)) go(e.detail); });
+    items.forEach((li, i) => { const a = li.querySelector("a"); a.addEventListener("click", (e) => { if (i !== idx(at)) { e.preventDefault(); root.classList.add("held"); pick(i); } }); a.addEventListener("focus", () => { if (i !== idx(at) && a.matches(":focus-visible")) pick(i); }); });
     new IntersectionObserver(([en]) => root.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(root);
   }
 </script>
@@ -31,4 +35,8 @@ const { eager = true } = Astro.props;
   .cap { position: relative; min-height: 84px; margin-top: 12px; padding-inline: 20px; text-align: center; } .about { display: grid; justify-items: center; gap: 6px; } :global(.has-js) .about { position: absolute; inset: 0 20px auto; opacity: 0; transform: translateY(8px); transition: opacity .3s var(--ease), transform .45s var(--ease); } :global(.has-js) .about.on { opacity: 1; transform: none; } .about b { font-weight: 500; font-size: clamp(18px, 1.7vw, 22px); letter-spacing: -.01em; color: #fff; } .about span { max-width: 38em; font-size: 15px; line-height: 1.4; opacity: .84; }
   .timer { position: absolute; width: 0; height: 0; animation: rgtick 5.5s linear forwards; } .rg:is(:hover, :focus-within, .off) .timer { animation-play-state: paused; } .rg:global(.held) .timer { animation: none; } @keyframes rgtick { to { opacity: .99; } }
   @media (max-width: 700px) { .rg { --rw: 72vw; } .cap { min-height: 122px; } }
+  /* Following the home hero: the caption leads, and only the top of each window shows, rising out of the foot of the hero. */
+  .follow { --rw: clamp(300px, 48vw, 700px); display: flex; flex-direction: column; margin-top: 14px; } .follow .cap { order: -1; min-height: 70px; margin: 0 0 18px; }
+  .follow .stage3d { height: calc(var(--rw) * .36); overflow: hidden; mask-image: linear-gradient(#000 45%, transparent); } .follow .track { padding-top: 2px; }
+  @media (max-width: 700px) { .follow { --rw: 76vw; } .follow .cap { min-height: 136px; } .follow .stage3d { height: calc(var(--rw) * .5); } }
 </style>
