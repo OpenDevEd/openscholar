@@ -43,6 +43,7 @@ import { chatAbout } from "@/lib/assistant/place";
 
 interface SearchCommandFooterProps {
   totalCount: number;
+  shownCount?: number;
   currentQuery: string;
   isScreeningOpen: boolean;
   onScreeningToggle: () => void;
@@ -55,6 +56,7 @@ interface SearchCommandFooterProps {
 
 export function SearchCommandFooter({
   totalCount,
+  shownCount,
   currentQuery,
   isScreeningOpen,
   onScreeningToggle,
@@ -242,7 +244,7 @@ Return a more targeted version of this query.`;
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
           <AnimatedCount
-            value={totalCount}
+            value={shownCount ?? totalCount}
             className="text-lg font-semibold text-foreground"
           />
           <span className="text-muted-foreground">
@@ -251,7 +253,7 @@ Return a more targeted version of this query.`;
         </div>
       </div>
 
-      {/* On a phone the strip spans the card, its buttons spread across it, so none falls off its edge; below 360px it drops its dividers and the toggle's chevron to fit. */}
+      {/* On a phone the strip spans the card, its buttons spread across it, so none falls off its edge; in a card under 330px it drops its dividers and the toggle's chevron to fit. */}
       <div className="w-full @3xl:w-auto">
         <motion.div
           layout
@@ -295,7 +297,7 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")
                   }
                   className={cn(
-                    "h-9 gap-1.5 rounded-xl border border-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5",
+                    "h-9 gap-1.5 rounded-xl border border-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5",
                     isContextualActionLoading && "text-foreground"
                   )}
                 >
@@ -312,7 +314,7 @@ Return a more targeted version of this query.`;
                       : tsc("makeSpecific")}
                   </span>
                 </Button>
-                {!queryOnly && <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden @3xl:mx-1" />}
+                {!queryOnly && <div className="mx-0.5 h-6 w-px bg-border/70 @max-[330px]:hidden @3xl:mx-1" />}
               </motion.div>
             )}
           </AnimatePresence>
@@ -324,10 +326,10 @@ Return a more targeted version of this query.`;
                 disabled={isLoading}
                 triggerVariant="ghost"
                 compactTrigger
-                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5"
+                triggerClassName="h-9 rounded-xl border-0 bg-transparent px-2 text-muted-foreground hover:bg-muted hover:text-foreground has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5"
               />
 
-              <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden @3xl:mx-1" />
+              <div className="mx-0.5 h-6 w-px bg-border/70 @max-[330px]:hidden @3xl:mx-1" />
 
               {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
               <div
@@ -341,7 +343,7 @@ Return a more targeted version of this query.`;
                     type="button"
                     onClick={handleStartChat}
                     aria-label={tsc("startChat")}
-                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <MessageSquare className="h-3.5 w-3.5" />
                     <span className="hidden text-sm font-medium @3xl:inline">{tsc("startChat")}</span>
@@ -357,7 +359,7 @@ Return a more targeted version of this query.`;
                   onClick={() => phase === "authenticated" ? router.push(`/screening?search=${encodeURIComponent(searchId)}`) : goToSignIn()}
                   disabled={Boolean(isLoading)}
                   aria-label={tsc("screenAll")}
-                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 max-[359px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="h-9 gap-1.5 rounded-lg border border-transparent px-2 has-[>svg]:px-2 @max-[330px]:has-[>svg]:px-1.5 @3xl:px-2.5 sm:has-[>svg]:px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <ListChecks className="h-3.5 w-3.5" />
                   <span className="hidden text-sm font-medium @3xl:inline">
@@ -384,7 +386,7 @@ Return a more targeted version of this query.`;
                 )}
               </div>
 
-              <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden @3xl:mx-1" />
+              <div className="mx-0.5 h-6 w-px bg-border/70 @max-[330px]:hidden @3xl:mx-1" />
 
               {/* Right: Screen toggle */}
               <Button
@@ -395,7 +397,7 @@ Return a more targeted version of this query.`;
                 aria-expanded={isScreeningOpen}
                 aria-controls={screeningPanelId}
                 className={cn(
-                  "h-9 justify-between gap-2 rounded-xl border border-transparent px-2 max-[359px]:gap-1 max-[359px]:px-1.5 @3xl:min-w-[130px] @3xl:px-2.5",
+                  "h-9 justify-between gap-2 rounded-xl border border-transparent px-2 @max-[330px]:gap-1 @max-[330px]:px-1.5 @3xl:min-w-[130px] @3xl:px-2.5",
                   "text-muted-foreground hover:bg-muted hover:text-foreground",
                   isScreeningOpen &&
                     "border-border bg-card text-foreground shadow-[0_10px_22px_-18px_var(--color-primary)]"
@@ -420,7 +422,7 @@ Return a more targeted version of this query.`;
                   <motion.div
                     animate={{ rotate: isScreeningOpen ? 180 : 0 }}
                     transition={subtleSpring}
-                    className="max-[359px]:hidden"
+                    className="@max-[330px]:hidden"
                   >
                     <ChevronDown className="h-3.5 w-3.5" />
                   </motion.div>

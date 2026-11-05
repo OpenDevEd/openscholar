@@ -988,7 +988,8 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Sesha izimaki...",
-    "bookmarkDeleted": "Ibhukhimakhi isusiwe",
+    "deleteBookmarkTitle": "Susa ibhukhimakhi",
+    "deleteBookmarkConfirm": "Uqinisekile ukuthi ufuna ukususa {name}?",
     "clearAllBookmarks": "Sula zonke izimaki",
     "clearAllBookmarksTitle": "Sula zonke izimaki",
     "clearAllBookmarksConfirm": "Ingabe uqinisekile ukuthi ufuna ukususa zonke izimaki ezingu-{count}? Lesi senzo asikwazi ukuhlehliswa.",
@@ -1212,7 +1213,7 @@
   },
   "jobStatus": {
     "restart": "Qala kabusha",
-    "papersCount": "{count} amaphepha",
+    "papersCount": "{count, plural, one {# iphepha} other {# amaphepha}}",
     "questionsCount": "{count, plural, one {# umbuzo} other {# imibuzo}}",
     "statusPending": "Ilindile",
     "statusDownloadingPdfs": "Icubungula amaphepha",

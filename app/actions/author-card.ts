@@ -127,10 +127,10 @@ export async function searchIndexAuthors(search: string, page: number, given?: S
   if (!query || !Number.isInteger(page) || page < 1 || page > 200) return { authors: [] as IndexAuthor[], more: false };
   const source = await chosenSource(given);
   // A pasted ID is that one person, whom the search by name doesn't find.
-  const pasted = query.replace(/^https?:\/\/(?:openalex\.org|openscholar\.ai)\/(?:authors\/)?/, "").toUpperCase();
+  const pasted = (query.includes("/") ? query.replace(/\/$/, "").split("/").at(-1)! : query).toUpperCase();
   if (isAuthorId(pasted)) {
     if (page > 1) return { authors: [] as IndexAuthor[], more: false };
-    const card = await readAuthorCard(pasted, source).catch(() => null);
+    const card = await readAuthorCard(pasted, source);
     if (card && !("id" in card)) return card;
     return {
       authors: card ? [{ id: card.paired ?? card.id, name: card.name, institution: card.institution?.name ?? null, country: card.institution?.country ?? null, works: card.works, citations: card.citations, largest: card.works }] : [],

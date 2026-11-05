@@ -988,7 +988,8 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Search bookmarks...",
-    "bookmarkDeleted": "Bookmark deleted",
+    "deleteBookmarkTitle": "Delete bookmark",
+    "deleteBookmarkConfirm": "Are you sure you want to delete {name}?",
     "clearAllBookmarks": "Clear all bookmarks",
     "clearAllBookmarksTitle": "Clear all bookmarks",
     "clearAllBookmarksConfirm": "Are you sure you want to delete all {count} bookmarks? This action cannot be undone.",
@@ -1215,7 +1216,7 @@
     "noMatches": "No matches for current filters",
     "clearFilters": "Clear filters",
     "restart": "Restart",
-    "papersCount": "{count} papers",
+    "papersCount": "{count, plural, one {# paper} other {# papers}}",
     "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "Pending",
     "statusDownloadingPdfs": "Processing papers",

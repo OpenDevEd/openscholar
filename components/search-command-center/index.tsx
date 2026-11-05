@@ -16,6 +16,8 @@ import type { CommandCenterMode } from "./types";
 interface SearchCommandCenterProps {
   searchId: string;
   totalCount: number;
+  /** What the count says, when a filter on this page leaves fewer than the search found. */
+  shownCount?: number;
   currentQuery: string;
   isLoading?: boolean;
   isValidating?: boolean;
@@ -34,6 +36,7 @@ interface SearchCommandCenterProps {
 export function SearchCommandCenter({
   searchId,
   totalCount,
+  shownCount,
   currentQuery,
   isLoading = false,
   isValidating = false,
@@ -99,6 +102,7 @@ export function SearchCommandCenter({
       {/* Footer with results count and screening toggle */}
       <SearchCommandFooter
         totalCount={totalCount}
+        shownCount={shownCount}
         currentQuery={currentQuery}
         isScreeningOpen={isScreeningOpen}
         onScreeningToggle={() => toggleScreeningPanel(screenStateKey)}
