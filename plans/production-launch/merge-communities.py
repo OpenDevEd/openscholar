@@ -70,10 +70,18 @@ libraries = [row for row in data("evidenceLibraries") if row.get("name") in name
 missing = set(names) - {row["name"] for row in libraries}
 if missing:
     sys.exit(f"no community named: {sorted(missing)}")
+# A name isn't unique: a test community with the same one mustn't come along with its credentials.
+if len(libraries) != len(set(names)):
+    sys.exit(f"more than one community has one of these names: {sorted((row['name'], row['_id']) for row in libraries)}")
 ids = {row["_id"] for row in libraries}
 rows = {"evidenceLibraries": libraries}
 for table in BY_LIBRARY:
     rows[table] = sum((indexed(table, BY_INDEX[table], library) for library in ids), []) if table in BY_INDEX else data(table, lambda row: row.get("libraryId") in ids)
+
+# A source following a collection needs that collection, which stays on dev.
+following = rows["evidenceLibraryCollectionSources"]
+if following:
+    sys.exit(f"these communities follow collections on dev, so move those first or remove the sources: {sorted({row['libraryId'] for row in following})}")
 
 # The organizations that own them, with their workspaces and memberships.
 workspaces = {row["_id"]: row for row in data("workspaces")}
@@ -149,10 +157,11 @@ if rows_only:
     if wrong:
         sys.exit(f"prod's numbers for these tables aren't dev's, so the launch import didn't reserve them: {wrong}")
 if rows_only:
-    # A later organization's rows would double the ones production Clerk's webhook makes. Bring it through the app instead.
+    # Only an organization the launch import brought has dev's IDs on prod. Any other would need its rows remapped onto the
+    # ones production Clerk's webhook made, which this doesn't do.
     held_organizations = {json.loads(line)["_id"] for line in live.read("organizations/documents.jsonl").decode().splitlines()}
     if organization_ids - held_organizations:
-        sys.exit(f"these organizations aren't on prod: {sorted(organization_ids - held_organizations)}")
+        sys.exit(f"the launch import didn't bring these organizations: {sorted(organization_ids - held_organizations)}")
     # What prod already holds, such as an organization an earlier community brought, stays as it is.
     held = lambda table: {json.loads(line)["_id"] for line in live.read(f"{table}/documents.jsonl").decode().splitlines()} if f"{table}/documents.jsonl" in live.namelist() else set()
     rows = {table: [row for row in found if row["_id"] not in held(table)] for table, found in rows.items()}
