@@ -843,7 +843,7 @@ export default function AuthorPage({
             </div>
           </div> : <div key="openalex" className="fade-enter">
             {openAlexError && <p role="alert" className="p-4 text-sm text-destructive">{openAlexError}</p>}
-            {profile.match ? (
+            {(profile.match || searchIds?.length) ? (
               <>
                 <FocusMode
                   isOpen={isFocusModeOpen}

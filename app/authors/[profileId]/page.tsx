@@ -9,6 +9,7 @@ import { PreloadedAuthorProfile } from "@/components/authors/author-profile";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { isAuthorId } from "@/lib/openalex/author-filter";
+import { workspaceHref } from "@/lib/workspaces/paths";
 
 /** An author's record. Null for one the source doesn't have. A read that failed, or a visitor at their limit, goes to the error page, which says to try again. */
 const cardOf = async (id: string): Promise<AuthorCard | null> => {
@@ -32,17 +33,17 @@ export async function generateMetadata({params}: {params: Promise<{profileId: st
   return isAuthorId(profileId) ? {robots: {index: false, follow: true}} : {};
 }
 
-export default async function Page({params}: {params: Promise<{profileId: string}>}) {
-  const {profileId} = await params;
+export default async function Page({params}: {params: Promise<{profileId: string; slug?: string}>}) {
+  const {profileId, slug} = await params;
   // An author's ID opens their profile when one links it, the page of the OpenAlex author it's paired with when there is one, or a page of its own.
   if (isAuthorId(profileId)) {
     // Asked first: a linked ID opens its profile whether or not the source can read the record just now.
     const linked = await fetchQuery(api.authors.links.profileFor, {ids: [profileId]});
-    if (linked) redirect(`/authors/${linked}`);
+    if (linked) redirect(workspaceHref(slug, `/authors/${linked}`));
     const card = await cardOf(profileId);
     if (!card) notFound();
-    if (card.profileId) redirect(`/authors/${card.profileId}`);
-    if (card.paired && card.paired !== profileId) redirect(`/authors/${card.paired}`);
+    if (card.profileId) redirect(workspaceHref(slug, `/authors/${card.profileId}`));
+    if (card.paired && card.paired !== profileId) redirect(workspaceHref(slug, `/authors/${card.paired}`));
     return <AutomaticAuthor card={card} firstWorks={await firstWorksOf(profileId)} />;
   }
   // The profile renders with the page. The viewer's token keeps their role,

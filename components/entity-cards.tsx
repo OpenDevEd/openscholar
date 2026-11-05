@@ -219,7 +219,8 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
   const filter = useAuthorFilter();
   const source = useSearchSource();
   const card = useSWR(["author-card", id, source], ([, author, reading]) => unlessLimited(readAuthorCard(author, reading)), { revalidateOnFocus: false });
-  const author = card.data;
+  // A record the source doesn't have is an answer, not a read still going.
+  const author = card.data ?? undefined;
   return (
     <>
       <CardHeader
@@ -230,13 +231,13 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
             {author.institution.country && <CountryFlag countryCode={author.institution.country} className="shrink-0" />}
             <span className="truncate">{author.institution.name}</span>
           </>
-        ) : author ? <span>{t("noInstitution")}</span> : <SkeletonBar className="h-3 w-44" />}
+        ) : author || card.data === null || card.error ? <span>{t("noInstitution")}</span> : <SkeletonBar className="h-3 w-44" />}
       />
       {/* Counts and top topics, at one height whether loading, loaded, empty or failed. */}
-      {card.error ? (
+      {card.error || card.data === null ? (
         <div role="alert" className="mx-4 mt-3 flex h-[8.75rem] flex-col items-start justify-center gap-2 text-sm text-muted-foreground">
-          {t("authorFailed")}
-          <Button size="sm" variant="outline" onClick={() => void card.mutate()}>{t("tryAgain")}</Button>
+          {card.data === null ? t("noAuthorRecord") : t("authorFailed")}
+          {card.error && <Button size="sm" variant="outline" onClick={() => void card.mutate()}>{t("tryAgain")}</Button>}
         </div>
       ) : (
         <div className="mt-3 h-[8.75rem] px-4">
