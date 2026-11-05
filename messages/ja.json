@@ -1100,6 +1100,7 @@
     "searchWithQuery": "このクエリで検索",
     "removeFromHistory": "履歴から削除",
     "openDoi": "DOIを開く",
+    "openPaperPage": "論文のページを開く",
     "doiTooltip": "DOI：{doi}",
     "resetToDefaults": "デフォルトにリセット",
     "focusMode": "フォーカスモード",

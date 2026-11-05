@@ -36,10 +36,12 @@ export async function getSearchResultsWithFilters(
     validation,
     countryNames,
     finalApiQuery,
+    tooLong,
     effectiveFilters,
     effectiveCitesItemId,
     effectiveRelatedToItemId,
   } = prepareOpenAlexSearch(params, { ...options, expand: browserExpand });
+  if (tooLong) throw new SearchError(validation.warnings[0], 400);
   if (finalApiQuery === null) {
     // Return early with error state instead of throwing
     return {

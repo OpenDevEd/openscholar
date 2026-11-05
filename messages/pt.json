@@ -1101,6 +1101,7 @@
     "searchWithQuery": "Pesquisar com esta consulta",
     "removeFromHistory": "Remover do histórico",
     "openDoi": "Abrir DOI",
+    "openPaperPage": "Abrir a página do artigo",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Repor predefinições",
     "focusMode": "Modo de foco",

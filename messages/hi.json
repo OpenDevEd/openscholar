@@ -1100,6 +1100,7 @@
     "searchWithQuery": "इस क्वेरी से खोजें",
     "removeFromHistory": "इतिहास से हटाएं",
     "openDoi": "DOI खोलें",
+    "openPaperPage": "लेख का पृष्ठ खोलें",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "डिफ़ॉल्ट पर रीसेट करें",
     "focusMode": "फोकस मोड",

@@ -55,7 +55,7 @@ function PaginationLink({
       role={props.href ? undefined : "link"}
       tabIndex={props.href || props["aria-disabled"] ? undefined : 0}
       onKeyDown={(event) => {
-        if (!props.href && event.key === "Enter") event.currentTarget.click();
+        if (!props.href && !props["aria-disabled"] && event.key === "Enter") event.currentTarget.click();
         props.onKeyDown?.(event);
       }}
       data-slot="pagination-link"

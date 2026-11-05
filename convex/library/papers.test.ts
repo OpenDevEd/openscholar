@@ -182,7 +182,7 @@ describe("saving a paper by its ID", () => {
     await ada.mutation(api.library.mutations.removeFromLibrary, { paper: "W9" });
 
     // What isn't a paper's ID, a paper OpenAlex doesn't have, and a rating off the scale are refused, and save nothing.
-    await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its OpenAlex ID/);
+    await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its ID/);
     await expect(ada.action(save, { id: "W404" })).rejects.toThrow(/no paper by that ID/);
     await expect(ada.action(save, { id: "W9", rating: 9 })).rejects.toThrow(/0 to 5/);
     expect((await items()).map((row) => row.paperKey).sort()).toEqual(["openalex:W7", "openalex:W8"]);

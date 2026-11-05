@@ -1100,6 +1100,7 @@
     "searchWithQuery": "使用此查询搜索",
     "removeFromHistory": "从历史记录中移除",
     "openDoi": "打开 DOI",
+    "openPaperPage": "打开论文页面",
     "doiTooltip": "DOI：{doi}",
     "resetToDefaults": "重置为默认值",
     "focusMode": "专注模式",

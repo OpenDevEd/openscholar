@@ -25,7 +25,7 @@ import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
-import { questionAsWords, SEMANTIC_FIELD, type SearchSource } from './source';
+import { SEMANTIC_FIELD, type SearchSource } from './source';
 import { useSearchSource } from './use-search-source';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
@@ -151,11 +151,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     () => savedParams ?? (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
     [savedParams, routeIsOql, routeUrlParams, storedQuery],
   );
-  // A question saved on our index runs as its words on OpenAlex, so that's how it shows: the scope, its label and its filter count.
-  const urlParams = useMemo(() => {
-    const params = local ? local.params : routeSearchParams;
-    return source === 'openalex' && params.field === SEMANTIC_FIELD ? { ...params, field: 'title_and_abstract' as const, q: questionAsWords(params.q) } : params;
-  }, [local, routeSearchParams, source]);
+  const urlParams = local ? local.params : routeSearchParams;
   const onLocalParamsChange = local?.onParamsChange;
 
   // Back and Forward. The address cannot say what a history entry showed: an OQL query is not in
@@ -480,6 +476,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       keepPreviousData: true,
       dedupingInterval: 5000,
       errorRetryCount: 2,
+      shouldRetryOnError: (err) => !(err instanceof SearchError && err.status === 400),
       errorRetryInterval: 1000,
       onSuccess: (data) => {
         if (data?.results?.meta?.count !== undefined && searchId && data.paramsKey === paramsKey) {
@@ -491,9 +488,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       },
       onError: (err) => {
         console.error('Search failed:', err);
-        // An OQL query OpenAlex rejects shows its reason under the query box instead.
-        const rejectedOql = currentParams.field === OQL_FIELD && err instanceof SearchError && err.status === 400;
-        if (!rejectedOql) toast.search.failed(err);
+        // A query the source refuses says why on the page, in place of its results.
+        if (!(err instanceof SearchError && err.status === 400)) toast.search.failed(err);
       },
     }
   );

@@ -1100,6 +1100,7 @@
     "searchWithQuery": "Rechercher avec cette requête",
     "removeFromHistory": "Retirer de l'historique",
     "openDoi": "Ouvrir le DOI",
+    "openPaperPage": "Ouvrir la page de l'article",
     "doiTooltip": "DOI : {doi}",
     "resetToDefaults": "Réinitialiser par défaut",
     "focusMode": "Mode focus",

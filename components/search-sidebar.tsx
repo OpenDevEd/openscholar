@@ -168,6 +168,7 @@ const RatingFilterPanel = React.memo(function RatingFilterPanel() {
 const CountryFilterPanel = React.memo(function CountryFilterPanel() {
   const tf = useTranslations("searchFilters");
   const { selectedRegions, selectedCountryFocus, currentSearchField } = useCurrentSearchFormState();
+  const byMeaning = currentSearchField === SEMANTIC_FIELD && useSearchSource() === "openscholar";
   const updateFilter = useUpdateSearchFilter();
   const isActive =
     isCountryFilterActive(selectedRegions) ||
@@ -194,7 +195,7 @@ const CountryFilterPanel = React.memo(function CountryFilterPanel() {
         </div>
         <div className="space-y-1.5">
           {/* Country focus adds words to the query, which a question asked by meaning sends as written. */}
-          {currentSearchField !== SEMANTIC_FIELD && <><Label className="text-xs text-muted-foreground">{tf("countryFocus")}</Label>
+          {!byMeaning && <><Label className="text-xs text-muted-foreground">{tf("countryFocus")}</Label>
           <CountryFocusPicker /></>}
         </div>
       </div>
@@ -207,7 +208,9 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
   const tf = useTranslations("searchFilters");
   const source = useSearchSource();
   const ta = useTranslations("accessibility");
-  const { currentSearchField } = useCurrentSearchFormState();
+  const { currentSearchField: savedField } = useCurrentSearchFormState();
+  // A question saved on our index runs as words on OpenAlex, and reads that way here.
+  const currentSearchField = savedField === SEMANTIC_FIELD && source === "openalex" ? DEFAULT_FILTERS.field : savedField;
   const updateFilter = useUpdateSearchFilter();
 
   const handleSearchFieldChange = React.useCallback(
@@ -257,6 +260,7 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
   const tf = useTranslations("searchFilters");
   const ta = useTranslations("accessibility");
   const { sortBy, currentSearchField, similarTo } = useCurrentSearchFormState();
+  const source = useSearchSource();
   const updateFilter = useUpdateSearchFilter();
 
   const handleSortChange = React.useCallback(
@@ -287,7 +291,7 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
   const isSortActive = sortBy !== DEFAULT_FILTERS.sortBy;
 
   // Closeness is the only order these searches have.
-  if (currentSearchField === SEMANTIC_FIELD || similarTo?.length) return null;
+  if (source === "openscholar" && (currentSearchField === SEMANTIC_FIELD || similarTo?.length)) return null;
   return (
     <FilterSection
       title={tf("sortResultsBy")}
@@ -493,6 +497,7 @@ function SwitchRow({
 const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
   const tf = useTranslations("searchFilters");
   const { openAccessOnly, hasAbstract, includeRetracted, reviewFilter, topCitedOnly, venuesOnly, currentSearchField } = useCurrentSearchFormState();
+  const byMeaning = currentSearchField === SEMANTIC_FIELD && useSearchSource() === "openscholar";
   const updateFilter = useUpdateSearchFilter();
   const isActive = openAccessOnly || hasAbstract || includeRetracted || isReviewFilterActive(reviewFilter) || topCitedOnly || venuesOnly;
   return (
@@ -522,7 +527,7 @@ const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
           onCheckedChange={(checked) => updateFilter({ hasAbstract: checked })}
         />
         {/* Reviews adds words to the query, which a question asked by meaning sends as written. */}
-        {currentSearchField !== SEMANTIC_FIELD && <SwitchRow
+        {!byMeaning && <SwitchRow
           id="review-filter"
           label={tf("reviews")}
           hint={tf("reviewFilterDescription")}

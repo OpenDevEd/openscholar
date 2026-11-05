@@ -1101,6 +1101,7 @@
     "searchWithQuery": "ابحث باستخدام هذا الاستعلام",
     "removeFromHistory": "إزالة من السجل",
     "openDoi": "فتح DOI",
+    "openPaperPage": "فتح صفحة الورقة",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "إعادة الضبط إلى الإعدادات الافتراضية",
     "focusMode": "وضع التركيز",

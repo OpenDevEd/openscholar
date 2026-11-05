@@ -37,6 +37,8 @@ export type AuthorCard = {
   topics: { id: string; name: string; papers: number }[];
   /** The OpenAlex record our index pairs this one with. */
   paired: string | null;
+  /** Every ID this person goes by, so that holding any of them is holding them. */
+  records: string[];
   /** The hand-made profile that links this author, when one does. */
   profileId: string | null;
 };
@@ -83,6 +85,12 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   const author = records ? wholePerson(records) : authorSchema.parse(await response!.json());
   const institution = author.last_known_institutions?.[0];
   const paired = author.ids?.openalex ? lastPart(author.ids.openalex) : null;
+  // The others split from this person, whichever of them this page opened from. The card stands without them.
+  const split = records ?? (source === "openscholar" && paired ? await readPairedRecords(paired).catch((error) => {
+    console.error("[authors] couldn't read an author's paired records", id, error);
+    return [];
+  }) : []);
+  const known = [...new Set([id, lastPart(author.id), ...(paired ? [paired] : []), ...split.map((record) => lastPart(record.id))])];
   return {
     id,
     name: author.display_name,
@@ -93,8 +101,9 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
     institution: institution?.display_name ? { id: institution.id ? lastPart(institution.id) : null, name: institution.display_name, country: institution.country_code ?? null } : null,
     topics: (author.topics ?? []).slice(0, TOP_TOPICS).map((topic) => ({ id: lastPart(topic.id), name: topic.display_name, papers: topic.count ?? 0 })),
     paired,
+    records: known,
     // The card stands without it: it only says where the author's page goes.
-    profileId: await fetchQuery(api.authors.links.profileFor, { ids: [...new Set([id, lastPart(author.id), ...(paired ? [paired] : [])])] }).catch((error) => {
+    profileId: await fetchQuery(api.authors.links.profileFor, { ids: known }).catch((error) => {
       console.error("[authors] couldn't look up an author's profile", id, error);
       return null;
     }),

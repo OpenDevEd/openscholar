@@ -153,7 +153,7 @@ export default function AuthorPage({
   const [activity, setActivity] = useState(false);
   // Either mode of the page keeps the person in the profile's room. First in the bar's right-hand group, so faces arriving move nothing.
   const presence = atHome ? <span className="-order-1 flex"><ItemPresence kind="author" id={profileId} /></span> : null;
-  // A paper is shown once its rating is read, so its card opens at its final size.
+  // The server already drew these, so they stay put while their ratings are read, and answer once they are.
   const rated = useRatedPapers(works);
   const openAlexPapers = rated.papers;
   const loadingWorks = fetchingWorks || rated.loading;
@@ -857,25 +857,26 @@ export default function AuthorPage({
                   onDownloadEssentialItem={downloadLibraryEssentialItem}
                 />
                 <div className="flex flex-col gap-4 p-4">
-{!openAlexPapers.length && (loadingWorks ? <ListLoading label={t("loadingPublications")} /> : <ListEmpty icon={SourceIcon}>{t("noPublicationsToDisplay", {source: SEARCH_SOURCE_NAMES[source]})}</ListEmpty>)}
-                  {openAlexPapers
+{!works.length && (loadingWorks ? <ListLoading label={t("loadingPublications")} /> : <ListEmpty icon={SourceIcon}>{t("noPublicationsToDisplay", {source: SEARCH_SOURCE_NAMES[source]})}</ListEmpty>)}
+                  {works
                     .map((paper, index) => (
-                      <PaperCard
-                        key={paper.id}
-                        result={paper}
-                        resultIndex={index}
-                        viewMode="list-detail"
-                        onDownloadItem={downloadLibraryItem}
-                        onDownloadEssentialItem={
-                          downloadLibraryEssentialItem
-                        }
-                      />
+                      <div key={paper.id} inert={index >= openAlexPapers.length}>
+                        <PaperCard
+                          result={paper}
+                          resultIndex={index}
+                          viewMode="list-detail"
+                          onDownloadItem={downloadLibraryItem}
+                          onDownloadEssentialItem={
+                            downloadLibraryEssentialItem
+                          }
+                        />
+                      </div>
                     ))}
                 </div>
                 {hasMoreWorks && (
                   <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-4 py-3">
                     <span className="text-xs text-muted-foreground">
-                      {openAlexPapers.length} of{" "}
+                      {works.length} of{" "}
                       {workCount} publications
                     </span>
                     <Button

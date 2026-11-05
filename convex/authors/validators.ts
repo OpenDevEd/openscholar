@@ -40,7 +40,7 @@ export const profileInvitationsWaitingValidator = capped(v.array(profileInvitati
 export const MAX_PROFILE_RECORDS = 20;
 export const profileRecordsValidator = capped(v.array(v.string()), MAX_PROFILE_RECORDS);
 /** IDs of one person that one lookup of a profile takes. */
-export const AUTHOR_IDS_LOOKED_UP = 5;
+export const AUTHOR_IDS_LOOKED_UP = 60;
 
 /** A profile as the assistant lists it (./assistant.ts). */
 const authorSummaryFields = {profileId: v.id("authorProfiles"), name: v.string(), headline: v.string(), affiliation: v.string(), orcid: v.string(), openalex: v.string()};

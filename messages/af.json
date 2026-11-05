@@ -1101,6 +1101,7 @@
     "searchWithQuery": "Soek met hierdie soekopdrag",
     "removeFromHistory": "Verwyder uit geskiedenis",
     "openDoi": "Maak DOI oop",
+    "openPaperPage": "Maak die artikel se bladsy oop",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Stel terug na verstek",
     "focusMode": "Fokusmodus",

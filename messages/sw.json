@@ -1101,6 +1101,7 @@
     "searchWithQuery": "Tafuta kwa hoja hii",
     "removeFromHistory": "Ondoa kwenye historia",
     "openDoi": "Fungua DOI",
+    "openPaperPage": "Fungua ukurasa wa makala",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Rudisha kwa chaguo-msingi",
     "focusMode": "Hali ya kuzingatia",
