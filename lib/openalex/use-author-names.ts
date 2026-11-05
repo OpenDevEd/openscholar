@@ -4,7 +4,7 @@ import { readOpenAlexRecordNames } from "@/app/actions/openalex-lookup";
 import { isAuthorId } from "./author-filter";
 import { createNameLookup } from "./use-entity-names";
 
-const authors = createNameLookup("author", (ids) => readOpenAlexRecordNames("authors", ids));
+const authors = createNameLookup("author", (ids, source) => readOpenAlexRecordNames("authors", ids, source));
 
 /**
  * Names for the authors a search is filtered by. An id such as A5023888391 is

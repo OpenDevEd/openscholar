@@ -11,6 +11,7 @@ import { format, parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
 import { MIN_YEAR } from '../constants';
+import { bareWork } from '../openalex/ids';
 import { OQL_FIELD } from '../openalex/oql';
 import type { ParsedSearchParams } from './parsers';
 import { DEFAULT_SEARCH_PARAMS } from './parsers';
@@ -180,13 +181,13 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
   
   // References - only include if non-empty
   if (result.citesItemId) {
-    params.cites = result.citesItemId;
+    params.cites = bareWork(result.citesItemId);
   }
   if (result.citedByItemId) {
-    params.citedBy = result.citedByItemId;
+    params.citedBy = bareWork(result.citedByItemId);
   }
   if (result.relatedToItemId) {
-    params.rel = result.relatedToItemId;
+    params.rel = bareWork(result.relatedToItemId);
   }
   
   // Content
@@ -336,9 +337,9 @@ export function paramsMatchState(params: ParsedSearchParams, state: SearchResult
   if (!arraysEqual(params.focus, stateFocus)) return false;
   
   // References
-  if (params.cites !== (state.citesItemId || '')) return false;
-  if (params.citedBy !== (state.citedByItemId || '')) return false;
-  if (params.rel !== (state.relatedToItemId || '')) return false;
+  if (params.cites !== bareWork(state.citesItemId || '')) return false;
+  if (params.citedBy !== bareWork(state.citedByItemId || '')) return false;
+  if (params.rel !== bareWork(state.relatedToItemId || '')) return false;
   
   // Content
   if (params.review !== (state.reviewFilter ?? false)) return false;

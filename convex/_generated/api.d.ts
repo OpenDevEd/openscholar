@@ -295,6 +295,7 @@ import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_retryOnConflict from "../lib/retryOnConflict.js";
+import type * as lib_searchSource from "../lib/searchSource.js";
 import type * as lib_searchText from "../lib/searchText.js";
 import type * as lib_triggers from "../lib/triggers.js";
 import type * as lib_userActionRegistry from "../lib/userActionRegistry.js";
@@ -755,6 +756,7 @@ declare const fullApi: ApiFromModules<{
   "lib/query_states": typeof lib_query_states;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/retryOnConflict": typeof lib_retryOnConflict;
+  "lib/searchSource": typeof lib_searchSource;
   "lib/searchText": typeof lib_searchText;
   "lib/triggers": typeof lib_triggers;
   "lib/userActionRegistry": typeof lib_userActionRegistry;

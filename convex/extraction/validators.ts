@@ -251,6 +251,8 @@ export const searchFiltersValidator = v.object({
     /** An OQL search, filters included, run as a POST instead of search and filter. */
     oql: v.optional(v.string()),
     sort: v.string(),
+    /** The source it reads, kept so a job finishes on the source it started on. OpenAlex when left out. */
+    source: v.optional(v.union(v.literal("openalex"), v.literal("openscholar"))),
   }),
   /** The search's result its papers start from, from 1 (#690); from its first when left out. */
   first: v.optional(v.number()),

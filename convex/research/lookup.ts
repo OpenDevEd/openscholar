@@ -11,6 +11,7 @@ import { assistantAction, defineUserAction, userAction } from "../lib/userAction
 import { autocomplete, readNames } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
+import { isOwnId } from "../../lib/search/source";
 import { LOOKUP_MAX, NAMES_MAX, lookupKindValidator, lookupValidator, namesValidator } from "./searchValidators";
 
 const ENTITIES = { author: "authors", funder: "funders", journal: "sources", institution: "institutions" } as const;
@@ -32,7 +33,8 @@ export const findAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
-    const matches = await autocomplete(ENTITIES[kind], text.trim(), spender(ctx, clerkId));
+    const source = await ctx.runQuery(internal.featureFlags.internal.searchSource, {});
+    const matches = await autocomplete(ENTITIES[kind], text.trim(), spender(ctx, clerkId), source);
     return { matches: matches.slice(0, LOOKUP_MAX) };
   },
 });
@@ -42,7 +44,7 @@ export const findForAssistant = assistantAction(findAction);
 /** What a filter names by ID, by the letter its ID starts with. */
 const BY_LETTER = { A: "authors", F: "funders", S: "sources", I: "institutions" } as const;
 const AREA = /^(?:T[1-9]\d*|(?:domains|fields|subfields)\/[1-9]\d*)$/i;
-const RECORD = /^[AFSI]\d+$/i;
+const RECORD = /^(?:[AFSI]|OSA|OSV)\d+$/i;
 
 export const namesAction = defineUserAction({
   path: "research/lookup:names",
@@ -56,21 +58,22 @@ export const namesAction = defineUserAction({
   // It changes nothing, so there's nothing to undo.
   undoable: true,
   run: async (ctx, { userId }, { ids }): Promise<Array<{ id: string; name: string }>> => {
-    const asked = [...new Set(ids.map((id) => id.trim().replace(/^https:\/\/openalex\.org\//i, "")))];
+    const asked = [...new Set(ids.map((id) => id.trim().replace(/^https:\/\/(?:openalex\.org|openscholar\.ai)\//i, "")))];
     if (!asked.length || asked.length > NAMES_MAX) throw createError("VALIDATION_ERROR", `Give between 1 and ${NAMES_MAX} IDs.`);
     const unknown = asked.find((id) => !AREA.test(id) && !RECORD.test(id));
     if (unknown) throw createError("VALIDATION_ERROR", `${unknown.slice(0, 100)} isn't an ID a filter names: an author, funder, journal or institution ID such as A5023888391, or a research area such as T10011 or fields/33.`);
     const areas = asked.filter((id) => AREA.test(id)).map((id) => (/^t/i.test(id) ? id.toUpperCase() : id.toLowerCase()));
     const records: Partial<Record<keyof typeof BY_LETTER, string[]>> = {};
-    for (const id of asked.filter((one) => RECORD.test(one)).map((one) => one.toUpperCase())) (records[id[0] as keyof typeof BY_LETTER] ??= []).push(id);
+    for (const id of asked.filter((one) => RECORD.test(one)).map((one) => one.toUpperCase())) (records[(id.startsWith("OS") ? id[2] === "A" ? "A" : "S" : id[0]) as keyof typeof BY_LETTER] ??= []).push(id);
     const named: Array<{ id: string; name: string }> = areas.length ? await ctx.runQuery(internal.research.topicCatalog.names, { ids: areas }) : [];
     if (Object.keys(records).length) {
       const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
       if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
       const groups = Object.entries(records) as Array<[keyof typeof BY_LETTER, string[]]>;
       // One request a kind, all counted before the first is made: past the allowance, none is.
+      const source = asked.some(isOwnId) ? "openscholar" : await ctx.runQuery(internal.featureFlags.internal.searchSource, {});
       if (!(await spender(ctx, person.clerkId)(groups.length))) throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
-      for (const [letter, group] of groups) named.push(...(await readNames(BY_LETTER[letter], group, async () => true)));
+      for (const [letter, group] of groups) named.push(...(await readNames(BY_LETTER[letter], group, async () => true, source)));
     }
     return named;
   },

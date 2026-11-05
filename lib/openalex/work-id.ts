@@ -9,3 +9,16 @@ export function workUrl(id: string): string | null {
   const work = openalexWork(id);
   return work ? `https://openalex.org/${work}` : null;
 }
+
+/** `select` with what `appWork` reads, where it names a work's ID. */
+export const selectWithIds = (select: string) => (select.split(",").includes("id") && !select.split(",").includes("ids") ? `${select},ids` : select);
+
+/**
+ * A work as the app keeps it, whichever source gave it. Our index names every work by its own ID and gives the OpenAlex ID
+ * beside it. A paper OpenAlex knows keeps that ID as its own, so what's saved under it, ratings and screenings included,
+ * is still that paper. A paper only our index has keeps our ID.
+ */
+export function appWork<Work extends { id?: string }>(work: Work): Work {
+  const openalex = (work as { ids?: { openalex?: unknown } | null }).ids?.openalex;
+  return typeof openalex === "string" && openalex ? { ...work, id: openalex } : work;
+}

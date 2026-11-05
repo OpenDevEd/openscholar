@@ -14,6 +14,7 @@ import { heldPapers, SAVED_A_READ } from "../paperSets/held";
 import { readSearchRun, readSearchWorks, type SearchSnapshot } from "../paperSets/openalex";
 import { PAPERS_A_READ, SCREENING_FIELDS, keptByRating, searchPapers, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
 import { parsePaperKey, toPaperKey } from "../../lib/papers/paper-ref";
+import { isOwnId } from "../../lib/search/source";
 
 /**
  * Papers one bulk change takes at most, whatever the person's plan allows (`bulk_papers`):
@@ -103,10 +104,10 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
     if (keys.length > most) throw tooMany();
     const ids = keys.flatMap((key) => {
       const ref = parsePaperKey(key);
-      return ref?.source === "openalex" ? [ref.work] : [];
+      return ref?.source === "openalex" || ref?.source === "openscholar" ? [ref.work] : [];
     });
     // A paper from elsewhere is changed as the person's library holds it.
-    const elsewhere = keys.filter((key) => parsePaperKey(key)?.source !== "openalex");
+    const elsewhere = keys.filter((key) => { const source = parsePaperKey(key)?.source; return source !== "openalex" && source !== "openscholar"; });
     const saved: SearchPaper[] = [];
     for (let from = 0; from < elsewhere.length; from += SAVED_A_READ) saved.push(...(await ctx.runQuery(internal.paperSets.held.saved, { workspaceId, keys: elsewhere.slice(from, from + SAVED_A_READ) })));
     if (!ids.length) return saved;
@@ -114,10 +115,12 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
+    // Only our index reads its own IDs, and it reads OpenAlex's too.
+    const source = ids.some(isOwnId) ? "openscholar" : await ctx.runQuery(internal.featureFlags.internal.searchSource, {});
     const found: Work[] = [];
     for (let from = 0; from < ids.length; from += IDS_A_REQUEST) {
       const some = ids.slice(from, from + IDS_A_REQUEST);
-      found.push(...(await readSearchWorks<Work>({ filter: `openalex:${some.join("|")}`, sort: "cited_by_count:desc" }, { first: 1, last: some.length, select: SCREENING_FIELDS }, spender(ctx, clerkId))));
+      found.push(...(await readSearchWorks<Work>({ filter: `openalex:${some.join("|")}`, sort: "cited_by_count:desc", source }, { first: 1, last: some.length, select: SCREENING_FIELDS }, spender(ctx, clerkId))));
     }
     return [...found.map(toPaper), ...saved];
   }

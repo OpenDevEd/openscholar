@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "Nada corresponde a «{query}»",
-    "queryErrorTitle": "A OpenAlex não conseguiu executar esta pesquisa",
+    "queryErrorTitle": "A {source} não conseguiu executar esta pesquisa",
     "oqlUnknownFieldFix": "Verifique o nome do campo ou coloque as palavras de pesquisa numa cláusula de texto, como em title/abstract has (chatgpt). A referência OQL lista todos os campos.",
     "noResultsNoFilter": "Não encontrámos artigos com os filtros atuais",
     "tryBroaderTerms": "Experimente termos mais amplos",
@@ -479,7 +479,7 @@
       "action_timeout": "O servidor demorou demasiado a responder. Vamos tentar novamente.",
       "pdf_download_failed": "Não foi possível obter o PDF deste artigo. Muitas vezes é temporário: tente novamente daqui a pouco.",
       "pdf_invalid": "Este documento está corrompido, protegido por palavra-passe ou digitalizado sem texto. Vamos ignorá-lo.",
-      "paper_not_found": "Não foi possível encontrar este artigo na OpenAlex. Pode ter sido removido ou indexado incorretamente.",
+      "paper_not_found": "Não foi possível encontrar este artigo na Openscholar. Pode ter sido removido ou indexado incorretamente.",
       "indexing_failed": "Ocorreu um erro ao preparar este artigo para extração.",
       "llm_content_refusal": "O modelo recusou responder a esta pergunta. Tente reformulá-la ou escolha outro modelo.",
       "schema_validation": "A resposta do modelo não correspondeu à estrutura esperada.",
@@ -568,7 +568,7 @@
         "dismiss": "Dispensar",
         "body": {
           "pdf_invalid": "PDF inválido ou ilegível",
-          "paper_not_found": "Artigo não encontrado na OpenAlex",
+          "paper_not_found": "Artigo não encontrado na Openscholar",
           "moderation": "Bloqueado pela moderação de conteúdos",
           "context_too_long": "Conteúdo demasiado longo para a janela de contexto do modelo",
           "llm_content_refusal": "O modelo recusou responder",
@@ -805,8 +805,8 @@
     "authorsUnavailable": "Não foi possível carregar os autores. Tente novamente.",
     "filterByAuthor": "Só trabalhos de {name}",
     "authorByName": "Qualquer autor com este nome",
-    "authorsAndNames": "Um trabalho tem de ter um dos autores da OpenAlex e um dos nomes escritos.",
-    "authorsAndNamesWhy": "A OpenAlex pesquisa separadamente os registos de autores e os nomes escritos nos trabalhos. Dentro de cada grupo, basta corresponder a uma das escolhas, mas entre os dois grupos só pode exigir ambos.",
+    "authorsAndNames": "Um trabalho tem de ter um dos autores da {source} e um dos nomes escritos.",
+    "authorsAndNamesWhy": "A {source} pesquisa separadamente os registos de autores e os nomes escritos nos trabalhos. Dentro de cada grupo, basta corresponder a uma das escolhas, mas entre os dois grupos só pode exigir ambos.",
     "minCitations": "Mínimo de citações",
     "anyNumber": "Qualquer número",
     "atLeastCitations": "{count, plural, one {Pelo menos # citação} other {Pelo menos # citações}}",
@@ -1333,11 +1333,11 @@
   },
   "workId": {
     "workIdLabel": "ID do trabalho",
-    "placeholder": "p. ex., W2741809807 ou https://openalex.org/W2741809807",
+    "placeholder": "p. ex., W2741809807",
     "applyFilter": "Aplicar filtro",
-    "descriptionCites": "Introduza um ID de trabalho da OpenAlex para encontrar artigos que citam esse trabalho",
-    "descriptionCitedBy": "Introduza um ID de trabalho da OpenAlex para encontrar artigos citados por esse trabalho",
-    "descriptionRelated": "Introduza um ID de trabalho da OpenAlex para encontrar artigos relacionados com esse trabalho",
+    "descriptionCites": "Introduza um ID de trabalho da {source} para encontrar artigos que citam esse trabalho",
+    "descriptionCitedBy": "Introduza um ID de trabalho da {source} para encontrar artigos citados por esse trabalho",
+    "descriptionRelated": "Introduza um ID de trabalho da {source} para encontrar artigos relacionados com esse trabalho",
     "statusCites": "A procurar artigos que citam: ",
     "statusCitedBy": "A procurar artigos citados por: ",
     "statusRelated": "A procurar artigos relacionados com: ",
@@ -1564,7 +1564,7 @@
     "progress": "Progresso",
     "beingRead": "<n></n> a ser lidos",
     "startsAfter": "Começa depois de {name}",
-    "gettingPapers": "A obter artigos da OpenAlex",
+    "gettingPapers": "A obter artigos da {source}",
     "ofTotal": "{done, number} de {total, number}",
     "papersAtOnce": "Artigos em simultâneo",
     "slotsInUse": "{running} de {limit} posições em uso",
@@ -2846,7 +2846,7 @@
     "publicationsFailed": "Não foi possível carregar as publicações.",
     "loadingPublications": "A carregar publicações",
     "publicationsView": "Fontes de publicações",
-    "noOpenAlex": "Não foram encontradas publicações da OpenAlex.",
+    "noPublications": "Não foram encontradas publicações da {source}.",
     "progress": "{loaded, number} de {total, number}",
     "searchLibrary": "Pesquisar publicações da comunidade",
     "searchPlaceholder": "Pesquisar publicações",
@@ -3057,6 +3057,14 @@
           "label": "PDF completos",
           "hint": "Ler o PDF de cada artigo, não apenas o resumo"
         }
+      },
+      "searchSource": {
+        "group": "Pesquisa",
+        "label": "Fonte de pesquisa",
+        "hint": "Todas as pesquisas do site usam esta fonte.",
+        "confirmTitle": "Pesquisar com {name}?",
+        "confirmMessage": "A pesquisa muda para todos imediatamente. Os trabalhos em curso terminam na fonte com que começaram.",
+        "confirmAction": "Usar {name}"
       }
     },
     "models": {
@@ -3401,12 +3409,12 @@
       "lookPapers": {
         "doing": "A procurar artigos",
         "did": "Procurou artigos",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "A ler um artigo",
         "did": "Leu um artigo",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "A verificar os seus créditos",
@@ -3712,7 +3720,7 @@
       "readPaperPdf": {
         "doing": "A ler o PDF de um artigo",
         "did": "Leu o PDF de um artigo",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Ler o PDF de um artigo",
         "askMany": "Ler {count, plural, one {o PDF de # artigo} other {os PDF de # artigos}}",
         "doingMany": "A ler {count, plural, one {o PDF de # artigo} other {os PDF de # artigos}}",
@@ -3916,7 +3924,7 @@
       "readAuthor": {
         "doing": "A ler um autor",
         "did": "Leu um autor",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Ler um autor",
         "askMany": "Ler {count, plural, one {# autor} other {# autores}}",
         "doingMany": "A ler {count, plural, one {# autor} other {# autores}}",
@@ -3934,7 +3942,7 @@
       "nameFilters": {
         "doing": "A dar nome aos filtros de uma pesquisa",
         "did": "Deu nome aos filtros de uma pesquisa",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Dar nome aos filtros de uma pesquisa"
       },
       "cite": {
@@ -5357,8 +5365,7 @@
     "publications": "Publicações",
     "noPublicationsMatchYourSearch": "Nenhuma publicação corresponde à sua pesquisa.",
     "noPublicationsSelectedYet": "Ainda não há publicações selecionadas.",
-    "loadingOpenalexPublications": "A carregar publicações da OpenAlex",
-    "noOpenalexPublicationsToDisplay": "Não há publicações da OpenAlex para mostrar.",
+    "noPublicationsToDisplay": "Não há publicações da {source} para mostrar.",
     "showMore": "Mostrar mais",
     "confirmAuthorMatch": "Confirmar a correspondência do autor",
     "findAuthorOnOpenalex": "Encontrar o autor na OpenAlex",

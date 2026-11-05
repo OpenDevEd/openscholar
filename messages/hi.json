@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "\"{query}\" से कुछ मेल नहीं खाया",
-    "queryErrorTitle": "OpenAlex यह क्वेरी नहीं चला सका",
+    "queryErrorTitle": "{source} यह क्वेरी नहीं चला सका",
     "oqlUnknownFieldFix": "फ़ील्ड का नाम जाँचें, या खोज के शब्दों को टेक्स्ट क्लॉज़ के अंदर रखें, जैसे title/abstract has (chatgpt)। OQL संदर्भ में सभी फ़ील्ड दिए गए हैं।",
     "noResultsNoFilter": "आपके वर्तमान फ़िल्टर के साथ कोई पेपर नहीं मिला",
     "tryBroaderTerms": "व्यापक शब्द आज़माएं",
@@ -478,7 +478,7 @@
       "action_timeout": "सर्वर ने प्रतिक्रिया देने में बहुत समय लिया। हम पुनः प्रयास करेंगे।",
       "pdf_download_failed": "हम इस पेपर का PDF प्राप्त नहीं कर सके। यह अक्सर अस्थायी होता है — कुछ क्षण में पुनः प्रयास करें।",
       "pdf_invalid": "यह दस्तावेज़ दूषित है, पासवर्ड-संरक्षित है, या बिना टेक्स्ट के स्कैन किया गया है। हम इसे छोड़ देंगे।",
-      "paper_not_found": "हम इस पेपर को OpenAlex में नहीं ढूँढ सके। हो सकता है इसे हटा दिया गया हो या ग़लत इंडेक्स किया गया हो।",
+      "paper_not_found": "हम इस पेपर को Openscholar में नहीं ढूँढ सके। हो सकता है इसे हटा दिया गया हो या ग़लत इंडेक्स किया गया हो।",
       "indexing_failed": "इस पेपर को निष्कर्षण के लिए तैयार करते समय कुछ ग़लत हो गया।",
       "llm_content_refusal": "मॉडल ने इस प्रश्न का उत्तर देने से इनकार किया। अपना प्रश्न दोबारा लिखें या कोई अन्य मॉडल चुनें।",
       "schema_validation": "मॉडल का उत्तर अपेक्षित संरचना से मेल नहीं खाया।",
@@ -567,7 +567,7 @@
         "dismiss": "बंद करें",
         "body": {
           "pdf_invalid": "अमान्य या अपठनीय पीडीएफ",
-          "paper_not_found": "OpenAlex में पेपर नहीं मिला",
+          "paper_not_found": "Openscholar में पेपर नहीं मिला",
           "moderation": "सामग्री मॉडरेशन द्वारा अवरुद्ध",
           "context_too_long": "सामग्री मॉडल की कॉन्टेक्स्ट विंडो के लिए बहुत लंबी है",
           "llm_content_refusal": "मॉडल ने उत्तर देने से इंकार किया",
@@ -804,8 +804,8 @@
     "authorsUnavailable": "लेखक लोड नहीं हो सके। फिर से कोशिश करें।",
     "filterByAuthor": "केवल {name} की रचनाएँ",
     "authorByName": "इस नाम का कोई भी लेखक",
-    "authorsAndNames": "किसी रचना में OpenAlex लेखकों में से एक और लिखे गए नामों में से एक होना चाहिए।",
-    "authorsAndNamesWhy": "OpenAlex अपने लेखक रिकॉर्ड और रचनाओं पर लिखे नामों को अलग-अलग खोजता है। हर एक के भीतर आपके चुने विकल्पों में से कोई एक काफ़ी है, लेकिन दोनों के बीच वह केवल दोनों की शर्त रख सकता है।",
+    "authorsAndNames": "किसी रचना में {source} लेखकों में से एक और लिखे गए नामों में से एक होना चाहिए।",
+    "authorsAndNamesWhy": "{source} अपने लेखक रिकॉर्ड और रचनाओं पर लिखे नामों को अलग-अलग खोजता है। हर एक के भीतर आपके चुने विकल्पों में से कोई एक काफ़ी है, लेकिन दोनों के बीच वह केवल दोनों की शर्त रख सकता है।",
     "minCitations": "न्यूनतम उद्धरण",
     "anyNumber": "कोई भी संख्या",
     "atLeastCitations": "{count, plural, one {कम से कम # उद्धरण} other {कम से कम # उद्धरण}}",
@@ -1332,11 +1332,11 @@
   },
   "workId": {
     "workIdLabel": "कार्य ID",
-    "placeholder": "जैसे W2741809807 या https://openalex.org/W2741809807",
+    "placeholder": "जैसे W2741809807",
     "applyFilter": "फ़िल्टर लागू करें",
-    "descriptionCites": "उन पेपर खोजने के लिए OpenAlex कार्य ID दर्ज करें जो उस कार्य को उद्धृत करते हैं",
-    "descriptionCitedBy": "उन पेपर खोजने के लिए OpenAlex कार्य ID दर्ज करें जो उस कार्य द्वारा उद्धृत हैं",
-    "descriptionRelated": "उन पेपर खोजने के लिए OpenAlex कार्य ID दर्ज करें जो उस कार्य से संबंधित हैं",
+    "descriptionCites": "उन पेपर खोजने के लिए {source} कार्य ID दर्ज करें जो उस कार्य को उद्धृत करते हैं",
+    "descriptionCitedBy": "उन पेपर खोजने के लिए {source} कार्य ID दर्ज करें जो उस कार्य द्वारा उद्धृत हैं",
+    "descriptionRelated": "उन पेपर खोजने के लिए {source} कार्य ID दर्ज करें जो उस कार्य से संबंधित हैं",
     "statusCites": "उन पेपर को खोज रहे हैं जो उद्धृत करते हैं: ",
     "statusCitedBy": "उन पेपर को खोज रहे हैं जो उद्धृत हैं: ",
     "statusRelated": "उन पेपर को खोज रहे हैं जो संबंधित हैं: ",
@@ -1563,7 +1563,7 @@
     "progress": "प्रगति",
     "beingRead": "<n></n> पढ़े जा रहे हैं",
     "startsAfter": "{name} के बाद शुरू होगी",
-    "gettingPapers": "OpenAlex से लेख लाए जा रहे हैं",
+    "gettingPapers": "{source} से लेख लाए जा रहे हैं",
     "ofTotal": "{total, number} में से {done, number}",
     "papersAtOnce": "एक साथ पेपर",
     "slotsInUse": "{limit} में से {running} स्लॉट उपयोग में",
@@ -2845,7 +2845,7 @@
     "publicationsFailed": "प्रकाशन लोड नहीं हो सके।",
     "loadingPublications": "प्रकाशन लोड हो रहे हैं",
     "publicationsView": "प्रकाशन स्रोत",
-    "noOpenAlex": "OpenAlex में कोई प्रकाशन नहीं मिला।",
+    "noPublications": "{source} में कोई प्रकाशन नहीं मिला।",
     "progress": "{total, number} में से {loaded, number}",
     "searchLibrary": "कम्युनिटी प्रकाशनों में खोजें",
     "searchPlaceholder": "प्रकाशन खोजें",
@@ -3056,6 +3056,14 @@
           "label": "पूरे PDF",
           "hint": "सिर्फ़ सार नहीं, हर पेपर का PDF पढ़ें"
         }
+      },
+      "searchSource": {
+        "group": "खोज",
+        "label": "खोज स्रोत",
+        "hint": "साइट की हर खोज इसी स्रोत से होती है।",
+        "confirmTitle": "{name} से खोजें?",
+        "confirmMessage": "खोज सभी के लिए तुरंत बदल जाती है। चल रहे कार्य उसी स्रोत पर पूरे होते हैं जिससे वे शुरू हुए थे।",
+        "confirmAction": "{name} का उपयोग करें"
       }
     },
     "models": {
@@ -3400,12 +3408,12 @@
       "lookPapers": {
         "doing": "शोध-पत्र खोज रहा है",
         "did": "शोध-पत्र खोजे",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "एक शोध-पत्र पढ़ रहा है",
         "did": "एक शोध-पत्र पढ़ा",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "आपके क्रेडिट जाँच रहा है",
@@ -3711,7 +3719,7 @@
       "readPaperPdf": {
         "doing": "शोधपत्र की PDF पढ़ रहा है",
         "did": "शोधपत्र की PDF पढ़ी",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "शोधपत्र की PDF पढ़ें",
         "askMany": "{count, number} शोधपत्रों की PDF पढ़ें",
         "doingMany": "{count, number} शोधपत्रों की PDF पढ़ रहा है",
@@ -3915,7 +3923,7 @@
       "readAuthor": {
         "doing": "एक लेखक पढ़ रहा है",
         "did": "एक लेखक पढ़ा",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "एक लेखक पढ़ें",
         "askMany": "{count, number} लेखक पढ़ें",
         "doingMany": "{count, number} लेखक पढ़ रहा है",
@@ -3933,7 +3941,7 @@
       "nameFilters": {
         "doing": "एक खोज के फ़िल्टरों के नाम पढ़ रहा है",
         "did": "एक खोज के फ़िल्टरों के नाम पढ़े",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "एक खोज के फ़िल्टरों के नाम पढ़ें"
       },
       "cite": {
@@ -5356,8 +5364,7 @@
     "publications": "प्रकाशन",
     "noPublicationsMatchYourSearch": "आपकी खोज से कोई प्रकाशन मेल नहीं खाता।",
     "noPublicationsSelectedYet": "अभी कोई प्रकाशन नहीं चुना गया।",
-    "loadingOpenalexPublications": "OpenAlex प्रकाशन लोड हो रहे हैं",
-    "noOpenalexPublicationsToDisplay": "दिखाने के लिए कोई OpenAlex प्रकाशन नहीं।",
+    "noPublicationsToDisplay": "दिखाने के लिए कोई {source} प्रकाशन नहीं।",
     "showMore": "और दिखाएं",
     "confirmAuthorMatch": "लेखक का मिलान पक्का करें",
     "findAuthorOnOpenalex": "OpenAlex पर लेखक खोजें",

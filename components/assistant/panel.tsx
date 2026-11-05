@@ -5,6 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useKeyboardViewport } from "@/lib/hooks/use-keyboard-viewport";
 import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
@@ -1080,7 +1081,10 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
 function PaperFocus({ paperId, open, href, onClose }: { paperId: string; open: boolean; href: string; onClose: () => void }) {
   const { data, error } = useSWR(workKey(paperId), readWorkOf, { revalidateOnFocus: false });
   const rated = useRatedPapers(data ? [data as PaperResult] : []);
+  const onOpenAlex = useSearchSource() === "openalex";
   if (error !== undefined || data === null) {
+    // Nothing opens OpenAlex while our index is what people search, so a paper it can't read just doesn't open.
+    if (!onOpenAlex || href.includes("openscholar.ai")) return null;
     return (
       <LinkSafetyDialog
         isOpen={open}

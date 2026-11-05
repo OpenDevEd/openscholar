@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "Akukho okuhambisana no-\"{query}\"",
-    "queryErrorTitle": "I-OpenAlex ayikwazanga ukuqhuba lo mbuzo",
+    "queryErrorTitle": "I-{source} ayikwazanga ukuqhuba lo mbuzo",
     "oqlUnknownFieldFix": "Hlola igama lenkambu, noma faka amagama ngaphakathi komusho wombhalo, njengo-title/abstract has (chatgpt). Incwadi ye-OQL inikeza uhlu lwazo zonke izinkambu.",
     "noResultsNoFilter": "Asikwazanga ukuthola amaphepha ngezihlungi ezikhona manje",
     "tryBroaderTerms": "Zama amagama abanzi",
@@ -478,7 +478,7 @@
       "action_timeout": "Iseva ithathe isikhathi eside kakhulu ukuphendula. Sizozama futhi.",
       "pdf_download_failed": "Asikwazanga ukuthola i-PDF yalelo phepha. Ivame ukuba yisikhashana — zama futhi ngemuva kwesikhashana.",
       "pdf_invalid": "Lolu xwebhu lonakele, luvikelwe ngephasiwedi, noma lukhishwe ngaphandle kombhalo. Sizolidlula.",
-      "paper_not_found": "Asikwazanga ukuthola lelo phepha ku-OpenAlex. Lingase lisuswe noma lifakwe ohlwini ngephutha.",
+      "paper_not_found": "Asikwazanga ukuthola lelo phepha ku-Openscholar. Lingase lisuswe noma lifakwe ohlwini ngephutha.",
       "indexing_failed": "Kukhona okungahambanga kahle ngesikhathi silungiselela leli phepha ukuze likhishwe.",
       "llm_content_refusal": "Imodeli yenqabile ukuphendula lo mbuzo. Zama ukuwubhala ngenye indlela noma khetha enye imodeli.",
       "schema_validation": "Impendulo yemodeli ayihambisananga nesakhiwo esilindelekile.",
@@ -567,7 +567,7 @@
         "dismiss": "Cashisa",
         "body": {
           "pdf_invalid": "I-PDF engalungile noma engafundeki",
-          "paper_not_found": "Iphepha alitholakali ku-OpenAlex",
+          "paper_not_found": "Iphepha alitholakali ku-Openscholar",
           "moderation": "Ivinjwe ukuhlungwa kokuqukethwe",
           "context_too_long": "Okuqukethwe kumude kakhulu kumkhawulo wombhalo wemodeli",
           "llm_content_refusal": "Imodeli yenqabile ukuphendula",
@@ -804,8 +804,8 @@
     "authorsUnavailable": "Ababhali bahlehlile ukulayisha. Zama futhi.",
     "filterByAuthor": "Isebenza kuphela yimisebenzi ka-{name}",
     "authorByName": "Noma ngubani umbhali onalo igama",
-    "authorsAndNames": "Umsebenzi udinga omunye wababhali be-OpenAlex nenye yamagama abhalwe.",
-    "authorsAndNamesWhy": "I-OpenAlex isesha amarekhodi ababhali bayo namagama abhalwe emisebenzini ngokwahlukana. Ngaphakathi kwalokho ngakunye, ukufana nanoma yikuphi okukhethile kwanele, kodwa phakathi kwezimbili kungadinga kokubili.",
+    "authorsAndNames": "Umsebenzi udinga omunye wababhali be-{source} nenye yamagama abhalwe.",
+    "authorsAndNamesWhy": "I-{source} isesha amarekhodi ababhali bayo namagama abhalwe emisebenzini ngokwahlukana. Ngaphakathi kwalokho ngakunye, ukufana nanoma yikuphi okukhethile kwanele, kodwa phakathi kwezimbili kungadinga kokubili.",
     "minCitations": "Ukubhalisa okuncane",
     "anyNumber": "Noma yiluphi inombolo",
     "atLeastCitations": "{count, plural, one {Okungenani # ukubhalisa} other {Okungenani # ukubhalisa}}",
@@ -1332,11 +1332,11 @@
   },
   "workId": {
     "workIdLabel": "I-ID yomsebenzi",
-    "placeholder": "isibonelo: W2741809807 noma https://openalex.org/W2741809807",
+    "placeholder": "isibonelo: W2741809807",
     "applyFilter": "Faka isihlungi",
-    "descriptionCites": "Faka i-ID yomsebenzi we-OpenAlex ukuze uthole amaphepha abhalisa lowo msebenzi",
-    "descriptionCitedBy": "Faka i-ID yomsebenzi we-OpenAlex ukuze uthole amaphepha abhalisiwe ngulowo msebenzi",
-    "descriptionRelated": "Faka i-ID yomsebenzi we-OpenAlex ukuze uthole amaphepha ahlobene nalowo msebenzi",
+    "descriptionCites": "Faka i-ID yomsebenzi we-{source} ukuze uthole amaphepha abhalisa lowo msebenzi",
+    "descriptionCitedBy": "Faka i-ID yomsebenzi we-{source} ukuze uthole amaphepha abhalisiwe ngulowo msebenzi",
+    "descriptionRelated": "Faka i-ID yomsebenzi we-{source} ukuze uthole amaphepha ahlobene nalowo msebenzi",
     "statusCites": "Kuthola amaphepha abhalisa: ",
     "statusCitedBy": "Kuthola amaphepha abhalisiwe ngu: ",
     "statusRelated": "Kuthola amaphepha ahlobene no: ",
@@ -1563,7 +1563,7 @@
     "progress": "Inqubekelaphambili",
     "beingRead": "<n></n> iyafundwa",
     "startsAfter": "Iqala ngemuva kwa-{name}",
-    "gettingPapers": "Ithola amaphepha avela ku-OpenAlex",
+    "gettingPapers": "Ithola amaphepha avela ku-{source}",
     "ofTotal": "{done, number} kwa-{total, number}",
     "papersAtOnce": "Amaphepha ngesikhathi esisodwa",
     "slotsInUse": "{running} kwa-{limit} izindawo zisetshenziswa",
@@ -2845,7 +2845,7 @@
     "publicationsFailed": "Okushicilelwe akukwazanga ukulayishwa.",
     "loadingPublications": "Iyalayisha okushicilelwe",
     "publicationsView": "Imithombo yokushicilela",
-    "noOpenAlex": "Akukho okushicilelwe kwe-OpenAlex okutholakele.",
+    "noPublications": "Akukho okushicilelwe kwe-{source} okutholakele.",
     "progress": "{loaded, number} kwa-{total, number}",
     "searchLibrary": "Sesha okushicilelwe emphakathini",
     "searchPlaceholder": "Sesha okushicilelwe",
@@ -3056,6 +3056,14 @@
           "label": "Ama-PDF aphelele",
           "hint": "Funda i-PDF yephepha ngalinye, hhayi i-abstract kuphela"
         }
+      },
+      "searchSource": {
+        "group": "Ukusesha",
+        "label": "Umthombo wokusesha",
+        "hint": "Konke ukusesha kusayithi kusebenzisa lo mthombo.",
+        "confirmTitle": "Sesha nge-{name}?",
+        "confirmMessage": "Ukusesha kuyashintsha kubo bonke ngokushesha. Imisebenzi esaqhubeka iqeda kumthombo eqale ngawo.",
+        "confirmAction": "Sebenzisa {name}"
       }
     },
     "models": {
@@ -3400,12 +3408,12 @@
       "lookPapers": {
         "doing": "Ibheka amaphepha",
         "did": "Ibhekile amaphepha",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "Ifunda iphepha",
         "did": "Ifundile iphepha",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "Ihlola amakhredithi akho",
@@ -3711,7 +3719,7 @@
       "readPaperPdf": {
         "doing": "Ifunda i-PDF yephepha",
         "did": "Ifundile i-PDF yephepha",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Funda i-PDF yephepha",
         "askMany": "Funda {count, plural, one {i-PDF yephepha elilodwa} other {ama-PDF ezephepha ezingu-#}}",
         "doingMany": "Ifunda {count, plural, one {i-PDF yephepha elilodwa} other {ama-PDF ezephepha ezingu-#}}",
@@ -3915,7 +3923,7 @@
       "readAuthor": {
         "doing": "Ifunda umbhali",
         "did": "Ifundile umbhali",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Funda umbhali",
         "askMany": "Funda {count, plural, one {# umbhali} other {# ababhali}}",
         "doingMany": "Ifunda {count, plural, one {# umbhali} other {# ababhali}}",
@@ -3933,7 +3941,7 @@
       "nameFilters": {
         "doing": "Iqamba igama lezihlungi zesesho",
         "did": "Yaqamba igama lezihlungi zesesho",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Qamba igama lezihlungi zesesho"
       },
       "cite": {
@@ -5356,8 +5364,7 @@
     "publications": "Okushicilelwe",
     "noPublicationsMatchYourSearch": "Akukho okushicilelwe okuhambisana nokusesha kwakho.",
     "noPublicationsSelectedYet": "Akukho okushicilelwe okukhethiwe okwamanje.",
-    "loadingOpenalexPublications": "Iyalayisha okushicilelwe kwe-OpenAlex",
-    "noOpenalexPublicationsToDisplay": "Akukho okushicilelwe kwe-OpenAlex okungaboniswa.",
+    "noPublicationsToDisplay": "Akukho okushicilelwe kwe-{source} okungaboniswa.",
     "showMore": "Bonisa okwengeziwe",
     "confirmAuthorMatch": "Qinisekisa ukufana kombhali",
     "findAuthorOnOpenalex": "Thola umbhali ku-OpenAlex",

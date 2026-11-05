@@ -102,6 +102,19 @@ describe("AI overviews of a search", () => {
     expect(await view()).toMatchObject({ day: "2026-10-30", free: 0, paid: 1 });
   });
 
+  it("doesn't take an overview written from one source for another's", async () => {
+    const { t, search, ensure } = await setup();
+    const asked = await search("teacher training");
+    expect(await ensure(asked)).toBe("started");
+    await t.run(async (ctx) => {
+      const [row] = await ctx.db.query("searchOverviews").take(1);
+      await ctx.db.patch("searchOverviews", row._id, { status: "done" });
+    });
+    expect(await ensure(asked)).toBe("written");
+    await t.run((ctx) => ctx.db.insert("featureFlags", { key: "search.openscholar", enabled: true, updatedAt: 1 }));
+    expect(await ensure(asked)).toBe("started");
+  });
+
   it("reads a written overview again for a search with the same request, and writes it anew only when asked", async () => {
     const { t, as, scope, home, search, ensure, stored, setPerDay } = await setup();
     await setPerDay(5);

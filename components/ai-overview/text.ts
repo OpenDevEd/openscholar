@@ -8,7 +8,7 @@ export type Block = { kind: "text"; parts: Array<string | Cite> } | { kind: "cha
 type List = Infer<typeof overviewListValidator>;
 
 const MARKER = /\[chart:(\w+)(:change)?\]/g;
-const CITE = /\[([^\]]+)\]\(paper:(W\d+)\)/g;
+const CITE = /\[([^\]]+)\]\(paper:((?:W|OS)\d+)\)/g;
 
 /** A paragraph's words, with each cited paper as a chip. */
 function textBlock(line: string): Block[] {

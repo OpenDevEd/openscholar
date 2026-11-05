@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "\"{query}\" に一致するものはありません",
-    "queryErrorTitle": "OpenAlex はこのクエリを実行できませんでした",
+    "queryErrorTitle": "{source} はこのクエリを実行できませんでした",
     "oqlUnknownFieldFix": "フィールド名を確認するか、検索語をテキスト句の中に書いてください。例: title/abstract has (chatgpt)。すべてのフィールドは OQL リファレンスにあります。",
     "noResultsNoFilter": "現在のフィルターで論文が見つかりませんでした",
     "tryBroaderTerms": "より広い用語を試してください",
@@ -478,7 +478,7 @@
       "action_timeout": "サーバーの応答に時間がかかりすぎました。再試行します。",
       "pdf_download_failed": "この論文のPDFを取得できませんでした。一時的な問題であることが多いため、しばらくしてから再試行してください。",
       "pdf_invalid": "この文書は破損しているか、パスワード保護されているか、テキストのないスキャンです。スキップします。",
-      "paper_not_found": "OpenAlexでこの論文を見つけられませんでした。削除されたか、誤ってインデックスされている可能性があります。",
+      "paper_not_found": "Openscholarでこの論文を見つけられませんでした。削除されたか、誤ってインデックスされている可能性があります。",
       "indexing_failed": "この論文を抽出用に準備中に問題が発生しました。",
       "llm_content_refusal": "モデルがこの質問への回答を拒否しました。表現を変えるか、別のモデルを選択してください。",
       "schema_validation": "モデルの回答が想定された構造と一致しませんでした。",
@@ -567,7 +567,7 @@
         "dismiss": "閉じる",
         "body": {
           "pdf_invalid": "無効または読み取れないPDF",
-          "paper_not_found": "OpenAlexで論文が見つかりません",
+          "paper_not_found": "Openscholarで論文が見つかりません",
           "moderation": "コンテンツモデレーションによりブロックされました",
           "context_too_long": "モデルのコンテキストウィンドウに対してコンテンツが長すぎます",
           "llm_content_refusal": "モデルが回答を拒否しました",
@@ -804,8 +804,8 @@
     "authorsUnavailable": "著者を読み込めませんでした。もう一度お試しください。",
     "filterByAuthor": "{name} の著作のみ",
     "authorByName": "この名前の著者すべて",
-    "authorsAndNames": "OpenAlex の著者のいずれかと、入力した名前のいずれかの両方を含む著作が対象です。",
-    "authorsAndNamesWhy": "OpenAlex は著者レコードと、著作に記された名前を別々に検索します。それぞれの中ではいずれか一つに一致すれば足りますが、両者の間では両方への一致しか指定できません。",
+    "authorsAndNames": "{source} の著者のいずれかと、入力した名前のいずれかの両方を含む著作が対象です。",
+    "authorsAndNamesWhy": "{source} は著者レコードと、著作に記された名前を別々に検索します。それぞれの中ではいずれか一つに一致すれば足りますが、両者の間では両方への一致しか指定できません。",
     "minCitations": "最小被引用数",
     "anyNumber": "指定なし",
     "atLeastCitations": "{count, plural, other {被引用数#件以上}}",
@@ -1332,11 +1332,11 @@
   },
   "workId": {
     "workIdLabel": "作品 ID",
-    "placeholder": "例：W2741809807 または https://openalex.org/W2741809807",
+    "placeholder": "例：W2741809807",
     "applyFilter": "フィルターを適用",
-    "descriptionCites": "その論文を引用している論文を検索するOpenAlex Work IDを入力",
-    "descriptionCitedBy": "その論文に引用されている論文を検索するOpenAlex Work IDを入力",
-    "descriptionRelated": "その論文に関連する論文を検索するOpenAlex Work IDを入力",
+    "descriptionCites": "その論文を引用している論文を検索する{source} Work IDを入力",
+    "descriptionCitedBy": "その論文に引用されている論文を検索する{source} Work IDを入力",
+    "descriptionRelated": "その論文に関連する論文を検索する{source} Work IDを入力",
     "statusCites": "引用している論文を検索中：",
     "statusCitedBy": "引用されている論文を検索中：",
     "statusRelated": "関連する論文を検索中：",
@@ -1563,7 +1563,7 @@
     "progress": "進捗",
     "beingRead": "<n></n> 件を読み取り中",
     "startsAfter": "{name} の後に開始",
-    "gettingPapers": "OpenAlex から論文を取得中",
+    "gettingPapers": "{source} から論文を取得中",
     "ofTotal": "{total, number} 件中 {done, number} 件",
     "papersAtOnce": "同時に処理する論文",
     "slotsInUse": "{limit} スロット中 {running} を使用中",
@@ -2845,7 +2845,7 @@
     "publicationsFailed": "文献を読み込めませんでした。",
     "loadingPublications": "文献を読み込み中",
     "publicationsView": "出版物のソース",
-    "noOpenAlex": "OpenAlex の文献は見つかりませんでした。",
+    "noPublications": "{source} の文献は見つかりませんでした。",
     "progress": "{total, number} 件中 {loaded, number} 件",
     "searchLibrary": "コミュニティの文献を検索",
     "searchPlaceholder": "文献を検索",
@@ -3056,6 +3056,14 @@
           "label": "PDF 全文",
           "hint": "要約だけでなく各論文の PDF を読む"
         }
+      },
+      "searchSource": {
+        "group": "検索",
+        "label": "検索ソース",
+        "hint": "サイト内のすべての検索がこのソースを使います。",
+        "confirmTitle": "{name} で検索しますか?",
+        "confirmMessage": "検索はすぐに全員に切り替わります。実行中のジョブは開始時のソースで完了します。",
+        "confirmAction": "{name} を使う"
       }
     },
     "models": {
@@ -3400,12 +3408,12 @@
       "lookPapers": {
         "doing": "論文を検索しています",
         "did": "論文を検索しました",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "論文を読んでいます",
         "did": "論文を読みました",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "クレジットを確認しています",
@@ -3711,7 +3719,7 @@
       "readPaperPdf": {
         "doing": "論文の PDF を読んでいます",
         "did": "論文の PDF を読みました",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "論文の PDF を読む",
         "askMany": "{count, number} 件の論文の PDF を読む",
         "doingMany": "{count, number} 件の論文の PDF を読んでいます",
@@ -3915,7 +3923,7 @@
       "readAuthor": {
         "doing": "著者を読んでいます",
         "did": "著者を読みました",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "著者を読む",
         "askMany": "{count, number} 人の著者を読む",
         "doingMany": "{count, number} 人の著者を読んでいます",
@@ -3933,7 +3941,7 @@
       "nameFilters": {
         "doing": "検索の絞り込みに名前を付けています",
         "did": "検索の絞り込みに名前を付けました",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "検索の絞り込みに名前を付ける"
       },
       "cite": {
@@ -5356,8 +5364,7 @@
     "publications": "出版物",
     "noPublicationsMatchYourSearch": "検索に一致する出版物はありません。",
     "noPublicationsSelectedYet": "まだ出版物が選ばれていません。",
-    "loadingOpenalexPublications": "OpenAlex の出版物を読み込んでいます",
-    "noOpenalexPublicationsToDisplay": "表示できる OpenAlex の出版物はありません。",
+    "noPublicationsToDisplay": "表示できる {source} の出版物はありません。",
     "showMore": "さらに表示",
     "confirmAuthorMatch": "著者の一致を確定",
     "findAuthorOnOpenalex": "OpenAlex で著者を探す",

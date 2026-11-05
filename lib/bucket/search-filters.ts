@@ -1,3 +1,4 @@
+import type { SearchSource } from "@/lib/search/source";
 import type { SearchParams } from "@/lib/search/types";
 import { effectiveSort } from "@/lib/search-params";
 import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
@@ -11,7 +12,7 @@ import type { GetSearchResultsWithFiltersOptions } from "@/lib/search-utils";
  */
 export type BucketSearchFilters = {
   query: string;
-  openAlexQuery: OpenAlexWorksQuery & { sort: string };
+  openAlexQuery: OpenAlexWorksQuery & { sort: string; source?: SearchSource };
 };
 
 /** Null when the query is not valid; `options.onWarning` gets the reason. */

@@ -230,7 +230,7 @@
   },
   "search": {
     "nothingMatched": "Hakuna kilichofanana na \"{query}\"",
-    "queryErrorTitle": "OpenAlex haikuweza kuendesha hoja hii",
+    "queryErrorTitle": "{source} haikuweza kuendesha hoja hii",
     "oqlUnknownFieldFix": "Angalia jina la sehemu, au weka maneno ndani ya kifungu cha maandishi, kama title/abstract has (chatgpt). Marejeo ya OQL yanaorodhesha kila sehemu.",
     "noResultsNoFilter": "Hatukupata makala yoyote kwa vichujio vyako vya sasa",
     "tryBroaderTerms": "Jaribu maneno mapana zaidi",
@@ -479,7 +479,7 @@
       "action_timeout": "Seva ilichukua muda mrefu kujibu. Tutajaribu tena.",
       "pdf_download_failed": "Hatukuweza kupata PDF ya makala hii. Mara nyingi ni ya muda mfupi, jaribu tena baada ya muda mfupi.",
       "pdf_invalid": "Hati hii imeharibika, imelindwa kwa nenosiri, au imechanganuliwa bila maandishi. Tutairuka.",
-      "paper_not_found": "Hatukuweza kupata makala hii kwenye OpenAlex. Huenda iliondolewa au imeorodheshwa vibaya.",
+      "paper_not_found": "Hatukuweza kupata makala hii kwenye Openscholar. Huenda iliondolewa au imeorodheshwa vibaya.",
       "indexing_failed": "Kuna tatizo lilitokea wakati wa kuandaa makala hii kwa uchimbaji.",
       "llm_content_refusal": "Modeli imekataa kujibu swali hili. Jaribu kuliandika upya au chagua modeli nyingine.",
       "schema_validation": "Jibu la modeli halikulingana na muundo unaotarajiwa.",
@@ -568,7 +568,7 @@
         "dismiss": "Ondoa",
         "body": {
           "pdf_invalid": "PDF si sahihi au haiwezi kusomwa",
-          "paper_not_found": "Makala haijapatikana kwenye OpenAlex",
+          "paper_not_found": "Makala haijapatikana kwenye Openscholar",
           "moderation": "Imezuiwa na udhibiti wa maudhui",
           "context_too_long": "Maudhui ni marefu mno kwa dirisha la muktadha la modeli",
           "llm_content_refusal": "Modeli imekataa kujibu",
@@ -805,8 +805,8 @@
     "authorsUnavailable": "Waandishi hawakuweza kupakiwa. Jaribu tena.",
     "filterByAuthor": "Hufanya kazi kwa {name} pekee",
     "authorByName": "Mwandishi yeyote mwenye jina hili",
-    "authorsAndNames": "Kazi inahitaji mmoja wa waandishi wa OpenAlex na mmoja wa majina yaliyoandikwa.",
-    "authorsAndNamesWhy": "OpenAlex inatafuta rekodi zake za waandishi na majina yaliyoandikwa kwenye kazi kando kando. Ndani ya kila kimoja, kulingana na chochote kati ya chaguo lako kunatosha, lakini kwa vyote viwili inaweza kuhitaji vyote kwa pamoja.",
+    "authorsAndNames": "Kazi inahitaji mmoja wa waandishi wa {source} na mmoja wa majina yaliyoandikwa.",
+    "authorsAndNamesWhy": "{source} inatafuta rekodi zake za waandishi na majina yaliyoandikwa kwenye kazi kando kando. Ndani ya kila kimoja, kulingana na chochote kati ya chaguo lako kunatosha, lakini kwa vyote viwili inaweza kuhitaji vyote kwa pamoja.",
     "minCitations": "Nukuu za chini kabisa",
     "anyNumber": "Nambari yoyote",
     "atLeastCitations": "{count, plural, one {Angalau nukuu #} other {Angalau nukuu #}}",
@@ -1333,11 +1333,11 @@
   },
   "workId": {
     "workIdLabel": "Kitambulisho cha kazi",
-    "placeholder": "mfano: W2741809807 au https://openalex.org/W2741809807",
+    "placeholder": "mfano: W2741809807",
     "applyFilter": "Tumia kichujio",
-    "descriptionCites": "Weka kitambulisho cha kazi cha OpenAlex ili kupata makala zinazonukuu kazi hiyo",
-    "descriptionCitedBy": "Weka kitambulisho cha kazi cha OpenAlex ili kupata makala zinazonukuliwa na kazi hiyo",
-    "descriptionRelated": "Weka kitambulisho cha kazi cha OpenAlex ili kupata makala zinazohusiana na kazi hiyo",
+    "descriptionCites": "Weka kitambulisho cha kazi cha {source} ili kupata makala zinazonukuu kazi hiyo",
+    "descriptionCitedBy": "Weka kitambulisho cha kazi cha {source} ili kupata makala zinazonukuliwa na kazi hiyo",
+    "descriptionRelated": "Weka kitambulisho cha kazi cha {source} ili kupata makala zinazohusiana na kazi hiyo",
     "statusCites": "Inatafuta makala zinazonukuu: ",
     "statusCitedBy": "Inatafuta makala zilizonukuliwa na: ",
     "statusRelated": "Inatafuta makala zinazohusiana na: ",
@@ -1564,7 +1564,7 @@
     "progress": "Maendeleo",
     "beingRead": "<n></n> inasomwa",
     "startsAfter": "Inaanza baada ya {name}",
-    "gettingPapers": "Inapata makala kutoka OpenAlex",
+    "gettingPapers": "Inapata makala kutoka {source}",
     "ofTotal": "{done, number} kati ya {total, number}",
     "papersAtOnce": "Makala kwa wakati mmoja",
     "slotsInUse": "nafasi {running} kati ya {limit} zinatumika",
@@ -2846,7 +2846,7 @@
     "publicationsFailed": "Machapisho hayakuweza kupakiwa.",
     "loadingPublications": "Inapakia machapisho",
     "publicationsView": "Vyanzo vya machapisho",
-    "noOpenAlex": "Hakuna machapisho ya OpenAlex yaliyopatikana.",
+    "noPublications": "Hakuna machapisho ya {source} yaliyopatikana.",
     "progress": "{loaded, number} kati ya {total, number}",
     "searchLibrary": "Tafuta machapisho ya jumuiya",
     "searchPlaceholder": "Tafuta machapisho",
@@ -3057,6 +3057,14 @@
           "label": "PDF kamili",
           "hint": "Soma PDF ya kila makala, si muhtasari pekee"
         }
+      },
+      "searchSource": {
+        "group": "Utafutaji",
+        "label": "Chanzo cha utafutaji",
+        "hint": "Kila utafutaji kwenye tovuti hutumia chanzo hiki.",
+        "confirmTitle": "Tafuta kwa {name}?",
+        "confirmMessage": "Utafutaji unabadilika kwa kila mtu mara moja. Kazi zinazoendelea humalizika kwenye chanzo zilichoanza nacho.",
+        "confirmAction": "Tumia {name}"
       }
     },
     "models": {
@@ -3401,12 +3409,12 @@
       "lookPapers": {
         "doing": "Inatafuta makala",
         "did": "Imetafuta makala",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "readPaper": {
         "doing": "Inasoma makala",
         "did": "Imesoma makala",
-        "where": "OpenAlex"
+        "where": "Openscholar"
       },
       "credits": {
         "doing": "Inakagua krediti zako",
@@ -3712,7 +3720,7 @@
       "readPaperPdf": {
         "doing": "Inasoma PDF ya makala",
         "did": "Imesoma PDF ya makala",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Soma PDF ya makala",
         "askMany": "Soma {count, plural, one {PDF ya makala #} other {PDF za makala #}}",
         "doingMany": "Inasoma {count, plural, one {PDF ya makala #} other {PDF za makala #}}",
@@ -3916,7 +3924,7 @@
       "readAuthor": {
         "doing": "Inasoma mwandishi",
         "did": "Imesoma mwandishi",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Soma mwandishi",
         "askMany": "Soma {count, plural, one {mwandishi #} other {waandishi #}}",
         "doingMany": "Inasoma {count, plural, one {mwandishi #} other {waandishi #}}",
@@ -3934,7 +3942,7 @@
       "nameFilters": {
         "doing": "Inataja vichujio vya utafutaji",
         "did": "Imetaja vichujio vya utafutaji",
-        "where": "OpenAlex",
+        "where": "Openscholar",
         "ask": "Taja vichujio vya utafutaji"
       },
       "cite": {
@@ -5357,8 +5365,7 @@
     "publications": "Machapisho",
     "noPublicationsMatchYourSearch": "Hakuna machapisho yanayolingana na utafutaji wako.",
     "noPublicationsSelectedYet": "Bado hakuna machapisho yaliyochaguliwa.",
-    "loadingOpenalexPublications": "Inapakia machapisho ya OpenAlex",
-    "noOpenalexPublicationsToDisplay": "Hakuna machapisho ya OpenAlex ya kuonyesha.",
+    "noPublicationsToDisplay": "Hakuna machapisho ya {source} ya kuonyesha.",
     "showMore": "Onyesha zaidi",
     "confirmAuthorMatch": "Thibitisha mwandishi aliyelingana",
     "findAuthorOnOpenalex": "Tafuta mwandishi kwenye OpenAlex",

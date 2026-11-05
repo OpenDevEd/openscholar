@@ -317,6 +317,9 @@ export async function downloadWithMetadata(
  * `meta.count` is needed so the request payload is ~200x smaller than
  * the default search page.
  */
+/** A work as a cites, cited_by or related_to filter takes it: its address, or our index's ID as it is. */
+const workFilterValue = (id: string) => (id.startsWith('https://') || id.startsWith('OS') ? id : `https://openalex.org/${id}`);
+
 export function createSearchParameters(
   rawQuery: string,
   filters: SearchFilters,
@@ -367,21 +370,21 @@ export function createSearchParameters(
   // Add cites filtering
   if (filters.citesItemId) {
     // Clean the item ID to ensure it's in the correct format
-    const cleanItemId = filters.citesItemId.startsWith('https://openalex.org/') ? filters.citesItemId : `https://openalex.org/${filters.citesItemId}`;
+    const cleanItemId = workFilterValue(filters.citesItemId);
     apiFilters.cites = cleanItemId;
   }
 
   // Add cited_by filtering
   if (filters.citedByItemId) {
     // Clean the item ID to ensure it's in the correct format
-    const cleanItemId = filters.citedByItemId.startsWith('https://openalex.org/') ? filters.citedByItemId : `https://openalex.org/${filters.citedByItemId}`;
+    const cleanItemId = workFilterValue(filters.citedByItemId);
     apiFilters.cited_by = cleanItemId;
   }
 
   // Add related_to filtering
   if (filters.relatedToItemId) {
     // Clean the item ID to ensure it's in the correct format
-    const cleanItemId = filters.relatedToItemId.startsWith('https://openalex.org/') ? filters.relatedToItemId : `https://openalex.org/${filters.relatedToItemId}`;
+    const cleanItemId = workFilterValue(filters.relatedToItemId);
     apiFilters.related_to = cleanItemId;
   }
 

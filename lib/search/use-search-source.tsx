@@ -1,0 +1,17 @@
+"use client";
+
+import { createContext, useContext } from "react";
+import { useDbFlags } from "@/lib/feature-flags/provider";
+import { SEARCH_SOURCE_FLAG, sourceFromFlag, type SearchSource } from "./source";
+
+const Pinned = createContext<SearchSource | null>(null);
+
+/** Everything inside searches this source whatever the site's is: a community's source dialog, which asks OpenAlex. */
+export const PinSearchSource = Pinned.Provider;
+
+/** The source this part of the page searches. It comes with the page's flags, so it's right from the first frame. */
+export function useSearchSource(): SearchSource {
+  const pinned = useContext(Pinned);
+  const flags = useDbFlags();
+  return pinned ?? sourceFromFlag(flags?.find((flag) => flag.key === SEARCH_SOURCE_FLAG)?.enabled);
+}

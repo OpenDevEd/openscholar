@@ -6,6 +6,7 @@ import { crossRefsOf, paperKey, type CrossRefs, type PaperRef } from "../../lib/
 
 export const paperRefValidator = v.union(
   v.object({ source: v.literal("openalex"), work: v.string() }),
+  v.object({ source: v.literal("openscholar"), work: v.string() }),
   v.object({ source: v.literal("library"), libraryId: v.string(), key: v.string() }),
   v.object({ source: v.literal("zotero"), library: v.union(v.literal("user"), v.literal("group")), owner: v.string(), key: v.string() }),
   v.object({ source: v.literal("upload"), file: v.string() }),

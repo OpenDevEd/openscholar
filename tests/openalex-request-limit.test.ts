@@ -7,6 +7,7 @@ const { works, caller } = vi.hoisted(() => ({
   works: vi.fn(async () => ({ results: [], meta: { count: 0 } })),
   caller: { userId: null as string | null, address: "203.0.113.7" },
 }));
+vi.mock("@/lib/search/active-source", () => ({ chosenSource: async () => "openalex", activeSearchSource: async () => "openalex" }));
 vi.mock("@/lib/openalex", () => ({ default: { works } }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: async () => ({ userId: caller.userId }) }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ "cf-connecting-ip": caller.address }) }));

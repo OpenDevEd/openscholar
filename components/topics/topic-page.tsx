@@ -12,6 +12,9 @@ import { readTopic, readTopicWorks } from "@/app/actions/topics";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
+import { LogoMark } from "@/components/logo";
+import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { PaperCard } from "@/components/paper-card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -32,14 +35,16 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const tToast = useTranslations("toast");
   const locale = useLocale();
   const [tab, setTab] = useState<"libraries" | "openalex">("libraries");
+  const source = useSearchSource();
+  const SourceIcon = source === "openalex" ? OpenAlexIcon : LogoMark;
   const library = useTopicLibraryResults(topic.id);
   const [showRelated, setShowRelated] = useState(false);
   // The server sends the saved description; the browser only asks when that failed.
-  const detail = useSWR(["topic", topic.id], ([, id]) => readTopic(id), {fallbackData: initialDetail ?? undefined, revalidateOnMount: !initialDetail, revalidateOnFocus: false});
+  const detail = useSWR(["topic", topic.id, source], ([, id]) => readTopic(id), {fallbackData: initialDetail ?? undefined, revalidateOnMount: !initialDetail, revalidateOnFocus: false});
   const works = useSWRInfinite((_page, previous) => {
     if (tab !== "openalex" || (previous && !previous.meta.next_cursor)) return null;
-    return ["topic-works", topic.id, previous?.meta.next_cursor ?? "*"] as const;
-  }, ([, id, cursor]) => unlessLimited(readTopicWorks(id, cursor)));
+    return ["topic-works", topic.id, previous?.meta.next_cursor ?? "*", source] as const;
+  }, ([, id, cursor, reading]) => unlessLimited(readTopicWorks(id, cursor, reading)));
   // A paper is shown once its rating is read, so its card opens at its final size.
   const rated = useRatedPapers(works.data?.flatMap(page => page.results) ?? []);
   const papers = rated.papers;
@@ -53,10 +58,10 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
       catch { toast.error(t("copyFailed")); }
     }}><Copy aria-hidden /><span className={BAR_LABEL}>{t("copyLink")}</span></Button>
-    <Button variant="outline" size="sm" className={BAR_ACTION} asChild><a href={`https://openalex.org/${topic.id}`} target="_blank" rel="noreferrer"><OpenAlexIcon className="size-4 shrink-0" /><span className={BAR_LABEL}>OpenAlex</span><ArrowUpRight aria-hidden className="@max-3xl:hidden" /></a></Button>
+    {source === "openalex" && <Button variant="outline" size="sm" className={BAR_ACTION} asChild><a href={`https://openalex.org/${topic.id}`} target="_blank" rel="noreferrer"><OpenAlexIcon className="size-4 shrink-0" /><span className={BAR_LABEL}>OpenAlex</span><ArrowUpRight aria-hidden className="@max-3xl:hidden" /></a></Button>}
   </>} tabs={<ListViewTabs label={t("publicationsView")} value={tab} onChange={setTab} tabs={[
     {value: "libraries", label: tc("evidenceLibraries"), icon: <BookOpen aria-hidden className="size-3.5" />, count: library.count},
-    {value: "openalex", label: "OpenAlex", icon: <OpenAlexIcon className="size-3.5 shrink-0" />, count: detail.data?.worksCount.toLocaleString(locale)},
+    {value: "openalex", label: SEARCH_SOURCE_NAMES[source], icon: <SourceIcon className="size-3.5 shrink-0" />, count: detail.data?.worksCount.toLocaleString(locale)},
   ]} />} filters={tab === "libraries" && <ListSearch aria-label={t("searchLibrary")} placeholder={t("searchPlaceholder")} value={library.query} maxLength={200} onChange={event => void library.setQuery(event.target.value)} />} filtersInCard intro={
     <div className="space-y-4 p-4 sm:p-6">
       <nav aria-label={t("classification")} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
@@ -84,7 +89,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
         {papers.length > 0 && <div className="space-y-4 p-4 sm:p-6">
           {papers.map((paper, index) => <PaperCard key={paper.id} result={paper} resultIndex={index} viewMode="list-simple" onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />)}
         </div>}
-        {!loadingPapers && !works.error && !papers.length && <ListEmpty icon={OpenAlexIcon}>{t("noOpenAlex")}</ListEmpty>}
+        {!loadingPapers && !works.error && !papers.length && <ListEmpty icon={SourceIcon}>{t("noPublications", {source: SEARCH_SOURCE_NAMES[source]})}</ListEmpty>}
         {works.data?.at(-1)?.meta.next_cursor && <div className="flex items-center justify-between gap-3 border-t border-border-subtle px-6 py-3">
           <span className="text-sm text-muted-foreground">{t("progress", { loaded: papers.length, total })}</span>
           <Button variant="ghost" size="sm" disabled={works.isValidating} onClick={() => void works.setSize(works.size + 1)}>{works.isValidating && <Spinner />}{t("showMore")}</Button>

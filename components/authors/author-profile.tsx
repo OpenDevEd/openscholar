@@ -13,6 +13,7 @@ import useSWRInfinite from "swr/infinite";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { readProfileAuthor, readProfileAuthorWorks, searchProfileAuthors } from "@/app/actions/authors";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import AuthorPage from "./author-page";
 import { ProfileAccess } from "./profile-access";
 import type { AuthorProfile } from "./types";
@@ -57,12 +58,13 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   const save = useAction(api.authors.photos.save);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
-  const authors = useSWR(debouncedSearch ? ["author-profile-search", debouncedSearch] : null, ([, value]) => unlessLimited(searchProfileAuthors(value)));
-  const match = useSWR(record?.openalex ? ["author-profile-match", record.openalex] : null, ([, id]) => unlessLimited(readProfileAuthor(id)));
+  const source = useSearchSource();
+  const authors = useSWR(debouncedSearch ? ["author-profile-search", debouncedSearch, source] : null, ([, value, reading]) => unlessLimited(searchProfileAuthors(value, reading)));
+  const match = useSWR(record?.openalex ? ["author-profile-match", record.openalex, source] : null, ([, id, reading]) => unlessLimited(readProfileAuthor(id, reading)));
   const works = useSWRInfinite((page, previous) => {
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
-    return ["author-profile-works", record.openalex, page + 1] as const;
-  }, ([, id, page]) => unlessLimited(readProfileAuthorWorks(id, page)));
+    return ["author-profile-works", record.openalex, page + 1, source] as const;
+  }, ([, id, page, reading]) => unlessLimited(readProfileAuthorWorks(id, page, reading)));
   if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title={t("loadingAuthorProfile")} /></PageWrapper>;
   if (!record) return <p className="p-6">{t("authorProfileNotFound")}</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;

@@ -6,6 +6,8 @@ import { SearchX, ArrowRight, Loader2, CircleAlert, BookOpen } from "@/component
 import { useTranslations } from "next-intl";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";
+import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 type NoResultsVariant = "search" | "filter";
 
@@ -102,9 +104,10 @@ export function NoResults({ query, variant = "search", onTryNewSearch }: NoResul
   );
 }
 
-/** Why OpenAlex rejected the query, where it stopped, and how to fix it. */
+/** Why the search source rejected the query, where it stopped, and how to fix it. */
 export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql: boolean }) {
   const t = useTranslations("search");
+  const source = useSearchSource();
   const tsc = useTranslations("searchCommand");
   const problem = detail.problem.charAt(0).toUpperCase() + detail.problem.slice(1);
   // OpenAlex's own fix for this one points at an internal registry.
@@ -121,7 +124,7 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
       >
         <CircleAlert className="mb-6 h-12 w-12 text-destructive opacity-60" aria-hidden />
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
-          {t("queryErrorTitle")}
+          {t("queryErrorTitle", { source: SEARCH_SOURCE_NAMES[source] })}
         </h2>
         <p className="mt-2 text-base text-foreground">{problem}</p>
         {detail.near && (

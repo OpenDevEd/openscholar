@@ -1,12 +1,14 @@
 import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { CookiePreferencesTrigger } from "@/components/cookie-consent-banner";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 const footerLinkClassName =
   "text-xs text-muted-foreground hover:text-foreground transition-colors";
 
 export function Footer() {
   const t = useTranslations("footer");
+  const source = useSearchSource();
 
   return (
     <footer className="py-8 shrink-0">
@@ -44,7 +46,7 @@ export function Footer() {
             >
               eKitabu
             </a>{" "}
-            {t("with")}{" "}
+            {source === "openalex" && <>{t("with")}{" "}
             <a
               href="https://openalex.org"
               target="_blank"
@@ -52,7 +54,7 @@ export function Footer() {
               className={footerLinkClassName}
             >
               OpenAlex
-            </a>
+            </a></>}
             {t("suffix") && <> {t("suffix")}</>}
           </span>
         </div>

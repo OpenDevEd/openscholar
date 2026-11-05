@@ -5,12 +5,14 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { usePersistedStoreReady } from "@/lib/use-persisted-store-ready";
 import { unlessLimited, type OpenAlexLimited } from "./limited";
+import type { SearchSource } from "../search/source";
+import { useSearchSource } from "../search/use-search-source";
 
 /**
  * Names for one kind of OpenAlex id (authors, funders, journals, institutions) that this browser has seen, so a chip
  * starts with its name instead of its id: saved ones at once, others looked up once and then saved.
  */
-export function createNameLookup(what: string, read: (ids: string[]) => Promise<Record<string, string> | OpenAlexLimited>) {
+export function createNameLookup(what: string, read: (ids: string[], source: SearchSource) => Promise<Record<string, string> | OpenAlexLimited>) {
   const useStore = create<{ names: Record<string, string> }>()(
     persist(() => ({ names: {} }), { name: `${what}-names`, storage: createJSONStorage(() => localStorage) }),
   );
@@ -29,11 +31,12 @@ export function createNameLookup(what: string, read: (ids: string[]) => Promise<
     // (blocked, or the server) the store only holds this visit's lookups, which start empty on both sides.
     const ready = usePersistedStoreReady(useStore) || !useStore.persist;
     const saved = useStore((state) => state.names);
+    const source = useSearchSource();
     const missing = ready ? [...new Set(ids)].filter((id) => !saved[id]).sort() : [];
     useSWR(
-      missing.length ? [`${what}-names`, ...missing] : null,
+      missing.length ? [`${what}-names`, source, ...missing] : null,
       async () => {
-        const names = await unlessLimited(read(missing));
+        const names = await unlessLimited(read(missing, source));
         remember(names);
         return names;
       },
