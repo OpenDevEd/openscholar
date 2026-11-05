@@ -12,6 +12,8 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
      already settled on (the key is earth.js's MEMORY). The light levels use the smaller map. -->
 <script is:inline>(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = l === 1 || l === 2 ? "/img/earth-day-2048.avif" : "/img/earth-day.avif"; document.head.append(k); })();</script>
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
+<!-- Mock: ?strip=panels shows the earlier panel strip, to compare. -->
+<script is:inline>document.documentElement.dataset.strip = new URLSearchParams(location.search).get("strip") === "panels" ? "panels" : "reel";</script>
 <section class="bleed sky" data-orbit>
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" />
   {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
@@ -30,6 +32,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   <div class="inner hub">
     <p class="hubline"><a href="/evidence-communities/">Evidence Communities</a> <span>Curated evidence, open to anyone</span></p>
     <ul class="fields" aria-label="Live Evidence Communities">{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url}><img class="shot" src={`/img/art-tile-${c.key}-960.avif`} width="960" height="540" alt="" loading="lazy" decoding="async" /><span class="tag"><b>{c.name}</b><small><span>{c.host}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></small></span><span class="more">{c.text}</span></a></li>)}</ul>
+    <!-- The communities as one line of large type that runs across the page, a glass emblem between names. The copy keeps the line unbroken as it loops. -->
+    <div class="reel" data-reel><div class="run">{[0, 1].map((copy) => <ul aria-label={copy ? undefined : "Live Evidence Communities"} aria-hidden={copy ? "true" : undefined}>{COMMUNITIES.map((c, i) => <li data-k={i} style={`--c:${c.color}`}><a href={c.url} tabindex={copy ? -1 : undefined}><img src={`/img/comm-${c.key}.avif`} width="56" height="56" alt="" decoding="async" />{c.name}</a></li>)}</ul>)}</div></div>
+    <p class="note" aria-live="polite">{COMMUNITIES.map((c, i) => <span data-k={i} style={`--c:${c.color}`}><b>{c.name}</b>{c.text}<a href={c.url} tabindex="-1">{c.host}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></a></span>)}</p>
   </div>
 </section>
 <script>
@@ -74,7 +79,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
         // Distance dims the glass in steps, so the filter isn't rewritten every frame. A caught satellite's name stays on screen.
         const dim = Math.round((.8 + near * .2) * 20) / 20, nudge = Math.round(Math.max(118 - x, 0) - Math.max(x + 118 - W, 0)); if (dim !== spot.dim) { spot.dim = dim; imgs[i].style.filter = `brightness(${dim})`; } if (nudge !== spot.nudge) { spot.nudge = nudge; names[i].style.setProperty("--nudge", `${nudge}px`); }
       });
-      best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { rows[lit]?.classList.remove("on"); rows[best].classList.add("on"); lit = best; }
+      best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { rows[lit]?.classList.remove("on"); rows[best].classList.add("on"); lit = best; root.dataset.lit = best; }
     };
     // The planet
     // The quality level comes from earth.js: where this visit got to, else what the browser lets on, then the monitor below
@@ -166,6 +171,8 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     // When the pointer leaves, a name the keyboard is on keeps its satellite.
     const aim = (i) => setHold(i < 0 ? rows.findIndex((r) => r.querySelector(":focus-visible")) : i);
     strip.addEventListener("pointerover", (e) => aim(rowOf(e))); strip.addEventListener("focusin", (e) => setHold(rowOf(e))); strip.addEventListener("pointerout", () => aim(-1)); strip.addEventListener("focusout", () => setHold(-1));
+    const reel = root.querySelector("[data-reel]"), kOf = (e) => Number(e.target.closest("[data-k]")?.dataset.k ?? -1);
+    reel.addEventListener("pointerover", (e) => aim(kOf(e))); reel.addEventListener("pointerout", () => aim(-1)); reel.addEventListener("focusin", (e) => setHold(kOf(e))); reel.addEventListener("focusout", () => setHold(-1));
     // Back from another page can restore the hero with a satellite still caught.
     addEventListener("pageshow", (e) => { if (e.persisted) { onSat = -1; setHold(-1); } });
     // Scrolling flicks the orbit and the planet forward, and they settle back.
@@ -222,6 +229,29 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .hub { position: relative; z-index: 6; }
   .hubline, .fields { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
   .hubline { font-size: 16px; color: #c9cfdc; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
+  /* The communities as a line of large type running slowly across the whole width. The one whose satellite is at the front
+     lights in its own colour, and the line below says what it holds. Pointing at a name stops the line and swings its
+     satellite round. It moves by transform alone. */
+  :global(html[data-strip="reel"]) .fields, :global(html[data-strip="panels"]) .reel, :global(html[data-strip="panels"]) .note { display: none; }
+  :global(html:not([data-strip])) .fields { display: none; }
+  .reel { margin: 22px calc(50% - 50vw) 0; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+  .run { display: flex; width: max-content; animation: reel-run 110s linear infinite; } .reel:hover .run, .reel:focus-within .run { animation-play-state: paused; }
+  @keyframes reel-run { to { transform: translateX(-50%); } }
+  .reel ul { display: flex; margin: 0; padding: 0; list-style: none; }
+  .reel a { display: flex; align-items: center; gap: 22px; padding: 6px 30px; font: 500 54px/1.15 var(--sans); letter-spacing: -.035em; color: rgb(232 235 242 / .34); white-space: nowrap; transition: color .9s var(--ease), text-shadow .9s var(--ease); }
+  .reel img { width: 54px; height: 54px; object-fit: contain; opacity: .5; filter: saturate(.6); transition: opacity .9s var(--ease), filter .9s var(--ease), transform .9s var(--ease); }
+  .reel a:hover, .reel a:focus-visible { color: rgb(255 255 255 / .7); }
+  .note { display: grid; margin: 14px 0 0; text-align: center; font-size: 15px; color: #c9cfdc; }
+  .note span { grid-area: 1 / 1; opacity: 0; transition: opacity .5s; } .note b { margin-right: 12px; font-weight: 500; color: var(--c); } .note a { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; color: #fff; } .note a:hover { text-decoration: underline; } .note svg { width: 14px; height: 14px; }
+  @media (prefers-reduced-motion: reduce) { .run { animation: none; } .reel { overflow-x: auto; mask-image: none; } }
+  @media (max-width: 699px) { .reel a { gap: 14px; padding: 4px 18px; font-size: 34px; } .reel img { width: 36px; height: 36px; } .note { font-size: 14px; } }
+  :global([data-lit="0"]) .reel li[data-k="0"] a { color: var(--c); text-shadow: 0 0 28px color-mix(in srgb, var(--c) 45%, transparent); } :global([data-lit="0"]) .reel li[data-k="0"] img { opacity: 1; filter: saturate(1.3) drop-shadow(0 0 12px var(--c)); transform: scale(1.12); } :global([data-lit="0"]) .note span[data-k="0"] { opacity: 1; transition-delay: .3s; } :global([data-lit="0"]) .note span[data-k="0"] a { pointer-events: auto; }
+  :global([data-lit="1"]) .reel li[data-k="1"] a { color: var(--c); text-shadow: 0 0 28px color-mix(in srgb, var(--c) 45%, transparent); } :global([data-lit="1"]) .reel li[data-k="1"] img { opacity: 1; filter: saturate(1.3) drop-shadow(0 0 12px var(--c)); transform: scale(1.12); } :global([data-lit="1"]) .note span[data-k="1"] { opacity: 1; transition-delay: .3s; } :global([data-lit="1"]) .note span[data-k="1"] a { pointer-events: auto; }
+  :global([data-lit="2"]) .reel li[data-k="2"] a { color: var(--c); text-shadow: 0 0 28px color-mix(in srgb, var(--c) 45%, transparent); } :global([data-lit="2"]) .reel li[data-k="2"] img { opacity: 1; filter: saturate(1.3) drop-shadow(0 0 12px var(--c)); transform: scale(1.12); } :global([data-lit="2"]) .note span[data-k="2"] { opacity: 1; transition-delay: .3s; } :global([data-lit="2"]) .note span[data-k="2"] a { pointer-events: auto; }
+  :global([data-lit="3"]) .reel li[data-k="3"] a { color: var(--c); text-shadow: 0 0 28px color-mix(in srgb, var(--c) 45%, transparent); } :global([data-lit="3"]) .reel li[data-k="3"] img { opacity: 1; filter: saturate(1.3) drop-shadow(0 0 12px var(--c)); transform: scale(1.12); } :global([data-lit="3"]) .note span[data-k="3"] { opacity: 1; transition-delay: .3s; } :global([data-lit="3"]) .note span[data-k="3"] a { pointer-events: auto; }
+  :global([data-lit="4"]) .reel li[data-k="4"] a { color: var(--c); text-shadow: 0 0 28px color-mix(in srgb, var(--c) 45%, transparent); } :global([data-lit="4"]) .reel li[data-k="4"] img { opacity: 1; filter: saturate(1.3) drop-shadow(0 0 12px var(--c)); transform: scale(1.12); } :global([data-lit="4"]) .note span[data-k="4"] { opacity: 1; transition-delay: .3s; } :global([data-lit="4"]) .note span[data-k="4"] a { pointer-events: auto; }
+  :global([data-lit="5"]) .reel li[data-k="5"] a { color: var(--c); text-shadow: 0 0 28px color-mix(in srgb, var(--c) 45%, transparent); } :global([data-lit="5"]) .reel li[data-k="5"] img { opacity: 1; filter: saturate(1.3) drop-shadow(0 0 12px var(--c)); transform: scale(1.12); } :global([data-lit="5"]) .note span[data-k="5"] { opacity: 1; transition-delay: .3s; } :global([data-lit="5"]) .note span[data-k="5"] a { pointer-events: auto; }
+  .note span a { pointer-events: none; }
   /* The live communities across the whole width. The one whose satellite is at the front opens out with its story; the
      rest stay narrow. It turns with the orbit, and pointing at one holds its satellite there and keeps it open. Their widths
      always add up to the same, and the text inside each is laid out at its final width, so only the edges move. */
