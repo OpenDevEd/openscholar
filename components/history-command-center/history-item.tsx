@@ -11,7 +11,7 @@ import { useSearchHistoryStore } from "@/lib/store";
 import type { SearchResult, ViewMode } from "@/lib/types";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
-import { BookmarkForm } from "@/components/command-center";
+import { BookmarkForm, bookmarkable } from "@/components/command-center";
 import { Entry, EntryAction, EntryAside, EntryTile, ENTRY_OPEN, FullTextToggle, isGrid, isRoomy } from "@/components/command-center/entry";
 import { useFullText } from "@/components/evidence-libraries/configuration/disclosure-button";
 import { QueryText } from "@/components/ui/query-text";
@@ -177,7 +177,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
       }
     >
       <EntryAction label={tc("copyQuery")} icon={Copy} onClick={handleCopy} />
-      {!choosing && (
+      {!choosing && bookmarkable(item.query, item.field) && (
         <Popover open={isBookmarking} onOpenChange={setIsBookmarking}>
           <PopoverTrigger asChild>
             <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} />

@@ -989,6 +989,8 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Lesezeichen suchen...",
+    "deleteBookmarkTitle": "Lesezeichen löschen",
+    "deleteBookmarkConfirm": "Möchten Sie {name} wirklich löschen?",
     "clearAllBookmarks": "Alle Lesezeichen löschen",
     "clearAllBookmarksTitle": "Alle Lesezeichen löschen",
     "clearAllBookmarksConfirm": "Möchten Sie wirklich alle {count} Lesezeichen löschen? Dies kann nicht rückgängig gemacht werden.",

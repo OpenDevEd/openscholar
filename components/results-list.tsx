@@ -562,6 +562,7 @@ export function ResultsList({
           <SearchCommandCenter
             searchId={searchId || ""}
             totalCount={totalCount}
+            shownCount={!preview && isRatingFilterActive(ratingRange, onlyRatedPapers) ? filteredResults.length : undefined}
             currentQuery={urlQuery}
             isLoading={isLoading}
             isValidating={isValidating}

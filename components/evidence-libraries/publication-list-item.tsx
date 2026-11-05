@@ -5,10 +5,11 @@ import { ArrowUpRight, FileText, Library } from "@/components/icons";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { AuthorPublication } from "@/components/authors/types";
+import { typeName } from "@/lib/evidence-libraries/reader-sources";
 
 export function PublicationMetadata({year, type, className}: Pick<AuthorPublication, "year" | "type"> & {className: string}) {
   const publicationYear = year.trim();
-  const publicationType = type.trim();
+  const publicationType = typeName(type.trim());
   if (!publicationYear && !publicationType) return null;
   return <span className={className}>
     {publicationYear && <span className="font-medium tabular-nums">{publicationYear}</span>}

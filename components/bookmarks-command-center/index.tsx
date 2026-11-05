@@ -125,6 +125,16 @@ export function BookmarksCommandCenter() {
   };
   const handleCancelEdit = () => setEditingBookmark(null);
   const handleDelete = (name: string) => {
+    showConfirmation({
+      title: tb("deleteBookmarkTitle"),
+      message: tb("deleteBookmarkConfirm", { name }),
+      confirmText: tc("delete"),
+      cancelText: tc("cancel"),
+      onConfirm: () => deleteBookmark(name),
+    });
+  };
+
+  const deleteBookmark = (name: string) => {
     // Track bookmark deletion event
     posthog.capture("bookmark_deleted", {
       bookmark_name: name,

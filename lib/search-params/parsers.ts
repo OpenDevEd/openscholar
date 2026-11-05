@@ -19,6 +19,7 @@ import { SEARCH_FIELDS } from '../types/search.types';
 import { encodeRegions, decodeRegions } from './regions';
 import { authorFilterValue } from '../openalex/author-filter';
 import { institutionId, sourceId, workId } from '../openalex/ids';
+import { sortOptions } from '../constants';
 
 /**
  * Custom parser for region arrays with smart encoding
@@ -85,7 +86,8 @@ export const searchParamsParsers = {
   field: parseAsString.withDefault('title_and_abstract'),
   // Papers a search finds the closest to by meaning, on our index.
   like: parseAsArrayOf(parseAsSeed).withDefault([]),
-  sort: parseAsString.withDefault('relevance_score:desc'),
+  // An order the page doesn't offer, from a hand-typed address, reads as the default instead of failing the search.
+  sort: createParser({ parse: (value: string) => (sortOptions.some((option) => option.value === value) ? value : null), serialize: String }).withDefault('relevance_score:desc'),
   
   // Pagination
   page: parseAsInteger.withDefault(1),
@@ -232,7 +234,7 @@ export function parseSearchParamsFromUrl(
     q: searchParams.get('q') ?? DEFAULT_SEARCH_PARAMS.q,
     field: field !== null && SEARCH_FIELDS.some(({ value }) => value === field) ? field : DEFAULT_SEARCH_PARAMS.field,
     like: parseListParam(searchParams, 'like').map(similarSeed).filter(Boolean),
-    sort: searchParams.get('sort') ?? DEFAULT_SEARCH_PARAMS.sort,
+    sort: sortOptions.find(({ value }) => value === searchParams.get('sort'))?.value ?? DEFAULT_SEARCH_PARAMS.sort,
     page:
       parseIntegerParam(searchParams, 'page', DEFAULT_SEARCH_PARAMS.page) ??
       DEFAULT_SEARCH_PARAMS.page,

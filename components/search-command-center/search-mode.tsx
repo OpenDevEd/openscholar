@@ -290,7 +290,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
 
       {/* Keywords Input */}
-      <form onSubmit={handleSearchSubmit}>
+      <form onSubmit={handleSearchSubmit} className="@container">
         <FloatingInput
           label={isOql ? t('oqlQuery') : byMeaning ? ts('yourQuestion') : t('keywords')}
           labelAddon={
@@ -328,14 +328,14 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 className="px-3"
               >
                 <>
-                  <Search className="h-4 w-4 sm:me-1" />
-                  <span className="hidden sm:inline">{tc('search')}</span>
+                  <Search className="h-4 w-4 @lg:me-1" />
+                  <span className="hidden @lg:inline">{tc('search')}</span>
                 </>
               </Button>
             </div>
           }
         />
-        {isOql && <OqlQueryStatus error={search?.error ?? null} />}
+        {isOql && <OqlQueryStatus />}
       </form>
     </div>
   );

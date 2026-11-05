@@ -988,6 +988,8 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "बुकमार्क्स खोजें...",
+    "deleteBookmarkTitle": "बुकमार्क हटाएँ",
+    "deleteBookmarkConfirm": "क्या आप वाकई {name} को हटाना चाहते हैं?",
     "clearAllBookmarks": "सभी बुकमार्क्स साफ़ करें",
     "clearAllBookmarksTitle": "सभी बुकमार्क्स साफ़ करें",
     "clearAllBookmarksConfirm": "क्या आप वाकई सभी {count} बुकमार्क्स हटाना चाहते हैं? यह क्रिया पूर्ववत नहीं की जा सकती।",

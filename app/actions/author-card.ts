@@ -47,7 +47,8 @@ export type AuthorCard = {
 async function readPairedRecords(id: string) {
   const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "50" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
   if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  return indexPageSchema.parse(await response.json()).results;
+  // The filter also finds records paired with someone else, whose name is close: they aren't this person.
+  return indexPageSchema.parse(await response.json()).results.filter((record) => record.ids?.openalex && lastPart(record.ids.openalex) === id);
 }
 
 /** One person from their records: the largest speaks for them, and their counts and topics are added up. */
@@ -125,6 +126,17 @@ export async function searchIndexAuthors(search: string, page: number, given?: S
   const query = search.trim().slice(0, 200);
   if (!query || !Number.isInteger(page) || page < 1 || page > 200) return { authors: [] as IndexAuthor[], more: false };
   const source = await chosenSource(given);
+  // A pasted ID is that one person, whom the search by name doesn't find.
+  const pasted = (query.includes("/") ? query.replace(/\/$/, "").split("/").at(-1)! : query).toUpperCase();
+  if (isAuthorId(pasted)) {
+    if (page > 1) return { authors: [] as IndexAuthor[], more: false };
+    const card = await readAuthorCard(pasted, source);
+    if (card && !("id" in card)) return card;
+    return {
+      authors: card ? [{ id: card.paired ?? card.id, name: card.name, institution: card.institution?.name ?? null, country: card.institution?.country ?? null, works: card.works, citations: card.citations, largest: card.works }] : [],
+      more: false,
+    };
+  }
   const limited = await spendOpenAlexRequests();
   if (limited) return limited;
   const response = await openAlexFetch(searchUrl(source, "authors", { search: query, "per-page": String(INDEX_PAGE), page: String(page) }), { timeoutMs: 12_000 } as RequestInit & { timeoutMs: number });

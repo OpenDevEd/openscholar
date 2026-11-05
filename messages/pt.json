@@ -989,6 +989,8 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Pesquisar marcadores...",
+    "deleteBookmarkTitle": "Eliminar favorito",
+    "deleteBookmarkConfirm": "Tem a certeza de que quer eliminar {name}?",
     "clearAllBookmarks": "Limpar todos os marcadores",
     "clearAllBookmarksTitle": "Limpar todos os marcadores",
     "clearAllBookmarksConfirm": "Tem a certeza de que quer eliminar os {count} marcadores? Esta ação não pode ser anulada.",
@@ -1212,7 +1214,7 @@
   },
   "jobStatus": {
     "restart": "Reiniciar",
-    "papersCount": "{count} artigos",
+    "papersCount": "{count, plural, one {# artigo} other {# artigos}}",
     "questionsCount": "{count, plural, one {# pergunta} other {# perguntas}}",
     "statusPending": "Pendente",
     "statusDownloadingPdfs": "A processar artigos",

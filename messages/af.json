@@ -989,6 +989,8 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Soek boekmerke...",
+    "deleteBookmarkTitle": "Skrap boekmerk",
+    "deleteBookmarkConfirm": "Is jy seker jy wil {name} skrap?",
     "clearAllBookmarks": "Maak alle boekmerke leeg",
     "clearAllBookmarksTitle": "Maak alle boekmerke leeg",
     "clearAllBookmarksConfirm": "Is jy seker jy wil al {count} boekmerke verwyder? Hierdie aksie kan nie ongedaan gemaak word nie.",
@@ -1212,7 +1214,7 @@
   },
   "jobStatus": {
     "restart": "Herbegin",
-    "papersCount": "{count} artikels",
+    "papersCount": "{count, plural, one {# artikel} other {# artikels}}",
     "questionsCount": "{count, plural, one {# vraag} other {# vrae}}",
     "statusPending": "Hangende",
     "statusDownloadingPdfs": "Verwerk artikels",

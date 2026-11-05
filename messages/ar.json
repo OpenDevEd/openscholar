@@ -989,6 +989,8 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "ابحث في الإشارات المرجعية...",
+    "deleteBookmarkTitle": "حذف الإشارة المرجعية",
+    "deleteBookmarkConfirm": "هل تريد بالتأكيد حذف {name}؟",
     "clearAllBookmarks": "مسح كل الإشارات المرجعية",
     "clearAllBookmarksTitle": "مسح كل الإشارات المرجعية",
     "clearAllBookmarksConfirm": "هل أنت متأكد أنك تريد حذف جميع الإشارات المرجعية البالغ عددها {count}؟ لا يمكن التراجع عن هذا الإجراء.",

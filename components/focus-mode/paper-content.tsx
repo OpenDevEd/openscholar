@@ -157,7 +157,7 @@ export function PaperContent({
             <span className="flex items-center gap-1">
               <span className="text-muted-foreground">{tLabels("refs")}:</span>
               <span className="font-medium">
-                {isPreview ? "127" : paper.referenced_works_count || 0}
+                {isPreview ? "127" : paper.referenced_works_count ?? tCommon("notAvailable")}
               </span>
             </span>
             <span className="flex items-center gap-1">
