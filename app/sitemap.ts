@@ -1,8 +1,6 @@
 import type { MetadataRoute } from "next";
-import { getTranslations } from "next-intl/server";
-import { INDEXED_PATHS } from "@/lib/seo/page-metadata";
+import { INDEXED_PATHS, SITE_URL } from "@/lib/seo/page-metadata";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const t = await getTranslations("metadata");
-  return INDEXED_PATHS.map((path) => ({ url: path === "/" ? t("siteUrl") : `${t("siteUrl")}${path}` }));
+export default function sitemap(): MetadataRoute.Sitemap {
+  return INDEXED_PATHS.map((path) => ({ url: path === "/" ? SITE_URL : `${SITE_URL}${path}` }));
 }
