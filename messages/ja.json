@@ -955,7 +955,10 @@
       "melanesia": "メラネシア",
       "micronesia": "ミクロネシア",
       "polynesia": "ポリネシア"
-    }
+    },
+    "searchFieldDefault": "タイトル、抄録、全文",
+    "searchFieldSemantic": "意味で検索",
+    "filterSimilarTo": "類似の対象"
   },
   "paperCard": {
     "screeningResponses": "スクリーニング回答",
@@ -5463,5 +5466,24 @@
     "plansNoticeTitle": "公開アルファ版の間は無料",
     "plansNoticeDetail": "すべての機能を利用できます。プランはその後変更されます。",
     "emailAddress": "{email} にメール"
+  },
+  "similarPapers": {
+    "closestOf": "{count} 件中で最も近い",
+    "similarTo": "{count, plural, other {# 件の論文}}に類似",
+    "clear": "解除",
+    "moreLike": "評価した{count, plural, other {# 件の論文}}に似たものをさらに表示",
+    "likelyFirst": "関連性が高そうな順",
+    "resort": "新しい評価で並べ替える",
+    "orderFailed": "結果を並べ替えられませんでした",
+    "title": "類似の論文",
+    "similar": "類似",
+    "seeAll": "すべて表示",
+    "finding": "類似の論文を検索中",
+    "failed": "類似の論文を読み込めませんでした。",
+    "none": "類似の論文は見つかりませんでした。",
+    "likeCollection": "このコレクションに似た論文",
+    "likeLibrary": "ライブラリに似た論文",
+    "yourQuestion": "質問",
+    "questionPlaceholder": "農村部の学校に教員が定着するには何が役立ちますか?"
   }
 }

@@ -93,7 +93,8 @@
     "zotero/actions:startOAuth": "Starts Zotero's OAuth redirect, which only the person's browser can complete.",
     "zotero/runtimeReadActions:listTags": "The tag filter settings' search of the library's tags. The assistant reads the library's records and their tags with evidenceLibraries/library:records.",
     "zotero/runtimeReadActions:readHomeQuestions": "The configuration page's preview of the questions the running library asks on its home page.",
-    "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library."
+    "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library.",
+    "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -156,7 +157,8 @@
     "topics/publications:listGroups": "topics/assistant:publications",
     "topics/publications:listLocations": "topics/assistant:publications",
     "evidenceLibraries/readers:address": "evidenceLibraries/library:source",
-    "app/actions/overview-papers:readCitedPapers": "research/papers:get"
+    "app/actions/overview-papers:readCitedPapers": "research/papers:get",
+    "app/actions/similar:readSimilarPapers": "research/papers:search"
   },
   "manual": {
     "admins/invitations:invite": "Site administration, for Openscholar's own admins on the admin pages.",

@@ -39,6 +39,8 @@ const FIELD_KEY_MAP: Record<string, string> = {
   fulltext: "searchFieldFulltext",
   display_name: "searchFieldDisplayName",
   oql: "searchFieldOql",
+  default: "searchFieldDefault",
+  semantic: "searchFieldSemantic",
 };
 
 /** Maps sortBy values (e.g. relevance_score:desc) to searchFilters translation keys */
@@ -467,6 +469,16 @@ export function buildFilterData(
         "relatedTo",
         bareWork(params.relatedToItemId!),
         t ? t("filterRelatedTo") : "Related to"
+      )
+    );
+  }
+  if (params.similarTo?.length) {
+    citationItems.push(
+      createFilterItem(
+        "similarTo",
+        "similarTo",
+        params.similarTo.join(", "),
+        t ? t("filterSimilarTo") : "Similar to"
       )
     );
   }

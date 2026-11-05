@@ -25,6 +25,7 @@ export function toSearchFilters(entry: SearchResult): SearchFilters {
     citesItemId: entry.citesItemId ?? "",
     citedByItemId: entry.citedByItemId ?? "",
     relatedToItemId: entry.relatedToItemId ?? "",
+    similarTo: entry.similarTo ?? [],
     reviewFilter: entry.reviewFilter ?? false,
     researchAreas: entry.researchAreas ?? [],
     sdgs: entry.sdgs ?? [],

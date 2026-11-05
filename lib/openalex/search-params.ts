@@ -10,7 +10,7 @@
  * An OpenAlex works request: its query-string values, or an OQL query with the
  * filters inside it, which is sent as a POST body because it outgrows a URL.
  */
-export type OpenAlexWorksQuery = { search?: string; filter?: string; oql?: string };
+export type OpenAlexWorksQuery = { search?: string; filter?: string; oql?: string; semantic?: string; similarTo?: string };
 
 /**
  * Exact list of top-level OpenAlex Work fields that

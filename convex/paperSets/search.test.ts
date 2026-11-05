@@ -147,6 +147,38 @@ describe("Screen all with our own index as the active source", () => {
   });
 });
 
+describe("Screen all on a search only our index has", () => {
+  const answering = (asked: URL[]) => vi.fn(async (input: string | URL) => {
+    const url = new URL(String(input));
+    asked.push(url);
+    return new Response(JSON.stringify({ meta: { count: 1, next_cursor: null }, results: [{ id: "https://openalex.org/W7", display_name: "Paper" }] }), { status: 200 });
+  });
+
+  it("asks our index the question, or for the similar papers, with nothing else in their place", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search.test");
+    const asked: URL[] = [];
+    vi.stubGlobal("fetch", answering(asked));
+    const { t, screen } = await setup({ ...search, field: "semantic", query: "What helps teachers stay?", sortBy: "relevance_score:desc" });
+    await t.run((ctx) => ctx.db.insert("featureFlags", { key: "search.openscholar", enabled: true, updatedAt: 1 }));
+    await screen({ first: 1, last: 1 });
+    const read = asked.at(-1)!;
+    expect(read.searchParams.get("search.semantic")).toBe("What helps teachers stay?");
+    expect(read.searchParams.get("search")).toBeNull();
+  });
+
+  it("reads a question as words on OpenAlex, and says similar papers need our index", async () => {
+    const asked: URL[] = [];
+    vi.stubGlobal("fetch", answering(asked));
+    const { screen } = await setup({ ...search, field: "semantic", query: "teachers", sortBy: "relevance_score:desc" });
+    await screen({ first: 1, last: 1 });
+    expect(asked.at(-1)!.searchParams.get("search.semantic")).toBeNull();
+    expect(asked.at(-1)!.searchParams.get("filter")).toContain("title_and_abstract.search:teachers");
+
+    const { screen: similar } = await setup({ ...search, query: "", similarTo: ["W1"], sortBy: "relevance_score:desc" });
+    await expect(similar({ first: 1, last: 1 })).rejects.toThrow(/our own index/);
+  });
+});
+
 describe("Screen all on a saved search, read on the server", () => {
   it("reads the range from the results page's request, a numbered page each, with the key and only the fields it keeps", async () => {
     const { t, alice, read, settled } = await setup({ ...search, sortBy: "relevance_score:desc" });

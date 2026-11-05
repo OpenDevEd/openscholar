@@ -955,7 +955,10 @@
       "melanesia": "मेलेनेशिया",
       "micronesia": "माइक्रोनेशिया",
       "polynesia": "पॉलीनेशिया"
-    }
+    },
+    "searchFieldDefault": "शीर्षक, सार, पूरा पाठ",
+    "searchFieldSemantic": "अर्थ के अनुसार",
+    "filterSimilarTo": "इसके समान"
   },
   "paperCard": {
     "screeningResponses": "स्क्रीनिंग प्रतिक्रियाएं",
@@ -5463,5 +5466,24 @@
     "plansNoticeTitle": "सार्वजनिक अल्फ़ा के दौरान मुफ़्त",
     "plansNoticeDetail": "हर सुविधा शामिल है। इसके बाद योजनाएँ बदलेंगी।",
     "emailAddress": "{email} पर ईमेल करें"
+  },
+  "similarPapers": {
+    "closestOf": "{count} में से सबसे करीबी",
+    "similarTo": "{count, plural, one {# शोधपत्र} other {# शोधपत्रों}} के समान",
+    "clear": "हटाएँ",
+    "moreLike": "{count, plural, one {आपके रेट किए शोधपत्र} other {आपके रेट किए # शोधपत्रों}} जैसे और",
+    "likelyFirst": "संभावित प्रासंगिक पहले",
+    "resort": "अपनी नई रेटिंग से फिर क्रमबद्ध करें",
+    "orderFailed": "परिणाम क्रमबद्ध नहीं हो सके",
+    "title": "समान शोधपत्र",
+    "similar": "समान",
+    "seeAll": "सभी देखें",
+    "finding": "समान शोधपत्र खोजे जा रहे हैं",
+    "failed": "समान शोधपत्र लोड नहीं हो सके।",
+    "none": "कोई समान शोधपत्र नहीं मिला।",
+    "likeCollection": "इस संग्रह जैसे शोधपत्र",
+    "likeLibrary": "आपकी लाइब्रेरी जैसे शोधपत्र",
+    "yourQuestion": "आपका प्रश्न",
+    "questionPlaceholder": "ग्रामीण स्कूलों में शिक्षकों को टिके रहने में क्या मदद करता है?"
   }
 }

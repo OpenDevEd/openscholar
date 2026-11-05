@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { UNSERVED_FILTER_PANELS } from "@/lib/search/source";
+import { OWN_ONLY_FIELDS, SEMANTIC_FIELD, UNSERVED_FILTER_PANELS } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import { Button } from "@/components/ui/button";
 import {
@@ -167,7 +167,7 @@ const RatingFilterPanel = React.memo(function RatingFilterPanel() {
 // which countries the work is about.
 const CountryFilterPanel = React.memo(function CountryFilterPanel() {
   const tf = useTranslations("searchFilters");
-  const { selectedRegions, selectedCountryFocus } = useCurrentSearchFormState();
+  const { selectedRegions, selectedCountryFocus, currentSearchField } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isActive =
     isCountryFilterActive(selectedRegions) ||
@@ -193,8 +193,9 @@ const CountryFilterPanel = React.memo(function CountryFilterPanel() {
           <CountryRegionPicker />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">{tf("countryFocus")}</Label>
-          <CountryFocusPicker />
+          {/* Country focus adds words to the query, which a question asked by meaning sends as written. */}
+          {currentSearchField !== SEMANTIC_FIELD && <><Label className="text-xs text-muted-foreground">{tf("countryFocus")}</Label>
+          <CountryFocusPicker /></>}
         </div>
       </div>
     </FilterSection>
@@ -204,6 +205,7 @@ const CountryFilterPanel = React.memo(function CountryFilterPanel() {
 // Search Field Component - now a dropdown select
 const SearchFieldPanel = React.memo(function SearchFieldPanel() {
   const tf = useTranslations("searchFilters");
+  const source = useSearchSource();
   const ta = useTranslations("accessibility");
   const { currentSearchField } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -238,7 +240,7 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {SEARCH_FIELDS.map((field) => (
+          {SEARCH_FIELDS.filter((field) => source === "openscholar" || !OWN_ONLY_FIELDS.includes(field.value)).map((field) => (
             <SelectItem key={field.value} value={field.value}>
               {getFieldLabel(field.value, tf as FilterT)}
             </SelectItem>
@@ -253,7 +255,7 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
 const SortOptionsPanel = React.memo(function SortOptionsPanel() {
   const tf = useTranslations("searchFilters");
   const ta = useTranslations("accessibility");
-  const { sortBy } = useCurrentSearchFormState();
+  const { sortBy, currentSearchField, similarTo } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
 
   const handleSortChange = React.useCallback(
@@ -283,6 +285,8 @@ const SortOptionsPanel = React.memo(function SortOptionsPanel() {
 
   const isSortActive = sortBy !== DEFAULT_FILTERS.sortBy;
 
+  // Closeness is the only order these searches have.
+  if (currentSearchField === SEMANTIC_FIELD || similarTo?.length) return null;
   return (
     <FilterSection
       title={tf("sortResultsBy")}
@@ -487,7 +491,7 @@ function SwitchRow({
 
 const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
   const tf = useTranslations("searchFilters");
-  const { openAccessOnly, hasAbstract, includeRetracted, reviewFilter, topCitedOnly, venuesOnly } = useCurrentSearchFormState();
+  const { openAccessOnly, hasAbstract, includeRetracted, reviewFilter, topCitedOnly, venuesOnly, currentSearchField } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
   const isActive = openAccessOnly || hasAbstract || includeRetracted || isReviewFilterActive(reviewFilter) || topCitedOnly || venuesOnly;
   return (
@@ -516,13 +520,14 @@ const OnlyShowFilterPanel = React.memo(function OnlyShowFilterPanel() {
           checked={hasAbstract}
           onCheckedChange={(checked) => updateFilter({ hasAbstract: checked })}
         />
-        <SwitchRow
+        {/* Reviews adds words to the query, which a question asked by meaning sends as written. */}
+        {currentSearchField !== SEMANTIC_FIELD && <SwitchRow
           id="review-filter"
           label={tf("reviews")}
           hint={tf("reviewFilterDescription")}
           checked={reviewFilter}
           onCheckedChange={(checked) => updateFilter({ reviewFilter: checked })}
-        />
+        />}
         <SwitchRow
           id="top-cited-filter"
           label={tf("topCited")}

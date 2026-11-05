@@ -3,6 +3,7 @@
 // The tasks-to-models map shared by the AI settings page and the admin AI models
 // page, and the cost meter.
 
+import { EASE } from "@/components/ui/opening";
 import { type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -120,7 +121,7 @@ function layoutOf(cloud: readonly PresetTask[]) {
     ]) as Record<PresetTask, number>,
   };
 }
-export const EASE = [0.32, 0.72, 0, 1] as const;
+export { EASE };
 
 export type MapNode = { id: string; model: MapModel; paidBy: "credits" | "key"; tasks: PresetTask[]; target: number };
 type Edge = { task: PresetTask; node: string; y0: number };

@@ -955,7 +955,10 @@
       "melanesia": "I-Melanesia",
       "micronesia": "I-Micronesia",
       "polynesia": "I-Polynesia"
-    }
+    },
+    "searchFieldDefault": "Isihloko, isifinyezo, umbhalo ogcwele",
+    "searchFieldSemantic": "Ngencazelo",
+    "filterSimilarTo": "Kufana no"
   },
   "paperCard": {
     "screeningResponses": "Izimpendulo zokuskrini",
@@ -5463,5 +5466,24 @@
     "plansNoticeTitle": "Imahhala ngesikhathi se-alpha yomphakathi",
     "plansNoticeDetail": "Zonke izici zifakiwe. Amapulani azoshintsha ngemva kwalokho.",
     "emailAddress": "Thumela i-imeyili ku-{email}"
+  },
+  "similarPapers": {
+    "closestOf": "eziseduze kakhulu kwezingu-{count}",
+    "similarTo": "Kufana {count, plural, one {nephepha elingu-#} other {namaphepha angu-#}}",
+    "clear": "Susa",
+    "moreLike": "Okunye okufana {count, plural, one {nephepha olikalile} other {namaphepha angu-# owakalile}}",
+    "likelyFirst": "Okungase kuhambisane kuqala",
+    "resort": "Hlela kabusha ngezilinganiso zakho ezintsha",
+    "orderFailed": "Akwenzekanga ukuhlela imiphumela",
+    "title": "Amaphepha afanayo",
+    "similar": "Afanayo",
+    "seeAll": "Bona konke",
+    "finding": "Kufunwa amaphepha afanayo",
+    "failed": "Amaphepha afanayo awakwazanga ukulayishwa.",
+    "none": "Awekho amaphepha afanayo atholakele.",
+    "likeCollection": "Amaphepha afana naleli qoqo",
+    "likeLibrary": "Amaphepha afana nomtapo wakho",
+    "yourQuestion": "Umbuzo wakho",
+    "questionPlaceholder": "Yini esiza othisha ukuthi bahlale ezikoleni zasemakhaya?"
   }
 }

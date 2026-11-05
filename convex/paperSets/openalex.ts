@@ -10,7 +10,7 @@ import { openAlexFetch, openAlexReason } from "../../lib/openalex/fetch";
 import { searchUrl } from "../../lib/openalex/request-url";
 import { appWork, selectWithIds } from "../../lib/openalex/work-id";
 import { oqlForOwnIndex } from "../../lib/openalex/oql-for-own-index";
-import { SEARCH_SOURCE_NAMES, type SearchSource } from "../../lib/search/source";
+import { questionAsWords, SEARCH_SOURCE_NAMES, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "../../lib/search/source";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { autocompleteOptions, autocompleteParameters, sourceTypesParameters, withSourceTypes, type LookupEntity, type LookupOption } from "../../lib/openalex/autocomplete";
 
@@ -45,6 +45,9 @@ export const searchRequestValidator = v.object({
   filter: v.optional(v.string()),
   oql: v.optional(v.string()),
   sort: v.string(),
+  /** A question asked by meaning, and the papers whose closest works are asked for, on our index. */
+  semantic: v.optional(v.string()),
+  similarTo: v.optional(v.string()),
   /** The source it reads. Kept with the request, so a job finishes on the source it started on. A request kept before there was a choice read OpenAlex. */
   source: v.optional(searchSourceValidator),
 });
@@ -60,6 +63,14 @@ export type SearchSnapshot = Infer<typeof searchSnapshotValidator>;
 type Page = { page: number } | { cursor: string };
 
 const sourceOf = (request: SearchRequest): SearchSource => request.source ?? "openalex";
+
+/** What says which works a request means, as its source takes it. OpenAlex reads a question as words, and has no similar papers. */
+function asked(request: SearchRequest): Record<string, string | undefined> {
+  if (sourceOf(request) === "openscholar") return { search: request.search, filter: request.filter, "search.semantic": request.semantic, similar_to: request.similarTo };
+  if (request.similarTo) throw createError("VALIDATION_ERROR", SIMILAR_NEEDS_OWN_INDEX);
+  const words = request.semantic && questionAsWords(request.semantic);
+  return { search: request.search, filter: [request.filter, words && `title_and_abstract.search:${words}`].filter(Boolean).join(",") || undefined };
+}
 
 /** How many of a character the search's text holds, outside its quoted phrases. */
 const countOf = (request: SearchRequest, character: string) => `${request.search ?? ""}${request.filter ?? ""}${request.oql ?? ""}`.replace(/"[^"]*"/g, "").split(character).length;
@@ -95,7 +106,7 @@ async function readPage<Work>(request: SearchRequest, at: Page, select: string, 
   const source = sourceOf(request);
   const url = request.oql
     ? searchUrl(source, "", parameters)
-    : searchUrl(source, "works", { ...parameters, search: request.search, filter: request.filter });
+    : searchUrl(source, "works", { ...parameters, ...asked(request) });
   let response: Response;
   try {
     response = await openAlexFetch(url, {
@@ -307,7 +318,7 @@ export async function groupSearch(request: SearchRequest, by: string, spend: (pa
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {
-    response = await openAlexFetch(searchUrl(source, "works", { search: request.search, filter: request.filter, group_by: by, "per-page": String(PAGE_SIZE) }), { timeoutMs: PAGE_TIMEOUT_MS });
+    response = await openAlexFetch(searchUrl(source, "works", { ...asked(request), group_by: by, "per-page": String(PAGE_SIZE) }), { timeoutMs: PAGE_TIMEOUT_MS });
   } catch (error) {
     console.error(`[paperSets] ${SEARCH_SOURCE_NAMES[source]} count by ${by} didn't answer`, error);
     throw createError("VALIDATION_ERROR", `${SEARCH_SOURCE_NAMES[source]} didn't count these papers in time. Try again in a moment.`);

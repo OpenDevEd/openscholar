@@ -1,4 +1,7 @@
 import { TopicLink } from "@/components/topics/topic-link";
+import { SimilarPapers } from "./similar-papers";
+import { similarSearchHref } from "@/lib/search/similar-href";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import React from "react";
 import { QueryMatchText } from "@/components/query-highlight";
 import { BookOpen, Award, ExternalLink, FileText } from "@/components/icons";
@@ -62,6 +65,7 @@ export function PaperContent({
   selectedInstitutions,
   onToggleInstitution,
 }: PaperContentProps) {
+  const ownIndex = useSearchSource() === "openscholar";
   return (
     <div className={contentClasses}>
       {/* COINS metadata span - only render for the currently focused paper (not preview) */}
@@ -329,6 +333,7 @@ export function PaperContent({
           </div>
         </div>
       )}
+      {!isPreview && ownIndex && similarSearchHref([paper.id]) && <SimilarPapers paperId={paper.id} />}
     </div>
   );
 }

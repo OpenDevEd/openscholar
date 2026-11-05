@@ -1,4 +1,5 @@
 import { OQL_FIELD, joinOql } from './openalex/oql';
+import { SEMANTIC_FIELD } from './search/source';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
 import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
 import { validateAndExpandKeywords, type ExpandShortcuts } from './keyword-validation';
@@ -91,6 +92,11 @@ export function prepareOpenAlexSearch(
   };
 
   const countryNames = getCountryNames();
+
+  // A question asked by meaning is sent as it was written: it has no operators to check, shortcuts to expand or terms to add.
+  if (filters.searchField === SEMANTIC_FIELD) {
+    return { validation: { isValid: true, expandedQuery: query, warnings: [] }, countryNames: [], finalApiQuery: query, effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId };
+  }
 
   // Validate and expand keywords on the original query first
   const validation = validateAndExpandKeywords(query, options.expand, {

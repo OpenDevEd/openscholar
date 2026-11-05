@@ -11,7 +11,7 @@ import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import { OpenAlexLimitedError } from "@/lib/openalex/limited";
 import { fetchOwnWorks } from "@/lib/openalex/read-works";
 import { chosenSource } from "@/lib/search/active-source";
-import type { SearchSource } from "@/lib/search/source";
+import { asKeywords, questionAsWords, SEMANTIC_FIELD, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "@/lib/search/source";
 
 /**
  * Result of a search action. We return a structured error instead of throwing:
@@ -57,9 +57,12 @@ async function spendOne(): Promise<{ ok: false; status: number; message: string 
 }
 
 async function callOpenAlexSDK(
-  query: string,
-  filters: SearchFilters
+  asked: string,
+  given: SearchFilters
 ): Promise<SearchActionResult> {
+  if (given.similarTo?.length) return { ok: false, status: 400, message: SIMILAR_NEEDS_OWN_INDEX };
+  const filters = asKeywords(given);
+  const query = given.searchField === SEMANTIC_FIELD ? questionAsWords(asked) : asked;
   const limited = await spendOne();
   if (limited) return limited;
   const searchParams = createSearchParameters(query, filters);
@@ -90,7 +93,11 @@ async function searchOwnIndex(query: string, filters: SearchFilters): Promise<Se
   if (filters.searchField === OQL_FIELD) {
     return fetchOqlWorks(worksOql(query, searchParams.filter ?? {}), { perPage: searchParams.perPage, sort: filters.sortBy }, "openscholar");
   }
-  return fetchOwnWorks({ search: searchParams.search, filter: searchParams.filter as never, sortBy: searchParams.sortBy }, { perPage: searchParams.perPage });
+  return fetchOwnWorks(
+    { search: searchParams.search, filter: searchParams.filter as never, ...(searchParams.semantic || searchParams.similar ? {} : { sortBy: searchParams.sortBy }) },
+    { perPage: searchParams.perPage },
+    { "search.semantic": searchParams.semantic, similar_to: searchParams.similar },
+  );
 }
 
 export async function getSearchResults(

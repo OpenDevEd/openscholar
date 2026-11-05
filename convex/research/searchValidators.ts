@@ -16,7 +16,7 @@ export const LAST_PAGE = 10_000 / RESULTS_PAGE;
  */
 export const LAST_PAGE_FROM_START = 2_000 / RESULTS_PAGE;
 
-const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"), v.literal("oql"));
+const fieldValidator = v.union(v.literal("default"), v.literal("semantic"), v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"), v.literal("oql"));
 const sortValidator = v.union(v.literal("relevance"), v.literal("most_cited"), v.literal("newest"), v.literal("oldest"));
 const numberValidator = v.optional(v.union(v.number(), v.null()));
 /** A day or a paper's ID, or null to take it off. */
@@ -52,6 +52,7 @@ export const searchSettings = {
   citationsOf: textValidator,
   referencesOf: textValidator,
   relatedTo: textValidator,
+  similarTo: listValidator,
   openAccessOnly: v.optional(v.boolean()),
   withAbstractOnly: v.optional(v.boolean()),
   reviewsOnly: v.optional(v.boolean()),
@@ -80,15 +81,16 @@ export const changesValidator = v.array(
 
 /** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
 export const SETTINGS =
-  "`field`: where the query's words are looked for (title_and_abstract, the default, title, abstract, fulltext), or oql for a query in OpenAlex Query Language. " +
-  "A time span is in years (`fromYear`, `toYear`) or days (`fromDate`, `toDate`, YYYY-MM-DD). " +
-  "`authorsIn` is where the authors work and `about` where the paper is about: two-letter country codes, regions such as africa, western_africa or latin_america, or income groups low_income, lower_middle_income, upper_middle_income and high_income. " +
-  "`types` and `institutionTypes` are OpenAlex's, such as article or education. `languages` are ISO 639 codes, `sdgs` goal numbers 1 to 17. " +
-  "`authors` are IDs or names as papers print them. `funders`, `journals`, `institutions` (their sub-units too) and `researchAreas` are IDs from research/lookup:find. " +
-  "`studyDesigns` are such as systematic-review or randomized-controlled-trial (clinical trials too); only 1 paper in 15 has one, mostly medical. " +
-  "`topCitedOnly` keeps the top 10% of a field and year by citations, `venuesOnly` papers in journals, conferences and book series. " +
+  "`field`: where the query's words are looked for, title_and_abstract by default, or oql for OpenAlex Query Language. " +
+  "A time span is in years (`fromYear`, `toYear`) or days (`fromDate`, `toDate`). " +
+  "`authorsIn` is where the authors work and `about` where the paper is about: two-letter country codes, regions such as africa or latin_america, or income groups such as low_income. " +
+  "`types` and `institutionTypes` are such as article or education. `languages` are ISO 639 codes, `sdgs` goal numbers. " +
+  "`authors` are IDs or printed names. `funders`, `journals`, `institutions` and `researchAreas` are IDs from research/lookup:find. " +
+  "`studyDesigns` are such as systematic-review or randomized-controlled-trial ; few papers have one. " +
+  "`topCitedOnly` keeps a field and year's top 10% by citations, `venuesOnly` journals, conferences and book series. " +
   "`citationsOf`, `referencesOf` and `relatedTo` take one paper's ID: papers citing it, its references, papers like it. " +
-  "`ratedOnly` keeps papers the person rated; `minRating` and `maxRating` (0 to 5) narrow those and turn it on.";
+  "`similarTo` (papers' IDs) and `field` semantic (a question) find the closest in meaning on our index. " +
+  "`ratedOnly` keeps rated papers; `minRating` and `maxRating` (0 to 5) narrow those and turn it on.";
 
 /** Authors of a paper the results name, each with its ID to filter by. */
 export const AUTHORS_SHOWN = 3;

@@ -2,6 +2,7 @@
 "use no memo"; // Sync effect setCurrentQuery(urlQuery) for store; try/finally in handlers
 
 import React, { useState, useEffect, useCallback } from "react";
+import { SEMANTIC_FIELD } from "@/lib/search/source";
 import { Search, AiIcon } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
@@ -42,6 +43,7 @@ const originals = new Map<string, Map<string, string>>();
 export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
   const toast = useAppToast();
   const t = useTranslations("searchCommand");
+  const ts = useTranslations('similarPapers');
   const tc = useTranslations("common");
   const te = useTranslations("errors");
   const tValidation = useTranslations("validation");
@@ -78,6 +80,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
   const isFormDisabled = isLoading || isValidating || isTranslating || isEnhancing;
   const isOql = search?.params?.field === OQL_FIELD;
+  const byMeaning = search?.params?.field === SEMANTIC_FIELD;
   // AI writes and translates in the search's own query language.
   const syntax = isOql ? ('oql' as const) : undefined;
   const isLanguageSelectorDisabled = isTranslating || isEnhancing;
@@ -286,7 +289,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       {/* Keywords Input */}
       <form onSubmit={handleSearchSubmit}>
         <FloatingInput
-          label={isOql ? t('oqlQuery') : t('keywords')}
+          label={isOql ? t('oqlQuery') : byMeaning ? ts('yourQuestion') : t('keywords')}
           labelAddon={
             <QueryHistoryNav
               historyIndex={historyIndex}
@@ -298,9 +301,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
               disabled={isFormDisabled}
             />
           }
-          placeholder={isTranslating ? tc('translating') : t(isOql ? 'placeholder.oql' : 'placeholder.keywords')}
+          placeholder={isTranslating ? tc('translating') : byMeaning ? ts('questionPlaceholder') : t(isOql ? 'placeholder.oql' : 'placeholder.keywords')}
           value={localInputValue.replace(/[\r\n]+/g, " ")}
-          highlightQuery={!isOql}
+          highlightQuery={!isOql && !byMeaning}
           onChange={(e) => handleQueryChange(e.target.value)}
           disabled={isFormDisabled}
           icon={<Search className="h-4 w-4" />}
