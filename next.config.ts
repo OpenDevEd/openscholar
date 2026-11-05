@@ -1,11 +1,18 @@
 import type { NextConfig } from "next";
 import { withPostHogConfig } from "@posthog/nextjs-config";
 import createNextIntlPlugin from "next-intl/plugin";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
+// The question stage's planet script is cached, so its address carries a hash of its contents: an old copy is never used.
+const earthScriptVersion = createHash("sha256").update(readFileSync(join(process.cwd(), "public/question-stage/earth.js"))).digest("hex").slice(0, 10);
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  env: { QUESTION_STAGE_EARTH_VERSION: earthScriptVersion },
   serverExternalPackages: ["citeproc-ts"],
   devIndicators: false,
   poweredByHeader: false,
@@ -19,12 +26,13 @@ const nextConfig: NextConfig = {
     turbopackFileSystemCacheForBuild: true,
   },
   // A second local address for testing, as the free question limit counts each address on its own.
-  allowedDevOrigins: ["127.0.0.1"],
+  allowedDevOrigins: ["127.0.0.1", "192.168.1.47"],
   async headers() {
     return [
       // The marketing site fetches these ahead, so they're on hand the moment someone searches from it. Images only: the script changes.
       {
-        source: "/question-stage/:file([\\w-]+\\.avif)",
+        // The planet's script too: its address always carries its version.
+        source: "/question-stage/:file([\\w-]+\\.(?:avif|js))",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {

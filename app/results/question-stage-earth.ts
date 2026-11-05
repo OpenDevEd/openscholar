@@ -57,13 +57,11 @@ export function ringMarkup({ rx: a, ry: b, cx, cy, tilt, narrow }: Layout, front
   ].join("");
 }
 
-/** The planet itself is public/question-stage/earth.js, which runs before the app's scripts. */
-export const EARTH_SCRIPT = `${DIR}/earth.js`;
-export type Earth = { wave(): void; sunBehind(ms: number): void; stop(): void };
+export type Earth = { wave(): void; sunBehind(ms: number): void; stop(): void; canvas?: HTMLCanvasElement };
 export type EarthConfig = { layout: Layout; width: number; height: number; turn: { t: number; at: number } | null };
 declare global {
   interface Window {
-    questionStageEarth?: { boot(script: Element, config: EarthConfig): void };
+    questionStageEarth?: { boot(stage: HTMLElement): Earth };
     questionStageEarthRun?: Earth;
   }
 }

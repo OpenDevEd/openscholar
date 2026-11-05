@@ -6,7 +6,8 @@ import { useSearchParams } from "next/navigation";
 import { parseSearchParamsFromUrl, readUrlQuestion } from "@/lib/search-params";
 import { highlightSegments, queryMatcher } from "@/lib/search/boolean-query";
 import { useQuestionStage } from "@/lib/search/question-stage";
-import { earthLayout, ringMarkup, spaceHeight, EARTH_IMAGES, EARTH_SCRIPT, EARTH_STILL, SKY_PLATE, STILL_REACH, type Earth, type EarthConfig } from "./question-stage-earth";
+import { EARTH_SCRIPT } from "@/lib/search/question-stage-script";
+import { earthLayout, ringMarkup, spaceHeight, EARTH_IMAGES, EARTH_STILL, SKY_PLATE, STILL_REACH, type Earth, type EarthConfig } from "./question-stage-earth";
 import styles from "./question-stage.module.css";
 
 /** The query box's concepts, in the order it colours them, lightened for the night sky. */
@@ -149,17 +150,21 @@ export function QuestionStage() {
     else planetEl.animate([{ transform: "none" }, { transform: settled }], { duration: 1800, delay: 100, easing: "cubic-bezier(.45,0,.2,1)", fill: "both" });
     const stillImage = stage.current!.querySelector<HTMLImageElement>("[data-still] img");
     for (const image of [plate.current!, stillImage]) void image?.decode().then(() => (image.dataset.in = ""), () => {});
-    // Coming through the hero the planet is already going, started by the tags below. Otherwise it starts here.
-    let earth: Earth | undefined = window.questionStageEarthRun;
-    if (!handover && !earth) {
-      const stageEl = stage.current!;
-      const script = document.createElement("script");
-      script.src = EARTH_SCRIPT;
-      script.onload = () => {
-        window.questionStageEarth!.boot(stageEl, { layout: layout!, width: frame.width, height: frame.spaceHeight, turn: null });
-        earth = window.questionStageEarthRun;
-      };
-      document.head.append(script);
+    // Coming through the hero the planet is already going: public/question-stage/earth.js started it as the stage arrived.
+    // If it isn't going in this stage (a visitor who came straight here, or a stage React has built afresh), it starts now.
+    const stageEl = stage.current!;
+    let earth: Earth | undefined;
+    const begin = () => (earth = window.questionStageEarth!.boot(stageEl));
+    if (window.questionStageEarth) begin();
+    else {
+      const loading = document.querySelector<HTMLScriptElement>(`script[src="${EARTH_SCRIPT}"]`);
+      if (loading) loading.addEventListener("load", begin);
+      else {
+        const script = document.createElement("script");
+        script.src = EARTH_SCRIPT;
+        script.onload = begin;
+        document.head.append(script);
+      }
     }
     const started = performance.now();
     let litAt = 0;
@@ -276,13 +281,19 @@ export function QuestionStage() {
 
   const size = question.length <= 40 ? "large" : question.length <= 90 ? "medium" : "small";
   const handedOver = handover !== null;
+  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn } satisfies EarthConfig) : undefined;
   const variables = {
     "--page": frame && handedOver ? `${frame.width}px` : undefined,
     "--sky-top": handover?.skyTop === undefined ? undefined : `${handover.skyTop}px`,
     "--question-top": handover?.questionTop === undefined ? undefined : `${handover.questionTop}px`,
   } as React.CSSProperties;
   return (
-    <div ref={stage} id="question-stage" data-earth className={styles.stage} style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
+    <div
+      ref={stage}
+      id="question-stage"
+      data-earth-config={earthConfig}
+      className={styles.stage}
+      style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
       <div className={styles.scene}>
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed backdrop, sized by the stage */}
         <img ref={plate} className={styles.plate} src={SKY_PLATE} width={2560} height={820} alt="" decoding={handedOver ? "sync" : "async"} fetchPriority="high" />
@@ -308,8 +319,8 @@ export function QuestionStage() {
               style={{ left: layout.cx - layout.R * 0.75, top: layout.cy - layout.R * 0.66, width: layout.narrow ? 800 : 1400, height: 2 * (frame.spaceHeight - layout.cy + layout.R * 0.66) }}
               aria-hidden
             />
-            <svg data-ring="back" className={styles.ring} aria-hidden dangerouslySetInnerHTML={{ __html: rings.back }} />
-            <div data-still className={styles.stillBox} style={{ "--fade": `${layout.narrow ? 56 : 96}px` } as React.CSSProperties}>
+            <svg data-ring="back" className={styles.ring} aria-hidden suppressHydrationWarning dangerouslySetInnerHTML={{ __html: rings.back }} />
+            <div data-still suppressHydrationWarning className={styles.stillBox} style={{ "--fade": `${layout.narrow ? 56 : 96}px` } as React.CSSProperties}>
               {/* eslint-disable-next-line @next/next/no-img-element -- a frame of the shader, placed to the pixel */}
               <img
                 className={styles.still}
@@ -320,19 +331,9 @@ export function QuestionStage() {
                 style={{ left: layout.cx - layout.R * STILL_REACH, top: layout.cy - layout.R * STILL_REACH, width: layout.R * STILL_REACH * 2 }}
               />
             </div>
-            <canvas className={styles.earth} aria-hidden />
-            <svg data-ring="front" className={styles.ring} aria-hidden dangerouslySetInnerHTML={{ __html: rings.front }} />
-            {handover && (
-              <>
-                {/* A plain script and a tag to start it, so the planet is going before the app's own scripts have loaded. */}
-                <script src={EARTH_SCRIPT} />
-                <script
-                  dangerouslySetInnerHTML={{
-                    __html: `window.questionStageEarth.boot(document.currentScript,${JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn } satisfies EarthConfig)})`,
-                  }}
-                />
-              </>
-            )}
+            {/* earth.js sizes and draws it, and marks it live, before React takes the page over. */}
+            <canvas className={styles.earth} aria-hidden suppressHydrationWarning />
+            <svg data-ring="front" className={styles.ring} aria-hidden suppressHydrationWarning dangerouslySetInnerHTML={{ __html: rings.front }} />
           </div>
         )}
       </div>

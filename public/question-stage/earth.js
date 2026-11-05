@@ -43,35 +43,34 @@ void main(){
   var clamp01 = function (v) { return Math.min(1, Math.max(0, v)); };
   var unit = function (v) { var l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
 
-  /**
-   * Starts the planet. `turn` is where the hero had got to and when, so that it carries on as if nothing had happened;
-   * without one it starts from the still's place, at rest. `ready` runs once its first frame is drawn, or it can't be.
-   */
-  function start(o) {
-    var canvas = o.canvas, layout = o.layout, turn = o.turn;
-    var none = { wave: function () {}, sunBehind: function () {}, stop: function () {} };
-    var options = { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" };
-    // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can reach
-    // the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas, which it leaves
-    // alone. A browser without WebGL off screen draws straight to the canvas.
-    var offscreen = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", options);
-    var gl = offscreen || canvas.getContext("webgl2", options);
-    if (!gl) { o.ready(false); return none; }
-    var buffer = offscreen ? offscreen.canvas : canvas;
-    var shown = offscreen ? canvas.getContext("2d") : null;
+  var OPTIONS = { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" };
 
+  /**
+   * Compiles the shader and uploads the four maps. Coming from the hero this runs while the new page is still arriving, so
+   * the planet's first frame can be drawn the moment the stage is there. `canvas` is only for a browser without WebGL off
+   * screen, which has to draw straight to the canvas on the page.
+   */
+  var prepared = null;
+  function prepare(canvas) {
+    if (prepared && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
+    // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can
+    // reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas.
+    var gl = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", OPTIONS);
+    var offscreen = !!gl;
+    if (!gl && canvas) gl = canvas.getContext("webgl2", OPTIONS);
+    if (!gl) return null;
     var compile = function (type, source) {
       var shader = gl.createShader(type);
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.error("Earth shader:", gl.getShaderInfoLog(shader));
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.error("[earth] shader:", gl.getShaderInfoLog(shader));
       return shader;
     };
     var program = gl.createProgram();
     gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX));
     gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT));
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { o.ready(false); return none; }
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
     gl.useProgram(program);
     gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
@@ -79,8 +78,43 @@ void main(){
     gl.enableVertexAttribArray(attribute);
     gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0);
     var uniform = function (name) { return gl.getUniformLocation(program, name); };
-    var U = { c: uniform("c"), r: uniform("r"), t: uniform("t"), sd: uniform("sd"), wv: uniform("wv"), fd: uniform("fd"), L: uniform("L"), rg: uniform("rg") };
     var aniso = gl.getExtension("EXT_texture_filter_anisotropic");
+    var self = {
+      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false,
+      U: { c: uniform("c"), r: uniform("r"), t: uniform("t"), sd: uniform("sd"), wv: uniform("wv"), fd: uniform("fd"), L: uniform("L"), rg: uniform("rg") },
+    };
+    self.textures = Promise.all(IMAGES.map(function (name, i) {
+      var image = new Image();
+      image.src = DIR + name + ".avif";
+      return image.decode().then(function () {
+        gl.activeTexture(gl.TEXTURE0 + i);
+        gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+        gl.generateMipmap(gl.TEXTURE_2D);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
+        gl.uniform1i(uniform(name), i);
+      });
+    })).then(function () { self.loaded = true; console.info("[earth] maps ready at", Math.round(performance.now()) + "ms"); });
+    console.info("[earth] shader ready at", Math.round(performance.now()) + "ms");
+    prepared = self;
+    return self;
+  }
+
+  /**
+   * Starts the planet. `turn` is where the hero had got to and when, so that it carries on as if nothing had happened;
+   * without one it starts from the still's place, at rest. `ready` runs once its first frame is drawn, or it can't be.
+   */
+  function start(o) {
+    var canvas = o.canvas, layout = o.layout, turn = o.turn;
+    var none = { wave: function () {}, sunBehind: function () {}, stop: function () {} };
+    var ready = prepare(canvas);
+    if (!ready) { o.ready(false); return none; }
+    var gl = ready.gl, U = ready.U;
+    var buffer = ready.offscreen ? gl.canvas : canvas;
+    var shown = ready.offscreen ? canvas.getContext("2d") : null;
 
     // A little sharper than the hero, as the planet gets zoomed. The width comes from the caller: the stage may be hidden still.
     var d = Math.min(devicePixelRatio || 1, 2);
@@ -144,22 +178,7 @@ void main(){
       comet(now);
     };
 
-    Promise.all(IMAGES.map(function (name, i) {
-      var image = new Image();
-      image.src = DIR + name + ".avif";
-      return image.decode().then(function () {
-        if (stopped) return;
-        gl.activeTexture(gl.TEXTURE0 + i);
-        gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        gl.generateMipmap(gl.TEXTURE_2D);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
-        gl.uniform1i(uniform(name), i);
-      });
-    })).then(function () {
+    var go = function () {
       if (stopped) return;
       // Carries on from where the hero stood still: it stops drawing once this page's response starts arriving, and the
       // screen holds its last frame until this one is ready. Jumping to where it would be now would jolt it forward.
@@ -172,8 +191,11 @@ void main(){
       draw(liveAt);
       o.ready(true);
       if (!o.calm) raf = requestAnimationFrame(loop);
-    }, function (error) {
-      console.error("Earth images:", error);
+    };
+    // Ready already, it draws now, before the browser paints the stage for the first time.
+    if (ready.loaded) go();
+    else ready.textures.then(go, function (error) {
+      console.error("[earth] images:", error);
       o.ready(false);
     });
 
@@ -186,25 +208,54 @@ void main(){
     };
   }
 
-  /** Starts it for the stage the given script tag is in, as soon as that has arrived. */
-  function boot(script, config) {
-    var stage = script.closest("[data-earth]");
+  /**
+   * Starts the planet in a stage, reading its settings from the stage's data-earth-config, unless it's already going
+   * there. The app calls this too, so a stage React has built itself still gets its planet.
+   */
+  function boot(stage) {
     var canvas = stage.querySelector("canvas");
+    var running = window.questionStageEarthRun;
+    if (running && running.canvas === canvas) return running;
+    if (running) running.stop();
+    var config = JSON.parse(stage.dataset.earthConfig);
+    console.info("[earth] stage arrived at", Math.round(performance.now()) + "ms");
+    var begun = performance.now();
+    console.info("[earth] starting", config.turn ? "from the hero" : "from rest");
     var still = stage.querySelector("[data-still]");
-    window.questionStageEarthRun = start({
+    var run = start({
       stage: stage, canvas: canvas,
       ringBack: stage.querySelector("[data-ring=back]"), ringFront: stage.querySelector("[data-ring=front]"),
       layout: config.layout, width: config.width, height: config.height, turn: config.turn,
       calm: matchMedia("(prefers-reduced-motion: reduce)").matches,
       ready: function (ok) {
+        console.info("[earth]", ok ? "drawing" : "can't draw, showing the still", Math.round(performance.now() - begun) + "ms after starting");
         if (ok) { canvas.dataset.live = ""; still.dataset.live = ""; } else still.dataset.failed = "";
-        // Chromium has been told not to paint until this is here: see lib/search/question-stage-script.ts.
-        var mark = document.createElement("i");
-        mark.id = "question-stage-earth";
-        mark.hidden = true;
-        document.body.append(mark);
+        // The browser has been told not to paint until this stylesheet has loaded: removing it lets the page paint now,
+        // with the planet in it (lib/search/question-stage-script.ts).
+        var hold = document.getElementById("question-stage-hold");
+        if (hold) hold.remove();
       },
     });
+    run.canvas = canvas;
+    window.questionStageEarthRun = run;
+    return run;
+  }
+
+  // Loaded early by the page's first script (lib/search/question-stage-script.ts), it gets the planet ready while the page is
+  // still arriving, and starts it the moment the stage is there, before the app's own scripts.
+  console.info("[earth] script ran at", Math.round(performance.now()) + "ms");
+  if (location.search.indexOf("hero=") !== -1) prepare(null);
+  // The page arrives in pieces, so it waits for the stage's last part, the ring in front, before starting.
+  var find = function () {
+    var stage = document.querySelector("#question-stage[data-earth-config]");
+    if (!stage || !stage.querySelector("[data-ring=front]")) return false;
+    try { boot(stage); } catch (error) { console.error("[earth] couldn't start:", error); }
+    return true;
+  };
+  if (!find()) {
+    var watching = new MutationObserver(function () { if (find()) watching.disconnect(); });
+    watching.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(function () { watching.disconnect(); }, 20000);
   }
 
   window.questionStageEarth = { boot: boot };
