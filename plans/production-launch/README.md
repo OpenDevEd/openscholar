@@ -140,9 +140,13 @@ A community's app, Postgres, search, files and domains stay put. Only its Convex
 3. Publish it from prod, which writes the new Openscholar address and a production Clerk sign-in into the community. Publish refuses when nothing changed, so run `versions:startRuntimeUpdate` if an update is waiting, or save a change first.
 4. Readers: in the community's database, change `reader_account."accountId"` and `reader_user.email` from the dev Clerk ID to the production one, matched by email, before they sign in on prod. Otherwise they get a new empty reader. There are about 16 real ones. Everyone signs in once more.
 
-5. Topics: copying `topicLocations` doesn't rebuild the counts topic pages read (`topicPublicationGroups`, `topicOpenAlexDois`), so a moved community's papers don't list there until they're rebuilt. Not built yet: add it before moving a community with topics.
+5. Rebuild what copying rows doesn't, neither built yet, both needed before moving a community:
+   - Topic counts: `topicPublicationGroups` and `topicOpenAlexDois`, which topic pages read, so a moved community's papers don't list there until then.
+   - List counts: the `listCounts` entries for `evidenceLibraries` and `evidenceLibraryConfigOperations`, kept by triggers and not by an import, so a moved community's version count reads zero and the workspace's community limit undercounts. Demo has both gaps today.
 
-**Going back:** the community's rows stay on dev for a week, so publishing it from dev undoes the move, once step 4 is reversed with the mapping kept from it. Then delete those rows. Never tear it down from dev: that deletes its app.
+Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script.
+
+**Going back:** the community's rows stay on dev for a week. On dev, save a change to its configuration, since publishing refuses when nothing changed, and publish. Once that has put dev's sign-in back, reverse step 4 with the mapping kept from it. Then delete the dev rows. Never tear it down from dev: that deletes its app.
 
 ## Backups
 
