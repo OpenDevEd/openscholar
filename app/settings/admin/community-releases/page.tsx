@@ -388,7 +388,7 @@ export default function CommunityReleasesPage() {
                           </Button>
                           <TooltipHint label={t("openCommunity")}>
                             <Button asChild variant="ghost" size="icon" className="size-8 shrink-0 text-muted-foreground">
-                              <a href={`/evidence-communities/${community.id}/configuration`} target="_blank" rel="noopener noreferrer" aria-label={t("openCommunity")}>
+                              <a href={community.address} target="_blank" rel="noopener noreferrer" aria-label={t("openCommunity")}>
                                 <ExternalLink />
                               </a>
                             </Button>

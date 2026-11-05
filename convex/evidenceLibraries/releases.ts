@@ -15,7 +15,7 @@ import { createError, readConvexErrorData } from "../lib/errors";
 import { MAX_RELEASES, MAX_RELEASE_NOTES, MAX_ROLLOUT_COMMUNITIES } from "../lib/listCaps";
 import { newestOffered, releasesBehind } from "../../lib/evidence-libraries/runtime-position";
 import { resolveRuntimeImage } from "./runtimeImageRegistry";
-import { fetchRuntimeCatalog, offersPrereleases, RELEASE_CHECK_WITHDRAWN, setRuntimeReleasePrerelease } from "./runtimeReleases";
+import { fetchRuntimeCatalog, offersPrereleases, RELEASE_CHECK_WITHDRAWN, runtimeIncludesCommit, setRuntimeReleasePrerelease } from "./runtimeReleases";
 import { releaseCatalogRowsValidator, releasesOverviewValidator } from "./validators";
 import { startRolloutRuntimeUpdate } from "./versions";
 
@@ -50,7 +50,7 @@ async function readCommunity(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   if (!binding || !("runtimeCommit" in binding)) return null;
   const status = await ctx.db.query("evidenceLibrarySourceStatus").withIndex("by_libraryId", (q) => q.eq("libraryId", library._id)).first();
   const records = (status?.sources ?? []).reduce((sum, source) => sum + (source.searchable ?? 0), 0);
-  return { id: library._id, name: library.name, running: binding.runtimeCommit, records };
+  return { id: library._id, name: library.name, running: binding.runtimeCommit, records, address: binding.canonicalBaseUrl ?? binding.targetBaseUrl };
 }
 
 const currentRollout = (ctx: QueryCtx) => ctx.db.query("evidenceLibraryRollouts").first();
@@ -247,20 +247,41 @@ export const advance = internalMutation({
   },
 });
 
-export const beginCommunity = internalMutation({
+/** The commit the community a rollout has reached runs, for asking GitHub where it stands. */
+export const readRolloutCommunity = internalQuery({
   args: { rolloutId: v.id("evidenceLibraryRollouts") },
-  returns: v.null(),
+  returns: v.union(v.null(), v.object({ target: v.string(), running: v.union(v.string(), v.null()) })),
   handler: async (ctx, { rolloutId }) => {
     const rollout = await ctx.db.get("evidenceLibraryRollouts", rolloutId);
     if (rollout?.state !== "running" || rollout.operationId) return null;
     const library = await ctx.db.get("evidenceLibraries", rollout.queue[rollout.done]!);
     const community = library?.state === "active" && library.runtimeBindingId ? await readCommunity(ctx, library) : null;
-    // Gone, or moved on by itself since the rollout began. Checked here, where the update starts,
-    // so an owner's update finishing just before can't send the community back.
-    if (!library || !community || releasesBehind(community.running, rollout.target, await readCatalog(ctx)) === 0) {
+    return { target: rollout.target, running: community?.running ?? null };
+  },
+});
+
+export const beginCommunity = internalMutation({
+  args: {
+    rolloutId: v.id("evidenceLibraryRollouts"),
+    // What GitHub was asked about: whether `running` already holds the target.
+    running: v.union(v.string(), v.null()),
+    reached: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { rolloutId, running, reached }) => {
+    const rollout = await ctx.db.get("evidenceLibraryRollouts", rolloutId);
+    if (rollout?.state !== "running" || rollout.operationId) return null;
+    const library = await ctx.db.get("evidenceLibraries", rollout.queue[rollout.done]!);
+    const community = library?.state === "active" && library.runtimeBindingId ? await readCommunity(ctx, library) : null;
+    // Gone, or moved on by itself since the rollout began.
+    if (!library || !community || reached) {
       await finishCommunity(ctx, rollout);
       return null;
     }
+    // Updates only go forward, so the answer has to be about the commit it runs now.
+    if (community.running !== running) throw createError("CONFLICT", "This community's software changed as the update started");
+    const target = await ctx.db.query("evidenceLibraryReleaseCatalog").withIndex("by_commit", (q) => q.eq("commit", rollout.target)).first();
+    if (!target || (target.prerelease && !offersPrereleases())) throw createError("CONFLICT", "That release was pulled back");
     const operationId = await startRolloutRuntimeUpdate(ctx, {
       library,
       to: rollout.target,
@@ -288,7 +309,11 @@ export const startCommunity = internalAction({
   returns: v.null(),
   handler: async (ctx, { rolloutId }) => {
     try {
-      await ctx.runMutation(internal.evidenceLibraries.releases.beginCommunity, { rolloutId });
+      const current = await ctx.runQuery(internal.evidenceLibraries.releases.readRolloutCommunity, { rolloutId });
+      if (!current) return null;
+      // Asked of GitHub, not the release list: an owner's update can be on a release the list hasn't heard of.
+      const reached = current.running !== null && (await runtimeIncludesCommit({ runtime: current.running, commit: current.target, token: githubToken() }));
+      await ctx.runMutation(internal.evidenceLibraries.releases.beginCommunity, { rolloutId, running: current.running, reached });
     } catch (error) {
       console.error("[evidence-library] a rollout could not start a community", { rolloutId, error: String(error) });
       await ctx.runMutation(internal.evidenceLibraries.releases.recordFailure, {

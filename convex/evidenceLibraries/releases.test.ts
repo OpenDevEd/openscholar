@@ -77,9 +77,10 @@ async function seedRollout(records: { small: number; big: number }) {
     fixture.t.run(async (ctx) => {
       for (const user of await ctx.db.query("users").take(10)) await ctx.db.insert("admins", { email: user.email, userId: user._id, createdAt: 1 });
     });
-  const begin = async () => {
+  /** GitHub's answer to whether the community already holds the target is a test's to give. */
+  const begin = async (reached = false, running: string | null = RUNNING) => {
     const { _id } = await rollout();
-    await fixture.t.mutation(internal.evidenceLibraries.releases.beginCommunity, { rolloutId: _id });
+    await fixture.t.mutation(internal.evidenceLibraries.releases.beginCommunity, { rolloutId: _id, running, reached });
     return (await rollout()).operationId!;
   };
   const advance = async () => fixture.t.mutation(internal.evidenceLibraries.releases.advance, { rolloutId: (await rollout())._id });
@@ -186,11 +187,22 @@ describe("community releases", () => {
     expect(await rollout()).toMatchObject({ state: "running", done: 1 });
     await fixture.t.run(async (ctx) => {
       const library = (await ctx.db.get("evidenceLibraries", big))!;
-      await ctx.db.patch("evidenceLibraryRuntimeBindings", library.runtimeBindingId!, { runtimeCommit: UNPROMOTED });
+      await ctx.db.patch("evidenceLibraryRuntimeBindings", library.runtimeBindingId!, { runtimeCommit: "d".repeat(40) });
     });
-    // An owner's update got there first and went further: the rollout doesn't send it back.
-    expect(await begin()).toBeUndefined();
+    // An owner's update went further than the release list knows of. An answer about another commit is refused.
+    await expect(begin(false, RUNNING)).rejects.toThrow("changed as the update started");
+    expect(await begin(true, "d".repeat(40))).toBeUndefined();
     expect(await rollout()).toMatchObject({ state: "finished", done: 2, skipped: 1 });
+  });
+
+  it("stops when its release is pulled back, except where prereleases are offered anyway", async () => {
+    const { fixture, start, begin, rollout } = await seedRollout({ small: 10, big: 100 });
+    await start();
+    await fixture.t.mutation(internal.evidenceLibraries.releases.recordChannel, { commit: PROMOTED, prerelease: true });
+    await expect(begin()).rejects.toThrow("pulled back");
+    expect((await rollout()).operationId).toBeUndefined();
+    vi.stubEnv("EL_OFFER_PRERELEASES", "true");
+    expect(await begin()).toBeDefined();
   });
 
   it("leaves out what isn't behind, and refuses when nothing is", async () => {
