@@ -140,8 +140,8 @@ rows = {table: [rewrite(row) for row in found] for table, found in rows.items()}
 # Every table live doesn't have takes dev's number, so a later community can always come with its IDs.
 taken = {row["id"]: row["name"] for row in live_tables}
 dev_numbers = dev_tables()
-new_tables = {table: number for table, number in dev_numbers.items() if table not in taken.values() and not table.startswith("_")}
-clash = {table: taken[number] for table, number in new_tables.items() if number in taken}
+new_tables = {table: number for table, number in dev_numbers.items() if table not in taken.values() and not table.startswith("_") and number not in taken}
+clash = {table: taken[dev_numbers[table]] for table, found in rows.items() if found and table not in taken.values() and dev_numbers[table] in taken}
 if clash:
     sys.exit(f"these tables' numbers are live's: {clash}")
 if rows_only:
