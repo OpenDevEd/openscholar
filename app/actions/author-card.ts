@@ -63,6 +63,7 @@ function wholePerson(records: AuthorRecord[]): AuthorRecord {
     orcid: records.find((record) => record.orcid)?.orcid ?? null,
     works_count: records.reduce((sum, record) => sum + (record.works_count ?? 0), 0),
     cited_by_count: records.reduce((sum, record) => sum + (record.cited_by_count ?? 0), 0),
+    // ponytail: the largest record's h-index, a floor for the person's. The true one takes reading their papers' citations together, too much for a hover card.
     summary_stats: { h_index: Math.max(...records.map((record) => record.summary_stats?.h_index ?? 0)) },
     topics: [...topics.values()].sort((a, b) => b.count - a.count),
   };
@@ -85,8 +86,9 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   const author = records ? wholePerson(records) : authorSchema.parse(await response!.json());
   const institution = author.last_known_institutions?.[0];
   const paired = author.ids?.openalex ? lastPart(author.ids.openalex) : null;
-  // The others split from this person, whichever of them this page opened from. The card stands without them.
-  const split = records ?? (source === "openscholar" && paired ? await readPairedRecords(paired).catch((error) => {
+  // The others split from this person, whichever of them this page opened from, and whichever source is on: a profile may hold any of them. The card stands without them.
+  const pairedId = id.startsWith("A") ? id : paired;
+  const split = records ?? (pairedId && !(await spendOpenAlexRequests()) ? await readPairedRecords(pairedId).catch((error) => {
     console.error("[authors] couldn't read an author's paired records", id, error);
     return [];
   }) : []);

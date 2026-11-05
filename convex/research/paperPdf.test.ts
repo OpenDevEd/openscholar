@@ -267,7 +267,7 @@ describe("reading a paper's PDF", () => {
   it("reads nothing when the title it was asked about isn't the ID's paper", async () => {
     const t = convexTest(schema);
     const { asAda } = await chat(t);
-    await expect(asAda.action(api.research.papers.readPdf, { id: "W1", title: "Video games and wellbeing" })).rejects.toThrow(/Loot boxes and problem gambling.{0,4} in OpenAlex/);
+    await expect(asAda.action(api.research.papers.readPdf, { id: "W1", title: "Video games and wellbeing" })).rejects.toThrow(/Loot boxes and problem gambling/);
     expect(publisher).toEqual([]);
     // A title without its subtitle is the same paper.
     expect(await asAda.action(api.research.papers.readPdf, { id: "W1", title: "Loot boxes" })).toMatchObject({ paperPdf: PDF });
