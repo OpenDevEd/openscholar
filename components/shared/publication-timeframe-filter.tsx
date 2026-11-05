@@ -30,7 +30,7 @@ interface PublicationTimeframeFilterProps {
  * Shared publication timeframe filter with year/date segmented toggle.
  *
  * Used identically by both the search results sidebar and the library sidebar.
- * In year mode: renders YearRangePicker with enable/disable toggle.
+ * In year mode: renders YearRangePicker.
  * In date mode: renders DateRangePicker with calendar.
  */
 export function PublicationTimeframeFilter({
@@ -71,7 +71,6 @@ export function PublicationTimeframeFilter({
           onYearRangeChange={onYearRangeChange}
           isEnabled={isYearEnabled}
           onToggleEnabled={onYearToggleEnabled}
-          showToggle
           isActive={isActive}
         />
       )}
