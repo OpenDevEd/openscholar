@@ -374,7 +374,7 @@
   "aiSetupGate": {
     "title": "Set up AI to enhance your search",
     "description": "Openscholar uses AI to refine queries, screen papers, and translate results.",
-    "signInForCredits": "Sign in for free credits",
+    "signInForCredits": "Sign in for 50k free credits",
     "useOwnApiKey": "Use your own API key"
   },
   "aiSettings": {

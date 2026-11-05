@@ -19,7 +19,7 @@ Agreed with the user on 2026-11-04.
 - The frontend is the same container as `dev.openscholar.ai`, on Coolify. Its
   OpenAlex limiter is per process, so Vercel isn't a like-for-like home.
 - Autumn stays one server, using its live environment.
-- Credits: everyone is on Free with its 20,000 a month. Only credits people
+- Credits: everyone is on Free with its 50,000 a month. Only credits people
   bought carry over: 10 people, 423,521 credits on 2026-11-04.
 - Communities are on at launch: an organization opens one under the organization plans, by request (`/pricing?audience=org`, switched on at Settings > Admin). The existing ones move after launch (AIED, TVET, ECCAR, USAID, Wealth Inequality and `aievidencehub.org`), once Demo's move is accepted. The other 120 are tests and stay on dev. Until each moves, its Open in Openscholar button opens `dev.openscholar.ai`, on dev Clerk's separate accounts, capped at 100 people (56 on 2026-11-05).
 - Search-engine and marketing pages beyond the basics come after launch.

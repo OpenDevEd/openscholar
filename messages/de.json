@@ -374,7 +374,7 @@
   "aiSetupGate": {
     "title": "KI für Ihre Suche einrichten",
     "description": "Openscholar nutzt KI, um Abfragen zu verfeinern, Artikel zu prüfen und Ergebnisse zu übersetzen.",
-    "signInForCredits": "Anmelden für kostenlose Credits",
+    "signInForCredits": "Anmelden für 50.000 kostenlose Credits",
     "useOwnApiKey": "Eigenen API-Schlüssel verwenden"
   },
   "aiSettings": {

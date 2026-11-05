@@ -75,6 +75,8 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
   // Use the new router hooks
   const { write: writeQuery, isConfigured: isEnhanceConfigured } = useQuestionToQuery();
+  // Writing a query is free for anyone, so whether to offer sign-in depends on the rest of the AI.
+  const { isConfigured: isAIConfigured } = useEnhanceSearchQuery();
   const { execute: translateQueryFn, isConfigured: isTranslateConfigured } = useTranslateQuery();
 
   const selectedLanguage = search?.params?.lang ?? "";
@@ -258,7 +260,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
     [selectedLanguage, performTranslation]
   );
 
-  const isFullyUnconfigured = !isEnhanceConfigured && !isTranslateConfigured;
+  const isFullyUnconfigured = !isAIConfigured && !isTranslateConfigured;
 
   return (
     <div className="p-4 space-y-4">

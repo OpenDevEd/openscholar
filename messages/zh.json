@@ -374,7 +374,7 @@
   "aiSetupGate": {
     "title": "设置 AI 以增强搜索",
     "description": "Openscholar 使用 AI 优化查询、筛选论文和翻译结果。",
-    "signInForCredits": "登录获取免费积分",
+    "signInForCredits": "登录获取 5 万免费积分",
     "useOwnApiKey": "使用自己的 API 密钥"
   },
   "aiSettings": {

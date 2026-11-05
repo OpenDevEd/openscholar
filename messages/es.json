@@ -374,7 +374,7 @@
   "aiSetupGate": {
     "title": "Configure la IA para mejorar su búsqueda",
     "description": "Openscholar usa IA para refinar consultas, cribar artículos y traducir resultados.",
-    "signInForCredits": "Inicie sesión para obtener créditos gratis",
+    "signInForCredits": "Inicie sesión para obtener 50k créditos gratis",
     "useOwnApiKey": "Use su propia clave de API"
   },
   "aiSettings": {
