@@ -1,5 +1,14 @@
 # Production launch
 
+**Launched 2026-11-05, about 14:03 UTC.** The holding page was up for about 6 minutes. The app builds from branch `prod`, not `main`. What follows is the plan as run, kept for moving the communities (see Moving communities) and going back.
+
+Differences from the plan below:
+
+- Stripe's and Clerk's webhooks point at `convex-site.openscholar.ai`, not `api.openscholar.ai`: Convex Cloud's custom domain for `api` wins over our DNS record, even proxied, until it is removed from `opulent-ram-908`.
+- Clerk's `home_url` is still `openscholar.ai`: `PATCH /instance` accepted it and changed nothing. Hosted pages with no return address land on the marketing site.
+- Autumn's Svix grows to about 80 idle Postgres connections in a burst of webhooks, of the 100 allowed, which refused new ones until Svix restarted. Migrate customers with `send_webhooks: false`, or cap its pool first. Its queue is in memory.
+- A migration can leave a customer on the old plan version while reporting success: check them, and `billing.update` with `plan_id` and `version` moves one.
+
 Brings `dev` to production. Standing rules are in the root `AGENTS.md` and
 `docs/agents/project.md`.
 
