@@ -23,7 +23,7 @@ import {
 } from "@/lib/store";
 import { useEffectiveSearchId, useQueryHistory } from "@/lib/hooks";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
-import { useTranslateQuery } from "@/lib/ai/client/router";
+import { useEnhanceSearchQuery, useTranslateQuery } from "@/lib/ai/client/router";
 import { useQuestionToQuery } from "@/lib/ai/client/question-query";
 import { ensureQueryShortcuts, validateAndExpandKeywordsSilently } from "@/lib/keyword-validation-browser";
 import { useQueryShortcuts } from "@/lib/research/reads";
