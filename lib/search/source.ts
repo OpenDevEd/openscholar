@@ -31,9 +31,9 @@ export const SIMILAR_NEEDS_OWN_INDEX = "Similar papers need our own index, and s
 /** A question as OpenAlex's search of the words in a title and abstract reads it, without what would make it an operator or split the filter. */
 export const questionAsWords = (question: string) => question.replace(/[,|*?()"]/g, " ").replace(/\s+/g, " ").trim();
 
-/** Filters as OpenAlex reads them: a search saved in a way only our index has runs on the words it holds. */
+/** Filters as OpenAlex reads them: a question runs on its words. The combined scope needs nothing, since OpenAlex takes it as a plain search. */
 export const asKeywords = <Filters extends { searchField: string }>(filters: Filters): Filters =>
-  OWN_ONLY_FIELDS.includes(filters.searchField) ? { ...filters, searchField: "title_and_abstract" } : filters;
+  filters.searchField === SEMANTIC_FIELD ? { ...filters, searchField: "title_and_abstract" } : filters;
 
 /** Filters a source can't serve, by their panel in the search sidebar. They aren't offered while it's active. */
 export const UNSERVED_FILTER_PANELS: Record<SearchSource, readonly string[]> = {

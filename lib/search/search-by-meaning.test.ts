@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildOpenAlexWorksQuery } from "../openalex/works-query";
 import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from "../search-params";
+import { buildOpenAlexSourceQuery } from "../evidence-libraries/openalex-source-query";
 import { effectiveSort, paramsToSearchResult, searchResultToParams } from "../search-params/converters";
 
 const query = (params: Partial<typeof DEFAULT_SEARCH_PARAMS>) =>
@@ -34,5 +35,17 @@ describe("a search for similar papers", () => {
     expect(saved.similarTo).toEqual(["W1", "OS2"]);
     expect(searchResultToParams(saved)).toMatchObject({ like: ["W1", "OS2"] });
     expect(parseSearchParamsFromUrl(new URLSearchParams("like=https://openalex.org/W1,OS2,nonsense")).like).toEqual(["W1", "OS2"]);
+  });
+});
+
+describe("a community source made from one of these searches", () => {
+  it("saves a question as its words, since a source asks OpenAlex", () => {
+    const saved = buildOpenAlexSourceQuery({ ...DEFAULT_SEARCH_PARAMS, field: "semantic", q: "What helps teachers?" } as never);
+    expect(saved?.filter).toContain("title_and_abstract.search:What helps teachers");
+    expect(saved).not.toHaveProperty("semantic");
+  });
+
+  it("isn't made from similar papers alone, which OpenAlex can't find", () => {
+    expect(buildOpenAlexSourceQuery({ ...DEFAULT_SEARCH_PARAMS, like: ["W1"] } as never)).toBeNull();
   });
 });

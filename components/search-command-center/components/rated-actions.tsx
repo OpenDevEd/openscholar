@@ -42,7 +42,7 @@ export function RatedActions() {
   const papers = search.results as Array<{ id: string; openscholar_id?: string }>;
   const rated = (keep: (rating: number) => boolean) => papers.filter((paper) => ratings[paper.id] !== undefined && keep(ratings[paper.id]));
   const liked = own ? rated((rating) => rating >= LIKED_RATING).slice(0, MOST_SEEDS) : [];
-  const disliked = rated((rating) => rating >= 1 && rating <= DISLIKED_RATING).slice(0, MOST_SEEDS);
+  const disliked = rated((rating) => rating <= DISLIKED_RATING).slice(0, MOST_SEEDS);
   const like = search.params.like;
   const shown = liked.length > 0 || Boolean(order) || like.length > 0;
   const madeFrom = JSON.stringify(papers.filter((paper) => ratings[paper.id] !== undefined).map((paper) => [paper.id, ratings[paper.id]]));
