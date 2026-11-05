@@ -1,7 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { MIN_YEAR } from "../constants";
 import { effectiveSort, paramsToSearchResult, searchResultToParams } from "./converters";
-import { DEFAULT_SEARCH_PARAMS, type ParsedSearchParams } from "./parsers";
+import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl, type ParsedSearchParams } from "./parsers";
+
+describe("a paper's ID in a citation filter", () => {
+  it("reads an older saved search's address as the ID, whichever index named it", () => {
+    const params = searchResultToParams({
+      citesItemId: "https://openalex.org/W2741809807",
+      citedByItemId: "https://openscholar.ai/OS79563844",
+      relatedToItemId: "W12",
+    });
+    expect(params).toMatchObject({ cites: "W2741809807", citedBy: "OS79563844", rel: "W12" });
+  });
+
+  it("reads an older shared link's address as the ID", () => {
+    const params = parseSearchParamsFromUrl(new URLSearchParams("cites=https://openalex.org/W2741809807&rel=not-a-paper"));
+    expect(params).toMatchObject({ cites: "W2741809807", rel: "" });
+  });
+});
 
 describe("searchResultToParams — selection sanitization", () => {
   it("trims and drops empty region codes before they reach the URL params", () => {

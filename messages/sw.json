@@ -1337,7 +1337,7 @@
   },
   "workId": {
     "workIdLabel": "Kitambulisho cha kazi",
-    "placeholder": "mfano: W2741809807 au https://openalex.org/W2741809807",
+    "placeholder": "mfano: W2741809807",
     "applyFilter": "Tumia kichujio",
     "descriptionCites": "Weka kitambulisho cha kazi cha {source} ili kupata makala zinazonukuu kazi hiyo",
     "descriptionCitedBy": "Weka kitambulisho cha kazi cha {source} ili kupata makala zinazonukuliwa na kazi hiyo",

@@ -1336,7 +1336,7 @@
   },
   "workId": {
     "workIdLabel": "作品 ID",
-    "placeholder": "例如：W2741809807 或 https://openalex.org/W2741809807",
+    "placeholder": "例如：W2741809807",
     "applyFilter": "应用筛选",
     "descriptionCites": "输入 {source} 作品 ID 以查找引用该作品的论文",
     "descriptionCitedBy": "输入 {source} 作品 ID 以查找被该作品引用的论文",

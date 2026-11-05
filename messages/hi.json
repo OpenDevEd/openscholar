@@ -1336,7 +1336,7 @@
   },
   "workId": {
     "workIdLabel": "कार्य ID",
-    "placeholder": "जैसे W2741809807 या https://openalex.org/W2741809807",
+    "placeholder": "जैसे W2741809807",
     "applyFilter": "फ़िल्टर लागू करें",
     "descriptionCites": "उन पेपर खोजने के लिए {source} कार्य ID दर्ज करें जो उस कार्य को उद्धृत करते हैं",
     "descriptionCitedBy": "उन पेपर खोजने के लिए {source} कार्य ID दर्ज करें जो उस कार्य द्वारा उद्धृत हैं",

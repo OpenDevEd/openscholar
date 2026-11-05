@@ -15,7 +15,7 @@ import { ASSISTANT_FIELDS, keptByRating, requestOf, savedSearchValidator, spende
 import { COUNTRY_HIERARCHY, getCountryCodesForRegions, MIN_YEAR } from "../../lib/constants";
 import { withoutQuotedQuestionMarks } from "../../lib/search/wildcard";
 import { authorFilterValue } from "../../lib/openalex/author-filter";
-import { institutionId, openAlexId, sourceId } from "../../lib/openalex/ids";
+import { institutionId, openAlexId, sourceId, workId } from "../../lib/openalex/ids";
 import { INSTITUTION_TYPES, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
 import { currentSearch, restoreSearch, type SavedSearch, type UndoCommand } from "../../lib/research/records";
 import { buildShareableUrl } from "../../lib/search-params";
@@ -172,7 +172,6 @@ const isDay = (day: string) => {
   return Number.isFinite(at) && new Date(at).toISOString().slice(0, 10) === day;
 };
 
-const workId = openAlexId("W");
 const funderId = openAlexId("F");
 /** A research area as the page's filter keeps it: a domain, field or subfield by its path, a topic by its ID. */
 const AREA = /^(?:(?:domains|fields|subfields)\/\d+|T\d+)$/;

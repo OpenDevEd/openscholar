@@ -1336,7 +1336,7 @@
   },
   "workId": {
     "workIdLabel": "作品 ID",
-    "placeholder": "例：W2741809807 または https://openalex.org/W2741809807",
+    "placeholder": "例：W2741809807",
     "applyFilter": "フィルターを適用",
     "descriptionCites": "その論文を引用している論文を検索する{source} Work IDを入力",
     "descriptionCitedBy": "その論文に引用されている論文を検索する{source} Work IDを入力",
