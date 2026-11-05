@@ -1225,7 +1225,7 @@
     "statusCompleted": "Completed",
     "statusFailed": "Failed",
     "statusCancelled": "Cancelled",
-    "progressOfPapers": "{processed} of {total} papers",
+    "progressOfPapers": "{processed} of {total, plural, one {# paper} other {# papers}}",
     "loadingExtractionResults": "Loading extraction results..."
   },
   "reportBuilder": {

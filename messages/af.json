@@ -1226,7 +1226,7 @@
     "updated": "Opgedateer {timeAgo}",
     "noMatches": "Geen passings vir die huidige filters nie",
     "clearFilters": "Maak filters leeg",
-    "progressOfPapers": "{processed} van {total} artikels",
+    "progressOfPapers": "{processed} van {total, plural, one {# artikel} other {# artikels}}",
     "loadingExtractionResults": "Laai ekstraksieresultate..."
   },
   "reportBuilder": {

@@ -1226,7 +1226,7 @@
     "updated": "Aktualisiert {timeAgo}",
     "noMatches": "Keine Treffer für die aktuellen Filter",
     "clearFilters": "Filter löschen",
-    "progressOfPapers": "{processed} von {total} Artikeln",
+    "progressOfPapers": "{processed} von {total, plural, one {# Artikel} other {# Artikeln}}",
     "loadingExtractionResults": "Extraktionsergebnisse werden geladen..."
   },
   "reportBuilder": {

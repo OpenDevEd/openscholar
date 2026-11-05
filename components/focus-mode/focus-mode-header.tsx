@@ -72,6 +72,7 @@ export function FocusModeHeader({
   tAccessibility,
 }: FocusModeHeaderProps) {
   const tCommon = useTranslations("common");
+  const tRating = useTranslations("rating");
   const effectiveRating = useEffectiveRating(currentPaper.id);
   // Any paper named by its source but an upload is rated and saved (an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = saveablePaper(currentPaper.id);
@@ -126,6 +127,7 @@ export function FocusModeHeader({
             <div className="hidden lg:flex items-center gap-0.5">
               <div className="flex items-center gap-1">
                 <button
+                  aria-label={tRating("noRating")}
                   onClick={() =>
                     onRatingChange(currentPaper.id, "no-rating")
                   }
@@ -149,6 +151,7 @@ export function FocusModeHeader({
               </div>
               <div className="flex items-center gap-1">
                 <button
+                  aria-label={tRating("nStars", { count: 0 })}
                   onClick={() => onRatingChange(currentPaper.id, "0")}
                   className="hover:scale-110 transition-transform"
                 >
@@ -168,6 +171,7 @@ export function FocusModeHeader({
               {[1, 2, 3, 4, 5].map((star) => (
                 <div key={star} className="flex items-center gap-1">
                   <button
+                    aria-label={tRating("nStars", { count: star })}
                     onClick={() => {
                       if (effectiveRating === star) {
                         onRatingChange(currentPaper.id, "no-rating");
