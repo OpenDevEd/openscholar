@@ -113,8 +113,10 @@ development Convex service.
 
 ## Branches and live systems
 
-- `prod` is live: the app at `discover.openscholar.ai` on self-hosted Convex (`convex.openscholar.ai`), and the marketing site from `marketing/` at `openscholar.ai`. Both Coolify apps build from it with auto-deploy off. Never push to or deploy `prod` unless the user asks. `main` and `prod-old` are history.
+- `prod` is live: the app at `discover.openscholar.ai` on self-hosted Convex (`convex.openscholar.ai`), and the marketing site from `marketing/` at `openscholar.ai`. Both Coolify apps build from it with auto-deploy off. `main` and `prod-old` are history.
 - `dev` deploys to `dev.openscholar.ai` and is where all current work lands.
+- "ship" means merge to `dev`, follow its CI, and push shared dev's Convex. It never touches prod.
+- "ship to prod", "promote" and "check prod" reach prod, for that request only. Use the `ship-prod` skill for all three. Nothing else pushes to or deploys `prod`, or updates a community that a prod Convex published. That includes a community update that follows a new-el merge.
 - new-el's `coolify` branch and the tenants it runs are off limits. Never
   touch, push to, or use them as a reference; see new-el's
   `docs/agents/project.md`.
@@ -131,6 +133,8 @@ settings, so every change to its shape ships a migration.
 - For a breaking storage or ownership change, widen, migrate, then narrow.
 - Use `@convex-dev/migrations` for unbounded data. Audit and dry-run first,
   verify every batch and live deployment, then narrow.
+- A migration file stays until it has run on prod as well as shared dev. Each
+  backend keeps its own record, and a deleted migration can't run on prod.
 - Starting with the deployment that needs a version, all new writes use that
   version.
 - Keep frozen revisions unchanged. Restore by applying the explicit migration
