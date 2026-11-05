@@ -1,3 +1,4 @@
+import { bareWork } from './openalex/ids';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import posthog from 'posthog-js';
@@ -135,7 +136,7 @@ const getEssentialInfo = (
   format: 'json' | 'csv'
 ) => {
   const essentialInfo = {
-    id: item.id,
+    id: bareWork(item.id),
     title: item.title,
     authors: item.authorships?.map((a: { author: { display_name: string } }) => a.author.display_name).join(', ') || '',
     year: item.publication_year,
