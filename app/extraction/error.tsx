@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import Link from "@/components/workspace-link";
 import { AlertTriangle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useChunkReload } from "@/lib/chunk-reload";
+import { useReportPageError } from "@/lib/report-page-error";
 
 export default function ExtractionErrorPage({
   error,
@@ -16,11 +16,8 @@ export default function ExtractionErrorPage({
 }) {
   const t = useTranslations("errorPages");
   const tc = useTranslations("common");
+  useReportPageError("app/extraction/error", error);
   const { reloading, retry } = useChunkReload(error, reset);
-
-  useEffect(() => {
-    console.error("[app/extraction/error]", error);
-  }, [error]);
 
   if (reloading) return null;
 
