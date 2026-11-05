@@ -1,0 +1,51 @@
+---
+import { APP } from "../data/site.mjs";
+const { id = "ask", questions, mark = false, class: cls = "", label = "Search the research" } = Astro.props;
+---
+<form class:list={["ask", cls]} data-questions={questions ? JSON.stringify(questions) : undefined} data-q={questions?.[0]} data-ask action={`${APP}/results`} method="get" role="search" aria-label={label}>
+  <label class="sr" for={id}>Ask a research question</label>
+  {mark && <img class="mk" src="/favicon.svg" width="28" height="28" alt="" />}
+  <span class="fld">
+    <input id={id} name="q" autocomplete="off" required placeholder={questions?.[0] ?? "Ask a research question"} />
+    {questions && <span class="typed" aria-hidden="true"><span class="now"></span></span>}
+  </span>
+  <button class="btn brand" aria-label="Search"><span>Search</span><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
+</form>
+<script>
+  // The app reads `q` as keywords, so a sentence loses the words that only make it a sentence. A query stays exactly as typed.
+  const FILLER = /^(a|an|and|are|as|at|be|by|can|did|do|does|for|from|good|has|have|how|if|in|is|it|of|on|or|really|than|that|the|their|there|these|this|to|was|were|what|when|where|which|who|why|will|with|would)$/;
+  const QUESTION = /\?\s*$|^(what|why|how|who|when|where|which|is|are|do|does|did|can|could|should|will|would)\b/i, QUERY = /"|\b(AND|OR|NOT)\b/;
+  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const input = form.querySelector("input"), typed = input.value.trim() || form.dataset.q || ""; if (!input.value.trim() && typed) input.value = typed; if (QUERY.test(typed) || !QUESTION.test(typed)) return; const words = typed.replace(/[?.!,]/g, " ").split(/\s+/).filter((w, i) => w && !FILLER.test(i === 0 ? w.toLowerCase() : w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
+  const still = matchMedia("(prefers-reduced-motion: reduce)"), wait = (ms) => new Promise((go) => setTimeout(go, ms));
+  // Questions type themselves one after another, so Search always has a whole one to run. The box still takes whatever you type instead.
+  for (const form of document.querySelectorAll("[data-questions]")) {
+    const input = form.querySelector("input"), typed = form.querySelector(".typed"), now = form.querySelector(".now"), qs = JSON.parse(form.dataset.questions); input.required = false;
+    if (still.matches) continue;
+    let at = 0; const busy = () => document.activeElement === input || input.value || form.closest(".away");
+    // Clicking in always leaves a whole question showing, the one Enter will run.
+    const whole = () => { typed.style.visibility = "hidden"; now.className = "now"; now.textContent = ""; input.placeholder = form.dataset.q = qs[at]; }; input.addEventListener("focus", whole);
+    const cycle = async () => {
+      for (let hold = 3200; ; ) {
+        await wait(hold); hold = 3200; if (busy()) { whole(); while (busy()) await wait(600); continue; }
+        // The placeholder hands over to a copy of itself in one tick, and the copy rolls away.
+        now.textContent = qs[at]; input.placeholder = ""; typed.style.visibility = ""; now.className = "now"; void now.offsetWidth; now.className = "now out";
+        await wait(500); if (busy()) { whole(); continue; }
+        now.className = "now"; now.textContent = ""; at = (at + 1) % qs.length; const q = form.dataset.q = qs[at];
+        for (let c = 1; c <= q.length && !busy(); c++) { now.textContent = q.slice(0, c); await wait(30 + ((c * 7) % 5) * 9 + (q[c - 1] === " " ? 90 : 0)); }
+        if (busy()) { whole(); continue; }
+        now.className = "now rest"; form.dispatchEvent(new CustomEvent("asked", { bubbles: true })); hold = 4200;
+      }
+    }; cycle();
+  }
+</script>
+<style>
+  .ask { display: flex; align-items: center; gap: 8px; width: min(600px, 100%); padding: 6px 6px 6px 18px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 20px 40px -18px rgb(8 12 24 / .55); } .ask:focus-within { box-shadow: 0 0 0 3px rgb(255 255 255 / .7), 0 20px 40px -18px rgb(8 12 24 / .55); }
+  .mk { flex: none; width: 28px; height: 28px; }
+  .fld { position: relative; display: flex; flex: 1; min-width: 0; }
+  input { flex: 1; min-width: 0; height: 52px; padding: 0; background: none; border: 0; outline: 0; font-size: 16px; text-overflow: ellipsis; } input::placeholder { color: var(--t3); opacity: 1; }
+  /* The line matches the input's 16px one, so a smaller question sits on the placeholder's baseline and the hand-over doesn't jump. */
+  .typed { position: absolute; inset: 0; overflow: hidden; pointer-events: none; white-space: nowrap; color: var(--t3); font-size: 16px; line-height: 52px; text-align: start; }
+  .now { display: inline-block; line-height: 1.25; } .now::after { content: ""; display: inline-block; width: 1.5px; height: 1.1em; margin-left: 1px; vertical-align: -.2em; background: var(--brand-ink); } .now:empty::after { display: none; } .rest::after { animation: caret 1.1s steps(1) infinite; } @keyframes caret { 50% { opacity: 0; } } :global(.away) .rest::after { animation-play-state: paused; }
+  .out { transform: translateY(-100%); opacity: 0; transition: transform .32s var(--ease), opacity .32s var(--ease); } .out::after { opacity: 0; }
+  @media (max-width: 500px) { input::placeholder, .now { font-size: 14px; } .ask { padding-left: 12px; gap: 6px; } .mk { width: 24px; height: 24px; } .ask button { padding-left: 8px; } .ask button span { display: none; } } @media (max-width: 359px) { .mk { display: none; } input::placeholder, .now { font-size: 13px; } }
+</style>

@@ -1,0 +1,59 @@
+---
+// Type a field and a real community home page takes its name, its address and its colour. The page behind is a real community with its own words removed.
+import Device from "./Device.astro";
+import Arrow from "./Arrow.astro";
+import { APP } from "../data/site.mjs";
+const first = "Early childhood education";
+const colours = [["Orange", "#c9500a", "#fff"], ["Blue", "#2563eb", "#fff"], ["Teal", "#0f766e", "#fff"], ["Forest", "#15803d", "#fff"], ["Crimson", "#be123c", "#fff"]];
+const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "");
+---
+<section class="panel nameit" id="yours" data-name style={`--acc:${colours[0][1]};--acc-on:${colours[0][2]}`}>
+  <div class="n-left">
+    <h2>Put your field's name on it</h2>
+    <p class="lead">Your name, your address and your colours, on a community built around your evidence.</p>
+    <label class="f"><span>Your field</span><input data-field type="text" maxlength="60" value={first} autocomplete="off" spellcheck="false" /></label>
+    <p class="addr"><span>Public address</span><code data-addr>{slug(first)}.openscholar.ai</code></p>
+    <div class="f"><span id="n-col">Colour</span><div class="sw" role="group" aria-labelledby="n-col">{colours.map(([n, c, on], i) => <button type="button" aria-label={n} aria-pressed={i === 0 ? "true" : "false"} data-c={c} data-on={on} style={`--c:${c}`}></button>)}</div></div>
+    <a class="btn" href={`${APP}/pricing?audience=org`}>Create your community<Arrow /></a>
+  </div>
+  <div class="n-dev" aria-hidden="true">
+    <Device kind="laptop" name="c-blank" theme="light" sizes="(max-width: 900px) 94vw, 780px">
+      <div class="site"><div class="in">
+        <b class="navname" data-out>{first}</b><span class="signin">Sign in</span>
+        <div class="hero-s"><h3 data-out>{first}</h3><p class="sub">Research on <span data-low>{first.toLowerCase()}</span>, kept current from your sources.</p><p class="body">We gather the research on <strong data-low>{first.toLowerCase()}</strong>. Search it, read it and cite it. Where the licence allows, the full text is here too.</p><div class="row"><span class="b1">Explore the community</span><span class="b2">Get the digest</span></div></div>
+      </div></div>
+    </Device>
+  </div>
+</section>
+<script>
+  const root = document.querySelector("[data-name]");
+  if (root) {
+    const input = root.querySelector("[data-field]"), addr = root.querySelector("[data-addr]"), outs = root.querySelectorAll("[data-out]"), lows = root.querySelectorAll("[data-low]"), marks = [...root.querySelectorAll("[data-c]")];
+    const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "") || "your-field";
+    const show = () => { const v = input.value.trim() || "Your field"; outs.forEach((o) => { o.textContent = v; }); lows.forEach((o) => { o.textContent = v.toLowerCase(); }); addr.textContent = `${slug(v)}.openscholar.ai`; };
+    input.addEventListener("input", show);
+    const paint = (m) => { root.style.setProperty("--acc", m.dataset.c); root.style.setProperty("--acc-on", m.dataset.on); marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); };
+    // Until someone touches it, it fills itself in, so it's plain the page is live. Any touch ends this for good.
+    const FIELDS = ["Marine conservation", "Early childhood education", "Urban water and sanitation", "Migration and labour markets"]; let timer = 0, on = false, done = false, field = 0, at = 0, back = false, tick = 0;
+    const step = () => { if (!on || done) return; const word = FIELDS[field]; let wait = 46; if (back) { input.value = input.value.slice(0, -1); if (!input.value) { back = false; field = (field + 1) % FIELDS.length; at = 0; paint(marks[(field + 1) % marks.length]); wait = 200; } else wait = 18; } else { at += 1; input.value = word.slice(0, at); if (at >= word.length) { back = true; wait = 2600; } } show(); timer = setTimeout(step, wait); };
+    const stop = () => { done = true; clearTimeout(timer); addr.parentElement.setAttribute("aria-live", "polite"); };
+    root.addEventListener("focusin", stop); root.addEventListener("pointerdown", stop); marks.forEach((m) => m.addEventListener("click", () => paint(m))); const calm = matchMedia("(prefers-reduced-motion: reduce)"); calm.addEventListener("change", (e) => { if (e.matches) { done = true; clearTimeout(timer); } });
+    if (!calm.matches) new IntersectionObserver(([e]) => { on = e.isIntersecting; clearTimeout(timer); if (on && !done) { if (!tick++) { back = true; timer = setTimeout(step, 1800); } else timer = setTimeout(step, 400); } }, { threshold: .5 }).observe(root);
+  }
+</script>
+<style>
+  @font-face { font-family: Montserrat; font-weight: 500 700; font-display: swap; src: url(/fonts/montserrat-latin.woff2) format("woff2"); }
+  .nameit { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(24px, 3.4vw, 48px); align-items: center; padding: var(--pad); background: linear-gradient(135deg, #fff1f2, #ffe4e6 55%, #fecdd3); color: var(--ink); } .nameit .lead { color: var(--t2); }
+  .n-left { display: grid; gap: 16px; justify-items: start; } .f { display: grid; gap: 7px; width: 100%; } .f > span, .addr span { font-size: 14px; color: var(--t2); } .f input { width: 100%; height: 50px; padding-inline: 14px; border: 0; border-radius: 12px; background: #fff; color: var(--ink); font-size: 17px; outline: 0; box-shadow: 0 0 0 1px rgb(159 18 57 / .18), 0 16px 32px -20px rgb(136 19 55 / .6); } .f input:focus { box-shadow: 0 0 0 2px #be123c, 0 16px 32px -20px rgb(136 19 55 / .6); }
+  .addr { display: grid; gap: 4px; width: 100%; } code { font: 400 15px/1.3 var(--mono); overflow-wrap: anywhere; color: #9f1239; }
+  .sw { display: flex; gap: 8px; } .sw button { width: 38px; height: 38px; border-radius: 11px; background: var(--c); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .28); transition: transform .2s var(--ease), box-shadow .2s var(--ease); } .sw button:hover { transform: translateY(-2px); } .sw [aria-pressed="true"] { box-shadow: 0 0 0 2px #ffe4e6, 0 0 0 4px var(--ink); }
+  .nameit :global(.btn) { --face: var(--ink); --text: #fff; --chip: #fff; --chipt: var(--ink); margin-top: 4px; }
+  /* The page's own measurements, in 1440ths of its width, so the words sit exactly where the real site puts them. */
+  .site { position: absolute; inset: 0; z-index: 1; container-type: inline-size; color: #0f0f0f; text-align: left; } .in { --p: calc(100cqw / 1440); position: absolute; inset: 0; font-family: var(--sans); }
+  .navname { position: absolute; left: calc(var(--p) * 283); top: calc(var(--p) * 52); max-width: calc(var(--p) * 430); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; font-size: calc(var(--p) * 24); line-height: calc(var(--p) * 30); letter-spacing: -.025em; color: #000; }
+  .signin { position: absolute; left: calc(var(--p) * 1108); top: calc(var(--p) * 48); display: grid; place-items: center; width: calc(var(--p) * 86); height: calc(var(--p) * 30); border-radius: calc(var(--p) * 8); background: var(--acc); color: var(--acc-on); font-weight: 500; font-size: calc(var(--p) * 16); transition: background-color .25s var(--ease); }
+  .hero-s { position: absolute; left: calc(var(--p) * 56); top: calc(var(--p) * 200); width: calc(var(--p) * 760); display: grid; gap: calc(var(--p) * 20); justify-items: start; }
+  h3 { max-width: calc(var(--p) * 720); font: 700 calc(var(--p) * 60)/1 Montserrat, var(--sans); letter-spacing: -.03em; overflow-wrap: anywhere; } .sub { width: calc(var(--p) * 500); font: 500 calc(var(--p) * 24)/calc(var(--p) * 32) Montserrat, var(--sans); letter-spacing: -.025em; color: rgb(15 15 15 / .72); } .body { width: calc(var(--p) * 544); margin-top: calc(var(--p) * 8); font-size: calc(var(--p) * 17); line-height: calc(var(--p) * 28); color: rgb(15 15 15 / .75); } .body strong { font-weight: 500; color: #0f0f0f; }
+  .row { display: flex; gap: calc(var(--p) * 12); margin-top: calc(var(--p) * 14); } .row span { display: grid; place-items: center; height: calc(var(--p) * 40); padding-inline: calc(var(--p) * 18); border-radius: calc(var(--p) * 10); font-size: calc(var(--p) * 14); } .b1 { background: var(--acc); color: var(--acc-on); transition: background-color .25s var(--ease); } .b2 { background: #f4f4f5; color: rgb(0 0 0 / .75); font-weight: 500; }
+  @media (max-width: 900px) { .nameit { grid-template-columns: minmax(0, 1fr); } }
+</style>

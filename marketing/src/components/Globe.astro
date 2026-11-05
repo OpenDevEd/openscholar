@@ -1,0 +1,44 @@
+---
+// The world turning slowly, its research institutions lit up, with links arcing between the busiest places. Drag to spin it. It only runs while on screen.
+---
+<div class="gl" data-globe role="img" aria-label="A turning globe with research institutions lit up on every continent"><i class="atm" aria-hidden="true"></i><canvas></canvas></div>
+<script>
+  const root = document.querySelector("[data-globe]");
+  if (root) {
+    const cv = root.querySelector("canvas"), ctx = cv.getContext("2d"), calm = matchMedia("(prefers-reduced-motion: reduce)"); let still = calm.matches;
+    const HUES = ["#38bdf8", "#22d3ee", "#34d399", "#a3e635", "#fbbf24", "#fb923c", "#fb7185"], TILT = .34, ct = Math.cos(TILT), st = Math.sin(TILT);
+    let pts, spin = -.55, S = 0, R = 0, dpr = 1, live = false, raf = 0, last = 0, drag = null, arcs = [], t0 = 0;
+    // One small round sprite per colour and size: far cheaper to stamp than drawing thousands of arcs.
+    const sprites = new Map();
+    const sprite = (c, r) => { const k = c + r; if (sprites.has(k)) return sprites.get(k); const s = document.createElement("canvas"); s.width = s.height = Math.ceil(r * 2 + 2); const g = s.getContext("2d"); g.fillStyle = c; g.beginPath(); g.arc(s.width / 2, s.height / 2, r, 0, 7); g.fill(); sprites.set(k, s); return s; };
+    const size = () => { const w = root.clientWidth; dpr = Math.min(devicePixelRatio || 1, 1.5); S = Math.round(w * dpr); cv.width = cv.height = S; R = S * .47; sprites.clear(); };
+    const toXYZ = (lon, lat) => [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
+    const place = (x, y, z, c, s) => { const X = x * c + z * s, Z0 = -x * s + z * c; return [X, y * ct - Z0 * st, y * st + Z0 * ct]; };
+    const drawArc = (a, u) => { const n = 28, c = Math.cos(spin), s = Math.sin(spin); let on = false; ctx.beginPath(); const head = Math.min(1, u * 1.6), tail = Math.max(0, u * 1.6 - .6); for (let i = 0; i <= n; i++) { const f = tail + (head - tail) * (i / n); let x = a.a[0] + (a.b[0] - a.a[0]) * f, y = a.a[1] + (a.b[1] - a.a[1]) * f, z = a.a[2] + (a.b[2] - a.a[2]) * f; const l = Math.hypot(x, y, z), h = (1 + Math.sin(f * Math.PI) * a.lift) / l; x *= h; y *= h; z *= h; const [X, Y, Z] = place(x, y, z, c, s); if (Z < .02) { on = false; continue; } const px = S / 2 + X * R, py = S / 2 - Y * R; if (on) ctx.lineTo(px, py); else ctx.moveTo(px, py); on = true; } ctx.strokeStyle = a.c; ctx.lineWidth = 1.4 * dpr; ctx.globalAlpha = Math.min(1, Math.min(u, 1 - u) * 6) * .9; ctx.stroke(); };
+    const draw = (now = 0) => {
+      ctx.clearRect(0, 0, S, S); const c = Math.cos(spin), s = Math.sin(spin), n = pts.length / 6;
+      for (let i = 0; i < n; i++) { const o = i * 6, x = pts[o], y = pts[o + 1], z = pts[o + 2], [X, Y, Z] = place(x, y, z, c, s); if (Z < .03) continue; const k = pts[o + 3], img = k ? sprite(HUES[pts[o + 4]], [0, 1.5, 2.2, 3][k] * dpr) : sprite("#cfe6ff", 1 * dpr); ctx.globalAlpha = (k ? .45 + Z * .55 : .16 + Z * .34); ctx.drawImage(img, S / 2 + X * R - img.width / 2, S / 2 - Y * R - img.height / 2); }
+      if (!still) for (const a of arcs) { const u = ((now - t0 - a.d) % 9000) / 2600; if (u > 0 && u < 1) drawArc(a, u); }
+      ctx.globalAlpha = 1;
+    };
+    const tick = (now) => { if (!live) return; raf = requestAnimationFrame(tick); if (now - last < 32) return; const dt = Math.min(64, now - last); last = now; if (!drag) spin += dt * .00007; draw(now); };
+    let onScreen = false; const run = (want) => { onScreen = want; const on = want && !still; if (on === live) return; live = on; cancelAnimationFrame(raf); if (on) { last = performance.now(); raf = requestAnimationFrame(tick); } };
+    const load = () => fetch("/globe.json").then((r) => r.json()).then(({ cell, p }) => {
+      pts = new Float32Array((p.length / 3) * 6); const big = [];
+      for (let i = 0; i < p.length / 3; i++) { const lon = ((p[i * 3] + .5) * cell - 180) * Math.PI / 180, lat = (90 - (p[i * 3 + 1] + .5) * cell) * Math.PI / 180, [x, y, z] = toXYZ(lon, lat), o = i * 6, k = p[i * 3 + 2]; pts.set([x, y, z, k, Math.min(6, Math.floor(((lon + Math.PI) / (2 * Math.PI)) * 7)), 0], o); if (k === 3) big.push([x, y, z]); }
+      // Links join busy places far enough apart to read as an arc.
+      for (let i = 0, j = 0; i < 9 && j < 600 && big.length > 1; j++) { const a = big[(j * 37) % big.length], b = big[(j * 91 + 11) % big.length], d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); if (d > .7 && d < 1.5) { arcs.push({ a, b, lift: d * .1, c: HUES[i % HUES.length], d: i * 1000 }); i++; } }
+      t0 = performance.now(); size(); draw(); root.classList.add("on"); new ResizeObserver(() => { size(); draw(); }).observe(root); new IntersectionObserver(([e]) => run(e.isIntersecting), { threshold: .05 }).observe(root); calm.addEventListener("change", (e) => { still = e.matches; run(onScreen); draw(); });
+    });
+    const near = new IntersectionObserver(([e]) => { if (e.isIntersecting) { near.disconnect(); load(); } }, { rootMargin: "500px 0px" }); near.observe(root);
+    root.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") return; drag = { x: e.clientX, s: spin }; root.setPointerCapture(e.pointerId); root.classList.add("held"); });
+    root.addEventListener("pointermove", (e) => { if (!drag) return; spin = drag.s + (e.clientX - drag.x) * .005; if (still) draw(); });
+    const end = () => { drag = null; root.classList.remove("held"); }; root.addEventListener("pointerup", end); root.addEventListener("pointercancel", end);
+  }
+</script>
+<style>
+  .gl { position: relative; aspect-ratio: 1; cursor: grab; touch-action: pan-y; user-select: none; } .gl:global(.held) { cursor: grabbing; } canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1s var(--ease); } .gl:global(.on) canvas { opacity: 1; }
+  .atm { position: absolute; inset: 3%; border-radius: 50%; background: radial-gradient(circle at 40% 32%, #16264f, #0a1230 60%, #060a1c); box-shadow: inset -30px -40px 90px rgb(4 6 14 / .75), inset 10px 14px 60px rgb(125 211 252 / .16); }
+  /* A thin rim of sunrise that never changes. */
+  .atm::before { content: ""; position: absolute; inset: -5%; z-index: -1; border-radius: 50%; background: conic-gradient(from 200deg, #ff6b35, #ff8c00, #ff9d36, #ff8c00, #ff6b35); -webkit-mask: radial-gradient(closest-side, #000 91.4%, rgb(0 0 0 / .5) 92.4%, rgb(0 0 0 / .18) 94%, transparent 97%); mask: radial-gradient(closest-side, #000 91.4%, rgb(0 0 0 / .5) 92.4%, rgb(0 0 0 / .18) 94%, transparent 97%); }
+</style>

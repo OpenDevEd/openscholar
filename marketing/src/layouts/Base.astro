@@ -1,0 +1,154 @@
+---
+import "../styles/global.css";
+import { APP, COMMUNITIES, NAV, SECTIONS } from "../data/site.mjs";
+import { GUIDES } from "../data/docs.mjs";
+import Icon from "../components/Icon.astro";
+import Arrow from "../components/Arrow.astro";
+import markFile from "../data/mark.svg?raw";
+const { title, description, og = "/og.jpg", top = "#091026" } = Astro.props;
+const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
+// The logo inline, so its chain of nodes can turn around the Earth on hover.
+const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
+const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize", "list"], ["screening", "sieve"], ["extraction", "table"], ["assistant", "spark"]]], ["Teams", [["workspaces", "merge"], ["account", "key"]]], ["Communities", [["community-setup", "globe"], ["community-readers", "cite"], ["community-admin", "pen"]]]];
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  {/* The page's colour comes first, so the browser never shows white while the rest of the page arrives. */}
+  {top !== "#ffffff" && <meta name="color-scheme" content="dark" />}
+  <style is:inline set:html={`html{background:${top}}`} />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <meta name="theme-color" content={top} />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" media="(prefers-color-scheme: light)" />
+  <link rel="icon" href="/favicon-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)" />
+  <link rel="canonical" href={new URL(path, Astro.site)} />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:image" content={new URL(og, Astro.site)} />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preload" href="/fonts/ubuntu-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/ubuntu-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin />
+  <script type="speculationrules" set:html={JSON.stringify({ prerender: [{ where: { href_matches: "/*" }, eagerness: "moderate" }] })} />
+  <script is:inline>document.documentElement.classList.add("has-js"); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js")</script>
+  <slot name="head" />
+</head>
+<body style={`background-color:${top}`}>
+  <div class="top">
+    <header class="bar">
+      <a class="brand" href="/" aria-label="Openscholar home">
+        <svg class="mark" viewBox="0 0 64 64" width="28" height="28" aria-hidden="true" set:html={MARK} />
+        <span class="name">Openscholar</span><span class="slot" aria-hidden="true"><i>/</i><span data-sec></span></span>
+      </a>
+      <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
+      <div class="end">
+        <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
+        <a class="go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span></a>
+        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet">{NAV.map((n) => <a href={n.href}>{n.label}<Arrow /></a>)}<a href={`${APP}/sign-in`}>Sign in<Arrow /></a></div></details>
+      </div>
+      {sections.length > 0 && <nav class="rail" aria-label="On this page" data-rail>{sections.map(([id, label, color]) => <a href={`#${id}`} data-to={id} data-label={label} style={`--c:${color}`} aria-label={label}><i></i></a>)}</nav>}
+    </header>
+    <div class="mega" data-mega>
+      {NAV.map((n) => <div class="sub" data-sub={n.id} inert>
+        {n.rows ? <div class="split">
+          <div class="rows"><span class="hl" aria-hidden="true"></span>
+            {n.rows.map((r, i) => <a class="row" href={r.href} data-row={i} style={`--c:${r.color}`}><i><Icon name={r.icon} /></i><span><b>{r.title}</b><em>{r.text}</em></span></a>)}
+            {n.live && <div class="live"><span>See one live</span><div class="lv">{COMMUNITIES.map(({ key, name: t, url: u, color }) => <a href={u} aria-label={t} style={`--c:${color}`}><img src={`/img/comm-${key}.avif`} width="280" height="280" loading="lazy" decoding="async" alt="" /><b>{t}</b></a>)}</div></div>}
+          </div>
+          <div class="stage">{n.rows.map((r, i) => <div class:list={["st", `f-${r.field}`]} data-st={i}>{r.art && <img class="a" data-src={`/img/art-${r.art}-960.avif`} alt="" />}{r.img && <img class="s" data-src={`/img/screens/${r.img}-1000.avif`} alt="" />}</div>)}</div>
+        </div> : <div class="guides">{DOCS.map(([head, ids]) => <div class="g-col"><span>{head}</span>{ids.map(([id, icon]) => <a href={`/docs/#${id}`}><Icon name={icon} size={16} /><span class="roll" data-t={GUIDES.find((g) => g.id === id).title}><span>{GUIDES.find((g) => g.id === id).title}</span></span></a>)}</div>)}</div>}
+      </div>)}
+    </div>
+  </div>
+  <div class="scrim" aria-hidden="true"></div>
+  <main class="strip"><slot /></main>
+  <footer class="foot" data-foot>
+    <nav class="belt" aria-label="Every live community">
+      {[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url} tabindex={copy ? -1 : undefined}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" loading="lazy" decoding="async" alt="" /><span>{c.name}</span></a></li>)}</ul>)}
+    </nav>
+    <div class="f-in">
+      <div class="f-brand"><img src="/favicon-dark.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p><a class="f-go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span><Arrow /></a></div>
+      <nav aria-label="Footer">
+        <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a></div>
+        <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a></div>
+        <div><b>Legal</b><a href={`${APP}/privacy`}><span class="roll" data-t="Privacy"><span>Privacy</span></span></a><a href={`${APP}/cookie-policy`}><span class="roll" data-t="Cookies"><span>Cookies</span></span></a><a href={`${APP}/credits`}><span class="roll" data-t="Attributions"><span>Attributions</span></span></a></div>
+      </nav>
+      <p class="credit">Built by OpenDevEd and eKitabu</p>
+    </div>
+    <div class="stand" aria-hidden="true"><div class="word">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><i class="veil"></i><div class="word edge2">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div></div>
+  </footer>
+  <script src="../scripts/fx.js"></script>
+</body>
+</html>
+<style>
+  /* A dark glass capsule that tightens once the page moves under it. */
+  .top { position: sticky; top: max(10px, env(safe-area-inset-top)); z-index: 50; max-width: 1280px; height: 64px; margin: max(10px, env(safe-area-inset-top)) auto calc(-64px - max(10px, env(safe-area-inset-top))); padding-inline: var(--gap); color: #fff; }
+  .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(#171c2b, #0b0f1a); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 7 16 / .7); transition: width .4s var(--ease); }
+  .stuck .bar { width: min(100%, 1180px); }
+  /* Light from the pointer catches the capsule's edge. */
+  .bar::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: radial-gradient(180px circle at var(--bx, 50%) 50%, rgb(255 222 186 / .9), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; } .bar:hover::before { opacity: 1; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; letter-spacing: -.02em; flex: none; }
+  /* The logo always moves as one piece: its Earth has gaps cut for the chain, so the chain can't move alone. */
+  .mark { flex: none; overflow: visible; transition: rotate .45s cubic-bezier(.34, 1.56, .64, 1), scale .45s cubic-bezier(.34, 1.56, .64, 1); } .brand:hover .mark { rotate: -12deg; scale: 1.1; } @media (prefers-reduced-motion: reduce) { .mark { transition: none; } .brand:hover .mark { rotate: none; scale: none; } }
+  /* The section you're reading sits beside the name, in space that opens once there is one. */
+  .name { white-space: nowrap; } .slot { display: flex; align-items: baseline; gap: 8px; width: 112px; margin-left: -2px; overflow: hidden; opacity: 0; font-size: 15px; font-weight: 400; letter-spacing: 0; white-space: nowrap; color: rgb(255 255 255 / .82); transition: opacity .3s var(--ease); } .slot i { font-style: normal; opacity: .4; } .has-sec .slot { opacity: 1; }
+  .nav { position: relative; display: flex; gap: 2px; font-size: 15px; color: rgb(255 255 255 / .82); }
+  .lk { position: relative; z-index: 1; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; transition: color .15s var(--ease); } .lk:hover, .lk.on { color: #fff; } .lk[aria-current] { color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .16); }
+  .chev { opacity: .6; transition: rotate .25s var(--ease); } .lk.on .chev { rotate: 180deg; }
+  .pill { position: absolute; top: 0; left: 0; height: 40px; width: var(--pw, 0); border-radius: 11px; background: rgb(255 255 255 / .12); opacity: 0; transform: translateX(var(--px, 0)); transition: transform .3s var(--ease), width .3s var(--ease), opacity .18s var(--ease); pointer-events: none; }
+  .end { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+  /* The search button keeps asking real questions. */
+  .signin { display: inline-flex; align-items: center; height: 40px; font-size: 15px; padding-inline: 10px; color: rgb(255 255 255 / .82); transition: color .15s var(--ease); } .signin:hover { color: #fff; }
+  .go { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 44px; padding-inline: 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; }
+  .go::before { content: ""; position: absolute; z-index: -2; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; background: conic-gradient(from 0deg, var(--brand-deep), var(--brand-bright), #fff1e0, var(--brand-bright), var(--brand-deep)); translate: -50% -50%; opacity: 0; transition: opacity .25s var(--ease); }
+  .go::after { content: ""; position: absolute; z-index: -1; inset: 2px; border-radius: 10px; background: #fff; }
+  .go:hover::before { opacity: 1; animation: turn 2.4s linear infinite; }
+  @keyframes turn { to { rotate: 360deg; } }
+  /* A map of the page along the capsule's lower edge: one bar per section, in that section's colour. */
+  .rail { position: absolute; left: 24px; right: 24px; bottom: 0; display: flex; gap: 4px; height: 10px; align-items: flex-end; }
+  .rail a { position: relative; flex: 1; height: 10px; display: flex; align-items: flex-end; } .rail i { position: relative; display: block; width: 100%; height: 2px; border-radius: 2px; background: color-mix(in srgb, var(--c) 42%, transparent); overflow: hidden; transition: height .15s var(--ease); } .rail i::after { content: ""; position: absolute; inset: 0; background: var(--c); opacity: .5; transform: scaleX(var(--p, 0)); transform-origin: left; transition: opacity .3s var(--ease); } .rail a:global(.now) i::after { opacity: 1; } .rail a:hover i { height: 4px; }
+  .rail a::after { content: attr(data-label); position: absolute; top: 14px; left: 50%; translate: -50% 4px; padding: 5px 9px; border-radius: 8px; background: #10141f; color: #fff; font: 400 13px/1.2 var(--mono); white-space: nowrap; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); opacity: 0; pointer-events: none; transition: opacity .12s var(--ease), translate .12s var(--ease); } .rail a:hover::after { opacity: 1; translate: -50% 0; }
+  .menu { display: none; position: relative; } .menu summary { list-style: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgb(255 255 255 / .1); cursor: pointer; } .menu summary::-webkit-details-marker { display: none; }
+  .sheet { position: absolute; right: 0; top: 56px; width: min(340px, calc(100vw - 2 * var(--gap) - 20px)); padding: 8px; border-radius: 18px; background: #10141f; color: #fff; box-shadow: 0 0 0 1px rgb(255 255 255 / .12), 0 30px 60px -20px rgb(4 7 16 / .8); display: grid; } .sheet a { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 10px 12px; border-radius: 12px; text-align: left; font-size: 17px; } .sheet a:hover { background: rgb(255 255 255 / .08); } .sheet :global(svg) { flex: none; }
+  .scrim { position: fixed; inset: 0; z-index: 40; background: rgb(7 11 26 / .28); opacity: 0; pointer-events: none; transition: opacity .25s var(--ease); } .top:has(.mega[data-open]) ~ .scrim { opacity: 1; }
+  /* One panel that changes shape between menus. */
+  .mega { position: absolute; top: 72px; left: var(--gap); width: var(--w, 800px); height: var(--h, 320px); transform: translateX(var(--x, 0)); border-radius: 22px; background: #10141f; box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), inset 0 0 0 1px rgb(255 255 255 / .08), 0 50px 90px -30px rgb(4 7 16 / .75); opacity: 0; visibility: hidden; color: #fff; overflow: hidden; }
+  .top:has(.mega[data-open])::after { content: ""; position: absolute; left: 0; right: 0; top: 64px; height: 10px; }
+  .mega[data-open] { opacity: 1; visibility: visible; transition: opacity .16s var(--ease), transform .32s var(--ease), width .32s var(--ease), height .32s var(--ease); }
+  .mega:not([data-open]) { transition: opacity .12s var(--ease), visibility 0s .12s; }
+  .sub { position: absolute; top: 0; left: 0; opacity: 0; transform: translateX(var(--from, 0)); transition: opacity .2s var(--ease), transform .32s var(--ease); pointer-events: none; }
+  .sub[data-on] { opacity: 1; transform: none; pointer-events: auto; }
+  .split { display: grid; grid-template-columns: 380px 460px; width: 840px; }
+  .rows { position: relative; display: grid; align-content: start; gap: 2px; padding: 10px; } .hl { position: absolute; left: 10px; right: 10px; top: 0; height: var(--hh, 0); border-radius: 14px; background: rgb(255 255 255 / .07); transform: translateY(var(--hy, 0)); transition: transform .28s var(--ease), height .28s var(--ease); pointer-events: none; }
+  .row { position: relative; display: flex; gap: 12px; padding: 10px; border-radius: 14px; } .row i { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: rgb(255 255 255 / .07); color: rgb(255 255 255 / .75); transition: background-color .2s var(--ease), color .2s var(--ease); } .row b { display: block; font-weight: 500; font-size: 15px; line-height: 1.3; } .row em { display: block; font-style: normal; font-size: 13px; line-height: 1.35; color: rgb(255 255 255 / .62); }
+  .row.on i, .row:focus-visible i { background: var(--c); color: #070b1a; }
+  /* All six live communities as their emblems. The name of the one you're on takes over the line above them. */
+  .live { position: relative; display: grid; gap: 6px; margin-top: 6px; padding: 12px 10px 8px; border-top: 1px solid rgb(255 255 255 / .1); font-size: 13px; } .live > span { color: rgb(255 255 255 / .55); transition: opacity .12s var(--ease); } .live:has(a:is(:hover, :focus-visible)) > span { opacity: 0; } .lv { display: flex; gap: 2px; margin-left: -4px; } .lv a { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; transition: background-color .15s var(--ease); } .lv a:hover { background: rgb(255 255 255 / .09); } .lv img { width: 34px; height: 34px; object-fit: contain; filter: saturate(1.5); transition: transform .3s var(--ease), filter .2s var(--ease); } .lv a:is(:hover, :focus-visible) img { transform: scale(1.14); filter: saturate(1.8) drop-shadow(0 0 10px color-mix(in srgb, var(--c) 80%, transparent)); } .lv b { position: absolute; left: 10px; right: 10px; top: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 400; color: #fff; opacity: 0; pointer-events: none; transition: opacity .12s var(--ease); } .lv a:is(:hover, :focus-visible) b { opacity: 1; }
+  .stage { position: relative; margin: 10px 10px 10px 0; border-radius: 14px; overflow: hidden; min-height: 320px; }
+  .st { position: absolute; inset: 0; opacity: 0; transition: opacity .25s var(--ease); } .st.on { opacity: 1; } .st .a { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; } .st .s { position: absolute; left: 24px; top: 24px; width: 620px; max-width: none; border-radius: 10px 0 0 0; box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 24px 48px -16px rgb(4 7 16 / .8); transform: translateY(10px); transition: transform .45s var(--ease); } .st.on .s { transform: none; }
+  .guides { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4px 12px; width: 620px; padding: 14px; } .g-col { display: grid; gap: 2px; align-content: start; } .g-col:first-child { grid-row: span 2; } .g-col > span { padding: 4px 10px 6px; font: 400 13px/1 var(--mono); color: rgb(255 255 255 / .55); } .g-col a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: 15px; white-space: nowrap; color: rgb(255 255 255 / .85); transition: background-color .15s var(--ease), color .15s var(--ease); } .g-col a :global(svg) { flex: none; opacity: .7; } .g-col a:hover { background: rgb(255 255 255 / .08); color: #fff; }
+  .foot { position: relative; isolation: isolate; overflow: clip; background: var(--night); color: #fff; }
+  /* Our communities pass along the top of the footer. */
+  .belt { display: flex; width: max-content; padding-block: 24px; border-bottom: 1px solid rgb(255 255 255 / .1); animation: belt 46s linear infinite; } .belt:hover, .belt:focus-within, .foot.away .belt { animation-play-state: paused; } @keyframes belt { to { transform: translateX(-50%); } }
+  .belt ul { display: flex; flex: none; } .belt a { display: flex; align-items: center; gap: 14px; padding-inline: 28px; font-size: clamp(18px, 1.9vw, 26px); letter-spacing: -.015em; white-space: nowrap; color: rgb(255 255 255 / .82); transition: color .2s var(--ease); } .belt img { filter: saturate(1.5); width: 56px; height: 56px; object-fit: contain; transition: transform .45s var(--ease); } .belt a:hover { color: var(--c); } .belt a:hover img { transform: rotate(-8deg) scale(1.16); }
+  .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 48px calc(var(--gap) + var(--pad)) 28px; }
+  .f-brand { display: grid; justify-items: start; align-content: start; gap: 12px; } .f-brand p { color: rgb(255 255 255 / .78); max-width: 18em; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.25; letter-spacing: -.01em; } .f-go { display: inline-flex; align-items: center; gap: 10px; margin-top: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; } .f-go :global(i) { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--brand); color: var(--brand-on); }
+  .foot nav:not(.belt) { display: flex; gap: 56px; } .foot nav:not(.belt) div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .78); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav:not(.belt) a { width: fit-content; } .foot nav:not(.belt) a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .62); }
+  /* The name runs off the bottom of the page, cut from lit glass. A dark veil with one bright window slides across it, following the pointer or sweeping by itself, and only ever moves as a transform. */
+  /* The name in dark glass, its edges catching a little light, with the sunrise showing only in the one bright window that moves across it. */
+  .stand { position: relative; height: 1.03em; margin-top: 8px; overflow: clip; font-size: 17.2vw; } .edge2 { position: absolute; left: 0; right: 0; top: 0; pointer-events: none; } .edge2 span { background: none !important; color: transparent; -webkit-text-fill-color: transparent !important; -webkit-text-stroke: 1px rgb(255 255 255 / .28); }
+  .word { display: flex; justify-content: center; padding-inline: var(--gap); font-weight: 500; line-height: 1; letter-spacing: -.05em; white-space: nowrap; user-select: none; }
+  .word span { padding: 0 .05em .06em 0; margin: 0 -.05em -.06em 0; color: var(--brand-bright); -webkit-background-clip: text; background-clip: text; background-size: 100vw 100%; background-position-x: calc(var(--i) * -8.6vw); transition: translate .45s cubic-bezier(.2, 1.5, .4, 1); }
+  .foot.seen .word span, :global(html:not(.has-js)) .word span { background-image: url(/img/word-fill.avif); -webkit-text-fill-color: transparent; }
+  /* Letters rise off the bottom edge as you reach them, and any one lifts under the pointer with its neighbours half as far. */
+  :global(.js) .stand:not(.up) .word span { translate: 0 100%; } :global(.js) .stand.up .word span { animation: letter 1.1s var(--ease) calc(var(--i) * 48ms) backwards; } @keyframes letter { from { translate: 0 100%; } }
+  .word span:global(.lift) { translate: 0 -8%; } .word span:global(.lift2) { translate: 0 -4%; }
+  .veil { position: absolute; left: 0; top: 0; bottom: 0; width: 300vw; background: linear-gradient(90deg, rgb(7 11 26 / .93) 42%, rgb(7 11 26 / .3) 44.5%, transparent 45% 55%, rgb(7 11 26 / .3) 55.5%, rgb(7 11 26 / .93) 58%); transform: translateX(-150vw); animation: sweep 11s ease-in-out infinite alternate; pointer-events: none; }
+  .foot.away .veil { animation-play-state: paused; } .foot.held .veil { animation: none; transition: transform .25s var(--ease); } @keyframes sweep { to { transform: translateX(-50vw); } }
+  @media (prefers-reduced-motion: reduce) { .veil { transform: translateX(-100vw); } }
+  @media (max-width: 960px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
+  @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
+  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { gap: 32px; flex-wrap: wrap; } .belt { padding-block: 16px; } .belt img { filter: saturate(1.5); width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a { visibility: hidden; pointer-events: none; } .rail i { visibility: visible; } .rail { transition: opacity .3s var(--ease); } .top:not(.stuck) .rail { opacity: 0; } }
+</style>

@@ -1,0 +1,229 @@
+---
+// A living Earth under OpenScholar's search box, with the communities as glass satellites you can catch as they go round, named in the strip below. NASA Blue Marble, Black Marble and cloud imagery, drawn by a small shader, so the planet really turns, with day, night, weather and sea glint.
+import AskBar from "./AskBar.astro";
+import { COMMUNITIES } from "../data/site.mjs";
+const HEAD = "Ask the world's research anything".split(" ");
+const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce burnout?", "Do pesticides harm bees?", "Does remote work boost output?", "Do farm antibiotics harm people?", "Do cash transfers reduce hunger?"];
+// Stars are fixed in size and place, so they never pop or shift between loads, and none sit behind the headline or the box. They thin out towards the bottom of the sky.
+const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
+const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).toFixed(1), y = +(rng() * 820).toFixed(1), big = i < 10, small = rng() < .85; return [x, y, +(big ? 1.4 + rng() * .4 : small ? .5 + rng() * .4 : .9 + rng() * .4).toFixed(2), +((big ? .9 : small ? .2 + rng() * .4 : .7) * Math.min(1, (820 - y) / 246)).toFixed(2), i % 3]; }).filter(([x, y, , o]) => o > 0 && (x < 720 || x > 1840 || y < 136 || y > 390));
+---
+<link rel="preload" as="image" href="/img/earth-day.avif" fetchpriority="high" />
+<link rel="preload" as="image" href="/img/sky-plate.avif" />
+<section class="bleed sky" data-orbit>
+  <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" />
+  {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
+  <div class="inner say">
+    <h1>{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
+    <p class="lead">Less time sorting papers, more time on what they mean.</p>
+    <div class="halo"><AskBar id="ask-hero" class="big" questions={QUESTIONS} mark label="Search with Openscholar" /></div>
+  </div>
+  <div class="space">
+    <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6b35" /><stop offset=".16" stop-color="#ff9d36" /><stop offset=".34" stop-color="#ffd9ae" /><stop offset=".52" stop-color="#8fd3d8" /><stop offset=".76" stop-color="#5a9be6" /><stop offset="1" stop-color="#3c62b8" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg><svg class="cometsvg"><g data-comet="back" opacity="0"></g></svg></div>
+    <canvas class="earth" data-day="/img/earth-day.avif" data-night="/img/earth-night.avif" data-clouds="/img/earth-clouds.avif" data-water="/img/earth-water.avif" aria-hidden="true"></canvas>
+    <script is:inline>if (!document.querySelector("[data-orbit] .earth").getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" })) document.documentElement.classList.add("flat")</script>
+    <div class="orb front" aria-hidden="true"><svg class="ringsvg"><g data-ring="front"></g></svg><svg class="cometsvg"><g data-comet="front" opacity="0"></g></svg></div>
+    <div class="sats" aria-hidden="true">{COMMUNITIES.map((c, i) => <a class="sat" data-sat tabindex="-1" href={c.url} style={`--c:${c.color};--i:${i}`}><img src={`/img/comm-${c.key}.avif`} width="96" height="96" alt="" decoding="async" /><b>{c.name}</b></a>)}</div>
+  </div>
+  <div class="inner hub">
+    <p class="hubline"><a href="/evidence-communities/">Evidence Communities</a> <span>Curated evidence, open to anyone</span></p>
+    <ul class="fields" aria-label="Live Evidence Communities">{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="44" height="44" alt="" decoding="async" />{c.name}</a></li>)}</ul>
+  </div>
+</section>
+<script>
+  const root = document.querySelector("[data-orbit]");
+  // Without WebGL the hero is its words and links, and nothing here has a job.
+  if (root && !document.documentElement.classList.contains("flat")) {
+    const scene = root.querySelector(".space"), cv = scene.querySelector(".earth"), sats = [...scene.querySelectorAll("[data-sat]")], imgs = sats.map((a) => a.querySelector("img")), names = sats.map((a) => a.querySelector("b")), strip = root.querySelector(".fields"), rows = [...strip.children], halo = root.querySelector(".halo"), orbs = [...scene.querySelectorAll(".orb")], skies = [...root.querySelectorAll(".stars")], calm = matchMedia("(prefers-reduced-motion: reduce)"), TAU = Math.PI * 2, NS = "http://www.w3.org/2000/svg";
+    const backG = scene.querySelector('[data-ring="back"]'), frontG = scene.querySelector('[data-ring="front"]'), cometB = scene.querySelector('[data-comet="back"]'), cometF = scene.querySelector('[data-comet="front"]'), grad = scene.querySelector("#spectrum");
+    // A still scene shows all six clear of the planet.
+    const STILL = [-35, 30, 70, 110, 150, 215].map((d) => d * Math.PI / 180), spots = sats.map(() => ({ x: 0, y: 0, hid: false, nudge: 0, dim: 0 }));
+    let W = 0, H = 0, R = 0, cx = 0, cy = 0, rx = 0, ry = 0, tilt = -.1, phase = 1.1, speed = 1, onSat = -1, mouse = null, hold = -1, lit = -1, seen = true, px = 0, py = 0, tx = 0, ty = 0, last = 0, kick = 0, spin = 0, lastY = scrollY, lastDraw = -1e9, dawnAt = 0, orbitAt = 0, waveAt = -1e9, firedT = 0, dead = false, raf = 0;
+    // The comet's three dashes share a head, so it tapers: length along the half ring out of 1000, width, opacity.
+    const COMET = [[150, 1.2, .3], [70, 1.8, .6], [22, 2.6, 1]];
+    const arc = (a, b, front) => `M ${-a} 0 A ${a} ${b} 0 0 ${front ? 0 : 1} ${a} 0`;
+    // A crescent: a hairline at the far ends of the ring, swelling to its full width across the planet.
+    const band = (a, b, t, front) => { const S = front ? 0 : 1; return `M ${-a} 0 A ${a} ${b} 0 0 ${S} ${a} 0 A ${a} ${b - t} 0 0 ${1 - S} ${-a} 0 Z`; };
+    const add = (g, d, attrs) => { const p = document.createElementNS(NS, "path"); p.setAttribute("d", d); for (const k in attrs) p.setAttribute(k, attrs[k]); g.append(p); };
+    const fill = (g, d, opacity) => add(g, d, { fill: "url(#spectrum)", opacity });
+    const stroke = (g, d, w, opacity, extra = {}) => add(g, d, { fill: "none", stroke: "url(#spectrum)", "stroke-width": w, opacity, ...extra });
+    const buildRing = () => {
+      const narrow = W < 700, body = narrow ? 9 : 18, inset = narrow ? 8 : 16;
+      for (const [g, comet, front, k, o] of [[backG, cometB, false, .35, .5], [frontG, cometF, true, 1, 1]]) {
+        g.replaceChildren(); comet.replaceChildren();
+        stroke(g, arc(rx, ry, front), 14, front ? .16 : .08, { filter: "url(#ringsoft)" }); stroke(g, arc(rx, ry, front), 1, .85 * o);
+        fill(g, band(rx, ry, body * k, front), .06 * o); fill(g, band(rx, ry, 2.2 * k, front), o); fill(g, band(rx, ry - inset * k, 1.2 * k, front), .55 * o); fill(g, band(rx, ry - inset * .5 * k, .8 * k, front), .35 * o); if (!narrow) fill(g, band(rx, ry + 7 * k, .8 * k, front), .3 * o);
+        for (const [len, w, opacity] of COMET) add(comet, arc(rx, ry, front), { fill: "none", stroke: "#fff1e0", "stroke-width": w, opacity, pathLength: 1000, "stroke-dasharray": `${len} ${2000 - len}`, "stroke-linecap": "round" });
+      }
+      grad.setAttribute("x1", -rx); grad.setAttribute("x2", rx); grad.setAttribute("y1", 0); grad.setAttribute("y2", 0);
+      const tf = `translate(${cx} ${cy}) rotate(${tilt * 180 / Math.PI})`; for (const g of [backG, frontG, cometB, cometF]) g.setAttribute("transform", tf);
+    };
+    const size = () => {
+      W = scene.clientWidth; H = scene.clientHeight; const [r, x, k] = W >= 1400 ? [320, 620, .13] : W >= 1200 ? [250, W / 2 - 60, .12] : W >= 1000 ? [260, W / 2 - 60, .16] : W >= 700 ? [216, W / 2 - 44, .18] : [Math.min(150, W / 2 - 58), W / 2 - 30, .3];
+      R = r; rx = x; ry = Math.min(rx * k, W < 700 ? 60 : 1e3); cx = W / 2; cy = R + (W >= 700 ? 98 : 60); scene.style.setProperty("--sx", `${cx - R * .75}px`); scene.style.setProperty("--sy", `${cy - R * .66}px`); scene.style.setProperty("--sh", `${2 * (H - cy + R * .66)}px`); buildRing(); glSize();
+    };
+    // The satellites go slower in front and faster behind, so none hides for long. Behind the planet the limb covers them, a real eclipse. `sweep` swings them into place at the start.
+    const placeSats = (sweep = 0) => {
+      const c = Math.cos(tilt), s = Math.sin(tilt), floor = W < 700 ? .75 : .55; let best = 0, top = -2;
+      sats.forEach((a, i) => {
+        const th0 = sweep - phase + i * TAU / sats.length, th = calm.matches ? STILL[i] : th0 + .4 * Math.cos(th0), ox = rx * Math.cos(th), oy = ry * Math.sin(th), x = cx + ox * c - oy * s + px * 14, y = cy + ox * s + oy * c + py * 9, depth = Math.sin(th), near = (depth + 1) / 2, spot = spots[i];
+        spot.x = x; spot.y = y; spot.hid = depth < 0 && Math.hypot(x - cx, y - cy) < R - 34; if (depth > top) { top = depth; best = i; }
+        a.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%)`; imgs[i].style.transform = `scale(${(floor + near * (1 - floor)).toFixed(3)})`;
+        a.style.zIndex = depth >= 0 ? 5 : 1; a.style.pointerEvents = spot.hid ? "none" : "auto"; a.classList.toggle("caught", i === hold && depth >= 0);
+        // Distance dims the glass in steps, so the filter isn't rewritten every frame. A caught satellite's name stays on screen.
+        const dim = Math.round((.8 + near * .2) * 20) / 20, nudge = Math.round(Math.max(118 - x, 0) - Math.max(x + 118 - W, 0)); if (dim !== spot.dim) { spot.dim = dim; imgs[i].style.filter = `brightness(${dim})`; } if (nudge !== spot.nudge) { spot.nudge = nudge; names[i].style.setProperty("--nudge", `${nudge}px`); }
+      });
+      best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { rows[lit]?.classList.remove("on"); rows[best].classList.add("on"); lit = best; }
+    };
+    // The planet
+    const gl = cv.getContext("webgl2", { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" }); let U, ready = false;
+    function glSize() { const d = Math.min(devicePixelRatio || 1, 1.75); cv.width = Math.round(W * d); cv.height = Math.round(H * d); gl.viewport(0, 0, cv.width, cv.height); const g = R * 1.55; gl.enable(gl.SCISSOR_TEST); gl.scissor(Math.max(0, (cx - g) * d), Math.max(0, cv.height - (cy + g) * d), g * 2 * d, g * 2 * d); }
+    const VS = `#version 300 es\nin vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+    const FS = `#version 300 es
+precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c; uniform float r, t, wv, fd; uniform vec3 L, rg;
+const float PI = 3.14159265;
+float gs(float x){ return exp(-x * x); }
+vec2 ll(vec3 n, float spin){ float lon = atan(n.x, n.z) - spin, lat = asin(clamp(n.y, -1., 1.)), u = lon / (2. * PI); float u1 = fract(u), u2 = fract(u + .5) - .5; return vec2(fwidth(u1) < fwidth(u2) - .001 ? u1 : u2, .5 - lat / PI); }
+vec3 halo(float d, float sun){ float lit = smoothstep(-.55, .75, sun), e = max(d - 1., 0.), g = (exp(-e * 22.) * .7 + exp(-e * 5.) * .08) * (1. - smoothstep(1.2, 1.5, d)); return mix(mix(vec3(.06, .16, .42), vec3(.36, .62, .95), lit), vec3(1., .56, .24), smoothstep(.5, .93, sun) * .8) * g * (.42 + lit) + vec3(1., .68, .36) * smoothstep(.55, .92, sun) * exp(-e * 26.) + vec3(1., .92, .8) * smoothstep(.82, .95, sun) * exp(-e * 70.) * .7; }
+void main(){
+  vec2 p = (gl_FragCoord.xy - c) / r; float d = length(p), sun = dot(normalize(vec3(p, .001)), L); vec3 h = halo(d, sun);
+  if (wv > 0.) h *= 1. + 1.6 * smoothstep(0., .08, wv) * max(0., 1. - wv * 2.) * smoothstep(.1, .9, p.y);
+  float ha = clamp(max(h.r, max(h.g, h.b)), 0., 1.);
+  float fade = smoothstep(0., fd, gl_FragCoord.y); if (d > 1.) { o = vec4(h, ha) * fade; return; }
+  float z = sqrt(1. - d * d); vec3 n0 = vec3(p, z);
+  float ax = .4, ay = .22; mat3 lean = mat3(cos(ax), sin(ax), 0., -sin(ax), cos(ax), 0., 0., 0., 1.) * mat3(1., 0., 0., 0., cos(ay), -sin(ay), 0., sin(ay), cos(ay)); vec3 n = lean * n0;
+  vec2 uv = ll(n, t * .05), uvc = ll(n, t * .058);
+  float wet = texture(water, uv).r; vec3 dc = (texture(day, uv).rgb + wet * vec3(0., .022, .06) + (1. - wet) * vec3(.03, .04, .03)) * vec3(.97, 1., 1.05); vec3 nc = texture(night, uv).rgb; float cl = texture(clouds, uvc).r, sh = texture(clouds, uvc + vec2(.0028, -.0018)).r;
+  float dif = dot(n0, L), lit = smoothstep(-.08, .46, dif), dusk = smoothstep(-.14, .08, dif) * (1. - smoothstep(.06, .22, dif));
+  vec3 col = dc * (vec3(.05, .075, .13) + 1.12 * lit) * (1. - pow(sh, 1.5) * .3 * lit) + vec3(.012, .032, .085) * (1. - lit);
+  col += pow(max(dot(reflect(-L, n0), vec3(0., 0., 1.)), 0.), 90.) * wet * vec3(.7, .85, 1.) * .42 * lit;
+  float city = max(nc.r - .05, 0.); col += (nc * 1.1 + city * vec3(1.6, 1.1, .55) * 4.5 * (1. - cl * .8)) * (1. - smoothstep(-.2, .06, dif));
+  col = mix(col, mix(vec3(.07, .11, .2), vec3(1., 1., 1.02), lit), pow(cl, 1.5) * .9);
+  col += dusk * vec3(.9, .5, .25) * .07;
+  col += mix(vec3(.3, .6, .95), vec3(1., .6, .3), smoothstep(.55, .93, sun) * .8) * pow(1. - z, 3.2) * (.24 + .9 * smoothstep(0., .8, dif));
+  vec2 q = mat2(cos(rg.z), sin(rg.z), -sin(rg.z), cos(rg.z)) * p; float yr = -rg.y * sqrt(max(0., 1. - q.x * q.x / (rg.x * rg.x))); col *= 1. - .3 * gs((q.y - yr + .035) / .018);
+  if (wv > 0.) { float g = acos(clamp(dot(n0, vec3(0., .96, .28)), -1., 1.)), f = wv * 3.2 - .2, e = smoothstep(0., .1, wv) * (1. - wv), b = gs((g - f) / .2) * e; col *= 1. + b * .75; col += b * (vec3(1., .55, .2) * .1 + city * vec3(1.6, 1.15, .6) * 9.) * (1. - cl * .7) + gs((g - f) / .06) * e * vec3(1., .7, .4) * .22 + vec3(1., .72, .42) * pow(1. - z, 2.5) * smoothstep(.1, .9, p.y) * max(0., 1. - wv * 2.) * .6; }
+  col = col / (1. + col * .14); float a = 1. - smoothstep(1. - 2.2 / r, 1., d);
+  o = (vec4(col, 1.) * a + vec4(h, ha) * (1. - a)) * fade;
+}`;
+    const start = async () => {
+      const sh = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+      const pr = gl.createProgram(); gl.attachShader(pr, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(pr); if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr)); gl.useProgram(pr);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); const al = gl.getAttribLocation(pr, "a"); gl.enableVertexAttribArray(al); gl.vertexAttribPointer(al, 2, gl.FLOAT, false, 0, 0);
+      U = Object.fromEntries(["c", "r", "t", "wv", "fd", "L", "rg"].map((n) => [n, gl.getUniformLocation(pr, n)]));
+      const aniso = gl.getExtension("EXT_texture_filter_anisotropic");
+      await Promise.all(["day", "night", "clouds", "water"].map(async (n, i) => { const im = new Image(); im.src = cv.dataset[n]; await im.decode(); gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, gl.createTexture()); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im); gl.generateMipmap(gl.TEXTURE_2D); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8); gl.uniform1i(gl.getUniformLocation(pr, n), i); }));
+      ready = true; dawnAt ||= performance.now(); draw(performance.now()); root.classList.add("lit"); orbit();
+    };
+    // The sun comes up: the planet holds as a crescent with its cities lit, then day sweeps across it.
+    const clamp01 = (v) => Math.min(1, Math.max(0, v)), LA = [-.72, .5, -.48], LB = [-.7, .62, .3];
+    const draw = (now) => {
+      if (!ready) return; lastDraw = now; const d = cv.width / W, k = clamp01((now - dawnAt - 300) / 3200), e = calm.matches ? 1 : k * k * (3 - 2 * k), Lv = LA.map((a, i) => a + (LB[i] - a) * e), Ln = Math.hypot(...Lv), w = (now - waveAt) / 1800;
+      gl.uniform2f(U.c, cx * d, cv.height - (cy + 40 * (1 - e)) * d); gl.uniform1f(U.r, R * d); gl.uniform1f(U.t, 18 + spin); gl.uniform3f(U.L, Lv[0] / Ln, Lv[1] / Ln, Lv[2] / Ln); gl.uniform3f(U.rg, rx / R, ry / R, tilt); gl.uniform1f(U.wv, w > 0 && w < 1 ? w : 0); gl.uniform1f(U.fd, (W < 700 ? 56 : 96) * d);
+      gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    };
+    // A spark of light runs round the ring the same way the satellites go: left to right in front, back again behind.
+    const comet = (now) => { if (!orbitAt || now - orbitAt < 2200) return; const k = (now / 15000) % 1, front = k < .5, head = (front ? k * 2 : 1 - (k - .5) * 2) * 1000, on = front ? cometF : cometB, off = front ? cometB : cometF; on.setAttribute("opacity", front ? 1 : .5); off.setAttribute("opacity", 0); COMET.forEach(([len], i) => on.children[i].setAttribute("stroke-dashoffset", (front ? len - head : -head).toFixed(1))); };
+    const camera = () => { cv.style.translate = `${(px * 6).toFixed(1)}px ${(py * 4).toFixed(1)}px`; const o = `translate3d(${(px * 14).toFixed(1)}px, ${(py * 9).toFixed(1)}px, 0)`; for (const el of orbs) el.style.transform = o; skies.forEach((el, i) => { el.style.transform = `translate3d(${(px * [4, 8, 14][i]).toFixed(1)}px, ${(py * [3, 5, 9][i]).toFixed(1)}px, 0)`; }); };
+    const orbit = () => { if (orbitAt) return; orbitAt = performance.now(); root.classList.add("orbiting"); };
+    const run = () => { if (!raf && !dead && seen && !calm.matches) raf = requestAnimationFrame(loop); };
+    const loop = (now) => {
+      raf = 0; run();
+      const dt = Math.min(64, now - last); last = now; let want = 1;
+      if (onSat >= 0 || hold >= 0) want = 0; else if (mouse && spots.some((s) => !s.hid && Math.hypot(s.x - mouse.x, s.y - mouse.y) < 120)) want = .12;
+      speed += ((want === 0 ? 0 : want + kick) - speed) * (1 - Math.exp(-dt / 220)); phase += dt * .000095 * speed;
+      if (hold >= 0) { const d = ((((hold * TAU / sats.length - Math.PI / 2 - phase) % TAU) + TAU + Math.PI) % TAU) - Math.PI; phase += d * (1 - Math.exp(-dt / 320)); }
+      kick *= Math.exp(-dt / 400); spin += dt / 1000 * (1 + kick * .8);
+      const moving = Math.abs(tx - px) > .002 || Math.abs(ty - py) > .002, ease = 1 - Math.exp(-dt / 220); px += (tx - px) * ease; py += (ty - py) * ease; if (moving) camera();
+      placeSats(orbitAt ? 2.4 * (1 - clamp01((now - orbitAt) / 2800)) ** 4 : 2.4); comet(now);
+      const w = (now - waveAt) / 1800; if (now - lastDraw >= 30 || now - dawnAt < 3600 || (w > 0 && w < 1)) draw(now);
+    };
+    // Wrapped text leaves its box wider than the words, so each name's box is set to its words and the gaps between the six come out equal.
+    const fitNames = () => rows.forEach((li) => { const a = li.querySelector("a"); a.style.width = ""; if (innerWidth < 1000) return; const t = document.createRange(); t.selectNodeContents(a.lastChild); a.style.width = `${Math.ceil(t.getBoundingClientRect().width) + 1}px`; });
+    document.fonts?.ready.then(fitNames); addEventListener("resize", fitNames, { passive: true });
+    new ResizeObserver(() => { size(); placeSats(calm.matches || orbitAt ? 0 : 2.4); if (ready) draw(performance.now()); }).observe(scene);
+    new IntersectionObserver(([e]) => { seen = e.isIntersecting; last = performance.now(); run(); }).observe(root);
+    // Reduced motion turned on mid-visit settles everything into the still scene.
+    calm.addEventListener("change", () => { if (calm.matches) { cometF.setAttribute("opacity", 0); cometB.setAttribute("opacity", 0); placeSats(0); draw(performance.now()); } last = performance.now(); run(); });
+    scene.addEventListener("pointerover", (e) => { onSat = sats.indexOf(e.target.closest("[data-sat]")); }); scene.addEventListener("pointerout", () => { onSat = -1; });
+    root.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = root.getBoundingClientRect(), b = scene.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; mouse = { x: e.clientX - b.left, y: e.clientY - b.top }; }, { passive: true }); root.addEventListener("pointerleave", () => { mouse = null; tx = ty = 0; });
+    // Pointing at or tabbing to a name in the strip swings its satellite round to the front and holds it there.
+    const setHold = (i) => { if (i === hold) return; sats[hold]?.classList.remove("held"); hold = i; sats[i]?.classList.add("held"); }, rowOf = (e) => rows.indexOf(e.target.closest("li"));
+    // When the pointer leaves, a name the keyboard is on keeps its satellite.
+    const aim = (i) => setHold(i < 0 ? rows.findIndex((r) => r.querySelector(":focus-visible")) : i);
+    strip.addEventListener("pointerover", (e) => aim(rowOf(e))); strip.addEventListener("focusin", (e) => setHold(rowOf(e))); strip.addEventListener("pointerout", () => aim(-1)); strip.addEventListener("focusout", () => setHold(-1));
+    // Back from another page can restore the hero with a satellite still caught.
+    addEventListener("pageshow", (e) => { if (e.persisted) { onSat = -1; setHold(-1); } });
+    // Scrolling flicks the orbit and the planet forward, and they settle back.
+    addEventListener("scroll", () => { kick = Math.min(3, kick + Math.abs(scrollY - lastY) * .012); lastY = scrollY; }, { passive: true });
+    // Each finished question, or real typing, sends light down the planet from under the box. No satellite reacts, on purpose: the box searches the literature, not the communities.
+    const wave = () => { const n = performance.now(); if (!seen || calm.matches || n - waveAt < 1800) return; waveAt = n + 200; halo.classList.add("fired"); clearTimeout(firedT); firedT = setTimeout(() => halo.classList.remove("fired"), 900); }; root.addEventListener("asked", wave); root.addEventListener("input", wave);
+    // If the planet can't draw, the art leaves and the page keeps its shape. A lost GPU context comes back with the planet.
+    const bare = () => { dead = true; ready = false; root.classList.add("bare"); }; cv.addEventListener("webglcontextlost", (e) => { e.preventDefault(); ready = false; }); cv.addEventListener("webglcontextrestored", () => { size(); start().catch(bare); });
+    setTimeout(orbit, 2000); size(); placeSats(calm.matches ? 0 : 2.4); for (const a of sats) a.style.opacity = 1; start().catch(bare); last = performance.now(); run();
+  }
+</script>
+<style>
+  .sky { padding: 146px 0 0; background: var(--sky); text-align: center; }
+  .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; animation: arrive 1.2s var(--ease) backwards; }
+  .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; animation: tw var(--tw) ease-in-out var(--twd) infinite alternate; } .s0 { --tw: 6s; --twd: 0s; } .s1 { --tw: 9s; --twd: -3s; } .s2 { --tw: 13s; --twd: -6s; } @keyframes tw { to { opacity: .35; } }
+
+  .say { position: relative; z-index: 6; display: grid; justify-items: center; gap: 14px; }
+  h1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .26em; font-size: 38px; letter-spacing: -.04em; line-height: 1.06; } h1 span { display: inline-block; animation: rise 700ms var(--ease) calc(.05s + var(--i) * 45ms) backwards; } @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
+  @media (min-width: 600px) { h1 { font-size: 56px; } } @media (min-width: 1100px) { h1 { font-size: 64px; } } @media (min-width: 1400px) { h1 { font-size: 72px; } } @media (max-width: 1099px) { h1 { max-width: 9em; } }
+  /* The headline is filled with the same Earth under the sunrise: warm cream over the oceans, near white over land and ice, so every letter stays bright. */
+  @supports (background-clip: text) or (-webkit-background-clip: text) { h1 span { padding: .08em .05em; margin: -.08em -.05em; color: transparent; background: linear-gradient(#ffe6cf, #ffe6cf), url(/img/earth-day.avif) calc(var(--i) * -3.2em - 6em) -2.6em / 20em 10em #ffe6cf; background-blend-mode: screen, normal; -webkit-background-clip: text; background-clip: text; } }
+  .lead { font-size: 20px; color: #c9cfdc; animation: rise 800ms var(--ease) .36s backwards; }
+
+  /* Openscholar's box is the one warm thing in the sky, lit like the sunrise on the planet below it. */
+  /* Two lights run round the box's rim. The box clips them, so they only ever show in its 2px edge. */
+  .halo { position: relative; isolation: isolate; overflow: clip; width: min(100%, 700px); margin-top: 8px; padding: 2px; border-radius: 20px; background: linear-gradient(90deg, var(--brand-deep), var(--brand) 30%, var(--brand-bright) 70%, var(--brand-deep)); box-shadow: inset 0 0 0 2px transparent, 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); transition: box-shadow .5s var(--ease); animation: rise 800ms var(--ease) .46s backwards; } .halo :global(.big) { width: 100%; box-shadow: none; } .halo:focus-within { box-shadow: inset 0 0 0 2px transparent, 0 0 0 3px rgb(255 255 255 / .7), 0 0 22px -2px color-mix(in srgb, var(--brand) 70%, transparent); } .halo:global(.fired) { box-shadow: inset 0 0 0 2px #fff1e0, 0 0 24px 2px color-mix(in srgb, var(--brand-bright) 85%, transparent); }
+  @supports (offset-path: inset(0 round 1px)) { .halo::before, .halo::after { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(closest-side, #fff1e0, var(--brand-bright) 34%, transparent); offset-path: inset(0 round 20px); offset-rotate: 0deg; animation: lap 11s linear infinite; pointer-events: none; } .halo::after { background: radial-gradient(closest-side, #ffd9b0, var(--brand-deep) 34%, transparent); animation-delay: -5.5s; } @keyframes lap { from { offset-distance: 0%; } to { offset-distance: 100%; } } .halo:focus-within::before, .halo:focus-within::after { animation-play-state: paused; } }
+  @media (max-width: 719px) { .halo :global(button span) { display: none; } .halo :global(.btn) { --chip: var(--brand); --chipt: var(--brand-on); gap: 0; height: 48px; min-height: 0; padding: 0 6px; } }
+  @media (max-width: 500px) { .halo { width: calc(100% + 32px); margin-inline: -16px; } }
+
+  .space { position: relative; isolation: isolate; height: 562px; margin-top: -132px; overflow: clip visible; }
+  .space::before { content: ""; position: absolute; left: var(--sx, 50%); top: var(--sy, 0); z-index: 0; width: 1400px; height: var(--sh, 900px); transform: translate(-50%, -50%); pointer-events: none; background: radial-gradient(closest-side, rgb(255 226 190 / .42), rgb(255 150 70 / .22) 16%, rgb(190 90 60 / .09) 44%, transparent); opacity: 0; transition: opacity 1.2s var(--ease); } :global(.lit) .space::before { opacity: 1; animation: sun 14s ease-in-out 1.2s infinite alternate; } @keyframes sun { to { opacity: .72; } }
+  .earth { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; opacity: 0; transform: scale(.98); transition: opacity 1.2s var(--ease), transform 2.4s var(--ease); } :global(.lit) .earth { opacity: 1; transform: none; }
+  .orb { position: absolute; inset: 0; pointer-events: none; will-change: transform; } .back { z-index: 1; } .front { z-index: 4; } .orb svg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; overflow: visible; } .cometsvg { will-change: transform; }
+  /* The ring draws itself on: left to right in front, then right to left behind, the way the satellites travel. */
+  @property --draw { syntax: "<length-percentage>"; inherits: false; initial-value: calc(100% + 160px); }
+  .front .ringsvg { mask-image: linear-gradient(90deg, #000 calc(var(--draw) - 160px), transparent var(--draw)); transition: --draw 1s cubic-bezier(.45, 0, .9, .7) .3s; } .back .ringsvg { mask-image: linear-gradient(270deg, #000 calc(var(--draw) - 160px), transparent var(--draw)); transition: --draw 1s cubic-bezier(.1, .3, .55, 1) 1.2s; } :global(.js) [data-orbit]:not(.orbiting) .ringsvg { --draw: 0%; }
+
+  .sats { display: contents; }
+  .sat { position: absolute; left: 0; top: 0; width: 88px; height: 88px; opacity: 0; will-change: transform; }
+  .sat img { width: 100%; height: 100%; object-fit: contain; will-change: transform; transition: opacity .9s var(--ease) calc(.7s + var(--i) * 100ms), scale .4s var(--ease); } :global(.js) [data-orbit]:not(.orbiting) .sat img { opacity: 0; } .sat:hover img, .sat:global(.held) img { scale: 1.18; } .sat:hover, .sat:global(.caught) { z-index: 7 !important; }
+  /* The link's own label, above its emblem so it stays clear of the strip below, and only one ever shows. */
+  .sat b { position: absolute; left: 50%; bottom: 100%; width: 220px; translate: calc(-50% + var(--nudge, 0px)) -4px; font: 500 14px/1.25 var(--sans); text-wrap: balance; text-align: center; opacity: 0; transition: opacity .25s var(--ease), translate .25s var(--ease); pointer-events: none; text-shadow: 0 1px 2px rgb(4 7 16 / .95), 0 0 6px rgb(4 7 16 / .95), 0 0 16px rgb(4 7 16 / .95); } .sat:hover b { opacity: 1; translate: calc(-50% + var(--nudge, 0px)) -10px; }
+
+  .hub { position: relative; z-index: 6; padding-bottom: 48px; }
+  .hubline, .fields { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
+  .hubline { font-size: 16px; color: #c9cfdc; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
+  /* A quiet index. As a satellite passes the front, its name takes the community's colour and an underline draws in. */
+  .fields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 8px -6px 0; padding: 0; list-style: none; } .fields a { position: relative; display: grid; justify-items: center; align-content: start; gap: 4px; max-width: 16em; margin-inline: auto; font: 500 14px/1.22 var(--sans); color: #e8ebf2; text-wrap: balance; transition: color .6s var(--ease); } .fields a::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 32px; height: 2px; margin-left: -16px; border-radius: 2px; background: var(--c); scale: 0 1; transition: scale .6s var(--ease); } .fields img { width: 40px; height: 40px; object-fit: contain; filter: saturate(1.35) drop-shadow(0 0 7px color-mix(in srgb, var(--c) 42%, transparent)); transition: transform .6s var(--ease), filter .6s var(--ease); }
+  .fields :global(li.on) a, .fields li:hover a, .fields li:focus-within a { color: var(--c); } .fields :global(li.on) a::after, .fields li:hover a::after, .fields li:focus-within a::after { scale: 1; } .fields :global(li.on) img, .fields li:hover img, .fields li:focus-within img { transform: translateY(-3px) scale(1.14); filter: drop-shadow(0 0 10px var(--c)); }
+
+  /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */
+  @media (max-width: 1399px) { .sky { padding-top: 142px; } .space { height: 478px; } } @media (max-width: 1199px) { .sky { padding-top: 136px; } .space { height: 504px; } }
+  @media (min-width: 1000px) { .fields { grid-template-columns: repeat(6, auto); justify-content: space-between; margin-inline: 0; } .fields a { max-width: 13.5em; } }
+  /* From laptops up each emblem sits beside its name, so the strip is one low line and the space it gives back goes above the headline. It takes fitNames to keep those names apart, so a hero without the planet keeps its emblems above them, with room to spare. */
+  @media (min-width: 1200px) { :global(html.has-js:not(.flat)) .fields { margin: 10px -40px 0; } :global(html.has-js:not(.flat)) .fields a { display: grid; box-sizing: content-box; align-content: center; justify-items: start; min-height: 34px; padding-left: 42px; text-align: left; } :global(html.has-js:not(.flat)) .fields a::after { left: 42px; margin-left: 0; } :global(html.has-js:not(.flat)) .fields img { position: absolute; inset-block: 0; left: 0; width: 34px; height: 34px; margin-block: auto; } }
+  @media (min-width: 1200px) and (max-width: 1399px) { :global(html.has-js:not(.flat)) .fields a { padding-left: 38px; } :global(html.has-js:not(.flat)) .fields a::after { left: 38px; } :global(html.has-js:not(.flat)) .fields img { width: 30px; height: 30px; } }
+  @media (max-width: 999px) { .sky { padding-top: 134px; } .space { height: 448px; } .sat { width: 80px; height: 80px; } .sat b { display: none; } .fields { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 8px; margin-inline: 0; } }
+  @media (hover: none) { .sat b { display: none; } }
+  @media (max-width: 699px) { .sky { padding-top: 126px; } .space { height: 302px; margin-top: -76px; } .space::before { width: 800px; } .sat { width: 52px; height: 52px; } .hub { padding-bottom: 40px; } .hubline a, .hubline span { display: block; margin: 0; } .lead { font-size: 17px; } }
+  @media (max-width: 599px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-inline: -18px; } .fields a { font-size: 13.5px; } .fields img { width: 36px; height: 36px; } }
+
+  /* Scrolling lifts the words away and sinks the stars. The planet, ring and strip stay with the page, so no text can collide. */
+  @media (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
+    .say { animation: lift linear both; }
+    .say { animation-timeline: scroll(root); animation-range: 0 500px; }
+    .stars { animation: tw var(--tw) ease-in-out var(--twd) infinite alternate, sink linear both; }
+    .stars { animation-timeline: auto, scroll(root); animation-range: normal, 0 640px; }
+    @keyframes lift { to { translate: 0 -80px; } } @keyframes sink { to { translate: 0 60px; } }
+  } }
+  :global(.away) .stars, :global(.away) .space::before, :global(.away) .halo::before, :global(.away) .halo::after { animation-play-state: paused; }
+
+  /* No scripts or no WebGL: the headline, the box and all six links are the whole hero. If the planet fails later, the art goes and the page keeps its shape. */
+  :global(.flat) .sats, :global(.flat) .orb, :global(.flat) .earth, :global(.flat) .space::before, :global(html:not(.has-js)) .sats, :global(html:not(.has-js)) .orb, :global(html:not(.has-js)) .earth, :global(html:not(.has-js)) .space::before, :global(.bare) .sats, :global(.bare) .orb, :global(.bare) .earth, :global(.bare) .space::before { display: none; } :global(.flat) .space, :global(html:not(.has-js)) .space { height: 24px; margin-top: 0; } :global(.flat) .plate, :global(html:not(.has-js)) .plate { height: 100%; object-fit: cover; } :global(html.flat), :global(.flat) .space { background: var(--sky); }
+</style>

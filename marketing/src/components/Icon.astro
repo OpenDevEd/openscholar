@@ -1,0 +1,5 @@
+---
+import { ICONS } from "../data/site.mjs";
+const { name, size = 20 } = Astro.props;
+---
+<svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={ICONS[name]} /></svg>

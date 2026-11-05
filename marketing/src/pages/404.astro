@@ -1,0 +1,9 @@
+---
+import Base from "../layouts/Base.astro";
+import AskBar from "../components/AskBar.astro";
+import Art from "../components/Art.astro";
+---
+<Base top="#070b1a" title="Not found: Openscholar" description="That page isn't here.">
+  <section class="bleed lost"><Art name="dark-ribbon" pos="50% 100%" eager /><h1>That page isn't here</h1><p class="lead">Search the research instead, or head <a href="/">back to the start</a>.</p><AskBar id="ask-lost" /></section>
+</Base>
+<style>.lost > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .lost { background: var(--night); display: grid; justify-items: center; align-content: center; gap: 20px; min-height: 720px; padding: 120px var(--pad) 240px; text-align: center; } .lead a { text-decoration: underline; text-underline-offset: 3px; }</style>

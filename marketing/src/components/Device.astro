@@ -1,0 +1,31 @@
+---
+// A real screen in a realistic device. `theme` picks light or dark; "both" stacks them so a parent can wipe between the two.
+const { kind = "laptop", name, theme = "light", sizes = "(max-width: 900px) 60vw, 50vw", eager = false, defer = false, alt = "", class: cls = "", tilt = false, lazyDark = false, ...rest } = Astro.props;
+const W = { laptop: [1000, 2000], tablet: [800, 1400], phone: [400, 800] }[kind], R = { laptop: "1280 / 800", tablet: "834 / 1112", phone: "393 / 852" }[kind];
+const attrs = (t) => { const base = `/img/screens/${name}-${kind}-${t}`, srcset = `${base}-${W[0]}.avif ${W[0]}w, ${base}.avif ${W[1]}w`; return defer || (lazyDark && t === "dark") ? { "data-src": `${base}.avif`, "data-srcset": srcset, sizes } : { src: `${base}.avif`, srcset, sizes, loading: eager ? "eager" : "lazy", fetchpriority: eager ? "high" : undefined, decoding: "async" }; };
+const themes = theme === "both" ? ["light", "dark"] : [theme];
+---
+<figure class:list={["dev", kind, cls]} data-tilt={tilt || undefined} {...rest}>
+  <div class="body"><div class="glass" style={`aspect-ratio:${R}`}>{themes.map((t) => <div class:list={["scr", t]}>{kind === "phone" && <i class="status" aria-hidden="true"><span>9:41</span><svg viewBox="0 0 54 12" width="44" fill="currentColor"><rect x="0" y="7" width="3" height="5" rx="1" /><rect x="5" y="5" width="3" height="7" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /><path d="M29 2.500a8 8 0 0 1 6 2.500l-1.300 1.400A6 6 0 0 0 29 4.400a6 6 0 0 0-4.700 2L23 5a8 8 0 0 1 6-2.500Zm0 3.700a4.300 4.300 0 0 1 3.300 1.400L29 11.500l-3.300-3.900A4.300 4.300 0 0 1 29 6.200Z" /><rect x="40" y="1.500" width="12" height="9" rx="2.500" /><rect x="52.800" y="4.500" width="1.200" height="3" rx=".6" /></svg></i>}<img {...attrs(t)} width={W[1]} alt={t === themes[0] ? alt : ""} /></div>)}<slot /><i class="sheen" aria-hidden="true"></i></div>{kind === "laptop" && <i class="cam" aria-hidden="true"></i>}{kind === "phone" && <><i class="island" aria-hidden="true"></i><i class="btn-a" aria-hidden="true"></i><i class="btn-b" aria-hidden="true"></i><i class="btn-c" aria-hidden="true"></i><i class="btn-d" aria-hidden="true"></i></>}</div>
+  {kind === "laptop" && <div class="deck" aria-hidden="true"><i></i></div>}
+</figure>
+<style>
+  .dev { position: relative; margin: 0; transform-style: preserve-3d; }
+  .glass { position: relative; overflow: hidden; background: #0b0d12; } .scr { position: absolute; inset: 0; } .scr img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top left; max-width: none; }
+  .phone .scr.light { color: var(--ink); } .phone .scr.dark { color: #fff; } .status { position: absolute; z-index: 1; left: 0; right: 0; top: 0; height: 6.7%; }
+  .status { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 9% 2px 11%; font: 500 3.6cqw/1 var(--sans); }
+  .sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgb(255 255 255 / .1), transparent 26%, transparent 70%, rgb(255 255 255 / .04)); }
+  /* Laptop: a thin black lid on an aluminium deck. */
+  .laptop .body { position: relative; padding: 1.5% 1.5% 2.6%; border-radius: 1.9% / 3%; background: #090a0d; box-shadow: inset 0 0 0 1.5px #4b4e57, inset 0 0 0 3px #15161a, 0 40px 80px -36px rgb(12 16 28 / .75); }
+  .laptop .glass { border-radius: .7% / 1.1%; }
+  .cam { position: absolute; top: .52%; left: 50%; width: .62%; aspect-ratio: 1; border-radius: 50%; translate: -50% 0; background: radial-gradient(circle at 40% 40%, #2a3350, #07080c 70%); }
+  .deck { position: relative; z-index: 1; width: 112%; margin-left: -6%; height: clamp(8px, 1.5vw, 18px); border-radius: 2px 2px 18px 18px / 2px 2px 100% 100%; background: linear-gradient(#e9ebef, #c6c9d1 40%, #8f939d); box-shadow: 0 1px 0 rgb(255 255 255 / .8) inset, 0 34px 40px -18px rgb(12 16 28 / .5); }
+  .deck i { position: absolute; top: 0; left: 50%; width: 15%; height: 45%; translate: -50% 0; border-radius: 0 0 10px 10px; background: linear-gradient(#a8abb4, #d5d7dd); }
+  /* Tablet: an even black border inside a rounded aluminium edge. */
+  .tablet .body { padding: 3.1%; border-radius: 4.6% / 3.5%; background: #08090c; box-shadow: inset 0 0 0 2px #6d7079, inset 0 0 0 3.5px #1b1c21, 0 44px 80px -30px rgb(12 16 28 / .7); } .tablet .glass { border-radius: 1.6% / 1.2%; }
+  /* Phone: titanium band, side buttons and the island. */
+  .phone .body { position: relative; padding: 2.6%; border-radius: 15.5% / 7.2%; background: #050608; box-shadow: 0 0 0 1.5px #62656e, 0 0 0 2.5px #a9acb4, 0 0 0 3px #3a3c43, 0 36px 60px -22px rgb(12 16 28 / .75); } .phone .glass { border-radius: 13% / 6%; container-type: inline-size; } .phone .status svg { width: 19%; height: auto; }
+  .btn-a, .btn-b, .btn-c, .btn-d { position: absolute; left: -5px; width: 3px; border-radius: 1.5px 0 0 1.5px; background: linear-gradient(90deg, #6b6e77, #b3b6be); } .btn-a { top: 13.5%; height: 3.2%; } .btn-b { top: 19%; height: 6.2%; } .btn-c { top: 26.800%; height: 6.2%; } .btn-d { left: auto; right: -5px; top: 22%; height: 9.5%; border-radius: 0 1.5px 1.5px 0; background: linear-gradient(270deg, #6b6e77, #b3b6be); }
+  .island { position: absolute; top: 3.4%; left: 50%; width: 27%; height: 2.9%; translate: -50% 0; border-radius: 99px; background: #000; box-shadow: 0 0 0 1px rgb(255 255 255 / .09); }
+  @media (prefers-reduced-motion: no-preference) { .scr { transition: clip-path .75s var(--ease); } }
+</style>

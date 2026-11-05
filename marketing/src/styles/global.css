@@ -1,0 +1,93 @@
+@font-face { font-family: Ubuntu; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-latin-400-normal.woff2) format("woff2"); }
+@font-face { font-family: Ubuntu; font-weight: 500; font-display: swap; src: url(/fonts/ubuntu-latin-500-normal.woff2) format("woff2"); }
+/* A stand-in that takes up the same space as Ubuntu, so text doesn't reflow when the real font arrives on a slow connection. */
+@font-face { font-family: "Ubuntu Fallback"; src: local("Arial"), local("Helvetica"), local("Liberation Sans"); size-adjust: 101.5%; ascent-override: 91.8%; descent-override: 18.6%; line-gap-override: 0%; }
+@font-face { font-family: "Ubuntu Mono"; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-mono-latin-400-normal.woff2) format("woff2"); }
+@view-transition { navigation: auto; }
+:root {
+  color-scheme: light;
+  --ink: #171717; --t2: #525252; --t3: #6a6a6a; --line: rgb(0 0 0 / .1); --line2: rgb(0 0 0 / .18); --soft: #f5f5f5;
+  /* The brand orange, with the app's brighter and deeper stops. White on it is only 2.82:1, so text on a brand fill takes --brand-on, and brand-coloured text, icons and focus rings on white take --brand-ink. */
+  --brand: oklch(0.7 0.17 54); --brand-bright: #ff9d36; --brand-deep: #e0650a; --brand-on: #361307; --brand-ink: #b2440a;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --sans: Ubuntu, "Ubuntu Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Ubuntu Mono", ui-monospace, Menlo, monospace;
+  --night: #070b1a; --sky: #091026;
+  --gap: 16px; --pad: clamp(24px, 4.4vw, 64px); --r: 28px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { background: var(--night); interpolate-size: allow-keywords; scroll-padding-top: 88px; -webkit-text-size-adjust: 100%; }
+/* Safari takes its status bar colour from the body's background colour, so that's the page's top colour. */
+body { margin: 0; color: var(--ink); font: 400 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: clip; }
+img, svg { display: block; max-width: 100%; } img { height: auto; }
+a { color: inherit; text-decoration: none; }
+button, input { font: inherit; color: inherit; } button { background: none; border: 0; padding: 0; cursor: pointer; }
+h1, h2, h3, p, ul, ol, figure, dl, dd, blockquote { margin: 0; padding: 0; } ul, ol { list-style: none; }
+h1, h2, h3 { font-weight: 500; text-wrap: balance; }
+h1 { font-size: clamp(40px, 5.4vw, 72px); line-height: 1.04; letter-spacing: -.035em; }
+h2 { font-size: clamp(30px, 3.6vw, 48px); line-height: 1.08; letter-spacing: -.03em; }
+h3 { font-size: clamp(19px, 1.7vw, 22px); line-height: 1.2; letter-spacing: -.015em; }
+p { text-wrap: pretty; }
+.lead { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+:focus-visible { outline: 3px solid var(--brand-ink); outline-offset: 2px; } :is(.panel, .bleed, .top, .foot, .tour) :focus-visible { outline-color: #fff; } :is(.ask, .card, .nameit) :focus-visible { outline-color: var(--brand-ink); }
+.strip { position: relative; isolation: isolate; max-width: 1280px; margin-inline: auto; padding-inline: var(--gap); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
+/* The page's white starts at the gap under the first section, so nothing white ever sits behind a hero while the page loads. */
+.strip:has(> :nth-child(2))::before { content: ""; position: absolute; z-index: -1; grid-row: 2 / auto; top: calc(var(--gap) * -1); bottom: 0; left: calc(50% - 50vw); right: calc(50% - 50vw); background: #fff; }
+
+/* A colour field panel. */
+.panel { position: relative; isolation: isolate; overflow: clip; border-radius: var(--r); background: var(--bg, #0d1d3a); color: #fff; }
+.panel > .field { position: absolute; inset: 0; z-index: -1; }
+/* Light follows the pointer across a colour field. */
+.panel::after { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 1040px; height: 1040px; pointer-events: none; background: radial-gradient(closest-side, rgb(255 226 196 / .15), transparent); opacity: 0; transform: translate(calc(var(--mx, 520px) - 520px), calc(var(--my, 520px) - 520px)); transition: opacity .3s var(--ease); }
+@media (hover: hover) { .panel:hover::after { opacity: 1; will-change: transform; } }
+
+/* A section whose art runs to the edges of the window while its content keeps to the strip. */
+.bleed { position: relative; isolation: isolate; width: 100vw; margin-inline: calc(50% - 50vw); overflow: clip; color: #fff; }
+.inner { width: 100%; max-width: 1280px; margin-inline: auto; padding-inline: calc(var(--gap) + var(--pad)); }
+.panel > .art { z-index: -1; }
+.art { position: absolute; inset: 0; z-index: -2; overflow: clip; }
+.art img { width: 100%; height: 100%; object-fit: cover; }
+.art.dim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(var(--dir, 90deg), rgb(var(--sc, 6 36 54) / .94), rgb(var(--sc, 6 36 54) / .7) 45%, rgb(var(--sc, 6 36 54) / 0) 70%); }
+/* A scene: art and interface share one coordinate system, 1672 units wide, so they stay locked together at any size. */
+.scene { position: relative; container-type: inline-size; aspect-ratio: 1672 / 941; } .scene > * { --u: calc(100cqw / 1672); } .scene > .art { z-index: 0; }
+/* Glass laid over art, tinted by the section's --g. */
+.frost { position: relative; border-radius: 18px; background: rgb(var(--g, 4 40 32) / .68); -webkit-backdrop-filter: blur(18px) saturate(1.5); backdrop-filter: blur(18px) saturate(1.5); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 30px 60px -28px rgb(0 10 20 / .8); color: #fff; }
+/* Entrances, only once scripts are running, so nothing stays hidden without them. */
+.js [data-in] { opacity: 0; transform: translateY(26px); }
+.js [data-in].in { opacity: 1; transform: none; transition: opacity .8s var(--ease) var(--d, 0s), transform .9s var(--ease) var(--d, 0s); }
+
+/* The colour fields behind each panel: drawn by the browser, so they cost nothing to load. */
+.f-steel { background: radial-gradient(ellipse 22% 34% at 98% 98%, #2b6f9e, transparent), radial-gradient(ellipse 45% 71% at 12% 86%, #0f2a66, transparent), radial-gradient(ellipse 37% 60% at 62% 76%, #17458f, transparent), radial-gradient(ellipse 40% 64% at 81% 18%, #1a4a9a, transparent), radial-gradient(ellipse 45% 71% at 19% 12%, #18408a, transparent), #12306e; }
+.f-emerald { background: radial-gradient(ellipse 37% 60% at 8% 88%, #0a4f40, transparent), radial-gradient(ellipse 40% 64% at 54% 86%, #0f665c, transparent), radial-gradient(ellipse 42% 67% at 75% 24%, #0d5f4c, transparent), radial-gradient(ellipse 45% 71% at 16% 16%, #0d5f4c, transparent), #0a4438; }
+.f-rose { background: radial-gradient(ellipse 39% 62% at 11% 88%, #be123c, transparent), radial-gradient(ellipse 37% 60% at 62% 86%, #e11d48, transparent), radial-gradient(ellipse 40% 64% at 78% 14%, #be123c, transparent), radial-gradient(ellipse 45% 71% at 18% 22%, #be123c, transparent), #9f1239; }
+.f-ocean { background: radial-gradient(ellipse 37% 60% at 8% 86%, #12506a, transparent), radial-gradient(ellipse 40% 64% at 56% 88%, #1b4a78, transparent), radial-gradient(ellipse 40% 64% at 78% 20%, #15628a, transparent), radial-gradient(ellipse 43% 69% at 16% 18%, #116a84, transparent), #0f4a66; }
+.f-night { background: radial-gradient(ellipse 17% 28% at 96% 98%, #1c4a6e, transparent), radial-gradient(ellipse 45% 71% at 55% 90%, #121c38, transparent), radial-gradient(ellipse 34% 55% at 82% 12%, #123d52, transparent), radial-gradient(ellipse 40% 64% at 14% 12%, #1a2a55, transparent), #091026; }
+
+/* Buttons: the arrow's chip floods the whole button on hover. */
+.btn { --face: #fff; --text: var(--ink); --chip: var(--brand); --chipt: var(--brand-on); position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(12 16 28 / .18); }
+.btn::before { content: ""; position: absolute; z-index: -1; inset: 0; background: var(--chip); clip-path: inset(calc(50% - 18px) 8px calc(50% - 18px) calc(100% - 44px) round 10px); transition: clip-path .4s var(--ease), background-color .2s var(--ease); }
+.btn i { display: grid; place-items: center; width: 36px; height: 36px; color: var(--chipt); flex: none; overflow: hidden; transition: color .2s var(--ease); } .btn i svg { transition: transform .35s var(--ease); } .btn:hover i svg { transform: translateX(3px); }
+.btn:not(.ghost, .line):hover { color: var(--chipt); box-shadow: 0 10px 26px -8px rgb(12 16 28 / .45); } .btn:not(.ghost, .line):hover::before { clip-path: inset(0 round 14px); } .btn:active { transform: translateY(1px); }
+.btn.brand { --face: var(--brand); --text: var(--brand-on); --chip: #fff; --chipt: var(--brand-ink); } .btn.brand:hover { --chip: var(--brand-deep); --chipt: var(--brand-on); }
+.btn.ghost, .btn.line { padding-inline: 20px; } .btn.ghost::before, .btn.line::before { display: none; }
+.btn.ghost { --face: rgb(255 255 255 / .14); --text: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); } .btn.ghost:hover { background: #fff; color: var(--ink); }
+.btn.line { --face: transparent; --text: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); } .btn.line:hover { background: var(--ink); color: #fff; box-shadow: none; }
+/* A point of light runs around the edge of a card. */
+@property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.edge { position: relative; } .edge::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--a), transparent 62%, rgb(255 232 208 / .95) 82%, transparent 92%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
+.edge:hover::before { opacity: 1; animation: orbit 2.8s linear infinite; } @keyframes orbit { to { --a: 360deg; } }
+/* Text rolls up to a copy of itself. */
+.roll { position: relative; display: inline-block; overflow: hidden; vertical-align: top; line-height: 1.35; } .roll > span { display: block; transition: transform .32s var(--ease); } .roll::after { content: attr(data-t); position: absolute; left: 0; top: 100%; white-space: nowrap; transition: transform .32s var(--ease); } a:hover > .roll > span, a:hover > .roll::after { transform: translateY(-100%); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } @view-transition { navigation: none; } }
+@media (max-width: 900px) { .panel > .art img, .hero > .art img { opacity: .24; } .art.dim::after { background: rgb(var(--sc, 6 36 54) / .74); } }
+@media (max-width: 700px) { :root { --gap: 10px; --r: 22px; } }
+@media (max-width: 400px) { .btn { height: auto; min-height: 52px; padding-block: 8px; white-space: normal; line-height: 1.2; } }
+/* Blur is the most expensive thing on the page to repaint, and phones gain nothing from it. */
+@media (max-width: 900px), (pointer: coarse) { * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; } }
+
+/* Answers and lists open by sliding, where the browser can. */
+details::details-content { height: 0; overflow: clip; transition: height .35s var(--ease), content-visibility .35s allow-discrete; } details[open]::details-content { height: auto; }
+/* The closing ribbons breathe, very slowly. */
+.close > .art img { transform-origin: 50% 80%; animation: ribbon 26s ease-in-out infinite alternate; } @keyframes ribbon { from { transform: scale(1.02) translateX(-1%); } to { transform: scale(1.08) translateX(1.5%); } } .close.away > .art img { animation-play-state: paused; }
+/* A closing line this large needs a button to match. */
+.close > .btn { height: 62px; padding-inline: 28px 10px; font-size: 19px; border-radius: 16px; }

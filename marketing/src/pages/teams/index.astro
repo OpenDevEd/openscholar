@@ -1,0 +1,46 @@
+---
+import Base from "../../layouts/Base.astro";
+import Faq from "../../components/Faq.astro";
+import Arrow from "../../components/Arrow.astro";
+import Art from "../../components/Art.astro";
+import Device from "../../components/Device.astro";
+import TeamHero from "../../components/TeamHero.astro";
+import RoleDoors from "../../components/RoleDoors.astro";
+import ReviewFlow from "../../components/ReviewFlow.astro";
+import { APP } from "../../data/site.mjs";
+const files = ["screening_final.xlsx", "screening_final_v2.xlsx", "final_FINAL.xlsx", "screening (1).xlsx", "screening_tomas.xlsx", "maya_edits.xlsx"];
+const faq = [
+  ["How does a team get started?", "Create an organization and invite your team. Everyone also keeps a personal workspace, and the switcher at the top of the sidebar moves between the two."],
+  ["Can we bring in work we've already done?", "Yes. Move an item from a personal workspace into the organization, and its ratings, answers and history come with it. The people it was shared with keep their access."],
+  ["Can we share with someone outside the organization?", "Yes. Use Share on any item and invite them as a viewer or an editor. They'll see that item and nothing else."],
+];
+---
+<Base top="#032630" og="/og-teams.jpg" title="Teams: Openscholar" description="One workspace for your team's evidence: shared searches, screenings and extractions, with a record of every change.">
+  <TeamHero />
+  <section class="panel merge" id="shared">
+    <i class="field f-ocean" aria-hidden="true"></i><Art name="ribbon-teal" pos="50% 100%" />
+    <div class="m-head"><h2>Six copies of a spreadsheet become one piece of work</h2><p class="lead">A screening is one shared thing. Your team sees it as it changes, with the history of how it got there one click away.</p></div>
+    <div class="m-flow" data-in>
+      <ul class="files" aria-label="Spreadsheet copies a team might be passing around">{files.map((f, i) => <li style={`--i:${i}`}><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="3" fill="#047857" /><path d="M6 6h8M6 10h8M6 14h8M10 6v8" stroke="#fff" stroke-width="1.5" /></svg>{f}</li>)}</ul>
+      <svg class="lines" data-lines viewBox="0 0 120 300" preserveAspectRatio="none" fill="none" aria-hidden="true">{files.map((_, i) => <path d={`M0 ${25 + i * 50}C70 ${25 + i * 50} 50 150 120 150`} stroke="#b8f3ff" stroke-opacity=".55" stroke-width="1.5" vector-effect="non-scaling-stroke" />)}</svg>
+      <Device class="one" kind="laptop" name="screen2" theme="dark" alt="One shared screening, showing who ran it, its progress and its questions" tilt sizes="(max-width: 900px) 61vw, 880px" />
+    </div>
+  </section>
+  <RoleDoors />
+  <section class="panel rev" id="publish"><Art name="back-loop" pos="50% 100%" /><div class="r-copy"><h2>Review it together before anyone reads it</h2><p class="lead">Publishing to your community is a team decision. Creators submit what they've written, and an editor publishes it or sends it back.</p></div><ReviewFlow story="back" /></section>
+  <Faq items={faq} />
+  <section class="bleed close"><Art name="close-green" pos="50% 100%" /><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
+</Base>
+<style>
+  .merge { display: grid; gap: 28px; padding: var(--pad); } .m-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
+  .m-flow { display: grid; grid-template-columns: minmax(0, 250px) 90px minmax(0, 1fr); align-items: center; } .files { display: grid; gap: 8px; } .files li { display: flex; align-items: center; gap: 10px; height: 42px; padding-inline: 12px; border-radius: 10px; background: rgb(3 38 48 / .55); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), inset 0 0 0 1px rgb(255 255 255 / .22); color: #fff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: transform .25s var(--ease); } .files li:hover { transform: translateX(6px); } .files svg { flex: none; } .lines { width: 100%; height: 300px; } .m-flow :global(.one) { min-width: 0; } .xx { width: 100%; }
+  .close { background: var(--night); display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(64px, 8vw, 112px) var(--pad) max(160px, 28vw); text-align: center; } .close > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .close h2 { font-size: clamp(38px, 6.4vw, 92px); line-height: 1; letter-spacing: -.03em; }
+  /* The heading happens: the copies fly into the one screen, one after another, and that screen takes the whole stage. */
+  @media (min-width: 901px) { .m-flow { margin-bottom: 8%; } :global(.js) .m-flow.in .files li { animation: file-go .85s cubic-bezier(.5, 0, .2, 1) calc(1.8s + var(--i) * .16s) forwards; } :global(.js) .m-flow.in .lines { animation: gone .4s var(--ease) 2.3s forwards; } :global(.js) .m-flow.in :global(.one) { transform-origin: 50% 0; animation: one-grows 1.3s var(--ease) 2.8s forwards; }
+    @keyframes file-go { to { translate: 440px calc((2.5 - var(--i)) * 50px); scale: .5; opacity: 0; visibility: hidden; } } @keyframes gone { to { opacity: 0; } } @keyframes one-grows { to { translate: -170px 0; scale: 1.18; } } }
+  @media (max-width: 900px) { .m-head, .m-flow { grid-template-columns: minmax(0, 1fr); } .lines { display: none; } .files { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin-bottom: 12px; } .files li { font-size: 13px; padding-inline: 8px; gap: 6px; } }
+  @media (max-width: 480px) { .files { grid-template-columns: minmax(0, 1fr); } }
+  .rev { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding: var(--pad); min-height: 560px; } .r-copy { display: grid; gap: 18px; } .rev { background: #021206; min-height: min(56vw, 720px); align-items: start; padding-top: clamp(32px, 3.4vw, 48px); padding-bottom: clamp(200px, 15vw, 220px); } @media (max-width: 1100px) { .rev { padding-bottom: var(--pad); align-items: center; } .rev > :global(.art) { opacity: .4; } } @media (max-width: 900px) { .rev { grid-template-columns: minmax(0, 1fr); } }
+  /* Every copy of the spreadsheet drifts into the one shared screening. */
+  :global(.js) .m-flow[data-in] { opacity: 1; transform: none; } :global(.js) .m-flow .files li { opacity: 0; transform: translateX(-24px); } :global(.js) .m-flow.in .files li { opacity: 1; transform: none; transition: opacity .6s var(--ease) calc(var(--i) * .07s), transform .7s var(--ease) calc(var(--i) * .07s); } :global(.js) .m-flow .lines { clip-path: inset(0 100% 0 0); } :global(.js) .m-flow.in .lines { clip-path: inset(0); transition: clip-path 1s var(--ease) .4s; } :global(.js) .m-flow :global(.one) { opacity: 0; transform: translateX(30px) scale(.98); } :global(.js) .m-flow.in :global(.one) { opacity: 1; transform: none; transition: opacity .8s var(--ease) .7s, transform 1s var(--ease) .7s; }
+</style>

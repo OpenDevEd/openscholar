@@ -1,0 +1,68 @@
+---
+import Base from "../../layouts/Base.astro";
+import { GUIDES } from "../../data/docs.mjs";
+import { group } from "../../data/features.mjs";
+import Art from "../../components/Art.astro";
+import Icon from "../../components/Icon.astro";
+const TOPICS = [["start", "flag", "#ff9d36", "Get started", "Your first search to your first export"], ["search", "search", "#4fc3d9", "Find papers", "Questions, queries and filters"], ["screening", "sieve", "#34d399", "Screen papers", "Your criteria, applied to every paper"], ["extraction", "table", "#eab308", "Extract data", "Answers you can sort and check"], ["assistant", "spark", "#7da7e6", "Work with the assistant", "What it does and when it asks"], ["community-setup", "globe", "#fb7185", "Create an Evidence Community", "From a name to a live site"]];
+---
+<Base top="#ffffff" og="/og-docs.jpg" title="Documentation: Openscholar" description="How to use Openscholar and Evidence Communities.">
+  <section class="bleed intro"><Art name="docs-ribbon" eager pos="100% 30%" /><div class="inner"><h1>Documentation</h1><p class="lead">How to use Openscholar and Evidence Communities.</p><label class="find-big"><Icon name="search" size={20} /><span class="sr">Search the docs</span><input type="search" data-find placeholder="Search the docs" autocomplete="off" /></label></div></section>
+  <nav class="topics" aria-label="Start here" data-topics>{TOPICS.map(([id, ic, c, t, d]) => <a href={`#${id}`} style={`--c:${c}`}><i><Icon name={ic} size={20} /></i><b>{t}</b><span>{d}</span></a>)}</nav>
+  <div class="docs">
+    <aside>
+      <nav aria-label="Documentation">{GUIDES.map((g) => <a href={`#${g.id}`}>{g.title}</a>)}</nav>
+    </aside>
+    <article>
+      {GUIDES.map((g) => (
+        <section id={g.id} data-guide>
+          <div class="g-text"><h2>{g.title}</h2>
+          {g.intro.map((p) => <p class="p">{p}</p>)}
+          {g.steps && <ol class="steps">{g.steps.map((s) => <li>{s}</li>)}</ol>}
+          {g.group && <details class="more" data-block><summary>Everything in this area</summary>{g.group.map((id) => { const f = group(id); return (<div class="block">{g.group.length > 1 && <h3>{f.name}</h3>}<dl>{f.items.map(([n, t]) => <div data-text={`${n} ${t}`.toLowerCase()}><dt>{n}</dt><dd>{t}</dd></div>)}</dl></div>); })}</details>}
+          </div>
+          {g.shot ? <button type="button" class="fig" data-zoom={`/img/screens/${g.shot}-laptop-light.avif`} aria-label={`See it larger: ${g.alt}`}><img src={`/img/screens/${g.shot}-laptop-light-1000.avif`} width="1000" height="625" loading="lazy" decoding="async" alt={g.alt} /></button> : <div class="fig art" aria-hidden="true"><img src={`/img/art-${g.art}-960.avif`} width="960" height="540" loading="lazy" decoding="async" alt="" /></div>}
+        </section>
+      ))}
+      <p class="none" data-none hidden>Nothing matches. Try a shorter word.</p>
+    </article>
+  </div>
+  <dialog class="zoom" data-zoomed aria-label="Screen, enlarged"><img width="2000" height="1250" alt="" /></dialog>
+</Base>
+<script>
+  const input = document.querySelector("[data-find]"), rows = [...document.querySelectorAll("[data-text]")], blocks = [...document.querySelectorAll("[data-block]")], guides = [...document.querySelectorAll("[data-guide]")], none = document.querySelector("[data-none]");
+  const topics = document.querySelector("[data-topics]"); input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(); topics.hidden = !!q; let n = 0; for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; } for (const b of blocks) { const any = !!b.querySelector("[data-text]:not([hidden])"); b.hidden = !any; b.open = !!q && any; } for (const g of guides) { const prose = g.textContent.toLowerCase().includes(q); g.hidden = !!q && !g.querySelector("[data-block]:not([hidden])") && !prose; } none.hidden = !q || guides.some((g) => !g.hidden); for (const a of document.querySelectorAll("aside nav a")) a.hidden = !!document.querySelector(a.getAttribute("href"))?.hidden; });
+  // Matching words light up where they appear, without touching the page's markup.
+  if (window.Highlight) input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(), ranges = []; if (q.length > 1) for (const root of document.querySelectorAll("[data-guide]:not([hidden])")) { const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); while (walk.nextNode()) { const n = walk.currentNode, t = n.nodeValue.toLowerCase(); if (n.parentElement.closest("[hidden]")) continue; for (let i = t.indexOf(q); i >= 0; i = t.indexOf(q, i + q.length)) { const r = new Range(); r.setStart(n, i); r.setEnd(n, i + q.length); ranges.push(r); } } } CSS.highlights.set("find", new Highlight(...ranges)); });
+  // A screen opens large, and any click or Escape closes it.
+  // It opens on the picture already loaded, and the larger one replaces it once it's ready.
+  const zoomed = document.querySelector("[data-zoomed]"), big = zoomed.querySelector("img"); let wanted;
+  document.querySelectorAll("[data-zoom]").forEach((b) => b.addEventListener("click", () => { const small = b.querySelector("img"), full = new Image(); big.src = small.currentSrc || small.src; big.alt = small.alt; zoomed.showModal(); wanted = b.dataset.zoom; full.src = wanted; full.decode().then(() => { if (zoomed.open && wanted === b.dataset.zoom) big.src = full.src; }).catch(() => {}); }));
+  zoomed.addEventListener("click", () => zoomed.close());
+  // The sidebar shows which guide you're reading.
+  const side = [...document.querySelectorAll("aside nav a")]; const io = new IntersectionObserver((list) => { for (const e of list) if (e.isIntersecting) side.forEach((a) => (a.getAttribute("href") === `#${e.target.id}` ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"))); }, { rootMargin: "-20% 0px -70% 0px" }); guides.forEach((g) => io.observe(g));
+</script>
+<style>
+  .intro { padding-block: clamp(112px, 11vw, 160px) clamp(56px, 6vw, 88px); background: #fff; color: var(--ink); } .intro .inner { padding-inline: var(--gap); } .intro .lead { color: var(--t2); } .intro :global(.art) { -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); } .intro .lead { margin-top: 10px; } .find-big { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); height: 60px; margin-top: 24px; padding-inline: 18px; border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line2), 0 24px 50px -22px color-mix(in srgb, var(--brand) 50%, transparent); } .find-big:focus-within { box-shadow: 0 0 0 2px var(--brand-ink), 0 24px 50px -22px color-mix(in srgb, var(--brand) 50%, transparent); } .find-big input { flex: 1; height: auto; margin: 0; padding: 0; background: none; font-size: 17px; box-shadow: none !important; }
+  /* The whole journey as one coloured line, the same order as the work itself. */
+  /* Links have 10px of hover padding, so their boxes start 10px out and their words share the page's left edge. */
+  .topics { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-block: 12px 36px; margin-inline: -10px; } .topics[hidden] { display: none; } .topics::before { content: ""; position: absolute; left: 22px; right: 16%; top: 21px; height: 2px; background: linear-gradient(90deg, #7da7e6, #fb7185) 100% 0 / 20% 100% no-repeat, linear-gradient(90deg in oklch, #ff9d36, #4fc3d9, #34d399, #eab308, #7da7e6) 0 0 / 80% 100% no-repeat; } .topics a { position: relative; display: grid; align-content: start; justify-items: start; gap: 4px; color: var(--ink); font-size: 14px; line-height: 1.3; } .topics i { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 8px; border-radius: 13px; background: #fff; color: color-mix(in srgb, var(--c) 72%, var(--ink)); box-shadow: inset 0 0 0 2px var(--c), 0 10px 22px -12px var(--c); transition: background-color .2s var(--ease), color .2s var(--ease), transform .3s var(--ease); } .topics a[href="#extraction"] i { color: #a16207; } .topics a:hover i { background: var(--c); color: var(--ink); transform: translateY(-3px); } .topics b { font-weight: 500; font-size: 16px; } .topics a:hover b { color: var(--brand-ink); } .topics span { color: var(--t2); }
+  .docs { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: clamp(24px, 5vw, 72px); align-items: start; padding-block: 16px 96px; }
+  aside { position: sticky; top: 102px; margin-left: -10px; max-height: calc(100svh - 126px); overflow-y: auto; scrollbar-width: thin; }
+  input { width: 100%; height: 44px; padding-inline: 14px; background: var(--soft); border: 0; border-radius: 11px; font-size: 16px; outline: 0; margin-bottom: 10px; } input:focus { box-shadow: 0 0 0 2px var(--brand-ink); } input::placeholder { color: var(--t3); }
+  nav a { display: block; padding: 7px 10px; border-radius: 9px; font-size: 15px; color: var(--t2); transition: background-color .15s var(--ease), color .15s var(--ease); } nav a:hover { background: var(--soft); color: var(--ink); } nav a[aria-current] { background: var(--soft); color: var(--brand-ink); font-weight: 500; } nav a[hidden] { display: none; }
+  article { min-width: 0; } section[data-guide] { padding-block: 28px; border-top: 1px solid var(--line); scroll-margin-top: 80px; } section[data-guide]:first-child { padding-top: 8px; border-top: 0; } section[hidden] { display: none; }
+  section[data-guide] { display: grid; grid-template-columns: minmax(0, 1fr) clamp(280px, 26vw, 340px); gap: 20px clamp(28px, 4vw, 56px); align-items: start; } section[data-guide][hidden] { display: none; }
+  .fig { display: block; width: 100%; padding: 0; overflow: clip; border-radius: 12px; background: var(--soft); box-shadow: 0 0 0 1px var(--line), 0 18px 34px -22px rgb(12 16 28 / .5); cursor: zoom-in; transition: transform .35s var(--ease), box-shadow .35s var(--ease); } .fig img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; } button.fig:hover { transform: translateY(-3px); box-shadow: 0 0 0 1px var(--line), 0 26px 44px -22px rgb(12 16 28 / .6); } .fig.art { cursor: default; box-shadow: none; } .fig.art img { object-position: 50% 50%; }
+  ::highlight(find) { background-color: #fde68a; color: var(--ink); }
+  .zoom { width: min(94vw, 1280px); max-width: none; max-height: none; margin: auto; padding: 0; border: 0; border-radius: 14px; overflow: clip; background: #fff; box-shadow: 0 50px 120px -30px rgb(4 7 16 / .8); cursor: zoom-out; opacity: 1; transform: none; transition: opacity .22s var(--ease), transform .3s var(--ease), overlay .3s allow-discrete, display .3s allow-discrete; } .zoom img { display: block; width: 100%; height: auto; } .zoom::backdrop { background: rgb(4 7 16 / .72); } @starting-style { .zoom[open] { opacity: 0; transform: scale(.96); } }
+  section[data-guide] h2 { font-size: clamp(24px, 2.4vw, 32px); margin-bottom: 12px; }
+  .p { color: var(--t2); font-size: 17px; margin-bottom: 12px; }
+  .steps { counter-reset: s; display: grid; gap: 8px; } .steps li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 6px; color: var(--t2); } .steps li::before { content: counter(s); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: color-mix(in srgb, var(--brand) 14%, #fff); color: var(--brand-ink); font-weight: 500; font-size: 14px; }
+  .more { margin-top: 12px; } .more[hidden] { display: none; } .more summary { cursor: pointer; font-weight: 500; color: var(--brand-ink); width: fit-content; list-style: none; } .more summary::-webkit-details-marker { display: none; } .more summary::after { content: " +"; } .more[open] summary::after { content: " \2212"; } .block { margin-top: 16px; } h3 { font-size: 18px; margin-bottom: 8px; }
+  dl > div { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; padding-block: 10px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.45; } dl > div[hidden] { display: none; } dt { font-weight: 500; } dd { color: var(--t2); }
+  .none { padding-block: 32px 96px; color: var(--t2); font-size: 18px; } .none[hidden] { display: none; }
+  @media (max-width: 760px) { .intro :global(.art) { left: 42%; opacity: .5; -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%); mask-image: linear-gradient(90deg, transparent, #000 40%); } .intro { padding-bottom: 32px; } }
+  @media (max-width: 1100px) { .topics { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 12px; } .topics::before { display: none; } } @media (max-width: 560px) { .topics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 1100px) { section[data-guide] { grid-template-columns: minmax(0, 1fr); } .fig { max-width: 560px; } } @media (max-width: 900px) { .docs { grid-template-columns: minmax(0, 1fr); padding-bottom: 64px; } aside { position: static; max-height: none; } aside nav { display: flex; flex-wrap: wrap; gap: 2px; } dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+</style>
