@@ -956,7 +956,13 @@
       "micronesia": "Micronesia",
       "polynesia": "Polynesia"
     },
-    "filterByTopic": "Only works on {name}"
+    "filterByTopic": "Only works on {name}",
+    "filterByYearRange": "Filter by year range",
+    "enableToggleToCustomize": "Enable the toggle above to customize the year range",
+    "defaultAllYears": "By default, all years are included in your search",
+    "yearRangeLabel": "Year Range:",
+    "searchFieldDefault": "Title, abstract, full text",
+    "searchFieldSemantic": "By meaning"
   },
   "paperCard": {
     "screeningResponses": "Screening responses",

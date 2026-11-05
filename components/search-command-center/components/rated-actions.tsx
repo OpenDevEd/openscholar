@@ -1,0 +1,102 @@
+"use client";
+
+import { useState } from "react";
+import { ArrowUpDown, Compass, RotateCcw, Target, X } from "@/components/icons";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { orderByCloseness } from "@/app/actions/similar";
+import { Button } from "@/components/ui/button";
+import Link from "@/components/workspace-link";
+import { unlessLimited } from "@/lib/openalex/limited";
+import { useSearchOptional } from "@/lib/search";
+import { similarSearchHref } from "@/lib/search/actions";
+import { DISLIKED_RATING, LIKED_RATING, MOST_SEEDS, useLikelyOrder } from "@/lib/search/likely-order";
+import { useSearchSource } from "@/lib/search/use-search-source";
+import { useRatingsStore } from "@/lib/store";
+import { useAppToast } from "@/lib/toast";
+
+const QUIET = "h-8 gap-1.5 rounded-lg px-2 text-muted-foreground hover:text-foreground";
+const shortId = (id: string) => id.split("/").at(-1)!;
+
+/**
+ * What the papers rated so far can do, on our index only: find more like the ones rated well, and put the results most
+ * like them first. They appear once a paper is rated 4 or 5.
+ */
+export function RatedActions() {
+  const search = useSearchOptional();
+  const source = useSearchSource();
+  const toast = useAppToast();
+  const { ratings } = useRatingsStore();
+  const [ordering, setOrdering] = useState(false);
+  const searchId = search?.searchId;
+  const order = useLikelyOrder((state) => (searchId ? state.orders[searchId] : undefined));
+  const setOrder = useLikelyOrder((state) => state.set);
+  if (source !== "openscholar" || !search || !searchId) return null;
+  const papers = search.results as Array<{ id: string; openscholar_id?: string }>;
+  const rated = (keep: (rating: number) => boolean) => papers.filter((paper) => ratings[paper.id] !== undefined && keep(ratings[paper.id]));
+  const liked = rated((rating) => rating >= LIKED_RATING).slice(0, MOST_SEEDS);
+  const disliked = rated((rating) => rating >= 1 && rating <= DISLIKED_RATING).slice(0, MOST_SEEDS);
+  const like = search.params.like;
+  if (!liked.length && !order && !like.length) return null;
+  const madeFrom = JSON.stringify(papers.filter((paper) => ratings[paper.id] !== undefined).map((paper) => [paper.id, ratings[paper.id]]));
+  const changed = order !== undefined && order.ratings !== madeFrom && liked.length > 0;
+
+  const orderNow = async () => {
+    setOrdering(true);
+    search.setPage(1);
+    try {
+      const own = (paper: { id: string; openscholar_id?: string }) => shortId(paper.openscholar_id ?? paper.id);
+      const closest = await unlessLimited(orderByCloseness(papers.map(own), liked.map(own), disliked.map(own)));
+      const byOwn = new Map(papers.map((paper) => [own(paper), paper.id]));
+      const ids = closest.flatMap((id) => byOwn.get(id) ?? []);
+      // Papers not rated yet first, the likeliest first: the rest have had their turn. It stays put while you rate.
+      setOrder(searchId, { ids: [...ids.filter((id) => ratings[id] === undefined), ...ids.filter((id) => ratings[id] !== undefined)], ratings: madeFrom });
+    } catch (error) {
+      console.error("[search] couldn't order the results", error);
+      toast.error("Couldn't order the results");
+    } finally {
+      setOrdering(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {like.length > 0 && (
+        <span className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-inset ps-2.5 pe-1 text-sm text-muted-foreground">
+          <Compass className="h-3.5 w-3.5" />
+          Similar to {like.length === 1 ? "1 paper" : `${like.length} papers`}
+          <TooltipHint label="Clear">
+            <Button type="button" variant="ghost" size="icon" className="size-6 rounded-md" aria-label="Clear" onClick={() => search.updateParams({ like: [], page: 1 })}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipHint>
+        </span>
+      )}
+      {liked.length > 0 && (
+        <Button variant="ghost" size="sm" className={QUIET} asChild>
+          <Link href={similarSearchHref(liked.map((paper) => shortId(paper.id)))}>
+            <Target className="h-3.5 w-3.5" />
+            More like the {liked.length === 1 ? "paper" : `${liked.length} papers`} you rated
+          </Link>
+        </Button>
+      )}
+      {(liked.length > 0 || order) && <Button
+        type="button"
+        variant={order ? "secondary" : "ghost"}
+        size="sm"
+        className={QUIET}
+        aria-pressed={Boolean(order)}
+        disabled={ordering}
+        onClick={order ? () => setOrder(searchId, null) : () => void orderNow()}
+      >
+        <ArrowUpDown className="h-3.5 w-3.5" />
+        Likely relevant first
+      </Button>}
+      {changed && (
+        <Button type="button" variant="ghost" size="sm" className={QUIET} disabled={ordering} onClick={() => void orderNow()}>
+          <RotateCcw className="h-3.5 w-3.5" />
+          Re-sort with your new ratings
+        </Button>
+      )}
+    </div>
+  );
+}

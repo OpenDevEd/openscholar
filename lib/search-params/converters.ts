@@ -8,6 +8,7 @@
  */
 
 import { format, parseISO } from 'date-fns';
+import { SEMANTIC_FIELD } from '../search/source';
 import type { DateRange } from 'react-day-picker';
 import type { SearchResult, SearchFilters, SearchField } from '../types';
 import { MIN_YEAR } from '../constants';
@@ -230,8 +231,10 @@ export function searchResultToParams(result: Partial<SearchResult>): Partial<Par
  * country focus and the review filter add one.
  */
 export function effectiveSort(
-  params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus'>,
+  params: Pick<ParsedSearchParams, 'q' | 'sort' | 'field' | 'review' | 'focus'> & { like?: string[] },
 ): string {
+  // Closeness is the only order a search by meaning has.
+  if (params.field === SEMANTIC_FIELD || params.like?.length) return 'relevance_score:desc';
   const searchesText = params.field === OQL_FIELD
     ? /\b(has|is similar to)\b/i.test(params.q) || params.review || params.focus.length > 0
     : Boolean(params.q.trim());
@@ -264,6 +267,7 @@ export function paramsToFilters(params: ParsedSearchParams): SearchFilters {
     citesItemId: params.cites,
     citedByItemId: params.citedBy,
     relatedToItemId: params.rel,
+    similarTo: params.like,
     
     reviewFilter: params.review,
     researchAreas: params.area,

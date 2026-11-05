@@ -1,5 +1,7 @@
 "use client";
 import { TopicLink } from "@/components/topics/topic-link";
+import { similarSearchHref } from "@/lib/search/actions";
+import { useSearchSource } from "@/lib/search/use-search-source";
 
 import { CitationControl } from "@/components/citation-control";
 
@@ -93,6 +95,8 @@ export function PaperCardListDetail({
   const handleCitesSearch = () => handleFilteredSearch("cites");
   const handleCitedBySearch = () => handleFilteredSearch("citedBy");
   const handleRelatedSearch = () => handleFilteredSearch("related");
+  const ownIndex = useSearchSource() === "openscholar";
+  const handleSimilarSearch = () => router.push(similarSearchHref([result.id.split("/").at(-1)!]));
 
   // Handle paper opened
   const handlePaperOpened = () => {
@@ -434,9 +438,10 @@ export function PaperCardListDetail({
                   <Network className="h-3.5 w-3.5" />
                   <span className="text-xs font-medium">{tc("related")}</span>
                 </div>
-                <div className="text-lg font-bold ink-related">
+                {/* Our index names no related papers on a paper, so a zero there says nothing. */}
+                {!ownIndex && <div className="text-lg font-bold ink-related">
                   {format.number(result.related_works?.length ?? 0)}
-                </div>
+                </div>}
                 <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
             </div>
@@ -491,11 +496,12 @@ export function PaperCardListDetail({
                 onClick={handleCitedBySearch}
               />
               <CitationBadge
-                count={result.related_works?.length ?? 0}
+                count={ownIndex ? undefined : result.related_works?.length ?? 0}
                 label={tc("related")}
                 color="blue"
                 onClick={handleRelatedSearch}
               />
+              {ownIndex && <CitationBadge label="Similar" color="similar" onClick={handleSimilarSearch} />}
             </div>
           </div>
         )}

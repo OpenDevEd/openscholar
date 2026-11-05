@@ -17,8 +17,7 @@ import {
   Building,
   Table,
   AiIcon,
-  TranslateIcon,
-} from "@/components/icons";
+  TranslateIcon, Compass } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { authorValue, useScreening, type FilterValue } from "./hooks";
 import { institutionId, sourceId } from "@/lib/openalex/ids";
@@ -437,9 +436,10 @@ export function CitationBadge({
   onClick,
   compact = false,
 }: {
-  count: number;
+  /** None where a source has no number for it. */
+  count?: number;
   label: string;
-  color: "orange" | "green" | "blue";
+  color: "orange" | "green" | "blue" | "similar";
   onClick?: () => void;
   compact?: boolean;
 }) {
@@ -448,9 +448,10 @@ export function CitationBadge({
     orange: "ink-cites hover:bg-cites/10",
     green: "ink-cited-by hover:bg-cited-by/10",
     blue: "ink-related hover:bg-related/10",
+    similar: "ink-related hover:bg-related/10",
   };
 
-  const Icon = color === "blue" ? Network : Quote;
+  const Icon = color === "similar" ? Compass : color === "blue" ? Network : Quote;
 
   if (compact) {
     return (
@@ -463,7 +464,7 @@ export function CitationBadge({
           )}
         >
           <Icon className="h-3 w-3" />
-          <span>{format.number(count)}</span>
+          {count !== undefined && <span>{format.number(count)}</span>}
         </button>
       </TooltipHint>
     );
@@ -478,7 +479,7 @@ export function CitationBadge({
     >
       <Icon className="h-4 w-4" />
       <span className="text-sm">
-        {label} <span className="font-semibold tabular-nums">{format.number(count)}</span>
+        {label}{count !== undefined && <> <span className="font-semibold tabular-nums">{format.number(count)}</span></>}
       </span>
     </Button>
   );

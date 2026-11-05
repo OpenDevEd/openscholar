@@ -331,6 +331,10 @@ export function createSearchParameters(
     search?: string;
     filter?: Record<string, unknown>;
     sortBy?: SortByWork;
+    /** A question asked by meaning, on our index. */
+    semantic?: string;
+    /** The papers whose closest works by meaning are asked for, on our index. */
+    similar?: string;
   }
 
   const searchParams: OpenAlexSearchParams = {
@@ -343,7 +347,10 @@ export function createSearchParameters(
 
   // Handle search based on field type. A blank query lists every work.
   const query = rawQuery.trim();
-  if (query) {
+  if (filters.similarTo?.length) searchParams.similar = filters.similarTo.join('|');
+  if (filters.searchField === 'semantic') {
+    if (query) searchParams.semantic = query;
+  } else if (query) {
     // Map search fields to SDK filter format
     const searchFilterMap = {
       'title_and_abstract': 'title_and_abstract',
@@ -480,8 +487,10 @@ export function createSearchParameters(
     searchParams.filter = apiFilters;
   }
 
-  // Add sorting
-  if (filters.sortBy) {
+  // Add sorting. Closeness is the only order a search by meaning has.
+  if (searchParams.semantic || searchParams.similar) {
+    searchParams.sortBy = { field: 'relevance_score' as SortByWork['field'], order: 'desc' };
+  } else if (filters.sortBy) {
     const [field, order] = filters.sortBy.split(':');
     searchParams.sortBy = {
       field: field as SortByWork['field'],

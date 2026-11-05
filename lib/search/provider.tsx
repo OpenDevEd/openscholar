@@ -25,7 +25,7 @@ import { buildShareableUrl, effectiveSort } from '../search-params';
 import { sanitizeSelection } from '../search-params/sanitize';
 import type { SearchWithFiltersParams } from '../search-utils';
 import { getSearchResultsWithFilters } from './search-results';
-import type { SearchSource } from './source';
+import { OWN_ONLY_FIELDS, type SearchSource } from './source';
 import { useSearchSource } from './use-search-source';
 import { SearchError, rejectedQuery } from './search-error';
 import { OQL_FIELD } from '../openalex/oql';
@@ -126,6 +126,12 @@ function cloneSearchParams(params: SearchParams): SearchParams {
 /**
  * SearchProvider - Wrap your results pages with this
  */
+/** ponytail: mock only. What saved searches don't hold yet stays in the address, over the saved search. */
+const addressOnly = (address: { field: string; like: string[] }) => ({
+  ...(OWN_ONLY_FIELDS.includes(address.field) ? { field: address.field } : {}),
+  like: address.like,
+});
+
 export function SearchProvider({ children, local }: SearchProviderProps) {
   const toast = useAppToast();
   const tValidation = useTranslations("validation");
@@ -145,7 +151,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     (state) => state.searchHistory.find((entry) => entry.id === searchId),
   );
   const storedQuery = storedSearch?.query ?? '';
-  const savedParams = useMemo(() => account && storedSearch ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(storedSearch), q: storedQuery } : null, [account, storedSearch, storedQuery]);
+  const savedParams = useMemo(() => account && storedSearch ? { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(storedSearch), q: storedQuery, ...addressOnly(routeUrlParams) } : null, [account, storedSearch, storedQuery, routeUrlParams.field, routeUrlParams.like]);
   const routeIsOql = (savedParams ?? routeUrlParams).field === OQL_FIELD;
   const routeSearchParams = useMemo(
     () => savedParams ?? (routeIsOql ? { ...routeUrlParams, q: storedQuery } : routeUrlParams),
@@ -260,6 +266,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       cites: urlParams.cites,
       citedBy: urlParams.citedBy,
       rel: urlParams.rel,
+      like: urlParams.like,
       review: urlParams.review,
       area: urlParams.area,
       sdg: urlParams.sdg,
@@ -304,6 +311,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     urlParams.cites,
     urlParams.citedBy,
     urlParams.rel,
+    urlParams.like,
     urlParams.review,
     urlParams.area,
     urlParams.sdg,
@@ -409,6 +417,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       citesItemId: params.cites || '',
       citedByItemId: params.citedBy || '',
       relatedToItemId: params.rel || '',
+      similarTo: params.like ?? [],
       reviewFilter: params.review || false,
       researchAreas: params.area,
       sdgs: params.sdg,
@@ -772,6 +781,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       cites: '',
       citedBy: '',
       rel: '',
+      like: [],
       review: false,
       area: [],
       sdg: [],
@@ -896,6 +906,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // A rejected query ran nothing, so the last search's results are not shown as its own.
     results: (rejected ? [] : data?.results?.results || []) as PaperResult[],
     totalCount: rejected ? 0 : data?.results?.meta?.count || 0,
+    searchedCount: rejected ? null : (data?.results?.meta as { searched_count?: number } | undefined)?.searched_count ?? null,
     apiUrl: data?.results?.meta?.url || '',
     oql,
     originalQuery: data?.originalQuery || '',

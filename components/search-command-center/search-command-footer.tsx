@@ -2,6 +2,7 @@
 "use no memo"; // try/finally in handlers
 
 import { useSearchAccess } from "@/lib/research/reads";
+import { RatedActions } from "./components/rated-actions";
 import React, { useState } from "react";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
@@ -241,14 +242,17 @@ Return a more targeted version of this query.`;
       )}
     >
       {/* Left: Results count */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
           <AnimatedCount
             value={totalCount}
             className="text-lg font-semibold text-foreground"
           />
-          <span className="text-muted-foreground">{t("common.results").toLowerCase()}</span>
+          <span className="text-muted-foreground">
+            {search?.searchedCount ? `closest of ${format.number(search.searchedCount)}` : t("common.results").toLowerCase()}
+          </span>
         </div>
+        <RatedActions />
       </div>
 
       {/* On a phone the strip spans the card, its buttons spread across it, so none falls off its edge; below 360px it drops its dividers and the toggle's chevron to fit. */}

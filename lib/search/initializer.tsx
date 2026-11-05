@@ -112,7 +112,9 @@ export function SearchInitializer({ children, onMade }: SearchInitializerProps) 
       ...(question ? { questionHistory: [{ question, timestamp: new Date().toISOString() }] } : {}),
     });
     onMade?.(newId);
-    router.replace(buildResultsUrl(newId, searchResultToParams({ ...entry, id: newId } as SearchResult)));
+    // A search's "similar to" papers aren't saved in the mock: they stay in the address.
+    const like = new URLSearchParams(window.location.search).get('like')?.split(',').filter(Boolean) ?? [];
+    router.replace(buildResultsUrl(newId, { ...searchResultToParams({ ...entry, id: newId } as SearchResult), like }));
     return newId;
   }, [addSearchResult, onMade, router]);
 

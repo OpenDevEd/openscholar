@@ -46,6 +46,7 @@ import { useAppToast } from "@/lib/toast";
 import { useTranslations } from "next-intl";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
 import { AiOverview } from "@/components/ai-overview/overview-card";
+import { inLikelyOrder, useLikelyOrder } from "@/lib/search/likely-order";
 import { useCitedFocus } from "@/components/ai-overview/focus";
 
 interface PapersListProps {
@@ -344,7 +345,8 @@ export function ResultsList({
   const urlQuery = search.params.q;
 
   // Filter results based on rating filter
-  const filteredResults = results.filter((result) => {
+  const likelyOrder = useLikelyOrder((state) => (searchId ? state.orders[searchId]?.ids : undefined));
+  const filteredResults = inLikelyOrder(results.filter((result) => {
     // Rating filter
     if (!preview && isRatingFilterActive(ratingRange, onlyRatedPapers)) {
       const paperRating = ratings[result.id];
@@ -359,7 +361,7 @@ export function ResultsList({
     }
 
     return true;
-  });
+  }), likelyOrder);
 
   const totalPages = useMemo(
     () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),
@@ -546,7 +548,8 @@ export function ResultsList({
           />
         </div>
 
-        {!preview && searchId && results.length > 0 ? <AiOverview searchId={searchId} total={totalCount} /> : null}
+        {/* ponytail: mock only. An overview reads the saved search, which doesn't hold these two kinds of search yet. */}
+        {!preview && searchId && results.length > 0 && search.params.field !== "semantic" && !search.params.like.length ? <AiOverview searchId={searchId} total={totalCount} /> : null}
 
         {/* Inline alert for batch-screening errors. Sits above the
             results area so the user sees it whether the screening panel
