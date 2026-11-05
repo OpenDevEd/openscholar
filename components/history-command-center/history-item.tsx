@@ -47,7 +47,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
   const [isHistoryWanted, setIsHistoryWanted] = useState(false);
   const history = useSearchHistoryEntries(item, "query", isQueryHistoryOpen || isHistoryWanted);
   const removeSearchResult = useSearchHistoryStore((state) => state.removeSearchResult);
-  const queryText = useFullText<HTMLButtonElement>(`${viewMode}|${item.query}`);
+  const queryText = useFullText<HTMLSpanElement>(`${viewMode}|${item.query}`);
 
   const handleCopy = async () => {
     try {
@@ -93,8 +93,11 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
 
   // The query, cut to `clamp` until it is asked for in full.
   const open = (clamp: string, shape?: string) => (
-    <button ref={queryText.ref} type="button" className={cn(ENTRY_OPEN, shape, !queryText.expanded && clamp)} onClick={openSearch}>
-      <QueryText query={item.query} oql={item.field === OQL_FIELD} />
+    <button type="button" className={cn(ENTRY_OPEN, shape)} onClick={openSearch}>
+      {/* The cut goes on the text: Safari doesn't cut a button's own lines. */}
+      <span ref={queryText.ref} className={cn("block min-w-0", !queryText.expanded && clamp)}>
+        <QueryText query={item.query} oql={item.field === OQL_FIELD} />
+      </span>
     </button>
   );
 
