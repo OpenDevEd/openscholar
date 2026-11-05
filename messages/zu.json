@@ -1225,7 +1225,7 @@
     "updated": "Kubuyekezwe {timeAgo}",
     "noMatches": "Akukho okuhambisanayo nezihlungi zamanje",
     "clearFilters": "Sula izihlungi",
-    "progressOfPapers": "{processed} kwa-{total} amaphepha",
+    "progressOfPapers": "{processed} kwa-{total, plural, one {# iphepha} other {# amaphepha}}",
     "loadingExtractionResults": "Iyalayisha imiphumela yokukhishwa..."
   },
   "reportBuilder": {
