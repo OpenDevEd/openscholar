@@ -297,6 +297,8 @@ export function QuestionStage() {
       ref={stage}
       id="question-stage"
       data-earth-config={earthConfig}
+      // earth.js marks the level it chose here before React takes the page over.
+      suppressHydrationWarning
       className={styles.stage}
       style={variables} data-handover={handedOver ? "" : undefined} aria-busy="true">
       <div className={styles.scene}>

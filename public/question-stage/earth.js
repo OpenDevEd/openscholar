@@ -134,8 +134,9 @@ void main(){
    * screen, which has to draw straight to the canvas on the page.
    */
   var prepared = null;
-  function prepare(canvas, smallMaps) {
-    if (prepared && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
+  function prepare(canvas, smallMaps, base) {
+    base = base || DIR;
+    if (prepared && prepared.base === base && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
     // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can
     // reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas.
     var gl = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", OPTIONS);
@@ -174,12 +175,12 @@ void main(){
     if (!program(false) && !program(true)) return null;
     var aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     var self = {
-      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false, program: program,
+      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false, program: program, base: base,
     };
     self.textures = Promise.all(IMAGES.map(function (name, i) {
       var image = new Image();
       // A device starting low gets the smaller day map: it decodes in about a third of the time.
-      image.src = DIR + name + (smallMaps && name === "day" ? "-2048" : "") + ".avif";
+      image.src = base + name + (smallMaps && name === "day" ? "-2048" : "") + ".avif";
       return image.decode().then(function () {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
@@ -200,12 +201,13 @@ void main(){
    * The ring's spark of light. A lap takes four seconds, much quicker than on the hero: here it says work is going on. It
    * swings round the far ends of the ring and hurries across the front, as an orbit does.
    */
-  function spark(stage, layout) {
+  function spark(stage, layout, lapMs) {
+    lapMs = lapMs || 4000;
     var front = stage.querySelector("[data-spark=front]"), back = stage.querySelector("[data-spark=back]");
     if (!front || !back) return function () {};
     var c = Math.cos(layout.tilt), s = Math.sin(layout.tilt), shown = null;
     return function (elapsed) {
-      var lap = (elapsed / 4000) % 1;
+      var lap = (elapsed / lapMs) % 1;
       var k = (lap + 0.07 * Math.sin(lap * 2 * Math.PI) + 1) % 1;
       // Left to right across the front, then back again behind the planet.
       var angle = k < 0.5 ? Math.PI - k * 2 * Math.PI : -(k - 0.5) * 2 * Math.PI;
@@ -238,61 +240,90 @@ void main(){
   }
 
   /**
-   * Starts the planet. `turn` is where the hero had got to and when, so that it carries on as if nothing had happened;
-   * without one it starts from the still's place, at rest. `ready` runs once its first frame is drawn, or it can't be.
+   * The planet's drawing, on its own: a canvas at a quality level, drawn one frame at a time from the values given. The
+   * stage below and the marketing hero (marketing/src/components/HomeHero.astro) both use it, so the two are the same
+   * planet. `base` is where the four maps are served from.
    */
-  function start(o) {
-    var canvas = o.canvas, layout = o.layout, turn = o.turn;
-    var none = { wave: function () {}, sunBehind: function () {}, stop: function () {}, level: 0 };
+  function renderer(o) {
+    var canvas = o.canvas, layout = o.layout, width = o.width, height = o.height;
     var level = Math.max(1, Math.min(TOP, o.level));
-    var ready = prepare(canvas, level <= 2);
-    if (!ready) { o.ready(false); return none; }
+    var ready = prepare(canvas, level <= 2, o.base);
+    if (!ready) return null;
     var gl = ready.gl;
     var buffer = ready.offscreen ? gl.canvas : canvas;
     var shown = ready.offscreen ? canvas.getContext("2d") : null;
-    var spec, current, d, frameNo = 0, lastDrawn = 0;
-
-    // Sets the drawing up for a level: its shader, its resolution (the width comes from the caller, as the stage may be
-    // hidden still) and how often it draws.
+    var spec, current, d;
+    // Sets the drawing up for a level and a size: its shader, its resolution and how often it draws.
     var apply = function () {
       spec = LEVELS[level];
       current = ready.program(spec.lite) || ready.program(!spec.lite);
       gl.useProgram(current.program);
       d = Math.min(devicePixelRatio || 1, spec.scale);
-      canvas.width = buffer.width = Math.round(o.width * d);
-      canvas.height = buffer.height = Math.round(o.height * d);
+      canvas.width = buffer.width = Math.round(width * d);
+      canvas.height = buffer.height = Math.round(height * d);
       gl.viewport(0, 0, canvas.width, canvas.height);
       var g = layout.R * 1.55;
       gl.enable(gl.SCISSOR_TEST);
       gl.scissor(Math.max(0, (layout.cx - g) * d), Math.max(0, canvas.height - (layout.cy + g) * d), g * 2 * d, g * 2 * d);
     };
     apply();
+    return {
+      textures: ready.textures,
+      get loaded() { return ready.loaded; },
+      get level() { return level; },
+      /** How many display frames apart this level draws. */
+      get every() { return spec.every; },
+      setLevel: function (next) { level = Math.max(1, Math.min(TOP, next)); apply(); },
+      resize: function (w, h, l) { width = w; height = h; layout = l; apply(); },
+      /** One frame: `t` the turn, `sun` a unit vector, `shadow` the ring's shadow on it, `wave` 0 to 1 or 0, `lift` px. */
+      draw: function (u) {
+        var U = current.U;
+        gl.useProgram(current.program);
+        gl.uniform2f(U.c, layout.cx * d, canvas.height - (layout.cy + (u.lift || 0)) * d);
+        gl.uniform1f(U.r, layout.R * d);
+        gl.uniform1f(U.t, u.t);
+        gl.uniform1f(U.sd, u.shadow);
+        gl.uniform3f(U.L, u.sun[0], u.sun[1], u.sun[2]);
+        gl.uniform3f(U.rg, layout.rx / layout.R, layout.ry / layout.R, layout.tilt);
+        gl.uniform1f(U.wv, u.wave || 0);
+        gl.uniform1f(U.fd, (layout.narrow ? 56 : 96) * d);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (shown) {
+          shown.clearRect(0, 0, canvas.width, canvas.height);
+          shown.drawImage(buffer, 0, 0);
+        }
+      },
+    };
+  }
+
+  /**
+   * Starts the planet. `turn` is where the hero had got to and when, so that it carries on as if nothing had happened;
+   * without one it starts from the still's place, at rest. `ready` runs once its first frame is drawn, or it can't be.
+   */
+  function start(o) {
+    var canvas = o.canvas, layout = o.layout, turn = o.turn;
+    var none = { wave: function () {}, sunBehind: function () {}, stop: function () {}, level: 0 };
+    var planet = renderer({ canvas: canvas, layout: layout, width: o.width, height: o.height, level: o.level });
+    if (!planet) { o.ready(false); return none; }
+    var level = planet.level, frameNo = 0, lastDrawn = 0;
 
     var raf = 0, stopped = false, waveAt = -1e9, liveAt = 0, sunAt = 0, sunMs = 1, last = 0;
     var phase = turn ? turn.t : PHASE_STILL;
     var speed = turn ? 1 : 0;
 
     var draw = function (now) {
-      var U = current.U;
       var w = (now - waveAt) / 1800;
       var swing = sunAt ? smooth(clamp01((now - sunAt) / sunMs)) : 0;
-      var from = unit(SUN_UP), sun = unit([from[0] + (SUN_BEHIND[0] - from[0]) * swing, from[1] + (SUN_BEHIND[1] - from[1]) * swing, from[2] + (SUN_BEHIND[2] - from[2]) * swing]);
-      gl.uniform2f(U.c, layout.cx * d, canvas.height - layout.cy * d);
-      gl.uniform1f(U.r, layout.R * d);
-      gl.uniform1f(U.t, phase);
-      // The still has no ring shadow on the planet, so coming from it, it comes in gently.
-      gl.uniform1f(U.sd, turn || !liveAt ? (turn ? 1 : 0) : clamp01((now - liveAt) / 900));
-      gl.uniform3f(U.L, sun[0], sun[1], sun[2]);
-      gl.uniform3f(U.rg, layout.rx / layout.R, layout.ry / layout.R, layout.tilt);
-      gl.uniform1f(U.wv, w > 0 && w < 1 ? w : 0);
-      gl.uniform1f(U.fd, (layout.narrow ? 56 : 96) * d);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      if (shown) {
-        shown.clearRect(0, 0, canvas.width, canvas.height);
-        shown.drawImage(buffer, 0, 0);
-      }
+      var from = unit(SUN_UP);
+      planet.draw({
+        t: phase,
+        sun: unit([from[0] + (SUN_BEHIND[0] - from[0]) * swing, from[1] + (SUN_BEHIND[1] - from[1]) * swing, from[2] + (SUN_BEHIND[2] - from[2]) * swing]),
+        // The still has no ring shadow on the planet, so coming from it, it comes in gently.
+        shadow: turn || !liveAt ? (turn ? 1 : 0) : clamp01((now - liveAt) / 900),
+        wave: w > 0 && w < 1 ? w : 0,
+      });
     };
 
     var comet = spark(o.stage, layout);
@@ -302,7 +333,7 @@ void main(){
       console.info("[earth] level", level, "to", next);
       if (next === 0) { level = 0; o.onLevel(0); return; }
       level = next;
-      apply();
+      planet.setLevel(level);
       o.onLevel(level);
     });
     var loop = function (now) {
@@ -318,7 +349,7 @@ void main(){
       comet(now - liveAt);
       // At most 60 planet frames a second, even on a 120 Hz screen: a slow turn looks the same, for half the work. Stripe's
       // globe draws every other frame for the same reason.
-      if (level === 0 || now - lastDrawn < 1000 / 60 - 2 || frameNo++ % spec.every) return;
+      if (level === 0 || now - lastDrawn < 1000 / 60 - 2 || frameNo++ % planet.every) return;
       lastDrawn = now;
       draw(now);
     };
@@ -338,8 +369,8 @@ void main(){
       if (!o.calm) raf = requestAnimationFrame(loop);
     };
     // Ready already, it draws now, before the browser paints the stage for the first time.
-    if (ready.loaded) go();
-    else ready.textures.then(go, function (error) {
+    if (planet.loaded) go();
+    else planet.textures.then(go, function (error) {
       console.error("[earth] images:", error);
       o.ready(false);
     });
@@ -423,11 +454,11 @@ void main(){
     try { boot(stage); } catch (error) { console.error("[earth] couldn't start:", error); }
     return true;
   };
-  if (!find()) {
+  if (document.documentElement.dataset.questionStage !== undefined && !find()) {
     var watching = new MutationObserver(function () { if (find()) watching.disconnect(); });
     watching.observe(document.documentElement, { childList: true, subtree: true });
     setTimeout(function () { watching.disconnect(); }, 20000);
   }
 
-  window.questionStageEarth = { boot: boot };
+  window.questionStageEarth = { boot: boot, renderer: renderer, monitor: monitor, spark: spark, startLevel: startLevel, memory: MEMORY, sunUp: SUN_UP };
 })();
