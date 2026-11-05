@@ -5,6 +5,7 @@
  * These are the only places that write to the history store.
  */
 
+import { bareWork } from '../openalex/ids';
 import { useSearchHistoryStore } from '../store';
 import type { SearchFilters, SearchField, SearchResult, QuestionHistoryEntry } from '../types';
 import { searchResultToParams } from '../search-params/converters';
@@ -97,9 +98,9 @@ export function createCitationSearch(
     filterType: 'year' as const,
     selectedRegions: [] as string[],
     selectedCountryFocus: [] as string[],
-    citesItemId: type === 'cites' ? paperId : '',
-    citedByItemId: type === 'citedBy' ? paperId : '',
-    relatedToItemId: type === 'related' ? paperId : '',
+    citesItemId: type === 'cites' ? bareWork(paperId) : '',
+    citedByItemId: type === 'citedBy' ? bareWork(paperId) : '',
+    relatedToItemId: type === 'related' ? bareWork(paperId) : '',
     reviewFilter: false,
   };
   

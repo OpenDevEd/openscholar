@@ -1337,7 +1337,7 @@
   },
   "workId": {
     "workIdLabel": "معرّف العمل",
-    "placeholder": "مثال: W2741809807 أو https://openalex.org/W2741809807",
+    "placeholder": "مثال: W2741809807",
     "applyFilter": "تطبيق عامل التصفية",
     "descriptionCites": "أدخل معرّف عمل من {source} للعثور على الأوراق التي تستشهد بهذا العمل",
     "descriptionCitedBy": "أدخل معرّف عمل من {source} للعثور على الأوراق التي استشهد بها هذا العمل",

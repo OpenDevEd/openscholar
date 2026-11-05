@@ -1337,7 +1337,7 @@
   },
   "workId": {
     "workIdLabel": "ID do trabalho",
-    "placeholder": "p. ex., W2741809807 ou https://openalex.org/W2741809807",
+    "placeholder": "p. ex., W2741809807",
     "applyFilter": "Aplicar filtro",
     "descriptionCites": "Introduza um ID de trabalho da {source} para encontrar artigos que citam esse trabalho",
     "descriptionCitedBy": "Introduza um ID de trabalho da {source} para encontrar artigos citados por esse trabalho",

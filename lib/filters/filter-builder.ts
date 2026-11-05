@@ -24,6 +24,7 @@ import {
   FilterSectionType,
 } from "./filter-types";
 import { SECTION_TITLES, FILTER_ICONS, SORT_OPTIONS } from "./filter-config";
+import { bareWork } from "@/lib/openalex/ids";
 import { INSTITUTION_TYPES, SDGS, STUDY_DESIGNS, WORK_TYPES } from "@/lib/openalex/vocabulary";
 
 /** Translation function for filter strings (from useTranslations("searchFilters")) */
@@ -444,7 +445,7 @@ export function buildFilterData(
       createFilterItem(
         "cites",
         "cites",
-        params.citesItemId!,
+        bareWork(params.citesItemId!),
         t ? t("filterCites") : "Cites"
       )
     );
@@ -454,7 +455,7 @@ export function buildFilterData(
       createFilterItem(
         "citedBy",
         "citedBy",
-        params.citedByItemId!,
+        bareWork(params.citedByItemId!),
         t ? t("filterCitedBy") : "Cited by"
       )
     );
@@ -464,7 +465,7 @@ export function buildFilterData(
       createFilterItem(
         "relatedTo",
         "relatedTo",
-        params.relatedToItemId!,
+        bareWork(params.relatedToItemId!),
         t ? t("filterRelatedTo") : "Related to"
       )
     );

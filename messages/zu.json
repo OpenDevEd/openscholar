@@ -1336,7 +1336,7 @@
   },
   "workId": {
     "workIdLabel": "I-ID yomsebenzi",
-    "placeholder": "isibonelo: W2741809807 noma https://openalex.org/W2741809807",
+    "placeholder": "isibonelo: W2741809807",
     "applyFilter": "Faka isihlungi",
     "descriptionCites": "Faka i-ID yomsebenzi we-{source} ukuze uthole amaphepha abhalisa lowo msebenzi",
     "descriptionCitedBy": "Faka i-ID yomsebenzi we-{source} ukuze uthole amaphepha abhalisiwe ngulowo msebenzi",

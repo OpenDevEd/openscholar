@@ -9,6 +9,7 @@ import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
 import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
+import { bareWork, workId } from "@/lib/openalex/ids";
 import { isOwnId, SEARCH_SOURCE_NAMES } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
@@ -77,7 +78,7 @@ export function WorkIdFilter({
   const Icon = icon || typeConfig.icon;
   
   // Get the appropriate store values and methods based on type
-  const itemId: string = typeConfig.itemId;
+  const itemId: string = bareWork(typeConfig.itemId);
   const isActive = typeConfig.isActive;
   
   const setItemId = (id: string) => {
@@ -100,27 +101,15 @@ export function WorkIdFilter({
       return;
     }
     
-    // Clean and validate the input
-    const cleanId = inputValue.trim();
-    let validatedId = cleanId;
-    
-    // If it's a full URL, extract the ID
-    if (cleanId.startsWith('https://openalex.org/')) {
-      validatedId = cleanId.replace('https://openalex.org/', '');
-    }
-    
-    // Validate the ID format (should start with 'W' for works)
-    if (cleanId.startsWith('https://openscholar.ai/')) {
-      validatedId = cleanId.replace('https://openscholar.ai/', '');
-    }
-    if (!validatedId.match(/^(?:W|OS)\d+$/)) {
+    // A pasted address becomes the ID it names.
+    const id = workId(inputValue);
+    if (!id) {
       toast.validation.failed(t("workIdFormatHint"));
       return;
     }
-    
-    // Update the filter in the store
-    setItemId(validatedId);
-    
+
+    setInputValue(id);
+    setItemId(id);
   };
   
   const handleClearFilter = () => {
@@ -202,7 +191,7 @@ export function WorkIdFilter({
              <Icon className={cn("h-3 w-3 flex-shrink-0", colors.icon)} />
              <span className="flex-shrink-0">{currentConfig.statusText}</span>
              {source === "openalex" && !isOwnId(itemId) && <a
-               href={itemId.startsWith('https://') ? itemId : `https://openalex.org/${itemId}`}
+               href={`https://openalex.org/${itemId}`}
                target="_blank"
                rel="noopener noreferrer"
                className={cn("ms-auto flex-shrink-0 hover:opacity-80", colors.link)}
@@ -215,7 +204,7 @@ export function WorkIdFilter({
                "block w-full px-1 py-0.5 rounded text-xs break-all word-break-all",
                colors.code
              )}>
-               {itemId.startsWith('https://openalex.org/') ? itemId.replace('https://openalex.org/', '') : itemId}
+               {itemId}
              </code>
            </div>
          </div>

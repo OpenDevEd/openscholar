@@ -546,7 +546,7 @@ export default function AuthorPage({
                           target="_blank"
                           rel="noreferrer"
                         >
-                          openalex.org/{draft.match.id}
+                          {draft.match.id}
                           <ArrowUpRight className="size-3" />
                         </a>
                         )}

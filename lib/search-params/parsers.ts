@@ -18,7 +18,7 @@ import { MIN_YEAR } from '../constants';
 import { SEARCH_FIELDS } from '../types/search.types';
 import { encodeRegions, decodeRegions } from './regions';
 import { authorFilterValue } from '../openalex/author-filter';
-import { institutionId, sourceId } from '../openalex/ids';
+import { institutionId, sourceId, workId } from '../openalex/ids';
 
 /**
  * Custom parser for region arrays with smart encoding
@@ -74,6 +74,7 @@ const parseAsSearchDate = createParser({ parse: searchDate, serialize: String })
 const parseAsAuthor = createParser({ parse: authorFilterValue, serialize: String });
 const parseAsSource = createParser({ parse: (value) => sourceId(value) ?? null, serialize: String });
 const parseAsInstitution = createParser({ parse: (value) => institutionId(value) ?? null, serialize: String });
+const parseAsWork = createParser({ parse: (value) => workId(value) ?? null, serialize: String });
 
 export const searchParamsParsers = {
   // Core search
@@ -103,9 +104,9 @@ export const searchParamsParsers = {
   focus: parseAsRegions.withDefault([]),
   
   // Reference filters
-  cites: parseAsString.withDefault(''),
-  citedBy: parseAsString.withDefault(''),
-  rel: parseAsString.withDefault(''), // relatedTo
+  cites: parseAsWork.withDefault(''),
+  citedBy: parseAsWork.withDefault(''),
+  rel: parseAsWork.withDefault(''), // relatedTo
   
   // Content filters
   review: parseAsBoolean.withDefault(false),
@@ -238,9 +239,9 @@ export function parseSearchParamsFromUrl(
     rated: searchParams.get('rated') === 'true',
     reg: searchParams.has('reg') ? decodeRegions(searchParams.get('reg') || '') : [],
     focus: searchParams.has('focus') ? decodeRegions(searchParams.get('focus') || '') : [],
-    cites: searchParams.get('cites') ?? DEFAULT_SEARCH_PARAMS.cites,
-    citedBy: searchParams.get('citedBy') ?? DEFAULT_SEARCH_PARAMS.citedBy,
-    rel: searchParams.get('rel') ?? DEFAULT_SEARCH_PARAMS.rel,
+    cites: workId(searchParams.get('cites') ?? '') ?? DEFAULT_SEARCH_PARAMS.cites,
+    citedBy: workId(searchParams.get('citedBy') ?? '') ?? DEFAULT_SEARCH_PARAMS.citedBy,
+    rel: workId(searchParams.get('rel') ?? '') ?? DEFAULT_SEARCH_PARAMS.rel,
     review: searchParams.get('review') === 'true',
     area: parseListParam(searchParams, 'area'),
     sdg: parseListParam(searchParams, 'sdg'),

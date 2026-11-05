@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
 import { searchFields, type SavedSearch } from "./research/records";
 import { authorMetadata } from "./library/paper-metadata";
-import { openalexAddress, openalexWorkOfRow } from "./papers/paper-ref";
+import { openalexWorkOfRow } from "./papers/paper-ref";
 
 type Cell = string | number | boolean | string[];
 type Row = Record<string, Cell>;
@@ -45,7 +45,7 @@ function libraryRow(item: Doc<"libraryItems">) {
     pdfUrl: item.pdfUrl ?? "",
     workType: item.workType ?? "",
     metadataRecoveredAt: item.metadataRecoveredAt === undefined ? "" : new Date(item.metadataRecoveredAt).toISOString(),
-    openalexId: openalexAddress(openalexWorkOfRow(item)) ?? "",
+    openalexId: openalexWorkOfRow(item) ?? "",
     paper: item.paperKey,
     publicationYear: item.publicationYear ?? "",
     rating: item.rating ?? "",

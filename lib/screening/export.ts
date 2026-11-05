@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { SearchSnapshot } from "@/convex/paperSets/openalex";
 import { sourceMetadata, type PaperSourceMetadata } from "@/lib/library/paper-metadata";
-import { openalexAddress, openalexWorkOf, type CrossRefs } from "../papers/paper-ref";
+import { openalexWorkOf, type CrossRefs } from "../papers/paper-ref";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -120,7 +120,7 @@ function screeningCells(questions: Questions, result: ScreeningExportResult): Ar
     result.publicationYear?.toString() ?? '',
     result.doi ?? '',
     result.paper,
-    openalexAddress(openalexWorkOf(result.paper, result.crossRefs)) ?? '',
+    openalexWorkOf(result.paper, result.crossRefs) ?? '',
     ...questions.map((q) => formatScreeningAnswer(result.answers?.[q.key])),
     result.score ?? '',
     result.stars ?? '',
@@ -160,7 +160,7 @@ export const screeningItems = (questions: Questions, job: Run) => {
   json: (result: ScreeningExportResult, index: number) =>
     `${index === 0 ? '' : ','}\n    ${indented(JSON.stringify({
       paper: result.paper,
-      openalexId: openalexAddress(openalexWorkOf(result.paper, result.crossRefs)),
+      openalexId: openalexWorkOf(result.paper, result.crossRefs),
       title: result.title,
       ...sourceMetadata(result),
       venue: result.venue ?? null,
