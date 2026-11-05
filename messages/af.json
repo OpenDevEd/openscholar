@@ -38,7 +38,7 @@
     "signInCreditsDescription": "Meld aan om krediete vir KI direk vanaf Openscholar te gebruik",
     "highlightSearchTerms": "Merk soekterme uit",
     "signOut": "Meld af",
-    "resultWord": "{count, plural, one {resultaat} other {resultate}}",
+    "resultWord": "{count, plural, =1 {resultaat} other {resultate}}",
     "results": "Resultate",
     "filters": "Filters",
     "previous": "Vorige",
@@ -1215,7 +1215,7 @@
   },
   "jobStatus": {
     "restart": "Herbegin",
-    "papersCount": "{count, plural, one {# artikel} other {# artikels}}",
+    "papersCount": "{count, plural, =1 {# artikel} other {# artikels}}",
     "questionsCount": "{count, plural, one {# vraag} other {# vrae}}",
     "statusPending": "Hangende",
     "statusDownloadingPdfs": "Verwerk artikels",
@@ -1226,7 +1226,7 @@
     "updated": "Opgedateer {timeAgo}",
     "noMatches": "Geen passings vir die huidige filters nie",
     "clearFilters": "Maak filters leeg",
-    "progressOfPapers": "{processed} van {total, plural, one {# artikel} other {# artikels}}",
+    "progressOfPapers": "{processed} van {total, plural, =1 {# artikel} other {# artikels}}",
     "loadingExtractionResults": "Laai ekstraksieresultate..."
   },
   "reportBuilder": {

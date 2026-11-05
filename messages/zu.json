@@ -38,7 +38,7 @@
     "signInCreditsDescription": "Ngena ukuze usebenzise amakhredithi we-AI ngqo kusuka ku-Openscholar",
     "highlightSearchTerms": "Gqamisa amagama okusesha",
     "signOut": "Phuma",
-    "resultWord": "{count, plural, one {umphumela} other {imiphumela}}",
+    "resultWord": "{count, plural, =1 {umphumela} other {imiphumela}}",
     "results": "Imiphumela",
     "filters": "Izihlungi",
     "previous": "Okwangaphambili",
@@ -1214,7 +1214,7 @@
   },
   "jobStatus": {
     "restart": "Qala kabusha",
-    "papersCount": "{count, plural, one {# iphepha} other {# amaphepha}}",
+    "papersCount": "{count, plural, =1 {# iphepha} other {# amaphepha}}",
     "questionsCount": "{count, plural, one {# umbuzo} other {# imibuzo}}",
     "statusPending": "Ilindile",
     "statusDownloadingPdfs": "Icubungula amaphepha",
@@ -1225,7 +1225,7 @@
     "updated": "Kubuyekezwe {timeAgo}",
     "noMatches": "Akukho okuhambisanayo nezihlungi zamanje",
     "clearFilters": "Sula izihlungi",
-    "progressOfPapers": "{processed} kwa-{total, plural, one {# iphepha} other {# amaphepha}}",
+    "progressOfPapers": "{processed} kwa-{total, plural, =1 {# iphepha} other {# amaphepha}}",
     "loadingExtractionResults": "Iyalayisha imiphumela yokukhishwa..."
   },
   "reportBuilder": {

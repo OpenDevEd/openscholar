@@ -38,7 +38,7 @@
     "signInCreditsDescription": "Melden Sie sich an, um Credits für KI direkt in Openscholar zu nutzen",
     "highlightSearchTerms": "Suchbegriffe hervorheben",
     "signOut": "Abmelden",
-    "resultWord": "{count, plural, one {Ergebnis} other {Ergebnisse}}",
+    "resultWord": "{count, plural, =1 {Ergebnis} other {Ergebnisse}}",
     "results": "Ergebnisse",
     "filters": "Filter",
     "previous": "Zurück",
@@ -1226,7 +1226,7 @@
     "updated": "Aktualisiert {timeAgo}",
     "noMatches": "Keine Treffer für die aktuellen Filter",
     "clearFilters": "Filter löschen",
-    "progressOfPapers": "{processed} von {total, plural, one {# Artikel} other {# Artikeln}}",
+    "progressOfPapers": "{processed} von {total, plural, =1 {# Artikel} other {# Artikeln}}",
     "loadingExtractionResults": "Extraktionsergebnisse werden geladen..."
   },
   "reportBuilder": {

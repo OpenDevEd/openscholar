@@ -38,7 +38,7 @@
     "signInCreditsDescription": "Connectez-vous pour utiliser les crédits IA directement depuis Openscholar",
     "highlightSearchTerms": "Surligner les termes de recherche",
     "signOut": "Se déconnecter",
-    "resultWord": "{count, plural, one {résultat} other {résultats}}",
+    "resultWord": "{count, plural, =1 {résultat} other {résultats}}",
     "results": "Résultats",
     "filters": "Filtres",
     "previous": "Précédent",
@@ -1214,7 +1214,7 @@
   },
   "jobStatus": {
     "restart": "Redémarrer",
-    "papersCount": "{count, plural, one {# article} other {# articles}}",
+    "papersCount": "{count, plural, =1 {# article} other {# articles}}",
     "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "En attente",
     "statusDownloadingPdfs": "Traitement des articles",
@@ -1225,7 +1225,7 @@
     "updated": "Mis à jour {timeAgo}",
     "noMatches": "Aucune correspondance pour les filtres actuels",
     "clearFilters": "Effacer les filtres",
-    "progressOfPapers": "{processed} sur {total, plural, one {# article} other {# articles}}",
+    "progressOfPapers": "{processed} sur {total, plural, =1 {# article} other {# articles}}",
     "loadingExtractionResults": "Chargement des résultats de l'extraction..."
   },
   "reportBuilder": {
