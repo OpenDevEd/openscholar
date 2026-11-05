@@ -118,8 +118,9 @@ def clerk(method, path, body=None):
 for row in rows["organizations"]:
     row["slug"] = clerk("GET", f"/organizations/{row['clerkOrganizationId']}")["slug"]
 rows["organizationMemberships"] = []
-# Clerk's webhook writes prod's row for every membership Clerk has, so one prod already mirrors, or one made here, isn't imported:
-# a second row for the same membership makes the webhook's lookup by membership fail.
+# A second row for the same membership makes the webhook's lookup by membership fail, so one prod already mirrors isn't
+# imported. Nor is one made here when moving a community: prod's webhook writes its row. At launch it is, since the import
+# replaces everything and webhooks are off until after it.
 mirrored = {row["clerkMembershipId"] for row in live_rows("organizationMemberships")} if "organizationMemberships/documents.jsonl" in live.namelist() else set()
 for row in memberships:
     clerk_user = clerk_ids.get(row.get("clerkUserId"))
@@ -128,10 +129,9 @@ for row in memberships:
         continue
     organization = clerk_organizations[row["organizationId"]]
     found = clerk("GET", f"/organizations/{organization}/memberships?user_id={clerk_user}&limit=1")["data"]
-    if not found:
-        clerk("POST", f"/organizations/{organization}/memberships", {"user_id": clerk_user, "role": row["role"]})
-    elif found[0]["id"] not in mirrored:
-        rows["organizationMemberships"].append(dict(row, clerkMembershipId=found[0]["id"]))
+    made = found[0] if found else clerk("POST", f"/organizations/{organization}/memberships", {"user_id": clerk_user, "role": row["role"]})
+    if made["id"] not in mirrored and (found or not rows_only):
+        rows["organizationMemberships"].append(dict(row, clerkMembershipId=made["id"]))
 for row in libraries:
     if row["createdBy"] not in user_ids:
         sys.exit(f"{row['name']}: its owner has no live account")
