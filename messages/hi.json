@@ -958,7 +958,8 @@
     },
     "searchFieldDefault": "शीर्षक, सार, पूरा पाठ",
     "searchFieldSemantic": "अर्थ के अनुसार",
-    "filterSimilarTo": "इसके समान"
+    "filterSimilarTo": "इसके समान",
+    "filterByTopic": "केवल {name} पर कार्य"
   },
   "paperCard": {
     "screeningResponses": "स्क्रीनिंग प्रतिक्रियाएं",
@@ -4248,6 +4249,24 @@
         "doing": "Evidence Community की पहुँच देख रहा है",
         "did": "Evidence Community की पहुँच देखी",
         "where": "एडमिन"
+      },
+      "linkAuthorRecord": {
+        "doing": "लेखक रिकॉर्ड जोड़ा जा रहा है",
+        "did": "लेखक रिकॉर्ड जोड़ा",
+        "where": "लेखक",
+        "ask": "लेखक रिकॉर्ड जोड़ें"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "लेखक रिकॉर्ड हटाया जा रहा है",
+        "did": "लेखक रिकॉर्ड हटाया",
+        "where": "लेखक",
+        "ask": "लेखक रिकॉर्ड हटाएँ"
+      },
+      "claimAuthor": {
+        "doing": "लेखक पर दावा किया जा रहा है",
+        "did": "लेखक पर दावा किया",
+        "where": "लेखक",
+        "ask": "लेखक पर दावा करें"
       }
     },
     "asks": {
@@ -5420,8 +5439,20 @@
     "sectionProfile": "प्रोफ़ाइल",
     "sectionLinks": "लिंक और पहचानकर्ता",
     "sectionPublications": "प्रकाशन",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "पहुँच"
+    "sectionOpenAlex": "लेखक रिकॉर्ड",
+    "sectionAccess": "पहुँच",
+    "authorRecords": "लेखक रिकॉर्ड",
+    "authorRecordsDescription": "इस व्यक्ति का हर रिकॉर्ड। शोधपत्र खोज इन सभी को पढ़ती है।",
+    "changeMainRecord": "मुख्य रिकॉर्ड बदलें",
+    "mainRecord": "मुख्य",
+    "claimAuthor": "इस लेखक पर दावा करें",
+    "otherRecordsWithThisName": "इस नाम के अन्य रिकॉर्ड",
+    "addRecord": "जोड़ें",
+    "removeRecord": "यह रिकॉर्ड हटाएँ",
+    "recordPapers": "{count, plural, one {{shown} शोधपत्र} other {{shown} शोधपत्र}}",
+    "authorsIn": "{source} में",
+    "couldNotSearchAuthors": "लेखक नहीं खोजे जा सके। थोड़ी देर में फिर प्रयास करें।",
+    "searchingAuthors": "लेखक खोजे जा रहे हैं"
   },
   "connectApp": {
     "signInToContinue": "जारी रखने के लिए साइन इन करें",
@@ -5485,5 +5516,38 @@
     "likeLibrary": "आपकी लाइब्रेरी जैसे शोधपत्र",
     "yourQuestion": "आपका प्रश्न",
     "questionPlaceholder": "ग्रामीण स्कूलों में शिक्षकों को टिके रहने में क्या मदद करता है?"
+  },
+  "entityCards": {
+    "papers": "शोधपत्र",
+    "citations": "उद्धरण",
+    "hIndex": "एच-इंडेक्स",
+    "noInstitution": "कोई वर्तमान संस्थान नहीं",
+    "noTopics": "कोई विषय सूचीबद्ध नहीं",
+    "authorFailed": "यह लेखक लोड नहीं हो सका।",
+    "topicFailed": "विवरण लोड नहीं हो सका।",
+    "institutionFailed": "यह संस्थान लोड नहीं हो सका।",
+    "noDescription": "अभी कोई विवरण नहीं।",
+    "tryAgain": "फिर से प्रयास करें",
+    "filterResults": "परिणाम फ़िल्टर करें",
+    "removeFilter": "फ़िल्टर हटाएँ",
+    "searchPapers": "शोधपत्र खोजें",
+    "authorPage": "लेखक पृष्ठ",
+    "topicPage": "विषय पृष्ठ",
+    "browseTopics": "विषय देखें",
+    "website": "वेबसाइट",
+    "openOnOpenAlex": "OpenAlex पर खोलें",
+    "level": {
+      "topic": "विषय",
+      "subfield": "उपक्षेत्र",
+      "field": "क्षेत्र",
+      "domain": "डोमेन"
+    },
+    "below": {
+      "domain": "क्षेत्र",
+      "field": "उपक्षेत्र",
+      "subfield": "विषय"
+    },
+    "topicPapers": "{name}, {count, plural, one {# शोधपत्र} other {# शोधपत्र}}",
+    "noAuthorRecord": "कोई लेखक रिकॉर्ड नहीं"
   }
 }

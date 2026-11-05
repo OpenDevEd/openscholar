@@ -959,7 +959,8 @@
     },
     "searchFieldDefault": "Kichwa, muhtasari, maandishi kamili",
     "searchFieldSemantic": "Kwa maana",
-    "filterSimilarTo": "Inafanana na"
+    "filterSimilarTo": "Inafanana na",
+    "filterByTopic": "Kazi kuhusu {name} pekee"
   },
   "paperCard": {
     "screeningResponses": "Majibu ya uchujaji",
@@ -4249,6 +4250,24 @@
         "doing": "Inaangalia ufikiaji wa Evidence Community",
         "did": "Iliangalia ufikiaji wa Evidence Community",
         "where": "Msimamizi"
+      },
+      "linkAuthorRecord": {
+        "doing": "Inaunganisha rekodi ya mwandishi",
+        "did": "Imeunganisha rekodi ya mwandishi",
+        "where": "Waandishi",
+        "ask": "Unganisha rekodi ya mwandishi"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Inaondoa rekodi ya mwandishi",
+        "did": "Imeondoa rekodi ya mwandishi",
+        "where": "Waandishi",
+        "ask": "Ondoa rekodi ya mwandishi"
+      },
+      "claimAuthor": {
+        "doing": "Inadai mwandishi",
+        "did": "Imedai mwandishi",
+        "where": "Waandishi",
+        "ask": "Dai mwandishi"
       }
     },
     "asks": {
@@ -5421,8 +5440,20 @@
     "sectionProfile": "Wasifu",
     "sectionLinks": "Viungo na vitambulisho",
     "sectionPublications": "Machapisho",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "Ufikiaji"
+    "sectionOpenAlex": "Rekodi za mwandishi",
+    "sectionAccess": "Ufikiaji",
+    "authorRecords": "Rekodi za mwandishi",
+    "authorRecordsDescription": "Kila rekodi ya mtu huyu. Utafutaji wa makala husoma zote.",
+    "changeMainRecord": "Badilisha rekodi kuu",
+    "mainRecord": "Kuu",
+    "claimAuthor": "Dai mwandishi huyu",
+    "otherRecordsWithThisName": "Rekodi nyingine zenye jina hili",
+    "addRecord": "Ongeza",
+    "removeRecord": "Ondoa rekodi hii",
+    "recordPapers": "{count, plural, one {makala {shown}} other {makala {shown}}}",
+    "authorsIn": "Katika {source}",
+    "couldNotSearchAuthors": "Imeshindwa kutafuta waandishi. Jaribu tena baada ya muda.",
+    "searchingAuthors": "Inatafuta waandishi"
   },
   "connectApp": {
     "signInToContinue": "Ingia ili uendelee",
@@ -5486,5 +5517,38 @@
     "likeLibrary": "Makala kama maktaba yako",
     "yourQuestion": "Swali lako",
     "questionPlaceholder": "Nini huwasaidia walimu kubaki katika shule za vijijini?"
+  },
+  "entityCards": {
+    "papers": "Makala",
+    "citations": "Manukuu",
+    "hIndex": "h-index",
+    "noInstitution": "Hakuna taasisi ya sasa",
+    "noTopics": "Hakuna mada zilizoorodheshwa",
+    "authorFailed": "Mwandishi huyu hakuweza kupakiwa.",
+    "topicFailed": "Maelezo hayakuweza kupakiwa.",
+    "institutionFailed": "Taasisi hii haikuweza kupakiwa.",
+    "noDescription": "Bado hakuna maelezo.",
+    "tryAgain": "Jaribu tena",
+    "filterResults": "Chuja matokeo",
+    "removeFilter": "Ondoa kichujio",
+    "searchPapers": "Tafuta makala",
+    "authorPage": "Ukurasa wa mwandishi",
+    "topicPage": "Ukurasa wa mada",
+    "browseTopics": "Vinjari mada",
+    "website": "Tovuti",
+    "openOnOpenAlex": "Fungua kwenye OpenAlex",
+    "level": {
+      "topic": "Mada",
+      "subfield": "Uga mdogo",
+      "field": "Uga",
+      "domain": "Eneo"
+    },
+    "below": {
+      "domain": "Nyanja",
+      "field": "Nyanja ndogo",
+      "subfield": "Mada"
+    },
+    "topicPapers": "{name}, {count, plural, one {makala #} other {makala #}}",
+    "noAuthorRecord": "Hakuna rekodi ya mwandishi"
   }
 }

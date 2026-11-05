@@ -959,7 +959,8 @@
     },
     "searchFieldDefault": "العنوان والملخص والنص الكامل",
     "searchFieldSemantic": "حسب المعنى",
-    "filterSimilarTo": "مشابه لـ"
+    "filterSimilarTo": "مشابه لـ",
+    "filterByTopic": "الأعمال عن {name} فقط"
   },
   "paperCard": {
     "screeningResponses": "ردود الفرز",
@@ -4249,6 +4250,24 @@
         "doing": "جارٍ النظر في الوصول إلى Evidence Community",
         "did": "نظر في الوصول إلى Evidence Community",
         "where": "الإدارة"
+      },
+      "linkAuthorRecord": {
+        "doing": "جارٍ ربط سجل مؤلف",
+        "did": "تم ربط سجل مؤلف",
+        "where": "المؤلفون",
+        "ask": "ربط سجل مؤلف"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "جارٍ إزالة سجل مؤلف",
+        "did": "تمت إزالة سجل مؤلف",
+        "where": "المؤلفون",
+        "ask": "إزالة سجل مؤلف"
+      },
+      "claimAuthor": {
+        "doing": "جارٍ المطالبة بمؤلف",
+        "did": "تمت المطالبة بمؤلف",
+        "where": "المؤلفون",
+        "ask": "المطالبة بمؤلف"
       }
     },
     "asks": {
@@ -5421,8 +5440,20 @@
     "sectionProfile": "الملف الشخصي",
     "sectionLinks": "الروابط والمعرّفات",
     "sectionPublications": "المنشورات",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "الوصول"
+    "sectionOpenAlex": "سجلات المؤلف",
+    "sectionAccess": "الوصول",
+    "authorRecords": "سجلات المؤلف",
+    "authorRecordsDescription": "كل سجل يخص هذا الشخص. يقرأها البحث في الأوراق كلها.",
+    "changeMainRecord": "تغيير السجل الرئيسي",
+    "mainRecord": "رئيسي",
+    "claimAuthor": "المطالبة بهذا المؤلف",
+    "otherRecordsWithThisName": "سجلات أخرى بهذا الاسم",
+    "addRecord": "إضافة",
+    "removeRecord": "إزالة هذا السجل",
+    "recordPapers": "{count, plural, one {{shown} ورقة} other {{shown} أوراق}}",
+    "authorsIn": "في {source}",
+    "couldNotSearchAuthors": "تعذر البحث عن المؤلفين. حاول بعد قليل.",
+    "searchingAuthors": "جارٍ البحث عن المؤلفين"
   },
   "connectApp": {
     "signInToContinue": "سجّل الدخول للمتابعة",
@@ -5486,5 +5517,38 @@
     "likeLibrary": "أوراق مثل مكتبتك",
     "yourQuestion": "سؤالك",
     "questionPlaceholder": "ما الذي يساعد المعلمين على البقاء في المدارس الريفية؟"
+  },
+  "entityCards": {
+    "papers": "الأوراق",
+    "citations": "الاستشهادات",
+    "hIndex": "مؤشر h",
+    "noInstitution": "لا توجد مؤسسة حالية",
+    "noTopics": "لا موضوعات مدرجة",
+    "authorFailed": "تعذر تحميل هذا المؤلف.",
+    "topicFailed": "تعذر تحميل الوصف.",
+    "institutionFailed": "تعذر تحميل هذه المؤسسة.",
+    "noDescription": "لا يوجد وصف بعد.",
+    "tryAgain": "حاول مرة أخرى",
+    "filterResults": "تصفية النتائج",
+    "removeFilter": "إزالة التصفية",
+    "searchPapers": "البحث في الأوراق",
+    "authorPage": "صفحة المؤلف",
+    "topicPage": "صفحة الموضوع",
+    "browseTopics": "تصفح الموضوعات",
+    "website": "الموقع الإلكتروني",
+    "openOnOpenAlex": "فتح على OpenAlex",
+    "level": {
+      "topic": "موضوع",
+      "subfield": "مجال فرعي",
+      "field": "مجال",
+      "domain": "نطاق"
+    },
+    "below": {
+      "domain": "المجالات",
+      "field": "المجالات الفرعية",
+      "subfield": "الموضوعات"
+    },
+    "topicPapers": "{name}، {count, plural, one {ورقة واحدة} other {# أوراق}}",
+    "noAuthorRecord": "لا يوجد سجل مؤلف"
   }
 }

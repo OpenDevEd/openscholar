@@ -36,6 +36,12 @@ export const profileInvitationWaitingValidator = v.object({invitationId: v.id("i
 /** All of them: an address has at most this many invitations waiting, to anything. */
 export const profileInvitationsWaitingValidator = capped(v.array(profileInvitationWaitingValidator), MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
 
+/** Author records one profile links (./links.ts). */
+export const MAX_PROFILE_RECORDS = 20;
+export const profileRecordsValidator = capped(v.array(v.string()), MAX_PROFILE_RECORDS);
+/** IDs of one person that one lookup of a profile takes. */
+export const AUTHOR_IDS_LOOKED_UP = 5;
+
 /** A profile as the assistant lists it (./assistant.ts). */
 const authorSummaryFields = {profileId: v.id("authorProfiles"), name: v.string(), headline: v.string(), affiliation: v.string(), orcid: v.string(), openalex: v.string()};
 /** Profiles one page of the directory gives (./profiles.ts `searchProfilePage`). */

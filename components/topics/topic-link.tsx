@@ -1,22 +1,37 @@
 "use client";
 
-import { useContext } from "react";
-import Link from "@/components/workspace-link";
-import { FocusModeClose } from "@/components/focus-mode/close-context";
-import { topicHref } from "@/lib/topics/links";
-import { useUIStore } from "@/lib/store";
+import { useTranslations } from "next-intl";
+import { TopicHoverCard, useCloseFocus } from "@/components/entity-cards";
+import { useTopicFilter } from "@/components/paper-card/hooks";
+import { FilterName } from "@/components/paper-card/shared";
 
-/** Keep navigation inside a clickable paper card from also opening focus mode. */
+/**
+ * A paper's topic or research area. Like an author's name, it narrows the page's search, or
+ * starts one where the page has none; its card, a hover away, goes to the topic's page.
+ */
 export function TopicLink({ topic, className = "" }: {
   topic: { id: string; display_name: string };
   className?: string;
 }) {
-  // In focus mode, going to a topic closes it, whichever focus mode it is.
-  const closeFocus = useContext(FocusModeClose);
-  return <Link
-    href={topicHref(topic.id, topic.display_name)}
-    className={`rounded-sm hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring ${className}`}
-    onClick={event => event.stopPropagation()}
-    onNavigate={() => (closeFocus ? closeFocus() : useUIStore.getState().setIsFocusModeOpen(false))}
-  >{topic.display_name}</Link>;
+  const t = useTranslations("searchFilters");
+  const filter = useTopicFilter();
+  const closeFocus = useCloseFocus();
+  const id = topic.id.replace(/^https?:\/\/openalex\.org\//, "");
+  const name = topic.display_name;
+  return (
+    <TopicHoverCard id={id} name={name}>
+      <FilterName
+        pressed={filter.selected.includes(id)}
+        label={t("filterByTopic", { name })}
+        className={className}
+        onToggle={() => {
+          // A new search leaves the page, and the focus mode over it.
+          if (!filter.canFilter) closeFocus();
+          filter.toggle({ value: id, name });
+        }}
+      >
+        {name}
+      </FilterName>
+    </TopicHoverCard>
+  );
 }

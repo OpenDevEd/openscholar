@@ -9,7 +9,7 @@ import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { cn } from "@/lib/utils";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import Link from "@/components/workspace-link";
-import { Users, Plus, ArrowUpRight, SearchX } from "@/components/icons";
+import { Users, Plus, ArrowUpRight } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useExploreHeader } from "@/components/topics/explore-header";
@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { ListEmpty, ListLoading, ListSearch } from "@/components/evidence-libraries/list-controls";
 import { AuthorAvatar } from "./author-avatar";
 import { AuthorInvitations } from "./author-invitations";
+import { IndexAuthors } from "./index-authors";
 import { AUTHOR_PAGE_SIZE } from "./types";
 import { Opening } from "@/components/workspaces/parts";
 import { Field, FieldError } from "@/components/evidence-libraries/configuration/section-card";
@@ -57,10 +58,11 @@ export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; 
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{profile.name}</p><p className="truncate text-xs text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}
-    {!profiles.length && (status === "LoadingFirstPage" && !early
+    {!profiles.length && !search && (status === "LoadingFirstPage" && !early
       ? <ListLoading label={t("loadingAuthors")} />
-      : <ListEmpty icon={search ? SearchX : Users}>{search ? t("noAuthorsMatchYourSearch") : t("noAuthorsYet")}</ListEmpty>)}
+      : <ListEmpty icon={Users}>{t("noAuthorsYet")}</ListEmpty>)}
     {more && <div className="flex justify-center border-t border-border-subtle p-3"><Button variant="ghost" size="sm" disabled={early || status === "LoadingMore"} onClick={() => loadMore(AUTHOR_PAGE_SIZE)}>{status === "LoadingMore" && <Spinner />}{t("showMore")}</Button></div>}
+    <IndexAuthors search={search} profiled={new Set(profiles.map(profile => profile.openalex).filter(Boolean))} />
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{t("createAuthorProfile")}</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (creating) return; setCreating(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }

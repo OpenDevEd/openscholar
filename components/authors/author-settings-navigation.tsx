@@ -1,6 +1,5 @@
 "use client";
 import { useTranslations } from "next-intl";
-import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { ConfigurationNavigation } from "@/components/evidence-libraries/configuration/configuration-layout";
 import {
   RailGroup,
@@ -12,7 +11,7 @@ const sections = [
   ["profile-details", "sectionProfile", PersonIcon],
   ["profile-links", "sectionLinks", LinkIcon],
   ["profile-publications", "sectionPublications", BookIcon],
-  ["profile-openalex", "sectionOpenAlex", OpenAlexIcon],
+  ["profile-openalex", "sectionOpenAlex", LinkIcon],
   ["profile-access", "sectionAccess", TeamIcon],
 ] as const;
 const editorSections = sections.filter(([id]) => id !== "profile-access");
