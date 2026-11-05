@@ -15,6 +15,32 @@ describe("analytics without consent", () => {
     expect(reduceWithoutConsent(event("$autocapture", { $cookieless_mode: true, $el_text: "a@b.org" }))).toBeNull();
   });
 
+  it("sends no page leave, which only says how long someone stayed and how far they scrolled", () => {
+    expect(reduceWithoutConsent(event("$pageleave", { $cookieless_mode: true, $prev_pageview_duration: 29 }))).toBeNull();
+  });
+
+  it("keeps a page view without the time and scrolling on the page before, or what links the two", () => {
+    const reduced = reduceWithoutConsent(
+      event("$pageview", {
+        $cookieless_mode: true,
+        $pathname: "/privacy",
+        $initialization_time: "2026-11-05T07:20:37.673Z",
+        $prev_pageview_id: "01a1aa94",
+        $prev_pageview_pathname: "/",
+        $prev_pageview_duration: 29.094,
+        $prev_pageview_last_scroll: 12372,
+        $prev_pageview_last_scroll_percentage: 1,
+        $prev_pageview_max_scroll: 12372,
+        $prev_pageview_max_scroll_percentage: 1,
+        $prev_pageview_last_content: 13216,
+        $prev_pageview_last_content_percentage: 1,
+        $prev_pageview_max_content: 13216,
+        $prev_pageview_max_content_percentage: 1,
+      }),
+    );
+    expect(reduced?.properties).toEqual({ $cookieless_mode: true, $pathname: "/privacy", $prev_pageview_pathname: "/" });
+  });
+
   it("keeps the count and removes typed text, device readings and account links", () => {
     const reduced = reduceWithoutConsent(
       event("search_executed", {
