@@ -240,7 +240,6 @@
     "searchingDescription": "正在浏览数百万篇论文...",
     "noResultsMatchFilters": "没有符合筛选条件的结果",
     "updatingResults": "更新结果中...",
-    "applyingParameters": "应用搜索参数中",
     "adjustTab": "调整"
   },
   "pricing": {
@@ -1071,7 +1070,8 @@
     "aiConfigRequired": "请先配置您的 AI 设置",
     "noQueryToBroaden": "没有活动查询可扩展。",
     "noQueryToNarrow": "没有活动查询可缩小。",
-    "bookmarkNotFound": "未找到书签「{keyword}」"
+    "bookmarkNotFound": "未找到书签「{keyword}」",
+    "queryTooLong": "搜索内容最多 {max} 个字符。"
   },
   "accessibility": {
     "closeDialog": "关闭",

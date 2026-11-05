@@ -255,7 +255,7 @@ export function PaperContent({
                   className="flex items-center gap-1 text-xs ink-info hover:underline cursor-pointer"
                 >
                   <ExternalLink className="h-3 w-3" />
-                  <span className="font-mono">
+                  <span dir="ltr" className="font-mono">
                     {paper.doi!.replace("https://doi.org/", "")}
                   </span>
                 </button>
@@ -326,7 +326,7 @@ export function PaperContent({
           <div className="text-sm font-medium text-muted-foreground mb-1">
             {tCommon("abstract")}
           </div>
-          <div className={cn("pe-2", fontSizeClass, lineHeightClass)}>
+          <div dir="auto" className={cn("pe-2", fontSizeClass, lineHeightClass)}>
             {isPreview
               ? tFocus("abstractPreview")
               : <QueryMatchText text={showTranslated && translatedContent ? translatedContent.translatedAbstract : paper.abstract} />}

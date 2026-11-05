@@ -318,6 +318,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 isTranslating={isTranslating}
               />
               <Button
+                aria-label={tc('search')}
                 type="submit"
                 size="sm"
                 disabled={isFormDisabled}

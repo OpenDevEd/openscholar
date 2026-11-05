@@ -240,7 +240,6 @@
     "searchingDescription": "Inapitia mamilioni ya makala...",
     "noResultsMatchFilters": "Hakuna matokeo yanayolingana na vichujio vyako",
     "updatingResults": "Inasasisha matokeo...",
-    "applyingParameters": "Inatumia vigezo vyako vya utafutaji",
     "adjustTab": "Rekebisha"
   },
   "pricing": {
@@ -1072,7 +1071,8 @@
     "aiConfigRequired": "Tafadhali sanidi mipangilio yako ya AI kwanza",
     "noQueryToBroaden": "Hakuna hoja inayotumika ya kupanua.",
     "noQueryToNarrow": "Hakuna hoja inayotumika ya kupunguza.",
-    "bookmarkNotFound": "Alamisho \"{keyword}\" haijapatikana"
+    "bookmarkNotFound": "Alamisho \"{keyword}\" haijapatikana",
+    "queryTooLong": "Utafutaji unaweza kuwa na herufi {max} kwa upeo."
   },
   "accessibility": {
     "closeDialog": "Funga",

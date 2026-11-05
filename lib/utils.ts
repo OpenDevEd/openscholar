@@ -1,3 +1,4 @@
+import { doiOfQuery } from './search/source';
 import { type ClassValue, clsx } from "clsx"
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { extendTailwindMerge } from "tailwind-merge"
@@ -317,6 +318,9 @@ export async function downloadWithMetadata(
  * `meta.count` is needed so the request payload is ~200x smaller than
  * the default search page.
  */
+const COUNTRIES_OQL_REFUSES = new Set(['EH', 'TF', 'UM']);
+const KEYWORD_FIELDS = new Set<string>(['title_and_abstract', 'default', 'title', 'abstract', 'fulltext', 'display_name']);
+
 /** A work as a cites, cited_by or related_to filter takes it: its address, or our index's ID as it is. */
 const workFilterValue = (id: string) => (id.startsWith('https://') || id.startsWith('OS') ? id : `https://openalex.org/${id}`);
 
@@ -348,7 +352,11 @@ export function createSearchParameters(
   // Handle search based on field type. A blank query lists every work.
   const query = rawQuery.trim();
   if (filters.similarTo?.length) searchParams.similar = filters.similarTo.join('|');
-  if (filters.searchField === 'semantic') {
+  // A DOI pasted as the whole query means that paper, not the words in it.
+  const doi = KEYWORD_FIELDS.has(filters.searchField) ? doiOfQuery(query) : null;
+  if (doi) {
+    apiFilters.doi = doi;
+  } else if (filters.searchField === 'semantic') {
     if (query) searchParams.semantic = query;
   } else if (query) {
     // Map search fields to SDK filter format
@@ -429,7 +437,8 @@ export function createSearchParameters(
   
   if (countryCodes && countryCodes.length > 0) {
     apiFilters.authorships = {
-      countries: countryCodes.join('|')
+      // OpenAlex's query language refuses a whole search over a country it has no record for; its filters just find nothing.
+      countries: (filters.searchField === 'oql' ? countryCodes.filter((code) => !COUNTRIES_OQL_REFUSES.has(code)) : countryCodes).join('|')
     };
   }
 
@@ -491,13 +500,13 @@ export function createSearchParameters(
   // Add sorting. Closeness is the only order a search by meaning has.
   if (searchParams.semantic || searchParams.similar) {
     searchParams.sortBy = { field: 'relevance_score' as SortByWork['field'], order: 'desc' };
-  } else if (filters.sortBy) {
+  } else if (filters.sortBy && !(doi && filters.sortBy === 'relevance_score:desc')) {
     const [field, order] = filters.sortBy.split(':');
     searchParams.sortBy = {
       field: field as SortByWork['field'],
       order: order as 'asc' | 'desc'
     };
-  } else {
+  } else if (!doi) {
     // Default sorting
     searchParams.sortBy = {
       field: 'relevance_score',

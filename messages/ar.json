@@ -240,7 +240,6 @@
     "searchingDescription": "نبحث بين ملايين الأوراق البحثية...",
     "noResultsMatchFilters": "لا توجد نتائج تطابق عوامل التصفية",
     "updatingResults": "جارٍ تحديث النتائج...",
-    "applyingParameters": "جارٍ تطبيق معايير البحث",
     "adjustTab": "تعديل"
   },
   "pricing": {
@@ -1072,7 +1071,8 @@
     "aiConfigRequired": "يُرجى ضبط إعدادات الذكاء الاصطناعي أولًا",
     "noQueryToBroaden": "لا يوجد استعلام نشط لتوسيعه.",
     "noQueryToNarrow": "لا يوجد استعلام نشط لتضييقه.",
-    "bookmarkNotFound": "لم تُعثر على الإشارة المرجعية \"{keyword}\""
+    "bookmarkNotFound": "لم تُعثر على الإشارة المرجعية \"{keyword}\"",
+    "queryTooLong": "يمكن أن يتكون البحث من {max} حرف كحد أقصى."
   },
   "accessibility": {
     "closeDialog": "إغلاق",

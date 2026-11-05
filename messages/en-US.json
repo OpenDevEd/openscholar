@@ -240,7 +240,6 @@
     "searchingDescription": "Looking through millions of papers...",
     "noResultsMatchFilters": "No results match your filters",
     "updatingResults": "Updating results...",
-    "applyingParameters": "Applying your search parameters",
     "adjustTab": "Adjust"
   },
   "pricing": {
@@ -1071,7 +1070,8 @@
     "aiConfigRequired": "Please configure your AI settings first",
     "noQueryToBroaden": "No active query to broaden.",
     "noQueryToNarrow": "No active query to narrow.",
-    "bookmarkNotFound": "Bookmark \"{keyword}\" not found"
+    "bookmarkNotFound": "Bookmark \"{keyword}\" not found",
+    "queryTooLong": "A search can be at most {max} characters."
   },
   "accessibility": {
     "closeDialog": "Close",

@@ -111,27 +111,26 @@ export const run = internalAction({
         },
       });
       let text = "";
-      let stored = 0;
       let usd = 0;
       // OpenRouter's cost for every step, or tokens at the model's price when a step didn't report one.
       let reported = true;
       let writing = false;
+      // Where the step being read began: what a step says before it calls a tool is it planning, not the overview.
+      let stepFrom = 0;
       for await (const part of result.stream) {
         if (part.type === "text-delta" && part.text) {
           if (!writing) await progress({ step: "writing" });
           writing = true;
           text += part.text;
-          // Whole lines only, so a paragraph shows once and never grows in place.
-          const end = text.lastIndexOf("\n") + 1;
-          if (end > stored) {
-            stored = end;
-            await progress({ text: text.slice(0, end) });
-          }
         } else if (part.type === "start-step") {
           // A step that writes after a tool call starts a paragraph of its own.
           if (text && !text.endsWith("\n")) text += "\n";
+          stepFrom = text.length;
           writing = false;
         } else if (part.type === "finish-step") {
+          // Shown when its step ends, once it's known not to be planning, so nothing shown is ever taken back.
+          if (part.finishReason === "tool-calls") text = text.slice(0, stepFrom);
+          else if (text) await progress({ text });
           const cost = pickProviderCostUsd(part.providerMetadata);
           if (cost === null) reported = false;
           else usd += cost;
@@ -165,7 +164,7 @@ export const run = internalAction({
 
 const SYSTEM = (year: number, language: string) => `You write the short AI overview shown above a list of research papers in Openscholar. It reads the whole search the person ran in OpenAlex, through the lens they picked, and answers what the lens asks.
 
-Get every number from the tools: count for how papers divide (by year, country, type and more), papers for the papers themselves. Never state a number a tool didn't give you. Make one to four tool calls, then write.
+Get every number from the tools: count for how papers divide (by year, country, type and more), papers for the papers themselves. Never state a number a tool didn't give you. Make one to four tool calls, then write. Write nothing before your last tool call: no plan, no saying what you'll do next. The first thing you write is the overview.
 
 Write in ${language}: two to four short paragraphs of plain prose, under 150 words in all. Name only the few numbers that carry the point; a chart shows the rest. No headings, lists, bold, italics or other Markdown. Open with the finding itself. Keep the chart markers and paper links exactly as described below, in any language.
 

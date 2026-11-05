@@ -240,7 +240,6 @@
     "searchingDescription": "लाखों पेपर खोज रहे हैं...",
     "noResultsMatchFilters": "आपके फ़िल्टर से कोई परिणाम मेल नहीं खाता",
     "updatingResults": "परिणाम अपडेट हो रहे हैं...",
-    "applyingParameters": "आपके खोज पैरामीटर लागू कर रहे हैं",
     "adjustTab": "समायोजित करें"
   },
   "pricing": {
@@ -1071,7 +1070,8 @@
     "aiConfigRequired": "कृपया पहले अपनी AI सेटिंग्स कॉन्फ़िगर करें",
     "noQueryToBroaden": "विस्तारित करने के लिए कोई सक्रिय क्वेरी नहीं।",
     "noQueryToNarrow": "सीमित करने के लिए कोई सक्रिय क्वेरी नहीं।",
-    "bookmarkNotFound": "बुकमार्क \"{keyword}\" नहीं मिला"
+    "bookmarkNotFound": "बुकमार्क \"{keyword}\" नहीं मिला",
+    "queryTooLong": "खोज में अधिकतम {max} वर्ण हो सकते हैं।"
   },
   "accessibility": {
     "closeDialog": "बंद करें",

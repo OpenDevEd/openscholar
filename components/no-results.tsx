@@ -162,22 +162,9 @@ export function LoadingResults({ variant = "full" }: LoadingResultsProps) {
 
   if (variant === "banner") {
     return (
-      <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4 relative overflow-hidden">
-        <div className="flex items-center gap-3">
-          <Loader2 className="h-5 w-5 text-primary animate-spin" />
-          <div className="flex-1">
-            <p className="font-medium text-foreground">{t("updatingResults")}</p>
-            <p className="text-sm text-muted-foreground">
-              {t("applyingParameters")}
-            </p>
-          </div>
-        </div>
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: "100%" }}
-          transition={{ duration: 2, ease: "easeInOut" }}
-          className="absolute bottom-0 start-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"
-        />
+      <div role="status" className="fade-enter inline-flex items-center gap-2 rounded-full border border-border-subtle bg-card px-3 py-1.5 text-sm shadow-sm">
+        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        {t("updatingResults")}
       </div>
     );
   }

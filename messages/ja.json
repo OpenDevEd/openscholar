@@ -240,7 +240,6 @@
     "searchingDescription": "数百万の論文を検索中...",
     "noResultsMatchFilters": "フィルターに一致する結果がありません",
     "updatingResults": "結果を更新中...",
-    "applyingParameters": "検索パラメータを適用中",
     "adjustTab": "調整"
   },
   "pricing": {
@@ -1071,7 +1070,8 @@
     "aiConfigRequired": "まずAI設定を構成してください",
     "noQueryToBroaden": "広げるアクティブなクエリがありません。",
     "noQueryToNarrow": "狭めるアクティブなクエリがありません。",
-    "bookmarkNotFound": "ブックマーク「{keyword}」が見つかりません"
+    "bookmarkNotFound": "ブックマーク「{keyword}」が見つかりません",
+    "queryTooLong": "検索は最大 {max} 文字までです。"
   },
   "accessibility": {
     "closeDialog": "閉じる",

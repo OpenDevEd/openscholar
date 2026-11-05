@@ -586,23 +586,6 @@ export function ResultsList({
 
           return (
             <>
-              {showValidatingBanner && (
-                <AnimatePresence>
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 400,
-                      damping: 30,
-                    }}
-                    className="overflow-hidden"
-                  >
-                    <LoadingResults variant="banner" />
-                  </motion.div>
-                </AnimatePresence>
-              )}
               {queryError ? (
                 <QueryErrorState detail={queryError} oql={search.params.field === OQL_FIELD} />
               ) : isSearching || isInitialLoading ? (
@@ -621,25 +604,35 @@ export function ResultsList({
                   onTryNewSearch={onBackToHome}
                 />
               ) : (
-                <PapersGrid
-                  results={results}
-                  filteredResults={filteredResults}
-                  paginatedResults={paginatedResults}
-                  ratingRange={ratingRange}
-                  onlyRatedPapers={onlyRatedPapers}
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  isLoading={isLoading}
-                  isValidating={isValidating}
-                  currentQuery={currentQuery}
-                  onBackToHome={onBackToHome}
-                  onDownloadItem={onDownloadItem}
-                  onDownloadEssentialItem={onDownloadEssentialItem}
-                  onPageChange={handlePageChange}
-                  resultsContainerRef={resultsContainerRef}
-                  viewMode={effectiveViewMode}
-                  hide={preview ? { rating: true, download: true, focusMode: true } : undefined}
-                />
+                // The results of the last search stay until the next arrive, dimmed and out of reach, with a note that takes no room.
+                <div className="relative">
+                  {showValidatingBanner && (
+                    <div className="pointer-events-none sticky top-3 z-10 h-0 text-center">
+                      <LoadingResults variant="banner" />
+                    </div>
+                  )}
+                  <div inert={showValidatingBanner} className={cn("transition-opacity duration-200", showValidatingBanner && "opacity-50")}>
+                    <PapersGrid
+                      results={results}
+                      filteredResults={filteredResults}
+                      paginatedResults={paginatedResults}
+                      ratingRange={ratingRange}
+                      onlyRatedPapers={onlyRatedPapers}
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      isLoading={isLoading}
+                      isValidating={isValidating}
+                      currentQuery={currentQuery}
+                      onBackToHome={onBackToHome}
+                      onDownloadItem={onDownloadItem}
+                      onDownloadEssentialItem={onDownloadEssentialItem}
+                      onPageChange={handlePageChange}
+                      resultsContainerRef={resultsContainerRef}
+                      viewMode={effectiveViewMode}
+                      hide={preview ? { rating: true, download: true, focusMode: true } : undefined}
+                    />
+                  </div>
+                </div>
               )}
             </>
           );

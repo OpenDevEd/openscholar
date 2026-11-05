@@ -136,6 +136,7 @@ export function FilterSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={toggle}
+                  aria-label={isCollapsed ? t("expandFilters") : t("collapseFilters")}
                   className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                 >
                   <motion.div
@@ -181,6 +182,7 @@ export function FilterSidebar({
                     variant="ghost"
                     size="icon"
                     onClick={toggle}
+                    aria-label={t("expandFilters")}
                     className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-all duration-200"
                   >
                     <motion.div

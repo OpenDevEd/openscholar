@@ -240,7 +240,6 @@
     "searchingDescription": "A analisar milhões de artigos...",
     "noResultsMatchFilters": "Nenhum resultado corresponde aos filtros",
     "updatingResults": "A atualizar resultados...",
-    "applyingParameters": "A aplicar os parâmetros da pesquisa",
     "adjustTab": "Ajustar"
   },
   "pricing": {
@@ -1072,7 +1071,8 @@
     "aiConfigRequired": "Configure primeiro as definições de IA",
     "noQueryToBroaden": "Não há nenhuma pesquisa ativa para alargar.",
     "noQueryToNarrow": "Não há nenhuma pesquisa ativa para restringir.",
-    "bookmarkNotFound": "Marcador \"{keyword}\" não encontrado"
+    "bookmarkNotFound": "Marcador \"{keyword}\" não encontrado",
+    "queryTooLong": "Uma pesquisa pode ter no máximo {max} caracteres."
   },
   "accessibility": {
     "closeDialog": "Fechar",
