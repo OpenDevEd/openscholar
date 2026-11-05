@@ -667,7 +667,7 @@ export default function AuthorPage({
               tabs={[
                 ...(automatic ? [] : [{value: "selected" as const, label: t("selectedPublications"), icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length}]),
                 // The OpenAlex total is known once its first page arrives.
-                {value: "openalex", label: source === "openalex" ? t("fromOpenalex") : SEARCH_SOURCE_NAMES[source], icon: <SourceIcon className="size-3.5 shrink-0" />, count: openAlexPapers.length ? workCount : undefined},
+                {value: "openalex", label: source === "openalex" ? t("fromOpenalex") : SEARCH_SOURCE_NAMES[source], icon: <SourceIcon className="size-3.5 shrink-0" />, count: workCount || undefined},
               ]}
             />
           }

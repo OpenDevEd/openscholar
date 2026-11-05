@@ -59,7 +59,6 @@ export function IndexAuthors({ search, profiled }: { search: string; profiled: R
     ([, value, page, reading]) => unlessLimited(searchIndexAuthors(value, page, reading)),
     { revalidateFirstPage: false, revalidateOnFocus: false },
   );
-  if (!query) return null;
   const seen = new Set<string>();
   const authors = (pages.data ?? []).flatMap((page) => page.authors).filter((author) => {
     if (seen.has(author.id) || profiled.has(author.id)) return false;
@@ -68,27 +67,33 @@ export function IndexAuthors({ search, profiled }: { search: string; profiled: R
   });
   const more = pages.data?.at(-1)?.more;
   const SourceIcon = source === "openalex" ? OpenAlexIcon : LogoMark;
+  // The whole part opens its place on the first word typed, so what's below moves only as it does.
   return (
-    <section aria-label={t("authorsIn", { source: SEARCH_SOURCE_NAMES[source] })} className="border-t border-border-subtle">
-      <p className="flex items-center gap-2 px-4 pt-4 pb-1 text-xs font-medium text-muted-foreground">
-        <SourceIcon className="size-3.5 shrink-0" />
-        {t("authorsIn", { source: SEARCH_SOURCE_NAMES[source] })}
-      </p>
-      {!pages.data && pages.isLoading && <ListLoading compact label={t("searchingAuthors")} />}
-      {pages.error && <p className="px-4 py-3 text-sm text-muted-foreground">{t("couldNotSearchAuthors")}</p>}
-      {pages.data && !authors.length && <p className="px-4 py-3 text-sm text-muted-foreground">{t("noAuthorsMatchYourSearch")}</p>}
-      {/* A search's rows open their place, so what's below them moves only as they do. */}
-      <AnimatePresence initial={false}>
-        {!!authors.length && <Opening key={query}><ul className="divide-y divide-border-subtle">{authors.map((author) => <AuthorRow key={author.id} author={author} />)}</ul></Opening>}
-      </AnimatePresence>
-      {more && (
-        <div className="flex justify-center border-t border-border-subtle p-3">
-          <Button variant="ghost" size="sm" disabled={pages.isValidating} onClick={() => void pages.setSize(pages.size + 1)}>
-            {pages.isValidating && <Spinner />}
-            {t("showMore")}
-          </Button>
-        </div>
+    <AnimatePresence initial={false}>
+      {query && (
+        <Opening key="index">
+          <section aria-label={t("authorsIn", { source: SEARCH_SOURCE_NAMES[source] })} className="border-t border-border-subtle">
+            <p className="flex items-center gap-2 px-4 pt-4 pb-1 text-xs font-medium text-muted-foreground">
+              <SourceIcon className="size-3.5 shrink-0" />
+              {t("authorsIn", { source: SEARCH_SOURCE_NAMES[source] })}
+            </p>
+            {!pages.data && pages.isLoading && <ListLoading compact label={t("searchingAuthors")} />}
+            {pages.error && <p className="px-4 py-3 text-sm text-muted-foreground">{t("couldNotSearchAuthors")}</p>}
+            {pages.data && !authors.length && <p className="px-4 py-3 text-sm text-muted-foreground">{t("noAuthorsMatchYourSearch")}</p>}
+                        <AnimatePresence>
+              {!!authors.length && <Opening key={query}><ul className="divide-y divide-border-subtle">{authors.map((author) => <AuthorRow key={author.id} author={author} />)}</ul></Opening>}
+            </AnimatePresence>
+            {more && (
+              <div className="flex justify-center border-t border-border-subtle p-3">
+                <Button variant="ghost" size="sm" disabled={pages.isValidating} onClick={() => void pages.setSize(pages.size + 1)}>
+                  {pages.isValidating && <Spinner />}
+                  {t("showMore")}
+                </Button>
+              </div>
+            )}
+          </section>
+        </Opening>
       )}
-    </section>
+    </AnimatePresence>
   );
 }
