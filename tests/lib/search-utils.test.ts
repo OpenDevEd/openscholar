@@ -6,6 +6,9 @@ import { getSearchResults } from "@/app/actions/openalex";
 import { getSearchResultsWithFilters } from "@/lib/search/search-results";
 import type { SearchFilters } from "@/lib/types";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
+import { COUNTRIES } from "@/lib/constants";
+import { browserExpand } from "@/lib/keyword-validation-browser";
+import { prepareOpenAlexSearch } from "@/lib/search-utils";
 
 const getSearchResultsMock = getSearchResults as unknown as ReturnType<
   typeof vi.fn
@@ -76,6 +79,20 @@ describe("getSearchResultsWithFilters", () => {
     );
     expect(getSearchResultsMock.mock.calls[0][0]).toContain(
       '"Naoero" OR "Nauru"',
+    );
+  });
+
+  it("searches a country by the name papers use, never a list entry that a comma would split", async () => {
+    const everyCountry = prepareOpenAlexSearch(
+      {
+        query: "education",
+        filters: { ...filters, selectedCountryFocus: Object.keys(COUNTRIES) },
+      },
+      { expand: browserExpand },
+    );
+    expect(everyCountry.countryNames.filter((name) => /[,/]/.test(name))).toEqual([]);
+    expect(everyCountry.countryNames).toEqual(
+      expect.arrayContaining(["Tanzania", "Côte d'Ivoire", "Libya"]),
     );
   });
 

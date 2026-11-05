@@ -1,7 +1,7 @@
 import { OQL_FIELD, joinOql } from './openalex/oql';
 import { doiOfQuery, SEMANTIC_FIELD } from './search/source';
 import { isCountryFocusActive, isCitesFilterActive, isRelatedToFilterActive, isDateFilterActive } from './utils';
-import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './constants';
+import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES, COUNTRY_SEARCH_NAMES } from './constants';
 import { validateAndExpandKeywords, type ExpandShortcuts } from './keyword-validation';
 import type { SearchFilters, SearchField } from './types';
 
@@ -18,17 +18,6 @@ export interface GetSearchResultsWithFiltersOptions {
   expand: ExpandShortcuts;
   getMessage?: (key: string, params?: Record<string, string>) => string;
   onWarning?: (message: string) => void;
-}
-
-/**
- * Clean country names for use in OpenAlex API queries
- * Replace commas with spaces and handle other problematic characters
- */
-function cleanCountryNameForAPI(countryName: string): string {
-  return countryName
-    .replace(/,/g, '') // Remove commas entirely
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .trim();
 }
 
 export interface PreparedOpenAlexSearch {
@@ -86,9 +75,8 @@ export function prepareOpenAlexSearch(
     
     countryData.countries.forEach(code => {
       if (COUNTRIES[code]) {
-        for (const name of COUNTRY_NAME_CHANGES[code] ?? [COUNTRIES[code]]) {
-          const cleanedName = cleanCountryNameForAPI(name);
-          if (!countryNames.includes(cleanedName)) countryNames.push(cleanedName);
+        for (const name of COUNTRY_NAME_CHANGES[code] ?? [COUNTRY_SEARCH_NAMES[code] ?? COUNTRIES[code]]) {
+          if (!countryNames.includes(name)) countryNames.push(name);
         }
       }
     });

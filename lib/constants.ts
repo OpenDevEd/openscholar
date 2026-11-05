@@ -43,6 +43,35 @@ export const COUNTRY_NAME_CHANGES: Record<string, readonly [string, ...string[]]
   MK: ["North Macedonia", "Republic of Macedonia", "FYROM"],
 };
 
+// What papers call a country whose name in COUNTRIES they don't use, such as "Tanzania, United Republic of".
+// Country focus searches it as an exact phrase. One name each: our index reads a search over 1,000 characters
+// or 64 words and phrases as plain words, so a second name would push a region's query past that.
+export const COUNTRY_SEARCH_NAMES: Record<string, string> = {
+  BL: "Saint Barthélemy",
+  BN: "Brunei",
+  CC: "Keeling Islands",
+  CD: "Democratic Republic of Congo",
+  CI: "Côte d'Ivoire",
+  CW: "Curaçao",
+  FK: "Falkland Islands",
+  FM: "Micronesia",
+  HM: "Heard Island",
+  IR: "Iran",
+  KP: "North Korea",
+  KR: "South Korea",
+  LA: "Laos",
+  LY: "Libya",
+  MD: "Moldova",
+  RU: "Russia",
+  ST: "São Tomé and Príncipe",
+  SY: "Syria",
+  TZ: "Tanzania",
+  VA: "Vatican",
+  VG: "British Virgin Islands",
+  VI: "U.S. Virgin Islands",
+  VN: "Vietnam",
+};
+
 export const COUNTRIES: Record<string, string> = {
   ...Object.fromEntries(Object.entries(COUNTRY_NAME_CHANGES).map(([code, [name]]) => [code, name])),
 	AF: 'Afghanistan',
