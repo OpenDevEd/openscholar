@@ -49,6 +49,18 @@ export const getUserById = internalQuery({
   },
 });
 
+/** Which of these Clerk IDs have accepted analytics, for what the server sends PostHog (../lib/analytics.ts). */
+export const acceptedAnalytics = internalQuery({
+  args: { clerkIds: v.array(v.string()) },
+  returns: v.array(v.string()),
+  handler: async (ctx, { clerkIds }) => {
+    const users = await Promise.all(
+      clerkIds.map((clerkId) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId)).unique()),
+    );
+    return users.flatMap((user) => (user?.analyticsConsent?.choice === "granted" ? [user.clerkId] : []));
+  },
+});
+
 type UserUpsertProjectionArgs = ClerkEventMetadata & {
   clerkId: string;
   email: string;

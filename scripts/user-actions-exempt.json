@@ -81,6 +81,7 @@
     "research/records:importBatch": "Imports the browser's local history once, at sign-in.",
     "topics/catalog:initialize": "Seeds the topic catalog the first time a page needs it.",
     "users/mutations:ensureUser": "Creates the account row when a session first signs in.",
+    "users/mutations:saveAnalyticsConsent": "Copies the cookie banner's answer from the browser onto the account row.",
     "users/mutations:syncProfileFromSession": "Copies the Clerk session's name and email onto the account row.",
     "users/queries:getById": "A person's name and picture for the page that shows them.",
     "users/queries:me": "Who is signed in, for the page.",

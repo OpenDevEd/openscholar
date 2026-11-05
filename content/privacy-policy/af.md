@@ -30,7 +30,7 @@ Ons versamel of gebruik die volgende persoonlike inligting **om jou rekening en 
 
 Wanneer jy 'n KI-funksie gebruik, word jou versoek en die artikelteks wat daarvoor nodig is, gestuur na die KI-verskaffer wat die werk doen.
 
-Of jy analitiese koekies aanvaar of nie, ons stuur vir PostHog 'n rekord van elke KI-versoek onder jou rekening-ID, sonder die teks daarvan, om koste en betroubaarheid te volg.
+Ons stuur vir PostHog 'n rekord van elke KI-versoek en siftingstaak, sonder die teks daarvan, om koste en betroubaarheid te volg. Dit bevat jou rekening-ID net as jy ontledingskoekies aanvaar het.
 
 Ons versamel of gebruik die volgende persoonlike inligting vir **die hantering van navrae, klagtes of eise**:
 

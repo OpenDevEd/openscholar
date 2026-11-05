@@ -1,5 +1,5 @@
 import { MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { readAccount } from "../billing/accounts";
 import { ensureWorkspace } from "../workspaces/create";
@@ -13,6 +13,7 @@ export async function createUserWithDefaults(
     firstName?: string;
     lastName?: string;
     avatarUrl?: string;
+    analyticsConsent?: Doc<"users">["analyticsConsent"];
   }
 ): Promise<Id<"users">> {
   const now = Date.now();

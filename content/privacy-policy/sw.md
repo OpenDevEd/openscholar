@@ -30,7 +30,7 @@ Tunakusanya au kutumia taarifa binafsi zifuatazo **ili kuendesha akaunti yako na
 
 Unapotumia kipengele cha AI, ombi lako na maandishi ya makala yanayohitajika hutumwa kwa mtoa huduma wa AI anayefanya kazi hiyo.
 
-Iwe unakubali vidakuzi vya uchanganuzi au la, tunatuma kwa PostHog rekodi ya kila ombi la AI chini ya kitambulisho cha akaunti yako, bila maandishi yake, ili kufuatilia gharama na uaminifu.
+Tunatuma kwa PostHog rekodi ya kila ombi la AI na kila kazi ya uchujaji, bila maandishi yake, ili kufuatilia gharama na uaminifu. Ina kitambulisho cha akaunti yako tu ikiwa ulikubali vidakuzi vya uchambuzi.
 
 Tunakusanya au kutumia taarifa binafsi zifuatazo kwa **kushughulikia maswali, malalamiko au madai**:
 
