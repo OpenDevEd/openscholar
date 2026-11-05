@@ -19,7 +19,7 @@ const FRAGMENT = `#version 300 es
 precision highp float; out vec4 o; uniform sampler2D day, night, clouds, water; uniform vec2 c; uniform float r, t, tc, sd, wv, fd; uniform vec3 L, rg;
 const float PI = 3.14159265;
 float gs(float x){ return exp(-x * x); }
-vec2 ll(vec3 n, float spin){ float lon = atan(n.x, n.z) - spin, lat = asin(clamp(n.y, -1., 1.)), u = lon / (2. * PI); float u1 = fract(u), u2 = fract(u + .5) - .5; return vec2(fwidth(u1) < fwidth(u2) - .001 ? u1 : u2, .5 - lat / PI); }
+vec2 ll(vec3 n, float spin, out vec2 gx, out vec2 gy){ float lon = atan(n.x, n.z) - spin, lat = asin(clamp(n.y, -1., 1.)), u = lon / (2. * PI), v = .5 - lat / PI; float u1 = fract(u), u2 = fract(u + .5) - .5, x1 = dFdx(u1), x2 = dFdx(u2), y1 = dFdy(u1), y2 = dFdy(u2); gx = vec2(abs(x1) < abs(x2) ? x1 : x2, dFdx(v)); gy = vec2(abs(y1) < abs(y2) ? y1 : y2, dFdy(v)); return vec2(u1, v); }
 vec3 halo(float d, float sun){ float lit = smoothstep(-.55, .75, sun), e = max(d - 1., 0.), g = (exp(-e * 22.) * .7 + exp(-e * 5.) * .08) * (1. - smoothstep(1.2, 1.5, d)); return mix(mix(vec3(.06, .16, .42), vec3(.36, .62, .95), lit), vec3(1., .56, .24), smoothstep(.5, .93, sun) * .8) * g * (.42 + lit) + vec3(1., .68, .36) * smoothstep(.55, .92, sun) * exp(-e * 26.) + vec3(1., .92, .8) * smoothstep(.82, .95, sun) * exp(-e * 70.) * .7; }
 void main(){
   vec2 p = (gl_FragCoord.xy - c) / r; float d = length(p), sun = dot(normalize(vec3(p, .001)), L); vec3 h = halo(d, sun);
@@ -28,8 +28,8 @@ void main(){
   float fade = smoothstep(0., fd, gl_FragCoord.y); if (d > 1.) { o = vec4(h, ha) * fade; return; }
   float z = sqrt(1. - d * d); vec3 n0 = vec3(p, z);
   float ax = .4, ay = .22; mat3 lean = mat3(cos(ax), sin(ax), 0., -sin(ax), cos(ax), 0., 0., 0., 1.) * mat3(1., 0., 0., 0., cos(ay), -sin(ay), 0., sin(ay), cos(ay)); vec3 n = lean * n0;
-  vec2 uv = ll(n, t * .05), uvc = ll(n, tc * .058);
-  float wet = texture(water, uv).r; vec3 dc = (texture(day, uv).rgb + wet * vec3(0., .022, .06) + (1. - wet) * vec3(.03, .04, .03)) * vec3(.97, 1., 1.05); vec3 nc = texture(night, uv).rgb; float cl = texture(clouds, uvc).r, sh = texture(clouds, uvc + vec2(.0028, -.0018)).r;
+  vec2 gx, gy, gxc, gyc, uv = ll(n, t * .05, gx, gy), uvc = ll(n, tc * .058, gxc, gyc);
+  float wet = textureGrad(water, uv, gx, gy).r; vec3 dc = (textureGrad(day, uv, gx, gy).rgb + wet * vec3(0., .022, .06) + (1. - wet) * vec3(.03, .04, .03)) * vec3(.97, 1., 1.05); vec3 nc = textureGrad(night, uv, gx, gy).rgb; float cl = textureGrad(clouds, uvc, gxc, gyc).r, sh = textureGrad(clouds, uvc + vec2(.0028, -.0018), gxc, gyc).r;
   float dif = dot(n0, L), lit = smoothstep(-.08, .46, dif), dusk = smoothstep(-.14, .08, dif) * (1. - smoothstep(.06, .22, dif));
   vec3 col = dc * (vec3(.05, .075, .13) + 1.12 * lit) * (1. - pow(sh, 1.5) * .3 * lit) + vec3(.012, .032, .085) * (1. - lit);
   col += pow(max(dot(reflect(-L, n0), vec3(0., 0., 1.)), 0.), 90.) * wet * vec3(.7, .85, 1.) * .42 * lit;
@@ -132,7 +132,8 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
   let layout = earthLayout(space.clientWidth);
   const size = () => {
     layout = earthLayout(space.clientWidth);
-    const d = Math.min(devicePixelRatio || 1, 1.75);
+    // A little sharper than the hero, as the planet gets zoomed.
+    const d = Math.min(devicePixelRatio || 1, 2);
     canvas.width = buffer.width = Math.round(space.clientWidth * d);
     canvas.height = buffer.height = Math.round(space.clientHeight * d);
     gl.viewport(0, 0, canvas.width, canvas.height);

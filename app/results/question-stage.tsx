@@ -27,6 +27,8 @@ const WORD_STAGGER_MS = 160;
 /** How much of the gap between them the planet covers, and its most in pixels. The words cover the rest. */
 const RISE_SHARE = 0.5;
 const RISE_MAX = 170;
+/** The most the planet moves down after the hero has gone. It zooms for the rest. */
+const SETTLE_DOWN_MAX = 120;
 /** How small a word has got as it fades into the planet. */
 const WORD_END = 0.4;
 
@@ -58,6 +60,12 @@ function readHandover(value: string | null): Frame | null {
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
+
+/**
+ * How much bigger the planet has to be, zooming from its top edge, for the foot of its box to stay below the screen. The
+ * hero's links cover that foot, and without them the planet would look cut off.
+ */
+const zoomToClear = (top: number, foot: number) => Math.max(1, (innerHeight + 60 - top) / (foot - top));
 
 /** One word's way into the planet: it sinks first and gathers towards the point late, so its path curves, and it fades as it arrives. */
 function wordSettle(dx: number, dy: number) {
@@ -132,6 +140,16 @@ export function QuestionStage() {
     }
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
     stage.current!.dataset.moving = "";
+    const planetEl = space.current!;
+    const planetTop = frame.spaceTop + layout!.cy - layout!.R;
+    const planetFoot = frame.spaceTop + frame.spaceHeight;
+    // Always from the planet's top edge, so it stays where the question will land.
+    planetEl.style.transformOrigin = `${layout!.cx}px ${layout!.cy - layout!.R}px`;
+    // It settles down into the room the hero's links left, and zooms for whatever that doesn't cover.
+    const down = Math.min(Math.max(0, innerHeight - planetFoot), SETTLE_DOWN_MAX);
+    const settled = `translateY(${down}px) scale(${zoomToClear(planetTop + down, planetFoot + down)})`;
+    if (calm) planetEl.style.transform = settled;
+    else planetEl.animate([{ transform: "none" }, { transform: settled }], { duration: 1800, delay: 100, easing: "cubic-bezier(.45,0,.2,1)", fill: "both" });
     for (const image of [plate.current!, still.current!]) void image.decode().then(() => (image.dataset.in = ""), () => {});
     const earth = startEarth(canvas.current!, ringBack.current!, ringFront.current!, space.current!, calm, () => setLive(true));
     const started = performance.now();
@@ -159,15 +177,20 @@ export function QuestionStage() {
         return;
       }
 
-      const planet = space.current!;
-      for (const motion of planet.getAnimations()) motion.pause();
-      const box = planet.getBoundingClientRect();
+      const planet = planetEl;
+      // Carries on from wherever it has got to.
+      const from = getComputedStyle(planet).transform;
+      const now = new DOMMatrix(from);
+      for (const motion of planet.getAnimations()) motion.cancel();
+      planet.style.transform = from;
       const spans = [...headline.current!.children] as HTMLElement[];
       const question = headline.current!.getBoundingClientRect();
-      const top = box.top + layout.cy - layout.R;
+      const top = planetTop + now.m42;
       const rise = Math.min(Math.max(0, top - question.bottom) * RISE_SHARE, RISE_MAX);
-      const x = box.left + layout.cx;
-      const y = top - rise + layout.R * 0.04;
+      const met = now.m42 - rise;
+      const zoom = zoomToClear(planetTop + met, planetFoot + met);
+      const x = frame.width / 2;
+      const y = planetTop + met + layout.R * zoom * 0.04;
 
       const centres = spans.map((span) => span.getBoundingClientRect()).map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }));
       const farthest = Math.max(1, ...centres.map((c) => Math.hypot(c.x - x, c.y - y)));
@@ -181,10 +204,9 @@ export function QuestionStage() {
       const whole = SETTLE_MS + DAWN_MS;
       planet.animate(
         [
-          { transform: "none", easing: "cubic-bezier(.45,0,.35,1)", offset: 0 },
-          { transform: `translateY(${-rise}px)`, easing: "cubic-bezier(.55,0,.35,1)", offset: SETTLE_MS / whole },
-          // Far enough that the planet's foot, where the hero's links used to cover it, leaves the screen.
-          { transform: `translateY(${Math.max(layout.R, innerHeight - box.bottom + 60)}px)`, offset: 1 },
+          { transform: from, easing: "cubic-bezier(.45,0,.35,1)", offset: 0 },
+          { transform: `translateY(${met}px) scale(${zoom})`, easing: "cubic-bezier(.55,0,.35,1)", offset: SETTLE_MS / whole },
+          { transform: `translateY(${met + layout.R * zoom}px) scale(${zoom})`, offset: 1 },
         ],
         { duration: whole, fill: "forwards" },
       );
@@ -196,7 +218,7 @@ export function QuestionStage() {
       const light = { delay: SETTLE_MS * 0.7, fill: "forwards" as const };
       sunrise.animate(
         [
-          { opacity: 0, transform: `translate(-50%, -50%) translateY(${layout.R * 0.3}px) scale(.45)` },
+          { opacity: 0, transform: `translate(-50%, -50%) translateY(${layout.R * zoom * 0.3}px) scale(.45)` },
           { opacity: 1, offset: 0.2 },
           { opacity: 1, transform: `translate(-50%, -50%) translateY(${-layout.R * 0.28}px) scale(2.3)` },
         ],
@@ -272,7 +294,7 @@ export function QuestionStage() {
         <div ref={dawn} className={styles.dawn} aria-hidden />
         <div ref={sun} className={styles.sun} aria-hidden />
         {frame && layout && rings && (
-          <div ref={space} className={styles.space} style={{ top: frame.spaceTop, height: frame.spaceHeight, width: frame.width, "--space-foot": `${frame.spaceTop + frame.spaceHeight}px` } as React.CSSProperties}>
+          <div ref={space} className={styles.space} style={{ top: frame.spaceTop, height: frame.spaceHeight, width: frame.width }}>
             <div
               className={styles.glow}
               style={{ left: layout.cx - layout.R * 0.75, top: layout.cy - layout.R * 0.66, width: layout.narrow ? 800 : 1400, height: 2 * (frame.spaceHeight - layout.cy + layout.R * 0.66) }}

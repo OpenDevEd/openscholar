@@ -108,28 +108,23 @@
 .space {
   position: absolute;
   left: 0;
-  transform-origin: 50% 80%;
   will-change: transform;
   animation: stage-in 0.9s var(--ease) backwards;
 }
 .stage[data-handover] .space {
-  animation: stage-settle 1.8s cubic-bezier(0.45, 0, 0.2, 1) 0.1s both;
+  animation: none;
 }
 /* Motion gives things layers of their own, which can finish drawing after the sky's colour has already gone up. So the
    first paint is one flat layer, whole, and the motion starts once it's there. */
-.stage[data-handover]:not([data-moving]) .space,
+.stage[data-handover]:not([data-moving]) .space {
+  will-change: auto;
+}
 .stage[data-handover]:not([data-moving]) .stars {
   animation: none;
-  will-change: auto;
 }
 
 @keyframes stage-in {
   from { opacity: 0; }
-}
-
-/* The hero keeps its links under the planet. With them gone it settles into their place. */
-@keyframes stage-settle {
-  to { translate: 0 clamp(0px, calc(100vh - var(--space-foot)), 120px); }
 }
 
 .glow {
