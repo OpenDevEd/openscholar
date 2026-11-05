@@ -1,11 +1,10 @@
 "use server";
 
-import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { clientAddress } from "@/lib/openalex/spend-requests";
+import { hashedClientAddress } from "@/lib/openalex/spend-requests";
 
 export type FreeQueryAnswer =
   | { ok: true; query: string }
@@ -23,7 +22,7 @@ export async function writeFreeQuery(input: { question: string; language?: strin
     return { ok: false, reason: "failed" };
   }
   const { userId } = await auth();
-  const who = userId ? { person: userId } : { address: createHash("sha256").update(`${secret}:${clientAddress(await headers())}`).digest("hex") };
+  const who = userId ? { person: userId } : { address: hashedClientAddress(secret, await headers()) };
   try {
     const answer = await fetchAction(api.ai.freeQueriesAction.write, { secret, who, question: input.question, language: input.language, syntax: input.syntax });
     if (answer.ok) return answer;

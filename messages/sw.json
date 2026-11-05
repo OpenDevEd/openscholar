@@ -5017,14 +5017,16 @@
       "back": "Muhtasari wa bure unarudi saa {time}",
       "noCredits": "Krediti zimekwisha",
       "getCredits": "Pata krediti",
-      "limit": "Muhtasari {count} wa kulipia wa leo umetumika. Zaidi saa {time}"
+      "limit": "Muhtasari {count} wa kulipia wa leo umetumika. Zaidi saa {time}",
+      "signIn": "Muhtasari {count} wa bure wa leo umetumika. Ingia upate zaidi"
     },
     "left": "Muhtasari {left} kati ya {perDay} wa bure umebaki leo",
     "noneLeft": "Hakuna muhtasari wa bure uliobaki leo. Unarudi saa {time}",
     "failed": {
       "credits": "Hakukuwa na krediti za kutosha kwa muhtasari huu.",
       "failed": "Muhtasari haukuweza kuandikwa.",
-      "timeout": "Muhtasari ulichukua muda mrefu mno."
+      "timeout": "Muhtasari ulichukua muda mrefu mno.",
+      "verify": "Hatukuweza kuthibitisha kuwa wewe ni binadamu."
     },
     "tryAgain": "Jaribu tena",
     "unavailable": {

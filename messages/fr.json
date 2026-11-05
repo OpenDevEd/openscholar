@@ -5016,14 +5016,16 @@
       "back": "Aperçus gratuits de retour à {time}",
       "noCredits": "Plus de crédits",
       "getCredits": "Obtenir des crédits",
-      "limit": "Les {count} aperçus payants du jour sont utilisés. D'autres à {time}"
+      "limit": "Les {count} aperçus payants du jour sont utilisés. D'autres à {time}",
+      "signIn": "Les {count} aperçus gratuits du jour sont utilisés. Connectez-vous pour en avoir d'autres"
     },
     "left": "{left} aperçus gratuits sur {perDay} restants aujourd'hui",
     "noneLeft": "Plus d'aperçus gratuits aujourd'hui. Ils reviennent à {time}",
     "failed": {
       "credits": "Il n'y avait pas assez de crédits pour cet aperçu.",
       "failed": "L'aperçu n'a pas pu être rédigé.",
-      "timeout": "L'aperçu a pris trop de temps."
+      "timeout": "L'aperçu a pris trop de temps.",
+      "verify": "Nous n'avons pas pu vérifier que vous êtes une personne."
     },
     "tryAgain": "Réessayer",
     "unavailable": {
