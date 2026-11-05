@@ -80,22 +80,19 @@ schema change needs the rehearsal run again. Agree a freeze before step 4.
 - App address to `discover`: `metadata.siteUrl` is in 13 message files, so make it one
   setting. `isLiveSite` and the canonicals follow it.
 - Bought credits: a script from `credits.paidBalance` in the export to Autumn top-ups.
-- Privacy policy: name the processors and hosting as they'll be, for the user to
-  approve, in every language.
-- `credits.topups` off at launch unless a terms page exists by then.
 - Point `rehearse.sh` at self-hosted Convex.
 
 ### 3. Infrastructure, nothing public changes
 
-1. DNS: `discover.openscholar.ai` and `convex.openscholar.ai` to the host.
-2. Prod Convex: replace `openscholar-prod` with a fresh database on dev's image, with
+1. DNS: `discover.openscholar.ai` to the host with `cf`; `convex.openscholar.ai` already points there.
+2. Prod Convex: replace `openscholar-prod`, stopped 2026-11-05 with its volumes kept, with a fresh database on dev's image, with
    64 concurrent queries and mutations, `cpu_shares` 16384 and `oom_score_adj` -500.
 3. Settings: live's, plus what prod lacks, leaving out `EL_*`. Same `ENCRYPTION_KEY`,
    which already matches dev's. Webhook secrets stay as they are.
 4. Frontend: `openscholar-app-prod` on `main`, at `discover`. A later API redeploy builds
    the pinned commit, so deploy by webhook.
 5. Clerk: organizations on, slugs on, higher member cap, add the `o` claim.
-6. Autumn: live Stripe key, copy the catalog, live API key, webhook to prod Convex.
+6. Autumn: live Stripe key, copy the catalog, live API key, webhook to prod Convex. Top-ups stay on at launch, so check one with a real card.
 7. Separate PostHog project for prod.
 8. Before real accounts live here: add prod's Convex backend to `CONVEX_BACKENDS` in
    `/etc/default/backup-r2`, Coolify auto-update off, port 8000 closed.

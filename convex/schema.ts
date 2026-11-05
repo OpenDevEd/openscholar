@@ -602,7 +602,9 @@ export default defineSchema({
     .index("by_email", ["email"])
     // Active users by email, for the picker that adds an admin (admins/queries.ts).
     .index("by_state_and_email", ["state", "email"])
-    .index("by_state", ["state"]),
+    .index("by_state", ["state"])
+    // Deleted accounts past retention, for the daily cleanup (maintenance/mutations.ts).
+    .index("by_state_and_updated_at", ["state", "updatedAt"]),
 
   // ═══════════════════════════════════════════════════════════════
   // WORKSPACES (#650) - where work lives: one per account, its own,
