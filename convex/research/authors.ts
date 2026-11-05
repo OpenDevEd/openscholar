@@ -8,7 +8,8 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
-import { readAuthor } from "../paperSets/openalex";
+import { wholePerson } from "../../lib/openalex/whole-person";
+import { readAuthor, readPairedAuthors } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { linkLabel } from "../assistant/links";
 import { AUTHOR_LISTED as LISTED, authorValidator } from "./searchValidators";
@@ -19,7 +20,8 @@ type OpenAlexAuthor = {
   orcid?: string | null;
   works_count?: number;
   cited_by_count?: number;
-  summary_stats?: { h_index?: number } | null;
+  summary_stats?: { h_index?: number | null } | null;
+  ids?: { openalex?: string | null } | null;
   last_known_institutions?: Array<{ id?: string | null; display_name?: string | null; country_code?: string | null }> | null;
   topics?: Array<{ id?: string; display_name?: string; count?: number }> | null;
 };
@@ -42,8 +44,13 @@ export const getAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const source = sourceForId(asked, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const author = await readAuthor<OpenAlexAuthor>(asked, "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,topics", spender(ctx, person.clerkId), source);
-    if (!author) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no author by that ID.`);
+    const fields = "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,topics,ids";
+    const record = await readAuthor<OpenAlexAuthor>(asked, fields, spender(ctx, person.clerkId), source);
+    if (!record) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no author by that ID.`);
+    // Our index splits a person into records: any of their IDs reads them whole, as their page does.
+    const pairedId = source === "openscholar" ? (asked.startsWith("A") ? asked : record.ids?.openalex?.split("/").at(-1)) : undefined;
+    const split = pairedId ? await readPairedAuthors<OpenAlexAuthor>(pairedId, fields, spender(ctx, person.clerkId)) : [];
+    const author = split.length ? wholePerson(split) : record;
     const name = author.display_name?.trim() || asked;
     return {
       id: asked,

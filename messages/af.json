@@ -38,6 +38,7 @@
     "signInCreditsDescription": "Meld aan om krediete vir KI direk vanaf Openscholar te gebruik",
     "highlightSearchTerms": "Merk soekterme uit",
     "signOut": "Meld af",
+    "resultWord": "{count, plural, one {resultaat} other {resultate}}",
     "results": "Resultate",
     "filters": "Filters",
     "previous": "Vorige",

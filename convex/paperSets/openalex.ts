@@ -13,6 +13,7 @@ import { oqlForOwnIndex } from "../../lib/openalex/oql-for-own-index";
 import { questionAsWords, SEARCH_SOURCE_NAMES, SIMILAR_NEEDS_OWN_INDEX, type SearchSource } from "../../lib/search/source";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { autocompleteOptions, autocompleteParameters, sourceTypesParameters, withSourceTypes, type LookupEntity, type LookupOption } from "../../lib/openalex/autocomplete";
+import { pairedRecords } from "../../lib/openalex/whole-person";
 
 /** OpenAlex's largest page. */
 export const PAGE_SIZE = 200;
@@ -288,6 +289,14 @@ export const readWork = async <Work>(id: string, select: string, spend: (pages: 
   return work && (appWork(work) as Work);
 };
 /** One author by their ID, or null when OpenAlex has none by it. */
+/** One person's records as our index splits them, or none when nothing is paired with that OpenAlex ID: one request. */
+export const readPairedAuthors = async <Author extends { ids?: { openalex?: string | null } | null }>(id: string, select: string, spend: (pages: number) => Promise<boolean>) => {
+  contact("openscholar");
+  if (!(await spend(1))) throw limited();
+  const body = (await readLookup("authors", { filter: `openalex:${id}`, select, "per-page": "50" }, "openscholar")) as { results?: Author[] };
+  return pairedRecords(id, body.results ?? []);
+};
+
 export const readAuthor = <Author>(id: string, select: string, spend: (pages: number) => Promise<boolean>, source: SearchSource = "openalex") => readRecord<Author>(`authors/${id}`, select, spend, "this author", source);
 
 /** The names of up to 100 authors, funders, journals or institutions by their IDs, such as A1: one request, counted against the acting person's allowance. One OpenAlex has none for is left out. */

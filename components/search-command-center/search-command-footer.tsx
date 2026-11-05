@@ -248,7 +248,7 @@ Return a more targeted version of this query.`;
             className="text-lg font-semibold text-foreground"
           />
           <span className="text-muted-foreground">
-            {search?.searchedCount ? t("similarPapers.closestOf", { count: format.number(search.searchedCount) }) : t("common.results").toLowerCase()}
+            {search?.searchedCount ? t("similarPapers.closestOf", { count: format.number(search.searchedCount) }) : t("common.resultWord", { count: shownCount ?? totalCount })}
           </span>
         </div>
       </div>

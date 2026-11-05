@@ -3,6 +3,7 @@ import { fetchQuery } from "convex/nextjs";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { isAuthorId } from "@/lib/openalex/author-filter";
+import { pairedRecords, wholePerson } from "@/lib/openalex/whole-person";
 import { openAlexFetch } from "@/lib/openalex/fetch";
 import { searchUrl } from "@/lib/openalex/request-url";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
@@ -47,27 +48,7 @@ export type AuthorCard = {
 async function readPairedRecords(id: string) {
   const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "50" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
   if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  // The filter also finds records paired with someone else, whose name is close: they aren't this person.
-  return indexPageSchema.parse(await response.json()).results.filter((record) => record.ids?.openalex && lastPart(record.ids.openalex) === id);
-}
-
-/** One person from their records: the largest speaks for them, and their counts and topics are added up. */
-function wholePerson(records: AuthorRecord[]): AuthorRecord {
-  const largest = records.reduce((best, record) => ((record.works_count ?? 0) > (best.works_count ?? 0) ? record : best));
-  const topics = new Map<string, { id: string; display_name: string; count: number }>();
-  for (const topic of records.flatMap((record) => record.topics ?? [])) {
-    const known = topics.get(topic.id);
-    topics.set(topic.id, { id: topic.id, display_name: topic.display_name, count: (known?.count ?? 0) + (topic.count ?? 0) });
-  }
-  return {
-    ...largest,
-    orcid: records.find((record) => record.orcid)?.orcid ?? null,
-    works_count: records.reduce((sum, record) => sum + (record.works_count ?? 0), 0),
-    cited_by_count: records.reduce((sum, record) => sum + (record.cited_by_count ?? 0), 0),
-    // ponytail: the largest record's h-index, a floor for the person's. The true one takes reading their papers' citations together, too much for a hover card.
-    summary_stats: { h_index: Math.max(...records.map((record) => record.summary_stats?.h_index ?? 0)) },
-    topics: [...topics.values()].sort((a, b) => b.count - a.count),
-  };
+  return pairedRecords(id, indexPageSchema.parse(await response.json()).results);
 }
 
 /** How many of an author's topics a card lists. */
@@ -130,7 +111,10 @@ export async function searchIndexAuthors(search: string, page: number, given?: S
   const pasted = (query.includes("/") ? query.replace(/\/$/, "").split("/").at(-1)! : query).toUpperCase();
   if (isAuthorId(pasted)) {
     if (page > 1) return { authors: [] as IndexAuthor[], more: false };
-    const card = await readAuthorCard(pasted, source);
+    // Any of their IDs is the one person: the one their page goes by reads them whole.
+    const named = await readAuthorCard(pasted, source);
+    if (named && !("id" in named)) return named;
+    const card = named?.paired && named.paired !== pasted ? await readAuthorCard(named.paired, source) : named;
     if (card && !("id" in card)) return card;
     return {
       authors: card ? [{ id: card.paired ?? card.id, name: card.name, institution: card.institution?.name ?? null, country: card.institution?.country ?? null, works: card.works, citations: card.citations, largest: card.works }] : [],

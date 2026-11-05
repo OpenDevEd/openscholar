@@ -38,6 +38,7 @@
     "signInCreditsDescription": "Ngena ukuze usebenzise amakhredithi we-AI ngqo kusuka ku-Openscholar",
     "highlightSearchTerms": "Gqamisa amagama okusesha",
     "signOut": "Phuma",
+    "resultWord": "{count, plural, one {umphumela} other {imiphumela}}",
     "results": "Imiphumela",
     "filters": "Izihlungi",
     "previous": "Okwangaphambili",
