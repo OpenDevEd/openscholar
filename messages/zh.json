@@ -4249,6 +4249,24 @@
         "doing": "正在查看 Evidence Community 访问权限",
         "did": "已查看 Evidence Community 访问权限",
         "where": "管理"
+      },
+      "linkAuthorRecord": {
+        "doing": "正在关联作者记录",
+        "did": "已关联作者记录",
+        "where": "作者",
+        "ask": "关联作者记录"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "正在移除作者记录",
+        "did": "已移除作者记录",
+        "where": "作者",
+        "ask": "移除作者记录"
+      },
+      "claimAuthor": {
+        "doing": "正在认领作者",
+        "did": "已认领作者",
+        "where": "作者",
+        "ask": "认领作者"
       }
     },
     "asks": {

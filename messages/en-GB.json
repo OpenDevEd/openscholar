@@ -4249,6 +4249,24 @@
         "doing": "Looking at Evidence Community access",
         "did": "Looked at Evidence Community access",
         "where": "Admin"
+      },
+      "linkAuthorRecord": {
+        "doing": "Linking an author record",
+        "did": "Linked an author record",
+        "where": "Authors",
+        "ask": "Link an author record"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Removing an author record",
+        "did": "Removed an author record",
+        "where": "Authors",
+        "ask": "Remove an author record"
+      },
+      "claimAuthor": {
+        "doing": "Claiming an author",
+        "did": "Claimed an author",
+        "where": "Authors",
+        "ask": "Claim an author"
       }
     },
     "asks": {

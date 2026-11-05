@@ -4249,6 +4249,24 @@
         "doing": "Consultation de l'accès à l'Evidence Community",
         "did": "Accès à l'Evidence Community consulté",
         "where": "Administration"
+      },
+      "linkAuthorRecord": {
+        "doing": "Association d'une fiche d'auteur",
+        "did": "Fiche d'auteur associée",
+        "where": "Auteurs",
+        "ask": "Associer une fiche d'auteur"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Retrait d'une fiche d'auteur",
+        "did": "Fiche d'auteur retirée",
+        "where": "Auteurs",
+        "ask": "Retirer une fiche d'auteur"
+      },
+      "claimAuthor": {
+        "doing": "Revendication d'un auteur",
+        "did": "Auteur revendiqué",
+        "where": "Auteurs",
+        "ask": "Revendiquer un auteur"
       }
     },
     "asks": {

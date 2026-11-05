@@ -4249,6 +4249,24 @@
         "doing": "Evidence Community へのアクセスを確認しています",
         "did": "Evidence Community へのアクセスを確認しました",
         "where": "管理"
+      },
+      "linkAuthorRecord": {
+        "doing": "著者レコードをリンク中",
+        "did": "著者レコードをリンクしました",
+        "where": "著者",
+        "ask": "著者レコードをリンク"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "著者レコードを削除中",
+        "did": "著者レコードを削除しました",
+        "where": "著者",
+        "ask": "著者レコードを削除"
+      },
+      "claimAuthor": {
+        "doing": "著者を申請中",
+        "did": "著者を申請しました",
+        "where": "著者",
+        "ask": "著者を申請"
       }
     },
     "asks": {

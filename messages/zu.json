@@ -4249,6 +4249,24 @@
         "doing": "Ibheka ukufinyelela ku-Evidence Community",
         "did": "Ibheke ukufinyelela ku-Evidence Community",
         "where": "Umphathi"
+      },
+      "linkAuthorRecord": {
+        "doing": "Kuxhunywa irekhodi lombhali",
+        "did": "Kuxhunyiwe irekhodi lombhali",
+        "where": "Ababhali",
+        "ask": "Xhuma irekhodi lombhali"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Kususwa irekhodi lombhali",
+        "did": "Kususiwe irekhodi lombhali",
+        "where": "Ababhali",
+        "ask": "Susa irekhodi lombhali"
+      },
+      "claimAuthor": {
+        "doing": "Kufakwa isicelo sombhali",
+        "did": "Kufakiwe isicelo sombhali",
+        "where": "Ababhali",
+        "ask": "Faka isicelo sombhali"
       }
     },
     "asks": {

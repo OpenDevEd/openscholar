@@ -4250,6 +4250,24 @@
         "doing": "A ver o acesso à Evidence Community",
         "did": "Viu o acesso à Evidence Community",
         "where": "Administração"
+      },
+      "linkAuthorRecord": {
+        "doing": "Vinculando um registro de autor",
+        "did": "Registro de autor vinculado",
+        "where": "Autores",
+        "ask": "Vincular um registro de autor"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Removendo um registro de autor",
+        "did": "Registro de autor removido",
+        "where": "Autores",
+        "ask": "Remover um registro de autor"
+      },
+      "claimAuthor": {
+        "doing": "Reivindicando um autor",
+        "did": "Autor reivindicado",
+        "where": "Autores",
+        "ask": "Reivindicar um autor"
       }
     },
     "asks": {

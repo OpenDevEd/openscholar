@@ -4250,6 +4250,24 @@
         "doing": "Inaangalia ufikiaji wa Evidence Community",
         "did": "Iliangalia ufikiaji wa Evidence Community",
         "where": "Msimamizi"
+      },
+      "linkAuthorRecord": {
+        "doing": "Inaunganisha rekodi ya mwandishi",
+        "did": "Imeunganisha rekodi ya mwandishi",
+        "where": "Waandishi",
+        "ask": "Unganisha rekodi ya mwandishi"
+      },
+      "unlinkAuthorRecord": {
+        "doing": "Inaondoa rekodi ya mwandishi",
+        "did": "Imeondoa rekodi ya mwandishi",
+        "where": "Waandishi",
+        "ask": "Ondoa rekodi ya mwandishi"
+      },
+      "claimAuthor": {
+        "doing": "Inadai mwandishi",
+        "did": "Imedai mwandishi",
+        "where": "Waandishi",
+        "ask": "Dai mwandishi"
       }
     },
     "asks": {
