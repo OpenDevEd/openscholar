@@ -247,6 +247,7 @@ describe("Evidence Library application setup", () => {
         ) {
           return Response.json([
             {
+              id: 1,
               tag_name: `runtime-${LATEST_RUNTIME_COMMIT}`,
               draft: false,
               published_at: "2026-09-09T10:00:00Z",

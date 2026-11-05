@@ -28,7 +28,9 @@ export const papers = internalMutation({
       const held = await ctx.db.query("libraryItems").withIndex("by_workspace_paperKey", (q) => q.eq("workspaceId", workspaceId).eq("paperKey", item.paperKey)).first();
       const libraryItemId = held?._id ?? (await ctx.db.insert("libraryItems", item));
       if (!held) added += 1;
-      await ctx.db.insert("libraryItemCollections", { ...link, collectionId, libraryItemId });
+      // A paper prod already holds keeps its own fields: without a saved date, the trigger fills the place from it.
+      const place = held ? { assignedAt: link.assignedAt } : link;
+      await ctx.db.insert("libraryItemCollections", { ...place, collectionId, libraryItemId });
     }
     const counted = await ctx.db.query("libraryCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
     if (counted) await ctx.db.patch("libraryCounts", counted._id, { count: counted.count + added });

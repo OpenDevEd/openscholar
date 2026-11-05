@@ -113,11 +113,13 @@ development Convex service.
 
 ## Branches and live systems
 
-- `main` is the live OpenScholar at `openscholar.ai`. It has none of the
-  Evidence Library, extraction, or other work on `dev`, which is the future
-  production release. Never merge into, push to, or deploy `main` unless the
-  user asks.
+- `prod` is live: the app at `discover.openscholar.ai` on self-hosted Convex (`convex.openscholar.ai`), and the marketing site from `marketing/` at `openscholar.ai`. Both Coolify apps build from it with auto-deploy off. Never push to or deploy `prod` unless the user asks. `main` and `prod-old` are history.
 - `dev` deploys to `dev.openscholar.ai` and is where all current work lands.
+- Community releases: new-el publishes each runtime release as a GitHub
+  prerelease. Shared dev's Convex sets `EL_OFFER_PRERELEASES=true` and offers it
+  at once; prod offers a release only once it's promoted at
+  `/settings/admin/community-releases`, which also runs updates. Updates only
+  go forward; rollbacks are done by hand on the server.
 - new-el's `coolify` branch and the tenants it runs are off limits. Never
   touch, push to, or use them as a reference; see new-el's
   `docs/agents/project.md`.

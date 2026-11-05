@@ -16,7 +16,7 @@ import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
 import { authenticate } from "./auth";
 
 type Location = Doc<"topicLocations">;
-async function linkedDois(ctx: Pick<QueryCtx, "db">, id: string | null) {
+export async function linkedDois(ctx: Pick<QueryCtx, "db">, id: string | null) {
   if (!id) return [];
   return (await ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", id)).take(2)).map(row => row.doi);
 }
@@ -101,6 +101,8 @@ export const replaceFromLibrary = internalMutation({
       if (receipt.digest !== digest) throw createError("CONFLICT", "Idempotency key reused with different content");
       return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: receipt.generation, status: receipt.status};
     }
+    const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
+    if (state?.rebuilding) throw createError("CONFLICT", "Topic counts are being rebuilt; try again shortly");
     const previous = await ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", input.itemKey)).unique();
     if (previous && previous.generation === input.generation) throw createError("CONFLICT", "Generation already used");
     const status = previous && previous.generation > input.generation ? "superseded" as const : "applied" as const;

@@ -158,6 +158,7 @@ import type * as evidenceLibraries_readers from "../evidenceLibraries/readers.js
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
 import type * as evidenceLibraries_readinessSetup from "../evidenceLibraries/readinessSetup.js";
 import type * as evidenceLibraries_readinessSetupActions from "../evidenceLibraries/readinessSetupActions.js";
+import type * as evidenceLibraries_releases from "../evidenceLibraries/releases.js";
 import type * as evidenceLibraries_revisionConfiguration from "../evidenceLibraries/revisionConfiguration.js";
 import type * as evidenceLibraries_runtimeActionConfig from "../evidenceLibraries/runtimeActionConfig.js";
 import type * as evidenceLibraries_runtimeConfiguration from "../evidenceLibraries/runtimeConfiguration.js";
@@ -623,6 +624,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;
   "evidenceLibraries/readinessSetup": typeof evidenceLibraries_readinessSetup;
   "evidenceLibraries/readinessSetupActions": typeof evidenceLibraries_readinessSetupActions;
+  "evidenceLibraries/releases": typeof evidenceLibraries_releases;
   "evidenceLibraries/revisionConfiguration": typeof evidenceLibraries_revisionConfiguration;
   "evidenceLibraries/runtimeActionConfig": typeof evidenceLibraries_runtimeActionConfig;
   "evidenceLibraries/runtimeConfiguration": typeof evidenceLibraries_runtimeConfiguration;

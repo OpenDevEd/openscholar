@@ -1,5 +1,14 @@
 # Production launch
 
+**Launched 2026-11-05, about 14:03 UTC.** The holding page was up for about 6 minutes. The app builds from branch `prod`, not `main`. What follows is the plan as run, kept for moving the communities (see Moving communities) and going back.
+
+Differences from the plan below:
+
+- Stripe's and Clerk's webhooks point at `convex-site.openscholar.ai`, not `api.openscholar.ai`: Convex Cloud's custom domain for `api` wins over our DNS record, even proxied, until it is removed from `opulent-ram-908`.
+- Clerk's `home_url` is still `openscholar.ai`: `PATCH /instance` accepted it and changed nothing. Hosted pages with no return address land on the marketing site.
+- Autumn's Svix grows to about 80 idle Postgres connections in a burst of webhooks, of the 100 allowed, which refused new ones until Svix restarted. Migrate customers with `send_webhooks: false`, or cap its pool first. Its queue is in memory.
+- A migration can leave a customer on the old plan version while reporting success: check them, and `billing.update` with `plan_id` and `version` moves one.
+
 Brings `dev` to production. Standing rules are in the root `AGENTS.md` and
 `docs/agents/project.md`.
 
@@ -121,13 +130,12 @@ the hour.
 ### 6. After launch
 
 - Marketing on the apex, with `WebSite` and `Organization` data, then job and comparison pages.
-- Community releases, before the first community moves. new-el publishes each release as a
-  GitHub prerelease; dev's OpenScholar can see prereleases, and promoting one offers it to
-  prod. A page at `/settings/admin/community-releases`, agreed as a mock on
-  `mock/community-releases`, lists releases and communities, with Promote, Pull back, Update all
-  and Roll back all. Updates run one at a time, smallest first, stopping at the first failure,
-  and we may update anyone's community. Rollback uses `startRuntimeRollback` and only appears
-  when no database change is in the way. There are no manual rollbacks.
+- Community releases, before the first community moves: built in #1063. new-el publishes each
+  release as a GitHub prerelease; shared dev offers it at once (`EL_OFFER_PRERELEASES=true`), and
+  promoting it offers it to prod. `/settings/admin/community-releases` lists releases and
+  communities, with Promote, Pull back and Update all. A rollout runs on the server, one community
+  at a time, smallest first, stopping at the first failure, and we may update anyone's community.
+  Updates only go forward. Rollbacks are done by hand on the server.
 - Move the existing communities: see Moving communities.
 - Delete `upgradeLiveData.ts` and this folder.
 
@@ -142,8 +150,8 @@ A community's app, Postgres, search, files and domains stay put. Only its Convex
 
 5. Rebuild what copying rows doesn't, which runs no triggers. All three are safe to run again:
    - `npx convex run migrations/communityMoveCounts:countLibraries`, the workspace's count of communities.
-   - `npx convex run migrations/pagedLibraryVersions:run '{"cursor": null}'`, each community's count of versions.
-   - `npx convex run migrations/communityMoveCounts:rebuildTopics`, what topic pages read. Run it after the last move of a batch: it reads every community's locations.
+   - `npx convex run migrations/pagedLibraryVersions:run '{"reset": true}'`, each community's count of versions.
+   - `npx convex run migrations/communityMoveCounts:rebuildTopics`, what topic pages read. Run it after the last move of a batch: it reads every community's locations. It also corrects each location's group key, which can name a community still on dev. Deliveries wait while it runs, and the communities retry them. Don't delete a community during it. If it dies, run `migrations/communityMoveCounts:clearTopicCounts` to start it again.
 
 Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script until `copy-collection.py <export> <collection ID>` has put it on prod, through `migrations/copyCollection`: AIED follows one, 1,611 papers.
 
