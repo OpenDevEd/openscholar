@@ -65,8 +65,8 @@ credits as they should, 125 in all.
 | Live Stripe | 0 active subscriptions, products Go, Pro and Credits, last charge 2026-10-16 |
 | Privacy policy | Names only PostHog and Vercel as processors. No terms page exists |
 | PostHog | Dev and live share one project key |
-| Cloudflare | Holds DNS. No API token found on this machine or the host |
-| Coolify | Auto-update on (daily 00:02). Port 8000 answers from outside. Nightly backup skips Docker volumes |
+| Cloudflare | Holds DNS. Reach it with the `cf` CLI, logged in on the Mac (`CLOUDFLARE_ACCOUNT_ID=47478c682fae9ae095d6c89858ea0d67`) |
+| Coolify | Auto-update on (daily 00:02). Port 8000 answers from outside. Restic skips Docker volumes; see Backups |
 
 ## Order
 
@@ -97,8 +97,8 @@ schema change needs the rehearsal run again. Agree a freeze before step 4.
 5. Clerk: organizations on, slugs on, higher member cap, add the `o` claim.
 6. Autumn: live Stripe key, copy the catalog, live API key, webhook to prod Convex.
 7. Separate PostHog project for prod.
-8. Before real accounts live here: nightly `convex export` into the restic backup,
-   Coolify auto-update off, port 8000 closed.
+8. Before real accounts live here: add prod's Convex backend to `CONVEX_BACKENDS` in
+   `/etc/default/backup-r2`, Coolify auto-update off, port 8000 closed.
 
 ### 4. Rehearse on the real stack
 
@@ -145,8 +145,30 @@ the hour.
 - Communities: copy each one's Convex rows to prod with owner and organization remapped,
   recreate its organization on production Clerk by email, publish from prod. About 6 are real.
   Readers (37) are keyed by dev Clerk ID and need matching by email. Try it on Demo first.
-- Full backups: community databases and Convex files.
 - Delete `upgradeLiveData.ts` and this folder.
+
+## Backups
+
+`backup-r2.sh` runs nightly at 04:30 on the host (`backup-r2.timer`). It dumps every database in `POSTGRES_CONTAINERS` and each backend in `CONVEX_BACKENDS`, both in `/etc/default/backup-r2`, and encrypts them with `age` to bucket `openscholar-backups` on R2. A new community database is picked up by itself; a new Postgres container has to be added. Meilisearch rebuilds from Postgres, and PDFs stay in Supabase and R2, so neither is copied. Restic still covers the host's configuration.
+
+- **Kept:** `daily/` 14 days, `weekly/` 36 days, so a deleted account is gone from backups within the time the privacy policy gives. Sunday's copy goes to `weekly/` and includes Convex's stored files (4 small images in November 2026). A 7-day bucket lock stops anyone deleting a recent copy, the server's own token included. To delete one sooner, change the lock with `cf r2 buckets locks`.
+- **Failure:** the job exits non-zero and pings the restic health check's `/fail`, including when a copy is under half the size of the last. There's no alert if the timer never runs at all.
+- **Keys:** the private key is at `~/.config/openscholar-backup/age-key.txt` on the Mac and in the password manager, never on the host. Keep Convex's environment variables and `ENCRYPTION_KEY` with it: dumps don't include them.
+
+**Restoring**, from the Mac (`age -d` needs the private key):
+
+```sh
+BACKUP='set -a; . /etc/default/backup-r2; set +a; rclone'
+# Find a copy
+ssh hetzner "sudo -n bash -c '$BACKUP lsf -R r2:openscholar-backups/daily/'"
+# A Postgres database, into a server with the extensions: restore globals.sql.zst.age the same way with psql first
+ssh hetzner "sudo -n bash -c '$BACKUP cat r2:openscholar-backups/daily/<stamp>/postgres/<container>/<db>.dump.zst.age'" \
+  | age -d -i ~/.config/openscholar-backup/age-key.txt | zstd -d | pg_restore --no-owner -d <target>
+# Convex: decrypt the zip the same way, then import it as under "The data upgrade"
+npx convex import --replace-all <zip>
+```
+
+Tested 2026-11-05: `kenya` restored into a throwaway pgvector container and its five largest tables matched the source row for row. The Convex zip opened with all 156 tables, but hasn't been imported yet: the self-hosted rehearsal in step 4 should use one of these copies.
 
 ## Not rehearsed yet
 
