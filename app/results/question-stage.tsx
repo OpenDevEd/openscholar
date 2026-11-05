@@ -18,8 +18,12 @@ const LEAST_MS = 1300;
 const LIT_MS = 900;
 /** The page gets this long to finish loading its results behind the stage. */
 const PAGE_MS = 8000;
-/** How long the question takes to fall into the planet. The sky opens as it arrives. */
-const FALL_MS = 650;
+/** How long the question takes to fall into the planet, its lift included. The sky opens as it arrives. */
+const FALL_MS = 900;
+/** How much later the farthest word sets off than the nearest. */
+const WORD_STAGGER_MS = 160;
+/** How much of the fall is the lift before it. */
+const LIFT = 0.2;
 const OPEN_MS = 1150;
 /** How much of the gap between them the planet covers, and its most in pixels. The words cover the rest. */
 const RISE_SHARE = 0.5;
@@ -51,6 +55,40 @@ function readHandover(value: string | null): Frame | null {
   if (numbers.length !== 5 || numbers.some((n) => !Number.isFinite(n) || Math.abs(n) > 10000)) return null;
   const [width, skyTop, spaceTop, height, questionTop] = numbers;
   return width > 0 && height > 0 ? { width, skyTop, spaceTop, spaceHeight: height, questionTop } : null;
+}
+
+const smooth = (t: number) => t * t * (3 - 2 * t);
+const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
+/** Keyframes sampled from a curve: CSS easing moves everything along one line at one rate, and this needs several at once. */
+const sampled = (steps: number, at: (t: number) => Keyframe) => Array.from({ length: steps + 1 }, (_, i) => at(i / steps));
+
+/**
+ * One word's way into the planet. It lifts as if drawing breath, falls under something like gravity, and only gathers
+ * towards the point late on, so its path curves and it doesn't run into its neighbours while it's still big.
+ */
+function wordFall(dx: number, dy: number, side: number) {
+  return sampled(44, (t) => {
+    const lift = t < LIFT ? Math.sin((t / LIFT) * Math.PI) : 0;
+    const u = clamp01((t - LIFT) / (1 - LIFT));
+    const x = dx * u ** 3;
+    const y = dy * u ** 1.9 - 12 * lift;
+    const scale = 1 + 0.03 * lift - (1 - WORD_END) * smooth(u);
+    return { transform: `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${(side * 10 * u ** 2.4).toFixed(2)}deg) scale(${scale.toFixed(4)})`, opacity: clamp01((1 - u) / 0.08) };
+  });
+}
+
+/** The planet's part: it dips as the words lift, rises to meet them, gives under the impact, then the camera goes in. */
+function planetMeet(rise: number) {
+  const total = FALL_MS + OPEN_MS;
+  return sampled(80, (t) => {
+    const ms = t * total;
+    const dip = ms < FALL_MS * LIFT ? 8 * Math.sin((ms / (FALL_MS * LIFT)) * Math.PI) : 0;
+    const u = clamp01((ms - FALL_MS * LIFT) / (FALL_MS * (1 - LIFT)));
+    const after = Math.max(0, ms - FALL_MS) / 1000;
+    const give = 16 * Math.exp(-5 * after) * Math.sin(11 * after);
+    const scale = 1 + 0.03 * u ** 2 + 0.012 * Math.exp(-5 * after) * Math.sin(11 * after) + 0.37 * smooth(clamp01((ms - FALL_MS) / OPEN_MS)) ** 1.6;
+    return { transform: `translateY(${(dip - rise * u ** 2.2 + give).toFixed(2)}px) scale(${scale.toFixed(4)})` };
+  });
 }
 
 /** The question's words, each with the concept of the query it matched, if any. */
@@ -92,6 +130,8 @@ export function QuestionStage() {
   const ringBack = useRef<SVGSVGElement>(null);
   const ringFront = useRef<SVGSVGElement>(null);
   const headline = useRef<HTMLHeadingElement>(null);
+  const spark = useRef<HTMLDivElement>(null);
+  const stars = useRef<SVGSVGElement[]>([]);
   const words = useMemo(() => questionWords(question, lit ? query : null), [question, lit, query]);
   const layout = useMemo(() => (frame ? earthLayout(frame.width) : null), [frame]);
   const rings = useMemo(() => (layout ? { back: ringMarkup(layout, false), front: ringMarkup(layout, true) } : null), [layout]);
@@ -150,30 +190,34 @@ export function QuestionStage() {
       // A little inside the planet's edge, so the words go into it rather than stopping at it.
       const y = top - rise + layout.R * 0.07;
 
-      const lead = Math.min(spans.length * 10, 120);
+      const centres = spans.map((span) => span.getBoundingClientRect()).map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }));
+      const farthest = Math.max(1, ...centres.map((c) => Math.hypot(c.x - x, c.y - y)));
       spans.forEach((span, i) => {
-        const from = span.getBoundingClientRect();
-        const dx = x - from.left - (from.width * WORD_END) / 2;
-        const dy = y - from.top - (from.height * WORD_END) / 2;
-        span.animate(
-          [
-            { transform: "none", opacity: 1, offset: 0 },
-            { opacity: 1, offset: 0.72 },
-            { transform: `translate(${dx}px, ${dy}px) scale(${WORD_END})`, opacity: 0, offset: 1 },
-          ],
-          { duration: FALL_MS - lead, delay: (i / Math.max(1, spans.length - 1)) * lead, easing: "cubic-bezier(.5,0,.8,.45)", fill: "both" },
-        );
+        span.style.transformOrigin = "50% 50%";
+        const near = Math.hypot(centres[i].x - x, centres[i].y - y) / farthest;
+        span.animate(wordFall(x - centres[i].x, y - centres[i].y, Math.sign(centres[i].x - x)), {
+          duration: FALL_MS - WORD_STAGGER_MS,
+          // The words nearest the point go first and the rest pour in after them.
+          delay: near * WORD_STAGGER_MS,
+          fill: "both",
+        });
       });
 
-      const meet = FALL_MS / (FALL_MS + OPEN_MS);
       planet.style.transformOrigin = `${layout.cx}px ${y - box.top}px`;
-      planet.animate(
+      planet.animate(planetMeet(rise), { duration: FALL_MS + OPEN_MS, fill: "forwards" });
+
+      // Light gathers where the words are going in, and the opening starts from it.
+      const glow = spark.current!;
+      glow.style.left = `${x}px`;
+      glow.style.top = `${y}px`;
+      glow.animate(
         [
-          { transform: "none", easing: "cubic-bezier(.5,0,.8,.45)", offset: 0 },
-          { transform: `translateY(${-rise}px) scale(1.03)`, easing: "cubic-bezier(.3,0,.6,1)", offset: meet },
-          { transform: `translateY(${-rise}px) scale(1.4)`, offset: 1 },
+          { opacity: 0, transform: "translate(-50%, -50%) scale(.15)", easing: "cubic-bezier(.5,0,.9,.5)", offset: 0 },
+          { opacity: 0, transform: "translate(-50%, -50%) scale(.15)", easing: "cubic-bezier(.5,0,.9,.5)", offset: 0.38 },
+          { opacity: 1, transform: "translate(-50%, -50%) scale(1)", easing: "ease-out", offset: 0.74 },
+          { opacity: 0, transform: "translate(-50%, -50%) scale(1.6)", offset: 1 },
         ],
-        { duration: FALL_MS + OPEN_MS, fill: "forwards" },
+        { duration: FALL_MS + 300, fill: "forwards" },
       );
 
       finish = window.setTimeout(() => {
@@ -182,17 +226,25 @@ export function QuestionStage() {
         root.style.setProperty("--rx", `${x}px`);
         root.style.setProperty("--ry", `${y}px`);
         root.dataset.opening = "";
+        // Going through: what's nearer the camera rushes past faster than what's far away.
+        for (const [layer, scale] of [[plate.current!, 1.06], ...stars.current!.map((star, i) => [star, 1.12 + i * 0.06] as const)] as const) {
+          const place = layer.getBoundingClientRect();
+          layer.style.transformOrigin = `${x - place.left}px ${y - place.top}px`;
+          layer.animate([{ transform: "none" }, { transform: `scale(${scale})` }], { duration: OPEN_MS, easing: "cubic-bezier(.7,0,.2,1)", fill: "forwards" });
+        }
         const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 300;
         const openedAt = performance.now();
         const open = (now: number) => {
           const k = Math.min(1, (now - openedAt) / OPEN_MS);
-          root.style.setProperty("--r", `${(k ** 2.2 * far).toFixed(1)}px`);
-          rim.current!.style.opacity = String(Math.min(1, k * 5) * (1 - k ** 6));
+          // Slow to catch, then all at once, easing as it leaves the screen.
+          const eased = k < 0.5 ? 8 * k ** 4 : 1 - (-2 * k + 2) ** 4 / 2;
+          root.style.setProperty("--r", `${(eased * far).toFixed(1)}px`);
+          rim.current!.style.opacity = String(Math.min(1, k * 8) * (1 - k ** 6));
           if (k < 1) raf = requestAnimationFrame(open);
           else end();
         };
         raf = requestAnimationFrame(open);
-      }, FALL_MS);
+      }, FALL_MS - 50);
     };
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
@@ -235,7 +287,13 @@ export function QuestionStage() {
         {/* eslint-disable-next-line @next/next/no-img-element -- a fixed backdrop, sized by the stage */}
         <img ref={plate} className={styles.plate} src={SKY_PLATE} width={2560} height={820} alt="" decoding={handedOver ? "sync" : "async"} fetchPriority="high" />
         {[0, 1, 2].map((group) => (
-          <svg key={group} className={styles.stars} data-group={group} viewBox="0 0 2560 820" aria-hidden fill="#e6eaf5">
+          <svg
+            key={group}
+            ref={(star) => {
+              if (star) stars.current[group] = star;
+            }}
+            className={styles.stars}
+            data-group={group} viewBox="0 0 2560 820" aria-hidden fill="#e6eaf5">
             {STARS.filter((star) => star.group === group).map((star) => (
               <circle key={`${star.x}-${star.y}`} cx={star.x} cy={star.y} r={star.r} opacity={star.opacity} />
             ))}
@@ -267,6 +325,7 @@ export function QuestionStage() {
         )}
       </div>
       <div ref={rim} className={styles.rim} aria-hidden />
+      <div ref={spark} className={styles.spark} aria-hidden />
       <h1 ref={headline} className={styles.question} data-size={size} data-flying={flying ? "" : undefined} role="status">
         {words.map((word, i) => (
           <span

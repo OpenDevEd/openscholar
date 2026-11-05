@@ -50,6 +50,15 @@
   );
 }
 
+.spark {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(closest-side, #fff 0, rgb(255 236 214 / 0.9) 14%, rgb(255 170 90 / 0.42) 38%, rgb(255 120 40 / 0.1) 68%, transparent);
+}
+
 .plate {
   position: absolute;
   left: 50%;

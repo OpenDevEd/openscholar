@@ -178,7 +178,9 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
   const cometsBack = [...ringBack.querySelectorAll<SVGPathElement>("[data-comet]")];
   // A lap takes four seconds, much quicker than on the hero: here the spark says work is going on.
   const comet = (now: number) => {
-    const k = ((now - liveAt) / 4000) % 1;
+    // It swings round the far ends of the ring and hurries across the front, as an orbit does.
+    const lap = ((now - liveAt) / 4000) % 1;
+    const k = (lap + 0.07 * Math.sin(lap * 2 * Math.PI) + 1) % 1;
     const front = k < 0.5;
     const head = (front ? k * 2 : 1 - (k - 0.5) * 2) * 1000;
     for (const dash of front ? cometsBack : cometsFront) dash.setAttribute("visibility", "hidden");
