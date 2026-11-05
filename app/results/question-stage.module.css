@@ -1,0 +1,184 @@
+/* The marketing hero's sky and type (marketing/src/components/HomeHero.astro). It stays night in either
+   theme: it carries on from the page the person just left. */
+.stage {
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --r: 0px;
+  /* The planet's radius and how far its centre sits above the foot, as startEarth draws it. */
+  --earth: min(22.5vw, 37vh);
+  --earth-y: 0.78;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #091026;
+}
+
+/* The sky opens outwards from the question's field, showing the real page through it. */
+.stage[data-opening] .scene {
+  mask-image: radial-gradient(circle at var(--rx) var(--ry), transparent calc(var(--r) - 44px), #000 var(--r));
+}
+
+.rim {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--rx, 50%) var(--ry, 50%),
+    transparent calc(var(--r) - 60px),
+    rgb(255 255 255 / 0.85) calc(var(--r) - 22px),
+    rgb(255 226 190 / 0.95) var(--r),
+    rgb(255 157 54 / 0.5) calc(var(--r) + 34px),
+    rgb(255 120 40 / 0.14) calc(var(--r) + 120px),
+    transparent calc(var(--r) + 260px)
+  );
+}
+
+.plate {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2560px;
+  max-width: none;
+  height: 820px;
+  margin-left: -1280px;
+  pointer-events: none;
+  mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px);
+  mask-composite: intersect;
+  opacity: 0;
+  transition: opacity 1.2s var(--ease);
+}
+
+.plate[data-in] {
+  opacity: 1;
+}
+
+.stars {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 2560px;
+  max-width: none;
+  height: 900px;
+  margin-left: -1280px;
+  animation: stage-twinkle 6s ease-in-out infinite alternate;
+}
+.stars[data-group="1"] { animation-duration: 9s; animation-delay: -3s; }
+.stars[data-group="2"] { animation-duration: 13s; animation-delay: -6s; }
+
+@keyframes stage-twinkle {
+  to { opacity: 0.35; }
+}
+
+.glow {
+  position: absolute;
+  left: calc(50% - var(--earth) * 0.75);
+  top: calc(100% - var(--earth) * (var(--earth-y) + 0.66));
+  width: 1400px;
+  height: 1100px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgb(255 226 190 / 0.42), rgb(255 150 70 / 0.22) 16%, rgb(190 90 60 / 0.09) 44%, transparent);
+  opacity: 0;
+  transition: opacity 1.2s var(--ease);
+}
+
+.earth,
+.ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: 50% 70%;
+  will-change: transform;
+  transition: opacity 1s var(--ease);
+}
+
+.scene[data-lit] .glow,
+.scene[data-lit] .earth,
+.scene[data-lit] .ring {
+  opacity: 1;
+}
+
+.question {
+  position: absolute;
+  inset: clamp(84px, 15vh, 146px) 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-inline: auto;
+  max-width: min(1240px, calc(100vw - 48px));
+  color: #ffe6cf;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.12;
+  text-align: center;
+  pointer-events: none;
+}
+
+.question[data-size="large"] { font-size: 38px; }
+.question[data-size="medium"] { font-size: 30px; }
+.question[data-size="small"] { font-size: 22px; line-height: 1.2; letter-spacing: -0.02em; }
+
+@media (max-width: 699px) {
+  .stage {
+    --earth: min(62vw, 30vh);
+    --earth-y: 0.72;
+  }
+}
+
+@media (min-width: 600px) {
+  .question[data-size="large"] { font-size: 56px; }
+  .question[data-size="medium"] { font-size: 44px; }
+  .question[data-size="small"] { font-size: 30px; }
+}
+
+@media (min-width: 1100px) {
+  .question[data-size="large"] { font-size: 64px; }
+  .question[data-size="medium"] { font-size: 52px; }
+  .question[data-size="small"] { font-size: 36px; }
+}
+
+@media (min-width: 1400px) {
+  .question[data-size="large"] { font-size: 72px; }
+}
+
+/* Padding, not a gap, keeps the space between words, so a term's underline runs across its words. */
+.word {
+  display: inline-block;
+  padding-inline: 0.13em;
+  transform-origin: 0 0;
+  background: linear-gradient(var(--m, transparent), var(--m, transparent)) no-repeat 0 100% / 0 0.05em;
+  animation: stage-rise 700ms var(--ease) calc(0.05s + var(--i) * 45ms) backwards;
+  transition: background-size 0.6s var(--ease);
+}
+
+.word[data-lit] {
+  background-size: 100% 0.05em;
+}
+
+.question[data-flying] .word {
+  background-size: 0 0.05em;
+  transition-duration: 0.2s;
+}
+
+@keyframes stage-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stars,
+  .word {
+    animation: none;
+  }
+}

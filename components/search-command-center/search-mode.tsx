@@ -267,7 +267,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       {isFullyUnconfigured && <AISetupGate />}
 
       {/* Research Question Input */}
-      <form onSubmit={handleQuestionSubmit}>
+      <form onSubmit={handleQuestionSubmit} data-question-field={isLoading || isValidating ? "loading" : "settled"}>
         <FloatingInput
           label={t('researchQuestion')}
           placeholder={t('placeholder.researchQuestion')}

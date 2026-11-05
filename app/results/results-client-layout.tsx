@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { SearchProvider } from "@/lib/search";
 import { SearchInitializer } from "@/lib/search/initializer";
 import { ResearchLoading, useResearchStatus } from "@/lib/research/provider";
+import { QuestionStage } from "./question-stage";
 import { useWatchedSearch } from "@/lib/research/reads";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { ResearchContext } from "@/lib/research/binding";
@@ -66,14 +67,15 @@ export function ResultsClientLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Suspense
-      fallback={<ResultsLoading />}
-    >
+    <>
+    <Suspense fallback={null}><QuestionStage /></Suspense>
+    <Suspense fallback={<ResultsLoading />}>
       <ResearchLoading><InitializeResults>
         <SearchProvider>
           {children}
         </SearchProvider>
       </InitializeResults></ResearchLoading>
     </Suspense>
+    </>
   );
 }
