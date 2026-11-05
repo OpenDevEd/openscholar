@@ -29,7 +29,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   </div>
   <div class="inner hub">
     <p class="hubline"><a href="/evidence-communities/">Evidence Communities</a> <span>Curated evidence, open to anyone</span></p>
-    <ul class="fields" aria-label="Live Evidence Communities">{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url}><img class="shot" src={`/img/art-tile-${c.key}-960.avif`} width="960" height="540" alt="" loading="lazy" decoding="async" /><span class="tag"><b>{c.name}</b><small>{c.host}</small></span></a></li>)}</ul>
+    <ul class="fields" aria-label="Live Evidence Communities">{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url}><img class="shot" src={`/img/art-tile-${c.key}-960.avif`} width="960" height="540" alt="" loading="lazy" decoding="async" /><span class="tag"><b>{c.name}</b><small><span>{c.host}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></small></span><span class="more">{c.text}</span></a></li>)}</ul>
   </div>
 </section>
 <script>
@@ -222,25 +222,32 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .hub { position: relative; z-index: 6; }
   .hubline, .fields { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
   .hubline { font-size: 16px; color: #c9cfdc; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
-  /* Each live community as a tile across the whole width: its real site behind its emblem and name. As a satellite passes
-     the front, its tile lights in the community's colour. */
-  .fields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; margin: 16px calc(50% - 50vw) 0; padding: 0; list-style: none; }
-  .fields a { position: relative; display: block; height: 176px; overflow: hidden; background: #0b1330; color: #e8ebf2; text-align: left; }
-  .fields a::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(to top, rgb(7 11 26 / .92) 10%, rgb(7 11 26 / .5) 45%, transparent 75%); }
-  .fields a::after { content: ""; position: absolute; inset: auto 0 0; z-index: 1; height: 100%; background: radial-gradient(90% 70% at 30% 100%, color-mix(in srgb, var(--c) 34%, transparent), transparent 70%); opacity: 0; transition: opacity .6s var(--ease); }
+  /* The live communities across the whole width. The one whose satellite is at the front opens out with its story; the
+     rest stay narrow. It turns with the orbit, and pointing at one holds its satellite there and keeps it open. Their widths
+     always add up to the same, and the text inside each is laid out at its final width, so only the edges move. */
+  .fields { --open: 3.4; --narrow: calc((100vw - 10px) / (5 + var(--open))); display: flex; gap: 2px; height: 232px; margin: 16px calc(50% - 50vw) 0; padding: 0; list-style: none; }
+  .fields li { flex: 1 1 0; min-width: 0; transition: flex-grow .9s var(--ease); }
+  .fields :global(li.on) { flex-grow: var(--open); }
+  .fields a { position: relative; display: block; height: 100%; overflow: hidden; background: #0b1330; color: #e8ebf2; text-align: left; }
+  .fields a::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(to top, rgb(7 11 26 / .94) 8%, rgb(7 11 26 / .55) 42%, transparent 72%); }
+  .fields a::after { content: ""; position: absolute; inset: 0; z-index: 1; background: radial-gradient(70% 80% at 20% 100%, color-mix(in srgb, var(--c) 30%, transparent), transparent 70%); opacity: 0; transition: opacity .9s var(--ease); }
   /* Each community's story in glass, in its own colour, generated with its prompt in art/art-prompts.txt. */
-  .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; filter: brightness(.72); transform-origin: 70% 40%; transition: filter .6s var(--ease), transform 1.2s var(--ease); }
-  .tag { position: absolute; inset: auto 16px 16px; z-index: 2; display: grid; text-shadow: 0 1px 14px #070b1a, 0 0 4px rgb(7 11 26 / .8); }
-  .tag b { font: 500 14px/1.22 var(--sans); text-wrap: balance; transition: color .6s var(--ease); } .tag small { margin-top: 3px; overflow: hidden; font-size: 12px; color: #8f98ae; text-overflow: ellipsis; white-space: nowrap; }
-  .fields :global(li.on) a::after, .fields li:hover a::after, .fields li:focus-within a::after { opacity: 1; } .fields :global(li.on) .shot, .fields li:hover .shot, .fields li:focus-within .shot { filter: brightness(1); transform: scale(1.05); }
-  .fields :global(li.on) b, .fields li:hover b, .fields li:focus-within b { color: var(--c); }
+  .shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; filter: brightness(.55) saturate(.8); transition: filter .9s var(--ease), transform 1.4s var(--ease); }
+  .tag { position: absolute; left: 16px; bottom: 16px; z-index: 2; display: grid; width: calc(var(--narrow) - 32px); text-shadow: 0 1px 14px #070b1a, 0 0 4px rgb(7 11 26 / .8); }
+  .tag b { font: 500 14px/1.22 var(--sans); text-wrap: balance; transition: color .9s var(--ease); }
+  .tag small { display: flex; align-items: center; gap: 4px; margin-top: 4px; overflow: hidden; font-size: 12px; color: #8f98ae; white-space: nowrap; } .tag small span { overflow: hidden; text-overflow: ellipsis; } .tag small svg { flex: none; width: 13px; height: 13px; opacity: 0; translate: -4px 0; transition: opacity .4s, translate .4s var(--ease); }
+  .more { position: absolute; left: calc(var(--narrow) + 8px); bottom: 16px; z-index: 2; width: 300px; font-size: 14px; line-height: 1.45; color: #d4d9e4; text-shadow: 0 1px 12px #070b1a; opacity: 0; transition: opacity .3s; }
+  .fields :global(li.on) a::after { opacity: 1; } .fields :global(li.on) .shot { filter: brightness(.95) saturate(1); transform: scale(1.03); } .fields :global(li.on) b { color: var(--c); }
+  .fields :global(li.on) .more { opacity: 1; transition: opacity .6s var(--ease) .45s; } .fields :global(li.on) small svg { opacity: 1; translate: 0 0; } .fields a:hover small, .fields a:focus-visible small { color: #fff; }
 
   /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */
   @media (max-width: 1399px) { .sky { padding-top: 142px; } .space { height: 478px; } } @media (max-width: 1199px) { .sky { padding-top: 136px; } .space { height: 504px; } }
-  @media (max-width: 999px) { .sky { padding-top: 134px; } .space { height: 448px; } .sat { width: 80px; height: 80px; } .sat b { display: none; } .fields { grid-template-columns: repeat(3, minmax(0, 1fr)); } .fields a { height: 152px; } }
+  @media (max-width: 999px) { .sky { padding-top: 134px; } .space { height: 448px; } .sat { width: 80px; height: 80px; } .sat b { display: none; } }
   @media (hover: none) { .sat b { display: none; } }
   @media (max-width: 699px) { .sky { padding-top: 126px; } .space { height: 302px; margin-top: -76px; } .space::before { width: 800px; } .sat { width: 52px; height: 52px; } .hubline a, .hubline span { display: block; margin: 0; } .lead { font-size: 17px; } }
-  @media (max-width: 599px) { .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fields a { height: 144px; } .tag { inset: auto 12px 12px; } .tag b { font-size: 13.5px; } }
+  /* Narrower, the same strip runs down the page: the lit row opens taller, the rest are one line each. */
+  @media (max-width: 1199px) { .fields { flex-direction: column; height: calc(5 * 58px + 216px + 10px); } .tag { right: 16px; width: auto; display: flex; align-items: baseline; gap: 10px; } .tag b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .tag small { flex: none; margin: 0; opacity: 0; transition: opacity .6s; } .fields :global(li.on) small { opacity: 1; } .more { left: 16px; bottom: 46px; width: min(460px, calc(100% - 32px)); } }
+  @media (max-width: 599px) { .fields { height: calc(5 * 54px + 230px + 10px); } .tag { left: 14px; right: 14px; bottom: 14px; } .tag small { display: none; } .more { left: 14px; bottom: 40px; font-size: 13.5px; } }
 
   /* Scrolling lifts the words away and sinks the stars. The planet, ring and strip stay with the page, so no text can collide. */
   @media (prefers-reduced-motion: no-preference) { @supports (animation-timeline: scroll()) {
