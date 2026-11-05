@@ -42,15 +42,21 @@ async function readCommunities(ctx: QueryCtx) {
   const communities = await Promise.all(
     libraries.filter((library) => library.state === "active" && library.runtimeBindingId).map((library) => readCommunity(ctx, library)),
   );
-  return communities.filter((community) => community !== null).sort((a, b) => a.records - b.records);
+  return communities
+    .filter((community) => community !== null)
+    .sort((a, b) => a.size - b.size)
+    .map(({ size: _size, ...community }) => community);
 }
 
 async function readCommunity(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   const binding = await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId!);
   if (!binding || !("runtimeCommit" in binding)) return null;
   const status = await ctx.db.query("evidenceLibrarySourceStatus").withIndex("by_libraryId", (q) => q.eq("libraryId", library._id)).first();
-  const records = (status?.sources ?? []).reduce((sum, source) => sum + (source.searchable ?? 0), 0);
-  return { id: library._id, name: library.name, running: binding.runtimeCommit, records, address: binding.canonicalBaseUrl ?? binding.targetBaseUrl };
+  const records = status?.records ?? null;
+  // A runtime too old to report its total is placed by its sources' counts, which count a record once for each source
+  // holding it: too many to show, but near enough to update the smallest first.
+  const size = records ?? (status?.sources ?? []).reduce((sum, source) => sum + (source.searchable ?? 0), 0);
+  return { id: library._id, name: library.name, running: binding.runtimeCommit, records, size, address: binding.canonicalBaseUrl ?? binding.targetBaseUrl };
 }
 
 const currentRollout = (ctx: QueryCtx) => ctx.db.query("evidenceLibraryRollouts").first();

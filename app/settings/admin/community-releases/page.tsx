@@ -98,7 +98,7 @@ export default function CommunityReleasesPage() {
     return communities
       .filter((community) => !needle || community.name.toLowerCase().includes(needle))
       .filter((community) => show === "all" || (show === "behind" ? behindBy(community.id) > 0 : community.id === failedId))
-      .toSorted((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : sort === "behind" ? behindBy(b.id) - behindBy(a.id) : b.records - a.records));
+      .toSorted((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : sort === "behind" ? behindBy(b.id) - behindBy(a.id) : (b.records ?? -1) - (a.records ?? -1)));
   }, [communities, query, show, sort, behindBy, failedId]);
 
   if (!data) return <Enter ready={false}>{null}</Enter>;
@@ -364,7 +364,7 @@ export default function CommunityReleasesPage() {
                             </TooltipHint>
                             <p className="mt-0.5 flex items-center gap-2 truncate text-xs text-muted-foreground">
                               <code className="font-mono text-2xs">{community.running.slice(0, 7)}</code>
-                              <span className="tabular-nums">{t("records", { count: community.records })}</span>
+                              {community.records !== null && <span className="tabular-nums">{t("records", { count: community.records })}</span>}
                             </p>
                           </div>
                           {failedHere ? (
