@@ -3,6 +3,8 @@ import { convexTest } from "convex-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { snapshotFromCustomer } from "../billing/accounts";
+import type { AutumnCustomer } from "../billing/autumn";
 
 /** What PostHog's batch endpoint received, gzipped or not. */
 async function sentEvents(fetchMock: ReturnType<typeof vi.fn>) {
@@ -131,18 +133,15 @@ describe("analytics.capture", () => {
     await person.mutation(api.users.mutations.ensureUser, {});
     const workspaceId = await t.run(async (ctx) => (await ctx.db.query("workspaces").first())!._id);
     let fetchedAt = 0;
-    const write = (plan: string, hasPaid: boolean, trialing = false) =>
+    const write = (plan: string, paying: boolean) =>
       t.mutation(internal.billing.accounts.writeSnapshot, {
         workspaceId,
         withCard: false,
         fetchedAt: ++fetchedAt,
-        snapshot: { plan, hasPaid, trialing, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
+        snapshot: { plan, paying, hasPaid: paying, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
       });
     await write("free", false);
     await write("free", false);
-    // A trial, and the free organization plan, aren't payments.
-    await write("pro", true, true);
-    await write("free_organization", true);
     await write("pro", true);
     await write("pro", true);
     // Cancelling and coming back isn't a first payment again.
@@ -155,7 +154,36 @@ describe("analytics.capture", () => {
       ["account_created", "user_a", {}],
       ["first_payment", "user_a", { workspace_kind: "personal", plan: "pro" }],
     ]);
-    expect(sent.filter(({ event }) => event === "plan_changed").map(({ properties }) => JSON.parse(properties).to_plan)).toEqual(["pro", "free_organization", "pro", "free", "pro"]);
+    expect(sent.filter(({ event }) => event === "plan_changed").map(({ properties }) => JSON.parse(properties).to_plan)).toEqual(["pro", "free", "pro"]);
+  });
+
+  it("knows real payment from a free organization plan, a trial, and a row cached before it could tell", async () => {
+    const customer = (status: string, plan_id: string, auto_enable: boolean, purchases: Array<{ plan_id: string }> = []) =>
+      snapshotFromCustomer({ id: "c", balances: {}, purchases, subscriptions: [{ plan_id, status, auto_enable }] } as unknown as AutumnCustomer).paying;
+    expect(customer("active", "free_organization", false)).toBe(false);
+    expect(customer("trialing", "pro", false)).toBe(false);
+    expect(customer("active", "free", true)).toBe(false);
+    expect(customer("active", "pro", false)).toBe(true);
+    expect(customer("active", "free_organization", false, [{ plan_id: "top_up" }])).toBe(true);
+
+    const t = convexTest(schema);
+    await t.withIdentity({ subject: "user_a" }).mutation(api.users.mutations.ensureUser, {});
+    const workspaceId = await t.run(async (ctx) => (await ctx.db.query("workspaces").first())!._id);
+    const row = { workspaceId, plan: "pro", hasPaid: true, pastDue: false, balance: 0, purchased: 0, signupGranted: true, refreshedAt: 1, fetchedAt: 1 };
+    await t.run(async (ctx) => {
+      const existing = await ctx.db.query("billingAccounts").first();
+      if (existing) await ctx.db.delete("billingAccounts", existing._id);
+      await ctx.db.insert("billingAccounts", row);
+    });
+    await t.mutation(internal.billing.accounts.writeSnapshot, {
+      workspaceId,
+      withCard: false,
+      fetchedAt: 2,
+      snapshot: { plan: "pro", paying: true, hasPaid: true, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
+    });
+    const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+    const events = scheduled.flatMap((job) => (job.args[0] as { events?: Array<{ event: string }> }).events ?? []).map(({ event }) => event);
+    expect(events).not.toContain("first_payment");
   });
 
   it("sends nothing where PostHog isn't set up", async () => {

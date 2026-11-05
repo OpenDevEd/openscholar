@@ -32,8 +32,8 @@ export const billingAccountSnapshotValidator = v.object({
   signupGranted: v.boolean(),
   /** Has paid for a plan or credits, so Stripe holds invoices for them. */
   hasPaid: v.boolean(),
-  /** On a plan's trial, so nothing has been paid for it yet. */
-  trialing: v.optional(v.boolean()),
+  /** Has really paid: `hasPaid` also holds on the free organization plan and on a trial. Absent on a snapshot cached before this. */
+  paying: v.optional(v.boolean()),
   stripeCustomerId: v.optional(v.string()),
   /** While past due, the payment that failed (#40): how much, when its invoice was raised, and the page that pays it. */
   unpaid: v.optional(v.object({ amount: v.number(), currency: v.string(), since: v.number(), url: v.optional(v.string()) })),
