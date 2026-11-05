@@ -10,7 +10,8 @@ import { worksUrl } from "@/lib/openalex/works-url";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import { OpenAlexLimitedError } from "@/lib/openalex/limited";
 import { fetchOwnWorks } from "@/lib/openalex/read-works";
-import { activeSearchSource } from "@/lib/search/active-source";
+import { chosenSource } from "@/lib/search/active-source";
+import type { SearchSource } from "@/lib/search/source";
 
 /**
  * Result of a search action. We return a structured error instead of throwing:
@@ -95,9 +96,8 @@ async function searchOwnIndex(query: string, filters: SearchFilters): Promise<Se
 export async function getSearchResults(
   query: string,
   filters: SearchFilters,
-  /** Asks OpenAlex whatever the site's source is, for a community's source dialog. */
-  onOpenAlex?: boolean,
+  source?: SearchSource,
 ): Promise<SearchActionResult> {
-  if (!onOpenAlex && (await activeSearchSource()) === "openscholar") return searchOwnIndex(query, filters);
+  if ((await chosenSource(source)) === "openscholar") return searchOwnIndex(query, filters);
   return callOpenAlexSDK(query, filters);
 }

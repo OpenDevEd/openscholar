@@ -6,6 +6,7 @@ import { paperIdOf, paperKey, paperPage, parsePaperKey, toPaperKey } from "../pa
 import { autocompleteParameters } from "../openalex/autocomplete";
 import { authorFilterValue, isAuthorId } from "../openalex/author-filter";
 import { fetchOqlWorks } from "../openalex/oql-works";
+import { fetchOwnWorks } from "../openalex/read-works";
 import { sourceForId } from "./source";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -129,6 +130,12 @@ describe("sending OQL", () => {
       expect(result).toMatchObject({ ok: false, status: 400, detail: { fix: expect.stringContaining("works where") } });
     }
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("answers with a failed search, not a thrown error, when our index's address isn't set", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "");
+    await expect(fetchOwnWorks({ search: "kelp" }, { perPage: 1 })).resolves.toMatchObject({ ok: false, status: null });
+    await expect(fetchOqlWorks("works where year is (2024)", { perPage: 1 }, "openscholar")).resolves.toMatchObject({ ok: false, status: null });
   });
 
   it("points an error at the query that was sent", async () => {

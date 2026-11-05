@@ -55,7 +55,7 @@ export async function getSearchResultsWithFilters(
   const result = await getSearchResults(
     finalApiQuery,
     requestFilters(effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId),
-    source === "openalex",
+    source,
   );
 
   if (!result.ok) {

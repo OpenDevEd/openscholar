@@ -250,6 +250,8 @@ function rewriteGroup(query: string, tokens: Token[], open: number, close: numbe
     if (!isWord(joiner, "or") && !isWord(joiner, "and")) return;
     joiners.add(joiner.text.toLowerCase());
     index += 1;
+    // A joiner with nothing after it is a mistake to report, not a value to drop.
+    if (index >= close) return;
   }
   if (!values.length || joiners.size > 1) return;
   const inside = { at: tokens[open].at, end: tokens[close].end };

@@ -5,7 +5,8 @@ import type { OpenAlexWorksQuery } from "@/lib/openalex/search-params";
 import type { SearchFilters } from "@/lib/types";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import type { OpenAlexLimited } from "@/lib/openalex/limited";
-import { activeSearchSource } from "@/lib/search/active-source";
+import { chosenSource } from "@/lib/search/active-source";
+import type { SearchSource } from "@/lib/search/source";
 
 /**
  * Server-side wrapper around `fetchOpenAlexCount`. Exists as a Server
@@ -15,11 +16,9 @@ import { activeSearchSource } from "@/lib/search/active-source";
 export async function searchOpenAlexCount(
   query: string,
   filters: SearchFilters,
-  /** Asks OpenAlex whatever the site's source is, for a community's source dialog. */
-  onOpenAlex?: boolean,
+  source?: SearchSource,
 ): Promise<{ count: number } | OpenAlexLimited> {
-  const source = onOpenAlex ? "openalex" : await activeSearchSource();
-  return (await spendOpenAlexRequests()) ?? (await fetchOpenAlexCount(query, filters, source));
+  return (await spendOpenAlexRequests()) ?? (await fetchOpenAlexCount(query, filters, await chosenSource(source)));
 }
 
 /** Counts of a community's approved source queries, in one call. These are what it imports from OpenAlex, so OpenAlex counts them. */

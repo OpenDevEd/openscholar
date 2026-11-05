@@ -40,11 +40,11 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const library = useTopicLibraryResults(topic.id);
   const [showRelated, setShowRelated] = useState(false);
   // The server sends the saved description; the browser only asks when that failed.
-  const detail = useSWR(["topic", topic.id], ([, id]) => readTopic(id), {fallbackData: initialDetail ?? undefined, revalidateOnMount: !initialDetail, revalidateOnFocus: false});
+  const detail = useSWR(["topic", topic.id, source], ([, id]) => readTopic(id), {fallbackData: initialDetail ?? undefined, revalidateOnMount: !initialDetail, revalidateOnFocus: false});
   const works = useSWRInfinite((_page, previous) => {
     if (tab !== "openalex" || (previous && !previous.meta.next_cursor)) return null;
-    return ["topic-works", topic.id, previous?.meta.next_cursor ?? "*"] as const;
-  }, ([, id, cursor]) => unlessLimited(readTopicWorks(id, cursor)));
+    return ["topic-works", topic.id, previous?.meta.next_cursor ?? "*", source] as const;
+  }, ([, id, cursor, reading]) => unlessLimited(readTopicWorks(id, cursor, reading)));
   // A paper is shown once its rating is read, so its card opens at its final size.
   const rated = useRatedPapers(works.data?.flatMap(page => page.results) ?? []);
   const papers = rated.papers;

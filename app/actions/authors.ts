@@ -3,8 +3,8 @@ import { z } from "zod";
 import client from "@/lib/openalex";
 import { lookupRequests, readOpenAlexAuthor, readOpenAlexAuthorTopics, searchOpenAlex, topicNames } from "@/lib/openalex/lookup";
 import { fetchOwnWorks } from "@/lib/openalex/read-works";
-import { activeSearchSource } from "@/lib/search/active-source";
-import { sourceForId } from "@/lib/search/source";
+import { chosenSource } from "@/lib/search/active-source";
+import { sourceForId, type SearchSource } from "@/lib/search/source";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import type { OpenAlexMatch } from "@/components/authors/types";
 import type { Author } from "@sickrin/openalex-sdk/dist/src/types/author";
@@ -21,10 +21,10 @@ function match(author: Author & { topics?: { display_name: string }[] | null }):
 }
 
 /** Authors to link a profile to: the filters' own lookup, which also takes a pasted ID, with each author's topics. */
-export async function searchProfileAuthors(search: string) {
+export async function searchProfileAuthors(search: string, given?: SearchSource) {
   const query = search.trim().slice(0, 200).replace(/^https:\/\/(?:openalex\.org|openscholar\.ai)\//, "");
   if (!query) return [];
-  const source = await activeSearchSource();
+  const source = await chosenSource(given);
   const limited = await spendOpenAlexRequests(lookupRequests("authors") + 1);
   if (limited) return limited;
   const authors = await searchOpenAlex("authors", query, source);
@@ -34,9 +34,9 @@ export async function searchProfileAuthors(search: string) {
 
 const AUTHOR_ID = /^(?:A|OSA)\d+$/;
 
-export async function readProfileAuthor(id: string) {
+export async function readProfileAuthor(id: string, given?: SearchSource) {
   if (!AUTHOR_ID.test(id)) throw new Error("Invalid author");
-  const source = sourceForId(id, await activeSearchSource());
+  const source = sourceForId(id, await chosenSource(given));
   const limited = await spendOpenAlexRequests(2);
   if (limited) return limited;
   if (source === "openscholar") {
@@ -50,9 +50,9 @@ export async function readProfileAuthor(id: string) {
   return {...match(author), works: works.results.map(work => work.title ?? work.id)};
 }
 
-export async function readProfileAuthorWorks(id: string, page: number) {
+export async function readProfileAuthorWorks(id: string, page: number, given?: SearchSource) {
   if (!AUTHOR_ID.test(id) || !Number.isInteger(page) || page < 1 || page > 1000) throw new Error("Invalid author page");
-  const source = sourceForId(id, await activeSearchSource());
+  const source = sourceForId(id, await chosenSource(given));
   const limited = await spendOpenAlexRequests();
   if (limited) return limited;
   const sortBy = {field: "publication_date", order: "desc"} as const;

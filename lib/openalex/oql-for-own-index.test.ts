@@ -155,6 +155,9 @@ describe("OQL as our index reads it", () => {
     "type is ((article or review) and not book)",
     "type is not (article and review)",
     "type is (article and review or book)",
+    "funder is (F1 and)",
+    "funder is (F1 or)",
+    "funder is (and F1)",
     "language is (en or unknown and fr)",
   ])("leaves %s for the API to answer", (query) => {
     const once = oqlForOwnIndex(where(query));

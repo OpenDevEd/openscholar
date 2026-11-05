@@ -107,7 +107,8 @@ async function searchFor(ctx: QueryCtx, actor: Pick<Acting, "workspaceId" | "use
   const { request, ratingRange } = await requestOf(ctx, actor, currentSearch(row.data), row.revision);
   if (!request || request.oql) return { reason: "oql" as const };
   if (ratingRange) return { reason: "ratings" as const };
-  return { request, key: digest(JSON.stringify([request.search ?? "", request.filter ?? ""])) };
+  // An overview written from one source isn't the same search's on another. OpenAlex's keep the keys they were stored by.
+  return { request, key: digest(JSON.stringify([request.search ?? "", request.filter ?? "", ...(request.source === "openscholar" ? [request.source] : [])])) };
 }
 
 /** The languages the app speaks, which an overview is written in: the page's. */

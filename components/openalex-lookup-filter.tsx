@@ -38,7 +38,7 @@ export function OpenAlexLookupFilter({
   const [search, setSearch] = useState("");
   const query = useDebouncedValue(search.trim());
   const source = useSearchSource();
-  const results = useSWR(query ? [`${lookup.entity}-search`, source, query] : null, () => unlessLimited(searchOpenAlexRecords(lookup.entity, query, source === "openalex")), {
+  const results = useSWR(query ? [`${lookup.entity}-search`, source, query] : null, () => unlessLimited(searchOpenAlexRecords(lookup.entity, query, source)), {
     revalidateOnFocus: false,
     keepPreviousData: true,
   });

@@ -57,12 +57,14 @@ export const requestRefresh = internalMutation({
     return null;
   },
 });
+/** What a stored topic's details are good for: the catalog, and the source that gave its description and count. OpenAlex's keep the revision they were stored with. */
+const revisionOf = (source: SearchSource) => (source === "openalex" ? CATALOG_REVISION : `${CATALOG_REVISION}:${source}`);
 async function fetchTopicDetail(id: string, source: SearchSource) {
   const response = await openAlexFetch(searchUrl(source, `topics/${id}`), {timeoutMs: 10000});
   if (!response.ok) throw new Error(`${source} topic returned ${response.status}`);
   const topic = provider.parse(await response.json());
   if (topic.id.replace("https://openalex.org/", "") !== id) throw new Error("OpenAlex returned a different topic");
-  return {id, description: topic.description, keywords: topic.keywords.slice(0, MAX_TOPIC_KEYWORDS), worksCount: topic.works_count, fetchedAt: Date.now(), revision: CATALOG_REVISION};
+  return {id, description: topic.description, keywords: topic.keywords.slice(0, MAX_TOPIC_KEYWORDS), worksCount: topic.works_count, fetchedAt: Date.now(), revision: revisionOf(source)};
 }
 /** Keeps a saved topic's publication count current without making a reader wait. */
 export const refresh = internalAction({
@@ -79,14 +81,16 @@ export const refresh = internalAction({
  * `spend`, for a person's own read: the fetch of one not kept yet counts against their
  * OpenAlex allowance, and isn't made past it. The background refresh is the platform's.
  */
-export async function readTopicDetail(ctx: ActionCtx, args: {id: string; libraryId?: string; spend?: (pages: number) => Promise<boolean>}) {
+// Its return is written out: the generated API's types depend on this module, so inference would loop.
+export async function readTopicDetail(ctx: ActionCtx, args: {id: string; libraryId?: string; spend?: (pages: number) => Promise<boolean>}): Promise<{contractVersion: 1; id: string; name: string; description: string; keywords: string[]; path: {id: string; name: string}[]; worksCount: number; fetchedAt: string; revision: string; publicBaseUrl: string; topicUrl: string}> {
     if (!topicIdSchema.safeParse(args.id).success) throw createError("VALIDATION_ERROR", "Invalid topic ID");
+    const source: SearchSource = await ctx.runQuery(internal.featureFlags.internal.searchSource, {});
     const result: {node: TopicNode; path: {id: string; name: string}[]; detail: Doc<"topicDetails"> | null} = await ctx.runQuery(internal.topics.details.read, {id: args.id});
-    let detail: {description: string; keywords: string[]; worksCount: number; fetchedAt: number; revision: string} | null = result.detail?.revision === CATALOG_REVISION ? result.detail : null;
+    let detail: {description: string; keywords: string[]; worksCount: number; fetchedAt: number; revision: string} | null = result.detail?.revision === revisionOf(source) ? result.detail : null;
     if (!detail) {
       if (args.spend && !(await args.spend(1))) throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
       try {
-        const fetched = await fetchTopicDetail(args.id, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
+        const fetched = await fetchTopicDetail(args.id, source);
         await ctx.runMutation(internal.topics.details.save, fetched);
         detail = fetched;
       } catch (error) {

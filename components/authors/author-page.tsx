@@ -6,7 +6,7 @@ import {
 } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { LogoMark } from "@/components/logo";
-import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { isOwnId, SEARCH_SOURCE_NAMES } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import Link from "@/components/workspace-link";
 import { AuthorSettingsNavigation } from "./author-settings-navigation";
@@ -539,6 +539,7 @@ export default function AuthorPage({
                         <p className="text-xs text-muted-foreground">
                           {draft.match.affiliation}
                         </p>
+                        {source === "openalex" && !isOwnId(draft.match.id) && (
                         <a
                           className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
                           href={`https://openalex.org/${draft.match.id}`}
@@ -548,6 +549,7 @@ export default function AuthorPage({
                           openalex.org/{draft.match.id}
                           <ArrowUpRight className="size-3" />
                         </a>
+                        )}
                       </>
                     ) : (
                       <p className="text-muted-foreground">
@@ -929,7 +931,7 @@ export default function AuthorPage({
                           className="flex w-full items-center gap-3 p-3 text-start hover:bg-muted"
                           onClick={async () => {
                             setCandidate(m);
-                            try { const detail = await unlessLimited(readProfileAuthor(m.id)); setCandidate(current => current?.id === m.id ? detail : current); }
+                            try { const detail = await unlessLimited(readProfileAuthor(m.id, source)); setCandidate(current => current?.id === m.id ? detail : current); }
                             catch (error) { toast.error(error instanceof OpenAlexLimitedError ? error.message : t("couldNotLoadThisAuthorS")); }
                           }}
                         >

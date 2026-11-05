@@ -57,7 +57,7 @@ export function useHistoryCount(
       const { count } = await unlessLimited(searchOpenAlexCount(
         entry.query,
         toSearchFilters(entry),
-        source === "openalex",
+        source,
       ));
       return count;
     },

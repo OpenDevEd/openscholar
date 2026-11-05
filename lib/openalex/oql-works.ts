@@ -30,10 +30,10 @@ export async function fetchOqlWorks(
   if (isOqlSentence(oql)) return { ok: false, status: 400, message: OQL_SENTENCE_REFUSAL.problem, detail: OQL_SENTENCE_REFUSAL };
   // Our index is strict about how a query is written: errors point into what it was sent.
   const sent = source === "openscholar" ? oqlForOwnIndex(oql) : oql;
-  const url = searchUrl(source, "", { "per-page": String(view.perPage), cursor: view.cursor, sort: view.sort });
-
   let response: Response;
   try {
+    // Inside the try: a request that can't be built, with our index's address unset, is answered like one that failed.
+    const url = searchUrl(source, "", { "per-page": String(view.perPage), cursor: view.cursor, sort: view.sort });
     response = await openAlexFetch(url, {
       timeoutMs: OPENALEX_TIMEOUT_MS,
       method: "POST",
