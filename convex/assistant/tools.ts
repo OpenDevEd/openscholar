@@ -72,6 +72,7 @@ const CORE_PATHS = [
   "research/papers:count",
   "research/papers:get",
   "research/lookup:find",
+  "research/authors:get",
   "research/records:listedSearches",
   "research/records:getSearch",
   "research/searches:create",
