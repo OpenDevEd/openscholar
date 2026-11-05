@@ -76,6 +76,11 @@ export function restoreFromHistory(entry: SearchResult): string {
   return buildResultsUrl(entry.id, params);
 }
 
+/** The address of a search for the papers closest in meaning to these, on our index. Saved searches don't hold it yet. */
+export function similarSearchHref(paperIds: readonly string[]) {
+  return `/results?like=${[...new Set(paperIds)].slice(0, 100).join(",")}`;
+}
+
 /**
  * Create a "cites", "cited by", or "related" search from an existing paper
  * 

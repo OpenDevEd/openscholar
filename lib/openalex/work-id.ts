@@ -20,5 +20,6 @@ export const selectWithIds = (select: string) => (select.split(",").includes("id
  */
 export function appWork<Work extends { id?: string }>(work: Work): Work {
   const openalex = (work as { ids?: { openalex?: unknown } | null }).ids?.openalex;
-  return typeof openalex === "string" && openalex ? { ...work, id: openalex } : work;
+  // The ID our index knows it by goes with it, for what only our index can do with it.
+  return typeof openalex === "string" && openalex ? { ...work, id: openalex, openscholar_id: work.id } : work;
 }

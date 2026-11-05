@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { UNSERVED_FILTER_PANELS } from "@/lib/search/source";
+import { OWN_ONLY_FIELDS, UNSERVED_FILTER_PANELS } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import { Button } from "@/components/ui/button";
 import {
@@ -204,6 +204,7 @@ const CountryFilterPanel = React.memo(function CountryFilterPanel() {
 // Search Field Component - now a dropdown select
 const SearchFieldPanel = React.memo(function SearchFieldPanel() {
   const tf = useTranslations("searchFilters");
+  const source = useSearchSource();
   const ta = useTranslations("accessibility");
   const { currentSearchField } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -238,7 +239,7 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          {SEARCH_FIELDS.map((field) => (
+          {SEARCH_FIELDS.filter((field) => source === "openscholar" || !OWN_ONLY_FIELDS.includes(field.value)).map((field) => (
             <SelectItem key={field.value} value={field.value}>
               {getFieldLabel(field.value, tf as FilterT)}
             </SelectItem>

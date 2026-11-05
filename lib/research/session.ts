@@ -412,7 +412,10 @@ export class ResearchSession {
       if (failures.length) this.fail(new ResearchImportError(failures.length));
     } catch (error) { if (this.epoch === epoch) this.fail(error); }
   }
-  private dispatch(command: ResearchCommand) {
+  private dispatch(given: ResearchCommand) {
+    // ponytail: mock only. Saved searches don't take our index's two new search kinds, and the mock changes no server, so they're
+    // saved as the default scope and live in the address. The real build widens fieldValidator and saves them.
+    const command = JSON.parse(JSON.stringify(given, (key, value: unknown) => (key === "field" && (value === "semantic" || value === "default") ? "title_and_abstract" : value))) as ResearchCommand;
     if (!this.listeners.size) throw new ResearchAccountChangedError();
     if (command.kind === "editSearch" && this.watched.get(command.id)?.value?.guest?.role === "viewer") {
       // A change to its fields folds into the one before it, so a page turned a thousand times is one draft, and nothing made earlier is dropped.

@@ -21,6 +21,10 @@ export const isOwnId = (id: string) => OWN_ID.test(id.trim());
 /** Which source reads a record by its ID: only ours knows our IDs, and any other ID goes to the active source. */
 export const sourceForId = (id: string, active: SearchSource): SearchSource => (isOwnId(id) ? "openscholar" : active);
 
+/** Ways to search only our index has. */
+export const OWN_ONLY_FIELDS: readonly string[] = ["default", "semantic"];
+export const SEMANTIC_FIELD = "semantic";
+
 /** Filters a source can't serve, by their panel in the search sidebar. They aren't offered while it's active. */
 export const UNSERVED_FILTER_PANELS: Record<SearchSource, readonly string[]> = {
   openalex: [],

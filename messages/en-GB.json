@@ -959,7 +959,9 @@
     "filterRatingRangeMulti": "{min}-{max} stars",
     "filterSortPublicationDate": "Publication date",
     "filterSortCitations": "Citations",
-    "filterSortWorksCount": "Works count"
+    "filterSortWorksCount": "Works count",
+    "searchFieldDefault": "Title, abstract, full text",
+    "searchFieldSemantic": "By meaning"
   },
   "paperCard": {
     "screeningResponses": "Screening responses",
