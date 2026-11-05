@@ -207,3 +207,22 @@ gem-prism: Cut out on its own silhouette (rows and columns filled between the fi
 
 Home page, the extraction panel. stack is portrait 1024 by 1536, then cropped to the middle 55 percent of its width and 97.6 percent of its height and squeezed to 448 by 1536, so the sheets pack tight in a 112 px column. Across narrow screens the page turns the same file a quarter turn.
 stack: A physically based 3D render, a macro studio photograph of real optical glass and light. One subject that completely fills the frame edge to edge, with no background visible. The fore-edge of a very thick stack of about thirty separate sheets of clear optical glass pressed together like the pages of a closed book, seen exactly straight on, so every polished edge is a long vertical strip running off the top and bottom of the frame. It must read as individually visible sheets of real glass and never as a smooth gradient with evenly spaced lines. Sheets have noticeably different thicknesses. Every sheet has crisp chamfered bevels catching a thin white-hot specular line on one side, and a near-black gap of shadow before the next sheet. Light is carried inside the glass, so each edge has its own brightness: some burn saturated yellow-gold (#fde047), some are deep amber (#ff9d36 into #b45309), some are almost dark smoked amber. Refraction changes down the height: caustic kinks, small offsets where a bright line shifts sideways through a sheet, faint internal reflections, tiny air gaps. The brightest point sits in the middle of the height, falling off slowly to deep amber at the top and bottom, never to grey. Razor sharp. No text, letters, numbers, logos, UI, people, sparkles or purple.
+
+
+Community tiles for the home hero strip (2026-11-05). Generated with codex exec at low effort, then node art/art.mjs <folder>; the page uses the -960 size.
+
+Use your built-in image_gen tool. Generate each of the 6 images below, one tool call each, at the widest landscape size the tool supports (16:9 or wider, highest resolution and quality). Do not edit files or do anything else. After all of them, print the absolute saved path of each image next to its name.
+
+Shared style for all: a physically based 3D render, as a studio photograph of real glass and light. One subject. Crisp, razor-sharp fine detail, real refraction and caustics. Rich saturated colour in the named hues only. Flat blue-black background (#070b1a) everywhere the subject isn't. The subject sits in the right two thirds of the frame and the upper part; the lower left quarter stays calm, dark and empty, because text will sit there. No text, no letters, no numbers, no logos, no UI, no people, no robots, no brains, no orbs, no bubbles, no sparkles, no lens flare, no film grain. Never any purple, violet or magenta.
+
+1. tile-aied: An open book made of thin glass pages, lying at an angle. From its open pages a fan of razor-thin translucent glass sheets lifts up and to the right, and the sheets settle into a few neat, evenly spaced rows, like lessons being arranged. Warm peach and soft amber light (#fdba74, #f59e0b).
+
+2. tile-wi: A long row of stacks of thick round glass coins standing on a dark glass floor, receding from left to right. The stacks rise unevenly: many very short stacks, a few towering ones on the right. Emerald and mint light glows from inside the coins (#34d399, #6ee7b7), the tallest stacks brightest.
+
+3. tile-eccar: A large single translucent glass leaf arching like a roof over a small landscape of glass terraces that step down a hillside, each terrace holding a thin layer of lit water. Fine glass threads of rain fall at the far left edge and stop at the leaf. Lime and fresh green light (#a3e635, #4ade80).
+
+4. tile-tvet: A row of interlocking glass gears of different sizes, turning together, driving a long straight glass conveyor that carries small identical glass blocks to the right. Coral and warm rose light (#fb7185, #fda4af), with amber highlights where the teeth meet.
+
+5. tile-aimea: A large glass protractor standing upright, its arc lit from within, with a fine beam of light measuring an angle across it, beside a long precise glass ruler lying flat with luminous tick marks along its edge (marks only, no numbers). Orange and amber light (#fb923c, #fdba74).
+
+6. tile-usaid: A glass compass lying on a wide surface made of thousands of tiny flat translucent glass tiles that form faint continents, its needle a thin bright bar of light. The tiles nearest the compass glow; those further away fade into the dark. Golden amber light (#fbbf24, #f59e0b).
