@@ -143,9 +143,9 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   if (missing) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
+      <header className="@container flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
         <AiIcon size={18} working={working} className="shrink-0" />
-        <FadeRow scrolls scrollbar="none" className="flex-1">
+        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="flex-1">
           <div className="w-max">
             <Pills
               label={t("lens")}
@@ -159,7 +159,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
         {/* Named in words where there's room, so it needs no tooltip. */}
         <button type="button" aria-label={t("newLens")} onClick={() => setEditing({ lens: null })} className="flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2.5">
           <Plus className="size-4" />
-          <span className="hidden sm:inline">{t("newLens")}</span>
+          <span className="hidden @lg:inline">{t("newLens")}</span>
         </button>
         <DropdownMenu>
           <TooltipHint label={t("options")}>
