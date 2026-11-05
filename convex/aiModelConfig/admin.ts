@@ -3,11 +3,11 @@ import { mutation } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { presetConfigKey } from "../../lib/ai/tasks";
-import { presetTaskValidator, effortValidator, presetKeyValidator } from "./validators";
+import { aiTaskValidator, effortValidator, presetKeyValidator } from "./validators";
 
 /** Sets the model and effort a preset runs a task on. */
 export const setPresetPick = mutation({
-  args: { preset: presetKeyValidator, task: presetTaskValidator, modelId: v.id("models"), effort: v.optional(effortValidator) },
+  args: { preset: presetKeyValidator, task: aiTaskValidator, modelId: v.id("models"), effort: v.optional(effortValidator) },
   returns: v.null(),
   handler: async (ctx, { preset, task, modelId, effort }) => {
     await requireAdmin(ctx);

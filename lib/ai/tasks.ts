@@ -5,20 +5,11 @@ import { isDecisionModel } from "./decisions";
  * effort for every task (`aiModelConfig` key `preset.<preset>.<task>`); Custom
  * holds the user's own pick for each.
  */
-export const CLOUD_TASKS = ["chat", "extraction", "screenAll"] as const;
+export const CLOUD_TASKS = ["chat", "extraction", "screenAll", "overview"] as const;
 /** Tasks that run in the browser when the user pays with their own key. */
 export const BROWSER_TASKS = ["screening", "questionToQuery", "refine", "translate", "broadenNarrow"] as const;
 export const AI_TASKS = [...CLOUD_TASKS, ...BROWSER_TASKS] as const;
 export type AiTask = (typeof AI_TASKS)[number];
-/**
- * Tasks only a preset sets, on the admin's map. Nobody picks their own model for these: a free overview runs at
- * Openscholar's cost, so what it runs on stays in admins' hands. Custom reads Balanced's.
- */
-export const PRESET_ONLY_TASKS = ["overview"] as const;
-export const PRESET_TASKS = [...AI_TASKS, ...PRESET_ONLY_TASKS] as const;
-export type PresetTask = (typeof PRESET_TASKS)[number];
-/** Whether a person can pick their own model for a task. */
-export const isAiTask = (task: PresetTask): task is AiTask => (AI_TASKS as readonly PresetTask[]).includes(task);
 
 /** Which search task a query enhancement is. */
 export const SEARCH_TASKS = ["questionToQuery", "refine", "broadenNarrow"] as const;
@@ -31,7 +22,7 @@ export type ModelChoice = PresetKey | "custom";
 /** The preset a user starts on, and the fallback when a pick is gone. */
 export const DEFAULT_PRESET: PresetKey = "balanced";
 
-export const presetConfigKey = (preset: PresetKey, task: PresetTask) => `preset.${preset}.${task}`;
+export const presetConfigKey = (preset: PresetKey, task: AiTask) => `preset.${preset}.${task}`;
 
 /** What a user runs on: their choice, or Custom when credits are off (presets need credits). */
 export const effectiveChoice = (creditsEnabled: boolean, saved: ModelChoice | undefined): ModelChoice =>
@@ -42,7 +33,7 @@ export const fallbackPreset = (saved: ModelChoice | undefined): PresetKey =>
   saved && saved !== "custom" ? saved : DEFAULT_PRESET;
 
 /** Tasks a decision model (Jev) can do: yes/no screening. */
-export const DECISION_TASKS: readonly PresetTask[] = ["screening", "screenAll"];
+export const DECISION_TASKS: readonly AiTask[] = ["screening", "screenAll"];
 
 /**
  * Whether a model can do a task: a decision model (Jev) only screens, and every
@@ -50,7 +41,7 @@ export const DECISION_TASKS: readonly PresetTask[] = ["screening", "screenAll"];
  * (`response_format` alone is plain JSON mode). The server enforces it; pickers
  * filter with it.
  */
-export function usableFor(model: { modelId: string; supportedParameters?: string[] }, task: PresetTask) {
+export function usableFor(model: { modelId: string; supportedParameters?: string[] }, task: AiTask) {
   if (isDecisionModel(model.modelId)) return DECISION_TASKS.includes(task);
   // An overview reads its numbers and papers through tools, and a run that reads nothing is refused.
   if (task === "overview") return model.supportedParameters?.includes("tools") === true;
