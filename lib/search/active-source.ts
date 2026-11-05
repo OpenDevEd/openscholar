@@ -1,4 +1,3 @@
-import "server-only";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { SEARCH_SOURCE_FLAG, sourceFromFlag, type SearchSource } from "./source";
