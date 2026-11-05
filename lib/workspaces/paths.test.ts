@@ -41,6 +41,11 @@ it("lands a switch into an organization in that organization, on a page it has, 
   }
 });
 
+it("gives every settings page of a person's own workspace its own page in an organization, which the profile's catch-all would otherwise answer blank", () => {
+  const settings = own.filter((route) => route === "settings" || route.startsWith("settings/"));
+  expect(settings.filter((route) => !organization.includes(route))).toEqual([]);
+});
+
 it("lands a switch out of an organization, to a person's own workspace or another organization, on a page that's there", () => {
   for (const route of organization) {
     const from = `/o/lab${sample(route) === "/" ? "" : sample(route)}`;
