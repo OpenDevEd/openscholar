@@ -11,6 +11,14 @@ crons.interval(
   {},
 );
 
+// What the community releases page lists. new-el publishes without telling us.
+crons.interval(
+  "sync community releases",
+  { minutes: 10 },
+  internal.evidenceLibraries.releases.syncCatalog,
+  {},
+);
+
 // Convex allows only one executing run of this cron. The action never
 // schedules a continuation; a failed run waits for the next daily tick.
 crons.interval(

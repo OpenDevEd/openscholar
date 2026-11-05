@@ -6,7 +6,10 @@
 // how far behind a library is.
 //
 // A release is a GitHub Release tagged `runtime-<commit>`. new-el publishes
-// one only after the runtime image and its plain-language notes both exist.
+// one as a prerelease, only after the runtime image and its plain-language
+// notes both exist. Promoting it clears GitHub's prerelease flag
+// (./releases.ts). Shared dev offers every release (`EL_OFFER_PRERELEASES`);
+// any other deployment offers only promoted ones.
 
 import {
   resolveRuntimeImage,
@@ -27,6 +30,11 @@ const MAX_NOTE_LENGTH = 300;
 const COMMIT = /^[a-f0-9]{40}$/u;
 
 export const RUNTIME_RELEASE_CACHE_MS = 10 * 60 * 1_000;
+/** The `checkedAt` of a saved check whose answer a release's channel change took away. */
+export const RELEASE_CHECK_WITHDRAWN = 0;
+
+/** Whether this deployment offers releases that haven't been promoted. */
+export const offersPrereleases = () => process.env.EL_OFFER_PRERELEASES === "true";
 
 export type RuntimeReleaseChange = { sha: string; message: string };
 export type RuntimeReleaseNotes = {
@@ -104,10 +112,19 @@ export function parseReleaseNotes(body: unknown): {
   return { summary: summary.slice(0, MAX_NOTE_LENGTH), notes };
 }
 
+/** The line new-el adds to a release body, counting the migrations since the release before it. */
+const DATABASE_CHANGES_LINE = /^Database changes: (\d+)$/mu;
+
+function parseDatabaseChanges(body: unknown): number | undefined {
+  const count = typeof body === "string" ? DATABASE_CHANGES_LINE.exec(body)?.[1] : undefined;
+  return count === undefined ? undefined : Number(count);
+}
+
 async function readGithub(
   fetchImpl: typeof fetch,
   token: string,
   path: string,
+  patch?: unknown,
 ): Promise<{ status: number; body: unknown }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -115,13 +132,14 @@ async function readGithub(
     let response: Response;
     try {
       response = await fetchImpl(new URL(path, GITHUB_ORIGIN), {
-        method: "GET",
+        method: patch === undefined ? "GET" : "PATCH",
         headers: {
           accept: "application/vnd.github+json",
           authorization: `Bearer ${token}`,
           "user-agent": "Openscholar",
           "x-github-api-version": "2022-11-28",
         },
+        ...(patch === undefined ? {} : { body: JSON.stringify(patch) }),
         signal: controller.signal,
       });
     } catch {
@@ -164,7 +182,85 @@ async function readGithub(
   }
 }
 
-type PublishedRelease = { publishedAt: number; release: RuntimeReleaseNotes };
+type PublishedRelease = {
+  releaseId: number;
+  publishedAt: number;
+  prerelease: boolean;
+  databaseChanges?: number;
+  release: RuntimeReleaseNotes;
+};
+
+/** Every runtime release GitHub lists, promoted or not, newest first. */
+async function listRuntimeReleases(
+  fetchImpl: typeof fetch,
+  token: string,
+): Promise<PublishedRelease[]> {
+  const response = await readGithub(
+    fetchImpl,
+    token,
+    `/repos/${RUNTIME_REPOSITORY}/releases?per_page=${MAX_RELEASES}`,
+  );
+  if (response.status !== 200 || !Array.isArray(response.body)) {
+    throw new RuntimeReleaseError(
+      "GITHUB_UNAVAILABLE",
+      "The latest Evidence Community release could not be read",
+    );
+  }
+  const published: PublishedRelease[] = [];
+  for (const entry of response.body) {
+    if (!isRecord(entry) || entry.draft === true) continue;
+    const commit =
+      typeof entry.tag_name === "string"
+        ? RUNTIME_RELEASE_TAG.exec(entry.tag_name)?.[1]
+        : undefined;
+    if (!commit || typeof entry.id !== "number") continue;
+    const publishedAt =
+      typeof entry.published_at === "string"
+        ? Date.parse(entry.published_at)
+        : NaN;
+    if (!Number.isFinite(publishedAt)) continue;
+    const databaseChanges = parseDatabaseChanges(entry.body);
+    published.push({
+      releaseId: entry.id,
+      publishedAt,
+      prerelease: entry.prerelease === true,
+      ...(databaseChanges === undefined ? {} : { databaseChanges }),
+      release: { commit, ...parseReleaseNotes(entry.body) },
+    });
+  }
+  // The API can list an older release first. Use publication dates.
+  return published.sort((a, b) => b.publishedAt - a.publishedAt);
+}
+
+/** The list the releases page shows. */
+export async function fetchRuntimeCatalog(input: {
+  token: string;
+  fetchImpl?: typeof fetch;
+}): Promise<PublishedRelease[]> {
+  return await listRuntimeReleases(input.fetchImpl ?? fetch, input.token.trim());
+}
+
+/** Promotes a release, or pulls one back, on GitHub: every deployment reads the flag from there. */
+export async function setRuntimeReleasePrerelease(input: {
+  token: string;
+  releaseId: number;
+  prerelease: boolean;
+  fetchImpl?: typeof fetch;
+}) {
+  const response = await readGithub(
+    input.fetchImpl ?? fetch,
+    input.token.trim(),
+    `/repos/${RUNTIME_REPOSITORY}/releases/${input.releaseId}`,
+    { prerelease: input.prerelease },
+  );
+  if (response.status !== 200) {
+    console.error("[evidence-library] changing a release failed", { releaseId: input.releaseId, status: response.status, body: response.body });
+    throw new RuntimeReleaseError(
+      "GITHUB_UNAVAILABLE",
+      `GitHub refused the change (${response.status})`,
+    );
+  }
+}
 
 export async function fetchRecommendedRuntimeRelease(input: {
   token: string;
@@ -191,34 +287,9 @@ async function readPublishedReleases(input: {
     );
   }
   const fetchImpl = input.fetchImpl ?? fetch;
-  const response = await readGithub(
-    fetchImpl,
-    token,
-    `/repos/${RUNTIME_REPOSITORY}/releases?per_page=${MAX_RELEASES}`,
+  const published = (await listRuntimeReleases(fetchImpl, token)).filter(
+    ({ prerelease }) => !prerelease || offersPrereleases(),
   );
-  const published: PublishedRelease[] = [];
-  if (response.status === 200 && Array.isArray(response.body)) {
-    for (const entry of response.body) {
-      if (!isRecord(entry) || entry.draft === true || entry.prerelease === true)
-        continue;
-      const commit =
-        typeof entry.tag_name === "string"
-          ? RUNTIME_RELEASE_TAG.exec(entry.tag_name)?.[1]
-          : undefined;
-      if (!commit) continue;
-      const publishedAt =
-        typeof entry.published_at === "string"
-          ? Date.parse(entry.published_at)
-          : NaN;
-      if (!Number.isFinite(publishedAt)) continue;
-      published.push({
-        publishedAt,
-        release: { commit, ...parseReleaseNotes(entry.body) },
-      });
-    }
-  }
-  // The API can list an older release first. Use publication dates.
-  published.sort((a, b) => b.publishedAt - a.publishedAt);
   const newest = published[0]?.release;
   if (!newest) {
     throw new RuntimeReleaseError(
@@ -370,6 +441,10 @@ export async function fetchRuntimeRelease(input: {
   if (latest === running) return { latest, image, changes: [], releases: [] };
 
   const placement = await readPlacement(fetchImpl, token, running, latest);
+  // A community on a release that was later pulled back is ahead of the newest
+  // one offered. Updates only go forward, so it has nothing to take. `image`
+  // goes unread: a release row names an image only for a `latest` it moves to.
+  if (placement?.status === "behind") return { latest: running, image, changes: [], releases: [] };
   // The releases the library has not applied yet are the ones published after
   // the one it runs. A commit that was never released is placed by when it
   // was made.
