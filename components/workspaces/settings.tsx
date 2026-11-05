@@ -512,7 +512,7 @@ export function WorkspaceMembers() {
                 });
               }}
             >
-              <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
+              <label className="flex h-10 min-w-[min(14rem,100%)] flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
                 <Mail className="size-4 shrink-0 text-muted-foreground" />
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("emailAddress")} aria-label={tw("emailToInvite")} className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
               </label>

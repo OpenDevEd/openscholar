@@ -85,7 +85,7 @@ interface MarkdownContentProps {
 
 export function MarkdownContent({ content, className }: MarkdownContentProps) {
   return (
-    <article className={cn("text-sm sm:text-base", className)}>
+    <article className={cn("text-sm break-words sm:text-base", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {content}
       </ReactMarkdown>

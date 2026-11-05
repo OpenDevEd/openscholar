@@ -25,7 +25,7 @@ export function HomeHero() {
             animate={{ y: 0, opacity: 1 }}
             transition={logoTransition}
           >
-            <Logo size="lg" clickable={false} context="home" />
+            <Logo size="lg" clickable={false} context="home" className="flex-wrap justify-center" />
           </motion.span>
         </h1>
 

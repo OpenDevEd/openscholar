@@ -97,7 +97,7 @@ export function JobListItem({ job, viewMode, face, done = 0, presence }: JobList
     <Entry viewMode={viewMode}>
       {isGrid(viewMode) ? (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {kind}
             {state}
             <span className="flex-1" />

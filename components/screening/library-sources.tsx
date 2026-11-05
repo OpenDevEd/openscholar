@@ -262,7 +262,7 @@ export function LibrarySources({
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {library ? <LibrarySelect libraries={libraries} value={library.libraryId} onChange={pick} totalOf={totalOf} /> : null}
-        <div className="relative min-w-56 flex-1">
+        <div className="relative min-w-[min(14rem,100%)] flex-1">
           <Link2 aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={address}

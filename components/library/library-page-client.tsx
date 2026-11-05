@@ -552,7 +552,7 @@ export function LibraryPageClient() {
                   actions={
                     selectedCollection && !guest ? (
                       <>
-                        {likeHref && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg px-2 text-muted-foreground hover:text-foreground" asChild><Link href={likeHref}><Compass className="h-3.5 w-3.5" />{ts("likeCollection")}</Link></Button>}
+                        {likeHref && <Button variant="ghost" size="sm" className="h-auto min-h-8 shrink gap-1.5 whitespace-normal rounded-lg px-2 py-1 text-muted-foreground hover:text-foreground" asChild><Link href={likeHref}><Compass className="h-3.5 w-3.5" />{ts("likeCollection")}</Link></Button>}
                         <ItemPresence kind="collection" id={selectedCollection._id} />
                         <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
                         <MoveButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
@@ -560,7 +560,7 @@ export function LibraryPageClient() {
                       </>
                     ) : !params.col && workspaceId ? (
                       <>
-                        {likeHref && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg px-2 text-muted-foreground hover:text-foreground" asChild><Link href={likeHref}><Compass className="h-3.5 w-3.5" />{ts("likeLibrary")}</Link></Button>}
+                        {likeHref && <Button variant="ghost" size="sm" className="h-auto min-h-8 shrink gap-1.5 whitespace-normal rounded-lg px-2 py-1 text-muted-foreground hover:text-foreground" asChild><Link href={likeHref}><Compass className="h-3.5 w-3.5" />{ts("likeLibrary")}</Link></Button>}
                         <ItemPresence kind="library" id={workspaceId} />
                       </>
                     ) : undefined

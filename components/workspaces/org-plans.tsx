@@ -82,7 +82,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
           badges={organization && !onSouthern ? [{ tone: "success", label: t("yourOrganizationsPlan") }] : []}
           icon={Building2}
           name={free.name}
-          price={<div className="text-4xl font-bold">{tp("freePrice")}</div>}
+          price={<div className="text-4xl font-bold break-words">{tp("freePrice")}</div>}
           description={t("alphaFreeDescription")}
           features={[
             t("noMemberLimit"),
@@ -256,7 +256,7 @@ function TeamPlans({ featureName, initial }: { featureName: (id: string) => stri
           badges={organization && !onTeam ? [{ tone: "success", label: t("yourOrganizationsPlan") }] : []}
           icon={Building2}
           name={t("freeOrganization")}
-          price={<div className="text-4xl font-bold">{tp("freePrice")}</div>}
+          price={<div className="text-4xl font-bold break-words">{tp("freePrice")}</div>}
           description={t("freeDescription")}
           features={[
             ts("upToMembers", { count: FREE_MEMBERS }),

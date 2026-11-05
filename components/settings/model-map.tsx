@@ -412,7 +412,7 @@ export function MapSummary({
   const step = shown.length > 1 ? Math.min(36, 144 / (shown.length - 1)) : 36;
   return (
     <div className="flex items-center justify-between gap-6 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start">
-      <div className="flex min-w-0 items-center gap-4 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start">
+      <div className="flex min-w-0 max-w-full items-center gap-4 @max-[46rem]/configuration:flex-col @max-[46rem]/configuration:items-start">
         <div className="flex shrink-0">
           <AnimatePresence initial={false} mode="popLayout">
             {shown.map((n, i) => {
@@ -437,7 +437,7 @@ export function MapSummary({
             })}
           </AnimatePresence>
         </div>
-        <div className="min-w-0 space-y-2">
+        <div className="min-w-0 max-w-full space-y-2">
           <h2 className="flex items-baseline gap-2 truncate">
             <span className="text-2xl font-semibold tracking-tight">{title}</span>
           </h2>
@@ -484,7 +484,7 @@ export function PresetSwitch<T extends PresetKey | "custom">({
   const mean = (values: number[]) => (values.length ? values.reduce((sum, n) => sum + n, 0) / values.length : undefined);
   // Intelligence averages the scored models only; an unscored model says nothing about it.
   const summary = (models: MapModel[]) => (
-    <span className="flex w-full items-center gap-4">
+    <span className="flex w-full items-center gap-4 overflow-hidden">
       <IntelligenceMeter index={mean(models.flatMap((m) => (m.intelligenceIndex == null ? [] : [m.intelligenceIndex])))} className="flex-1" />
       <PriceScale input={mean(models.map((m) => m.inputPricePerMillion)) ?? 0} output={mean(models.map((m) => m.outputPricePerMillion)) ?? 0} />
     </span>
