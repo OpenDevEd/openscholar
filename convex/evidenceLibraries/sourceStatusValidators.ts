@@ -93,12 +93,16 @@ export const sourceStatusSnapshotValidator = v.object({
   libraryId: v.string(),
   observedAt: v.string(),
   sources: capped(v.array(sourceStatusValidator), MAX_LIBRARY_SOURCES),
+  /** The community's public records, each counted once however many of its sources hold it. Runtimes older than it leave it out. */
+  records: v.optional(v.number()),
 });
 
 export const evidenceLibrarySourceStatusFields = {
   libraryId: v.id("evidenceLibraries"),
   observedAt: v.number(),
   sources: capped(v.array(sourceStatusValidator), MAX_LIBRARY_SOURCES),
+  /** The community's public records, each counted once however many of its sources hold it. Runtimes older than it leave it out. */
+  records: v.optional(v.number()),
 };
 
 /** The runtime's latest report on a library's sources, or null before its first. */

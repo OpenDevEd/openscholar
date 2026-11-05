@@ -56,6 +56,7 @@ export const record = internalMutation({
     credentialDigest: v.string(),
     observedAt: v.number(),
     sources: v.array(sourceStatusValidator),
+    records: v.optional(v.number()),
   },
   returns: v.union(v.literal("saved"), v.literal("stale")),
   handler: async (ctx, args) => {
@@ -67,7 +68,8 @@ export const record = internalMutation({
       .withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId))
       .unique();
     if (current && current.observedAt >= args.observedAt) return "stale";
-    const snapshot = { libraryId, observedAt: args.observedAt, sources: args.sources };
+    // A report without a total, from an older runtime, leaves none: a total kept from before would go stale.
+    const snapshot = { libraryId, observedAt: args.observedAt, sources: args.sources, records: args.records };
     if (current) await ctx.db.replace("evidenceLibrarySourceStatus", current._id, snapshot);
     else await ctx.db.insert("evidenceLibrarySourceStatus", snapshot);
     // A report naming a subject an owner asked to grade against sends that request on.
@@ -112,7 +114,8 @@ export const receiveSourceStatus = httpAction(async (ctx, request) => {
     Number.isNaN(observedAt) ||
     observedAt > Date.now() + MAX_CLOCK_AHEAD_MS ||
     snapshot.sources.length > MAX_SOURCES ||
-    !snapshot.sources.every(isSensibleStatus)
+    !snapshot.sources.every(isSensibleStatus) ||
+    !isCount(snapshot.records ?? null)
   ) {
     return jsonResponse(400, { error: "invalid_request" });
   }
@@ -122,6 +125,7 @@ export const receiveSourceStatus = httpAction(async (ctx, request) => {
       credentialDigest: await digestOpaqueToken(credential),
       observedAt,
       sources: snapshot.sources,
+      records: snapshot.records,
     });
     return jsonResponse(200, { result });
   } catch (error) {
