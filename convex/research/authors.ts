@@ -28,8 +28,8 @@ const lastPart = (id: string) => id.split("/").at(-1)!;
 export const getAction = defineUserAction({
   path: "research/authors:get",
   description:
-    "Reads an author by their OpenAlex ID, such as A5023888391, as results and research/lookup:find give it: their name, ORCID, where they work now, the research areas they publish in most, how many papers they have, how often they're cited and their h-index. " +
-    "Their papers are research/papers:search with `authors`. One request against the person's OpenAlex allowance.",
+    "Reads an author by their ID, such as A5023888391 or OSA2259683, as results and research/lookup:find give it: their name, ORCID, where they work now, the research areas they publish in most, how many papers they have, how often they're cited and their h-index. " +
+    "Their papers are research/papers:search with `authors`. One request against the person's search allowance.",
   args: { id: v.string() },
   returns: authorValidator,
   spendsCredits: false,
@@ -38,7 +38,7 @@ export const getAction = defineUserAction({
   undoable: true,
   run: async (ctx, { userId }, { id }): Promise<Infer<typeof authorValidator>> => {
     const asked = /^(?:https:\/\/(?:openalex\.org|openscholar\.ai)\/)?((?:A|OSA)\d+)$/i.exec(id.trim())?.[1]?.toUpperCase();
-    if (!asked) throw createError("VALIDATION_ERROR", "An author is read by their OpenAlex ID, such as A5023888391.");
+    if (!asked) throw createError("VALIDATION_ERROR", "An author is read by their ID, such as A5023888391 or OSA2259683.");
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const source = sourceForId(asked, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));

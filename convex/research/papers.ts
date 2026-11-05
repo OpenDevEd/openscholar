@@ -30,11 +30,11 @@ import type { screeningPaperInputValidator } from "../screening/validators";
 export const searchAction = defineUserAction({
   path: "research/papers:search",
   description:
-    "Searches OpenAlex for papers by a query, filters, or both, and saves nothing. Use it to look papers up or try a query. " +
+    "Searches the index for papers by a query, filters, or both, and saves nothing. Use it to look papers up or try a query. " +
     `Returns ${RESULTS_PAGE} papers a page, each with its ID, title, first authors with IDs and countries, year, venue, type, DOI, open access, citations and the start of its abstract, and how many match in all. ` +
-    "The query is keywords, with AND, OR, NOT and quoted phrases. A quoted phrase holds no ? or *, which OpenAlex reads as wildcards: leave a title's question mark out. " +
+    "The query is keywords, with AND, OR, NOT and quoted phrases. A quoted phrase holds no ? or *, which the index reads as wildcards: leave a title's question mark out. " +
     SETTINGS +
-    " Each page read counts against the person's OpenAlex allowance.",
+    " Each page read counts against the person's search allowance.",
   args: { query: v.optional(v.string()), ...searchSettings, page: pageValidator },
   returns: resultsValidator,
   spendsCredits: false,
@@ -44,7 +44,7 @@ export const searchAction = defineUserAction({
   run: async (ctx, { userId, workspaceId }, { query, page, ...settings }): Promise<Infer<typeof resultsValidator>> => {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, workspaceId, query, settings });
-    return await readPage(ctx, userId, found, page ?? 1, "This query isn't one OpenAlex can read. Check its brackets and quotes.");
+    return await readPage(ctx, userId, found, page ?? 1, "This query isn't one the index can read. Check its brackets and quotes.");
   },
 });
 export const search = userAction(searchAction);
@@ -71,10 +71,10 @@ const FILTER_ID: Partial<Record<Grouping, (key: string) => string>> = {
 export const countAction = defineUserAction({
   path: "research/papers:count",
   description:
-    "Counts the papers a query, filters, or both find in OpenAlex, and saves nothing. With `by`, also how they divide: by year, language, type, openAccess, country (where the authors work), author, institution, funder, journal, field or sdg. " +
+    "Counts the papers a query, filters, or both find in the index, and saves nothing. With `by`, also how they divide: by year, language, type, openAccess, country (where the authors work), author, institution, funder, journal, field or sdg. " +
     `It returns up to ${GROUPS_MAX} groups with how many papers each has: the largest first, or by year the latest ${GROUPS_MAX} in order. Use it for how many, how a topic changed over the years, who publishes most, which countries or languages, in one call, and never by reading pages of results. ` +
     "A group comes with the `id` the filter that narrows by it takes: `authors`, `funders`, `journals`, `institutions`, `authorsIn` or `about` for a country, `languages`, `types`, `sdgs`, and `researchAreas` for a field. The query and the filters are the ones research/papers:search takes, and mean the same. " +
-    "One request against the person's OpenAlex allowance.",
+    "One request against the person's search allowance.",
   args: { query: v.optional(v.string()), ...searchSettings, by: v.optional(v.union(...(Object.keys(GROUPINGS) as Grouping[]).map((name) => v.literal(name)), v.null())) },
   returns: countValidator,
   spendsCredits: false,
@@ -84,7 +84,7 @@ export const countAction = defineUserAction({
   run: async (ctx, { userId, workspaceId }, { query, by, ...settings }): Promise<Infer<typeof countValidator>> => {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.research.searches.requestFor, { userId, workspaceId, query, settings });
-    if (!found.request) throw createError("VALIDATION_ERROR", "This query isn't one OpenAlex can read. Check its brackets and quotes.");
+    if (!found.request) throw createError("VALIDATION_ERROR", "This query isn't one the index can read. Check its brackets and quotes.");
     // Which papers a person rated is theirs, not OpenAlex's, so it can't count them.
     if (found.ratingRange) throw createError("VALIDATION_ERROR", "Papers kept by the person's ratings can't be counted this way. Leave `ratedOnly`, `minRating` and `maxRating` out.");
     const spend = spender(ctx, found.clerkId);
@@ -123,7 +123,7 @@ export const getAction = defineUserAction({
   path: "research/papers:get",
   description:
     "Reads one paper whole, by its ID as results give it (such as W2741809807) or its DOI: its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
-    "One request against the person's OpenAlex allowance.",
+    "One request against the person's search allowance.",
   args: { id: v.string() },
   returns: paperRecordValidator,
   spendsCredits: false,
@@ -183,11 +183,11 @@ export const readPdfAction = defineUserAction({
   path: "research/papers:readPdf",
   description:
     "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
-    "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. A paper in the person's Zotero library is read from there, with zotero/library:pdf. " +
-    "An Evidence Community's record is read from the community, by its `paper` as evidenceLibraries/library:records gives it or by its page's address on the community, when that says `pdf`, or else from OpenAlex's copy when it has an OpenAlex ID. When none can be got, ask the person to attach its PDF to the chat. " +
-    "OpenAlex sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
+    "Search results, a paper's record and the person's saved papers say `pdf` when the index knows of one; it may still hold a copy of one without. A paper in the person's Zotero library is read from there, with zotero/library:pdf. " +
+    "An Evidence Community's record is read from the community, by its `paper` as evidenceLibraries/library:records gives it or by its page's address on the community, when that says `pdf`, or else from the index's copy when it has a paper ID. When none can be got, ask the person to attach its PDF to the chat. " +
+    "The index sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
-    "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",
+    "The person is asked first, with what the read may cost. One request against the person's search allowance.",
   args: { id: v.string(), title: v.optional(v.string()) },
   returns: paperPdfValidator,
   spendsCredits: true,
@@ -215,7 +215,7 @@ export const readPdfAction = defineUserAction({
     const { paper, title, pdfUrl } = toPaper(work);
     const openalexId = paperIdOf(paper);
     // The person was asked about the paper by the title the model gave: one that isn't this ID's reads nothing.
-    if (asked && !sameTitle(asked, title)) throw createError("VALIDATION_ERROR", `${id} is "${title}" in OpenAlex, not "${asked}". Check the paper's ID, and read it again.`);
+    if (asked && !sameTitle(asked, title)) throw createError("VALIDATION_ERROR", `${id} is "${title}" in the index, not "${asked}". Check the paper's ID, and read it again.`);
     // The model is sent the stored copy, never the file through here.
     const got = await paperPdf(ctx, { userId, workspaceId, scope: await chatScope(ctx, call), kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
     if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);

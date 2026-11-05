@@ -240,7 +240,8 @@
     "searchingDescription": "Inapitia mamilioni ya makala...",
     "noResultsMatchFilters": "Hakuna matokeo yanayolingana na vichujio vyako",
     "updatingResults": "Inasasisha matokeo...",
-    "adjustTab": "Rekebisha"
+    "adjustTab": "Rekebisha",
+    "firstOnly": "Inaonyesha {shown} za kwanza kati ya {total}. Punguza utafutaji ili kufikia zilizobaki."
   },
   "pricing": {
     "chooseYourPlan": "Mipango",
@@ -488,7 +489,8 @@
   "downloads": {
     "downloadAll": "Pakua zote",
     "downloadEssentialJSON": "Pakua taarifa muhimu kama JSON",
-    "downloadEssentialCSV": "Pakua taarifa muhimu kama CSV"
+    "downloadEssentialCSV": "Pakua taarifa muhimu kama CSV",
+    "pageOnly": "Makala {count} kwenye ukurasa huu"
   },
   "extraction": {
     "searchJobs": "Tafuta kazi...",
@@ -1033,7 +1035,8 @@
     "queryHistory": "Historia ya hoja",
     "queryEvolution": "Mabadiliko ya hoja",
     "bookmarkNamePlaceholder": "jina-la-alamisho",
-    "recentSearches": "Utafutaji wa hivi karibuni"
+    "recentSearches": "Utafutaji wa hivi karibuni",
+    "clearAllHistoryConfirmWhole": "Una uhakika unataka kufuta historia yako yote ya utafutaji? Hatua hii haiwezi kutenduliwa."
   },
   "commandCenter": {
     "searchesLabel": "utafutaji",
@@ -1098,6 +1101,7 @@
     "searchWithQuery": "Tafuta kwa hoja hii",
     "removeFromHistory": "Ondoa kwenye historia",
     "openDoi": "Fungua DOI",
+    "openPaperPage": "Fungua ukurasa wa makala",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Rudisha kwa chaguo-msingi",
     "focusMode": "Hali ya kuzingatia",
@@ -4969,7 +4973,7 @@
     },
     "tryAgain": "Jaribu tena",
     "unavailable": {
-      "oql": "Utafutaji ulioandikwa kwa OQL hauwezi kuhesabiwa, kwa hivyo hauna muhtasari.",
+      "oql": "Muhtasari haupatikani kwa utafutaji ulioandikwa kwa OQL.",
       "ratings": "Muhtasari husoma utafutaji wote, kwa hivyo hakuna unaoandikwa matokeo yanapochujwa kwa ukadiriaji wako."
     },
     "dialog": {
@@ -5369,7 +5373,7 @@
     "loadingPublications": "Inapakia machapisho",
     "noPublishedWorksAreLinkedTo": "Bado hakuna kazi zilizochapishwa zilizounganishwa na mwandishi huyu.",
     "connectTheAuthorSResearchRecord": "Unganisha rekodi ya utafiti ya mwandishi ili kuonyesha machapisho yake.",
-    "linkAnAuthorToDisplayTheir": "Unganisha mwandishi ili kuonyesha machapisho yake ya OpenAlex.",
+    "linkAnAuthorToDisplayTheir": "Unganisha mwandishi ili kuonyesha machapisho yake.",
     "changeMatch": "Badilisha linganisho",
     "findAuthor": "Tafuta mwandishi",
     "unlink": "Tenganisha",
@@ -5390,22 +5394,22 @@
     "noPublicationsToDisplay": "Hakuna machapisho ya {source} ya kuonyesha.",
     "showMore": "Onyesha zaidi",
     "confirmAuthorMatch": "Thibitisha mwandishi aliyelingana",
-    "findAuthorOnOpenalex": "Tafuta mwandishi kwenye OpenAlex",
+    "findAuthorOnOpenalex": "Tafuta rekodi ya mwandishi",
     "checkTheAffiliationAndResearchBefore": "Kagua taasisi na utafiti kabla ya kuunganisha rekodi hii.",
-    "searchByNameAffiliationOrOpenalex": "Tafuta kwa jina, taasisi au kitambulisho cha mwandishi wa OpenAlex.",
+    "searchByNameAffiliationOrOpenalex": "Tafuta kwa jina, taasisi au kitambulisho cha mwandishi.",
     "yourNameBiographyLinksAndSelected": "Jina lako, historia fupi, viungo na machapisho yaliyochaguliwa vitabaki kama ulivyoviingiza.",
-    "searchOpenalexAuthors": "Tafuta waandishi wa OpenAlex",
+    "searchOpenalexAuthors": "Tafuta rekodi za waandishi",
     "nameAffiliationOrAuthorId": "Jina, taasisi au kitambulisho cha mwandishi",
-    "openalexSearchIsUnavailableYourProfile": "Utafutaji wa OpenAlex haupatikani. Wasifu wako na linganisho la sasa havijabadilika.",
+    "openalexSearchIsUnavailableYourProfile": "Utafutaji wa waandishi haupatikani. Wasifu wako na muunganisho wa sasa havijabadilika.",
     "tryAgain": "Jaribu tena",
     "couldNotLoadThisAuthorS": "Machapisho ya mwandishi huyu hayakuweza kupakiwa",
     "searchingOpenalexAuthors": "Inatafuta waandishi wa OpenAlex",
     "noAuthorsMatchYourSearch": "Hakuna waandishi wanaolingana na utafutaji wako.",
-    "searchForAnAuthorByName": "Tafuta mwandishi kwa jina, taasisi au kitambulisho cha OpenAlex.",
+    "searchForAnAuthorByName": "Tafuta mwandishi kwa jina, taasisi au kitambulisho.",
     "back": "Rudi",
     "confirmMatch": "Thibitisha linganisho",
-    "unlinkOpenalexAuthor": "Tenganisha mwandishi wa OpenAlex?",
-    "thisRemovesTheImportedResearchFrom": "Hii inaondoa utafiti uliongizwa kutoka wasifu huu. Maelezo ya wasifu wako na machapisho yaliyochaguliwa yanabaki.",
+    "unlinkOpenalexAuthor": "Ondoa rekodi kuu?",
+    "thisRemovesTheImportedResearchFrom": "Makala zake zinaondoka kwenye wasifu huu, isipokuwa rekodi nyingine iliyounganishwa inazo. Rekodi nyingine, maelezo ya wasifu na machapisho uliyochagua hubaki.",
     "unlinkAuthor": "Tenganisha mwandishi",
     "createAuthor": "Unda mwandishi",
     "findAuthors": "Tafuta waandishi",
@@ -5443,17 +5447,18 @@
     "sectionOpenAlex": "Rekodi za mwandishi",
     "sectionAccess": "Ufikiaji",
     "authorRecords": "Rekodi za mwandishi",
-    "authorRecordsDescription": "Kila rekodi ya mtu huyu. Utafutaji wa makala husoma zote.",
+    "authorRecordsDescription": "Mtu mmoja anaweza kugawanywa katika rekodi kadhaa kwenye faharasa. Ongeza zile za mtu huyu, na Utafutaji wa makala husoma zote.",
     "changeMainRecord": "Badilisha rekodi kuu",
     "mainRecord": "Kuu",
     "claimAuthor": "Dai mwandishi huyu",
-    "otherRecordsWithThisName": "Rekodi nyingine zenye jina hili",
+    "otherRecordsWithThisName": "Rekodi nyingine zenye jina hili: hakikisha kila moja ni mtu yule yule",
     "addRecord": "Ongeza",
     "removeRecord": "Ondoa rekodi hii",
     "recordPapers": "{count, plural, one {makala {shown}} other {makala {shown}}}",
     "authorsIn": "Katika {source}",
     "couldNotSearchAuthors": "Imeshindwa kutafuta waandishi. Jaribu tena baada ya muda.",
-    "searchingAuthors": "Inatafuta waandishi"
+    "searchingAuthors": "Inatafuta waandishi",
+    "recordsFull": "Wasifu huu una rekodi {max}. Ondoa moja ili kuongeza nyingine."
   },
   "connectApp": {
     "signInToContinue": "Ingia ili uendelee",

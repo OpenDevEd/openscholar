@@ -240,7 +240,8 @@
     "searchingDescription": "Ons soek deur miljoene artikels...",
     "noResultsMatchFilters": "Geen resultate pas by jou filters nie",
     "updatingResults": "Werk resultate by...",
-    "adjustTab": "Pas aan"
+    "adjustTab": "Pas aan",
+    "firstOnly": "Wys die eerste {shown} van {total}. Vernou die soektog om by die res uit te kom."
   },
   "pricing": {
     "chooseYourPlan": "Planne",
@@ -488,7 +489,8 @@
   "downloads": {
     "downloadAll": "Laai alles af",
     "downloadEssentialJSON": "Laai essensiële inligting as JSON af",
-    "downloadEssentialCSV": "Laai essensiële inligting as CSV af"
+    "downloadEssentialCSV": "Laai essensiële inligting as CSV af",
+    "pageOnly": "Die {count} artikels op hierdie bladsy"
   },
   "extraction": {
     "searchJobs": "Soek take...",
@@ -1033,7 +1035,8 @@
     "queryHistory": "Soekopdraggeskiedenis",
     "queryEvolution": "Soekopdragevolusie",
     "bookmarkNamePlaceholder": "boekmerknaam",
-    "recentSearches": "Onlangse soektogte"
+    "recentSearches": "Onlangse soektogte",
+    "clearAllHistoryConfirmWhole": "Is jy seker jy wil jou hele soekgeskiedenis uitvee? Dit kan nie ontdoen word nie."
   },
   "commandCenter": {
     "searchesLabel": "soektogte",
@@ -1098,6 +1101,7 @@
     "searchWithQuery": "Soek met hierdie soekopdrag",
     "removeFromHistory": "Verwyder uit geskiedenis",
     "openDoi": "Maak DOI oop",
+    "openPaperPage": "Maak die artikel se bladsy oop",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Stel terug na verstek",
     "focusMode": "Fokusmodus",
@@ -4969,7 +4973,7 @@
     },
     "tryAgain": "Probeer weer",
     "unavailable": {
-      "oql": "’n Soektog wat in OQL geskryf is, kan nie getel word nie, so dit het geen oorsig nie.",
+      "oql": "'n Oorsig is nie beskikbaar vir 'n soektog in OQL nie.",
       "ratings": "’n Oorsig lees die hele soektog, so niks word geskryf terwyl die resultate deur jou graderings gefiltreer word nie."
     },
     "dialog": {
@@ -5369,7 +5373,7 @@
     "loadingPublications": "Laai publikasies",
     "noPublishedWorksAreLinkedTo": "Geen gepubliseerde werke is nog aan hierdie outeur gekoppel nie.",
     "connectTheAuthorSResearchRecord": "Koppel die outeur se navorsingsrekord om hul publikasies te wys.",
-    "linkAnAuthorToDisplayTheir": "Koppel ’n outeur om hul OpenAlex-publikasies te wys.",
+    "linkAnAuthorToDisplayTheir": "Koppel 'n outeur om hul publikasies te wys.",
     "changeMatch": "Verander passing",
     "findAuthor": "Vind outeur",
     "unlink": "Ontkoppel",
@@ -5390,22 +5394,22 @@
     "noPublicationsToDisplay": "Geen {source}-publikasies om te wys nie.",
     "showMore": "Wys meer",
     "confirmAuthorMatch": "Bevestig outeurpassing",
-    "findAuthorOnOpenalex": "Vind outeur op OpenAlex",
+    "findAuthorOnOpenalex": "Vind 'n outeursrekord",
     "checkTheAffiliationAndResearchBefore": "Gaan die affiliasie en navorsing na voordat jy hierdie rekord koppel.",
-    "searchByNameAffiliationOrOpenalex": "Soek volgens naam, affiliasie of OpenAlex-outeur-ID.",
+    "searchByNameAffiliationOrOpenalex": "Soek volgens naam, instelling of outeur-ID.",
     "yourNameBiographyLinksAndSelected": "Jou naam, biografie, skakels en gekose publikasies bly soos jy hulle ingevoer het.",
-    "searchOpenalexAuthors": "Soek OpenAlex-outeurs",
+    "searchOpenalexAuthors": "Soek outeursrekords",
     "nameAffiliationOrAuthorId": "Naam, affiliasie of outeur-ID",
-    "openalexSearchIsUnavailableYourProfile": "OpenAlex-soektog is nie beskikbaar nie. Jou profiel en huidige passing bly ongewysig.",
+    "openalexSearchIsUnavailableYourProfile": "Outeursoektog is nie beskikbaar nie. Jou profiel en huidige koppeling bly onveranderd.",
     "tryAgain": "Probeer weer",
     "couldNotLoadThisAuthorS": "Kon nie hierdie outeur se publikasies laai nie",
     "searchingOpenalexAuthors": "Soek OpenAlex-outeurs",
     "noAuthorsMatchYourSearch": "Geen outeurs pas by jou soektog nie.",
-    "searchForAnAuthorByName": "Soek ’n outeur volgens naam, affiliasie of OpenAlex-ID.",
+    "searchForAnAuthorByName": "Soek 'n outeur volgens naam, instelling of ID.",
     "back": "Terug",
     "confirmMatch": "Bevestig passing",
-    "unlinkOpenalexAuthor": "Ontkoppel OpenAlex-outeur?",
-    "thisRemovesTheImportedResearchFrom": "Dit verwyder die ingevoerde navorsing uit hierdie profiel. Jou profielbesonderhede en gekose publikasies bly.",
+    "unlinkOpenalexAuthor": "Verwyder die hoofrekord?",
+    "thisRemovesTheImportedResearchFrom": "Sy artikels verlaat hierdie profiel, tensy 'n ander gekoppelde rekord hulle het. Ander gekoppelde rekords, jou profielbesonderhede en gekose publikasies bly.",
     "unlinkAuthor": "Ontkoppel outeur",
     "createAuthor": "Skep outeur",
     "findAuthors": "Vind outeurs",
@@ -5443,17 +5447,18 @@
     "sectionOpenAlex": "Outeursrekords",
     "sectionAccess": "Toegang",
     "authorRecords": "Outeursrekords",
-    "authorRecordsDescription": "Elke rekord wat hierdie persoon is. Soek artikels lees hulle almal.",
+    "authorRecordsDescription": "Een persoon kan in die indeks in verskeie rekords verdeel wees. Voeg dié by wat hierdie persoon is, en Soek artikels lees hulle almal.",
     "changeMainRecord": "Verander hoofrekord",
     "mainRecord": "Hoof",
     "claimAuthor": "Eis hierdie outeur op",
-    "otherRecordsWithThisName": "Ander rekords met hierdie naam",
+    "otherRecordsWithThisName": "Ander rekords met hierdie naam: maak seker elkeen is dieselfde persoon",
     "addRecord": "Voeg by",
     "removeRecord": "Verwyder hierdie rekord",
     "recordPapers": "{count, plural, one {{shown} artikel} other {{shown} artikels}}",
     "authorsIn": "In {source}",
     "couldNotSearchAuthors": "Kon nie outeurs soek nie. Probeer binnekort weer.",
-    "searchingAuthors": "Soek outeurs"
+    "searchingAuthors": "Soek outeurs",
+    "recordsFull": "Hierdie profiel het sy {max} rekords. Verwyder een om nog een by te voeg."
   },
   "connectApp": {
     "signInToContinue": "Meld aan om voort te gaan",

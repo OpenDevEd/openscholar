@@ -16,6 +16,7 @@ import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { BookOpen, Quote } from "@/components/icons";
 import { useAuthorFilter, useJournalFilter, useTranslate, useCitationHandlers } from "./hooks";
+import { SimilarIconButton } from "./similar-button";
 import { cn } from "@/lib/utils";
 import {
   PaperCardProps,
@@ -188,6 +189,7 @@ export function PaperCardListSimple({
                 compact
               />
               <DOIBadge doi={result.doi} compact />
+              <SimilarIconButton paperId={result.id} />
               {!hide?.download && (
                 <DownloadMenuCompact
                   onDownloadJSON={() => onDownloadItem(result, "json")}

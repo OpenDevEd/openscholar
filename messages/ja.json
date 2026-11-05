@@ -240,7 +240,8 @@
     "searchingDescription": "数百万の論文を検索中...",
     "noResultsMatchFilters": "フィルターに一致する結果がありません",
     "updatingResults": "結果を更新中...",
-    "adjustTab": "調整"
+    "adjustTab": "調整",
+    "firstOnly": "{total} 件中、最初の {shown} 件を表示しています。残りを見るには検索を絞り込んでください。"
   },
   "pricing": {
     "chooseYourPlan": "プランを選択",
@@ -487,7 +488,8 @@
   "downloads": {
     "downloadAll": "すべてダウンロード",
     "downloadEssentialJSON": "基本情報をJSONでダウンロード",
-    "downloadEssentialCSV": "基本情報をCSVでダウンロード"
+    "downloadEssentialCSV": "基本情報をCSVでダウンロード",
+    "pageOnly": "このページの {count} 件の論文"
   },
   "extraction": {
     "searchJobs": "ジョブを検索...",
@@ -1032,7 +1034,8 @@
     "queryHistory": "クエリ履歴",
     "queryEvolution": "クエリの進化",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "最近の検索"
+    "recentSearches": "最近の検索",
+    "clearAllHistoryConfirmWhole": "検索履歴をすべて削除してもよろしいですか?この操作は元に戻せません。"
   },
   "commandCenter": {
     "searchesLabel": "検索",
@@ -1097,6 +1100,7 @@
     "searchWithQuery": "このクエリで検索",
     "removeFromHistory": "履歴から削除",
     "openDoi": "DOIを開く",
+    "openPaperPage": "論文のページを開く",
     "doiTooltip": "DOI：{doi}",
     "resetToDefaults": "デフォルトにリセット",
     "focusMode": "フォーカスモード",
@@ -4968,7 +4972,7 @@
     },
     "tryAgain": "もう一度試す",
     "unavailable": {
-      "oql": "OQLで書かれた検索は数えられないため、概要はありません。",
+      "oql": "OQLで書かれた検索には概要がありません。",
       "ratings": "概要は検索全体を読むため、結果を自分の評価で絞り込んでいる間は書かれません。"
     },
     "dialog": {
@@ -5368,7 +5372,7 @@
     "loadingPublications": "出版物を読み込んでいます",
     "noPublishedWorksAreLinkedTo": "この著者にリンクされた公開済みの作品はまだありません。",
     "connectTheAuthorSResearchRecord": "著者の研究記録を接続すると、その出版物が表示されます。",
-    "linkAnAuthorToDisplayTheir": "著者をリンクして、その OpenAlex の出版物を表示します。",
+    "linkAnAuthorToDisplayTheir": "著者をリンクすると出版物が表示されます。",
     "changeMatch": "一致を変更",
     "findAuthor": "著者を探す",
     "unlink": "リンクを解除",
@@ -5389,22 +5393,22 @@
     "noPublicationsToDisplay": "表示できる {source} の出版物はありません。",
     "showMore": "さらに表示",
     "confirmAuthorMatch": "著者の一致を確定",
-    "findAuthorOnOpenalex": "OpenAlex で著者を探す",
+    "findAuthorOnOpenalex": "著者レコードを探す",
     "checkTheAffiliationAndResearchBefore": "このレコードをリンクする前に、所属と研究内容を確認してください。",
-    "searchByNameAffiliationOrOpenalex": "名前、所属、または OpenAlex の著者 ID で検索します。",
+    "searchByNameAffiliationOrOpenalex": "名前、所属、著者IDで検索します。",
     "yourNameBiographyLinksAndSelected": "名前、略歴、リンク、選んだ出版物は、入力したとおりに残ります。",
-    "searchOpenalexAuthors": "OpenAlex の著者を検索",
+    "searchOpenalexAuthors": "著者レコードを検索",
     "nameAffiliationOrAuthorId": "名前、所属、または著者 ID",
-    "openalexSearchIsUnavailableYourProfile": "OpenAlex の検索は利用できません。プロフィールと現在の一致は変わりません。",
+    "openalexSearchIsUnavailableYourProfile": "著者検索は利用できません。プロフィールと現在のリンクは変わりません。",
     "tryAgain": "もう一度試す",
     "couldNotLoadThisAuthorS": "この著者の出版物を読み込めませんでした",
     "searchingOpenalexAuthors": "OpenAlex の著者を検索しています",
     "noAuthorsMatchYourSearch": "検索に一致する著者はいません。",
-    "searchForAnAuthorByName": "名前、所属、または OpenAlex ID で著者を検索します。",
+    "searchForAnAuthorByName": "名前、所属、IDで著者を検索します。",
     "back": "戻る",
     "confirmMatch": "一致を確定",
-    "unlinkOpenalexAuthor": "OpenAlex の著者のリンクを解除しますか？",
-    "thisRemovesTheImportedResearchFrom": "このプロフィールから、取り込んだ研究が削除されます。プロフィールの詳細と選んだ出版物は残ります。",
+    "unlinkOpenalexAuthor": "メインレコードを削除しますか?",
+    "thisRemovesTheImportedResearchFrom": "他のリンク済みレコードに含まれない論文はこのプロフィールから外れます。他のレコード、プロフィール情報、選択した出版物は残ります。",
     "unlinkAuthor": "著者のリンクを解除",
     "createAuthor": "著者を作成",
     "findAuthors": "著者を探す",
@@ -5442,17 +5446,18 @@
     "sectionOpenAlex": "著者レコード",
     "sectionAccess": "アクセス",
     "authorRecords": "著者レコード",
-    "authorRecordsDescription": "この人物に該当するすべてのレコード。論文検索はそのすべてを読みます。",
+    "authorRecordsDescription": "一人の人物が索引で複数のレコードに分かれていることがあります。この人物のものを追加すると、論文検索はそのすべてを読みます。",
     "changeMainRecord": "メインレコードを変更",
     "mainRecord": "メイン",
     "claimAuthor": "この著者を申請",
-    "otherRecordsWithThisName": "同じ名前の他のレコード",
+    "otherRecordsWithThisName": "同じ名前の他のレコード:それぞれ同じ人物か確認してください",
     "addRecord": "追加",
     "removeRecord": "このレコードを削除",
     "recordPapers": "{count, plural, other {{shown} 件の論文}}",
     "authorsIn": "{source}内",
     "couldNotSearchAuthors": "著者を検索できませんでした。少し後でもう一度お試しください。",
-    "searchingAuthors": "著者を検索中"
+    "searchingAuthors": "著者を検索中",
+    "recordsFull": "このプロフィールのレコードは上限の {max} 件です。追加するには1件削除してください。"
   },
   "connectApp": {
     "signInToContinue": "続けるにはサインインしてください",

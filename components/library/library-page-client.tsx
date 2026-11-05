@@ -227,16 +227,17 @@ export function LibraryPageClient() {
   );
 
   // In an organization's library, who saved each paper (#656), by the paper.
-  // Papers like what's on screen, on our index only: the saved papers it can name.
+  // Papers like what's on the first page, the newest, on our index only: the saved papers it can name. Later pages have no
+  // button, so it means the same search wherever it's offered.
   const ownIndex = useSearchSource() === "openscholar";
   const likeHref = useMemo(() => {
-    if (!ownIndex) return null;
+    if (!ownIndex || paged.page > 1) return null;
     const papers = pageItems.flatMap((item) => {
       const ref = parsePaperKey(item.paperKey);
       return ref?.source === "openalex" || ref?.source === "openscholar" ? [ref.work] : [];
     });
     return similarSearchHref(papers);
-  }, [ownIndex, pageItems]);
+  }, [ownIndex, pageItems, paged.page]);
   const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[libraryCardId(item), item.by] as const] : []))), [pageItems]);
 
   // In an organization's library outside a collection, how its members rated each paper themselves (#801): their average and who gave what.

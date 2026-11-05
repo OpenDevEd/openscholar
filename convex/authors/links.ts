@@ -117,17 +117,20 @@ export const claimAction = defineUserMutation({
   path: "authors/links:claim",
   description:
     "Makes an author profile from an author record, owned by the workspace the reply runs in, whose plan must have Evidence Communities: named as given, with that record as its main one. " +
-    "Refused when another profile links the record. Nothing here checks that the person is that author.",
-  args: { authorId: v.string(), name: v.string() },
+    "Refused when another profile links the record, or any of `knownAs`, the other IDs this person goes by, as far as they're known. Nothing here checks that the person is that author.",
+  args: { authorId: v.string(), knownAs: v.optional(v.array(v.string())), name: v.string() },
   returns: v.id("authorProfiles"),
   spendsCredits: false,
   // The directory lists it to everyone who reads it, and nothing takes it away by itself.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, { userId, workspaceId, author }, { authorId, name }) => {
+  run: async (ctx, { userId, workspaceId, author }, { authorId, knownAs, name }) => {
     await requireAuthorProfiles(ctx, workspaceId);
     const id = authorIdOf(authorId);
-    if (await holderOf(ctx, id)) throw createError("CONFLICT", "That author record is linked to another profile.");
+    if ((knownAs?.length ?? 0) > AUTHOR_IDS_LOOKED_UP) throw createError("VALIDATION_ERROR", `At most ${AUTHOR_IDS_LOOKED_UP} IDs at once.`);
+    for (const known of [id, ...(knownAs ?? []).map(authorIdOf)]) {
+      if (await holderOf(ctx, known)) throw createError("CONFLICT", "That author record is linked to another profile.");
+    }
     const profileId = await createProfile(ctx, userId, workspaceId, name, author === "assistant");
     await ctx.db.patch("authorProfiles", profileId, { openalex: id });
     await linkRecord(ctx, profileId, id);

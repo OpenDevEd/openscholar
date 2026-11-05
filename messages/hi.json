@@ -240,7 +240,8 @@
     "searchingDescription": "लाखों पेपर खोज रहे हैं...",
     "noResultsMatchFilters": "आपके फ़िल्टर से कोई परिणाम मेल नहीं खाता",
     "updatingResults": "परिणाम अपडेट हो रहे हैं...",
-    "adjustTab": "समायोजित करें"
+    "adjustTab": "समायोजित करें",
+    "firstOnly": "{total} में से पहले {shown} दिखाए जा रहे हैं। बाकी तक पहुँचने के लिए खोज सीमित करें।"
   },
   "pricing": {
     "chooseYourPlan": "अपना प्लान चुनें",
@@ -487,7 +488,8 @@
   "downloads": {
     "downloadAll": "सब डाउनलोड करें",
     "downloadEssentialJSON": "ज़रूरी जानकारी JSON के रूप में डाउनलोड करें",
-    "downloadEssentialCSV": "ज़रूरी जानकारी CSV के रूप में डाउनलोड करें"
+    "downloadEssentialCSV": "ज़रूरी जानकारी CSV के रूप में डाउनलोड करें",
+    "pageOnly": "इस पृष्ठ के {count} शोधपत्र"
   },
   "extraction": {
     "searchJobs": "जॉब खोजें...",
@@ -1032,7 +1034,8 @@
     "queryHistory": "क्वेरी इतिहास",
     "queryEvolution": "क्वेरी विकास",
     "bookmarkNamePlaceholder": "बुकमार्क-नाम",
-    "recentSearches": "हाल की खोजें"
+    "recentSearches": "हाल की खोजें",
+    "clearAllHistoryConfirmWhole": "क्या आप वाकई अपना पूरा खोज इतिहास हटाना चाहते हैं? इसे पूर्ववत नहीं किया जा सकता।"
   },
   "commandCenter": {
     "searchesLabel": "खोजें",
@@ -1097,6 +1100,7 @@
     "searchWithQuery": "इस क्वेरी से खोजें",
     "removeFromHistory": "इतिहास से हटाएं",
     "openDoi": "DOI खोलें",
+    "openPaperPage": "लेख का पृष्ठ खोलें",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "डिफ़ॉल्ट पर रीसेट करें",
     "focusMode": "फोकस मोड",
@@ -4968,7 +4972,7 @@
     },
     "tryAgain": "फिर से कोशिश करें",
     "unavailable": {
-      "oql": "OQL में लिखी खोज गिनी नहीं जा सकती, इसलिए इसका कोई सारांश नहीं है।",
+      "oql": "OQL में लिखी खोज के लिए अवलोकन उपलब्ध नहीं है।",
       "ratings": "सारांश पूरी खोज पढ़ता है, इसलिए जब नतीजे आपकी रेटिंग से छाँटे गए हों तब यह नहीं लिखा जाता।"
     },
     "dialog": {
@@ -5368,7 +5372,7 @@
     "loadingPublications": "प्रकाशन लोड हो रहे हैं",
     "noPublishedWorksAreLinkedTo": "इस लेखक से अभी कोई प्रकाशित कार्य नहीं जुड़ा है।",
     "connectTheAuthorSResearchRecord": "लेखक का शोध रिकॉर्ड जोड़ें, ताकि उनके प्रकाशन दिखें।",
-    "linkAnAuthorToDisplayTheir": "अपने OpenAlex प्रकाशन दिखाने के लिए एक लेखक जोड़ें।",
+    "linkAnAuthorToDisplayTheir": "उनके प्रकाशन दिखाने के लिए लेखक को लिंक करें।",
     "changeMatch": "मिलान बदलें",
     "findAuthor": "लेखक खोजें",
     "unlink": "जोड़ हटाएं",
@@ -5389,22 +5393,22 @@
     "noPublicationsToDisplay": "दिखाने के लिए कोई {source} प्रकाशन नहीं।",
     "showMore": "और दिखाएं",
     "confirmAuthorMatch": "लेखक का मिलान पक्का करें",
-    "findAuthorOnOpenalex": "OpenAlex पर लेखक खोजें",
+    "findAuthorOnOpenalex": "लेखक रिकॉर्ड खोजें",
     "checkTheAffiliationAndResearchBefore": "इस रिकॉर्ड को जोड़ने से पहले संबद्धता और शोध जाँचें।",
-    "searchByNameAffiliationOrOpenalex": "नाम, संबद्धता या OpenAlex लेखक ID से खोजें।",
+    "searchByNameAffiliationOrOpenalex": "नाम, संस्थान या लेखक आईडी से खोजें।",
     "yourNameBiographyLinksAndSelected": "आपका नाम, जीवनी, लिंक और चुने गए प्रकाशन वैसे ही रहेंगे जैसे आपने लिखे हैं।",
-    "searchOpenalexAuthors": "OpenAlex लेखक खोजें",
+    "searchOpenalexAuthors": "लेखक रिकॉर्ड खोजें",
     "nameAffiliationOrAuthorId": "नाम, संबद्धता या लेखक ID",
-    "openalexSearchIsUnavailableYourProfile": "OpenAlex खोज उपलब्ध नहीं है। आपकी प्रोफ़ाइल और मौजूदा मिलान नहीं बदले हैं।",
+    "openalexSearchIsUnavailableYourProfile": "लेखक खोज उपलब्ध नहीं है। आपकी प्रोफ़ाइल और मौजूदा लिंक नहीं बदले।",
     "tryAgain": "फिर से कोशिश करें",
     "couldNotLoadThisAuthorS": "इस लेखक के प्रकाशन लोड नहीं हो सके",
     "searchingOpenalexAuthors": "OpenAlex लेखक खोजे जा रहे हैं",
     "noAuthorsMatchYourSearch": "आपकी खोज से कोई लेखक मेल नहीं खाता।",
-    "searchForAnAuthorByName": "नाम, संबद्धता या OpenAlex ID से लेखक खोजें।",
+    "searchForAnAuthorByName": "नाम, संस्थान या आईडी से लेखक खोजें।",
     "back": "वापस",
     "confirmMatch": "मिलान पक्का करें",
-    "unlinkOpenalexAuthor": "OpenAlex लेखक का जोड़ हटाएं?",
-    "thisRemovesTheImportedResearchFrom": "इससे इस प्रोफ़ाइल से आयात किया गया शोध हट जाएगा। आपका प्रोफ़ाइल विवरण और चुने गए प्रकाशन रहेंगे।",
+    "unlinkOpenalexAuthor": "मुख्य रिकॉर्ड हटाएँ?",
+    "thisRemovesTheImportedResearchFrom": "इसके शोधपत्र इस प्रोफ़ाइल से हट जाएँगे, जब तक कोई अन्य लिंक किया रिकॉर्ड उन्हें न रखता हो। अन्य रिकॉर्ड, प्रोफ़ाइल विवरण और चुने गए प्रकाशन बने रहेंगे।",
     "unlinkAuthor": "लेखक का जोड़ हटाएं",
     "createAuthor": "लेखक बनाएं",
     "findAuthors": "लेखक खोजें",
@@ -5442,17 +5446,18 @@
     "sectionOpenAlex": "लेखक रिकॉर्ड",
     "sectionAccess": "पहुँच",
     "authorRecords": "लेखक रिकॉर्ड",
-    "authorRecordsDescription": "इस व्यक्ति का हर रिकॉर्ड। शोधपत्र खोज इन सभी को पढ़ती है।",
+    "authorRecordsDescription": "एक व्यक्ति इंडेक्स में कई रिकॉर्ड में बँटा हो सकता है। जो इसी व्यक्ति के हों उन्हें जोड़ें, शोधपत्र खोज उन सभी को पढ़ती है।",
     "changeMainRecord": "मुख्य रिकॉर्ड बदलें",
     "mainRecord": "मुख्य",
     "claimAuthor": "इस लेखक पर दावा करें",
-    "otherRecordsWithThisName": "इस नाम के अन्य रिकॉर्ड",
+    "otherRecordsWithThisName": "इस नाम के अन्य रिकॉर्ड: जाँचें कि हर एक वही व्यक्ति है",
     "addRecord": "जोड़ें",
     "removeRecord": "यह रिकॉर्ड हटाएँ",
     "recordPapers": "{count, plural, one {{shown} शोधपत्र} other {{shown} शोधपत्र}}",
     "authorsIn": "{source} में",
     "couldNotSearchAuthors": "लेखक नहीं खोजे जा सके। थोड़ी देर में फिर प्रयास करें।",
-    "searchingAuthors": "लेखक खोजे जा रहे हैं"
+    "searchingAuthors": "लेखक खोजे जा रहे हैं",
+    "recordsFull": "इस प्रोफ़ाइल में {max} रिकॉर्ड हैं। दूसरा जोड़ने के लिए एक हटाएँ।"
   },
   "connectApp": {
     "signInToContinue": "जारी रखने के लिए साइन इन करें",

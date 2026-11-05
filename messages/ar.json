@@ -240,7 +240,8 @@
     "searchingDescription": "نبحث بين ملايين الأوراق البحثية...",
     "noResultsMatchFilters": "لا توجد نتائج تطابق عوامل التصفية",
     "updatingResults": "جارٍ تحديث النتائج...",
-    "adjustTab": "تعديل"
+    "adjustTab": "تعديل",
+    "firstOnly": "عرض أول {shown} من {total}. ضيّق البحث للوصول إلى الباقي."
   },
   "pricing": {
     "chooseYourPlan": "الباقات",
@@ -488,7 +489,8 @@
   "downloads": {
     "downloadAll": "تنزيل الكل",
     "downloadEssentialJSON": "تنزيل المعلومات الأساسية بصيغة JSON",
-    "downloadEssentialCSV": "تنزيل المعلومات الأساسية بصيغة CSV"
+    "downloadEssentialCSV": "تنزيل المعلومات الأساسية بصيغة CSV",
+    "pageOnly": "الأوراق الـ{count} في هذه الصفحة"
   },
   "extraction": {
     "searchJobs": "ابحث في المهام...",
@@ -1033,7 +1035,8 @@
     "queryHistory": "سجل الاستعلامات",
     "queryEvolution": "تطور الاستعلام",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "عمليات البحث الأخيرة"
+    "recentSearches": "عمليات البحث الأخيرة",
+    "clearAllHistoryConfirmWhole": "هل تريد بالتأكيد حذف سجل البحث بالكامل؟ لا يمكن التراجع عن ذلك."
   },
   "commandCenter": {
     "searchesLabel": "عمليات بحث",
@@ -1098,6 +1101,7 @@
     "searchWithQuery": "ابحث باستخدام هذا الاستعلام",
     "removeFromHistory": "إزالة من السجل",
     "openDoi": "فتح DOI",
+    "openPaperPage": "فتح صفحة الورقة",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "إعادة الضبط إلى الإعدادات الافتراضية",
     "focusMode": "وضع التركيز",
@@ -4969,7 +4973,7 @@
     },
     "tryAgain": "حاول مرة أخرى",
     "unavailable": {
-      "oql": "لا يمكن عدّ بحث مكتوب بصيغة OQL، لذلك لا توجد له نظرة عامة.",
+      "oql": "لا تتوفر نظرة عامة لبحث مكتوب بلغة OQL.",
       "ratings": "تقرأ النظرة العامة البحث كله، لذلك لا تُكتب أثناء تصفية النتائج حسب تقييماتك."
     },
     "dialog": {
@@ -5369,7 +5373,7 @@
     "loadingPublications": "جارٍ تحميل المنشورات",
     "noPublishedWorksAreLinkedTo": "لم تُربط بعد أي أعمال منشورة بهذا المؤلف.",
     "connectTheAuthorSResearchRecord": "اربط السجل البحثي للمؤلف لعرض منشوراته.",
-    "linkAnAuthorToDisplayTheir": "اربط مؤلفًا لعرض منشوراته في OpenAlex.",
+    "linkAnAuthorToDisplayTheir": "اربط مؤلفًا لعرض منشوراته.",
     "changeMatch": "تغيير المطابقة",
     "findAuthor": "ابحث عن مؤلف",
     "unlink": "فك الربط",
@@ -5390,22 +5394,22 @@
     "noPublicationsToDisplay": "لا توجد منشورات {source} للعرض.",
     "showMore": "عرض المزيد",
     "confirmAuthorMatch": "تأكيد مطابقة المؤلف",
-    "findAuthorOnOpenalex": "ابحث عن المؤلف في OpenAlex",
+    "findAuthorOnOpenalex": "البحث عن سجل مؤلف",
     "checkTheAffiliationAndResearchBefore": "تحقّق من الانتساب والبحث قبل ربط هذا السجل.",
-    "searchByNameAffiliationOrOpenalex": "ابحث بالاسم أو الانتساب أو معرّف المؤلف في OpenAlex.",
+    "searchByNameAffiliationOrOpenalex": "ابحث بالاسم أو الجهة أو معرّف المؤلف.",
     "yourNameBiographyLinksAndSelected": "ستبقى اسمك وسيرتك الذاتية وروابطك والمنشورات المختارة كما أدخلتها.",
-    "searchOpenalexAuthors": "ابحث عن مؤلفين في OpenAlex",
+    "searchOpenalexAuthors": "البحث في سجلات المؤلفين",
     "nameAffiliationOrAuthorId": "الاسم أو الانتساب أو معرّف المؤلف",
-    "openalexSearchIsUnavailableYourProfile": "بحث OpenAlex غير متاح. لم يتغير ملفك ولا المطابقة الحالية.",
+    "openalexSearchIsUnavailableYourProfile": "البحث عن المؤلفين غير متاح. لم يتغير ملفك ولا الربط الحالي.",
     "tryAgain": "حاول مرة أخرى",
     "couldNotLoadThisAuthorS": "تعذّر تحميل منشورات هذا المؤلف",
     "searchingOpenalexAuthors": "جارٍ البحث عن مؤلفين في OpenAlex",
     "noAuthorsMatchYourSearch": "لا يوجد مؤلفون يطابقون بحثك.",
-    "searchForAnAuthorByName": "ابحث عن مؤلف بالاسم أو الانتساب أو معرّف OpenAlex.",
+    "searchForAnAuthorByName": "ابحث عن مؤلف بالاسم أو الجهة أو المعرّف.",
     "back": "رجوع",
     "confirmMatch": "تأكيد المطابقة",
-    "unlinkOpenalexAuthor": "فك ربط مؤلف OpenAlex؟",
-    "thisRemovesTheImportedResearchFrom": "سيؤدي هذا إلى إزالة البحوث المستوردة من هذا الملف. وتبقى تفاصيل ملفك والمنشورات المختارة.",
+    "unlinkOpenalexAuthor": "إزالة السجل الرئيسي؟",
+    "thisRemovesTheImportedResearchFrom": "تُزال أوراقه من هذا الملف ما لم تكن في سجل مرتبط آخر. تبقى السجلات المرتبطة الأخرى وتفاصيل ملفك والمنشورات المختارة.",
     "unlinkAuthor": "فك ربط المؤلف",
     "createAuthor": "إنشاء مؤلف",
     "findAuthors": "ابحث عن مؤلفين",
@@ -5443,17 +5447,18 @@
     "sectionOpenAlex": "سجلات المؤلف",
     "sectionAccess": "الوصول",
     "authorRecords": "سجلات المؤلف",
-    "authorRecordsDescription": "كل سجل يخص هذا الشخص. يقرأها البحث في الأوراق كلها.",
+    "authorRecordsDescription": "قد يكون الشخص الواحد موزعًا على عدة سجلات في الفهرس. أضف ما يخص هذا الشخص، وسيقرؤها البحث في الأوراق كلها.",
     "changeMainRecord": "تغيير السجل الرئيسي",
     "mainRecord": "رئيسي",
     "claimAuthor": "المطالبة بهذا المؤلف",
-    "otherRecordsWithThisName": "سجلات أخرى بهذا الاسم",
+    "otherRecordsWithThisName": "سجلات أخرى بهذا الاسم: تأكد أن كل واحد منها هو الشخص نفسه",
     "addRecord": "إضافة",
     "removeRecord": "إزالة هذا السجل",
     "recordPapers": "{count, plural, one {{shown} ورقة} other {{shown} أوراق}}",
     "authorsIn": "في {source}",
     "couldNotSearchAuthors": "تعذر البحث عن المؤلفين. حاول بعد قليل.",
-    "searchingAuthors": "جارٍ البحث عن المؤلفين"
+    "searchingAuthors": "جارٍ البحث عن المؤلفين",
+    "recordsFull": "لهذا الملف {max} سجلات كحد أقصى. أزل واحدًا لإضافة آخر."
   },
   "connectApp": {
     "signInToContinue": "سجّل الدخول للمتابعة",

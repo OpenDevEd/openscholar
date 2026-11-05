@@ -20,7 +20,7 @@ export const findAction = defineUserAction({
   path: "research/lookup:find",
   description:
     "Finds an author, a funder, a journal, an institution or a research area by name, to filter a saved search by: each match's ID, its name, and what tells it from others of that name (where an author works, whether a journal is a journal or a repository and who publishes it, where an institution is, what an area sits under). " +
-    "Give the IDs to research/searches:create or :update as `authors`, `funders`, `journals`, `institutions` or `researchAreas`. Looking up anything but a research area counts against the person's OpenAlex allowance.",
+    "Give the IDs to research/searches:create or :update as `authors`, `funders`, `journals`, `institutions` or `researchAreas`. Looking up anything but a research area counts against the person's search allowance.",
   args: { kind: lookupKindValidator, text: v.string() },
   returns: lookupValidator,
   spendsCredits: false,
@@ -50,7 +50,7 @@ export const namesAction = defineUserAction({
   path: "research/lookup:names",
   description:
     `Names what a saved search's filters hold by ID, up to ${NAMES_MAX} at once, as research/records:getSearch gives them: authors (A…), funders (F…), journals (S…), institutions (I…) and research areas (T…, or fields/, subfields/ or domains/ with a number). ` +
-    "Each comes back with its name; one OpenAlex has none for is left out. One request for each kind of ID but research areas, against the person's OpenAlex allowance.",
+    "Each comes back with its name; one the index has none for is left out. One request for each kind of ID but research areas, against the person's search allowance.",
   args: { ids: v.array(v.string()) },
   returns: namesValidator,
   spendsCredits: false,

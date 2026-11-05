@@ -28,13 +28,18 @@ describe("a search for similar papers", () => {
     const words = query({ like: ["W1"], q: "kelp", field: "default" });
     expect(words?.search).toBeUndefined();
     expect(words?.filter).toContain("default.search");
+    const question = query({ like: ["W1"], q: "why", field: "semantic" });
+    expect(question?.semantic).toBeUndefined();
+    expect(question?.filter).toContain("title_and_abstract.search:why");
   });
 
   it("survives saving, and an old link's address reads as the ID", () => {
     const saved = paramsToSearchResult({ ...DEFAULT_SEARCH_PARAMS, like: ["W1", "OS2"] });
     expect(saved.similarTo).toEqual(["W1", "OS2"]);
     expect(searchResultToParams(saved)).toMatchObject({ like: ["W1", "OS2"] });
-    expect(parseSearchParamsFromUrl(new URLSearchParams("like=https://openalex.org/W1,OS2,nonsense")).like).toEqual(["W1", "OS2"]);
+    expect(parseSearchParamsFromUrl(new URLSearchParams("like=https://openalex.org/W1,OS2")).like).toEqual(["W1", "OS2"]);
+    // Kept, so the search refuses it: without it this would be a search of everything.
+    expect(parseSearchParamsFromUrl(new URLSearchParams("like=nonsense")).like).toEqual(["nonsense"]);
   });
 });
 

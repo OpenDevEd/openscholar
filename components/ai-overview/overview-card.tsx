@@ -73,12 +73,15 @@ function subscribeEnsure(convex: ReturnType<typeof useConvex>) {
   };
 }
 
-export function AiOverview({ searchId, total }: { searchId: string; total: number }) {
+/** What every overview here reads, from whatever stays on the page, so a card's row is there the moment it's shown. Signed out there's no account to keep lenses in, and no overview. */
+export function useOverviewView(wanted: boolean) {
   const scope = useResearchScope();
-  const { data: view } = useProtectedQuery(api.research.overviews.view, scope ?? "skip");
-  // Signed out there's no account to keep lenses in, and no overview.
-  if (!scope || !view) return null;
-  return <Card scope={scope} view={view} searchId={searchId} total={total} />;
+  const { data: view } = useProtectedQuery(api.research.overviews.view, wanted && scope ? scope : "skip");
+  return scope && view ? { scope, view } : null;
+}
+
+export function AiOverview({ read, searchId, total }: { read: { scope: Scope; view: View }; searchId: string; total: number }) {
+  return <Card scope={read.scope} view={read.view} searchId={searchId} total={total} />;
 }
 
 function Card({ scope, view, searchId, total }: { scope: Scope; view: View; searchId: string; total: number }) {

@@ -240,7 +240,8 @@
     "searchingDescription": "Iphenya izinkulungwane zamaphepha...",
     "noResultsMatchFilters": "Akukho miphumela ehambisana nezihlungi zakho",
     "updatingResults": "Iyavuselela imiphumela...",
-    "adjustTab": "Lungisa"
+    "adjustTab": "Lungisa",
+    "firstOnly": "Kuboniswa okungu-{shown} kokuqala kokungu-{total}. Nciphisa ukusesha ukuze ufinyelele kokunye."
   },
   "pricing": {
     "chooseYourPlan": "Izinhlelo",
@@ -487,7 +488,8 @@
   "downloads": {
     "downloadAll": "Landa konke",
     "downloadEssentialJSON": "Landa ulwazi oludingekayo njenge-JSON",
-    "downloadEssentialCSV": "Landa ulwazi oludingekayo njenge-CSV"
+    "downloadEssentialCSV": "Landa ulwazi oludingekayo njenge-CSV",
+    "pageOnly": "Amaphepha angu-{count} kuleli khasi"
   },
   "extraction": {
     "searchJobs": "Sesha imisebenzi...",
@@ -1032,7 +1034,8 @@
     "queryHistory": "Umlando wemibuzo",
     "queryEvolution": "Ukuguquka kombuzo",
     "bookmarkNamePlaceholder": "igama-lesimaki",
-    "recentSearches": "Ukusesha kwakamuva"
+    "recentSearches": "Ukusesha kwakamuva",
+    "clearAllHistoryConfirmWhole": "Uqinisekile ukuthi ufuna ukususa wonke umlando wakho wokusesha? Lokhu akukwazi ukuhlehliswa."
   },
   "commandCenter": {
     "searchesLabel": "izisesho",
@@ -1097,6 +1100,7 @@
     "searchWithQuery": "Sesha ngalo mbuzo",
     "removeFromHistory": "Susa emlandweni",
     "openDoi": "Vula i-DOI",
+    "openPaperPage": "Vula ikhasi lephepha",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Buyela ezilungiselelweni zokuzenzakalelayo",
     "focusMode": "Imodi yokugxila",
@@ -4968,7 +4972,7 @@
     },
     "tryAgain": "Zama futhi",
     "unavailable": {
-      "oql": "Isesho elibhalwe nge-OQL alikwazi ukubalwa, ngakho alinasifinyezo.",
+      "oql": "Ukubuka konke akutholakali ekuseshweni okubhalwe nge-OQL.",
       "ratings": "Isifinyezo sifunda sonke isesho, ngakho asibhalwa ngenkathi imiphumela ihlungwe ngezilinganiso zakho."
     },
     "dialog": {
@@ -5368,7 +5372,7 @@
     "loadingPublications": "Iyalayisha okushicilelwe",
     "noPublishedWorksAreLinkedTo": "Akukho msebenzi oshicilelwe oxhunyiwe kulo mbhali okwamanje.",
     "connectTheAuthorSResearchRecord": "Xhumanisa irekhodi locwaningo lombhali ukuze ubonise okushicilelwe kwakhe.",
-    "linkAnAuthorToDisplayTheir": "Xhumanisa umbhali ukuze uboniswe okushicilelwe kwe-OpenAlex kwakhe.",
+    "linkAnAuthorToDisplayTheir": "Xhuma umbhali ukuze ubonise izincwadi zakhe.",
     "changeMatch": "Shintsha ukufana",
     "findAuthor": "Thola umbhali",
     "unlink": "Nqamula",
@@ -5389,22 +5393,22 @@
     "noPublicationsToDisplay": "Akukho okushicilelwe kwe-{source} okungaboniswa.",
     "showMore": "Bonisa okwengeziwe",
     "confirmAuthorMatch": "Qinisekisa ukufana kombhali",
-    "findAuthorOnOpenalex": "Thola umbhali ku-OpenAlex",
+    "findAuthorOnOpenalex": "Thola irekhodi lombhali",
     "checkTheAffiliationAndResearchBefore": "Hlola isikhungo nocwaningo ngaphambi kokuxhumanisa leli rekhodi.",
-    "searchByNameAffiliationOrOpenalex": "Sesha ngegama, isikhungo noma i-ID kambhali ye-OpenAlex.",
+    "searchByNameAffiliationOrOpenalex": "Sesha ngegama, isikhungo noma i-ID yombhali.",
     "yourNameBiographyLinksAndSelected": "Igama lakho, ibhayografi, amaxhumanisi nokushicilelwe okukhethiwe kuzohlala njengoba ukufakile.",
-    "searchOpenalexAuthors": "Sesha ababhali be-OpenAlex",
+    "searchOpenalexAuthors": "Sesha amarekhodi ababhali",
     "nameAffiliationOrAuthorId": "Igama, isikhungo noma i-ID kambhali",
-    "openalexSearchIsUnavailableYourProfile": "Ukusesha kwe-OpenAlex akutholakali. Iphrofayili yakho nokufana kwamanje akushintshile.",
+    "openalexSearchIsUnavailableYourProfile": "Ukusesha ababhali akutholakali. Iphrofayela yakho nokuxhuma kwamanje akushintshile.",
     "tryAgain": "Zama futhi",
     "couldNotLoadThisAuthorS": "Okushicilelwe kalombhali akukwazanga ukulayishwa",
     "searchingOpenalexAuthors": "Iyasesha ababhali be-OpenAlex",
     "noAuthorsMatchYourSearch": "Akekho umbhali ohambisana nokusesha kwakho.",
-    "searchForAnAuthorByName": "Sesha umbhali ngegama, isikhungo noma i-ID ye-OpenAlex.",
+    "searchForAnAuthorByName": "Sesha umbhali ngegama, isikhungo noma i-ID.",
     "back": "Emuva",
     "confirmMatch": "Qinisekisa ukufana",
-    "unlinkOpenalexAuthor": "Nqamula umbhali we-OpenAlex?",
-    "thisRemovesTheImportedResearchFrom": "Lokhu kususa ucwaningo olungeniswe kule phrofayili. Imininingwane yephrofayili yakho nokushicilelwe okukhethiwe kuzohlala.",
+    "unlinkOpenalexAuthor": "Susa irekhodi eliyinhloko?",
+    "thisRemovesTheImportedResearchFrom": "Amaphepha alo ayaphuma kule phrofayela, ngaphandle uma elinye irekhodi elixhunyiwe linawo. Amanye amarekhodi, imininingwane yephrofayela nezincwadi ezikhethiwe kuyasala.",
     "unlinkAuthor": "Nqamula umbhali",
     "createAuthor": "Dala umbhali",
     "findAuthors": "Thola ababhali",
@@ -5442,17 +5446,18 @@
     "sectionOpenAlex": "Amarekhodi ombhali",
     "sectionAccess": "Ukufinyelela",
     "authorRecords": "Amarekhodi ombhali",
-    "authorRecordsDescription": "Yonke irekhodi yalo muntu. Ukusesha amaphepha kuwafunda wonke.",
+    "authorRecordsDescription": "Umuntu angahlukaniswa abe ngamarekhodi amaningi enkombeni. Engeza lawo angalo muntu, futhi ukusesha amaphepha kuwafunda wonke.",
     "changeMainRecord": "Shintsha irekhodi eliyinhloko",
     "mainRecord": "Inhloko",
     "claimAuthor": "Faka isicelo salo mbhali",
-    "otherRecordsWithThisName": "Amanye amarekhodi analeli gama",
+    "otherRecordsWithThisName": "Amanye amarekhodi analeli gama: qiniseka ukuthi ngamunye ungumuntu ofanayo",
     "addRecord": "Engeza",
     "removeRecord": "Susa leli rekhodi",
     "recordPapers": "{count, plural, one {iphepha elingu-{shown}} other {amaphepha angu-{shown}}}",
     "authorsIn": "Ku-{source}",
     "couldNotSearchAuthors": "Akwenzekanga ukusesha ababhali. Zama futhi maduze.",
-    "searchingAuthors": "Kufunwa ababhali"
+    "searchingAuthors": "Kufunwa ababhali",
+    "recordsFull": "Le phrofayela inamarekhodi angu-{max}. Susa elilodwa ukuze wengeze elinye."
   },
   "connectApp": {
     "signInToContinue": "Ngena ukuze uqhubeke",

@@ -240,7 +240,8 @@
     "searchingDescription": "正在浏览数百万篇论文...",
     "noResultsMatchFilters": "没有符合筛选条件的结果",
     "updatingResults": "更新结果中...",
-    "adjustTab": "调整"
+    "adjustTab": "调整",
+    "firstOnly": "显示 {total} 条中的前 {shown} 条。缩小搜索范围以查看其余结果。"
   },
   "pricing": {
     "chooseYourPlan": "选择您的计划",
@@ -487,7 +488,8 @@
   "downloads": {
     "downloadAll": "下载全部",
     "downloadEssentialJSON": "将基本信息下载为 JSON",
-    "downloadEssentialCSV": "将基本信息下载为 CSV"
+    "downloadEssentialCSV": "将基本信息下载为 CSV",
+    "pageOnly": "本页的 {count} 篇论文"
   },
   "extraction": {
     "searchJobs": "搜索任务...",
@@ -1032,7 +1034,8 @@
     "queryHistory": "查询历史",
     "queryEvolution": "查询演变",
     "bookmarkNamePlaceholder": "书签名称",
-    "recentSearches": "最近搜索"
+    "recentSearches": "最近搜索",
+    "clearAllHistoryConfirmWhole": "确定要删除全部搜索历史吗?此操作无法撤销。"
   },
   "commandCenter": {
     "searchesLabel": "次搜索",
@@ -1097,6 +1100,7 @@
     "searchWithQuery": "使用此查询搜索",
     "removeFromHistory": "从历史记录中移除",
     "openDoi": "打开 DOI",
+    "openPaperPage": "打开论文页面",
     "doiTooltip": "DOI：{doi}",
     "resetToDefaults": "重置为默认值",
     "focusMode": "专注模式",
@@ -4968,7 +4972,7 @@
     },
     "tryAgain": "重试",
     "unavailable": {
-      "oql": "用 OQL 写的检索无法统计，因此没有概览。",
+      "oql": "用 OQL 编写的搜索没有概览。",
       "ratings": "概览会阅读整个检索，因此在按你的评分筛选结果时不会撰写。"
     },
     "dialog": {
@@ -5368,7 +5372,7 @@
     "loadingPublications": "正在加载出版物",
     "noPublishedWorksAreLinkedTo": "此作者尚未关联任何已发表作品。",
     "connectTheAuthorSResearchRecord": "连接作者的研究记录，以显示其出版物。",
-    "linkAnAuthorToDisplayTheir": "关联作者以显示其 OpenAlex 出版物。",
+    "linkAnAuthorToDisplayTheir": "关联作者以显示其出版物。",
     "changeMatch": "更改匹配",
     "findAuthor": "查找作者",
     "unlink": "取消关联",
@@ -5389,22 +5393,22 @@
     "noPublicationsToDisplay": "没有可显示的 {source} 出版物。",
     "showMore": "显示更多",
     "confirmAuthorMatch": "确认作者匹配",
-    "findAuthorOnOpenalex": "在 OpenAlex 上查找作者",
+    "findAuthorOnOpenalex": "查找作者记录",
     "checkTheAffiliationAndResearchBefore": "关联此记录前，请核对所属机构和研究方向。",
-    "searchByNameAffiliationOrOpenalex": "按姓名、所属机构或 OpenAlex 作者 ID 搜索。",
+    "searchByNameAffiliationOrOpenalex": "按姓名、机构或作者 ID 搜索。",
     "yourNameBiographyLinksAndSelected": "您的姓名、简介、链接和精选出版物将保持您输入的内容。",
-    "searchOpenalexAuthors": "搜索 OpenAlex 作者",
+    "searchOpenalexAuthors": "搜索作者记录",
     "nameAffiliationOrAuthorId": "姓名、所属机构或作者 ID",
-    "openalexSearchIsUnavailableYourProfile": "无法使用 OpenAlex 搜索。您的资料和当前匹配保持不变。",
+    "openalexSearchIsUnavailableYourProfile": "作者搜索暂不可用。你的资料和当前关联不变。",
     "tryAgain": "重试",
     "couldNotLoadThisAuthorS": "无法加载此作者的出版物",
     "searchingOpenalexAuthors": "正在搜索 OpenAlex 作者",
     "noAuthorsMatchYourSearch": "没有符合搜索的作者。",
-    "searchForAnAuthorByName": "按姓名、所属机构或 OpenAlex ID 搜索作者。",
+    "searchForAnAuthorByName": "按姓名、机构或 ID 搜索作者。",
     "back": "返回",
     "confirmMatch": "确认匹配",
-    "unlinkOpenalexAuthor": "取消关联 OpenAlex 作者？",
-    "thisRemovesTheImportedResearchFrom": "这会从此资料中移除导入的研究成果。您的资料详情和精选出版物将保留。",
+    "unlinkOpenalexAuthor": "移除主记录?",
+    "thisRemovesTheImportedResearchFrom": "其论文将离开此资料,除非另一条关联记录也包含它们。其他关联记录、资料详情和所选出版物保留。",
     "unlinkAuthor": "取消关联作者",
     "createAuthor": "创建作者",
     "findAuthors": "查找作者",
@@ -5442,17 +5446,18 @@
     "sectionOpenAlex": "作者记录",
     "sectionAccess": "访问权限",
     "authorRecords": "作者记录",
-    "authorRecordsDescription": "属于此人的每条记录。搜索论文会读取全部记录。",
+    "authorRecordsDescription": "一个人可能在索引中被分成多条记录。添加属于此人的记录,搜索论文会读取全部记录。",
     "changeMainRecord": "更改主记录",
     "mainRecord": "主要",
     "claimAuthor": "认领此作者",
-    "otherRecordsWithThisName": "同名的其他记录",
+    "otherRecordsWithThisName": "同名的其他记录:请逐一确认是同一个人",
     "addRecord": "添加",
     "removeRecord": "移除此记录",
     "recordPapers": "{count, plural, other {{shown} 篇论文}}",
     "authorsIn": "在 {source} 中",
     "couldNotSearchAuthors": "无法搜索作者。请稍后再试。",
-    "searchingAuthors": "正在搜索作者"
+    "searchingAuthors": "正在搜索作者",
+    "recordsFull": "此资料已有 {max} 条记录。移除一条才能添加另一条。"
   },
   "connectApp": {
     "signInToContinue": "登录以继续",

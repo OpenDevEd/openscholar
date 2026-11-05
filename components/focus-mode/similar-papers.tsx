@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { useFormatter, useTranslations } from "next-intl";
+import { useCloseFocus } from "@/components/entity-cards";
 import { Compass, Quote } from "@/components/icons";
 import { readSimilarPapers } from "@/app/actions/similar";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,14 @@ const SHOWN = 8;
 export function SimilarPapers({ paperId }: { paperId: string }) {
   const format = useFormatter();
   const t = useTranslations("similarPapers");
+  const closeFocus = useCloseFocus();
   const { data, error, isLoading } = useSWR(["similar-papers", paperId], ([, id]) => unlessLimited(readSimilarPapers(id, SHOWN)), { revalidateOnFocus: false });
   return (
     <section aria-label={t("title")} className="border-t pt-2">
       <div className="mb-1 flex min-h-8 items-center justify-between gap-2">
         <h3 className="text-sm font-medium text-muted-foreground">{t("title")}</h3>
         <Button variant="ghost" size="sm" className="h-7 gap-1.5 px-2 text-xs" asChild>
-          <Link href={similarSearchHref([paperId]) ?? "/results"}>
+          <Link href={similarSearchHref([paperId]) ?? "/results"} onNavigate={closeFocus}>
             <Compass className="h-3.5 w-3.5" />
             {t("seeAll")}
           </Link>
@@ -42,7 +44,8 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
                 {paper.doi ? (
                   <a href={paper.doi} target="_blank" rel="noopener noreferrer" className="min-w-0 hover:underline">{paper.title}</a>
                 ) : (
-                  <span className="min-w-0">{paper.title}</span>
+                  // No DOI to open: what's like it is the next best place to go.
+                  <Link href={similarSearchHref([paper.id]) ?? "/results"} onNavigate={closeFocus} className="min-w-0 hover:underline">{paper.title}</Link>
                 )}
                 <span className="flex shrink-0 items-center gap-3 text-xs tabular-nums text-muted-foreground">
                   {paper.year ? <span>{paper.year}</span> : null}

@@ -240,7 +240,8 @@
     "searchingDescription": "Revisando millones de artículos...",
     "noResultsMatchFilters": "Ningún resultado coincide con sus filtros",
     "updatingResults": "Actualizando resultados...",
-    "adjustTab": "Ajustar"
+    "adjustTab": "Ajustar",
+    "firstOnly": "Se muestran los primeros {shown} de {total}. Acota la búsqueda para llegar al resto."
   },
   "pricing": {
     "chooseYourPlan": "Planes",
@@ -488,7 +489,8 @@
   "downloads": {
     "downloadAll": "Descargar todo",
     "downloadEssentialJSON": "Descargar la información esencial como JSON",
-    "downloadEssentialCSV": "Descargar la información esencial como CSV"
+    "downloadEssentialCSV": "Descargar la información esencial como CSV",
+    "pageOnly": "Los {count} artículos de esta página"
   },
   "extraction": {
     "searchJobs": "Buscar trabajos...",
@@ -1033,7 +1035,8 @@
     "queryHistory": "Historial de consultas",
     "queryEvolution": "Evolución de la consulta",
     "bookmarkNamePlaceholder": "nombre-del-marcador",
-    "recentSearches": "Búsquedas recientes"
+    "recentSearches": "Búsquedas recientes",
+    "clearAllHistoryConfirmWhole": "¿Seguro que quieres borrar todo tu historial de búsqueda? Esta acción no se puede deshacer."
   },
   "commandCenter": {
     "searchesLabel": "búsquedas",
@@ -1098,6 +1101,7 @@
     "searchWithQuery": "Buscar con esta consulta",
     "removeFromHistory": "Quitar del historial",
     "openDoi": "Abrir DOI",
+    "openPaperPage": "Abrir la página del artículo",
     "doiTooltip": "DOI: {doi}",
     "resetToDefaults": "Restablecer valores predeterminados",
     "focusMode": "Modo de enfoque",
@@ -4969,7 +4973,7 @@
     },
     "tryAgain": "Inténtelo de nuevo",
     "unavailable": {
-      "oql": "Una búsqueda escrita en OQL no se puede contar, así que no tiene resumen.",
+      "oql": "No hay resumen para una búsqueda escrita en OQL.",
       "ratings": "Un resumen lee toda la búsqueda, así que no se escribe ninguno mientras los resultados se filtran por sus valoraciones."
     },
     "dialog": {
@@ -5369,7 +5373,7 @@
     "loadingPublications": "Cargando publicaciones",
     "noPublishedWorksAreLinkedTo": "Todavía no hay obras publicadas vinculadas a esta persona autora.",
     "connectTheAuthorSResearchRecord": "Vincule el registro de investigación de la persona autora para mostrar sus publicaciones.",
-    "linkAnAuthorToDisplayTheir": "Vincule un autor para mostrar sus publicaciones de OpenAlex.",
+    "linkAnAuthorToDisplayTheir": "Vincula un autor para mostrar sus publicaciones.",
     "changeMatch": "Cambiar coincidencia",
     "findAuthor": "Buscar autor",
     "unlink": "Desvincular",
@@ -5390,22 +5394,22 @@
     "noPublicationsToDisplay": "No hay publicaciones de {source} que mostrar.",
     "showMore": "Mostrar más",
     "confirmAuthorMatch": "Confirmar la coincidencia del autor",
-    "findAuthorOnOpenalex": "Buscar autor en OpenAlex",
+    "findAuthorOnOpenalex": "Buscar un registro de autor",
     "checkTheAffiliationAndResearchBefore": "Revise la afiliación y la investigación antes de vincular este registro.",
-    "searchByNameAffiliationOrOpenalex": "Busque por nombre, afiliación o ID de autor de OpenAlex.",
+    "searchByNameAffiliationOrOpenalex": "Busca por nombre, afiliación o ID de autor.",
     "yourNameBiographyLinksAndSelected": "Su nombre, su biografía, sus enlaces y las publicaciones seleccionadas se mantendrán tal como los escribió.",
-    "searchOpenalexAuthors": "Buscar autores en OpenAlex",
+    "searchOpenalexAuthors": "Buscar registros de autor",
     "nameAffiliationOrAuthorId": "Nombre, afiliación o ID de autor",
-    "openalexSearchIsUnavailableYourProfile": "La búsqueda en OpenAlex no está disponible. Su perfil y la coincidencia actual no cambian.",
+    "openalexSearchIsUnavailableYourProfile": "La búsqueda de autores no está disponible. Tu perfil y la coincidencia actual no cambian.",
     "tryAgain": "Inténtelo de nuevo",
     "couldNotLoadThisAuthorS": "No se pudieron cargar las publicaciones de esta persona autora",
     "searchingOpenalexAuthors": "Buscando autores en OpenAlex",
     "noAuthorsMatchYourSearch": "Ningún autor coincide con su búsqueda.",
-    "searchForAnAuthorByName": "Busque un autor por nombre, afiliación o ID de OpenAlex.",
+    "searchForAnAuthorByName": "Busca un autor por nombre, afiliación o ID.",
     "back": "Atrás",
     "confirmMatch": "Confirmar coincidencia",
-    "unlinkOpenalexAuthor": "¿Desvincular el autor de OpenAlex?",
-    "thisRemovesTheImportedResearchFrom": "Esto quita de este perfil la investigación importada. Sus datos del perfil y las publicaciones seleccionadas se mantienen.",
+    "unlinkOpenalexAuthor": "¿Quitar el registro principal?",
+    "thisRemovesTheImportedResearchFrom": "Sus artículos salen de este perfil, salvo que otro registro vinculado los tenga. Los demás registros vinculados, los datos del perfil y las publicaciones elegidas se mantienen.",
     "unlinkAuthor": "Desvincular autor",
     "createAuthor": "Crear autor",
     "findAuthors": "Buscar autores",
@@ -5443,17 +5447,18 @@
     "sectionOpenAlex": "Registros del autor",
     "sectionAccess": "Acceso",
     "authorRecords": "Registros del autor",
-    "authorRecordsDescription": "Cada registro que es esta persona. Buscar artículos los lee todos.",
+    "authorRecordsDescription": "Una persona puede estar dividida en varios registros del índice. Añade los que sean esta persona, y Buscar artículos los lee todos.",
     "changeMainRecord": "Cambiar registro principal",
     "mainRecord": "Principal",
     "claimAuthor": "Reclamar este autor",
-    "otherRecordsWithThisName": "Otros registros con este nombre",
+    "otherRecordsWithThisName": "Otros registros con este nombre: comprueba que cada uno sea la misma persona",
     "addRecord": "Añadir",
     "removeRecord": "Quitar este registro",
     "recordPapers": "{count, plural, one {{shown} artículo} other {{shown} artículos}}",
     "authorsIn": "En {source}",
     "couldNotSearchAuthors": "No se pudieron buscar autores. Inténtalo en un momento.",
-    "searchingAuthors": "Buscando autores"
+    "searchingAuthors": "Buscando autores",
+    "recordsFull": "Este perfil ya tiene {max} registros. Quita uno para añadir otro."
   },
   "connectApp": {
     "signInToContinue": "Inicie sesión para continuar",

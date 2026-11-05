@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { SEMANTIC_FIELD } from "@/lib/search/source";
+import { useSearchSource } from "@/lib/search/use-search-source";
 import { Search, AiIcon } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
@@ -80,7 +81,9 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
 
   const isFormDisabled = isLoading || isValidating || isTranslating || isEnhancing;
   const isOql = search?.params?.field === OQL_FIELD;
-  const byMeaning = search?.params?.field === SEMANTIC_FIELD;
+  const source = useSearchSource();
+  // A question saved on our index runs as words on OpenAlex, and reads that way here.
+  const byMeaning = search?.params?.field === SEMANTIC_FIELD && source === "openscholar";
   // AI writes and translates in the search's own query language.
   const syntax = isOql ? ('oql' as const) : undefined;
   const isLanguageSelectorDisabled = isTranslating || isEnhancing;
