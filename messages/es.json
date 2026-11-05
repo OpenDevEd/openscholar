@@ -989,6 +989,7 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Buscar marcadores...",
+    "bookmarkDeleted": "Marcador eliminado",
     "clearAllBookmarks": "Borrar todos los marcadores",
     "clearAllBookmarksTitle": "Borrar todos los marcadores",
     "clearAllBookmarksConfirm": "¿Seguro que quiere eliminar los {count} marcadores? Esta acción no se puede deshacer.",

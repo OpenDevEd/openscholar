@@ -43,7 +43,7 @@ const CLOSE_MS = 80;
  * place of what the name does on a click, which the card holds too. Its clicks stay inside it: React carries a portal's
  * events up to the paper card the name sits in, which would open focus mode.
  */
-function EntityHoverCard({ trigger, children }: { trigger: ReactElement; children: ReactNode }) {
+function EntityHoverCard({ trigger, label, children }: { trigger: ReactElement; label: string; children: ReactNode }) {
   const touch = useNoHover();
   const [open, setOpen] = useState(false);
   const fromKeyboard = useRef(false);
@@ -80,6 +80,7 @@ function EntityHoverCard({ trigger, children }: { trigger: ReactElement; childre
       <PopoverAnchor asChild>{name}</PopoverAnchor>
       <PopoverContent
         ref={card}
+        aria-label={label}
         align="start"
         className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0"
         onClick={(event) => event.stopPropagation()}
@@ -288,7 +289,7 @@ function UnmatchedAuthorBody({ value, name }: { value: string; name: string }) {
  */
 export function AuthorHoverCard({ value, name, children }: { value: string; name: string; children: ReactElement }) {
   return (
-    <EntityHoverCard trigger={children}>
+    <EntityHoverCard trigger={children} label={name}>
       {isAuthorId(value) ? <AuthorCardBody id={value} name={name} /> : <UnmatchedAuthorBody value={value} name={name} />}
     </EntityHoverCard>
   );
@@ -389,7 +390,7 @@ function InstitutionCardBody({ id, name }: { id: string; name: string }) {
 /** An institution's name with its card, by its ID. */
 export function InstitutionHoverCard({ id, name, children }: { id: string; name: string; children: ReactElement }) {
   return (
-    <EntityHoverCard trigger={children}>
+    <EntityHoverCard trigger={children} label={name}>
       <InstitutionCardBody id={id} name={name} />
     </EntityHoverCard>
   );
@@ -398,7 +399,7 @@ export function InstitutionHoverCard({ id, name, children }: { id: string; name:
 /** A topic's (or a research area's) name with its card, by catalog id: T10017 or subfields/3304. */
 export function TopicHoverCard({ id, name, children }: { id: string; name: string; children: ReactElement }) {
   return (
-    <EntityHoverCard trigger={children}>
+    <EntityHoverCard trigger={children} label={name}>
       <TopicCardBody id={id} name={name} />
     </EntityHoverCard>
   );

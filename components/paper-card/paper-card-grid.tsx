@@ -245,8 +245,8 @@ export function PaperCardGrid({
                 </button>
               </TooltipHint>
 
-              {/* Related count - hidden in compact */}
-              {!isCompact && (ownIndex ? <SimilarIconButton paperId={result.id} /> : (
+              {/* Similar in every grid; the related count is hidden in compact */}
+              {ownIndex ? <SimilarIconButton paperId={result.id} /> : !isCompact && (
                 <TooltipHint label={tp("relatedCount", { count: format.number(result.related_works?.length ?? 0) })}>
                   <button
                     type="button"
@@ -260,7 +260,7 @@ export function PaperCardGrid({
                     <span>{format.number(result.related_works?.length ?? 0)}</span>
                   </button>
                 </TooltipHint>
-              ))}
+              )}
             </div>
           </div>
         </div>

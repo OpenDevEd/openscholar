@@ -561,7 +561,7 @@ export function ResultsList({
         <div className="mb-6">
           <SearchCommandCenter
             searchId={searchId || ""}
-            totalCount={totalCount}
+            totalCount={!preview && isRatingFilterActive(ratingRange, onlyRatedPapers) ? filteredResults.length : totalCount}
             currentQuery={urlQuery}
             isLoading={isLoading}
             isValidating={isValidating}

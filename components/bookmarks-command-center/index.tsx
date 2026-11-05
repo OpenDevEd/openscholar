@@ -21,6 +21,7 @@ import {
 } from "@/lib/utils";
 import { showConfirmation } from "@/lib/confirmation";
 import { useAppToast } from "@/lib/toast";
+import { toast as sonner } from "sonner";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { BookmarkSortBy } from "@/lib/types";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -75,6 +76,7 @@ export function BookmarksCommandCenter() {
   const workspaceId = useWorkspace();
   const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
+  const tUndo = useTranslations("saveToLibrary");
   const tc = useTranslations("common");
   const tcc = useTranslations("commandCenter");
   const tToast = useTranslations("toast");
@@ -92,6 +94,7 @@ export function BookmarksCommandCenter() {
 
   const updateKeyword = useKeywordExpansionStore((state) => state.updateKeyword);
   const removeKeyword = useKeywordExpansionStore((state) => state.removeKeyword);
+  const addKeyword = useKeywordExpansionStore((state) => state.addKeyword);
   const clearKeywords = useKeywordExpansionStore((state) => state.clearKeywords);
   const importKeywords = useKeywordExpansionStore((state) => state.importKeywords);
   // Bookmarks and view settings are saved in the browser; wait for them rather than flash an empty list.
@@ -132,8 +135,12 @@ export function BookmarksCommandCenter() {
       remaining_bookmarks: (bookmarks.count ?? 1) - 1,
     });
 
+    const expansion = bookmarks.items.find((item) => item.name === name)?.expansion;
     removeKeyword(name);
     if (editingBookmark === name) setEditingBookmark(null);
+    if (expansion !== undefined) {
+      sonner(tb("bookmarkDeleted"), { description: name, duration: 5000, action: { label: tUndo("undo"), onClick: () => addKeyword(name, expansion) } });
+    }
   };
 
   // An account's bookmarks are written by the server, a page at a time; this browser's are all here.

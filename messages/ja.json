@@ -988,6 +988,7 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "ブックマークを検索...",
+    "bookmarkDeleted": "ブックマークを削除しました",
     "clearAllBookmarks": "すべてのブックマークをクリア",
     "clearAllBookmarksTitle": "すべてのブックマークをクリア",
     "clearAllBookmarksConfirm": "すべての {count} 件のブックマークを削除しますか？この操作は取り消せません。",

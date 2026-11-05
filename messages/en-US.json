@@ -988,6 +988,7 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Search bookmarks...",
+    "bookmarkDeleted": "Bookmark deleted",
     "clearAllBookmarks": "Clear all bookmarks",
     "clearAllBookmarksTitle": "Clear all bookmarks",
     "clearAllBookmarksConfirm": "Are you sure you want to delete all {count} bookmarks? This action cannot be undone.",

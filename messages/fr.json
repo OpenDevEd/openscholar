@@ -988,6 +988,7 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Rechercher des favoris...",
+    "bookmarkDeleted": "Favori supprimé",
     "clearAllBookmarks": "Effacer tous les favoris",
     "clearAllBookmarksTitle": "Effacer tous les favoris",
     "clearAllBookmarksConfirm": "Êtes-vous sûr de vouloir supprimer tous les {count} favoris ? Cette action est irréversible.",

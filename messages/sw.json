@@ -989,6 +989,7 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Tafuta alamisho...",
+    "bookmarkDeleted": "Alamisho limefutwa",
     "clearAllBookmarks": "Futa alamisho zote",
     "clearAllBookmarksTitle": "Futa alamisho zote",
     "clearAllBookmarksConfirm": "Una uhakika unataka kufuta alamisho zote {count}? Kitendo hiki hakiwezi kutenduliwa.",

@@ -989,6 +989,7 @@
   },
   "bookmarksPage": {
     "searchPlaceholder": "Soek boekmerke...",
+    "bookmarkDeleted": "Boekmerk geskrap",
     "clearAllBookmarks": "Maak alle boekmerke leeg",
     "clearAllBookmarksTitle": "Maak alle boekmerke leeg",
     "clearAllBookmarksConfirm": "Is jy seker jy wil al {count} boekmerke verwyder? Hierdie aksie kan nie ongedaan gemaak word nie.",

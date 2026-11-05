@@ -164,7 +164,7 @@ Please enhance this academic search query according to the user's specific instr
         busy={isLoading || isValidating}
         flash={queryFlash}
       />
-      {isOql && <OqlQueryStatus error={search.error} />}
+      {isOql && <OqlQueryStatus />}
     </div>
   );
 }

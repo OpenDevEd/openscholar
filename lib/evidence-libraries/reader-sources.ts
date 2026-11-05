@@ -31,7 +31,7 @@ export type FilterKind = (typeof FILTER_KINDS)[number];
 export const SORTS = ["desc", "asc", "mostCited", "leastCited", "authorAZ", "authorZA", "titleAZ", "titleZA"] as const;
 
 /** A record type as the library names it: journalArticle is "Journal article". */
-const typeName = (type: string) => type.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()).replace(/ ([A-Z])/g, (_, c: string) => ` ${c.toLowerCase()}`);
+export const typeName = (type: string) => type.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()).replace(/ ([A-Z])/g, (_, c: string) => ` ${c.toLowerCase()}`);
 
 /** A search's filters and order, without its words, one chip each. A sort is its key, which the form names. */
 export function filtersOf(search: string): Array<{ kind: FilterKind; value: string }> {

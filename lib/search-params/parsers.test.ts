@@ -61,6 +61,12 @@ describe("parseSearchParamsFromUrl", () => {
   });
 
   describe("an address is anyone's to type, and the server refuses a search it can't hold", () => {
+    it("reads an order the page doesn't offer as the default", () => {
+      expect(parse("sort=not-a-field").sort).toBe(DEFAULT_SEARCH_PARAMS.sort);
+      expect(searchParamsParsers.sort.parse("not-a-field")).toBeNull();
+      expect(parse("sort=cited_by_count:desc").sort).toBe("cited_by_count:desc");
+    });
+
     const thisYear = new Date().getFullYear();
 
     it.each([
