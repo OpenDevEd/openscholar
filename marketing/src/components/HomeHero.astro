@@ -1,7 +1,6 @@
 ---
-// A living Earth under OpenScholar's search box, with the communities as glass satellites you can catch as they go round, and the real site of the one in front rising below. NASA Blue Marble, Black Marble and cloud imagery, drawn by a small shader, so the planet really turns, with day, night, weather and sea glint.
+// A living Earth under OpenScholar's search box, with the communities as glass satellites you can catch as they go round, each named along the ring as it passes the front. NASA Blue Marble, Black Marble and cloud imagery, drawn by a small shader, so the planet really turns, with day, night, weather and sea glint.
 import AskBar from "./AskBar.astro";
-import CommunityRing from "./CommunityRing.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const HEAD = "Ask the world's research anything".split(" ");
 const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce burnout?", "Do pesticides harm bees?", "Does remote work boost output?", "Do farm antibiotics harm people?", "Do cash transfers reduce hunger?"];
@@ -26,11 +25,11 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     <img class="still" data-still alt="" decoding="async" />
     <canvas class="earth" aria-hidden="true"></canvas>
     <div class="orb front" aria-hidden="true"><svg class="ringsvg"><g data-ring="front"></g></svg><i class="spark" data-spark="front"></i></div>
-    <div class="sats" aria-hidden="true">{COMMUNITIES.map((c, i) => <a class="sat" data-sat tabindex="-1" href={c.url} style={`--c:${c.color};--i:${i}`}><img src={`/img/comm-${c.key}.avif`} width="96" height="96" alt="" decoding="async" /><b>{c.name}</b></a>)}</div>
+    <nav class="sats" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <a class="sat" data-sat href={c.url} style={`--c:${c.color};--i:${i}`}><img src={`/img/comm-${c.key}.avif`} width="96" height="96" alt="" decoding="async" /><b>{c.name}</b></a>)}</nav>
   </div>
   <div class="inner hub">
     <p class="hubline"><a href="/evidence-communities/">Evidence Communities</a> <span>Curated evidence, open to anyone</span></p>
-    <CommunityRing follow eager={false} />
+    <p class="cap">{COMMUNITIES.map((c, i) => <span data-k={i} style={`--c:${c.color}`}><b>{c.name}</b>{c.text}<a href={c.url} tabindex="-1">{c.host}<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></a></span>)}</p>
   </div>
 </section>
 <script>
@@ -39,10 +38,10 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   import "../planet/earth.js";
   const root = document.querySelector("[data-orbit]");
   if (root) {
-    const scene = root.querySelector(".space"), cv = scene.querySelector(".earth"), sats = [...scene.querySelectorAll("[data-sat]")], imgs = sats.map((a) => a.querySelector("img")), names = sats.map((a) => a.querySelector("b")), halo = root.querySelector(".halo"), orbs = [...scene.querySelectorAll(".orb")], skies = [...root.querySelectorAll(".stars")], calm = matchMedia("(prefers-reduced-motion: reduce)"), TAU = Math.PI * 2, NS = "http://www.w3.org/2000/svg";
+    const scene = root.querySelector(".space"), cv = scene.querySelector(".earth"), sats = [...scene.querySelectorAll("[data-sat]")], imgs = sats.map((a) => a.querySelector("img")), names = sats.map((a) => a.querySelector("b")), caps = [...root.querySelectorAll(".cap span")], halo = root.querySelector(".halo"), orbs = [...scene.querySelectorAll(".orb")], skies = [...root.querySelectorAll(".stars")], calm = matchMedia("(prefers-reduced-motion: reduce)"), TAU = Math.PI * 2, NS = "http://www.w3.org/2000/svg";
     const backG = scene.querySelector('[data-ring="back"]'), frontG = scene.querySelector('[data-ring="front"]'), grad = scene.querySelector("#spectrum");
     // A still scene shows all six clear of the planet.
-    const STILL = [-35, 30, 70, 110, 150, 215].map((d) => d * Math.PI / 180), spots = sats.map(() => ({ x: 0, y: 0, hid: false, nudge: 0, dim: 0 }));
+    const STILL = [-35, 30, 70, 110, 150, 215].map((d) => d * Math.PI / 180), spots = sats.map(() => ({ x: 0, y: 0, hid: false, dim: 0, show: -1 }));
     let W = 0, H = 0, R = 0, cx = 0, cy = 0, rx = 0, ry = 0, tilt = -.1, phase = 1.1, speed = 1, onSat = -1, mouse = null, hold = -1, lit = -1, seen = true, px = 0, py = 0, tx = 0, ty = 0, last = 0, kick = 0, spin = 0, lastY = scrollY, lastDraw = -1e9, dawnAt = 0, orbitAt = 0, waveAt = -1e9, firedT = 0, dead = false, raf = 0;
     const arc = (a, b, front) => `M ${-a} 0 A ${a} ${b} 0 0 ${front ? 0 : 1} ${a} 0`;
     // A crescent: a hairline at the far ends of the ring, swelling to its full width across the planet.
@@ -72,10 +71,14 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
         spot.x = x; spot.y = y; spot.hid = depth < 0 && Math.hypot(x - cx, y - cy) < R - 34; if (depth > top) { top = depth; best = i; }
         a.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%)`; imgs[i].style.transform = `scale(${(floor + near * (1 - floor)).toFixed(3)})`;
         a.style.zIndex = depth >= 0 ? 5 : 1; a.style.pointerEvents = spot.hid ? "none" : "auto"; a.classList.toggle("caught", i === hold && depth >= 0);
-        // Distance dims the glass in steps, so the filter isn't rewritten every frame. A caught satellite's name stays on screen.
-        const dim = Math.round((.8 + near * .2) * 20) / 20, nudge = Math.round(Math.max(118 - x, 0) - Math.max(x + 118 - W, 0)); if (dim !== spot.dim) { spot.dim = dim; imgs[i].style.filter = `brightness(${dim})`; } if (nudge !== spot.nudge) { spot.nudge = nudge; names[i].style.setProperty("--nudge", `${nudge}px`); }
+        // Distance dims the glass in steps, so the filter isn't rewritten every frame.
+        const dim = Math.round((.8 + near * .2) * 20) / 20; if (dim !== spot.dim) { spot.dim = dim; imgs[i].style.filter = `brightness(${dim})`; }
+        // Its name rides the ring just behind it, turned to the ring's direction there, and fades out towards the sides and behind. Below 1200 px the satellites are too close for more than the front one's name.
+        const tx = -rx * Math.sin(th) * c - ry * Math.cos(th) * s, ty = -rx * Math.sin(th) * s + ry * Math.cos(th) * c, show = W < 1200 && i !== lit ? 0 : Math.round(Math.min(1, Math.max(0, (depth - .5) / .35)) * 20) / 20;
+        names[i].style.transform = `rotate(${Math.atan2(-ty, -tx).toFixed(3)}rad) translate(-100%, -100%) translate(-40px, -4px)`;
+        if (show !== spot.show) { spot.show = show; names[i].style.opacity = show; names[i].style.pointerEvents = show > .3 ? "auto" : "none"; }
       });
-      best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { lit = best; document.dispatchEvent(new CustomEvent("community:front", { detail: best })); }
+      best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { sats[lit]?.classList.remove("front"); caps[lit]?.classList.remove("on"); sats[best].classList.add("front"); caps[best].classList.add("on"); lit = best; }
     };
     // The planet
     // The quality level comes from earth.js: where this visit got to, else what the browser lets on, then the monitor below
@@ -162,11 +165,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     calm.addEventListener("change", () => { if (calm.matches) { scene.querySelectorAll("[data-spark]").forEach((spark) => { spark.style.opacity = "0"; }); placeSats(0); draw(performance.now()); } last = performance.now(); run(); });
     scene.addEventListener("pointerover", (e) => { onSat = sats.indexOf(e.target.closest("[data-sat]")); }); scene.addEventListener("pointerout", () => { onSat = -1; });
     root.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = root.getBoundingClientRect(), b = scene.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; mouse = { x: e.clientX - b.left, y: e.clientY - b.top }; }, { passive: true }); root.addEventListener("pointerleave", () => { mouse = null; tx = ty = 0; });
-    // Choosing a community's window below swings its satellite round to the front, and holds it there while the pointer or
-    // the keyboard stays on the windows.
+    // Tabbing to a satellite swings it round to the front and holds it there.
     const setHold = (i) => { if (i === hold) return; sats[hold]?.classList.remove("held"); hold = i; sats[i]?.classList.add("held"); };
-    const ring = root.querySelector("[data-rg]");
-    ring.addEventListener("community:pick", (e) => setHold(e.detail)); ring.addEventListener("pointerleave", () => { if (!ring.querySelector(":focus-visible")) setHold(-1); }); ring.addEventListener("focusout", (e) => { if (!ring.contains(e.relatedTarget)) setHold(-1); });
+    scene.addEventListener("focusin", (e) => setHold(sats.indexOf(e.target.closest("[data-sat]")))); scene.addEventListener("focusout", () => setHold(-1));
     // Back from another page can restore the hero with a satellite still caught.
     addEventListener("pageshow", (e) => { if (e.persisted) { onSat = -1; setHold(-1); } });
     // Scrolling flicks the orbit and the planet forward, and they settle back.
@@ -218,10 +219,13 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .sat { position: absolute; left: 0; top: 0; width: 88px; height: 88px; opacity: 0; will-change: transform; }
   .sat img { width: 100%; height: 100%; object-fit: contain; will-change: transform; transition: opacity .9s var(--ease) calc(.7s + var(--i) * 100ms), scale .4s var(--ease); } :global(.js) [data-orbit]:not(.orbiting) .sat img { opacity: 0; } .sat:hover img, .sat:global(.held) img { scale: 1.18; } .sat:hover, .sat:global(.caught) { z-index: 7 !important; }
   /* The link's own label, above its emblem so it stays clear of the strip below, and only one ever shows. */
-  .sat b { position: absolute; left: 50%; bottom: 100%; width: 220px; translate: calc(-50% + var(--nudge, 0px)) -4px; font: 500 14px/1.25 var(--sans); text-wrap: balance; text-align: center; opacity: 0; transition: opacity .25s var(--ease), translate .25s var(--ease); pointer-events: none; text-shadow: 0 1px 2px rgb(4 7 16 / .95), 0 0 6px rgb(4 7 16 / .95), 0 0 16px rgb(4 7 16 / .95); } .sat:hover b { opacity: 1; translate: calc(-50% + var(--nudge, 0px)) -10px; }
+  /* The names ride the ring (placeSats turns and fades them). The one at the front takes its community's colour. */
+  .sat b { position: absolute; left: 50%; top: 50%; width: max-content; max-width: 250px; transform-origin: 0 0; font: 500 15px/1.25 var(--sans); color: #eef1f7; text-align: right; text-wrap: balance; opacity: 0; pointer-events: none; transition: color .8s var(--ease); text-shadow: 0 1px 2px rgb(4 7 16 / .95), 0 0 6px rgb(4 7 16 / .95), 0 0 16px rgb(4 7 16 / .95); } .sat:global(.front) b { color: var(--c); }
+  .cap { display: grid; margin: 10px 0 0; text-align: center; font-size: 15px; color: #c9cfdc; }
+  .cap span { grid-area: 1 / 1; opacity: 0; transition: opacity .5s; } .cap span:global(.on) { opacity: 1; transition-delay: .25s; } .cap b { margin-right: 12px; font-weight: 500; color: var(--c); } .cap a { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; color: #fff; pointer-events: none; } .cap span:global(.on) a { pointer-events: auto; } .cap a:hover { text-decoration: underline; } .cap svg { width: 14px; height: 14px; }
 
   .hub { position: relative; z-index: 6; }
-  .hubline, .hub > :global(.rg) { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
+  .hubline, .cap { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
   .hubline { font-size: 16px; color: #c9cfdc; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
 
   /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */
