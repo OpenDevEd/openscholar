@@ -53,6 +53,7 @@ async function seedRollout(records: { small: number; big: number }) {
         libraryId,
         observedAt: 1,
         sources: [{ key: "zotero-1", provider: "zotero", searchable, searchFailed: 0, changed: 0, lastSuccessAt: null, issues: {}, state: "idle" }],
+        records: searchable,
       });
     }
     for (const binding of [running._id, copyBinding]) await ctx.db.patch("evidenceLibraryRuntimeBindings", binding, { runtimeCommit: RUNNING });
@@ -138,6 +139,25 @@ describe("community releases", () => {
     const overview = await fixture.admin.query(api.evidenceLibraries.releases.overview, {});
     expect(overview.latest).toBe(PROMOTED);
     expect(overview.communities.map(({ records }) => records)).toEqual([1, 2]);
+  });
+
+  it("shows each community's own total, and places one too old to report it by its sources' counts", async () => {
+    const { fixture, small, big, start, rollout, makeAdmin } = await seedRollout({ small: 10, big: 100 });
+    await makeAdmin();
+    // The smaller community's two sources hold the same 60 records, so their counts add up to more than the bigger's,
+    // whose runtime reports no total.
+    await fixture.t.run(async (ctx) => {
+      const statusOf = async (libraryId: typeof small) => (await ctx.db.query("evidenceLibrarySourceStatus").withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId)).unique())!;
+      const smaller = await statusOf(small);
+      const source = smaller.sources[0]!;
+      await ctx.db.patch("evidenceLibrarySourceStatus", smaller._id, { sources: [{ ...source, searchable: 60 }, { ...source, key: "zotero-2", searchable: 60 }], records: 60 });
+      await ctx.db.patch("evidenceLibrarySourceStatus", (await statusOf(big))._id, { records: undefined });
+    });
+
+    const overview = await fixture.admin.query(api.evidenceLibraries.releases.overview, {});
+    expect(overview.communities.map(({ id, records }) => [id, records])).toEqual([[small, 60], [big, null]]);
+    await start();
+    expect((await rollout()).queue).toEqual([small, big]);
   });
 
   it("moves communities smallest first, one at a time, and stops at the first failure", async () => {

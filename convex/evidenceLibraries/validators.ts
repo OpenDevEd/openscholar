@@ -669,7 +669,7 @@ export const releaseCatalogRowsValidator = capped(v.array(v.object(evidenceLibra
 export const releasesOverviewValidator = v.object({
   releases: capped(v.array(v.object(shownReleaseFields)), MAX_RELEASES),
   latest: v.union(v.string(), v.null()),
-  communities: capped(v.array(v.object({ id: v.id("evidenceLibraries"), name: v.string(), running: v.string(), records: v.number(), address: v.string() })), MAX_ROLLOUT_COMMUNITIES),
+  communities: capped(v.array(v.object({ id: v.id("evidenceLibraries"), name: v.string(), running: v.string(), records: v.union(v.number(), v.null()), address: v.string() })), MAX_ROLLOUT_COMMUNITIES),
   rollout: v.union(
     v.null(),
     v.object({
