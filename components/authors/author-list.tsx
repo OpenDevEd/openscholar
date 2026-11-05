@@ -1,5 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
+import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -34,7 +35,8 @@ export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; 
   const tLabels = useTranslations("authorPages");
   const t = useTranslations("authorPages");
   const router = useWorkspaceRouter();
-  const [search, setSearch] = useState("");
+  // In the address, so Back from an author comes back to the search.
+  const [search, setSearch] = useQueryState("q", parseAsString.withDefault("").withOptions({ history: "replace", shallow: true }));
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -51,7 +53,7 @@ export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; 
   return <LibraryPageShell {...explore} actions={<AnimatePresence initial={false}>{creates
     ? <Opening key="create" across className="-ms-2 overflow-clip [overflow-clip-margin:4px]"><Button size="sm" className={cn("ms-2", BAR_ACTION)} onClick={() => {setError(""); setOpen(true);}}><Plus /><span className={BAR_LABEL}>{t("createAuthor")}</span></Button></Opening>
     : null}</AnimatePresence>}
-    filters={<ListSearch aria-label={t("findAuthors")} placeholder={t("findAnAuthor")} className="w-56" value={search} onChange={event => setSearch(event.target.value)} />}>
+    filters={<ListSearch aria-label={t("findAuthors")} placeholder={t("findAnAuthor")} className="w-56" value={search} onChange={event => void setSearch(event.target.value || null)} />}>
     <AuthorInvitations />
     {!!profiles.length && <ul className="divide-y divide-border-subtle">{profiles.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
       <AuthorAvatar photo={profile.photo} className="me-1 size-10 shrink-0" />

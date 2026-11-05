@@ -23,6 +23,8 @@ const authorSchema = z.object({
   topics: z.array(z.object({ id: z.string(), display_name: z.string(), count: z.number().nullish() })).nullish(),
 });
 
+type AuthorRecord = z.infer<typeof authorSchema>;
+
 export type AuthorCard = {
   id: string;
   name: string;
@@ -39,6 +41,31 @@ export type AuthorCard = {
   profileId: string | null;
 };
 
+/** Every record our index pairs with an OpenAlex author: the one person, split. */
+async function readPairedRecords(id: string) {
+  const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "50" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
+  if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
+  return indexPageSchema.parse(await response.json()).results;
+}
+
+/** One person from their records: the largest speaks for them, and their counts and topics are added up. */
+function wholePerson(records: AuthorRecord[]): AuthorRecord {
+  const largest = records.reduce((best, record) => ((record.works_count ?? 0) > (best.works_count ?? 0) ? record : best));
+  const topics = new Map<string, { id: string; display_name: string; count: number }>();
+  for (const topic of records.flatMap((record) => record.topics ?? [])) {
+    const known = topics.get(topic.id);
+    topics.set(topic.id, { id: topic.id, display_name: topic.display_name, count: (known?.count ?? 0) + (topic.count ?? 0) });
+  }
+  return {
+    ...largest,
+    orcid: records.find((record) => record.orcid)?.orcid ?? null,
+    works_count: records.reduce((sum, record) => sum + (record.works_count ?? 0), 0),
+    cited_by_count: records.reduce((sum, record) => sum + (record.cited_by_count ?? 0), 0),
+    summary_stats: { h_index: Math.max(...records.map((record) => record.summary_stats?.h_index ?? 0)) },
+    topics: [...topics.values()].sort((a, b) => b.count - a.count),
+  };
+}
+
 /** How many of an author's topics a card lists. */
 const TOP_TOPICS = 3;
 
@@ -48,11 +75,12 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   const source = sourceForId(id, await chosenSource(given));
   const limited = await spendOpenAlexRequests();
   if (limited) return limited;
-  const response = await openAlexFetch(searchUrl(source, `authors/${id}`, {}), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
+  const records = source === "openscholar" && id.startsWith("A") ? await readPairedRecords(id) : null;
+  const response = records ? null : await openAlexFetch(searchUrl(source, `authors/${id}`, {}), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
   // The source doesn't know them, which a page says differently from a read that failed.
-  if (response.status === 404) return null;
-  if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  const author = authorSchema.parse(await response.json());
+  if (records?.length === 0 || response?.status === 404) return null;
+  if (response && !response.ok) throw new Error(`Author ${id} returned ${response.status}`);
+  const author = records ? wholePerson(records) : authorSchema.parse(await response!.json());
   const institution = author.last_known_institutions?.[0];
   const paired = author.ids?.openalex ? lastPart(author.ids.openalex) : null;
   return {
@@ -73,7 +101,7 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   } satisfies AuthorCard;
 }
 
-export type IndexAuthor = { id: string; name: string; institution: string | null; country: string | null; works: number; citations: number; records: number };
+export type IndexAuthor = { id: string; name: string; institution: string | null; country: string | null; works: number; citations: number; largest: number };
 
 const indexPageSchema = z.object({ meta: z.object({ count: z.number().nullish() }).nullish(), results: z.array(authorSchema) });
 const INDEX_PAGE = 25;
@@ -96,16 +124,18 @@ export async function searchIndexAuthors(search: string, page: number, given?: S
     const id = lastPart(author.ids?.openalex ?? author.id);
     const known = people.get(id);
     const institution = author.last_known_institutions?.[0];
-    const row: IndexAuthor = {
+    const works = author.works_count ?? 0;
+    // A person's records on this page add up, and the largest speaks for them.
+    const speaks = !known || works > known.largest;
+    people.set(id, {
       id,
-      name: author.display_name,
-      institution: institution?.display_name ?? null,
-      country: institution?.country_code ?? null,
-      works: author.works_count ?? 0,
-      citations: author.cited_by_count ?? 0,
-      records: (known?.records ?? 0) + 1,
-    };
-    people.set(id, !known || row.works > known.works ? row : { ...known, records: row.records });
+      name: speaks ? author.display_name : known.name,
+      institution: speaks ? institution?.display_name ?? null : known.institution,
+      country: speaks ? institution?.country_code ?? null : known.country,
+      works: (known?.works ?? 0) + works,
+      citations: (known?.citations ?? 0) + (author.cited_by_count ?? 0),
+      largest: Math.max(known?.largest ?? 0, works),
+    });
   }
   return { authors: [...people.values()], more: page * INDEX_PAGE < (body.meta?.count ?? 0) };
 }

@@ -27,7 +27,8 @@ function AuthorRow({ author }: { author: IndexAuthor }) {
       <Link href={`/authors/${author.id}`} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring">
         <AuthorAvatar className="me-1 size-10 shrink-0" />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium group-hover:underline">{author.name}</p>
+          {/* Several people, or several unpaired records of one, can share a name: its ID tells them apart. */}
+          <p className="flex min-w-0 items-baseline gap-2"><span className="truncate text-sm font-medium group-hover:underline">{author.name}</span><code className="hidden shrink-0 text-3xs font-normal text-muted-foreground sm:inline">{author.id}</code></p>
           <p className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
             {author.country && <CountryFlag countryCode={author.country} className="shrink-0" />}
             <span className="truncate">{author.institution ?? t("noInstitution")}</span>
