@@ -18,8 +18,17 @@ export const selectWithIds = (select: string) => (select.split(",").includes("id
  * beside it. A paper OpenAlex knows keeps that ID as its own, so what's saved under it, ratings and screenings included,
  * is still that paper. A paper only our index has keeps our ID.
  */
-export function appWork<Work extends { id?: string }>(work: Work): Work {
+export function appWork<Work extends { id?: string }>(given: Work): Work {
+  const work = withPlainJournalName(given);
   const openalex = (work as { ids?: { openalex?: unknown } | null }).ids?.openalex;
   // The ID our index knows it by goes with it, for what only our index can do with it.
   return typeof openalex === "string" && openalex ? { ...work, id: openalex, openscholar_id: work.id } : work;
+}
+
+/** Some journal names come escaped for a web page, such as Children &amp; Society. */
+function withPlainJournalName<Work>(work: Work): Work {
+  const location = (work as { primary_location?: { source?: { display_name?: unknown } | null } | null }).primary_location;
+  const name = location?.source?.display_name;
+  if (typeof name !== "string" || !name.includes("&amp;")) return work;
+  return { ...work, primary_location: { ...location, source: { ...location!.source, display_name: name.replaceAll("&amp;", "&") } } };
 }

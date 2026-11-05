@@ -1454,7 +1454,7 @@
     "ratingFilter": "按最低评分筛选",
     "loadMore": "加载更多",
     "emptyLibraryTitle": "此文献库为空",
-    "emptyLibraryDescription": "在搜索结果中对论文评分，即可将其加入文献库。",
+    "emptyLibraryDescription": "从搜索结果中保存论文，建立这个文库。",
     "emptyLibraryCta": "搜索论文",
     "noResultsTitle": "没有符合您搜索或筛选条件的论文",
     "clearFilters": "清除筛选",

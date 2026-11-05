@@ -1454,7 +1454,7 @@
     "ratingFilter": "最低評価でフィルター",
     "loadMore": "もっと読み込む",
     "emptyLibraryTitle": "このライブラリは空です",
-    "emptyLibraryDescription": "検索結果から論文を評価して、このライブラリを構築しましょう。",
+    "emptyLibraryDescription": "検索結果から論文を保存して、このライブラリを作りましょう。",
     "emptyLibraryCta": "論文を検索",
     "noResultsTitle": "検索やフィルターに一致する論文はありません",
     "clearFilters": "フィルターをクリア",

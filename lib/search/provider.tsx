@@ -489,8 +489,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       },
       onError: (err) => {
         console.error('Search failed:', err);
-        // A query the source refuses says why on the page, in place of its results.
+        // A query the source refuses says why on the page, in place of its results, and found nothing.
         if (!(err instanceof SearchError && err.status === 400)) toast.search.failed(err);
+        else if (searchId && getSearchResult(searchId)?.count) updateSearchResult(searchId, { count: 0 });
       },
     }
   );

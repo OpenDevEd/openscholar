@@ -1455,7 +1455,7 @@
     "ratingFilter": "Avaliação",
     "loadMore": "Carregar mais",
     "emptyLibraryTitle": "Esta biblioteca está vazia",
-    "emptyLibraryDescription": "Comece a avaliar artigos a partir dos resultados da pesquisa para criar esta biblioteca.",
+    "emptyLibraryDescription": "Guarde artigos dos resultados de pesquisa para criar esta biblioteca.",
     "emptyLibraryCta": "Pesquisar artigos",
     "noResultsTitle": "Nenhum artigo corresponde à sua pesquisa ou aos filtros",
     "clearFilters": "Limpar filtros",

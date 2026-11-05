@@ -1454,7 +1454,7 @@
     "ratingFilter": "Rating",
     "loadMore": "Load more",
     "emptyLibraryTitle": "This library is empty",
-    "emptyLibraryDescription": "Start rating papers from search results to build this library.",
+    "emptyLibraryDescription": "Save papers from search results to build this library.",
     "emptyLibraryCta": "Search papers",
     "noResultsTitle": "No papers match your search or filters",
     "clearFilters": "Clear filters",
