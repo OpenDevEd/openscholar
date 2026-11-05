@@ -53,4 +53,12 @@ crons.interval(
   {},
 );
 
+// The privacy policy says a deleted account's data goes within about 30 days.
+crons.interval(
+  "clean up deleted users",
+  { hours: 24 },
+  internal.maintenance.mutations.cleanupDeletedUsers,
+  {},
+);
+
 export default crons;
