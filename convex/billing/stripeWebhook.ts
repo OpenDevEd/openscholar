@@ -131,12 +131,23 @@ async function reverseRefundedTopUp(
     payment: { type: "payment_intent", payment_intent: paymentIntent },
   });
   const invoiceId = payments.data[0]?.invoice;
-  if (typeof invoiceId !== "string") return;
+  if (typeof invoiceId !== "string") {
+    console.warn(`[stripe webhook] refund ${chargeId} has no invoice; not reversed`);
+    return;
+  }
+  // Which plan an invoice bought is Autumn's to say: its lines on Stripe don't name it.
+  const billed = (await autumn.customer(userId, { invoices: true })).invoices?.find((invoice) => invoice.stripe_id === invoiceId);
+  if (!billed?.plan_ids?.includes(TOPUP_PLAN)) {
+    console.log(`[stripe webhook] refund ${chargeId} isn't of a top-up (invoice ${invoiceId}, plans ${billed?.plan_ids?.join(", ") ?? "unknown"})`);
+    return;
+  }
+  if (billed.plan_ids.length > 1) {
+    console.error(`[stripe webhook] refund ${chargeId} is of an invoice with more than a top-up (${billed.plan_ids.join(", ")}); not reversed`);
+    return;
+  }
   const lines = await stripe.invoices.listLineItems(invoiceId);
   // Autumn bills a bundle as one line of its full price, quantity 1.
-  const topUpCents = lines.data
-    .filter((line) => line.metadata?.autumn_product_id === TOPUP_PLAN)
-    .reduce((sum, line) => sum + line.amount, 0);
+  const topUpCents = lines.data.reduce((sum, line) => sum + line.amount, 0);
   if (topUpCents <= 0) return;
   const catalog = await ctx.runQuery(api.billing.catalog.get, {});
   const unitPrice = catalog && findPlan(catalog, TOPUP_PLAN)?.credits?.unitPrice;
