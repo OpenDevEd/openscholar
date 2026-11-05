@@ -487,7 +487,8 @@
   "downloads": {
     "downloadAll": "सब डाउनलोड करें",
     "downloadEssentialJSON": "ज़रूरी जानकारी JSON के रूप में डाउनलोड करें",
-    "downloadEssentialCSV": "ज़रूरी जानकारी CSV के रूप में डाउनलोड करें"
+    "downloadEssentialCSV": "ज़रूरी जानकारी CSV के रूप में डाउनलोड करें",
+    "pageOnly": "इस पृष्ठ के {count} शोधपत्र"
   },
   "extraction": {
     "searchJobs": "जॉब खोजें...",
@@ -1032,7 +1033,8 @@
     "queryHistory": "क्वेरी इतिहास",
     "queryEvolution": "क्वेरी विकास",
     "bookmarkNamePlaceholder": "बुकमार्क-नाम",
-    "recentSearches": "हाल की खोजें"
+    "recentSearches": "हाल की खोजें",
+    "clearAllHistoryConfirmWhole": "क्या आप वाकई अपना पूरा खोज इतिहास हटाना चाहते हैं? इसे पूर्ववत नहीं किया जा सकता।"
   },
   "commandCenter": {
     "searchesLabel": "खोजें",

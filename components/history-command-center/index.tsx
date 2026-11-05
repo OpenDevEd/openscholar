@@ -162,7 +162,8 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const handleClearAll = () => {
     showConfirmation({
       title: th("clearAllHistoryTitle"),
-      message: th("clearAllHistoryConfirm", { count: history.count ?? 0 }),
+      // Until the count is read it says what it deletes without one, not that it's none.
+      message: history.count == null ? th("clearAllHistoryConfirmWhole") : th("clearAllHistoryConfirm", { count: history.count }),
       confirmText: tc("clearAll"),
       cancelText: tc("cancel"),
       onConfirm: () => {

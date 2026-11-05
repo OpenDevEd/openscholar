@@ -488,7 +488,8 @@
   "downloads": {
     "downloadAll": "Pakua zote",
     "downloadEssentialJSON": "Pakua taarifa muhimu kama JSON",
-    "downloadEssentialCSV": "Pakua taarifa muhimu kama CSV"
+    "downloadEssentialCSV": "Pakua taarifa muhimu kama CSV",
+    "pageOnly": "Makala {count} kwenye ukurasa huu"
   },
   "extraction": {
     "searchJobs": "Tafuta kazi...",
@@ -1033,7 +1034,8 @@
     "queryHistory": "Historia ya hoja",
     "queryEvolution": "Mabadiliko ya hoja",
     "bookmarkNamePlaceholder": "jina-la-alamisho",
-    "recentSearches": "Utafutaji wa hivi karibuni"
+    "recentSearches": "Utafutaji wa hivi karibuni",
+    "clearAllHistoryConfirmWhole": "Una uhakika unataka kufuta historia yako yote ya utafutaji? Hatua hii haiwezi kutenduliwa."
   },
   "commandCenter": {
     "searchesLabel": "utafutaji",

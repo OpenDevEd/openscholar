@@ -217,6 +217,8 @@ export function SearchCommandHeader({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {/* It downloads what's loaded, not the whole search. */}
+              {search?.results.length ? <DropdownMenuLabel className="font-normal text-muted-foreground">{td("pageOnly", { count: search.results.length })}</DropdownMenuLabel> : null}
               {onDownloadAllJSON && (
                 <DropdownMenuItem onClick={onDownloadAllJSON}>
                   {tc("downloadAsJson")}

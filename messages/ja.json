@@ -487,7 +487,8 @@
   "downloads": {
     "downloadAll": "すべてダウンロード",
     "downloadEssentialJSON": "基本情報をJSONでダウンロード",
-    "downloadEssentialCSV": "基本情報をCSVでダウンロード"
+    "downloadEssentialCSV": "基本情報をCSVでダウンロード",
+    "pageOnly": "このページの {count} 件の論文"
   },
   "extraction": {
     "searchJobs": "ジョブを検索...",
@@ -1032,7 +1033,8 @@
     "queryHistory": "クエリ履歴",
     "queryEvolution": "クエリの進化",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "最近の検索"
+    "recentSearches": "最近の検索",
+    "clearAllHistoryConfirmWhole": "検索履歴をすべて削除してもよろしいですか?この操作は元に戻せません。"
   },
   "commandCenter": {
     "searchesLabel": "検索",

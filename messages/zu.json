@@ -487,7 +487,8 @@
   "downloads": {
     "downloadAll": "Landa konke",
     "downloadEssentialJSON": "Landa ulwazi oludingekayo njenge-JSON",
-    "downloadEssentialCSV": "Landa ulwazi oludingekayo njenge-CSV"
+    "downloadEssentialCSV": "Landa ulwazi oludingekayo njenge-CSV",
+    "pageOnly": "Amaphepha angu-{count} kuleli khasi"
   },
   "extraction": {
     "searchJobs": "Sesha imisebenzi...",
@@ -1032,7 +1033,8 @@
     "queryHistory": "Umlando wemibuzo",
     "queryEvolution": "Ukuguquka kombuzo",
     "bookmarkNamePlaceholder": "igama-lesimaki",
-    "recentSearches": "Ukusesha kwakamuva"
+    "recentSearches": "Ukusesha kwakamuva",
+    "clearAllHistoryConfirmWhole": "Uqinisekile ukuthi ufuna ukususa wonke umlando wakho wokusesha? Lokhu akukwazi ukuhlehliswa."
   },
   "commandCenter": {
     "searchesLabel": "izisesho",

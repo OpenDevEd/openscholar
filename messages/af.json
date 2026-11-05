@@ -488,7 +488,8 @@
   "downloads": {
     "downloadAll": "Laai alles af",
     "downloadEssentialJSON": "Laai essensiële inligting as JSON af",
-    "downloadEssentialCSV": "Laai essensiële inligting as CSV af"
+    "downloadEssentialCSV": "Laai essensiële inligting as CSV af",
+    "pageOnly": "Die {count} artikels op hierdie bladsy"
   },
   "extraction": {
     "searchJobs": "Soek take...",
@@ -1033,7 +1034,8 @@
     "queryHistory": "Soekopdraggeskiedenis",
     "queryEvolution": "Soekopdragevolusie",
     "bookmarkNamePlaceholder": "boekmerknaam",
-    "recentSearches": "Onlangse soektogte"
+    "recentSearches": "Onlangse soektogte",
+    "clearAllHistoryConfirmWhole": "Is jy seker jy wil jou hele soekgeskiedenis uitvee? Dit kan nie ontdoen word nie."
   },
   "commandCenter": {
     "searchesLabel": "soektogte",

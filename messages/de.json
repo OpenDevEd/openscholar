@@ -488,7 +488,8 @@
   "downloads": {
     "downloadAll": "Alle herunterladen",
     "downloadEssentialJSON": "Wesentliche Informationen als JSON herunterladen",
-    "downloadEssentialCSV": "Wesentliche Informationen als CSV herunterladen"
+    "downloadEssentialCSV": "Wesentliche Informationen als CSV herunterladen",
+    "pageOnly": "Die {count} Artikel auf dieser Seite"
   },
   "extraction": {
     "searchJobs": "Aufträge suchen...",
@@ -1033,7 +1034,8 @@
     "queryHistory": "Abfrageverlauf",
     "queryEvolution": "Entwicklung der Abfrage",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "Letzte Suchen"
+    "recentSearches": "Letzte Suchen",
+    "clearAllHistoryConfirmWhole": "Möchtest du deinen gesamten Suchverlauf wirklich löschen? Das lässt sich nicht rückgängig machen."
   },
   "commandCenter": {
     "searchesLabel": "Suchen",

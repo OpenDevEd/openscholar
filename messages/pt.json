@@ -488,7 +488,8 @@
   "downloads": {
     "downloadAll": "Descarregar tudo",
     "downloadEssentialJSON": "Descarregar as informações essenciais em JSON",
-    "downloadEssentialCSV": "Descarregar as informações essenciais em CSV"
+    "downloadEssentialCSV": "Descarregar as informações essenciais em CSV",
+    "pageOnly": "Os {count} artigos desta página"
   },
   "extraction": {
     "searchJobs": "Pesquisar trabalhos...",
@@ -1033,7 +1034,8 @@
     "queryHistory": "Histórico de pesquisas",
     "queryEvolution": "Evolução da pesquisa",
     "bookmarkNamePlaceholder": "nome-do-marcador",
-    "recentSearches": "Pesquisas recentes"
+    "recentSearches": "Pesquisas recentes",
+    "clearAllHistoryConfirmWhole": "Tem certeza de que deseja excluir todo o seu histórico de pesquisa? Esta ação não pode ser desfeita."
   },
   "commandCenter": {
     "searchesLabel": "pesquisas",

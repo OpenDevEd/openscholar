@@ -487,7 +487,8 @@
   "downloads": {
     "downloadAll": "下载全部",
     "downloadEssentialJSON": "将基本信息下载为 JSON",
-    "downloadEssentialCSV": "将基本信息下载为 CSV"
+    "downloadEssentialCSV": "将基本信息下载为 CSV",
+    "pageOnly": "本页的 {count} 篇论文"
   },
   "extraction": {
     "searchJobs": "搜索任务...",
@@ -1032,7 +1033,8 @@
     "queryHistory": "查询历史",
     "queryEvolution": "查询演变",
     "bookmarkNamePlaceholder": "书签名称",
-    "recentSearches": "最近搜索"
+    "recentSearches": "最近搜索",
+    "clearAllHistoryConfirmWhole": "确定要删除全部搜索历史吗?此操作无法撤销。"
   },
   "commandCenter": {
     "searchesLabel": "次搜索",

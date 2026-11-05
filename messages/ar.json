@@ -488,7 +488,8 @@
   "downloads": {
     "downloadAll": "تنزيل الكل",
     "downloadEssentialJSON": "تنزيل المعلومات الأساسية بصيغة JSON",
-    "downloadEssentialCSV": "تنزيل المعلومات الأساسية بصيغة CSV"
+    "downloadEssentialCSV": "تنزيل المعلومات الأساسية بصيغة CSV",
+    "pageOnly": "الأوراق الـ{count} في هذه الصفحة"
   },
   "extraction": {
     "searchJobs": "ابحث في المهام...",
@@ -1033,7 +1034,8 @@
     "queryHistory": "سجل الاستعلامات",
     "queryEvolution": "تطور الاستعلام",
     "bookmarkNamePlaceholder": "bookmark-name",
-    "recentSearches": "عمليات البحث الأخيرة"
+    "recentSearches": "عمليات البحث الأخيرة",
+    "clearAllHistoryConfirmWhole": "هل تريد بالتأكيد حذف سجل البحث بالكامل؟ لا يمكن التراجع عن ذلك."
   },
   "commandCenter": {
     "searchesLabel": "عمليات بحث",
