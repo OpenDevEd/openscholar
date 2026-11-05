@@ -67,10 +67,10 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const source = useSearchSource();
-  // In settings the search starts from the profile's name, to offer its other records.
-  const query = debouncedSearch || (configuration ? record?.name ?? "" : "");
-  const authors = useSWR(query ? ["author-profile-search", query, source] : null, ([, value, reading]) => unlessLimited(searchProfileAuthors(value, reading)));
   const match = useSWR(record?.openalex ? ["author-profile-match", record.openalex, source] : null, ([, id, reading]) => unlessLimited(readProfileAuthor(id, reading)));
+  // In settings the search starts from the name on the linked record, or the profile's, to offer their other records.
+  const query = debouncedSearch || (configuration ? match.data?.name ?? record?.name ?? "" : "");
+  const authors = useSWR(query ? ["author-profile-search", query, source] : null, ([, value, reading]) => unlessLimited(searchProfileAuthors(value, reading)));
   const ids = [...new Set([record?.openalex, ...links].filter((id): id is string => Boolean(id)))];
   const works = useSWRInfinite((page, previous) => {
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
@@ -89,7 +89,7 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
     card={card ?? undefined} searchIds={ids}
-    linkedRecords={<LinkedRecords profileId={record._id} main={record.openalex} suggestions={authors.data && !("limited" in authors.data) ? authors.data : []} />}
+    linkedRecords={<LinkedRecords profileId={record._id} main={[record.openalex, ...(match.data && "id" in match.data ? [match.data.id] : [])]} name={match.data && "name" in match.data ? match.data.name : record.name} suggestions={authors.data && !("limited" in authors.data) ? authors.data : []} />}
     canEdit={Boolean(record.role)} member={record.member} atHome={record.workspaceId !== undefined && record.workspaceId === workspaceId} moveFrom={record.role === "owner" ? record.workspaceId : undefined} accessSection={configuration && record.role === "owner" && record.workspaceId ? <ProfileAccess profileId={profileId} workspaceId={record.workspaceId} /> : null}
     papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? tLabels("publicationsCouldNotBeLoadedTry") : publications.data?.unavailableCount ? tLabels("somePublicationsCouldNotBeLoaded") : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? tLabels("openalexIsUnavailableTryAgain") : null)}

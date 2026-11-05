@@ -74,7 +74,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import type { AuthorCard } from "@/app/actions/author-card";
-import { Stat, TopTopics } from "@/components/entity-cards";
+import { InstitutionHoverCard, Stat, TopTopics } from "@/components/entity-cards";
+import { useInstitutionFilter } from "@/components/paper-card/hooks";
+import { FilterName } from "@/components/paper-card/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -146,6 +148,8 @@ export default function AuthorPage({
   const ta = useTranslations("workspaces.activity");
   const tc = useTranslations("common");
   const tCard = useTranslations("entityCards");
+  const tf = useTranslations("searchFilters");
+  const institutionFilter = useInstitutionFilter();
   const [moving, setMoving] = useState(false);
   const [activity, setActivity] = useState(false);
   // Either mode of the page keeps the person in the profile's room. First in the bar's right-hand group, so faces arriving move nothing.
@@ -552,9 +556,9 @@ export default function AuthorPage({
                   <div className="min-w-0 text-sm">
                     {draft.match ? (
                       <>
-                        <p className="font-medium">{draft.match.name}</p>
+                        <p className="flex items-center gap-2 font-medium">{draft.openalex === profile.openalex && profile.match ? profile.match.name : draft.match.name}<span className="rounded bg-primary/10 px-1.5 py-0.5 text-3xs font-medium text-primary">Main</span><code className="rounded bg-inset px-1.5 py-0.5 text-3xs font-normal text-muted-foreground">{draft.match.id}</code></p>
                         <p className="text-xs text-muted-foreground">
-                          {draft.match.affiliation}
+                          {draft.openalex === profile.openalex && profile.match ? profile.match.affiliation : draft.match.affiliation}
                         </p>
                         {source === "openalex" && !isOwnId(draft.match.id) && (
                         <a
@@ -721,7 +725,17 @@ export default function AuthorPage({
                         {profile.affiliation && (
                           <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
                             <GraduationCap className="mt-0.5 size-4 shrink-0" />
-                            {profile.affiliation}
+                            {card?.institution?.id && card.institution.name === profile.affiliation ? (
+                              <InstitutionHoverCard id={card.institution.id} name={profile.affiliation}>
+                                <FilterName
+                                  pressed={false}
+                                  label={tf("filterByThisInstitution", { name: profile.affiliation })}
+                                  onToggle={() => institutionFilter.toggle({ value: card.institution!.id!, name: profile.affiliation })}
+                                >
+                                  {profile.affiliation}
+                                </FilterName>
+                              </InstitutionHoverCard>
+                            ) : profile.affiliation}
                           </p>
                         )}
                       </div>

@@ -22,7 +22,7 @@ const authorSchema = z.object({
   cited_by_count: z.number().nullish(),
   summary_stats: z.object({ h_index: z.number().nullish() }).nullish(),
   ids: z.object({ openalex: z.string().nullish() }).nullish(),
-  last_known_institutions: z.array(z.object({ display_name: z.string().nullish(), country_code: z.string().nullish() })).nullish(),
+  last_known_institutions: z.array(z.object({ id: z.string().nullish(), display_name: z.string().nullish(), country_code: z.string().nullish() })).nullish(),
   topics: z.array(z.object({ id: z.string(), display_name: z.string(), count: z.number().nullish() })).nullish(),
 });
 
@@ -33,7 +33,7 @@ export type AuthorCard = {
   works: number;
   citations: number;
   hIndex: number | null;
-  institution: { name: string; country: string | null } | null;
+  institution: { id: string | null; name: string; country: string | null } | null;
   /** The author's top topics, with how many of their papers each holds, most first. */
   topics: { id: string; name: string; papers: number }[];
   /** The OpenAlex record our index pairs this one with. */
@@ -53,8 +53,8 @@ async function linkedProfile(ids: string[], name: string) {
   if (linked) return linked;
   const session = await auth();
   const token = (await session.getToken({ template: "convex" })) ?? undefined;
-  const rows = await fetchQuery(api.authors.profiles.list, { search: name, paginationOpts: { cursor: null, numItems: 30 } }, { token }).catch(() => null);
-  return rows?.page.find((profile) => ids.includes(profile.openalex))?._id ?? null;
+  const pages = await Promise.all([name, ""].map((search) => fetchQuery(api.authors.profiles.list, { search, paginationOpts: { cursor: null, numItems: 30 } }, { token }).catch(() => null)));
+  return pages.flatMap((rows) => rows?.page ?? []).find((profile) => ids.includes(profile.openalex))?._id ?? null;
 }
 
 /** How many of an author's topics a card lists. */
@@ -78,7 +78,7 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
     works: author.works_count ?? 0,
     citations: author.cited_by_count ?? 0,
     hIndex: author.summary_stats?.h_index ?? null,
-    institution: institution?.display_name ? { name: institution.display_name, country: institution.country_code ?? null } : null,
+    institution: institution?.display_name ? { id: institution.id ? lastPart(institution.id) : null, name: institution.display_name, country: institution.country_code ?? null } : null,
     topics: (author.topics ?? []).slice(0, TOP_TOPICS).map((topic) => ({ id: lastPart(topic.id), name: topic.display_name, papers: topic.count ?? 0 })),
     paired,
     profileId: await linkedProfile([...new Set([id, lastPart(author.id), ...(paired ? [paired] : [])])], author.display_name),

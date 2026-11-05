@@ -48,14 +48,16 @@ function LinkedRecord({ id, onRemove }: { id: string; onRemove: () => void }) {
  * The records linked beside a profile's main one, and others with its name to add. An ID belongs to one profile at most.
  * ponytail: mock only, kept in a cookie; the real build saves them with the profile.
  */
-export function LinkedRecords({ profileId, main, suggestions }: { profileId: string; main: string; suggestions: OpenAlexMatch[] }) {
+export function LinkedRecords({ profileId, main, name, suggestions }: { profileId: string; main: string[]; name: string; suggestions: OpenAlexMatch[] }) {
   const [links, setLinks] = useState(readLinks);
   const save = (next: Record<string, string>) => {
     writeLinks(next);
     setLinks(next);
   };
   const extras = linksOf(links, profileId);
-  const others = suggestions.filter(({ id }) => id !== main && !extras.includes(id)).slice(0, 5);
+  // The search matches any word, so only records sharing the surname are offered as this person.
+  const surname = name.trim().split(/\s+/).at(-1)?.toLowerCase();
+  const others = suggestions.filter((other) => !main.includes(other.id) && !extras.includes(other.id) && other.name.trim().split(/\s+/).at(-1)?.toLowerCase() === surname).slice(0, 5);
   return (
     <div className="mt-4 space-y-4">
       {!!extras.length && (
