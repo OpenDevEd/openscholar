@@ -14,7 +14,7 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Compass, Quote, Network, Users, BookOpen } from "@/components/icons";
-import { similarSearchHref } from "@/lib/search/actions";
+import { similarSearchHref } from "@/lib/search/similar-href";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import { useAuthorFilter, useJournalFilter, useTranslate, useScreening, useCitationHandlers } from "./hooks";
 import { cn } from "@/lib/utils";

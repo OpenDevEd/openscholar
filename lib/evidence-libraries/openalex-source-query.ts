@@ -1,3 +1,4 @@
+import { questionAsWords, SEMANTIC_FIELD } from "@/lib/search/source";
 import { DEFAULT_SEARCH_PARAMS, parseSearchParamsFromUrl } from "@/lib/search-params";
 import { serializeSearchParams } from "@/lib/search-params/parsers";
 import type { SearchParams } from "@/lib/search";
@@ -33,7 +34,9 @@ function narrowsOql(oql: string | undefined): boolean {
  * What OpenAlex is asked for an import. Saved as it is, so the library asks the
  * same thing on every update whatever the search code later becomes.
  */
-export function buildOpenAlexSourceQuery(params: SearchParams): OpenAlexQuery | null {
+export function buildOpenAlexSourceQuery(given: SearchParams): OpenAlexQuery | null {
+  // A source asks OpenAlex, so a question picked from history is saved as its words, and similar papers, which OpenAlex can't find, aren't saved at all.
+  const params: SearchParams = { ...given, like: [], ...(given.field === SEMANTIC_FIELD ? { field: "title_and_abstract", q: questionAsWords(given.q) } : {}) };
   // Leaving out retracted works is on by default and narrows nothing on its own,
   // so a search must still have its own query or filter to be imported.
   const narrowing = buildOpenAlexWorksQuery({ ...params, retracted: true }, { expand: browserExpand });
