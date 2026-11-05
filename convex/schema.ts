@@ -164,7 +164,8 @@ export default defineSchema({
     .index("by_openalexId_and_doi", ["openalexId", "doi"]),
   topicPublicationGroups: defineTable({topicId: v.string(), groupKey: v.string(), count: v.number()})
     .index("by_topicId_and_groupKey", ["topicId", "groupKey"]),
-  topicProjectionState: defineTable({key: v.literal("publications"), pending: v.number()}).index("by_key", ["key"]),
+  // `rebuilding`: a full recount is running (migrations/communityMoveCounts), and deliveries wait for it.
+  topicProjectionState: defineTable({key: v.literal("publications"), pending: v.number(), rebuilding: v.optional(v.boolean())}).index("by_key", ["key"]),
 
   authorPublicationReceipts: defineTable({
     libraryId: v.id("evidenceLibraries"),

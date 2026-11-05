@@ -267,6 +267,14 @@ it("rebuilds what topic pages read after locations arrive without their counts, 
     await rebuild();
     expect(await counts()).toEqual(delivered);
     expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).updating).toBe(false);
+    // Nothing else may change the counts while they are recounted: a delivery waits, and so does a second start.
+    await t.mutation(internal.migrations.communityMoveCounts.rebuildTopics, {});
+    await expect(t.mutation(internal.migrations.communityMoveCounts.rebuildTopics, {})).rejects.toThrow("still running");
+    const later = request(undefined, {idempotencyKey: "after-the-rebuild", generation: 99});
+    await expect(send(later)).rejects.toThrow("being rebuilt");
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(await counts()).toEqual(delivered);
+    await expect(send(later)).resolves.toMatchObject({status: "applied"});
   } finally {
     vi.useRealTimers();
   }
