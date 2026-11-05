@@ -130,27 +130,32 @@ describe("analytics.capture", () => {
     const person = t.withIdentity({ subject: "user_a" });
     await person.mutation(api.users.mutations.ensureUser, {});
     const workspaceId = await t.run(async (ctx) => (await ctx.db.query("workspaces").first())!._id);
-    const write = (plan: string, hasPaid: boolean, fetchedAt: number) =>
+    let fetchedAt = 0;
+    const write = (plan: string, hasPaid: boolean, trialing = false) =>
       t.mutation(internal.billing.accounts.writeSnapshot, {
         workspaceId,
         withCard: false,
-        fetchedAt,
-        snapshot: { plan, hasPaid, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
+        fetchedAt: ++fetchedAt,
+        snapshot: { plan, hasPaid, trialing, pastDue: false, balance: 0, purchased: 0, signupGranted: true },
       });
-    await write("free", false, 1);
-    await write("free", false, 2);
-    await write("pro", true, 3);
-    await write("pro", true, 4);
-    await write("go", true, 5);
+    await write("free", false);
+    await write("free", false);
+    // A trial, and the free organization plan, aren't payments.
+    await write("pro", true, true);
+    await write("free_organization", true);
+    await write("pro", true);
+    await write("pro", true);
+    // Cancelling and coming back isn't a first payment again.
+    await write("free", false);
+    await write("pro", true);
 
     const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
     const sent = scheduled.flatMap((job) => (job.args[0] as { events?: Array<{ event: string; distinctId: string; properties: string }> }).events ?? []);
-    expect(sent.map(({ event, distinctId, properties }) => [event, distinctId, JSON.parse(properties)])).toEqual([
+    expect(sent.filter(({ event }) => event !== "plan_changed").map(({ event, distinctId, properties }) => [event, distinctId, JSON.parse(properties)])).toEqual([
       ["account_created", "user_a", {}],
       ["first_payment", "user_a", { workspace_kind: "personal", plan: "pro" }],
-      ["plan_changed", "user_a", { workspace_kind: "personal", from_plan: "free", to_plan: "pro" }],
-      ["plan_changed", "user_a", { workspace_kind: "personal", from_plan: "pro", to_plan: "go" }],
     ]);
+    expect(sent.filter(({ event }) => event === "plan_changed").map(({ properties }) => JSON.parse(properties).to_plan)).toEqual(["pro", "free_organization", "pro", "free", "pro"]);
   });
 
   it("sends nothing where PostHog isn't set up", async () => {

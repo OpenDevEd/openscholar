@@ -91,6 +91,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
       : undefined,
     signupGranted: customer.subscriptions.some((s) => s.plan_id === SIGNUP_PLAN),
     hasPaid: onPaidPlan || (customer.purchases ?? []).length > 0,
+    trialing: current?.status === "trialing",
     stripeCustomerId: customer.stripe_id ?? undefined,
     ...(unpaid ? { unpaid: { amount: unpaid.total, currency: unpaid.currency, since: unpaid.created_at, ...(unpaid.hosted_invoice_url ? { url: unpaid.hosted_invoice_url } : {}) } } : {}),
   };
@@ -183,6 +184,7 @@ export const writeSnapshot = internalMutation({
       ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       workspaceId,
+      firstPaidAt: existing?.firstPaidAt ?? (isPaying(snapshot) ? fetchedAt : undefined),
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,
       fetchedAt,
     };
@@ -215,6 +217,9 @@ export const zeroBalance = internalMutation({
   },
 });
 
+/** `hasPaid` also holds on the free organization plan and on a trial, where nothing has been paid. */
+const isPaying = (account: BillingAccountSnapshot) => account.hasPaid && !account.trialing && account.plan !== ORGANIZATION_PLAN;
+
 /** A first payment and a change of plan, read from what Autumn just said: every way of paying ends up here. */
 async function captureBillingChanges(
   ctx: MutationCtx,
@@ -228,7 +233,7 @@ async function captureBillingChanges(
   const shared = { distinctId: person?.clerkId ?? UNNAMED_ACCOUNT, timestamp };
   const workspaceKind = { workspace_kind: workspace.kind };
   await captureLater(ctx, [
-    ...(after.hasPaid && !before.hasPaid ? [{ ...shared, event: "first_payment", properties: { ...workspaceKind, plan: after.plan } }] : []),
+    ...(isPaying(after) && !isPaying(before) && before.firstPaidAt === undefined ? [{ ...shared, event: "first_payment", properties: { ...workspaceKind, plan: after.plan } }] : []),
     ...(before.plan && after.plan && before.plan !== after.plan
       ? [{ ...shared, event: "plan_changed", properties: { ...workspaceKind, from_plan: before.plan, to_plan: after.plan } }]
       : []),
