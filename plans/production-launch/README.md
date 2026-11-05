@@ -23,6 +23,8 @@ Agreed with the user on 2026-11-04.
   bought carry over: 10 people, 423,521 credits on 2026-11-04.
 - Communities are left out. The `organizations.evidenceLibraries` switch stays
   off in prod, and they keep running against shared dev until moved after launch.
+  Until then their Open in Openscholar button opens `dev.openscholar.ai`, on dev
+  Clerk's separate accounts, capped at 100 people (56 on 2026-11-05).
 - Search-engine and marketing pages beyond the basics come after launch.
 
 ## The data upgrade
@@ -33,40 +35,35 @@ moved shared dev's data were deleted after they ran.
 `convex/migrations/upgradeLiveData.ts` does it in one run and is deleted once it
 has run on live.
 
-`rehearse.sh` runs it on `formal-rabbit-271` from a fresh export. Rehearsed
-four times on 2026-11-04 on about 33,760 documents:
+`rehearse.sh` runs it on prod Convex from a fresh export of live. On the self-hosted stack on 2026-11-05, on 33,775 documents:
 
 | Step | Took |
 | --- | --- |
-| Export live | 9 to 40 s |
-| Push `dev`, validation off | 40 to 95 s |
-| `migrations/upgradeLiveData:run` | 4 to 7 min |
-| Follow-up migrations | about 40 s |
-| Push `dev`, validation on | about 20 s |
+| Export live | 18 s |
+| Import into prod Convex | 29 s |
+| Push `dev`, validation off | 33 s |
+| `migrations/upgradeLiveData:run` | 3 min 7 s |
+| Follow-up migrations | 36 s |
+| Push `dev`, validation on | 21 s |
 
-Result: about 45,000 rows, 0 fail the schema. Nothing lost: 3,234 papers with their
-ratings and owners, 16 collections, 80 memberships, 3,270 screening answers.
+About 6 minutes in all. Result: 45,077 rows in 139 tables, 0 fail the schema. Nothing lost: 3,234 papers with their ratings and owners, 16 collections, 80 memberships, 3,372 screening answers.
 
-Then, signed in as a test login mapped onto a copied account: library, filter
-counts, screenings and their tallies, plan page, search, question to query, AI
-overview and an assistant reply all worked. The query and the reply charged
-credits as they should, 125 in all.
+Then, with a production Clerk login mapped onto a copied account, on `discover`: library (294 papers), screenings, plan page (20,000 Free plus 96,634 bought), search, pricing and `/connect` all worked. Earlier rehearsals on Cloud also checked question to query, AI overview and an assistant reply.
 
-## What's there today (read 2026-11-04)
+## What's there today (read 2026-11-05)
 
 | Thing | State |
 | --- | --- |
 | Live site | Vercel, Convex Cloud `opulent-ram-908`, production Clerk |
-| `api.openscholar.ai` | Cloud's custom domain. Stripe's webhook points here (`/webhooks/stripe`) and `/webhooks/clerk` answers here |
-| `openscholar-prod` on Coolify | A June copy of live (1,442 users), old image, no router for `convex.openscholar.ai` (503). It holds live keys and is running. Nothing depends on it, so it can be replaced |
-| `openscholar-app-prod` on Coolify | Old `coolify` branch with `pk_live`, at `openscholar.opendev.space` |
-| Production Clerk | Organizations off, slugs off, 5-member cap. The `convex` JWT template lacks dev's `o` claim (`{id: org.id, rol: org.role}`). `home_url` is `openscholar.ai` |
-| Autumn | Live environment empty: no live customers, products or API key, and only test Stripe keys |
-| Live Stripe | 0 active subscriptions, products Go, Pro and Credits, last charge 2026-10-16 |
-| Privacy policy | Names only PostHog and Vercel as processors. No terms page exists |
-| PostHog | Dev and live share one project key |
-| Cloudflare | Holds DNS. Reach it with the `cf` CLI, logged in on the Mac (`CLOUDFLARE_ACCOUNT_ID=47478c682fae9ae095d6c89858ea0d67`) |
-| Coolify | Auto-update on (daily 00:02). Port 8000 answers from outside. Restic skips Docker volumes; see Backups |
+| `api.openscholar.ai` | Cloud's custom domain. Stripe's webhook points here (`/webhooks/stripe`) and `/webhooks/clerk` answers here. Prod Convex already has a router for this host, with no certificate resolver because Cloudflare proxies it |
+| `openscholar-prod` on Coolify | Prod Convex: dev's image, 64 concurrent queries and mutations, fresh volumes `convex-data` and `convex-pgdata` (the June copy's `data` and `pgdata` are kept). At `convex.openscholar.ai`, `convex-site.openscholar.ai`, `convex-dashboard.openscholar.ai`. It holds the last rehearsal's copy of live. Admin key: `~/.os-rehearsal/prod-convex.env` on the Mac, or `generate_admin_key.sh` in the container |
+| `openscholar-app-prod` on Coolify | At `discover.openscholar.ai`, built from `dev`, auto-deploy off. Deploy with `POST /api/v1/deploy?uuid=...` from the host |
+| Production Clerk | Organizations and slugs on, `force_organization_selection` off, `convex` template has `o` and `email`. Member caps are set per organization in code, so the instance's 5 doesn't matter. `home_url` is still `openscholar.ai` |
+| Autumn live | Live Stripe key, catalog copied, key `am_sk_live` on prod Convex, Svix webhook to `convex-site.openscholar.ai/webhooks/autumn`. Holds the rehearsal's customers |
+| Live Stripe | 0 active subscriptions. Autumn added a webhook of its own and its products; the old site's webhook and products are untouched |
+| Cloudflare | Holds DNS. Reach it with the `cf` CLI (`CLOUDFLARE_ACCOUNT_ID=47478c682fae9ae095d6c89858ea0d67`). Prepared and switched off: holding page, two redirects. A response rule sends `X-Robots-Tag: noindex` on `discover` until launch |
+| Coolify | Auto-update off. Port 8000 closed to the outside by `close-coolify-port.service`; the dashboard is `coolify.opendeved.net` |
+| PostHog | One project, as the free plan allows. Server events carry `environment`, browser events `$host` |
 
 ## Order
 
@@ -75,37 +72,31 @@ credits as they should, 125 in all.
 Custom search (#1012, not started in code) and marketing are in other threads. Any
 schema change needs the rehearsal run again. Agree a freeze before step 4.
 
-### 2. Code, nothing deployed
+### 2. Code: done
 
-- App address to `discover`: `metadata.siteUrl` is in 13 message files, so make it one
-  setting. `isLiveSite` and the canonicals follow it.
-- Bought credits: a script from `credits.paidBalance` in the export to Autumn top-ups.
-- Point `rehearse.sh` at self-hosted Convex.
+`SITE_URL`, `carry-credits.mjs` and the rehearsal scripts merged in #1048.
 
-### 3. Infrastructure, nothing public changes
+### 3. Infrastructure: done except a real payment
 
-1. DNS: `discover.openscholar.ai` to the host with `cf`; `convex.openscholar.ai` already points there.
-2. Prod Convex: replace `openscholar-prod`, stopped 2026-11-05 with its volumes kept, with a fresh database on dev's image, with
-   64 concurrent queries and mutations, `cpu_shares` 16384 and `oom_score_adj` -500.
-3. Settings: live's, plus what prod lacks, leaving out `EL_*`. Same `ENCRYPTION_KEY`,
-   which already matches dev's. Webhook secrets stay as they are.
-4. Frontend: `openscholar-app-prod` on `main`, at `discover`. A later API redeploy builds
-   the pinned commit, so deploy by webhook.
-5. Clerk: organizations on, slugs on, higher member cap, add the `o` claim.
-6. Autumn: live Stripe key, copy the catalog, live API key, webhook to prod Convex. Top-ups stay on at launch, so check one with a real card.
-7. Separate PostHog project for prod.
-8. Before real accounts live here: add prod's Convex backend to `CONVEX_BACKENDS` in
-   `/etc/default/backup-r2`, Coolify auto-update off, port 8000 closed.
+See the table above. Traps for anyone repeating it:
+
+- Turning on Clerk organizations through the API also sets `force_organization_selection`, which reached the live site for about 15 minutes on 2026-11-05. Send it as `false` in the same request.
+- `npx convex env set --from-file` keeps backslashes in a quoted value. Set values holding quotes one at a time.
+- Prod Convex holds `EL_*`, without `EL_ALLOW_DEVELOPMENT_TEARDOWN`, so a community can be published from it.
+
+Still to do: one top-up with a real card. `discover` reaches Stripe's live checkout for $1.00 with the right email, and nothing has been paid.
 
 ### 4. Rehearse on the real stack
 
-Copy live data to prod Convex and run the upgrade (`rehearse.sh`). On `discover` with
-real sign-in, check library, ratings, collections, screening and extraction start to
-finish, assistant, plans, `/connect` and Zotero. Note how long each step takes.
+`rehearse.sh`, then `carry-credits.mjs`, have run: see The data upgrade. Open in Openscholar was proven on `launch-check-lib.opendev.space`, a test community published from prod with 13 papers: signed out, the button lands on `discover`'s sign-in; a reader signs in through production Clerk without a second login; the button opens `discover` with the 13 papers. Stripe, Clerk and Autumn webhooks answer on prod Convex, both directly and for `api.openscholar.ai` at the origin.
+
+Left: screening and extraction start to finish, assistant, Zotero, and a person's Google sign-in on `discover`. Rerun `rehearse.sh` after the product freeze.
+
+**Before launch, clear the rehearsal:** delete Autumn live's customers, or `carry-credits.mjs` skips people whose balances have since changed; delete the Clerk users `mohammed+launch-check*` and organization `launch-check`, and that community's Coolify app and database.
 
 ### 5. Launch
 
-1. Holding page on the apex and stop Stripe's webhook. Wait until no screening job is
+1. Turn on the holding page (Cloudflare rule, switched off until then) and stop Stripe's webhook. Wait until no screening job is
    `processing`: the upgrade marks any paper still running as skipped.
 2. Export live and keep it. Note who bought credits.
 3. Push old `main`'s code to prod with validation off and import with `--replace-all`, as
@@ -117,13 +108,11 @@ finish, assistant, plans, `/connect` and Zotero. Note how long each step takes.
    `npx convex import --table <table> --format jsonLines --replace`, without `_id` or
    `_creationTime`. Don't use `featureFlags/internal:seed`: it leaves the assistant off.
    Add the admins.
-5. Give the people who bought credits their balances as top-ups.
-6. Point `api.openscholar.ai` at prod Convex, so Stripe's and Clerk's webhooks keep their
-   address. Start the frontend from the merged `main`.
-7. Apex: redirect to `discover`, permanently for app paths (keeping the query string on
-   `/connect`), temporarily for `/` until marketing is ready. Fix `www`. Stop Vercel deploys.
-8. Check `/` on `discover` says `index, follow`: the proxy must pass that host. Check
-   sign-in, a search and a charge.
+5. Give the people who bought credits their balances as top-ups: `AUTUMN_URL=... AUTUMN_SECRET_KEY=... node carry-credits.mjs <export.zip> --apply`. On 2026-11-05 that was 10 people and 423,521 credits. It stops with an error if any balance comes out wrong.
+6. Point `api.openscholar.ai` at prod Convex with `cf`: A `178.63.162.33` and AAAA `2a01:4f8:2210:1224::2`, proxied, so Stripe's and Clerk's webhooks keep their address. Point the frontend at `main` (it builds from `dev` now) and deploy it.
+7. Clerk: set `home_url` to `discover`. Doing it earlier would move the live site's hosted-page links.
+8. Apex: swap the holding page for the two prepared redirects, permanent for app paths with the query string kept, temporary for `/` until marketing is ready. Remove the `noindex` rule on `discover`. Fix `www`. Stop Vercel deploys.
+9. Check `/` on `discover` says `index, follow` with no `X-Robots-Tag`. Check sign-in, a search and a charge. A new account must show 20,000 credits straight away.
 
 **Going back:** before step 6 nothing public has moved. After it, point DNS back at
 Cloud and Vercel, which are untouched. Writes made since are lost, so decide within
@@ -165,16 +154,15 @@ ssh hetzner "sudo -n bash -c '$BACKUP cat r2:openscholar-backups/daily/<stamp>/p
 npx convex import --replace-all <zip>
 ```
 
-Tested 2026-11-05: `kenya` restored into a throwaway pgvector container and its five largest tables matched the source row for row. The Convex zip opened with all 156 tables, but hasn't been imported yet: the self-hosted rehearsal in step 4 should use one of these copies.
+Tested 2026-11-05: `kenya` restored into a throwaway pgvector container and its five largest tables matched the source row for row. The Convex zip opened with all 156 tables, but hasn't been imported yet. Prod Convex's backend is in `CONVEX_BACKENDS`.
 
 ## Not rehearsed yet
 
-- The upgrade on self-hosted Convex. It has only run on Convex Cloud.
-- Importing a Cloud export into self-hosted Convex, and Cloud's components there.
-- Live Autumn, and whether it needs Stripe connected for free plans.
-- Real sign-in through the production Clerk on `discover`.
+- Real sign-in by a person, with Google, through the production Clerk on `discover`.
+- A real payment through Autumn live.
 - A screening or extraction run start to finish on the new stack.
-- Load: dev's host has room today (17 GB free, 91 GB page cache) but runs at load 10.
+- Load: on 2026-11-05 the host ran at load 45 to 140 during CI.
+- Importing one of the backups' Convex zips.
 
 ## Done when
 
