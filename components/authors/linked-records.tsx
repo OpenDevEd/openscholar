@@ -14,6 +14,7 @@ import { useAppToast } from "@/lib/toast";
 import { useWorkspaceMutation } from "@/lib/workspaces/url";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { useSearchSource } from "@/lib/search/use-search-source";
+import Link from "@/components/workspace-link";
 import { AuthorAvatar } from "./author-avatar";
 import type { OpenAlexMatch } from "./types";
 
@@ -78,8 +79,9 @@ export function LinkedRecords({ profileId, main, name, suggestions }: { profileI
               <RecordRow
                 key={other.id}
                 id={other.id}
-                name={other.name}
-                detail={other.affiliation || other.topics}
+                // Its own page, in a new tab, to check it's the same person.
+                name={<Link href={`/authors/${other.id}`} target="_blank" rel="noreferrer" className="hover:underline">{other.name}</Link>}
+                detail={[other.affiliation, other.topics].filter(Boolean).join("  ")}
                 action={
                   <Button type="button" variant="outline" size="sm" onClick={() => void add({ profileId, authorId: other.id }).catch(failed)}>
                     <Plus aria-hidden />

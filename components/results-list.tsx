@@ -43,7 +43,7 @@ import { usePhoneView } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
 import { useAppToast } from "@/lib/toast";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
 import { AiOverview } from "@/components/ai-overview/overview-card";
 import { inLikelyOrder, useLikelyOrder } from "@/lib/search/likely-order";
@@ -52,6 +52,8 @@ import { useSearchSource } from "@/lib/search/use-search-source";
 import { useCitedFocus } from "@/components/ai-overview/focus";
 
 interface PapersListProps {
+  /** How many the search found, of which `results` are what one request gave. */
+  totalCount?: number | null;
   results: PaperResult[];
   filteredResults: PaperResult[];
   paginatedResults: PaperResult[];
@@ -104,7 +106,10 @@ function PapersGrid({
   resultsContainerRef,
   viewMode,
   hide,
+  totalCount,
 }: PapersListProps) {
+  const t = useTranslations("search");
+  const format = useFormatter();
   const gridClasses = {
     "list-simple": "flex flex-col gap-2",
     "list-detail": "flex flex-col gap-4",
@@ -248,6 +253,10 @@ function PapersGrid({
             </PaginationContent>
           </Pagination>
         </div>
+      )}
+      {/* A results page holds what one request can, which a big search outgrows: says so where the pages run out. */}
+      {currentPage === totalPages && results.length < (totalCount ?? 0) && results.length === filteredResults.length && (
+        <p className="pt-4 text-center text-sm text-muted-foreground">{t("firstOnly", { shown: format.number(results.length), total: format.number(totalCount ?? 0) })}</p>
       )}
     </div>
   );
@@ -614,6 +623,7 @@ export function ResultsList({
                   <div inert={showValidatingBanner} className={cn("transition-opacity duration-200", showValidatingBanner && "opacity-50")}>
                     <PapersGrid
                       results={results}
+                      totalCount={totalCount}
                       filteredResults={filteredResults}
                       paginatedResults={paginatedResults}
                       ratingRange={ratingRange}

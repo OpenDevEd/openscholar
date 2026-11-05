@@ -93,11 +93,15 @@ async function searchOwnIndex(query: string, filters: SearchFilters): Promise<Se
   if (filters.searchField === OQL_FIELD) {
     return fetchOqlWorks(worksOql(query, searchParams.filter ?? {}), { perPage: searchParams.perPage, sort: filters.sortBy }, "openscholar");
   }
-  return fetchOwnWorks(
-    { search: searchParams.search, filter: searchParams.filter as never, ...(searchParams.semantic || searchParams.similar ? {} : { sortBy: searchParams.sortBy }) },
-    { perPage: searchParams.perPage },
-    { "search.semantic": searchParams.semantic, similar_to: searchParams.similar },
-  );
+  const parameters = { search: searchParams.search, filter: searchParams.filter as never };
+  const extra = { "search.semantic": searchParams.semantic, similar_to: searchParams.similar };
+  if (!searchParams.semantic && !searchParams.similar) return fetchOwnWorks({ ...parameters, sortBy: searchParams.sortBy }, { perPage: searchParams.perPage }, extra);
+  // These find at most 300, more than a page holds, so all of them are read: they're the whole of what the search found.
+  const first = await fetchOwnWorks(parameters, { page: 1, perPage: searchParams.perPage }, extra);
+  if (!first.ok || first.data.meta.count <= searchParams.perPage) return first;
+  if (await spendOne()) return first;
+  const second = await fetchOwnWorks(parameters, { page: 2, perPage: searchParams.perPage }, extra);
+  return second.ok ? { ...first, data: { ...first.data, results: [...first.data.results, ...second.data.results] } } : first;
 }
 
 export async function getSearchResults(
