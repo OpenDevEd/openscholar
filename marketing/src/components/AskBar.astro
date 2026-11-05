@@ -1,6 +1,6 @@
 ---
 import { APP } from "../data/site.mjs";
-const { id = "ask", questions, mark = false, class: cls = "", label = "Search the research", go = "Search" } = Astro.props;
+const { id = "ask", questions, mark = false, class: cls = "", label = "Search the research" } = Astro.props;
 ---
 <form class:list={["ask", cls]} data-questions={questions ? JSON.stringify(questions) : undefined} data-q={questions?.[0]} data-ask action={`${APP}/results`} method="get" role="search" aria-label={label}>
   <label class="sr" for={id}>Ask a research question</label>
@@ -9,7 +9,7 @@ const { id = "ask", questions, mark = false, class: cls = "", label = "Search th
     <input id={id} name="q" autocomplete="off" required placeholder={questions?.[0] ?? "Ask a research question"} />
     {questions && <span class="typed" aria-hidden="true"><span class="now"></span></span>}
   </span>
-  <button class="btn brand" aria-label={go}><span>{go}</span><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
+  <button class="btn brand" aria-label="Search"><span>Search</span><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
 </form>
 <script>
   // The app reads `q` as keywords, so a sentence loses the words that only make it a sentence. A query stays exactly as typed.

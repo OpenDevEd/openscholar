@@ -16,7 +16,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   <div class="inner say">
     <h1>{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
     <p class="lead">Less time sorting papers, more time on what they mean.</p>
-    <div class="halo"><AskBar id="ask-hero" class="big" questions={QUESTIONS} mark label="Search with Openscholar" go="Search Openscholar" /></div>
+    <div class="halo"><AskBar id="ask-hero" class="big" questions={QUESTIONS} mark label="Search with Openscholar" /></div>
   </div>
   <div class="space">
     <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6b35" /><stop offset=".16" stop-color="#ff9d36" /><stop offset=".34" stop-color="#ffd9ae" /><stop offset=".52" stop-color="#8fd3d8" /><stop offset=".76" stop-color="#5a9be6" /><stop offset="1" stop-color="#3c62b8" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg><svg class="cometsvg"><g data-comet="back" opacity="0"></g></svg></div>
