@@ -317,6 +317,15 @@ export async function downloadWithMetadata(
  * `meta.count` is needed so the request payload is ~200x smaller than
  * the default search page.
  */
+const COUNTRIES_OQL_REFUSES = new Set(['EH', 'TF', 'UM']);
+const KEYWORD_FIELDS = new Set<string>(['title_and_abstract', 'default', 'title', 'abstract', 'fulltext', 'display_name']);
+
+/** The DOI a whole query is, with or without its address, in the form a filter takes it; null for anything else. */
+export function doiOfQuery(query: string): string | null {
+  const doi = query.trim().match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:\s*)?(10\.\d{4,9}\/\S+)$/i)?.[1];
+  return doi ? `https://doi.org/${doi.toLowerCase()}` : null;
+}
+
 /** A work as a cites, cited_by or related_to filter takes it: its address, or our index's ID as it is. */
 const workFilterValue = (id: string) => (id.startsWith('https://') || id.startsWith('OS') ? id : `https://openalex.org/${id}`);
 
@@ -348,7 +357,11 @@ export function createSearchParameters(
   // Handle search based on field type. A blank query lists every work.
   const query = rawQuery.trim();
   if (filters.similarTo?.length) searchParams.similar = filters.similarTo.join('|');
-  if (filters.searchField === 'semantic') {
+  // A DOI pasted as the whole query means that paper, not the words in it.
+  const doi = KEYWORD_FIELDS.has(filters.searchField) ? doiOfQuery(query) : null;
+  if (doi) {
+    apiFilters.doi = doi;
+  } else if (filters.searchField === 'semantic') {
     if (query) searchParams.semantic = query;
   } else if (query) {
     // Map search fields to SDK filter format
@@ -429,7 +442,8 @@ export function createSearchParameters(
   
   if (countryCodes && countryCodes.length > 0) {
     apiFilters.authorships = {
-      countries: countryCodes.join('|')
+      // OpenAlex's query language refuses a whole search over a country it has no record for; its filters just find nothing.
+      countries: (filters.searchField === 'oql' ? countryCodes.filter((code) => !COUNTRIES_OQL_REFUSES.has(code)) : countryCodes).join('|')
     };
   }
 

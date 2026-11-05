@@ -273,12 +273,16 @@ export const downloadAll = async (
   }
 };
 
+/** What had the keyboard when focus mode opened, which it goes back to when focus mode closes. */
+export const focusOpener: { element: HTMLElement | null } = { element: null };
+
 export const openFocusMode = (
   isMobile?: boolean,
   initialIndex: number = 0,
   paperId?: string
 ) => {
   const { setIsDialogOpen, setIsFocusModeOpen, setFocusModeIndex } = useUIStore.getState();
+  focusOpener.element = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
   // If isMobile is provided, use it; otherwise fall back to window check for backward compatibility
   const isDesktop = isMobile !== undefined ? !isMobile : window.matchMedia("(min-width: 768px)").matches;

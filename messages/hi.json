@@ -1070,7 +1070,8 @@
     "aiConfigRequired": "कृपया पहले अपनी AI सेटिंग्स कॉन्फ़िगर करें",
     "noQueryToBroaden": "विस्तारित करने के लिए कोई सक्रिय क्वेरी नहीं।",
     "noQueryToNarrow": "सीमित करने के लिए कोई सक्रिय क्वेरी नहीं।",
-    "bookmarkNotFound": "बुकमार्क \"{keyword}\" नहीं मिला"
+    "bookmarkNotFound": "बुकमार्क \"{keyword}\" नहीं मिला",
+    "queryTooLong": "खोज में अधिकतम {max} वर्ण हो सकते हैं।"
   },
   "accessibility": {
     "closeDialog": "बंद करें",

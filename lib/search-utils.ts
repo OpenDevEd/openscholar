@@ -5,6 +5,9 @@ import { getCountryCodesForRegions, COUNTRIES, COUNTRY_NAME_CHANGES } from './co
 import { validateAndExpandKeywords, type ExpandShortcuts } from './keyword-validation';
 import type { SearchFilters, SearchField } from './types';
 
+/** The longest search both sources take. */
+const MAX_QUERY_LENGTH = 4000;
+
 export interface SearchWithFiltersParams {
   query: string;
   filters: SearchFilters;
@@ -96,6 +99,13 @@ export function prepareOpenAlexSearch(
   // A question asked by meaning is sent as it was written: it has no operators to check, shortcuts to expand or terms to add.
   if (filters.searchField === SEMANTIC_FIELD) {
     return { validation: { isValid: true, expandedQuery: query, warnings: [] }, countryNames: [], finalApiQuery: query, effectiveFilters, effectiveCitesItemId, effectiveRelatedToItemId };
+  }
+
+  // Said here in words about the search box: past this, the API refuses it in terms of its own fields.
+  if (filters.searchField !== OQL_FIELD && query.length > MAX_QUERY_LENGTH) {
+    const warning = options.getMessage?.("validation.queryTooLong", { max: String(MAX_QUERY_LENGTH) }) ?? `A search can be at most ${MAX_QUERY_LENGTH} characters.`;
+    options.onWarning?.(warning);
+    return { validation: { isValid: false, expandedQuery: query, warnings: [warning] }, countryNames: [], finalApiQuery: null, effectiveFilters };
   }
 
   // Validate and expand keywords on the original query first

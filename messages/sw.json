@@ -1071,7 +1071,8 @@
     "aiConfigRequired": "Tafadhali sanidi mipangilio yako ya AI kwanza",
     "noQueryToBroaden": "Hakuna hoja inayotumika ya kupanua.",
     "noQueryToNarrow": "Hakuna hoja inayotumika ya kupunguza.",
-    "bookmarkNotFound": "Alamisho \"{keyword}\" haijapatikana"
+    "bookmarkNotFound": "Alamisho \"{keyword}\" haijapatikana",
+    "queryTooLong": "Utafutaji unaweza kuwa na herufi {max} kwa upeo."
   },
   "accessibility": {
     "closeDialog": "Funga",

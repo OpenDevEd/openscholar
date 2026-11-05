@@ -1070,7 +1070,8 @@
     "aiConfigRequired": "Sicela umise izilungiselelo zakho ze-AI kuqala",
     "noQueryToBroaden": "Asikho umbuzo osebenzayo okufanele unwetshwe.",
     "noQueryToNarrow": "Asikho umbuzo osebenzayo okufanele unciphisiwe.",
-    "bookmarkNotFound": "Isimaki \"{keyword}\" asitholakalanga"
+    "bookmarkNotFound": "Isimaki \"{keyword}\" asitholakalanga",
+    "queryTooLong": "Ukusesha kungaba nezinhlamvu ezingu-{max} kuphela."
   },
   "accessibility": {
     "closeDialog": "Vala",

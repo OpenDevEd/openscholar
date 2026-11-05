@@ -1071,7 +1071,8 @@
     "aiConfigRequired": "Stel asseblief eers jou KI-instellings op",
     "noQueryToBroaden": "Geen aktiewe soekopdrag om te verbreed nie.",
     "noQueryToNarrow": "Geen aktiewe soekopdrag om te vernou nie.",
-    "bookmarkNotFound": "Boekmerk “{keyword}” nie gevind nie"
+    "bookmarkNotFound": "Boekmerk “{keyword}” nie gevind nie",
+    "queryTooLong": "'n Soektog kan hoogstens {max} karakters wees."
   },
   "accessibility": {
     "closeDialog": "Maak toe",

@@ -1070,7 +1070,8 @@
     "aiConfigRequired": "まずAI設定を構成してください",
     "noQueryToBroaden": "広げるアクティブなクエリがありません。",
     "noQueryToNarrow": "狭めるアクティブなクエリがありません。",
-    "bookmarkNotFound": "ブックマーク「{keyword}」が見つかりません"
+    "bookmarkNotFound": "ブックマーク「{keyword}」が見つかりません",
+    "queryTooLong": "検索は最大 {max} 文字までです。"
   },
   "accessibility": {
     "closeDialog": "閉じる",

@@ -1,3 +1,4 @@
+import { focusOpener } from "@/lib/search-actions";
 import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import posthog from "posthog-js";
 
@@ -13,7 +14,7 @@ import {
   useUIStore,
 } from "@/lib/store";
 import { useTheme } from "next-themes";
-import { useIsMobile } from "@/lib/hooks";
+import { useIsMobile, useIsTablet } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { useTranslate } from "../paper-card";
@@ -63,6 +64,7 @@ export function FocusMode({
   const settings = useFocusModeSettingsStore();
   const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
   const ratePaper = useRatePaper();
 
   const tLabels = useTranslations("labels");
@@ -462,6 +464,11 @@ export function FocusMode({
         side="right"
         // The header closes it with a button of its own row.
         showCloseButton={false}
+        onCloseAutoFocus={(event) => {
+          if (!focusOpener.element?.isConnected) return;
+          event.preventDefault();
+          focusOpener.element.focus();
+        }}
         className="w-full sm:max-w-none p-0 overflow-hidden !outline-none"
       >
         <FocusModeClose.Provider value={onClose}>
@@ -478,7 +485,8 @@ export function FocusMode({
             listedPapers={listedPapers}
             translationMenuOpen={translationMenuOpen}
             onTranslationMenuOpenChange={setTranslationMenuOpen}
-            isMobile={isMobile}
+            // A tablet hasn't the width for the full row of controls: it takes the phone's.
+            isMobile={isTablet}
             onRatingChange={handleRatingChange}
             onToggleTranslation={() => setShowTranslated(!showTranslated)}
             onToggleSettings={() => setShowSettings(!showSettings)}

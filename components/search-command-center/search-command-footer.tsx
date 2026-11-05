@@ -235,8 +235,9 @@ Return a more targeted version of this query.`;
   };
 
   return (
-    <div className="border-t border-border-subtle">
-    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="@container border-t border-border-subtle">
+    {/* By its own width: a tablet with the filters open has less room than a phone turned sideways. */}
+    <div className="flex flex-col gap-3 px-4 py-3 @3xl:flex-row @3xl:items-center @3xl:justify-between">
       {/* Left: Results count */}
       <div className="flex min-w-0 items-center gap-3">
         <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
@@ -251,12 +252,12 @@ Return a more targeted version of this query.`;
       </div>
 
       {/* On a phone the strip spans the card, its buttons spread across it, so none falls off its edge; below 360px it drops its dividers and the toggle's chevron to fit. */}
-      <div className="w-full sm:w-auto">
+      <div className="w-full @3xl:w-auto">
         <motion.div
           layout
           transition={contextualTransition}
           className={cn(
-            "flex w-full items-center justify-between rounded-2xl border border-border bg-field p-1 shadow-sm sm:inline-flex sm:w-auto sm:justify-start"
+            "flex w-full flex-wrap items-center justify-between rounded-2xl border border-border bg-field p-1 shadow-sm @3xl:inline-flex @3xl:w-auto @3xl:flex-nowrap @3xl:justify-start"
           )}
         >
           <AnimatePresence initial={false} mode="popLayout">

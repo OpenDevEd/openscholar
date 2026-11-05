@@ -1071,7 +1071,8 @@
     "aiConfigRequired": "Configure primeiro as definições de IA",
     "noQueryToBroaden": "Não há nenhuma pesquisa ativa para alargar.",
     "noQueryToNarrow": "Não há nenhuma pesquisa ativa para restringir.",
-    "bookmarkNotFound": "Marcador \"{keyword}\" não encontrado"
+    "bookmarkNotFound": "Marcador \"{keyword}\" não encontrado",
+    "queryTooLong": "Uma pesquisa pode ter no máximo {max} caracteres."
   },
   "accessibility": {
     "closeDialog": "Fechar",

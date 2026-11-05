@@ -1071,7 +1071,8 @@
     "aiConfigRequired": "Bitte konfigurieren Sie zuerst Ihre KI-Einstellungen",
     "noQueryToBroaden": "Keine aktive Abfrage zum Erweitern vorhanden.",
     "noQueryToNarrow": "Keine aktive Abfrage zum Eingrenzen vorhanden.",
-    "bookmarkNotFound": "Lesezeichen \"{keyword}\" nicht gefunden"
+    "bookmarkNotFound": "Lesezeichen \"{keyword}\" nicht gefunden",
+    "queryTooLong": "Eine Suche darf höchstens {max} Zeichen lang sein."
   },
   "accessibility": {
     "closeDialog": "Schließen",

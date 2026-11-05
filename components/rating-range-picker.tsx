@@ -41,6 +41,7 @@ export function RatingRangePicker({
             </p>
           </div>
           <Switch
+            aria-label={tf("onlyShowRated")}
             checked={onlyRatedPapers}
             onCheckedChange={onOnlyRatedChange}
           />
