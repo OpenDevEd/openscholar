@@ -193,6 +193,13 @@ export default defineSchema({
   }).index("by_workspace", ["workspaceId"])
     .searchIndex("search_name", {searchField: "name"}),
 
+  // The author records that are a profile's person (./authors/links.ts). A record belongs to one profile at most.
+  authorRecordLinks: defineTable({
+    profileId: v.id("authorProfiles"),
+    authorId: v.string(),
+  }).index("by_authorId", ["authorId"])
+    .index("by_profileId", ["profileId"]),
+
   clerkEventLogs: defineTable(clerkEventLogFields)
     .index("by_instanceId_and_eventId", ["instanceId", "eventId"])
     .index("by_entity_outcome_time_and_eventId", [

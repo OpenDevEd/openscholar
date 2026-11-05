@@ -959,7 +959,8 @@
     },
     "searchFieldDefault": "Titel, opsomming, volteks",
     "searchFieldSemantic": "Volgens betekenis",
-    "filterSimilarTo": "Soortgelyk aan"
+    "filterSimilarTo": "Soortgelyk aan",
+    "filterByTopic": "Net werke oor {name}"
   },
   "paperCard": {
     "screeningResponses": "Siftingsantwoorde",
@@ -5421,8 +5422,20 @@
     "sectionProfile": "Profiel",
     "sectionLinks": "Skakels en identifiseerders",
     "sectionPublications": "Publikasies",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "Toegang"
+    "sectionOpenAlex": "Outeursrekords",
+    "sectionAccess": "Toegang",
+    "authorRecords": "Outeursrekords",
+    "authorRecordsDescription": "Elke rekord wat hierdie persoon is. Soek artikels lees hulle almal.",
+    "changeMainRecord": "Verander hoofrekord",
+    "mainRecord": "Hoof",
+    "claimAuthor": "Eis hierdie outeur op",
+    "otherRecordsWithThisName": "Ander rekords met hierdie naam",
+    "addRecord": "Voeg by",
+    "removeRecord": "Verwyder hierdie rekord",
+    "recordPapers": "{count, plural, one {{shown} artikel} other {{shown} artikels}}",
+    "authorsIn": "In {source}",
+    "couldNotSearchAuthors": "Kon nie outeurs soek nie. Probeer binnekort weer.",
+    "searchingAuthors": "Soek outeurs"
   },
   "connectApp": {
     "signInToContinue": "Meld aan om voort te gaan",
@@ -5486,5 +5499,38 @@
     "likeLibrary": "Artikels soos jou biblioteek",
     "yourQuestion": "Jou vraag",
     "questionPlaceholder": "Wat help onderwysers om in plattelandse skole te bly?"
+  },
+  "entityCards": {
+    "papers": "Artikels",
+    "citations": "Aanhalings",
+    "hIndex": "h-indeks",
+    "noInstitution": "Geen huidige instelling nie",
+    "noTopics": "Geen onderwerpe gelys nie",
+    "authorFailed": "Hierdie outeur kon nie gelaai word nie.",
+    "topicFailed": "Die beskrywing kon nie gelaai word nie.",
+    "institutionFailed": "Hierdie instelling kon nie gelaai word nie.",
+    "noDescription": "Nog geen beskrywing nie.",
+    "tryAgain": "Probeer weer",
+    "filterResults": "Filtreer resultate",
+    "removeFilter": "Verwyder filter",
+    "searchPapers": "Soek artikels",
+    "authorPage": "Outeursblad",
+    "topicPage": "Onderwerpblad",
+    "browseTopics": "Blaai deur onderwerpe",
+    "website": "Webwerf",
+    "openOnOpenAlex": "Maak oop op OpenAlex",
+    "level": {
+      "topic": "Onderwerp",
+      "subfield": "Subveld",
+      "field": "Veld",
+      "domain": "Domein"
+    },
+    "below": {
+      "domain": "Velde",
+      "field": "Subvelde",
+      "subfield": "Onderwerpe"
+    },
+    "topicPapers": "{name}, {count, plural, one {# artikel} other {# artikels}}",
+    "noAuthorRecord": "Geen outeursrekord nie"
   }
 }

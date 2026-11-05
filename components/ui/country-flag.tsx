@@ -12,8 +12,7 @@ export const CountryFlag = ({ countryCode, className = "" }: CountryFlagProps) =
     <img
       src={flagUrl}
       alt=""
-      loading="lazy"
-      className={cn("inline-block rounded-[2px] border border-border", className)}
+      className={cn("inline-block h-3 w-4 rounded-[2px] border border-border bg-muted object-cover", className)}
       width="16"
       height="12"
     />

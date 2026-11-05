@@ -958,7 +958,8 @@
     },
     "searchFieldDefault": "标题、摘要、全文",
     "searchFieldSemantic": "按含义",
-    "filterSimilarTo": "相似于"
+    "filterSimilarTo": "相似于",
+    "filterByTopic": "仅限关于 {name} 的作品"
   },
   "paperCard": {
     "screeningResponses": "筛选响应",
@@ -5420,8 +5421,20 @@
     "sectionProfile": "个人资料",
     "sectionLinks": "链接与标识符",
     "sectionPublications": "出版物",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "访问权限"
+    "sectionOpenAlex": "作者记录",
+    "sectionAccess": "访问权限",
+    "authorRecords": "作者记录",
+    "authorRecordsDescription": "属于此人的每条记录。搜索论文会读取全部记录。",
+    "changeMainRecord": "更改主记录",
+    "mainRecord": "主要",
+    "claimAuthor": "认领此作者",
+    "otherRecordsWithThisName": "同名的其他记录",
+    "addRecord": "添加",
+    "removeRecord": "移除此记录",
+    "recordPapers": "{count, plural, other {{shown} 篇论文}}",
+    "authorsIn": "在 {source} 中",
+    "couldNotSearchAuthors": "无法搜索作者。请稍后再试。",
+    "searchingAuthors": "正在搜索作者"
   },
   "connectApp": {
     "signInToContinue": "登录以继续",
@@ -5485,5 +5498,38 @@
     "likeLibrary": "与您的文库相似的论文",
     "yourQuestion": "您的问题",
     "questionPlaceholder": "什么能帮助教师留在乡村学校?"
+  },
+  "entityCards": {
+    "papers": "论文",
+    "citations": "引用",
+    "hIndex": "h 指数",
+    "noInstitution": "无当前机构",
+    "noTopics": "未列出主题",
+    "authorFailed": "无法加载此作者。",
+    "topicFailed": "无法加载描述。",
+    "institutionFailed": "无法加载此机构。",
+    "noDescription": "暂无描述。",
+    "tryAgain": "重试",
+    "filterResults": "筛选结果",
+    "removeFilter": "移除筛选",
+    "searchPapers": "搜索论文",
+    "authorPage": "作者页面",
+    "topicPage": "主题页面",
+    "browseTopics": "浏览主题",
+    "website": "网站",
+    "openOnOpenAlex": "在 OpenAlex 上打开",
+    "level": {
+      "topic": "主题",
+      "subfield": "子领域",
+      "field": "领域",
+      "domain": "学科"
+    },
+    "below": {
+      "domain": "领域",
+      "field": "子领域",
+      "subfield": "主题"
+    },
+    "topicPapers": "{name},{count, plural, other {# 篇论文}}",
+    "noAuthorRecord": "无作者记录"
   }
 }

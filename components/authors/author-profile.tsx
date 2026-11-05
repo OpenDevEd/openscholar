@@ -14,7 +14,9 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { readProfileAuthor, readProfileAuthorWorks, searchProfileAuthors } from "@/app/actions/authors";
 import { useSearchSource } from "@/lib/search/use-search-source";
+import type { AuthorCard } from "@/app/actions/author-card";
 import AuthorPage from "./author-page";
+import { LinkedRecords } from "./linked-records";
 import { ProfileAccess } from "./profile-access";
 import type { AuthorProfile } from "./types";
 import { useWorkspace } from "@/lib/workspaces/url";
@@ -31,24 +33,30 @@ export function AuthorProfileView({profileId, configuration = false}: {profileId
 }
 
 /** The public profile, drawn from queries the server already ran so it renders with the page. */
-export function PreloadedAuthorProfile({profileId, preloadedRecord, preloadedReferences}: {
+export function PreloadedAuthorProfile({profileId, preloadedRecord, preloadedReferences, preloadedRecords, card}: {
   profileId: Id<"authorProfiles">;
   preloadedRecord: Preloaded<typeof api.authors.profiles.get>;
   preloadedReferences: Preloaded<typeof api.authors.publications.list>;
+  /** The linked author's record, read with the page, so what it fills in is there from the first frame. */
+  card: AuthorCard | null;
+  preloadedRecords: Preloaded<typeof api.authors.links.records>;
 }) {
   // Until the browser's sign-in reaches Convex, a live query would run signed
   // out and briefly drop the viewer's role, so the server's result stands in.
   const { isLoading: authLoading } = useConvexAuth();
   const record = useQuery(api.authors.profiles.get, authLoading ? "skip" : {profileId}) ?? preloadedQueryResult(preloadedRecord);
   const references = useQuery(api.authors.publications.list, authLoading ? "skip" : {profileId}) ?? preloadedQueryResult(preloadedReferences);
-  return <AuthorProfileBody profileId={profileId} record={record} references={references} />;
+  return <AuthorProfileBody profileId={profileId} record={record} references={references} card={card} firstRecords={preloadedQueryResult(preloadedRecords)} />;
 }
 
-function AuthorProfileBody({profileId, record, references, configuration = false}: {
+function AuthorProfileBody({profileId, record, references, configuration = false, card, firstRecords}: {
   profileId: Id<"authorProfiles">;
   record: ProfileRecord | undefined;
   references: ProfileReferences | undefined;
   configuration?: boolean;
+  card?: AuthorCard | null;
+  /** The records it links, as the server read them, until the live read arrives. */
+  firstRecords?: string[];
 }) {
   const tLabels = useTranslations("authorPages");
   const t = useTranslations("authorPages");
@@ -59,20 +67,30 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const source = useSearchSource();
-  const authors = useSWR(debouncedSearch ? ["author-profile-search", debouncedSearch, source] : null, ([, value, reading]) => unlessLimited(searchProfileAuthors(value, reading)));
   const match = useSWR(record?.openalex ? ["author-profile-match", record.openalex, source] : null, ([, id, reading]) => unlessLimited(readProfileAuthor(id, reading)));
+  // In settings the search starts from the name on the linked record, or the profile's, to offer their other records.
+  const query = debouncedSearch || (configuration ? match.data?.name ?? record?.name ?? "" : "");
+  const authors = useSWR(query ? ["author-profile-search", query, source] : null, ([, value, reading]) => unlessLimited(searchProfileAuthors(value, reading)));
+  const records = useQuery(api.authors.links.records, {profileId}) ?? firstRecords ?? [];
+  const ids = [...new Set([record?.openalex, ...records].filter((id): id is string => Boolean(id)))];
   const works = useSWRInfinite((page, previous) => {
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
-    return ["author-profile-works", record.openalex, page + 1, source] as const;
+    return ["author-profile-works", ids.join("|"), page + 1, source] as const;
   }, ([, id, page, reading]) => unlessLimited(readProfileAuthorWorks(id, page, reading)));
   if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title={t("loadingAuthorProfile")} /></PageWrapper>;
   if (!record) return <p className="p-6">{t("authorProfileNotFound")}</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;
   const profile: AuthorProfile = {
-    ...record, id: record._id, photo: record.photo ?? undefined, featured: (references ?? []).filter(reference => reference.rank !== undefined).sort((a, b) => a.rank! - b.rank!).map(reference => reference.id),
+    ...record,
+    // What the profile leaves empty, its linked record fills in.
+    affiliation: record.affiliation || (configuration ? "" : card?.institution?.name ?? ""),
+    orcid: record.orcid || (configuration ? "" : card?.orcid ?? ""),
+    id: record._id, photo: record.photo ?? undefined, featured: (references ?? []).filter(reference => reference.rank !== undefined).sort((a, b) => a.rank! - b.rank!).map(reference => reference.id),
     match: match.data ?? (record.openalex ? {id: record.openalex, name: record.name, affiliation: "", topics: "", works: []} : undefined),
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
+    card={card ?? undefined} searchIds={ids}
+    linkedRecords={<LinkedRecords profileId={record._id} main={[record.openalex, ...(match.data && "id" in match.data ? [match.data.id] : [])]} name={match.data && "name" in match.data ? match.data.name : record.name} suggestions={authors.data && !("limited" in authors.data) ? authors.data : []} />}
     canEdit={Boolean(record.role)} member={record.member} atHome={record.workspaceId !== undefined && record.workspaceId === workspaceId} moveFrom={record.role === "owner" ? record.workspaceId : undefined} accessSection={configuration && record.role === "owner" && record.workspaceId ? <ProfileAccess profileId={profileId} workspaceId={record.workspaceId} /> : null}
     papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? tLabels("publicationsCouldNotBeLoadedTry") : publications.data?.unavailableCount ? tLabels("somePublicationsCouldNotBeLoaded") : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? tLabels("openalexIsUnavailableTryAgain") : null)}

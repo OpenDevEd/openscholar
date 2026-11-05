@@ -958,7 +958,8 @@
     "filterSortWorksCount": "Works count",
     "searchFieldDefault": "Title, abstract, full text",
     "searchFieldSemantic": "By meaning",
-    "filterSimilarTo": "Similar to"
+    "filterSimilarTo": "Similar to",
+    "filterByTopic": "Only works on {name}"
   },
   "paperCard": {
     "screeningResponses": "Screening responses",
@@ -5420,8 +5421,20 @@
     "sectionProfile": "Profile",
     "sectionLinks": "Links & identifiers",
     "sectionPublications": "Publications",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "Access"
+    "sectionOpenAlex": "Author records",
+    "sectionAccess": "Access",
+    "authorRecords": "Author records",
+    "authorRecordsDescription": "Every record that is this person. Search papers reads them all.",
+    "changeMainRecord": "Change main record",
+    "mainRecord": "Main",
+    "claimAuthor": "Claim this author",
+    "otherRecordsWithThisName": "Other records with this name",
+    "addRecord": "Add",
+    "removeRecord": "Remove this record",
+    "recordPapers": "{count, plural, one {{shown} paper} other {{shown} papers}}",
+    "authorsIn": "In {source}",
+    "couldNotSearchAuthors": "Couldn't search authors. Try again in a moment.",
+    "searchingAuthors": "Searching authors"
   },
   "connectApp": {
     "signInToContinue": "Sign in to continue",
@@ -5485,5 +5498,38 @@
     "likeLibrary": "Papers like your library",
     "yourQuestion": "Your question",
     "questionPlaceholder": "What helps teachers stay in rural schools?"
+  },
+  "entityCards": {
+    "papers": "Papers",
+    "citations": "Citations",
+    "hIndex": "h-index",
+    "noInstitution": "No current institution",
+    "noTopics": "No topics listed",
+    "authorFailed": "This author could not be loaded.",
+    "topicFailed": "The description could not be loaded.",
+    "institutionFailed": "This institution could not be loaded.",
+    "noDescription": "No description yet.",
+    "tryAgain": "Try again",
+    "filterResults": "Filter results",
+    "removeFilter": "Remove filter",
+    "searchPapers": "Search papers",
+    "authorPage": "Author page",
+    "topicPage": "Topic page",
+    "browseTopics": "Browse topics",
+    "website": "Website",
+    "openOnOpenAlex": "Open on OpenAlex",
+    "level": {
+      "topic": "Topic",
+      "subfield": "Subfield",
+      "field": "Field",
+      "domain": "Domain"
+    },
+    "below": {
+      "domain": "Fields",
+      "field": "Subfields",
+      "subfield": "Topics"
+    },
+    "topicPapers": "{name}, {count, plural, one {# paper} other {# papers}}",
+    "noAuthorRecord": "No author record"
   }
 }

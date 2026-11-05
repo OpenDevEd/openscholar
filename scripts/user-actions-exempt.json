@@ -158,7 +158,12 @@
     "topics/publications:listLocations": "topics/assistant:publications",
     "evidenceLibraries/readers:address": "evidenceLibraries/library:source",
     "app/actions/overview-papers:readCitedPapers": "research/papers:get",
-    "app/actions/similar:readSimilarPapers": "research/papers:search"
+    "app/actions/similar:readSimilarPapers": "research/papers:search",
+    "app/actions/author-card:readAuthorCard": "research/authors:get",
+    "app/actions/author-card:searchIndexAuthors": "research/lookup:find",
+    "app/actions/author-card:readInstitutionCard": "research/lookup:find",
+    "authors/links:records": "authors/assistant:profile",
+    "authors/links:profileFor": "authors/assistant:directory"
   },
   "manual": {
     "admins/invitations:invite": "Site administration, for Openscholar's own admins on the admin pages.",

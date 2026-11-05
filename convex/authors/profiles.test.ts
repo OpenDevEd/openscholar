@@ -156,7 +156,7 @@ describe("author profiles", () => {
     await expect(t.mutation(api.authors.profiles.create, {name: content.name})).rejects.toThrow();
     const duplicate = await editor.mutation(api.authors.profiles.create, {name: content.name});
     await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
-    await editor.action(api.authors.photos.save, {profileId: duplicate, expectedRevision: 1, content});
+    await editor.action(api.authors.photos.save, {profileId: duplicate, expectedRevision: 1, content: {...content, openalex: ""}});
     expect((await t.query(api.authors.profiles.get, {profileId}))?.bio).toBe(content.bio);
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBeNull();
     await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content: {...content, bio: "Overwrite"}})).rejects.toThrow();

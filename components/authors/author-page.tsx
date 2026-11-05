@@ -72,6 +72,10 @@ import {
 } from "@/components/evidence-libraries/configuration/section-card";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import type { AuthorCard } from "@/app/actions/author-card";
+import { InstitutionHoverCard, Stat, TopTopics } from "@/components/entity-cards";
+import { useInstitutionFilter } from "@/components/paper-card/hooks";
+import { FilterName } from "@/components/paper-card/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -105,6 +109,7 @@ export default function AuthorPage({
   profile, configuration, canEdit, member = false, atHome = false, moveFrom, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers: works, onSearchAuthors, openAlexError,
   hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks,
+  card, automatic = false, extraActions, searchIds, linkedRecords,
 }: {
   profile: AuthorProfile;
   configuration: boolean;
@@ -126,6 +131,14 @@ export default function AuthorPage({
   onSearchAuthors: (search: string) => void;
   openAlexError: string | null;
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
+  /** What the author's record says: their counts and topics beside the profile. */
+  card?: AuthorCard;
+  /** A page made from the record, with no profile behind it: only its papers, and nothing to edit. */
+  automatic?: boolean;
+  extraActions?: ReactNode;
+  /** Every author ID the profile links, which Search papers reads together. */
+  searchIds?: string[];
+  linkedRecords?: ReactNode;
 }) {
   const tLabels = useTranslations("authorPages");
   const t = useTranslations("authorPages");
@@ -133,6 +146,9 @@ export default function AuthorPage({
   const tm = useTranslations("workspaces.move");
   const ta = useTranslations("workspaces.activity");
   const tc = useTranslations("common");
+  const tCard = useTranslations("entityCards");
+  const tf = useTranslations("searchFilters");
+  const institutionFilter = useInstitutionFilter();
   const [moving, setMoving] = useState(false);
   const [activity, setActivity] = useState(false);
   // Either mode of the page keeps the person in the profile's room. First in the bar's right-hand group, so faces arriving move nothing.
@@ -166,7 +182,7 @@ export default function AuthorPage({
   const unavailable = Boolean(openAlexError);
   const [unlink, setUnlink] = useState(false);
   const [formError, setFormError] = useState("");
-  const [publicationTab, setPublicationTab] = useState<"selected" | "openalex">("selected");
+  const [publicationTab, setPublicationTab] = useState<"selected" | "openalex">(automatic ? "openalex" : "selected");
   const source = useSearchSource();
   const SourceIcon = source === "openalex" ? OpenAlexIcon : LogoMark;
   const update = async (next: AuthorProfile) => {
@@ -527,17 +543,17 @@ export default function AuthorPage({
               </SectionCard>
               <SectionCard
                 id="sec-profile-openalex"
-                icon={OpenAlexIcon}
-                title="OpenAlex"
-                description={t("connectTheAuthorSResearchRecord")}
+                icon={SourceIcon}
+                title={t("authorRecords")}
+                description={t("authorRecordsDescription")}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 text-sm">
                     {draft.match ? (
                       <>
-                        <p className="font-medium">{draft.match.name}</p>
+                        <p className="flex items-center gap-2 font-medium">{draft.openalex === profile.openalex && profile.match ? profile.match.name : draft.match.name}<span className="rounded bg-primary/10 px-1.5 py-0.5 text-3xs font-medium text-primary">{t("mainRecord")}</span><code className="rounded bg-inset px-1.5 py-0.5 text-3xs font-normal text-muted-foreground">{draft.match.id}</code></p>
                         <p className="text-xs text-muted-foreground">
-                          {draft.match.affiliation}
+                          {draft.openalex === profile.openalex && profile.match ? profile.match.affiliation : draft.match.affiliation}
                         </p>
                         {source === "openalex" && !isOwnId(draft.match.id) && (
                         <a
@@ -565,7 +581,7 @@ export default function AuthorPage({
                       onClick={openMatch}
                     >
                       <Link2 />
-                      {draft.match ? t("changeMatch") : t("findAuthor")}
+                      {draft.match ? t("changeMainRecord") : t("findAuthor")}
                     </Button>
                     {draft.match && (
                       <Button
@@ -580,6 +596,7 @@ export default function AuthorPage({
                     )}
                   </ButtonGroup>
                 </div>
+                {linkedRecords}
               </SectionCard>
 
             </div>
@@ -609,7 +626,7 @@ export default function AuthorPage({
             ) : null}
             {searchAuthor && <TooltipHint label={tc("searchPapers")}>
               <Button variant="outline" size="sm" className="w-8 px-0" aria-label={tc("searchPapers")} asChild>
-                <Link href={buildShareableUrl("", { author: [searchAuthor], sort: "cited_by_count:desc" })}>
+                <Link href={buildShareableUrl("", { author: searchIds?.length ? searchIds : [searchAuthor], sort: "cited_by_count:desc" })}>
                   <Search aria-hidden />
                 </Link>
               </Button>
@@ -634,6 +651,7 @@ export default function AuthorPage({
               <Copy />
               <span className={BAR_LABEL}>{t("share")}</span>
             </Button>
+            {extraActions}
             {canEdit && <Button size="sm" className={BAR_ACTION} asChild>
               <Link href={configurationHref}>
                 <Pencil />
@@ -647,7 +665,7 @@ export default function AuthorPage({
               value={publicationTab}
               onChange={setPublicationTab}
               tabs={[
-                {value: "selected", label: t("selectedPublications"), icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length},
+                ...(automatic ? [] : [{value: "selected" as const, label: t("selectedPublications"), icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length}]),
                 // The OpenAlex total is known once its first page arrives.
                 {value: "openalex", label: source === "openalex" ? t("fromOpenalex") : SEARCH_SOURCE_NAMES[source], icon: <SourceIcon className="size-3.5 shrink-0" />, count: openAlexPapers.length ? workCount : undefined},
               ]}
@@ -702,7 +720,17 @@ export default function AuthorPage({
                         {profile.affiliation && (
                           <p className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
                             <GraduationCap className="mt-0.5 size-4 shrink-0" />
-                            {profile.affiliation}
+                            {card?.institution?.id && card.institution.name === profile.affiliation ? (
+                              <InstitutionHoverCard id={card.institution.id} name={profile.affiliation}>
+                                <FilterName
+                                  pressed={false}
+                                  label={tf("filterByThisInstitution", { name: profile.affiliation })}
+                                  onToggle={() => institutionFilter.toggle({ value: card.institution!.id!, name: profile.affiliation })}
+                                >
+                                  {profile.affiliation}
+                                </FilterName>
+                              </InstitutionHoverCard>
+                            ) : profile.affiliation}
                           </p>
                         )}
                       </div>
@@ -745,6 +773,16 @@ export default function AuthorPage({
                     </div>
                   </div>
                   <div className="flex flex-col justify-center">
+                    {card && (
+                      <div className={cn("max-w-md", profile.bio && "mb-6")}>
+                        <div className="grid grid-cols-3 gap-3">
+                          <Stat value={workCount || card.works} label={tCard("papers")} />
+                          <Stat value={card.citations} label={tCard("citations")} />
+                          <Stat value={card.hIndex} label={tCard("hIndex")} />
+                        </div>
+                        <TopTopics topics={card.topics} onNavigate={() => {}} />
+                      </div>
+                    )}
                     {profile.bio && (
                       <p className="max-w-prose text-sm leading-7 text-muted-foreground">
                         {profile.bio}

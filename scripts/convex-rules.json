@@ -46,7 +46,8 @@
       "MAX_PROFILE_MEMBERS": "convex/sharing/items.ts",
       "MAX_LIBRARIES_PER_WORKSPACE": "convex/evidenceLibraries/mutations.ts",
       "MAX_LIBRARY_SOURCES": "convex/evidenceLibraries/screeningRequests.ts:requestScreeningGrade",
-      "KEYS_PAGES": "convex/paperSets/libraryKeys.ts:keepKeys"
+      "KEYS_PAGES": "convex/paperSets/libraryKeys.ts:keepKeys",
+      "MAX_PROFILE_RECORDS": "convex/authors/links.ts:linkRecord"
     },
     "refused": {
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",

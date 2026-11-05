@@ -12,6 +12,7 @@ import { authorContentFields } from "./validators";
 import { profileViewer, requireProfileAccess } from "./access";
 import { workspaceMutation } from "../lib/userActions";
 import { noteActivity } from "../activity/notes";
+import { moveMainRecord } from "./links";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
@@ -116,6 +117,7 @@ async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfile
   }
   const revision = profile.revision + 1;
   const content = cleanContent(args.content);
+  await moveMainRecord(ctx, args.profileId, profile.openalex, content.openalex);
   await ctx.db.patch("authorProfiles", args.profileId, {...content, revision, updatedAt: Date.now(), ...(args.photo ? {photoId: args.photo.storageId} : {})});
   // Its Activity (#656), kept by the workspace that owns it: a new name says the one it had.
   if (profile.workspaceId) await noteActivity(ctx, {workspaceId: profile.workspaceId, by: user._id, viaAssistant: false}, {kind: "author", id: args.profileId, ...(content.name === profile.name ? {happened: "edited"} : {happened: "renamed", detail: profile.name})});

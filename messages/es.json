@@ -959,7 +959,8 @@
     },
     "searchFieldDefault": "Título, resumen, texto completo",
     "searchFieldSemantic": "Por significado",
-    "filterSimilarTo": "Similar a"
+    "filterSimilarTo": "Similar a",
+    "filterByTopic": "Solo obras sobre {name}"
   },
   "paperCard": {
     "screeningResponses": "Respuestas de cribado",
@@ -5421,8 +5422,20 @@
     "sectionProfile": "Perfil",
     "sectionLinks": "Enlaces e identificadores",
     "sectionPublications": "Publicaciones",
-    "sectionOpenAlex": "OpenAlex",
-    "sectionAccess": "Acceso"
+    "sectionOpenAlex": "Registros del autor",
+    "sectionAccess": "Acceso",
+    "authorRecords": "Registros del autor",
+    "authorRecordsDescription": "Cada registro que es esta persona. Buscar artículos los lee todos.",
+    "changeMainRecord": "Cambiar registro principal",
+    "mainRecord": "Principal",
+    "claimAuthor": "Reclamar este autor",
+    "otherRecordsWithThisName": "Otros registros con este nombre",
+    "addRecord": "Añadir",
+    "removeRecord": "Quitar este registro",
+    "recordPapers": "{count, plural, one {{shown} artículo} other {{shown} artículos}}",
+    "authorsIn": "En {source}",
+    "couldNotSearchAuthors": "No se pudieron buscar autores. Inténtalo en un momento.",
+    "searchingAuthors": "Buscando autores"
   },
   "connectApp": {
     "signInToContinue": "Inicie sesión para continuar",
@@ -5486,5 +5499,38 @@
     "likeLibrary": "Artículos como tu biblioteca",
     "yourQuestion": "Tu pregunta",
     "questionPlaceholder": "¿Qué ayuda a los docentes a quedarse en las escuelas rurales?"
+  },
+  "entityCards": {
+    "papers": "Artículos",
+    "citations": "Citas",
+    "hIndex": "índice h",
+    "noInstitution": "Sin institución actual",
+    "noTopics": "Sin temas",
+    "authorFailed": "No se pudo cargar este autor.",
+    "topicFailed": "No se pudo cargar la descripción.",
+    "institutionFailed": "No se pudo cargar esta institución.",
+    "noDescription": "Aún sin descripción.",
+    "tryAgain": "Reintentar",
+    "filterResults": "Filtrar resultados",
+    "removeFilter": "Quitar filtro",
+    "searchPapers": "Buscar artículos",
+    "authorPage": "Página del autor",
+    "topicPage": "Página del tema",
+    "browseTopics": "Explorar temas",
+    "website": "Sitio web",
+    "openOnOpenAlex": "Abrir en OpenAlex",
+    "level": {
+      "topic": "Tema",
+      "subfield": "Subcampo",
+      "field": "Campo",
+      "domain": "Dominio"
+    },
+    "below": {
+      "domain": "Campos",
+      "field": "Subcampos",
+      "subfield": "Temas"
+    },
+    "topicPapers": "{name}, {count, plural, one {# artículo} other {# artículos}}",
+    "noAuthorRecord": "Sin registro de autor"
   }
 }
