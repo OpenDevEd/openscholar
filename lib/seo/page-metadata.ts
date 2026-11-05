@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getTranslations } from "next-intl/server";
 
+/** The app's public address. `openscholar.ai` itself is the marketing site. */
+export const SITE_URL = "https://discover.openscholar.ai";
+
 /** Whether this request came to the real site: dev and previews stay out of search engines. */
 export async function isLiveSite() {
-  const [requestHeaders, t] = await Promise.all([headers(), getTranslations("metadata")]);
+  const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  return host === new URL(t("siteUrl")).host;
+  return host === new URL(SITE_URL).host;
 }
 
 /** What every link preview carries; a page adds its own title, description and address. */

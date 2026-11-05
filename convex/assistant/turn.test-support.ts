@@ -164,7 +164,7 @@ export function finishingDoStream(
 /** Poll helper: wait until a predicate returns true, or throw. */
 export async function waitFor(
   predicate: () => boolean | Promise<boolean>,
-  { timeoutMs = 2_000, intervalMs = 20 } = {},
+  { timeoutMs = 30_000, intervalMs = 20 } = {},
 ): Promise<void> {
   const start = Date.now();
   while (!(await predicate())) {

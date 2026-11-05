@@ -17,8 +17,6 @@ import {
 import {
   getStoredConsent,
   storeConsent,
-  hasConsentDecision,
-  CONSENT_UPDATED_EVENT,
 } from "@/lib/consent-storage";
 import { PolicyLinks } from "@/components/legal-links";
 import { api } from "@/convex/_generated/api";
@@ -147,7 +145,7 @@ export function CookieConsentBanner() {
   return (
     <>
       <AnimatePresence>
-        {showBanner && (
+        {showBanner && !showPreferencesDialog && (
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
@@ -224,26 +222,11 @@ const COOKIE_PREFERENCES_EVENT = "openscholar-open-cookie-preferences";
 
 export function CookiePreferencesTrigger() {
   const t = useTranslations("footer");
-  const [mounted, setMounted] = useState(false);
-  const [hasDecision, setHasDecision] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    setHasDecision(hasConsentDecision());
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setHasDecision(true);
-    window.addEventListener(CONSENT_UPDATED_EVENT, handler);
-    return () => window.removeEventListener(CONSENT_UPDATED_EVENT, handler);
-  }, []);
-
   const handleClick = () => {
     window.dispatchEvent(new CustomEvent(COOKIE_PREFERENCES_EVENT));
   };
 
-  if (!mounted || !hasDecision) return null;
-
+  // Always there, so the footer's other links don't move once the page has read the decision.
   return (
     <button
       type="button"

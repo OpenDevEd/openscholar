@@ -1,13 +1,16 @@
 #!/bin/bash
-# Rehearses the upgrade on the spare deployment from a fresh copy of live. See README.md.
-# Needs checkouts of main and dev at $R/main and $R/dev, with no .env.local.
-export CONVEX_DEPLOYMENT=dev:formal-rabbit-271 CONVEX_SELF_HOSTED_URL= CONVEX_SELF_HOSTED_ADMIN_KEY=
+# Rehearses the upgrade on prod Convex from a fresh copy of live. See README.md.
+# Needs checkouts of main and dev at $R/main and $R/dev, with no .env.local, and prod Convex's URL and admin key in $R/prod-convex.env.
 R="${R:-$HOME/.os-rehearsal}"; t0=$(date +%s); stamp(){ echo "[$(( $(date +%s)-t0 )) s] $*"; }
 HERE="$(cd "$(dirname "$0")" && pwd)"
+unset CONVEX_DEPLOYMENT CONVEX_SELF_HOSTED_URL CONVEX_SELF_HOSTED_ADMIN_KEY
+set -a; . "$R/prod-convex.env" || exit 1; set +a
+[ -n "$CONVEX_SELF_HOSTED_URL" ] && [ -n "$CONVEX_SELF_HOSTED_ADMIN_KEY" ] || { echo "$R/prod-convex.env needs CONVEX_SELF_HOSTED_URL and CONVEX_SELF_HOSTED_ADMIN_KEY"; exit 1; }
+live(){ CONVEX_DEPLOYMENT=dev:formal-rabbit-271 CONVEX_SELF_HOSTED_URL= CONVEX_SELF_HOSTED_ADMIN_KEY= npx convex "$@"; }
 cd $R/main || exit 1
 cp convex/schema.ts /tmp/m.bak; perl -0pi -e 's/\}\);\s*$/}, { schemaValidation: false });\n/' convex/schema.ts
 npx convex dev --once --typecheck disable --tail-logs disable 2>&1 | tail -1 | cut -c1-200
-rm -f $R/prod-export.zip; npx convex export --prod --include-file-storage --path $R/prod-export.zip 2>&1 | tail -1 | cut -c1-120; stamp "exported live"
+rm -f $R/prod-export.zip; live export --prod --include-file-storage --path $R/prod-export.zip 2>&1 | tail -1 | cut -c1-120; stamp "exported live"
 npx convex import --replace-all --yes $R/prod-export.zip 2>&1 | tail -1 | cut -c1-200; stamp "imported"
 cp /tmp/m.bak convex/schema.ts; rm /tmp/m.bak
 npx convex dev --once --typecheck disable --tail-logs disable 2>&1 | tail -1 | cut -c1-200; stamp "main on the copy, validated"

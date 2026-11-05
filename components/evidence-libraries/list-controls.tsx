@@ -29,14 +29,14 @@ export function ListViewTabs<T extends string>({ label, value, onChange, tabs }:
   tabs: { value: T; label: ReactNode; icon: ReactNode; count?: ReactNode }[];
 }) {
   return (
-    <div className="flex items-center gap-1" role="group" aria-label={label}>
+    <div className="flex flex-wrap items-center gap-1" role="group" aria-label={label}>
       {tabs.map((tab) => (
         <Button
           key={tab.value}
           size="sm"
           variant="ghost"
           aria-pressed={value === tab.value}
-          className={cn("gap-2 text-muted-foreground", value === tab.value && "bg-muted text-foreground")}
+          className={cn("h-auto min-h-8 shrink gap-2 whitespace-normal py-1 text-muted-foreground", value === tab.value && "bg-muted text-foreground")}
           onClick={() => onChange(tab.value)}
         >
           {tab.icon}
