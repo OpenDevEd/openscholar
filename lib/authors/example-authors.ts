@@ -31,8 +31,16 @@ async function readRecord(id: string, source: SearchSource) {
   return authorRecordSchema.parse(await response.json());
 }
 
-/** The examples as the active source has them. One it can't read is left out, and the page stands without any. */
+/** How long the page waits for them. The reads go on, so a later visit finds them kept. */
+const WAIT_MS = 1_500;
+
+/** The examples as the active source has them. One it can't read is left out, and the page stands without any: the search is what it's for. */
 export async function readExampleAuthors(): Promise<IndexAuthor[]> {
+  const late = new Promise<IndexAuthor[]>((resolve) => setTimeout(resolve, WAIT_MS, []));
+  return await Promise.race([readAll(), late]);
+}
+
+async function readAll(): Promise<IndexAuthor[]> {
   const source = await activeSearchSource();
   const authors = await Promise.all(EXAMPLES.map(async ({ id, name }) => {
     const record = await readRecord(id, source).catch((error) => {
