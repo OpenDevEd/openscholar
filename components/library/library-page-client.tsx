@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { parsePaperKey } from "@/lib/papers/paper-ref";
 import { useSearchSource } from "@/lib/search/use-search-source";
-import { similarSearchHref } from "@/lib/search/actions";
+import { similarSearchHref } from "@/lib/search/similar-href";
 import { ItemPresence } from "@/components/workspaces/presence";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
@@ -230,11 +230,12 @@ export function LibraryPageClient() {
   // Papers like what's on screen, on our index only: the saved papers it can name.
   const ownIndex = useSearchSource() === "openscholar";
   const likeHref = useMemo(() => {
+    if (!ownIndex) return null;
     const papers = pageItems.flatMap((item) => {
       const ref = parsePaperKey(item.paperKey);
       return ref?.source === "openalex" || ref?.source === "openscholar" ? [ref.work] : [];
     });
-    return ownIndex ? similarSearchHref(papers) : null;
+    return similarSearchHref(papers);
   }, [ownIndex, pageItems]);
   const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[libraryCardId(item), item.by] as const] : []))), [pageItems]);
 

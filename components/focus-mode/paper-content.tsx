@@ -1,6 +1,6 @@
 import { TopicLink } from "@/components/topics/topic-link";
 import { SimilarPapers } from "./similar-papers";
-import { similarSearchHref } from "@/lib/search/actions";
+import { similarSearchHref } from "@/lib/search/similar-href";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import React from "react";
 import { QueryMatchText } from "@/components/query-highlight";

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "@/components/workspace-link";
 import { unlessLimited } from "@/lib/openalex/limited";
-import { similarSearchHref } from "@/lib/search/actions";
+import { similarSearchHref } from "@/lib/search/similar-href";
 
 const SHOWN = 8;
 
