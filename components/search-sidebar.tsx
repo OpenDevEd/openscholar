@@ -212,7 +212,8 @@ const SearchFieldPanel = React.memo(function SearchFieldPanel() {
 
   const handleSearchFieldChange = React.useCallback(
     (field: string) => {
-      updateFilter({ currentSearchField: field as SearchField });
+      // A search by meaning and one for similar papers each say what's looked for: choosing the first ends the second.
+      updateFilter({ currentSearchField: field as SearchField, ...(field === SEMANTIC_FIELD ? { similarTo: [] } : {}) });
     },
     [updateFilter],
   );
