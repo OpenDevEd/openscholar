@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import { useChunkReload } from "@/lib/chunk-reload";
+import { useReportPageError } from "@/lib/report-page-error";
 
 export default function GlobalError({
   error,
@@ -10,11 +10,8 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useReportPageError("app/global-error", error);
   const { reloading, retry } = useChunkReload(error, reset);
-
-  useEffect(() => {
-    console.error("[app/global-error]", error);
-  }, [error]);
 
   if (reloading) return <html lang="en"><body /></html>;
 
