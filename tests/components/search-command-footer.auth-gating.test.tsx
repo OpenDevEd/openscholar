@@ -39,6 +39,7 @@ const {
   };
 });
 
+vi.mock("@/components/search-command-center/components/rated-actions", () => ({ RatedActions: () => null }));
 vi.mock("next/navigation", () => ({
   useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),

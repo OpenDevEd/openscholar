@@ -11,6 +11,7 @@ import {
 } from "@/lib/store";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { createCitationSearch, useSearchOptional } from "@/lib/search";
+import { similarSearchHref } from "@/lib/search/similar-href";
 import { useCurrentSearchFormState, useUpdateSearchFilter } from "@/lib/hooks";
 import { rememberAuthorNames } from "@/lib/openalex/use-author-names";
 import { rememberInstitutionNames, rememberJournalNames } from "@/lib/openalex/use-record-names";
@@ -131,6 +132,10 @@ export function useCitationHandlers(paperId: string) {
     handleCitesSearch: () => handleFilteredSearch("cites"),
     handleCitedBySearch: () => handleFilteredSearch("citedBy"),
     handleRelatedSearch: () => handleFilteredSearch("related"),
+    handleSimilarSearch: () => {
+      const href = similarSearchHref([paperId]);
+      if (href) router.push(href);
+    },
   };
 }
 

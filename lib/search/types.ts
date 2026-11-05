@@ -15,6 +15,8 @@ import type { SearchField, SearchFilters, PaperResult } from '../types';
  * These map directly to URL query params
  */
 export interface SearchParams {
+  /** Papers a search finds the closest to by meaning, on our index. */
+  like: string[];
   q: string;
   field: string;
   sort: string;
@@ -58,6 +60,8 @@ export interface SearchParams {
 export interface SearchResultData {
   results: PaperResult[];
   totalCount: number;
+  /** How many works a search by meaning looked among. */
+  searchedCount?: number | null;
   apiUrl: string;
   originalQuery: string;
   enhancedQuery: string;
@@ -89,6 +93,8 @@ export interface SearchContextValue {
   // Results from SWR
   results: PaperResult[];
   totalCount: number;
+  /** How many works a search by meaning looked among. */
+  searchedCount?: number | null;
   apiUrl: string;
   /** An OQL search's full request, filters included. OQL cannot be written as `apiUrl`. */
   oql: string | null;

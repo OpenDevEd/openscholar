@@ -956,7 +956,10 @@
       "melanesia": "Melanesien",
       "micronesia": "Mikronesien",
       "polynesia": "Polynesien"
-    }
+    },
+    "searchFieldDefault": "Titel, Abstract, Volltext",
+    "searchFieldSemantic": "Nach Bedeutung",
+    "filterSimilarTo": "Ähnlich wie"
   },
   "paperCard": {
     "screeningResponses": "Screening-Antworten",
@@ -5464,5 +5467,24 @@
     "plansNoticeTitle": "Kostenlos während der öffentlichen Alpha",
     "plansNoticeDetail": "Alle Funktionen enthalten. Danach ändern sich die Pläne.",
     "emailAddress": "E-Mail an {email}"
+  },
+  "similarPapers": {
+    "closestOf": "die nächsten von {count}",
+    "similarTo": "Ähnlich wie {count, plural, one {# Artikel} other {# Artikel}}",
+    "clear": "Entfernen",
+    "moreLike": "Mehr wie {count, plural, one {der von dir bewertete Artikel} other {die # von dir bewerteten Artikel}}",
+    "likelyFirst": "Wahrscheinlich Relevantes zuerst",
+    "resort": "Mit deinen neuen Bewertungen neu sortieren",
+    "orderFailed": "Die Ergebnisse konnten nicht sortiert werden",
+    "title": "Ähnliche Artikel",
+    "similar": "Ähnlich",
+    "seeAll": "Alle ansehen",
+    "finding": "Ähnliche Artikel werden gesucht",
+    "failed": "Ähnliche Artikel konnten nicht geladen werden.",
+    "none": "Keine ähnlichen Artikel gefunden.",
+    "likeCollection": "Artikel wie diese Sammlung",
+    "likeLibrary": "Artikel wie deine Bibliothek",
+    "yourQuestion": "Deine Frage",
+    "questionPlaceholder": "Was hilft Lehrkräften, an ländlichen Schulen zu bleiben?"
   }
 }

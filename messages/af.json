@@ -956,7 +956,10 @@
       "melanesia": "Melanesië",
       "micronesia": "Mikronesië",
       "polynesia": "Polinesië"
-    }
+    },
+    "searchFieldDefault": "Titel, opsomming, volteks",
+    "searchFieldSemantic": "Volgens betekenis",
+    "filterSimilarTo": "Soortgelyk aan"
   },
   "paperCard": {
     "screeningResponses": "Siftingsantwoorde",
@@ -5464,5 +5467,24 @@
     "plansNoticeTitle": "Gratis tydens die openbare alfa",
     "plansNoticeDetail": "Elke funksie ingesluit. Planne sal daarna verander.",
     "emailAddress": "E-pos {email}"
+  },
+  "similarPapers": {
+    "closestOf": "naaste uit {count}",
+    "similarTo": "Soortgelyk aan {count, plural, one {# artikel} other {# artikels}}",
+    "clear": "Vee uit",
+    "moreLike": "Meer soos {count, plural, one {die artikel} other {die # artikels}} wat jy gegradeer het",
+    "likelyFirst": "Waarskynlik relevant eerste",
+    "resort": "Sorteer weer met jou nuwe graderings",
+    "orderFailed": "Kon nie die resultate rangskik nie",
+    "title": "Soortgelyke artikels",
+    "similar": "Soortgelyk",
+    "seeAll": "Sien alles",
+    "finding": "Soek soortgelyke artikels",
+    "failed": "Soortgelyke artikels kon nie gelaai word nie.",
+    "none": "Geen soortgelyke artikels gevind nie.",
+    "likeCollection": "Artikels soos hierdie versameling",
+    "likeLibrary": "Artikels soos jou biblioteek",
+    "yourQuestion": "Jou vraag",
+    "questionPlaceholder": "Wat help onderwysers om in plattelandse skole te bly?"
   }
 }

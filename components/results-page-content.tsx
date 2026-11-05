@@ -50,6 +50,7 @@ export default function ResultsPageContent({
     return {
       query,
       field: filters.searchField,
+      similarTo: filters.similarTo,
       dateRange: filters.dateRange,
       yearRange: filters.yearRange,
       searchId,

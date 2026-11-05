@@ -310,6 +310,11 @@ describe("the assistant's search tools", () => {
     await expect(update({ id, funders: ["Wellcome Trust"] })).rejects.toThrow(/research\/lookup:find/);
     await expect(update({ id, researchAreas: ["Education"] })).rejects.toThrow(/research\/lookup:find/);
     await expect(update({ id, relatedTo: "that paper" })).rejects.toThrow(/one paper's ID/);
+    // Similar papers go by IDs too, in the form the page keeps them.
+    await update({ id, similarTo: ["https://openalex.org/W1", "OS2"] });
+    expect(await search(id)).toMatchObject({ similarTo: ["W1", "OS2"] });
+    await expect(update({ id, similarTo: ["that paper"] })).rejects.toThrow(/paper's ID/);
+    await update({ id, similarTo: null });
     await expect(alice.action(find, { kind: "author", text: " " })).rejects.toThrow(/name to look for/);
   });
 

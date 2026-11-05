@@ -80,6 +80,8 @@ export const searchParamsParsers = {
   // Core search
   q: parseAsString.withDefault(''),
   field: parseAsString.withDefault('title_and_abstract'),
+  // Papers a search finds the closest to by meaning, on our index.
+  like: parseAsArrayOf(parseAsWork).withDefault([]),
   sort: parseAsString.withDefault('relevance_score:desc'),
   
   // Pagination
@@ -137,6 +139,7 @@ export const searchParamsParsers = {
 export type ParsedSearchParams = {
   q: string;
   field: string;
+  like: string[];
   sort: string;
   page: number;
   yf: number | null;
@@ -225,6 +228,7 @@ export function parseSearchParamsFromUrl(
   return {
     q: searchParams.get('q') ?? DEFAULT_SEARCH_PARAMS.q,
     field: field !== null && SEARCH_FIELDS.some(({ value }) => value === field) ? field : DEFAULT_SEARCH_PARAMS.field,
+    like: parseListParam(searchParams, 'like').map(workId).filter((id) => id !== undefined),
     sort: searchParams.get('sort') ?? DEFAULT_SEARCH_PARAMS.sort,
     page:
       parseIntegerParam(searchParams, 'page', DEFAULT_SEARCH_PARAMS.page) ??
@@ -284,6 +288,7 @@ export const serializeSearchParams = createSerializer(searchParamsParsers, {
 export const DEFAULT_SEARCH_PARAMS: ParsedSearchParams = {
   q: '',
   field: 'title_and_abstract',
+  like: [],
   sort: 'relevance_score:desc',
   page: 1,
   yf: null,

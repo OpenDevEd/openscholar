@@ -956,7 +956,10 @@
       "melanesia": "ميلانيزيا",
       "micronesia": "ميكرونيزيا",
       "polynesia": "بولينيزيا"
-    }
+    },
+    "searchFieldDefault": "العنوان والملخص والنص الكامل",
+    "searchFieldSemantic": "حسب المعنى",
+    "filterSimilarTo": "مشابه لـ"
   },
   "paperCard": {
     "screeningResponses": "ردود الفرز",
@@ -5464,5 +5467,24 @@
     "plansNoticeTitle": "مجاني خلال إصدار ألفا العام",
     "plansNoticeDetail": "كل الميزات مشمولة. ستتغير الخطط بعد ذلك.",
     "emailAddress": "راسل {email}"
+  },
+  "similarPapers": {
+    "closestOf": "الأقرب من بين {count}",
+    "similarTo": "مشابه لـ {count, plural, one {ورقة واحدة} other {# أوراق}}",
+    "clear": "مسح",
+    "moreLike": "المزيد مثل {count, plural, one {الورقة التي قيّمتها} other {الأوراق الـ# التي قيّمتها}}",
+    "likelyFirst": "الأكثر صلة أولًا",
+    "resort": "أعد الترتيب بتقييماتك الجديدة",
+    "orderFailed": "تعذر ترتيب النتائج",
+    "title": "أوراق مشابهة",
+    "similar": "مشابه",
+    "seeAll": "عرض الكل",
+    "finding": "جارٍ البحث عن أوراق مشابهة",
+    "failed": "تعذر تحميل الأوراق المشابهة.",
+    "none": "لم يُعثر على أوراق مشابهة.",
+    "likeCollection": "أوراق مثل هذه المجموعة",
+    "likeLibrary": "أوراق مثل مكتبتك",
+    "yourQuestion": "سؤالك",
+    "questionPlaceholder": "ما الذي يساعد المعلمين على البقاء في المدارس الريفية؟"
   }
 }
