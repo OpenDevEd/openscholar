@@ -144,7 +144,7 @@ A community's app, Postgres, search, files and domains stay put. Only its Convex
    - Topic counts: `topicPublicationGroups` and `topicOpenAlexDois`, which topic pages read, so a moved community's papers don't list there until then.
    - List counts: the `listCounts` entries for `evidenceLibraries` and `evidenceLibraryConfigOperations`, kept by triggers and not by an import, so a moved community's version count reads zero and the workspace's community limit undercounts. Demo has both gaps today.
 
-Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script.
+Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script until `copy-collection.py <export> <collection ID>` has put it on prod, through `migrations/copyCollection`: AIED follows one, 1,611 papers.
 
 **Going back:** the community's rows stay on dev for a week. On dev, save a change to its configuration, since publishing refuses when nothing changed, and publish. Once that has put dev's sign-in back, reverse step 4 with the mapping kept from it. Then delete the dev rows. Never tear it down from dev: that deletes its app.
 

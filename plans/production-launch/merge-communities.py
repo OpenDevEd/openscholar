@@ -78,10 +78,13 @@ rows = {"evidenceLibraries": libraries}
 for table in BY_LIBRARY:
     rows[table] = sum((indexed(table, BY_INDEX[table], library) for library in ids), []) if table in BY_INDEX else data(table, lambda row: row.get("libraryId") in ids)
 
-# A source following a collection needs that collection, which stays on dev.
-following = rows["evidenceLibraryCollectionSources"]
-if following:
-    sys.exit(f"these communities follow collections on dev, so move those first or remove the sources: {sorted({row['libraryId'] for row in following})}")
+# A source following a collection needs that collection on prod, which copy-collection.py puts there.
+copied_path = f"{R}/copied-collections.json"
+copied = json.load(open(copied_path)) if os.path.exists(copied_path) else {}
+missing_collections = {row["collectionId"] for row in rows["evidenceLibraryCollectionSources"]} - set(copied)
+if missing_collections:
+    sys.exit(f"copy these collections to prod first (copy-collection.py): {sorted(missing_collections)}")
+rows["evidenceLibraryCollectionSources"] = [dict(row, collectionId=copied[row["collectionId"]]) for row in rows["evidenceLibraryCollectionSources"]]
 
 # The organizations that own them, with their workspaces and memberships.
 workspaces = {row["_id"]: row for row in data("workspaces")}
