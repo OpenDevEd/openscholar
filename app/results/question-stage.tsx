@@ -102,8 +102,11 @@ export function QuestionStage() {
   const [question] = useState(() => (parseSearchParamsFromUrl(params).q?.trim() ? "" : readUrlQuestion(params)));
   // Mock only: seconds to hold the stage, to watch it longer than a real answer takes.
   const [holdMs] = useState(() => Number(params.get("hold") ?? 0) * 1000);
-  // Mock only: which quality level to show, to compare them.
-  const [quality] = useState<"full" | "light" | "still">(() => (["light", "still"].includes(params.get("quality") ?? "") ? (params.get("quality") as "light" | "still") : "full"));
+  // Mock only: a quality level to hold the planet at (0 the still to 5 the best), to compare them. Otherwise earth.js chooses.
+  const [pinnedLevel] = useState(() => {
+    const level = Number(params.get("level"));
+    return params.has("level") && Number.isInteger(level) && level >= 0 && level <= 5 ? level : null;
+  });
   const [handover] = useState(() => readHandover(params.get("hero")));
   const [frame, setFrame] = useState<Frame | null>(handover);
   const [lit, setLit] = useState(false);
@@ -157,8 +160,7 @@ export function QuestionStage() {
     const stageEl = stage.current!;
     let earth: Earth | undefined;
     const begin = () => (earth = window.questionStageEarth!.boot(stageEl));
-    if (quality === "still") stageEl.querySelector<HTMLElement>("[data-still]")!.dataset.failed = "";
-    else if (window.questionStageEarth) begin();
+    if (window.questionStageEarth) begin();
     else {
       const loading = document.querySelector<HTMLScriptElement>(`script[src="${EARTH_SCRIPT}"]`);
       if (loading) loading.addEventListener("load", begin);
@@ -284,7 +286,7 @@ export function QuestionStage() {
 
   const size = question.length <= 40 ? "large" : question.length <= 90 ? "medium" : "small";
   const handedOver = handover !== null;
-  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, quality } satisfies EarthConfig) : undefined;
+  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, level: pinnedLevel, ...(pinnedLevel === null ? {} : { ceiling: pinnedLevel }) }) : undefined;
   const variables = {
     "--page": frame && handedOver ? `${frame.width}px` : undefined,
     "--sky-top": handover?.skyTop === undefined ? undefined : `${handover.skyTop}px`,
@@ -323,6 +325,8 @@ export function QuestionStage() {
               aria-hidden
             />
             <svg data-ring="back" className={styles.ring} aria-hidden suppressHydrationWarning dangerouslySetInnerHTML={{ __html: rings.back }} />
+            {/* The ring's spark, moved only by a transform, so nothing is redrawn as it goes round: behind the planet here. */}
+            <i data-spark="back" className={styles.spark} aria-hidden suppressHydrationWarning />
             <div data-still suppressHydrationWarning className={styles.stillBox} style={{ "--fade": `${layout.narrow ? 56 : 96}px` } as React.CSSProperties}>
               {/* eslint-disable-next-line @next/next/no-img-element -- a frame of the shader, placed to the pixel */}
               <img
@@ -337,6 +341,7 @@ export function QuestionStage() {
             {/* earth.js sizes and draws it, and marks it live, before React takes the page over. */}
             <canvas className={styles.earth} aria-hidden suppressHydrationWarning />
             <svg data-ring="front" className={styles.ring} aria-hidden suppressHydrationWarning dangerouslySetInnerHTML={{ __html: rings.front }} />
+            <i data-spark="front" className={styles.spark} aria-hidden suppressHydrationWarning />
           </div>
         )}
       </div>

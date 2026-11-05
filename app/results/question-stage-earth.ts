@@ -23,12 +23,6 @@ type Layout = ReturnType<typeof earthLayout>;
 /** The hero's height for its planet at a width, for a visitor who didn't come through the hero. */
 export const spaceHeight = (W: number) => (W >= 1400 ? 562 : W >= 1200 ? 478 : W >= 1000 ? 504 : W >= 700 ? 448 : 302);
 
-const COMET: [number, number, number][] = [
-  [150, 1.2, 0.3],
-  [70, 1.8, 0.6],
-  [22, 2.6, 1],
-];
-
 /** One half of the ring as the hero draws it, behind the planet or in front of it, as SVG the server can send. */
 export function ringMarkup({ rx: a, ry: b, cx, cy, tilt, narrow }: Layout, front: boolean) {
   const id = front ? "stage-ring-front" : "stage-ring-back";
@@ -51,14 +45,13 @@ export function ringMarkup({ rx: a, ry: b, cx, cy, tilt, narrow }: Layout, front
     fill(band(b - inset * k, 1.2 * k), 0.55 * o),
     fill(band(b - inset * 0.5 * k, 0.8 * k), 0.35 * o),
     narrow ? "" : fill(band(b + 7 * k, 0.8 * k), 0.3 * o),
-    // The comet's three dashes share a head, so it tapers.
-    ...COMET.map(([length, width, opacity]) => `<path data-comet="${length}" d="${arc}" fill="none" stroke="#fff1e0" stroke-width="${width}" opacity="${opacity}" pathLength="1000" stroke-dasharray="${length} ${2000 - length}" stroke-linecap="round" visibility="hidden"/>`),
     `</g>`,
   ].join("");
 }
 
 export type Earth = { wave(): void; sunBehind(ms: number): void; stop(): void; canvas?: HTMLCanvasElement };
-export type EarthConfig = { layout: Layout; width: number; height: number; turn: { t: number; at: number } | null; quality: "full" | "light" | "still" };
+/** `level` is where on the quality ladder to start (0 the still, 5 the best), or null to let earth.js choose. */
+export type EarthConfig = { layout: Layout; width: number; height: number; turn: { t: number; at: number } | null; level: number | null };
 declare global {
   interface Window {
     questionStageEarth?: { boot(stage: HTMLElement): Earth };

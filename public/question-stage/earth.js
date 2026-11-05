@@ -59,14 +59,83 @@ void main(){
 
   var OPTIONS = { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: "low-power" };
 
+  // The quality ladder, cheapest first. Level 0 is the still image. Each step up costs a real amount more: measured on
+  // Chromium's software renderer a frame of the light shader at 1x took 8 ms, the full shader at 1x 22 ms, and at 2x 83 ms
+  // (docs/research/device-performance.md).
+  var LEVELS = [
+    null,
+    { lite: true, scale: 0.75, every: 2 },
+    { lite: true, scale: 1, every: 1 },
+    { lite: false, scale: 1, every: 1 },
+    { lite: false, scale: 1.5, every: 1 },
+    { lite: false, scale: 2, every: 1 },
+  ];
+  var TOP = LEVELS.length - 1;
+
+  /**
+   * Where to start before anything has been measured: what was remembered, else what the browser lets on. The monitor then
+   * moves it up or down from what it sees.
+   */
+  function startLevel(remembered) {
+    if (remembered >= 0 && remembered <= TOP) return remembered;
+    var connection = navigator.connection;
+    if (connection && (connection.saveData || /(^|-)2g$/.test(connection.effectiveType || ""))) return 0;
+    var memory = navigator.deviceMemory, cores = navigator.hardwareConcurrency || 8;
+    // A context that refuses to be made when performance would be poor means software rendering or a blocklisted GPU.
+    var probe = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", { failIfMajorPerformanceCaveat: true });
+    if (typeof OffscreenCanvas !== "undefined" && !probe) return 1;
+    // A software renderer by name: the planet draws on the CPU there, and only the light level keeps up.
+    var info = probe && probe.getExtension("WEBGL_debug_renderer_info");
+    var name = info ? String(probe.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
+    if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(name)) return 1;
+    // Old GPUs by name, from the list Stripe's home page ships (read 2026-11-05): these start on the light level. Any other
+    // GPU is taken to be capable, as Stripe does, and the monitor corrects a wrong guess within a couple of seconds.
+    if (/powervr sgx|powervr series ?[4-6]|adreno \(?tm\)? ?(2\d\d|3\d\d|4\d\d|50[0-6])\b|mali-(2|3|4)\d\d|mali-t[678]\d\d|mali-g(31|51)\b|intel.*(gma|g4[15]|q45|hd graphics 3000)|geforce (8|9)\d{3}|geforce gt [1-3]\d\d(?!\d)|radeon hd [2-5]\d{3}/i.test(name)) return 1;
+    if ((memory && memory <= 2) || cores <= 2) return 1;
+    if ((memory && memory <= 4) || cores <= 4) return 3;
+    return 4;
+  }
+
+  /**
+   * Watches the frame rate the way drei's PerformanceMonitor does (pmndrs/drei): averages over 250 ms, ten of them, and a
+   * move when three in four agree. The bounds follow the screen's own highest rate, so Safari's 30 fps cap in Low Power
+   * Mode isn't taken for a weak device. After three changes of direction it stays where it is.
+   */
+  function monitor(onMove) {
+    var windowStart = 0, frames = 0, averages = [], refresh = 0, turns = 0, lastMove = 0, settled = false;
+    return function (now, level, ceiling) {
+      if (settled) return;
+      if (!windowStart) { windowStart = now; return; }
+      frames++;
+      if (now - windowStart < 250) return;
+      var fps = (frames * 1000) / (now - windowStart);
+      windowStart = now; frames = 0;
+      refresh = Math.max(refresh, fps);
+      averages.push(fps);
+      if (averages.length > 10) averages.shift();
+      var upper = refresh > 100 ? 100 : Math.min(55, refresh * 0.92), lower = refresh > 100 ? 60 : Math.min(40, refresh * 0.8);
+      // Far too slow drops sooner and further: a second of frames at under half the lower bound is enough to go down two.
+      var recent = averages.slice(-4), drowning = recent.length === 4 && recent.every(function (a) { return a < lower / 2; });
+      var low = averages.filter(function (a) { return a < lower; }).length, high = averages.filter(function (a) { return a >= upper; }).length;
+      var move = drowning ? -2 : averages.length < 10 ? 0 : low > 7 ? -1 : high > 7 && level < ceiling ? 1 : 0;
+      if (!move) return;
+      if (lastMove && Math.sign(move) !== Math.sign(lastMove)) turns++;
+      lastMove = move;
+      averages = [];
+      if (turns >= 3) { settled = true; if (move > 0) return; }
+      if (level + move < 1 && level > 1) move = 1 - level;
+      onMove(Math.max(0, Math.min(ceiling, level + move)));
+    };
+  }
+
   /**
    * Compiles the shader and uploads the four maps. Coming from the hero this runs while the new page is still arriving, so
    * the planet's first frame can be drawn the moment the stage is there. `canvas` is only for a browser without WebGL off
    * screen, which has to draw straight to the canvas on the page.
    */
   var prepared = null;
-  function prepare(canvas, light) {
-    if (prepared && prepared.light === !!light && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
+  function prepare(canvas, smallMaps) {
+    if (prepared && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
     // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can
     // reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas.
     var gl = typeof OffscreenCanvas === "undefined" ? null : new OffscreenCanvas(1, 1).getContext("webgl2", OPTIONS);
@@ -80,26 +149,37 @@ void main(){
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.error("[earth] shader:", gl.getShaderInfoLog(shader));
       return shader;
     };
-    var program = gl.createProgram();
-    gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX));
-    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, light ? FRAGMENT.replace("precision highp float;", "precision mediump float;\n#define LIGHT") : FRAGMENT));
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
-    gl.useProgram(program);
-    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    var triangle = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, triangle);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-    var attribute = gl.getAttribLocation(program, "a");
-    gl.enableVertexAttribArray(attribute);
-    gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0);
-    var uniform = function (name) { return gl.getUniformLocation(program, name); };
+    var programs = {};
+    // The full shader, or the light one without the cloud shadow and sea glint. Each is built the first time it's wanted.
+    var program = function (lite) {
+      var key = lite ? "lite" : "full";
+      if (programs[key]) return programs[key];
+      var made = gl.createProgram();
+      gl.attachShader(made, compile(gl.VERTEX_SHADER, VERTEX));
+      gl.attachShader(made, compile(gl.FRAGMENT_SHADER, lite ? FRAGMENT.replace("precision highp float;", "precision mediump float;\n#define LIGHT") : FRAGMENT));
+      gl.linkProgram(made);
+      if (!gl.getProgramParameter(made, gl.LINK_STATUS)) return null;
+      gl.useProgram(made);
+      var attribute = gl.getAttribLocation(made, "a");
+      gl.enableVertexAttribArray(attribute);
+      gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0);
+      var u = function (name) { return gl.getUniformLocation(made, name); };
+      IMAGES.forEach(function (name, i) { gl.uniform1i(u(name), i); });
+      programs[key] = { program: made, U: { c: u("c"), r: u("r"), t: u("t"), sd: u("sd"), wv: u("wv"), fd: u("fd"), L: u("L"), rg: u("rg") } };
+      return programs[key];
+    };
+    if (!program(false) && !program(true)) return null;
     var aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     var self = {
-      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false, light: !!light,
-      U: { c: uniform("c"), r: uniform("r"), t: uniform("t"), sd: uniform("sd"), wv: uniform("wv"), fd: uniform("fd"), L: uniform("L"), rg: uniform("rg") },
+      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false, program: program,
     };
     self.textures = Promise.all(IMAGES.map(function (name, i) {
       var image = new Image();
-      image.src = DIR + name + (light && name === "day" ? "-2048" : "") + ".avif";
+      // A device starting low gets the smaller day map: it decodes in about a third of the time.
+      image.src = DIR + name + (smallMaps && name === "day" ? "-2048" : "") + ".avif";
       return image.decode().then(function () {
         gl.activeTexture(gl.TEXTURE0 + i);
         gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
@@ -109,7 +189,6 @@ void main(){
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
-        gl.uniform1i(uniform(name), i);
       });
     })).then(function () { self.loaded = true; console.info("[earth] maps ready at", Math.round(performance.now()) + "ms"); });
     console.info("[earth] shader ready at", Math.round(performance.now()) + "ms");
@@ -118,35 +197,83 @@ void main(){
   }
 
   /**
+   * The ring's spark of light. A lap takes four seconds, much quicker than on the hero: here it says work is going on. It
+   * swings round the far ends of the ring and hurries across the front, as an orbit does.
+   */
+  function spark(stage, layout) {
+    var front = stage.querySelector("[data-spark=front]"), back = stage.querySelector("[data-spark=back]");
+    if (!front || !back) return function () {};
+    var c = Math.cos(layout.tilt), s = Math.sin(layout.tilt), shown = null;
+    return function (elapsed) {
+      var lap = (elapsed / 4000) % 1;
+      var k = (lap + 0.07 * Math.sin(lap * 2 * Math.PI) + 1) % 1;
+      // Left to right across the front, then back again behind the planet.
+      var angle = k < 0.5 ? Math.PI - k * 2 * Math.PI : -(k - 0.5) * 2 * Math.PI;
+      var ox = layout.rx * Math.cos(angle), oy = layout.ry * Math.sin(angle);
+      var x = layout.cx + ox * c - oy * s, y = layout.cy + ox * s + oy * c;
+      // Along the way it's heading, so the streak trails behind its head.
+      var dx = layout.rx * Math.sin(angle), dy = -layout.ry * Math.cos(angle);
+      var heading = Math.atan2(dx * s + dy * c, dx * c - dy * s);
+      // Fading in and out at the far ends, where it goes round behind or comes back in front.
+      var ends = Math.min(1, Math.abs(Math.sin(angle)) * 4);
+      var on = oy > 0 ? front : back;
+      if (shown !== on) { if (shown) shown.style.opacity = "0"; shown = on; }
+      on.style.opacity = String((on === front ? 1 : 0.5) * ends);
+      on.style.transform = "translate(" + (x - 150).toFixed(1) + "px," + y.toFixed(1) + "px) rotate(" + heading.toFixed(3) + "rad)";
+    };
+  }
+
+  /** The still level: no WebGL at all, only the ring's spark going round, at 30 frames a second. */
+  function still(o) {
+    var comet = spark(o.stage, o.layout), raf = 0, stopped = false, began = performance.now(), last = 0;
+    var loop = function (now) {
+      if (stopped || (o.stage && !o.stage.isConnected)) return;
+      raf = requestAnimationFrame(loop);
+      if (now - last < 32) return;
+      last = now;
+      comet(now - began);
+    };
+    if (!o.calm) raf = requestAnimationFrame(loop);
+    return { wave: function () {}, sunBehind: function () {}, stop: function () { stopped = true; cancelAnimationFrame(raf); }, level: 0 };
+  }
+
+  /**
    * Starts the planet. `turn` is where the hero had got to and when, so that it carries on as if nothing had happened;
    * without one it starts from the still's place, at rest. `ready` runs once its first frame is drawn, or it can't be.
    */
   function start(o) {
     var canvas = o.canvas, layout = o.layout, turn = o.turn;
-    var none = { wave: function () {}, sunBehind: function () {}, stop: function () {} };
-    var light = o.quality === "light";
-    var ready = prepare(canvas, light);
+    var none = { wave: function () {}, sunBehind: function () {}, stop: function () {}, level: 0 };
+    var level = Math.max(1, Math.min(TOP, o.level));
+    var ready = prepare(canvas, level <= 2);
     if (!ready) { o.ready(false); return none; }
-    var gl = ready.gl, U = ready.U;
+    var gl = ready.gl;
     var buffer = ready.offscreen ? gl.canvas : canvas;
     var shown = ready.offscreen ? canvas.getContext("2d") : null;
+    var spec, current, d, frameNo = 0, lastDrawn = 0;
 
-    // A little sharper than the hero, as the planet gets zoomed. The width comes from the caller: the stage may be hidden still.
-    // The light level draws at half the resolution and half the frame rate.
-    var d = light ? Math.min(devicePixelRatio || 1, 2) / 2 : Math.min(devicePixelRatio || 1, 2);
-    var lastDrawn = 0;
-    canvas.width = buffer.width = Math.round(o.width * d);
-    canvas.height = buffer.height = Math.round(o.height * d);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-    var g = layout.R * 1.55;
-    gl.enable(gl.SCISSOR_TEST);
-    gl.scissor(Math.max(0, (layout.cx - g) * d), Math.max(0, canvas.height - (layout.cy + g) * d), g * 2 * d, g * 2 * d);
+    // Sets the drawing up for a level: its shader, its resolution (the width comes from the caller, as the stage may be
+    // hidden still) and how often it draws.
+    var apply = function () {
+      spec = LEVELS[level];
+      current = ready.program(spec.lite) || ready.program(!spec.lite);
+      gl.useProgram(current.program);
+      d = Math.min(devicePixelRatio || 1, spec.scale);
+      canvas.width = buffer.width = Math.round(o.width * d);
+      canvas.height = buffer.height = Math.round(o.height * d);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      var g = layout.R * 1.55;
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(Math.max(0, (layout.cx - g) * d), Math.max(0, canvas.height - (layout.cy + g) * d), g * 2 * d, g * 2 * d);
+    };
+    apply();
 
     var raf = 0, stopped = false, waveAt = -1e9, liveAt = 0, sunAt = 0, sunMs = 1, last = 0;
     var phase = turn ? turn.t : PHASE_STILL;
     var speed = turn ? 1 : 0;
 
     var draw = function (now) {
+      var U = current.U;
       var w = (now - waveAt) / 1800;
       var swing = sunAt ? smooth(clamp01((now - sunAt) / sunMs)) : 0;
       var from = unit(SUN_UP), sun = unit([from[0] + (SUN_BEHIND[0] - from[0]) * swing, from[1] + (SUN_BEHIND[1] - from[1]) * swing, from[2] + (SUN_BEHIND[2] - from[2]) * swing]);
@@ -168,33 +295,32 @@ void main(){
       }
     };
 
-    var dashes = function (svg) { return Array.prototype.slice.call(svg.querySelectorAll("[data-comet]")); };
-    var cometsFront = dashes(o.ringFront), cometsBack = dashes(o.ringBack);
-    // It swings round the far ends of the ring and hurries across the front, as an orbit does.
-    var comet = function (now) {
-      var lap = ((now - liveAt) / 4000) % 1;
-      var k = (lap + 0.07 * Math.sin(lap * 2 * Math.PI) + 1) % 1;
-      var front = k < 0.5;
-      var head = (front ? k * 2 : 1 - (k - 0.5) * 2) * 1000;
-      (front ? cometsBack : cometsFront).forEach(function (dash) { dash.setAttribute("visibility", "hidden"); });
-      (front ? cometsFront : cometsBack).forEach(function (dash) {
-        dash.setAttribute("visibility", "visible");
-        dash.setAttribute("stroke-dashoffset", (front ? Number(dash.dataset.comet) - head : -head).toFixed(1));
-      });
-    };
+    var comet = spark(o.stage, layout);
 
+    // Down to the still, the canvas gives way to the image, and the ring's spark keeps going so the page doesn't look stuck.
+    var watch = monitor(function (next) {
+      console.info("[earth] level", level, "to", next);
+      if (next === 0) { level = 0; o.onLevel(0); return; }
+      level = next;
+      apply();
+      o.onLevel(level);
+    });
     var loop = function (now) {
       // A stage taken off the page before it finished stops with it.
       if (stopped || (o.stage && !o.stage.isConnected && liveAt && now - liveAt > 2000)) return;
       raf = requestAnimationFrame(loop);
-      if (light && now - lastDrawn < 30) return;
-      lastDrawn = now;
       var dt = Math.min(64, now - last);
       last = now;
       speed += (CRUISE - speed) * (1 - Math.exp(-dt / 2000));
       phase += (speed * dt) / 1000;
+      // The first second after it starts is the page still settling, so the monitor waits it out.
+      if (now - liveAt > 1000) watch(now, level, o.ceiling);
+      comet(now - liveAt);
+      // At most 60 planet frames a second, even on a 120 Hz screen: a slow turn looks the same, for half the work. Stripe's
+      // globe draws every other frame for the same reason.
+      if (level === 0 || now - lastDrawn < 1000 / 60 - 2 || frameNo++ % spec.every) return;
+      lastDrawn = now;
       draw(now);
-      comet(now);
     };
 
     var go = function () {
@@ -224,8 +350,19 @@ void main(){
       /** Swings the sun round behind the planet. */
       sunBehind: function (ms) { sunMs = ms; sunAt = performance.now(); },
       stop: function () { stopped = true; cancelAnimationFrame(raf); },
+      get level() { return level; },
     };
   }
+
+  // The browser has been told not to paint until a stylesheet has loaded: removing it lets the page paint now, with the
+  // planet in it (lib/search/question-stage-script.ts).
+  var release = function () {
+    var hold = document.getElementById("question-stage-hold");
+    if (hold) hold.remove();
+  };
+  // The level this device ended up at, kept for the visit only: a level saved for good would stick after one stall at load.
+  // None of the WebGL home pages studied saves it (docs/research/device-performance.md).
+  var MEMORY = "openscholar.planet-level";
 
   /**
    * Starts the planet in a stage, reading its settings from the stage's data-earth-config, unless it's already going
@@ -233,26 +370,41 @@ void main(){
    */
   function boot(stage) {
     var canvas = stage.querySelector("canvas");
+    var image = stage.querySelector("[data-still]");
     var running = window.questionStageEarthRun;
     if (running && running.canvas === canvas) return running;
     if (running) running.stop();
     var config = JSON.parse(stage.dataset.earthConfig);
+    if (config.level == null) {
+      var remembered = -1;
+      try { remembered = Number(sessionStorage.getItem(MEMORY) ?? -1); } catch (error) {}
+      config.level = startLevel(remembered);
+    }
+    stage.dataset.level = String(config.level);
+    // Level 0 never starts WebGL: the still is the planet, and only the ring's spark moves.
+    if (config.level === 0) {
+      release();
+      var resting = still({ stage: stage, layout: config.layout, calm: matchMedia("(prefers-reduced-motion: reduce)").matches });
+      resting.canvas = canvas;
+      window.questionStageEarthRun = resting;
+      return resting;
+    }
     console.info("[earth] stage arrived at", Math.round(performance.now()) + "ms");
     var begun = performance.now();
     console.info("[earth] starting", config.turn ? "from the hero" : "from rest");
-    var still = stage.querySelector("[data-still]");
     var run = start({
       stage: stage, canvas: canvas,
-      ringBack: stage.querySelector("[data-ring=back]"), ringFront: stage.querySelector("[data-ring=front]"),
-      layout: config.layout, width: config.width, height: config.height, turn: config.turn, quality: config.quality,
+      layout: config.layout, width: config.width, height: config.height, turn: config.turn,
+      level: config.level, ceiling: config.ceiling == null ? TOP : config.ceiling,
+      onLevel: function (level) {
+        stage.dataset.level = String(level);
+        try { sessionStorage.setItem(MEMORY, String(level)); } catch (error) {}
+      },
       calm: matchMedia("(prefers-reduced-motion: reduce)").matches,
       ready: function (ok) {
         console.info("[earth]", ok ? "drawing" : "can't draw, showing the still", Math.round(performance.now() - begun) + "ms after starting");
-        if (ok) { canvas.dataset.live = ""; still.dataset.live = ""; } else still.dataset.failed = "";
-        // The browser has been told not to paint until this stylesheet has loaded: removing it lets the page paint now,
-        // with the planet in it (lib/search/question-stage-script.ts).
-        var hold = document.getElementById("question-stage-hold");
-        if (hold) hold.remove();
+        if (ok) { canvas.dataset.live = ""; image.dataset.live = ""; } else image.dataset.failed = "";
+        release();
       },
     });
     run.canvas = canvas;
