@@ -81,16 +81,21 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     // moves it as it watches the frame rate. Level 0 is the still image, with only the ring's spark moving.
     const Earth = window.questionStageEarth, still = scene.querySelector("[data-still]");
     let level = (() => { let saved = -1; try { saved = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} return Earth.startLevel(saved); })();
-    let planet = null, ready = false, sparkMove = () => {};
+    let planet = null, ready = false, frozen = false, sparkMove = () => {};
     const layout = () => ({ R, cx, cy, rx, ry, tilt, narrow: W < 700 });
     const placeStill = () => { const g = R * 1.55; still.style.left = `${cx - g}px`; still.style.top = `${cy - g}px`; still.style.width = `${g * 2}px`; };
     const remember = () => { try { sessionStorage.setItem(Earth.memory, String(level)); } catch {} };
-    // The still is only fetched when it's needed, and fades in over the planet once it can be drawn, so it doesn't jump.
-    // The still is final: nothing climbs back from it.
-    const rest = () => { level = 0; remember(); still.src = "/img/earth-still.avif"; still.decode().catch(() => {}).then(() => { planet = null; root.classList.add("resting"); }); };
+    // Level 0, which is final: nothing climbs back from it. A planet that has been drawing stops turning where it is, with
+    // one last frame at the light level's full resolution, so the view doesn't change. Only a planet that never drew, or
+    // lost its GPU, becomes the still image, a fixed view fetched only then and faded in once it can be drawn.
+    const rest = (lost) => {
+      level = 0; remember();
+      if (planet && !lost) { frozen = true; planet.setLevel(Earth.frozenLevel); draw(performance.now()); return; }
+      still.src = "/img/earth-still.avif"; still.decode().catch(() => {}).then(() => { planet = null; root.classList.add("resting"); });
+    };
     const watch = Earth.monitor((next) => { if (!level) return; if (!next) rest(); else { level = next; planet.setLevel(next); remember(); } });
     const start = async () => {
-      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", onLost: rest });
+      if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", onLost: () => rest(true) });
       if (planet) await planet.textures; else rest();
       ready = true; dawnAt ||= performance.now(); draw(performance.now()); root.classList.add("lit"); orbit(); (window.requestIdleCallback ?? setTimeout)(appImages);
     };
@@ -107,7 +112,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       const question = document.createElement("div"); question.className = "handq"; question.ariaHidden = "true"; question.dataset.size = q.length <= 40 ? "large" : q.length <= 90 ? "medium" : "small"; question.style.top = `${head.getBoundingClientRect().top - top.top}px`;
       question.append(...shown.map((w) => { const span = document.createElement("span"); span.textContent = w; return span; })); root.append(question);
       const qTop = Math.round(question.getBoundingClientRect().top);
-      leaving = { at: performance.now(), sent: false, send: () => `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop, (level ? 18 + spin : 30).toFixed(3), Date.now(), level].join(",")}` };
+      leaving = { at: performance.now(), sent: false, send: () => `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop, (planet ? 18 + spin : Earth.stillTurn).toFixed(3), Date.now(), level].join(",")}` };
       tx = ty = 0; mouse = null; onSat = -1; setHold(-1); run();
       // What was typed lifts out of the box and grows into the headline, from exactly where it was.
       const first = question.firstElementChild.getBoundingClientRect(), box = input.getBoundingClientRect(), blockRect = question.getBoundingClientRect(), small = parseFloat(getComputedStyle(input).fontSize) / parseFloat(getComputedStyle(question).fontSize), inset = parseFloat(getComputedStyle(question.firstElementChild).paddingLeft);
@@ -142,12 +147,12 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       if (onSat >= 0 || hold >= 0) want = 0; else if (mouse && spots.some((s) => !s.hid && Math.hypot(s.x - mouse.x, s.y - mouse.y) < 120)) want = .12;
       speed += ((want === 0 ? 0 : want + kick) - speed) * (1 - Math.exp(-dt / 220)); phase += dt * .000095 * speed;
       if (hold >= 0) { const d = ((((hold * TAU / sats.length - Math.PI / 2 - phase) % TAU) + TAU + Math.PI) % TAU) - Math.PI; phase += d * (1 - Math.exp(-dt / 320)); }
-      kick *= Math.exp(-dt / 400); spin += dt / 1000 * (1 + kick * .8);
+      kick *= Math.exp(-dt / 400); if (!frozen) spin += dt / 1000 * (1 + kick * .8);
       const moving = Math.abs(tx - px) > .002 || Math.abs(ty - py) > .002, ease = 1 - Math.exp(-dt / 220); px += (tx - px) * ease; py += (ty - py) * ease; if (moving) camera();
       placeSats(orbitAt ? 2.4 * (1 - clamp01((now - orbitAt) / 2800)) ** 4 : 2.4); comet(now);
       // The page settles for a second after the planet first draws, then the frame rate decides its level.
       if (planet && level && !leaving && now - dawnAt > 1000) watch(now, level, 5);
-      const w = (now - waveAt) / 1800; if (leaving || now - lastDraw >= 30 || now - dawnAt < 3600 || (w > 0 && w < 1)) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; location.href = leaving.send(); }
+      const w = (now - waveAt) / 1800; if (leaving || now - dawnAt < 3600 || (!frozen && (now - lastDraw >= 30 || (w > 0 && w < 1)))) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; location.href = leaving.send(); }
     };
     // Wrapped text leaves its box wider than the words, so each name's box is set to its words and the gaps between the six come out equal.
     const fitNames = () => rows.forEach((li) => { const a = li.querySelector("a"); a.style.width = ""; if (innerWidth < 1000) return; const t = document.createRange(); t.selectNodeContents(a.lastChild); a.style.width = `${Math.ceil(t.getBoundingClientRect().width) + 1}px`; });

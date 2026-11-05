@@ -161,7 +161,7 @@
   opacity: 1;
   transition: none;
 }
-.stage[data-handover]:not([data-level="0"]) .stillBox:not([data-failed]) {
+.stage[data-handover] .stillBox:not([data-failed]) {
   display: none;
 }
 /* The ring's spark: a short tapering streak whose head is the element's right end. earth.js moves it round the ring with a
@@ -188,12 +188,13 @@
   animation: none;
 }
 
-/* The still level: the image is the planet, and no canvas is drawn. */
-.stage[data-level="0"] .stillBox {
+/* The still level: the image is the planet, and no canvas is drawn. Unless the hero's planet had stopped where it was:
+   then the canvas holds that same view, drawn once. */
+.stage[data-level="0"]:not([data-frozen]) .stillBox {
   display: block;
   opacity: 1;
 }
-.stage[data-level="0"] .earth {
+.stage[data-level="0"]:not([data-frozen]) .earth {
   opacity: 0;
 }
 

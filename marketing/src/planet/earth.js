@@ -53,6 +53,8 @@ void main(){
   // Turns a second, in the shader's units. The hero's speed, easing up a little once it has gone.
   var CRUISE = 1.6;
   var PHASE_STILL = 30;
+  // A planet that drops to level 0 after drawing stops where it is, drawn once at this level; the hero hands that turn on.
+  var FROZEN_LEVEL = 2;
   var smooth = function (t) { return t * t * (3 - 2 * t); };
   var clamp01 = function (v) { return Math.min(1, Math.max(0, v)); };
   var unit = function (v) { var l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; };
@@ -335,7 +337,7 @@ void main(){
 
     var raf = 0, stopped = false, waveAt = -1e9, liveAt = 0, sunAt = 0, sunMs = 1, last = 0;
     var phase = turn ? turn.t : PHASE_STILL;
-    var speed = turn ? 1 : 0;
+    var speed = turn && !o.frozen ? 1 : 0;
 
     var draw = function (now) {
       var w = (now - waveAt) / 1800;
@@ -366,7 +368,7 @@ void main(){
       raf = requestAnimationFrame(loop);
       var dt = Math.min(64, now - last);
       last = now;
-      speed += (CRUISE - speed) * (1 - Math.exp(-dt / 2000));
+      if (!o.frozen) speed += (CRUISE - speed) * (1 - Math.exp(-dt / 2000));
       phase += (speed * dt) / 1000;
       // The first second after it starts is the page still settling, so the monitor waits it out. The still is final.
       if (level > 0 && now - liveAt > 1000) watch(now, level, o.ceiling);
@@ -382,13 +384,15 @@ void main(){
       if (stopped) return;
       // Carries on from where the hero stood still: it stops drawing once this page's response starts arriving, and the
       // screen holds its last frame until this one is ready. Jumping to where it would be now would jolt it forward.
-      if (turn) {
+      if (turn && !o.frozen) {
         var entry = performance.getEntriesByType("navigation")[0];
         var froze = entry && entry.responseStart ? performance.timeOrigin + entry.responseStart : Date.now();
         phase = turn.t + Math.min(30, Math.max(0, (froze - turn.at) / 1000));
       }
       liveAt = last = performance.now();
       draw(liveAt);
+      // Frozen, it's drawn once and only the ring's spark moves on.
+      if (o.frozen) level = 0;
       o.ready(true);
       if (!o.calm) raf = requestAnimationFrame(loop);
     };
@@ -436,8 +440,12 @@ void main(){
       config.level = startLevel(remembered);
     }
     stage.dataset.level = String(config.level);
-    // Level 0 never starts WebGL: the still is the planet, and only the ring's spark moves.
-    if (config.level === 0) {
+    // Level 0 handed over with the hero's own turn: the hero's planet had stopped where it was, so this draws that same
+    // view once instead of showing the still, which faces another way.
+    var frozen = config.level === 0 && config.turn && config.turn.t !== PHASE_STILL;
+    if (frozen) stage.dataset.frozen = "";
+    // Otherwise level 0 never starts WebGL: the still is the planet, and only the ring's spark moves.
+    if (config.level === 0 && !frozen) {
       // The page paints once the still can be drawn, so the planet's place is never empty.
       var picture = image.querySelector("img");
       (picture ? picture.decode() : Promise.resolve()).then(release, release);
@@ -452,7 +460,7 @@ void main(){
     var run = start({
       stage: stage, canvas: canvas,
       layout: config.layout, width: config.width, height: config.height, turn: config.turn,
-      level: config.level, ceiling: config.ceiling == null ? TOP : config.ceiling,
+      level: frozen ? FROZEN_LEVEL : config.level, frozen: frozen, ceiling: config.ceiling == null ? TOP : config.ceiling,
       onLevel: function (level) {
         stage.dataset.level = String(level);
         try { sessionStorage.setItem(MEMORY, String(level)); } catch (error) {}
@@ -475,8 +483,9 @@ void main(){
   // Coming from the hero, the maps are fetched now, the smaller day map for the light levels, unless the hero had come to
   // rest on the still (its level is the 8th number).
   var handed = new URLSearchParams(location.search).get("hero");
-  var handedLevel = handed ? Number(handed.split(",")[7]) : 0;
-  if (handedLevel > 0) prepare(null, handedLevel <= 2);
+  var handedNumbers = handed ? handed.split(",").map(Number) : [];
+  var handedLevel = handedNumbers[7] || 0;
+  if (handedLevel > 0 || (handed && handedNumbers[5] !== PHASE_STILL)) prepare(null, handedLevel <= 2);
   // The page arrives in pieces, so it waits for the stage's last part, the ring in front, before starting.
   var find = function () {
     var stage = document.querySelector("#question-stage[data-earth-config]");
@@ -490,5 +499,5 @@ void main(){
     setTimeout(function () { watching.disconnect(); }, 20000);
   }
 
-  window.questionStageEarth = { boot: boot, renderer: renderer, monitor: monitor, spark: spark, startLevel: startLevel, memory: MEMORY };
+  window.questionStageEarth = { boot: boot, renderer: renderer, monitor: monitor, spark: spark, startLevel: startLevel, memory: MEMORY, frozenLevel: FROZEN_LEVEL, stillTurn: PHASE_STILL };
 })();

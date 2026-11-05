@@ -73,8 +73,10 @@ The ladder, from `LEVELS` in `earth.js`:
 
 - The level reached is kept in `sessionStorage`, so it lasts for the visit and not beyond. The hero sends it to the app as
   the eighth number of `hero=`, because the two sites are different origins and can't read each other's storage.
-- At level 0 the hero fetches the still only when it needs it, and crossfades it in over the live planet. The app skips
-  the four map downloads when it knows it will draw the still.
+- A planet that drops to level 0 after drawing stops turning where it is, drawn once more at the light level's full
+  resolution, and hands that turn to the app, which draws the same view once. Only a visitor whose planet never drew
+  (data saver, 2G, no WebGL, a lost GPU) gets the still image, a fixed view fetched only then. The app skips the four map
+  downloads when it knows it will show the still.
 - A bug skewed the earlier light-level figures. The light shader's `#define` swallowed the rest of its line, so it never
   compiled and every light level ran the full shader. With the fix, level 1 on SwiftShader went from 49 to 64 frames a
   second on the hero. The light shader keeps `highp` precision: at `mediump`, which is 16-bit on phone GPUs, pixel
