@@ -90,10 +90,12 @@ export function ringMarkup({ rx: a, ry: b, cx, cy, tilt, narrow }: Layout, front
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+/** The sun just behind the planet's top edge: the globe is in shadow with its cities on, under a bright crescent. */
+const SUN_BEHIND = [0, 0.85, -0.52];
 
 /** Starts the live planet over the still. `onLive` runs once its first frame is drawn. */
 export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, ringFront: SVGSVGElement, space: HTMLElement, calm: boolean, onLive: () => void) {
-  const none = { wave() {}, stop() {} };
+  const none = { wave() {}, sunBehind() {}, stop() {} };
   // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing
   // can reach the screen by then. So the planet draws off screen and each frame is copied to a plain 2D canvas,
   // which it leaves alone. A browser without WebGL off screen draws straight to the canvas.
@@ -144,6 +146,8 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
   // The hero's sun once it's fully up.
   const light = [-0.7, 0.62, 0.3];
   const length = Math.hypot(...light);
+  let sunAt = 0;
+  let sunMs = 1;
   let raf = 0;
   let stopped = false;
   let waveAt = -1e9;
@@ -161,7 +165,11 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
     gl.uniform1f(U.tc, EARTH_PHASE + turned);
     // The still has no ring shadow on the planet, so it comes in gently.
     gl.uniform1f(U.sd, liveAt ? clamp01((now - liveAt) / 900) : 0);
-    gl.uniform3f(U.L, light[0] / length, light[1] / length, light[2] / length);
+    const behind = sunAt ? Math.min(1, (now - sunAt) / sunMs) : 0;
+    const swing = behind * behind * (3 - 2 * behind);
+    const sun = light.map((axis, i) => axis / length + (SUN_BEHIND[i] - axis / length) * swing);
+    const sunLength = Math.hypot(...sun);
+    gl.uniform3f(U.L, sun[0] / sunLength, sun[1] / sunLength, sun[2] / sunLength);
     gl.uniform3f(U.rg, layout.rx / layout.R, layout.ry / layout.R, layout.tilt);
     gl.uniform1f(U.wv, w > 0 && w < 1 ? w : 0);
     gl.uniform1f(U.fd, (layout.narrow ? 56 : 96) * d);
@@ -235,6 +243,11 @@ export function startEarth(canvas: HTMLCanvasElement, ringBack: SVGSVGElement, r
     /** A wave of light runs down the planet from the question, lighting the cities it passes. */
     wave() {
       waveAt = performance.now();
+    },
+    /** Swings the sun round behind the planet. */
+    sunBehind(ms: number) {
+      sunMs = ms;
+      sunAt = performance.now();
     },
     stop() {
       stopped = true;

@@ -18,18 +18,17 @@ const LEAST_MS = 1300;
 const LIT_MS = 900;
 /** The page gets this long to finish loading its results behind the stage. */
 const PAGE_MS = 8000;
-/** How long the question takes to fall into the planet, its lift included. The sky opens as it arrives. */
-const FALL_MS = 900;
+/** How long the question takes to settle into the planet. The sun comes up as it arrives. */
+const SETTLE_MS = 800;
+/** From the sun's first light to the sky being full of it. */
+const DAWN_MS = 1500;
 /** How much later the farthest word sets off than the nearest. */
 const WORD_STAGGER_MS = 160;
-/** How much of the fall is the lift before it. */
-const LIFT = 0.2;
-const OPEN_MS = 1150;
 /** How much of the gap between them the planet covers, and its most in pixels. The words cover the rest. */
 const RISE_SHARE = 0.5;
 const RISE_MAX = 170;
-/** How small a word has got as it enters the planet. */
-const WORD_END = 0.18;
+/** How small a word has got as it fades into the planet. */
+const WORD_END = 0.4;
 
 // The marketing hero's stars, from the same seed: fixed in size and place, and none behind its headline or box.
 const STARS = (() => {
@@ -59,35 +58,14 @@ function readHandover(value: string | null): Frame | null {
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
-/** Keyframes sampled from a curve: CSS easing moves everything along one line at one rate, and this needs several at once. */
-const sampled = (steps: number, at: (t: number) => Keyframe) => Array.from({ length: steps + 1 }, (_, i) => at(i / steps));
 
-/**
- * One word's way into the planet. It lifts as if drawing breath, falls under something like gravity, and only gathers
- * towards the point late on, so its path curves and it doesn't run into its neighbours while it's still big.
- */
-function wordFall(dx: number, dy: number, side: number) {
-  return sampled(44, (t) => {
-    const lift = t < LIFT ? Math.sin((t / LIFT) * Math.PI) : 0;
-    const u = clamp01((t - LIFT) / (1 - LIFT));
-    const x = dx * u ** 3;
-    const y = dy * u ** 1.9 - 12 * lift;
-    const scale = 1 + 0.03 * lift - (1 - WORD_END) * smooth(u);
-    return { transform: `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) rotate(${(side * 10 * u ** 2.4).toFixed(2)}deg) scale(${scale.toFixed(4)})`, opacity: clamp01((1 - u) / 0.08) };
-  });
-}
-
-/** The planet's part: it dips as the words lift, rises to meet them, gives under the impact, then the camera goes in. */
-function planetMeet(rise: number) {
-  const total = FALL_MS + OPEN_MS;
-  return sampled(80, (t) => {
-    const ms = t * total;
-    const dip = ms < FALL_MS * LIFT ? 8 * Math.sin((ms / (FALL_MS * LIFT)) * Math.PI) : 0;
-    const u = clamp01((ms - FALL_MS * LIFT) / (FALL_MS * (1 - LIFT)));
-    const after = Math.max(0, ms - FALL_MS) / 1000;
-    const give = 16 * Math.exp(-5 * after) * Math.sin(11 * after);
-    const scale = 1 + 0.03 * u ** 2 + 0.012 * Math.exp(-5 * after) * Math.sin(11 * after) + 0.37 * smooth(clamp01((ms - FALL_MS) / OPEN_MS)) ** 1.6;
-    return { transform: `translateY(${(dip - rise * u ** 2.2 + give).toFixed(2)}px) scale(${scale.toFixed(4)})` };
+/** One word's way into the planet: it sinks first and gathers towards the point late, so its path curves, and it fades as it arrives. */
+function wordSettle(dx: number, dy: number) {
+  return Array.from({ length: 41 }, (_, i) => {
+    const t = i / 40;
+    const u = smooth(t);
+    const scale = 1 - (1 - WORD_END) * u;
+    return { transform: `translate(${(dx * u ** 1.8).toFixed(2)}px, ${(dy * u ** 1.2).toFixed(2)}px) scale(${scale.toFixed(4)})`, opacity: clamp01((1 - t) / 0.45) };
   });
 }
 
@@ -106,8 +84,8 @@ function questionWords(question: string, query: string | null) {
 /**
  * In front of the results page while AI writes the query for a question in the address: the
  * marketing hero's Earth and sky go on, with the question as the headline. When the query is
- * written the words it uses light up, and once the page behind has its results the question falls
- * into the planet as it rises to meet it, and the sky opens from where they touch.
+ * written the words it uses light up, and once the page behind has its results the question settles
+ * into the planet as it rises to meet it, and the sun comes up from behind it where they touch.
  */
 export function QuestionStage() {
   const params = useSearchParams();
@@ -123,14 +101,15 @@ export function QuestionStage() {
   const query = useQuestionStage((state) => state.query);
   const stage = useRef<HTMLDivElement>(null);
   const space = useRef<HTMLDivElement>(null);
-  const rim = useRef<HTMLDivElement>(null);
   const plate = useRef<HTMLImageElement>(null);
   const still = useRef<HTMLImageElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const ringBack = useRef<SVGSVGElement>(null);
   const ringFront = useRef<SVGSVGElement>(null);
   const headline = useRef<HTMLHeadingElement>(null);
-  const spark = useRef<HTMLDivElement>(null);
+  const sun = useRef<HTMLDivElement>(null);
+  const dawn = useRef<HTMLDivElement>(null);
+  const wash = useRef<HTMLDivElement>(null);
   const stars = useRef<SVGSVGElement[]>([]);
   const words = useMemo(() => questionWords(question, lit ? query : null), [question, lit, query]);
   const layout = useMemo(() => (frame ? earthLayout(frame.width) : null), [frame]);
@@ -166,19 +145,20 @@ export function QuestionStage() {
       setDone(true);
     };
 
-    // The question falls into the planet as the planet rises to meet it, and the sky opens from where they touch.
+    // The question settles into the planet as the planet rises to meet it, the planet turns into its own shadow,
+    // and the sun comes up from behind it where they touched, until the sky is full of light and the page is there.
     const land = () => {
       setFlying(true);
+      const root = stage.current!;
 
       if (calm || !layout) {
         delete document.documentElement.dataset.questionStage;
-        stage.current!.style.transition = "opacity .3s";
-        stage.current!.style.opacity = "0";
+        root.style.transition = "opacity .3s";
+        root.style.opacity = "0";
         finish = window.setTimeout(end, 320);
         return;
       }
 
-      const root = stage.current!;
       const planet = space.current!;
       for (const motion of planet.getAnimations()) motion.pause();
       const box = planet.getBoundingClientRect();
@@ -187,64 +167,54 @@ export function QuestionStage() {
       const top = box.top + layout.cy - layout.R;
       const rise = Math.min(Math.max(0, top - question.bottom) * RISE_SHARE, RISE_MAX);
       const x = box.left + layout.cx;
-      // A little inside the planet's edge, so the words go into it rather than stopping at it.
-      const y = top - rise + layout.R * 0.07;
+      const y = top - rise + layout.R * 0.04;
 
       const centres = spans.map((span) => span.getBoundingClientRect()).map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }));
       const farthest = Math.max(1, ...centres.map((c) => Math.hypot(c.x - x, c.y - y)));
       spans.forEach((span, i) => {
         span.style.transformOrigin = "50% 50%";
         const near = Math.hypot(centres[i].x - x, centres[i].y - y) / farthest;
-        span.animate(wordFall(x - centres[i].x, y - centres[i].y, Math.sign(centres[i].x - x)), {
-          duration: FALL_MS - WORD_STAGGER_MS,
-          // The words nearest the point go first and the rest pour in after them.
-          delay: near * WORD_STAGGER_MS,
-          fill: "both",
-        });
+        span.animate(wordSettle(x - centres[i].x, y - centres[i].y), { duration: SETTLE_MS - WORD_STAGGER_MS, delay: near * WORD_STAGGER_MS, fill: "both" });
       });
 
-      planet.style.transformOrigin = `${layout.cx}px ${y - box.top}px`;
-      planet.animate(planetMeet(rise), { duration: FALL_MS + OPEN_MS, fill: "forwards" });
-
-      // Light gathers where the words are going in, and the opening starts from it.
-      const glow = spark.current!;
-      glow.style.left = `${x}px`;
-      glow.style.top = `${y}px`;
-      glow.animate(
+      earth.sunBehind(SETTLE_MS + 200);
+      const whole = SETTLE_MS + DAWN_MS;
+      planet.animate(
         [
-          { opacity: 0, transform: "translate(-50%, -50%) scale(.15)", easing: "cubic-bezier(.5,0,.9,.5)", offset: 0 },
-          { opacity: 0, transform: "translate(-50%, -50%) scale(.15)", easing: "cubic-bezier(.5,0,.9,.5)", offset: 0.38 },
-          { opacity: 1, transform: "translate(-50%, -50%) scale(1)", easing: "ease-out", offset: 0.74 },
-          { opacity: 0, transform: "translate(-50%, -50%) scale(1.6)", offset: 1 },
+          { transform: "none", easing: "cubic-bezier(.45,0,.35,1)", offset: 0 },
+          { transform: `translateY(${-rise}px)`, easing: "cubic-bezier(.55,0,.35,1)", offset: SETTLE_MS / whole },
+          // Far enough that the planet's foot, where the hero's links used to cover it, leaves the screen.
+          { transform: `translateY(${Math.max(layout.R, innerHeight - box.bottom + 60)}px)`, offset: 1 },
         ],
-        { duration: FALL_MS + 300, fill: "forwards" },
+        { duration: whole, fill: "forwards" },
       );
 
+      // The sun starts behind the planet's edge, so the planet uncovers it as it comes up.
+      const sunrise = sun.current!;
+      sunrise.style.left = `${x}px`;
+      sunrise.style.top = `${y}px`;
+      const light = { delay: SETTLE_MS * 0.7, fill: "forwards" as const };
+      sunrise.animate(
+        [
+          { opacity: 0, transform: `translate(-50%, -50%) translateY(${layout.R * 0.3}px) scale(.45)` },
+          { opacity: 1, offset: 0.2 },
+          { opacity: 1, transform: `translate(-50%, -50%) translateY(${-layout.R * 0.28}px) scale(2.3)` },
+        ],
+        { ...light, duration: DAWN_MS, easing: "cubic-bezier(.25,.5,.25,1)" },
+      );
+      const sky = dawn.current!;
+      sky.style.setProperty("--sun-x", `${x}px`);
+      sky.style.setProperty("--sun-y", `${y}px`);
+      sky.animate([{ opacity: 0 }, { opacity: 1 }], { ...light, duration: DAWN_MS * 0.8, easing: "cubic-bezier(.4,0,.5,1)" });
+      for (const layer of [plate.current!, ...stars.current]) layer.animate({ opacity: 0 }, { delay: SETTLE_MS * 0.8, duration: DAWN_MS * 0.6, easing: "ease-in", fill: "forwards" });
+
+      // The light becomes the page: cream over a light page, and over a dark one the sky simply fades into it.
+      if (!document.documentElement.classList.contains("dark")) wash.current!.animate([{ opacity: 0 }, { opacity: 1 }], { delay: SETTLE_MS + DAWN_MS * 0.4, duration: DAWN_MS * 0.5, easing: "cubic-bezier(.5,0,.6,1)", fill: "forwards" });
+      const leaveAt = SETTLE_MS + DAWN_MS * 0.85;
       finish = window.setTimeout(() => {
         delete document.documentElement.dataset.questionStage;
-        earth.wave();
-        root.style.setProperty("--rx", `${x}px`);
-        root.style.setProperty("--ry", `${y}px`);
-        root.dataset.opening = "";
-        // Going through: what's nearer the camera rushes past faster than what's far away.
-        for (const [layer, scale] of [[plate.current!, 1.06], ...stars.current!.map((star, i) => [star, 1.12 + i * 0.06] as const)] as const) {
-          const place = layer.getBoundingClientRect();
-          layer.style.transformOrigin = `${x - place.left}px ${y - place.top}px`;
-          layer.animate([{ transform: "none" }, { transform: `scale(${scale})` }], { duration: OPEN_MS, easing: "cubic-bezier(.7,0,.2,1)", fill: "forwards" });
-        }
-        const far = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y)) + 300;
-        const openedAt = performance.now();
-        const open = (now: number) => {
-          const k = Math.min(1, (now - openedAt) / OPEN_MS);
-          // Slow to catch, then all at once, easing as it leaves the screen.
-          const eased = k < 0.5 ? 8 * k ** 4 : 1 - (-2 * k + 2) ** 4 / 2;
-          root.style.setProperty("--r", `${(eased * far).toFixed(1)}px`);
-          rim.current!.style.opacity = String(Math.min(1, k * 8) * (1 - k ** 6));
-          if (k < 1) raf = requestAnimationFrame(open);
-          else end();
-        };
-        raf = requestAnimationFrame(open);
-      }, FALL_MS - 50);
+        root.animate({ opacity: 0 }, { duration: 550, easing: "ease-in-out", fill: "forwards" }).finished.then(end, end);
+      }, leaveAt);
     };
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
@@ -299,6 +269,8 @@ export function QuestionStage() {
             ))}
           </svg>
         ))}
+        <div ref={dawn} className={styles.dawn} aria-hidden />
+        <div ref={sun} className={styles.sun} aria-hidden />
         {frame && layout && rings && (
           <div ref={space} className={styles.space} style={{ top: frame.spaceTop, height: frame.spaceHeight, width: frame.width, "--space-foot": `${frame.spaceTop + frame.spaceHeight}px` } as React.CSSProperties}>
             <div
@@ -324,8 +296,7 @@ export function QuestionStage() {
           </div>
         )}
       </div>
-      <div ref={rim} className={styles.rim} aria-hidden />
-      <div ref={spark} className={styles.spark} aria-hidden />
+      <div ref={wash} className={styles.wash} aria-hidden />
       <h1 ref={headline} className={styles.question} data-size={size} data-flying={flying ? "" : undefined} role="status">
         {words.map((word, i) => (
           <span

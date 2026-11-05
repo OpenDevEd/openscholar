@@ -2,7 +2,6 @@
    theme: it carries on from the page the person just left. */
 .stage {
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --r: 0px;
   position: fixed;
   inset: 0;
   z-index: 200;
@@ -29,34 +28,40 @@
   background: #091026;
 }
 
-/* The sky opens outwards from the question's field, showing the real page through it. */
-.stage[data-opening] .scene {
-  mask-image: radial-gradient(circle at var(--rx) var(--ry), transparent calc(var(--r) - 44px), #000 var(--r));
-}
-
-.rim {
+/* Dawn from orbit: warm at the sun and cooling to the night it's rising into. */
+.dawn {
   position: absolute;
   inset: 0;
   opacity: 0;
   pointer-events: none;
   background: radial-gradient(
-    circle at var(--rx, 50%) var(--ry, 50%),
-    transparent calc(var(--r) - 60px),
-    rgb(255 255 255 / 0.85) calc(var(--r) - 22px),
-    rgb(255 226 190 / 0.95) var(--r),
-    rgb(255 157 54 / 0.5) calc(var(--r) + 34px),
-    rgb(255 120 40 / 0.14) calc(var(--r) + 120px),
-    transparent calc(var(--r) + 260px)
+    ellipse 130vmax 95vmax at var(--sun-x, 50%) var(--sun-y, 50%),
+    #fff4dc 0,
+    #ffd48f 12%,
+    #ff9f5a 26%,
+    #d96a5f 42%,
+    #7a4a72 60%,
+    #27305f 80%,
+    #0f1838 100%
   );
 }
 
-.spark {
+.sun {
   position: absolute;
-  width: 320px;
-  height: 320px;
+  width: min(70vmin, 620px);
+  aspect-ratio: 1;
   opacity: 0;
   pointer-events: none;
-  background: radial-gradient(closest-side, #fff 0, rgb(255 236 214 / 0.9) 14%, rgb(255 170 90 / 0.42) 38%, rgb(255 120 40 / 0.1) 68%, transparent);
+  background: radial-gradient(closest-side, #fff 0, #fffbe9 16%, rgb(255 226 160 / 0.85) 32%, rgb(255 170 90 / 0.35) 60%, transparent);
+}
+
+/* The sky's last step into the page. */
+.wash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: #fff6e9;
 }
 
 .plate {
