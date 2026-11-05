@@ -27,7 +27,7 @@ const DAY = 86_400_000;
  * `planId`: the main plan, Free until another is attached, as Autumn auto-enables it on every new customer. `flags`: the boolean features its plan grants.
  * `seats`: Team seats bought (#862). `next`: the plan it moves to at the renewal. `periodStart`: when its billing period began.
  */
-type Customer = { plan: number; topUp: number; signup: boolean; planId: string; flags?: readonly string[]; seats: number; next?: string; periodStart: number; pastDue?: boolean; invoices?: Array<{ plan_ids?: string[]; status: string; total: number; currency: string; created_at: number; hosted_invoice_url?: string }> };
+type Customer = { plan: number; topUp: number; signup: boolean; planId: string; flags?: readonly string[]; seats: number; next?: string; periodStart: number; pastDue?: boolean; invoices?: Array<{ plan_ids?: string[]; stripe_id?: string; status: string; total: number; currency: string; created_at: number; hosted_invoice_url?: string }> };
 
 export const fakeAutumn = {
   customers: new Map<string, Customer>(),

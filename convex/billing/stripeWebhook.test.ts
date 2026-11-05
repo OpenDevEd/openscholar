@@ -20,8 +20,8 @@ function stripeFetch(state: { refunded: number; userId?: string }) {
       return json({ object: "list", data: [{ invoice: "in_1" }], has_more: false });
     }
     if (url.pathname === "/v1/invoices/in_1/lines") {
-      // Autumn bills a whole bundle as one line.
-      return json({ object: "list", data: [{ amount: 500, quantity: 1, metadata: { autumn_product_id: "top_up" } }], has_more: false });
+      // Autumn bills a whole bundle as one line, and the line doesn't name the plan.
+      return json({ object: "list", data: [{ amount: 500, quantity: 1, metadata: {} }], has_more: false });
     }
     throw new Error(`unexpected Stripe call ${url.pathname}`);
   };
@@ -71,6 +71,7 @@ describe("refunding a top-up", () => {
       return id;
     });
     stripe.userId = userId;
+    fakeAutumn.customer(userId).invoices = [{ plan_ids: ["top_up"], stripe_id: "in_1", status: "paid", total: 5, currency: "usd", created_at: 0 }];
     const refund = () =>
       t.action(internal.billing.stripeWebhook.handleEvent, {
         stripeCustomerId: "cus_1",
@@ -97,5 +98,12 @@ describe("refunding a top-up", () => {
         .collect(),
     );
     expect(logged.map((row) => row.credits)).toEqual([15_000, 1_000]);
+
+    // A refund of anything else leaves the credits alone.
+    fakeAutumn.setBalance(userId, { paid: 7_000 });
+    fakeAutumn.customer(userId).invoices = [{ plan_ids: ["pro"], stripe_id: "in_1", status: "paid", total: 5, currency: "usd", created_at: 0 }];
+    stripe.refunded = 400;
+    await refund();
+    expect(fakeAutumn.balance(userId)).toBe(7_000);
   });
 });
