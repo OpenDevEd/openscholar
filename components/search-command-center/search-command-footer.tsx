@@ -242,8 +242,8 @@ Return a more targeted version of this query.`;
       )}
     >
       {/* Left: Results count */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
           <AnimatedCount
             value={totalCount}
             className="text-lg font-semibold text-foreground"
