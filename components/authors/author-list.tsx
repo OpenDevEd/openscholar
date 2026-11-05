@@ -15,11 +15,13 @@ import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { ExploreSearch, useExploreHeader } from "@/components/topics/explore-header";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { AuthorAvatar } from "./author-avatar";
 import { AuthorInvitations } from "./author-invitations";
+import type { IndexAuthor } from "@/lib/authors/example-authors";
 import { IndexAuthors } from "./index-authors";
 import { AUTHOR_PAGE_SIZE } from "./types";
 import { Opening } from "@/components/workspaces/parts";
@@ -30,7 +32,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "
  * Every author profile, public. "Create author" shows where the workspace's plan makes profiles;
  * `createsBefore` is that as the rail last saw it, until the plan is read. `firstPage` is the list's first page, sent with the page.
  */
-export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; firstPage: FunctionReturnType<typeof api.authors.profiles.list>}) {
+export function AuthorList({createsBefore, firstPage, examples}: {createsBefore: boolean; firstPage: FunctionReturnType<typeof api.authors.profiles.list>; examples: IndexAuthor[]}) {
   const tLabels = useTranslations("authorPages");
   const t = useTranslations("authorPages");
   const router = useWorkspaceRouter();
@@ -56,6 +58,7 @@ export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; 
     : null}</AnimatePresence>}>
     <AuthorInvitations />
     <ExploreSearch label={t("findAuthors")} placeholder={t("authorSearchPlaceholder")} value={search} onChange={value => void setSearch(value || null)} />
+    <AutoHeight>
     {!!profiles.length && <p className="border-t border-border-subtle px-4 pt-4 pb-1 text-xs font-medium text-muted-foreground">{t("authorProfilesLabel")}</p>}
     {!!profiles.length && <ul className="divide-y divide-border-subtle">{profiles.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
       <AuthorAvatar photo={profile.photo} className="me-1 size-10 shrink-0" />
@@ -63,7 +66,8 @@ export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; 
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}
     {more && <div className="flex justify-center border-t border-border-subtle p-3"><Button variant="ghost" size="sm" disabled={early || status === "LoadingMore"} onClick={() => loadMore(AUTHOR_PAGE_SIZE)}>{status === "LoadingMore" && <Spinner />}{t("showMore")}</Button></div>}
-    <IndexAuthors search={search} examples={!profiles.length} profiled={new Set(profiles.map(profile => profile.openalex).filter(Boolean))} />
+    </AutoHeight>
+    <IndexAuthors search={search} examples={profiles.length ? [] : examples} profiled={new Set(profiles.map(profile => profile.openalex).filter(Boolean))} />
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{t("createAuthorProfile")}</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (creating) return; setCreating(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }

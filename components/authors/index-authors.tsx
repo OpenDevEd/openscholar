@@ -1,7 +1,8 @@
 "use client";
 import { useFormatter, useTranslations } from "next-intl";
 import useSWRInfinite from "swr/infinite";
-import { searchIndexAuthors, type IndexAuthor } from "@/app/actions/author-card";
+import { searchIndexAuthors } from "@/app/actions/author-card";
+import type { IndexAuthor } from "@/lib/authors/example-authors";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { ArrowUpRight } from "@/components/icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
@@ -50,28 +51,19 @@ function AuthorRow({ author, showId = true }: { author: IndexAuthor; showId?: bo
   );
 }
 
-// ponytail: mock snapshot of whole-person numbers from our index (2026-11-05). The real build reads these on the server, cached, per source.
-const EXAMPLES: IndexAuthor[] = [
-  { id: "A5015565298", name: "Esther Duflo", institution: "Massachusetts Institute of Technology", country: "US", works: 355, citations: 68230, largest: 274 },
-  { id: "A5035981377", name: "John Allan Hattie", institution: "The University of Melbourne", country: "AU", works: 625, citations: 38570, largest: 584 },
-  { id: "A5075388625", name: "Linda Darling-Hammond", institution: "Learning Policy Institute", country: "US", works: 466, citations: 66007, largest: 408 },
-  { id: "A5067184382", name: "Jennifer Doudna", institution: "University of California, Berkeley", country: "US", works: 694, citations: 104554, largest: 550 },
-  { id: "A5108093963", name: "Geoffrey E. Hinton", institution: "Google (United States)", country: "US", works: 506, citations: 594057, largest: 466 },
-];
-
 /** Real authors under the search box, each opening their page: what a search finds, before anything is typed. */
-function ExampleAuthors() {
+function ExampleAuthors({ authors }: { authors: IndexAuthor[] }) {
   const t = useTranslations("authorPages");
   return (
     <section aria-label={t("authorExamplesLabel")} className="border-t border-border-subtle">
       <p className="px-4 pt-4 pb-1 text-xs font-medium text-muted-foreground">{t("authorExamplesLabel")}</p>
-      <ul className="divide-y divide-border-subtle">{EXAMPLES.map((author) => <AuthorRow key={author.id} author={author} showId={false} />)}</ul>
+      <ul className="divide-y divide-border-subtle">{authors.map((author) => <AuthorRow key={author.id} author={author} showId={false} />)}</ul>
     </section>
   );
 }
 
 /** Authors in the active source that match the search, below the profiles that do. One that has a profile shows there alone. */
-export function IndexAuthors({ search, profiled, examples }: { search: string; profiled: ReadonlySet<string>; examples: boolean }) {
+export function IndexAuthors({ search, profiled, examples }: { search: string; profiled: ReadonlySet<string>; examples: IndexAuthor[] }) {
   const source = useSearchSource();
   const t = useTranslations("authorPages");
   const typed = search.trim();
@@ -95,7 +87,7 @@ export function IndexAuthors({ search, profiled, examples }: { search: string; p
   const answered = !!query && (!!pages.data || !!pages.error);
   return (
     <AutoHeight>
-      {examples && !answered ? <div inert={!!typed} className={cn("transition-opacity duration-200", typed && "opacity-50")}><ExampleAuthors /></div> : query ? (
+      {examples.length && !answered ? <div inert={!!typed} className={cn("transition-opacity duration-200", typed && "opacity-50")}><ExampleAuthors authors={examples} /></div> : query ? (
         <section aria-label={t("authorsIn", { source: SEARCH_SOURCE_NAMES[source] })} className="border-t border-border-subtle">
           <p className="flex items-center gap-2 px-4 pt-4 pb-1 text-xs font-medium text-muted-foreground">
             <SourceIcon className="size-3.5 shrink-0" />

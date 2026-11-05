@@ -4,26 +4,16 @@ import { z } from "zod";
 import { api } from "@/convex/_generated/api";
 import { AUTHOR_IDS_LOOKED_UP } from "@/convex/authors/validators";
 import { isAuthorId } from "@/lib/openalex/author-filter";
-import { pairedRecords, wholePerson } from "@/lib/openalex/whole-person";
+import { authorPageSchema, authorRecordSchema, readPairedRecords } from "@/lib/openalex/author-record";
+import { wholePerson } from "@/lib/openalex/whole-person";
 import { openAlexFetch } from "@/lib/openalex/fetch";
 import { searchUrl } from "@/lib/openalex/request-url";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
+import type { IndexAuthor } from "@/lib/authors/example-authors";
 import { chosenSource } from "@/lib/search/active-source";
 import { sourceForId, type SearchSource } from "@/lib/search/source";
 
 const lastPart = (id: string) => id.split("/").at(-1)!;
-
-const authorSchema = z.object({
-  id: z.string(),
-  display_name: z.string(),
-  orcid: z.string().nullish(),
-  works_count: z.number().nullish(),
-  cited_by_count: z.number().nullish(),
-  summary_stats: z.object({ h_index: z.number().nullish() }).nullish(),
-  ids: z.object({ openalex: z.string().nullish() }).nullish(),
-  last_known_institutions: z.array(z.object({ id: z.string().nullish(), display_name: z.string().nullish(), country_code: z.string().nullish() })).nullish(),
-  topics: z.array(z.object({ id: z.string(), display_name: z.string(), count: z.number().nullish() })).nullish(),
-});
 
 export type AuthorCard = {
   id: string;
@@ -43,13 +33,6 @@ export type AuthorCard = {
   profileId: string | null;
 };
 
-/** Every record our index pairs with an OpenAlex author: the one person, split. */
-async function readPairedRecords(id: string) {
-  const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "200" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
-  if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  return pairedRecords(id, indexPageSchema.parse(await response.json()).results);
-}
-
 /** How many of an author's topics a card lists. */
 const TOP_TOPICS = 3;
 
@@ -64,7 +47,7 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   // The source doesn't know them, which a page says differently from a read that failed.
   if (records?.length === 0 || response?.status === 404) return null;
   if (response && !response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  const record = records ? wholePerson(records) : authorSchema.parse(await response!.json());
+  const record = records ? wholePerson(records) : authorRecordSchema.parse(await response!.json());
   const paired = record.ids?.openalex ? lastPart(record.ids.openalex) : null;
   // The others split from this person, whichever of them this page opened from, and whichever source is on: a profile may hold any of them. The card stands without them.
   const pairedId = id.startsWith("A") ? id : paired;
@@ -96,9 +79,6 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   } satisfies AuthorCard;
 }
 
-export type IndexAuthor = { id: string; name: string; institution: string | null; country: string | null; works: number; citations: number; largest: number };
-
-const indexPageSchema = z.object({ meta: z.object({ count: z.number().nullish() }).nullish(), results: z.array(authorSchema) });
 const INDEX_PAGE = 25;
 
 /**
@@ -124,7 +104,7 @@ export async function searchIndexAuthors(search: string, page: number, given?: S
   if (limited) return limited;
   const response = await openAlexFetch(searchUrl(source, "authors", { search: query, "per-page": String(INDEX_PAGE), page: String(page) }), { timeoutMs: 12_000 } as RequestInit & { timeoutMs: number });
   if (!response.ok) throw new Error(`Author search returned ${response.status}`);
-  const body = indexPageSchema.parse(await response.json());
+  const body = authorPageSchema.parse(await response.json());
   const people = new Map<string, IndexAuthor>();
   for (const author of body.results) {
     const id = lastPart(author.ids?.openalex ?? author.id);

@@ -24,7 +24,7 @@ export function useExploreHeader(list: "topics" | "authors") {
 
 /** The search at the top of an Explore card: what the page is for, so it takes the card's whole width. */
 export function ExploreSearch({ label, placeholder, value, onChange, maxLength }: { label: string; placeholder: string; value: string; onChange: (value: string) => void; maxLength?: number }) {
-  const t = useTranslations("topics");
+  const t = useTranslations("libraryPage");
   const input = useRef<HTMLInputElement>(null);
   return (
     <div className="relative m-4">
