@@ -142,13 +142,8 @@ describe("Screen all with our own index as the active source", () => {
     }
     // What decides a paper's ID has to be read back even when the job asks for fewer fields.
     expect(asked.find(({ url }) => url.searchParams.get("per-page") === "200")?.url.searchParams.get("select")?.split(",")).toContain("ids");
-    const { results, limits } = await t.run(async (ctx) => ({
-      results: await ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3),
-      limits: await ctx.db.query("rateLimits").collect(),
-    }));
+    const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3));
     expect(results.map((result) => result.paperKey).sort()).toEqual(["openalex:W7", "openscholar:OS2"]);
-    expect(limits.find((row) => row.name === "openscholar-day")).toBeDefined();
-    expect(limits.find((row) => row.name === "openalex-day")).toBeUndefined();
   });
 });
 
@@ -497,7 +492,7 @@ describe("counting OpenAlex requests from an action", () => {
     await vi.runAllTimersAsync();
     expect(await spending).toBe(true);
     expect(runMutation).toHaveBeenCalledTimes(3);
-    expect(runMutation.mock.calls[2][1]).toEqual({ clerkId: "clerk_1", count: 3, source: "openalex" });
+    expect(runMutation.mock.calls[2][1]).toEqual({ clerkId: "clerk_1", count: 3 });
     // An allowance that's used up is an answer, not a collision.
     expect(await spender({ runMutation: vi.fn().mockResolvedValue(false) } as never, "clerk_1")(1)).toBe(false);
     // Any other failure is the caller's to hear about, at once.

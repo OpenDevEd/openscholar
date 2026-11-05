@@ -120,7 +120,7 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
     const found: Work[] = [];
     for (let from = 0; from < ids.length; from += IDS_A_REQUEST) {
       const some = ids.slice(from, from + IDS_A_REQUEST);
-      found.push(...(await readSearchWorks<Work>({ filter: `openalex:${some.join("|")}`, sort: "cited_by_count:desc", source }, { first: 1, last: some.length, select: SCREENING_FIELDS }, spender(ctx, clerkId, source))));
+      found.push(...(await readSearchWorks<Work>({ filter: `openalex:${some.join("|")}`, sort: "cited_by_count:desc", source }, { first: 1, last: some.length, select: SCREENING_FIELDS }, spender(ctx, clerkId))));
     }
     return [...found.map(toPaper), ...saved];
   }
@@ -138,7 +138,7 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
     const request = found.request;
     const rating = found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined;
     papers = await readPieces(first, last, enough, async (from, to, resume) => {
-      const { works, ended, resume: next } = await readSearchRun<Work>(request, { first: from, last: to, select: SCREENING_FIELDS, resume, goesOn: true }, spender(ctx, found.clerkId, request.source));
+      const { works, ended, resume: next } = await readSearchRun<Work>(request, { first: from, last: to, select: SCREENING_FIELDS, resume, goesOn: true }, spender(ctx, found.clerkId));
       return { papers: await keptByRating(ctx, userId, works.map(toPaper), rating), taken: works.length, ended, ...(next ? { resume: next } : {}) };
     });
   } else if (set.kind === "search") {

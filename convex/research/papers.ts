@@ -87,7 +87,7 @@ export const countAction = defineUserAction({
     if (!found.request) throw createError("VALIDATION_ERROR", "This query isn't one OpenAlex can read. Check its brackets and quotes.");
     // Which papers a person rated is theirs, not OpenAlex's, so it can't count them.
     if (found.ratingRange) throw createError("VALIDATION_ERROR", "Papers kept by the person's ratings can't be counted this way. Leave `ratedOnly`, `minRating` and `maxRating` out.");
-    const spend = spender(ctx, found.clerkId, found.request?.source);
+    const spend = spender(ctx, found.clerkId);
     if (!by) return { total: await countSearch(found.request, spend) };
     const { total, groups } = await groupSearch(found.request, GROUPINGS[by], spend);
     // Years read in order, and the latest are the ones asked about; anything else, largest first, as OpenAlex returns them.
@@ -136,7 +136,7 @@ export const getAction = defineUserAction({
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
     const source = sourceForId(path, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, spender(ctx, clerkId, source), source);
+    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, spender(ctx, clerkId), source);
     if (!work) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     const paper = toPaper(work);
     const authors = (work.authorships ?? []).flatMap(({ author, institutions }) => {
@@ -210,7 +210,7 @@ export const readPdfAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const source = sourceForId(path, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const work = await readWork<Work>(path, "id,display_name,title,doi,best_oa_location,primary_location,has_content", spender(ctx, person.clerkId, source), source);
+    const work = await readWork<Work>(path, "id,display_name,title,doi,best_oa_location,primary_location,has_content", spender(ctx, person.clerkId), source);
     if (!work) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     const { paper, title, pdfUrl } = toPaper(work);
     const openalexId = paperIdOf(paper);

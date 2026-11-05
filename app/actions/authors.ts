@@ -25,7 +25,7 @@ export async function searchProfileAuthors(search: string) {
   const query = search.trim().slice(0, 200).replace(/^https:\/\/(?:openalex\.org|openscholar\.ai)\//, "");
   if (!query) return [];
   const source = await activeSearchSource();
-  const limited = await spendOpenAlexRequests(lookupRequests("authors") + 1, source);
+  const limited = await spendOpenAlexRequests(lookupRequests("authors") + 1);
   if (limited) return limited;
   const authors = await searchOpenAlex("authors", query, source);
   const topics = authors.length ? await readOpenAlexAuthorTopics(authors.map(author => author.id), source) : {};
@@ -37,7 +37,7 @@ const AUTHOR_ID = /^(?:A|OSA)\d+$/;
 export async function readProfileAuthor(id: string) {
   if (!AUTHOR_ID.test(id)) throw new Error("Invalid author");
   const source = sourceForId(id, await activeSearchSource());
-  const limited = await spendOpenAlexRequests(2, source);
+  const limited = await spendOpenAlexRequests(2);
   if (limited) return limited;
   if (source === "openscholar") {
     const [author, works] = await Promise.all([readOpenAlexAuthor(id, source), fetchOwnWorks({filter: {authorships: {author: {id}}}}, {perPage: 2})]);
@@ -53,7 +53,7 @@ export async function readProfileAuthor(id: string) {
 export async function readProfileAuthorWorks(id: string, page: number) {
   if (!AUTHOR_ID.test(id) || !Number.isInteger(page) || page < 1 || page > 1000) throw new Error("Invalid author page");
   const source = sourceForId(id, await activeSearchSource());
-  const limited = await spendOpenAlexRequests(1, source);
+  const limited = await spendOpenAlexRequests();
   if (limited) return limited;
   const sortBy = {field: "publication_date", order: "desc"} as const;
   const goals = z.array(z.object({id: z.string(), display_name: z.string(), score: z.number()})).optional();

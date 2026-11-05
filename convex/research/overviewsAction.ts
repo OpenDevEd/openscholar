@@ -68,7 +68,7 @@ export const run = internalAction({
         held = await reserveCredits(ctx, { userId, workspaceId, chargeId, credits: estimateCredits(pricing, CALL_TOKENS.overview) });
         if (!held) throw new Error("Not enough credits for an overview");
       }
-      const spend = spender(ctx, start.clerkId, request.source);
+      const spend = spender(ctx, start.clerkId);
       let counts = 0;
       let lists = 0;
       const years = z.object({ from: z.number().int().optional(), to: z.number().int().optional() }).optional().describe("Only papers published in these years, both included.");

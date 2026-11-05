@@ -34,7 +34,7 @@ export const findAction = defineUserAction({
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
     const source = await ctx.runQuery(internal.featureFlags.internal.searchSource, {});
-    const matches = await autocomplete(ENTITIES[kind], text.trim(), spender(ctx, clerkId, source), source);
+    const matches = await autocomplete(ENTITIES[kind], text.trim(), spender(ctx, clerkId), source);
     return { matches: matches.slice(0, LOOKUP_MAX) };
   },
 });
@@ -72,7 +72,7 @@ export const namesAction = defineUserAction({
       const groups = Object.entries(records) as Array<[keyof typeof BY_LETTER, string[]]>;
       // One request a kind, all counted before the first is made: past the allowance, none is.
       const source = asked.some(isOwnId) ? "openscholar" : await ctx.runQuery(internal.featureFlags.internal.searchSource, {});
-      if (!(await spender(ctx, person.clerkId, source)(groups.length))) throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
+      if (!(await spender(ctx, person.clerkId)(groups.length))) throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
       for (const [letter, group] of groups) named.push(...(await readNames(BY_LETTER[letter], group, async () => true, source)));
     }
     return named;

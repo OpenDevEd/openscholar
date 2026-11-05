@@ -38,7 +38,7 @@ export const citeAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const source = sourceForId(work, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const paper = await readWork<PaperResult>(work, CITED, spender(ctx, person.clerkId, source), source);
+    const paper = await readWork<PaperResult>(work, CITED, spender(ctx, person.clerkId), source);
     if (!paper) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     const data = paperToCitationData(paper);
     if (!data) throw createError("VALIDATION_ERROR", "This paper has no title, so it can't be cited.");

@@ -42,7 +42,7 @@ export const getAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const source = sourceForId(asked, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const author = await readAuthor<OpenAlexAuthor>(asked, "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,topics", spender(ctx, person.clerkId, source), source);
+    const author = await readAuthor<OpenAlexAuthor>(asked, "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions,topics", spender(ctx, person.clerkId), source);
     if (!author) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no author by that ID.`);
     const name = author.display_name?.trim() || asked;
     return {

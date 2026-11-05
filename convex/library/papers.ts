@@ -50,7 +50,7 @@ export const saveAction = defineUserAction({
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const source = sourceForId(openalexId, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId, source), source);
+    const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId), source);
     if (!read) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     // The record as the results page holds it: the abstract as text, in place of the index OpenAlex sends.
     const { abstract_inverted_index: index, ...rest } = read;

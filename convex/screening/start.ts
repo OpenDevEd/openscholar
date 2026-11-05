@@ -63,7 +63,7 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, workspaceId, searchId: set.searchId });
     snapshot = snapshotOf(found);
-    total = await countSearch(snapshot.request, spender(ctx, found.clerkId, snapshot.request.source));
+    total = await countSearch(snapshot.request, spender(ctx, found.clerkId));
   } else {
     // A set the account doesn't count is read to its end, or to `last`.
     total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, workspaceId, set })) ?? through;

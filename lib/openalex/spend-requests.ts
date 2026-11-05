@@ -2,8 +2,7 @@ import { headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { OPENALEX_REQUEST_LIMITS, OWN_INDEX_REQUEST_LIMITS, RequestLimiter } from "./request-limiter";
-import type { SearchSource } from "../search/source";
+import { OPENALEX_REQUEST_LIMITS, RequestLimiter } from "./request-limiter";
 import { OPENALEX_LIMITED, type OpenAlexLimited } from "./limited";
 
 /** How long a search waits for Convex to count its requests before counting them here instead. */
@@ -22,11 +21,11 @@ async function convexToken(session: Awaited<ReturnType<typeof auth>>) {
 }
 
 /** Whether Convex counted the account's requests: true or false when it answered, null when it couldn't. */
-async function spendInConvex(session: Awaited<ReturnType<typeof auth>>, count: number, source: SearchSource): Promise<boolean | null> {
+async function spendInConvex(session: Awaited<ReturnType<typeof auth>>, count: number): Promise<boolean | null> {
   const timeout = new Promise<null>((resolve) => setTimeout(resolve, CONVEX_COUNT_TIMEOUT_MS, null));
   const counted = (async () => {
     const token = await convexToken(session);
-    return token ? await fetchMutation(api.openalex.limits.spend, { count, source }, { token }) : null;
+    return token ? await fetchMutation(api.openalex.limits.spend, { count }, { token }) : null;
   })().catch((error: unknown) => {
     // Caught here, not around the race, so a call that fails after the timeout is caught too.
     console.error("[openalex] couldn't count requests in Convex", error);
@@ -42,13 +41,12 @@ async function spendInConvex(session: Awaited<ReturnType<typeof auth>>, count: n
  * goes uncounted. Returns the limit answer when they have none left, for the action to
  * return instead of asking OpenAlex.
  */
-export async function spendOpenAlexRequests(count = 1, source: SearchSource = "openalex"): Promise<OpenAlexLimited | null> {
+export async function spendOpenAlexRequests(count = 1): Promise<OpenAlexLimited | null> {
   const session = await auth();
-  const limits = source === "openscholar" ? OWN_INDEX_REQUEST_LIMITS : OPENALEX_REQUEST_LIMITS;
   if (session.userId) {
-    const counted = await spendInConvex(session, count, source);
+    const counted = await spendInConvex(session, count);
     if (counted !== null) return counted ? null : OPENALEX_LIMITED;
-    return limiter.take(`${source}:account:${session.userId}`, limits.account, count) ? null : OPENALEX_LIMITED;
+    return limiter.take(`account:${session.userId}`, OPENALEX_REQUEST_LIMITS.account, count) ? null : OPENALEX_LIMITED;
   }
-  return limiter.take(`${source}:visitor:${clientAddress(await headers())}`, limits.visitor, count) ? null : OPENALEX_LIMITED;
+  return limiter.take(`visitor:${clientAddress(await headers())}`, OPENALEX_REQUEST_LIMITS.visitor, count) ? null : OPENALEX_LIMITED;
 }

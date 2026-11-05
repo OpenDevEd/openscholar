@@ -228,7 +228,7 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     const first = start + place.read;
     const last = Math.min(start + wanted - 1, first + SEARCH_STEP - 1);
     if (last < first) return { papers: [], next: onTo(position + 1) };
-    const run = await readSearchRun<unknown>(filters.openAlexQuery, { first, last, select: OPENALEX_WORK_SELECT_FIELDS.join(","), resume: place.resume, goesOn: true }, spender(ctx, clerkId, filters.openAlexQuery.source));
+    const run = await readSearchRun<unknown>(filters.openAlexQuery, { first, last, select: OPENALEX_WORK_SELECT_FIELDS.join(","), resume: place.resume, goesOn: true }, spender(ctx, clerkId));
     const papers = run.works.map((work): SetupPaper => ({ ...mapOpenAlexWorkToPaperData(toOpenAlexWork(work)), sourceType: "history", sourceId: item.sourceRefId }));
     const read = place.read + papers.length;
     return { papers, next: run.ended || !run.resume || read >= wanted ? onTo(position + 1) : { ...place, read, resume: run.resume } };

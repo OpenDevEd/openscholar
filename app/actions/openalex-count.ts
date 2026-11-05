@@ -19,7 +19,7 @@ export async function searchOpenAlexCount(
   onOpenAlex?: boolean,
 ): Promise<{ count: number } | OpenAlexLimited> {
   const source = onOpenAlex ? "openalex" : await activeSearchSource();
-  return (await spendOpenAlexRequests(1, source)) ?? (await fetchOpenAlexCount(query, filters, source));
+  return (await spendOpenAlexRequests()) ?? (await fetchOpenAlexCount(query, filters, source));
 }
 
 /** Counts of a community's approved source queries, in one call. These are what it imports from OpenAlex, so OpenAlex counts them. */

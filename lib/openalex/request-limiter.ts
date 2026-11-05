@@ -11,15 +11,6 @@ export const OPENALEX_REQUEST_LIMITS = {
   account: { perMinute: 300, perDay: 20_000 },
 } as const;
 
-/**
- * The same limits on our index, whose key allows 100,000 credits a day: about 10,000 searches at 10 credits each,
- * for everyone together. A whole day's allowance for one account is a fifth of that.
- */
-export const OWN_INDEX_REQUEST_LIMITS = {
-  visitor: { perMinute: 120, perDay: 200 },
-  account: { perMinute: 300, perDay: 2_000 },
-} as const;
-
 export type RequestLimit = { perMinute: number; perDay: number };
 
 const MINUTE = 60_000;

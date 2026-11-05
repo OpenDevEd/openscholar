@@ -9,12 +9,12 @@ import { spendOpenAlexRequests } from "../lib/rateLimit";
  * limit instead of asking OpenAlex.
  */
 export const spend = mutation({
-  args: { count: v.number(), source: v.optional(v.union(v.literal("openalex"), v.literal("openscholar"))) },
+  args: { count: v.number() },
   returns: v.boolean(),
-  handler: async (ctx, { count, source }) => {
+  handler: async (ctx, { count }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw createError("UNAUTHENTICATED", "Sign in to search");
     if (!Number.isInteger(count) || count < 1 || count > 1_000) throw createError("VALIDATION_ERROR", "Count whole requests, from 1 to 1,000");
-    return await spendOpenAlexRequests(ctx, identity.subject, count, source);
+    return await spendOpenAlexRequests(ctx, identity.subject, count);
   },
 });
