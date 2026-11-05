@@ -151,8 +151,8 @@ A community's app, Postgres, search, files and domains stay put. Only its Convex
 
 5. Rebuild what copying rows doesn't, which runs no triggers. All three are safe to run again:
    - `npx convex run migrations/communityMoveCounts:countLibraries`, the workspace's count of communities.
-   - `npx convex run migrations/pagedLibraryVersions:run '{"cursor": null}'`, each community's count of versions.
-   - `npx convex run migrations/communityMoveCounts:rebuildTopics`, what topic pages read. Run it after the last move of a batch: it reads every community's locations.
+   - `npx convex run migrations/pagedLibraryVersions:run '{"reset": true}'`, each community's count of versions.
+   - `npx convex run migrations/communityMoveCounts:rebuildTopics`, what topic pages read. Run it after the last move of a batch: it reads every community's locations. It also corrects each location's group key, which can name a community still on dev.
 
 Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script until `copy-collection.py <export> <collection ID>` has put it on prod, through `migrations/copyCollection`: AIED follows one, 1,611 papers.
 

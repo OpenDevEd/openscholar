@@ -55,8 +55,6 @@ if len(items) != len(links):
 
 owner = user[collection["createdBy"]]
 new_id = call(PROD, "mutation", "migrations/copyCollection:collection", {"row": dict(bare(collection), createdBy=owner)})
-copied[collection_id] = new_id
-json.dump(copied, open(copied_path, "w"))
 pairs = []
 for link in links:
     item = bare(items[link["libraryItemId"]])
@@ -66,4 +64,7 @@ for link in links:
 for at in range(0, len(pairs), BATCH):
     call(PROD, "mutation", "migrations/copyCollection:papers", {"collectionId": new_id, "workspaceId": collection["workspaceId"], "rows": pairs[at : at + BATCH]})
     print(f"  {min(at + BATCH, len(pairs))} of {len(pairs)}", flush=True)
+# Only now: merge-communities.py takes this as the collection being whole.
+copied[collection_id] = new_id
+json.dump(copied, open(copied_path, "w"))
 print(f"copied as {new_id}")

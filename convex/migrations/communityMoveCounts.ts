@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import { listCounts, workspaceLibrariesOf } from "../lib/listCounts";
-import { changeDoiLink, changeGroups, pendingReconciliation } from "../topics/publications";
+import { publicationGroupKey } from "../../lib/topics/identity";
+import { changeDoiLink, changeGroups, linkedDois, pendingReconciliation } from "../topics/publications";
 
 /**
  * What copying a community's rows to prod doesn't keep up to date, because an import runs no triggers
@@ -13,6 +14,8 @@ import { changeDoiLink, changeGroups, pendingReconciliation } from "../topics/pu
  *   npx convex run migrations/communityMoveCounts:rebuildTopics
  */
 const REBUILD_BATCH = 100;
+// A location holds up to 100 topics, each a lookup, and one step may make about 4,000.
+const GROUP_BATCH = 25;
 
 /** Each community into its workspace's total, which the limit on communities reads. */
 export const countLibraries = internalMutation({
@@ -48,22 +51,36 @@ export const clearTopicCounts = internalMutation({
     const links = await ctx.db.query("topicOpenAlexDois").take(REBUILD_BATCH * 5);
     for (const row of links) await ctx.db.delete("topicOpenAlexDois", row._id);
     if (groups.length + links.length > 0) await ctx.scheduler.runAfter(0, internal.migrations.communityMoveCounts.clearTopicCounts, {});
-    else await ctx.scheduler.runAfter(0, internal.migrations.communityMoveCounts.countTopics, { cursor: null });
+    else await ctx.scheduler.runAfter(0, internal.migrations.communityMoveCounts.countTopicLinks, { cursor: null });
     return null;
   },
 });
 
-export const countTopics = internalMutation({
+/** DOI links come first: a location's group key depends on them, and a key can name a community still on dev. */
+export const countTopicLinks = internalMutation({
   args: { cursor: v.union(v.string(), v.null()) },
   returns: v.null(),
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("topicLocations").paginate({ cursor, numItems: REBUILD_BATCH });
+    for (const row of page.page) await changeDoiLink(ctx, row, 1);
+    if (page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.communityMoveCounts.countTopicGroups, { cursor: null });
+    else await ctx.scheduler.runAfter(0, internal.migrations.communityMoveCounts.countTopicLinks, { cursor: page.continueCursor });
+    return null;
+  },
+});
+
+export const countTopicGroups = internalMutation({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("topicLocations").paginate({ cursor, numItems: GROUP_BATCH });
     for (const row of page.page) {
-      await changeDoiLink(ctx, row, 1);
-      await changeGroups(ctx, row, 1);
+      const groupKey = publicationGroupKey(row.libraryId, row.itemKey, row.doi, row.openalexId, await linkedDois(ctx, row.openalexId));
+      if (groupKey !== row.groupKey) await ctx.db.patch("topicLocations", row._id, { groupKey });
+      await changeGroups(ctx, { ...row, groupKey }, 1);
     }
     if (page.isDone) await pendingReconciliation(ctx, -1);
-    else await ctx.scheduler.runAfter(0, internal.migrations.communityMoveCounts.countTopics, { cursor: page.continueCursor });
+    else await ctx.scheduler.runAfter(0, internal.migrations.communityMoveCounts.countTopicGroups, { cursor: page.continueCursor });
     return null;
   },
 });

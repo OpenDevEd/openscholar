@@ -16,7 +16,7 @@ import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
 import { authenticate } from "./auth";
 
 type Location = Doc<"topicLocations">;
-async function linkedDois(ctx: Pick<QueryCtx, "db">, id: string | null) {
+export async function linkedDois(ctx: Pick<QueryCtx, "db">, id: string | null) {
   if (!id) return [];
   return (await ctx.db.query("topicOpenAlexDois").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", id)).take(2)).map(row => row.doi);
 }
