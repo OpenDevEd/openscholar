@@ -17,6 +17,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Users } from "@/components/icons";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
+import { trackOverview } from "@/lib/posthog-overview";
 
 export type Lens = Infer<typeof overviewLensValidator>;
 type Scope = { accountId: string; workspaceId: Id<"workspaces"> };
@@ -49,6 +50,7 @@ function LensForm({ scope, lens, done }: { scope: Scope; lens: Lens | null; done
         setSaving(true);
         try {
           await save({ ...scope, ...(lens ? { id: lens.id } : {}), name, instruction, shared });
+          trackOverview("overview_lens_saved", { shared, edited: Boolean(lens) });
           done();
         } catch (error) {
           toast.error(lens ? t("editTitle") : t("newTitle"), getErrorMessage(error, ""));

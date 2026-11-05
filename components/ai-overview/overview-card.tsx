@@ -35,13 +35,18 @@ import { Ring } from "@/components/ui/progress-ring";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useResearchScope } from "@/lib/research/reads";
+import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
+import { BUILT_IN_LENSES, DEFAULT_LENS, SIGNED_OUT_PER_ADDRESS, type BuiltInLens } from "@/convex/research/overviewValidators";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import type { PaperResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { lensCode, trackOverview } from "@/lib/posthog-overview";
 import { useWorkspaceHref } from "@/lib/workspaces/href";
 import { ChangeBars, PaperRows, ShareBars, YearBars } from "./charts";
 import { openCited, useCitedFocus } from "./focus";
 import { LensDialog, type Lens } from "./lens-dialog";
+import { ensureSignedOut, useSignedOutOverviews, utcDay } from "./signed-out";
+import { useTurnstile } from "./turnstile";
 import { blocksOf, citedPapers, plainText, type Block, type Cite } from "./text";
 
 type Scope = { accountId: string; workspaceId: Id<"workspaces"> };
@@ -66,7 +71,10 @@ const thisYear = new Date().getUTCFullYear();
 function subscribeEnsure(convex: ReturnType<typeof useConvex>) {
   return ([, scope, searchId, lens, locale]: [string, Scope, string, string, Locale], { next }: { next: (error?: Error | null, data?: string) => void }) => {
     convex.mutation(api.research.overviews.ensure, { ...scope, searchId, lens, locale }).then(
-      (state) => next(null, state),
+      (state) => {
+        if (state === "started") trackOverview("overview_started", { signed_in: true, lens: lensCode({ id: lens }), trigger: "auto", paid: false });
+        next(null, state);
+      },
       (error: unknown) => next(error instanceof Error ? error : new Error(String(error))),
     );
     return () => {};
@@ -134,6 +142,8 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   const run = async (args: { pay?: boolean; again?: boolean }) => {
     try {
       const state = await ensure({ ...scope, searchId, lens: lens.id, locale, ...args });
+      if (state === "started") trackOverview("overview_started", { signed_in: true, lens: lensCode(lens), trigger: args.again ? "again" : "write", paid: Boolean(args.pay) });
+      if (state === "limit") trackOverview("overview_limit_reached", { signed_in: true, lens: lensCode(lens) });
       if (state === "limit") toast.error(t("label"), t("ask.limit", { count: view.paidPerDay, time: format.dateTime(nextDay(), { hour: "numeric", minute: "2-digit" }) }));
     } catch (error) {
       toast.error(t("label"), getErrorMessage(error, ""));
@@ -150,7 +160,10 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
             <Pills
               label={t("lens")}
               value={lens.id}
-              onChange={(open) => void setView({ ...scope, open })}
+              onChange={(open) => {
+                trackOverview("overview_lens_switched", { signed_in: true, lens: lensCode({ id: open }) });
+                void setView({ ...scope, open });
+              }}
               options={view.lenses.map((one) => ({ id: one.id, label: one.builtIn ? t(`lenses.${one.builtIn}`) : (one.name ?? ""), icon: one.shared ? Users : undefined }))}
             />
           </div>
@@ -168,7 +181,13 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
             </DropdownMenuTrigger>
           </TooltipHint>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem disabled={overview?.status !== "done"} onSelect={() => void navigator.clipboard.writeText(plainText(blocks))}>
+            <DropdownMenuItem
+              disabled={overview?.status !== "done"}
+              onSelect={() => {
+                trackOverview("overview_copied", { signed_in: true, lens: lensCode(lens) });
+                void navigator.clipboard.writeText(plainText(blocks));
+              }}
+            >
               <Copy /> {t("copy")}
             </DropdownMenuItem>
             <DropdownMenuItem disabled={working || !shown?.available || view.collapsed} onSelect={() => void run({ again: true, ...(free ? {} : { pay: true }) })}>
@@ -188,7 +207,13 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
             {lens.id !== "overview" ? (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive" onSelect={() => void removeLens({ ...scope, id: lens.id })}>
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => {
+                    trackOverview("overview_lens_removed", { mine: lens.mine });
+                    void removeLens({ ...scope, id: lens.id });
+                  }}
+                >
                   <Trash2 /> {lens.mine ? t("deleteLens") : t("hideLens")}
                 </DropdownMenuItem>
               </>
@@ -197,7 +222,10 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
         </DropdownMenu>
         {/* One name in both states, so its tooltip doesn't change words as it closes on the click. */}
         <TooltipHint label={t("fold")}>
-          <button type="button" aria-label={t("fold")} aria-expanded={!view.collapsed} onClick={() => void setView({ ...scope, collapsed: !view.collapsed })} className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
+          <button type="button" aria-label={t("fold")} aria-expanded={!view.collapsed} onClick={() => {
+              trackOverview("overview_folded", { signed_in: true, folded: !view.collapsed });
+              void setView({ ...scope, collapsed: !view.collapsed });
+            }} className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
             <ChevronDown className={cn("size-4 transition-transform duration-300", !view.collapsed && "rotate-180")} />
           </button>
         </TooltipHint>
@@ -222,7 +250,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
                 <p className="grid pb-2 text-sm text-muted-foreground">{working ? <WorkingText>{stepText(t, overview?.step)}</WorkingText> : <span>{showing ? <ReadText overview={showing.overview} /> : null}</span>}</p>
                 {showing ? (
                   <div inert={showing.key !== key || showing.overview !== overview} className={cn("transition-opacity duration-300", showing.key !== key && "opacity-40")}>
-                    <Written key={showing.key} blocks={blocks} overview={showing.overview} />
+                    <Written key={showing.key} blocks={blocks} overview={showing.overview} signedIn />
                   </div>
                 ) : (
                   // Lines at the text's own height while nothing is written yet; the first paragraph takes their place.
@@ -315,7 +343,7 @@ function Ask({ view, total, freePlan, paidUsed, onWrite }: { view: View; total: 
   );
 }
 
-function Written({ blocks, overview }: { blocks: Block[]; overview: Overview }) {
+function Written({ blocks, overview, signedIn }: { blocks: Block[]; overview: Overview; signedIn: boolean }) {
   const t = useTranslations("overview.chart");
   const reduce = useReducedMotion();
   const cited = citedPapers(blocks, overview.lists);
@@ -330,12 +358,13 @@ function Written({ blocks, overview }: { blocks: Block[]; overview: Overview }) 
     },
   });
   const works = Array.isArray(records) ? records : null;
-  const open = (index: number) => {
+  const open = (index: number, from: "text" | "list") => {
+    trackOverview("overview_citation_opened", { signed_in: signedIn, from });
     // Until the records are read, a paper opens with what the overview knows of it.
     const papers: PaperResult[] = works?.length === cited.length ? works : cited.map((paper) => ({ id: paperIdOf(toPaperKey(paper.id) ?? paper.id), title: paper.title, display_name: paper.title, publication_year: paper.year, cited_by_count: paper.cited }) as PaperResult);
     openCited(papers, index);
   };
-  const openId = (id: string) => open(cited.findIndex((paper) => paper.id === id));
+  const openId = (id: string) => open(cited.findIndex((paper) => paper.id === id), "text");
   return (
     <div className="space-y-3">
       {blocks.map((block, i) => (
@@ -349,7 +378,7 @@ function Written({ blocks, overview }: { blocks: Block[]; overview: Overview }) 
       ))}
       {overview.status === "done" && cited.length ? (
         <motion.div initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: EASE }}>
-          <PaperRows papers={cited} onOpen={open} />
+          <PaperRows papers={cited} onOpen={(index) => open(index, "list")} />
         </motion.div>
       ) : null}
     </div>
@@ -425,5 +454,149 @@ function CapRing({ left, perDay }: { left: number; perDay: number }) {
         {left}
       </span>
     </TooltipHint>
+  );
+}
+
+/**
+ * The overview for a signed-out visitor (#1070): the built-in lenses, each written as it's shown, within the day's
+ * allowance for their address, after Turnstile says they're a person. Nothing is kept past this tab. New lens, and
+ * Write overview once the day's are used, send them to sign in.
+ */
+export function SignedOutOverview({ params }: { params: string }) {
+  const t = useTranslations("overview");
+  const locale = useLocale() as Locale;
+  const signIn = useSignInRedirect();
+  const { slot, token } = useTurnstile();
+  const [open, setOpen] = useState<BuiltInLens>(DEFAULT_LENS);
+  const [collapsed, setCollapsed] = useState(false);
+  const key = `${params}~${open}~${locale}`;
+  const run = useSignedOutOverviews((state) => state.runs[key]);
+  // The day the visitor ran out ends at midnight UTC, and the allowance comes back.
+  const out = useSignedOutOverviews((state) => state.outOn) === utcDay();
+  const off = useSignedOutOverviews((state) => state.off);
+  const request = { params, lens: open, locale };
+  // An overview nothing has written is started as the card shows it, once.
+  useSWRSubscription(!collapsed && !out && !off && !run ? ["ai-overview-signed-out", key] : null, () => {
+    void ensureSignedOut(key, request, token, "auto");
+    return () => {};
+  });
+  const overview = run && "status" in run ? run : null;
+  const working = !collapsed && !out ? !run || overview?.status === "running" : overview?.status === "running";
+
+  // As for a signed-in person: the last overview written stays, dimmed, until the next one is whole.
+  const [last, setLast] = useState<{ key: string; overview: Overview } | null>(null);
+  if (overview?.status === "done" && last?.key !== key) setLast({ key, overview });
+  const live = overview && overview.status !== "failed" && overview.text && (overview.status === "done" || !last) ? { key, overview } : null;
+  const showing = live ?? (working ? last : null);
+  const blocks = showing ? blocksOf(showing.overview.text) : [];
+  const again = () => void ensureSignedOut(key, request, token, "again");
+  const toSignIn = (from: "new_lens" | "write") => {
+    trackOverview("overview_sign_in_prompted", { from });
+    signIn();
+  };
+
+  if (off) return null;
+  return (
+    <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
+      <header className="@container flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
+        <AiIcon size={18} working={working} className="shrink-0" />
+        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="flex-1">
+          <div className="w-max">
+            <Pills
+              label={t("lens")}
+              value={open}
+              onChange={(lens) => {
+                trackOverview("overview_lens_switched", { signed_in: false, lens });
+                setOpen(lens as BuiltInLens);
+              }}
+              options={BUILT_IN_LENSES.map((lens) => ({ id: lens.id, label: t(`lenses.${lens.id}`) }))}
+            />
+          </div>
+        </FadeRow>
+        <button type="button" aria-label={t("newLens")} onClick={() => toSignIn("new_lens")} className="flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2.5">
+          <Plus className="size-4" />
+          <span className="hidden @lg:inline">{t("newLens")}</span>
+        </button>
+        <DropdownMenu>
+          <TooltipHint label={t("options")}>
+            <DropdownMenuTrigger aria-label={t("options")} className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+          </TooltipHint>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem
+              disabled={overview?.status !== "done"}
+              onSelect={() => {
+                trackOverview("overview_copied", { signed_in: false, lens: open });
+                void navigator.clipboard.writeText(plainText(blocks));
+              }}
+            >
+              <Copy /> {t("copy")}
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={working || out || collapsed || !overview} onSelect={again}>
+              <RefreshCw /> {t("writeAgain")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <TooltipHint label={t("fold")}>
+          <button
+            type="button"
+            aria-label={t("fold")}
+            aria-expanded={!collapsed}
+            onClick={() => {
+              trackOverview("overview_folded", { signed_in: false, folded: !collapsed });
+              setCollapsed(!collapsed);
+            }}
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ChevronDown className={cn("size-4 transition-transform duration-300", !collapsed && "rotate-180")} />
+          </button>
+        </TooltipHint>
+      </header>
+
+      <AutoHeight>
+        {collapsed ? null : (
+          <div className="px-4 pb-4">
+            {/* Turnstile's widget, out of sight unless Cloudflare needs the visitor to click. */}
+            <div ref={slot} />
+            {run && "unavailable" in run ? (
+              <p className="text-sm text-muted-foreground">{t(run.unavailable === "ratings" ? "unavailable.ratings" : "unavailable.oql")}</p>
+            ) : overview?.status === "failed" ? (
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="flex-1">{t(run && "because" in run && run.because === "verify" ? "failed.verify" : "failed.failed")}</span>
+                <Button size="sm" variant="outline" onClick={again}>
+                  <RefreshCw /> {t("tryAgain")}
+                </Button>
+              </div>
+            ) : working || showing ? (
+              <>
+                <p className="grid pb-2 text-sm text-muted-foreground">{working ? <WorkingText>{stepText(t, overview?.step)}</WorkingText> : <span>{showing ? <ReadText overview={showing.overview} /> : null}</span>}</p>
+                {showing ? (
+                  <div inert={showing.key !== key || showing.overview !== overview} className={cn("transition-opacity duration-300", showing.key !== key && "opacity-40")}>
+                    <Written key={showing.key} blocks={blocks} overview={showing.overview} signedIn={false} />
+                  </div>
+                ) : (
+                  <div aria-hidden>
+                    {["w-full", "w-[94%]", "w-3/5"].map((width) => (
+                      <div key={width} className="flex h-[1.5234rem] items-center">
+                        <SkeletonBar className={width} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                {/* A pill as tall as the lens pills above it, as for a signed-in person. */}
+                <Button variant="ai" onClick={() => toSignIn("write")} className="h-9 rounded-full px-4">
+                  {t("ask.write")}
+                </Button>
+                <span className="text-sm text-muted-foreground">{t("ask.signIn", { count: SIGNED_OUT_PER_ADDRESS })}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </AutoHeight>
+    </section>
   );
 }

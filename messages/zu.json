@@ -5016,14 +5016,16 @@
       "back": "Izifinyezo ezimahhala zibuya ngo-{time}",
       "noCredits": "Awusasali amakhredithi",
       "getCredits": "Thola amakhredithi",
-      "limit": "Izifinyezo ezikhokhelwayo ezingu-{count} zanamuhla sezisetshenziwe. Ezinye ngo-{time}"
+      "limit": "Izifinyezo ezikhokhelwayo ezingu-{count} zanamuhla sezisetshenziwe. Ezinye ngo-{time}",
+      "signIn": "Izifinyezo ezimahhala ezingu-{count} zanamuhla sezisetshenziwe. Ngena ukuze uthole ezengeziwe"
     },
     "left": "{left} kwa-{perDay} izifinyezo ezimahhala ezisele namuhla",
     "noneLeft": "Azikho izifinyezo ezimahhala ezisele namuhla. Zibuya ngo-{time}",
     "failed": {
       "credits": "Ayikwanele amakhredithi alesi sifinyezo.",
       "failed": "Isifinyezo asikwazanga ukubhalwa.",
-      "timeout": "Isifinyezo sithathe isikhathi eside kakhulu."
+      "timeout": "Isifinyezo sithathe isikhathi eside kakhulu.",
+      "verify": "Asikwazanga ukuqinisekisa ukuthi ungumuntu."
     },
     "tryAgain": "Zama futhi",
     "unavailable": {

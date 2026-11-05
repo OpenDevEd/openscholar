@@ -5017,14 +5017,16 @@
       "back": "As visões gerais gratuitas voltam às {time}",
       "noCredits": "Sem créditos",
       "getCredits": "Obter créditos",
-      "limit": "As {count} visões gerais pagas de hoje estão usadas. Mais às {time}"
+      "limit": "As {count} visões gerais pagas de hoje estão usadas. Mais às {time}",
+      "signIn": "As {count} visões gerais gratuitas de hoje estão usadas. Entre para ter mais"
     },
     "left": "Restam {left} de {perDay} visões gerais gratuitas hoje",
     "noneLeft": "Não restam visões gerais gratuitas hoje. Voltam às {time}",
     "failed": {
       "credits": "Não havia créditos suficientes para esta visão geral.",
       "failed": "Não foi possível escrever a visão geral.",
-      "timeout": "A visão geral demorou demasiado."
+      "timeout": "A visão geral demorou demasiado.",
+      "verify": "Não conseguimos verificar que você é uma pessoa."
     },
     "tryAgain": "Tentar novamente",
     "unavailable": {

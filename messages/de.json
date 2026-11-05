@@ -5017,14 +5017,16 @@
       "back": "Kostenlose Überblicke wieder ab {time}",
       "noCredits": "Keine Credits mehr",
       "getCredits": "Credits holen",
-      "limit": "Die {count} kostenpflichtigen Überblicke für heute sind verbraucht. Weitere ab {time}"
+      "limit": "Die {count} kostenpflichtigen Überblicke für heute sind verbraucht. Weitere ab {time}",
+      "signIn": "Die {count} kostenlosen Überblicke für heute sind verbraucht. Melde dich an für weitere"
     },
     "left": "{left} von {perDay} kostenlosen Überblicken heute übrig",
     "noneLeft": "Heute sind keine kostenlosen Überblicke mehr übrig. Sie sind wieder ab {time} verfügbar",
     "failed": {
       "credits": "Für diesen Überblick reichten die Credits nicht.",
       "failed": "Der Überblick konnte nicht geschrieben werden.",
-      "timeout": "Der Überblick hat zu lange gedauert."
+      "timeout": "Der Überblick hat zu lange gedauert.",
+      "verify": "Wir konnten nicht prüfen, ob du ein Mensch bist."
     },
     "tryAgain": "Erneut versuchen",
     "unavailable": {
