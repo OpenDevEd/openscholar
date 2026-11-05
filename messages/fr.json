@@ -38,6 +38,7 @@
     "signInCreditsDescription": "Connectez-vous pour utiliser les crédits IA directement depuis Openscholar",
     "highlightSearchTerms": "Surligner les termes de recherche",
     "signOut": "Se déconnecter",
+    "resultWord": "{count, plural, one {résultat} other {résultats}}",
     "results": "Résultats",
     "filters": "Filtres",
     "previous": "Précédent",

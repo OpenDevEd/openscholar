@@ -38,6 +38,7 @@
     "signInCreditsDescription": "Sign in to use credits for AI directly from Openscholar",
     "highlightSearchTerms": "Highlight search terms",
     "signOut": "Sign out",
+    "resultWord": "{count, plural, one {result} other {results}}",
     "results": "Results",
     "filters": "Filters",
     "previous": "Previous",

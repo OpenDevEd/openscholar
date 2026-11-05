@@ -38,6 +38,7 @@
     "signInCreditsDescription": "Ingia ili kutumia krediti za AI moja kwa moja kutoka Openscholar",
     "highlightSearchTerms": "Angazia maneno ya utafutaji",
     "signOut": "Toka",
+    "resultWord": "{count, plural, one {tokeo} other {matokeo}}",
     "results": "Matokeo",
     "filters": "Vichujio",
     "previous": "Iliyotangulia",

@@ -38,6 +38,7 @@
     "signInCreditsDescription": "Melden Sie sich an, um Credits für KI direkt in Openscholar zu nutzen",
     "highlightSearchTerms": "Suchbegriffe hervorheben",
     "signOut": "Abmelden",
+    "resultWord": "{count, plural, one {Ergebnis} other {Ergebnisse}}",
     "results": "Ergebnisse",
     "filters": "Filter",
     "previous": "Zurück",

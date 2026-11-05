@@ -21,7 +21,8 @@ export function QueryVersions({
   total,
   onLoadOlder,
   searchId,
-  readOnly = false,
+  readOnly,
+  similarTo,
 }: {
   /** The newest queries; older ones are read as the list is scrolled to its end. */
   queryHistory: QueryHistoryEntry[];
@@ -29,6 +30,7 @@ export function QueryVersions({
   onLoadOlder?: () => void;
   searchId: string;
   readOnly?: boolean;
+  similarTo?: string[];
 }) {
   const toast = useAppToast();
   const tc = useTranslations("common");
@@ -84,7 +86,7 @@ export function QueryVersions({
                 <QueryText query={entry.query} oql={entry.field === OQL_FIELD} className="block min-w-0 flex-1 py-0.5 text-sm [overflow-wrap:anywhere]" />
                 <EntryAside meta={<time dateTime={entry.timestamp}>{format.relativeTime(new Date(entry.timestamp), now)}</time>} className="h-6">
                   <EntryAction label={tc("copyQuery")} icon={Copy} onClick={() => void copy(entry.query)} {...noTooltipOnFocus} />
-                  {!readOnly && bookmarkable(entry.query, entry.field) && <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} onClick={() => setBookmarking(key)} {...noTooltipOnFocus} />}
+                  {!readOnly && bookmarkable(entry.query, entry.field, similarTo) && <EntryAction label={tc("saveAsBookmark")} icon={BookmarkPlus} onClick={() => setBookmarking(key)} {...noTooltipOnFocus} />}
                   {!readOnly && !current && <EntryAction label={tc("delete")} icon={Trash2} danger onClick={() => removeQueryHistoryEntry(searchId, entry)} {...noTooltipOnFocus} />}
                 </EntryAside>
               </>

@@ -2,7 +2,9 @@
 import { fetchQuery } from "convex/nextjs";
 import { z } from "zod";
 import { api } from "@/convex/_generated/api";
+import { AUTHOR_IDS_LOOKED_UP } from "@/convex/authors/validators";
 import { isAuthorId } from "@/lib/openalex/author-filter";
+import { pairedRecords, wholePerson } from "@/lib/openalex/whole-person";
 import { openAlexFetch } from "@/lib/openalex/fetch";
 import { searchUrl } from "@/lib/openalex/request-url";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
@@ -22,8 +24,6 @@ const authorSchema = z.object({
   last_known_institutions: z.array(z.object({ id: z.string().nullish(), display_name: z.string().nullish(), country_code: z.string().nullish() })).nullish(),
   topics: z.array(z.object({ id: z.string(), display_name: z.string(), count: z.number().nullish() })).nullish(),
 });
-
-type AuthorRecord = z.infer<typeof authorSchema>;
 
 export type AuthorCard = {
   id: string;
@@ -45,29 +45,9 @@ export type AuthorCard = {
 
 /** Every record our index pairs with an OpenAlex author: the one person, split. */
 async function readPairedRecords(id: string) {
-  const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "50" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
+  const response = await openAlexFetch(searchUrl("openscholar", "authors", { filter: `openalex:${id}`, "per-page": "200" }), { timeoutMs: 10_000 } as RequestInit & { timeoutMs: number });
   if (!response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  // The filter also finds records paired with someone else, whose name is close: they aren't this person.
-  return indexPageSchema.parse(await response.json()).results.filter((record) => record.ids?.openalex && lastPart(record.ids.openalex) === id);
-}
-
-/** One person from their records: the largest speaks for them, and their counts and topics are added up. */
-function wholePerson(records: AuthorRecord[]): AuthorRecord {
-  const largest = records.reduce((best, record) => ((record.works_count ?? 0) > (best.works_count ?? 0) ? record : best));
-  const topics = new Map<string, { id: string; display_name: string; count: number }>();
-  for (const topic of records.flatMap((record) => record.topics ?? [])) {
-    const known = topics.get(topic.id);
-    topics.set(topic.id, { id: topic.id, display_name: topic.display_name, count: (known?.count ?? 0) + (topic.count ?? 0) });
-  }
-  return {
-    ...largest,
-    orcid: records.find((record) => record.orcid)?.orcid ?? null,
-    works_count: records.reduce((sum, record) => sum + (record.works_count ?? 0), 0),
-    cited_by_count: records.reduce((sum, record) => sum + (record.cited_by_count ?? 0), 0),
-    // ponytail: the largest record's h-index, a floor for the person's. The true one takes reading their papers' citations together, too much for a hover card.
-    summary_stats: { h_index: Math.max(...records.map((record) => record.summary_stats?.h_index ?? 0)) },
-    topics: [...topics.values()].sort((a, b) => b.count - a.count),
-  };
+  return pairedRecords(id, indexPageSchema.parse(await response.json()).results);
 }
 
 /** How many of an author's topics a card lists. */
@@ -84,16 +64,19 @@ export async function readAuthorCard(id: string, given?: SearchSource) {
   // The source doesn't know them, which a page says differently from a read that failed.
   if (records?.length === 0 || response?.status === 404) return null;
   if (response && !response.ok) throw new Error(`Author ${id} returned ${response.status}`);
-  const author = records ? wholePerson(records) : authorSchema.parse(await response!.json());
-  const institution = author.last_known_institutions?.[0];
-  const paired = author.ids?.openalex ? lastPart(author.ids.openalex) : null;
+  const record = records ? wholePerson(records) : authorSchema.parse(await response!.json());
+  const paired = record.ids?.openalex ? lastPart(record.ids.openalex) : null;
   // The others split from this person, whichever of them this page opened from, and whichever source is on: a profile may hold any of them. The card stands without them.
   const pairedId = id.startsWith("A") ? id : paired;
   const split = records ?? (pairedId && !(await spendOpenAlexRequests()) ? await readPairedRecords(pairedId).catch((error) => {
     console.error("[authors] couldn't read an author's paired records", id, error);
     return [];
   }) : []);
-  const known = [...new Set([id, lastPart(author.id), ...(paired ? [paired] : []), ...split.map((record) => lastPart(record.id))])];
+  // ponytail: a person with more records than a lookup takes is checked by the first of them; none seen tonight has over 50.
+  const known = [...new Set([id, lastPart(record.id), ...(paired ? [paired] : []), ...split.map((one) => lastPart(one.id))])].slice(0, AUTHOR_IDS_LOOKED_UP);
+  // Any of their IDs reads the one person.
+  const author = source === "openscholar" && !records && split.length ? wholePerson(split) : record;
+  const institution = author.last_known_institutions?.[0];
   return {
     id,
     name: author.display_name,

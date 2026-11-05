@@ -38,6 +38,7 @@
     "signInCreditsDescription": "سجّل الدخول لاستخدام الأرصدة في ميزات الذكاء الاصطناعي من Openscholar مباشرةً.",
     "highlightSearchTerms": "تمييز مصطلحات البحث",
     "signOut": "تسجيل الخروج",
+    "resultWord": "{count, plural, one {نتيجة} other {النتائج}}",
     "results": "النتائج",
     "filters": "عوامل التصفية",
     "previous": "السابق",
