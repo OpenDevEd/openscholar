@@ -374,7 +374,7 @@
   "aiSetupGate": {
     "title": "AIで検索を強化する",
     "description": "OpenscholarはAIを使用してクエリの改善、論文のスクリーニング、結果の翻訳を行います。",
-    "signInForCredits": "サインインして無料クレジットを取得",
+    "signInForCredits": "サインインして5万無料クレジットを取得",
     "useOwnApiKey": "自分のAPIキーを使用"
   },
   "aiSettings": {

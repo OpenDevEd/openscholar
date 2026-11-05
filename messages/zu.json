@@ -374,7 +374,7 @@
   "aiSetupGate": {
     "title": "Lungisa i-AI ukuze uthuthukise ukusesha kwakho",
     "description": "I-Openscholar isebenzisa i-AI ukuze icwengisise imibuzo, ihlole amaphepha, futhi ihumushe imiphumela.",
-    "signInForCredits": "Ngena ukuze uthole amakhredithi mahhala",
+    "signInForCredits": "Ngena ukuze uthole amakhredithi angu-50k mahhala",
     "useOwnApiKey": "Sebenzisa ukhiye wakho we-API"
   },
   "aiSettings": {

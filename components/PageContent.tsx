@@ -21,6 +21,7 @@ import { detectSearchMode } from "@/lib/search/detect-mode";
 
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useEnhanceSearchQuery } from "@/lib/ai/client/router";
 import { useAIConfigStore } from "@/lib/store";
 import Image from "next/image";
 import { subtleSpring } from "@/lib/animation-config";
@@ -52,7 +53,9 @@ function PageContent() {
   // AI configuration and research question state
   const { apiKeyMode } = useAIConfigStore();
 
-  const { write: writeQuery, isConfigured: isAIConfigured } = useQuestionToQuery();
+  const { write: writeQuery } = useQuestionToQuery();
+  // Writing a query is free for anyone, so whether to offer sign-in depends on the rest of the AI.
+  const { isConfigured: isAIConfigured } = useEnhanceSearchQuery();
 
   const createSearchFilters = useCreateSearchFilters();
   const searched = useHasSearched();

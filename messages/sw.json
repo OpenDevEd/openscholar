@@ -374,7 +374,7 @@
   "aiSetupGate": {
     "title": "Sanidi AI ili kuboresha utafutaji wako",
     "description": "Openscholar hutumia AI kuboresha maswali, kuchuja makala, na kutafsiri matokeo.",
-    "signInForCredits": "Ingia upate krediti za bure",
+    "signInForCredits": "Ingia upate krediti 50k za bure",
     "useOwnApiKey": "Tumia ufunguo wako wa API"
   },
   "aiSettings": {
