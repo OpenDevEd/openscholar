@@ -5,6 +5,7 @@ import Arrow from "./Arrow.astro";
 import Art from "./Art.astro";
 import Icon from "./Icon.astro";
 import { APP } from "../data/site.mjs";
+import countries from "../data/countries.json";
 const EMAIL = "habari@openscholar.ai";
 // What people write to us about. Each topic asks for what it needs: a project where there is one, a country for the
 // Southern plan, and a message labelled for the topic.
@@ -32,20 +33,27 @@ const faq = [
       <div class="fields">
         <div class="col">
         <div class="stack">
-          <label class="f"><span>Name</span><input name="name" autocomplete="name" required /></label>
-          <label class="f"><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
+          <label class="f"><span class="lh"><span>Name</span><small class="side"><span class="err" id="e-name"></span></small></span><input name="name" autocomplete="name" maxlength="120" required aria-describedby="e-name" /></label>
+          <label class="f"><span class="lh"><span>Email</span><small class="side"><span class="err" id="e-email"></span></small></span><input name="email" type="email" autocomplete="email" maxlength="254" required aria-describedby="e-email" /></label>
         </div>
         <div class="duo">
-          <label class="f"><span><span data-org>Organisation</span> <small>Optional</small></span><input name="org" autocomplete="organization" /></label>
-          <div class="opt off" data-opt="country"><label class="f"><span>Country</span><input name="country" autocomplete="country-name" required disabled /></label></div>
+          <label class="f"><span class="lh"><span><span data-org>Organisation</span> <small class="opt-tag">Optional</small></span><small class="side"><span class="err" id="e-org"></span></small></span><input name="org" autocomplete="organization" maxlength="160" aria-describedby="e-org" /></label>
+          <div class="opt off" data-opt="country"><div class="f"><span class="lh"><label for="country">Country</label><small class="side"><span class="err" id="e-country"></span></small></span>
+            <div class="cbx" data-cbx>
+              <span class="c-mark" aria-hidden="true"><span class="c-globe"><Icon name="globe" size={18} /></span><img class="c-flag" alt="" width="18" height="13" hidden /></span>
+              <input id="country" name="country" role="combobox" aria-expanded="false" aria-controls="country-list" aria-autocomplete="list" autocomplete="off" placeholder="Search countries" required disabled aria-describedby="e-country" />
+              <svg class="c-chev" width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 5 5 5-5" /></svg>
+            </div>
+          </div></div>
         </div>
         </div>
         <div class="col">
-        <div class="opt" data-opt="project"><label class="f"><span data-project-label>{first.project[0]}</span><textarea name="project" rows="4" required placeholder={first.project[1]}></textarea></label></div>
-        <label class="f"><span><span data-msg-label>{first.message[0]}</span> <small data-msg-optional>Optional</small></span><textarea name="message" rows="3" data-msg placeholder=""></textarea></label>
+        <div class="opt" data-opt="project"><label class="f"><span class="lh"><span data-project-label>{first.project[0]}</span><small class="side"><span class="err" id="e-project"></span><span class="count" data-count>0 / 3,000</span></small></span><textarea name="project" rows="4" maxlength="3000" required data-min="20" placeholder={first.project[1]} aria-describedby="e-project"></textarea></label></div>
+        <label class="f"><span class="lh"><span><span data-msg-label>{first.message[0]}</span> <small class="opt-tag" data-msg-optional>Optional</small></span><small class="side"><span class="err" id="e-message"></span><span class="count" data-count>0 / 3,000</span></small></span><textarea name="message" rows="3" maxlength="3000" data-msg placeholder="" aria-describedby="e-message"></textarea></label>
         <div class="send"><button class="btn brand" type="submit">Send message<Arrow /></button><p class="note">Replies come from {EMAIL}</p></div>
         </div>
       </div>
+      <ul id="country-list" class="c-pop" role="listbox" aria-label="Countries" popover="manual">{countries.map(([code, name]) => <li role="option" id={`c-${code}`} data-code={code} aria-selected="false"><img src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`} alt="" width="18" height="13" loading="lazy" />{name}</li>)}<li class="c-none" role="presentation" hidden>No country matches</li></ul>
       <div class="sent" data-sent hidden>
         <svg class="env" viewBox="0 0 220 160" fill="none" aria-hidden="true">
           <defs><linearGradient id="trail" x1="0" x2="1"><stop offset="0" stop-color="#2563eb" stop-opacity="0" /><stop offset=".35" stop-color="#22d3ee" /><stop offset=".6" stop-color="#34d399" /><stop offset=".8" stop-color="#fbbf24" /><stop offset="1" stop-color="#fb7185" /></linearGradient><linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6ea" /><stop offset="1" stop-color="#ffd3a3" /></linearGradient></defs>
@@ -77,15 +85,96 @@ const faq = [
   if (form) {
     const sent = form.querySelector<HTMLElement>("[data-sent]")!;
     const msg = form.querySelector<HTMLTextAreaElement>("[data-msg]")!, project = form.querySelector<HTMLTextAreaElement>("textarea[name=project]")!;
+    const country = form.querySelector<HTMLInputElement>("#country")!, list = form.querySelector<HTMLUListElement>("#country-list")!;
+    const options = [...list.querySelectorAll<HTMLLIElement>("li[data-code]")], none = list.querySelector<HTMLElement>(".c-none")!;
+    // Lower case and without accents, so "cote" finds Côte d'Ivoire.
+    const plain = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+    const byName = new Map(options.map((o) => [plain(o.textContent!), o]));
+    let picked: HTMLLIElement | null = null;
+
     // Measured once with every field open: the message box takes over exactly the space the project field gives up, over the
     // same time, so the column it shares never changes height.
     const projectH = form.querySelector<HTMLElement>("[data-opt=project]")!.offsetHeight, msgH = msg.offsetHeight;
+
+    // Validation. A field says what's wrong in its label row, where its character count sits, so nothing below it moves.
+    // It speaks up once it has been left or the form has been sent, and goes quiet as soon as it's fixed.
+    const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+    const problem = (f: HTMLInputElement | HTMLTextAreaElement) => {
+      if (f.disabled) return "";
+      const v = f.value.trim();
+      if (f === country) return !v ? "Choose a country" : picked && plain(picked.textContent!) === plain(v) ? "" : "Choose one from the list";
+      if (!v) return f.required ? (f.name === "name" ? "Enter your name" : f.name === "email" ? "Enter your email" : "Required") : "";
+      if (f.name === "email" && !EMAIL.test(v)) return "Check this address";
+      const min = Number(f.dataset.min ?? 0);
+      if (v.length < min) return `At least ${min} characters`;
+      return "";
+    };
+    const fields = () => [...form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(".fields input, .fields textarea")];
+    const show = (f: HTMLInputElement | HTMLTextAreaElement) => {
+      const p = problem(f), box = f.closest<HTMLElement>(".f")!;
+      box.classList.toggle("bad", !!p); f.setAttribute("aria-invalid", String(!!p));
+      box.querySelector(".err")!.textContent = p;
+      return !p;
+    };
+    const count = (f: HTMLTextAreaElement) => {
+      const c = f.closest(".f")!.querySelector<HTMLElement>("[data-count]");
+      if (!c) return;
+      c.textContent = `${f.value.length.toLocaleString()} / ${f.maxLength.toLocaleString()}`;
+      c.classList.toggle("near", f.value.length > f.maxLength * .9);
+    };
+    form.addEventListener("focusout", (e) => { const f = e.target as HTMLInputElement; if (f.closest?.(".fields") && f.name && f !== country) { f.dataset.seen = ""; show(f); } });
+    form.addEventListener("input", (e) => { const f = e.target as HTMLInputElement | HTMLTextAreaElement; if (!f.closest?.(".fields")) return; if (f instanceof HTMLTextAreaElement) count(f); if ("seen" in f.dataset) show(f); });
+
+    // The country picker: type to narrow the list, arrows to move, Enter to choose. The list opens in the top layer under the
+    // field, at its width, so the field's folding container never clips it.
+    let active: HTMLLIElement | null = null;
+    const visible = () => options.filter((o) => !o.hidden);
+    const mark = (o: HTMLLIElement | null) => {
+      active?.classList.remove("on"); active = o; o?.classList.add("on");
+      country.setAttribute("aria-activedescendant", o?.id ?? ""); o?.scrollIntoView({ block: "nearest" });
+    };
+    const place = () => { const r = country.getBoundingClientRect(); list.style.left = `${r.left}px`; list.style.top = `${r.bottom + 6}px`; list.style.width = `${r.width}px`; };
+    const open = () => { if (list.matches(":popover-open")) return; place(); list.showPopover(); country.setAttribute("aria-expanded", "true"); };
+    const close = () => { if (!list.matches(":popover-open")) return; list.hidePopover(); country.setAttribute("aria-expanded", "false"); mark(null); };
+    const filter = () => {
+      const q = plain(country.value), starts: HTMLLIElement[] = [], rest: HTMLLIElement[] = [];
+      for (const o of options) { const n = plain(o.textContent!); const hit = !q || n.includes(q); o.hidden = !hit; if (hit) (q && n.startsWith(q) ? starts : rest).push(o); }
+      // Names that start with what was typed come first.
+      for (const o of [...starts, ...rest]) list.insertBefore(o, none);
+      none.hidden = starts.length + rest.length > 0;
+      mark(q ? (starts[0] ?? rest[0] ?? null) : picked);
+    };
+    const choose = (o: HTMLLIElement) => {
+      picked?.setAttribute("aria-selected", "false"); picked = o; o.setAttribute("aria-selected", "true");
+      country.value = o.textContent!; const flag = form.querySelector<HTMLImageElement>(".c-flag")!;
+      flag.src = o.querySelector("img")!.src; flag.hidden = false; form.querySelector<HTMLElement>(".c-globe")!.hidden = true;
+      close(); country.dataset.seen = ""; show(country);
+    };
+    const unpick = () => { picked?.setAttribute("aria-selected", "false"); picked = null; form.querySelector<HTMLImageElement>(".c-flag")!.hidden = true; form.querySelector<HTMLElement>(".c-globe")!.hidden = false; };
+    country.addEventListener("focus", () => { filter(); open(); });
+    country.addEventListener("click", () => { filter(); open(); });
+    country.addEventListener("input", () => { if (picked && plain(picked.textContent!) !== plain(country.value)) unpick(); filter(); open(); });
+    country.addEventListener("keydown", (e) => {
+      const v = visible(), i = active ? v.indexOf(active) : -1;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); mark(v[Math.max(0, Math.min(v.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))] ?? null); }
+      else if (e.key === "Enter" && list.matches(":popover-open")) { e.preventDefault(); if (active) choose(active); }
+      else if (e.key === "Escape" && list.matches(":popover-open")) { e.preventDefault(); close(); }
+    });
+    // A name typed out in full counts as choosing it.
+    country.addEventListener("blur", () => { close(); const exact = byName.get(plain(country.value)); if (exact && exact !== picked) choose(exact); else if (country.value) { country.dataset.seen = ""; show(country); } });
+    list.addEventListener("mousedown", (e) => e.preventDefault());
+    list.addEventListener("click", (e) => { const o = (e.target as HTMLElement).closest<HTMLLIElement>("li[data-code]"); if (o) choose(o); });
+    list.addEventListener("mousemove", (e) => { const o = (e.target as HTMLElement).closest<HTMLLIElement>("li[data-code]"); if (o && o !== active) mark(o); });
+    addEventListener("scroll", () => { if (list.matches(":popover-open")) place(); }, { passive: true });
+    addEventListener("resize", () => { if (list.matches(":popover-open")) place(); });
+
     const opt = (name: string, on: boolean) => {
       const el = form.querySelector<HTMLElement>(`[data-opt=${name}]`)!;
-      el.classList.toggle("off", !on); el.querySelectorAll<HTMLInputElement>("input, textarea").forEach((f) => { f.disabled = !on; });
+      el.classList.toggle("off", !on);
+      el.querySelectorAll<HTMLInputElement>("input, textarea").forEach((f) => { f.disabled = !on; if (!on) { f.closest(".f")!.classList.remove("bad"); f.removeAttribute("aria-invalid"); } });
     };
     // The fields ask what the chosen topic needs.
-    const place = () => {
+    const topic = () => {
       const on = form.querySelector<HTMLInputElement>("input[name=topic]:checked")!.closest<HTMLElement>(".tile")!;
       const t = JSON.parse(on.dataset.topic!);
       opt("project", !!t.project); opt("country", t.country);
@@ -95,19 +184,26 @@ const faq = [
       form.querySelector("[data-msg-label]")!.textContent = label;
       form.querySelector<HTMLElement>("[data-msg-optional]")!.hidden = !!required;
       msg.required = !!required; msg.placeholder = required ? ask : ""; msg.style.height = `${msgH + (t.project ? 0 : projectH)}px`;
+      if ("seen" in msg.dataset) show(msg);
     };
-    form.addEventListener("change", (e) => { if ((e.target as HTMLInputElement).name === "topic") place(); });
-    place();
+    form.addEventListener("change", (e) => { if ((e.target as HTMLInputElement).name === "topic") topic(); });
+    topic();
+
     // Mock: nothing is sent yet. The envelope seals and flies off, and the form gives way to a thank-you.
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      if (!form.checkValidity()) { form.classList.add("tried"); form.querySelector<HTMLElement>(":invalid")?.focus(); return; }
-      form.querySelector("[data-sent-to]")!.textContent = (form.elements.namedItem("email") as HTMLInputElement).value;
+      const bad = fields().filter((f) => { f.dataset.seen = ""; return !show(f); });
+      if (bad.length) { bad[0].focus(); return; }
+      form.querySelector("[data-sent-to]")!.textContent = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
       form.style.setProperty("--fh", `${form.offsetHeight}px`);
       form.classList.add("done"); sent.hidden = false;
       form.querySelector<HTMLElement>("[data-sent-h]")!.focus({ preventScroll: true });
     });
-    form.querySelector("[data-again]")!.addEventListener("click", () => { form.reset(); form.classList.remove("done", "tried"); sent.hidden = true; place(); form.querySelector<HTMLElement>("input[name=name]")!.focus(); });
+    form.querySelector("[data-again]")!.addEventListener("click", () => {
+      form.reset(); unpick(); form.classList.remove("done"); sent.hidden = true;
+      fields().forEach((f) => { delete f.dataset.seen; f.closest(".f")!.classList.remove("bad"); f.removeAttribute("aria-invalid"); if (f instanceof HTMLTextAreaElement) count(f); });
+      topic(); form.querySelector<HTMLElement>("input[name=name]")!.focus();
+    });
   }
   const copy = document.querySelector<HTMLButtonElement>("[data-copy]");
   copy?.addEventListener("click", async () => { await navigator.clipboard.writeText(copy.dataset.copy!); copy.classList.add("ok"); setTimeout(() => copy.classList.remove("ok"), 1800); });
@@ -141,12 +237,25 @@ const faq = [
   .duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; transition: grid-template-columns .45s var(--ease), column-gap .45s var(--ease); } .duo:has(> .off) { grid-template-columns: minmax(0, 1fr) minmax(0, 0fr); column-gap: 0; } .duo > .opt { grid-template-rows: auto; min-width: 0; } .duo > .opt > * { white-space: nowrap; }
   /* A field a topic doesn't need folds away; the space it leaves closes as one movement. */
   .opt { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .45s var(--ease), opacity .3s var(--ease); } .opt > * { min-height: 0; overflow: hidden; padding: 2px; margin: -2px; } .col > .opt:not(:first-child) > * > :first-child { margin-top: 14px; } .col > .opt:first-child > * > :last-child { margin-bottom: 14px; } .opt.off { grid-template-rows: 0fr; opacity: 0; }
-  .f { display: grid; gap: 7px; font-size: 14px; font-weight: 500; } .f small { font-weight: 400; color: var(--t3); font-size: 13px; margin-left: 4px; }
+  .f { display: grid; gap: 7px; font-size: 14px; font-weight: 500; min-width: 0; }
   .f input, .f textarea { width: 100%; font: 400 16px/1.45 var(--sans); color: var(--ink); padding: 12px 14px; border: 0; border-radius: 12px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .2s var(--ease), background-color .2s var(--ease), height .45s var(--ease); }
   .f input { height: 48px; } .f textarea { resize: vertical; min-height: 96px; } .f textarea::placeholder { color: var(--t3); }
   .f input:hover, .f textarea:hover { box-shadow: inset 0 0 0 1px var(--line2); }
   .f input:focus, .f textarea:focus { outline: none; background: #fff; box-shadow: inset 0 0 0 1.5px var(--brand-deep), 0 0 0 4px color-mix(in srgb, var(--brand) 22%, transparent); }
-  .tried .f :invalid { box-shadow: inset 0 0 0 1.5px #dc2626; }
+
+  /* Each field's label row: its name on the left; on the right its character count, or what's wrong with it. */
+  .lh { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; height: 20px; line-height: 20px; } .lh > :first-child { white-space: nowrap; } .opt-tag { font-weight: 400; color: var(--t3); font-size: 13px; margin-left: 4px; }
+  .side { display: grid; justify-items: end; align-items: center; min-width: 0; font-size: 13px; font-weight: 400; line-height: 20px; } .side > * { grid-area: 1 / 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; transition: opacity .2s var(--ease); }
+  .count { color: var(--t3); font-variant-numeric: tabular-nums; } .count.near { color: var(--brand-ink); } .err { color: #b91c1c; opacity: 0; } .f.bad .err { opacity: 1; } .f.bad .count { opacity: 0; }
+  .f.bad input, .f.bad textarea, .f.bad input:focus, .f.bad textarea:focus { box-shadow: inset 0 0 0 1.5px #dc2626; } .f.bad input:focus, .f.bad textarea:focus { box-shadow: inset 0 0 0 1.5px #dc2626, 0 0 0 4px rgb(220 38 38 / .14); }
+  /* The country picker: a flag, or a globe until one is chosen, in a slot that never changes size. */
+  .cbx { position: relative; } .cbx input { padding-left: 40px; padding-right: 36px; text-overflow: ellipsis; }
+  .c-mark { position: absolute; left: 14px; top: 50%; translate: 0 -50%; display: grid; place-items: center; width: 18px; height: 18px; color: var(--t3); pointer-events: none; } .c-mark > * { grid-area: 1 / 1; } .c-globe { display: grid; } .c-globe[hidden], .c-flag[hidden] { display: none; } .c-flag { border-radius: 2px; box-shadow: 0 0 0 1px var(--line); }
+  .c-chev { position: absolute; right: 12px; top: 50%; translate: 0 -50%; color: var(--t3); pointer-events: none; transition: rotate .2s var(--ease); } .cbx:has([aria-expanded=true]) .c-chev { rotate: 180deg; }
+  .c-pop { position: fixed; inset: auto; margin: 0; max-height: 280px; overflow: auto; overscroll-behavior: contain; padding: 6px; border: 0; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 24px 48px -16px rgb(7 11 26 / .3); opacity: 0; translate: 0 -4px; transition: opacity .16s var(--ease), translate .2s var(--ease), overlay .2s allow-discrete, display .2s allow-discrete; }
+  .c-pop:popover-open { opacity: 1; translate: 0; } @starting-style { .c-pop:popover-open { opacity: 0; translate: 0 -4px; } }
+  .c-pop li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; font-size: 15px; line-height: 1.3; cursor: pointer; } .c-pop li[hidden] { display: none; } .c-pop li img { flex: none; border-radius: 2px; box-shadow: 0 0 0 1px var(--line); }
+  .c-pop li.on { background: var(--soft); } .c-pop li[aria-selected=true] { font-weight: 500; color: var(--brand-ink); } .c-pop .c-none { color: var(--t3); cursor: default; }
   .send { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; } .note { font-size: 14px; color: var(--t3); }
 
   /* Sent: the form fades back, and the envelope seals low on the left, then rises along a spectrum trail and settles. */
