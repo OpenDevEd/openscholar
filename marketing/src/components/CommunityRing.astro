@@ -2,9 +2,11 @@
 // The real sites of our live communities on one flat strip: one large in the middle, its neighbours cut off by the edges of the window.
 import { COMMUNITIES } from "../data/site.mjs";
 const { eager = true } = Astro.props;
+// Each frame's place from the middle, -HALF to the right end: the last community sits just left of the first.
+const N = COMMUNITIES.length, HALF = Math.floor(N / 2), place = (i) => ((i + N + HALF) % N) - HALF;
 ---
 <nav class="rg" data-rg aria-label="Live Evidence Communities">
-  <div class="stage3d"><ul class="track" data-track>{COMMUNITIES.map((c, i) => <li style={`--d:${((i + 9) % 6) - 3};--c:${c.color}`} class:list={{ on: i === 0 }}><a href={c.url} aria-label={`${c.name}: ${c.text}`}><span class="bar">{c.host}</span><img src={`/img/site-${c.key}.avif`} width="960" height="600" loading={eager && (i < 2 || i === 5) ? "eager" : "lazy"} decoding="async" alt="" /></a></li>)}</ul></div>
+  <div class="stage3d"><ul class="track" data-track>{COMMUNITIES.map((c, i) => <li style={`--d:${place(i)};--c:${c.color}`} class:list={{ on: i === 0 }}><a href={c.url} aria-label={`${c.name}: ${c.text}`}><span class="bar">{c.host}</span><img src={`/img/site-${c.key}.avif`} width="960" height="600" loading={eager && (i < 2 || i === N - 1) ? "eager" : "lazy"} decoding="async" alt="" /></a></li>)}</ul></div>
   <div class="cap" aria-hidden="true">{COMMUNITIES.map((c, i) => <div class:list={["about", { on: i === 0 }]} style={`--c:${c.color}`}><b>{c.name}</b><span>{c.text}</span></div>)}</div>
   <i class="timer" data-timer aria-hidden="true"></i>
 </nav>
@@ -12,9 +14,9 @@ const { eager = true } = Astro.props;
   const root = document.querySelector("[data-rg]");
   if (root) {
     const track = root.querySelector("[data-track]"), items = [...track.children], caps = [...root.querySelectorAll(".about")], timer = root.querySelector("[data-timer]"); let at = 0;
-    const idx = (k) => ((k % items.length) + items.length) % items.length;
+    const idx = (k) => ((k % items.length) + items.length) % items.length, half = Math.floor(items.length / 2), place = (k) => ((k + items.length + half) % items.length) - half;
     // The ring only ever turns the short way round.
-    const go = (n) => { const d = ((n - idx(at) + 9) % 6) - 3; at += d; items.forEach((li, i) => { const next = ((i - n + 9) % 6) - 3, wraps = Math.abs(next - +li.style.getPropertyValue("--d")) > 3; /* A frame going round from one end to the other jumps while it's off screen, instead of flying across the strip. */ if (wraps) li.style.transition = "none"; li.style.setProperty("--d", next); if (wraps) { void li.offsetWidth; li.style.transition = ""; } li.classList.toggle("on", i === n); caps[i].classList.toggle("on", i === n); }); timer.style.animation = "none"; void timer.offsetWidth; timer.style.animation = ""; };
+    const go = (n) => { const d = place(n - idx(at)); at += d; items.forEach((li, i) => { const next = place(i - n), wraps = Math.abs(next - +li.style.getPropertyValue("--d")) > half; /* A frame going round from one end to the other jumps while it's off screen, instead of flying across the strip. */ if (wraps) li.style.transition = "none"; li.style.setProperty("--d", next); if (wraps) { void li.offsetWidth; li.style.transition = ""; } li.classList.toggle("on", i === n); caps[i].classList.toggle("on", i === n); }); timer.style.animation = "none"; void timer.offsetWidth; timer.style.animation = ""; };
     timer.addEventListener("animationend", () => go(idx(at + 1)));
     items.forEach((li, i) => { const a = li.querySelector("a"); a.addEventListener("click", (e) => { if (i !== idx(at)) { e.preventDefault(); root.classList.add("held"); go(i); } }); a.addEventListener("focus", () => { if (i !== idx(at) && a.matches(":focus-visible")) go(i); }); });
     new IntersectionObserver(([en]) => root.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(root);

@@ -7,7 +7,6 @@ export const COMMUNITIES = [
   { key: "wi", name: "Wealth Inequality and Social Mobility", url: "https://wealth-inequality.openscholar.ai", host: "wealth-inequality.openscholar.ai", color: "#34d399", text: "How wealth, assets and income are spread, how advantage passes between generations, and the policies that change them" },
   { key: "eccar", name: "Climate Change Adaptation and Resilience", url: "https://eccar.openscholar.ai", host: "eccar.openscholar.ai", color: "#a3e635", text: "How farms, cities, coasts, health systems and communities adapt to floods, drought, heat and other climate hazards" },
   { key: "tvet", name: "Technical and Vocational Education and Training", url: "https://tvet.openscholar.ai", host: "tvet.openscholar.ai", color: "#fb7185", text: "Vocational schools and colleges, apprenticeships and work-based learning, teachers, and skills for employment" },
-  { key: "aimea", name: "Artificial Intelligence in Measurement and Education", url: "https://aievidencehub.org", host: "aievidencehub.org", color: "#fb923c", text: "Automated scoring, item generation, formative feedback, fairness and the evaluation of language models" },
   { key: "usaid", name: "USAID", url: "https://usaid.openscholar.ai", host: "usaid.openscholar.ai", color: "#fbbf24", text: "Research gathered in one place, to search, read and cite" },
 ];
 export const NAV = [

@@ -43,9 +43,14 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   if (root) {
     const scene = root.querySelector(".space"), cv = scene.querySelector(".earth"), sats = [...scene.querySelectorAll("[data-sat]")], imgs = sats.map((a) => a.querySelector("img")), names = sats.map((a) => a.querySelector("b")), hub = root.querySelector(".hub"), keyed = [...hub.querySelectorAll("[data-k]")], halo = root.querySelector(".halo"), orbs = [...scene.querySelectorAll(".orb")], skies = [...root.querySelectorAll(".stars")], calm = matchMedia("(prefers-reduced-motion: reduce)"), TAU = Math.PI * 2, NS = "http://www.w3.org/2000/svg";
     const backG = scene.querySelector('[data-ring="back"]'), frontG = scene.querySelector('[data-ring="front"]'), grad = scene.querySelector("#spectrum");
-    // A still scene shows all six clear of the planet.
-    const STILL = [-35, 30, 70, 110, 150, 215].map((d) => d * Math.PI / 180), spots = sats.map(() => ({ x: 0, y: 0, hid: false, nudge: 0, dim: 0 }));
-    let W = 0, H = 0, R = 0, cx = 0, cy = 0, rx = 0, ry = 0, tilt = -.1, phase = 1.1, speed = 1, onSat = -1, mouse = null, hold = -1, lit = -1, seen = true, px = 0, py = 0, tx = 0, ty = 0, last = 0, kick = 0, spin = 0, lastY = scrollY, lastDraw = -1e9, dawnAt = 0, orbitAt = 0, waveAt = -1e9, firedT = 0, dead = false, raf = 0;
+    // A still scene shows all five clear of the planet, the first at the front.
+    // The planet starts turned so that Africa faces us as the sun comes up, and turns on from there.
+    const TURN = 48.5;
+    // The satellites hold still until they swing in, and their swing ends with the first community at the front: the orbit's
+    // speed, times the swing's 2.8 s, short of the first's place.
+    const ORBIT_SPEED = .000095, START_PHASE = -Math.PI / 2 - ORBIT_SPEED * 2800;
+    const STILL = [72, 110, 150, 215, -35].map((d) => d * Math.PI / 180), spots = sats.map(() => ({ x: 0, y: 0, hid: false, nudge: 0, dim: 0 }));
+    let W = 0, H = 0, R = 0, cx = 0, cy = 0, rx = 0, ry = 0, tilt = -.1, phase = START_PHASE, speed = 1, onSat = -1, mouse = null, hold = -1, lit = -1, seen = true, px = 0, py = 0, tx = 0, ty = 0, last = 0, kick = 0, spin = 0, lastY = scrollY, lastDraw = -1e9, dawnAt = 0, orbitAt = 0, waveAt = -1e9, firedT = 0, dead = false, raf = 0;
     const arc = (a, b, front) => `M ${-a} 0 A ${a} ${b} 0 0 ${front ? 0 : 1} ${a} 0`;
     // A crescent: a hairline at the far ends of the ring, swelling to its full width across the planet.
     const band = (a, b, t, front) => { const S = front ? 0 : 1; return `M ${-a} 0 A ${a} ${b} 0 0 ${S} ${a} 0 A ${a} ${b - t} 0 0 ${1 - S} ${-a} 0 Z`; };
@@ -149,17 +154,20 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       if (!q || leaving || readying || !ready || calm.matches || (vv && vv.scale > 1.01)) return;
       e.preventDefault();
       readying = true;
+      // From here until the app opens the page can't be scrolled: the hand-over measures the hero and flies the question from
+      // where it is, so a scroll in between would land the app's first frame in the wrong place. Scripts still scroll it.
+      document.documentElement.classList.add("handing");
       // The hero's box takes the question, and its typing demo (AskBar) stands down as it does when the box is clicked.
       if (asking !== form) { const box = form.querySelector("input"); box.value = q; box.dispatchEvent(new Event("focus")); }
       // If anything here fails, the search still goes, as a plain one.
-      keyboardDown(input).then(toTop).then(() => { readying = false; handOver(q); }).catch(() => { readying = false; asking.submit(); });
+      keyboardDown(input).then(toTop).then(() => { readying = false; handOver(q); }).catch(() => { readying = false; document.documentElement.classList.remove("handing"); asking.submit(); });
     });
     const handOver = (q) => {
       const top = root.getBoundingClientRect(), space = scene.getBoundingClientRect(), head = root.querySelector("h1"), input = form.querySelector("input"), words = q.match(/\S+/g), shown = words.length > 30 ? [...words.slice(0, 30), "..."] : words;
       const question = document.createElement("div"); question.className = "handq"; question.ariaHidden = "true"; question.dataset.size = q.length <= 40 ? "large" : q.length <= 90 ? "medium" : "small"; question.style.top = `${head.getBoundingClientRect().top - top.top}px`;
       question.append(...shown.map((w) => { const span = document.createElement("span"); span.textContent = w; return span; })); root.append(question);
       const qTop = Math.round(question.getBoundingClientRect().top);
-      leaving = { at: performance.now(), sent: false, send: () => `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop, (planet ? 18 + spin : Earth.stillTurn).toFixed(3), Date.now(), level, space.left.toFixed(1)].join(",")}` };
+      leaving = { at: performance.now(), sent: false, send: () => `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop, (planet ? TURN + spin : Earth.stillTurn).toFixed(3), Date.now(), level, space.left.toFixed(1)].join(",")}` };
       tx = ty = 0; mouse = null; onSat = -1; setHold(-1); run();
       // What was typed lifts out of the box and grows into the headline, from exactly where it was.
       const first = question.firstElementChild.getBoundingClientRect(), box = input.getBoundingClientRect(), blockRect = question.getBoundingClientRect(), small = parseFloat(getComputedStyle(input).fontSize) / parseFloat(getComputedStyle(question).fontSize), inset = parseFloat(getComputedStyle(question.firstElementChild).paddingLeft);
@@ -176,12 +184,19 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       handed.push({ cancel: () => { question.remove(); cover.remove(); } });
     };
     // Back from the app, the hero is as it was.
-    addEventListener("pageshow", (e) => { readying = false; if (e.persisted && leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } });
+    // Back to the hero as it was: back from the app, or a hand-over whose page never came (stopped, or the network gave up).
+    const restore = () => { readying = false; document.documentElement.classList.remove("handing"); if (leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } };
+    addEventListener("pageshow", (e) => { if (e.persisted) restore(); else { readying = false; document.documentElement.classList.remove("handing"); } });
+    const awaitArrival = () => {
+      window.navigation?.addEventListener("navigateerror", restore, { once: true });
+      // Without the Navigation API there is no word of a stopped load: a page still here after 20 s comes back.
+      setTimeout(() => { if (leaving?.sent && document.visibilityState === "visible") restore(); }, 20000);
+    };
     // The sun comes up: the planet holds as a crescent with its cities lit, then day sweeps across it.
     const clamp01 = (v) => Math.min(1, Math.max(0, v)), LA = [-.72, .5, -.48], LB = [-.7, .62, .3];
     const draw = (now) => {
       if (!ready || !planet) return; lastDraw = now; const k = clamp01((now - dawnAt - 300) / 3200), h = leaving ? clamp01((now - leaving.at) / HAND_MS) : 0, s = h * h * (3 - 2 * h), e0 = calm.matches ? 1 : k * k * (3 - 2 * k), e = e0 + (1 - e0) * s, Lv = LA.map((a, i) => a + (LB[i] - a) * e), Ln = Math.hypot(...Lv), w0 = (now - waveAt) / 1800, w = w0 > 0 && w0 < 1 ? w0 + (1 - w0) * s : w0;
-      planet.draw({ t: 18 + spin, sun: Lv.map((v) => v / Ln), shadow: 1, wave: w > 0 && w < 1 ? w : 0, lift: 40 * (1 - e) });
+      planet.draw({ t: TURN + spin, sun: Lv.map((v) => v / Ln), shadow: 1, wave: w > 0 && w < 1 ? w : 0, lift: 40 * (1 - e) });
     };
     // A spark of light runs round the ring the same way the satellites go: left to right in front, back again behind.
     const comet = (now) => { if (!orbitAt || now - orbitAt < 2200) return; sparkMove(now); };
@@ -194,16 +209,16 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       raf = 0; run();
       const dt = Math.min(64, now - last); last = now; let want = 1;
       if (onSat >= 0 || hold >= 0) want = 0; else if (mouse && spots.some((s) => !s.hid && Math.hypot(s.x - mouse.x, s.y - mouse.y) < 120)) want = .12;
-      speed += ((want === 0 ? 0 : want + kick) - speed) * (1 - Math.exp(-dt / 220)); phase += dt * .000095 * speed;
+      speed += ((want === 0 ? 0 : want + kick) - speed) * (1 - Math.exp(-dt / 220)); if (orbitAt) phase += dt * ORBIT_SPEED * speed;
       if (hold >= 0) { const d = ((((hold * TAU / sats.length - Math.PI / 2 - phase) % TAU) + TAU + Math.PI) % TAU) - Math.PI; phase += d * (1 - Math.exp(-dt / 320)); }
-      kick *= Math.exp(-dt / 400); if (!frozen) spin += dt / 1000 * (1 + kick * .8);
+      kick *= Math.exp(-dt / 400); if (ready && !frozen) spin += dt / 1000 * (1 + kick * .8);
       const moving = Math.abs(tx - px) > .002 || Math.abs(ty - py) > .002, ease = 1 - Math.exp(-dt / 220); px += (tx - px) * ease; py += (ty - py) * ease; if (moving) camera();
       placeSats(orbitAt ? 2.4 * (1 - clamp01((now - orbitAt) / 2800)) ** 4 : 2.4); comet(now);
       // The page settles for a second after the planet first draws, then the frame rate decides its level.
       if (planet && level && !leaving && now - dawnAt > 1000) watch(now, level, 5);
-      const w = (now - waveAt) / 1800; if (leaving || now - dawnAt < 3600 || (!frozen && (now - lastDraw >= 30 || (w > 0 && w < 1)))) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; location.href = leaving.send(); }
+      const w = (now - waveAt) / 1800; if (leaving || now - dawnAt < 3600 || (!frozen && (now - lastDraw >= 30 || (w > 0 && w < 1)))) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; awaitArrival(); location.href = leaving.send(); }
     };
-    // Wrapped text leaves its box wider than the words, so each name's box is set to its words and the gaps between the six come out equal.
+    // Wrapped text leaves its box wider than the words, so each name's box is set to its words and the gaps between them come out equal.
     new ResizeObserver(() => { size(); placeSats(calm.matches || orbitAt ? 0 : 2.4); if (ready) draw(performance.now()); }).observe(scene);
     new IntersectionObserver(([e]) => { seen = e.isIntersecting; last = performance.now(); run(); }).observe(root);
     // Reduced motion turned on mid-visit settles everything into the still scene.
@@ -231,6 +246,8 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   :global(.handq) { position: absolute; left: 0; width: 100vw; z-index: 7; display: flex; flex-wrap: wrap; justify-content: center; padding-inline: max(24px, calc((100vw - 1240px) / 2)); color: #ffe6cf; font-weight: 500; letter-spacing: -.04em; line-height: 1.06; text-align: center; pointer-events: none; font-size: 38px; } :global(.handq[data-size="medium"]) { font-size: 30px; } :global(.handq[data-size="small"]) { font-size: 22px; line-height: 1.2; letter-spacing: -.02em; }
   @media (min-width: 600px) { :global(.handq) { font-size: 56px; } :global(.handq[data-size="medium"]) { font-size: 44px; } :global(.handq[data-size="small"]) { font-size: 30px; } } @media (min-width: 1100px) { :global(.handq) { font-size: 64px; } :global(.handq[data-size="medium"]) { font-size: 52px; } :global(.handq[data-size="small"]) { font-size: 36px; } } @media (min-width: 1400px) { :global(.handq) { font-size: 72px; } }
   :global(.handq span) { display: inline-block; padding-inline: .13em; }
+  /* The scrollbar keeps its room while scrolling is off, so nothing moves sideways. */
+  :global(html.handing) { overflow: hidden; scrollbar-gutter: stable; overscroll-behavior: none; }
   :global(.handcover) { position: fixed; inset: 0; z-index: 40; background: var(--sky); pointer-events: none; animation: arrive 240ms ease-out backwards; }
   .sky { padding: 146px 0 0; background: var(--sky); text-align: center; }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; transition: opacity 1.2s var(--ease); }
@@ -273,11 +290,11 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .hub { position: relative; z-index: 6; }
   .hubline, .band { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
   .hubline { font-size: 16px; color: #c9cfdc; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
-  /* The communities in one rounded glass panel inside the page, six segments. The one whose satellite is at the front glows
+  /* The communities in one rounded glass panel inside the page, one segment each. The one whose satellite is at the front glows
      in its colour with its art behind it, and pointing at one holds its satellite there. */
   .band small { display: block; max-width: 100%; margin-top: 3px; overflow: hidden; font-size: 12px; color: #8f98ae; text-overflow: ellipsis; white-space: nowrap; }
   .band b { font: 500 14px/1.25 var(--sans); text-wrap: balance; transition: color .8s var(--ease); } .band :global(.on) b { color: var(--c); }
-  .band { display: grid; list-style: none; grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 1180px; margin: 22px auto 0; padding: 0; overflow: hidden; border-radius: 22px; background: linear-gradient(rgb(255 255 255 / .06), rgb(255 255 255 / .02)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 24px 60px -30px #000; }
+  .band { display: grid; list-style: none; grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 1180px; margin: 22px auto 0; padding: 0; overflow: hidden; border-radius: 22px; background: linear-gradient(rgb(255 255 255 / .06), rgb(255 255 255 / .02)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 24px 60px -30px #000; }
   .band li + li { box-shadow: inset 1px 0 rgb(255 255 255 / .08); }
   .band a { position: relative; display: grid; align-content: start; justify-items: start; gap: 12px; height: 150px; padding: 18px 18px 0; overflow: hidden; color: #e8ebf2; text-align: left; }
   .band .look { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; opacity: 0; mask-image: linear-gradient(90deg, transparent 15%, #000 85%); transition: opacity .9s var(--ease); }
@@ -285,8 +302,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .band .em, .band span { position: relative; } .band span { display: grid; width: 100%; } .band .em { width: 38px; height: 38px; object-fit: contain; filter: saturate(1.2) drop-shadow(0 0 8px color-mix(in srgb, var(--c) 40%, transparent)); }
   .band :global(li.on) a::before { opacity: 1; } .band :global(li.on) .look { opacity: .38; }
 
-  @media (max-width: 1199px) { .band { grid-template-columns: repeat(3, minmax(0, 1fr)); } .band li:nth-child(4) { box-shadow: none; } .band li:nth-child(n + 4) a { border-top: 1px solid rgb(255 255 255 / .08); } }
-  @media (max-width: 699px) { .band { grid-template-columns: 1fr; } .band li + li { box-shadow: inset 0 1px rgb(255 255 255 / .08); } .band a { grid-template-columns: 38px minmax(0, 1fr); align-items: center; align-content: center; height: 76px; padding: 0 16px; border: 0 !important; } }
+  /* Three over two, the two sharing the full width. */
+  @media (max-width: 1199px) { .band { grid-template-columns: repeat(6, minmax(0, 1fr)); } .band li { grid-column: span 2; } .band li:nth-child(n + 4) { grid-column: span 3; } .band li:nth-child(4) { box-shadow: none; } .band li:nth-child(n + 4) a { border-top: 1px solid rgb(255 255 255 / .08); } }
+  @media (max-width: 699px) { .band { grid-template-columns: 1fr; } .band li, .band li:nth-child(n + 4) { grid-column: auto; } .band li + li { box-shadow: inset 0 1px rgb(255 255 255 / .08); } .band a { grid-template-columns: 38px minmax(0, 1fr); align-items: center; align-content: center; height: 76px; padding: 0 16px; border: 0 !important; } }
 
   /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */
   @media (max-width: 1399px) { .sky { padding-top: 142px; } .space { height: 478px; } } @media (max-width: 1199px) { .sky { padding-top: 136px; } .space { height: 504px; } }
@@ -304,6 +322,6 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   } }
   :global(.away) .stars, :global(.away) .space::before, :global(.away) .halo::before, :global(.away) .halo::after { animation-play-state: paused; }
 
-  /* No scripts or no WebGL: the headline, the box and all six links are the whole hero. If the planet fails later, the art goes and the page keeps its shape. */
+  /* No scripts or no WebGL: the headline, the box and all the community links are the whole hero. If the planet fails later, the art goes and the page keeps its shape. */
   :global(html:not(.has-js)) .sats, :global(html:not(.has-js)) .orb, :global(html:not(.has-js)) .earth, :global(html:not(.has-js)) .space::before, :global(.bare) .sats, :global(.bare) .orb, :global(.bare) .earth, :global(.bare) .space::before { display: none; } :global(html:not(.has-js)) .space { height: 24px; margin-top: 0; } :global(html:not(.has-js)) .plate { height: 100%; object-fit: cover; }
 </style>
