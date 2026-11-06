@@ -12,6 +12,8 @@ export type ErrorCode =
   | "VALIDATION_ERROR"
   | "INVALID_DATA"
   | "CONFLICT"
+  // A service Openscholar calls, such as Clerk, didn't answer
+  | "EXTERNAL_SERVICE_ERROR"
   // AI
   | "AI_UNAUTHENTICATED"
   | "AI_INSUFFICIENT_CREDITS"

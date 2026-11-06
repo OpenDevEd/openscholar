@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import type { Id } from "../_generated/dataModel";
+import { refuseApps } from "../lib/auth";
 
 /**
  * Finalize wallet key creation. Called after approveConnection mutation.
@@ -17,6 +18,7 @@ export const finalizeConnection = action({
     keyPrefix: v.string(),
   }),
   handler: async (ctx, args): Promise<{ rawKey: string; keyPrefix: string }> => {
+    await refuseApps(ctx);
     const user: { _id: Id<"users"> } | null = await ctx.runQuery(internal.users.internal.getCurrentUser);
     if (!user) throw createError("UNAUTHENTICATED", "Sign in required");
 

@@ -21,6 +21,7 @@ import {
 import { readActiveOperations } from "./operations";
 import { requireEvidenceLibraryAccess } from "./access";
 import type { LibraryCredentialSource } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 /**
  * One row per library holds the OpenRouter key. The owner writes it through
@@ -177,6 +178,7 @@ export const removeAiProviderKey = mutation({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const access = await requireEvidenceLibraryAccess(
       ctx,
       args.libraryId,

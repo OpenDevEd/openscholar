@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import { requireInvitationMail, sendInvitationEmail } from "../lib/invitationDelivery";
 import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
+import { refuseApps } from "../lib/auth";
 
 const escape = (text: string) =>
   text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -16,6 +17,7 @@ export const invite = action({
   args: { email: v.string() },
   returns: v.id("admins"),
   handler: async (ctx, { email }): Promise<Id<"admins">> => {
+    await refuseApps(ctx);
     const adminId: Id<"admins"> = await ctx.runMutation(internal.admins.mutations.prepareInvite, { email });
     await deliver(ctx, adminId);
     return adminId;
@@ -26,6 +28,7 @@ export const resend = action({
   args: { adminId: v.id("admins") },
   returns: v.null(),
   handler: async (ctx, { adminId }) => {
+    await refuseApps(ctx);
     await ctx.runMutation(internal.admins.mutations.prepareResend, { adminId });
     await deliver(ctx, adminId);
     return null;

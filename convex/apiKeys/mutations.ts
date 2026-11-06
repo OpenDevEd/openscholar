@@ -1,6 +1,6 @@
 import { mutation, internalMutation } from "../lib/functions";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/auth";
+import { refuseApps, requireAuth } from "../lib/auth";
 import { apiKeyProviderValidator } from "../lib/validators";
 
 /**
@@ -47,6 +47,7 @@ export const remove = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const user = await requireAuth(ctx);
 
     const existing = await ctx.db
@@ -73,6 +74,7 @@ export const markUsed = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const user = await requireAuth(ctx);
 
     const key = await ctx.db

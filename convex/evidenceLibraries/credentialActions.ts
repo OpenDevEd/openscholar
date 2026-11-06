@@ -8,6 +8,7 @@ import { encrypt, getKeyPrefix } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import { generateOpaqueToken } from "../lib/opaqueToken";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { refuseApps } from "../lib/auth";
 
 export const writeCredential = action({
   args: {
@@ -18,6 +19,7 @@ export const writeCredential = action({
   },
   returns: v.id("evidenceLibraryCredentials"),
   handler: async (ctx, args): Promise<Id<"evidenceLibraryCredentials">> => {
+    await refuseApps(ctx);
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
       throw createError(
@@ -51,6 +53,7 @@ export const rotateServiceCredential = action({
     maskedHint: string;
     credentialId: Id<"evidenceLibraryCredentials">;
   }> => {
+    await refuseApps(ctx);
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
       throw createError(

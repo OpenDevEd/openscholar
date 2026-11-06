@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ActionCtx } from "../_generated/server";
 import { optionalPlatformMailService, requireRuntimeEnvironment } from "../evidenceLibraries/runtimeActionConfig";
 import { createError } from "./errors";
+import { requireActionAuth } from "./auth";
 
 export function requireInvitationMail() {
   const mail = optionalPlatformMailService(message => new Error(message));
@@ -24,8 +25,7 @@ export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitat
 }
 
 export async function verifiedInvitationEmails(ctx: ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw createError("UNAUTHENTICATED", "Sign in to respond");
+  const identity = await requireActionAuth(ctx, "Sign in to respond");
   return verifiedEmailsOf(identity.subject);
 }
 

@@ -14,6 +14,7 @@ import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { setSeats, teamSeats, unlessDeclined } from "./seats";
 import { purchasing, unlessPaymentOpen } from "./purchases";
 import { costsMore, findPlan, topUpBundles } from "../../lib/billing/catalog";
+import { refuseApps } from "../lib/auth";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
   const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
@@ -92,6 +93,7 @@ export const choosePlan = action({
   args: { plan: v.string() },
   returns: checkoutResult,
   handler: async (ctx, { plan }): Promise<{ url: string | null }> => {
+    await refuseApps(ctx);
     const user = await requireUser(ctx);
     const catalog = await requireChoosablePlan(ctx, plan);
     const workspaceId = await ownWorkspace(ctx, user);
@@ -112,6 +114,7 @@ export const keepPlan = action({
   args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.null(),
   handler: async (ctx, { workspaceId }): Promise<null> => {
+    await refuseApps(ctx);
     const user = await requireUser(ctx);
     if (workspaceId) await organizationAdminOf(ctx, workspaceId);
     const workspace = workspaceId ?? (await ownWorkspace(ctx, user));
@@ -159,6 +162,7 @@ export const previewPlan = action({
   args: { plan: v.string() },
   returns: previewResult,
   handler: async (ctx, { plan }): Promise<PreviewResult> => {
+    await refuseApps(ctx);
     const user = await requireUser(ctx);
     const catalog = await requireChoosablePlan(ctx, plan);
     const customer = await autumn.customer(user._id, { card: true, plans: true });
@@ -173,6 +177,7 @@ export const buyCredits = action({
   args: { credits: v.number(), workspaceId: v.optional(v.id("workspaces")) },
   returns: checkoutResult,
   handler: async (ctx, { credits, workspaceId }): Promise<{ url: string | null }> => {
+    await refuseApps(ctx);
     const user = await requireUser(ctx);
     const payer = await payerIn(ctx, user, workspaceId);
     const bundles = topUpBundles(await requireCatalog(ctx));
@@ -195,6 +200,7 @@ export const openPortal = action({
   args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.string(),
   handler: async (ctx, { workspaceId }): Promise<string> => {
+    await refuseApps(ctx);
     const user = await requireUser(ctx);
     if (!workspaceId) return (await autumn.portal(user._id, billingUrl())).url;
     const organization = await organizationAdminOf(ctx, workspaceId);
@@ -221,6 +227,7 @@ export const previewTeam = action({
   args: { workspaceId: v.id("workspaces"), seats: v.number() },
   returns: previewResult,
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
+    await refuseApps(ctx);
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
     await requireSeatBilling(ctx);
@@ -243,6 +250,7 @@ export const moveToTeam = action({
   args: { workspaceId: v.id("workspaces"), seats: v.number() },
   returns: checkoutResult,
   handler: async (ctx, { workspaceId, seats }): Promise<{ url: string | null }> => {
+    await refuseApps(ctx);
     await requireUser(ctx);
     const organization = await organizationAdminOf(ctx, workspaceId);
     await requireSeatBilling(ctx);
@@ -262,6 +270,7 @@ export const previewSeats = action({
   args: { workspaceId: v.id("workspaces"), seats: v.number() },
   returns: previewResult,
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
+    await refuseApps(ctx);
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
     await requireSeatBilling(ctx);
@@ -278,6 +287,7 @@ export const changeSeats = action({
   args: { workspaceId: v.id("workspaces"), seats: v.number() },
   returns: checkoutResult,
   handler: async (ctx, { workspaceId, seats }): Promise<{ url: string | null }> => {
+    await refuseApps(ctx);
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
     const url = await setSeats(ctx, workspaceId, seats);
@@ -295,6 +305,7 @@ export const moveToFree = action({
   args: { workspaceId: v.id("workspaces") },
   returns: v.null(),
   handler: async (ctx, { workspaceId }): Promise<null> => {
+    await refuseApps(ctx);
     const user = await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
     // Free has no Evidence Libraries: one left behind couldn't be opened to delete, nor its organization deleted while it's there.

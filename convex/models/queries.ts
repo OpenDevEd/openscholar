@@ -5,6 +5,7 @@ import { effortValidator, modelEffortsValidator, modelParametersValidator } from
 import type { Doc } from "../_generated/dataModel";
 import schema from "../schema";
 import { isVariant, toNativeModelId } from "../../lib/ai/native-model-id";
+import { refuseApps } from "../lib/auth";
 
 const catalogOptionValidator = v.object({
   _id: v.id("models"),
@@ -67,6 +68,7 @@ export const list = query({
   args: { provider: v.optional(v.string()) },
   returns: v.array(schema.doc("models")),
   handler: async (ctx, { provider }) => {
+    await refuseApps(ctx);
     return pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
   },
 });
@@ -79,6 +81,7 @@ export const listCatalogOptions = query({
   args: {},
   returns: v.array(catalogOptionValidator),
   handler: async (ctx) => {
+    await refuseApps(ctx);
     return pickable(await activeModels(ctx).take(MAX_CATALOG_MODELS)).map(catalogOption);
   },
 });
@@ -94,6 +97,7 @@ export const getCatalogOption = query({
   },
   returns: v.union(catalogOptionValidator, v.null()),
   handler: async (ctx, { modelId, provider }) => {
+    await refuseApps(ctx);
     if (provider) {
       const rows = pickable(await activeModels(ctx, provider).take(MAX_CATALOG_MODELS));
       const model = rows.find((row) => !isVariant(row.modelId) && toNativeModelId(row.modelId, provider) === modelId);

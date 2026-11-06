@@ -31,6 +31,7 @@ import {
 } from "./validators";
 import { MAX_LIBRARY_DOMAINS } from "../lib/listCaps";
 import { dnsRecordsValidator, domainRowsValidator } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 /** One library may hold a small, fixed number of custom domains. */
 export const MAX_EVIDENCE_LIBRARY_DOMAINS = MAX_LIBRARY_DOMAINS;
@@ -254,6 +255,7 @@ export const chooseMainAddress = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const access = await requireEvidenceLibraryAccess(
       ctx,
       args.libraryId,
@@ -301,6 +303,7 @@ export const stageMainDomainRemoval = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const access = await requireEvidenceLibraryAccess(
       ctx,
       args.libraryId,

@@ -136,6 +136,34 @@ for (const [id, reason] of [...plumbing, ...manual]) if (reason.trim().length < 
 for (const [id, path] of covered) if (!listed.has(path)) problems.push(`${id}: covered by ${path}, which isn't a registered action.`);
 for (const [id, issue] of pending) if (!/^#\d+$/.test(issue)) problems.push(`${id}: pending needs the issue that will register it, such as "#327".`);
 
+// Developer apps act for people through Convex (convex/developerApps). Every function on the "can't do"
+// list calls refuseApps, and only convex/lib/auth.ts and convex/lib/appCalls.ts read the identity, so
+// every app token is checked. Both are read from the code itself, so a comment doesn't count.
+/** Whether `node` holds a call whose callee is `matches`. */
+function hasCall(node: ts.Node, matches: (callee: ts.Expression) => boolean): boolean {
+  if (ts.isCallExpression(node) && matches(node.expression)) return true;
+  return ts.forEachChild(node, (child) => hasCall(child, matches) || undefined) ?? false;
+}
+const parsed = new Map<string, ts.SourceFile>();
+const sourceOf = (file: string) => parsed.get(file) ?? parsed.set(file, ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true)).get(file)!;
+for (const id of manual.keys()) {
+  const [module, name] = id.split(":");
+  const file = `convex/${module}.ts`;
+  if (!convexModules.includes(file)) continue;
+  const declaration = sourceOf(file)
+    .statements.filter(ts.isVariableStatement)
+    .flatMap((statement) => statement.declarationList.declarations)
+    .find((decl) => ts.isIdentifier(decl.name) && decl.name.text === name);
+  const refuses = declaration?.initializer && hasCall(declaration.initializer, (callee) => ts.isIdentifier(callee) && callee.text === "refuseApps");
+  if (!refuses) problems.push(`${id}: listed as manual, so its handler starts with \`await refuseApps(ctx)\` (convex/lib/auth.ts).`);
+}
+for (const file of convexModules) {
+  if (["convex/lib/auth.ts", "convex/lib/appCalls.ts"].includes(file)) continue;
+  if (hasCall(sourceOf(file), (callee) => ts.isPropertyAccessExpression(callee) && callee.name.text === "getUserIdentity")) {
+    problems.push(`${file}: reads the identity itself (getUserIdentity); use getIdentity, requireAuth or requireActionAuth from convex/lib/auth.ts, which check developer apps' tokens.`);
+  }
+}
+
 // The modules whose records have moved into workspaces (#650): every public function in one acts in a
 // workspace and checks it, a registered action through its wrapper and any other itself, so nothing reaches
 // their records outside the check.

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { getIdentity } from "../lib/auth";
 import { spendOpenAlexRequests } from "../lib/rateLimit";
 
 /**
@@ -12,7 +13,7 @@ export const spend = mutation({
   args: { count: v.number() },
   returns: v.boolean(),
   handler: async (ctx, { count }) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await getIdentity(ctx);
     if (!identity) throw createError("UNAUTHENTICATED", "Sign in to search");
     if (!Number.isInteger(count) || count < 1 || count > 1_000) throw createError("VALIDATION_ERROR", "Count whole requests, from 1 to 1,000");
     return await spendOpenAlexRequests(ctx, identity.subject, count);

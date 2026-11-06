@@ -3,7 +3,7 @@
  */
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser, refuseApps } from "../lib/auth";
 
 /**
  * Get the current user's Zotero connection status.
@@ -22,6 +22,7 @@ export const getConnectionStatus = query({
     })
   ),
   handler: async (ctx) => {
+    await refuseApps(ctx);
     const user = await getCurrentUser(ctx);
     if (!user) {
       return { connected: false as const };

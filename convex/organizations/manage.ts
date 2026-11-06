@@ -14,6 +14,7 @@ import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { FREE_MEMBERS, INVITES_AT_ONCE } from "../../lib/billing/plans";
 import { setSeats } from "../billing/seats";
 import { createError } from "../lib/errors";
+import { refuseApps, requireActionAuth } from "../lib/auth";
 import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, workspaceMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
 import { ORGANIZATION_COLOURS, type OrganizationColour } from "../../lib/workspaces/colours";
@@ -451,8 +452,7 @@ export const confirmJoin = action({
   args: { slug: v.string() },
   returns: v.union(v.null(), v.object({ workspaceId: v.id("workspaces"), slug: v.string() })),
   handler: async (ctx, { slug }): Promise<{ workspaceId: Id<"workspaces">; slug: string } | null> => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw createError("UNAUTHENTICATED", "Sign in to join an organization");
+    const identity = await requireActionAuth(ctx, "Sign in to join an organization");
     const clerkOrganizationId: string | null = await ctx.runQuery(internal.organizations.read.clerkIdOf, { slug });
     if (!clerkOrganizationId) return null;
     const key = clerkSecretKey();
@@ -496,6 +496,7 @@ export const setAiPreset = workspaceMutation({
   args: { preset: presetKeyValidator },
   returns: v.null(),
   handler: async (ctx, { workspaceId, role }, { preset }) => {
+    await refuseApps(ctx);
     if (role !== "admin") throw createError("FORBIDDEN", "Only an admin of the organization changes its AI preset.");
     const organization = await organizationOf(ctx, workspaceId);
     if ((organization.aiPreset ?? DEFAULT_PRESET) !== preset) await ctx.db.patch("organizations", organization._id, { aiPreset: preset });

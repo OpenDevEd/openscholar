@@ -16,6 +16,7 @@ import {
   verifyCrossrefCredentials,
   verifyZenodoCredentials,
 } from "./publicationCredentialVerification";
+import { refuseApps } from "../lib/auth";
 
 function sandboxValue(name: string) {
   const value = process.env[`EL_${name}`]?.trim();
@@ -35,6 +36,7 @@ export const verifyAndSave = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const prepared = await ctx.runQuery(
       internal.evidenceLibraries.publicationProviders.prepare,
       { libraryId: args.libraryId },

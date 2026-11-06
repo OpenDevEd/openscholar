@@ -2,7 +2,7 @@ import { mutation } from "../lib/functions";
 import { v, type Infer } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { analyticsChoiceValidator } from "../lib/validators";
-import { requireAuth } from "../lib/auth";
+import { getIdentity, refuseApps, requireAuth } from "../lib/auth";
 import { createUserWithDefaults, ensureBillingAccount } from "../lib/userCreation";
 import { createError } from "../lib/errors";
 
@@ -13,6 +13,7 @@ export const updateProfile = mutation({
   },
   returns: v.id("users"),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const user = await requireAuth(ctx);
 
     await ctx.db.patch("users", user._id, {
@@ -37,7 +38,7 @@ export const ensureUser = mutation({
   args: { analyticsConsent: v.optional(analyticsChoiceValidator) },
   returns: v.id("users"),
   handler: async (ctx, { analyticsConsent }) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await getIdentity(ctx);
     if (!identity) throw createError("UNAUTHENTICATED", "Authentication required");
 
     const existing = await ctx.db

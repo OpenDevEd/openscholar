@@ -6,6 +6,7 @@ import { authorContentFields } from "./validators";
 import { checkEvidenceLibraryUploadContent } from "../../lib/evidence-libraries/configuration/uploads";
 import { createError } from "../lib/errors";
 import type { Id } from "../_generated/dataModel";
+import { refuseApps } from "../lib/auth";
 
 const savedProfileValidator = v.object({
   ...authorContentFields,
@@ -17,6 +18,7 @@ export const save = action({
   args: {profileId: v.id("authorProfiles"), expectedRevision: v.number(), content: v.object(authorContentFields), photo: v.optional(v.string()), featured: v.optional(v.array(v.id("authorPublications")))},
   returns: savedProfileValidator,
   handler: async (ctx, args): Promise<Infer<typeof savedProfileValidator>> => {
+    await refuseApps(ctx);
     const previous = await ctx.runQuery(internal.authors.profiles.editable, {profileId: args.profileId});
     let photoId: Id<"_storage"> | undefined;
     if (args.photo) {
