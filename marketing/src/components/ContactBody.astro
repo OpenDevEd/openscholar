@@ -27,20 +27,23 @@ const faq = [
     <form class="form" data-contact novalidate>
       <div class="topics" role="radiogroup" aria-labelledby="desk-h">
         <h2 id="desk-h">What can we help with?</h2>
-        <span class="hl" aria-hidden="true"></span>
-        {topics.map((t, i) => <label class="topic" style={`--c:${t.color}`} data-topic={JSON.stringify({ project: t.project ?? null, country: !!t.country, org: t.org ?? "Organisation", message: t.message })}><input type="radio" name="topic" value={t.id} checked={i === 0} /><i><Icon name={t.icon} size={22} /></i><span><b>{t.title}</b><em>{t.text}</em></span><span class="tick" aria-hidden="true"><Icon name="check" size={20} /></span></label>)}
+        <div class="tiles">{topics.map((t, i) => <label class="tile" style={`--c:${t.color}`} data-topic={JSON.stringify({ project: t.project ?? null, country: !!t.country, org: t.org ?? "Organisation", message: t.message })}><input type="radio" name="topic" value={t.id} checked={i === 0} /><span class="em" aria-hidden="true"><img src={`/img/topic-${t.id}.avif`} width="240" height="240" alt="" loading="lazy" decoding="async" /></span><b>{t.title}</b><em>{t.text}</em></label>)}</div>
       </div>
       <div class="fields">
-        <div class="pair">
+        <div class="col">
+        <div class="stack">
           <label class="f"><span>Name</span><input name="name" autocomplete="name" required /></label>
           <label class="f"><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
         </div>
-        <div class="pair">
+        <div class="stack">
           <label class="f"><span><span data-org>Organisation</span> <small>Optional</small></span><input name="org" autocomplete="organization" /></label>
           <div class="opt off" data-opt="country"><label class="f"><span>Country</span><input name="country" autocomplete="country-name" required disabled /></label></div>
         </div>
+        </div>
+        <div class="col">
         <div class="opt" data-opt="project"><label class="f"><span data-project-label>{first.project[0]}</span><textarea name="project" rows="4" required placeholder={first.project[1]}></textarea></label></div>
         <label class="f"><span><span data-msg-label>{first.message[0]}</span> <small data-msg-optional>Optional</small></span><textarea name="message" rows="3" data-msg placeholder=""></textarea></label>
+        </div>
         <div class="send"><button class="btn brand" type="submit">Send message<Arrow /></button><p class="note">Replies come from {EMAIL}</p></div>
       </div>
       <div class="sent" data-sent hidden>
@@ -72,16 +75,15 @@ const faq = [
 <script>
   const form = document.querySelector<HTMLFormElement>("[data-contact]");
   if (form) {
-    const hl = form.querySelector<HTMLElement>(".hl")!, sent = form.querySelector<HTMLElement>("[data-sent]")!;
+    const sent = form.querySelector<HTMLElement>("[data-sent]")!;
     const msg = form.querySelector<HTMLTextAreaElement>("[data-msg]")!, project = form.querySelector<HTMLTextAreaElement>("textarea[name=project]")!;
     const opt = (name: string, on: boolean) => {
       const el = form.querySelector<HTMLElement>(`[data-opt=${name}]`)!;
       el.classList.toggle("off", !on); el.querySelectorAll<HTMLInputElement>("input, textarea").forEach((f) => { f.disabled = !on; });
     };
-    // The highlight slides to the chosen topic, and the fields below ask what that topic needs.
+    // The fields ask what the chosen topic needs.
     const place = () => {
-      const on = form.querySelector<HTMLInputElement>("input[name=topic]:checked")!.closest<HTMLElement>(".topic")!;
-      hl.style.setProperty("--hy", `${on.offsetTop}px`); hl.style.setProperty("--hh", `${on.offsetHeight}px`); hl.style.setProperty("--hc", on.style.getPropertyValue("--c"));
+      const on = form.querySelector<HTMLInputElement>("input[name=topic]:checked")!.closest<HTMLElement>(".tile")!;
       const t = JSON.parse(on.dataset.topic!);
       opt("project", !!t.project); opt("country", t.country);
       if (t.project) { form.querySelector("[data-project-label]")!.textContent = t.project[0]; project.placeholder = t.project[1]; }
@@ -92,7 +94,6 @@ const faq = [
       msg.required = !!required; msg.placeholder = required ? ask : ""; msg.rows = required ? 6 : 3;
     };
     form.addEventListener("change", (e) => { if ((e.target as HTMLInputElement).name === "topic") place(); });
-    new ResizeObserver(() => { const on = form.querySelector<HTMLElement>("input[name=topic]:checked")!.closest<HTMLElement>(".topic")!; hl.style.setProperty("--hy", `${on.offsetTop}px`); hl.style.setProperty("--hh", `${on.offsetHeight}px`); }).observe(form.querySelector(".topics")!);
     place();
     // Mock: nothing is sent yet. The envelope seals and flies off, and the form gives way to a thank-you.
     form.addEventListener("submit", (e) => {
@@ -114,23 +115,27 @@ const faq = [
 
   /* The form rises out of the hero onto the page. */
   .desk { position: relative; z-index: 1; margin-top: calc(clamp(130px, 11vw, 170px) * -1); animation: c-up .9s .14s var(--ease) both; }
-  .form { position: relative; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); padding: clamp(20px, 3vw, 40px); border-radius: var(--r); background: #fff; box-shadow: 0 0 0 1px var(--line), 0 40px 80px -40px rgb(7 11 26 / .55); }
-  .topics { position: relative; display: grid; align-content: start; gap: 4px; min-width: 0; }
-  .topics h2 { padding: 0 0 16px 12px; font-size: clamp(26px, 2.6vw, 34px); }
-  .hl { position: absolute; left: 0; right: 0; top: 0; height: var(--hh, 0); border-radius: 16px; background: color-mix(in srgb, var(--hc, #fb7185) 13%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hc, #fb7185) 55%, #fff); transform: translateY(var(--hy, 0)); transition: transform .38s var(--ease), height .38s var(--ease), background-color .3s var(--ease), box-shadow .3s var(--ease); pointer-events: none; }
-  .topic { position: relative; display: flex; align-items: center; gap: 14px; padding: 12px; border-radius: 16px; cursor: pointer; transition: background-color .15s var(--ease); }
-  .topic:hover:not(:has(:checked)) { background: var(--soft); }
-  .topic input { position: absolute; opacity: 0; pointer-events: none; }
-  .topic:has(:focus-visible) { outline: 3px solid var(--brand-ink); outline-offset: 2px; }
-  .topic > i { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: color-mix(in srgb, var(--c) 16%, #fff); color: color-mix(in srgb, var(--c) 72%, #171717); transition: background-color .25s var(--ease), color .25s var(--ease), transform .45s cubic-bezier(.34, 1.56, .64, 1); }
-  .topic:has(:checked) > i { background: var(--c); color: #0b0f1a; transform: rotate(-8deg) scale(1.06); }
-  .topic > span:not(.tick) { display: grid; gap: 2px; min-width: 0; } .topic b { font-weight: 500; font-size: 16px; line-height: 1.3; } .topic em { font-style: normal; font-size: 14px; line-height: 1.35; color: var(--t2); }
-  .tick { flex: none; display: grid; margin-left: auto; color: color-mix(in srgb, var(--c) 75%, #171717); opacity: 0; transform: scale(.6); transition: opacity .2s var(--ease), transform .35s cubic-bezier(.34, 1.56, .64, 1); } .topic:has(:checked) .tick { opacity: 1; transform: none; }
+  .form { position: relative; display: grid; gap: clamp(24px, 3vw, 36px); padding: clamp(20px, 3vw, 40px); border-radius: var(--r); background: #fff; box-shadow: 0 0 0 1px var(--line), 0 40px 80px -40px rgb(7 11 26 / .55); }
+  .topics { display: grid; gap: 18px; min-width: 0; } .topics h2 { font-size: clamp(26px, 2.6vw, 34px); }
+  /* Each topic is a tile with its own glass emblem. The chosen one fills with its colour and its emblem lifts and turns; the rest wait, a little quieter. */
+  .tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  .tile { position: relative; isolation: isolate; display: grid; grid-template-rows: auto auto 1fr; justify-items: center; align-content: start; gap: 4px; padding: 10px 12px 16px; border-radius: 20px; text-align: center; cursor: pointer; background: var(--soft); box-shadow: inset 0 0 0 1px transparent; transition: background-color .3s var(--ease), box-shadow .3s var(--ease); }
+  .tile input { position: absolute; opacity: 0; pointer-events: none; }
+  .tile:has(:focus-visible) { outline: 3px solid var(--brand-ink); outline-offset: 2px; }
+  .em { position: relative; display: grid; place-items: center; width: 100%; aspect-ratio: 1.25; margin-bottom: 2px; }
+  .em::before { content: ""; position: absolute; z-index: -1; width: 70%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(closest-side, color-mix(in srgb, var(--c) 55%, transparent), transparent); opacity: 0; transform: scale(.6); transition: opacity .4s var(--ease), transform .5s var(--ease); }
+  .em img { width: min(104px, 82%); height: auto; filter: saturate(.55) opacity(.8); transition: transform .55s cubic-bezier(.34, 1.56, .64, 1), filter .3s var(--ease); }
+  .tile b { font-weight: 500; font-size: 15px; line-height: 1.25; text-wrap: balance; } .tile em { font-style: normal; font-size: 13px; line-height: 1.35; color: var(--t2); text-wrap: balance; }
+  .tile:hover .em img { filter: none; transform: translateY(-3px) rotate(-3deg); }
+  .tile:has(:checked) { background: color-mix(in srgb, var(--c) 14%, #fff); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, #fff); }
+  .tile:has(:checked) .em::before { opacity: 1; transform: none; }
+  .tile:has(:checked) .em img { filter: none; transform: translateY(-6px) rotate(-8deg) scale(1.1); }
+  .tile:has(:checked) b { color: color-mix(in srgb, var(--c) 30%, #171717); }
 
-  .fields { display: grid; gap: 14px; align-content: start; padding-top: 6px; }
-  .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; } .pair:has(> .opt.off) { grid-template-columns: minmax(0, 1fr); } .pair > .opt.off { display: none; }
+  .fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px clamp(20px, 3vw, 40px); align-items: start; } .col { display: grid; gap: 14px; align-content: start; }
+  .stack { display: grid; gap: 14px; } .stack > .opt.off { display: none; } .send { grid-column: 1 / -1; }
   /* A field a topic doesn't need folds away; the space it leaves closes as one movement. */
-  .opt { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .4s var(--ease), opacity .25s var(--ease); } .opt > * { min-height: 0; overflow: hidden; padding: 2px; margin: -2px; } .opt.off { grid-template-rows: 0fr; opacity: 0; } .fields > .opt.off { margin-bottom: -14px; } .pair > .opt.off { visibility: hidden; transition: grid-template-rows .4s var(--ease), opacity .25s var(--ease), visibility 0s .4s; }
+  .opt { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .4s var(--ease), opacity .25s var(--ease); } .opt > * { min-height: 0; overflow: hidden; padding: 2px; margin: -2px; } .opt.off { grid-template-rows: 0fr; opacity: 0; } .col > .opt.off { margin-bottom: -14px; }
   .f { display: grid; gap: 7px; font-size: 14px; font-weight: 500; } .f small { font-weight: 400; color: var(--t3); font-size: 13px; margin-left: 4px; }
   .f input, .f textarea { width: 100%; font: 400 16px/1.45 var(--sans); color: var(--ink); padding: 12px 14px; border: 0; border-radius: 12px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .2s var(--ease), background-color .2s var(--ease); }
   .f input { height: 48px; } .f textarea { resize: vertical; min-height: 96px; } .f textarea::placeholder { color: var(--t3); }
@@ -160,6 +165,7 @@ const faq = [
 
   .close { background: var(--night); display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(64px, 8vw, 112px) var(--pad) max(160px, 28vw); text-align: center; } .close > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .close h2 { font-size: clamp(38px, 6.4vw, 92px); line-height: 1; letter-spacing: -.03em; }
 
-  @media (max-width: 900px) { .form { grid-template-columns: minmax(0, 1fr); } .mail :global(.m-art) { left: 0; opacity: .35; } }
-  @media (max-width: 560px) { .pair { grid-template-columns: minmax(0, 1fr); } .pair > .opt.off { display: none; } .topic em { display: none; } .cap { width: 100%; } .cap-ic { display: none; } .cap-addr { font-size: 16px; padding-left: 8px; } .cap-btn { margin-left: auto; padding-inline: 14px; } .cap-btn .t { display: none; } }
+  @media (max-width: 1100px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 900px) { .fields { grid-template-columns: minmax(0, 1fr); } .mail :global(.m-art) { left: 0; opacity: .35; } }
+  @media (max-width: 560px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tile em { display: none; } .cap { width: 100%; } .cap-ic { display: none; } .cap-addr { font-size: 16px; padding-left: 8px; } .cap-btn { margin-left: auto; padding-inline: 14px; } .cap-btn .t { display: none; } }
 </style>
