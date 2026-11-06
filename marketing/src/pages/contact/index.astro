@@ -25,7 +25,7 @@ const faq = [
 ---
 <Base top="#070b1a" title="Contact: Openscholar" description="Write to the team behind Openscholar about your research, your team or a community of your own.">
   <section class="bleed chero">
-    <Art name="contact-letter" eager pos="100% 50%" class="c-art" sizes="(max-width: 900px) 132vw, 900px" />
+    <Art name="contact-letter" eager pos="0 50%" class="c-art" sizes="(max-width: 900px) 150vw, 1100px" />
     <div class="inner"><div class="c-copy"><h1>Let's talk about your evidence</h1><p class="lead">Questions about your research, your team or a community of your own. Write to us and someone on the team will read it.</p></div></div>
   </section>
 
@@ -117,10 +117,10 @@ const faq = [
 </script>
 
 <style>
-  /* The hero's height decides where the envelope sits: it stands between the header and the card that rises over the hero, whole at every width, with its ribbon fading out before the art's edge. */
+  /* The envelope keeps its place beside the headline, and its ribbon and glow run on past the right edge of the window: the art box starts just left of the envelope and is wider than any window leaves room for. */
   .chero { --rise: clamp(130px, 11vw, 170px); background: #070b1a; padding-block: clamp(140px, 12vw, 184px) calc(var(--rise) + clamp(56px, 5vw, 72px)); }
-  .chero :global(.c-art) { inset: 28px auto calc(var(--rise) - 24px); right: max(-90px, calc(50vw - 780px)); aspect-ratio: 1672 / 941; height: auto; -webkit-mask-image: linear-gradient(90deg, transparent 6%, #000 36%, #000 86%, transparent), linear-gradient(#000 82%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent 6%, #000 36%, #000 86%, transparent), linear-gradient(#000 82%, transparent); mask-composite: intersect; }
-  .chero :global(.c-art img) { object-position: 100% 50%; }
+  .chero :global(.c-art) { inset: -20px auto calc(var(--rise) - 60px) min(calc(50% + 270px), calc(100% - 560px)); aspect-ratio: 1672 / 941; -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(#000 84%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent), linear-gradient(#000 84%, transparent); mask-composite: intersect; }
+  .chero :global(.c-art img) { object-position: 0 50%; }
   .c-copy { position: relative; display: grid; gap: 20px; max-width: 600px; } .c-copy h1 { font-size: clamp(44px, 6vw, 88px); line-height: 1; letter-spacing: -.035em; } .c-copy .lead { max-width: 30em; color: rgb(255 255 255 / .86); }
   .c-copy > * { animation: c-up .8s var(--ease) both; } .c-copy > :nth-child(2) { animation-delay: .07s; } @keyframes c-up { from { opacity: 0; transform: translateY(18px); } }
 
@@ -172,6 +172,7 @@ const faq = [
 
   .close { background: var(--night); display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(64px, 8vw, 112px) var(--pad) max(160px, 28vw); text-align: center; } .close > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .close h2 { font-size: clamp(38px, 6.4vw, 92px); line-height: 1; letter-spacing: -.03em; }
 
-  @media (max-width: 900px) { .form { grid-template-columns: minmax(0, 1fr); } .mail :global(.m-art) { left: 0; opacity: .35; } .chero :global(.c-art) { inset: 56px auto auto; right: -38vw; width: 132vw; height: auto; opacity: .5; } }
+  @media (max-width: 1100px) { .c-copy { max-width: 460px; } }
+  @media (max-width: 900px) { .form { grid-template-columns: minmax(0, 1fr); } .mail :global(.m-art) { left: 0; opacity: .35; } .chero :global(.c-art) { inset: 40px auto auto 22vw; width: 150vw; height: auto; opacity: .5; } }
   @media (max-width: 560px) { .pair { grid-template-columns: minmax(0, 1fr); } .pair > .opt.off { display: none; } .topic em { display: none; } .cap { width: 100%; } .cap-ic { display: none; } .cap-addr { font-size: 17px; padding-left: 8px; } .cap-btn { margin-left: auto; padding-inline: 14px; } .cap-btn .t { display: none; } }
 </style>
