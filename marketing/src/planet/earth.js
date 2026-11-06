@@ -284,7 +284,7 @@ void main(){
       spec = LEVELS[level];
       current = ready.program(spec.lite) || ready.program(!spec.lite);
       gl.useProgram(current.program);
-      d = Math.min(devicePixelRatio || 1, spec.scale);
+      d = Math.min((devicePixelRatio || 1) * (o.zoom || 1), spec.scale);
       canvas.width = buffer.width = Math.round(width * d);
       canvas.height = buffer.height = Math.round(height * d);
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -331,7 +331,7 @@ void main(){
   function start(o) {
     var canvas = o.canvas, layout = o.layout, turn = o.turn;
     var none = { wave: function () {}, sunBehind: function () {}, stop: function () {}, level: 0 };
-    var planet = renderer({ canvas: canvas, layout: layout, width: o.width, height: o.height, level: o.level, onLost: function () { level = 0; if (o.stage) delete o.stage.dataset.frozen; o.onLevel(0); } });
+    var planet = renderer({ canvas: canvas, layout: layout, width: o.width, height: o.height, level: o.level, zoom: o.zoom, onLost: function () { level = 0; if (o.stage) delete o.stage.dataset.frozen; o.onLevel(0); } });
     if (!planet) { o.ready(false); return none; }
     var level = planet.level, frameNo = 0, lastDrawn = 0;
 
@@ -462,6 +462,8 @@ void main(){
       stage: stage, canvas: canvas,
       layout: config.layout, width: config.width, height: config.height, turn: config.turn,
       level: frozen ? FROZEN_LEVEL : config.level, frozen: frozen,
+      // Coming from the hero the stage is scaled to this page's zoom, so the canvas needs that many more pixels to stay sharp.
+      zoom: config.turn ? window.innerWidth / config.width : 1,
       onLevel: function (level) {
         stage.dataset.level = String(level);
         try { sessionStorage.setItem(MEMORY, String(level)); } catch (error) {}
