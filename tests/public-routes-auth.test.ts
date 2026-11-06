@@ -71,6 +71,9 @@ describe("public route auth matrix", () => {
       "/history",
       "/pricing",
       "/privacy",
+      // The question stage's planet script and its first-paint hold, loaded by a visitor arriving signed out from the home page.
+      "/question-stage/earth.js",
+      "/question-stage/hold",
       "/results",
       "/results/x",
       "/settings/ai",
