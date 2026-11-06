@@ -52,7 +52,8 @@ void main(){
   var SUN_BEHIND = [0, 0.85, -0.52];
   // Turns a second, in the shader's units. The hero's speed, easing up a little once it has gone.
   var CRUISE = 1.6;
-  var PHASE_STILL = 30;
+  // Where the planet has turned to in the still image (earth-still.avif): Africa, as the hero shows it once the sun is up.
+  var PHASE_STILL = 52;
   // A planet that drops to level 0 after drawing stops where it is, drawn once at this level; the hero hands that turn on.
   var FROZEN_LEVEL = 2;
   var smooth = function (t) { return t * t * (3 - 2 * t); };
