@@ -20,6 +20,7 @@ import { useAppToast } from "@/lib/toast";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { WorkspaceTag } from "@/components/workspaces/parts";
+import { DeveloperApps } from "@/components/settings/developer-apps";
 
 const PER_PAGE = 8;
 const APP_TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
@@ -150,6 +151,8 @@ export default function ConnectionsPage() {
             </Paged>
           </Zone>
         ) : null}
+
+        <DeveloperApps />
       </div>
     </Enter>
   );
