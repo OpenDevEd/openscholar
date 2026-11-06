@@ -102,7 +102,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     const start = async () => {
       level = (() => { let saved = -1; try { saved = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} return Earth.startLevel(saved); })();
       if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", onLost: () => rest(true) });
-      if (planet) await planet.textures; else rest();
+      // Without a shader the still stands in, as it does without WebGL.
+      if (planet) await planet.textures.catch((error) => { if (!error?.shader) throw error; planet = null; });
+      if (!planet) rest();
       ready = true; dawnAt ||= performance.now(); draw(performance.now()); root.classList.add("lit"); orbit(); (window.requestIdleCallback ?? setTimeout)(appImages);
     };
     // Searching hands over to the app's first frame: its sky, its stars, and the words typed rising out of the box to be the headline. The planet just keeps turning, and the address says how far it had got and when, so the app's carries on from there. The browser can't animate between two sites, so nothing can be seen to change when the page does.

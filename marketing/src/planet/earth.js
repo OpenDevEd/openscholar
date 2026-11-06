@@ -348,9 +348,13 @@ void main(){
       gl.scissor(Math.max(0, (layout.cx - g) * d), Math.max(0, canvas.height - (layout.cy + g) * d), g * 2 * d, g * 2 * d);
     };
     apply();
-    // Ready once the maps are in and the shader has compiled; it fails if neither shader can be built.
+    // Ready once the maps are in and the shader has compiled. It fails if neither shader can be built, with `shader` set, so a
+    // caller can show the still for that and not for a map that failed to arrive.
     var textures = Promise.all([ready.textures, ready.compiled(spec.lite)]).then(function () {
-      if (!ready.program(spec.lite) && !ready.program(!spec.lite)) throw new Error("no shader");
+      if (ready.program(spec.lite) || ready.program(!spec.lite)) return;
+      var error = new Error("no shader");
+      error.shader = true;
+      throw error;
     });
     return {
       textures: textures,
