@@ -19,10 +19,11 @@
   }
 }
 
-/* Coming from the hero, --page is its width, so a scrollbar it had doesn't move anything here. */
+/* Coming from the hero, --page is its sky's width and --left where that sky started (half a scrollbar off the edge when the
+   scrollbar takes room), so the planet and headline land exactly where they were. */
 .scene {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 0 auto 0 var(--left, 0);
   width: var(--page, 100%);
   overflow: hidden;
   background: #091026;
@@ -234,7 +235,7 @@
 /* The question and the line under it saying what's under way. */
 .head {
   position: absolute;
-  left: 0;
+  left: var(--left, 0);
   top: var(--question-top, clamp(84px, 15vh, 146px));
   width: var(--page, 100%);
   padding-inline: max(24px, calc((var(--page, 100vw) - 1240px) / 2));

@@ -83,17 +83,19 @@ function pickGlints(frame: Frame, layout: ReturnType<typeof earthLayout>) {
 
 /**
  * Where things are on the screen: the page width, the sky's top, the planet's box, and the question's top. `level` is the
- * quality level the hero's planet had got to, as the app's address can't read what the marketing site remembered.
+ * quality level the hero's planet had got to, as the app's address can't read what the marketing site remembered. `left` is
+ * where the hero's full-width sky started: with a scrollbar that takes room, the sky reaches under it and starts half a
+ * scrollbar off the left edge, so the hero's middle, and its planet and headline, sit left of the window's middle.
  */
-type Frame = { width: number; skyTop?: number; spaceTop: number; spaceHeight: number; questionTop?: number; turn: EarthConfig["turn"]; level?: number };
+type Frame = { width: number; skyTop?: number; spaceTop: number; spaceHeight: number; questionTop?: number; turn: EarthConfig["turn"]; level?: number; left?: number };
 
 /** The hero's measurements, sent in the address so the first paint lands exactly on its last frame. */
 function readHandover(value: string | null): Frame | null {
   const numbers = value?.split(",").map(Number) ?? [];
-  if (numbers.length !== 8 || numbers.some((n) => !Number.isFinite(n))) return null;
-  const [width, skyTop, spaceTop, height, questionTop, t, at, level] = numbers;
-  if ([width, skyTop, spaceTop, height, questionTop].some((n) => Math.abs(n) > 10000) || !Number.isInteger(level) || level < 0 || level > 5) return null;
-  return width > 0 && height > 0 ? { width, skyTop, spaceTop, spaceHeight: height, questionTop, turn: { t, at }, level } : null;
+  if (numbers.length !== 9 || numbers.some((n) => !Number.isFinite(n))) return null;
+  const [width, skyTop, spaceTop, height, questionTop, t, at, level, left] = numbers;
+  if ([width, skyTop, spaceTop, height, questionTop].some((n) => Math.abs(n) > 10000) || Math.abs(left) > 100 || !Number.isInteger(level) || level < 0 || level > 5) return null;
+  return width > 0 && height > 0 ? { width, skyTop, spaceTop, spaceHeight: height, questionTop, turn: { t, at }, level, left } : null;
 }
 
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -255,13 +257,15 @@ export function QuestionStage() {
       const zoom = zoomToClear(planetTop + met, planetFoot + met);
       const x = frame.width / 2;
       const y = planetTop + met + layout.R * zoom * 0.04;
+      // The words are measured in the window, the planet in the sky, which may start a little left of the window.
+      const wordsX = x + (frame.left ?? 0);
 
       const centres = spans.map((span) => span.getBoundingClientRect()).map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }));
-      const farthest = Math.max(1, ...centres.map((c) => Math.hypot(c.x - x, c.y - y)));
+      const farthest = Math.max(1, ...centres.map((c) => Math.hypot(c.x - wordsX, c.y - y)));
       spans.forEach((span, i) => {
         span.style.transformOrigin = "50% 50%";
-        const near = Math.hypot(centres[i].x - x, centres[i].y - y) / farthest;
-        span.animate(wordSettle(x - centres[i].x, y - centres[i].y), { duration: SETTLE_MS - WORD_STAGGER_MS, delay: near * WORD_STAGGER_MS, fill: "both" });
+        const near = Math.hypot(centres[i].x - wordsX, centres[i].y - y) / farthest;
+        span.animate(wordSettle(wordsX - centres[i].x, y - centres[i].y), { duration: SETTLE_MS - WORD_STAGGER_MS, delay: near * WORD_STAGGER_MS, fill: "both" });
       });
 
       earth?.sunBehind(SETTLE_MS + 200);
@@ -338,6 +342,7 @@ export function QuestionStage() {
   const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, level: frame.level ?? null }) : undefined;
   const variables = {
     "--page": frame && handedOver ? `${frame.width}px` : undefined,
+    "--left": handover?.left ? `${handover.left}px` : undefined,
     "--sky-top": handover?.skyTop === undefined ? undefined : `${handover.skyTop}px`,
     "--question-top": handover?.questionTop === undefined ? undefined : `${handover.questionTop}px`,
   } as React.CSSProperties;
