@@ -10,12 +10,13 @@ const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce bu
 const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
 const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).toFixed(1), y = +(rng() * 820).toFixed(1), big = i < 10, small = rng() < .85; return [x, y, +(big ? 1.4 + rng() * .4 : small ? .5 + rng() * .4 : .9 + rng() * .4).toFixed(2), +((big ? .9 : small ? .2 + rng() * .4 : .7) * Math.min(1, (820 - y) / 246)).toFixed(2), i % 3]; }).filter(([x, y, , o]) => o > 0 && (x < 720 || x > 1840 || y < 136 || y > 390));
 ---
-<!-- The day map is fetched early unless the planet will be the still: data saver, a 2G connection, or a level this visit
-     already settled on (the key is earth.js's MEMORY). The light levels use the smaller map. -->
-<script is:inline>(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = l === 1 || l === 2 ? "/img/earth-day-2048.avif" : "/img/earth-day.avif"; document.head.append(k); })();</script>
+<!-- The planet's four maps are fetched as the page arrives, not once its script has run, unless the planet will be the
+     still: data saver, a 2G connection, or a level this visit already settled on (the key is earth.js's MEMORY). The day map
+     is the smaller one, which every level starts on (src/planet/earth.js). -->
+<script is:inline>(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; for (const n of ["day-2048", "night", "clouds", "water"]) { const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = `/img/earth-${n}.avif`; document.head.append(k); } })();</script>
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
 <section class="bleed sky" data-orbit>
-  <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" />
+  <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />
   {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
   <div class="inner say">
     <h1>{HEAD.map((w, i) => <><span style={`--i:${i}`}>{w}</span>{" "}</>)}</h1>
@@ -82,7 +83,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     // The quality level comes from earth.js: where this visit got to, else what the browser lets on, then the monitor below
     // moves it as it watches the frame rate. Level 0 is the still image, with only the ring's spark moving.
     const Earth = window.questionStageEarth, still = scene.querySelector("[data-still]");
-    let level = (() => { let saved = -1; try { saved = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} return Earth.startLevel(saved); })();
+    let level = 0;
     let planet = null, ready = false, frozen = false, sparkMove = () => {};
     const layout = () => ({ R, cx, cy, rx, ry, tilt, narrow: W < 700 });
     const placeStill = () => { const g = R * 1.55; still.style.left = `${cx - g}px`; still.style.top = `${cy - g}px`; still.style.width = `${g * 2}px`; };
@@ -96,15 +97,20 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       still.src = "/img/earth-still.avif"; still.decode().catch(() => {}).then(() => { planet = null; root.classList.add("resting"); });
     };
     const watch = Earth.monitor((next) => { if (!level) return; if (!next) rest(); else { level = next; planet.setLevel(next); remember(); } });
+    // The level is worked out, and the planet's WebGL set up, only once the page has painted: on a weak GPU both hold up the
+    // page, and before the first paint that left it blank.
     const start = async () => {
+      level = (() => { let saved = -1; try { saved = Number(sessionStorage.getItem(Earth.memory) ?? -1); } catch {} return Earth.startLevel(saved); })();
       if (level) planet = Earth.renderer({ canvas: cv, width: W, height: H, layout: layout(), level, base: "/img/earth-", onLost: () => rest(true) });
-      if (planet) await planet.textures; else rest();
+      // Without a shader the still stands in, as it does without WebGL.
+      if (planet) await planet.textures.catch((error) => { if (!error?.shader) throw error; planet = null; });
+      if (!planet) rest();
       ready = true; dawnAt ||= performance.now(); draw(performance.now()); root.classList.add("lit"); orbit(); (window.requestIdleCallback ?? setTimeout)(appImages);
     };
     // Searching hands over to the app's first frame: its sky, its stars, and the words typed rising out of the box to be the headline. The planet just keeps turning, and the address says how far it had got and when, so the app's carries on from there. The browser can't animate between two sites, so nothing can be seen to change when the page does.
     const HAND_MS = 620, HAND_GO_MS = 480; let leaving = null, handed = [];
     // The app's images, on hand for when it's needed.
-    const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; const maps = level === 0 ? ["earth-still"] : [level <= 2 ? "earth-day-2048" : "earth-day", "earth-night", "earth-clouds", "earth-water"]; for (const n of ["sky-plate", ...maps]) new Image().src = `${at}${n}.avif`; };
+    const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; const maps = level === 0 ? ["earth-still"] : ["earth-day-2048", ...(level <= 2 ? [] : ["earth-day"]), "earth-night", "earth-clouds", "earth-water"]; for (const n of ["sky-plate", ...maps]) new Image().src = `${at}${n}.avif`; };
     const fade = (el, delay = 0, move = 0) => { if (el) handed.push(el.animate([{ opacity: getComputedStyle(el).opacity, translate: "0 0" }, { opacity: 0, translate: `0 ${move}px` }], { duration: 340, delay, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" })); };
     // A search from anywhere on the page, with or without a phone's keyboard up, first closes the keyboard and brings the hero
     // back to the top, so the hand-over measures and starts from the hero exactly where the app will draw it. A search from
@@ -180,7 +186,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     // A spark of light runs round the ring the same way the satellites go: left to right in front, back again behind.
     const comet = (now) => { if (!orbitAt || now - orbitAt < 2200) return; sparkMove(now); };
     const camera = () => { cv.style.translate = still.style.translate = `${(px * 6).toFixed(1)}px ${(py * 4).toFixed(1)}px`; const o = `translate3d(${(px * 14).toFixed(1)}px, ${(py * 9).toFixed(1)}px, 0)`; for (const el of orbs) el.style.transform = o; skies.forEach((el, i) => { el.style.transform = `translate3d(${(px * [4, 8, 14][i]).toFixed(1)}px, ${(py * [3, 5, 9][i]).toFixed(1)}px, 0)`; }); };
-    const orbit = () => { if (orbitAt) return; orbitAt = performance.now(); root.classList.add("orbiting"); };
+    // The ring draws in and the satellites come round once their pictures are here, so on a slow connection none arrives empty.
+    let orbiting = null;
+    const orbit = () => { orbiting ||= Promise.all(imgs.map((img) => img.decode().catch(() => {}))).then(() => { orbitAt = performance.now(); root.classList.add("orbiting"); }); };
     const run = () => { if (!raf && !dead && seen && !calm.matches) raf = requestAnimationFrame(loop); };
     const loop = (now) => {
       raf = 0; run();
@@ -215,7 +223,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     const wave = () => { const n = performance.now(); if (!seen || calm.matches || n - waveAt < 1800) return; waveAt = n + 200; halo.classList.add("fired"); clearTimeout(firedT); firedT = setTimeout(() => halo.classList.remove("fired"), 900); }; root.addEventListener("asked", wave); root.addEventListener("input", wave);
     // If the hero's script fails, the art leaves and the page keeps its shape.
     const bare = () => { dead = true; ready = false; root.classList.add("bare"); };
-    setTimeout(orbit, 2000); size(); placeSats(calm.matches ? 0 : 2.4); for (const a of sats) a.style.opacity = 1; start().catch(bare); last = performance.now(); run();
+    setTimeout(orbit, 2000); size(); placeSats(calm.matches ? 0 : 2.4); for (const a of sats) a.style.opacity = 1; requestAnimationFrame(() => setTimeout(() => start().catch(bare))); last = performance.now(); run();
   }
 </script>
 <style>
@@ -225,14 +233,16 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   :global(.handq span) { display: inline-block; padding-inline: .13em; }
   :global(.handcover) { position: fixed; inset: 0; z-index: 40; background: var(--sky); pointer-events: none; animation: arrive 240ms ease-out backwards; }
   .sky { padding: 146px 0 0; background: var(--sky); text-align: center; }
-  .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; animation: arrive 1.2s var(--ease) backwards; }
+  .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; transition: opacity 1.2s var(--ease); }
+  /* The sky's glow fades in when it has arrived, however long that takes, rather than at a set time. */
+  :global(.js) .plate:not([data-loaded]) { opacity: 0; }
   .stars { position: absolute; left: 50%; top: 0; z-index: -1; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; animation: tw var(--tw) ease-in-out var(--twd) infinite alternate; } .s0 { --tw: 6s; --twd: 0s; } .s1 { --tw: 9s; --twd: -3s; } .s2 { --tw: 13s; --twd: -6s; } @keyframes tw { to { opacity: .35; } }
 
   .say { position: relative; z-index: 6; display: grid; justify-items: center; gap: 14px; }
   h1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 .26em; font-size: 38px; letter-spacing: -.04em; line-height: 1.06; } h1 span { display: inline-block; animation: rise 700ms var(--ease) calc(.05s + var(--i) * 45ms) backwards; } @keyframes rise { from { opacity: 0; transform: translateY(18px); } }
   @media (min-width: 600px) { h1 { font-size: 56px; } } @media (min-width: 1100px) { h1 { font-size: 64px; } } @media (min-width: 1400px) { h1 { font-size: 72px; } } @media (max-width: 1099px) { h1 { max-width: 9em; } }
   /* The headline is filled with the same Earth under the sunrise: warm cream over the oceans, near white over land and ice, so every letter stays bright. */
-  @supports (background-clip: text) or (-webkit-background-clip: text) { h1 span { padding: .08em .05em; margin: -.08em -.05em; color: transparent; background: linear-gradient(#ffe6cf, #ffe6cf), url(/img/earth-day.avif) calc(var(--i) * -3.2em - 6em) -2.6em / 20em 10em #ffe6cf; background-blend-mode: screen, normal; -webkit-background-clip: text; background-clip: text; } }
+  @supports (background-clip: text) or (-webkit-background-clip: text) { h1 span { padding: .08em .05em; margin: -.08em -.05em; color: transparent; background: linear-gradient(#ffe6cf, #ffe6cf), url(/img/earth-day-2048.avif) calc(var(--i) * -3.2em - 6em) -2.6em / 20em 10em #ffe6cf; background-blend-mode: screen, normal; -webkit-background-clip: text; background-clip: text; } }
   .lead { font-size: 20px; color: #c9cfdc; animation: rise 800ms var(--ease) .36s backwards; }
 
   /* Openscholar's box is the one warm thing in the sky, lit like the sunrise on the planet below it. */

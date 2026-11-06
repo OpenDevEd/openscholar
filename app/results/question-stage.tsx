@@ -163,11 +163,11 @@ export function QuestionStage() {
   if (question) {
     preload(SKY_PLATE, { as: "image", fetchPriority: "high" });
     // The maps are fetched early only for a level known to be live: the hero's. Otherwise earth.js fetches
-    // them once it has chosen a level, so a visitor saving data, who gets the still, never downloads them. The light
-    // levels use the smaller day map.
+    // them once it has chosen a level, so a visitor saving data, who gets the still, never downloads them. Every level
+    // starts on the smaller day map; earth.js fetches the sharp one for the full levels later.
     const known = handover?.level;
     if (!handover || known === 0) preload(EARTH_STILL, { as: "image", fetchPriority: "high" });
-    if (known) for (const src of EARTH_IMAGES) preload(known <= 2 ? src.replace("earth-day.", "earth-day-2048.") : src, { as: "image", fetchPriority: "high" });
+    if (known) for (const src of EARTH_IMAGES) preload(src, { as: "image", fetchPriority: "high" });
   }
 
   // WebGL, the frame clock and the page behind are all outside React: this reads the page's field
@@ -403,6 +403,8 @@ export function QuestionStage() {
                 src={EARTH_STILL}
                 alt=""
                 decoding={handedOver ? "sync" : "async"}
+                // Under a live planet from the hero it shows only if WebGL fails, so it isn't fetched unless it's shown.
+                loading={handover?.level ? "lazy" : "eager"}
                 fetchPriority="high"
                 style={{ left: layout.cx - layout.R * STILL_REACH, top: layout.cy - layout.R * STILL_REACH, width: layout.R * STILL_REACH * 2 }}
               />
