@@ -19,11 +19,14 @@ const APP_USE_STEP = 60 * 60 * 1000;
 
 /**
  * The developer app a token was issued to, the person it acts for, and their row for the app on
- * their list of sites. Refuses a token of an app that was deleted, or that the person disconnected.
+ * their list of sites. Refuses a token of an app that was deleted, whose owner's account is no longer
+ * active, or that the person disconnected.
  */
 export async function appCall(ctx: IdentityCtx, identity: UserIdentity, clientId: string) {
   const app = await ctx.db.query("developerApps").withIndex("by_client_id", (q) => q.eq("clientId", clientId)).unique();
   if (!app) throw createError("UNAUTHENTICATED", "This app was deleted on Openscholar.");
+  // An app stops with its owner's account, as soon as it's suspended or deleted.
+  if ((await ctx.db.get("users", app.ownerId))?.state !== "active") throw createError("UNAUTHENTICATED", "This app is no longer available on Openscholar.");
   const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject)).unique();
   if (!user) return null;
   const grant = await ctx.db

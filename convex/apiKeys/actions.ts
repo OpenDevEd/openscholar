@@ -3,7 +3,7 @@ import { action, internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
-import { requireActionAuth } from "../lib/auth";
+import { refuseApps, requireActionAuth } from "../lib/auth";
 import { encrypt, decryptApiKey, getKeyPrefix } from "../lib/crypto";
 
 function validateApiKeyFormat(
@@ -46,6 +46,7 @@ export const encryptAndSave = action({
     keyPrefix: v.string(),
   }),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     // Rate limit check (before any processing)
     const identity = await requireActionAuth(ctx);
     await ctx.runMutation(internal.lib.rateLimit.consume, {

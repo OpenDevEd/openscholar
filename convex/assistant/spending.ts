@@ -26,7 +26,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { requireFeature } from "../featureFlags/guard";
-import { requireAuth } from "../lib/auth";
+import { refuseApps, requireAuth } from "../lib/auth";
 import { ASSISTANT_JOB_CAPS, ASSISTANT_REQUESTS_BEFORE_ASKING } from "../lib/constants";
 import { createError } from "../lib/errors";
 import { internalMutation, mutation, query } from "../lib/functions";
@@ -251,6 +251,7 @@ export const setReplyLimit = mutation({
   args: { threadId: v.id("assistantThreads"), limit: v.union(v.number(), v.null()) },
   returns: v.null(),
   handler: async (ctx, { threadId, limit }) => {
+    await refuseApps(ctx);
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
@@ -265,6 +266,7 @@ export const setAllowance = mutation({
   args: { threadId: v.id("assistantThreads"), allowance: v.union(v.null(), v.object({ cap: v.union(v.number(), v.null()) })) },
   returns: v.null(),
   handler: async (ctx, { threadId, allowance }) => {
+    await refuseApps(ctx);
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
@@ -279,6 +281,7 @@ export const setForNewChats = mutation({
   args: { threadId: v.id("assistantThreads"), on: v.boolean() },
   returns: v.null(),
   handler: async (ctx, { threadId, on }) => {
+    await refuseApps(ctx);
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
@@ -295,6 +298,7 @@ export const setTool = mutation({
   args: { threadId: v.id("assistantThreads"), tool: v.union(v.literal("web"), v.literal("files")), allowed: v.boolean() },
   returns: v.null(),
   handler: async (ctx, { threadId, tool, allowed }) => {
+    await refuseApps(ctx);
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);

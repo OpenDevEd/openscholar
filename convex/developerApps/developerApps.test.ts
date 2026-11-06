@@ -87,4 +87,41 @@ describe("developer apps acting for a person", () => {
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect(await t.run((ctx) => ctx.db.query("developerAppGrants").take(1))).toEqual([]);
   });
+
+  it("lists the site on a person's first sign-in through it, when the call makes their account", async () => {
+    const t = convexTest(schema);
+    await seed(t);
+    const newcomer = t.withIdentity({ subject: "newcomer", issuer: ISSUER, client_id: "client_bee", email: "new@example.test" });
+    await newcomer.mutation(api.users.mutations.ensureUser, {});
+    const sites = await t.withIdentity({ subject: "newcomer", issuer: ISSUER }).query(api.developerApps.sites.listSites, { paginationOpts: { numItems: 10, cursor: null } });
+    expect(sites.page).toMatchObject([{ name: "BeeWriter" }]);
+  });
+
+  it("stops an app as soon as its owner's account is suspended", async () => {
+    const t = convexTest(schema);
+    await seed(t);
+    await t.run(async (ctx) => {
+      const owner = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "owner")).unique();
+      await ctx.db.patch("users", owner!._id, { state: "suspended" });
+    });
+    await expect(throughApp(t).query(api.users.queries.me, {})).rejects.toMatchObject({ data: { code: "UNAUTHENTICATED" } });
+  });
+
+  it("removes a deleted account's sites and its own apps", async () => {
+    const t = convexTest(schema);
+    await seed(t);
+    await throughApp(t).mutation(api.users.mutations.ensureUser, {});
+    const longAgo = Date.now() - 40 * 24 * 60 * 60 * 1000;
+    await t.run(async (ctx) => {
+      for (const clerkId of ["ada", "owner"]) {
+        const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId)).unique();
+        await ctx.db.patch("users", user!._id, { state: "deleted", updatedAt: longAgo });
+      }
+    });
+    // One account per run.
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    expect(await t.run((ctx) => ctx.db.query("developerApps").take(1))).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("developerAppGrants").take(1))).toEqual([]);
+  });
 });

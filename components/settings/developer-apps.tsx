@@ -553,8 +553,8 @@ function SetupGuide({ app }: { app: AppKeys }) {
     "  code_challenge_method: \"S256\",",
     "}));",
   ];
-  const token = (grant: string[]) => [
-    `const tokens = await fetch("${issuer()}/oauth/token", {`,
+  const token = (name: string, grant: string[]) => [
+    `const ${name} = await fetch("${issuer()}/oauth/token", {`,
     "  method: \"POST\",",
     "  body: new URLSearchParams({",
     ...grant,
@@ -578,7 +578,7 @@ function SetupGuide({ app }: { app: AppKeys }) {
       about: server ? t("step2AboutServer") : t("step2AboutBrowser"),
       code: [
         ...(server ? ["// On your server, at the redirect URL"] : []),
-        ...token([
+        ...token("tokens", [
           "    grant_type: \"authorization_code\",",
           server ? "    code: request.query.code," : "    code: new URL(location.href).searchParams.get(\"code\"),",
           `    redirect_uri: "${redirect}",`,
@@ -606,7 +606,10 @@ function SetupGuide({ app }: { app: AppKeys }) {
     {
       title: t("step4"),
       about: t("step4About"),
-      code: token(["    grant_type: \"refresh_token\",", "    refresh_token: tokens.refresh_token,"]).join("\n"),
+      code: [
+        ...token("refreshed", ["    grant_type: \"refresh_token\",", "    refresh_token: tokens.refresh_token,"]),
+        "// refreshed.access_token. Keep refreshed.refresh_token if one comes back, or the old one if not.",
+      ].join("\n"),
     },
   ];
   return (

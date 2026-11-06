@@ -4,7 +4,8 @@
 
 import { v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { internalMutation, internalQuery, query } from "../lib/functions";
+import { internalMutation, internalQuery, query, type MutationCtx } from "../lib/functions";
+import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { refuseApps, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -121,15 +122,34 @@ export const update = internalMutation({
 });
 
 /** Deletes an app, which stops its tokens at once (getIdentity finds no app), and the sites list's rows for it after. */
+async function removeApp(ctx: MutationCtx, appId: Id<"developerApps">) {
+  await ctx.db.delete("developerApps", appId);
+  await ctx.scheduler.runAfter(0, internal.developerApps.apps.removeGrants, { appId });
+}
+
 export const remove = internalMutation({
   args: { appId: v.id("developerApps") },
   returns: v.null(),
   handler: async (ctx, { appId }) => {
-    await ctx.db.delete("developerApps", appId);
-    await ctx.scheduler.runAfter(0, internal.developerApps.apps.removeGrants, { appId });
+    await removeApp(ctx, appId);
     return null;
   },
 });
+
+/**
+ * A deleted account's sites list and its own apps, for cleanupDeletedUsers: each app goes here and from
+ * Clerk. False while rows are left for the next run.
+ */
+export async function purgeDeveloperApps(ctx: MutationCtx, userId: Id<"users">) {
+  const grants = await ctx.db.query("developerAppGrants").withIndex("by_user", (q) => q.eq("userId", userId)).take(GRANT_BATCH);
+  await Promise.all(grants.map((grant) => ctx.db.delete("developerAppGrants", grant._id)));
+  if (grants.length === GRANT_BATCH) return false;
+  for (const app of await ctx.db.query("developerApps").withIndex("by_owner", (q) => q.eq("ownerId", userId)).take(MAX_APPS)) {
+    await removeApp(ctx, app._id);
+    await ctx.scheduler.runAfter(0, internal.developerApps.actions.retireInClerk, { clerkApplicationId: app.clerkApplicationId });
+  }
+  return true;
+}
 
 export const removeGrants = internalMutation({
   args: { appId: v.id("developerApps") },

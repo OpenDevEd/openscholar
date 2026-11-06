@@ -2,7 +2,7 @@
 // OAuth application in Clerk, then the row Openscholar keeps (./apps.ts).
 
 import { v } from "convex/values";
-import { action, type ActionCtx } from "../_generated/server";
+import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { refuseApps } from "../lib/auth";
@@ -97,6 +97,16 @@ export const deleteApp = action({
     await deleteOAuthApplication(clerkSecretKey(), app.clerkApplicationId).catch((error: unknown) =>
       console.error("Developer app: delete failed in Clerk", { clerkApplicationId: app.clerkApplicationId, error }),
     );
+    return null;
+  },
+});
+
+/** Deletes an app's OAuth application in Clerk after Openscholar deleted the app with its owner's account. */
+export const retireInClerk = internalAction({
+  args: { clerkApplicationId: v.string() },
+  returns: v.null(),
+  handler: async (_ctx, { clerkApplicationId }) => {
+    await clerk("retire", () => deleteOAuthApplication(clerkSecretKey(), clerkApplicationId));
     return null;
   },
 });
