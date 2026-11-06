@@ -146,12 +146,12 @@ void main(){
   }
 
   /**
-   * Compiles the shader and uploads the four maps. Coming from the hero this runs while the new page is still arriving, so
-   * the planet's first frame can be drawn the moment the stage is there. `canvas` is only for a browser without WebGL off
-   * screen, which has to draw straight to the canvas on the page.
+   * Starts compiling the shader for the light levels or the full ones (`light`), and uploads the four maps. Coming from the
+   * hero this runs while the new page is still arriving, so the planet's first frame can be drawn the moment the stage is
+   * there. `canvas` is only for a browser without WebGL off screen, which has to draw straight to the canvas on the page.
    */
   var prepared = null;
-  function prepare(canvas, smallMaps, base) {
+  function prepare(canvas, light, base) {
     base = base || DIR;
     if (prepared && prepared.base === base && (prepared.offscreen || prepared.canvas === canvas)) return prepared;
     // Chromium shows a WebGL canvas as white from the moment a page leaves until the next one paints, and nothing can
@@ -164,52 +164,85 @@ void main(){
       var shader = gl.createShader(type);
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) console.error("[earth] shader:", gl.getShaderInfoLog(shader));
       return shader;
     };
     var triangle = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, triangle);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    // Where the browser can, the shaders compile off the main thread, and the page is asked about them only once they're done:
+    // asking sooner waits for the compile, which on a weak GPU holds up the whole page.
+    var parallel = gl.getExtension("KHR_parallel_shader_compile");
     var programs = {};
-    // The full shader, or the light one without the cloud shadow and sea glint. Each is built the first time it's wanted.
-    var program = function (lite) {
+    // The full shader, or the light one without the cloud shadow and sea glint. Each starts compiling the first time it's
+    // wanted, so a device on the light levels never compiles the full one.
+    var begin = function (lite) {
       var key = lite ? "lite" : "full";
-      if (programs[key]) return programs[key];
-      var made = gl.createProgram();
-      gl.attachShader(made, compile(gl.VERTEX_SHADER, VERTEX));
-      gl.attachShader(made, compile(gl.FRAGMENT_SHADER, lite ? FRAGMENT.replace("precision highp float;", "precision highp float;\n#define LIGHT\n") : FRAGMENT));
-      gl.linkProgram(made);
-      if (!gl.getProgramParameter(made, gl.LINK_STATUS)) return null;
+      if (!programs[key]) {
+        var made = gl.createProgram(), vertex = compile(gl.VERTEX_SHADER, VERTEX), fragment = compile(gl.FRAGMENT_SHADER, lite ? FRAGMENT.replace("precision highp float;", "precision highp float;\n#define LIGHT\n") : FRAGMENT);
+        gl.attachShader(made, vertex);
+        gl.attachShader(made, fragment);
+        gl.linkProgram(made);
+        programs[key] = { made: made, fragment: fragment, built: undefined };
+      }
+      return programs[key];
+    };
+    // The program ready to draw with, or null if it failed. Asked before the compile is done, this waits for it.
+    var program = function (lite) {
+      var entry = begin(lite);
+      if (entry.built !== undefined) return entry.built;
+      var made = entry.made;
+      if (!gl.getProgramParameter(made, gl.LINK_STATUS)) {
+        console.error("[earth] shader:", gl.getShaderInfoLog(entry.fragment) || gl.getProgramInfoLog(made));
+        return (entry.built = null);
+      }
       gl.useProgram(made);
       var attribute = gl.getAttribLocation(made, "a");
       gl.enableVertexAttribArray(attribute);
       gl.vertexAttribPointer(attribute, 2, gl.FLOAT, false, 0, 0);
       var u = function (name) { return gl.getUniformLocation(made, name); };
       IMAGES.forEach(function (name, i) { gl.uniform1i(u(name), i); });
-      programs[key] = { program: made, U: { c: u("c"), r: u("r"), t: u("t"), sd: u("sd"), wv: u("wv"), fd: u("fd"), L: u("L"), rg: u("rg") } };
-      return programs[key];
+      return (entry.built = { program: made, U: { c: u("c"), r: u("r"), t: u("t"), sd: u("sd"), wv: u("wv"), fd: u("fd"), L: u("L"), rg: u("rg") } });
     };
-    if (!program(false) && !program(true)) return null;
+    // Settles once a program can be asked about without waiting.
+    var compiled = function (lite) {
+      var entry = begin(lite);
+      return new Promise(function (done) {
+        var poll = function () { if (!parallel || gl.getProgramParameter(entry.made, parallel.COMPLETION_STATUS_KHR)) done(); else setTimeout(poll, 16); };
+        poll();
+      });
+    };
     var aniso = gl.getExtension("EXT_texture_filter_anisotropic");
     var self = {
-      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false, program: program, base: base,
+      gl: gl, offscreen: offscreen, canvas: offscreen ? null : canvas, loaded: false, program: program, compiled: compiled, base: base,
     };
-    self.textures = Promise.all(IMAGES.map(function (name, i) {
+    var maps = [];
+    var upload = function (i, image) {
+      gl.activeTexture(gl.TEXTURE0 + i);
+      if (maps[i]) gl.deleteTexture(maps[i]);
+      gl.bindTexture(gl.TEXTURE_2D, (maps[i] = gl.createTexture()));
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
+    };
+    var fetchMap = function (name) {
       var image = new Image();
-      // A device starting low gets the smaller day map: it decodes in about a third of the time.
-      image.src = base + name + (smallMaps && name === "day" ? "-2048" : "") + ".avif";
-      return image.decode().then(function () {
-        gl.activeTexture(gl.TEXTURE0 + i);
-        gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-        gl.generateMipmap(gl.TEXTURE_2D);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, 8);
-      });
-    })).then(function () { self.loaded = true; log("[earth] maps ready at", Math.round(performance.now()) + "ms"); });
-    log("[earth] shader ready at", Math.round(performance.now()) + "ms");
+      image.src = base + name + ".avif";
+      return image.decode().then(function () { return image; });
+    };
+    // Every device starts on the smaller day map, a third of the bytes, so the planet is there sooner on a slow connection.
+    // The full levels then swap in the sharp one once it has arrived.
+    self.textures = Promise.all(IMAGES.map(function (name, i) {
+      return fetchMap(name === "day" ? "day-2048" : name).then(function (image) { upload(i, image); });
+    })).then(function () {
+      self.loaded = true;
+      log("[earth] maps ready at", Math.round(performance.now()) + "ms");
+      if (!light) fetchMap("day").then(function (image) { if (!gl.isContextLost()) upload(0, image); }, function () {});
+    });
+    begin(light);
+    log("[earth] context ready at", Math.round(performance.now()) + "ms");
     // A lost context (a GPU reset, or the browser reclaiming it) can't draw again: whoever drew with it falls back to the
     // still, and the next start makes a new one.
     var lost = [];
@@ -301,11 +334,11 @@ void main(){
     var buffer = ready.offscreen ? gl.canvas : canvas;
     var shown = ready.offscreen ? canvas.getContext("2d") : null;
     var spec, current, d;
-    // Sets the drawing up for a level and a size: its shader, its resolution and how often it draws.
+    // Sets the drawing up for a level and a size: its shader, its resolution and how often it draws. The shader is taken at
+    // the next frame, so setting up never waits for a compile.
     var apply = function () {
       spec = LEVELS[level];
-      current = ready.program(spec.lite) || ready.program(!spec.lite);
-      gl.useProgram(current.program);
+      current = null;
       d = Math.min((devicePixelRatio || 1) * (o.zoom || 1), spec.scale);
       canvas.width = buffer.width = Math.round(width * d);
       canvas.height = buffer.height = Math.round(height * d);
@@ -315,8 +348,16 @@ void main(){
       gl.scissor(Math.max(0, (layout.cx - g) * d), Math.max(0, canvas.height - (layout.cy + g) * d), g * 2 * d, g * 2 * d);
     };
     apply();
+    // Ready once the maps are in and the shader has compiled. It fails if neither shader can be built, with `shader` set, so a
+    // caller can show the still for that and not for a map that failed to arrive.
+    var textures = Promise.all([ready.textures, ready.compiled(spec.lite)]).then(function () {
+      if (ready.program(spec.lite) || ready.program(!spec.lite)) return;
+      var error = new Error("no shader");
+      error.shader = true;
+      throw error;
+    });
     return {
-      textures: ready.textures,
+      textures: textures,
       get loaded() { return ready.loaded; },
       get level() { return level; },
       /** How many display frames apart this level draws. */
@@ -325,6 +366,8 @@ void main(){
       resize: function (w, h, l) { width = w; height = h; layout = l; apply(); },
       /** One frame: `t` the turn, `sun` a unit vector, `shadow` the ring's shadow on it, `wave` 0 to 1 or 0, `lift` px. */
       draw: function (u) {
+        current = current || ready.program(spec.lite) || ready.program(!spec.lite);
+        if (!current) return false;
         var U = current.U;
         gl.useProgram(current.program);
         gl.uniform2f(U.c, layout.cx * d, canvas.height - (layout.cy + (u.lift || 0)) * d);
@@ -342,6 +385,7 @@ void main(){
           shown.clearRect(0, 0, canvas.width, canvas.height);
           shown.drawImage(buffer, 0, 0);
         }
+        return true;
       },
     };
   }
@@ -365,7 +409,7 @@ void main(){
       var w = (now - waveAt) / 1800;
       var swing = sunAt ? smooth(clamp01((now - sunAt) / sunMs)) : 0;
       var from = unit(SUN_UP);
-      planet.draw({
+      return planet.draw({
         t: phase,
         sun: unit([from[0] + (SUN_BEHIND[0] - from[0]) * swing, from[1] + (SUN_BEHIND[1] - from[1]) * swing, from[2] + (SUN_BEHIND[2] - from[2]) * swing]),
         // The still has no ring shadow on the planet, so coming from it, it comes in gently.
@@ -413,14 +457,15 @@ void main(){
         phase = turn.t + Math.min(30, Math.max(0, (froze - turn.at) / 1000));
       }
       liveAt = last = performance.now();
-      draw(liveAt);
+      // Neither shader built: the still stands in.
+      if (!draw(liveAt)) { o.ready(false); return; }
       // Frozen, it's drawn once and only the ring's spark moves on.
       if (o.frozen) level = 0;
       o.ready(true);
       if (!o.calm) raf = requestAnimationFrame(loop);
     };
     // Ready already, it draws now, before the browser paints the stage for the first time.
-    if (planet.loaded) go();
+    if (planet.loaded) { planet.textures.catch(function () {}); go(); }
     else planet.textures.then(go, function (error) {
       console.error("[earth] images:", error);
       o.ready(false);
@@ -493,8 +538,13 @@ void main(){
       calm: matchMedia("(prefers-reduced-motion: reduce)").matches,
       ready: function (ok) {
         log("[earth]", ok ? "drawing" : "can't draw, showing the still", Math.round(performance.now() - begun) + "ms after starting");
-        if (ok) { canvas.dataset.live = ""; image.dataset.live = ""; } else image.dataset.failed = "";
-        release();
+        if (ok) { canvas.dataset.live = ""; image.dataset.live = ""; release(); return; }
+        image.dataset.failed = "";
+        // Under a live planet from the hero the still waited to be needed: it's fetched now, and the page paints once it can
+        // be drawn, so the planet's place is never empty.
+        var picture = image.querySelector("img");
+        if (picture) picture.loading = "eager";
+        (picture ? picture.decode() : Promise.resolve()).then(release, release);
       },
     });
     run.canvas = canvas;
@@ -505,8 +555,8 @@ void main(){
   // Loaded early by the page's first script (lib/search/question-stage-script.ts), it gets the planet ready while the page is
   // still arriving, and starts it the moment the stage is there, before the app's own scripts.
   log("[earth] script ran at", Math.round(performance.now()) + "ms");
-  // Coming from the hero, the maps are fetched now, the smaller day map for the light levels, unless the hero had come to
-  // rest on the still (its level is the 8th number).
+  // Coming from the hero, the maps are fetched and the shader for its level starts compiling now, unless the hero had come
+  // to rest on the still (its level is the 8th number).
   var handed = new URLSearchParams(location.search).get("hero");
   var handedNumbers = handed ? handed.split(",").map(Number) : [];
   var handedLevel = handedNumbers[7] || 0;

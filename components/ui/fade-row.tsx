@@ -25,9 +25,16 @@ export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover",
     };
     const resize = new ResizeObserver(() => {
       const kept = keepInView ? element.querySelector(keepInView)?.getBoundingClientRect() : null;
-      const edges = element.getBoundingClientRect();
-      if (kept && kept.left < edges.left) element.scrollLeft -= edges.left - kept.left;
-      else if (kept && kept.right > edges.right) element.scrollLeft += kept.right - edges.right;
+      if (kept) {
+        const edges = element.getBoundingClientRect();
+        const ltr = getComputedStyle(element).direction !== "rtl";
+        // In reading order: how far the item's start is inside the row's start (below 0 is cut), and its end past the row's end.
+        const start = ltr ? kept.left - edges.left : edges.right - kept.right;
+        const end = ltr ? kept.right - edges.right : edges.left - kept.left;
+        // The least move that brings it in, and when it's wider than the row, its start, so its name reads from the beginning.
+        const move = start < 0 ? start : end > 0 ? Math.min(end, start) : 0;
+        element.scrollLeft += ltr ? move : -move;
+      }
       measure();
     });
     const watch = () => {
