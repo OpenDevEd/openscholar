@@ -137,7 +137,8 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     });
     for (const asking of document.querySelectorAll("[data-ask]")) asking.addEventListener("submit", (e) => {
       const input = asking.querySelector("input"), q = input.value.trim() || asking.dataset.q || "";
-      if (!q || leaving || readying || !ready || calm.matches) return;
+      // Pinch zoom isn't kept per site, so the app couldn't match a pinched-in hero: that search goes the plain way.
+      if (!q || leaving || readying || !ready || calm.matches || (vv && vv.scale > 1.01)) return;
       e.preventDefault();
       readying = true;
       // The hero's box takes the question, and its typing demo (AskBar) stands down as it does when the box is clicked.

@@ -105,7 +105,7 @@ const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
  * How much bigger the planet has to be, zooming from its top edge, for the foot of its box to stay below the screen. The
  * hero's links cover that foot, and without them the planet would look cut off.
  */
-const zoomToClear = (top: number, foot: number) => Math.max(1, (innerHeight + 60 - top) / (foot - top));
+const zoomToClear = (top: number, foot: number, scale = 1) => Math.max(1, (innerHeight / scale + 60 - top) / (foot - top));
 
 /** One word's way into the planet: it sinks first and gathers towards the point late, so its path curves, and it fades as it arrives. */
 function wordSettle(dx: number, dy: number) {
@@ -179,6 +179,9 @@ export function QuestionStage() {
       return;
     }
     const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // Coming from the hero the stage is drawn in the hero's pixels, scaled to this page's zoom (see .stage[data-handover]), so
+    // the window's own measurements are divided by the same ratio.
+    const scale = handover ? innerWidth / handover.width : 1;
     stage.current!.dataset.moving = "";
     const planetEl = space.current!;
     const planetTop = frame.spaceTop + layout!.cy - layout!.R;
@@ -186,8 +189,8 @@ export function QuestionStage() {
     // Always from the planet's top edge, so it stays where the question will land.
     planetEl.style.transformOrigin = `${layout!.cx}px ${layout!.cy - layout!.R}px`;
     // It settles down into the room the hero's links left, and zooms for whatever that doesn't cover.
-    const down = Math.min(Math.max(0, innerHeight - planetFoot), SETTLE_DOWN_MAX);
-    const settled = `translateY(${down}px) scale(${zoomToClear(planetTop + down, planetFoot + down)})`;
+    const down = Math.min(Math.max(0, innerHeight / scale - planetFoot), SETTLE_DOWN_MAX);
+    const settled = `translateY(${down}px) scale(${zoomToClear(planetTop + down, planetFoot + down, scale)})`;
     if (calm) planetEl.style.transform = settled;
     else planetEl.animate([{ transform: "none" }, { transform: settled }], { duration: 1800, delay: 100, easing: "cubic-bezier(.45,0,.2,1)", fill: "both" });
     const stillImage = stage.current!.querySelector<HTMLImageElement>("[data-still] img");
@@ -250,17 +253,17 @@ export function QuestionStage() {
       for (const motion of planet.getAnimations()) motion.cancel();
       planet.style.transform = from;
       const spans = [...headline.current!.children] as HTMLElement[];
-      const question = headline.current!.getBoundingClientRect();
+      const questionBottom = headline.current!.getBoundingClientRect().bottom / scale;
       const top = planetTop + now.m42;
-      const rise = Math.min(Math.max(0, top - question.bottom) * RISE_SHARE, RISE_MAX);
+      const rise = Math.min(Math.max(0, top - questionBottom) * RISE_SHARE, RISE_MAX);
       const met = now.m42 - rise;
-      const zoom = zoomToClear(planetTop + met, planetFoot + met);
+      const zoom = zoomToClear(planetTop + met, planetFoot + met, scale);
       const x = frame.width / 2;
       const y = planetTop + met + layout.R * zoom * 0.04;
       // The words are measured in the window, the planet in the sky, which may start a little left of the window.
       const wordsX = x + (frame.left ?? 0);
 
-      const centres = spans.map((span) => span.getBoundingClientRect()).map((r) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 }));
+      const centres = spans.map((span) => span.getBoundingClientRect()).map((r) => ({ x: (r.left + r.width / 2) / scale, y: (r.top + r.height / 2) / scale }));
       const farthest = Math.max(1, ...centres.map((c) => Math.hypot(c.x - wordsX, c.y - y)));
       spans.forEach((span, i) => {
         span.style.transformOrigin = "50% 50%";
