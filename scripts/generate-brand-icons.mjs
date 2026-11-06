@@ -7,6 +7,11 @@ import sharp from "sharp";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = await readFile(path.join(root, "public/icon.svg"));
+// The browser-tab icon follows the browser's theme: its network is dark on a light tab bar and light on a dark one.
+const adaptive = source
+  .toString()
+  .replace(/(<svg[^>]*>)/, "$1<style>@media (prefers-color-scheme: dark){.network{fill:#f5f5f5}}</style>")
+  .replace('<path fill="#141414"', '<path class="network" fill="#141414"');
 
 async function transparentPng(size) {
   return sharp(source).resize(size, size, { fit: "contain" }).png().toBuffer();
@@ -58,7 +63,7 @@ const faviconFrames = await Promise.all(
 );
 
 const outputs = [
-  ["app/icon0.svg", source],
+  ["app/icon0.svg", adaptive],
   ["app/icon1.png", await transparentPng(96)],
   ["app/favicon.ico", ico(faviconFrames)],
   ["app/apple-icon.png", await whiteCanvasPng(180)],
