@@ -145,8 +145,8 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   /* Letters rise off the bottom edge as you reach them, and any one lifts under the pointer with its neighbours half as far. */
   :global(.js) .stand:not(.up) .word span { translate: 0 100%; } :global(.js) .stand.up .word span { animation: letter 1.1s var(--ease) calc(var(--i) * 48ms) backwards; } @keyframes letter { from { translate: 0 100%; } }
   .word span:global(.lift) { translate: 0 -8%; } .word span:global(.lift2) { translate: 0 -4%; }
-  .veil { position: absolute; left: 0; top: 0; bottom: 0; width: 300vw; background: linear-gradient(90deg, rgb(7 11 26 / .93) 42%, rgb(7 11 26 / .3) 44.5%, transparent 45% 55%, rgb(7 11 26 / .3) 55.5%, rgb(7 11 26 / .93) 58%); transform: translateX(-150vw); animation: sweep 11s ease-in-out infinite alternate; pointer-events: none; }
-  .foot.away .veil { animation-play-state: paused; } .foot.held .veil { animation: none; transition: transform .25s var(--ease); } @keyframes sweep { to { transform: translateX(-50vw); } }
+  .veil { position: absolute; left: 0; top: 0; bottom: 0; width: 300vw; background: linear-gradient(90deg, rgb(7 11 26 / .93) 42%, rgb(7 11 26 / .3) 44.5%, transparent 45% 55%, rgb(7 11 26 / .3) 55.5%, rgb(7 11 26 / .93) 58%); transform: translateX(-150vw); animation: sweep 11s ease-in-out infinite alternate; pointer-events: none; transition: translate .35s var(--ease); }
+  .foot.away .veil, .foot.held .veil { animation-play-state: paused; } @keyframes sweep { to { transform: translateX(-50vw); } }
   @media (prefers-reduced-motion: reduce) { .veil { transform: translateX(-100vw); } }
   @media (max-width: 960px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
