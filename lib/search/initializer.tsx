@@ -34,6 +34,7 @@ import { buildResultsUrl, parseSearchParamsFromUrl, readSharedOql, readUrlQuesti
 import { OQL_FIELD } from '../openalex/oql';
 import { resolveSearchInit } from './resolve-search-init';
 import { useCopiedSearches } from './copied';
+import { useQuestionStage } from './question-stage';
 import type { SearchField, SearchResult } from '../types';
 
 interface SearchInitializerProps {
@@ -67,6 +68,7 @@ function QuestionSearch({ question, entry, onWritten }: { question: string; entr
   useEffect(() => {
     if (!isReady || started.current) return;
     started.current = true;
+    useQuestionStage.setState({ query: null });
     const write = async () => {
       let query = '';
       try {
@@ -220,7 +222,10 @@ export function SearchInitializer({ children, onMade }: SearchInitializerProps) 
           <QuestionSearch
             question={unwritten.question}
             entry={unwritten.entry}
-            onWritten={(query) => createSearch({ ...unwritten.entry, query }, unwritten.question)}
+            onWritten={(query) => {
+              useQuestionStage.setState({ query });
+              createSearch({ ...unwritten.entry, query }, unwritten.question);
+            }}
           />
         )}
       </div>

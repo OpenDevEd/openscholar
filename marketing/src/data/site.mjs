@@ -1,4 +1,5 @@
-export const APP = "https://discover.openscholar.ai";
+// APP_URL points a local copy of this site at a local copy of the app.
+export const APP = process.env.APP_URL ?? "https://discover.openscholar.ai";
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
 // Live Evidence Communities, shown in the home hero and the menu.
 export const COMMUNITIES = [
