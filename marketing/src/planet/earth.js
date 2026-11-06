@@ -331,7 +331,7 @@ void main(){
   function start(o) {
     var canvas = o.canvas, layout = o.layout, turn = o.turn;
     var none = { wave: function () {}, sunBehind: function () {}, stop: function () {}, level: 0 };
-    var planet = renderer({ canvas: canvas, layout: layout, width: o.width, height: o.height, level: o.level, onLost: function () { level = 0; o.onLevel(0); } });
+    var planet = renderer({ canvas: canvas, layout: layout, width: o.width, height: o.height, level: o.level, onLost: function () { level = 0; if (o.stage) delete o.stage.dataset.frozen; o.onLevel(0); } });
     if (!planet) { o.ready(false); return none; }
     var level = planet.level, frameNo = 0, lastDrawn = 0;
 
@@ -354,10 +354,11 @@ void main(){
 
     var comet = spark(o.stage, layout);
 
-    // Down to the still, the canvas gives way to the image, and the ring's spark keeps going so the page doesn't look stuck.
+    // Down to level 0 the planet stops where it is, drawn once more at the light level's full resolution, as the hero's does,
+    // and the ring's spark keeps going so the page doesn't look stuck.
     var watch = monitor(function (next) {
       log("[earth] level", level, "to", next);
-      if (next === 0) { level = 0; o.onLevel(0); return; }
+      if (next === 0) { planet.setLevel(FROZEN_LEVEL); draw(performance.now()); level = 0; if (o.stage) o.stage.dataset.frozen = ""; o.onLevel(0); return; }
       level = next;
       planet.setLevel(level);
       o.onLevel(level);

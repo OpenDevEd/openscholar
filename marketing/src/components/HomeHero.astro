@@ -162,7 +162,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     scene.addEventListener("pointerover", (e) => { onSat = sats.indexOf(e.target.closest("[data-sat]")); }); scene.addEventListener("pointerout", () => { onSat = -1; });
     root.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = root.getBoundingClientRect(), b = scene.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; mouse = { x: e.clientX - b.left, y: e.clientY - b.top }; }, { passive: true }); root.addEventListener("pointerleave", () => { mouse = null; tx = ty = 0; });
     // Pointing at or tabbing to a community below swings its satellite round to the front and holds it there.
-    const setHold = (i) => { if (i === hold) return; sats[hold]?.classList.remove("held"); hold = i; sats[i]?.classList.add("held"); }, kOf = (el) => Number(el?.closest("[data-k]")?.dataset.k ?? -1);
+    const setHold = (i) => { if (i === hold) return; sats[hold]?.classList.remove("held"); hold = i; sats[i]?.classList.add("held"); if (calm.matches) placeSats(0); }, kOf = (el) => Number(el?.closest("[data-k]")?.dataset.k ?? -1);
     // When the pointer leaves, a community the keyboard is on keeps its satellite.
     const aim = (i) => setHold(i < 0 ? kOf(hub.querySelector(":focus-visible")) : i);
     hub.addEventListener("pointerover", (e) => aim(kOf(e.target))); hub.addEventListener("focusin", (e) => setHold(kOf(e.target))); hub.addEventListener("pointerout", () => aim(-1)); hub.addEventListener("focusout", () => setHold(-1));
