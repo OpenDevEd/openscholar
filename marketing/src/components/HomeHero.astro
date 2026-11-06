@@ -154,10 +154,13 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       if (!q || leaving || readying || !ready || calm.matches || (vv && vv.scale > 1.01)) return;
       e.preventDefault();
       readying = true;
+      // From here until the app opens the page can't be scrolled: the hand-over measures the hero and flies the question from
+      // where it is, so a scroll in between would land the app's first frame in the wrong place. Scripts still scroll it.
+      document.documentElement.classList.add("handing");
       // The hero's box takes the question, and its typing demo (AskBar) stands down as it does when the box is clicked.
       if (asking !== form) { const box = form.querySelector("input"); box.value = q; box.dispatchEvent(new Event("focus")); }
       // If anything here fails, the search still goes, as a plain one.
-      keyboardDown(input).then(toTop).then(() => { readying = false; handOver(q); }).catch(() => { readying = false; asking.submit(); });
+      keyboardDown(input).then(toTop).then(() => { readying = false; handOver(q); }).catch(() => { readying = false; document.documentElement.classList.remove("handing"); asking.submit(); });
     });
     const handOver = (q) => {
       const top = root.getBoundingClientRect(), space = scene.getBoundingClientRect(), head = root.querySelector("h1"), input = form.querySelector("input"), words = q.match(/\S+/g), shown = words.length > 30 ? [...words.slice(0, 30), "..."] : words;
@@ -181,7 +184,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       handed.push({ cancel: () => { question.remove(); cover.remove(); } });
     };
     // Back from the app, the hero is as it was.
-    addEventListener("pageshow", (e) => { readying = false; if (e.persisted && leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } });
+    addEventListener("pageshow", (e) => { readying = false; document.documentElement.classList.remove("handing"); if (e.persisted && leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } });
     // The sun comes up: the planet holds as a crescent with its cities lit, then day sweeps across it.
     const clamp01 = (v) => Math.min(1, Math.max(0, v)), LA = [-.72, .5, -.48], LB = [-.7, .62, .3];
     const draw = (now) => {
@@ -236,6 +239,8 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   :global(.handq) { position: absolute; left: 0; width: 100vw; z-index: 7; display: flex; flex-wrap: wrap; justify-content: center; padding-inline: max(24px, calc((100vw - 1240px) / 2)); color: #ffe6cf; font-weight: 500; letter-spacing: -.04em; line-height: 1.06; text-align: center; pointer-events: none; font-size: 38px; } :global(.handq[data-size="medium"]) { font-size: 30px; } :global(.handq[data-size="small"]) { font-size: 22px; line-height: 1.2; letter-spacing: -.02em; }
   @media (min-width: 600px) { :global(.handq) { font-size: 56px; } :global(.handq[data-size="medium"]) { font-size: 44px; } :global(.handq[data-size="small"]) { font-size: 30px; } } @media (min-width: 1100px) { :global(.handq) { font-size: 64px; } :global(.handq[data-size="medium"]) { font-size: 52px; } :global(.handq[data-size="small"]) { font-size: 36px; } } @media (min-width: 1400px) { :global(.handq) { font-size: 72px; } }
   :global(.handq span) { display: inline-block; padding-inline: .13em; }
+  /* The scrollbar keeps its room while scrolling is off, so nothing moves sideways. */
+  :global(html.handing) { overflow: hidden; scrollbar-gutter: stable; overscroll-behavior: none; }
   :global(.handcover) { position: fixed; inset: 0; z-index: 40; background: var(--sky); pointer-events: none; animation: arrive 240ms ease-out backwards; }
   .sky { padding: 146px 0 0; background: var(--sky); text-align: center; }
   .plate { position: absolute; left: 50%; top: 0; z-index: -2; width: 2560px; max-width: none; height: 820px; margin-left: -1280px; pointer-events: none; mask-image: linear-gradient(#000 76%, transparent), linear-gradient(90deg, transparent 360px, #000 560px, #000 2000px, transparent 2200px); mask-composite: intersect; transition: opacity 1.2s var(--ease); }
