@@ -1,0 +1,21 @@
+---
+// Hero C: two bundles of light meet in one point, just above the form.
+import Base from "../../../layouts/Base.astro";
+import ContactBody from "../../../components/ContactBody.astro";
+---
+<Base top="#360008" title="Contact: Openscholar" description="Write to the team behind Openscholar about your research, your team or a community of your own.">
+  <section class="bleed mhero">
+    <div class="m-art" aria-hidden="true"><img src="/img/art-fibres-960.avif" width="960" height="540" alt="" decoding="async" fetchpriority="high" /></div>
+    <div class="inner"><div class="c-copy"><h1>Let's talk about your evidence</h1><p class="lead">Questions about your research, your team or a community of your own. Write to us and someone on the team will read it.</p></div></div>
+  </section>
+  <ContactBody />
+</Base>
+<style>
+  .mhero { --rise: clamp(130px, 11vw, 170px); background: #360008; padding-block: clamp(136px, 11vw, 170px) calc(var(--rise) + clamp(190px, 17vw, 260px)); text-align: center; }
+  .c-copy { position: relative; z-index: 1; display: grid; gap: 20px; justify-items: center; max-width: 900px; margin-inline: auto; } .c-copy h1 { font-size: clamp(44px, 6vw, 92px); line-height: 1; letter-spacing: -.035em; } .c-copy .lead { max-width: 32em; color: rgb(255 255 255 / .88); }
+  .c-copy > * { animation: m-up .8s var(--ease) both; } .c-copy > :nth-child(2) { animation-delay: .07s; } @keyframes m-up { from { opacity: 0; transform: translateY(18px); } }
+  /* The light comes in from both edges of the window and meets in one point, just above the form. */
+  .m-art { position: absolute; z-index: -1; left: 0; right: 0; bottom: calc(var(--rise) - 150px); height: clamp(380px, 40vw, 600px); overflow: clip; }
+  .m-art img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; animation: m-meet 1.6s .1s var(--ease) both; } @keyframes m-meet { from { opacity: 0; transform: scaleX(1.25); } }
+  .m-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(#360008, transparent 22%, transparent 78%, #360008); }
+</style>

@@ -1,0 +1,68 @@
+---
+// Hero B: the inbox people are writing to, with messages arriving at the top.
+import Base from "../../../layouts/Base.astro";
+import Icon from "../../../components/Icon.astro";
+import ContactBody from "../../../components/ContactBody.astro";
+// What arrives: one message per topic on the form, in the words people write them in.
+const mail = [
+  ["globe", "#34d399", "Southern plan", "Early-grade reading in public schools, and what has worked since 2015"],
+  ["layers", "#fb7185", "Evidence Community", "A public home for our network's research on climate adaptation"],
+  ["team", "#38bdf8", "Your team", "Six of us are screening papers for a review of teacher coaching"],
+  ["buildings", "#fbbf24", "Research and partnerships", "Evidence for a skills programme running in three countries"],
+  ["key", "#7da7e6", "Your account", "My workspace is missing since I switched organisations"],
+  ["mail", "#ff9d36", "Something else", "Could the screening export include each paper's abstract?"],
+];
+const SHOWN = 4;
+---
+<Base top="#070b1a" title="Contact: Openscholar" description="Write to the team behind Openscholar about your research, your team or a community of your own.">
+  <section class="bleed ihero">
+    <i class="field f-night" aria-hidden="true"></i>
+    <div class="inner i-in">
+      <div class="c-copy"><h1>Write to us</h1><p class="lead">Questions about your research, your team or a community of your own. Every message reaches the team, and someone reads it.</p></div>
+      <div class="box" aria-hidden="true">
+        <div class="b-head"><i><Icon name="mail" size={20} /></i><b>habari@openscholar.ai</b><span>Inbox</span></div>
+        <ol class="b-list" data-inbox style={`--n:${SHOWN}`}>
+          {mail.map(([icon, color, topic, text], i) => <li style={`--c:${color};--i:${i < SHOWN ? i : SHOWN}`} class:list={{ gone: i >= SHOWN }}><i><Icon name={icon} size={20} /></i><span><b>{topic}</b><em>{text}</em></span><time>{i === 0 ? "now" : `${i * 3} min`}</time></li>)}
+        </ol>
+      </div>
+    </div>
+  </section>
+  <ContactBody />
+</Base>
+<script>
+  // A new message arrives at the top every few seconds: each row moves down one place and the last leaves. Rows only
+  // ever move by transform, so the box never changes size.
+  const list = document.querySelector<HTMLElement>("[data-inbox]");
+  if (list && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const rows = [...list.children] as HTMLElement[], shown = Number(list.style.getPropertyValue("--n"));
+    let order = rows.map((_, i) => i), timer = 0;
+    const tick = () => {
+      order = [order[order.length - 1], ...order.slice(0, -1)];
+      order.forEach((r, place) => {
+        const row = rows[r];
+        row.classList.toggle("gone", place >= shown); row.classList.toggle("fresh", place === 0);
+        row.style.setProperty("--i", String(Math.min(place, shown)));
+        row.querySelector("time")!.textContent = place === 0 ? "now" : `${place * 3} min`;
+      });
+    };
+    const run = () => { clearInterval(timer); if (!document.hidden) timer = window.setInterval(tick, 2800); };
+    document.addEventListener("visibilitychange", run); run();
+  }
+</script>
+<style>
+  .ihero { --rise: clamp(130px, 11vw, 170px); background: #070b1a; padding-block: clamp(136px, 11vw, 170px) calc(var(--rise) + clamp(48px, 5vw, 72px)); }
+  .ihero > .field { position: absolute; inset: 0; z-index: -1; }
+  .i-in { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(32px, 5vw, 80px); align-items: center; }
+  .c-copy { display: grid; gap: 20px; } .c-copy h1 { font-size: clamp(48px, 6.4vw, 96px); line-height: 1; letter-spacing: -.035em; } .c-copy .lead { max-width: 26em; color: rgb(255 255 255 / .86); }
+  .c-copy > *, .box { animation: i-up .8s var(--ease) both; } .c-copy > :nth-child(2) { animation-delay: .07s; } .box { animation-delay: .14s; } @keyframes i-up { from { opacity: 0; transform: translateY(18px); } }
+  /* The inbox: a glass pane with its address on top and four messages below it. */
+  .box { --row: 76px; border-radius: 22px; padding: 8px; background: rgb(255 255 255 / .06); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), inset 0 0 0 1px rgb(255 255 255 / .1), 0 40px 80px -30px rgb(0 0 0 / .6); }
+  .b-head { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 12px 0 8px; } .b-head i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--brand); color: var(--brand-on); } .b-head b { font-weight: 500; font-size: 16px; } .b-head span { margin-left: auto; font: 400 13px/1 var(--mono); color: rgb(255 255 255 / .55); }
+  .b-list { position: relative; height: calc(var(--row) * var(--n) + 4px * (var(--n) - 1)); overflow: clip; border-radius: 16px; }
+  .b-list li { position: absolute; left: 0; right: 0; top: 0; height: var(--row); display: flex; align-items: center; gap: 14px; padding: 0 16px 0 12px; border-radius: 16px; background: rgb(255 255 255 / .07); transform: translateY(calc(var(--i) * (var(--row) + 4px))); transition: transform .7s var(--ease), opacity .5s var(--ease), background-color .6s var(--ease); }
+  .b-list li > i { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: color-mix(in srgb, var(--c) 22%, transparent); color: var(--c); }
+  .b-list li > span { display: grid; gap: 3px; min-width: 0; } .b-list b { font-weight: 500; font-size: 15px; } .b-list em { font-style: normal; font-size: 14px; color: rgb(255 255 255 / .72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .b-list time { flex: none; margin-left: auto; align-self: start; padding-top: 18px; font: 400 13px/1 var(--mono); color: rgb(255 255 255 / .5); }
+  .b-list li.gone { opacity: 0; } .b-list li.fresh { background: rgb(255 255 255 / .14); animation: arrive .7s var(--ease); } @keyframes arrive { from { opacity: 0; transform: translateY(-24px) scale(.97); } }
+  @media (max-width: 900px) { .i-in { grid-template-columns: minmax(0, 1fr); } .box { --row: 68px; } }
+</style>
