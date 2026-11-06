@@ -60,7 +60,14 @@ const stand = $(".stand", foot); new IntersectionObserver(([e], o) => { if (e.is
 // A lifted letter's reflection moves with it, so both copies take the class.
 const copies = [...stand.querySelectorAll(".word")].map((w) => [...w.children]); const lift = (n) => copies.forEach((c) => c.forEach((s, i) => { s.classList.toggle("lift", i === n); s.classList.toggle("lift2", n >= 0 && Math.abs(i - n) === 1); })); copies[0].forEach((s, i) => s.addEventListener("pointerenter", () => lift(i))); copies[0][0].parentElement.addEventListener("pointerleave", () => lift(-1));
 const veil = $(".veil", foot);
-if (fine) { foot.addEventListener("pointerenter", () => foot.classList.add("held")); foot.addEventListener("pointerleave", () => { foot.classList.remove("held"); veil.style.transform = ""; }); }
+// With a mouse the bright window follows the pointer across the name. The sweep pauses where it is and the window is offset
+// from there, so it glides to the pointer and back again without a jump.
+if (fine) {
+  let frame = 0, x = 0;
+  const follow = () => { frame = 0; const sweep = new DOMMatrix(getComputedStyle(veil).transform).m41, centre = x - stand.getBoundingClientRect().left; veil.style.translate = `${(centre - veil.offsetWidth / 2 - sweep).toFixed(1)}px 0`; };
+  foot.addEventListener("pointermove", (e) => { if (still.matches) return; x = e.clientX; foot.classList.add("held"); frame ||= requestAnimationFrame(follow); }, { passive: true });
+  foot.addEventListener("pointerleave", () => { cancelAnimationFrame(frame); frame = 0; foot.classList.remove("held"); veil.style.translate = ""; });
+}
 
 
 // Pointer effects on real mice and trackpads only.
