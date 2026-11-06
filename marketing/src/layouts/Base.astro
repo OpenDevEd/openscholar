@@ -7,7 +7,7 @@ import Arrow from "../components/Arrow.astro";
 import markFile from "../data/mark.svg?raw";
 const { title, description, og = "/og.jpg", top = "#091026" } = Astro.props;
 const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
-// The logo inline, so its chain of nodes can turn around the Earth on hover.
+// The logo inline, so it can tilt on hover and its colours follow the page.
 const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
 const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize", "list"], ["screening", "sieve"], ["extraction", "table"], ["assistant", "spark"]]], ["Teams", [["workspaces", "merge"], ["account", "key"]]], ["Communities", [["community-setup", "globe"], ["community-readers", "cite"], ["community-admin", "pen"]]]];
 ---
