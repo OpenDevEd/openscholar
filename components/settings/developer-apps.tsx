@@ -1,0 +1,589 @@
+"use client";
+
+// MOCK (mock/developer-apps): apps people build on Openscholar, on the connections page.
+// The list lives in page state; nothing here reaches Clerk or Convex yet.
+
+import { useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useFormatter, useNow, useTranslations } from "next-intl";
+import { AppWindow, Check, ChevronRight, Copy, Globe, Lock, Plus, RefreshCw, Server, Trash2, X } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { AutoHeight } from "@/components/ui/auto-height";
+import { LIST, Paged, Segmented, Tile, Zone, pagerOf } from "@/components/settings/parts";
+import { EASE } from "@/components/settings/model-map";
+
+type Kind = "browser" | "server";
+type DevApp = { id: string; name: string; website: string; redirectUris: string[]; kind: Kind; clientId: string; createdAt: number };
+type Draft = { name: string; website: string; redirectUris: string[]; kind: Kind };
+
+const PER_PAGE = 8;
+const MAX_APPS = 10;
+const TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
+const DAY = 86_400_000;
+
+const SAMPLE: DevApp[] = [
+  { id: "a1", name: "BeeWriter", website: "https://beewriter.app", redirectUris: ["https://beewriter.app/auth/openscholar/callback"], kind: "server", clientId: "wiQ5lXcfnufTi0bp", createdAt: Date.now() - 3 * DAY },
+  { id: "a2", name: "Lab reading list", website: "https://reading.lab.example.org", redirectUris: ["https://reading.lab.example.org/callback", "http://localhost:5173/callback"], kind: "browser", clientId: "hZHIF2k6TdyIeGWe", createdAt: Date.now() - 12 * DAY },
+  { id: "a3", name: "Systematic review export tool for the Ministry of Education evidence team", website: "https://evidence-tools.example.gov", redirectUris: ["https://evidence-tools.example.gov/oauth/callback"], kind: "server", clientId: "Qm2Lr8vTyx01PdKs", createdAt: Date.now() - 40 * DAY },
+];
+
+const randomString = (length: number) => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  return Array.from(crypto.getRandomValues(new Uint8Array(length)), (byte) => chars[byte % chars.length]).join("");
+};
+
+/** Where Clerk signs people in: the publishable key holds the instance's frontend address. */
+function issuer() {
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+  try {
+    return `https://${atob(key.split("_")[2] ?? "").replace(/\$$/, "")}`;
+  } catch {
+    return "";
+  }
+}
+const API = process.env.NEXT_PUBLIC_CONVEX_URL ?? "";
+const host = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
+const validUrl = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || (parsed.protocol === "http:" && ["localhost", "127.0.0.1"].includes(parsed.hostname));
+  } catch {
+    return false;
+  }
+};
+
+export function DeveloperApps() {
+  const t = useTranslations("developerApps");
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
+  const [apps, setApps] = useState(SAMPLE);
+  const [page, setPage] = useState(1);
+  const [creating, setCreating] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const pager = pagerOf(apps.length, PER_PAGE, page, setPage);
+  const shown = apps.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
+  const full = apps.length >= MAX_APPS;
+  const opened = apps.find((app) => app.id === openId) ?? null;
+
+  const newApp = (
+    <Button size="sm" className="h-7" disabled={full} onClick={() => setCreating(true)}>
+      <Plus /> {t("newApp")}
+    </Button>
+  );
+
+  return (
+    <Zone
+      label={t("yourApps")}
+      aside={full ? (
+        <TooltipHint label={t("limit", { count: MAX_APPS })}>
+          <span tabIndex={0}>{newApp}</span>
+        </TooltipHint>
+      ) : newApp}
+    >
+      {apps.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
+          <AppWindow className="size-5 text-muted-foreground" />
+          <p className="text-sm font-medium">{t("noApps")}</p>
+          <p className="max-w-sm text-xs text-muted-foreground">{t("noAppsDescription")}</p>
+        </div>
+      ) : (
+        <Paged pager={pager} rowHeight={61} label={t("apps")}>
+          <ul className={`${LIST} @container/apps`}>
+            <AnimatePresence initial={false}>
+              {shown.map((app) => (
+                <motion.li
+                  key={app.id}
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: EASE }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(app.id)}
+                    className="flex w-full items-center gap-3 p-3 text-start transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
+                  >
+                    <Tile icon={AppWindow} tint={TINTS[apps.indexOf(app) % TINTS.length]!} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{app.name}</span>
+                      <span className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                        <span className="inline-flex min-w-0 items-center gap-1">
+                          <Globe className="size-3 shrink-0" />
+                          <span className="truncate">{host(app.website)}</span>
+                        </span>
+                        <span className="shrink-0 font-mono text-2xs @max-[30rem]/apps:hidden">{app.clientId}</span>
+                      </span>
+                    </span>
+                    <KindTag kind={app.kind} />
+                    <span className="shrink-0 whitespace-nowrap text-end text-xs tabular-nums text-muted-foreground @max-[36rem]/apps:hidden">
+                      {t("created", { time: format.relativeTime(Math.min(app.createdAt, now.getTime()), now) })}
+                    </span>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                  </button>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </ul>
+        </Paged>
+      )}
+
+      <NewAppDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onCreate={(draft) => {
+          const app: DevApp = { ...draft, id: crypto.randomUUID(), clientId: randomString(16), createdAt: Date.now() };
+          setApps((list) => [app, ...list]);
+          setPage(1);
+          return app;
+        }}
+      />
+      <AppDialog
+        app={opened}
+        onClose={() => setOpenId(null)}
+        onSave={(id, draft) => setApps((list) => list.map((app) => (app.id === id ? { ...app, ...draft } : app)))}
+        onDelete={(id) => {
+          setOpenId(null);
+          setApps((list) => list.filter((app) => app.id !== id));
+        }}
+      />
+    </Zone>
+  );
+}
+
+function KindTag({ kind }: { kind: Kind }) {
+  const t = useTranslations("developerApps");
+  const Icon = kind === "server" ? Server : Globe;
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">
+      <Icon className="size-3" />
+      {kind === "server" ? t("kindServer") : t("kindBrowser")}
+    </span>
+  );
+}
+
+/** Creating an app: its details, then its credentials (the secret only this once) and how to set it up. */
+function NewAppDialog({ open, onOpenChange, onCreate }: { open: boolean; onOpenChange: (open: boolean) => void; onCreate: (draft: Draft) => DevApp }) {
+  const t = useTranslations("developerApps");
+  const [draft, setDraft] = useState<Draft>({ name: "", website: "", redirectUris: [""], kind: "browser" });
+  const [created, setCreated] = useState<{ app: DevApp; secret: string | null } | null>(null);
+  const reset = () => {
+    setDraft({ name: "", website: "", redirectUris: [""], kind: "browser" });
+    setCreated(null);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        onOpenChange(next);
+        if (!next) reset();
+      }}
+    >
+      <DialogContent className={created ? "sm:max-w-2xl" : "sm:max-w-lg"}>
+        <DialogHeader>
+          <DialogTitle>{created ? created.app.name : t("newApp")}</DialogTitle>
+        </DialogHeader>
+        <AutoHeight className="min-w-0">
+          {created ? (
+            <div className="space-y-6">
+              <Credentials app={created.app} secret={created.secret} />
+              <SetupGuide app={created.app} />
+            </div>
+          ) : (
+            <form
+              id="new-app"
+              className="flex flex-col gap-5"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!ready(draft)) return;
+                const app = onCreate({ ...draft, redirectUris: draft.redirectUris.filter(Boolean) });
+                setCreated({ app, secret: app.kind === "server" ? randomString(40) : null });
+              }}
+            >
+              <AppFields draft={draft} onChange={setDraft} />
+            </form>
+          )}
+        </AutoHeight>
+        <DialogFooter>
+          {created ? (
+            <Button onClick={() => { onOpenChange(false); reset(); }}>{t("done")}</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
+              <Button type="submit" form="new-app" disabled={!ready(draft)}>{t("create")}</Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const ready = (draft: Draft) =>
+  draft.name.trim().length > 0 && validUrl(draft.website) && draft.redirectUris.some(Boolean) && draft.redirectUris.every((uri) => !uri || validUrl(uri));
+
+/** The details an app is made from, and the line people see when they're asked to allow it. */
+function AppFields({ draft, onChange, kindFixed = false }: { draft: Draft; onChange: (draft: Draft) => void; kindFixed?: boolean }) {
+  const t = useTranslations("developerApps");
+  const set = (patch: Partial<Draft>) => onChange({ ...draft, ...patch });
+  const firstRedirect = draft.redirectUris.find((uri) => validUrl(uri));
+  return (
+    <>
+      <Field label={t("name")} htmlFor="app-name">
+        <Input id="app-name" autoFocus value={draft.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} placeholder="BeeWriter" className="h-11 rounded-xl" />
+      </Field>
+      <Field label={t("website")} htmlFor="app-website" error={draft.website && !validUrl(draft.website) ? t("badUrl") : null}>
+        <Input id="app-website" type="url" value={draft.website} onChange={(e) => set({ website: e.target.value })} placeholder="https://beewriter.app" className="h-11 rounded-xl" />
+      </Field>
+      <Field label={t("redirectUrls")} error={draft.redirectUris.some((uri) => uri && !validUrl(uri)) ? t("badUrl") : null}>
+        <div className="space-y-2">
+          <AnimatePresence initial={false}>
+            {draft.redirectUris.map((uri, index) => (
+              <motion.div key={index} initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-clip [overflow-clip-margin:4px]">
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="url"
+                    aria-label={t("redirectUrl", { number: index + 1 })}
+                    value={uri}
+                    onChange={(e) => set({ redirectUris: draft.redirectUris.map((old, i) => (i === index ? e.target.value : old)) })}
+                    placeholder="https://beewriter.app/auth/callback"
+                    className="h-11 rounded-xl font-mono"
+                  />
+                  {draft.redirectUris.length > 1 ? (
+                    <TooltipHint label={t("removeUrl")}>
+                      <Button type="button" variant="ghost" size="icon" className="size-9 shrink-0 text-muted-foreground" aria-label={t("removeUrl")} onClick={() => set({ redirectUris: draft.redirectUris.filter((_, i) => i !== index) })}>
+                        <X />
+                      </Button>
+                    </TooltipHint>
+                  ) : null}
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {draft.redirectUris.length < 5 ? (
+            <Button type="button" variant="ghost" size="sm" className="h-7 text-muted-foreground" onClick={() => set({ redirectUris: [...draft.redirectUris, ""] })}>
+              <Plus /> {t("addUrl")}
+            </Button>
+          ) : null}
+        </div>
+      </Field>
+      <Field label={t("kind")}>
+        {kindFixed ? (
+          <div className="flex items-center gap-2 text-sm">
+            <KindTag kind={draft.kind} />
+            <span className="text-xs text-muted-foreground">{t("kindFixed")}</span>
+          </div>
+        ) : (
+          <Segmented
+            fill
+            size="md"
+            label={t("kind")}
+            value={draft.kind}
+            onChange={(kind) => set({ kind })}
+            options={[
+              { id: "browser", label: t("kindBrowserLong"), icon: Globe, below: <span className="text-2xs text-muted-foreground">{t("kindBrowserHint")}</span> },
+              { id: "server", label: t("kindServerLong"), icon: Server, below: <span className="text-2xs text-muted-foreground">{t("kindServerHint")}</span> },
+            ]}
+          />
+        )}
+      </Field>
+      {/* What the sign-in page will say, from what's typed above. */}
+      <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-3 py-2.5">
+        <Tile icon={AppWindow} tint={TINTS[0]!} className="size-8" />
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+          <span className="block truncate font-semibold text-foreground">{t("consentLine", { name: draft.name.trim() || t("yourApp") })}</span>
+          <span className="block truncate">{t("consentReturn", { host: firstRedirect ? host(firstRedirect) : "…" })}</span>
+        </p>
+      </div>
+    </>
+  );
+}
+
+function Field({ label, htmlFor, error, children }: { label: string; htmlFor?: string; error?: string | null; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <label htmlFor={htmlFor} className="ps-1 text-xs font-medium text-muted-foreground">{label}</label>
+      {children}
+      {error ? <p role="alert" className="ps-1 text-xs text-destructive">{error}</p> : null}
+    </div>
+  );
+}
+
+/** An app opened from the list: how to set it up, and its settings. */
+function AppDialog({ app, onClose, onSave, onDelete }: { app: DevApp | null; onClose: () => void; onSave: (id: string, draft: Draft) => void; onDelete: (id: string) => void }) {
+  const t = useTranslations("developerApps");
+  const [tab, setTab] = useState<"setup" | "settings">("setup");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [openedId, setOpenedId] = useState<string | null>(null);
+  // A different app starts on its setup, with nothing typed and no secret showing.
+  if (app && app.id !== openedId) {
+    setOpenedId(app.id);
+    setTab("setup");
+    setDraft({ name: app.name, website: app.website, redirectUris: app.redirectUris, kind: app.kind });
+    setSecret(null);
+    setConfirmDelete(false);
+  }
+  const changed = app && draft && JSON.stringify(draft) !== JSON.stringify({ name: app.name, website: app.website, redirectUris: app.redirectUris, kind: app.kind });
+
+  return (
+    <Dialog open={Boolean(app)} onOpenChange={(next) => { if (!next) { onClose(); setOpenedId(null); } }}>
+      <DialogContent className="sm:max-w-2xl">
+        {app && draft ? (
+          <>
+            <DialogHeader className="flex-row items-center gap-3 pe-8 text-start">
+              <Tile icon={AppWindow} tint={TINTS[0]!} />
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="truncate leading-snug">{app.name}</DialogTitle>
+                <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Globe className="size-3 shrink-0" />
+                  <span className="truncate">{host(app.website)}</span>
+                </p>
+              </div>
+              <KindTag kind={app.kind} />
+            </DialogHeader>
+            <Segmented
+              className="self-start"
+              label={t("view")}
+              value={tab}
+              onChange={setTab}
+              options={[
+                { id: "setup", label: t("setup") },
+                { id: "settings", label: t("settings") },
+              ]}
+            />
+            <AutoHeight className="min-w-0">
+              {tab === "setup" ? (
+                <div className="space-y-6">
+                  <Credentials app={app} secret={secret} onNewSecret={app.kind === "server" ? () => setSecret(randomString(40)) : undefined} />
+                  <SetupGuide app={app} />
+                </div>
+              ) : (
+                <form
+                  id="app-settings"
+                  className="flex flex-col gap-5"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (ready(draft)) onSave(app.id, { ...draft, redirectUris: draft.redirectUris.filter(Boolean) });
+                  }}
+                >
+                  <AppFields draft={draft} onChange={setDraft} kindFixed />
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle px-3 py-2.5">
+                    <p className="min-w-0 text-xs text-muted-foreground">
+                      <span className="block text-sm font-medium text-foreground">{t("deleteApp")}</span>
+                      {t("deleteAbout")}
+                    </p>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {confirmDelete ? (
+                        <>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>{t("cancel")}</Button>
+                          <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(app.id)}>{t("delete")}</Button>
+                        </>
+                      ) : (
+                        <Button type="button" variant="outline" size="sm" className="text-destructive" onClick={() => setConfirmDelete(true)}>
+                          <Trash2 /> {t("delete")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </form>
+              )}
+            </AutoHeight>
+            {tab === "settings" ? (
+              <DialogFooter>
+                <Button type="submit" form="app-settings" disabled={!changed || !ready(draft)}>{t("save")}</Button>
+              </DialogFooter>
+            ) : null}
+          </>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The client ID, and for an app with a server its secret: shown once when made, or when a new one replaces it. */
+function Credentials({ app, secret, onNewSecret }: { app: DevApp; secret: string | null; onNewSecret?: () => void }) {
+  const t = useTranslations("developerApps");
+  return (
+    <div className={LIST}>
+      <CopyRow label={t("clientId")} value={app.clientId} />
+      {app.kind === "server" ? (
+        secret ? (
+          <CopyRow label={t("clientSecret")} value={secret} note={t("secretOnce")} />
+        ) : (
+          <div className="flex items-center gap-3 px-3 py-2.5">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-muted-foreground">{t("clientSecret")}</p>
+              <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Lock className="size-3.5 shrink-0" /> {t("secretHidden")}
+              </p>
+            </div>
+            {onNewSecret ? (
+              <Button variant="outline" size="sm" onClick={onNewSecret}>
+                <RefreshCw /> {t("newSecret")}
+              </Button>
+            ) : null}
+          </div>
+        )
+      ) : null}
+    </div>
+  );
+}
+
+function CopyRow({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="truncate font-mono text-sm">{value}</p>
+        {note ? <p className="text-xs text-amber-700 dark:text-amber-400">{note}</p> : null}
+      </div>
+      <CopyButton value={value} label={label} />
+    </div>
+  );
+}
+
+function CopyButton({ value, label, className }: { value: string; label: string; className?: string }) {
+  const t = useTranslations("developerApps");
+  const [copied, setCopied] = useState(false);
+  return (
+    <TooltipHint label={t("copy")}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={`size-8 shrink-0 text-muted-foreground ${className ?? ""}`}
+        aria-label={t("copyLabel", { label })}
+        onClick={() => {
+          void navigator.clipboard?.writeText(value).catch(() => undefined);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        }}
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span key={String(copied)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+            {copied ? <Check className="size-4 text-emerald-600" /> : <Copy className="size-4" />}
+          </motion.span>
+        </AnimatePresence>
+      </Button>
+    </TooltipHint>
+  );
+}
+
+/** Code to copy, laid out on the first frame (no highlighter that arrives later). */
+function CodeBlock({ code, label }: { code: string; label: string }) {
+  return (
+    <div className="relative min-w-0 rounded-xl border border-border-subtle bg-muted/40">
+      <pre className="overflow-x-auto py-3 ps-3.5 pe-12 font-mono text-xs leading-relaxed">
+        <code>{code}</code>
+      </pre>
+      <CopyButton value={code} label={label} className="absolute end-1.5 top-1.5 bg-background/80" />
+    </div>
+  );
+}
+
+/** The four steps to sign people in and call Openscholar, with this app's own values filled in. */
+function SetupGuide({ app }: { app: DevApp }) {
+  const t = useTranslations("developerApps");
+  const redirect = app.redirectUris[0] ?? "";
+  const server = app.kind === "server";
+  const challenge = [
+    "const base64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\\+/g, \"-\").replace(/\\//g, \"_\").replace(/=+$/, \"\");",
+    "const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));",
+    "const challenge = base64url(new Uint8Array(await crypto.subtle.digest(\"SHA-256\", new TextEncoder().encode(verifier))));",
+  ];
+  const authorize = (go: string) => [
+    `${go}("${issuer()}/oauth/authorize?" + new URLSearchParams({`,
+    "  response_type: \"code\",",
+    `  client_id: "${app.clientId}",`,
+    `  redirect_uri: "${redirect}",`,
+    "  scope: \"openid email profile offline_access\",",
+    `  resource: "${API}",`,
+    "  code_challenge: challenge,",
+    "  code_challenge_method: \"S256\",",
+    "}));",
+  ];
+  const token = (grant: string[]) => [
+    `const tokens = await fetch("${issuer()}/oauth/token", {`,
+    "  method: \"POST\",",
+    "  body: new URLSearchParams({",
+    ...grant,
+    `    client_id: "${app.clientId}",`,
+    ...(server ? ["    client_secret: process.env.OPENSCHOLAR_CLIENT_SECRET,"] : []),
+    `    resource: "${API}",`,
+    "  }),",
+    "}).then((response) => response.json());",
+  ];
+  const steps: { title: string; about: string; code: string }[] = [
+    {
+      title: t("step1"),
+      about: t("step1About"),
+      code: (server
+        ? ["// On your server", ...challenge, "request.session.openscholarVerifier = verifier;", "", ...authorize("response.redirect")]
+        : [...challenge, "sessionStorage.setItem(\"openscholar_verifier\", verifier);", "", ...authorize("location.assign")]
+      ).join("\n"),
+    },
+    {
+      title: t("step2"),
+      about: server ? t("step2AboutServer") : t("step2AboutBrowser"),
+      code: [
+        ...(server ? ["// On your server, at the redirect URL"] : []),
+        ...token([
+          "    grant_type: \"authorization_code\",",
+          server ? "    code: request.query.code," : "    code: new URL(location.href).searchParams.get(\"code\"),",
+          `    redirect_uri: "${redirect}",`,
+          server ? "    code_verifier: request.session.openscholarVerifier," : "    code_verifier: sessionStorage.getItem(\"openscholar_verifier\"),",
+        ]),
+        "// tokens.access_token, tokens.refresh_token",
+      ].join("\n"),
+    },
+    {
+      title: t("step3"),
+      about: t("step3About"),
+      code: [
+        "import { ConvexHttpClient } from \"convex/browser\";",
+        "import { anyApi } from \"convex/server\";",
+        "",
+        `const openscholar = new ConvexHttpClient("${API}");`,
+        "openscholar.setAuth(tokens.access_token);",
+        "",
+        "const workspaceId = await openscholar.query(anyApi.workspaces.queries.personal, {});",
+        "await openscholar.action(anyApi.library.papers.save, { workspaceId, id: \"W2741809807\" });",
+      ].join("\n"),
+    },
+    {
+      title: t("step4"),
+      about: t("step4About"),
+      code: token(["    grant_type: \"refresh_token\",", "    refresh_token: tokens.refresh_token,"]).join("\n"),
+    },
+  ];
+  return (
+    <section className="space-y-2.5">
+      <h3 className="ps-1 text-xs font-medium text-muted-foreground">{t("setupTitle")}</h3>
+      <ol className="space-y-5">
+        {steps.map((step, index) => (
+          <li key={step.title} className="min-w-0 space-y-2">
+            <div className="flex gap-2.5 ps-1">
+              <span className="w-4 shrink-0 text-sm font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{step.title}</p>
+                <p className="text-xs text-muted-foreground">{step.about}</p>
+              </div>
+            </div>
+            <CodeBlock code={step.code} label={step.title} />
+          </li>
+        ))}
+      </ol>
+      <p className="ps-1 text-xs text-muted-foreground">{t("cantDo")}</p>
+    </section>
+  );
+}

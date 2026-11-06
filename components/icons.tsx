@@ -185,7 +185,7 @@ export { TextItalicIcon as Italic } from "@solar-icons/react/bold-duotone/text-i
 export { QuestionCircleIcon as HelpCircle, QuestionCircleIcon as CircleHelp } from "@solar-icons/react/bold-duotone/question-circle";
 export { HeartPulseIcon as HeartPulse } from "@solar-icons/react/bold-duotone/heart-pulse";
 export { HashtagIcon as Hash } from "@solar-icons/react/bold-duotone/hashtag";
-export { ServerIcon as HardDrive } from "@solar-icons/react/bold-duotone/server";
+export { ServerIcon as HardDrive, ServerIcon as Server } from "@solar-icons/react/bold-duotone/server";
 export { SledgehammerIcon as Hammer } from "@solar-icons/react/bold-duotone/sledgehammer";
 export { Grid3x3Icon as Grid3X3 } from "@solar-icons/react/bold-duotone/grid-3x3";
 export { SquareAcademicCapIcon as GraduationCap } from "@solar-icons/react/bold-duotone/square-academic-cap";
