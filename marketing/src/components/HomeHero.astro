@@ -184,7 +184,14 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       handed.push({ cancel: () => { question.remove(); cover.remove(); } });
     };
     // Back from the app, the hero is as it was.
-    addEventListener("pageshow", (e) => { readying = false; document.documentElement.classList.remove("handing"); if (e.persisted && leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } });
+    // Back to the hero as it was: back from the app, or a hand-over whose page never came (stopped, or the network gave up).
+    const restore = () => { readying = false; document.documentElement.classList.remove("handing"); if (leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } };
+    addEventListener("pageshow", (e) => { if (e.persisted) restore(); else { readying = false; document.documentElement.classList.remove("handing"); } });
+    const awaitArrival = () => {
+      window.navigation?.addEventListener("navigateerror", restore, { once: true });
+      // Without the Navigation API there is no word of a stopped load: a page still here after 20 s comes back.
+      setTimeout(() => { if (leaving?.sent && document.visibilityState === "visible") restore(); }, 20000);
+    };
     // The sun comes up: the planet holds as a crescent with its cities lit, then day sweeps across it.
     const clamp01 = (v) => Math.min(1, Math.max(0, v)), LA = [-.72, .5, -.48], LB = [-.7, .62, .3];
     const draw = (now) => {
@@ -209,7 +216,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       placeSats(orbitAt ? 2.4 * (1 - clamp01((now - orbitAt) / 2800)) ** 4 : 2.4); comet(now);
       // The page settles for a second after the planet first draws, then the frame rate decides its level.
       if (planet && level && !leaving && now - dawnAt > 1000) watch(now, level, 5);
-      const w = (now - waveAt) / 1800; if (leaving || now - dawnAt < 3600 || (!frozen && (now - lastDraw >= 30 || (w > 0 && w < 1)))) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; location.href = leaving.send(); }
+      const w = (now - waveAt) / 1800; if (leaving || now - dawnAt < 3600 || (!frozen && (now - lastDraw >= 30 || (w > 0 && w < 1)))) draw(now); if (leaving && !leaving.sent && now - leaving.at >= HAND_GO_MS) { leaving.sent = true; awaitArrival(); location.href = leaving.send(); }
     };
     // Wrapped text leaves its box wider than the words, so each name's box is set to its words and the gaps between them come out equal.
     new ResizeObserver(() => { size(); placeSats(calm.matches || orbitAt ? 0 : 2.4); if (ready) draw(performance.now()); }).observe(scene);
