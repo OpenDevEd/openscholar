@@ -136,13 +136,6 @@ function questionWords(question: string, query: string | null) {
 export function QuestionStage() {
   const params = useSearchParams();
   const [question] = useState(() => (parseSearchParamsFromUrl(params).q?.trim() ? "" : readUrlQuestion(params)));
-  // Mock only: seconds to hold the stage, to watch it longer than a real answer takes.
-  const [holdMs] = useState(() => Number(params.get("hold") ?? 0) * 1000);
-  // Mock only: a quality level to hold the planet at (0 the still to 5 the best), to compare them. Otherwise earth.js chooses.
-  const [pinnedLevel] = useState(() => {
-    const level = Number(params.get("level"));
-    return params.has("level") && Number.isInteger(level) && level >= 0 && level <= 5 ? level : null;
-  });
   const [handover] = useState(() => readHandover(params.get("hero")));
   const [frame, setFrame] = useState<Frame | null>(handover);
   const [lit, setLit] = useState(false);
@@ -165,10 +158,10 @@ export function QuestionStage() {
 
   if (question) {
     preload(SKY_PLATE, { as: "image", fetchPriority: "high" });
-    // The maps are fetched early only for a level known to be live: the hero's, or a pinned one. Otherwise earth.js fetches
+    // The maps are fetched early only for a level known to be live: the hero's. Otherwise earth.js fetches
     // them once it has chosen a level, so a visitor saving data, who gets the still, never downloads them. The light
     // levels use the smaller day map.
-    const known = pinnedLevel ?? handover?.level;
+    const known = handover?.level;
     if (!handover || known === 0) preload(EARTH_STILL, { as: "image", fetchPriority: "high" });
     if (known) for (const src of EARTH_IMAGES) preload(known <= 2 ? src.replace("earth-day.", "earth-day-2048.") : src, { as: "image", fetchPriority: "high" });
   }
@@ -310,7 +303,7 @@ export function QuestionStage() {
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       if (!litAt) {
-        if (useQuestionStage.getState().query !== null && now - started >= Math.max(LEAST_MS - LIT_MS, holdMs)) {
+        if (useQuestionStage.getState().query !== null && now - started >= LEAST_MS - LIT_MS) {
           litAt = now;
           const pass = reading[0]?.effect?.getComputedTiming().currentIteration;
           for (const word of reading) word.effect?.updateTiming({ iterations: pass == null ? 0 : pass + 1 });
@@ -336,13 +329,13 @@ export function QuestionStage() {
       clearTimeout(finish);
       for (const word of reading) word.cancel();
     };
-  }, [question, holdMs, frame, layout, handover]);
+  }, [question, frame, layout, handover]);
 
   if (!question || done) return null;
 
   const size = question.length <= 40 ? "large" : question.length <= 90 ? "medium" : "small";
   const handedOver = handover !== null;
-  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, level: pinnedLevel ?? frame.level ?? null, ...(pinnedLevel === null ? {} : { ceiling: pinnedLevel }) }) : undefined;
+  const earthConfig = frame && layout ? JSON.stringify({ layout, width: frame.width, height: frame.spaceHeight, turn: frame.turn, level: frame.level ?? null }) : undefined;
   const variables = {
     "--page": frame && handedOver ? `${frame.width}px` : undefined,
     "--sky-top": handover?.skyTop === undefined ? undefined : `${handover.skyTop}px`,

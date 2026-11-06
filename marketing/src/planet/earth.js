@@ -371,7 +371,7 @@ void main(){
       if (!o.frozen) speed += (CRUISE - speed) * (1 - Math.exp(-dt / 2000));
       phase += (speed * dt) / 1000;
       // The first second after it starts is the page still settling, so the monitor waits it out. The still is final.
-      if (level > 0 && now - liveAt > 1000) watch(now, level, o.ceiling);
+      if (level > 0 && now - liveAt > 1000) watch(now, level, TOP);
       comet(now - liveAt);
       // At most 60 planet frames a second, even on a 120 Hz screen: a slow turn looks the same, for half the work. Stripe's
       // globe draws every other frame for the same reason.
@@ -460,7 +460,7 @@ void main(){
     var run = start({
       stage: stage, canvas: canvas,
       layout: config.layout, width: config.width, height: config.height, turn: config.turn,
-      level: frozen ? FROZEN_LEVEL : config.level, frozen: frozen, ceiling: config.ceiling == null ? TOP : config.ceiling,
+      level: frozen ? FROZEN_LEVEL : config.level, frozen: frozen,
       onLevel: function (level) {
         stage.dataset.level = String(level);
         try { sessionStorage.setItem(MEMORY, String(level)); } catch (error) {}
