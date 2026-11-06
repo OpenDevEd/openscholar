@@ -35,7 +35,7 @@ const faq = [
           <label class="f"><span>Name</span><input name="name" autocomplete="name" required /></label>
           <label class="f"><span>Email</span><input name="email" type="email" autocomplete="email" required /></label>
         </div>
-        <div class="stack">
+        <div class="duo">
           <label class="f"><span><span data-org>Organisation</span> <small>Optional</small></span><input name="org" autocomplete="organization" /></label>
           <div class="opt off" data-opt="country"><label class="f"><span>Country</span><input name="country" autocomplete="country-name" required disabled /></label></div>
         </div>
@@ -43,8 +43,8 @@ const faq = [
         <div class="col">
         <div class="opt" data-opt="project"><label class="f"><span data-project-label>{first.project[0]}</span><textarea name="project" rows="4" required placeholder={first.project[1]}></textarea></label></div>
         <label class="f"><span><span data-msg-label>{first.message[0]}</span> <small data-msg-optional>Optional</small></span><textarea name="message" rows="3" data-msg placeholder=""></textarea></label>
-        </div>
         <div class="send"><button class="btn brand" type="submit">Send message<Arrow /></button><p class="note">Replies come from {EMAIL}</p></div>
+        </div>
       </div>
       <div class="sent" data-sent hidden>
         <svg class="env" viewBox="0 0 220 160" fill="none" aria-hidden="true">
@@ -77,6 +77,9 @@ const faq = [
   if (form) {
     const sent = form.querySelector<HTMLElement>("[data-sent]")!;
     const msg = form.querySelector<HTMLTextAreaElement>("[data-msg]")!, project = form.querySelector<HTMLTextAreaElement>("textarea[name=project]")!;
+    // Measured once with every field open: the message box takes over exactly the space the project field gives up, over the
+    // same time, so the column it shares never changes height.
+    const projectH = form.querySelector<HTMLElement>("[data-opt=project]")!.offsetHeight, msgH = msg.offsetHeight;
     const opt = (name: string, on: boolean) => {
       const el = form.querySelector<HTMLElement>(`[data-opt=${name}]`)!;
       el.classList.toggle("off", !on); el.querySelectorAll<HTMLInputElement>("input, textarea").forEach((f) => { f.disabled = !on; });
@@ -91,7 +94,7 @@ const faq = [
       const [label, ask, required] = t.message;
       form.querySelector("[data-msg-label]")!.textContent = label;
       form.querySelector<HTMLElement>("[data-msg-optional]")!.hidden = !!required;
-      msg.required = !!required; msg.placeholder = required ? ask : ""; msg.rows = required ? 6 : 3;
+      msg.required = !!required; msg.placeholder = required ? ask : ""; msg.style.height = `${msgH + (t.project ? 0 : projectH)}px`;
     };
     form.addEventListener("change", (e) => { if ((e.target as HTMLInputElement).name === "topic") place(); });
     place();
@@ -132,12 +135,14 @@ const faq = [
   .tile:has(:checked) .em img { filter: none; transform: translateY(-6px) rotate(-8deg) scale(1.1); }
   .tile:has(:checked) b { color: color-mix(in srgb, var(--c) 30%, #171717); }
 
-  .fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px clamp(20px, 3vw, 40px); align-items: start; } .col { display: grid; gap: 14px; align-content: start; }
-  .stack { display: grid; gap: 14px; } .stack > .opt.off { display: none; } .send { grid-column: 1 / -1; }
+  .fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px clamp(20px, 3vw, 40px); align-items: start; } .col { display: grid; align-content: start; } .col > :not(.opt) + :not(.opt), .stack > :not(.opt) + :not(.opt) { margin-top: 14px; }
+  .stack { display: grid; } .col > .send { margin-top: 20px; } .col > .duo { margin-top: 14px; }
+  /* Country joins Institution in the same row, which makes room for it, so nothing below moves. */
+  .duo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; transition: grid-template-columns .45s var(--ease), column-gap .45s var(--ease); } .duo:has(> .off) { grid-template-columns: minmax(0, 1fr) minmax(0, 0fr); column-gap: 0; } .duo > .opt { grid-template-rows: auto; min-width: 0; } .duo > .opt > * { white-space: nowrap; }
   /* A field a topic doesn't need folds away; the space it leaves closes as one movement. */
-  .opt { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .4s var(--ease), opacity .25s var(--ease); } .opt > * { min-height: 0; overflow: hidden; padding: 2px; margin: -2px; } .opt.off { grid-template-rows: 0fr; opacity: 0; } .col > .opt.off { margin-bottom: -14px; }
+  .opt { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .45s var(--ease), opacity .3s var(--ease); } .opt > * { min-height: 0; overflow: hidden; padding: 2px; margin: -2px; } .col > .opt:not(:first-child) > * > :first-child { margin-top: 14px; } .col > .opt:first-child > * > :last-child { margin-bottom: 14px; } .opt.off { grid-template-rows: 0fr; opacity: 0; }
   .f { display: grid; gap: 7px; font-size: 14px; font-weight: 500; } .f small { font-weight: 400; color: var(--t3); font-size: 13px; margin-left: 4px; }
-  .f input, .f textarea { width: 100%; font: 400 16px/1.45 var(--sans); color: var(--ink); padding: 12px 14px; border: 0; border-radius: 12px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .2s var(--ease), background-color .2s var(--ease); }
+  .f input, .f textarea { width: 100%; font: 400 16px/1.45 var(--sans); color: var(--ink); padding: 12px 14px; border: 0; border-radius: 12px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .2s var(--ease), background-color .2s var(--ease), height .45s var(--ease); }
   .f input { height: 48px; } .f textarea { resize: vertical; min-height: 96px; } .f textarea::placeholder { color: var(--t3); }
   .f input:hover, .f textarea:hover { box-shadow: inset 0 0 0 1px var(--line2); }
   .f input:focus, .f textarea:focus { outline: none; background: #fff; box-shadow: inset 0 0 0 1.5px var(--brand-deep), 0 0 0 4px color-mix(in srgb, var(--brand) 22%, transparent); }
