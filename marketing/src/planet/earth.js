@@ -224,29 +224,51 @@ void main(){
 
   /**
    * The ring's spark of light. A lap takes four seconds, much quicker than on the hero: here it says work is going on. It
-   * swings round the far ends of the ring and hurries across the front, as an orbit does.
+   * swings round the far ends of the ring and hurries across the front, as an orbit does. Its tail is a chain of short
+   * segments, each laid along the ring where it is, so it follows the curve: one straight streak left a phone's tight ring.
+   * Everything moves by transform alone.
    */
   function spark(stage, layout, lapMs) {
     lapMs = lapMs || 4000;
-    var front = stage.querySelector("[data-spark=front]"), back = stage.querySelector("[data-spark=back]");
-    if (!front || !back) return function () {};
-    var c = Math.cos(layout.tilt), s = Math.sin(layout.tilt), shown = null;
+    // The page renders the segments, the same number in front of the planet and behind it, head first.
+    var chains = { front: stage.querySelectorAll("[data-spark=front]"), back: stage.querySelectorAll("[data-spark=back]") };
+    var count = Math.min(chains.front.length, chains.back.length);
+    if (!count) return function () {};
+    // The tail is 150 px on a wide ring and shorter on a narrow one, so it never covers more than a stretch of the curve.
+    var tail = Math.min(150, layout.rx * 0.6), step = tail / count;
+    // Brightest at the head, fading along the tail. Each segment runs from the brightness at its tail end to the one at its
+    // head end, so the joins don't show and only opacity changes as it moves.
+    var fall = function (i) { return Math.pow(Math.max(0, 1 - i / count), 1.6).toFixed(3); };
+    ["front", "back"].forEach(function (side) {
+      for (var i = 0; i < count; i++) {
+        var segment = chains[side][i];
+        segment.style.width = (step + 0.6).toFixed(1) + "px";
+        segment.style.borderRadius = i === 0 ? "0 2px 2px 0" : "0";
+        segment.style.background = "linear-gradient(90deg, rgb(255 241 224 / " + fall(i + 1) + "), rgb(255 241 224 / " + fall(i) + "))";
+        segment.style.opacity = "0";
+      }
+    });
+    var c = Math.cos(layout.tilt), s = Math.sin(layout.tilt);
+    // The ring at an angle: where it is, which way it runs (in the direction of travel), and how far a step of angle goes.
+    var at = function (angle) {
+      var ox = layout.rx * Math.cos(angle), oy = layout.ry * Math.sin(angle);
+      var dx = layout.rx * Math.sin(angle), dy = -layout.ry * Math.cos(angle);
+      return { x: layout.cx + ox * c - oy * s, y: layout.cy + ox * s + oy * c, front: oy > 0, heading: Math.atan2(dx * s + dy * c, dx * c - dy * s), speed: Math.hypot(dx, dy), ends: Math.min(1, Math.abs(Math.sin(angle)) * 4) };
+    };
     return function (elapsed) {
       var lap = (elapsed / lapMs) % 1;
       var k = (lap + 0.07 * Math.sin(lap * 2 * Math.PI) + 1) % 1;
       // Left to right across the front, then back again behind the planet.
       var angle = k < 0.5 ? Math.PI - k * 2 * Math.PI : -(k - 0.5) * 2 * Math.PI;
-      var ox = layout.rx * Math.cos(angle), oy = layout.ry * Math.sin(angle);
-      var x = layout.cx + ox * c - oy * s, y = layout.cy + ox * s + oy * c;
-      // Along the way it's heading, so the streak trails behind its head.
-      var dx = layout.rx * Math.sin(angle), dy = -layout.ry * Math.cos(angle);
-      var heading = Math.atan2(dx * s + dy * c, dx * c - dy * s);
-      // Fading in and out at the far ends, where it goes round behind or comes back in front.
-      var ends = Math.min(1, Math.abs(Math.sin(angle)) * 4);
-      var on = oy > 0 ? front : back;
-      if (shown !== on) { if (shown) shown.style.opacity = "0"; shown = on; }
-      on.style.opacity = String((on === front ? 1 : 0.5) * ends);
-      on.style.transform = "translate(" + (x - 150).toFixed(1) + "px," + y.toFixed(1) + "px) rotate(" + heading.toFixed(3) + "rad)";
+      for (var i = 0; i < count; i++) {
+        var p = at(angle), shown = p.front ? chains.front[i] : chains.back[i], hidden = p.front ? chains.back[i] : chains.front[i];
+        hidden.style.opacity = "0";
+        // Half as bright behind the planet, and gone at the far ends.
+        shown.style.opacity = ((p.front ? 1 : 0.5) * p.ends).toFixed(3);
+        shown.style.transform = "translate(" + (p.x - step - 0.6).toFixed(1) + "px," + p.y.toFixed(1) + "px) rotate(" + p.heading.toFixed(3) + "rad)";
+        // The next segment starts where this one ends, a step back along the ring.
+        angle += step / Math.max(1, p.speed);
+      }
     };
   }
 
