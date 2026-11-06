@@ -1728,7 +1728,16 @@
     "connect": "Connect",
     "disconnect": "Disconnect",
     "connectedTime": "Connected {time}",
-    "disconnectFailed": "Could not disconnect Zotero. Try again."
+    "disconnectFailed": "Could not disconnect Zotero. Try again.",
+    "allowedSites": "Sites you've allowed",
+    "sites": "sites",
+    "noSites": "No sites yet",
+    "noSitesDescription": "Sites where you sign in with Openscholar show up here.",
+    "allowedTime": "Allowed {time}",
+    "siteSignsOut": "Signed out there until you allow it again",
+    "disconnectedTime": "Disconnected {time}",
+    "allowAgain": "Allow again",
+    "openSite": "Open {site}"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
