@@ -1,5 +1,15 @@
 ---
-import { ICONS } from "../data/site.mjs";
+// The app's icons: Solar's bold duotone set (Solar by 480 Design, CC BY 4.0), the same picks as the app's
+// components/icons.tsx. AI is the app's own mark, never a sparkle.
+import { icons } from "@iconify-json/solar/icons.json";
+import aiMark from "../data/ai-mark.svg?raw";
+const SOLAR = {
+  search: "magnifier", sieve: "filter", table: "database", thread: "link", globe: "global", flag: "flag",
+  merge: "users-group-rounded", team: "users-group-rounded", list: "list", key: "key", cross: "close-circle",
+  check: "check-circle", flagq: "plain-2", pen: "pen", mail: "letter", cite: "document-text", lock: "lock",
+  sun: "sun-2", moon: "moon", layers: "layers", buildings: "buildings-2", copy: "copy",
+};
 const { name, size = 20 } = Astro.props;
+const body = name === "spark" ? aiMark.replace(/<\/?svg[^>]*>/g, "") : icons[`${SOLAR[name]}-bold-duotone`].body;
 ---
-<svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={ICONS[name]} /></svg>
+<svg class="ic" width={size} height={size} viewBox={name === "spark" ? "0 0 128 128" : "0 0 24 24"} fill="currentColor" aria-hidden="true" set:html={body} />
