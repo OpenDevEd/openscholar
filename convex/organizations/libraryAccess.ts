@@ -11,6 +11,7 @@ import { createError } from "../lib/errors";
 import { searchTerms } from "../lib/searchText";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { MAX_LIBRARIES_PER_WORKSPACE } from "../lib/queryBounds";
+import { refuseApps } from "../lib/auth";
 
 const showValidator = v.union(v.literal("all"), v.literal("on"), v.literal("off"));
 
@@ -83,6 +84,7 @@ export const set = mutation({
   args: { organizationId: v.id("organizations"), on: v.boolean() },
   returns: v.null(),
   handler: async (ctx, { organizationId, on }) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     const organization = await ctx.db.get("organizations", organizationId);
     if (!organization) throw createError("NOT_FOUND", "This organization is gone.");

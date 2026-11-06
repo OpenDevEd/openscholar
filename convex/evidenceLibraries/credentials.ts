@@ -18,6 +18,7 @@ import { requireEvidenceLibraryAccess } from "./access";
 import { requireNoRunningOperation } from "./aiProviderKey";
 import { AI_PROVIDER_KEY_PATTERN } from "../../lib/evidence-libraries/configuration/ai";
 import { OPENALEX_API_KEY_PATTERN } from "../../lib/evidence-libraries/configuration/sources";
+import { refuseApps } from "../lib/auth";
 
 export function resolveCredentialPath(
   concretePath: string,
@@ -309,5 +310,8 @@ const credentialMetadataValidator = v.object({
 export const listCredentials = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: paginationResultValidator(credentialMetadataValidator),
-  handler: async (ctx, args) => ({ page: await readCredentialMetadata(ctx, args), isDone: true, continueCursor: "" }),
+  handler: async (ctx, args) => {
+    await refuseApps(ctx);
+    return { page: await readCredentialMetadata(ctx, args), isDone: true, continueCursor: "" };
+  },
 });

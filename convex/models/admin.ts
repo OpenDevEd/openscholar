@@ -9,6 +9,7 @@ import { topProvidersValidator } from "../aiModelConfig/validators";
 import { MAX_TOP_PROVIDERS } from "../lib/listCaps";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { activeModels, MAX_CATALOG_MODELS } from "./catalog";
+import { refuseApps } from "../lib/auth";
 
 const adminModelValidator = v.object({
   _id: v.id("models"),
@@ -107,6 +108,7 @@ export const setOffered = mutation({
   args: { modelId: v.id("models"), on: v.boolean() },
   returns: v.null(),
   handler: async (ctx, { modelId, on }) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     if (await ctx.db.get("models", modelId)) await ctx.db.patch("models", modelId, { hidden: !on, updatedAt: Date.now() });
     return null;

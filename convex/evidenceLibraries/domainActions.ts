@@ -54,6 +54,7 @@ import {
   requireRuntimeHttpsOrigin,
 } from "./runtimeActionConfig";
 import { checkedDomainResultsValidator } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 /** A step that could not run. Nothing is written and no state moves. */
 class DomainCheckUnavailable extends Error {
@@ -213,6 +214,7 @@ export const addDomain = action({
     }),
   ),
   handler: async (ctx, args): Promise<AddDomainResult> => {
+    await refuseApps(ctx);
     let host: string;
     try {
       host = normaliseDomainHost(args.host);
@@ -623,6 +625,7 @@ export const checkDomains = action({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: checkedDomainsValidator,
   handler: async (ctx, args): Promise<CheckDomainsResult> => {
+    await refuseApps(ctx);
     const first = await ctx.runQuery(
       internal.evidenceLibraries.domains.readDomainContext,
       { libraryId: args.libraryId },
@@ -930,8 +933,10 @@ export const removeDomain = action({
   handler: async (
     ctx,
     args,
-  ): Promise<{ status: "removed" | "removing" | "busy" }> =>
-    await removeLibraryDomain(ctx, args),
+  ): Promise<{ status: "removed" | "removing" | "busy" }> => {
+    await refuseApps(ctx);
+    return await removeLibraryDomain(ctx, args);
+  },
 });
 
 /**

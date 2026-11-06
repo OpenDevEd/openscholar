@@ -58,6 +58,7 @@ import {
 } from "./configurationSnapshot";
 import { validateSectionPayload } from "./sectionPayload";
 import { changedSectionsValidator } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 type RunningBinding = Extract<
   Doc<"evidenceLibraryRuntimeBindings">,
@@ -862,7 +863,10 @@ export const startRuntimeUpdate = mutation({
     from: v.string(),
     to: v.string(),
   }),
-  handler: startEvidenceLibraryRuntimeUpdate,
+  handler: async (ctx, args): ReturnType<typeof startEvidenceLibraryRuntimeUpdate> => {
+    await refuseApps(ctx);
+    return await startEvidenceLibraryRuntimeUpdate(ctx, args);
+  },
 });
 
 export const startRuntimeRollback = internalMutation({
@@ -986,7 +990,10 @@ export const restoreRevision = mutation({
     revisionKey: v.string(),
     revisionNumber: v.number(),
   }),
-  handler: restoreEvidenceLibraryRevision,
+  handler: async (ctx, args): ReturnType<typeof restoreEvidenceLibraryRevision> => {
+    await refuseApps(ctx);
+    return await restoreEvidenceLibraryRevision(ctx, args);
+  },
 });
 
 export const startAddressMove = internalMutation({
@@ -1220,6 +1227,7 @@ export const setDomainPrimary = mutation({
     address: v.string(),
   }),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const running = await requireRunningLibrary(ctx, args.libraryId);
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     const row = await ctx.db.get("evidenceLibraryDomains", args.domainId);

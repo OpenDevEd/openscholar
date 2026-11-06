@@ -15,7 +15,7 @@ import {
   readClerkInstanceUrls,
   readOAuthApplication,
   rotateOAuthApplicationSecret,
-  setOAuthApplicationRedirectUris,
+  updateOAuthApplication,
 } from "./clerkOAuthApplications";
 import { libraryOAuthApplicationName, libraryOAuthRedirectUris } from "./oauthClients";
 import { requireRuntimeEnvironment } from "./runtimeActionConfig";
@@ -138,7 +138,7 @@ async function provisionOAuthClient(
   const redirectUris = redirectUrisFor(input.mode, adopted.redirectUris, input.wanted);
   const application = sameUris(adopted.redirectUris, redirectUris)
     ? adopted
-    : await setOAuthApplicationRedirectUris(keys.secretKey, adopted.id, redirectUris);
+    : await updateOAuthApplication(keys.secretKey, adopted.id, { redirectUris });
   // Clerk shows a secret only once, so an adopted application gets a new one.
   const clientSecret = await rotateOAuthApplicationSecret(keys.secretKey, adopted.id);
   await saveApplication(ctx, input.libraryId, input.token, application, encrypt(clientSecret, keys.encryptionKey));
@@ -178,7 +178,7 @@ export async function syncLibraryOAuthClientFor(
     const redirectUris = redirectUrisFor(input.mode, current.redirectUris, wanted);
     const application = sameUris(current.redirectUris, redirectUris)
       ? current
-      : await setOAuthApplicationRedirectUris(keys.secretKey, current.id, redirectUris);
+      : await updateOAuthApplication(keys.secretKey, current.id, { redirectUris });
     if (!sameUris(row.redirectUris, application.redirectUris)) {
       await saveApplication(ctx, input.libraryId, token, application);
     }

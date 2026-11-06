@@ -4,12 +4,14 @@ import { mutation } from "../lib/functions";
 import { FLAG_REGISTRY, type FlagDefault } from "../../lib/feature-flags/registry";
 import { requireAdmin } from "../admins/access";
 import { createError } from "../lib/errors";
+import { refuseApps } from "../lib/auth";
 
 /** Turns a registered flag on or off for everyone. */
 export const setEnabled = mutation({
   args: { key: v.string(), enabled: v.boolean() },
   returns: v.null(),
   handler: async (ctx, { key, enabled }) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     if (!(key in FLAG_REGISTRY)) throw createError("NOT_FOUND", `No flag "${key}"`);
     const flag: FlagDefault = FLAG_REGISTRY[key as keyof typeof FLAG_REGISTRY];

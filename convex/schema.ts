@@ -12,6 +12,7 @@ import {
 import { libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
+import { appKindValidator, redirectUrisValidator } from "./developerApps/validators";
 import { searchSuggestionFields } from "./research/suggestionValidators";
 import { overviewPrefsFields, overviewSharedFields, searchOverviewFields } from "./research/overviewValidators";
 import { itemAccessFields, itemInvitationFields } from "./sharing/validators";
@@ -838,6 +839,32 @@ export default defineSchema({
     .index("by_hashed_key", ["hashedKey"])
     .index("by_user", ["userId"])
     .index("by_user_active", ["userId", "isActive"]),
+
+  // Apps people build on Openscholar: each is an OAuth application in Clerk, and signs people in
+  // to act as them through Convex (convex/developerApps). A person makes up to 10.
+  developerApps: defineTable({
+    ownerId: v.id("users"),
+    name: v.string(),
+    website: v.string(),
+    redirectUris: redirectUrisValidator,
+    kind: appKindValidator,
+    clientId: v.string(),
+    clerkApplicationId: v.string(),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_client_id", ["clientId"]),
+
+  // A site that changed something for a person through a developer app, recorded on its first
+  // mutation or action. Disconnecting blocks the app's tokens for that person until they allow it again.
+  developerAppGrants: defineTable({
+    userId: v.id("users"),
+    appId: v.id("developerApps"),
+    lastUsedAt: v.number(),
+    disconnectedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_and_app", ["userId", "appId"])
+    .index("by_app", ["appId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // API KEYS - BYOK (Bring Your Own Key) storage

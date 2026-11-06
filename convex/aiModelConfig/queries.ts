@@ -2,6 +2,7 @@ import { query, type QueryCtx } from "../_generated/server";
 import { modelSummary, presetPick } from "../ai/serverModel";
 import { AI_TASKS, type PresetKey } from "../../lib/ai/tasks";
 import { presetPicksValidator } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 /** What a preset runs every task on. A null model means nothing live is set. */
 const picksOf = (ctx: QueryCtx, preset: PresetKey) =>
@@ -17,6 +18,7 @@ export const presetPicks = query({
   args: {},
   returns: presetPicksValidator,
   handler: async (ctx) => {
+    await refuseApps(ctx);
     const [cheap, fast, balanced, intelligent] = await Promise.all((["cheap", "fast", "balanced", "intelligent"] as const).map((preset) => picksOf(ctx, preset)));
     return { cheap, fast, balanced, intelligent };
   },

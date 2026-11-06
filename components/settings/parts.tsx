@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { radioKeys, radioTabIndex } from "@/lib/radio-keys";
 import { cardEntrance, subtleSpring } from "@/lib/animation-config";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
+import { Spinner } from "@/components/ui/spinner";
 
 export type Ico = ComponentType<{ className?: string }>;
 
@@ -264,5 +265,15 @@ export function Enter({ ready, children }: { ready: boolean; children: ReactNode
     >
       {children}
     </motion.div>
+  );
+}
+
+/** A button's label that a spinner covers while it works, so the button keeps its width. Its button needs `relative`. */
+export function Working({ busy, children }: { busy: boolean; children: ReactNode }) {
+  return (
+    <>
+      <span className={busy ? "invisible" : undefined}>{children}</span>
+      {busy ? <Spinner className="absolute" /> : null}
+    </>
   );
 }

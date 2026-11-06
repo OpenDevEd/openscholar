@@ -4,7 +4,7 @@
 import { SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { mutation, internalMutation } from "../lib/functions";
 import { v } from "convex/values";
-import { getCurrentUser, requireAuth } from "../lib/auth";
+import { getCurrentUser, refuseApps, requireAuth } from "../lib/auth";
 
 /**
  * Store OAuth request token temporarily (during OAuth flow).
@@ -132,6 +132,7 @@ export const disconnect = mutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    await refuseApps(ctx);
     const user = await requireAuth(ctx);
 
     const connection = await ctx.db

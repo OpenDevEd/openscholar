@@ -83,6 +83,7 @@ import {
   requirePublishRuntime,
   type PublishRuntime,
 } from "./updates";
+import { refuseApps } from "../lib/auth";
 
 const SETUP_OPERATION_IDEMPOTENCY_KEY = "library-setup";
 
@@ -1055,7 +1056,10 @@ export const activateConfiguration = mutation({
       v.literal("failed"),
     ),
   }),
-  handler: activateEvidenceLibraryConfiguration,
+  handler: async (ctx, args): ReturnType<typeof activateEvidenceLibraryConfiguration> => {
+    await refuseApps(ctx);
+    return await activateEvidenceLibraryConfiguration(ctx, args);
+  },
 });
 
 export const retrySetup = mutation({
@@ -1064,5 +1068,8 @@ export const retrySetup = mutation({
     operationId: v.id("evidenceLibraryConfigOperations"),
     status: v.literal("running"),
   }),
-  handler: retryEvidenceLibrarySetup,
+  handler: async (ctx, args): ReturnType<typeof retryEvidenceLibrarySetup> => {
+    await refuseApps(ctx);
+    return await retryEvidenceLibrarySetup(ctx, args);
+  },
 });

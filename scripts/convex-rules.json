@@ -48,7 +48,8 @@
       "MAX_LIBRARY_SOURCES": "convex/evidenceLibraries/screeningRequests.ts:requestScreeningGrade",
       "KEYS_PAGES": "convex/paperSets/libraryKeys.ts:keepKeys",
       "MAX_PROFILE_RECORDS": "convex/authors/links.ts:linkRecord",
-      "MAX_RELEASES": "convex/evidenceLibraries/validators.ts"
+      "MAX_RELEASES": "convex/evidenceLibraries/validators.ts",
+      "MAX_APPS": "convex/developerApps/apps.ts:insert"
     },
     "refused": {
       "MAX_ROLLOUT_COMMUNITIES": "reads one past it and refuses to list or update communities, naming why",
@@ -121,7 +122,8 @@
       "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left",
       "LIBRARY_CHANGE_MAX": "a screening's queued library writes, a batch at a time: the flush schedules itself again while more wait",
       "MOST_ROWS": "One run over the live deployment, whose largest workspace or job is a few hundred rows; the file is deleted once it has run.",
-      "REBUILD_BATCH": "One step of a rebuild that schedules the next; the rows are small and the whole table is meant to be read."
+      "REBUILD_BATCH": "One step of a rebuild that schedules the next; the rows are small and the whole table is meant to be read.",
+      "GRANT_BATCH": "a deleted developer app's rows on people's lists of sites, a batch at a time; it reschedules itself until none are left"
     }
   }
 }
