@@ -6,7 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
 import posthog from "posthog-js";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { AppWindow, Globe, KeyRound, PersonIcon, Plug, Trash2 } from "@/components/icons";
+import { AppWindow, ExternalLink, Globe, KeyRound, PersonIcon, Plug, Trash2 } from "@/components/icons";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -17,7 +17,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useZoteroSignIn } from "@/lib/hooks/use-zotero-sign-in";
 import { useAppToast } from "@/lib/toast";
-import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
+import { Enter, LIST, Paged, Tile, Zone, pagerOf } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { WorkspaceTag } from "@/components/workspaces/parts";
 import { DeveloperApps } from "@/components/settings/developer-apps";
@@ -135,6 +135,8 @@ export default function ConnectionsPage() {
             </Paged>
           )}
         </Zone>
+
+        <AllowedSites />
 
         {revoked.items.length > 0 || revoked.hasPages ? (
           <Zone label={t("revokedBadge")}>
@@ -260,5 +262,122 @@ function Swap({ id, className, children }: { id: string; className: string; chil
     <motion.div key={id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }} className={className}>
       {children}
     </motion.div>
+  );
+}
+
+// MOCK (mock/developer-apps): sites that signed people in through an app on Openscholar. The real list comes from
+// Convex: a site is recorded the first time it changes something for the person, and Disconnect blocks its tokens for them.
+type Site = { id: string; name: string; website: string; allowedAt: number; lastUsedAt?: number; disconnectedAt?: number };
+const HOUR = 3_600_000;
+const SAMPLE_SITES: Site[] = [
+  { id: "s1", name: "BeeWriter", website: "https://beewriter.app", allowedAt: Date.now() - 9 * 24 * HOUR, lastUsedAt: Date.now() - 2 * HOUR },
+  { id: "s2", name: "Lab reading list", website: "https://reading.lab.example.org", allowedAt: Date.now() - 20 * 24 * HOUR, lastUsedAt: Date.now() - 3 * 24 * HOUR },
+  { id: "s3", name: "Citation checker for theses and dissertations at the Graduate School", website: "https://cite-check.example.edu", allowedAt: Date.now() - 26 * HOUR },
+  { id: "s4", name: "Survey builder", website: "https://surveys.example.com", allowedAt: Date.now() - 60 * 24 * HOUR, disconnectedAt: Date.now() - 14 * 24 * HOUR },
+];
+const SITE_TINTS = ["#60a5fa", "#f472b6", "#2dd4bf", "#a78bfa", "#d9a27c", "#34d399"];
+
+/** Sites you signed in to with Openscholar. Disconnect signs a site out of your account; it stays out until you allow it again. */
+function AllowedSites() {
+  const t = useTranslations("connectionsPage");
+  const [sites, setSites] = useState(SAMPLE_SITES);
+  const [page, setPage] = useState(1);
+  // Newest first by when it was allowed, so disconnecting or allowing a site again changes its row in place.
+  const sorted = [...sites].sort((a, b) => b.allowedAt - a.allowedAt);
+  const pager = pagerOf(sorted.length, PER_PAGE, page, setPage);
+  const set = (id: string, disconnectedAt: number | undefined) =>
+    setSites((all) => all.map((site) => (site.id === id ? { ...site, disconnectedAt } : site)));
+
+  return (
+    <Zone label={t("allowedSites")}>
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
+          <Globe className="size-5 text-muted-foreground" />
+          <p className="text-sm font-medium">{t("noSites")}</p>
+          <p className="max-w-sm text-xs text-muted-foreground">{t("noSitesDescription")}</p>
+        </div>
+      ) : (
+        <Paged pager={pager} rowHeight={61} label={t("sites")}>
+          <ul className={`${LIST} @container/sites`}>
+            {sorted.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE).map((site) => (
+              <SiteRow
+                key={site.id}
+                site={site}
+                tint={SITE_TINTS[sites.indexOf(site) % SITE_TINTS.length]!}
+                onChange={() => set(site.id, site.disconnectedAt ? undefined : Date.now())}
+              />
+            ))}
+          </ul>
+        </Paged>
+      )}
+    </Zone>
+  );
+}
+
+/** One site: its name and address, when it was last used or disconnected, a link to it, and Disconnect (with a confirm) or Allow again. */
+function SiteRow({ site, tint, onChange }: { site: Site; tint: string; onChange: () => void }) {
+  const t = useTranslations("connectionsPage");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
+  const [confirm, setConfirm] = useState(false);
+  const address = site.website.replace(/^https?:\/\//, "");
+  const when = site.disconnectedAt
+    ? t("disconnectedTime", { time: format.relativeTime(Math.min(site.disconnectedAt, now.getTime()), now) })
+    : site.lastUsedAt
+      ? t("lastUsed", { time: format.relativeTime(site.lastUsedAt, now) })
+      : t("allowedTime", { time: format.relativeTime(site.allowedAt, now) });
+
+  return (
+    <li className="flex items-center gap-3 p-3">
+      <Tile icon={Globe} tint={site.disconnectedAt ? "#94a3b8" : tint} className="transition-colors" />
+      <div className="min-w-0 flex-1">
+        <p className={`truncate text-sm font-semibold transition-colors ${site.disconnectedAt ? "text-muted-foreground" : ""}`}>{site.name}</p>
+        <Swap id={String(confirm)} className="flex min-w-0 items-center text-xs text-muted-foreground">
+          {confirm ? (
+            <span className="truncate">{t("siteSignsOut")}</span>
+          ) : (
+            <span className="truncate">{address}</span>
+          )}
+        </Swap>
+      </div>
+      <Swap id={site.disconnectedAt ? "gone" : "allowed"} className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted-foreground @max-[34rem]/sites:hidden">
+        {when}
+      </Swap>
+      <TooltipHint label={t("openSite", { site: address })}>
+        <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={t("openSite", { site: address })} asChild>
+          <a href={site.website} target="_blank" rel="noreferrer">
+            <ExternalLink />
+          </a>
+        </Button>
+      </TooltipHint>
+      <Swap id={site.disconnectedAt ? "gone" : String(confirm)} className="flex w-40 shrink-0 justify-end gap-1">
+        {site.disconnectedAt ? (
+          <Button variant="outline" size="sm" onClick={onChange}>
+            {t("allowAgain")}
+          </Button>
+        ) : confirm ? (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setConfirm(false)}>
+              {tc("cancel")}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setConfirm(false);
+                onChange();
+              }}
+            >
+              {t("disconnect")}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setConfirm(true)}>
+            {t("disconnect")}
+          </Button>
+        )}
+      </Swap>
+    </li>
   );
 }
