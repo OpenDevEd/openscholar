@@ -58,7 +58,11 @@ const faq = [
         <div class="col">
         <div class="opt" data-opt="project"><label class="f"><span class="lh"><span data-project-label>{first.project[0]}</span><small class="side"><span class="err" id="e-project"></span><span class="count" data-count>0 / 3,000</span></small></span><textarea name="project" rows="4" maxlength="3000" required data-min="20" placeholder={first.project[1]} aria-describedby="e-project"></textarea></label></div>
         <label class="f"><span class="lh"><span><span data-msg-label>{first.message[0]}</span> <small class="opt-tag" data-msg-optional>Optional</small></span><small class="side"><span class="err" id="e-message"></span><span class="count" data-count>0 / 3,000</span></small></span><textarea name="message" rows="3" maxlength="3000" data-msg placeholder="" aria-describedby="e-message"></textarea></label>
-        <div class="send"><button class="btn brand" type="submit">Send message<Arrow /></button><p class="note">Replies come from {EMAIL}</p></div>
+        <div class="send">
+          <button class="btn brand" type="submit">Send message<Arrow /></button><p class="note" data-note aria-live="polite">Replies come from {EMAIL}</p>
+          {/* Cloudflare's check. Out of sight unless it needs a click; then it opens in this card over the field above, so nothing moves. */}
+          <div class="ts" data-ts><p>One quick check before it sends</p><div data-ts-slot></div></div>
+        </div>
         </div>
       </div>
       <ul id="org-list" class="c-pop o-pop" role="listbox" aria-label="Institutions" popover="manual"></ul>
@@ -118,7 +122,7 @@ const faq = [
       if (v.length < min) return `At least ${min} characters`;
       return "";
     };
-    const fields = () => [...form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(".fields input, .fields textarea")];
+    const fields = () => [...form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(".fields .f input, .fields .f textarea")];
     const show = (f: HTMLInputElement | HTMLTextAreaElement) => {
       const p = problem(f), box = f.closest<HTMLElement>(".f")!;
       box.classList.toggle("bad", !!p); f.setAttribute("aria-invalid", String(!!p));
@@ -244,17 +248,53 @@ const faq = [
     form.classList.add("still"); topic(); requestAnimationFrame(() => requestAnimationFrame(() => form.classList.remove("still")));
 
     // Mock: nothing is sent yet. The envelope seals and flies off, and the form gives way to a thank-you.
-    form.addEventListener("submit", (e) => {
+    // Turnstile shows a visitor is a person before the message goes, as the signed-out overviews do. One token a message,
+    // checked by the server that sends it. ponytail: mock uses Cloudflare's testing keys (?challenge forces the click);
+    // the real form needs openscholar.ai on a widget and its secret where the message is sent.
+    const SITE_KEY = new URLSearchParams(location.search).has("challenge") ? "3x00000000000000000000FF" : "1x00000000000000000000BB";
+    const ts = form.querySelector<HTMLElement>("[data-ts]")!, note = form.querySelector<HTMLElement>("[data-note]")!, noteText = note.textContent;
+    type Turnstile = { render: (el: HTMLElement, o: Record<string, unknown>) => string; execute: (id: string) => void; reset: (id: string) => void };
+    let widget = "", waiting: ((token: string | null) => void) | null = null, loading: Promise<Turnstile> | null = null;
+    const load = () => loading ??= new Promise<Turnstile>((resolve, reject) => {
+      const w = window as unknown as { turnstile?: Turnstile };
+      if (w.turnstile) return resolve(w.turnstile);
+      const script = Object.assign(document.createElement("script"), { src: "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit", async: true });
+      script.onload = () => (w.turnstile ? resolve(w.turnstile) : reject(new Error("Turnstile didn't start")));
+      script.onerror = () => { loading = null; reject(new Error("Turnstile didn't load")); };
+      document.head.append(script);
+    });
+    const answer = (token: string | null) => { ts.classList.remove("asking"); waiting?.(token); waiting = null; };
+    const prepare = async () => {
+      const turnstile = await load();
+      widget ||= turnstile.render(form.querySelector<HTMLElement>("[data-ts-slot]")!, {
+        sitekey: SITE_KEY, action: "contact", execution: "execute", appearance: "interaction-only", size: "normal",
+        callback: (token: string) => answer(token), "error-callback": () => { answer(null); return true; }, "expired-callback": () => answer(null),
+        "before-interactive-callback": () => ts.classList.add("asking"),
+      });
+      return turnstile;
+    };
+    // Loaded as soon as someone starts on the form, so Send doesn't wait for it.
+    form.addEventListener("focusin", () => { prepare().catch(() => {}); }, { once: true });
+    const person = async () => { const turnstile = await prepare(); turnstile.reset(widget); return await new Promise<string | null>((resolve) => { waiting = resolve; turnstile.execute(widget); }); };
+    const say = (text: string | null, bad = false) => { note.textContent = text ?? noteText; note.classList.toggle("bad", bad); };
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (form.classList.contains("busy")) return;
       const bad = fields().filter((f) => { f.dataset.seen = ""; return !show(f); });
       if (bad.length) { bad[0].focus(); return; }
+      form.classList.add("busy"); form.setAttribute("aria-busy", "true"); say("Checking it's you");
+      const token = await person().catch(() => null);
+      form.classList.remove("busy"); form.removeAttribute("aria-busy");
+      if (!token) { say("We couldn't check it's you. Send it again.", true); return; }
+      say(null);
       form.querySelector("[data-sent-to]")!.textContent = (form.elements.namedItem("email") as HTMLInputElement).value.trim();
       form.style.setProperty("--fh", `${form.offsetHeight}px`);
       form.classList.add("done"); sent.hidden = false;
       form.querySelector<HTMLElement>("[data-sent-h]")!.focus({ preventScroll: true });
     });
     form.querySelector("[data-again]")!.addEventListener("click", () => {
-      form.reset(); unpick(); orgList.replaceChildren(); form.classList.remove("done"); sent.hidden = true;
+      form.reset(); unpick(); orgList.replaceChildren(); say(null); form.classList.remove("done"); sent.hidden = true;
       fields().forEach((f) => { delete f.dataset.seen; f.closest(".f")!.classList.remove("bad"); f.removeAttribute("aria-invalid"); if (f instanceof HTMLTextAreaElement) count(f); });
       topic(); form.querySelector<HTMLElement>("input[name=name]")!.focus();
     });
@@ -312,7 +352,10 @@ const faq = [
   .c-pop li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px; font-size: 15px; line-height: 1.3; cursor: pointer; } .c-pop li[hidden] { display: none; } .c-pop li img { flex: none; border-radius: 2px; box-shadow: 0 0 0 1px var(--line); }
   [data-org-box] input { padding-right: 14px; } /* Suggestions are written in by the script, outside this component's style scope. */ .o-pop :global(li) { display: grid; gap: 1px; padding: 8px 10px; border-radius: 9px; font-size: 15px; line-height: 1.3; cursor: pointer; } .o-pop :global(li.on) { background: var(--soft); } .o-pop :global(b) { font-weight: 500; } .o-pop :global(small) { font-size: 13px; color: var(--t3); }
   .c-pop li.on { background: var(--soft); } .c-pop li[aria-selected=true] { font-weight: 500; color: var(--brand-ink); } .c-pop .c-none { color: var(--t3); cursor: default; }
-  .send { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; } .note { font-size: 14px; color: var(--t3); }
+  .send { position: relative; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: 4px; } .note { font-size: 14px; color: var(--t3); } .note.bad { color: #b91c1c; }
+  .busy .send .btn { opacity: .7; pointer-events: none; }
+  .ts { position: absolute; z-index: 2; left: 0; bottom: calc(100% + 10px); display: grid; gap: 10px; padding: 14px; border-radius: 16px; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 24px 48px -16px rgb(7 11 26 / .3); opacity: 0; visibility: hidden; translate: 0 6px; transition: opacity .2s var(--ease), translate .25s var(--ease), visibility 0s .25s; } .ts p { font-size: 14px; font-weight: 500; }
+  .ts.asking { opacity: 1; visibility: visible; translate: 0; transition: opacity .2s var(--ease), translate .25s var(--ease); }
 
   /* Sent: the form fades back, and the envelope seals low on the left, then rises along a spectrum trail and settles. */
   .form.done { min-height: var(--fh); } .form.done > :not(.sent) { visibility: hidden; opacity: 0; transition: opacity .2s var(--ease), visibility 0s .2s; }
