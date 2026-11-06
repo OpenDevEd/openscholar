@@ -4,7 +4,8 @@
  */
 
 const DIR = "/question-stage";
-export const EARTH_IMAGES = [`${DIR}/earth-day.avif`, `${DIR}/earth-night.avif`, `${DIR}/earth-clouds.avif`, `${DIR}/earth-water.avif`];
+// The maps every level starts on. earth.js swaps in the sharp day map (earth-day.avif) for the full levels once it has arrived.
+export const EARTH_IMAGES = [`${DIR}/earth-day-2048.avif`, `${DIR}/earth-night.avif`, `${DIR}/earth-clouds.avif`, `${DIR}/earth-water.avif`];
 export const SKY_PLATE = `${DIR}/sky-plate.avif`;
 /** The planet in daylight, as the shader draws it, for a visitor who didn't come through the hero. */
 export const EARTH_STILL = `${DIR}/earth-still.avif`;
