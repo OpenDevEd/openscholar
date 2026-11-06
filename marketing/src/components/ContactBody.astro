@@ -25,11 +25,13 @@ const faq = [
   ["Where can I learn how something works?", "The documentation walks through searching, screening, extraction, the assistant, teams and communities, step by step."],
 ];
 ---
-  <section class="desk" aria-labelledby="desk-h">
+  <section class="desk" id="form" aria-labelledby="desk-h">
     <form class="form" data-contact novalidate>
       <div class="topics" role="radiogroup" aria-labelledby="desk-h">
         <h2 id="desk-h">What can we help with?</h2>
         <div class="tiles">{topics.map((t, i) => <label class="tile" style={`--c:${t.color}`} data-topic={JSON.stringify({ project: t.project ?? null, country: !!t.country, org: t.org ?? "Organisation", message: t.message })}><input type="radio" name="topic" value={t.id} checked={i === 0} /><span class="em" aria-hidden="true"><img src={`/img/topic-${t.id}.avif`} width="240" height="240" alt="" loading="lazy" decoding="async" /></span><b>{t.title}</b><em>{t.text}</em></label>)}</div>
+        {/* A link can choose the topic, as /contact/?topic=southern. It is set here, before the page first paints, so the default never shows first. */}
+        <script is:inline set:html={`(()=>{const t=new URLSearchParams(location.search).get("topic");const r=t&&document.querySelector('.tiles input[name=topic][value="'+CSS.escape(t)+'"]');if(r)r.checked=true})()`} />
       </div>
       <div class="fields">
         <div class="col">
@@ -231,8 +233,15 @@ const faq = [
       msg.required = !!required; msg.placeholder = required ? ask : ""; msg.style.height = `${msgH + (t.project ? 0 : projectH)}px`;
       if ("seen" in msg.dataset) show(msg);
     };
-    form.addEventListener("change", (e) => { if ((e.target as HTMLInputElement).name === "topic") topic(); });
-    topic();
+    form.addEventListener("change", (e) => {
+      const f = e.target as HTMLInputElement;
+      if (f.name !== "topic") return;
+      topic();
+      // The address follows the choice, so it can be copied and shared.
+      const url = new URL(location.href); url.searchParams.set("topic", f.value); history.replaceState(history.state, "", url);
+    });
+    // The first setup, perhaps for a topic the address chose, happens at once: nothing animates while the page arrives.
+    form.classList.add("still"); topic(); requestAnimationFrame(() => requestAnimationFrame(() => form.classList.remove("still")));
 
     // Mock: nothing is sent yet. The envelope seals and flies off, and the form gives way to a thank-you.
     form.addEventListener("submit", (e) => {
@@ -276,6 +285,7 @@ const faq = [
   .tile:has(:checked) .em img { filter: none; transform: translateY(-6px) rotate(-8deg) scale(1.1); }
   .tile:has(:checked) b { color: color-mix(in srgb, var(--c) 30%, #171717); }
 
+  .form.still, .form.still * { transition: none !important; }
   .fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px clamp(20px, 3vw, 40px); align-items: start; } .col { display: grid; align-content: start; } .col > :not(.opt) + :not(.opt), .stack > :not(.opt) + :not(.opt) { margin-top: 14px; }
   .stack { display: grid; } .col > .send { margin-top: 20px; } .col > .duo { margin-top: 14px; }
   /* Country joins Institution in the same row, which makes room for it, so nothing below moves. */
