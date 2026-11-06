@@ -3,6 +3,8 @@
 import AskBar from "./AskBar.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const HEAD = "Ask the world's research anything".split(" ");
+// The segments of the ring's spark tail, moved by src/planet/earth.js.
+const SPARK = Array.from({ length: 8 });
 const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce burnout?", "Do pesticides harm bees?", "Does remote work boost output?", "Do farm antibiotics harm people?", "Do cash transfers reduce hunger?"];
 // Stars are fixed in size and place, so they never pop or shift between loads, and none sit behind the headline or the box. They thin out towards the bottom of the sky.
 const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
@@ -21,10 +23,10 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     <div class="halo"><AskBar id="ask-hero" class="big" questions={QUESTIONS} mark label="Search with Openscholar" /></div>
   </div>
   <div class="space">
-    <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6b35" /><stop offset=".16" stop-color="#ff9d36" /><stop offset=".34" stop-color="#ffd9ae" /><stop offset=".52" stop-color="#8fd3d8" /><stop offset=".76" stop-color="#5a9be6" /><stop offset="1" stop-color="#3c62b8" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg><i class="spark" data-spark="back"></i></div>
+    <div class="orb back" aria-hidden="true"><svg class="ringsvg"><defs><linearGradient id="spectrum" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6b35" /><stop offset=".16" stop-color="#ff9d36" /><stop offset=".34" stop-color="#ffd9ae" /><stop offset=".52" stop-color="#8fd3d8" /><stop offset=".76" stop-color="#5a9be6" /><stop offset="1" stop-color="#3c62b8" /></linearGradient><filter id="ringsoft" x="-5%" y="-100%" width="110%" height="300%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="9" /></filter></defs><g data-ring="back"></g></svg>{SPARK.map(() => <i class="spark" data-spark="back"></i>)}</div>
     <img class="still" data-still alt="" decoding="async" />
     <canvas class="earth" aria-hidden="true"></canvas>
-    <div class="orb front" aria-hidden="true"><svg class="ringsvg"><g data-ring="front"></g></svg><i class="spark" data-spark="front"></i></div>
+    <div class="orb front" aria-hidden="true"><svg class="ringsvg"><g data-ring="front"></g></svg>{SPARK.map(() => <i class="spark" data-spark="front"></i>)}</div>
     <div class="sats" aria-hidden="true">{COMMUNITIES.map((c, i) => <a class="sat" data-sat tabindex="-1" href={c.url} style={`--c:${c.color};--i:${i}`}><img src={`/img/comm-${c.key}.avif`} width="96" height="96" alt="" decoding="async" /><b>{c.name}</b></a>)}</div>
   </div>
   <div class="inner hub">
@@ -160,7 +162,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       const typed = input.style.color; input.style.color = "transparent"; handed.push({ cancel: () => { input.style.color = typed; } });
       // The old headline is gone upwards before the question rises into its place.
       head.querySelectorAll("span").forEach((w, i) => handed.push(w.animate([{ opacity: 1, translate: "0 0", filter: "blur(0)" }, { opacity: 0, translate: "0 -28px", filter: "blur(3px)" }], { duration: 190, delay: i * 10, easing: "cubic-bezier(.5,0,.75,0)", fill: "both" })));
-      fade(root.querySelector(".lead"), 20, -10); fade(halo, 60, 10); fade(root.querySelector(".hub"), 0, 14); fade(document.querySelector(".top"), 0, -10); sats.forEach((a, i) => fade(a, i * 20)); scene.querySelectorAll("[data-spark]").forEach((c) => fade(c));
+      fade(root.querySelector(".lead"), 20, -10); fade(halo, 60, 10); fade(root.querySelector(".hub"), 0, 14); fade(document.querySelector(".top"), 0, -10); sats.forEach((a, i) => fade(a, i * 20)); scene.querySelectorAll(".spark").forEach((c) => fade(c));
       // The sun's slow pulse and the stars' twinkle settle, and whatever the sky doesn't reach is covered.
       skies.forEach((el) => handed.push(el.animate([{ opacity: getComputedStyle(el).opacity }, { opacity: 1 }], { duration: HAND_MS, fill: "forwards" })));
       handed.push(scene.animate([{ opacity: getComputedStyle(scene, "::before").opacity }, { opacity: 1 }], { duration: HAND_MS, pseudoElement: "::before", fill: "forwards" }));
@@ -197,7 +199,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     new ResizeObserver(() => { size(); placeSats(calm.matches || orbitAt ? 0 : 2.4); if (ready) draw(performance.now()); }).observe(scene);
     new IntersectionObserver(([e]) => { seen = e.isIntersecting; last = performance.now(); run(); }).observe(root);
     // Reduced motion turned on mid-visit settles everything into the still scene.
-    calm.addEventListener("change", () => { if (calm.matches) { scene.querySelectorAll("[data-spark]").forEach((spark) => { spark.style.opacity = "0"; }); placeSats(0); draw(performance.now()); } last = performance.now(); run(); });
+    calm.addEventListener("change", () => { if (calm.matches) { scene.querySelectorAll(".spark").forEach((spark) => { spark.style.opacity = "0"; }); placeSats(0); draw(performance.now()); } last = performance.now(); run(); });
     scene.addEventListener("pointerover", (e) => { onSat = sats.indexOf(e.target.closest("[data-sat]")); }); scene.addEventListener("pointerout", () => { onSat = -1; });
     root.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const r = root.getBoundingClientRect(), b = scene.getBoundingClientRect(); tx = (e.clientX - r.left) / r.width - .5; ty = (e.clientY - r.top) / r.height - .5; mouse = { x: e.clientX - b.left, y: e.clientY - b.top }; }, { passive: true }); root.addEventListener("pointerleave", () => { mouse = null; tx = ty = 0; });
     // Pointing at or tabbing to a community below swings its satellite round to the front and holds it there.
@@ -244,8 +246,8 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .space::before { content: ""; position: absolute; left: var(--sx, 50%); top: var(--sy, 0); z-index: 0; width: 1400px; height: var(--sh, 900px); transform: translate(-50%, -50%); pointer-events: none; background: radial-gradient(closest-side, rgb(255 226 190 / .42), rgb(255 150 70 / .22) 16%, rgb(190 90 60 / .09) 44%, transparent); opacity: 0; transition: opacity 1.2s var(--ease); } :global(.lit) .space::before { opacity: 1; animation: sun 14s ease-in-out 1.2s infinite alternate; } @keyframes sun { to { opacity: .72; } }
   .earth { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; pointer-events: none; opacity: 0; transform: scale(.98); transition: opacity 1.2s var(--ease), transform 2.4s var(--ease); } :global(.lit) .earth { opacity: 1; transform: none; }
   .orb { position: absolute; inset: 0; pointer-events: none; will-change: transform; } .back { z-index: 1; } .front { z-index: 4; } .orb svg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; overflow: visible; }
-  /* The ring's spark: a short tapering streak whose head is its right end, moved round by earth.js with a transform alone, so nothing is redrawn as it goes. */
-  .spark { position: absolute; left: 0; top: 0; width: 150px; height: 3px; margin-top: -1.5px; border-radius: 2px; background: linear-gradient(90deg, transparent, rgb(255 241 224 / .3) 45%, rgb(255 241 224 / .75) 85%, #fff1e0); transform-origin: 100% 50%; opacity: 0; will-change: transform, opacity; pointer-events: none; }
+  /* The ring's spark: one segment of its tail, laid along the ring and moved by earth.js with a transform alone. */
+  .spark { position: absolute; left: 0; top: 0; width: 20px; height: 2.5px; margin-top: -1.25px; border-radius: 2px; background: #fff1e0; transform-origin: 100% 50%; opacity: 0; will-change: transform, opacity; pointer-events: none; }
   /* Level 0: the planet is a still image, drawn by the same shader, and no canvas is drawn. */
   .still { position: absolute; z-index: 3; opacity: 0; transition: opacity 1s cubic-bezier(.4, 0, .2, 1); max-width: none; height: auto; aspect-ratio: 1; pointer-events: none; } :global(.resting) .still { opacity: 1; } :global(.resting) .earth { opacity: 0; transition: opacity 1s cubic-bezier(.4, 0, .2, 1); } :global(.resting) .stars { animation: none; }
   /* The ring draws itself on: left to right in front, then right to left behind, the way the satellites travel. */

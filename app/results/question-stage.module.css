@@ -176,17 +176,16 @@
 .stage[data-handover] .stillBox:not([data-failed]) {
   display: none;
 }
-/* The ring's spark: a short tapering streak whose head is the element's right end. earth.js moves it round the ring with a
-   transform alone, so it costs nothing to draw. */
+/* The ring's spark: one segment of its tail, laid along the ring and moved by earth.js with a transform alone. */
 .spark {
   position: absolute;
   left: 0;
   top: 0;
-  width: 150px;
-  height: 3px;
-  margin-top: -1.5px;
+  width: 20px;
+  height: 2.5px;
+  margin-top: -1.25px;
   border-radius: 2px;
-  background: linear-gradient(90deg, transparent, rgb(255 241 224 / 0.3) 45%, rgb(255 241 224 / 0.75) 85%, #fff1e0);
+  background: #fff1e0;
   transform-origin: 100% 50%;
   opacity: 0;
   will-change: transform, opacity;

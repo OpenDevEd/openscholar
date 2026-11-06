@@ -13,6 +13,8 @@ import styles from "./question-stage.module.css";
 /** The query box's concepts, in the order it colours them, lightened for the night sky. */
 const CONCEPT_COLOURS = ["#ff9d36", "#7cc7ff", "#b9a7ff", "#6fe0ae", "#ff9ccf", "#6fd9d2"];
 const MAX_WORDS = 30;
+/** The segments of the ring's spark tail, moved by marketing/src/planet/earth.js. */
+const SPARK = Array.from({ length: 8 });
 /** However fast the answer, the question is on screen this long: it should read, not flash. */
 const LEAST_MS = 1300;
 /** The lit words hold this long before they leave. */
@@ -391,7 +393,9 @@ export function QuestionStage() {
             />
             <svg data-ring="back" className={styles.ring} aria-hidden suppressHydrationWarning dangerouslySetInnerHTML={{ __html: rings.back }} />
             {/* The ring's spark, moved only by a transform, so nothing is redrawn as it goes round: behind the planet here. */}
-            <i data-spark="back" className={styles.spark} aria-hidden suppressHydrationWarning />
+            {SPARK.map((_, i) => (
+              <i key={i} data-spark="back" className={styles.spark} aria-hidden suppressHydrationWarning />
+            ))}
             <div data-still suppressHydrationWarning className={styles.stillBox} style={{ "--fade": `${layout.narrow ? 56 : 96}px` } as React.CSSProperties}>
               {/* eslint-disable-next-line @next/next/no-img-element -- a frame of the shader, placed to the pixel */}
               <img
@@ -406,7 +410,9 @@ export function QuestionStage() {
             {/* earth.js sizes and draws it, and marks it live, before React takes the page over. */}
             <canvas className={styles.earth} aria-hidden suppressHydrationWarning />
             <svg data-ring="front" className={styles.ring} aria-hidden suppressHydrationWarning dangerouslySetInnerHTML={{ __html: rings.front }} />
-            <i data-spark="front" className={styles.spark} aria-hidden suppressHydrationWarning />
+            {SPARK.map((_, i) => (
+              <i key={i} data-spark="front" className={styles.spark} aria-hidden suppressHydrationWarning />
+            ))}
           </div>
         )}
       </div>
