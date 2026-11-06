@@ -1,5 +1,6 @@
 // Clerk's Backend API for OAuth applications: the client each Evidence
-// Library signs readers and admins in with.
+// Library signs readers and admins in with, and the apps people build on
+// Openscholar (convex/developerApps).
 
 import { ClerkApiError, clerkRequest, isRecord } from "../lib/clerk";
 
@@ -62,22 +63,31 @@ export async function findOAuthApplicationsByName(secretKey: string, name: strin
 }
 
 /**
- * A confidential client with PKCE and no consent screen: the library is part
- * of OpenScholar, so readers are not asked to approve it.
+ * A client with PKCE. A library's is confidential with no consent screen: the
+ * library is part of OpenScholar, so readers are not asked to approve it. A
+ * developer app asks for consent, and a browser app is public, with no secret.
  */
 export async function createOAuthApplication(
   secretKey: string,
   input: { name: string; redirectUris: string[] },
+): Promise<{ application: ClerkOAuthApplication; clientSecret: string }>;
+export async function createOAuthApplication(
+  secretKey: string,
+  input: { name: string; redirectUris: string[]; public: boolean; consent: true },
+): Promise<{ application: ClerkOAuthApplication; clientSecret: string | null }>;
+export async function createOAuthApplication(
+  secretKey: string,
+  input: { name: string; redirectUris: string[]; public?: boolean; consent?: boolean },
 ) {
   const { body } = await clerkRequest(secretKey, "POST", "/oauth_applications", {
     name: input.name,
     redirect_uris: input.redirectUris,
     scopes: "openid email profile offline_access",
-    public: false,
-    consent_screen_enabled: false,
+    public: input.public ?? false,
+    consent_screen_enabled: input.consent ?? false,
     pkce_required: true,
   });
-  return { application: readApplication(body), clientSecret: readSecret(body) };
+  return { application: readApplication(body), clientSecret: input.public ? null : readSecret(body) };
 }
 
 /** Clerk shows a secret only once, so an adopted application gets a new one. */
@@ -101,16 +111,16 @@ export async function readOAuthApplication(secretKey: string, applicationId: str
   }
 }
 
-export async function setOAuthApplicationRedirectUris(
+export async function updateOAuthApplication(
   secretKey: string,
   applicationId: string,
-  redirectUris: string[],
+  changes: { redirectUris: string[]; name?: string },
 ) {
   const { body } = await clerkRequest(
     secretKey,
     "PATCH",
     `/oauth_applications/${encodeURIComponent(applicationId)}`,
-    { redirect_uris: redirectUris },
+    { redirect_uris: changes.redirectUris, ...(changes.name ? { name: changes.name } : {}) },
   );
   return readApplication(body);
 }

@@ -20,6 +20,7 @@ import {
 } from "./validators";
 import { MAX_CONFIGURATION_ISSUES } from "../lib/listCaps";
 import { MAX_ACTIVE_OPERATIONS_READ } from "../lib/queryBounds";
+import { refuseApps } from "../lib/auth";
 
 /** Newest publish operations read to find the newest configuration deployment. */
 const NEWEST_PUBLISHES_READ = 50;
@@ -719,5 +720,8 @@ export const queueOperation = mutation({
       v.literal("failed"),
     ),
   }),
-  handler: queueEvidenceLibraryOperation,
+  handler: async (ctx, args): ReturnType<typeof queueEvidenceLibraryOperation> => {
+    await refuseApps(ctx);
+    return await queueEvidenceLibraryOperation(ctx, args);
+  },
 });

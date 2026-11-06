@@ -18,6 +18,7 @@ import { resolveRuntimeImage } from "./runtimeImageRegistry";
 import { fetchRuntimeCatalog, offersPrereleases, RELEASE_CHECK_WITHDRAWN, runtimeIncludesCommit, setRuntimeReleasePrerelease } from "./runtimeReleases";
 import { releaseCatalogRowsValidator, releasesOverviewValidator } from "./validators";
 import { startRolloutRuntimeUpdate } from "./versions";
+import { refuseApps } from "../lib/auth";
 
 /** How often a rollout looks at the update it's waiting on. */
 const POLL_MS = 10_000;
@@ -67,6 +68,7 @@ export const overview = query({
   args: {},
   returns: releasesOverviewValidator,
   handler: async (ctx) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     const catalog = await readCatalog(ctx);
     const rollout = await currentRollout(ctx);
@@ -172,6 +174,7 @@ export const setChannel = action({
   args: { commit: v.string(), prerelease: v.boolean() },
   returns: v.null(),
   handler: async (ctx, { commit, prerelease }): Promise<null> => {
+    await refuseApps(ctx);
     const releaseId: number = await ctx.runQuery(internal.evidenceLibraries.releases.readForChange, { commit });
     await setRuntimeReleasePrerelease({ token: githubToken(), releaseId, prerelease });
     await ctx.runMutation(internal.evidenceLibraries.releases.recordChannel, { commit, prerelease });
@@ -213,6 +216,7 @@ export const startRollout = action({
   args: { libraryId: v.optional(v.id("evidenceLibraries")) },
   returns: v.null(),
   handler: async (ctx, { libraryId }): Promise<null> => {
+    await refuseApps(ctx);
     const { target, startedByClerkUserId }: { target: string; startedByClerkUserId: string } = await ctx.runQuery(internal.evidenceLibraries.releases.readRolloutTarget, {});
     const targetImage = await resolveRuntimeImage({ commit: target, githubToken: githubToken() });
     if (!targetImage) throw createError("CONFLICT", "That release's software image could not be read right now");
@@ -337,6 +341,7 @@ export const steerRollout = mutation({
   args: { action: v.union(v.literal("stopAfterThis"), v.literal("skip"), v.literal("retry"), v.literal("stop"), v.literal("dismiss")) },
   returns: v.null(),
   handler: async (ctx, { action: steer }) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     const rollout = await currentRollout(ctx);
     if (!rollout) return null;

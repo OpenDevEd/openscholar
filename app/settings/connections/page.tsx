@@ -11,16 +11,16 @@ import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useZoteroSignIn } from "@/lib/hooks/use-zotero-sign-in";
 import { useAppToast } from "@/lib/toast";
-import { Enter, LIST, Paged, Tile, Zone, pagerOf } from "@/components/settings/parts";
+import { Enter, LIST, Paged, Tile, Working, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { WorkspaceTag } from "@/components/workspaces/parts";
-import { DeveloperApps } from "@/components/settings/developer-apps";
+import { APPS_PER_PAGE, DeveloperApps } from "@/components/settings/developer-apps";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
 
 const PER_PAGE = 8;
 const APP_TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
@@ -36,11 +36,14 @@ export default function ConnectionsPage() {
   const revoked = useCursorPage(api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: false }), PER_PAGE);
   const { data: counts } = useProtectedQuery(api.wallet.queries.countKeys, inWorkspace(workspaceId, {}));
   const { data: zotero } = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
+  const apps = useCursorPage(api.developerApps.apps.listApps, {}, APPS_PER_PAGE);
+  const { data: appCount } = useProtectedQuery(api.developerApps.apps.countApps, {});
+  const sites = useCursorPage(api.developerApps.sites.listSites, {}, PER_PAGE);
   const revokeKey = useMutation(api.wallet.mutations.revokeKey);
   const [confirm, setConfirm] = useState<Id<"walletKeys"> | null>(null);
   const [revoking, setRevoking] = useState<Id<"walletKeys"> | null>(null);
 
-  if (active.isLoading || revoked.isLoading || !counts || !zotero) return <Enter ready={false}>{null}</Enter>;
+  if (active.isLoading || revoked.isLoading || !counts || !zotero || apps.isLoading || appCount === undefined || sites.isLoading) return <Enter ready={false}>{null}</Enter>;
 
   const revoke = async (walletKeyId: Id<"walletKeys">) => {
     posthog.capture("api_key_revoked", { app_name: active.items.find((k) => k._id === walletKeyId)?.appName });
@@ -136,7 +139,7 @@ export default function ConnectionsPage() {
           )}
         </Zone>
 
-        <AllowedSites />
+        <AllowedSites sites={sites} />
 
         {revoked.items.length > 0 || revoked.hasPages ? (
           <Zone label={t("revokedBadge")}>
@@ -154,7 +157,7 @@ export default function ConnectionsPage() {
           </Zone>
         ) : null}
 
-        <DeveloperApps />
+        <DeveloperApps apps={apps} count={appCount} />
       </div>
     </Enter>
   );
@@ -246,16 +249,6 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
   );
 }
 
-/** A button's label that a spinner covers while it works, so the button keeps its width. */
-function Working({ busy, children }: { busy: boolean; children: ReactNode }) {
-  return (
-    <>
-      <span className={busy ? "invisible" : undefined}>{children}</span>
-      {busy ? <Spinner className="absolute" /> : null}
-    </>
-  );
-}
-
 /** Fades its contents in when `id` changes, so a row's state swaps in place without a jump. */
 function Swap({ id, className, children }: { id: string; className: string; children: ReactNode }) {
   return (
@@ -265,47 +258,28 @@ function Swap({ id, className, children }: { id: string; className: string; chil
   );
 }
 
-// MOCK (mock/developer-apps): sites that signed people in through an app on Openscholar. The real list comes from
-// Convex: a site is recorded the first time it changes something for the person, and Disconnect blocks its tokens for them.
-type Site = { id: string; name: string; website: string; allowedAt: number; lastUsedAt?: number; disconnectedAt?: number };
-const HOUR = 3_600_000;
-const SAMPLE_SITES: Site[] = [
-  { id: "s1", name: "BeeWriter", website: "https://beewriter.app", allowedAt: Date.now() - 9 * 24 * HOUR, lastUsedAt: Date.now() - 2 * HOUR },
-  { id: "s2", name: "Lab reading list", website: "https://reading.lab.example.org", allowedAt: Date.now() - 20 * 24 * HOUR, lastUsedAt: Date.now() - 3 * 24 * HOUR },
-  { id: "s3", name: "Citation checker for theses and dissertations at the Graduate School", website: "https://cite-check.example.edu", allowedAt: Date.now() - 26 * HOUR },
-  { id: "s4", name: "Survey builder", website: "https://surveys.example.com", allowedAt: Date.now() - 60 * 24 * HOUR, disconnectedAt: Date.now() - 14 * 24 * HOUR },
-];
+type Site = FunctionReturnType<typeof api.developerApps.sites.listSites>["page"][number];
 const SITE_TINTS = ["#60a5fa", "#f472b6", "#2dd4bf", "#a78bfa", "#d9a27c", "#34d399"];
 
-/** Sites you signed in to with Openscholar. Disconnect signs a site out of your account; it stays out until you allow it again. */
-function AllowedSites() {
+/**
+ * Sites you signed in to through an app on Openscholar, newest allowed first. A site is listed once it
+ * changes something for you. Disconnect signs it out of your account; it stays out until you allow it again.
+ */
+function AllowedSites({ sites }: { sites: ReturnType<typeof useCursorPage<typeof api.developerApps.sites.listSites>> }) {
   const t = useTranslations("connectionsPage");
-  const [sites, setSites] = useState(SAMPLE_SITES);
-  const [page, setPage] = useState(1);
-  // Newest first by when it was allowed, so disconnecting or allowing a site again changes its row in place.
-  const sorted = [...sites].sort((a, b) => b.allowedAt - a.allowedAt);
-  const pager = pagerOf(sorted.length, PER_PAGE, page, setPage);
-  const set = (id: string, disconnectedAt: number | undefined) =>
-    setSites((all) => all.map((site) => (site.id === id ? { ...site, disconnectedAt } : site)));
-
   return (
     <Zone label={t("allowedSites")}>
-      {sorted.length === 0 ? (
+      {sites.items.length === 0 && !sites.hasPages ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
           <Globe className="size-5 text-muted-foreground" />
           <p className="text-sm font-medium">{t("noSites")}</p>
           <p className="max-w-sm text-xs text-muted-foreground">{t("noSitesDescription")}</p>
         </div>
       ) : (
-        <Paged pager={pager} rowHeight={61} label={t("sites")}>
-          <ul className={`${LIST} @container/sites`}>
-            {sorted.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE).map((site) => (
-              <SiteRow
-                key={site.id}
-                site={site}
-                tint={SITE_TINTS[sites.indexOf(site) % SITE_TINTS.length]!}
-                onChange={() => set(site.id, site.disconnectedAt ? undefined : Date.now())}
-              />
+        <Paged pager={{ list: sites, size: PER_PAGE }} rowHeight={61} label={t("sites")}>
+          <ul key={sites.page} className={`${LIST} @container/sites`}>
+            {sites.items.map((site, i) => (
+              <SiteRow key={site._id} site={site} tint={SITE_TINTS[(sites.offset + i) % SITE_TINTS.length]!} />
             ))}
           </ul>
         </Paged>
@@ -315,18 +289,30 @@ function AllowedSites() {
 }
 
 /** One site: its name and address, when it was last used or disconnected, a link to it, and Disconnect (with a confirm) or Allow again. */
-function SiteRow({ site, tint, onChange }: { site: Site; tint: string; onChange: () => void }) {
+function SiteRow({ site, tint }: { site: Site; tint: string }) {
   const t = useTranslations("connectionsPage");
   const tc = useTranslations("common");
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
+  const toast = useAppToast();
+  const setDisconnected = useMutation(api.developerApps.sites.setDisconnected);
   const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const change = async (disconnected: boolean) => {
+    setBusy(true);
+    try {
+      await setDisconnected({ siteId: site._id, disconnected });
+      setConfirm(false);
+    } catch (error) {
+      toast.error(getErrorMessage(error, tc("somethingWentWrong")));
+    } finally {
+      setBusy(false);
+    }
+  };
   const address = site.website.replace(/^https?:\/\//, "");
   const when = site.disconnectedAt
     ? t("disconnectedTime", { time: format.relativeTime(Math.min(site.disconnectedAt, now.getTime()), now) })
-    : site.lastUsedAt
-      ? t("lastUsed", { time: format.relativeTime(site.lastUsedAt, now) })
-      : t("allowedTime", { time: format.relativeTime(site.allowedAt, now) });
+    : t("lastUsed", { time: format.relativeTime(Math.min(site.lastUsedAt, now.getTime()), now) });
 
   return (
     <li className="flex items-center gap-3 p-3">
@@ -353,23 +339,16 @@ function SiteRow({ site, tint, onChange }: { site: Site; tint: string; onChange:
       </TooltipHint>
       <Swap id={site.disconnectedAt ? "gone" : String(confirm)} className="flex w-40 shrink-0 justify-end gap-1">
         {site.disconnectedAt ? (
-          <Button variant="outline" size="sm" onClick={onChange}>
-            {t("allowAgain")}
+          <Button variant="outline" size="sm" className="relative" disabled={busy} onClick={() => change(false)}>
+            <Working busy={busy}>{t("allowAgain")}</Working>
           </Button>
         ) : confirm ? (
           <>
-            <Button variant="ghost" size="sm" onClick={() => setConfirm(false)}>
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => setConfirm(false)}>
               {tc("cancel")}
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                setConfirm(false);
-                onChange();
-              }}
-            >
-              {t("disconnect")}
+            <Button variant="destructive" size="sm" className="relative" disabled={busy} onClick={() => change(true)}>
+              <Working busy={busy}>{t("disconnect")}</Working>
             </Button>
           </>
         ) : (

@@ -5,7 +5,7 @@ import type { Doc } from "../_generated/dataModel";
 import { query } from "../_generated/server";
 import schema from "../schema";
 import { searchTerms } from "../lib/searchText";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser, refuseApps } from "../lib/auth";
 import { ADMIN_LIST, countOf } from "../lib/listCounts";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { isAdmin, normalizeEmail, requireAdmin, requireAdminUser } from "./access";
@@ -15,6 +15,7 @@ export const amI = query({
   args: {},
   returns: v.boolean(),
   handler: async (ctx) => {
+    await refuseApps(ctx);
     const user = await getCurrentUser(ctx);
     return user ? await isAdmin(ctx, user._id) : false;
   },
@@ -105,6 +106,7 @@ export const links = query({
   args: {},
   returns: v.object({ autumn: v.optional(v.string()) }),
   handler: async (ctx) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     const autumn = process.env.AUTUMN_DASHBOARD_URL;
     return autumn ? { autumn } : {};

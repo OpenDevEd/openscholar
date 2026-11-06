@@ -19,6 +19,7 @@ import {
   zoteroGroupCredentialKey,
   zoteroGroupScopesValidator,
 } from "./libraryGroupValidators";
+import { refuseApps } from "../lib/auth";
 
 type ReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 
@@ -91,6 +92,7 @@ export const listZoteroGroups = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: paginationResultValidator(evidenceLibraryZoteroGroupValidator),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
     return { page: await libraryZoteroGroups(ctx, args.libraryId), isDone: true, continueCursor: "" };
   },
@@ -227,6 +229,7 @@ export const removeZoteroGroup = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const access = await requireEvidenceLibraryAccess(
       ctx,
       args.libraryId,

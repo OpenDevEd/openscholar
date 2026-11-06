@@ -1,39 +1,38 @@
 "use client";
 
-// MOCK (mock/developer-apps): apps people build on Openscholar, on the connections page.
-// The list lives in page state; nothing here reaches Clerk or Convex yet.
+// Apps people build on Openscholar, on the connections page: each signs people in with
+// Openscholar's sign-in and calls Convex as them (convex/developerApps).
 
 import { useState, type ReactNode } from "react";
+import { useAction } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { AppWindow, Check, ChevronRight, Copy, Globe, Lock, Plus, RefreshCw, Server, Trash2, X } from "@/components/icons";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { AutoHeight } from "@/components/ui/auto-height";
-import { LIST, Paged, Segmented, Tile, Zone, pagerOf } from "@/components/settings/parts";
+import { LIST, Paged, Segmented, Tile, Working, Zone } from "@/components/settings/parts";
 import { EASE } from "@/components/settings/model-map";
+import type { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 
-type Kind = "browser" | "server";
-type DevApp = { id: string; name: string; website: string; redirectUris: string[]; kind: Kind; clientId: string; createdAt: number };
+type DevApp = FunctionReturnType<typeof api.developerApps.apps.listApps>["page"][number];
+type Kind = DevApp["kind"];
+/** What the credentials and setup steps are filled in from: a listed app, or one just made. */
+type AppKeys = Pick<DevApp, "name" | "website" | "redirectUris" | "kind" | "clientId">;
 type Draft = { name: string; website: string; redirectUris: string[]; kind: Kind };
+type AppsPage = ReturnType<typeof useCursorPage<typeof api.developerApps.apps.listApps>>;
 
-const PER_PAGE = 8;
+export const APPS_PER_PAGE = 8;
+/** As many apps as one person makes (MAX_APPS in convex/developerApps/apps.ts). */
 const MAX_APPS = 10;
+const MAX_REDIRECT_URIS = 5;
 const TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
-const DAY = 86_400_000;
-
-const SAMPLE: DevApp[] = [
-  { id: "a1", name: "BeeWriter", website: "https://beewriter.app", redirectUris: ["https://beewriter.app/auth/openscholar/callback"], kind: "server", clientId: "wiQ5lXcfnufTi0bp", createdAt: Date.now() - 3 * DAY },
-  { id: "a2", name: "Lab reading list", website: "https://reading.lab.example.org", redirectUris: ["https://reading.lab.example.org/callback", "http://localhost:5173/callback"], kind: "browser", clientId: "hZHIF2k6TdyIeGWe", createdAt: Date.now() - 12 * DAY },
-  { id: "a3", name: "Systematic review export tool for the Ministry of Education evidence team", website: "https://evidence-tools.example.gov", redirectUris: ["https://evidence-tools.example.gov/oauth/callback"], kind: "server", clientId: "Qm2Lr8vTyx01PdKs", createdAt: Date.now() - 40 * DAY },
-];
-
-const randomString = (length: number) => {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  return Array.from(crypto.getRandomValues(new Uint8Array(length)), (byte) => chars[byte % chars.length]).join("");
-};
 
 /** Where Clerk signs people in: the publishable key holds the instance's frontend address. */
 function issuer() {
@@ -61,18 +60,14 @@ const validUrl = (url: string) => {
   }
 };
 
-export function DeveloperApps() {
+export function DeveloperApps({ apps, count }: { apps: AppsPage; count: number }) {
   const t = useTranslations("developerApps");
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
-  const [apps, setApps] = useState(SAMPLE);
-  const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const pager = pagerOf(apps.length, PER_PAGE, page, setPage);
-  const shown = apps.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
-  const full = apps.length >= MAX_APPS;
-  const opened = apps.find((app) => app.id === openId) ?? null;
+  const [openId, setOpenId] = useState<Id<"developerApps"> | null>(null);
+  const full = count >= MAX_APPS;
+  const opened = apps.items.find((app) => app._id === openId) ?? null;
 
   const newApp = (
     <Button size="sm" className="h-7" disabled={full} onClick={() => setCreating(true)}>
@@ -89,19 +84,19 @@ export function DeveloperApps() {
         </TooltipHint>
       ) : newApp}
     >
-      {apps.length === 0 ? (
+      {apps.items.length === 0 && !apps.hasPages ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
           <AppWindow className="size-5 text-muted-foreground" />
           <p className="text-sm font-medium">{t("noApps")}</p>
           <p className="max-w-sm text-xs text-muted-foreground">{t("noAppsDescription")}</p>
         </div>
       ) : (
-        <Paged pager={pager} rowHeight={61} label={t("apps")}>
-          <ul className={`${LIST} @container/apps`}>
+        <Paged pager={{ list: apps, size: APPS_PER_PAGE, total: count }} rowHeight={61} label={t("apps")}>
+          <ul key={apps.page} className={`${LIST} @container/apps`}>
             <AnimatePresence initial={false}>
-              {shown.map((app) => (
+              {apps.items.map((app, i) => (
                 <motion.li
-                  key={app.id}
+                  key={app._id}
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -109,10 +104,10 @@ export function DeveloperApps() {
                 >
                   <button
                     type="button"
-                    onClick={() => setOpenId(app.id)}
+                    onClick={() => setOpenId(app._id)}
                     className="flex w-full items-center gap-3 p-3 text-start transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none"
                   >
-                    <Tile icon={AppWindow} tint={TINTS[apps.indexOf(app) % TINTS.length]!} />
+                    <Tile icon={AppWindow} tint={TINTS[(apps.offset + i) % TINTS.length]!} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold">{app.name}</span>
                       <span className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
@@ -125,7 +120,7 @@ export function DeveloperApps() {
                     </span>
                     <KindTag kind={app.kind} />
                     <span className="shrink-0 whitespace-nowrap text-end text-xs tabular-nums text-muted-foreground @max-[36rem]/apps:hidden">
-                      {t("created", { time: format.relativeTime(Math.min(app.createdAt, now.getTime()), now) })}
+                      {t("created", { time: format.relativeTime(Math.min(app._creationTime, now.getTime()), now) })}
                     </span>
                     <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                   </button>
@@ -136,25 +131,8 @@ export function DeveloperApps() {
         </Paged>
       )}
 
-      <NewAppDialog
-        open={creating}
-        onOpenChange={setCreating}
-        onCreate={(draft) => {
-          const app: DevApp = { ...draft, id: crypto.randomUUID(), clientId: randomString(16), createdAt: Date.now() };
-          setApps((list) => [app, ...list]);
-          setPage(1);
-          return app;
-        }}
-      />
-      <AppDialog
-        app={opened}
-        onClose={() => setOpenId(null)}
-        onSave={(id, draft) => setApps((list) => list.map((app) => (app.id === id ? { ...app, ...draft } : app)))}
-        onDelete={(id) => {
-          setOpenId(null);
-          setApps((list) => list.filter((app) => app.id !== id));
-        }}
-      />
+      <NewAppDialog open={creating} onOpenChange={setCreating} />
+      <AppDialog app={opened} onClose={() => setOpenId(null)} />
     </Zone>
   );
 }
@@ -171,19 +149,36 @@ function KindTag({ kind }: { kind: Kind }) {
 }
 
 /** Creating an app: its details, then its credentials (the secret only this once) and how to set it up. */
-function NewAppDialog({ open, onOpenChange, onCreate }: { open: boolean; onOpenChange: (open: boolean) => void; onCreate: (draft: Draft) => DevApp }) {
+function NewAppDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useTranslations("developerApps");
+  const tc = useTranslations("common");
+  const toast = useAppToast();
+  const createApp = useAction(api.developerApps.actions.createApp);
   const [draft, setDraft] = useState<Draft>({ name: "", website: "", redirectUris: [""], kind: "browser" });
-  const [created, setCreated] = useState<{ app: DevApp; secret: string | null } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [created, setCreated] = useState<{ app: AppKeys; secret: string | null } | null>(null);
   const reset = () => {
     setDraft({ name: "", website: "", redirectUris: [""], kind: "browser" });
     setCreated(null);
+  };
+  const create = async () => {
+    const details = { name: draft.name, website: draft.website, redirectUris: draft.redirectUris.filter(Boolean) };
+    setBusy(true);
+    try {
+      const { clientId, clientSecret } = await createApp({ ...details, kind: draft.kind });
+      setCreated({ app: { ...details, kind: draft.kind, clientId }, secret: clientSecret });
+    } catch (error) {
+      toast.error(getErrorMessage(error, tc("somethingWentWrong")));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
+        if (busy) return;
         onOpenChange(next);
         if (!next) reset();
       }}
@@ -204,9 +199,7 @@ function NewAppDialog({ open, onOpenChange, onCreate }: { open: boolean; onOpenC
               className="flex flex-col gap-5"
               onSubmit={(event) => {
                 event.preventDefault();
-                if (!ready(draft)) return;
-                const app = onCreate({ ...draft, redirectUris: draft.redirectUris.filter(Boolean) });
-                setCreated({ app, secret: app.kind === "server" ? randomString(40) : null });
+                if (ready(draft) && !busy) void create();
               }}
             >
               <AppFields draft={draft} onChange={setDraft} />
@@ -218,8 +211,10 @@ function NewAppDialog({ open, onOpenChange, onCreate }: { open: boolean; onOpenC
             <Button onClick={() => { onOpenChange(false); reset(); }}>{t("done")}</Button>
           ) : (
             <>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
-              <Button type="submit" form="new-app" disabled={!ready(draft)}>{t("create")}</Button>
+              <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>{t("cancel")}</Button>
+              <Button type="submit" form="new-app" className="relative" disabled={!ready(draft) || busy}>
+                <Working busy={busy}>{t("create")}</Working>
+              </Button>
             </>
           )}
         </DialogFooter>
@@ -239,7 +234,7 @@ function AppFields({ draft, onChange, kindFixed = false }: { draft: Draft; onCha
   return (
     <>
       <Field label={t("name")} htmlFor="app-name">
-        <Input id="app-name" autoFocus value={draft.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} placeholder="BeeWriter" className="h-11 rounded-xl" />
+        <Input id="app-name" autoFocus value={draft.name} maxLength={80} onChange={(e) => set({ name: e.target.value })} placeholder="BeeWriter" className="h-11 rounded-xl" />
       </Field>
       <Field label={t("website")} htmlFor="app-website" error={draft.website && !validUrl(draft.website) ? t("badUrl") : null}>
         <Input id="app-website" type="url" value={draft.website} onChange={(e) => set({ website: e.target.value })} placeholder="https://beewriter.app" className="h-11 rounded-xl" />
@@ -269,7 +264,7 @@ function AppFields({ draft, onChange, kindFixed = false }: { draft: Draft; onCha
               </motion.div>
             ))}
           </AnimatePresence>
-          {draft.redirectUris.length < 5 ? (
+          {draft.redirectUris.length < MAX_REDIRECT_URIS ? (
             <Button type="button" variant="ghost" size="sm" className="h-7 text-muted-foreground" onClick={() => set({ redirectUris: [...draft.redirectUris, ""] })}>
               <Plus /> {t("addUrl")}
             </Button>
@@ -319,25 +314,45 @@ function Field({ label, htmlFor, error, children }: { label: string; htmlFor?: s
 }
 
 /** An app opened from the list: how to set it up, and its settings. */
-function AppDialog({ app, onClose, onSave, onDelete }: { app: DevApp | null; onClose: () => void; onSave: (id: string, draft: Draft) => void; onDelete: (id: string) => void }) {
+function AppDialog({ app, onClose }: { app: DevApp | null; onClose: () => void }) {
   const t = useTranslations("developerApps");
+  const tc = useTranslations("common");
+  const toast = useAppToast();
+  const updateApp = useAction(api.developerApps.actions.updateApp);
+  const deleteApp = useAction(api.developerApps.actions.deleteApp);
+  const newSecret = useAction(api.developerApps.actions.newSecret);
   const [tab, setTab] = useState<"setup" | "settings">("setup");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [openedId, setOpenedId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"save" | "delete" | "secret" | null>(null);
+  const [openedId, setOpenedId] = useState<Id<"developerApps"> | null>(null);
   // A different app starts on its setup, with nothing typed and no secret showing.
-  if (app && app.id !== openedId) {
-    setOpenedId(app.id);
+  if (app && app._id !== openedId) {
+    setOpenedId(app._id);
     setTab("setup");
     setDraft({ name: app.name, website: app.website, redirectUris: app.redirectUris, kind: app.kind });
     setSecret(null);
     setConfirmDelete(false);
   }
   const changed = app && draft && JSON.stringify(draft) !== JSON.stringify({ name: app.name, website: app.website, redirectUris: app.redirectUris, kind: app.kind });
+  const run = async (step: "save" | "delete" | "secret", call: () => Promise<void>) => {
+    setBusy(step);
+    try {
+      await call();
+    } catch (error) {
+      toast.error(getErrorMessage(error, tc("somethingWentWrong")));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const close = () => {
+    onClose();
+    setOpenedId(null);
+  };
 
   return (
-    <Dialog open={Boolean(app)} onOpenChange={(next) => { if (!next) { onClose(); setOpenedId(null); } }}>
+    <Dialog open={Boolean(app)} onOpenChange={(next) => { if (!next && !busy) close(); }}>
       <DialogContent className="sm:max-w-2xl">
         {app && draft ? (
           <>
@@ -365,7 +380,12 @@ function AppDialog({ app, onClose, onSave, onDelete }: { app: DevApp | null; onC
             <AutoHeight className="min-w-0">
               {tab === "setup" ? (
                 <div className="space-y-6">
-                  <Credentials app={app} secret={secret} onNewSecret={app.kind === "server" ? () => setSecret(randomString(40)) : undefined} />
+                  <Credentials
+                    app={app}
+                    secret={secret}
+                    newSecretBusy={busy === "secret"}
+                    onNewSecret={app.kind === "server" ? () => run("secret", async () => setSecret(await newSecret({ appId: app._id }))) : undefined}
+                  />
                   <SetupGuide app={app} />
                 </div>
               ) : (
@@ -374,7 +394,10 @@ function AppDialog({ app, onClose, onSave, onDelete }: { app: DevApp | null; onC
                   className="flex flex-col gap-5"
                   onSubmit={(event) => {
                     event.preventDefault();
-                    if (ready(draft)) onSave(app.id, { ...draft, redirectUris: draft.redirectUris.filter(Boolean) });
+                    if (!ready(draft) || busy) return;
+                    void run("save", async () => {
+                      await updateApp({ appId: app._id, name: draft.name, website: draft.website, redirectUris: draft.redirectUris.filter(Boolean) });
+                    });
                   }}
                 >
                   <AppFields draft={draft} onChange={setDraft} kindFixed />
@@ -386,8 +409,20 @@ function AppDialog({ app, onClose, onSave, onDelete }: { app: DevApp | null; onC
                     <div className="flex shrink-0 items-center gap-1">
                       {confirmDelete ? (
                         <>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDelete(false)}>{t("cancel")}</Button>
-                          <Button type="button" variant="destructive" size="sm" onClick={() => onDelete(app.id)}>{t("delete")}</Button>
+                          <Button type="button" variant="ghost" size="sm" disabled={busy === "delete"} onClick={() => setConfirmDelete(false)}>{t("cancel")}</Button>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="relative"
+                            disabled={busy === "delete"}
+                            onClick={() => run("delete", async () => {
+                              await deleteApp({ appId: app._id });
+                              close();
+                            })}
+                          >
+                            <Working busy={busy === "delete"}>{t("delete")}</Working>
+                          </Button>
                         </>
                       ) : (
                         <Button type="button" variant="outline" size="sm" className="text-destructive" onClick={() => setConfirmDelete(true)}>
@@ -401,7 +436,9 @@ function AppDialog({ app, onClose, onSave, onDelete }: { app: DevApp | null; onC
             </AutoHeight>
             {tab === "settings" ? (
               <DialogFooter>
-                <Button type="submit" form="app-settings" disabled={!changed || !ready(draft)}>{t("save")}</Button>
+                <Button type="submit" form="app-settings" className="relative" disabled={!changed || !ready(draft) || busy === "save"}>
+                  <Working busy={busy === "save"}>{t("save")}</Working>
+                </Button>
               </DialogFooter>
             ) : null}
           </>
@@ -412,7 +449,7 @@ function AppDialog({ app, onClose, onSave, onDelete }: { app: DevApp | null; onC
 }
 
 /** The client ID, and for an app with a server its secret: shown once when made, or when a new one replaces it. */
-function Credentials({ app, secret, onNewSecret }: { app: DevApp; secret: string | null; onNewSecret?: () => void }) {
+function Credentials({ app, secret, onNewSecret, newSecretBusy = false }: { app: AppKeys; secret: string | null; onNewSecret?: () => void; newSecretBusy?: boolean }) {
   const t = useTranslations("developerApps");
   return (
     <div className={LIST}>
@@ -429,8 +466,12 @@ function Credentials({ app, secret, onNewSecret }: { app: DevApp; secret: string
               </p>
             </div>
             {onNewSecret ? (
-              <Button variant="outline" size="sm" onClick={onNewSecret}>
-                <RefreshCw /> {t("newSecret")}
+              <Button variant="outline" size="sm" className="relative" disabled={newSecretBusy} onClick={onNewSecret}>
+                <Working busy={newSecretBusy}>
+                  <span className="inline-flex items-center gap-1.5">
+                    <RefreshCw /> {t("newSecret")}
+                  </span>
+                </Working>
               </Button>
             ) : null}
           </div>
@@ -492,7 +533,7 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
 }
 
 /** The four steps to sign people in and call Openscholar, with this app's own values filled in. */
-function SetupGuide({ app }: { app: DevApp }) {
+function SetupGuide({ app }: { app: AppKeys }) {
   const t = useTranslations("developerApps");
   const redirect = app.redirectUris[0] ?? "";
   const server = app.kind === "server";
@@ -556,6 +597,8 @@ function SetupGuide({ app }: { app: DevApp }) {
         `const openscholar = new ConvexHttpClient("${API}");`,
         "openscholar.setAuth(tokens.access_token);",
         "",
+        "// Makes the person's Openscholar account the first time they sign in.",
+        "await openscholar.mutation(anyApi.users.mutations.ensureUser, {});",
         "const workspaceId = await openscholar.query(anyApi.workspaces.queries.personal, {});",
         "await openscholar.action(anyApi.library.papers.save, { workspaceId, id: \"W2741809807\" });",
       ].join("\n"),

@@ -8,6 +8,7 @@ import { internal } from "../_generated/api";
 import { createCoolifyClient } from "./coolifyClient";
 import { SERVED_HOSTS_BATCH } from "../lib/queryBounds";
 import { addressReservationValidator, evidenceLibrarySetupIdentityFields, nameTakenValidator, unavailableValidator } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 const PROBE_TIMEOUT_MS = 8_000;
 // How long the list of hosts Coolify serves may be reused.
@@ -276,6 +277,7 @@ export const moveLibraryAddress = action({
     | { status: "moving"; movedFrom: string; movedTo: string }
     | { status: "unavailable"; reason: "check-failed" | "no-address" }
   > => {
+    await refuseApps(ctx);
     const plan = await ctx.runQuery(
       internal.evidenceLibraries.addressRecovery.readOwnerMoveCandidates,
       { libraryId: args.libraryId },

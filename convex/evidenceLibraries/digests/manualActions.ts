@@ -8,6 +8,7 @@ import { action } from "../../_generated/server";
 import { decrypt } from "../../lib/crypto";
 import { createError } from "../../lib/errors";
 import { requireRuntimeEnvironment } from "../runtimeActionConfig";
+import { refuseApps } from "../../lib/auth";
 
 const resultSchema = z.discriminatedUnion("status", [
   z.object({status: z.literal("queued"), editionId: z.string().uuid(), publicationCount: z.number().int().positive()}),
@@ -23,6 +24,7 @@ export const send = action({
     v.object({status: v.literal("disabled")}),
   ),
   handler: async (ctx, args): Promise<z.infer<typeof resultSchema>> => {
+    await refuseApps(ctx);
     const target = await ctx.runQuery(internal.evidenceLibraries.digests.manual.target, args);
     const key = requireRuntimeEnvironment("ENCRYPTION_KEY", message => createError("INVALID_DATA", message));
     try {

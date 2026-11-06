@@ -22,6 +22,7 @@ import {
   evidenceLibraryCredentialFields,
   type LibraryCredentialSource,
 } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 type ReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 export async function readPublicationProviderRecord(
@@ -99,6 +100,7 @@ export const get = query({
     verifiedAt: v.union(v.number(), v.null()),
   }),
   handler: async (ctx, { libraryId }) => {
+    await refuseApps(ctx);
     await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
     const record = await readPublicationProviderRecord(ctx, libraryId);
     return {

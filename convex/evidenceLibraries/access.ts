@@ -2,6 +2,7 @@ import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL }
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { getIdentity } from "../lib/auth";
 import { opensLibraries } from "../billing/accounts";
 import { addressesOf } from "../lib/people";
 
@@ -161,7 +162,7 @@ export async function readEvidenceLibraryAccess(
   libraryId: Id<"evidenceLibraries">,
   action: OrganizationAction,
 ) {
-  const identity = await ctx.auth.getUserIdentity();
+  const identity = await getIdentity(ctx);
   if (!identity) return null;
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library) return null;
@@ -178,7 +179,7 @@ export async function readEvidenceLibraryAccess(
 }
 
 export async function requireEvidenceLibraryAccess(ctx: OrganizationAccessCtx, libraryId: Id<"evidenceLibraries">, action: OrganizationAction) {
-  if (!await ctx.auth.getUserIdentity()) throw createError("UNAUTHENTICATED", "Sign in to access this community");
+  if (!await getIdentity(ctx)) throw createError("UNAUTHENTICATED", "Sign in to access this community");
   const access = await readEvidenceLibraryAccess(ctx, libraryId, action);
   if (!access) return denyOrganizationAccess();
   return access;

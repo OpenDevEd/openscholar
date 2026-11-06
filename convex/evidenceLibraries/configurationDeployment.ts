@@ -73,6 +73,7 @@ import {
   isRetryableConfigurationDeployment,
   readActiveOperations,
 } from "./operations";
+import { refuseApps } from "../lib/auth";
 
 export { isConfigurationDeploymentOperation } from "./operations";
 
@@ -1639,6 +1640,7 @@ export const retryConfigurationDeployment = mutation({
     status: v.literal("running"),
   }),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const operation = await ctx.db.get(args.operationId);
     if (!operation || operation.libraryId !== args.libraryId) {

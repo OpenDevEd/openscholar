@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { opensLibraries } from "./billing/accounts";
-import { getCurrentUser } from "./lib/auth";
+import { getCurrentUser, getIdentity } from "./lib/auth";
 import { createError } from "./lib/errors";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { hasDirectLibraryAccess } from "./evidenceLibraries/access";
@@ -67,7 +67,7 @@ export async function requireLibraryOrganization(
   ctx: QueryCtx | MutationCtx,
   organizationId: string,
 ) {
-  if (!(await ctx.auth.getUserIdentity()))
+  if (!(await getIdentity(ctx)))
     throw createError("UNAUTHENTICATED", "Sign in to create a community.");
   const entry = (await readLibraryOrganizations(ctx)).find(
     (row) => row.organization._id === organizationId,

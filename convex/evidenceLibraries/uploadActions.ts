@@ -16,6 +16,7 @@ import {
   ensureUploadBucket as ensurePlatformUploadBucket,
   storeLibraryUpload,
 } from "./uploadsClient";
+import { refuseApps } from "../lib/auth";
 
 const uploadKindValidator = v.union(
   v.literal("image"),
@@ -84,6 +85,7 @@ export const upload = action({
   },
   returns: uploadResultValidator,
   handler: async (ctx, args): Promise<UploadResult> => {
+    await refuseApps(ctx);
     await ctx.runQuery(internal.evidenceLibraries.uploads.requireUploadOwner, {
       libraryId: args.libraryId,
     });
@@ -147,6 +149,7 @@ export const remove = action({
   args: { libraryId: v.id("evidenceLibraries"), url: v.string() },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
+    await refuseApps(ctx);
     await ctx.runQuery(internal.evidenceLibraries.uploads.requireUploadOwner, {
       libraryId: args.libraryId,
     });

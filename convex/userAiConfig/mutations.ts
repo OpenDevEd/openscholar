@@ -1,7 +1,7 @@
 import { mutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { aiTaskValidator, effortValidator, modelChoiceValidator } from "../aiModelConfig/validators";
-import { requireAuth } from "../lib/auth";
+import { refuseApps, requireAuth } from "../lib/auth";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { ownTaskPick, userAiConfig } from "../ai/serverModel";
 import { AI_TASKS } from "../../lib/ai/tasks";
@@ -23,6 +23,7 @@ export const choose = mutation({
   args: { choice: modelChoiceValidator },
   returns: v.null(),
   handler: async (ctx, { choice }) => {
+    await refuseApps(ctx);
     const user = await requireAuth(ctx);
     const cfg = await userAiConfig(ctx, user._id);
     const custom = choice === "custom" && !cfg?.custom ? await currentPicks(ctx, user._id) : cfg?.custom;
@@ -40,6 +41,7 @@ export const setCustom = mutation({
   },
   returns: v.null(),
   handler: async (ctx, { picks }) => {
+    await refuseApps(ctx);
     const user = await requireAuth(ctx);
     for (const pick of picks) {
       const model = await requireAvailableModel(ctx, pick.modelId);

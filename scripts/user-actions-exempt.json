@@ -237,7 +237,15 @@
     "zotero/libraryGroups:listZoteroGroups": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
     "zotero/libraryGroups:removeZoteroGroup": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
     "zotero/mutations:disconnect": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
-    "zotero/queries:getConnectionStatus": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat."
+    "zotero/queries:getConnectionStatus": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
+    "developerApps/actions:createApp": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them.",
+    "developerApps/actions:updateApp": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them.",
+    "developerApps/actions:newSecret": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them.",
+    "developerApps/actions:deleteApp": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them.",
+    "developerApps/apps:listApps": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them.",
+    "developerApps/apps:countApps": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them.",
+    "developerApps/sites:listSites": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them.",
+    "developerApps/sites:setDisconnected": "Developer apps and the sites signed in through them, managed by the person on the connections page: secrets, and who may act for them."
   },
   "pending": {
     "evidenceLibraries/collectionSources:connectCollectionSource": "#329",

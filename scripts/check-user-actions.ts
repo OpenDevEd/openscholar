@@ -136,6 +136,24 @@ for (const [id, reason] of [...plumbing, ...manual]) if (reason.trim().length < 
 for (const [id, path] of covered) if (!listed.has(path)) problems.push(`${id}: covered by ${path}, which isn't a registered action.`);
 for (const [id, issue] of pending) if (!/^#\d+$/.test(issue)) problems.push(`${id}: pending needs the issue that will register it, such as "#327".`);
 
+// Developer apps act for people through Convex (convex/developerApps). Every function on the "can't do"
+// list refuses their calls first, and only convex/lib/auth.ts and convex/lib/appCalls.ts read the identity, so
+// every app token is checked.
+for (const id of manual.keys()) {
+  const [module, name] = id.split(":");
+  const file = `convex/${module}.ts`;
+  if (!convexModules.includes(file)) continue;
+  const tree = ts.createSourceFile(file, readFileSync(file, "utf8"), ts.ScriptTarget.Latest, true);
+  const declaration = tree.statements
+    .filter(ts.isVariableStatement)
+    .flatMap((statement) => statement.declarationList.declarations)
+    .find((decl) => ts.isIdentifier(decl.name) && decl.name.text === name);
+  if (!declaration?.initializer?.getText(tree).includes("refuseApps(")) problems.push(`${id}: listed as manual, so its handler starts with \`await refuseApps(ctx)\` (convex/lib/auth.ts).`);
+}
+for (const file of convexModules) {
+  if (!["convex/lib/auth.ts", "convex/lib/appCalls.ts"].includes(file) && /\.auth\.getUserIdentity\(/.test(readFileSync(file, "utf8"))) problems.push(`${file}: reads ctx.auth.getUserIdentity() itself; use getIdentity, requireAuth or requireActionAuth from convex/lib/auth.ts, which check developer apps' tokens.`);
+}
+
 // The modules whose records have moved into workspaces (#650): every public function in one acts in a
 // workspace and checks it, a registered action through its wrapper and any other itself, so nothing reaches
 // their records outside the check.

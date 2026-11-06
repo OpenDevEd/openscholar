@@ -9,6 +9,7 @@ import { decryptApiKey, encrypt, getKeyPrefix } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import { parseZoteroKeyAccess, type ZoteroGroupScopes } from "./groupAccess";
 import { zoteroGroupScopesValidator } from "./libraryGroupValidators";
+import { refuseApps } from "../lib/auth";
 
 const ZOTERO_API_URL = "https://api.zotero.org";
 
@@ -154,6 +155,7 @@ export const listMyZoteroGroups = action({
         capped: boolean;
       }
   > => {
+    await refuseApps(ctx);
     const { owner, apiKey } = await readOwner(ctx, args.libraryId);
     if (!owner.connection || !apiKey) return { connected: false as const };
     const { groups, capped } = await listAllUserGroups(owner.connection.zoteroUserId, apiKey);
@@ -235,5 +237,8 @@ async function connectGroup(
 export const connectZoteroGroup = action({
   args: { libraryId: v.id("evidenceLibraries"), groupId: v.string() },
   returns: connectResultValidator,
-  handler: connectGroup,
+  handler: async (ctx, args): ReturnType<typeof connectGroup> => {
+    await refuseApps(ctx);
+    return await connectGroup(ctx, args);
+  },
 });
