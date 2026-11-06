@@ -304,7 +304,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
 
   /* Three over two, the two sharing the full width. */
   @media (max-width: 1199px) { .band { grid-template-columns: repeat(6, minmax(0, 1fr)); } .band li { grid-column: span 2; } .band li:nth-child(n + 4) { grid-column: span 3; } .band li:nth-child(4) { box-shadow: none; } .band li:nth-child(n + 4) a { border-top: 1px solid rgb(255 255 255 / .08); } }
-  @media (max-width: 699px) { .band { grid-template-columns: 1fr; } .band li + li { box-shadow: inset 0 1px rgb(255 255 255 / .08); } .band a { grid-template-columns: 38px minmax(0, 1fr); align-items: center; align-content: center; height: 76px; padding: 0 16px; border: 0 !important; } }
+  @media (max-width: 699px) { .band { grid-template-columns: 1fr; } .band li, .band li:nth-child(n + 4) { grid-column: auto; } .band li + li { box-shadow: inset 0 1px rgb(255 255 255 / .08); } .band a { grid-template-columns: 38px minmax(0, 1fr); align-items: center; align-content: center; height: 76px; padding: 0 16px; border: 0 !important; } }
 
   /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */
   @media (max-width: 1399px) { .sky { padding-top: 142px; } .space { height: 478px; } } @media (max-width: 1199px) { .sky { padding-top: 136px; } .space { height: 504px; } }
