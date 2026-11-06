@@ -15,6 +15,7 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { requireEvidenceLibraryAccess } from "./access";
 import { requireNoRunningOperation } from "./aiProviderKey";
 import type { LibraryCredentialSource } from "./validators";
+import { refuseApps } from "../lib/auth";
 
 type ReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 
@@ -79,6 +80,7 @@ export const removeOpenAlexKey = mutation({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const access = await requireEvidenceLibraryAccess(
       ctx,
       args.libraryId,

@@ -127,6 +127,8 @@ export const MAX_PENDING_REMOVALS = 100;
 export const MAX_TOPIC_DEPTH = 4;
 /** An OpenAlex topic's keywords: OpenAlex gives ten or so. */
 export const MAX_TOPIC_KEYWORDS = 100;
+/** The addresses a developer app sends people back to after they sign in. */
+export const MAX_APP_REDIRECT_URIS = 5;
 /** Topics one library record is filed under (the topic contract's limit). */
 export const MAX_RECORD_TOPICS = 100;
 /** Creators of one library record (the topic contract's limit). */

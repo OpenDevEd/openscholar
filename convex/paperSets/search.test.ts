@@ -538,4 +538,13 @@ describe("counting OpenAlex requests from an action", () => {
     await rejected;
     expect(stuck).toHaveBeenCalledTimes(6);
   }, 20_000);
+
+  it("gives a signed-out visitor, counted by their address, the visitor's allowance and an account its own", async () => {
+    const t = convexTest(schema);
+    const spend = (clerkId: string, count: number) => t.mutation(internal.paperSets.search.spendRequests, { clerkId, count });
+    // A visitor's minute holds 120 requests, an account's 300.
+    expect(await spend("visitor:3f2a", 120)).toBe(true);
+    expect(await spend("visitor:3f2a", 1)).toBe(false);
+    expect(await spend("clerk_1", 121)).toBe(true);
+  });
 });

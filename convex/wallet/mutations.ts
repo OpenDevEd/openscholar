@@ -1,7 +1,7 @@
 import { mutation } from "../lib/functions";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser, refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { rateLimit } from "../lib/rateLimit";
 import type { Id } from "../_generated/dataModel";
@@ -20,6 +20,7 @@ export const approveConnection = mutation({
   },
   returns: v.id("walletKeys"),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     const user = await getCurrentUser(ctx);
     if (!user) throw createError("UNAUTHENTICATED", "Sign in required");
     await actorFor(ctx, user, args.workspaceId);
@@ -64,6 +65,7 @@ export const revokeKey = mutation({
   args: { walletKeyId: v.id("walletKeys") },
   returns: v.boolean(),
   handler: async (ctx, args): Promise<boolean> => {
+    await refuseApps(ctx);
     const user = await getCurrentUser(ctx);
     if (!user) throw createError("UNAUTHENTICATED", "Sign in required");
 

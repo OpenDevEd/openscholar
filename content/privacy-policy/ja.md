@@ -17,7 +17,7 @@ Open Development & Educationは、この通知において説明する個人情�
 
 # **連絡先詳細**
 
-メールアドレス：support@openscholar.ai
+メールアドレス：habari@openscholar.ai
 
 # **当社が収集、使用する情報とその理由**
 

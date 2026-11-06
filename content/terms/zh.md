@@ -74,7 +74,7 @@ Openscholar 按"现状"和"现有可用性"提供。我们不承诺它始终可�
 
 # **联系方式**
 
-电子邮件：support@openscholar.ai
+电子邮件：habari@openscholar.ai
 
 # **最后更新**
 

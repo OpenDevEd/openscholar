@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import { readAccount } from "../billing/accounts";
 import { ensureWorkspace } from "../workspaces/create";
 import { captureLater } from "./analyticsEvents";
+import { recordAppUse } from "./appCalls";
 
 export async function createUserWithDefaults(
   ctx: MutationCtx,
@@ -32,6 +33,8 @@ export async function createUserWithDefaults(
 
   await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
   await captureLater(ctx, [{ distinctId: userData.clerkId, event: "account_created", properties: {}, timestamp: now }]);
+  // A person who signs up through a developer app has no account when the mutation starts, so its site goes on their list now.
+  await recordAppUse(ctx);
   return userId;
 }
 

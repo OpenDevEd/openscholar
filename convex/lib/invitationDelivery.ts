@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ActionCtx } from "../_generated/server";
 import { optionalPlatformMailService, requireRuntimeEnvironment } from "../evidenceLibraries/runtimeActionConfig";
 import { createError } from "./errors";
+import { requireActionAuth } from "./auth";
 
 export function requireInvitationMail() {
   const mail = optionalPlatformMailService(message => new Error(message));
@@ -11,7 +12,8 @@ export function requireInvitationMail() {
   return mail;
 }
 
-export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitationMail>, {senderName, senderEmail, ...message}: {senderName: string; senderEmail?: string | null; to: string; subject: string; text: string; html: string}) {
+/** Sends one message through the platform mail service. Replies go to `replyTo` when given, otherwise to the sender. */
+export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitationMail>, {senderName, senderEmail, replyTo, ...message}: {senderName: string; senderEmail?: string | null; replyTo?: string; to: string; subject: string; text: string; html: string}) {
   const transport = nodemailer.createTransport({
     host: mail.host, port: mail.port, secure: mail.security === "tls",
     requireTLS: mail.security === "starttls", ignoreTLS: mail.security === "none",
@@ -19,13 +21,12 @@ export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitat
     ...(mail.username ? {auth: {user: mail.username, pass: mail.password}} : {}),
   });
   const address = senderEmail ?? mail.from;
-  try { await transport.sendMail({from: {name: senderName, address}, replyTo: address, ...message}); }
+  try { await transport.sendMail({from: {name: senderName, address}, replyTo: replyTo ?? address, ...message}); }
   finally { transport.close(); }
 }
 
 export async function verifiedInvitationEmails(ctx: ActionCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw createError("UNAUTHENTICATED", "Sign in to respond");
+  const identity = await requireActionAuth(ctx, "Sign in to respond");
   return verifiedEmailsOf(identity.subject);
 }
 

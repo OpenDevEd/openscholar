@@ -74,7 +74,7 @@ Openscholar "जैसा है" और "जैसा उपलब्ध है
 
 # **संपर्क**
 
-ईमेल: support@openscholar.ai
+ईमेल: habari@openscholar.ai
 
 # **अंतिम अपडेट**
 

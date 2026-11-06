@@ -17,7 +17,7 @@ Cet avis de confidentialité vous indique ce que nous faisons de vos information
 
 # **Coordonnées**
 
-E-mail : support@openscholar.ai
+E-mail : habari@openscholar.ai
 
 # **Informations que nous collectons, utilisons et pourquoi**
 

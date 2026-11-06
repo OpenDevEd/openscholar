@@ -9,6 +9,7 @@ import {
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
+import { getIdentity, refuseApps } from "../lib/auth";
 import { deleteLibraryTopicsBatch } from "../topics/publications";
 import { evidenceLibraryTeardownStepValidator } from "./validators";
 import {
@@ -223,7 +224,10 @@ export const requestDevelopmentTeardown = mutation({
     operationId: v.id("evidenceLibraryConfigOperations"),
     status: v.union(v.literal("queued"), v.literal("running")),
   }),
-  handler: requestTeardown,
+  handler: async (ctx, args): ReturnType<typeof requestTeardown> => {
+    await refuseApps(ctx);
+    return await requestTeardown(ctx, args);
+  },
 });
 
 export const getDevelopmentTeardownStatus = query({
@@ -244,7 +248,7 @@ export const getDevelopmentTeardownStatus = query({
     }),
   ),
   handler: async (ctx, args) => {
-    if (!await ctx.auth.getUserIdentity()) return null;
+    if (!(await getIdentity(ctx))) return null;
     const operationId = ctx.db.normalizeId(
       "evidenceLibraryConfigOperations",
       args.operationId,
@@ -287,6 +291,7 @@ export const restartDevelopmentTeardown = mutation({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({ status: v.literal("queued") }),
   handler: async (ctx, args) => {
+    await refuseApps(ctx);
     requireDevelopmentTeardownEnabled();
     await requireEvidenceLibraryAccess(ctx, args.libraryId, "remove");
     const operation = await ctx.db

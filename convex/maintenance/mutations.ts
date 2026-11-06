@@ -10,6 +10,7 @@ import { dropWorkspace, purgeWorkspace } from "../workspaces/purge";
 import { purgeRatings } from "../ratings";
 import { purgeReaders } from "../evidenceLibraries/readers";
 import { purgeGrants } from "../sharing/upkeep";
+import { purgeDeveloperApps } from "../developerApps/apps";
 
 // Retention period for deleted users (30 days)
 const DELETED_USER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -106,6 +107,11 @@ export const cleanupDeletedUsers = internalMutation({
       }
       // Their places as a guest of other workspaces' items.
       if (!(await purgeGrants(ctx, user._id))) {
+        deferred = true;
+        continue; // Skip user delete, process on next run
+      }
+      // The sites they allowed, and the apps they made, here and in Clerk.
+      if (!(await purgeDeveloperApps(ctx, user._id))) {
         deferred = true;
         continue; // Skip user delete, process on next run
       }

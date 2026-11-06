@@ -74,7 +74,7 @@ Diese Bedingungen unterliegen dem Recht von England und Wales, und dessen Gerich
 
 # **Kontakt**
 
-E-Mail: support@openscholar.ai
+E-Mail: habari@openscholar.ai
 
 # **Zuletzt aktualisiert**
 

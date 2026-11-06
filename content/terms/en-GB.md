@@ -74,7 +74,7 @@ These terms are governed by the law of England and Wales, and its courts have ju
 
 # **Contact**
 
-Email: support@openscholar.ai
+Email: habari@openscholar.ai
 
 # **Last updated**
 

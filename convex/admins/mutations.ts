@@ -4,11 +4,13 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { isAdmin, normalizeEmail, requireAdmin } from "./access";
 import { adminText } from "../lib/searchText";
+import { refuseApps } from "../lib/auth";
 
 export const addUser = mutation({
   args: { userId: v.id("users") },
   returns: v.null(),
   handler: async (ctx, { userId }) => {
+    await refuseApps(ctx);
     const me = await requireAdmin(ctx);
     const user = await ctx.db.get("users", userId);
     if (!user || user.state !== "active") throw createError("NOT_FOUND", "No such user");
@@ -25,6 +27,7 @@ export const remove = mutation({
   args: { adminId: v.id("admins") },
   returns: v.null(),
   handler: async (ctx, { adminId }) => {
+    await refuseApps(ctx);
     const me = await requireAdmin(ctx);
     const row = await ctx.db.get("admins", adminId);
     if (!row) return null;

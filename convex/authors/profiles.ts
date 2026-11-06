@@ -1,4 +1,4 @@
-import { CONTACT_EMAIL } from "../../lib/billing/contact";
+import { contactPage } from "../../lib/billing/contact";
 import { opensLibraries } from "../billing/accounts";
 import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
@@ -53,7 +53,7 @@ const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union
  * a library shared with the person isn't that. A plan is its workspace's alone.
  */
 export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
-  if (!(await opensLibraries(ctx, workspaceId))) throw createError("FORBIDDEN", `Author profiles come with Evidence Communities, which are turned on for an organization by request. Email ${CONTACT_EMAIL}.`);
+  if (!(await opensLibraries(ctx, workspaceId))) throw createError("FORBIDDEN", `Author profiles come with Evidence Communities, which are turned on for an organization by request. Ask for them at ${contactPage("community")}.`);
 }
 
 /** Makes a profile owned by the page's workspace. */

@@ -134,6 +134,6 @@ Si vous préférez empêcher la création de notre cookie d'analyse :
 
 Pour toute question sur nos pratiques en matière de cookies, veuillez nous contacter :
 
-**E-mail** : support@openscholar.ai
+**E-mail** : habari@openscholar.ai
 
 **Dernière mise à jour** : 4 novembre 2026

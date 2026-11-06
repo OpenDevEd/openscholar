@@ -19,7 +19,7 @@ import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
 import { createError } from "../lib/errors";
-import { getCurrentUser } from "../lib/auth";
+import { getCurrentUser, getIdentity } from "../lib/auth";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import { searchTerms } from "../lib/searchText";
 import { memberWithEmail } from "../organizations/read";
@@ -404,7 +404,7 @@ export const listLibraries = query({
   args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), organization: v.optional(v.id("organizations")) },
   returns: paginationResultValidator(libraryOverviewValidator),
   handler: async (ctx, { paginationOpts, search, organization }) => {
-    const identity = await ctx.auth.getUserIdentity();
+    const identity = await getIdentity(ctx);
     if (!identity) return { page: [], isDone: true, continueCursor: "" };
     const [owned, own] = await Promise.all([ownedOrganizations(ctx), ownWorkspace(ctx)]);
     const viewed = organization && !owned.some((entry) => entry._id === organization) ? await viewedOrganization(ctx, identity.subject, organization) : null;

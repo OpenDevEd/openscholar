@@ -10,6 +10,7 @@ import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
 import { FREE_QUERY_DEFAULTS, FREE_QUESTIONS_FLAG } from "../../lib/ai/free-queries";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { modelSummary, slugPick } from "./serverModel";
+import { refuseApps } from "../lib/auth";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TASK = "questionToQuery";
@@ -99,6 +100,7 @@ export const settings = query({
     signedOut: dayValidator,
   }),
   handler: async (ctx, { day }) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     const { modelId, effort, perAddress, perPerson, signedOutPerDay, signedInPerDay } = await settingsOf(ctx);
     const pick = await slugPick(ctx, modelId, effort, TASK);
@@ -127,6 +129,7 @@ export const setPick = mutation({
   args: { modelId: v.id("models"), effort: v.optional(effortValidator) },
   returns: v.null(),
   handler: async (ctx, { modelId, effort }) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     const model = await requireAvailableModel(ctx, modelId);
     requireEffort(model, effort);
@@ -140,6 +143,7 @@ export const setLimits = mutation({
   args: limitFields,
   returns: v.null(),
   handler: async (ctx, limits) => {
+    await refuseApps(ctx);
     await requireAdmin(ctx);
     // The switch is how it stops, not a limit of zero.
     if (Object.values(limits).some((limit) => !Number.isInteger(limit) || limit < 1 || limit > 10_000_000)) throw createError("VALIDATION_ERROR", "Limits are whole numbers from 1 to 10,000,000");

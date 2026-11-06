@@ -134,6 +134,6 @@ As jy verkies om te keer dat ons ontledingskoekie geskep word:
 
 Vir vrae oor ons koekiepraktyke, kontak ons asseblief:
 
-**E-pos**: support@openscholar.ai
+**E-pos**: habari@openscholar.ai
 
 **Laas opgedateer**: 4 November 2026

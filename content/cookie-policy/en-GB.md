@@ -134,6 +134,6 @@ If you'd prefer to stop our analytics cookie from being created:
 
 For questions about our cookie practices, please reach out to us:
 
-**Email**: support@openscholar.ai
+**Email**: habari@openscholar.ai
 
 **Last updated**: 4 November 2026

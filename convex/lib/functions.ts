@@ -10,17 +10,20 @@ import { internalMutation as rawInternalMutation, mutation as rawMutation, type 
 import { capWrites } from "./capWrites";
 import { triggers } from "./triggers";
 import { flushCountQueue, type CountQueue } from "./countQueue";
+import { recordAppUse } from "./appCalls";
 
 export * from "../_generated/server";
 
 /**
  * The writes a mutation makes: through the triggers, then capped (#426). The caps sit under
  * the triggers, so a trigger's own writes are capped too. The count writes the triggers
- * gather are queued once, when the mutation ends (./countQueue.ts).
+ * gather are queued once, when the mutation ends (./countQueue.ts). A developer app's call
+ * is checked and put on the person's list of sites first (`recordAppUse`).
  */
 const writes = {
   args: {},
   input: async (ctx: MutationCtx) => {
+    await recordAppUse(ctx);
     const countQueue: CountQueue = new Map();
     return {
       ctx: { db: triggers.wrapDB({ ...ctx, db: capWrites(ctx.db), countQueue }).db, countQueue },
