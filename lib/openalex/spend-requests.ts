@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { fetchMutation } from "convex/nextjs";
@@ -13,6 +14,11 @@ const limiter = new RequestLimiter();
 /** The address a request came from: Cloudflare's header first, then the proxies'. */
 export function clientAddress(list: Headers) {
   return list.get("cf-connecting-ip") ?? list.get("x-forwarded-for")?.split(",")[0]?.trim() ?? list.get("x-real-ip") ?? "unknown";
+}
+
+/** That address hashed with a secret, as the limits on signed-out visitors keep it, so it isn't stored. */
+export function hashedClientAddress(secret: string, list: Headers) {
+  return createHash("sha256").update(`${secret}:${clientAddress(list)}`).digest("hex");
 }
 
 /** The session's Convex token, chosen as `ConvexProviderWithClerk` chooses it. */

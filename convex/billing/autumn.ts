@@ -42,7 +42,7 @@ export type AutumnCustomer = {
   /** Boolean features the customer has, keyed by feature id. */
   flags?: Record<string, unknown>;
   /** Its invoices, newest first, only when the customer is read with `invoices`: `hosted_invoice_url` is where one is paid. */
-  invoices?: Array<{ plan_ids?: string[]; status: string; total: number; currency: string; created_at: number; hosted_invoice_url?: string | null }>;
+  invoices?: Array<{ plan_ids?: string[]; stripe_id?: string; status: string; total: number; currency: string; created_at: number; hosted_invoice_url?: string | null }>;
   payment_method?: { card?: { brand: string; last4: string } | null } | null;
 };
 

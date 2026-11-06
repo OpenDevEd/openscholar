@@ -20,8 +20,10 @@ DEV = dict(re.findall(r'^(CONVEX_SELF_HOSTED_\w+)="?([^"\n]*)"?$', open(ENV_FILE
 
 # Everything a community keeps. Left out: OAuth clients (the publish makes new ones on production Clerk), hand-offs, digest
 # jobs, leases, deletions and screening requests (short-lived work), and author publications (their profiles stay on dev).
-BY_LIBRARY = ["evidenceLibraryApprovedQueries", "evidenceLibraryCollectionSources", "evidenceLibraryConfigDrafts", "evidenceLibraryConfigOperations", "evidenceLibraryConfigRevisions", "evidenceLibraryConfigSections", "evidenceLibraryCredentials", "evidenceLibraryDomains", "evidenceLibraryReaders", "evidenceLibraryRuntimeBindings", "evidenceLibrarySourceStatus", "evidenceLibraryZoteroGroups", "topicLocations", "topicDeliveryReceipts", "authorPublicationReceipts"]
-BY_INDEX = {"topicLocations": "by_libraryId_and_itemKey", "topicDeliveryReceipts": "by_libraryId_and_idempotencyKey", "authorPublicationReceipts": "by_libraryId_and_itemKey"}
+# Topic delivery receipts stay too: over a million rows, needed only to answer a delivery retried across the move, which the
+# stored generation then refuses for that one record.
+BY_LIBRARY = ["evidenceLibraryApprovedQueries", "evidenceLibraryCollectionSources", "evidenceLibraryConfigDrafts", "evidenceLibraryConfigOperations", "evidenceLibraryConfigRevisions", "evidenceLibraryConfigSections", "evidenceLibraryCredentials", "evidenceLibraryDomains", "evidenceLibraryReaders", "evidenceLibraryRuntimeBindings", "evidenceLibrarySourceStatus", "evidenceLibraryZoteroGroups", "topicLocations", "authorPublicationReceipts"]
+BY_INDEX = {"topicLocations": "by_libraryId_and_itemKey", "authorPublicationReceipts": "by_libraryId_and_itemKey"}
 
 
 def data(table, keep=lambda row: True):
@@ -78,10 +80,12 @@ rows = {"evidenceLibraries": libraries}
 for table in BY_LIBRARY:
     rows[table] = sum((indexed(table, BY_INDEX[table], library) for library in ids), []) if table in BY_INDEX else data(table, lambda row: row.get("libraryId") in ids)
 
-# A source following a collection needs that collection, which stays on dev.
-following = rows["evidenceLibraryCollectionSources"]
-if following:
-    sys.exit(f"these communities follow collections on dev, so move those first or remove the sources: {sorted({row['libraryId'] for row in following})}")
+# A source following a collection needs that collection on prod, which copy-collection.py puts there.
+copied_path = f"{R}/copied-collections.json"
+copied = json.load(open(copied_path)) if os.path.exists(copied_path) else {}
+missing_collections = {row["collectionId"] for row in rows["evidenceLibraryCollectionSources"]} - set(copied)
+if missing_collections:
+    sys.exit(f"copy these collections to prod first (copy-collection.py): {sorted(missing_collections)}")
 
 # The organizations that own them, with their workspaces and memberships.
 workspaces = {row["_id"]: row for row in data("workspaces")}
@@ -114,6 +118,10 @@ def clerk(method, path, body=None):
 for row in rows["organizations"]:
     row["slug"] = clerk("GET", f"/organizations/{row['clerkOrganizationId']}")["slug"]
 rows["organizationMemberships"] = []
+# A second row for the same membership makes the webhook's lookup by membership fail, so one prod already mirrors isn't
+# imported. Nor is one made here when moving a community: prod's webhook writes its row. At launch it is, since the import
+# replaces everything and webhooks are off until after it.
+mirrored = {row["clerkMembershipId"] for row in live_rows("organizationMemberships")} if "organizationMemberships/documents.jsonl" in live.namelist() else set()
 for row in memberships:
     clerk_user = clerk_ids.get(row.get("clerkUserId"))
     if not clerk_user or row.get("state") != "active":
@@ -122,7 +130,8 @@ for row in memberships:
     organization = clerk_organizations[row["organizationId"]]
     found = clerk("GET", f"/organizations/{organization}/memberships?user_id={clerk_user}&limit=1")["data"]
     made = found[0] if found else clerk("POST", f"/organizations/{organization}/memberships", {"user_id": clerk_user, "role": row["role"]})
-    rows["organizationMemberships"].append(dict(row, clerkMembershipId=made["id"]))
+    if made["id"] not in mirrored and (found or not rows_only):
+        rows["organizationMemberships"].append(dict(row, clerkMembershipId=made["id"]))
 for row in libraries:
     if row["createdBy"] not in user_ids:
         sys.exit(f"{row['name']}: its owner has no live account")
@@ -139,7 +148,7 @@ def rewrite(value):
     if isinstance(value, list):
         return [rewrite(item) for item in value]
     if isinstance(value, str):
-        return user_ids.get(value) or clerk_ids.get(value) or value
+        return user_ids.get(value) or clerk_ids.get(value) or copied.get(value) or value
     return value
 
 
@@ -164,7 +173,7 @@ if rows_only:
         sys.exit(f"the launch import didn't bring these organizations: {sorted(organization_ids - held_organizations)}")
     # What prod already holds, such as an organization an earlier community brought, stays as it is.
     held = lambda table: {json.loads(line)["_id"] for line in live.read(f"{table}/documents.jsonl").decode().splitlines()} if f"{table}/documents.jsonl" in live.namelist() else set()
-    rows = {table: [row for row in found if row["_id"] not in held(table)] for table, found in rows.items()}
+    rows = {table: [row for row in found if row["_id"] not in kept] for table, found in rows.items() for kept in [held(table)]}
 with zipfile.ZipFile(merged_path, "w", zipfile.ZIP_DEFLATED) as merged:
     if not rows_only:
         for entry in live.namelist():

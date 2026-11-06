@@ -7,7 +7,7 @@ import {
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
-import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_CITATION_REPAIRS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
+import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_CITATION_REPAIRS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized, MAX_ROLLOUT_COMMUNITIES } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -626,6 +626,65 @@ export const evidenceLibraryRuntimeReleaseFields = {
   checkedAt: v.number(),
   contractSupport: v.optional(runtimeContractSupportValidator),
 };
+
+/** One release as the releases page lists it, kept from GitHub by ./releases.ts. */
+export const evidenceLibraryReleaseCatalogFields = {
+  commit: v.string(),
+  releaseId: v.number(),
+  publishedAt: v.number(),
+  prerelease: v.boolean(),
+  summary: v.string(),
+  notes: capped(v.array(v.string()), MAX_RELEASE_NOTES),
+  // Missing from releases published before new-el counted them.
+  databaseChanges: v.optional(v.number()),
+};
+
+export const rolloutStateValidator = v.union(
+  v.literal("running"),
+  v.literal("failed"),
+  v.literal("stopped"),
+  v.literal("finished"),
+);
+
+/** Communities moving to one release, one at a time: the rollout the releases page shows. */
+export const evidenceLibraryRolloutFields = {
+  target: v.string(),
+  targetImage: v.string(),
+  queue: capped(v.array(v.id("evidenceLibraries")), MAX_ROLLOUT_COMMUNITIES),
+  done: v.number(),
+  // Of `done`, those an admin skipped after they failed.
+  skipped: v.number(),
+  state: rolloutStateValidator,
+  stopping: v.boolean(),
+  operationId: v.optional(v.id("evidenceLibraryConfigOperations")),
+  failure: v.optional(v.string()),
+  startedByClerkUserId: v.string(),
+};
+
+const { releaseId: _releaseId, ...shownReleaseFields } = evidenceLibraryReleaseCatalogFields;
+
+export const releaseCatalogRowsValidator = capped(v.array(v.object(evidenceLibraryReleaseCatalogFields)), MAX_RELEASES);
+
+/** What the community releases page shows (./releases.ts). */
+export const releasesOverviewValidator = v.object({
+  releases: capped(v.array(v.object(shownReleaseFields)), MAX_RELEASES),
+  latest: v.union(v.string(), v.null()),
+  communities: capped(v.array(v.object({ id: v.id("evidenceLibraries"), name: v.string(), running: v.string(), records: v.union(v.number(), v.null()), address: v.string() })), MAX_ROLLOUT_COMMUNITIES),
+  rollout: v.union(
+    v.null(),
+    v.object({
+      target: v.string(),
+      queue: capped(v.array(v.id("evidenceLibraries")), MAX_ROLLOUT_COMMUNITIES),
+      done: v.number(),
+      skipped: v.number(),
+      state: rolloutStateValidator,
+      stopping: v.boolean(),
+      failure: v.optional(v.string()),
+      // How far the community it's on has got.
+      stage: v.union(v.string(), v.null()),
+    }),
+  ),
+});
 
 export const evidenceLibraryCredentialFields = {
   publicationSettings: v.optional(publicationSettingsValidator),

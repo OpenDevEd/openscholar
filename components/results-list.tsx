@@ -45,7 +45,10 @@ import { useBatchTranslation } from "@/hooks/use-batch-translation";
 import { useAppToast } from "@/lib/toast";
 import { useFormatter, useTranslations } from "next-intl";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
-import { AiOverview, useOverviewView } from "@/components/ai-overview/overview-card";
+import { AiOverview, SignedOutOverview, useOverviewView } from "@/components/ai-overview/overview-card";
+import { useAuth } from "@clerk/nextjs";
+import { serializeSearchParams } from "@/lib/search-params/parsers";
+import { browserExpand } from "@/lib/keyword-validation-browser";
 import { inLikelyOrder, useLikelyOrder } from "@/lib/search/likely-order";
 import { SEMANTIC_FIELD } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
@@ -297,6 +300,15 @@ export function ResultsList({
   const answered = useAnsweredPapers(searchId ?? undefined, rated.papers);
   const results = answered.papers;
   const overview = useOverviewView(!preview);
+  const auth = useAuth();
+  // What a signed-out visitor's overview is of: the search's address, less the page and order, which don't change it.
+  // Their shortcuts live in this browser, so it asks with the query they expand to, as their results do.
+  const signedOutParams = useMemo(() => {
+    const list = new URLSearchParams(serializeSearchParams({ ...search.params, q: browserExpand(search.params.q).expandedQuery }));
+    list.delete("page");
+    list.delete("sort");
+    return list.toString();
+  }, [search.params]);
   // Once it's shown it stays while the next results' ratings are read, so it doesn't leave and come back.
   const [overviewShown, setOverviewShown] = useState(false);
   const overviewNow = search.results.length > 0 && (results.length > 0 || overviewShown);
@@ -575,7 +587,13 @@ export function ResultsList({
         </div>
 
         {/* An overview is built on counts by group, which our index doesn't serve for these two kinds of search. */}
-        {overview && searchId && overviewNow && !(source === "openscholar" && (search.params.field === SEMANTIC_FIELD || search.params.like.length)) ? <AiOverview read={overview} searchId={searchId} total={totalCount} /> : null}
+        {overviewNow && !(source === "openscholar" && (search.params.field === SEMANTIC_FIELD || search.params.like.length)) ? (
+          overview && searchId ? (
+            <AiOverview read={overview} searchId={searchId} total={totalCount} />
+          ) : auth.isLoaded && !auth.isSignedIn && !preview ? (
+            <SignedOutOverview params={signedOutParams} />
+          ) : null
+        ) : null}
 
         {/* Inline alert for batch-screening errors. Sits above the
             results area so the user sees it whether the screening panel

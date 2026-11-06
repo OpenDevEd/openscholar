@@ -130,13 +130,12 @@ the hour.
 ### 6. After launch
 
 - Marketing on the apex, with `WebSite` and `Organization` data, then job and comparison pages.
-- Community releases, before the first community moves. new-el publishes each release as a
-  GitHub prerelease; dev's OpenScholar can see prereleases, and promoting one offers it to
-  prod. A page at `/settings/admin/community-releases`, agreed as a mock on
-  `mock/community-releases`, lists releases and communities, with Promote, Pull back, Update all
-  and Roll back all. Updates run one at a time, smallest first, stopping at the first failure,
-  and we may update anyone's community. Rollback uses `startRuntimeRollback` and only appears
-  when no database change is in the way. There are no manual rollbacks.
+- Community releases, before the first community moves: built in #1063. new-el publishes each
+  release as a GitHub prerelease; shared dev offers it at once (`EL_OFFER_PRERELEASES=true`), and
+  promoting it offers it to prod. `/settings/admin/community-releases` lists releases and
+  communities, with Promote, Pull back and Update all. A rollout runs on the server, one community
+  at a time, smallest first, stopping at the first failure, and we may update anyone's community.
+  Updates only go forward. Rollbacks are done by hand on the server.
 - Move the existing communities: see Moving communities.
 - Delete `upgradeLiveData.ts` and this folder.
 
@@ -146,16 +145,17 @@ A community's app, Postgres, search, files and domains stay put. Only its Convex
 
 1. Once, per organization: create it on production Clerk and name it in `$R/clerk-organizations.json`. OpenDevEd is `org_3Lggka7qmtNGSSsrLp6a0hHK3Ax`.
 2. `npx convex export` from prod, then `merge-communities.py --rows-only <export> <rows.zip> "<name>"`, then `npx convex import --append <rows.zip>`.
-3. Publish it from prod, which writes the new Openscholar address and a production Clerk sign-in into the community. Publish refuses when nothing changed, so run `versions:startRuntimeUpdate` if an update is waiting, or save a change first.
-4. Readers: in the community's database, change `reader_account."accountId"` and `reader_user.email` from the dev Clerk ID to the production one, matched by email, before they sign in on prod. Otherwise they get a new empty reader. There are about 16 real ones. Everyone signs in once more.
+3. Publish it from prod, which writes the new Openscholar address and a production Clerk sign-in into the community. Publish refuses when nothing changed, so press its Update on `/settings/admin/community-releases` if a release waits, or save a change first.
+4. Readers: in the community's database, change `reader_account."accountId"` and `reader_user.email` from the dev Clerk ID to the production one, matched by email, before they sign in on prod. Otherwise they get a new empty reader. There are about 16 real ones. Everyone signs in once more. Keep each dev ID and its production one in `$R/reader-mapping.json`: going back needs them.
+5. On dev, set the community's `evidenceLibraries` row to `state: "disabled"`. Dev's Update all would otherwise publish dev's sign-in into the live community.
+6. Rebuild what copying rows doesn't, which runs no triggers. All three are safe to run again:
+   - `npx convex run migrations/communityMoveCounts:countLibraries`, the workspace's count of communities.
+   - `npx convex run migrations/pagedLibraryVersions:run '{"reset": true}'`, each community's count of versions.
+   - `npx convex run migrations/communityMoveCounts:rebuildTopics`, what topic pages read. Run it after the last move of a batch: it reads every community's locations. It also corrects each location's group key, which can name a community still on dev. Deliveries wait while it runs, and the communities retry them. With the six communities' 900,000 locations it takes hours. Don't delete a community during it. If it dies, run `migrations/communityMoveCounts:clearTopicCounts` to start it again.
 
-5. Rebuild what copying rows doesn't, neither built yet, both needed before moving a community:
-   - Topic counts: `topicPublicationGroups` and `topicOpenAlexDois`, which topic pages read, so a moved community's papers don't list there until then.
-   - List counts: the `listCounts` entries for `evidenceLibraries` and `evidenceLibraryConfigOperations`, kept by triggers and not by an import, so a moved community's version count reads zero and the workspace's community limit undercounts. Demo has both gaps today.
+Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script until `copy-collection.py <export> <collection ID>` has put it on prod, through `migrations/copyCollection`: AIED follows one, 1,611 papers. The copy gets a new ID on prod, and prod's configuration names it, while the community's database still names dev's collection: its source-sync then refuses to start ("already points to a different community"). After publishing, set that source's `sourceConnection.externalScopeKey` in the community's database to the new ID; its record links stay as they are. AIED's source-sync was down from its move until this was done on 6 November (the old value is in `$R/aied-source-remap.txt`).
 
-Only organizations in the launch import can move this way, since they alone have dev's IDs on prod: all of today's are OpenDevEd. A community following a dev collection stops the script.
-
-**Going back:** the community's rows stay on dev for a week. On dev, save a change to its configuration, since publishing refuses when nothing changed, and publish. Once that has put dev's sign-in back, reverse step 4 with the mapping kept from it. Then delete the dev rows. Never tear it down from dev: that deletes its app.
+**Going back:** the community's rows stay on dev for a week. On dev, set its row back to `state: "active"`, save a change to its configuration, since publishing refuses when nothing changed, and publish. Once that has put dev's sign-in back, reverse step 4 with the mapping kept from it. Then delete the dev rows. Never tear it down from dev: that deletes its app.
 
 ## Backups
 

@@ -19,6 +19,8 @@ export const COUNTS_KEPT = 6;
 export const LISTS_KEPT = 6;
 export const GROUPS_KEPT = 30;
 export const PAPERS_KEPT = 10;
+/** Overviews a signed-out visitor's address gets a day (#1070). */
+export const SIGNED_OUT_PER_ADDRESS = 20;
 /** Characters of an overview's text kept. */
 export const TEXT_MAX = 6_000;
 

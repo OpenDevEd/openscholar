@@ -536,6 +536,7 @@ export async function queueRuntimeUpdateOperation(
     libraryId: Id<"evidenceLibraries">;
     idempotencyKey: string;
     revisionId: Id<"evidenceLibraryConfigRevisions">;
+    requestedByClerkUserId?: string;
     runtimeUpdate: {
       from: string;
       to: string;

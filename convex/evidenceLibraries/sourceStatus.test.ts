@@ -78,6 +78,18 @@ it("refuses another library's credential and a report that breaks the contract",
   expect(await saved()).toEqual([]);
 });
 
+it("keeps the community's total of records, and drops it when an older runtime reports without one", async () => {
+  const { post, saved } = await setup();
+
+  expect((await post("2026-09-27T12:10:00.000Z", [upToDate], token, { records: -1 })).status).toBe(400);
+  expect((await post("2026-09-27T12:10:00.000Z", [upToDate], token, { records: 2.5 })).status).toBe(400);
+  expect((await post("2026-09-27T12:10:00.000Z", [upToDate, { ...upToDate, key: "zotero-43" }], token, { records: 410 })).status).toBe(200);
+  expect(await saved()).toMatchObject([{ records: 410 }]);
+
+  expect((await post("2026-09-27T12:10:05.000Z", [upToDate])).status).toBe(200);
+  expect((await saved())[0]).not.toHaveProperty("records");
+});
+
 it("accepts a source adding PDFs and one that stopped while adding them", async () => {
   const { post, saved } = await setup();
   const addingPdfs = { ...importing, provider: "openalex", key: "openalex-1", searchable: 300, phase: "pdfs", pdfs: { added: 90, missed: 30 } };

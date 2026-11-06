@@ -72,6 +72,8 @@ type CandidateOperation = {
 
 type CandidateIntent = {
   libraryId: Id<"evidenceLibraries">;
+  /** Who asked, when no signed-in owner is making this call: a rollout an admin started. */
+  requestedByClerkUserId?: string;
   sourceRevisionId: Id<"evidenceLibraryConfigRevisions">;
   snapshot: OwnerConfigurationSnapshot;
   forceCandidate?: boolean;
@@ -102,12 +104,10 @@ type CandidateIntent = {
   };
 };
 
-async function requireRunningLibrary(
+async function requireRunning(
   ctx: MutationCtx,
-  libraryId: Id<"evidenceLibraries">,
+  library: Doc<"evidenceLibraries">,
 ) {
-  const access = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
-  const library = access.library;
   const binding = library.runtimeBindingId
     ? await ctx.db.get(library.runtimeBindingId)
     : null;
@@ -115,17 +115,24 @@ async function requireRunningLibrary(
     library.state !== "active" ||
     !library.activeRevisionId ||
     !binding ||
-    binding.libraryId !== libraryId ||
+    binding.libraryId !== library._id ||
     binding.state !== "ready" ||
     !("runtimeCommit" in binding)
   ) {
     throw createError("CONFLICT", "This community is not running yet");
   }
   return {
-    ...access,
     activeRevisionId: library.activeRevisionId,
     binding: binding as RunningBinding,
   };
+}
+
+async function requireRunningLibrary(
+  ctx: MutationCtx,
+  libraryId: Id<"evidenceLibraries">,
+) {
+  const access = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
+  return { ...access, ...(await requireRunning(ctx, access.library)) };
 }
 
 async function findOperationByKey(
@@ -346,9 +353,10 @@ async function queueCandidateOperation(
             )
           : intent.snapshot,
         rollbackOfRevisionId: intent.rollbackOfRevisionId,
-        createdByClerkUserId: (
-          await requireEvidenceLibraryAccess(ctx, intent.libraryId, "manage")
-        ).clerkUserId,
+        createdByClerkUserId:
+          intent.requestedByClerkUserId ??
+          (await requireEvidenceLibraryAccess(ctx, intent.libraryId, "manage"))
+            .clerkUserId,
       })
     : {
         revisionId: intent.sourceRevisionId,
@@ -362,6 +370,7 @@ async function queueCandidateOperation(
         idempotencyKey: intent.idempotencyKey,
         revisionId: candidate.revisionId,
         runtimeUpdate: intent.runtimeUpdate,
+        requestedByClerkUserId: intent.requestedByClerkUserId,
       })
     : intent.addressMove
       ? await queueAddressMoveOperation(ctx, {
@@ -425,7 +434,51 @@ export async function startEvidenceLibraryRuntimeUpdate(
       "This community already runs the latest software",
     );
   }
-  await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
+  const operation = await queueRuntimeMove(ctx, args.libraryId, running, {
+    to: release.latest,
+    toImage: release.latestImage,
+  });
+  const started = await claimAndScheduleConfigurationDeployment(ctx, {
+    libraryId: args.libraryId,
+    operationId: operation.operationId,
+  });
+  return { ...started, from, to: release.latest };
+}
+
+/** The same move for a rollout: an admin picked the release, and may update anyone's community. */
+export async function startRolloutRuntimeUpdate(
+  ctx: MutationCtx,
+  args: {
+    library: Doc<"evidenceLibraries">;
+    to: string;
+    toImage: string;
+    requestedByClerkUserId: string;
+  },
+) {
+  const running = await requireRunning(ctx, args.library);
+  const operation = await queueRuntimeMove(
+    ctx,
+    args.library._id,
+    running,
+    { to: args.to, toImage: args.toImage },
+    args.requestedByClerkUserId,
+  );
+  await claimAndScheduleInternalConfigurationDeployment(ctx, {
+    libraryId: args.library._id,
+    operationId: operation.operationId,
+  });
+  return operation.operationId;
+}
+
+async function queueRuntimeMove(
+  ctx: MutationCtx,
+  libraryId: Id<"evidenceLibraries">,
+  running: Awaited<ReturnType<typeof requireRunning>>,
+  target: { to: string; toImage: string },
+  requestedByClerkUserId?: string,
+) {
+  const from = running.binding.runtimeCommit;
+  await requireNoActiveConfigurationDeployment(ctx, libraryId);
   const source = await loadRevisionConfigurationSnapshot(
     ctx,
     running.activeRevisionId,
@@ -435,26 +488,22 @@ export async function startEvidenceLibraryRuntimeUpdate(
     source.migration.snapshot,
     running.binding.canonicalBaseUrl ?? running.binding.targetBaseUrl,
   );
-  const operation = await queueCandidateOperation(ctx, {
-    libraryId: args.libraryId,
+  return await queueCandidateOperation(ctx, {
+    libraryId,
+    requestedByClerkUserId,
     sourceRevisionId: running.activeRevisionId,
     snapshot: source.migration.snapshot,
     forceCandidate:
       source.header.ownerConfigurationVersion !==
       CURRENT_OWNER_CONFIGURATION_VERSION,
-    idempotencyKey: `runtime-update:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:${from}:${release.latest}`,
+    idempotencyKey: `runtime-update:${running.activeRevisionId}:v${CURRENT_OWNER_CONFIGURATION_VERSION}:${from}:${target.to}`,
     runtimeUpdate: {
       from,
-      to: release.latest,
+      to: target.to,
       fromImage: running.binding.runtimeImage,
-      toImage: release.latestImage,
+      toImage: target.toImage,
     },
   });
-  const started = await claimAndScheduleConfigurationDeployment(ctx, {
-    libraryId: args.libraryId,
-    operationId: operation.operationId,
-  });
-  return { ...started, from, to: release.latest };
 }
 
 /**
