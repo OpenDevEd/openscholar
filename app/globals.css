@@ -756,3 +756,12 @@
     }
   }
 }
+
+/* Held back until the question stage opens: see lib/search/question-stage-script.ts. */
+html[data-question-stage],
+html[data-question-stage] body {
+  background: #091026;
+}
+html[data-question-stage] body > * {
+  visibility: hidden;
+}
