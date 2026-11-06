@@ -1,7 +1,7 @@
-/** Where people reach OpenScholar: what's given by request is asked for here. */
-export const CONTACT_EMAIL = "support@openscholar.ai";
+import type { ContactTopic } from "../contact";
 
-const request = (subject: string, body: string) => `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+/** Where people reach Openscholar: the team's inbox, which the contact form on openscholar.ai writes to too. */
+export const CONTACT_EMAIL = "habari@openscholar.ai";
 
-export const SOUTHERN_REQUEST = request("Southern plan request", "Name:\nInstitution:\nCountry:\nResearch area:\n");
-export const LIBRARIES_REQUEST = request("Evidence Communities request", "Organization:\nWhat the community will cover:\n");
+/** The contact form on the marketing site with a topic chosen, opened at the form (marketing/src/pages/contact). */
+export const contactPage = (topic: ContactTopic) => `https://openscholar.ai/contact/?topic=${topic}#form`;

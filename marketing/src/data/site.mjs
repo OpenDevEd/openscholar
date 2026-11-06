@@ -1,5 +1,8 @@
 // APP_URL points a local copy of this site at a local copy of the app.
 export const APP = process.env.APP_URL ?? "https://discover.openscholar.ai";
+// The Turnstile widget the contact form proves a visitor is a person with: production's, whose secret the app checks it with.
+// A local copy pointed at another app sets the key that app checks.
+export const TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY ?? "0x4AAAAAAF1cTpm8gRNzExmz";
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
 // Live Evidence Communities, shown in the home hero and the menu.
 export const COMMUNITIES = [
@@ -35,25 +38,4 @@ export const SECTIONS = {
   "/": [["tour", "Tour", "#ff9d36"], ["product", "Find", "#4fc3d9"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fde047"], ["assistant", "Assistant", "#7da7e6"], ["community", "Communities", "#fb7185"]],
   "/evidence-communities/": [["readers", "Readers", "#4fc3d9"], ["answers", "Answers", "#ff9d36"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
   "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#7da7e6"], ["publish", "Review", "#34d399"]],
-};
-export const ICONS = {
-  search: "M9 16a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm5-2 5 5",
-  sieve: "M3 4h14l-5 7v6l-4-2v-4L3 4Z",
-  table: "M3 4h14v12H3V4Zm0 4h14M3 12h14M9 4v12",
-  spark: "M10 2v5m0 6v5M2 10h5m6 0h5M5 5l2 2m6 6 2 2m0-10-2 2m-6 6-2 2",
-  thread: "M2 10h16M6 5v10M10 5v10M14 5v10",
-  globe: "M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM2 10h16M10 2c-3 3-3 13 0 16 3-3 3-13 0-16",
-  flag: "M5 18V3m0 1h10l-2 3.500 2 3.500H5",
-  merge: "M3 4c6 0 4 6 10 6M3 16c6 0 4-6 10-6h4m-3-3 3 3-3 3",
-  list: "M7 5h10M7 10h10M7 15h10M3 5h.01M3 10h.01M3 15h.01",
-  key: "M13 11a4 4 0 1 0-3.500-2L3 15.500V18h3v-2h2v-2h2l1-1",
-  cross: "M6 6l8 8M14 6l-8 8",
-  check: "m4 10.500 4 4 8-9",
-  flagq: "M10 4v8m0 4v.01",
-  pen: "M4 16l1-4L14 3l3 3-9 9-4 1ZM12 5l3 3",
-  mail: "M3 5h14v10H3V5Zm0 1 7 5 7-5",
-  cite: "M4 4h9l3 3v9H4V4Zm3 5h6M7 12h6",
-  lock: "M5 9h10v8H5V9Zm2 0V6.500a3 3 0 0 1 6 0V9",
-  sun: "M10 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM10 2v1.500M10 16.500V18M2 10h1.500M16.500 10H18M4.300 4.300l1.100 1.100M14.600 14.600l1.100 1.100M4.300 15.700l1.100-1.100M14.600 5.400l1.100-1.100",
-  moon: "M17 11.500A7.500 7.500 0 0 1 8.500 3a7.500 7.500 0 1 0 8.500 8.500Z",
 };

@@ -134,6 +134,6 @@ Ikiwa ungependa kuzuia kidakuzi chetu cha uchambuzi kisiundwe:
 
 Kwa maswali kuhusu taratibu zetu za vidakuzi, tafadhali wasiliana nasi:
 
-**Barua pepe**: support@openscholar.ai
+**Barua pepe**: habari@openscholar.ai
 
 **Ilisasishwa mara ya mwisho**: 4 Novemba 2026

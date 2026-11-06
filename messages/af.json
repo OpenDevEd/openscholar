@@ -70,7 +70,8 @@
     "nextPage": "Volgende bladsy",
     "pageOf": "Bladsy {current} van {total}",
     "currentPlan": "Huidige plan",
-    "contactSupport": "Kontak ondersteuning",
+    "contactUs": "Kontak ons",
+    "reportProblem": "Meld 'n probleem",
     "notAvailable": "Nie beskikbaar nie",
     "noTitle": "Geen titel nie",
     "noAbstract": "Geen opsomming nie",
@@ -5564,10 +5565,10 @@
   "alpha": {
     "strip": "Openbare alfa vir toetsing.",
     "stripDetail": "Dinge kan verander of breek.",
-    "contactUs": "Kontak ons",
     "plansNoticeTitle": "Gratis tydens die openbare alfa",
     "plansNoticeDetail": "Elke funksie ingesluit. Planne sal daarna verander.",
-    "emailAddress": "E-pos {email}"
+    "requestSouthern": "Vra die Southern-plan aan",
+    "requestLibraries": "Vra Evidence Communities aan"
   },
   "similarPapers": {
     "closestOf": "naaste uit {count}",

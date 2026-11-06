@@ -134,6 +134,6 @@ Uma ungathanda ukuvimbela ukudalwa kwe-cookie yethu yokuhlaziya:
 
 Uma unemibuzo ngezinqubo zethu zama-cookie, sicela usithinte:
 
-**Imeyili**: support@openscholar.ai
+**Imeyili**: habari@openscholar.ai
 
 **Okubuyekezwe kokugcina**: 4 Novemba 2026

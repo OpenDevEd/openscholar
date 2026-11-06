@@ -87,6 +87,8 @@ import type * as billing_stripeWebhook from "../billing/stripeWebhook.js";
 import type * as billing_usage from "../billing/usage.js";
 import type * as billing_usageLog from "../billing/usageLog.js";
 import type * as billing_validators from "../billing/validators.js";
+import type * as contact from "../contact.js";
+import type * as contactMail from "../contactMail.js";
 import type * as crons from "../crons.js";
 import type * as debug_papers from "../debug_papers.js";
 import type * as developerApps_actions from "../developerApps/actions.js";
@@ -560,6 +562,8 @@ declare const fullApi: ApiFromModules<{
   "billing/usage": typeof billing_usage;
   "billing/usageLog": typeof billing_usageLog;
   "billing/validators": typeof billing_validators;
+  contact: typeof contact;
+  contactMail: typeof contactMail;
   crons: typeof crons;
   debug_papers: typeof debug_papers;
   "developerApps/actions": typeof developerApps_actions;

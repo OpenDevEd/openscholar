@@ -74,7 +74,7 @@
 
 # **التواصل**
 
-البريد الإلكتروني: support@openscholar.ai
+البريد الإلكتروني: habari@openscholar.ai
 
 # **آخر تحديث**
 

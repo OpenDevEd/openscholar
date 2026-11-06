@@ -70,7 +70,8 @@
     "nextPage": "Nächste Seite",
     "pageOf": "Seite {current} von {total}",
     "currentPlan": "Aktueller Tarif",
-    "contactSupport": "Support kontaktieren",
+    "contactUs": "Kontakt",
+    "reportProblem": "Problem melden",
     "notAvailable": "Nicht verfügbar",
     "noTitle": "Ohne Titel",
     "noAbstract": "Kein Abstract",
@@ -5564,10 +5565,10 @@
   "alpha": {
     "strip": "Öffentliche Alpha zum Testen.",
     "stripDetail": "Dinge können sich ändern oder ausfallen.",
-    "contactUs": "Kontakt",
     "plansNoticeTitle": "Kostenlos während der öffentlichen Alpha",
     "plansNoticeDetail": "Alle Funktionen enthalten. Danach ändern sich die Pläne.",
-    "emailAddress": "E-Mail an {email}"
+    "requestSouthern": "Southern-Tarif anfragen",
+    "requestLibraries": "Evidence Communities anfragen"
   },
   "similarPapers": {
     "closestOf": "die nächsten von {count}",

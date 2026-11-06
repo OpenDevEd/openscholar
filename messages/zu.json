@@ -70,7 +70,8 @@
     "nextPage": "Ikhasi elilandelayo",
     "pageOf": "Ikhasi {current} kwa-{total}",
     "currentPlan": "Uhlelo lwamanje",
-    "contactSupport": "Xhumana nosekelo",
+    "contactUs": "Xhumana nathi",
+    "reportProblem": "Bika inkinga",
     "notAvailable": "Akutholakali",
     "noTitle": "Akukho sihloko",
     "noAbstract": "Akukho isifingqo",
@@ -5563,10 +5564,10 @@
   "alpha": {
     "strip": "I-alpha yomphakathi yokuhlola.",
     "stripDetail": "Izinto zingashintsha noma zingasebenzi.",
-    "contactUs": "Xhumana nathi",
     "plansNoticeTitle": "Imahhala ngesikhathi se-alpha yomphakathi",
     "plansNoticeDetail": "Zonke izici zifakiwe. Amapulani azoshintsha ngemva kwalokho.",
-    "emailAddress": "Thumela i-imeyili ku-{email}"
+    "requestSouthern": "Cela uhlelo lwe-Southern",
+    "requestLibraries": "Cela i-Evidence Communities"
   },
   "similarPapers": {
     "closestOf": "eziseduze kakhulu kwezingu-{count}",

@@ -74,7 +74,7 @@ Masharti haya yanaongozwa na sheria ya Uingereza na Wales, na mahakama zake zina
 
 # **Mawasiliano**
 
-Barua pepe: support@openscholar.ai
+Barua pepe: habari@openscholar.ai
 
 # **Ilisasishwa mwisho**
 

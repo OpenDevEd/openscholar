@@ -70,7 +70,8 @@
     "nextPage": "الصفحة التالية",
     "pageOf": "الصفحة {current} من {total}",
     "currentPlan": "الباقة الحالية",
-    "contactSupport": "تواصل مع الدعم",
+    "contactUs": "تواصل معنا",
+    "reportProblem": "أبلغ عن مشكلة",
     "notAvailable": "غير متاح",
     "noTitle": "بدون عنوان",
     "noAbstract": "لا يوجد ملخص",
@@ -5564,10 +5565,10 @@
   "alpha": {
     "strip": "إصدار ألفا عام للاختبار.",
     "stripDetail": "قد تتغير الأشياء أو تتعطل.",
-    "contactUs": "تواصل معنا",
     "plansNoticeTitle": "مجاني خلال إصدار ألفا العام",
     "plansNoticeDetail": "كل الميزات مشمولة. ستتغير الخطط بعد ذلك.",
-    "emailAddress": "راسل {email}"
+    "requestSouthern": "اطلب باقة Southern",
+    "requestLibraries": "اطلب Evidence Communities"
   },
   "similarPapers": {
     "closestOf": "الأقرب من بين {count}",

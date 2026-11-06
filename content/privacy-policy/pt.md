@@ -17,7 +17,7 @@ Este aviso de privacidade indica o que pode esperar que façamos com os seus dad
 
 # **Contactos**
 
-Email: support@openscholar.ai
+Email: habari@openscholar.ai
 
 # **Que informações recolhemos, utilizamos e porquê**
 

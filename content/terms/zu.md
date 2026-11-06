@@ -74,7 +74,7 @@ Le migomo ilawulwa umthetho waseNgilandi naseWales, futhi izinkantolo zakhona zi
 
 # **Xhumana nathi**
 
-I-imeyili: support@openscholar.ai
+I-imeyili: habari@openscholar.ai
 
 # **Kubuyekezwe okokugcina**
 

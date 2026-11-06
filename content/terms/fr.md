@@ -74,7 +74,7 @@ Ces conditions sont régies par le droit de l'Angleterre et du pays de Galles, d
 
 # **Contact**
 
-E-mail : support@openscholar.ai
+E-mail : habari@openscholar.ai
 
 # **Dernière mise à jour**
 

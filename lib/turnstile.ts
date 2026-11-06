@@ -2,6 +2,8 @@ import "server-only";
 
 /** The action a page names its overview token with, so a token made for anything else isn't taken for one. */
 export const OVERVIEW_ACTION = "overview";
+/** The action the contact form on openscholar.ai names its tokens with (app/api/contact). */
+export const CONTACT_ACTION = "contact";
 
 type Siteverify = { success: boolean; action?: string; hostname?: string; "error-codes"?: string[]; metadata?: { result_with_testing_key?: boolean } };
 

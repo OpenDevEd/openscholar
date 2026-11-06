@@ -134,6 +134,6 @@ openscholar.aiの各ページの下部にある「Cookie設定」リンクをク
 
 Cookieポリシーに関するご質問は、以下までお問い合わせください：
 
-**メール**：support@openscholar.ai
+**メール**：habari@openscholar.ai
 
 **最終更新日**：2026年11月4日

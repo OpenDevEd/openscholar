@@ -74,7 +74,7 @@ Hierdie voorwaardes word deur die reg van Engeland en Wallis beheer, en sy howe 
 
 # **Kontak**
 
-E-pos: support@openscholar.ai
+E-pos: habari@openscholar.ai
 
 # **Laas bygewerk**
 

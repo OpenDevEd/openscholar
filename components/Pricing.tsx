@@ -43,7 +43,7 @@ import { OrganizationPlans, type CurrentWorkspace } from "@/components/workspace
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { PlanCard } from "@/components/billing/plan-card";
 import { AlphaPlansNotice, ContactButton } from "@/components/alpha-notices";
-import { CONTACT_EMAIL, SOUTHERN_REQUEST } from "@/lib/billing/contact";
+import { contactPage } from "@/lib/billing/contact";
 
 type PlanCard = {
   id: string;
@@ -82,6 +82,7 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
   const toast = useAppToast();
   const t = useTranslations("pricing");
   const tb = useTranslations("billingPage");
+  const tAlpha = useTranslations("alpha");
   const tc = useTranslations("common");
   const format = useFormatter();
 
@@ -410,9 +411,9 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
     if (plan.isDefault && findPlan(catalog, resolvedPlan)?.byRequest) {
       return {
         disabled: false,
-        label: tc("contactSupport"),
+        label: tc("contactUs"),
         variant: "outline" as const,
-        onClick: () => window.location.assign(`mailto:${CONTACT_EMAIL}`),
+        onClick: () => window.location.assign(contactPage("account")),
       };
     }
 
@@ -428,9 +429,9 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
     if (plan.id === ENTERPRISE_ID) {
       return {
         disabled: false,
-        label: tc("contactSupport"),
+        label: tc("contactUs"),
         variant: "outline" as const,
-        onClick: () => window.location.assign(`mailto:${CONTACT_EMAIL}`),
+        onClick: () => window.location.assign(contactPage("partner")),
       };
     }
 
@@ -593,7 +594,7 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
                 description={plan.description}
                 features={plan.features}
               >
-                {plan.byRequest && !isCurrent ? <ContactButton href={SOUTHERN_REQUEST} /> : <Button
+                {plan.byRequest && !isCurrent ? <ContactButton href={contactPage("southern")} label={tAlpha("requestSouthern")} /> : <Button
                   data-testid={`pricing-button-${plan.id}`}
                   className="w-full"
                   variant={buttonConfig.variant}

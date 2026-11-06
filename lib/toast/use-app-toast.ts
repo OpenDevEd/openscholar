@@ -3,6 +3,7 @@
 import { useFormatter, useTranslations } from "next-intl";
 import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { showStyledToast } from "@/components/ui/sonner";
+import { contactPage } from "@/lib/billing/contact";
 import { resolveToastActionRoute } from "./action-routing";
 import {
   getToastMessageKeyForErrorCode,
@@ -131,6 +132,8 @@ export function useAppToast(): AppToastApi {
   };
 
   const getActionFromCode = (code?: string): ToastAction | undefined => {
+    // Billing couldn't tell who's asking, which they can't fix themselves: the toast opens the contact form at Report a problem.
+    if (code === "BILLING_AUTHENTICATION_FAILED") return { label: tc("reportProblem"), onClick: () => window.location.assign(contactPage("bug")), icon: "arrow-right" };
     const route = resolveToastActionRoute(code);
     if (!route) {
       return undefined;

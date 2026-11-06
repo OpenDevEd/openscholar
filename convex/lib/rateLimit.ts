@@ -21,6 +21,10 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
   "profile-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
   "library-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
   "item-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
+  // The contact form on openscholar.ai (convex/contact.ts): a few messages an hour from one visitor, and a ceiling on
+  // what everyone together can send a day.
+  "contact-address": { kind: "token bucket", rate: 5, period: HOUR, capacity: 5 },
+  "contact-all": { kind: "token bucket", rate: 500, period: DAY, capacity: 500 },
   "start-extraction": {
     kind: "token bucket",
     rate: 30,
@@ -105,14 +109,32 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
     period: DAY,
     start: 0,
   },
+  // A signed-out visitor, counted by their hashed address (a key starting "visitor:"), gets the visitor's smaller allowance.
+  "openalex-visitor-minute": {
+    kind: "token bucket",
+    rate: OPENALEX_REQUEST_LIMITS.visitor.perMinute,
+    period: MINUTE,
+    capacity: OPENALEX_REQUEST_LIMITS.visitor.perMinute,
+  },
+  "openalex-visitor-day": {
+    kind: "fixed window",
+    rate: OPENALEX_REQUEST_LIMITS.visitor.perDay,
+    period: DAY,
+    start: 0,
+  },
 });
 
 /**
- * Counts `count` OpenAlex requests against an account, by its Clerk user ID. False,
- * counting none, when its minute or its day doesn't have that many left.
+ * Counts `count` OpenAlex requests against an account, by its Clerk user ID, or against a
+ * signed-out visitor, by a key starting "visitor:", with the visitor's smaller allowance.
+ * False, counting none, when its minute or its day doesn't have that many left.
  */
 export async function spendOpenAlexRequests(ctx: MutationCtx, clerkId: string, count: number): Promise<boolean> {
-  const limits = [{ name: "openalex-minute", key: clerkId, count }, { name: "openalex-day", key: clerkId, count }] as const;
+  const visitor = clerkId.startsWith("visitor:");
+  const limits = [
+    { name: visitor ? "openalex-visitor-minute" : "openalex-minute", key: clerkId, count },
+    { name: visitor ? "openalex-visitor-day" : "openalex-day", key: clerkId, count },
+  ] as const;
   for (const limit of limits) if (!(await checkRateLimit(ctx, limit)).ok) return false;
   for (const limit of limits) await rateLimit(ctx, { ...limit, throws: true });
   return true;

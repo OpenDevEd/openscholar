@@ -17,7 +17,7 @@ Hierdie privaatheidskennisgewing vertel jou wat om van ons te verwag met jou per
 
 # **Kontakbesonderhede**
 
-E-pos: support@openscholar.ai
+E-pos: habari@openscholar.ai
 
 # **Watter inligting ons versamel, gebruik en waarom**
 

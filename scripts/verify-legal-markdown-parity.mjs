@@ -106,9 +106,9 @@ async function main() {
         );
       }
 
-      if (!current.content.includes("support@openscholar.ai")) {
+      if (!current.content.includes("habari@openscholar.ai")) {
         failures.push(
-          `${current.filePath}: required contact marker support@openscholar.ai is missing`
+          `${current.filePath}: required contact marker habari@openscholar.ai is missing`
         );
       }
 

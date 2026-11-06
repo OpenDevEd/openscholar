@@ -17,7 +17,7 @@ Lesi saziso sobumfihlo sikutshela ukuthi siyolenza ini ngolwazi lwakho lomuntu s
 
 # **Imininingwane yokuxhumana**
 
-Imeyili: support@openscholar.ai
+Imeyili: habari@openscholar.ai
 
 # **Ulwazi esiluqoqayo, esiluyisebenzisayo, nesizathu**
 

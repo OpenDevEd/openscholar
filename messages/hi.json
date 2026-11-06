@@ -70,7 +70,8 @@
     "nextPage": "अगला पेज",
     "pageOf": "पेज {current} / {total}",
     "currentPlan": "वर्तमान प्लान",
-    "contactSupport": "सहायता से संपर्क करें",
+    "contactUs": "हमसे संपर्क करें",
+    "reportProblem": "समस्या की रिपोर्ट करें",
     "notAvailable": "उपलब्ध नहीं",
     "noTitle": "कोई शीर्षक नहीं",
     "noAbstract": "कोई सारांश नहीं",
@@ -5563,10 +5564,10 @@
   "alpha": {
     "strip": "परीक्षण के लिए सार्वजनिक अल्फ़ा।",
     "stripDetail": "चीज़ें बदल सकती हैं या ख़राब हो सकती हैं।",
-    "contactUs": "हमसे संपर्क करें",
     "plansNoticeTitle": "सार्वजनिक अल्फ़ा के दौरान मुफ़्त",
     "plansNoticeDetail": "हर सुविधा शामिल है। इसके बाद योजनाएँ बदलेंगी।",
-    "emailAddress": "{email} पर ईमेल करें"
+    "requestSouthern": "Southern प्लान का अनुरोध करें",
+    "requestLibraries": "Evidence Communities का अनुरोध करें"
   },
   "similarPapers": {
     "closestOf": "{count} में से सबसे करीबी",
