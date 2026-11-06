@@ -3,7 +3,6 @@
 import AskBar from "./AskBar.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const HEAD = "Ask the world's research anything".split(" ");
-// Mock: five directions for the community row, chosen with ?strip= (strip, dock, line, bento, index).
 const QUESTIONS = ["Do trees improve mental health?", "Can mindfulness reduce burnout?", "Do pesticides harm bees?", "Does remote work boost output?", "Do farm antibiotics harm people?", "Do cash transfers reduce hunger?"];
 // Stars are fixed in size and place, so they never pop or shift between loads, and none sit behind the headline or the box. They thin out towards the bottom of the sky.
 const rng = ((s) => () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296))(11);
@@ -13,7 +12,6 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
      already settled on (the key is earth.js's MEMORY). The light levels use the smaller map. -->
 <script is:inline>(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = l === 1 || l === 2 ? "/img/earth-day-2048.avif" : "/img/earth-day.avif"; document.head.append(k); })();</script>
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
-<script is:inline>(() => { const v = new URLSearchParams(location.search).get("strip"); document.documentElement.dataset.strip = ["strip", "dock", "line", "bento", "index"].includes(v) ? v : "strip"; })();</script>
 <section class="bleed sky" data-orbit>
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" />
   {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
@@ -31,11 +29,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   </div>
   <div class="inner hub">
     <p class="hubline"><a href="/evidence-communities/">Evidence Communities</a> <span>Curated evidence, open to anyone</span></p>
-    <ul class="v band" data-v="strip" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <li data-k={i} style={`--c:${c.color}`}><a href={c.url}><img class="look" src={`/img/art-tile-${c.key}-480.avif`} width="480" height="270" alt="" loading="lazy" decoding="async" /><img class="em" src={`/img/comm-${c.key}.avif`} width="44" height="44" alt="" decoding="async" /><span><b>{c.name}</b><small>{c.host}</small></span></a></li>)}</ul>
-    <div class="v dock-wrap" data-v="dock"><ul class="dock" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <li data-k={i} style={`--c:${c.color}`}><a href={c.url} aria-label={c.name}><img src={`/img/comm-${c.key}.avif`} width="64" height="64" alt="" decoding="async" /></a></li>)}</ul><p class="dock-cap" aria-hidden="true">{COMMUNITIES.map((c, i) => <span data-k={i} style={`--c:${c.color}`}><b>{c.name}</b><small>{c.host}</small></span>)}</p></div>
-    <ol class="v line" data-v="line" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <li data-k={i} style={`--c:${c.color}`}><a href={c.url}><i class="stop"><img src={`/img/comm-${c.key}.avif`} width="44" height="44" alt="" decoding="async" /></i><b>{c.name}</b><small>{c.host}</small></a></li>)}</ol>
-    <ul class="v bento" data-v="bento" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <li data-k={i} style={`--c:${c.color}`}><a href={c.url}><img class="look" src={`/img/art-tile-${c.key}-960.avif`} width="960" height="540" alt="" loading="lazy" decoding="async" /><span><b>{c.name}</b><small>{c.host}</small></span></a></li>)}</ul>
-    <div class="v index" data-v="index"><ul aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <li data-k={i} style={`--c:${c.color}`}><a href={c.url}><img src={`/img/comm-${c.key}.avif`} width="30" height="30" alt="" decoding="async" /><b>{c.name}</b><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg></a></li>)}</ul><div class="pane" aria-hidden="true">{COMMUNITIES.map((c, i) => <figure data-k={i} style={`--c:${c.color}`}><span class="bar">{c.host}</span><img src={`/img/site-${c.key}.avif`} width="960" height="600" alt="" loading="lazy" decoding="async" /><figcaption>{c.text}</figcaption></figure>)}</div></div>
+    <ul class="band" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <li data-k={i} style={`--c:${c.color}`}><a href={c.url}><img class="look" src={`/img/art-tile-${c.key}-480.avif`} width="480" height="270" alt="" loading="lazy" decoding="async" /><img class="em" src={`/img/comm-${c.key}.avif`} width="44" height="44" alt="" decoding="async" /><span><b>{c.name}</b><small>{c.host}</small></span></a></li>)}</ul>
   </div>
 </section>
 <script>
@@ -80,7 +74,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
         // Distance dims the glass in steps, so the filter isn't rewritten every frame. A caught satellite's name stays on screen.
         const dim = Math.round((.8 + near * .2) * 20) / 20, nudge = Math.round(Math.max(118 - x, 0) - Math.max(x + 118 - W, 0)); if (dim !== spot.dim) { spot.dim = dim; imgs[i].style.filter = `brightness(${dim})`; } if (nudge !== spot.nudge) { spot.nudge = nudge; names[i].style.setProperty("--nudge", `${nudge}px`); }
       });
-      best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { lit = best; hub.style.setProperty("--at", best); for (const el of keyed) el.classList.toggle("on", Number(el.dataset.k) === best); }
+      best = hold >= 0 ? hold : onSat >= 0 ? onSat : best; if (best !== lit) { lit = best; for (const el of keyed) el.classList.toggle("on", Number(el.dataset.k) === best); }
     };
     // The planet
     // The quality level comes from earth.js: where this visit got to, else what the browser lets on, then the monitor below
@@ -226,19 +220,13 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .sat b { position: absolute; left: 50%; bottom: 100%; width: 220px; translate: calc(-50% + var(--nudge, 0px)) -4px; font: 500 14px/1.25 var(--sans); text-wrap: balance; text-align: center; opacity: 0; transition: opacity .25s var(--ease), translate .25s var(--ease); pointer-events: none; text-shadow: 0 1px 2px rgb(4 7 16 / .95), 0 0 6px rgb(4 7 16 / .95), 0 0 16px rgb(4 7 16 / .95); } .sat:hover b { opacity: 1; translate: calc(-50% + var(--nudge, 0px)) -10px; }
 
   .hub { position: relative; z-index: 6; }
-  .hubline, .v { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
+  .hubline, .band { animation: arrive 1.2s var(--ease) 1.4s backwards; } @keyframes arrive { from { opacity: 0; } }
   .hubline { font-size: 16px; color: #c9cfdc; } .hubline a { font-weight: 500; font-size: 18px; color: #fff; margin-right: 8px; } .hubline a:hover { text-decoration: underline; }
-  /* Mock: five directions for the communities, only the chosen one shows. In each, the one whose satellite is at the front
-     lights up (.on), and pointing at one holds its satellite there. */
-  .v { display: none !important; }
-  :global(html[data-strip="strip"]) .band, :global(html[data-strip="dock"]) .dock-wrap, :global(html[data-strip="line"]) .line, :global(html[data-strip="bento"]) .bento, :global(html[data-strip="index"]) .index, :global(html:not([data-strip])) .band { display: var(--show) !important; }
-  .band, .line, .bento, .index { --show: grid; } .dock-wrap { --show: grid; }
-  .v small { display: block; max-width: 100%; margin-top: 3px; overflow: hidden; font-size: 12px; color: #8f98ae; text-overflow: ellipsis; white-space: nowrap; }
-  .v b { font: 500 14px/1.25 var(--sans); text-wrap: balance; transition: color .8s var(--ease); } .v :global(.on) b { color: var(--c); }
-  .v ul, .v ol, ul.v, ol.v { list-style: none; }
-
-  /* 1. Strip: one rounded glass panel inside the page, six segments; the lit one glows in its colour, its art behind it. */
-  .band { grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 1180px; margin: 22px auto 0; padding: 0; overflow: hidden; border-radius: 22px; background: linear-gradient(rgb(255 255 255 / .06), rgb(255 255 255 / .02)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 24px 60px -30px #000; }
+  /* The communities in one rounded glass panel inside the page, six segments. The one whose satellite is at the front glows
+     in its colour with its art behind it, and pointing at one holds its satellite there. */
+  .band small { display: block; max-width: 100%; margin-top: 3px; overflow: hidden; font-size: 12px; color: #8f98ae; text-overflow: ellipsis; white-space: nowrap; }
+  .band b { font: 500 14px/1.25 var(--sans); text-wrap: balance; transition: color .8s var(--ease); } .band :global(.on) b { color: var(--c); }
+  .band { display: grid; list-style: none; grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 1180px; margin: 22px auto 0; padding: 0; overflow: hidden; border-radius: 22px; background: linear-gradient(rgb(255 255 255 / .06), rgb(255 255 255 / .02)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 24px 60px -30px #000; }
   .band li + li { box-shadow: inset 1px 0 rgb(255 255 255 / .08); }
   .band a { position: relative; display: grid; align-content: start; justify-items: start; gap: 12px; height: 150px; padding: 18px 18px 0; overflow: hidden; color: #e8ebf2; text-align: left; }
   .band .look { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; opacity: 0; mask-image: linear-gradient(90deg, transparent 15%, #000 85%); transition: opacity .9s var(--ease); }
@@ -246,44 +234,8 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
   .band .em, .band span { position: relative; } .band span { display: grid; width: 100%; } .band .em { width: 38px; height: 38px; object-fit: contain; filter: saturate(1.2) drop-shadow(0 0 8px color-mix(in srgb, var(--c) 40%, transparent)); }
   .band :global(li.on) a::before { opacity: 1; } .band :global(li.on) .look { opacity: .38; }
 
-  /* 2. Dock: the emblems in a glass dock; the lit one magnifies and lifts, its neighbours a little, its name below. */
-  .dock-wrap { justify-items: center; margin-top: 20px; }
-  .dock { display: flex; align-items: flex-end; gap: 10px; height: 92px; margin: 0; padding: 0 16px 12px; border-radius: 28px; background: linear-gradient(rgb(255 255 255 / .08), rgb(255 255 255 / .03)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .14), inset 0 1px 0 rgb(255 255 255 / .2), 0 20px 50px -24px #000; }
-  .dock a { display: grid; place-items: center; width: 66px; height: 66px; }
-  .dock img { width: 58px; height: 58px; object-fit: contain; transform-origin: 50% 100%; filter: saturate(1.15) drop-shadow(0 6px 10px rgb(0 0 0 / .45)); transition: transform .5s cubic-bezier(.2, .9, .3, 1.2), filter .5s; }
-  .dock :global(li.on) img { transform: translateY(-14px) scale(1.4); filter: saturate(1.3) drop-shadow(0 0 14px var(--c)); } .dock li:has(+ :global(li.on)) img, .dock :global(li.on) + li img { transform: translateY(-5px) scale(1.14); }
-  .dock-cap { display: grid; margin: 14px 0 0; text-align: center; } .dock-cap span { grid-area: 1 / 1; opacity: 0; transition: opacity .4s; } .dock-cap span:global(.on) { opacity: 1; transition-delay: .2s; } .dock-cap b { font-size: 16px; }
-
-  /* 3. Line: the communities as stops on one line through their colours, a light running along it to the lit stop. */
-  .line { position: relative; grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 1180px; margin: 26px auto 0; padding: 0; }
-  .line::before { content: ""; position: absolute; left: calc(100% / 12); right: calc(100% / 12); top: 34px; height: 4px; margin-top: -2px; border-radius: 4px; background: linear-gradient(90deg, #fdba74, #34d399, #a3e635, #fb7185, #fb923c, #fbbf24); opacity: .55; }
-  .line::after { content: ""; position: absolute; top: 34px; left: calc((var(--at, 0) + .5) * 100% / 6); width: 90px; height: 10px; margin: -5px 0 0 -45px; border-radius: 10px; background: radial-gradient(closest-side, #fff, rgb(255 255 255 / 0)); transition: left 1.4s cubic-bezier(.6, 0, .3, 1); }
-  .line a { display: grid; justify-items: center; gap: 2px; color: #e8ebf2; text-align: center; padding: 0 8px; }
-  .stop { position: relative; z-index: 1; display: grid; place-items: center; width: 68px; height: 68px; margin-bottom: 12px; border-radius: 50%; background: #0b1330; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 55%, transparent); transition: box-shadow .8s var(--ease), transform .8s var(--ease); }
-  .stop img { width: 42px; height: 42px; object-fit: contain; }
-  .line :global(li.on) .stop { transform: scale(1.14); box-shadow: inset 0 0 0 2.5px var(--c), 0 0 30px -2px var(--c); }
-
-  /* 4. Bento: six rounded blocks of different sizes, each with its community's art. */
-  .bento { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: 150px 150px; gap: 10px; max-width: 1180px; margin: 22px auto 0; padding: 0; }
-  .bento li:nth-child(1) { grid-row: span 2; } .bento li:nth-child(2) { grid-column: span 2; }
-  .bento a { position: relative; display: block; height: 100%; overflow: hidden; border-radius: 18px; background: #0b1330; color: #e8ebf2; text-align: left; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: box-shadow .8s var(--ease); }
-  .bento .look { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 66% 40%; filter: brightness(.6) saturate(.85); transition: filter .9s var(--ease), scale 1.4s var(--ease); }
-  .bento a::before { content: ""; position: absolute; inset: 0; z-index: 1; background: linear-gradient(to top, rgb(7 11 26 / .9) 5%, transparent 60%); }
-  .bento span { position: absolute; inset: auto 16px 14px; z-index: 2; display: grid; }
-  .bento :global(li.on) a { box-shadow: inset 0 0 0 1.5px var(--c), 0 0 40px -12px var(--c); } .bento :global(li.on) .look { filter: brightness(1) saturate(1.05); scale: 1.04; }
-
-  /* 5. Index: the names as a list, and beside it the lit community's real site with what it holds. */
-  .index { grid-template-columns: 380px minmax(0, 1fr); max-width: 1180px; margin: 22px auto 0; overflow: hidden; border-radius: 22px; background: linear-gradient(rgb(255 255 255 / .06), rgb(255 255 255 / .02)); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); text-align: left; }
-  .index ul { margin: 0; padding: 12px; } .index a { display: grid; grid-template-columns: 30px minmax(0, 1fr) 16px; align-items: center; gap: 12px; height: 50px; padding: 0 12px; border-radius: 12px; color: #e8ebf2; transition: background .6s var(--ease); }
-  .index a img { width: 30px; height: 30px; object-fit: contain; } .index b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .index a svg { width: 16px; height: 16px; opacity: 0; transition: opacity .4s; }
-  .index :global(li.on) a { background: color-mix(in srgb, var(--c) 14%, transparent); } .index :global(li.on) svg { opacity: 1; color: var(--c); }
-  .pane { position: relative; margin: 12px 12px 12px 0; overflow: hidden; border-radius: 14px; background: #10141f; }
-  .pane figure { position: absolute; inset: 0; margin: 0; opacity: 0; transition: opacity .7s var(--ease); } .pane figure:global(.on) { opacity: 1; }
-  .pane .bar { display: grid; place-items: center; height: 28px; color: rgb(255 255 255 / .8); font: 400 12px/1 var(--mono); } .pane img { display: block; width: 100%; height: auto; }
-  .pane figcaption { position: absolute; inset: auto 0 0; padding: 40px 18px 14px; background: linear-gradient(transparent, rgb(7 11 26 / .92) 50%); color: #e8ebf2; font-size: 14px; }
-
-  @media (max-width: 1199px) { .band { grid-template-columns: repeat(3, minmax(0, 1fr)); } .band li:nth-child(4) { box-shadow: none; } .band li:nth-child(n + 4) a { border-top: 1px solid rgb(255 255 255 / .08); } .line { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 22px; } .line::before, .line::after { display: none; } .index { grid-template-columns: 300px minmax(0, 1fr); } }
-  @media (max-width: 699px) { .band { grid-template-columns: 1fr; } .band li + li { box-shadow: inset 0 1px rgb(255 255 255 / .08); } .band a { grid-template-columns: 38px minmax(0, 1fr); align-items: center; align-content: center; height: 76px; padding: 0 16px; border: 0 !important; } .dock { gap: 4px; padding: 0 10px 10px; height: 74px; } .dock a { width: 48px; height: 48px; } .dock img { width: 42px; height: 42px; } .line { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, 130px); } .bento li:nth-child(1) { grid-row: span 1; } .bento li:nth-child(2) { grid-column: span 1; } .index { grid-template-columns: 1fr; } .pane { height: 230px; margin: 0 12px 12px; } }
+  @media (max-width: 1199px) { .band { grid-template-columns: repeat(3, minmax(0, 1fr)); } .band li:nth-child(4) { box-shadow: none; } .band li:nth-child(n + 4) a { border-top: 1px solid rgb(255 255 255 / .08); } }
+  @media (max-width: 699px) { .band { grid-template-columns: 1fr; } .band li + li { box-shadow: inset 0 1px rgb(255 255 255 / .08); } .band a { grid-template-columns: 38px minmax(0, 1fr); align-items: center; align-content: center; height: 76px; padding: 0 16px; border: 0 !important; } }
 
   /* Below the laptop sizes everything steps down in fixed sizes, never with the window. */
   @media (max-width: 1399px) { .sky { padding-top: 142px; } .space { height: 478px; } } @media (max-width: 1199px) { .sky { padding-top: 136px; } .space { height: 504px; } }
