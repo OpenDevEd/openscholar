@@ -45,7 +45,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     const backG = scene.querySelector('[data-ring="back"]'), frontG = scene.querySelector('[data-ring="front"]'), grad = scene.querySelector("#spectrum");
     // A still scene shows all five clear of the planet, the first at the front.
     // The planet starts turned so that Africa faces us as the sun comes up, and turns on from there.
-    const TURN = 42.5;
+    const TURN = 48.5;
     // The satellites hold still until they swing in, and their swing ends with the first community at the front: the orbit's
     // speed, times the swing's 2.8 s, short of the first's place.
     const ORBIT_SPEED = .000095, START_PHASE = -Math.PI / 2 - ORBIT_SPEED * 2800;
