@@ -5,6 +5,8 @@ import Arrow from "./Arrow.astro";
 import Art from "./Art.astro";
 import Icon from "./Icon.astro";
 import { APP } from "../data/site.mjs";
+// The Southern plan's countries: UNCTAD's developing economies (Africa, Latin America and the Caribbean, Asia without
+// Israel, Japan and the Republic of Korea, Oceania without Australia and New Zealand), from the app's country list.
 import countries from "../data/countries.json";
 const EMAIL = "habari@openscholar.ai";
 // What people write to us about. Each topic asks for what it needs: a project where there is one, a country for the
@@ -59,7 +61,7 @@ const faq = [
         </div>
       </div>
       <ul id="org-list" class="c-pop o-pop" role="listbox" aria-label="Institutions" popover="manual"></ul>
-      <ul id="country-list" class="c-pop" role="listbox" aria-label="Countries" popover="manual">{countries.map(([code, name]) => <li role="option" id={`c-${code}`} data-code={code} aria-selected="false"><img src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`} alt="" width="18" height="13" loading="lazy" />{name}</li>)}<li class="c-none" role="presentation" hidden>No country matches</li></ul>
+      <ul id="country-list" class="c-pop" role="listbox" aria-label="Countries" popover="manual">{countries.map(([code, name]) => <li role="option" id={`c-${code}`} data-code={code} aria-selected="false"><img src={`https://flagcdn.com/w20/${code.toLowerCase()}.png`} alt="" width="18" height="13" loading="lazy" />{name}</li>)}<li class="c-none" role="presentation" hidden>No Southern country matches</li></ul>
       <div class="sent" data-sent hidden>
         <svg class="env" viewBox="0 0 220 160" fill="none" aria-hidden="true">
           <defs><linearGradient id="trail" x1="0" x2="1"><stop offset="0" stop-color="#2563eb" stop-opacity="0" /><stop offset=".35" stop-color="#22d3ee" /><stop offset=".6" stop-color="#34d399" /><stop offset=".8" stop-color="#fbbf24" /><stop offset="1" stop-color="#fb7185" /></linearGradient><linearGradient id="glass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6ea" /><stop offset="1" stop-color="#ffd3a3" /></linearGradient></defs>
