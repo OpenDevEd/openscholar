@@ -70,7 +70,8 @@
     "nextPage": "次のページ",
     "pageOf": "{total} 件中 {current} ページ",
     "currentPlan": "現在のプラン",
-    "contactSupport": "サポートに連絡",
+    "contactUs": "お問い合わせ",
+    "reportProblem": "問題を報告",
     "notAvailable": "利用不可",
     "noTitle": "タイトルなし",
     "noAbstract": "要約なし",
@@ -5563,10 +5564,10 @@
   "alpha": {
     "strip": "テスト用の公開アルファ版です。",
     "stripDetail": "内容の変更や不具合が起こる場合があります。",
-    "contactUs": "お問い合わせ",
     "plansNoticeTitle": "公開アルファ版の間は無料",
     "plansNoticeDetail": "すべての機能を利用できます。プランはその後変更されます。",
-    "emailAddress": "{email} にメール"
+    "requestSouthern": "Southern プランを申し込む",
+    "requestLibraries": "Evidence Communities を申し込む"
   },
   "similarPapers": {
     "closestOf": "{count} 件中で最も近い",

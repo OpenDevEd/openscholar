@@ -17,7 +17,7 @@ Open Development & Education इस सूचना में वर्णित
 
 # **संपर्क विवरण**
 
-ईमेल: support@openscholar.ai
+ईमेल: habari@openscholar.ai
 
 # **कौन सी जानकारी हम एकत्र करते हैं, उपयोग करते हैं और क्यों**
 

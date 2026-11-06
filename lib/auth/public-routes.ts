@@ -19,8 +19,11 @@ const PRIVATE_PATHS = [
   "/trpc/:path*",
 ] as const;
 
-/** Open pages inside a private section: a signed-out visitor's AI overview is written through /api/overviews (#1070). */
-const OPEN_INSIDE_PRIVATE = ["/settings/ai", "/api/overviews"] as const;
+/**
+ * Open pages inside a private section: a signed-out visitor's AI overview is written through /api/overviews (#1070), and
+ * the contact form on openscholar.ai sends and looks up institutions through /api/contact.
+ */
+const OPEN_INSIDE_PRIVATE = ["/settings/ai", "/api/overviews", "/api/contact", "/api/contact/institutions"] as const;
 
 function normalizePathname(pathname: string) {
   if (!pathname) return "/";

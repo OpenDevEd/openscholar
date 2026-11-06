@@ -70,7 +70,8 @@
     "nextPage": "Página siguiente",
     "pageOf": "Página {current} de {total}",
     "currentPlan": "Plan actual",
-    "contactSupport": "Contactar con soporte",
+    "contactUs": "Contáctanos",
+    "reportProblem": "Informar de un problema",
     "notAvailable": "No disponible",
     "noTitle": "Sin título",
     "noAbstract": "Sin resumen",
@@ -5564,10 +5565,10 @@
   "alpha": {
     "strip": "Alfa pública para pruebas.",
     "stripDetail": "Algunas cosas pueden cambiar o fallar.",
-    "contactUs": "Contáctanos",
     "plansNoticeTitle": "Gratis durante la alfa pública",
     "plansNoticeDetail": "Todas las funciones incluidas. Los planes cambiarán después.",
-    "emailAddress": "Escribir a {email}"
+    "requestSouthern": "Solicitar el plan Southern",
+    "requestLibraries": "Solicitar Evidence Communities"
   },
   "similarPapers": {
     "closestOf": "los más cercanos de {count}",

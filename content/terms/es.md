@@ -74,7 +74,7 @@ Estas condiciones se rigen por la legislación de Inglaterra y Gales, y sus trib
 
 # **Contacto**
 
-Correo electrónico: support@openscholar.ai
+Correo electrónico: habari@openscholar.ai
 
 # **Última actualización**
 

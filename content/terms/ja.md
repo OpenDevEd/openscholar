@@ -74,7 +74,7 @@ Openscholar の利用はいつでも終了でき、アカウントは設定か�
 
 # **お問い合わせ**
 
-メール：support@openscholar.ai
+メール：habari@openscholar.ai
 
 # **最終更新日**
 

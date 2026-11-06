@@ -60,6 +60,9 @@ describe("public route auth matrix", () => {
     walk(join(__dirname, "../app"), "");
     expect(pages.filter(isPublicPath).sort()).toEqual([
       "/",
+      // The contact form on openscholar.ai, which proves its visitors are people with Turnstile.
+      "/api/contact",
+      "/api/contact/institutions",
       // A signed-out visitor's AI overview (#1070), which checks for itself who's asking.
       "/api/overviews",
       "/authors",

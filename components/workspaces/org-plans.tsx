@@ -9,7 +9,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { Building2, Library, Users } from "@/components/icons";
 import { ContactButton } from "@/components/alpha-notices";
 import { planIcon } from "@/components/billing/plan-icon";
-import { LIBRARIES_REQUEST, SOUTHERN_REQUEST } from "@/lib/billing/contact";
+import { contactPage } from "@/lib/billing/contact";
 import { useSeatBilling } from "@/lib/feature-flags/hook";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { PlanCard } from "@/components/billing/plan-card";
@@ -58,6 +58,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
   const t = useTranslations("pricing.organizations");
   const tp = useTranslations("pricing");
   const tc = useTranslations("common");
+  const tAlpha = useTranslations("alpha");
   const { phase } = useAuthReadiness();
   const signIn = useSignInRedirect();
   const workspace = useCurrentWorkspace() ?? initial;
@@ -124,7 +125,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
                 {tc("currentPlan")}
               </Button>
             ) : (
-              <ContactButton href={SOUTHERN_REQUEST} />
+              <ContactButton href={contactPage("southern")} label={tAlpha("requestSouthern")} />
             )}
           </PlanCard>
         ) : null}
@@ -144,7 +145,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
               <Link href="/evidence-communities">{t("openLibraries")}</Link>
             </Button>
           ) : (
-            <ContactButton href={LIBRARIES_REQUEST} variant="outline" />
+            <ContactButton href={contactPage("community")} label={tAlpha("requestLibraries")} variant="outline" />
           )}
         </PlanCard>
       </div>

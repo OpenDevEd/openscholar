@@ -17,7 +17,7 @@ This privacy notice tells you what to expect us to do with your personal informa
 
 # **Contact details**
 
-Email: support@openscholar.ai
+Email: habari@openscholar.ai
 
 # **What information we collect, use, and why**
 

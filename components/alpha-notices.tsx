@@ -4,9 +4,9 @@
 // button that asks for what's given by request.
 
 import { useTranslations } from "next-intl";
-import { FlaskConical, Mail } from "@/components/icons";
+import { FlaskConical } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { CONTACT_EMAIL } from "@/lib/billing/contact";
+import { contactPage } from "@/lib/billing/contact";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,14 +15,15 @@ import { cn } from "@/lib/utils";
  */
 export function AlphaStrip() {
   const t = useTranslations("alpha");
+  const tc = useTranslations("common");
   return (
     <div className="sticky top-0 z-30 flex h-8 shrink-0 items-center justify-center gap-2 border-b border-warning/25 bg-[color-mix(in_oklab,var(--warning)_14%,var(--background))] px-4 text-xs dark:bg-[color-mix(in_oklab,var(--warning)_30%,var(--background))]">
       <FlaskConical className="size-3.5 shrink-0 ink-warning" />
       <span className="truncate">
         <span className="font-semibold">{t("strip")}</span> <span className="hidden text-muted-foreground sm:inline">{t("stripDetail")}</span>
       </span>
-      <a href={`mailto:${CONTACT_EMAIL}`} className="shrink-0 font-medium underline underline-offset-2">
-        {t("contactUs")}
+      <a href={contactPage("bug")} className="shrink-0 font-medium underline underline-offset-2">
+        {tc("reportProblem")}
       </a>
     </div>
   );
@@ -39,14 +40,11 @@ export function AlphaPlansNotice({ className }: { className?: string }) {
   );
 }
 
-/** For what's given by request: the address is on the button, so it works with no mail app set up. */
-export function ContactButton({ href, variant = "default" }: { href: string; variant?: "default" | "outline" }) {
-  const t = useTranslations("alpha");
+/** For what's given by request: opens the contact form at the request's topic. */
+export function ContactButton({ href, label, variant = "default" }: { href: string; label: string; variant?: "default" | "outline" }) {
   return (
     <Button asChild variant={variant} className="w-full">
-      <a href={href}>
-        <Mail /> {t("emailAddress", { email: CONTACT_EMAIL })}
-      </a>
+      <a href={href}>{label}</a>
     </Button>
   );
 }

@@ -70,7 +70,8 @@
     "nextPage": "Next page",
     "pageOf": "Page {current} of {total}",
     "currentPlan": "Current plan",
-    "contactSupport": "Contact support",
+    "contactUs": "Contact us",
+    "reportProblem": "Report a problem",
     "notAvailable": "Not available",
     "signInToSubscribe": "Sign in to subscribe",
     "upgradeTo": "Upgrade to {plan}",
@@ -5563,10 +5564,10 @@
   "alpha": {
     "strip": "Public alpha for testing.",
     "stripDetail": "Things may change or break.",
-    "contactUs": "Contact us",
     "plansNoticeTitle": "Free during the public alpha",
     "plansNoticeDetail": "Every feature included. Plans will change after it.",
-    "emailAddress": "Email {email}"
+    "requestSouthern": "Request the Southern plan",
+    "requestLibraries": "Request Evidence Communities"
   },
   "similarPapers": {
     "closestOf": "closest of {count}",

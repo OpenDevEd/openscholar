@@ -74,7 +74,7 @@ Estes termos regem-se pela lei de Inglaterra e do País de Gales, cujos tribunai
 
 # **Contacto**
 
-E-mail: support@openscholar.ai
+E-mail: habari@openscholar.ai
 
 # **Última atualização**
 

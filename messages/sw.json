@@ -70,7 +70,8 @@
     "nextPage": "Ukurasa unaofuata",
     "pageOf": "Ukurasa {current} wa {total}",
     "currentPlan": "Mpango wa sasa",
-    "contactSupport": "Wasiliana na usaidizi",
+    "contactUs": "Wasiliana nasi",
+    "reportProblem": "Ripoti tatizo",
     "notAvailable": "Haipatikani",
     "noTitle": "Hakuna kichwa",
     "noAbstract": "Hakuna muhtasari",
@@ -5564,10 +5565,10 @@
   "alpha": {
     "strip": "Alfa ya umma kwa majaribio.",
     "stripDetail": "Mambo yanaweza kubadilika au kuharibika.",
-    "contactUs": "Wasiliana nasi",
     "plansNoticeTitle": "Bure wakati wa alfa ya umma",
     "plansNoticeDetail": "Vipengele vyote vimejumuishwa. Mipango itabadilika baada ya hapo.",
-    "emailAddress": "Tuma barua pepe kwa {email}"
+    "requestSouthern": "Omba mpango wa Southern",
+    "requestLibraries": "Omba Evidence Communities"
   },
   "similarPapers": {
     "closestOf": "zilizo karibu zaidi kati ya {count}",

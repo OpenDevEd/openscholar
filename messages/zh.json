@@ -70,7 +70,8 @@
     "nextPage": "下一页",
     "pageOf": "第 {current} 页，共 {total} 页",
     "currentPlan": "当前计划",
-    "contactSupport": "联系支持",
+    "contactUs": "联系我们",
+    "reportProblem": "报告问题",
     "notAvailable": "不可用",
     "noTitle": "无标题",
     "noAbstract": "无摘要",
@@ -5563,10 +5564,10 @@
   "alpha": {
     "strip": "用于测试的公开 Alpha 版。",
     "stripDetail": "内容可能会变更或出现故障。",
-    "contactUs": "联系我们",
     "plansNoticeTitle": "公开 Alpha 期间免费",
     "plansNoticeDetail": "包含所有功能。之后方案会有变化。",
-    "emailAddress": "发送邮件至 {email}"
+    "requestSouthern": "申请 Southern 计划",
+    "requestLibraries": "申请 Evidence Communities"
   },
   "similarPapers": {
     "closestOf": "{count} 篇中最接近的",
