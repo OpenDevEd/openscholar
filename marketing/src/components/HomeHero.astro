@@ -104,15 +104,54 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
     // The app's images, on hand for when it's needed.
     const form = root.querySelector("[data-ask]"), appImages = () => { const at = new URL(form.action).origin + "/question-stage/"; const maps = level === 0 ? ["earth-still"] : [level <= 2 ? "earth-day-2048" : "earth-day", "earth-night", "earth-clouds", "earth-water"]; for (const n of ["sky-plate", ...maps]) new Image().src = `${at}${n}.avif`; };
     const fade = (el, delay = 0, move = 0) => { if (el) handed.push(el.animate([{ opacity: getComputedStyle(el).opacity, translate: "0 0" }, { opacity: 0, translate: `0 ${move}px` }], { duration: 340, delay, easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" })); };
-    form.addEventListener("submit", (e) => {
-      const q = form.querySelector("input").value.trim() || form.dataset.q || "";
-      if (!q || leaving || !ready || calm.matches || scrollY > 40) return;
+    // A search from anywhere on the page, with or without a phone's keyboard up, first closes the keyboard and brings the hero
+    // back to the top, so the hand-over measures and starts from the hero exactly where the app will draw it. A search from
+    // the box at the foot of the page carries its question up into the hero's box on the way.
+    let readying = false;
+    const frames = (n) => new Promise((done) => { const tick = () => (n-- > 0 ? requestAnimationFrame(tick) : done()); tick(); });
+    const vv = window.visualViewport;
+    // Safari and Chrome on Android shrink only the visual viewport for the keyboard, so the layout's height shows how much it
+    // covers. A browser that shrinks the layout too can't be read this way, so a touch device that had the box focused also
+    // gets a moment for its keyboard to go.
+    const keyboardOpen = () => !!vv && document.documentElement.clientHeight - vv.height > 80;
+    const keyboardDown = (input) => new Promise((done) => {
+      const focused = document.activeElement === input, open = focused && keyboardOpen();
+      input.blur();
+      if (!focused) return done();
+      const began = performance.now(), cap = open ? 900 : matchMedia("(pointer: coarse)").matches ? 350 : 0;
+      // Safari's offsetTop can lag the resize by a frame or two, and on some versions stays above 0 after the keyboard goes.
+      const check = () => { if ((!keyboardOpen() && (!vv || vv.offsetTop < 1)) || performance.now() - began > cap) frames(2).then(done); else requestAnimationFrame(check); };
+      requestAnimationFrame(check);
+    });
+    // The two-number form scrolls at once in every browser, as the site sets no smooth scrolling.
+    const toTop = () => new Promise((done) => {
+      const from = scrollY;
+      if (from < 1) return frames(1).then(done);
+      const ms = Math.min(900, 300 + from * .12), began = performance.now();
+      const step = (now) => {
+        const k = Math.min(1, (now - began) / ms), eased = k < .5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
+        scrollTo(0, Math.round(from * (1 - eased)));
+        if (k < 1) requestAnimationFrame(step); else frames(2).then(done);
+      };
+      requestAnimationFrame(step);
+    });
+    for (const asking of document.querySelectorAll("[data-ask]")) asking.addEventListener("submit", (e) => {
+      const input = asking.querySelector("input"), q = input.value.trim() || asking.dataset.q || "";
+      // Pinch zoom isn't kept per site, so the app couldn't match a pinched-in hero: that search goes the plain way.
+      if (!q || leaving || readying || !ready || calm.matches || (vv && vv.scale > 1.01)) return;
       e.preventDefault();
+      readying = true;
+      // The hero's box takes the question, and its typing demo (AskBar) stands down as it does when the box is clicked.
+      if (asking !== form) { const box = form.querySelector("input"); box.value = q; box.dispatchEvent(new Event("focus")); }
+      // If anything here fails, the search still goes, as a plain one.
+      keyboardDown(input).then(toTop).then(() => { readying = false; handOver(q); }).catch(() => { readying = false; asking.submit(); });
+    });
+    const handOver = (q) => {
       const top = root.getBoundingClientRect(), space = scene.getBoundingClientRect(), head = root.querySelector("h1"), input = form.querySelector("input"), words = q.match(/\S+/g), shown = words.length > 30 ? [...words.slice(0, 30), "..."] : words;
       const question = document.createElement("div"); question.className = "handq"; question.ariaHidden = "true"; question.dataset.size = q.length <= 40 ? "large" : q.length <= 90 ? "medium" : "small"; question.style.top = `${head.getBoundingClientRect().top - top.top}px`;
       question.append(...shown.map((w) => { const span = document.createElement("span"); span.textContent = w; return span; })); root.append(question);
       const qTop = Math.round(question.getBoundingClientRect().top);
-      leaving = { at: performance.now(), sent: false, send: () => `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop, (planet ? 18 + spin : Earth.stillTurn).toFixed(3), Date.now(), level].join(",")}` };
+      leaving = { at: performance.now(), sent: false, send: () => `${form.action}?question=${encodeURIComponent(q)}&hero=${[innerWidth, Math.round(top.top), Math.round(space.top), Math.round(space.height), qTop, (planet ? 18 + spin : Earth.stillTurn).toFixed(3), Date.now(), level, space.left.toFixed(1)].join(",")}` };
       tx = ty = 0; mouse = null; onSat = -1; setHold(-1); run();
       // What was typed lifts out of the box and grows into the headline, from exactly where it was.
       const first = question.firstElementChild.getBoundingClientRect(), box = input.getBoundingClientRect(), blockRect = question.getBoundingClientRect(), small = parseFloat(getComputedStyle(input).fontSize) / parseFloat(getComputedStyle(question).fontSize), inset = parseFloat(getComputedStyle(question.firstElementChild).paddingLeft);
@@ -127,9 +166,9 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
       handed.push(scene.animate([{ opacity: getComputedStyle(scene, "::before").opacity }, { opacity: 1 }], { duration: HAND_MS, pseudoElement: "::before", fill: "forwards" }));
       const cover = document.createElement("div"); cover.className = "handcover"; cover.style.top = `${top.bottom}px`; document.body.append(cover);
       handed.push({ cancel: () => { question.remove(); cover.remove(); } });
-    });
+    };
     // Back from the app, the hero is as it was.
-    addEventListener("pageshow", (e) => { if (e.persisted && leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } });
+    addEventListener("pageshow", (e) => { readying = false; if (e.persisted && leaving) { leaving = null; handed.forEach((a) => a.cancel()); handed = []; run(); } });
     // The sun comes up: the planet holds as a crescent with its cities lit, then day sweeps across it.
     const clamp01 = (v) => Math.min(1, Math.max(0, v)), LA = [-.72, .5, -.48], LB = [-.7, .62, .3];
     const draw = (now) => {

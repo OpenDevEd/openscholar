@@ -12,6 +12,17 @@
   animation: stage-give-up 0.3s linear 25s forwards;
 }
 
+/* Each site keeps its own zoom level, so the home page and this page can differ. Coming from the hero, the stage is laid out in
+   the hero's pixels and scaled by the ratio of the two (--hero-scale, set before the first paint by
+   lib/search/question-stage-script.ts), so it starts exactly the size it was on screen. */
+.stage[data-handover] {
+  inset: 0 auto auto 0;
+  width: calc(100% / var(--hero-scale, 1));
+  height: calc(100% / var(--hero-scale, 1));
+  transform: scale(var(--hero-scale, 1));
+  transform-origin: 0 0;
+}
+
 @keyframes stage-give-up {
   to {
     opacity: 0;
@@ -19,10 +30,11 @@
   }
 }
 
-/* Coming from the hero, --page is its width, so a scrollbar it had doesn't move anything here. */
+/* Coming from the hero, --page is its sky's width and --left where that sky started (half a scrollbar off the edge when the
+   scrollbar takes room), so the planet and headline land exactly where they were. */
 .scene {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 0 auto 0 var(--left, 0);
   width: var(--page, 100%);
   overflow: hidden;
   background: #091026;
@@ -234,14 +246,17 @@
 /* The question and the line under it saying what's under way. */
 .head {
   position: absolute;
-  left: 0;
+  left: var(--left, 0);
   top: var(--question-top, clamp(84px, 15vh, 146px));
   width: var(--page, 100%);
-  padding-inline: max(24px, calc((var(--page, 100vw) - 1240px) / 2));
   pointer-events: none;
+  /* The question's size follows the hero's width, which this box takes, not this window's, which differs at another zoom.
+     So the box has no padding of its own: a container query measures inside it. */
+  container-type: inline-size;
 }
 
 .question {
+  padding-inline: max(24px, calc((var(--page, 100vw) - 1240px) / 2));
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -256,19 +271,19 @@
 .question[data-size="medium"] { font-size: 30px; }
 .question[data-size="small"] { font-size: 22px; line-height: 1.2; letter-spacing: -0.02em; }
 
-@media (min-width: 600px) {
+@container (min-width: 600px) {
   .question[data-size="large"] { font-size: 56px; }
   .question[data-size="medium"] { font-size: 44px; }
   .question[data-size="small"] { font-size: 30px; }
 }
 
-@media (min-width: 1100px) {
+@container (min-width: 1100px) {
   .question[data-size="large"] { font-size: 64px; }
   .question[data-size="medium"] { font-size: 52px; }
   .question[data-size="small"] { font-size: 36px; }
 }
 
-@media (min-width: 1400px) {
+@container (min-width: 1400px) {
   .question[data-size="large"] { font-size: 72px; }
 }
 
