@@ -95,6 +95,7 @@
       "RECENT_SEARCHES": "the person's newest searches in a workspace, which their suggested searches are written from; older ones don't count"
     },
     "batches": {
+      "COMMUNITIES_STEP": "the communities a deleted account's cleanup starts deleting in one run; the account stays in the queue until the last is gone",
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",
       "BATCH": "a worker's batch; it pings itself for the next",
       "BATCH_SIZE": "a cascade's batch; it reschedules itself until nothing is left",
