@@ -189,7 +189,9 @@ export async function backfillCard(ctx: MutationCtx, library: Doc<"evidenceLibra
   if (library.state !== "active" || !library.activeRevisionId) return;
   const revision = await ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId);
   if (!revision || library.publishedAt === revision.createdAt) return;
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revision._id), liveAt: library.liveAt ?? library.createdAt, publishedAt: revision.createdAt });
+  // When it went live: its first settings' publish, which a setup puts live.
+  const first = library.liveAt === undefined ? await ctx.db.query("evidenceLibraryConfigRevisions").withIndex("by_libraryId_and_revisionNumber", (q) => q.eq("libraryId", library._id)).first() : null;
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revision._id), liveAt: library.liveAt ?? first?.createdAt ?? revision.createdAt, publishedAt: revision.createdAt });
   if (library.records === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   if (library.people === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }
