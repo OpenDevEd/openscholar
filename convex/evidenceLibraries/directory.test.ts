@@ -19,7 +19,7 @@ async function live(suffix: string) {
 const another = (fixture: Fixture, workspaceId: Id<"workspaces">, name: string, extra: { liveAt: number; records?: number; tagline?: string }) =>
   fixture.t.run((ctx) => ctx.db.insert("evidenceLibraries", {
     workspaceId, name, slug: name.toLowerCase().replaceAll(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1,
-    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: extra.tagline ? { tagline: extra.tagline } : {},
+    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, ...(extra.tagline ? { tagline: extra.tagline } : {}) },
   }));
 
 const list = (fixture: Fixture, workspaceId: Id<"workspaces">, sort: "newest" | "name" | "records", search?: string) =>
@@ -28,7 +28,7 @@ const list = (fixture: Fixture, workspaceId: Id<"workspaces">, sort: "newest" | 
 describe("the public directory", () => {
   it("keeps a community's card on its row once it goes live, and its record count once it says it", async () => {
     const { fixture, library } = await live("directory_card");
-    expect(library.card).toEqual({ accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
+    expect(library.card).toEqual({ name: "Climate Evidence", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
     expect(library.liveAt).toEqual(expect.any(Number));
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 1234 });
     expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ records: 1234, recordsAt: expect.any(Number) });
@@ -53,6 +53,11 @@ describe("the public directory", () => {
       _id: library._id, accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico", records: 50,
       address: "https://climate-evidence-lib.libraries.example.test", owner: { name: "Team directory_list", kind: "organization" },
     });
+
+    // A new name saved in its draft isn't public until it's published: the card keeps the one its site runs with.
+    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", library._id, { name: "Renamed in the draft" }));
+    expect(await names("name")).toEqual(["Agriculture Evidence", "Climate Evidence", "Water Evidence"]);
+    expect(await names("name", "renamed")).toEqual([]);
 
     // Unlisted by an owner: out of the directory, and back once public again.
     await fixture.admin.mutation(api.evidenceLibraries.assistant.setVisibility, { workspaceId, libraryId: library._id, visibility: "unlisted" });

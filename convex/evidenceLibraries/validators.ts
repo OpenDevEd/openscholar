@@ -281,8 +281,8 @@ export const evidenceLibraryFields = {
   /** The public records it last said it holds, and when (./directory.ts); the directory sorts by it. */
   records: v.optional(v.number()),
   recordsAt: v.optional(v.number()),
-  /** What its directory card shows, from the version it runs. */
-  card: v.optional(v.object({ tagline: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
+  /** What its directory card shows, from the version it runs: a draft's new name isn't public until it's published. */
+  card: v.optional(v.object({ name: v.optional(v.string()), tagline: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
 };
 
 // One custom domain of one library. `host` is unique across the platform.

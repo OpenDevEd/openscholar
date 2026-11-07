@@ -299,7 +299,7 @@ export default defineSchema({
     .index("by_workspace_and_slug", ["workspaceId", "slug"])
     // The public directory (./evidenceLibraries/directory.ts): live and not unlisted, by each of its sorts.
     .index("by_state_and_unlisted_and_liveAt", ["state", "unlisted", "liveAt"])
-    .index("by_state_and_unlisted_and_name", ["state", "unlisted", "name"])
+    .index("by_state_and_unlisted_and_cardName", ["state", "unlisted", "card.name"])
     .index("by_state_and_unlisted_and_records", ["state", "unlisted", "records"]),
 
   evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields)

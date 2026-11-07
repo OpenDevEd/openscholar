@@ -39,15 +39,16 @@ const cardValidator = v.object({
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : undefined);
 
-/** What a community's card shows, from a version of its settings: its tagline, accent colour and favicon. */
+/** What a community's card shows, from a version of its settings: its name, tagline, accent colour and favicon. */
 async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisions">) {
   const sections = new Map((await loadRevisionConfigurationSnapshot(ctx, revisionId, { requireComplete: false })).migration.snapshot.sections.map((section) => [section.sectionKey, section.payload]));
-  const identity = sections.get("identity") as { tagline?: unknown; assets?: { favicon?: unknown } } | undefined;
+  const identity = sections.get("identity") as { name?: unknown; tagline?: unknown; assets?: { favicon?: unknown } } | undefined;
   const theme = sections.get("theme") as { colors?: { accent?: unknown } } | undefined;
+  const name = text(identity?.name);
   const tagline = text(identity?.tagline);
   const accentColor = text(theme?.colors?.accent);
   const faviconUrl = text(identity?.assets?.favicon);
-  return { ...(tagline ? { tagline } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
+  return { ...(name ? { name } : {}), ...(tagline ? { tagline } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
 }
 
 /**
@@ -75,7 +76,7 @@ export const refreshAllRecords = internalMutation({
   args: { cursor: v.optional(v.union(v.string(), v.null())) },
   returns: v.null(),
   handler: async (ctx, { cursor = null }) => {
-    const page = await ctx.db.query("evidenceLibraries").withIndex("by_state_and_unlisted_and_name", (q) => q.eq("state", "active")).paginate({ cursor, numItems: REFRESH_STEP });
+    const page = await ctx.db.query("evidenceLibraries").withIndex("by_state_and_unlisted_and_liveAt", (q) => q.eq("state", "active")).paginate({ cursor, numItems: REFRESH_STEP });
     for (const [at, library] of page.page.entries()) await ctx.scheduler.runAfter(at * 1000, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
     if (!page.isDone) await ctx.scheduler.runAfter(REFRESH_STEP * 1000, internal.evidenceLibraries.directory.refreshAllRecords, { cursor: page.continueCursor });
     return null;
@@ -92,7 +93,8 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   const person = owner.person ? [owner.person.firstName, owner.person.lastName].filter(Boolean).join(" ") : null;
   return {
     _id: library._id,
-    name: library.name,
+    // The name its site runs with; a draft's new one isn't public until it's published.
+    name: library.card?.name ?? library.name,
     tagline: library.card?.tagline ?? null,
     accentColor: library.card?.accentColor ?? null,
     faviconUrl: library.card?.faviconUrl ?? null,
@@ -112,7 +114,7 @@ export const listPublicAction = defineUserQuery({
   returns: paginationResultValidator(cardValidator),
   run: async (ctx, _actor, { paginationOpts, sort, search }) => {
     const needle = search?.trim().toLowerCase();
-    const index = sort === "newest" ? "by_state_and_unlisted_and_liveAt" : sort === "name" ? "by_state_and_unlisted_and_name" : "by_state_and_unlisted_and_records";
+    const index = sort === "newest" ? "by_state_and_unlisted_and_liveAt" : sort === "name" ? "by_state_and_unlisted_and_cardName" : "by_state_and_unlisted_and_records";
     return await stream(ctx.db, schema)
       .query("evidenceLibraries")
       .withIndex(index, (q) => q.eq("state", "active").eq("unlisted", undefined))
