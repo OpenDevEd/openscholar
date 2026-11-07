@@ -17,14 +17,13 @@ import { Button } from "@/components/ui/button";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Spinner } from "@/components/ui/spinner";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
-import { RoleLabel } from "@/components/ui/identity";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { AdminAreaLink } from "./admin-area-link";
 import { LibraryImage } from "./library-image";
-import { LibraryStatusChip, type LibraryOperation } from "./library-status-chip";
+import { type LibraryOperation } from "./library-status-chip";
 import { PUBLIC_COMMUNITIES } from "./public-communities-mock";
 
 type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number];
@@ -48,7 +47,6 @@ export type Community = {
   operation?: LibraryOperation | null;
 };
 const ROLES = { owner: "Owner", editor: "Editor", creator: "Creator", viewer: "Viewer" } as const;
-const ROLE_KINDS = { Owner: "owner", Editor: "editor", Creator: "creator", Viewer: "view" } as const;
 
 const fromOverview = (library: Overview, from: Source): Community => ({
   id: library._id, name: library.name, role: ROLES[library.role], faviconUrl: library.faviconUrl, from,
@@ -108,7 +106,7 @@ export function YourCommunities({ search, personal, workspaceName, workspaceImag
       {/* As tall as the page's bar, with its bottom line, so the bar reads as running on under the sidebar. */}
       <div className="box-content flex h-16 shrink-0 items-center border-b border-sidebar-border px-3">
         <Select value={filter} onValueChange={onFilter}>
-          <SelectTrigger aria-label="Show communities from" className="w-full">
+          <SelectTrigger aria-label="Show communities from" className="w-full border-transparent bg-transparent font-medium shadow-none hover:bg-muted">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -144,11 +142,11 @@ export function YourCommunities({ search, personal, workspaceName, workspaceImag
           ) : (
             <p className="fade-enter px-2 py-3 text-xs text-muted-foreground">{empty}</p>
           )}
+          {!read.loading && pages > 1 && (
+            <PageStepper className="px-2 pt-2" page={page + 1} pageCount={pages} canPrevious={page > 0} canNext={page < pages - 1} onPrevious={() => step(page - 1)} onNext={() => step(page + 1)} />
+          )}
         </AutoHeight>
       </div>
-      {!read.loading && pages > 1 && (
-        <PageStepper className="shrink-0 border-t border-border-subtle px-3 py-2" page={page + 1} pageCount={pages} canPrevious={page > 0} canNext={page < pages - 1} onPrevious={() => step(page - 1)} onNext={() => step(page + 1)} />
-      )}
     </div>
   );
 }
@@ -192,6 +190,8 @@ function useEverything({ search, personal, organizations, organization, workspac
     }
     for (const row of rows("here")) list.push(fromOverview(row, { key: "here", kind: "organization", name: workspaceName, imageUrl: workspaceImage }));
   }
+  // MOCK: sample rows shared with you, so the list is long enough to page.
+  if (personal) list.push(...SAMPLE_SHARED.filter((row) => row.name.toLowerCase().includes(needle)));
   list.sort((a, b) => Number(Boolean(b.pending)) - Number(Boolean(a.pending)) || a.name.localeCompare(b.name));
 
   const [kept, keep] = useState<{ key: string; list: Community[] } | null>(null);
@@ -204,12 +204,19 @@ function useEverything({ search, personal, organizations, organization, workspac
   return { list: stale && kept ? kept.list : list, loading: loading && !stale, stale, answer };
 }
 
+/** MOCK: communities other people share with you, from the public samples, with a role each. */
+const SAMPLE_SHARED: Community[] = PUBLIC_COMMUNITIES.slice(0, 10).map((row, at): Community => ({
+  id: `sample-${row.id}`, name: row.name, faviconUrl: row.faviconUrl, address: row.address, status: "active", draft: false,
+  role: (["Editor", "Viewer", "Creator", "Viewer", "Editor"] as const)[at % 5],
+  from: { key: "shared", kind: "shared", name: row.owner.name },
+}));
+
 /** A community with no icon of its own shows Openscholar's, as its page's header does. */
 function Tile() {
   // The icon fades in where its place is held, as a country flag does, in place of appearing in one frame.
   const [loaded, setLoaded] = useState(false);
   return (
-    <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border-subtle bg-inset">
+    <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-inset">
       {/* eslint-disable-next-line @next/next/no-img-element -- the app's own icon */}
       <img
         ref={(image) => { if (image?.complete && image.naturalWidth > 0) setLoaded(true); }}
@@ -222,14 +229,12 @@ function Tile() {
   );
 }
 
-/** Where a row is from, beside its role, while the list shows more than one place. */
-function SourceLabel({ from }: { from: Source }) {
-  return (
-    <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-      {from.kind === "own" ? <UserRound className="size-3.5 shrink-0" /> : from.kind === "shared" ? <Share2 className="size-3.5 shrink-0" /> : <IdentityAvatar name={from.name} imageUrl={from.imageUrl ?? undefined} kind="organization" className="size-3.5 rounded-sm" />}
-      <span className="truncate">{from.name}</span>
-    </span>
-  );
+/** A row's one line under its name: your role, and while the list shows more than one place, where it's from. */
+function detail(community: Community, showSource: boolean) {
+  const role = community.role.toLowerCase();
+  if (community.pending) return `Invited as ${role} by ${community.from.name}`;
+  if (community.from.kind === "shared") return `${community.role}, shared by ${community.from.name}`;
+  return showSource && community.from.kind === "organization" ? `${community.role} in ${community.from.name}` : community.role;
 }
 
 /** One community: its name opens it, and everything else it offers is in its menu. */
@@ -238,21 +243,25 @@ function CommunityRow({ community, showSource, actions }: { community: Community
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState(false);
   const live = !community.pending && !community.draft;
+  const tStatus = useTranslations("evidenceLibraries.status");
+  // The whole row opens it: the name's link covers the row, under the buttons.
   const name = community.configuration
-    ? <Link href={community.configuration} className="truncate text-sm font-medium hover:underline">{community.name}</Link>
+    ? <Link href={community.configuration} className="truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">{community.name}</Link>
+    : live ? <a href={`https://${community.address}`} target="_blank" rel="noopener noreferrer" className="truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">{community.name}</a>
     : <span className="truncate text-sm font-medium">{community.name}</span>;
+  const status = !community.pending && community.status && community.status !== "active" ? community.status : null;
   return (
-    <li data-library-row={community.id} data-status={community.status} style={{ height: `${ROW_REM}rem` }} className="fade-enter flex items-center gap-2.5 rounded-lg px-2 hover:bg-muted">
-      {community.faviconUrl ? <LibraryImage src={community.faviconUrl} className="flex size-8 shrink-0 overflow-hidden rounded-lg border border-border-subtle bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
+    <li data-library-row={community.id} data-status={community.status} style={{ height: `${ROW_REM}rem` }} className="fade-enter group/row relative flex items-center gap-3 rounded-lg px-2 transition-colors hover:bg-muted has-[[data-state=open]]:bg-muted">
+      {community.faviconUrl ? <LibraryImage src={community.faviconUrl} className="flex size-8 shrink-0 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
       <div className="flex min-w-0 flex-1 flex-col">
         {name}
-        <div className="flex min-w-0 items-center gap-2">
-          <RoleLabel role={ROLE_KINDS[community.role]}>{community.pending ? "Invited as " + community.role.toLowerCase() : community.role}</RoleLabel>
-          {!community.pending && community.status !== "active" ? <LibraryStatusChip status={community.status ?? "active"} operation={community.operation} /> : showSource && <SourceLabel from={community.from} />}
-        </div>
+        <span className="truncate text-xs text-muted-foreground">
+          {detail(community, showSource)}
+          {status && <span className={status === "setup_failed" ? "text-destructive" : undefined}>{`, ${tStatus(status).toLowerCase()}`}</span>}
+        </span>
       </div>
       {community.pending ? (
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="relative flex shrink-0 items-center gap-1">
           <IconAction label={t("declineInvitation")} disabled={actions.answering !== null} onClick={() => actions.onDecline(community)}><X /></IconAction>
           {/* A text button: it leaves the row once the invitation is answered, and a tooltip would go with it. */}
           <Button size="sm" className="h-7 px-2.5" disabled={actions.answering !== null} onClick={() => actions.onAccept(community)}><Check />Accept</Button>
@@ -260,7 +269,7 @@ function CommunityRow({ community, showSource, actions }: { community: Community
       ) : (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="icon-sm" variant="ghost" className="shrink-0" aria-label={t("moreActionsFor", { name: community.name })}><MoreHorizontal /></Button>
+            <Button size="icon-sm" variant="ghost" className="absolute end-1.5 top-1/2 -translate-y-1/2 bg-muted opacity-0 hover:bg-inset group-hover/row:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:static [@media(hover:none)]:translate-y-0 [@media(hover:none)]:bg-transparent [@media(hover:none)]:opacity-100" aria-label={t("moreActionsFor", { name: community.name })}><MoreHorizontal /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {community.configuration && (
@@ -300,7 +309,7 @@ function IconAction({ label, disabled, onClick, children }: { label: string; dis
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button size="icon-sm" variant="outline" className="size-7" aria-label={label} disabled={disabled} onClick={onClick}>{children}</Button>
+        <Button size="icon-sm" variant="ghost" className="size-7" aria-label={label} disabled={disabled} onClick={onClick}>{children}</Button>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
