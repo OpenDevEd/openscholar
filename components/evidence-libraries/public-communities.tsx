@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils";
 import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
 
 const PER_PAGE = 6;
+/** A full page of cards, one, two or three to a row by the section's width; and with its pager under it (its top padding and buttons, and its margin). */
+const FULL_PAGE = "min-h-[calc(6*var(--card-h)+5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem)]";
+const FULL_PAGE_WITH_PAGER = "min-h-[calc(6*var(--card-h)+5rem+4.5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem+4.5rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem+4.5rem)]";
 const SORTS = ["newest", "name", "records"] as const;
 type Sort = (typeof SORTS)[number];
 type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.listPublic>["page"][number];
@@ -25,7 +28,7 @@ export function PublicCommunities({ search, workspaceId }: { search: string; wor
   const [sort, setSort] = useState<Sort>("newest");
   const read = useCursorPage(api.evidenceLibraries.directory.listPublic, workspaceId ? { workspaceId, sort, ...(search ? { search } : {}) } : "skip", PER_PAGE);
   return (
-    <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5">
+    <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "16.5rem" } as React.CSSProperties}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="public-communities" className="text-base font-semibold">{t("title")}</h2>
         <Select value={sort} onValueChange={(value) => setSort(value as Sort)}>
@@ -39,14 +42,15 @@ export function PublicCommunities({ search, workspaceId }: { search: string; wor
       </div>
       {/* The cards arrive after the page: the grid slides to their height instead of moving what's below in one frame. */}
       <AutoHeight>
-        {read.isLoading ? <ListLoading label={t("loading")} /> : read.items.length ? (
+        {/* Until the cards are read, a full page of them and its pager hold their place, so arriving cards don't push the page down. */}
+        {read.isLoading ? <div className={cn("grid place-items-center", FULL_PAGE_WITH_PAGER)}><ListLoading label={t("loading")} /></div> : read.items.length ? (
           // A full page's height while there are pages, so a short last page keeps the pager where it was.
           <ul
-            className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.hasPages && "min-h-[calc(6*var(--card-h)+5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem)]", read.isStale && "opacity-60")}
+            className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.hasPages && FULL_PAGE, read.isStale && "opacity-60")}
             inert={read.isStale || undefined}
-            style={{ "--card-h": "16.5rem" } as React.CSSProperties}
           >
-            {read.items.map((community) => <CommunityCard key={community._id} community={community} />)}
+            {/* By place on the page: another sort or page changes what each card holds, in place of moving cards about. */}
+            {read.items.map((community, at) => <CommunityCard key={at} community={community} />)}
           </ul>
         ) : (
           <ListEmpty icon={SearchX}>{search ? t("noMatches") : t("none")}</ListEmpty>
@@ -56,7 +60,8 @@ export function PublicCommunities({ search, workspaceId }: { search: string; wor
             className="mt-4"
             currentPage={read.page}
             itemLabel="communities"
-            steps={{ canPrevious: read.canPrevious, canNext: read.canNext, onPrevious: read.previous, onNext: read.next, offset: read.offset, shown: read.items.length }}
+            // While another sort or search is read, the pager keeps saying there's more, as the page it shows did.
+            steps={{ canPrevious: read.canPrevious, canNext: read.canNext || (read.isStale && read.hasPages), onPrevious: read.previous, onNext: read.next, offset: read.offset, shown: read.items.length }}
           />
         )}
       </AutoHeight>
@@ -80,12 +85,13 @@ function CommunityCard({ community }: { community: Card }) {
         className="group flex h-full flex-col overflow-hidden rounded-xl border border-border-subtle bg-background outline-offset-2 transition-[border-color,translate] duration-200 hover:-translate-y-0.5 hover:border-border focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
       >
         <div aria-hidden className="relative h-20 shrink-0 overflow-hidden" style={{ backgroundColor: accent }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- owner-hosted image, any domain */}
-          <img src={icon} alt="" className="absolute -inset-4 size-[calc(100%+2rem)] object-cover opacity-90 blur-xl saturate-150" />
+          <FadeImage src={icon} className="absolute -inset-4 size-[calc(100%+2rem)] object-cover blur-xl saturate-150" shown="opacity-90" />
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-          {/* eslint-disable-next-line @next/next/no-img-element -- owner-hosted image, any domain */}
-          <img src={icon} alt="" className="relative -mt-7 mb-2 size-14 rounded-xl bg-background object-cover ring-4 ring-background" />
+          {/* The icon's tile holds its place, and the icon fades into it. */}
+          <span className="relative -mt-7 mb-2 block size-14 overflow-hidden rounded-xl bg-background ring-4 ring-background">
+            <FadeImage src={icon} className="size-full object-cover" />
+          </span>
           <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
           {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : null}
           <div className="mt-auto flex flex-col gap-1.5 pt-3 text-xs text-muted-foreground">
@@ -103,5 +109,20 @@ function CommunityCard({ community }: { community: Card }) {
         </div>
       </a>
     </li>
+  );
+}
+
+/** An owner's picture that fades in once it has loaded, in place of appearing in one frame. */
+function FadeImage({ src, className, shown = "opacity-100" }: { src: string; className: string; shown?: string }) {
+  const [loaded, setLoaded] = useState<string | null>(null);
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- owner-hosted image, any domain
+    <img
+      ref={(image) => { if (image?.complete && image.naturalWidth > 0) setLoaded(src); }}
+      src={src}
+      alt=""
+      onLoad={() => setLoaded(src)}
+      className={cn(className, "transition-opacity duration-200 motion-reduce:transition-none", loaded === src ? shown : "opacity-0")}
+    />
   );
 }
