@@ -670,8 +670,8 @@ function Workspace({
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Mounted with the page, so it opens knowing whether the community can move. */}
-        <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} kind="community" id={libraryId} name={libraryName} from={workspaceId} />
+        {/* Its owners move it: mounted with their page, so it opens knowing whether the community can move. Someone given a role isn't in its workspace to ask. */}
+        {editable ? <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} kind="community" id={libraryId} name={libraryName} from={workspaceId} /> : null}
         <DeleteLibraryDialog
           libraryId={libraryId}
           name={libraryName}
