@@ -5427,6 +5427,8 @@
       "none": "Public communities appear here once they're live",
       "records": "{count, plural, one {{shown} record} other {{shown} records}}",
       "unnamedOwner": "An Openscholar member",
+      "recordsLabel": "{count, plural, one {record} other {records}}",
+      "peopleLabel": "{count, plural, one {person} other {people}}",
       "people": "{count, plural, one {{shown} person} other {{shown} people}}",
       "countries": "About {names}"
     },

@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { Clock, FileText, SearchX, Users } from "@/components/icons";
+import { SearchX } from "@/components/icons";
 import { THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -113,37 +113,27 @@ function CommunityCard({ community }: { community: Card }) {
           {/* MOCK: the real card falls back to the community's description when it has no tagline. */}
           {/* MOCK: one with neither says so, quieter than a description, so the space reads as empty on purpose. */}
           {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : <p className="mt-1 text-xs leading-relaxed text-subtle-foreground">No description yet</p>}
-          <div className="mt-auto flex flex-col gap-1.5 pt-4 text-xs text-muted-foreground">
-            <span className="flex min-w-0 items-center gap-1.5">
+          {/* MOCK: what it holds as a strip of figures over their labels, then who runs it and when it last changed. */}
+          <div className="mt-auto pt-3">
+            <dl className="grid grid-cols-3 gap-3 border-t border-border-subtle pt-3">
+              <Stat label={t("recordsLabel", { count: community.records ?? 0 })}>{community.records !== null ? format.number(community.records) : null}</Stat>
+              <Stat label={t("peopleLabel", { count: people ?? 0 })}>{people !== null ? format.number(people) : null}</Stat>
+              {/* Its countries when its records name any: the flags, and the one it's most about with how many more. */}
+              {countries.length ? (
+                <Stat label={`${named[0]}${named.length > 1 ? ` +${named.length - 1}` : ""}`}>
+                  <span className="flex items-center gap-1">
+                    <span className="sr-only">{t("countries", { names: named.join(", ") })}</span>
+                    {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
+                  </span>
+                </Stat>
+              ) : null}
+            </dl>
+            <div className="mt-3 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
               <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
               <span className="min-w-0 truncate">{community.owner.name ?? t("unnamedOwner")}</span>
               {/* MOCK: when it went live stands in for its last publish, which the real card keeps. */}
-              {community.liveAt !== null ? <span className="ms-auto flex shrink-0 items-center gap-1"><Clock className="size-3.5" />Updated {format.relativeTime(community.liveAt)}</span> : null}
-            </span>
-            {/* The facts wrap on a narrow card, in place of running past its edge. */}
-            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              {community.records !== null ? (
-                <span className="flex shrink-0 items-center gap-1 tabular-nums">
-                  <FileText className="size-3.5" />
-                  {t("records", { count: community.records, shown: format.number(community.records) })}
-                </span>
-              ) : null}
-              {people !== null ? (
-                <span className="flex shrink-0 items-center gap-1 tabular-nums">
-                  <Users className="size-3.5" />
-                  {t("people", { count: people, shown: format.number(people) })}
-                </span>
-              ) : null}
-            </span>
-            {/* The countries by name beside their flags: the two it's most about, and how many more. Its line is kept when it has none. */}
-            {countries.length === 0 ? <span aria-hidden className="h-4" /> : null}
-            {countries.length > 0 ? (
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span className="sr-only">{t("countries", { names: named.join(", ") })}</span>
-                <span aria-hidden className="flex shrink-0 items-center gap-1">{countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}</span>
-                <span aria-hidden className="min-w-0 truncate">{named.slice(0, 2).join(", ")}{named.length > 2 ? ` +${named.length - 2}` : ""}</span>
-              </span>
-            ) : null}
+              {community.liveAt !== null ? <span className="ms-auto shrink-0 text-subtle-foreground">{format.relativeTime(community.liveAt)}</span> : null}
+            </div>
           </div>
         </div>
       </a>
@@ -173,4 +163,15 @@ function regionName(regions: Intl.DisplayNames | null, code: string) {
   } catch {
     return code.toUpperCase();
   }
+}
+
+/** One figure of a card's strip over its label; blank while it isn't counted yet. */
+function Stat({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    // The label comes first, as a list of terms reads; the figure shows above it.
+    <div className="flex min-w-0 flex-col-reverse">
+      <dt className="truncate text-[11px] text-muted-foreground">{label}</dt>
+      <dd className="flex h-5 items-center text-sm font-semibold tabular-nums text-foreground">{children}</dd>
+    </div>
+  );
 }
