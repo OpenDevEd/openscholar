@@ -1,35 +1,41 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { FileText, SearchX, Users } from "@/components/icons";
+import { SearchX } from "@/components/icons";
+import { THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
+import { WorkspaceTile, type WorkspaceLook } from "@/components/workspaces/parts";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { AutoHeight } from "@/components/ui/auto-height";
-import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { PUBLIC_PER_PAGE } from "@/lib/evidence-libraries/directory";
+import type { Preloaded } from "convex/react";
+import { preloadedQueryResult } from "convex/nextjs";
 import { cn } from "@/lib/utils";
 import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
 
-const PER_PAGE = 6;
-/** A full page of cards, one, two or three to a row by the section's width; and with its pager under it (its top padding and buttons, and its margin). */
-const FULL_PAGE = "min-h-[calc(6*var(--card-h)+5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem)]";
+const PER_PAGE = PUBLIC_PER_PAGE;
+/** Two rows of cards and the pager under them (its top padding and buttons, and its margin): the place held while the first are read. */
 const FULL_PAGE_WITH_PAGER = "min-h-[calc(6*var(--card-h)+5rem+4.5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem+4.5rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem+4.5rem)]";
 const SORTS = ["newest", "name", "records"] as const;
 type Sort = (typeof SORTS)[number];
 type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.listPublic>["page"][number];
 
 /** Every public community, as cards, a page at a time, sorted and searched on the server (#1090). */
-export function PublicCommunities({ search, workspaceId }: { search: string; workspaceId?: Id<"workspaces"> }) {
+export function PublicCommunities({ search, workspaceId, preloaded }: { search: string; workspaceId?: Id<"workspaces">; preloaded?: Preloaded<typeof api.evidenceLibraries.directory.listPublic> }) {
   const t = useTranslations("libraryList.directory");
   const [sort, setSort] = useState<Sort>("newest");
-  const read = useCursorPage(api.evidenceLibraries.directory.listPublic, workspaceId ? { workspaceId, sort, ...(search ? { search } : {}) } : "skip", PER_PAGE);
+  const live = useCursorPage(api.evidenceLibraries.directory.listPublic, workspaceId ? { workspaceId, sort, ...(search ? { search } : {}) } : "skip", PER_PAGE);
+  // The server's first page, newest first, until the live one arrives: the cards are there from the first frame.
+  const first = preloaded && live.isLoading && sort === "newest" && !search ? preloadedQueryResult(preloaded) : undefined;
+  const read = first ? { ...live, items: first.page, isLoading: false, hasPages: !first.isDone } : live;
   return (
-    <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "16.5rem" } as React.CSSProperties}>
+    <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "17.25rem" } as React.CSSProperties}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="public-communities" className="text-base font-semibold">{t("title")}</h2>
         <Select value={sort} onValueChange={(value) => setSort(value as Sort)}>
@@ -43,15 +49,16 @@ export function PublicCommunities({ search, workspaceId }: { search: string; wor
       </div>
       {/* The cards arrive after the page: the grid slides to their height instead of moving what's below in one frame. */}
       <AutoHeight>
-        {/* Until the cards are read, a full page of them and its pager hold their place, so arriving cards don't push the page down. */}
+        {/* Until the cards are read, two rows of them and a pager hold their place; more slide the page longer below the window. */}
         {read.isLoading ? <div className={cn("grid place-items-center", FULL_PAGE_WITH_PAGER)}><ListLoading label={t("loading")} /></div> : read.items.length ? (
           // A full page's height while there are pages, so a short last page keeps the pager where it was.
+          // Another sort, search or page is a new list: its cards fade in, in place of each card's text changing where it stood.
           <ul
-            className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.hasPages && FULL_PAGE, read.isStale && "opacity-60")}
+            key={read.items.map((community) => community._id).join(",")}
+            className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && "opacity-60")}
             inert={read.isStale || undefined}
           >
-            {/* By place on the page: another sort or page changes what each card holds, in place of moving cards about. */}
-            {read.items.map((community, at) => <CommunityCard key={at} community={community} />)}
+            {read.items.map((community) => <CommunityCard key={community._id} community={community} />)}
           </ul>
         ) : (
           <ListEmpty icon={SearchX}>{search ? t("noMatches") : t("none")}</ListEmpty>
@@ -80,19 +87,23 @@ function CommunityCard({ community }: { community: Card }) {
   // A backend from before these were kept sends neither, for the minute a deploy takes to reach it.
   const countries = community.countries ?? [];
   const people = community.people ?? null;
-  // A community with no colour or icon of its own shows Openscholar's, as its site does.
-  const accent = community.accentColor ?? "var(--primary)";
+  const published = community.publishedAt ?? null;
+  // Its theme's accent, as its site shows it; one that set none has the theme every community starts with. With no icon it shows Openscholar's, as its site does.
+  const accent = community.accentColor ?? THEME_DEFAULTS.colors.accent;
   const icon = community.faviconUrl ?? "/icon.svg";
+  const named = countries.map((code) => regionName(regions, code));
   return (
-    <li className="h-(--card-h)">
+    // One height for every card, so a new sort changes what each holds without moving the rows.
+    <li className="fade-enter h-(--card-h)">
       <a
         href={community.address}
         target="_blank"
         rel="noopener noreferrer"
         className="group flex h-full flex-col overflow-hidden rounded-xl border border-border-subtle bg-background outline-offset-2 transition-[border-color,translate] duration-200 hover:-translate-y-0.5 hover:border-border focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
       >
-        <div aria-hidden className="relative h-20 shrink-0 overflow-hidden" style={{ backgroundColor: accent }}>
-          <FadeImage src={icon} className="absolute -inset-4 size-[calc(100%+2rem)] object-cover blur-xl saturate-150" shown="opacity-90" />
+        {/* Its own icon blurred across its theme's accent; without one, the accent alone. */}
+        <div aria-hidden className="relative h-20 shrink-0 overflow-hidden" style={{ background: community.faviconUrl ? accent : `linear-gradient(135deg, ${accent}, color-mix(in oklab, ${accent} 55%, var(--background)))` }}>
+          {community.faviconUrl ? <FadeImage src={icon} className="absolute -inset-4 size-[calc(100%+2rem)] object-cover blur-xl saturate-150" shown="opacity-90" /> : null}
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
           {/* The icon's tile holds its place, and the icon fades into it. */}
@@ -100,32 +111,29 @@ function CommunityCard({ community }: { community: Card }) {
             <FadeImage src={icon} className="size-full object-cover" />
           </span>
           <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
-          {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : null}
-          <div className="mt-auto flex flex-col gap-1.5 pt-3 text-xs text-muted-foreground">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
-              <span className="truncate">{community.owner.name ?? t("unnamedOwner")}</span>
-            </span>
-            {/* The facts wrap on a narrow card, in place of running past its edge. */}
-            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-              {community.records !== null ? (
-                <span className="flex shrink-0 items-center gap-1 tabular-nums">
-                  <FileText className="size-3.5" />
-                  {t("records", { count: community.records, shown: format.number(community.records) })}
-                </span>
+          {/* Its tagline, or its description; one with neither says so, quieter, so the space reads as empty on purpose. */}
+          {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : <p className="mt-1 text-xs leading-relaxed text-subtle-foreground">{t("noDescription")}</p>}
+          {/* What it holds as a strip of figures over their labels, then who runs it and when it last changed. */}
+          <div className="mt-auto pt-3">
+            <dl className="grid grid-cols-3 gap-3 border-t border-border-subtle pt-3">
+              <Stat label={t("recordsLabel", { count: community.records ?? 0 })}>{community.records !== null ? format.number(community.records) : null}</Stat>
+              <Stat label={t("peopleLabel", { count: people ?? 0 })}>{people !== null ? format.number(people) : null}</Stat>
+              {/* Its countries when its records name any: the flags, and the one it's most about with how many more. */}
+              {countries.length ? (
+                <Stat label={`${named[0]}${named.length > 1 ? ` +${named.length - 1}` : ""}`}>
+                  <span className="flex items-center gap-1">
+                    <span className="sr-only">{t("countries", { names: named.join(", ") })}</span>
+                    {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
+                  </span>
+                </Stat>
               ) : null}
-              {people !== null ? (
-                <span className="flex shrink-0 items-center gap-1 tabular-nums">
-                  <Users className="size-3.5" />
-                  {t("people", { count: people, shown: format.number(people) })}
-                </span>
-              ) : null}
-              {countries.length > 0 ? (
-                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: countries.map((code) => regionName(regions, code)).join(", ") })}>
-                  {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
-                </span>
-              ) : null}
-            </span>
+            </dl>
+            <div className="mt-3 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+              {/* The owner as the switcher draws a workspace: its logo, or the mark made for it in its colour; a person's photo. */}
+              <WorkspaceTile workspace={ownerLook(community.owner)} size="xxs" />
+              <span className="min-w-0 truncate">{community.owner.name ?? t("unnamedOwner")}</span>
+              {published !== null ? <span className="ms-auto shrink-0 text-subtle-foreground">{format.relativeTime(published)}</span> : null}
+            </div>
           </div>
         </div>
       </a>
@@ -155,4 +163,26 @@ function regionName(regions: Intl.DisplayNames | null, code: string) {
   } catch {
     return code.toUpperCase();
   }
+}
+
+/** One figure of a card's strip over its label; blank while it isn't counted yet. */
+function Stat({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    // The label comes first, as a list of terms reads; the figure shows above it.
+    <div className="flex min-w-0 flex-col-reverse">
+      <dt className="truncate text-[11px] text-muted-foreground">{label}</dt>
+      <dd className="flex h-5 items-center text-sm font-semibold tabular-nums text-foreground">{children}</dd>
+    </div>
+  );
+}
+
+/** A card's owner as the switcher's tile takes a workspace. */
+function ownerLook(owner: Card["owner"]): WorkspaceLook {
+  return {
+    kind: owner.kind === "organization" ? "organization" : "personal",
+    name: owner.name ?? "",
+    workspaceId: owner.workspaceId,
+    ...(owner.imageUrl ? { imageUrl: owner.imageUrl } : {}),
+    ...(owner.colour ? { colour: owner.colour } : {}),
+  };
 }

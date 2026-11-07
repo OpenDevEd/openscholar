@@ -5428,7 +5428,10 @@
       "records": "{count, plural, other {{shown} 条记录}}",
       "unnamedOwner": "一位 Openscholar 成员",
       "people": "{count, plural, other {{shown} 人}}",
-      "countries": "关于 {names}"
+      "countries": "关于 {names}",
+      "recordsLabel": "{count, plural, other {条记录}}",
+      "peopleLabel": "{count, plural, other {人}}",
+      "noDescription": "暂无描述"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新建文献社区",

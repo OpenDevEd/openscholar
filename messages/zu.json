@@ -5428,7 +5428,10 @@
       "records": "{count, plural, one {irekhodi elingu-{shown}} other {amarekhodi angu-{shown}}}",
       "unnamedOwner": "Ilungu le-Openscholar",
       "people": "{count, plural, one {umuntu ongu-{shown}} other {abantu abangu-{shown}}}",
-      "countries": "Mayelana ne-{names}"
+      "countries": "Mayelana ne-{names}",
+      "recordsLabel": "{count, plural, one {irekhodi} other {amarekhodi}}",
+      "peopleLabel": "{count, plural, one {umuntu} other {abantu}}",
+      "noDescription": "Akukho ncazelo okwamanje"
     },
     "evidenceLibraries": "Imiphakathi yobufakazi",
     "newLibrary": "Umphakathi omusha",

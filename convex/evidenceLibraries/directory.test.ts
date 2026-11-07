@@ -17,10 +17,10 @@ async function live(suffix: string) {
 }
 
 /** Another live community in the same workspace, with what its card would hold. */
-const another = (fixture: Fixture, workspaceId: Id<"workspaces">, name: string, extra: { liveAt: number; records?: number; tagline?: string }) =>
+const another = (fixture: Fixture, workspaceId: Id<"workspaces">, name: string, extra: { liveAt: number; records?: number; tagline?: string; description?: string }) =>
   fixture.t.run((ctx) => ctx.db.insert("evidenceLibraries", {
     workspaceId, name, slug: name.toLowerCase().replaceAll(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1,
-    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, ...(extra.tagline ? { tagline: extra.tagline } : {}) },
+    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, ...(extra.tagline ? { tagline: extra.tagline } : {}), ...(extra.description ? { description: extra.description } : {}) },
   }));
 
 const list = (fixture: Fixture, workspaceId: Id<"workspaces">, sort: "newest" | "name" | "records", search?: string) =>
@@ -31,6 +31,7 @@ describe("the public directory", () => {
     const { fixture, library } = await live("directory_card");
     expect(library.card).toEqual({ name: "Climate Evidence", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
     expect(library.liveAt).toEqual(expect.any(Number));
+    expect(library.publishedAt).toBe(library.liveAt);
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 1234 });
     expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ records: 1234, recordsAt: expect.any(Number) });
   });
@@ -59,7 +60,7 @@ describe("the public directory", () => {
     const { fixture, library, workspaceId } = await live("directory_list");
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 50 });
     await another(fixture, workspaceId, "Water Evidence", { liveAt: library.liveAt! + 1, records: 900, tagline: "Sanitation programmes" });
-    await another(fixture, workspaceId, "Agriculture Evidence", { liveAt: library.liveAt! - 1 });
+    await another(fixture, workspaceId, "Agriculture Evidence", { liveAt: library.liveAt! - 1, description: "Crop yields in smallholder farms" });
     // Not live yet: not listed.
     await fixture.t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId, name: "Draft", slug: "draft", state: "provisioning", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 }));
 
@@ -69,10 +70,12 @@ describe("the public directory", () => {
     // Most first; one not counted yet goes last.
     expect(await names("records")).toEqual(["Water Evidence", "Climate Evidence", "Agriculture Evidence"]);
     expect(await names("name", "sanitation")).toEqual(["Water Evidence"]);
+    // One with no tagline shows its description, and is found by it.
+    expect((await list(fixture, workspaceId, "name", "smallholder"))[0]).toMatchObject({ name: "Agriculture Evidence", tagline: "Crop yields in smallholder farms" });
     expect(await names("name", "team directory_list")).toHaveLength(3);
     expect((await list(fixture, workspaceId, "name", "climate"))[0]).toMatchObject({
       _id: library._id, accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico", records: 50,
-      address: "https://climate-evidence-lib.libraries.example.test", owner: { name: "Team directory_list", kind: "organization" },
+      address: "https://climate-evidence-lib.libraries.example.test", owner: { name: "Team directory_list", kind: "organization", workspaceId },
     });
 
     // A new name saved in its draft isn't public until it's published: the card keeps the one its site runs with.
@@ -95,7 +98,7 @@ describe("the public directory", () => {
     });
     await another(fixture, personal, "Solo Evidence", { liveAt: 1 });
     const solo = (await list(fixture, workspaceId, "name", "solo"))[0];
-    expect(solo.owner).toEqual({ name: null, kind: "person", imageUrl: null });
+    expect(solo.owner).toEqual({ name: null, kind: "person", imageUrl: null, workspaceId: personal, colour: null });
     expect(JSON.stringify(await list(fixture, workspaceId, "name"))).not.toContain("private@example.org");
   });
 
@@ -112,10 +115,10 @@ describe("the public directory", () => {
     expect((await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id)))?.unlisted).toBeUndefined();
   });
 
-  it("gives a community that was live before cards were kept its card and when it went live", async () => {
+  it("gives a community that was live before cards were kept its card, when it went live and when it was last published", async () => {
     const { fixture, library } = await live("directory_backfill");
-    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", library._id, { card: undefined, liveAt: undefined }));
+    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", library._id, { card: undefined, liveAt: undefined, publishedAt: undefined }));
     await fixture.t.run(async (ctx) => backfillCard(ctx, (await ctx.db.get("evidenceLibraries", library._id))!));
-    expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ card: { accentColor: "#005A9C" }, liveAt: expect.any(Number) });
+    expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ card: { accentColor: "#005A9C" }, liveAt: expect.any(Number), publishedAt: expect.any(Number) });
   });
 });

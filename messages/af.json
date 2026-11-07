@@ -5429,7 +5429,10 @@
       "records": "{count, plural, one {{shown} rekord} other {{shown} rekords}}",
       "unnamedOwner": "’n Openscholar-lid",
       "people": "{count, plural, one {{shown} persoon} other {{shown} mense}}",
-      "countries": "Oor {names}"
+      "countries": "Oor {names}",
+      "recordsLabel": "{count, plural, one {rekord} other {rekords}}",
+      "peopleLabel": "{count, plural, one {persoon} other {mense}}",
+      "noDescription": "Nog geen beskrywing nie"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nuwe gemeenskap",

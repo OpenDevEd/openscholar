@@ -5428,7 +5428,10 @@
       "records": "{count, plural, one {{shown} notice} other {{shown} notices}}",
       "unnamedOwner": "Un membre d’Openscholar",
       "people": "{count, plural, one {{shown} personne} other {{shown} personnes}}",
-      "countries": "Sur {names}"
+      "countries": "Sur {names}",
+      "recordsLabel": "{count, plural, one {notice} other {notices}}",
+      "peopleLabel": "{count, plural, one {personne} other {personnes}}",
+      "noDescription": "Pas encore de description"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Nouvelle communauté",

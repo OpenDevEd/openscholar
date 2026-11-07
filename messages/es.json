@@ -5429,7 +5429,10 @@
       "records": "{count, plural, one {{shown} registro} other {{shown} registros}}",
       "unnamedOwner": "Una persona de Openscholar",
       "people": "{count, plural, one {{shown} persona} other {{shown} personas}}",
-      "countries": "Sobre {names}"
+      "countries": "Sobre {names}",
+      "recordsLabel": "{count, plural, one {registro} other {registros}}",
+      "peopleLabel": "{count, plural, one {persona} other {personas}}",
+      "noDescription": "Aún no hay descripción"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nueva comunidad",

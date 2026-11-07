@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
 import Link from "@/components/workspace-link";
-import { useWorkspaces, type WorkspaceRow } from "@/components/workspaces/parts";
+import { useWorkspaces, WorkspaceTile, type WorkspaceRow } from "@/components/workspaces/parts";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -23,6 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { AdminAreaLink } from "./admin-area-link";
+import { LIST_FILTER } from "./list-controls";
 import { LibraryImage } from "./library-image";
 import { LibraryStatusIcon, type LibraryOperation } from "./library-status-chip";
 
@@ -30,7 +31,7 @@ type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibr
 type Invitation = FunctionReturnType<typeof api.evidenceLibraries.invitations.listInvitations>["page"][number];
 type Role = "owner" | "editor" | "creator" | "viewer";
 /** Who a community belongs to, for the badge on its icon: an organization's logo, or a person's photo. */
-type Owner = { name: string; imageUrl: string | null; kind: "person" | "organization" };
+type Owner = { name: string; imageUrl: string | null; kind: "person" | "organization"; workspaceId?: string };
 export type Community = {
   id: string;
   invitationId?: Id<"itemInvitations">;
@@ -49,7 +50,7 @@ export type Community = {
 const ROLE_KINDS = { owner: "owner", editor: "editor", creator: "creator", viewer: "view" } as const;
 
 const fromOverview = (library: Overview): Community => ({
-  id: library._id, name: library.name, role: library.role, faviconUrl: library.faviconUrl, owner: library.organization,
+  id: library._id, name: library.name, role: library.role, faviconUrl: library.faviconUrl, owner: { ...library.organization, workspaceId: library.workspaceId },
   address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation,
   deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active",
   ...(library.role === "owner" || library.status !== "deleting" ? { configuration: `/evidence-communities/${library._id}/configuration` } : {}),
@@ -76,7 +77,7 @@ export type CommunityFilter = "all" | "own" | "here" | "shared" | Id<"workspaces
  * from (#1090). In your own workspace that's yours, each organization's you're in and the ones
  * shared with you, invitations first; in an organization's, its own and the ones shared with it.
  */
-export function YourCommunities({ waiting = false, search, personal, workspaceName, workspaceImage, organization, filter, onFilter, ...actions }: Actions & {
+export function YourCommunities({ waiting = false, framed = false, search, personal, workspaceName, workspaceImage, organization, filter, onFilter, ...actions }: Actions & {
   search: string;
   personal: boolean;
   workspaceName: string;
@@ -86,6 +87,8 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
   onFilter: (filter: CommunityFilter) => void;
   /** Until the page knows the workspace, the list shows its spinner under the header. */
   waiting?: boolean;
+  /** In the page's sidebar: the list on a card of its own, beside the page's. */
+  framed?: boolean;
 }) {
   const t = useTranslations("libraryList.sidebar");
   const workspaces = useWorkspaces();
@@ -110,34 +113,42 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
     : filter === "shared" ? (personal ? t("emptyShared") : t("emptySharedHere", { name: workspaceName }))
     : filter === "own" ? t("emptyOwn")
     : t("emptyWorkspace", { name: filterName });
+  // In the sidebar the filter heads its card; on a phone it heads the list.
+  // "More workspaces" reads the next of the person's workspaces into the list, and leaves the filter as it was.
+  const filterSelect = (
+    <Select value={filter} onValueChange={(value) => (value === MORE ? workspaces.loadMore() : onFilter(value as CommunityFilter))}>
+      <SelectTrigger size="sm" aria-label={t("showFrom")} className={cn("w-full", framed ? LIST_FILTER : "border-transparent bg-transparent font-medium shadow-none hover:bg-muted")}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all"><Layers />{personal ? t("allWorkspaces") : t("allCommunities")}</SelectItem>
+        <SelectSeparator />
+        {personal ? (
+          <SelectGroup>
+            <SelectLabel>{t("workspaces")}</SelectLabel>
+            <SelectItem value="own"><UserRound />{t("yours")}</SelectItem>
+            {organizations.map((row) => <SelectItem key={row.workspaceId} value={row.workspaceId}><WorkspaceTile workspace={row} size="xxs" />{row.name}</SelectItem>)}
+            {workspaces.more ? <SelectItem value={MORE} disabled={workspaces.loading}><ChevronDown />{t("moreWorkspaces")}</SelectItem> : null}
+          </SelectGroup>
+        ) : (
+          <SelectItem value="here"><IdentityAvatar name={workspaceName} imageUrl={workspaceImage} kind="organization" className="size-4 rounded-sm" />{workspaceName}</SelectItem>
+        )}
+        <SelectSeparator />
+        <SelectItem value="shared"><Share2 />{shared}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* As tall as the page's bar, with its bottom line, so the bar reads as running on under the sidebar. */}
-      <div className="box-content flex h-16 shrink-0 items-center border-b border-sidebar-border px-3">
-        {/* "More workspaces" reads the next of the person's workspaces into the list, and leaves the filter as it was. */}
-        <Select value={filter} onValueChange={(value) => (value === MORE ? workspaces.loadMore() : onFilter(value as CommunityFilter))}>
-          <SelectTrigger aria-label={t("showFrom")} className="w-full border-transparent bg-transparent font-medium shadow-none hover:bg-muted">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all"><Layers />{personal ? t("allWorkspaces") : t("allCommunities")}</SelectItem>
-            <SelectSeparator />
-            {personal ? (
-              <SelectGroup>
-                <SelectLabel>{t("workspaces")}</SelectLabel>
-                <SelectItem value="own"><UserRound />{t("yours")}</SelectItem>
-                {organizations.map((row) => <SelectItem key={row.workspaceId} value={row.workspaceId}><IdentityAvatar name={row.name} imageUrl={row.imageUrl} kind="organization" className="size-4 rounded-sm" />{row.name}</SelectItem>)}
-                {workspaces.more ? <SelectItem value={MORE} disabled={workspaces.loading}><ChevronDown />{t("moreWorkspaces")}</SelectItem> : null}
-              </SelectGroup>
-            ) : (
-              <SelectItem value="here"><IdentityAvatar name={workspaceName} imageUrl={workspaceImage} kind="organization" className="size-4 rounded-sm" />{workspaceName}</SelectItem>
-            )}
-            <SelectSeparator />
-            <SelectItem value="shared"><Share2 />{shared}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2 scrollbar-hide">
+      {/* On a phone the filter heads the list; in the sidebar it heads the list's card. */}
+      {framed ? null : <div className="flex h-16 shrink-0 items-center border-b border-border-subtle px-3">{filterSelect}</div>}
+      {/* In the sidebar the list sits on a card like the page's own, level with it; the card takes its rows' height, up to the window's. */}
+      <div className={cn("flex min-h-0 flex-1 flex-col", framed && "py-4 ps-4 sm:py-6 sm:ps-6")}>
+      <div className={cn("relative flex min-h-0 flex-col", framed && "overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface")}>
+      {framed ? <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent" /> : null}
+      {/* The filter in the search bar's look, and its row the search row's height, so the two cards' dividers line up. */}
+      {framed ? <div className="relative shrink-0 border-b border-border-subtle p-4">{filterSelect}</div> : null}
+      <div className="relative min-h-0 flex-1 overflow-y-auto p-2 scrollbar-hide">
         {/* The list arrives after the page, and changes length with the filter: it slides to its height. */}
         <AutoHeight>
           {loading && !read.isStale ? (
@@ -157,6 +168,8 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
             <PageStepper className="px-2 pt-2" page={read.page} canPrevious={read.canPrevious} canNext={read.canNext} onPrevious={read.previous} onNext={read.next} />
           )}
         </AutoHeight>
+      </div>
+      </div>
       </div>
     </div>
   );
@@ -183,15 +196,15 @@ function Tile() {
 /** The community's icon, with who it belongs to on its corner: the organization's logo, or the person's photo. */
 function CommunityIcon({ community }: { community: Community }) {
   const { owner } = community;
+  // The person's own workspaces, with the colours their admins picked, as the switcher has them.
+  const known = new Map((useWorkspaces().list ?? []).map((row) => [row.workspaceId as string, row]));
   return (
     <div className="relative shrink-0">
       {community.faviconUrl ? <LibraryImage src={community.faviconUrl} className="flex size-8 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
-      <IdentityAvatar
-        name={owner.name}
-        imageUrl={owner.imageUrl}
-        kind={owner.kind}
-        className={cn("absolute -bottom-1 -end-1 size-4 bg-background ring-2 ring-background transition-shadow group-hover/row:ring-muted group-has-[[data-state=open]]/row:ring-muted", owner.kind === "organization" && "rounded-[0.3rem]")}
-      />
+      {/* Its owner as the switcher draws a workspace: its logo, or the mark made for it in its colour; a person's photo. */}
+      <span className="absolute -bottom-1 -end-1 flex rounded-[0.35rem] bg-background ring-2 ring-background transition-shadow group-hover/row:ring-muted group-has-[[data-state=open]]/row:ring-muted">
+        <WorkspaceTile workspace={known.get(owner.workspaceId ?? "") ?? { kind: owner.kind === "organization" ? "organization" : "personal", name: owner.name, imageUrl: owner.imageUrl ?? undefined, workspaceId: owner.workspaceId }} size="xxs" />
+      </span>
     </div>
   );
 }

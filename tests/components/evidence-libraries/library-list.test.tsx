@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   workspace: { kind: "personal", name: "Ada", workspaceId: "ws_own" } as Workspace,
   workspaces: [] as Workspace[],
 }));
-vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace, useWorkspaces: () => ({ list: [mocks.workspace, ...mocks.workspaces] }) }));
+vi.mock("@/components/workspaces/parts", async (original) => ({ ...(await original<typeof import("@/components/workspaces/parts")>()), useCurrentWorkspace: () => mocks.workspace, useWorkspaces: () => ({ list: [mocks.workspace, ...mocks.workspaces] }) }));
 vi.mock("@/lib/workspaces/href", async (original) => ({ ...(await original<typeof import("@/lib/workspaces/href")>()), useWorkspaceSlug: () => mocks.workspace.slug ?? null }));
 vi.mock("@/lib/workspaces/use-workspace-features", () => ({ useWorkspaceFeatures: () => ({ data: { evidenceLibraries: mocks.creates, authors: mocks.creates, createsCommunities: mocks.creates } }) }));
 vi.mock("next-intl", async () => {

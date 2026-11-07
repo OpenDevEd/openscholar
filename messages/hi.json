@@ -5428,7 +5428,10 @@
       "records": "{count, plural, one {{shown} रिकॉर्ड} other {{shown} रिकॉर्ड}}",
       "unnamedOwner": "Openscholar का एक सदस्य",
       "people": "{count, plural, one {{shown} व्यक्ति} other {{shown} लोग}}",
-      "countries": "{names} के बारे में"
+      "countries": "{names} के बारे में",
+      "recordsLabel": "{count, plural, one {रिकॉर्ड} other {रिकॉर्ड}}",
+      "peopleLabel": "{count, plural, one {व्यक्ति} other {लोग}}",
+      "noDescription": "अभी कोई विवरण नहीं"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "नई कम्युनिटी",

@@ -5429,7 +5429,10 @@
       "records": "{count, plural, one {rekodi {shown}} other {rekodi {shown}}}",
       "unnamedOwner": "Mwanachama wa Openscholar",
       "people": "{count, plural, one {mtu {shown}} other {watu {shown}}}",
-      "countries": "Kuhusu {names}"
+      "countries": "Kuhusu {names}",
+      "recordsLabel": "{count, plural, one {rekodi} other {rekodi}}",
+      "peopleLabel": "{count, plural, one {mtu} other {watu}}",
+      "noDescription": "Hakuna maelezo bado"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Jumuiya mpya",
