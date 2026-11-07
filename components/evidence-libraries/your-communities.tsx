@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSepa
 import { PageStepper } from "@/components/shared/page-stepper";
 import { AdminAreaLink } from "./admin-area-link";
 import { LibraryImage } from "./library-image";
-import { type LibraryOperation } from "./library-status-chip";
+import { LibraryStatusIcon, type LibraryOperation } from "./library-status-chip";
 import { PUBLIC_COMMUNITIES } from "./public-communities-mock";
 
 type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number];
@@ -141,7 +141,7 @@ export function YourCommunities({ search, personal, workspaceName, workspaceImag
               className={cn(read.stale && "opacity-60")}
               inert={read.stale || undefined}
             >
-              {shown.map((community) => <CommunityRow key={community.invitationId ?? community.id} community={community} showSource={filter === "all" || community.from.kind === "shared"} actions={read.answer(community, actions)} />)}
+              {shown.map((community) => <CommunityRow key={community.invitationId ?? community.id} community={community} actions={read.answer(community, actions)} />)}
             </ul>
           ) : (
             <p className="fade-enter px-2 py-3 text-xs text-muted-foreground">{empty}</p>
@@ -208,12 +208,27 @@ function useEverything({ search, personal, organizations, organization, workspac
   return { list: stale && kept ? kept.list : list, loading: loading && !stale, stale, answer };
 }
 
+/** MOCK: a state for some of the samples, so every one the list shows is there to see. */
+const operation = (stage: string, update: boolean) => ({ stage, runtimeUpdate: update ? {} : null }) as unknown as LibraryOperation;
+const SAMPLE_STATES: Partial<Record<number, { status?: Community["status"]; operation?: LibraryOperation }>> = {
+  1: { status: "setting_up" },
+  3: { status: "setup_failed" },
+  5: { status: "deleting" },
+  6: { operation: operation("running", true) },
+  8: { operation: operation("running", false) },
+  9: { operation: operation("queued", false) },
+};
+
 /** MOCK: communities other people share with you, from the public samples, with a role each. */
-const SAMPLE_SHARED: Community[] = PUBLIC_COMMUNITIES.slice(0, 10).map((row, at): Community => ({
-  id: `sample-${row.id}`, name: row.name, faviconUrl: row.faviconUrl, address: row.address, status: "active", draft: false,
-  role: (["Editor", "Viewer", "Creator", "Viewer", "Editor"] as const)[at % 5],
-  from: { key: "shared", kind: "shared", name: row.owner.name, avatar: row.owner.kind },
-}));
+const SAMPLE_SHARED: Community[] = PUBLIC_COMMUNITIES.slice(0, 10).map((row, at): Community => {
+  const state = SAMPLE_STATES[at] ?? {};
+  return {
+    id: `sample-${row.id}`, name: row.name, faviconUrl: row.faviconUrl, address: row.address, status: state.status ?? "active", draft: (state.status ?? "active") !== "active",
+    operation: state.operation ?? null,
+    role: (["Editor", "Viewer", "Creator", "Viewer", "Editor"] as const)[at % 5],
+    from: { key: "shared", kind: "shared", name: row.owner.name, avatar: row.owner.kind },
+  };
+});
 
 /** A community with no icon of its own shows Openscholar's, as its page's header does. */
 function Tile() {
@@ -233,38 +248,45 @@ function Tile() {
   );
 }
 
-/** Where a row is from, after its role: the organization's logo and name, your photo for yours, or the owner's for one shared with you. */
-function SourceLabel({ from }: { from: Source }) {
+/** The community's icon, with where it's from on its corner: the organization's logo, your photo, or the owner's for one shared with you. */
+function CommunityIcon({ community }: { community: Community }) {
+  const { from } = community;
   return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      <IdentityAvatar name={from.name} imageUrl={from.imageUrl} kind={from.avatar} className={cn("size-3.5", from.avatar === "organization" && "rounded-[0.2rem]")} />
-      <span className="truncate">{from.name}</span>
-    </span>
+    <div className="relative shrink-0">
+      {community.faviconUrl ? <LibraryImage src={community.faviconUrl} className="flex size-8 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
+      <IdentityAvatar
+        name={from.name}
+        imageUrl={from.imageUrl}
+        kind={from.avatar}
+        className={cn("absolute -bottom-1 -end-1 size-4 bg-background ring-2 ring-background transition-shadow group-hover/row:ring-muted group-has-[[data-state=open]]/row:ring-muted", from.avatar === "organization" && "rounded-[0.3rem]")}
+      />
+    </div>
   );
 }
 
 /** One community: its name opens it, and everything else it offers is in its menu. */
-function CommunityRow({ community, showSource, actions }: { community: Community; showSource: boolean; actions: Actions }) {
+function CommunityRow({ community, actions }: { community: Community; actions: Actions }) {
   const t = useTranslations("libraryList");
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState(false);
   const live = !community.pending && !community.draft;
-  const tStatus = useTranslations("evidenceLibraries.status");
   // The whole row opens it: the name's link covers the row, under the buttons.
   const name = community.configuration
     ? <Link href={community.configuration} className="truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">{community.name}</Link>
     : live ? <a href={`https://${community.address}`} target="_blank" rel="noopener noreferrer" className="truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">{community.name}</a>
     : <span className="truncate text-sm font-medium">{community.name}</span>;
-  const status = !community.pending && community.status && community.status !== "active" ? community.status : null;
+  // Every community but an invitation shows its state as an icon before its name, its word on hover, as the list always has.
+  const status = community.pending ? null : community.status ?? "active";
   return (
     <li data-library-row={community.id} data-status={community.status} style={{ height: `${ROW_REM}rem` }} className="fade-enter group/row relative flex items-center gap-3 rounded-lg px-2 transition-colors hover:bg-muted has-[[data-state=open]]:bg-muted">
-      {community.faviconUrl ? <LibraryImage src={community.faviconUrl} className="flex size-8 shrink-0 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
+      <CommunityIcon community={community} />
       <div className="flex min-w-0 flex-1 flex-col">
-        {name}
+        <span className="flex min-w-0 items-center gap-1.5">
+          {status && <LibraryStatusIcon status={status} operation={community.operation} className="relative z-10 [&>svg]:size-3.5" />}
+          {name}
+        </span>
         <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <RoleLabel role={ROLE_KINDS[community.role]}>{community.pending ? `Invited as ${community.role.toLowerCase()}` : community.role}</RoleLabel>
-          {status && <span className={cn("shrink-0", status === "setup_failed" && "text-destructive")}>{tStatus(status)}</span>}
-          {showSource && <SourceLabel from={community.from} />}
         </span>
       </div>
       {community.pending ? (
