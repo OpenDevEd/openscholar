@@ -26,6 +26,8 @@ export default getRequestConfig(async () => {
   return {
     locale,
     messages,
+    // One clock for the server's render and the browser's, so a relative time ("3 days ago") reads the same in both.
+    now: new Date(),
     getMessageFallback({ namespace, key }) {
       return `${namespace}.${key}`;
     },

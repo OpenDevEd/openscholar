@@ -5429,7 +5429,10 @@
       "records": "{count, plural, one {{shown} registo} other {{shown} registos}}",
       "unnamedOwner": "Um membro do Openscholar",
       "people": "{count, plural, one {{shown} pessoa} other {{shown} pessoas}}",
-      "countries": "Sobre {names}"
+      "countries": "Sobre {names}",
+      "recordsLabel": "{count, plural, one {registo} other {registos}}",
+      "peopleLabel": "{count, plural, one {pessoa} other {pessoas}}",
+      "noDescription": "Ainda sem descrição"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Nova comunidade",

@@ -5428,7 +5428,10 @@
       "records": "{count, plural, other {{shown} 件の記録}}",
       "unnamedOwner": "Openscholar のメンバー",
       "people": "{count, plural, other {{shown} 人}}",
-      "countries": "対象：{names}"
+      "countries": "対象：{names}",
+      "recordsLabel": "{count, plural, other {件の記録}}",
+      "peopleLabel": "{count, plural, other {人}}",
+      "noDescription": "説明はまだありません"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新しいコミュニティ",

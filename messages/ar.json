@@ -5429,7 +5429,10 @@
       "records": "{count, plural, one {سجل واحد} two {سجلان} few {{shown} سجلات} many {{shown} سجلًا} other {{shown} سجل}}",
       "unnamedOwner": "عضو في Openscholar",
       "people": "{count, plural, one {شخص واحد} two {شخصان} few {{shown} أشخاص} many {{shown} شخصًا} other {{shown} شخص}}",
-      "countries": "عن {names}"
+      "countries": "عن {names}",
+      "recordsLabel": "{count, plural, zero {سجل} one {سجل} two {سجلان} few {سجلات} many {سجلًا} other {سجل}}",
+      "peopleLabel": "{count, plural, zero {شخص} one {شخص} two {شخصان} few {أشخاص} many {شخصًا} other {شخص}}",
+      "noDescription": "لا يوجد وصف بعد"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "مجتمع جديد",

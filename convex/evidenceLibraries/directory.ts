@@ -19,8 +19,8 @@ import { readLibraryPeople } from "./queries";
 import { COUNTRIES_KEPT, countriesValidator } from "./validators";
 
 /** Most cards one page of the directory holds, and the rows one read passes over looking for a search's matches. */
-const PAGE_MAX = 24;
-const ROWS_READ = 300;
+const PAGE_MAX = 100;
+const ROWS_READ = 500;
 /** Communities one step of the daily count refresh asks about, a second apart so the communities aren't asked all at once. */
 const REFRESH_STEP = 50;
 
@@ -29,32 +29,43 @@ export const directorySortValidator = v.union(v.literal("newest"), v.literal("na
 const cardValidator = v.object({
   _id: v.id("evidenceLibraries"),
   name: v.string(),
+  /** Its tagline, or its description when it has none; null when it has neither. */
   tagline: v.union(v.string(), v.null()),
   accentColor: v.union(v.string(), v.null()),
   faviconUrl: v.union(v.string(), v.null()),
   address: v.string(),
   /** Who it belongs to. A person is named by their name alone: null when they have none, never their email. */
-  owner: v.object({ name: v.union(v.string(), v.null()), kind: v.union(v.literal("person"), v.literal("organization")), imageUrl: v.union(v.string(), v.null()) }),
+  owner: v.object({
+    name: v.union(v.string(), v.null()),
+    kind: v.union(v.literal("person"), v.literal("organization")),
+    imageUrl: v.union(v.string(), v.null()),
+    /** Its workspace, and the colour an organization's admins picked: the switcher's mark for one with no logo is made from them. */
+    workspaceId: v.id("workspaces"),
+    colour: v.union(v.string(), v.null()),
+  }),
   records: v.union(v.number(), v.null()),
   /** The countries most of its public records are about, most first; empty until its runtime names them. */
   countries: countriesValidator,
   /** How many people work on it: its owners and everyone given a role in it; null until counted. */
   people: v.union(v.number(), v.null()),
   liveAt: v.union(v.number(), v.null()),
+  /** When its last version went live. */
+  publishedAt: v.union(v.number(), v.null()),
 });
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : undefined);
 
-/** What a community's card shows, from a version of its settings: its name, tagline, accent colour and favicon. */
+/** What a community's card shows, from a version of its settings: its name, tagline, description, accent colour and favicon. */
 async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisions">) {
   const sections = new Map((await loadRevisionConfigurationSnapshot(ctx, revisionId, { requireComplete: false })).migration.snapshot.sections.map((section) => [section.sectionKey, section.payload]));
-  const identity = sections.get("identity") as { name?: unknown; tagline?: unknown; assets?: { favicon?: unknown } } | undefined;
+  const identity = sections.get("identity") as { name?: unknown; tagline?: unknown; description?: unknown; assets?: { favicon?: unknown } } | undefined;
   const theme = sections.get("theme") as { colors?: { accent?: unknown } } | undefined;
   const name = text(identity?.name);
   const tagline = text(identity?.tagline);
+  const description = text(identity?.description);
   const accentColor = text(theme?.colors?.accent);
   const faviconUrl = text(identity?.assets?.favicon);
-  return { ...(name ? { name } : {}), ...(tagline ? { tagline } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
+  return { ...(name ? { name } : {}), ...(tagline ? { tagline } : {}), ...(description ? { description } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
 }
 
 /**
@@ -62,7 +73,7 @@ async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisi
  * it for its record count. Called where a setup or a publish is put live.
  */
 export async function noteLive(ctx: MutationCtx, library: Doc<"evidenceLibraries">, revisionId: Id<"evidenceLibraryConfigRevisions">, now: number) {
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), ...(library.liveAt === undefined ? { liveAt: now } : {}) });
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), publishedAt: now, ...(library.liveAt === undefined ? { liveAt: now } : {}) });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }
@@ -130,15 +141,18 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     _id: library._id,
     // The name its site runs with; a draft's new one isn't public until it's published.
     name: library.card?.name ?? library.name,
-    tagline: library.card?.tagline ?? null,
+    tagline: library.card?.tagline ?? library.card?.description ?? null,
     accentColor: library.card?.accentColor ?? null,
     faviconUrl: library.card?.faviconUrl ?? null,
     address: binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "",
-    owner: owner.organization ? { name: shown.name, kind: "organization" as const, imageUrl: shown.imageUrl } : { name: person || null, kind: "person" as const, imageUrl: shown.imageUrl },
+    owner: owner.organization
+      ? { name: shown.name, kind: "organization" as const, imageUrl: shown.imageUrl, workspaceId: owner.workspace._id, colour: owner.organization.colour ?? null }
+      : { name: person || null, kind: "person" as const, imageUrl: shown.imageUrl, workspaceId: owner.workspace._id, colour: null },
     records: library.records ?? null,
     countries: library.countries ?? [],
     people: library.people ?? null,
     liveAt: library.liveAt ?? null,
+    publishedAt: library.publishedAt ?? library.liveAt ?? null,
   };
 }
 
@@ -167,10 +181,10 @@ export const listPublicForAssistant = assistantQuery(listPublicAction);
 
 /** The card and when it went live, for a community that was live before cards were kept (../migrations/communityDirectory.ts). */
 export async function backfillCard(ctx: MutationCtx, library: Doc<"evidenceLibraries">) {
-  if (library.state !== "active" || !library.activeRevisionId || library.card) return;
+  if (library.state !== "active" || !library.activeRevisionId || library.publishedAt !== undefined) return;
   const deployment = library.activeDeploymentOperationId ? await ctx.db.get("evidenceLibraryConfigOperations", library.activeDeploymentOperationId) : null;
-  const liveAt = library.liveAt ?? deployment?.receipt?.activatedAt ?? library.createdAt;
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId), liveAt });
+  const publishedAt = deployment?.receipt?.activatedAt ?? library.liveAt ?? library.createdAt;
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId), liveAt: library.liveAt ?? publishedAt, publishedAt });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }

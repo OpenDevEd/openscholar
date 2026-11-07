@@ -72,8 +72,8 @@ export function workspaceTint(workspace: WorkspaceLook) {
 }
 
 /** `row` matches a person's photo in a list row. */
-const TILE_BOX = { xs: "size-5", sm: "size-6", md: "size-8", row: "size-9", lg: "size-10", xl: "size-24" } as const;
-const TILE_CORNER = { xs: "rounded-md", sm: "rounded-md", md: "rounded-lg", row: "rounded-lg", lg: "rounded-xl", xl: "rounded-3xl" } as const;
+const TILE_BOX = { xxs: "size-4", xs: "size-5", sm: "size-6", md: "size-8", row: "size-9", lg: "size-10", xl: "size-24" } as const;
+const TILE_CORNER = { xxs: "rounded-[0.3rem]", xs: "rounded-md", sm: "rounded-md", md: "rounded-lg", row: "rounded-lg", lg: "rounded-xl", xl: "rounded-3xl" } as const;
 
 /**
  * A workspace's picture: your photo for your own, an organization's logo for one. `home` is the
