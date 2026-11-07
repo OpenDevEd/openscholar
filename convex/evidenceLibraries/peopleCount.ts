@@ -11,6 +11,14 @@ import type { MutationCtx } from "../_generated/server";
 
 const recountPeople = makeFunctionReference<"mutation", { libraryId: Id<"evidenceLibraries"> }>("evidenceLibraries/directory:recountPeople");
 const recountOrganization = makeFunctionReference<"mutation", { workspaceId: Id<"workspaces"> }>("evidenceLibraries/directory:recountOrganization");
+const recountShared = makeFunctionReference<"mutation", { organizationId: Id<"organizations"> }>("evidenceLibraries/directory:recountShared");
+
+/** An organization given a role in a community, its role changed, or taken away (#1091): all its members count, or stop counting. */
+export async function recountOnOrganizationGrant(ctx: MutationCtx, change: Change<DataModel, "libraryOrganizationGrants">) {
+  const grant = change.newDoc ?? change.oldDoc;
+  if (!grant || (change.operation === "update" && change.oldDoc.role === change.newDoc.role)) return;
+  await ctx.scheduler.runAfter(0, recountPeople, { libraryId: grant.libraryId });
+}
 
 /** A role given, changed or taken away in a community. */
 export async function recountOnGrant(ctx: MutationCtx, change: Change<DataModel, "itemAccess">) {
@@ -22,10 +30,18 @@ export async function recountOnGrant(ctx: MutationCtx, change: Change<DataModel,
 
 const isAdmin = (row: Doc<"organizationMemberships"> | null) => row?.role === "org:admin" && row.state === "active";
 
-/** Someone becoming or ceasing to be an organization's admin, who own its communities. */
+const isActive = (row: Doc<"organizationMemberships"> | null) => row?.state === "active";
+
+/**
+ * Someone becoming or ceasing to be an organization's admin, who own its communities; or joining or leaving
+ * it, which counts them in or out of the communities shared with it (#1091).
+ */
 export async function recountOnMembership(ctx: MutationCtx, change: Change<DataModel, "organizationMemberships">) {
-  if (isAdmin(change.oldDoc) === isAdmin(change.newDoc)) return;
   const organizationId = (change.newDoc ?? change.oldDoc)!.organizationId;
+  if (isActive(change.oldDoc) !== isActive(change.newDoc) && (await ctx.db.query("libraryOrganizationGrants").withIndex("by_organization_and_grantedAt", (q) => q.eq("organizationId", organizationId)).first())) {
+    await ctx.scheduler.runAfter(0, recountShared, { organizationId });
+  }
+  if (isAdmin(change.oldDoc) === isAdmin(change.newDoc)) return;
   const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
   if (workspace) await ctx.scheduler.runAfter(0, recountOrganization, { workspaceId: workspace._id });
 }

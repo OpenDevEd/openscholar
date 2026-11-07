@@ -29,10 +29,13 @@ import {
   grantedPeopleValidator,
   revisionSectionsValidator,
   teamInvitationsValidator,
+  teamOrganizationsValidator,
   teamPersonValidator,
 } from "./validators";
 import {
+  betterGrant,
   grantedRole,
+  organizationGrantsOf,
   libraryGrant,
   libraryOf,
   readActiveOrganizationMembership,
@@ -363,6 +366,20 @@ async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<
   return role && owner ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
 }
 
+/**
+ * A library shared with one of the person's organizations (#1091), with their role and who it belongs to. In
+ * their own workspace, where everything is one list (`dedupe`), one listed already is left out: one in a
+ * workspace of theirs, one given to them, or one shared with an organization of theirs listed before this one.
+ */
+async function sharedLibrary(ctx: QueryCtx, clerkUserId: string, grant: Doc<"libraryOrganizationGrants">, dedupe: { userId: Id<"users">; listed: Set<Id<"workspaces">>; before: Set<Id<"organizations">> } | null) {
+  const library = await ctx.db.get("evidenceLibraries", grant.libraryId);
+  if (!library?.workspaceId) return null;
+  if (dedupe && (dedupe.listed.has(library.workspaceId) || (await libraryGrant(ctx, library._id, dedupe.userId)) || (await organizationGrantsOf(ctx, library._id)).some((row) => dedupe.before.has(row.organizationId)))) return null;
+  const role = await readLibraryRole(ctx, library, clerkUserId);
+  const owner = role ? await libraryOwner(ctx, library) : null;
+  return role && owner ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
+}
+
 type Shown = { name: string; imageUrl: string | null; kind: "person" | "organization" };
 type From = { from: "own" | "organization" | "shared"; workspaceId: Id<"workspaces"> };
 
@@ -462,6 +479,27 @@ export const listLibraries = query({
           }]
         : []),
     ];
+    // The ones shared with organizations they're in (#1091): in their own workspace, every organization's, after the
+    // ones shared with them; on an organization's page, that one's, as what's shared with it.
+    const sharedWith = own ? (organization ? (here && (!from || from === "shared") ? [here] : []) : wants("shared") ? members : []) : [];
+    sources.push(...sharedWith.map((entry, at) => ({
+      key: `shared:${entry._id}`,
+      name: entry.name,
+      read: async (cursor: string | null, room: number): Promise<Read> => {
+        const dedupe = organization ? null : { userId: own!.userId, listed: listedIds, before: new Set(members.slice(0, at).map((earlier) => earlier._id)) };
+        const read = await stream(ctx.db, schema)
+          .query("libraryOrganizationGrants")
+          .withIndex("by_organization_and_grantedAt", (index) => index.eq("organizationId", entry._id))
+          .order("desc")
+          .map(async (grant) => sharedLibrary(ctx, identity.subject, grant, dedupe))
+          .filterWith(async (shared) => shared !== null && within(shared.library.name, shared.shown.name))
+          .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+        return {
+          page: await Promise.all(read.page.map((shared) => overviewRow(ctx, shared!.library, shared!.role, { ...shared!.shown, kind: shared!.owner.organization ? "organization" : "person" }, { from: "shared", workspaceId: shared!.library.workspaceId }))),
+          after: read.isDone ? null : read.continueCursor,
+        };
+      },
+    })));
     const stoppedAt = (at: number, after: string | null) => JSON.stringify({ source: sources[at].key, name: sources[at].name, after });
     const startFrom: { source: string; name: string; after: string | null } | null = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : null;
     const same = startFrom ? sources.findIndex((source) => source.key === startFrom.source) : 0;
@@ -866,7 +904,12 @@ const userOf = (ctx: QueryCtx, clerkUserId: string) => ctx.db.query("users").wit
  * role, and the people it grants a role to. The organization's other members aren't read: the
  * team picker searches them a page at a time (`listOrganizationPeople`).
  */
-export async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+/**
+ * Everyone with a role on a library and the role. With `organizations`, the members of the organizations it's
+ * shared with too (#1091), as its count of people and its published team name them; its team page lists those
+ * organizations as themselves.
+ */
+export async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">, { organizations = false } = {}) {
   const owner = await libraryOwner(ctx, library);
   const organization = owner?.organization;
   const person = owner?.workspace.kind === "personal" ? await ctx.db.get("users", owner.workspace.userId) : null;
@@ -883,12 +926,21 @@ export async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLib
   const ownerOf = new Map<string, Pick<Doc<"organizationMemberships">, "role">>(owners.map(m => [m.clerkUserId, m]));
   const granted = await Promise.all(assignments.map(async assignment => ({ assignment, user: await ctx.db.get("users", assignment.userId) })));
   const grantOf = new Map(granted.flatMap(({ assignment, user }) => (user ? [[user.clerkId, { assignment, user }] as const] : [])));
+  // The members of the organizations it's shared with, with the better role any of them gives.
+  const viaOrganization = new Map<string, Pick<Doc<"itemAccess">, "role">>();
+  for (const grant of organizations ? await organizationGrantsOf(ctx, library._id) : []) {
+    if (viaOrganization.size >= MAX_LIBRARY_MEMBERS || (await ctx.db.get("organizations", grant.organizationId))?.state !== "active") continue;
+    // ponytail: MAX_LIBRARY_MEMBERS members in all are read; past it, the first are counted and named.
+    const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", q => q.eq("organizationId", grant.organizationId).eq("state", "active")).take(MAX_LIBRARY_MEMBERS - viaOrganization.size);
+    for (const member of members) viaOrganization.set(member.clerkUserId, betterGrant(viaOrganization.get(member.clerkUserId) ?? null, grant)!);
+  }
   // A library in a person's own workspace is theirs.
-  const people = [...new Set([...(person ? [person.clerkId] : []), ...ownerOf.keys(), ...grantOf.keys()])];
+  const people = [...new Set([...(person ? [person.clerkId] : []), ...ownerOf.keys(), ...grantOf.keys(), ...viaOrganization.keys()])];
   return await Promise.all(people.map(async clerkUserId => {
-    // Only an owner's membership changes their role; a grant holder's role is their grant's, in the organization or not.
+    // Only an owner's membership changes their role; a grant holder's role is their grant's, or their organization's, in the owning organization or not.
     const user = grantOf.get(clerkUserId)?.user ?? (await userOf(ctx, clerkUserId));
-    return { role: libraryRoleFrom(library, owner, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment: grantOf.get(clerkUserId)?.assignment ?? null }), person: personOf(clerkUserId, user) };
+    const assignment = betterGrant(grantOf.get(clerkUserId)?.assignment ?? null, viaOrganization.get(clerkUserId) ?? null);
+    return { role: libraryRoleFrom(library, owner, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment }), person: personOf(clerkUserId, user) };
   }));
 }
 
@@ -941,6 +993,7 @@ export const libraryTeamValidator = v.object({
   editors: grantedPeopleValidator,
   creators: grantedPeopleValidator,
   invitations: teamInvitationsValidator,
+  organizations: teamOrganizationsValidator,
 });
 
 /** A library's people by role, which everyone who views it reads; its invitations are for its owners, who manage them (#653). */
@@ -952,8 +1005,13 @@ export async function readLibraryTeam(ctx: QueryCtx, args: { libraryId: Id<"evid
   const invitations = owner ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY) : [];
   // Everyone else is told names, photos and roles: an email is the owners', who manage the team.
   const shown = (role: "owner" | "editor" | "creator") => people.filter(p => p.role === role).map(p => (owner ? p.person : { ...p.person, email: "" }));
+  const organizations = await Promise.all((await organizationGrantsOf(ctx, args.libraryId)).map(async grant => {
+    const [organization, workspace] = await Promise.all([ctx.db.get("organizations", grant.organizationId), ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", grant.organizationId)).unique()]);
+    return organization?.state === "active" ? [{ organizationId: organization._id, workspaceId: workspace?._id ?? null, name: organization.name, imageUrl: organization.imageUrl ?? null, colour: organization.colour ?? null, role: grantedRole(grant) }] : [];
+  }));
   return {
-    invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery })),
+    invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery, toOrganization: i.toOrganization === true })),
+    organizations: organizations.flat().sort((a, b) => a.name.localeCompare(b.name)),
     organizationName: (await ownerName(ctx, access.owner)).name,
     owners: shown("owner"),
     editors: shown("editor"),
@@ -977,7 +1035,7 @@ export const readLibraryTeamForAssembly = internalQuery({
   handler: async (ctx, args) => {
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     if (!library) return [];
-    return (await readLibraryPeople(ctx, library)).flatMap(({ role, person }) => {
+    return (await readLibraryPeople(ctx, library, { organizations: true })).flatMap(({ role, person }) => {
       const name = publicName(person.name);
       if (!role || !name) return [];
       const photo = publicPhoto(person.imageUrl);

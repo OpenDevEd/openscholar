@@ -58,6 +58,7 @@ import {
   organizationInvitationFields,
   evidenceLibraryReaderFields,
   evidenceLibraryHandoffFields,
+  libraryOrganizationGrantFields,
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
@@ -412,6 +413,10 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_groupId", ["libraryId", "groupId"]),
 
+  // The organizations a community is shared with (#1091).
+  libraryOrganizationGrants: defineTable(libraryOrganizationGrantFields)
+    .index("by_library_and_organization", ["libraryId", "organizationId"])
+    .index("by_organization_and_grantedAt", ["organizationId", "grantedAt"]),
   evidenceLibraryCollectionSources: defineTable(evidenceLibraryCollectionSourceFields)
     .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"])
     // Whether any library follows a collection, which makes a change to it show outside the account.

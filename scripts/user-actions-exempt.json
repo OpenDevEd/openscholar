@@ -85,7 +85,8 @@
     "zotero/runtimeReadActions:listTags": "The tag filter settings' search of the library's tags. The assistant reads the library's records and their tags with evidenceLibraries/library:records.",
     "zotero/runtimeReadActions:readHomeQuestions": "The configuration page's preview of the questions the running library asks on its home page.",
     "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library.",
-    "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`."
+    "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`.",
+    "evidenceLibraries/organizationGrants:grantable": "The Team section's list of organizations its owner can share the community with straight away. The assistant reads a community's team through evidenceLibraries/assistant:team."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -244,7 +245,10 @@
     "assistant/spending:setAllowance": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
     "assistant/spending:setForNewChats": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
     "assistant/spending:setReplyLimit": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
-    "assistant/spending:setTool": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet."
+    "assistant/spending:setTool": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
+    "evidenceLibraries/organizationGrants:grant": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
+    "evidenceLibraries/organizationGrants:changeRole": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
+    "evidenceLibraries/organizationGrants:remove": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches."
   },
   "pending": {
     "evidenceLibraries/collectionSources:connectCollectionSource": "#329",

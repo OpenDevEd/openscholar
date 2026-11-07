@@ -5,7 +5,7 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
-import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_GRANTS_PER_LIBRARY, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
 import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_CITATION_REPAIRS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized, MAX_ROLLOUT_COMMUNITIES } from "../lib/listCaps";
 
@@ -1237,8 +1237,25 @@ export const teamPersonValidator = v.object({
 export const grantedPeopleValidator = capped(v.array(teamPersonValidator), MAX_LIBRARY_MEMBERS);
 /** A library's invitations waiting: inviting another past this is refused. */
 export const teamInvitationsValidator = capped(
-  v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+  v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")), toOrganization: v.boolean() })),
   MAX_PENDING_INVITATIONS_PER_LIBRARY,
+);
+
+/**
+ * A community shared with an organization (#1091): every active member of it, its admins included, has
+ * the role, and loses it on leaving the organization or once the grant goes.
+ */
+export const libraryOrganizationGrantFields = {
+  libraryId: v.id("evidenceLibraries"),
+  organizationId: v.id("organizations"),
+  role: v.union(v.literal("editor"), v.literal("creator")),
+  grantedBy: v.id("users"),
+  grantedAt: v.number(),
+};
+/** The organizations a community is shared with, as its team shows them. */
+export const teamOrganizationsValidator = capped(
+  v.array(v.object({ organizationId: v.id("organizations"), workspaceId: v.union(v.id("workspaces"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()), colour: v.union(v.string(), v.null()), role: v.union(v.literal("editor"), v.literal("creator")) })),
+  MAX_ORGANIZATION_GRANTS_PER_LIBRARY,
 );
 
 /** An address check's or reservation's answer that the name is the organization's library already, or that no address could be checked or found (./addressActions.ts). */
@@ -1257,6 +1274,8 @@ export const addressReservationValidator = v.union(
 export const pendingInvitationValidator = v.object({
   invitationId: v.id("itemInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
   role: v.union(v.literal("editor"), v.literal("creator")),
+  // For an organization the person is an admin of, which they pick on accepting (#1091).
+  toOrganization: v.boolean(),
   // Who the library belongs to: its organization, or with no ID the person whose own workspace it's in.
   organization: v.object({ id: v.union(v.id("organizations"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
 });

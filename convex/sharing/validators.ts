@@ -63,4 +63,6 @@ export const itemInvitationFields = {
   name: v.optional(v.string()),
   /** On one to a library's collection: who accepted it, so accepting again answers the same. */
   acceptedBy: v.optional(v.id("users")),
+  /** On one to a library: for an organization the invited person is an admin of, which they pick on accepting (#1091). */
+  toOrganization: v.optional(v.literal(true)),
 };

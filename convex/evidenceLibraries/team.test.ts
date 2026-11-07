@@ -83,6 +83,7 @@ describe("listTeam", () => {
     ).resolves.toEqual({
       organizationName: "Team team",
       invitations: [],
+      organizations: [],
       owners: [{ clerkUserId: "user_team", name: "Ada Lovelace", email: "ada@example.org", imageUrl: "https://images.example.org/ada.png" }],
       editors: [],
       creators: [],

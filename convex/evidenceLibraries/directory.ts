@@ -100,14 +100,14 @@ export const setRecords = internalMutation({
   },
 });
 
-/** How many people work on a community, as its card says: its owners and everyone given a role in it. Run when its team changes (./peopleCount.ts) and daily. */
+/** How many people work on a community, as its card says: its owners, everyone given a role in it, and the members of the organizations it's shared with. Run when its team changes (./peopleCount.ts) and daily. */
 export const recountPeople = internalMutation({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.null(),
   handler: async (ctx, { libraryId }) => {
     const library = await ctx.db.get("evidenceLibraries", libraryId);
     if (!library || library.state === "disabled") return null;
-    const people = (await readLibraryPeople(ctx, library)).filter((person) => person.role === "owner" || person.role === "editor" || person.role === "creator").length;
+    const people = (await readLibraryPeople(ctx, library, { organizations: true })).filter((person) => person.role === "owner" || person.role === "editor" || person.role === "creator").length;
     if (library.people !== people) await ctx.db.patch("evidenceLibraries", libraryId, { people });
     return null;
   },
@@ -121,6 +121,18 @@ export const recountOrganization = internalMutation({
     const page = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate({ cursor, numItems: REFRESH_STEP });
     for (const library of page.page) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountOrganization, { workspaceId, cursor: page.continueCursor });
+    return null;
+  },
+});
+
+/** Recounts the people of each community shared with an organization, a page at a time: someone joined it or left (#1091). */
+export const recountShared = internalMutation({
+  args: { organizationId: v.id("organizations"), cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, { organizationId, cursor = null }) => {
+    const page = await ctx.db.query("libraryOrganizationGrants").withIndex("by_organization_and_grantedAt", (q) => q.eq("organizationId", organizationId)).paginate({ cursor, numItems: REFRESH_STEP });
+    for (const grant of page.page) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: grant.libraryId });
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountShared, { organizationId, cursor: page.continueCursor });
     return null;
   },
 });
