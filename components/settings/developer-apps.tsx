@@ -371,7 +371,9 @@ function AppDialog({ app, onClose }: { app: DevApp | null; onClose: () => void }
               <KindTag kind={app.kind} />
             </DialogHeader>
             <Segmented
-              className="self-start"
+              // Settings takes a second line where both don't fit (200% text, longer languages) instead of widening the
+              // dialog. The radius is half the row's height, so one line looks as before.
+              className="self-start flex-wrap rounded-[1.25rem]"
               label={t("view")}
               value={tab}
               onChange={setTab}
