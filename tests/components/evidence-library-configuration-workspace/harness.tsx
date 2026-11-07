@@ -79,6 +79,7 @@ vi.mock("@/convex/_generated/api", () => ({
       team: { addOrganizationMember: "addOrganizationMember", changeRole: "changeRole", removeMember: "removeMember" },
       invitations: { change: "changeInvitation" },
       invitationActions: { invite: "inviteMember" },
+      organizationGrants: { grant: "grantOrganization", changeRole: "changeOrganizationRole", remove: "removeOrganization", grantable: "grantableOrganizations" },
       credentials: { listCredentials: "listCredentials" },
       credentialActions: { writeCredential: "writeCredential" },
       aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
@@ -205,7 +206,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
           ? { data: { page: harness.storedCredentials, isDone: true, continueCursor: "" }, isReady: true }
           : query === "listTeam"
             ? {
-                data: { organizationName: "Test Org", owners: [], editors: [], creators: [], invitations: [], availablePeople: [] },
+                data: { organizationName: "Test Org", owners: [], editors: [], creators: [], invitations: [], organizations: [], availablePeople: [] },
                 isReady: true,
               }
             : query === "listDomains"

@@ -5338,7 +5338,17 @@
     "removedFromLibrary": "أُزيل من هذا المجتمع.",
     "removedFromProfile": "أُزيل من هذا الملف الشخصي.",
     "addedToLibrary": "تمت إضافة {name} إلى هذا المجتمع.",
-    "addedToProfile": "تمت إضافة {name} إلى هذا الملف الشخصي."
+    "addedToProfile": "تمت إضافة {name} إلى هذا الملف الشخصي.",
+    "anOrganization": "مؤسسة",
+    "chooseAnOrganization": "اختر مؤسسة",
+    "anotherOrganization": "مؤسسة أخرى",
+    "adminEmail": "البريد الإلكتروني لمسؤولها",
+    "organizationGetsIt": "يحصل كل من في المؤسسة على هذا الدور، ويفقده عند المغادرة.",
+    "theirAdminAccepts": "يقبلها مسؤولها لمؤسسة يديرها، ويحصل كل من فيها على هذا الدور.",
+    "everyoneInIt": "كل من فيها",
+    "forTheirOrganization": "لمؤسسة يكون {email} مسؤولًا فيها",
+    "removeThisOrganization": "إزالة هذه المؤسسة؟ يحتفظ أعضاؤها فقط بالأدوار الممنوحة لهم شخصيًا.",
+    "organizationLabel": "المؤسسة"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, zero {لا يوجد ملخص في الانتظار} one {ملخص في الانتظار لمنشور واحد.} two {ملخص في الانتظار لمنشورين.} few {ملخص في الانتظار لـ # منشورات.} many {ملخص في الانتظار لـ # منشورًا.} other {ملخص في الانتظار لـ # منشور.}}",
@@ -5421,7 +5431,11 @@
       "invitedAs": "مدعو بصفة {role}",
       "accept": "قبول",
       "accepted": "تم قبول {name}.",
-      "moreWorkspaces": "مساحات عمل أخرى"
+      "moreWorkspaces": "مساحات عمل أخرى",
+      "invitedForOrganization": "مدعو بصفة {role}، لمؤسستك",
+      "acceptAsAnAdmin": "اقبلها بصفتك مسؤولًا في مؤسسة",
+      "acceptForWhich": "قبول {name} لأي مؤسسة",
+      "acceptedFor": "تم قبول {name} لـ {organization}."
     },
     "directory": {
       "title": "المجتمعات العامة",

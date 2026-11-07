@@ -5337,7 +5337,17 @@
     "removedFromLibrary": "Removed from this community.",
     "removedFromProfile": "Removed from this profile.",
     "addedToLibrary": "{name} added to this community.",
-    "addedToProfile": "{name} added to this profile."
+    "addedToProfile": "{name} added to this profile.",
+    "anOrganization": "An organization",
+    "chooseAnOrganization": "Choose an organization",
+    "anotherOrganization": "Another organization",
+    "adminEmail": "Its admin's email",
+    "organizationGetsIt": "Everyone in the organization gets this role, and loses it on leaving.",
+    "theirAdminAccepts": "Its admin accepts it for an organization they run, and everyone in it gets this role.",
+    "everyoneInIt": "Everyone in it",
+    "forTheirOrganization": "For an organization {email} is an admin of",
+    "removeThisOrganization": "Remove this organization? Its members keep only roles they were given themselves.",
+    "organizationLabel": "Organization"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Digest queued for # publication.} other {Digest queued for # publications.}}",
@@ -5420,7 +5430,11 @@
       "invitedAs": "Invited as {role}",
       "accept": "Accept",
       "accepted": "Accepted {name}.",
-      "moreWorkspaces": "More workspaces"
+      "moreWorkspaces": "More workspaces",
+      "invitedForOrganization": "Invited as {role}, for your organization",
+      "acceptAsAnAdmin": "Accept it as an admin of an organization",
+      "acceptForWhich": "Accept {name} for which organization",
+      "acceptedFor": "Accepted {name} for {organization}."
     },
     "directory": {
       "title": "Public communities",

@@ -5338,7 +5338,17 @@
     "removedFromLibrary": "Aus dieser Community entfernt.",
     "removedFromProfile": "Aus diesem Profil entfernt.",
     "addedToLibrary": "{name} zu dieser Community hinzugefügt.",
-    "addedToProfile": "{name} zu diesem Profil hinzugefügt."
+    "addedToProfile": "{name} zu diesem Profil hinzugefügt.",
+    "anOrganization": "Eine Organisation",
+    "chooseAnOrganization": "Organisation auswählen",
+    "anotherOrganization": "Andere Organisation",
+    "adminEmail": "E-Mail ihres Admins",
+    "organizationGetsIt": "Alle in der Organisation erhalten diese Rolle und verlieren sie beim Verlassen.",
+    "theirAdminAccepts": "Ihr Admin nimmt sie für eine Organisation an, die er verwaltet, und alle darin erhalten diese Rolle.",
+    "everyoneInIt": "Alle darin",
+    "forTheirOrganization": "Für eine Organisation, in der {email} Admin ist",
+    "removeThisOrganization": "Diese Organisation entfernen? Ihre Mitglieder behalten nur Rollen, die sie selbst erhalten haben.",
+    "organizationLabel": "Organisation"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Übersicht für # Publikation eingeplant.} other {Übersicht für # Publikationen eingeplant.}}",
@@ -5421,7 +5431,11 @@
       "invitedAs": "Eingeladen als {role}",
       "accept": "Annehmen",
       "accepted": "{name} angenommen.",
-      "moreWorkspaces": "Weitere Arbeitsbereiche"
+      "moreWorkspaces": "Weitere Arbeitsbereiche",
+      "invitedForOrganization": "Eingeladen als {role}, für Ihre Organisation",
+      "acceptAsAnAdmin": "Als Admin einer Organisation annehmen",
+      "acceptForWhich": "{name} für welche Organisation annehmen",
+      "acceptedFor": "{name} für {organization} angenommen."
     },
     "directory": {
       "title": "Öffentliche Communities",

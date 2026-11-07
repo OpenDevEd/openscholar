@@ -5338,7 +5338,17 @@
     "removedFromLibrary": "Uit hierdie gemeenskap verwyder.",
     "removedFromProfile": "Uit hierdie profiel verwyder.",
     "addedToLibrary": "{name} by hierdie gemeenskap gevoeg.",
-    "addedToProfile": "{name} by hierdie profiel gevoeg."
+    "addedToProfile": "{name} by hierdie profiel gevoeg.",
+    "anOrganization": "’n Organisasie",
+    "chooseAnOrganization": "Kies ’n organisasie",
+    "anotherOrganization": "’n Ander organisasie",
+    "adminEmail": "Sy admin se e-pos",
+    "organizationGetsIt": "Almal in die organisasie kry hierdie rol, en verloor dit wanneer hulle vertrek.",
+    "theirAdminAccepts": "Sy admin aanvaar dit vir ’n organisasie wat hulle bestuur, en almal daarin kry hierdie rol.",
+    "everyoneInIt": "Almal daarin",
+    "forTheirOrganization": "Vir ’n organisasie waarvan {email} ’n admin is",
+    "removeThisOrganization": "Verwyder hierdie organisasie? Sy lede behou net rolle wat hulle self gekry het.",
+    "organizationLabel": "Organisasie"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Opsomming in die ry vir # publikasie.} other {Opsomming in die ry vir # publikasies.}}",
@@ -5421,7 +5431,11 @@
       "invitedAs": "Uitgenooi as {role}",
       "accept": "Aanvaar",
       "accepted": "{name} aanvaar.",
-      "moreWorkspaces": "Meer werkruimtes"
+      "moreWorkspaces": "Meer werkruimtes",
+      "invitedForOrganization": "Uitgenooi as {role}, vir jou organisasie",
+      "acceptAsAnAdmin": "Aanvaar dit as ’n admin van ’n organisasie",
+      "acceptForWhich": "Aanvaar {name} vir watter organisasie",
+      "acceptedFor": "{name} aanvaar vir {organization}."
     },
     "directory": {
       "title": "Openbare gemeenskappe",

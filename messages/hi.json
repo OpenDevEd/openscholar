@@ -5337,7 +5337,17 @@
     "removedFromLibrary": "इस कम्युनिटी से हटाया गया।",
     "removedFromProfile": "इस प्रोफ़ाइल से हटाया गया।",
     "addedToLibrary": "{name} को इस कम्युनिटी में जोड़ा गया।",
-    "addedToProfile": "{name} को इस प्रोफ़ाइल में जोड़ा गया।"
+    "addedToProfile": "{name} को इस प्रोफ़ाइल में जोड़ा गया।",
+    "anOrganization": "एक संगठन",
+    "chooseAnOrganization": "संगठन चुनें",
+    "anotherOrganization": "दूसरा संगठन",
+    "adminEmail": "उसके एडमिन का ईमेल",
+    "organizationGetsIt": "संगठन के सभी लोगों को यह भूमिका मिलती है, और छोड़ने पर चली जाती है।",
+    "theirAdminAccepts": "उसका एडमिन इसे अपने चलाए किसी संगठन के लिए स्वीकार करता है, और उसके सभी लोगों को यह भूमिका मिलती है।",
+    "everyoneInIt": "इसके सभी लोग",
+    "forTheirOrganization": "ऐसे संगठन के लिए जिसका एडमिन {email} है",
+    "removeThisOrganization": "यह संगठन हटाएं? इसके सदस्यों के पास बस वही भूमिकाएँ रहेंगी जो उन्हें खुद दी गई थीं।",
+    "organizationLabel": "संगठन"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {# प्रकाशन के लिए डाइजेस्ट कतार में है।} other {# प्रकाशनों के लिए डाइजेस्ट कतार में है।}}",
@@ -5420,7 +5430,11 @@
       "invitedAs": "{role} के रूप में आमंत्रित",
       "accept": "स्वीकार करें",
       "accepted": "{name} स्वीकार की गई।",
-      "moreWorkspaces": "और वर्कस्पेस"
+      "moreWorkspaces": "और वर्कस्पेस",
+      "invitedForOrganization": "{role} के रूप में आमंत्रित, आपके संगठन के लिए",
+      "acceptAsAnAdmin": "किसी संगठन के एडमिन के रूप में स्वीकार करें",
+      "acceptForWhich": "{name} किस संगठन के लिए स्वीकार करें",
+      "acceptedFor": "{name} {organization} के लिए स्वीकार की गई।"
     },
     "directory": {
       "title": "सार्वजनिक कम्युनिटी",

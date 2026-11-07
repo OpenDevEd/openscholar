@@ -5337,7 +5337,17 @@
     "removedFromLibrary": "已从此文献社区中移除。",
     "removedFromProfile": "已从此个人资料中移除。",
     "addedToLibrary": "已将{name}添加到此文献社区。",
-    "addedToProfile": "已将{name}添加到此个人资料。"
+    "addedToProfile": "已将{name}添加到此个人资料。",
+    "anOrganization": "组织",
+    "chooseAnOrganization": "选择组织",
+    "anotherOrganization": "其他组织",
+    "adminEmail": "其管理员的邮箱",
+    "organizationGetsIt": "组织中的所有人都获得此角色，离开后失去。",
+    "theirAdminAccepts": "其管理员为自己管理的组织接受后，其中所有人都获得此角色。",
+    "everyoneInIt": "其中所有人",
+    "forTheirOrganization": "面向 {email} 担任管理员的组织",
+    "removeThisOrganization": "移除此组织？其成员只保留个人获得的角色。",
+    "organizationLabel": "组织"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {已为 # 篇出版物排队摘要。}}",
@@ -5420,7 +5430,11 @@
       "invitedAs": "受邀身份：{role}",
       "accept": "接受",
       "accepted": "已接受 {name}。",
-      "moreWorkspaces": "更多工作区"
+      "moreWorkspaces": "更多工作区",
+      "invitedForOrganization": "受邀身份：{role}（面向你的组织）",
+      "acceptAsAnAdmin": "请以组织管理员身份接受",
+      "acceptForWhich": "为哪个组织接受 {name}",
+      "acceptedFor": "已为 {organization} 接受 {name}。"
     },
     "directory": {
       "title": "公开社区",

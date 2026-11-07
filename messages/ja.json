@@ -5337,7 +5337,17 @@
     "removedFromLibrary": "このコミュニティから削除しました。",
     "removedFromProfile": "このプロフィールから削除しました。",
     "addedToLibrary": "{name}をこのコミュニティに追加しました。",
-    "addedToProfile": "{name}をこのプロフィールに追加しました。"
+    "addedToProfile": "{name}をこのプロフィールに追加しました。",
+    "anOrganization": "組織",
+    "chooseAnOrganization": "組織を選択",
+    "anotherOrganization": "別の組織",
+    "adminEmail": "管理者のメールアドレス",
+    "organizationGetsIt": "組織の全員がこの役割を得て、退出すると失います。",
+    "theirAdminAccepts": "管理者が自分の管理する組織として承諾し、その全員がこの役割を得ます。",
+    "everyoneInIt": "組織の全員",
+    "forTheirOrganization": "{email} が管理者を務める組織向け",
+    "removeThisOrganization": "この組織を削除しますか？メンバーには個別に付与された役割だけが残ります。",
+    "organizationLabel": "組織"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {# 件の出版物のダイジェストを待機中です。}}",
@@ -5420,7 +5430,11 @@
       "invitedAs": "{role}として招待されています",
       "accept": "承諾",
       "accepted": "{name} を承諾しました。",
-      "moreWorkspaces": "ほかのワークスペース"
+      "moreWorkspaces": "ほかのワークスペース",
+      "invitedForOrganization": "{role}として招待されています（あなたの組織向け）",
+      "acceptAsAnAdmin": "組織の管理者として承諾してください",
+      "acceptForWhich": "{name} をどの組織で承諾するか",
+      "acceptedFor": "{name} を {organization} として承諾しました。"
     },
     "directory": {
       "title": "公開コミュニティ",
