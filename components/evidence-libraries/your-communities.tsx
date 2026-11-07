@@ -23,6 +23,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { AdminAreaLink } from "./admin-area-link";
+import { LIST_FILTER } from "./list-controls";
 import { LibraryImage } from "./library-image";
 import { LibraryStatusIcon, type LibraryOperation } from "./library-status-chip";
 
@@ -116,7 +117,7 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
   // "More workspaces" reads the next of the person's workspaces into the list, and leaves the filter as it was.
   const filterSelect = (
     <Select value={filter} onValueChange={(value) => (value === MORE ? workspaces.loadMore() : onFilter(value as CommunityFilter))}>
-      <SelectTrigger aria-label={t("showFrom")} className="w-full border-transparent bg-transparent font-medium shadow-none hover:bg-muted">
+      <SelectTrigger size="sm" aria-label={t("showFrom")} className={cn("w-full", framed ? LIST_FILTER : "border-transparent bg-transparent font-medium shadow-none hover:bg-muted")}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -145,7 +146,8 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
       <div className={cn("flex min-h-0 flex-1 flex-col", framed && "py-4 ps-4 sm:py-6 sm:ps-6")}>
       <div className={cn("relative flex min-h-0 flex-col", framed && "overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface")}>
       {framed ? <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent" /> : null}
-      {framed ? <div className="relative shrink-0 border-b border-border-subtle p-2">{filterSelect}</div> : null}
+      {/* The filter in the search bar's look, and its row the search row's height, so the two cards' dividers line up. */}
+      {framed ? <div className="relative shrink-0 border-b border-border-subtle p-4">{filterSelect}</div> : null}
       <div className="relative min-h-0 flex-1 overflow-y-auto p-2 scrollbar-hide">
         {/* The list arrives after the page, and changes length with the filter: it slides to its height. */}
         <AutoHeight>
