@@ -74,11 +74,13 @@ async function renewTeardownLease(
 
 const BATCH_SIZE = 50;
 
+/** Whether this deployment takes communities apart: development only, for now. */
+export function developmentTeardownEnabled() {
+  return process.env.EL_ALLOW_DEVELOPMENT_TEARDOWN === "true" && process.env.EL_COOLIFY_ENVIRONMENT === "development";
+}
+
 function requireDevelopmentTeardownEnabled() {
-  if (
-    process.env.EL_ALLOW_DEVELOPMENT_TEARDOWN !== "true" ||
-    process.env.EL_COOLIFY_ENVIRONMENT !== "development"
-  ) {
+  if (!developmentTeardownEnabled()) {
     throw createError(
       "FORBIDDEN",
       "Development Evidence Community teardown is not enabled",
@@ -105,12 +107,27 @@ async function requestTeardown(
       "Enter the full community name to confirm deletion",
     );
   }
+  const started = await startTeardown(ctx, access.library, access.clerkUserId);
+  if ("waiting" in started) throw createError("CONFLICT", started.waiting);
+  return started;
+}
+
+/**
+ * Starts taking a community apart, or starts again one that stopped: what its owner's deletion and a deleted
+ * account's cleanup both do (../maintenance/mutations.ts). A teardown already on its way is returned as it is.
+ * Work still running on the community comes first: that returns `waiting`, saying what it waits for.
+ */
+export async function startTeardown(
+  ctx: MutationCtx,
+  library: Doc<"evidenceLibraries">,
+  requestedByClerkUserId: string,
+): Promise<{ operationId: Id<"evidenceLibraryConfigOperations">; status: "queued" | "running" } | { waiting: string }> {
   // The teardown's own operation, and running or retrying work, are found through their
   // indexes, so a long operation history isn't read (#357).
   const teardown = await ctx.db
     .query("evidenceLibraryConfigOperations")
     .withIndex("by_libraryId_and_idempotencyKey", (query) =>
-      query.eq("libraryId", args.libraryId).eq("idempotencyKey", `development-teardown:${args.libraryId}`),
+      query.eq("libraryId", library._id).eq("idempotencyKey", `development-teardown:${library._id}`),
     )
     .unique();
   // Running work, and queued work that already ran and waits to retry: a queued setup that
@@ -119,25 +136,25 @@ async function requestTeardown(
     ctx.db
       .query("evidenceLibraryConfigOperations")
       .withIndex("by_libraryId_and_status_and_updatedAt", (query) =>
-        query.eq("libraryId", args.libraryId).eq("status", "running"),
+        query.eq("libraryId", library._id).eq("status", "running"),
       )
       .take(2),
     ctx.db
       .query("evidenceLibraryConfigOperations")
       .withIndex("by_libraryId_and_status_and_attemptCount", (query) =>
-        query.eq("libraryId", args.libraryId).eq("status", "queued").gt("attemptCount", 0),
+        query.eq("libraryId", library._id).eq("status", "queued").gt("attemptCount", 0),
       )
       .first(),
     ctx.db
       .query("evidenceLibraryConfigOperations")
       .withIndex("by_libraryId_and_status_and_startedAt", (query) =>
-        query.eq("libraryId", args.libraryId).eq("status", "queued").gte("startedAt", 0),
+        query.eq("libraryId", library._id).eq("status", "queued").gte("startedAt", 0),
       )
       .first(),
   ]);
   // A domain change that is still running owns router state this teardown
   // would delete underneath it. It finishes or expires first.
-  const domains = await readEvidenceLibraryDomains(ctx, args.libraryId);
+  const domains = await readEvidenceLibraryDomains(ctx, library._id);
   const busy = domains.find(
     (domain) =>
       (domain.transition !== undefined &&
@@ -145,10 +162,7 @@ async function requestTeardown(
       domain.pendingDeployment !== undefined,
   );
   if (busy) {
-    throw createError(
-      "CONFLICT",
-      "A change to one of this community's domains is still running. Wait for it to finish, then delete the community.",
-    );
+    return { waiting: "A change to one of this community's domains is still running. Wait for it to finish, then delete the community." };
   }
   if (teardown?.status === "queued" || teardown?.status === "running") {
     return { operationId: teardown._id, status: teardown.status };
@@ -160,10 +174,7 @@ async function requestTeardown(
     (operation) => operation !== null && operation.kind !== "teardown",
   );
   if (activeOperation) {
-    throw createError(
-      "CONFLICT",
-      "Wait for the current community operation to finish before deleting it",
-    );
+    return { waiting: "Wait for the current community operation to finish before deleting it" };
   }
   const now = Date.now();
   let operationId: Id<"evidenceLibraryConfigOperations">;
@@ -172,29 +183,33 @@ async function requestTeardown(
       throw createError("CONFLICT", "This community teardown cannot be retried");
     }
     operationId = teardown._id;
+    // Started again with its retries back, as restarting it from the page does.
     await ctx.db.patch(operationId, {
       status: "queued",
       stage: "coolify",
       error: undefined,
+      attemptCount: 0,
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
       completedAt: undefined,
       updatedAt: now,
     });
   } else {
     operationId = await ctx.db.insert("evidenceLibraryConfigOperations", {
-      libraryId: args.libraryId,
+      libraryId: library._id,
       kind: "teardown",
-      idempotencyKey: `development-teardown:${args.libraryId}`,
+      idempotencyKey: `development-teardown:${library._id}`,
       status: "queued",
       stage: "coolify",
       attemptCount: 0,
-      requestedByClerkUserId: access.clerkUserId,
+      requestedByClerkUserId,
       createdAt: now,
       updatedAt: now,
     });
   }
-  await ctx.db.patch(args.libraryId, {
+  await ctx.db.patch(library._id, {
     state: "disabled",
-    updatedByClerkUserId: access.clerkUserId,
+    updatedByClerkUserId: requestedByClerkUserId,
     updatedAt: now,
   });
   // A worker whose lease ran out could still be holding a token. Moving each
@@ -210,7 +225,7 @@ async function requestTeardown(
   await ctx.scheduler.runAfter(
     0,
     internal.evidenceLibraries.teardownActions.runDevelopmentTeardown,
-    { libraryId: args.libraryId, operationId },
+    { libraryId: library._id, operationId },
   );
   return { operationId, status: "queued" as const };
 }
