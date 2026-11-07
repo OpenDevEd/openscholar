@@ -71,6 +71,7 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
+      assistant: { setVisibility: "setVisibility" },
       digests: { manual: { available: "manualDigestAvailable" }, manualActions: { send: "sendManualDigest" } },
       publicationProviders: {get: "getPublicationProviders"},
       publicationProviderActions: {verifyAndSave: "verifyPublicationProviders"},

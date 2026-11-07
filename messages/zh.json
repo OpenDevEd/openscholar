@@ -1814,7 +1814,15 @@
       "versions": "版本",
       "ai": "AI",
       "domain": "域名",
+      "listing": "目录展示",
       "publication": "出版"
+    },
+    "listing": {
+      "description": "此社区是否列入公开社区目录。无论如何，知道地址的人都可以打开它的网站。",
+      "public": "公开",
+      "publicHint": "列入公开目录，任何人都能找到。",
+      "unlisted": "不列出",
+      "unlistedHint": "不列入目录。知道地址的人仍可打开。"
     },
     "sectionState": {
       "complete": "已完成",
@@ -4204,6 +4212,18 @@
         "where": "Evidence Community",
         "ask": "创建文献社区草稿"
       },
+      "publicCommunities": {
+        "doing": "正在读取公开社区",
+        "did": "已读取公开社区",
+        "where": "Evidence Community",
+        "ask": "读取公开社区"
+      },
+      "communityVisibility": {
+        "doing": "正在更改社区是否列入目录",
+        "did": "已更改社区是否列入目录",
+        "where": "Evidence Community",
+        "ask": "更改社区是否列入目录"
+      },
       "librarySources": {
         "doing": "正在读取文献社区的来源",
         "did": "已读取文献社区的来源",
@@ -5372,6 +5392,42 @@
     "keepThisUnderCharacters": "请保持在{maxLength}个字符以内。"
   },
   "libraryList": {
+    "sidebar": {
+      "label": "你的社区",
+      "showFrom": "显示社区来源",
+      "allWorkspaces": "所有工作区",
+      "allCommunities": "所有社区",
+      "workspaces": "工作区",
+      "yours": "你的",
+      "sharedWithYou": "与你共享",
+      "sharedWith": "与 {name} 共享",
+      "loading": "正在加载社区",
+      "noMatches": "没有符合此搜索的社区。",
+      "emptyAll": "你的工作区中的社区以及与你共享的社区会显示在这里。",
+      "emptyHere": "{name} 的社区以及与其共享的社区会显示在这里。",
+      "emptyShared": "他人与你共享的社区会显示在这里。",
+      "emptySharedHere": "与 {name} 共享的社区会显示在这里。",
+      "emptyOwn": "你创建的社区会显示在这里。",
+      "emptyWorkspace": "{name} 还没有社区。",
+      "invitedAs": "受邀身份：{role}",
+      "accept": "接受",
+      "accepted": "已接受 {name}。",
+      "moreWorkspaces": "更多工作区"
+    },
+    "directory": {
+      "title": "公开社区",
+      "sortLabel": "排序公开社区",
+      "sort": {
+        "newest": "最新",
+        "name": "名称",
+        "records": "记录最多"
+      },
+      "loading": "正在加载公开社区",
+      "noMatches": "没有符合此搜索的公开社区",
+      "none": "公开社区上线后会显示在这里",
+      "records": "{count, plural, other {{shown} 条记录}}",
+      "unnamedOwner": "一位 Openscholar 成员"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新建文献社区",
     "libraryView": "文献社区视图",

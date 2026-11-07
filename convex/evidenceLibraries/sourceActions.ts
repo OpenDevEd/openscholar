@@ -448,3 +448,23 @@ export const flushWrites = internalAction({
     return null;
   },
 });
+
+/**
+ * Asks a running community how many public records it holds, and keeps the answer for the directory
+ * (./directory.ts). One that isn't running, or doesn't answer, keeps its last count until the next ask.
+ */
+export const refreshRecords = internalAction({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId }) => {
+    const target = await runningTarget(ctx, libraryId).catch(() => null);
+    if (!target) return null;
+    try {
+      const { records } = await readLibraryOverview(fetch, target, LIST_TIMEOUT_MS);
+      await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records });
+    } catch (error) {
+      console.warn("[community directory] the record count couldn't be read", { libraryId, reason: error instanceof Error ? error.message : String(error) });
+    }
+    return null;
+  },
+});

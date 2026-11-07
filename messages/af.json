@@ -1815,7 +1815,15 @@
       "versions": "Weergawes",
       "ai": "KI",
       "domain": "Domein",
+      "listing": "Lys",
       "publication": "Publikasie"
+    },
+    "listing": {
+      "description": "Of hierdie gemeenskap in die openbare gids van gemeenskappe gelys word. Die webwerf bly in elk geval oop vir enigiemand met die adres.",
+      "public": "Openbaar",
+      "publicHint": "In die openbare gids gelys, waar enigiemand dit kan vind.",
+      "unlisted": "Ongelys",
+      "unlistedHint": "Uit die gids gelaat. Enigiemand met die adres kan dit steeds oopmaak."
     },
     "sectionState": {
       "complete": "Voltooi",
@@ -4205,6 +4213,18 @@
         "where": "Evidence Communities",
         "ask": "Begin ’n gemeenskapskonsep"
       },
+      "publicCommunities": {
+        "doing": "Lees die openbare gemeenskappe",
+        "did": "Het die openbare gemeenskappe gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees die openbare gemeenskappe"
+      },
+      "communityVisibility": {
+        "doing": "Verander of ’n gemeenskap gelys word",
+        "did": "Het verander of ’n gemeenskap gelys word",
+        "where": "Evidence Communities",
+        "ask": "Verander of ’n gemeenskap gelys word"
+      },
       "librarySources": {
         "doing": "Lees ’n gemeenskap se bronne",
         "did": "Het ’n gemeenskap se bronne gelees",
@@ -5373,6 +5393,42 @@
     "keepThisUnderCharacters": "Hou dit onder {maxLength} karakters."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Jou gemeenskappe",
+      "showFrom": "Wys gemeenskappe van",
+      "allWorkspaces": "Alle werkruimtes",
+      "allCommunities": "Alle gemeenskappe",
+      "workspaces": "Werkruimtes",
+      "yours": "Joune",
+      "sharedWithYou": "Met jou gedeel",
+      "sharedWith": "Met {name} gedeel",
+      "loading": "Laai gemeenskappe",
+      "noMatches": "Niks hiervan pas by hierdie soektog nie.",
+      "emptyAll": "Gemeenskappe in jou werkruimtes, en dié wat met jou gedeel is, verskyn hier.",
+      "emptyHere": "Gemeenskappe wat {name} besit, en dié wat daarmee gedeel is, verskyn hier.",
+      "emptyShared": "Gemeenskappe wat mense met jou deel, verskyn hier.",
+      "emptySharedHere": "Gemeenskappe wat met {name} gedeel is, verskyn hier.",
+      "emptyOwn": "Gemeenskappe wat jy skep, verskyn hier.",
+      "emptyWorkspace": "{name} het nog geen gemeenskappe nie.",
+      "invitedAs": "Uitgenooi as {role}",
+      "accept": "Aanvaar",
+      "accepted": "{name} aanvaar.",
+      "moreWorkspaces": "Meer werkruimtes"
+    },
+    "directory": {
+      "title": "Openbare gemeenskappe",
+      "sortLabel": "Sorteer openbare gemeenskappe",
+      "sort": {
+        "newest": "Nuutste",
+        "name": "Naam",
+        "records": "Meeste rekords"
+      },
+      "loading": "Laai openbare gemeenskappe",
+      "noMatches": "Geen openbare gemeenskappe pas by hierdie soektog nie",
+      "none": "Openbare gemeenskappe verskyn hier sodra hulle regstreeks is",
+      "records": "{count, plural, one {{shown} rekord} other {{shown} rekords}}",
+      "unnamedOwner": "’n Openscholar-lid"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nuwe gemeenskap",
     "libraryView": "Gemeenskapsaansig",

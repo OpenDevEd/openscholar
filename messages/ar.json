@@ -1815,7 +1815,15 @@
       "versions": "الإصدارات",
       "ai": "الذكاء الاصطناعي",
       "domain": "النطاق",
+      "listing": "الظهور في الدليل",
       "publication": "النشر"
+    },
+    "listing": {
+      "description": "هل يظهر هذا المجتمع في الدليل العام للمجتمعات. يبقى موقعه مفتوحًا لكل من لديه عنوانه في الحالتين.",
+      "public": "عام",
+      "publicHint": "يظهر في الدليل العام حيث يمكن لأي شخص العثور عليه.",
+      "unlisted": "غير مدرج",
+      "unlistedHint": "لا يظهر في الدليل. يستطيع أي شخص لديه عنوانه فتحه."
     },
     "sectionState": {
       "complete": "مكتمل",
@@ -4205,6 +4213,18 @@
         "where": "Evidence Communities",
         "ask": "بدء مسودة مجتمع"
       },
+      "publicCommunities": {
+        "doing": "قراءة المجتمعات العامة",
+        "did": "تمت قراءة المجتمعات العامة",
+        "where": "Evidence Communities",
+        "ask": "اقرأ المجتمعات العامة"
+      },
+      "communityVisibility": {
+        "doing": "تغيير ظهور المجتمع في الدليل",
+        "did": "تم تغيير ظهور المجتمع في الدليل",
+        "where": "Evidence Communities",
+        "ask": "غيّر ظهور المجتمع في الدليل"
+      },
       "librarySources": {
         "doing": "قراءة مصادر مجتمع",
         "did": "قرأ مصادر مجتمع",
@@ -5373,6 +5393,42 @@
     "keepThisUnderCharacters": "اجعله أقل من {maxLength} حرف."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "مجتمعاتك",
+      "showFrom": "عرض المجتمعات من",
+      "allWorkspaces": "كل مساحات العمل",
+      "allCommunities": "كل المجتمعات",
+      "workspaces": "مساحات العمل",
+      "yours": "الخاصة بك",
+      "sharedWithYou": "مشتركة معك",
+      "sharedWith": "مشتركة مع {name}",
+      "loading": "جارٍ تحميل المجتمعات",
+      "noMatches": "لا شيء من هذه يطابق البحث.",
+      "emptyAll": "تظهر هنا المجتمعات في مساحات عملك، والمجتمعات المشتركة معك.",
+      "emptyHere": "تظهر هنا المجتمعات التي تملكها {name}، والمجتمعات المشتركة معها.",
+      "emptyShared": "تظهر هنا المجتمعات التي يشاركها الآخرون معك.",
+      "emptySharedHere": "تظهر هنا المجتمعات المشتركة مع {name}.",
+      "emptyOwn": "تظهر هنا المجتمعات التي تنشئها.",
+      "emptyWorkspace": "لا توجد مجتمعات لدى {name} بعد.",
+      "invitedAs": "مدعو بصفة {role}",
+      "accept": "قبول",
+      "accepted": "تم قبول {name}.",
+      "moreWorkspaces": "مساحات عمل أخرى"
+    },
+    "directory": {
+      "title": "المجتمعات العامة",
+      "sortLabel": "ترتيب المجتمعات العامة",
+      "sort": {
+        "newest": "الأحدث",
+        "name": "الاسم",
+        "records": "الأكثر سجلات"
+      },
+      "loading": "جارٍ تحميل المجتمعات العامة",
+      "noMatches": "لا توجد مجتمعات عامة تطابق هذا البحث",
+      "none": "تظهر المجتمعات العامة هنا عند إطلاقها",
+      "records": "{count, plural, one {سجل واحد} two {سجلان} few {{shown} سجلات} many {{shown} سجلًا} other {{shown} سجل}}",
+      "unnamedOwner": "عضو في Openscholar"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "مجتمع جديد",
     "libraryView": "عرض المجتمع",

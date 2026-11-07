@@ -1814,7 +1814,15 @@
       "versions": "バージョン",
       "ai": "AI",
       "domain": "ドメイン",
+      "listing": "掲載",
       "publication": "出版"
+    },
+    "listing": {
+      "description": "このコミュニティを公開コミュニティの一覧に掲載するかどうかです。どちらの場合も、アドレスを知っている人はサイトを開けます。",
+      "public": "公開",
+      "publicHint": "公開一覧に掲載され、誰でも見つけられます。",
+      "unlisted": "非掲載",
+      "unlistedHint": "一覧には載りません。アドレスを知っている人は引き続き開けます。"
     },
     "sectionState": {
       "complete": "完了",
@@ -4204,6 +4212,18 @@
         "where": "Evidence Community",
         "ask": "コミュニティの下書きを作成"
       },
+      "publicCommunities": {
+        "doing": "公開コミュニティを読んでいます",
+        "did": "公開コミュニティを読みました",
+        "where": "Evidence Community",
+        "ask": "公開コミュニティを読む"
+      },
+      "communityVisibility": {
+        "doing": "コミュニティの掲載を変更しています",
+        "did": "コミュニティの掲載を変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの掲載を変更する"
+      },
       "librarySources": {
         "doing": "コミュニティのソースを読んでいます",
         "did": "コミュニティのソースを読みました",
@@ -5372,6 +5392,42 @@
     "keepThisUnderCharacters": "{maxLength}文字以内で入力してください。"
   },
   "libraryList": {
+    "sidebar": {
+      "label": "あなたのコミュニティ",
+      "showFrom": "表示するコミュニティ",
+      "allWorkspaces": "すべてのワークスペース",
+      "allCommunities": "すべてのコミュニティ",
+      "workspaces": "ワークスペース",
+      "yours": "自分のもの",
+      "sharedWithYou": "共有されたもの",
+      "sharedWith": "{name} と共有",
+      "loading": "コミュニティを読み込み中",
+      "noMatches": "この検索に一致するものはありません。",
+      "emptyAll": "あなたのワークスペースのコミュニティと、共有されたコミュニティがここに表示されます。",
+      "emptyHere": "{name} のコミュニティと、共有されたコミュニティがここに表示されます。",
+      "emptyShared": "ほかの人が共有したコミュニティがここに表示されます。",
+      "emptySharedHere": "{name} と共有されたコミュニティがここに表示されます。",
+      "emptyOwn": "作成したコミュニティがここに表示されます。",
+      "emptyWorkspace": "{name} にはまだコミュニティがありません。",
+      "invitedAs": "{role}として招待されています",
+      "accept": "承諾",
+      "accepted": "{name} を承諾しました。",
+      "moreWorkspaces": "ほかのワークスペース"
+    },
+    "directory": {
+      "title": "公開コミュニティ",
+      "sortLabel": "公開コミュニティの並び替え",
+      "sort": {
+        "newest": "新しい順",
+        "name": "名前",
+        "records": "記録が多い順"
+      },
+      "loading": "公開コミュニティを読み込み中",
+      "noMatches": "この検索に一致する公開コミュニティはありません",
+      "none": "公開コミュニティは公開されるとここに表示されます",
+      "records": "{count, plural, other {{shown} 件の記録}}",
+      "unnamedOwner": "Openscholar のメンバー"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新しいコミュニティ",
     "libraryView": "コミュニティの表示",

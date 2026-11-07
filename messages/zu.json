@@ -1814,7 +1814,15 @@
       "versions": "Izinguqulo",
       "ai": "AI",
       "domain": "Idomeyini",
+      "listing": "Uhlu",
       "publication": "Ukushicilela"
+    },
+    "listing": {
+      "description": "Ukuthi lo mphakathi ubalwa yini ohlwini lomphakathi lwemiphakathi. Isayithi yawo ihlala ivulekele noma ubani onekheli layo kunoma yikuphi.",
+      "public": "Okomphakathi",
+      "publicHint": "Ubalwa ohlwini lomphakathi, lapho noma ubani angawuthola khona.",
+      "unlisted": "Awubalwanga",
+      "unlistedHint": "Awukho ohlwini. Noma ubani onekheli lawo usengawuvula."
     },
     "sectionState": {
       "complete": "Kuphelele",
@@ -4204,6 +4212,18 @@
         "where": "Evidence Communities",
         "ask": "Qala ukudrafti yomphakathi"
       },
+      "publicCommunities": {
+        "doing": "Ifunda imiphakathi yomphakathi",
+        "did": "Ifunde imiphakathi yomphakathi",
+        "where": "Evidence Communities",
+        "ask": "Funda imiphakathi yomphakathi"
+      },
+      "communityVisibility": {
+        "doing": "Ishintsha ukuthi umphakathi uyabalwa yini",
+        "did": "Ishintshile ukuthi umphakathi uyabalwa yini",
+        "where": "Evidence Communities",
+        "ask": "Shintsha ukuthi umphakathi uyabalwa yini"
+      },
       "librarySources": {
         "doing": "Ifunda imithombo yomphakathi",
         "did": "Ifunde imithombo yomphakathi",
@@ -5372,6 +5392,42 @@
     "keepThisUnderCharacters": "Gcina lokhu kungaphansi kwezinhlamvu ezingu-{maxLength}."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Imiphakathi yakho",
+      "showFrom": "Bonisa imiphakathi evela ku",
+      "allWorkspaces": "Zonke izindawo zokusebenza",
+      "allCommunities": "Yonke imiphakathi",
+      "workspaces": "Izindawo zokusebenza",
+      "yours": "Okwakho",
+      "sharedWithYou": "Kwabelwe wena",
+      "sharedWith": "Kwabelwe {name}",
+      "loading": "Ilayisha imiphakathi",
+      "noMatches": "Akukho kulokhu okufana nalokhu kusesha.",
+      "emptyAll": "Imiphakathi yezindawo zakho zokusebenza, neyabelwe wena, ivela lapha.",
+      "emptyHere": "Imiphakathi ka-{name}, neyabelwe yona, ivela lapha.",
+      "emptyShared": "Imiphakathi abantu abayabelana nawe ivela lapha.",
+      "emptySharedHere": "Imiphakathi eyabelwe {name} ivela lapha.",
+      "emptyOwn": "Imiphakathi oyidalayo ivela lapha.",
+      "emptyWorkspace": "U-{name} akakabi nayo imiphakathi.",
+      "invitedAs": "Umenyiwe njengo-{role}",
+      "accept": "Yamukela",
+      "accepted": "Wamukele u-{name}.",
+      "moreWorkspaces": "Izindawo zokusebenza ezengeziwe"
+    },
+    "directory": {
+      "title": "Imiphakathi yomphakathi",
+      "sortLabel": "Hlunga imiphakathi yomphakathi",
+      "sort": {
+        "newest": "Okusha kakhulu",
+        "name": "Igama",
+        "records": "Amarekhodi amaningi"
+      },
+      "loading": "Ilayisha imiphakathi yomphakathi",
+      "noMatches": "Ayikho imiphakathi yomphakathi efana nalokhu kusesha",
+      "none": "Imiphakathi yomphakathi ivela lapha uma isisebenza",
+      "records": "{count, plural, one {irekhodi elingu-{shown}} other {amarekhodi angu-{shown}}}",
+      "unnamedOwner": "Ilungu le-Openscholar"
+    },
     "evidenceLibraries": "Imiphakathi yobufakazi",
     "newLibrary": "Umphakathi omusha",
     "libraryView": "Ukubuka umphakathi",
