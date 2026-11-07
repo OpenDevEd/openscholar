@@ -6,10 +6,11 @@ import schema from "../schema";
 import { v, type Infer } from "convex/values";
 import { query, internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import { give } from "../sharing/access";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
-import { profileViewer, requireProfileAccess } from "./access";
+import { MAKERS, profileMaker, profileViewer, requireProfileAccess } from "./access";
 import { workspaceMutation } from "../lib/userActions";
 import { noteActivity } from "../activity/notes";
 import { moveMainRecord } from "./links";
@@ -36,11 +37,20 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   return next;
 }
 
-/** A profile owned by `workspaceId`, made by `createdBy` (#650), or by the assistant for them. */
-export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string, viaAssistant = false) {
+/**
+ * A profile owned by `workspaceId`, made by `createdBy` (#650), or by the assistant for them; `community`, the one it's
+ * made from, in its admin. Refused unless they may make one there (`profileMaker`, #1093). Its owners are the
+ * workspace's; a maker who doesn't run it edits it.
+ */
+export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string, { viaAssistant = false, community }: { viaAssistant?: boolean; community?: Doc<"evidenceLibraries"> } = {}) {
+  await requireAuthorProfiles(ctx, workspaceId);
+  const maker = await ctx.db.get("users", createdBy);
+  const may = maker ? await profileMaker(ctx, maker, workspaceId, community) : null;
+  if (!maker || !may) throw createError("FORBIDDEN", MAKERS);
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
   const id = await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy, revision: 1, updatedAt: Date.now()});
   await noteActivity(ctx, {workspaceId, by: createdBy, viaAssistant}, {kind: "author", id, happened: "created", detail: content.name});
+  if (!may.runs) await give(ctx, {kind: "author", id, workspaceId, name: content.name, createdBy}, maker, "editor", {userId: createdBy, author: viaAssistant ? "assistant" : "user"});
   return id;
 }
 
@@ -61,7 +71,6 @@ export const create = workspaceMutation({
   args: {name: v.string()},
   returns: v.id("authorProfiles"),
   handler: async (ctx, {userId, workspaceId}, args) => {
-    await requireAuthorProfiles(ctx, workspaceId);
     return await createProfile(ctx, userId, workspaceId, args.name);
   },
 });

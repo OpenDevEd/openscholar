@@ -8,6 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { grantLibraryRole } from "../evidenceLibraries/team.test-support";
+import { keepMakerEditing } from "../migrations/authorMakers";
 const modules = import.meta.glob("/convex/**/*.ts");
 const mail = vi.hoisted(() => ({sendMail: vi.fn().mockResolvedValue({}), close: vi.fn()}));
 vi.mock("nodemailer", () => ({default: {createTransport: () => mail}}));
@@ -39,6 +41,9 @@ describe("author profiles", () => {
       const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
       for (const clerkId of ["maker", "member", "outsider"]) await ctx.db.insert("users", {...fields, clerkId, firstName: clerkId, email: `${clerkId}@example.org`});
       const organizationId = await seedOrganizationFeatures(ctx, ["maker", "member"], { evidenceLibraries: true });
+      // The maker runs the lab, whose admins make its profiles.
+      const maker = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organizationId).eq("clerkUserId", "maker").eq("state", "active")).unique();
+      await ctx.db.patch("organizationMemberships", maker!._id, {role: "org:admin"});
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
     });
     const as = (subject: string) => t.withIdentity({subject});
@@ -81,7 +86,7 @@ describe("author profiles", () => {
     expect(await t.run(ctx => ctx.db.query("itemInvitations").collect())).toEqual([]);
   });
 
-  it("are owned by the workspace they were made in: by their maker and its admins, and edited by others only when invited", async () => {
+  it("are owned by the workspace they were made in, by its admins; their maker who doesn't run it edits them, as anyone invited does", async () => {
     const t = convexTest(schema, modules);
     const lab = await t.run(async ctx => {
       const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
@@ -89,47 +94,56 @@ describe("author profiles", () => {
       const organizationId = await seedOrganizationFeatures(ctx, ["admin", "maker", "member"], { evidenceLibraries: true });
       const admin = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organizationId).eq("clerkUserId", "admin").eq("state", "active")).unique();
       await ctx.db.patch("organizationMemberships", admin!._id, {role: "org:admin"});
-      return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+      const workspaceId = (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+      // The maker edits one of the lab's communities, which lets them make its profiles.
+      const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId, name: "Lab Evidence", slug: "lab-evidence", state: "active", createdByClerkUserId: "admin", updatedByClerkUserId: "admin", createdAt: 1, updatedAt: 1} as never);
+      await grantLibraryRole(ctx, libraryId, "maker", "editor");
+      return workspaceId;
     });
     const as = (subject: string) => t.withIdentity({subject});
+    // A colleague who runs the lab or edits one of its communities makes them; any other member doesn't.
+    await expect(as("member").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Not theirs"})).rejects.toThrow(/owners and admins/);
     const profileId = await as("maker").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Lab author"});
     expect(await t.run(ctx => ctx.db.get("authorProfiles", profileId))).toMatchObject({workspaceId: lab});
     const role = async (subject: string) => (await as(subject).query(api.authors.profiles.get, {profileId}))?.role;
-    expect(await role("maker")).toBe("owner");
-    expect(await role("admin")).toBe("owner");
-    expect(await role("member")).toBeNull();
-    // Its people list the maker and the lab's admin as owners; an owner isn't removed as an editor would be.
-    const members = await as("maker").query(api.authors.members.list, {profileId});
-    // The one reading it is marked, for their You chip.
-    expect(members.members.map(member => [member.email, member.role, member.you])).toEqual([["maker@example.org", "owner", true], ["admin@example.org", "owner", false]]);
-    const adminId = members.members.find(member => member.email === "admin@example.org")!.userId;
-    // A colleague in the lab is nothing to the profile until its owner makes them an editor of it: being in its workspace isn't having it.
-    const memberId = (await t.run(ctx => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "member")).unique()))!._id;
-    const invite = (userId: typeof adminId, email: string) => t.mutation(internal.sharing.invitations.prepare, {userId, workspaceId: lab, author: "user", kind: "author", id: profileId, email, role: "editor"});
-    await expect(invite(memberId, "friend@example.org")).rejects.toThrow(/Only whoever made this author profile/);
-    const invited = await invite(adminId, "member@example.org");
-    await t.mutation(internal.sharing.invitations.respondVerified, {userId: memberId, invitationId: invited, emails: ["member@example.org"], accept: true});
+    // The lab's admin owns it; its maker, who doesn't run the lab, edits it.
+    expect([await role("admin"), await role("maker"), await role("member")]).toEqual(["owner", "editor", null]);
+    const members = await as("admin").query(api.authors.members.list, {profileId});
+    expect(members.members.map(member => [member.email, member.role]).sort()).toEqual([["admin@example.org", "owner"], ["maker@example.org", "editor"]]);
+    // Sharing it is its owners' alone: an editor, its maker included, invites nobody to it.
+    const userOf = async (clerkId: string) => (await t.run(ctx => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkId)).unique()))!._id;
+    const invite = async (by: string, email: string) => t.mutation(internal.sharing.invitations.prepare, {userId: await userOf(by), workspaceId: lab, author: "user", kind: "author", id: profileId, email, role: "editor"});
+    await expect(invite("maker", "friend@example.org")).rejects.toThrow(/Only an owner or admin of its workspace/);
+    const invited = await invite("admin", "member@example.org");
+    await t.mutation(internal.sharing.invitations.respondVerified, {userId: await userOf("member"), invitationId: invited, emails: ["member@example.org"], accept: true});
     expect(await role("member")).toBe("editor");
-    // Sharing it stays its owners' alone: an editor, in the lab or not, invites nobody to it.
-    await expect(invite(memberId, "friend@example.org")).rejects.toThrow(/Only whoever made this author profile/);
     // Someone outside the lab can't make one there.
     await expect(as("outsider").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Not mine"})).rejects.toThrow(/Workspace not found/);
     // An organization without author profiles takes none, whatever another of its members' organizations has.
     const plain = await t.run(async ctx => {
-      const organizationId = await seedOrganizationFeatures(ctx, ["maker"], {});
+      const organizationId = await seedOrganizationFeatures(ctx, ["admin"], {});
+      const admin = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organizationId).eq("clerkUserId", "admin").eq("state", "active")).unique();
+      await ctx.db.patch("organizationMemberships", admin!._id, {role: "org:admin"});
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
     });
-    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow('"code":"FORBIDDEN"');
-    // Its maker who leaves the lab no longer owns it.
-    await t.run(async ctx => {
-      for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});
+    await expect(as("admin").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow('"code":"FORBIDDEN"');
+  });
+
+  it("keeps a maker who made one before #1093, and doesn't run its workspace, editing it", async () => {
+    const t = convexTest(schema, modules);
+    const {profileId} = await t.run(async ctx => {
+      const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
+      const maker = await ctx.db.insert("users", {...fields, clerkId: "maker", email: "maker@example.org"});
+      const organizationId = await seedOrganizationFeatures(ctx, ["maker"], { evidenceLibraries: true });
+      const workspaceId = (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+      // Made as a member, when its maker owned it.
+      const profileId = await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy: maker, revision: 1, updatedAt: 1});
+      return {profileId};
     });
-    expect(await role("maker")).toBeNull();
-    // Invited back, they edit it as anyone invited does.
-    const makerId = members.members.find(member => member.email === "maker@example.org")!.userId;
-    const invitationId = await t.mutation(internal.sharing.invitations.prepare, {userId: adminId, workspaceId: lab, author: "user", kind: "author", id: profileId, email: "maker@example.org", role: "editor"});
-    await t.mutation(internal.sharing.invitations.respondVerified, {userId: makerId, invitationId, emails: ["maker@example.org"], accept: true});
-    expect(await role("maker")).toBe("editor");
+    const role = async () => (await t.withIdentity({subject: "maker"}).query(api.authors.profiles.get, {profileId}))?.role;
+    expect(await role()).toBeNull();
+    await t.run(async ctx => keepMakerEditing(ctx, (await ctx.db.get("authorProfiles", profileId))!));
+    expect(await role()).toBe("editor");
   });
 
   it("is shared to edit only, by invitation as any item is", async () => {

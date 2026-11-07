@@ -6,7 +6,6 @@ import { readLibrarySessionAccess } from "../evidenceLibraries/sessionAccess";
 import { libraryOwner, ownerActive } from "../evidenceLibraries/access";
 import { createError } from "../lib/errors";
 import { createProfile, searchProfilePage } from "./profiles";
-import { ensureWorkspace } from "../workspaces/create";
 import type { Doc } from "../_generated/dataModel";
 import { authenticateLibraryServiceCredential } from "../evidenceLibraries/credentials";
 
@@ -62,8 +61,10 @@ export const create = internalMutation({
   args: {...serviceArgs, name: v.string()},
   handler: async (ctx, args) => {
     const user = await requireLibraryUser(ctx, args);
-    // Made from a library's admin, it's its maker's, in their own workspace.
-    const id = await createProfile(ctx, user._id, await ensureWorkspace(ctx, {kind: "personal", userId: user._id}), args.name);
+    // Made from a community's admin, it's that community's workspace's, and its maker has the role they have in the community (#1093).
+    const community = await ctx.db.get("evidenceLibraries", ctx.db.normalizeId("evidenceLibraries", args.libraryId)!);
+    if (!community?.workspaceId) throw createError("NOT_FOUND", "Community not found");
+    const id = await createProfile(ctx, user._id, community.workspaceId, args.name, { community });
     const profile = await ctx.db.get("authorProfiles", id);
     if (!profile) throw createError("NOT_FOUND", "Author profile was not created");
     return {...await publicProfile(ctx, profile), canEdit: true};

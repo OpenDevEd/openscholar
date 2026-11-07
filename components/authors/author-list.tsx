@@ -44,7 +44,10 @@ export function AuthorList({createsBefore, firstPage, examples}: {createsBefore:
   const [error, setError] = useState("");
   const create = useWorkspaceMutation(api.authors.profiles.create);
   const workspaceId = useWorkspace();
-  const creates = useWorkspaceFeatures().data?.authors ?? createsBefore;
+  const features = useWorkspaceFeatures().data;
+  const creates = features?.authors ?? createsBefore;
+  // Making one is a workspace's owners' and admins', and its communities' owners' and editors' (#1093); the directory is everyone's in it.
+  const makes = features?.createsAuthors ?? false;
   // Hand-made profiles are only for a workspace whose plan makes them. Everyone else searches.
   const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, creates ? {search} : "skip", {initialNumItems: AUTHOR_PAGE_SIZE});
   // The page arrives with its first profiles, so they show until the live list is in; a search waits for its own answer.
@@ -53,7 +56,7 @@ export function AuthorList({createsBefore, firstPage, examples}: {createsBefore:
   const more = creates && (early ? !firstPage.isDone : status === "CanLoadMore" || status === "LoadingMore");
   const explore = useExploreHeader("authors");
   // Read after the page drew, it opens its place beside the search: its own margin stands in for the row's gap, so the search moves only as it opens.
-  return <LibraryPageShell {...explore} actions={<AnimatePresence initial={false}>{creates
+  return <LibraryPageShell {...explore} actions={<AnimatePresence initial={false}>{makes
     ? <Opening key="create" across className="-ms-2 overflow-clip [overflow-clip-margin:4px]"><Button size="sm" disabled={!workspaceId} className={cn("ms-2", BAR_ACTION)} onClick={() => {setError(""); setOpen(true);}}><Plus /><span className={BAR_LABEL}>{t("createAuthor")}</span></Button></Opening>
     : null}</AnimatePresence>}>
     <AuthorInvitations />

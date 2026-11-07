@@ -2,9 +2,33 @@ import type { Id, Doc } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { getCurrentUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
+import { libraryOf, readLibraryRole } from "../evidenceLibraries/access";
 import { grantOf, open } from "../sharing/items";
 import { actorIn } from "../workspaces/actor";
+
+/** Why someone may not make a profile in a workspace. */
+export const MAKERS = "Author profiles are made by a workspace's owners and admins, and by the owners and editors of its communities.";
+
+/**
+ * Whether a person may make author profiles in a workspace (#1093), or have one moved into it: they own or run it
+ * (`runs`), or own or edit one of its communities now, `community` when the profile is made from one. Null when not.
+ * The workspace's Evidence Communities switch is checked apart (./profiles.ts).
+ */
+export async function profileMaker(ctx: QueryCtx | MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, community?: Doc<"evidenceLibraries">) {
+  if ((await actorIn(ctx, user, workspaceId))?.role === "admin") return {runs: true};
+  const edits = async (library: Doc<"evidenceLibraries"> | null) => {
+    if (library?.workspaceId !== workspaceId) return false;
+    const role = await readLibraryRole(ctx, library, user.clerkId);
+    return role === "owner" || role === "editor";
+  };
+  if (community) return (await edits(community)) ? {runs: false} : null;
+  // Otherwise one of its communities they were given the editor's role in, as it stands: a community being deleted gives none.
+  // A person holds at most MAX_LIBRARY_GRANTS_PER_PERSON, which giving them one enforces.
+  const grants = await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON);
+  for (const grant of grants) if (grant.role === "editor" && (await edits(await libraryOf(ctx, grant)))) return {runs: false};
+  return null;
+}
 
 /** What the person reading a profile is to it: their role, and whether they act in the workspace that owns it, whose members see its Activity and who has it open (#656, #657). */
 export async function profileViewer(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">) {
@@ -14,21 +38,21 @@ export async function profileViewer(ctx: QueryCtx | MutationCtx, profile: Doc<"a
 }
 
 /**
- * What a person may do with a profile: own it as its maker or an admin of the workspace
- * that owns it (#650), or edit it when it was shared with them (#653): a profile is public, so
- * its guests are its editors, wherever they act.
+ * What a person may do with a profile: own it as an owner or admin of the workspace that owns it (#650, #1093), or
+ * edit it when it was shared with them (#653), as its maker is when they don't run the workspace: a profile is public,
+ * so its guests are its editors, wherever they act.
  */
 export async function profileRoleForUser(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">, userId: Id<"users">) {
-  // Its maker and the workspace's admins own it while they can act in that workspace; one who left it keeps only an invitation of their own.
+  // The workspace's owner or admins own it while they can act in it.
   const user = profile.workspaceId ? await ctx.db.get("users", userId) : null;
   const actor = user && profile.workspaceId ? await actorIn(ctx, user, profile.workspaceId) : null;
-  if (actor && (actor.role === "admin" || profile.createdBy === userId)) return "owner" as const;
+  if (actor?.role === "admin") return "owner" as const;
   return profile.workspaceId && (await grantOf(ctx, profile._id, userId)) && (await open(ctx, profile.workspaceId)) ? "editor" as const : null;
 }
 
 /**
- * The people who own a profile: its maker, and the admins of the workspace that owns it: the
- * person whose own workspace it is, or an organization's admins, the first MAX_PROFILE_MEMBERS.
+ * The people who own a profile: the admins of the workspace that owns it: the person whose own
+ * workspace it is, or an organization's admins, the first MAX_PROFILE_MEMBERS.
  */
 export async function profileOwners(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">) {
   const workspace = profile.workspaceId ? await ctx.db.get("workspaces", profile.workspaceId) : null;
@@ -36,7 +60,7 @@ export async function profileOwners(ctx: QueryCtx | MutationCtx, profile: Doc<"a
     ? await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state_and_role", q => q.eq("organizationId", workspace.organizationId).eq("state", "active").eq("role", "org:admin")).take(MAX_PROFILE_MEMBERS)
     : [];
   const people = await Promise.all([
-    ...[profile.createdBy, workspace?.kind === "personal" ? workspace.userId : undefined].map(userId => (userId ? ctx.db.get("users", userId) : null)),
+    ...[workspace?.kind === "personal" ? workspace.userId : undefined].map(userId => (userId ? ctx.db.get("users", userId) : null)),
     ...admins.map(admin => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", admin.clerkUserId)).unique()),
   ]);
   return [...new Map(people.flatMap(person => (person ? [[person._id, person] as const] : []))).values()];

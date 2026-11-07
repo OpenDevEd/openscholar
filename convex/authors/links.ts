@@ -11,7 +11,7 @@ import { createError } from "../lib/errors";
 import { query } from "../lib/functions";
 import { assistantMutation, defineUserMutation, signedInAs, userMutation } from "../lib/userActions";
 import { requireProfileAccess } from "./access";
-import { createProfile, requireAuthorProfiles } from "./profiles";
+import { createProfile } from "./profiles";
 import { AUTHOR_IDS_LOOKED_UP, MAX_PROFILE_RECORDS, profileRecordsValidator } from "./validators";
 
 const authorIdOf = (given: string) => {
@@ -125,13 +125,12 @@ export const claimAction = defineUserMutation({
   outsideEffect: true,
   undoable: false,
   run: async (ctx, { userId, workspaceId, author }, { authorId, knownAs, name }) => {
-    await requireAuthorProfiles(ctx, workspaceId);
     const id = authorIdOf(authorId);
     if ((knownAs?.length ?? 0) > AUTHOR_IDS_LOOKED_UP) throw createError("VALIDATION_ERROR", `At most ${AUTHOR_IDS_LOOKED_UP} IDs at once.`);
     for (const known of [id, ...(knownAs ?? []).map(authorIdOf)]) {
       if (await holderOf(ctx, known)) throw createError("CONFLICT", "That author record is linked to another profile.");
     }
-    const profileId = await createProfile(ctx, userId, workspaceId, name, author === "assistant");
+    const profileId = await createProfile(ctx, userId, workspaceId, name, { viaAssistant: author === "assistant" });
     await ctx.db.patch("authorProfiles", profileId, { openalex: id });
     await linkRecord(ctx, profileId, id);
     return profileId;

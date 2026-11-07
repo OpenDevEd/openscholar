@@ -149,6 +149,27 @@ it("moves an author profile only to a workspace that has author profiles", async
   ]);
 });
 
+it("moves an author profile to a workspace its mover may make one in, where they edit it when they don't run it", async () => {
+  const { t, bob, lab: labId, bobOwn, users } = await lab();
+  const profile = await t.run(async (ctx) => {
+    await ctx.db.insert("billingAccounts", { workspaceId: labId, plan: "team", features: ["evidence_libraries"], pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: Date.now() });
+    return await ctx.db.insert("authorProfiles", { name: "Ada", headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: "", workspaceId: bobOwn, createdBy: users.bob, revision: 1, updatedAt: 1 });
+  });
+  // Bob, a member of the lab who edits none of its communities, makes none there, and moves none there.
+  await expect(bob.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId })).rejects.toThrow(/owners and admins/);
+  // As an editor of one of its communities he does, and edits it there (#1093).
+  const libraryId = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("evidenceLibraries", { workspaceId: labId, name: "Lab Evidence", slug: "lab-evidence", state: "active", createdByClerkUserId: "alice", updatedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 } as never);
+    await grantLibraryRole(ctx, id, "bob", "editor");
+    return id;
+  });
+  await bob.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId });
+  expect((await bob.query(api.authors.profiles.get, { profileId: profile }))?.role).toBe("editor");
+  // A community being deleted gives its editors no profiles to make.
+  await t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { state: "disabled" }));
+  await expect(bob.mutation(api.authors.profiles.create, { workspaceId: labId, name: "Not now" })).rejects.toThrow(/owners and admins/);
+});
+
 /** A collection's places, each with the rating it sorts by there and how many gave it. */
 const ratedPlaces = (t: Awaited<ReturnType<typeof lab>>["t"], collectionId: Id<"collections">) =>
   t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect()).map(({ rating, ratingCount }) => ({ rating, ratingCount })));

@@ -330,6 +330,7 @@ import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
+import type * as migrations_authorMakers from "../migrations/authorMakers.js";
 import type * as migrations_authorRecordLinks from "../migrations/authorRecordLinks.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
@@ -809,6 +810,7 @@ declare const fullApi: ApiFromModules<{
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
+  "migrations/authorMakers": typeof migrations_authorMakers;
   "migrations/authorRecordLinks": typeof migrations_authorRecordLinks;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
