@@ -163,11 +163,12 @@ export const listPeopleAction = defineUserQuery({
         .map(async (user) => await personRow(ctx, user!))
         .paginate(opts);
     }
+    // Off is told by the person's workspace alone, so a person passed over costs one read, not their communities.
     return await stream(ctx.db, schema)
       .query("users")
       .withIndex("by_state_and_email", (q) => (prefix ? q.eq("state", "active").gte("email", prefix).lt("email", `${prefix}\uffff`) : q.eq("state", "active")))
+      .filterWith(async (user) => show === "all" || (await personalWorkspaceOf(ctx, user._id))?.evidenceLibraries !== true)
       .map(async (user) => await personRow(ctx, user))
-      .filterWith(async (row) => show === "all" || !row.on)
       .paginate(opts);
   },
 });
@@ -182,7 +183,10 @@ export const countPeopleAction = defineUserQuery({
   run: async (ctx, { userId }, { show = "all" }) => {
     await requireAdminUser(ctx, userId);
     // ponytail: counted by reading rows, up to COUNT_READ; a sharded count (lib/listCounts) once people pass it.
-    const on = (await ctx.db.query("workspaces").withIndex("by_evidenceLibraries", (q) => q.eq("evidenceLibraries", true)).take(COUNT_READ)).filter((workspace) => workspace.kind === "personal").length;
+    // The people the list shows: active accounts, as the list reads them.
+    const switchedOn = await ctx.db.query("workspaces").withIndex("by_evidenceLibraries", (q) => q.eq("evidenceLibraries", true)).take(COUNT_READ);
+    const owners = await Promise.all(switchedOn.map((workspace) => (workspace.kind === "personal" ? ctx.db.get("users", workspace.userId) : null)));
+    const on = owners.filter((user) => user?.state === "active").length;
     if (show === "on") return on;
     const all = (await ctx.db.query("users").withIndex("by_state", (q) => q.eq("state", "active")).take(COUNT_READ)).length;
     return show === "all" ? all : Math.max(0, all - on);

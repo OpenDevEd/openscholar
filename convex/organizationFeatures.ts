@@ -39,7 +39,7 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
 /** Whether the person may create a community in the workspace: it has them switched on (`opensLibraries`), and it's their own or an organization they're an admin of. */
 export async function createsIn(ctx: QueryCtx | MutationCtx, user: Doc<"users">, workspace: Doc<"workspaces">) {
   if (user.state !== "active") return false;
-  if (workspace.kind === "personal" ? workspace.userId !== user._id : (await readActiveOrganizationMembership(ctx, workspace.organizationId, user.clerkId))?.role !== "org:admin") return false;
+  if (workspace.kind === "personal" ? workspace.userId !== user._id : (await ctx.db.get("organizations", workspace.organizationId))?.state !== "active" || (await readActiveOrganizationMembership(ctx, workspace.organizationId, user.clerkId))?.role !== "org:admin") return false;
   return await opensLibraries(ctx, workspace._id);
 }
 

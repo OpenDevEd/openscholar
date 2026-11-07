@@ -119,6 +119,12 @@ test("a community is created in your own workspace or an organization you're an 
     await expect(create(workspaceId, slug)).rejects.toThrow(/FORBIDDEN/);
   }
   expect(await creates(memberOnly)).toBe(false);
+  // An organization that's gone takes nothing new, though its memberships haven't been swept yet.
+  await t.run(async (ctx) => {
+    const workspace = await ctx.db.get("workspaces", alpha);
+    if (workspace?.kind === "organization") await ctx.db.patch("organizations", workspace.organizationId, { state: "deleted" });
+  });
+  await expect(create(alpha, "alpha-gone")).rejects.toThrow(/FORBIDDEN/);
   expect(await creates(disabled)).toBe(false);
   expect(await creates(own)).toBe(false);
 

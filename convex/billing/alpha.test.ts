@@ -112,9 +112,15 @@ it("switches Evidence Communities on for a person's own workspace, for OpenSchol
   expect((await people("off")).map((row) => row._id)).not.toContain(ada);
   expect(await as("zed").query(api.organizations.libraryAccess.countPeople, { workspaceId: zedOwn, show: "on" })).toBe(1);
   await expect(as("ada").query(api.organizations.libraryAccess.listPeople, { workspaceId: adaOwn, paginationOpts: { cursor: null, numItems: 8 } })).rejects.toThrow(/Admins only/);
+  // A switched-on account that's suspended leaves the list, and its count with it.
+  await t.run((ctx) => ctx.db.patch("users", ada, { state: "suspended" }));
+  expect(await people("on")).toEqual([]);
+  expect(await as("zed").query(api.organizations.libraryAccess.countPeople, { workspaceId: zedOwn, show: "on" })).toBe(0);
+  await t.run((ctx) => ctx.db.patch("users", ada, { state: "active" }));
   await as("zed").mutation(api.organizations.libraryAccess.setPerson, { userId: ada, on: false });
   expect(await creates()).toBe(false);
   expect(await people("on")).toEqual([]);
+  expect((await people("off")).map((row) => row._id)).toContain(ada);
 });
 
 it("switches libraries on for the organizations on Team, so moving them off it takes nothing away", async () => {
