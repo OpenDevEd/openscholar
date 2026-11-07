@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { FileText, SearchX } from "@/components/icons";
+import { FileText, SearchX, Users } from "@/components/icons";
+import { CountryFlag } from "@/components/ui/country-flag";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +74,12 @@ export function PublicCommunities({ search, workspaceId }: { search: string; wor
 function CommunityCard({ community }: { community: Card }) {
   const t = useTranslations("libraryList.directory");
   const format = useFormatter();
+  const locale = useLocale();
+  // The countries' names in the page's language, for the flags' accessible name.
+  const regions = useMemo(() => { try { return new Intl.DisplayNames([locale], { type: "region" }); } catch { return null; } }, [locale]);
+  // A backend from before these were kept sends neither, for the minute a deploy takes to reach it.
+  const countries = community.countries ?? [];
+  const people = community.people ?? null;
   // A community with no colour or icon of its own shows Openscholar's, as its site does.
   const accent = community.accentColor ?? "var(--primary)";
   const icon = community.faviconUrl ?? "/icon.svg";
@@ -99,12 +106,26 @@ function CommunityCard({ community }: { community: Card }) {
               <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
               <span className="truncate">{community.owner.name ?? t("unnamedOwner")}</span>
             </span>
-            {community.records !== null ? (
-              <span className="flex items-center gap-1 tabular-nums">
-                <FileText className="size-3.5" />
-                {t("records", { count: community.records, shown: format.number(community.records) })}
-              </span>
-            ) : null}
+            {/* The facts wrap on a narrow card, in place of running past its edge. */}
+            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              {community.records !== null ? (
+                <span className="flex shrink-0 items-center gap-1 tabular-nums">
+                  <FileText className="size-3.5" />
+                  {t("records", { count: community.records, shown: format.number(community.records) })}
+                </span>
+              ) : null}
+              {people !== null ? (
+                <span className="flex shrink-0 items-center gap-1 tabular-nums">
+                  <Users className="size-3.5" />
+                  {t("people", { count: people, shown: format.number(people) })}
+                </span>
+              ) : null}
+              {countries.length > 0 ? (
+                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: countries.map((code) => regionName(regions, code)).join(", ") })}>
+                  {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
+                </span>
+              ) : null}
+            </span>
           </div>
         </div>
       </a>
@@ -125,4 +146,13 @@ function FadeImage({ src, className, shown = "opacity-100" }: { src: string; cla
       className={cn(className, "transition-opacity duration-200 motion-reduce:transition-none", loaded === src ? shown : "opacity-0")}
     />
   );
+}
+
+/** A country's name in the page's language, or its code: a code the browser doesn't know as a region (a three-letter one) makes it throw. */
+function regionName(regions: Intl.DisplayNames | null, code: string) {
+  try {
+    return regions?.of(code.toUpperCase()) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
 }

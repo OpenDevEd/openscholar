@@ -5427,7 +5427,9 @@
       "noMatches": "Keine öffentliche Community passt zu dieser Suche",
       "none": "Öffentliche Communities erscheinen hier, sobald sie live sind",
       "records": "{count, plural, one {{shown} Eintrag} other {{shown} Einträge}}",
-      "unnamedOwner": "Ein Openscholar-Mitglied"
+      "unnamedOwner": "Ein Openscholar-Mitglied",
+      "people": "{count, plural, one {{shown} Person} other {{shown} Personen}}",
+      "countries": "Über {names}"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Neue Community",

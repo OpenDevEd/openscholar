@@ -15,6 +15,8 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import { libraryOwner, ownerActive, ownerName } from "./access";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
+import { readLibraryPeople } from "./queries";
+import { COUNTRIES_KEPT, countriesValidator } from "./validators";
 
 /** Most cards one page of the directory holds, and the rows one read passes over looking for a search's matches. */
 const PAGE_MAX = 24;
@@ -34,6 +36,10 @@ const cardValidator = v.object({
   /** Who it belongs to. A person is named by their name alone: null when they have none, never their email. */
   owner: v.object({ name: v.union(v.string(), v.null()), kind: v.union(v.literal("person"), v.literal("organization")), imageUrl: v.union(v.string(), v.null()) }),
   records: v.union(v.number(), v.null()),
+  /** The countries most of its public records are about, most first; empty until its runtime names them. */
+  countries: countriesValidator,
+  /** How many people work on it: its owners and everyone given a role in it; null until counted. */
+  people: v.union(v.number(), v.null()),
   liveAt: v.union(v.number(), v.null()),
 });
 
@@ -58,15 +64,41 @@ async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisi
 export async function noteLive(ctx: MutationCtx, library: Doc<"evidenceLibraries">, revisionId: Id<"evidenceLibraryConfigRevisions">, now: number) {
   await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), ...(library.liveAt === undefined ? { liveAt: now } : {}) });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
+  await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }
 
-/** The record count a community just gave. */
+/** The record count a community just gave, and the countries most of its records are about when its runtime names them. */
 export const setRecords = internalMutation({
-  args: { libraryId: v.id("evidenceLibraries"), records: v.number() },
+  args: { libraryId: v.id("evidenceLibraries"), records: v.number(), countries: v.optional(v.array(v.string())) },
   returns: v.null(),
-  handler: async (ctx, { libraryId, records }) => {
+  handler: async (ctx, { libraryId, records, countries }) => {
     const library = await ctx.db.get("evidenceLibraries", libraryId);
-    if (library) await ctx.db.patch("evidenceLibraries", libraryId, { records, recordsAt: Date.now() });
+    if (library) await ctx.db.patch("evidenceLibraries", libraryId, { records, recordsAt: Date.now(), ...(countries ? { countries: countries.map((code) => code.toLowerCase()).slice(0, COUNTRIES_KEPT) } : {}) });
+    return null;
+  },
+});
+
+/** How many people work on a community, as its card says: its owners and everyone given a role in it. Run when its team changes (./peopleCount.ts) and daily. */
+export const recountPeople = internalMutation({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId }) => {
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (!library || library.state === "disabled") return null;
+    const people = (await readLibraryPeople(ctx, library)).filter((person) => person.role === "owner" || person.role === "editor" || person.role === "creator").length;
+    if (library.people !== people) await ctx.db.patch("evidenceLibraries", libraryId, { people });
+    return null;
+  },
+});
+
+/** Recounts the people of each of an organization's communities, a page at a time: its admins, who own them, changed. */
+export const recountOrganization = internalMutation({
+  args: { workspaceId: v.id("workspaces"), cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, cursor = null }) => {
+    const page = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate({ cursor, numItems: REFRESH_STEP });
+    for (const library of page.page) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountOrganization, { workspaceId, cursor: page.continueCursor });
     return null;
   },
 });
@@ -77,7 +109,10 @@ export const refreshAllRecords = internalMutation({
   returns: v.null(),
   handler: async (ctx, { cursor = null }) => {
     const page = await ctx.db.query("evidenceLibraries").withIndex("by_state_and_unlisted_and_liveAt", (q) => q.eq("state", "active")).paginate({ cursor, numItems: REFRESH_STEP });
-    for (const [at, library] of page.page.entries()) await ctx.scheduler.runAfter(at * 1000, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
+    for (const [at, library] of page.page.entries()) {
+      await ctx.scheduler.runAfter(at * 1000, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
+      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
+    }
     if (!page.isDone) await ctx.scheduler.runAfter(REFRESH_STEP * 1000, internal.evidenceLibraries.directory.refreshAllRecords, { cursor: page.continueCursor });
     return null;
   },
@@ -101,6 +136,8 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     address: binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "",
     owner: owner.organization ? { name: shown.name, kind: "organization" as const, imageUrl: shown.imageUrl } : { name: person || null, kind: "person" as const, imageUrl: shown.imageUrl },
     records: library.records ?? null,
+    countries: library.countries ?? [],
+    people: library.people ?? null,
     liveAt: library.liveAt ?? null,
   };
 }
@@ -135,4 +172,5 @@ export async function backfillCard(ctx: MutationCtx, library: Doc<"evidenceLibra
   const liveAt = library.liveAt ?? deployment?.receipt?.activatedAt ?? library.createdAt;
   await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId), liveAt });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
+  await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }

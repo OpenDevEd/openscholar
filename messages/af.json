@@ -5427,7 +5427,9 @@
       "noMatches": "Geen openbare gemeenskappe pas by hierdie soektog nie",
       "none": "Openbare gemeenskappe verskyn hier sodra hulle regstreeks is",
       "records": "{count, plural, one {{shown} rekord} other {{shown} rekords}}",
-      "unnamedOwner": "’n Openscholar-lid"
+      "unnamedOwner": "’n Openscholar-lid",
+      "people": "{count, plural, one {{shown} persoon} other {{shown} mense}}",
+      "countries": "Oor {names}"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nuwe gemeenskap",

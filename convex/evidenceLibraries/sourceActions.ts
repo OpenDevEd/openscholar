@@ -460,8 +460,8 @@ export const refreshRecords = internalAction({
     const target = await runningTarget(ctx, libraryId).catch(() => null);
     if (!target) return null;
     try {
-      const { records } = await readLibraryOverview(fetch, target, LIST_TIMEOUT_MS);
-      await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records });
+      const { records, countries } = await readLibraryOverview(fetch, target, LIST_TIMEOUT_MS);
+      await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records, ...(countries ? { countries: countries.map((country) => country.code) } : {}) });
     } catch (error) {
       console.warn("[community directory] the record count couldn't be read", { libraryId, reason: error instanceof Error ? error.message : String(error) });
     }

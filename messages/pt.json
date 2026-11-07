@@ -5427,7 +5427,9 @@
       "noMatches": "Nenhuma comunidade pública corresponde a esta pesquisa",
       "none": "As comunidades públicas aparecem aqui quando estão online",
       "records": "{count, plural, one {{shown} registo} other {{shown} registos}}",
-      "unnamedOwner": "Um membro do Openscholar"
+      "unnamedOwner": "Um membro do Openscholar",
+      "people": "{count, plural, one {{shown} pessoa} other {{shown} pessoas}}",
+      "countries": "Sobre {names}"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Nova comunidade",

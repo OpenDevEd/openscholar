@@ -5427,7 +5427,9 @@
       "noMatches": "Hakuna jumuiya ya umma inayolingana na utafutaji huu",
       "none": "Jumuiya za umma zinaonekana hapa zikiwa hewani",
       "records": "{count, plural, one {rekodi {shown}} other {rekodi {shown}}}",
-      "unnamedOwner": "Mwanachama wa Openscholar"
+      "unnamedOwner": "Mwanachama wa Openscholar",
+      "people": "{count, plural, one {mtu {shown}} other {watu {shown}}}",
+      "countries": "Kuhusu {names}"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Jumuiya mpya",

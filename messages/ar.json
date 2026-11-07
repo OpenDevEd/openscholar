@@ -5427,7 +5427,9 @@
       "noMatches": "لا توجد مجتمعات عامة تطابق هذا البحث",
       "none": "تظهر المجتمعات العامة هنا عند إطلاقها",
       "records": "{count, plural, one {سجل واحد} two {سجلان} few {{shown} سجلات} many {{shown} سجلًا} other {{shown} سجل}}",
-      "unnamedOwner": "عضو في Openscholar"
+      "unnamedOwner": "عضو في Openscholar",
+      "people": "{count, plural, one {شخص واحد} two {شخصان} few {{shown} أشخاص} many {{shown} شخصًا} other {{shown} شخص}}",
+      "countries": "عن {names}"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "مجتمع جديد",

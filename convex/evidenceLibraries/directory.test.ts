@@ -6,6 +6,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { backfillCard } from "./directory";
+import { grantLibraryRole } from "./team.test-support";
 
 type Fixture = Awaited<ReturnType<typeof createReadySetupFixture>>;
 
@@ -32,6 +33,26 @@ describe("the public directory", () => {
     expect(library.liveAt).toEqual(expect.any(Number));
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 1234 });
     expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ records: 1234, recordsAt: expect.any(Number) });
+  });
+
+  it("keeps the countries a community names and counts the people working on it: its owners and everyone given a role", async () => {
+    const { fixture, library, workspaceId } = await live("directory_facts");
+    await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 10, countries: ["KE", "ug", "tz", "in", "bd", "np"] });
+    // An older runtime names no countries: the ones kept stay.
+    await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 12 });
+    const people = async () => {
+      await fixture.t.mutation(internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
+      return (await list(fixture, workspaceId, "name", "climate"))[0];
+    };
+    // The organization's one admin owns it.
+    expect(await people()).toMatchObject({ records: 12, countries: ["ke", "ug", "tz", "in", "bd"], people: 1 });
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("users", { clerkId: "user_editor", email: "editor@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      await grantLibraryRole(ctx, library._id, "user_editor", "editor");
+    });
+    // The grant itself asked for the count again (./peopleCount.ts).
+    expect((await fixture.t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect())).map((job) => job.name)).toContain("evidenceLibraries/directory:recountPeople");
+    expect(await people()).toMatchObject({ people: 2 });
   });
 
   it("lists the live ones by each sort, searched on the server, and leaves out the unlisted", async () => {

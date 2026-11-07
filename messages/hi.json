@@ -5426,7 +5426,9 @@
       "noMatches": "कोई सार्वजनिक कम्युनिटी इस खोज से मेल नहीं खाती",
       "none": "सार्वजनिक कम्युनिटी लाइव होने पर यहाँ दिखती हैं",
       "records": "{count, plural, one {{shown} रिकॉर्ड} other {{shown} रिकॉर्ड}}",
-      "unnamedOwner": "Openscholar का एक सदस्य"
+      "unnamedOwner": "Openscholar का एक सदस्य",
+      "people": "{count, plural, one {{shown} व्यक्ति} other {{shown} लोग}}",
+      "countries": "{names} के बारे में"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "नई कम्युनिटी",

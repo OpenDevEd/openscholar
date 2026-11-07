@@ -866,7 +866,7 @@ const userOf = (ctx: QueryCtx, clerkUserId: string) => ctx.db.query("users").wit
  * role, and the people it grants a role to. The organization's other members aren't read: the
  * team picker searches them a page at a time (`listOrganizationPeople`).
  */
-async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+export async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   const owner = await libraryOwner(ctx, library);
   const organization = owner?.organization;
   const person = owner?.workspace.kind === "personal" ? await ctx.db.get("users", owner.workspace.userId) : null;
