@@ -7,7 +7,6 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { Clock, FileText, SearchX, Users } from "@/components/icons";
-import { workspaceTint } from "@/components/workspaces/parts";
 import { THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -88,11 +87,8 @@ function CommunityCard({ community }: { community: Card }) {
   // A backend from before these were kept sends neither, for the minute a deploy takes to reach it.
   const countries = community.countries ?? [];
   const people = community.people ?? null;
-  // A community with no colour of its own takes one seeded from its ID, from the palette organizations take theirs from,
-  // so the cards of communities that set none don't all look alike. With no icon it shows Openscholar's, as its site does.
-  // Openscholar's own accent, which every community starts with, counts as none of its own.
-  const own = community.accentColor && community.accentColor.toLowerCase() !== THEME_DEFAULTS.colors.accent ? community.accentColor : null;
-  const accent = own ?? workspaceTint({ kind: "organization", name: community.name, workspaceId: community._id });
+  // Its theme's accent, as its site shows it; one that set none has the theme every community starts with. With no icon it shows Openscholar's, as its site does.
+  const accent = community.accentColor ?? THEME_DEFAULTS.colors.accent;
   const icon = community.faviconUrl ?? "/icon.svg";
   const named = countries.map((code) => regionName(regions, code));
   return (
@@ -104,7 +100,7 @@ function CommunityCard({ community }: { community: Card }) {
         rel="noopener noreferrer"
         className="group flex h-full flex-col overflow-hidden rounded-xl border border-border-subtle bg-background outline-offset-2 transition-[border-color,translate] duration-200 hover:-translate-y-0.5 hover:border-border focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
       >
-        {/* Its own icon blurred across its colour; without one, its colour alone, in place of Openscholar's orange on every card. */}
+        {/* Its own icon blurred across its theme's accent; without one, the accent alone. */}
         <div aria-hidden className="relative h-20 shrink-0 overflow-hidden" style={{ background: community.faviconUrl ? accent : `linear-gradient(135deg, ${accent}, color-mix(in oklab, ${accent} 55%, var(--background)))` }}>
           {community.faviconUrl ? <FadeImage src={icon} className="absolute -inset-4 size-[calc(100%+2rem)] object-cover blur-xl saturate-150" shown="opacity-90" /> : null}
         </div>
