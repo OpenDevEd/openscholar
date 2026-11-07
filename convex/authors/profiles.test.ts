@@ -9,6 +9,7 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { grantLibraryRole } from "../evidenceLibraries/team.test-support";
+import { keepMakerEditing } from "../migrations/authorMakers";
 const modules = import.meta.glob("/convex/**/*.ts");
 const mail = vi.hoisted(() => ({sendMail: vi.fn().mockResolvedValue({}), close: vi.fn()}));
 vi.mock("nodemailer", () => ({default: {createTransport: () => mail}}));
@@ -126,6 +127,23 @@ describe("author profiles", () => {
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
     });
     await expect(as("admin").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow('"code":"FORBIDDEN"');
+  });
+
+  it("keeps a maker who made one before #1093, and doesn't run its workspace, editing it", async () => {
+    const t = convexTest(schema, modules);
+    const {profileId} = await t.run(async ctx => {
+      const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
+      const maker = await ctx.db.insert("users", {...fields, clerkId: "maker", email: "maker@example.org"});
+      const organizationId = await seedOrganizationFeatures(ctx, ["maker"], { evidenceLibraries: true });
+      const workspaceId = (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+      // Made as a member, when its maker owned it.
+      const profileId = await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy: maker, revision: 1, updatedAt: 1});
+      return {profileId};
+    });
+    const role = async () => (await t.withIdentity({subject: "maker"}).query(api.authors.profiles.get, {profileId}))?.role;
+    expect(await role()).toBeNull();
+    await t.run(async ctx => keepMakerEditing(ctx, (await ctx.db.get("authorProfiles", profileId))!));
+    expect(await role()).toBe("editor");
   });
 
   it("is shared to edit only, by invitation as any item is", async () => {
