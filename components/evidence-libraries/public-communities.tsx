@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { FileText, SearchX } from "@/components/icons";
+import { FileText, SearchX, Users } from "@/components/icons";
+import { CountryFlag } from "@/components/ui/country-flag";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -73,6 +74,9 @@ export function PublicCommunities({ search, workspaceId }: { search: string; wor
 function CommunityCard({ community }: { community: Card }) {
   const t = useTranslations("libraryList.directory");
   const format = useFormatter();
+  const locale = useLocale();
+  // The countries' names in the page's language, for the flags' accessible name.
+  const regions = useMemo(() => { try { return new Intl.DisplayNames([locale], { type: "region" }); } catch { return null; } }, [locale]);
   // A community with no colour or icon of its own shows Openscholar's, as its site does.
   const accent = community.accentColor ?? "var(--primary)";
   const icon = community.faviconUrl ?? "/icon.svg";
@@ -99,12 +103,25 @@ function CommunityCard({ community }: { community: Card }) {
               <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
               <span className="truncate">{community.owner.name ?? t("unnamedOwner")}</span>
             </span>
-            {community.records !== null ? (
-              <span className="flex items-center gap-1 tabular-nums">
-                <FileText className="size-3.5" />
-                {t("records", { count: community.records, shown: format.number(community.records) })}
-              </span>
-            ) : null}
+            <span className="flex min-w-0 items-center gap-3">
+              {community.records !== null ? (
+                <span className="flex shrink-0 items-center gap-1 tabular-nums">
+                  <FileText className="size-3.5" />
+                  {t("records", { count: community.records, shown: format.number(community.records) })}
+                </span>
+              ) : null}
+              {community.people !== null ? (
+                <span className="flex shrink-0 items-center gap-1 tabular-nums">
+                  <Users className="size-3.5" />
+                  {t("people", { count: community.people, shown: format.number(community.people) })}
+                </span>
+              ) : null}
+              {community.countries.length > 0 ? (
+                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: community.countries.map((code) => regions?.of(code.toUpperCase()) ?? code.toUpperCase()).join(", ") })}>
+                  {community.countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
+                </span>
+              ) : null}
+            </span>
           </div>
         </div>
       </a>

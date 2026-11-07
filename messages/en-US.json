@@ -5426,7 +5426,9 @@
       "noMatches": "No public communities match this search",
       "none": "Public communities appear here once they're live",
       "records": "{count, plural, one {{shown} record} other {{shown} records}}",
-      "unnamedOwner": "An Openscholar member"
+      "unnamedOwner": "An Openscholar member",
+      "people": "{count, plural, one {{shown} person} other {{shown} people}}",
+      "countries": "About {names}"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "New community",

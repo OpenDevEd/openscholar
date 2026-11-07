@@ -152,6 +152,7 @@ import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/
 import type * as evidenceLibraries_operationKinds from "../evidenceLibraries/operationKinds.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
+import type * as evidenceLibraries_peopleCount from "../evidenceLibraries/peopleCount.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
 import type * as evidenceLibraries_publicationCredentialVerification from "../evidenceLibraries/publicationCredentialVerification.js";
@@ -629,6 +630,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/operationKinds": typeof evidenceLibraries_operationKinds;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
+  "evidenceLibraries/peopleCount": typeof evidenceLibraries_peopleCount;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
   "evidenceLibraries/publicationCredentialVerification": typeof evidenceLibraries_publicationCredentialVerification;

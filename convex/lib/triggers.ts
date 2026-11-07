@@ -21,6 +21,7 @@ import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchT
 import { ADMIN_LIST, countList, libraryVersionList, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
 import { refreshOnSearch } from "../research/suggestionRefresh";
+import { recountOnGrant, recountOnMembership } from "../evidenceLibraries/peopleCount";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -71,6 +72,9 @@ triggers.register("organizationMemberships", keepSearchText("organizationMembers
 triggers.register("organizationMemberships", rerateOnMembership);
 triggers.register("users", keepTextOfUser);
 // Guests (#653): an item's count is the people given it and the invitations still waiting, and a person's is what's shared with them, in all and of each kind.
+// A community's count of people follows its team and its organization's admins (../evidenceLibraries/peopleCount.ts).
+triggers.register("itemAccess", recountOnGrant);
+triggers.register("organizationMemberships", recountOnMembership);
 triggers.register("itemAccess", countList((grant) => itemGuestsOf(grant.item)));
 triggers.register("itemInvitations", countList((invitation) => (invitation.state === "pending" ? itemGuestsOf(invitation.item) : null)));
 triggers.register("itemAccess", countList((grant) => (grant.kind === "library" ? null : sharedWithOf(grant.userId))));

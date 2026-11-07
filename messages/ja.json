@@ -5426,7 +5426,9 @@
       "noMatches": "この検索に一致する公開コミュニティはありません",
       "none": "公開コミュニティは公開されるとここに表示されます",
       "records": "{count, plural, other {{shown} 件の記録}}",
-      "unnamedOwner": "Openscholar のメンバー"
+      "unnamedOwner": "Openscholar のメンバー",
+      "people": "{count, plural, other {{shown} 人}}",
+      "countries": "対象：{names}"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新しいコミュニティ",

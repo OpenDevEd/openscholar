@@ -134,6 +134,8 @@ export async function readLibraryCollection(fetchImpl: typeof fetch, target: Lib
 
 const overviewSchema = z.object({
   records: z.number().int().min(0),
+  // The countries most of its public records are about, from a runtime that names them (new-el #772); an older one doesn't.
+  countries: z.array(z.object({ code: z.string().min(2).max(3), records: z.number().int().min(0) })).max(20).optional(),
   collections: z.array(z.object({ key: z.string(), name: z.string(), parent: z.string().nullable(), records: z.number().int().min(0) })),
 });
 

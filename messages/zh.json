@@ -5426,7 +5426,9 @@
       "noMatches": "没有符合此搜索的公开社区",
       "none": "公开社区上线后会显示在这里",
       "records": "{count, plural, other {{shown} 条记录}}",
-      "unnamedOwner": "一位 Openscholar 成员"
+      "unnamedOwner": "一位 Openscholar 成员",
+      "people": "{count, plural, other {{shown} 人}}",
+      "countries": "关于 {names}"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新建文献社区",

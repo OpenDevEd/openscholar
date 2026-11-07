@@ -5426,7 +5426,9 @@
       "noMatches": "Ayikho imiphakathi yomphakathi efana nalokhu kusesha",
       "none": "Imiphakathi yomphakathi ivela lapha uma isisebenza",
       "records": "{count, plural, one {irekhodi elingu-{shown}} other {amarekhodi angu-{shown}}}",
-      "unnamedOwner": "Ilungu le-Openscholar"
+      "unnamedOwner": "Ilungu le-Openscholar",
+      "people": "{count, plural, one {umuntu ongu-{shown}} other {abantu abangu-{shown}}}",
+      "countries": "Mayelana ne-{names}"
     },
     "evidenceLibraries": "Imiphakathi yobufakazi",
     "newLibrary": "Umphakathi omusha",
