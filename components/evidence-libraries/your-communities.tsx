@@ -71,7 +71,7 @@ const ROW_REM = 3;
 
 type Answer = (community: Community) => void;
 /** Accepting, for one of the person's organizations when the invitation is for an organization. */
-export type Accept = (community: Community, organization?: WorkspaceRow) => void;
+export type Accept = (community: Community, organization?: { organizationId: Id<"organizations">; name: string }) => void;
 type Actions = { onAccept: Accept; onDecline: Answer; answering: string | null; notify: (text: string) => void };
 type Organization = WorkspaceRow & { organizationId: Id<"organizations"> };
 /** What the list shows: everything, the person's own, one workspace's, or what's shared. In an organization, `here` is its own. */
@@ -301,8 +301,11 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
  */
 function AcceptForOrganization({ community, actions }: { community: Community; actions: Actions }) {
   const ts = useTranslations("libraryList.sidebar");
-  const theirs = (useWorkspaces().list ?? []).filter((row) => row.kind === "organization" && row.role === "admin");
+  // Every organization they're an admin of, read whole: the switcher's list comes a page at a time. Off until it's read.
+  const read = useProtectedQuery(api.evidenceLibraries.organizationGrants.adminOf, {}).data?.page;
+  const theirs = (read ?? []).map((row) => ({ ...row, kind: "organization" as const, imageUrl: row.imageUrl ?? undefined, colour: row.colour ?? undefined, workspaceId: row.workspaceId ?? undefined }));
   const button = (props: Record<string, unknown>) => <Button size="sm" className="h-7 px-2.5" disabled={actions.answering !== null || theirs.length === 0} {...props}><Check />{ts("accept")}{theirs.length > 1 && <ChevronDown />}</Button>;
+  if (!read) return button({});
   if (theirs.length === 0) {
     return (
       <Tooltip>
@@ -317,7 +320,7 @@ function AcceptForOrganization({ community, actions }: { community: Community; a
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{button({ "aria-label": ts("acceptForWhich", { name: community.name }) })}</DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {theirs.map((row) => <DropdownMenuItem key={row.workspaceId} onSelect={() => actions.onAccept(community, row)}><WorkspaceTile workspace={row} size="xxs" />{row.name}</DropdownMenuItem>)}
+        {theirs.map((row) => <DropdownMenuItem key={row.organizationId} onSelect={() => actions.onAccept(community, row)}><WorkspaceTile workspace={row} size="xxs" />{row.name}</DropdownMenuItem>)}
       </DropdownMenuContent>
     </DropdownMenu>
   );

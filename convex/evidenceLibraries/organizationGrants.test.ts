@@ -82,5 +82,11 @@ describe("sharing a community with an organization", () => {
     await answer(users.user_partner_admin, { organizationId });
     expect(await roleOf(fixture, "user_partner_member")).toBe("editor");
     expect((await fixture.t.run((ctx) => ctx.db.get("itemInvitations", invitationId)))?.state).toBe("accepted");
+
+    // Its owner lowers the organization's role; an invitation accepted after that doesn't raise it again.
+    await fixture.admin.mutation(api.evidenceLibraries.organizationGrants.changeRole, { libraryId, organizationId, role: "creator" });
+    const again = await fixture.t.mutation(internal.evidenceLibraries.invitations.prepare, { libraryId, email, role: "editor", toOrganization: true, actingAs: owner });
+    await fixture.t.mutation(internal.evidenceLibraries.invitations.respondVerified, { invitationId: again, emails: [email], accept: true, actingAs: users.user_partner_admin, organizationId });
+    expect(await roleOf(fixture, "user_partner_member")).toBe("creator");
   });
 });

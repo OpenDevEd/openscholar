@@ -35,6 +35,7 @@ import {
 import {
   betterGrant,
   grantedRole,
+  ownerActive,
   organizationGrantsOf,
   libraryGrant,
   libraryOf,
@@ -347,6 +348,8 @@ async function readLibraryOverview(
 /** Most libraries one page of the list holds, and the rows one read of it passes over looking for matches. */
 const LIBRARIES_PAGE_MAX = 50;
 const LIBRARY_ROWS_READ = 1_000;
+/** Rows of what's shared with the person's organizations one page passes over, in all: each takes a few reads (`sharedLibrary`). */
+const SHARED_ROWS_READ = 300;
 /** Where the granted libraries sit in the list: after every organization the person owns. */
 const GRANTED = "granted";
 
@@ -367,17 +370,23 @@ async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<
 }
 
 /**
- * A library shared with one of the person's organizations (#1091), with their role and who it belongs to. In
- * their own workspace, where everything is one list (`dedupe`), one listed already is left out: one in a
+ * A library shared with one of the person's organizations (#1091), with their role and who it belongs to, from a few
+ * reads: its owner, the role given to them, and the organizations it's shared with, of which they're in `members`.
+ * In their own workspace, where everything is one list (`dedupe`), one listed already is left out: one in a
  * workspace of theirs, one given to them, or one shared with an organization of theirs listed before this one.
  */
-async function sharedLibrary(ctx: QueryCtx, clerkUserId: string, grant: Doc<"libraryOrganizationGrants">, dedupe: { userId: Id<"users">; listed: Set<Id<"workspaces">>; before: Set<Id<"organizations">> } | null) {
+async function sharedLibrary(ctx: QueryCtx, userId: Id<"users">, members: Map<Id<"organizations">, boolean>, grant: Doc<"libraryOrganizationGrants">, dedupe: { listed: Set<Id<"workspaces">>; before: Set<Id<"organizations">> } | null) {
   const library = await ctx.db.get("evidenceLibraries", grant.libraryId);
-  if (!library?.workspaceId) return null;
-  if (dedupe && (dedupe.listed.has(library.workspaceId) || (await libraryGrant(ctx, library._id, dedupe.userId)) || (await organizationGrantsOf(ctx, library._id)).some((row) => dedupe.before.has(row.organizationId)))) return null;
-  const role = await readLibraryRole(ctx, library, clerkUserId);
-  const owner = role ? await libraryOwner(ctx, library) : null;
-  return role && owner ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
+  if (!library?.workspaceId || library.state === "disabled") return null;
+  const owner = await libraryOwner(ctx, library);
+  if (!owner || !ownerActive(owner)) return null;
+  const [personal, shared] = await Promise.all([libraryGrant(ctx, library._id, userId), organizationGrantsOf(ctx, library._id)]);
+  if (dedupe && (dedupe.listed.has(library.workspaceId) || personal || shared.some((row) => dedupe.before.has(row.organizationId)))) return null;
+  // Its owners are an organization's admins, or the person whose own workspace it's in; the rest have the better role given to them or an organization of theirs.
+  const owns = owner.organization ? members.get(owner.organization._id) === true : owner.workspace.kind === "personal" && owner.workspace.userId === userId;
+  const given = shared.filter((row) => members.has(row.organizationId)).reduce<Pick<Doc<"itemAccess">, "role"> | null>((best, row) => betterGrant(best, row), personal);
+  const role = owns ? "owner" as const : given ? grantedRole(given) : null;
+  return role ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
 }
 
 type Shown = { name: string; imageUrl: string | null; kind: "person" | "organization" };
@@ -482,18 +491,24 @@ export const listLibraries = query({
     // The ones shared with organizations they're in (#1091): in their own workspace, every organization's, after the
     // ones shared with them; on an organization's page, that one's, as what's shared with it.
     const sharedWith = own ? (organization ? (here && (!from || from === "shared") ? [here] : []) : wants("shared") ? members : []) : [];
+    const memberOf = new Map(members.map((entry) => [entry._id, entry.owns]));
+    // Each row of these takes a few reads of its own, so together they pass over at most SHARED_ROWS_READ.
+    let sharedRows = 0;
     sources.push(...sharedWith.map((entry, at) => ({
       key: `shared:${entry._id}`,
       name: entry.name,
       read: async (cursor: string | null, room: number): Promise<Read> => {
-        const dedupe = organization ? null : { userId: own!.userId, listed: listedIds, before: new Set(members.slice(0, at).map((earlier) => earlier._id)) };
+        const dedupe = organization ? null : { listed: listedIds, before: new Set(members.slice(0, at).map((earlier) => earlier._id)) };
         const read = await stream(ctx.db, schema)
           .query("libraryOrganizationGrants")
           .withIndex("by_organization_and_grantedAt", (index) => index.eq("organizationId", entry._id))
           .order("desc")
-          .map(async (grant) => sharedLibrary(ctx, identity.subject, grant, dedupe))
+          .map(async (grant) => {
+            sharedRows++;
+            return sharedLibrary(ctx, own!.userId, memberOf, grant, dedupe);
+          })
           .filterWith(async (shared) => shared !== null && within(shared.library.name, shared.shown.name))
-          .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+          .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, Math.min(SHARED_ROWS_READ - sharedRows, LIBRARY_ROWS_READ - rows)) });
         return {
           page: await Promise.all(read.page.map((shared) => overviewRow(ctx, shared!.library, shared!.role, { ...shared!.shown, kind: shared!.owner.organization ? "organization" : "person" }, { from: "shared", workspaceId: shared!.library.workspaceId }))),
           after: read.isDone ? null : read.continueCursor,
