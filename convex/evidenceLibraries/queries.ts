@@ -437,7 +437,8 @@ export const listLibraries = query({
       // Their own workspace's come first, in their own workspace.
       ...(own && !organization && wants("own") ? [workspaceSource(own.workspaceId, "", own.workspaceId, { ...own.shown, kind: "person" }, { from: "own", workspaceId: own.workspaceId }, async () => "owner")] : []),
       ...organizations
-        .filter((entry) => organization || wants(entry.workspaceId))
+        // On an organization's page its own are listed unless the filter asks for what's shared with it.
+        .filter((entry) => (organization ? from !== "shared" : wants(entry.workspaceId)))
         .map((entry) => workspaceSource(entry._id, entry.name, entry.workspaceId, { name: entry.name, imageUrl: entry.imageUrl ?? null, kind: "organization" }, { from: "organization", workspaceId: entry.workspaceId }, async (library) =>
           entry.owns ? "owner" : ((await readLibraryRole(ctx, library, identity.subject)) ?? "viewer"))),
       // In their own workspace, the ones shared with them; on the page of an organization they aren't in, its ones shared with them.

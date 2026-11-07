@@ -13,7 +13,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { Check, ExternalLink, Layers, MoreHorizontal, RotateCcw, Settings2, Share2, UserRound, X } from "@/components/icons";
+import { Check, ChevronDown, ExternalLink, Layers, MoreHorizontal, RotateCcw, Settings2, Share2, UserRound, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Spinner } from "@/components/ui/spinner";
@@ -60,6 +60,8 @@ const fromInvitation = (invitation: Invitation): Community => ({
 });
 
 const PER_PAGE = 100;
+/** The filter's "More workspaces" item, which is no filter of its own. */
+const MORE = "more-workspaces";
 /** A row's height, which every row of a page keeps, so a short last page doesn't move the pager. */
 const ROW_REM = 3;
 
@@ -86,7 +88,8 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
   waiting?: boolean;
 }) {
   const t = useTranslations("libraryList.sidebar");
-  const organizations = (useWorkspaces().list ?? []).filter((row): row is Organization => row.kind === "organization" && row.organizationId !== undefined);
+  const workspaces = useWorkspaces();
+  const organizations = (workspaces.list ?? []).filter((row): row is Organization => row.kind === "organization" && row.organizationId !== undefined);
   const from = filter === "all" || filter === "here" ? undefined : filter;
   const read = useCursorPage(
     api.evidenceLibraries.queries.listLibraries,
@@ -111,7 +114,8 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
     <div className="flex h-full min-h-0 flex-col">
       {/* As tall as the page's bar, with its bottom line, so the bar reads as running on under the sidebar. */}
       <div className="box-content flex h-16 shrink-0 items-center border-b border-sidebar-border px-3">
-        <Select value={filter} onValueChange={(value) => onFilter(value as CommunityFilter)}>
+        {/* "More workspaces" reads the next of the person's workspaces into the list, and leaves the filter as it was. */}
+        <Select value={filter} onValueChange={(value) => (value === MORE ? workspaces.loadMore() : onFilter(value as CommunityFilter))}>
           <SelectTrigger aria-label={t("showFrom")} className="w-full border-transparent bg-transparent font-medium shadow-none hover:bg-muted">
             <SelectValue />
           </SelectTrigger>
@@ -123,6 +127,7 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
                 <SelectLabel>{t("workspaces")}</SelectLabel>
                 <SelectItem value="own"><UserRound />{t("yours")}</SelectItem>
                 {organizations.map((row) => <SelectItem key={row.workspaceId} value={row.workspaceId}><IdentityAvatar name={row.name} imageUrl={row.imageUrl} kind="organization" className="size-4 rounded-sm" />{row.name}</SelectItem>)}
+                {workspaces.more ? <SelectItem value={MORE} disabled={workspaces.loading}><ChevronDown />{t("moreWorkspaces")}</SelectItem> : null}
               </SelectGroup>
             ) : (
               <SelectItem value="here"><IdentityAvatar name={workspaceName} imageUrl={workspaceImage} kind="organization" className="size-4 rounded-sm" />{workspaceName}</SelectItem>

@@ -61,6 +61,18 @@ describe("the public directory", () => {
     expect(await names("name")).toHaveLength(3);
   });
 
+  it("names a person who owns a community by their name, never their email", async () => {
+    const { fixture, workspaceId } = await live("directory_person");
+    const personal = await fixture.t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { clerkId: "user_person", email: "private@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      return (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id;
+    });
+    await another(fixture, personal, "Solo Evidence", { liveAt: 1 });
+    const solo = (await list(fixture, workspaceId, "name", "solo"))[0];
+    expect(solo.owner).toEqual({ name: null, kind: "person", imageUrl: null });
+    expect(JSON.stringify(await list(fixture, workspaceId, "name"))).not.toContain("private@example.org");
+  });
+
   it("lets only an owner unlist a community", async () => {
     const { fixture, library, workspaceId } = await live("directory_owner");
     await fixture.t.run(async (ctx) => {

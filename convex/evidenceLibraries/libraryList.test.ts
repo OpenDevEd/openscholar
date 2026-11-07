@@ -69,6 +69,8 @@ describe("the library list", () => {
     expect((await names(me, { from: alphaWorkspace }, 10)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)"]);
     expect((await names(me, { from: "shared" }, 10)).flat()).toEqual(["Shared reading (editor)"]);
     expect((await names(me, { from: "own" }, 10)).flat()).toEqual([]);
+    // On an organization's page, "Shared with" it lists what's shared with it, not its own.
+    expect((await names(me, { organization: alpha, from: "shared" }, 10)).flat()).toEqual([]);
   });
 
   it("goes on to the granted libraries when the organization a page stopped in is no longer the person's", async () => {

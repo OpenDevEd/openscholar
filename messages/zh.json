@@ -5411,7 +5411,8 @@
       "emptyWorkspace": "{name} 还没有社区。",
       "invitedAs": "受邀身份：{role}",
       "accept": "接受",
-      "accepted": "已接受 {name}。"
+      "accepted": "已接受 {name}。",
+      "moreWorkspaces": "更多工作区"
     },
     "directory": {
       "title": "公开社区",
@@ -5424,7 +5425,8 @@
       "loading": "正在加载公开社区",
       "noMatches": "没有符合此搜索的公开社区",
       "none": "公开社区上线后会显示在这里",
-      "records": "{count, plural, other {{shown} 条记录}}"
+      "records": "{count, plural, other {{shown} 条记录}}",
+      "unnamedOwner": "一位 Openscholar 成员"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新建文献社区",

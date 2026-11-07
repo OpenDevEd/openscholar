@@ -5412,7 +5412,8 @@
       "emptyWorkspace": "{name} het nog geen gemeenskappe nie.",
       "invitedAs": "Uitgenooi as {role}",
       "accept": "Aanvaar",
-      "accepted": "{name} aanvaar."
+      "accepted": "{name} aanvaar.",
+      "moreWorkspaces": "Meer werkruimtes"
     },
     "directory": {
       "title": "Openbare gemeenskappe",
@@ -5425,7 +5426,8 @@
       "loading": "Laai openbare gemeenskappe",
       "noMatches": "Geen openbare gemeenskappe pas by hierdie soektog nie",
       "none": "Openbare gemeenskappe verskyn hier sodra hulle regstreeks is",
-      "records": "{count, plural, one {{shown} rekord} other {{shown} rekords}}"
+      "records": "{count, plural, one {{shown} rekord} other {{shown} rekords}}",
+      "unnamedOwner": "’n Openscholar-lid"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nuwe gemeenskap",

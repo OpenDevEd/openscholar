@@ -5412,7 +5412,8 @@
       "emptyWorkspace": "{name} bado haina jumuiya.",
       "invitedAs": "Umealikwa kama {role}",
       "accept": "Kubali",
-      "accepted": "Umekubali {name}."
+      "accepted": "Umekubali {name}.",
+      "moreWorkspaces": "Nafasi zaidi za kazi"
     },
     "directory": {
       "title": "Jumuiya za umma",
@@ -5425,7 +5426,8 @@
       "loading": "Inapakia jumuiya za umma",
       "noMatches": "Hakuna jumuiya ya umma inayolingana na utafutaji huu",
       "none": "Jumuiya za umma zinaonekana hapa zikiwa hewani",
-      "records": "{count, plural, one {rekodi {shown}} other {rekodi {shown}}}"
+      "records": "{count, plural, one {rekodi {shown}} other {rekodi {shown}}}",
+      "unnamedOwner": "Mwanachama wa Openscholar"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Jumuiya mpya",

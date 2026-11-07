@@ -90,8 +90,8 @@ function CommunityCard({ community }: { community: Card }) {
           {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : null}
           <div className="mt-auto flex flex-col gap-1.5 pt-3 text-xs text-muted-foreground">
             <span className="flex min-w-0 items-center gap-1.5">
-              <IdentityAvatar name={community.owner.name} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
-              <span className="truncate">{community.owner.name}</span>
+              <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
+              <span className="truncate">{community.owner.name ?? t("unnamedOwner")}</span>
             </span>
             {community.records !== null ? (
               <span className="flex items-center gap-1 tabular-nums">

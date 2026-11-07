@@ -5411,7 +5411,8 @@
       "emptyWorkspace": "{name} にはまだコミュニティがありません。",
       "invitedAs": "{role}として招待されています",
       "accept": "承諾",
-      "accepted": "{name} を承諾しました。"
+      "accepted": "{name} を承諾しました。",
+      "moreWorkspaces": "ほかのワークスペース"
     },
     "directory": {
       "title": "公開コミュニティ",
@@ -5424,7 +5425,8 @@
       "loading": "公開コミュニティを読み込み中",
       "noMatches": "この検索に一致する公開コミュニティはありません",
       "none": "公開コミュニティは公開されるとここに表示されます",
-      "records": "{count, plural, other {{shown} 件の記録}}"
+      "records": "{count, plural, other {{shown} 件の記録}}",
+      "unnamedOwner": "Openscholar のメンバー"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新しいコミュニティ",

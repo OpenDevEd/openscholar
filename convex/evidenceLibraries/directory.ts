@@ -31,7 +31,8 @@ const cardValidator = v.object({
   accentColor: v.union(v.string(), v.null()),
   faviconUrl: v.union(v.string(), v.null()),
   address: v.string(),
-  owner: v.object({ name: v.string(), kind: v.union(v.literal("person"), v.literal("organization")), imageUrl: v.union(v.string(), v.null()) }),
+  /** Who it belongs to. A person is named by their name alone: null when they have none, never their email. */
+  owner: v.object({ name: v.union(v.string(), v.null()), kind: v.union(v.literal("person"), v.literal("organization")), imageUrl: v.union(v.string(), v.null()) }),
   records: v.union(v.number(), v.null()),
   liveAt: v.union(v.number(), v.null()),
 });
@@ -87,6 +88,8 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   if (!owner || !ownerActive(owner)) return null;
   const binding = library.runtimeBindingId ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId) : null;
   const shown = await ownerName(ctx, owner);
+  // The directory is public: a person's email stays theirs.
+  const person = owner.person ? [owner.person.firstName, owner.person.lastName].filter(Boolean).join(" ") : null;
   return {
     _id: library._id,
     name: library.name,
@@ -94,7 +97,7 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     accentColor: library.card?.accentColor ?? null,
     faviconUrl: library.card?.faviconUrl ?? null,
     address: binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "",
-    owner: { name: shown.name, kind: owner.organization ? ("organization" as const) : ("person" as const), imageUrl: shown.imageUrl },
+    owner: owner.organization ? { name: shown.name, kind: "organization" as const, imageUrl: shown.imageUrl } : { name: person || null, kind: "person" as const, imageUrl: shown.imageUrl },
     records: library.records ?? null,
     liveAt: library.liveAt ?? null,
   };
@@ -115,7 +118,7 @@ export const listPublicAction = defineUserQuery({
       .withIndex(index, (q) => q.eq("state", "active").eq("unlisted", undefined))
       .order(sort === "name" ? "asc" : "desc")
       .map(async (library) => await cardRow(ctx, library))
-      .filterWith(async (card) => card !== null && (!needle || `${card.name} ${card.tagline ?? ""} ${card.owner.name}`.toLowerCase().includes(needle)))
+      .filterWith(async (card) => card !== null && (!needle || `${card.name} ${card.tagline ?? ""} ${card.owner.name ?? ""}`.toLowerCase().includes(needle)))
       .map(async (card) => card!)
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumRowsRead: ROWS_READ });
   },

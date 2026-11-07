@@ -5411,7 +5411,8 @@
       "emptyWorkspace": "{name} has no communities yet.",
       "invitedAs": "Invited as {role}",
       "accept": "Accept",
-      "accepted": "Accepted {name}."
+      "accepted": "Accepted {name}.",
+      "moreWorkspaces": "More workspaces"
     },
     "directory": {
       "title": "Public communities",
@@ -5424,7 +5425,8 @@
       "loading": "Loading public communities",
       "noMatches": "No public communities match this search",
       "none": "Public communities appear here once they're live",
-      "records": "{count, plural, one {{shown} record} other {{shown} records}}"
+      "records": "{count, plural, one {{shown} record} other {{shown} records}}",
+      "unnamedOwner": "An Openscholar member"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "New community",

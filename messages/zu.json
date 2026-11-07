@@ -5411,7 +5411,8 @@
       "emptyWorkspace": "U-{name} akakabi nayo imiphakathi.",
       "invitedAs": "Umenyiwe njengo-{role}",
       "accept": "Yamukela",
-      "accepted": "Wamukele u-{name}."
+      "accepted": "Wamukele u-{name}.",
+      "moreWorkspaces": "Izindawo zokusebenza ezengeziwe"
     },
     "directory": {
       "title": "Imiphakathi yomphakathi",
@@ -5424,7 +5425,8 @@
       "loading": "Ilayisha imiphakathi yomphakathi",
       "noMatches": "Ayikho imiphakathi yomphakathi efana nalokhu kusesha",
       "none": "Imiphakathi yomphakathi ivela lapha uma isisebenza",
-      "records": "{count, plural, one {irekhodi elingu-{shown}} other {amarekhodi angu-{shown}}}"
+      "records": "{count, plural, one {irekhodi elingu-{shown}} other {amarekhodi angu-{shown}}}",
+      "unnamedOwner": "Ilungu le-Openscholar"
     },
     "evidenceLibraries": "Imiphakathi yobufakazi",
     "newLibrary": "Umphakathi omusha",

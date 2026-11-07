@@ -5411,7 +5411,8 @@
       "emptyWorkspace": "{name} की अभी कोई कम्युनिटी नहीं है।",
       "invitedAs": "{role} के रूप में आमंत्रित",
       "accept": "स्वीकार करें",
-      "accepted": "{name} स्वीकार की गई।"
+      "accepted": "{name} स्वीकार की गई।",
+      "moreWorkspaces": "और वर्कस्पेस"
     },
     "directory": {
       "title": "सार्वजनिक कम्युनिटी",
@@ -5424,7 +5425,8 @@
       "loading": "सार्वजनिक कम्युनिटी लोड हो रही हैं",
       "noMatches": "कोई सार्वजनिक कम्युनिटी इस खोज से मेल नहीं खाती",
       "none": "सार्वजनिक कम्युनिटी लाइव होने पर यहाँ दिखती हैं",
-      "records": "{count, plural, one {{shown} रिकॉर्ड} other {{shown} रिकॉर्ड}}"
+      "records": "{count, plural, one {{shown} रिकॉर्ड} other {{shown} रिकॉर्ड}}",
+      "unnamedOwner": "Openscholar का एक सदस्य"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "नई कम्युनिटी",

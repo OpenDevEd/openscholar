@@ -5411,7 +5411,8 @@
       "emptyWorkspace": "{name} n’a pas encore de communauté.",
       "invitedAs": "Invité comme {role}",
       "accept": "Accepter",
-      "accepted": "{name} acceptée."
+      "accepted": "{name} acceptée.",
+      "moreWorkspaces": "Plus d’espaces de travail"
     },
     "directory": {
       "title": "Communautés publiques",
@@ -5424,7 +5425,8 @@
       "loading": "Chargement des communautés publiques",
       "noMatches": "Aucune communauté publique ne correspond à cette recherche",
       "none": "Les communautés publiques apparaissent ici dès qu’elles sont en ligne",
-      "records": "{count, plural, one {{shown} notice} other {{shown} notices}}"
+      "records": "{count, plural, one {{shown} notice} other {{shown} notices}}",
+      "unnamedOwner": "Un membre d’Openscholar"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Nouvelle communauté",

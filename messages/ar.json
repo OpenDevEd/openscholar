@@ -5412,7 +5412,8 @@
       "emptyWorkspace": "لا توجد مجتمعات لدى {name} بعد.",
       "invitedAs": "مدعو بصفة {role}",
       "accept": "قبول",
-      "accepted": "تم قبول {name}."
+      "accepted": "تم قبول {name}.",
+      "moreWorkspaces": "مساحات عمل أخرى"
     },
     "directory": {
       "title": "المجتمعات العامة",
@@ -5425,7 +5426,8 @@
       "loading": "جارٍ تحميل المجتمعات العامة",
       "noMatches": "لا توجد مجتمعات عامة تطابق هذا البحث",
       "none": "تظهر المجتمعات العامة هنا عند إطلاقها",
-      "records": "{count, plural, one {سجل واحد} two {سجلان} few {{shown} سجلات} many {{shown} سجلًا} other {{shown} سجل}}"
+      "records": "{count, plural, one {سجل واحد} two {سجلان} few {{shown} سجلات} many {{shown} سجلًا} other {{shown} سجل}}",
+      "unnamedOwner": "عضو في Openscholar"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "مجتمع جديد",
