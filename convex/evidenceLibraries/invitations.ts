@@ -13,9 +13,11 @@ import { createError } from "../lib/errors";
 import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
 import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { invitationTo } from "../sharing/access";
+import { giveOrganization } from "./organizationGrants";
 
 const roleValidator = v.union(v.literal("editor"), v.literal("creator"));
-const invitationArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator };
+// `toOrganization`: for an organization the invited person is an admin of, which they pick on accepting (#1091).
+const invitationArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator, toOrganization: v.optional(v.boolean()) };
 
 /** Checks an invitation and keeps it, ready to send. Sending one again restarts its seven days and takes no second place. */
 export const prepare = internalMutation({
@@ -30,8 +32,10 @@ export const prepare = internalMutation({
     // A deleted account keeps its address, so one address can name several accounts.
     const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).take(MAX_ACCOUNTS_PER_EMAIL + 1);
     if (users.length > MAX_ACCOUNTS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many accounts have used this address to check which of them already has access. Invite a different address.");
-    for (const user of users) {
-      if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has community access");
+    // Someone with a role of their own can still take it for an organization of theirs; someone with one through an
+    // organization it's shared with can still be given one of their own.
+    for (const user of args.toOrganization ? [] : users) {
+      if ((await readLibraryRole(ctx, access.library, user.clerkId)) === "owner" || (await libraryGrant(ctx, access.library._id, user._id))) throw createError("CONFLICT", "This person already has community access");
     }
     const inviter = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", access.clerkUserId)).unique();
     if (!inviter) throw createError("UNAUTHENTICATED", "Sign in to invite");
@@ -48,7 +52,7 @@ export const prepare = internalMutation({
         .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
       if (theirs.length >= MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "This person has too many invitations waiting. Ask them to answer some first.");
     }
-    const values = { kind: "library" as const, item: args.libraryId, email, role: args.role, invitedBy: inviter._id, expiresAt: Date.now() + 7 * 86400000, state: "pending" as const, delivery: "queued" as const };
+    const values = { kind: "library" as const, item: args.libraryId, email, role: args.role, invitedBy: inviter._id, expiresAt: Date.now() + 7 * 86400000, state: "pending" as const, delivery: "queued" as const, ...(args.toOrganization ? { toOrganization: true as const } : {}) };
     const invitationId = existing?._id ?? await ctx.db.insert("itemInvitations", values);
     if (existing) await ctx.db.replace("itemInvitations", existing._id, values);
     // Its time up, it is marked expired, so lists filter on its state and never on the clock (../sharing/invitations.ts).
@@ -65,7 +69,7 @@ export const readDelivery = internalQuery({
     const invited = invitation ? await libraryOf(ctx, invitation) : null;
     if (!invitation || !invited || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
     const access = await requireEvidenceLibraryAccess(ctx, invited._id, "manage");
-    return { email: invitation.email, libraryName: access.library.name, role: grantedRole(invitation), ...await libraryEmailSender(ctx, access.library) };
+    return { email: invitation.email, libraryName: access.library.name, role: grantedRole(invitation), toOrganization: invitation.toOrganization === true, ...await libraryEmailSender(ctx, access.library) };
   },
 });
 
@@ -119,7 +123,8 @@ export const listInvitations = query({
 
 /** Called only after Clerk confirms a verified address on the signed-in account. */
 export const respondVerified = internalMutation({
-  args: { ...actingArg, invitationId: v.id("itemInvitations"), emails: v.array(v.string()), accept: v.boolean() },
+  // `organizationId`: on accepting one for an organization, which of theirs gets it.
+  args: { ...actingArg, invitationId: v.id("itemInvitations"), emails: v.array(v.string()), accept: v.boolean(), organizationId: v.optional(v.id("organizations")) },
   returns: v.null(),
   handler: async (caller, { actingAs: as, ...args }) => {
     const ctx = await signedInAs(caller, as);
@@ -130,11 +135,15 @@ export const respondVerified = internalMutation({
     // One to anything else is answered where it was sent from (../sharing/invitations.ts).
     if (!invitation || invitation.kind !== "library" || !args.emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
     // Accepting again what they accepted already, as a second press or a second tab does, changes nothing.
-    if (args.accept && invitation.state === "accepted" && library && (await libraryGrant(ctx, library._id, user._id))) return null;
+    if (args.accept && invitation.state === "accepted" && library && (invitation.toOrganization || (await libraryGrant(ctx, library._id, user._id)))) return null;
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!library || library.state === "disabled" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Community unavailable");
+    if (args.accept && invitation.toOrganization) {
+      if (!args.organizationId) throw createError("VALIDATION_ERROR", "Choose which of your organizations gets this community.");
+      await giveOrganization(ctx, library, args.organizationId, grantedRole(invitation), user);
+    }
     // An outstanding invitation cannot overwrite a role granted since it was sent. Its place in the library becomes the person's.
-    if (args.accept && !(await libraryGrant(ctx, library._id, user._id))) {
+    else if (args.accept && !(await libraryGrant(ctx, library._id, user._id))) {
       await assertPersonHasRoom(ctx, user._id);
       await ctx.db.insert("itemAccess", { kind: "library", item: library._id, name: library.name, userId: user._id, role: grantedRole(invitation), grantedBy: invitation.invitedBy, grantedAt: Date.now() });
     }

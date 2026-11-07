@@ -5338,7 +5338,17 @@
     "removedFromLibrary": "Imeondolewa kwenye jumuiya hii.",
     "removedFromProfile": "Imeondolewa kwenye wasifu huu.",
     "addedToLibrary": "{name} ameongezwa kwenye jumuiya hii.",
-    "addedToProfile": "{name} ameongezwa kwenye wasifu huu."
+    "addedToProfile": "{name} ameongezwa kwenye wasifu huu.",
+    "anOrganization": "Shirika",
+    "chooseAnOrganization": "Chagua shirika",
+    "anotherOrganization": "Shirika lingine",
+    "adminEmail": "Barua pepe ya msimamizi wake",
+    "organizationGetsIt": "Kila mtu kwenye shirika anapata jukumu hili, na hulipoteza akiondoka.",
+    "theirAdminAccepts": "Msimamizi wake huikubali kwa shirika analoliendesha, na kila mtu ndani yake anapata jukumu hili.",
+    "everyoneInIt": "Kila mtu ndani yake",
+    "forTheirOrganization": "Kwa shirika ambalo {email} ni msimamizi wake",
+    "removeThisOrganization": "Ondoa shirika hili? Wanachama wake wanabaki tu na majukumu waliyopewa wenyewe.",
+    "organizationLabel": "Shirika"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Ripoti imewekwa kwenye foleni kwa chapisho #.} other {Ripoti imewekwa kwenye foleni kwa machapisho #.}}",
@@ -5421,7 +5431,11 @@
       "invitedAs": "Umealikwa kama {role}",
       "accept": "Kubali",
       "accepted": "Umekubali {name}.",
-      "moreWorkspaces": "Nafasi zaidi za kazi"
+      "moreWorkspaces": "Nafasi zaidi za kazi",
+      "invitedForOrganization": "Umealikwa kama {role}, kwa shirika lako",
+      "acceptAsAnAdmin": "Ikubali ukiwa msimamizi wa shirika",
+      "acceptForWhich": "Kubali {name} kwa shirika gani",
+      "acceptedFor": "Umekubali {name} kwa {organization}."
     },
     "directory": {
       "title": "Jumuiya za umma",

@@ -30,7 +30,7 @@ import { CommandCenterContainer } from "@/components/command-center/command-cent
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { ListSearch } from "./list-controls";
 import { PublicCommunities } from "./public-communities";
-import { YourCommunities, type Community, type CommunityFilter } from "./your-communities";
+import { YourCommunities, type Accept, type Community, type CommunityFilter } from "./your-communities";
 
 /**
  * The Communities page (#1090): every community you can open, in the page's sidebar, beside every
@@ -60,12 +60,12 @@ export function LibraryList({ preloadedOpens, preloadedPublic }: {
   const [answering, setAnswering] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [declining, setDeclining] = useState<Community | null>(null);
-  const accept = async (community: Community) => {
+  const accept: Accept = async (community, organization) => {
     if (!community.invitationId) return;
     setAnswering(community.invitationId);
     try {
-      await respond({ invitationId: community.invitationId, accept: true });
-      setNotice(t("sidebar.accepted", { name: community.name }));
+      await respond({ invitationId: community.invitationId, accept: true, ...(organization?.organizationId ? { organizationId: organization.organizationId } : {}) });
+      setNotice(organization ? t("sidebar.acceptedFor", { name: community.name, organization: organization.name }) : t("sidebar.accepted", { name: community.name }));
     } catch (error) { setNotice(getErrorMessage(error, t("unableToAcceptInvitation"))); }
     finally { setAnswering(null); }
   };

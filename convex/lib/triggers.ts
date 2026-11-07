@@ -21,7 +21,7 @@ import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchT
 import { ADMIN_LIST, countList, libraryVersionList, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
 import { refreshOnSearch } from "../research/suggestionRefresh";
-import { recountOnGrant, recountOnMembership } from "../evidenceLibraries/peopleCount";
+import { recountOnGrant, recountOnMembership, recountOnOrganizationGrant } from "../evidenceLibraries/peopleCount";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -75,6 +75,7 @@ triggers.register("users", keepTextOfUser);
 // A community's count of people follows its team and its organization's admins (../evidenceLibraries/peopleCount.ts).
 triggers.register("itemAccess", recountOnGrant);
 triggers.register("organizationMemberships", recountOnMembership);
+triggers.register("libraryOrganizationGrants", recountOnOrganizationGrant);
 triggers.register("itemAccess", countList((grant) => itemGuestsOf(grant.item)));
 triggers.register("itemInvitations", countList((invitation) => (invitation.state === "pending" ? itemGuestsOf(invitation.item) : null)));
 triggers.register("itemAccess", countList((grant) => (grant.kind === "library" ? null : sharedWithOf(grant.userId))));

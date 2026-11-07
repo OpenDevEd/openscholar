@@ -27,6 +27,7 @@
   "caps": {
     "enforced": {
       "MAX_LIBRARY_MEMBERS": "convex/evidenceLibraries/members.ts:assertLibraryHasRoom",
+      "MAX_ORGANIZATION_GRANTS_PER_LIBRARY": "convex/evidenceLibraries/organizationGrants.ts:giveOrganization",
       "MAX_LIBRARY_GRANTS_PER_PERSON": "convex/evidenceLibraries/members.ts:assertPersonHasRoom",
       "MAX_FEATURE_FLAGS": "convex/featureFlags/internal.ts",
       "MAX_PENDING_INVITATIONS_PER_LIBRARY": "convex/evidenceLibraries/invitations.ts",

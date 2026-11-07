@@ -30,8 +30,9 @@ export async function addLibraryMember(ctx: MutationCtx, args: ObjectType<typeof
   if (!membership) throw createError("FORBIDDEN", "Choose an organization member");
   const [person, by] = await Promise.all([account(ctx, args.clerkUserId), account(ctx, access.clerkUserId)]);
   if (person?.state !== "active" || !by) throw createError("NOT_FOUND", "Person not found");
-  // A row that gives no role now, as a disabled library's doesn't, still holds the person's place.
-  if (await readLibraryRole(ctx, access.library, args.clerkUserId) || await libraryGrant(ctx, args.libraryId, person._id)) {
+  // A row that gives no role now, as a disabled library's doesn't, still holds the person's place. A role through an
+  // organization it's shared with (#1091) leaves room for one of their own.
+  if (await readLibraryRole(ctx, access.library, args.clerkUserId) === "owner" || await libraryGrant(ctx, args.libraryId, person._id)) {
     throw createError("CONFLICT", "This person already has access");
   }
   // An invitation to their address that still waits is answered by this: its place in the library becomes theirs.

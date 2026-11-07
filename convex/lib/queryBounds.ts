@@ -19,6 +19,8 @@ export const SERVED_HOSTS_BATCH = 500;
 
 /** Most Evidence Libraries one person is granted directly; another grant is refused, so their grants read in one query. */
 export const MAX_LIBRARY_GRANTS_PER_PERSON = 200;
+/** Organizations one community is shared with (#1091): each member's role reads them all. */
+export const MAX_ORGANIZATION_GRANTS_PER_LIBRARY = 20;
 
 /** Most invitations one library has waiting; another is refused until some are answered, cancelled or expire. */
 export const MAX_PENDING_INVITATIONS_PER_LIBRARY = 500;

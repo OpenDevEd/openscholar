@@ -47,6 +47,8 @@ export type Community = {
   deletionFailed?: boolean;
   configuration?: string;
   operation?: LibraryOperation | null;
+  /** An invitation for an organization the person is an admin of, which they pick on accepting (#1091). */
+  toOrganization?: boolean;
 };
 const ROLE_KINDS = { owner: "owner", editor: "editor", creator: "creator", viewer: "view" } as const;
 
@@ -57,7 +59,7 @@ const fromOverview = (library: Overview): Community => ({
   ...(library.role === "owner" || library.status !== "deleting" ? { configuration: `/evidence-communities/${library._id}/configuration` } : {}),
 });
 const fromInvitation = (invitation: Invitation): Community => ({
-  id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: invitation.role, address: "", pending: true,
+  id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: invitation.role, address: "", pending: true, toOrganization: invitation.toOrganization,
   owner: { name: invitation.organization.name, imageUrl: invitation.organization.imageUrl, kind: invitation.organization.id ? "organization" : "person" },
 });
 
@@ -68,7 +70,9 @@ const MORE = "more-workspaces";
 const ROW_REM = 3;
 
 type Answer = (community: Community) => void;
-type Actions = { onAccept: Answer; onDecline: Answer; answering: string | null; notify: (text: string) => void };
+/** Accepting, for one of the person's organizations when the invitation is for an organization. */
+export type Accept = (community: Community, organization?: { organizationId: Id<"organizations">; name: string }) => void;
+type Actions = { onAccept: Accept; onDecline: Answer; answering: string | null; notify: (text: string) => void };
 type Organization = WorkspaceRow & { organizationId: Id<"organizations"> };
 /** What the list shows: everything, the person's own, one workspace's, or what's shared. In an organization, `here` is its own. */
 export type CommunityFilter = "all" | "own" | "here" | "shared" | Id<"workspaces">;
@@ -238,14 +242,16 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
           {name}
         </span>
         <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-          <RoleLabel role={ROLE_KINDS[community.role]}>{community.pending ? ts("invitedAs", { role }) : role}</RoleLabel>
+          <RoleLabel role={ROLE_KINDS[community.role]}>{community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role}</RoleLabel>
         </span>
       </div>
       {community.pending ? (
         <div className="relative flex shrink-0 items-center gap-1">
           <IconAction label={t("declineInvitation")} disabled={actions.answering !== null} onClick={() => actions.onDecline(community)}><X /></IconAction>
-          {/* A text button: it leaves the row once the invitation is answered, and a tooltip would go with it. */}
-          <Button size="sm" className="h-7 px-2.5" disabled={actions.answering !== null} onClick={() => actions.onAccept(community)}><Check />{ts("accept")}</Button>
+          {community.toOrganization ? <AcceptForOrganization community={community} actions={actions} /> : (
+            // A text button: it leaves the row once the invitation is answered, and a tooltip would go with it.
+            <Button size="sm" className="h-7 px-2.5" disabled={actions.answering !== null} onClick={() => actions.onAccept(community)}><Check />{ts("accept")}</Button>
+          )}
         </div>
       ) : (
         <DropdownMenu>
@@ -286,6 +292,37 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
       {/* Mounted once asked for: a page of rows doesn't each ask whether theirs can move. */}
       {movesFrom && moving ? <MoveDialog open onOpenChange={setMoving} kind="community" id={community.id} name={community.name} from={movesFrom as Id<"workspaces">} /> : null}
     </li>
+  );
+}
+
+/**
+ * Accepting an invitation for an organization (#1091): for the one the person is an admin of, or, with several,
+ * the one they pick. One who is an admin of none can't take it, and the button says why.
+ */
+function AcceptForOrganization({ community, actions }: { community: Community; actions: Actions }) {
+  const ts = useTranslations("libraryList.sidebar");
+  // Every organization they're an admin of, read whole: the switcher's list comes a page at a time. Off until it's read.
+  const read = useProtectedQuery(api.evidenceLibraries.organizationGrants.adminOf, {}).data?.page;
+  const theirs = (read ?? []).map((row) => ({ ...row, kind: "organization" as const, imageUrl: row.imageUrl ?? undefined, colour: row.colour ?? undefined, workspaceId: row.workspaceId ?? undefined }));
+  const button = (props: Record<string, unknown>) => <Button size="sm" className="h-7 px-2.5" disabled={actions.answering !== null || theirs.length === 0} {...props}><Check />{ts("accept")}{theirs.length > 1 && <ChevronDown />}</Button>;
+  if (!read) return button({});
+  if (theirs.length === 0) {
+    return (
+      <Tooltip>
+        {/* Focusable, so the reason it's off is there on hover and focus. */}
+        <TooltipTrigger asChild><span tabIndex={0}>{button({})}</span></TooltipTrigger>
+        <TooltipContent>{ts("acceptAsAnAdmin")}</TooltipContent>
+      </Tooltip>
+    );
+  }
+  if (theirs.length === 1) return button({ onClick: () => actions.onAccept(community, theirs[0]) });
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>{button({ "aria-label": ts("acceptForWhich", { name: community.name }) })}</DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {theirs.map((row) => <DropdownMenuItem key={row.organizationId} onSelect={() => actions.onAccept(community, row)}><WorkspaceTile workspace={row} size="xxs" />{row.name}</DropdownMenuItem>)}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

@@ -751,6 +751,15 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(routeLeases.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
+    // The organizations it was shared with (#1091).
+    const organizationGrants = await ctx.db
+      .query("libraryOrganizationGrants")
+      .withIndex("by_library_and_organization", (query) => query.eq("libraryId", args.libraryId))
+      .take(BATCH_SIZE);
+    if (organizationGrants.length > 0) {
+      await Promise.all(organizationGrants.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
     const oauthClients = await ctx.db
       .query("evidenceLibraryOAuthClients")
       .withIndex("by_libraryId", (query) =>

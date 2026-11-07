@@ -5337,7 +5337,17 @@
     "removedFromLibrary": "Kususiwe kulo mphakathi.",
     "removedFromProfile": "Kususiwe kule phrofayili.",
     "addedToLibrary": "U-{name} wengeziwe kulo mphakathi.",
-    "addedToProfile": "U-{name} wengeziwe kule phrofayili."
+    "addedToProfile": "U-{name} wengeziwe kule phrofayili.",
+    "anOrganization": "Inhlangano",
+    "chooseAnOrganization": "Khetha inhlangano",
+    "anotherOrganization": "Enye inhlangano",
+    "adminEmail": "I-imeyili yomlawuli wayo",
+    "organizationGetsIt": "Wonke umuntu enhlanganweni uthola le ndima, futhi uyilahlekelwa lapho ehamba.",
+    "theirAdminAccepts": "Umlawuli wayo uyamukela enhlanganweni ayiphethe, futhi wonke umuntu kuyo uthola le ndima.",
+    "everyoneInIt": "Wonke umuntu kuyo",
+    "forTheirOrganization": "Enhlanganweni u-{email} ongumlawuli wayo",
+    "removeThisOrganization": "Susa le nhlangano? Amalungu ayo agcina kuphela izindima azinikwe wona ngokwawo.",
+    "organizationLabel": "Inhlangano"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Isifinyezo sibekwe emgqeni ushicilelo olu-#.} other {Isifinyezo sibekwe emgqeni ukushicilelwa okungu-#.}}",
@@ -5420,7 +5430,11 @@
       "invitedAs": "Umenyiwe njengo-{role}",
       "accept": "Yamukela",
       "accepted": "Wamukele u-{name}.",
-      "moreWorkspaces": "Izindawo zokusebenza ezengeziwe"
+      "moreWorkspaces": "Izindawo zokusebenza ezengeziwe",
+      "invitedForOrganization": "Umenyiwe njengo-{role}, enhlanganweni yakho",
+      "acceptAsAnAdmin": "Yamukele njengomlawuli wenhlangano",
+      "acceptForWhich": "Yamukela u-{name} kuyiphi inhlangano",
+      "acceptedFor": "Wamukele u-{name} ku-{organization}."
     },
     "directory": {
       "title": "Imiphakathi yomphakathi",
