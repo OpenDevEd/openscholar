@@ -860,10 +860,3 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
   },
 });
 
-/** A workspace's first library, by name: what moving its organization to a plan without Evidence Libraries waits on. Null when it has none. */
-export const heldBy = internalQuery({
-  args: { workspaceId: v.id("workspaces") },
-  returns: v.union(v.null(), v.string()),
-  handler: async (ctx, { workspaceId }) =>
-    (await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first())?.name ?? null,
-});

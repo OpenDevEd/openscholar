@@ -3,74 +3,61 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { EvidenceLibrariesGate } from "@/components/auth/evidence-libraries-gate";
 
-const { access, child, home, path, redirect } = vi.hoisted(() => ({ access: vi.fn(), child: vi.fn(), home: vi.fn(), path: { value: "/evidence-communities" }, redirect: vi.fn() }));
-vi.mock("@/lib/workspaces/use-workspace-features", () => ({ useWorkspaceFeatures: access }));
+const { auth, child, home, path } = vi.hoisted(() => ({ auth: { phase: "authenticated" }, child: vi.fn(), home: vi.fn(), path: { value: "/evidence-communities" } }));
 vi.mock("@/components/workspaces/item-home", async (original) => ({ ...(await original<typeof import("@/components/workspaces/item-home")>()), useItemHome: home }));
-vi.mock("next/navigation", () => ({ usePathname: () => path.value, useSearchParams: () => new URLSearchParams(), redirect }));
-vi.mock("@/lib/workspaces/href", () => ({ useWorkspaceSlug: () => undefined, workspaceHref: (_slug: string | undefined, to: string) => to }));
-vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ retryUserSync: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => path.value, useSearchParams: () => new URLSearchParams() }));
+vi.mock("@/lib/workspaces/href", () => ({ useWorkspaceSlug: () => undefined }));
+vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ phase: auth.phase, retryUserSync: vi.fn() }) }));
 vi.mock("next-intl", () => ({
   useLocale: () => "en-US",
   useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }), useTranslations: () => (key: string) => key }));
 vi.mock("@/components/PageWrapper", () => ({ PageWrapper: ({ children }: React.PropsWithChildren) => <main>{children}</main> }));
 vi.mock("@/components/auth/auth-state-panel", () => ({ AuthStatePanel: ({ variant }: { variant: string }) => <div role="status">{variant}</div> }));
 function ProtectedContent() { child(); return <div>Protected content</div>; }
-const PLANS = "/pricing?audience=org";
-beforeEach(() => { child.mockClear(); home.mockReset(); redirect.mockClear(); path.value = "/evidence-communities"; });
+beforeEach(() => { child.mockClear(); home.mockReset(); path.value = "/evidence-communities"; auth.phase = "authenticated"; });
 
-it("keeps protected queries unmounted while loading, and goes to the organization plans when access is denied", () => {
-  access.mockReturnValue({ phase: "authenticated", data: undefined });
+it("keeps the page unmounted while sign-in finishes, then opens it whatever the workspace's plan", () => {
+  auth.phase = "initializing";
   const { rerender } = render(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
   expect(screen.getByRole("status")).toHaveTextContent("loading");
-  expect(redirect).not.toHaveBeenCalled();
   expect(child).not.toHaveBeenCalled();
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: false } });
+  auth.phase = "authenticated";
   rerender(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
-  expect(redirect).toHaveBeenCalledWith(PLANS);
-  expect(child).not.toHaveBeenCalled();
-});
-
-it("mounts allowed content and removes it when the workspace's plan stops including it", () => {
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: true } });
-  const { rerender } = render(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
   expect(screen.getByText("Protected content")).toBeInTheDocument();
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: false } });
-  rerender(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
-  expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
-  expect(redirect).toHaveBeenCalledWith(PLANS);
 });
 
-it("shows the page's own fallback while access is checked and keeps it mounted when access is granted", () => {
+it("asks a signed-out visitor to sign in", () => {
+  auth.phase = "anonymous";
+  render(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
+  expect(screen.getByRole("status")).toHaveTextContent("sign_in_required");
+  expect(child).not.toHaveBeenCalled();
+});
+
+it("shows the page's own fallback while sign-in finishes and keeps it mounted when it's done", () => {
   const mounts = vi.fn();
   function Page({ pending = false }: { pending?: boolean }) { React.useEffect(() => { mounts(); }, []); return <div>{pending ? "Pending page" : "Page"}</div>; }
   const gate = () => <EvidenceLibrariesGate fallback={<Page pending />}><Page /></EvidenceLibrariesGate>;
-  access.mockReturnValue({ phase: "initializing", data: undefined });
+  auth.phase = "initializing";
   const { rerender } = render(gate());
   expect(screen.getByText("Pending page")).toBeInTheDocument();
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: true } });
+  auth.phase = "authenticated";
   rerender(gate());
   expect(screen.getByText("Page")).toBeInTheDocument();
   expect(mounts).toHaveBeenCalledOnce();
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: false } });
-  rerender(gate());
-  expect(redirect).toHaveBeenCalledWith(PLANS);
 });
 
-it("waits, and doesn't go to the plans, while a link to a library of another of the person's workspaces is on its way there", () => {
-  // Opened from their own workspace, whose plan has no Evidence Libraries: the library's organization has them.
+it("waits while a link to a community of another of the person's workspaces is on its way there", () => {
   path.value = "/evidence-communities/library123/configuration";
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: false } });
   home.mockReturnValue(undefined);
   const { rerender } = render(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
   expect(screen.getByRole("status")).toHaveTextContent("loading");
   home.mockReturnValue({ slug: "lab" });
   rerender(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
   expect(screen.getByRole("status")).toHaveTextContent("loading");
-  expect(redirect).not.toHaveBeenCalled();
-  // In none of their workspaces: this workspace's answer stands.
+  expect(child).not.toHaveBeenCalled();
+  // In none of their workspaces: it opens here, and its own queries say what the person may do.
   home.mockReturnValue(null);
   rerender(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);
-  expect(redirect).toHaveBeenCalledWith(PLANS);
-  expect(child).not.toHaveBeenCalled();
+  expect(screen.getByText("Protected content")).toBeInTheDocument();
 });

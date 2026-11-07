@@ -2,7 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { useAction, useMutation, type Preloaded } from "convex/react";
-import { OrganizationAvatar, useLibraryOrganizationChoice } from "./organization-picker";
+import { preloadedQueryResult } from "convex/nextjs";
+import { OrganizationAvatar } from "./organization-picker";
+import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -88,16 +90,16 @@ function LibraryTile() {
 }
 
 /**
- * `pending` renders the page before access is confirmed: the frame and
- * toolbar show at once and only the list waits.
+ * Every workspace's communities. `preloadedOpens` is the server's answer to whether the person may
+ * create one here, so New community is there from the first frame.
  */
-export function LibraryList({ pending = false, preloadedOrganizations }: {
-  pending?: boolean;
-  preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.listLibraryOrganizations>;
+export function LibraryList({ preloadedOpens }: {
+  preloadedOpens?: Preloaded<typeof api.organizationFeatures.opens>;
 }) {
   const tLabels = useTranslations("libraryList");
   const t = useTranslations("libraryList");
-  const owner = useLibraryOrganizationChoice(preloadedOrganizations);
+  const live = useWorkspaceFeatures().data;
+  const creates = (live ?? (preloadedOpens ? preloadedQueryResult(preloadedOpens) : undefined))?.createsCommunities === true;
   const [tab, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
   const [search, setSearch] = useState("");
   const text = useDebouncedValue(search.trim(), 300);
@@ -110,10 +112,10 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   // The libraries are read a page at a time, filtered on the server.
   const overviews = useCursorPage(
     api.evidenceLibraries.queries.listLibraries,
-    pending || !workspace ? "skip" : { ...(text ? { search: text } : {}), ...(organization ? { organization } : {}) },
+    !workspace ? "skip" : { ...(text ? { search: text } : {}), ...(organization ? { organization } : {}) },
     COMMAND_CENTER_ITEMS_PER_PAGE,
   );
-  const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listInvitations, pending ? "skip" : {});
+  const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listInvitations, {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
@@ -128,11 +130,11 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
     : invited.map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true }));
   const [notice, setNotice] = useState("");
   const [declining, setDeclining] = useState<Library | null>(null);
-  const loading = !workspace || overviews.isLoading || !invitations.data || !owner.isReady;
+  const loading = !workspace || overviews.isLoading || !invitations.data;
   return (
     <LibraryPageShell
       title={t("evidenceLibraries")}
-      actions={owner.organizations.some((org) => org.id === organization) &&
+      actions={creates &&
         <Button asChild size="sm" className={BAR_ACTION}>
           <Link href="/evidence-communities/new">
             <Plus />
@@ -150,7 +152,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
             value: each,
             label: each === "libraries" ? t("sharedWithYou") : t("invitations"),
             icon: each === "libraries" ? <Layers className="size-3.5" /> : <Mail className="size-3.5" />,
-            count: loading ? undefined : each === "libraries" ? (overviews.hasPages ? undefined : overviews.items.length) : invited.length,
+            count: loading ? null : each === "libraries" ? (overviews.hasPages ? undefined : overviews.items.length) : invited.length,
           }))}
         />
       }

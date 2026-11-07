@@ -623,12 +623,15 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   workspaces: defineTable(
     v.union(
-      v.object({ kind: v.literal("personal"), userId: v.id("users") }),
+      // `evidenceLibraries`: OpenScholar's admins let this person create Evidence Communities in it. An
+      // organization's switch is `organizations.evidenceLibraries`, which its admin list is indexed by.
+      v.object({ kind: v.literal("personal"), userId: v.id("users"), evidenceLibraries: v.optional(v.literal(true)) }),
       v.object({ kind: v.literal("organization"), organizationId: v.id("organizations") }),
     ),
   )
     .index("by_userId", ["userId"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_evidenceLibraries", ["evidenceLibraries"]),
 
   // ═══════════════════════════════════════════════════════════════
   // BILLING - balances and plans live in Autumn (convex/billing).

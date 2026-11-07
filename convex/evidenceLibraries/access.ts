@@ -1,9 +1,8 @@
-import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { getIdentity } from "../lib/auth";
-import { opensLibraries } from "../billing/accounts";
 import { addressesOf } from "../lib/people";
 
 /**
@@ -90,20 +89,6 @@ export async function readPendingLibraryInvitations(
   return rows.filter(row => row !== null);
 }
 
-export async function hasDirectLibraryAccess(
-  ctx: Pick<QueryCtx | MutationCtx, "db">,
-  user: Doc<"users">,
-) {
-  if (user.state !== "active") return false;
-  // A person has at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts).
-  for (const assignment of await ctx.db.query("itemAccess")
-    .withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON)) {
-    const library = await libraryOf(ctx, assignment);
-    if (library && await readLibraryRole(ctx, library, user.clerkId)) return true;
-  }
-  return (await readPendingLibraryInvitations(ctx, user)).length > 0;
-}
-
 /** The person's active membership of the organization, or null once they left it. */
 export async function readActiveOrganizationMembership(
   ctx: Pick<QueryCtx | MutationCtx, "db">,
@@ -173,8 +158,6 @@ export async function readEvidenceLibraryAccess(
   if (!role || ((action === "manage" || action === "remove") && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
-  // Managing takes Evidence Libraries in the workspace that owns the library (#652).
-  if (action === "manage" && !(await opensLibraries(ctx, owner.workspace._id))) return null;
   return { clerkUserId: identity.subject, owner, organization: owner.organization, role, library };
 }
 

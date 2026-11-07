@@ -53,7 +53,7 @@ const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union
  * a library shared with the person isn't that. A plan is its workspace's alone.
  */
 export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
-  if (!(await opensLibraries(ctx, workspaceId))) throw createError("FORBIDDEN", `Author profiles come with Evidence Communities, which are turned on for an organization by request. Ask for them at ${contactPage("community")}.`);
+  if (!(await opensLibraries(ctx, workspaceId))) throw createError("FORBIDDEN", `Author profiles come with Evidence Communities, which are turned on for a workspace by request. Ask for them at ${contactPage("community")}.`);
 }
 
 /** Makes a profile owned by the page's workspace. */

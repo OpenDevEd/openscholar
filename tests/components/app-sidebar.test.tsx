@@ -103,10 +103,10 @@ describe("<AppSidebar>", () => {
     expect(screen.queryByText("100%")).not.toBeInTheDocument();
   });
 
-  it("opens Extract and Publish only where the workspace has them", () => {
+  it("opens Extract and Communities", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: "extract" })).toHaveAttribute("href", "/extraction");
-    expect(screen.getByRole("link", { name: "publish" })).toHaveAttribute("href", "/evidence-communities");
+    expect(screen.getByRole("link", { name: "communities" })).toHaveAttribute("href", "/evidence-communities");
   });
 
   it("hydrates as the server drew it when the look cookie changed after the request", async () => {
@@ -131,11 +131,11 @@ describe("<AppSidebar>", () => {
     expect(screen.getByRole("button", { name: "switchFrom" })).toBeInTheDocument();
   });
 
-  it("hides Publish in a workspace whose plan has no Evidence Libraries, and keeps Extract, which every plan has", () => {
+  it("keeps Communities and Extract in a workspace whose plan has no Evidence Communities", () => {
     reads.features = { evidenceLibraries: false };
     renderSidebar();
     expect(screen.getByRole("link", { name: "extract" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "publish" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "communities" })).toHaveAttribute("href", "/evidence-communities");
   });
 
   it("hides Extract once it's switched off for everyone", () => {

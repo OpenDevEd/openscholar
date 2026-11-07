@@ -38,4 +38,24 @@ describe("cleaning up deleted accounts", () => {
     const pending = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
     expect(pending.length).toBe(pendingBeforeLastRun.length);
   });
+
+  it("keeps a person with a community in their own workspace, and cleans up the accounts behind them meanwhile", async () => {
+    const t = convexTest(schema, modules);
+    const holder = await addDeleted(t, "holder", 90);
+    await addDeleted(t, "behind", 40);
+    const workspaceId = await t.run(async (ctx) => {
+      // Made with the account, as signing up makes it.
+      const workspaceId = (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", holder)).unique())!._id;
+      await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Kept", slug: "kept", state: "active", createdByClerkUserId: "holder", updatedByClerkUserId: "holder", createdAt: 1, updatedAt: 1 } as never);
+      return workspaceId;
+    });
+
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+
+    const left = await t.run((ctx) => ctx.db.query("users").take(10));
+    expect(left.map((user) => user.clerkId)).toEqual(["holder"]);
+    expect(await t.run((ctx) => ctx.db.get("workspaces", workspaceId))).not.toBeNull();
+    expect(await t.run((ctx) => ctx.db.query("evidenceLibraries").take(2))).toHaveLength(1);
+  });
 });

@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { creatableWorkspace } from "../organizationFeatures.test-support";
 import { api, internal } from "../_generated/api";
 import {
   createActivatedSetupFixture,
@@ -25,7 +26,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { organizationId: ((await fixture.admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id, name: "Climate Evidence" },
+        { workspaceId: await creatableWorkspace(fixture.admin), name: "Climate Evidence" },
       ),
     ).resolves.toEqual({
       status: "name-taken",
@@ -34,7 +35,7 @@ describe("library overviews", () => {
     await expect(
       fixture.admin.query(
         internal.evidenceLibraries.queries.readAddressCandidates,
-        { organizationId: ((await fixture.admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id, name: "   " },
+        { workspaceId: await creatableWorkspace(fixture.admin), name: "   " },
       ),
     ).rejects.toThrow(/VALIDATION_ERROR/);
   });

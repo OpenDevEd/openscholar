@@ -2,7 +2,7 @@ import { publicName, publicPhoto } from "../../lib/evidence-libraries/configurat
 import { actingArg, signedInAs } from "../lib/userActions";
 import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readDomainActivationPlan } from "./domainPlan";
-import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
+import { readMemberOrganizations, requireCommunityWorkspace } from "../organizationFeatures";
 import {
   internalQuery,
   query,
@@ -503,7 +503,7 @@ export const listLibraries = query({
  */
 export const readAddressCandidates = internalQuery({
   args: { ...actingArg,
-    organizationId: v.id("organizations"), name: v.string() },
+    workspaceId: v.id("workspaces"), name: v.string() },
   returns: v.union(
     v.object({
       status: v.literal("name-taken"),
@@ -520,8 +520,7 @@ export const readAddressCandidates = internalQuery({
   ),
   handler: async (caller, { actingAs: as, ...args }) => {
     const ctx = await signedInAs(caller, as);
-    const access = await requireLibraryOrganization(ctx, args.organizationId);
-    const workspaceId = await organizationWorkspaceOf(ctx, access.organization._id);
+    const { workspaceId } = await requireCommunityWorkspace(ctx, args.workspaceId);
     const named = await readEvidenceLibraryByName(ctx, {
       workspaceId,
       name: normalizeEvidenceLibraryName(args.name),

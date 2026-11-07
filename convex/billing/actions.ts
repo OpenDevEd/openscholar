@@ -308,12 +308,6 @@ export const moveToFree = action({
     await refuseApps(ctx);
     const user = await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
-    // Free has no Evidence Libraries: one left behind couldn't be opened to delete, nor its organization deleted while it's there.
-    const refuseWithLibrary = async () => {
-      const library: string | null = await ctx.runQuery(internal.evidenceLibraries.teardown.heldBy, { workspaceId });
-      if (library) throw createError("VALIDATION_ERROR", `${library} is an Evidence Community of this organization, and Free has none. Move or delete its Evidence Communities first.`);
-    };
-    await refuseWithLibrary();
     // A plan change like any other: alone among the organization's purchases, and not while a payment is open (#858).
     const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
     await purchasing(ctx, workspaceId, customerId, {}, async () => {
@@ -322,9 +316,6 @@ export const moveToFree = action({
       try {
         const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
         if (!counted || counted.members + counted.invitations > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members, invitations included: remove members or cancel invitations down to ${FREE_MEMBERS} first.`);
-        // Again, now that Clerk has answered: another admin may have made a library meanwhile.
-        // ponytail: one made while Autumn ends the plan still lands on Free; its owners delete it from the organization's settings. Hold new libraries during a move if that ever matters.
-        await refuseWithLibrary();
         await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
       } catch (error) {
         // It may still be on Team: a sync gives its members the limit of the plan it's on.

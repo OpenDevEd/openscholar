@@ -180,6 +180,6 @@ describe("Evidence Library limits", () => {
     const template = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!);
     const { _id, _creationTime, ...library } = template;
     await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_WORKSPACE - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
-    await expect(reserveLibraryAddressByName(fixture.admin, "One More", await fixture.t.run((ctx) => organizationOfLibrary(ctx, fixture.created.libraryId)))).rejects.toThrow(/up to 200 communities/);
+    await expect(reserveLibraryAddressByName(fixture.admin, "One More", (await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", fixture.created.libraryId)))!.workspaceId)).rejects.toThrow(/up to 200 communities/);
   });
 });

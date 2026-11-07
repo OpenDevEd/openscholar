@@ -26,7 +26,8 @@ export function ListViewTabs<T extends string>({ label, value, onChange, tabs }:
   label: string;
   value: T;
   onChange: (value: T) => void;
-  tabs: { value: T; label: ReactNode; icon: ReactNode; count?: ReactNode }[];
+  /** `count` null: still being read, its place held so the tab doesn't widen when it arrives. */
+  tabs: { value: T; label: ReactNode; icon: ReactNode; count?: ReactNode | null }[];
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1" role="group" aria-label={label}>
@@ -41,7 +42,8 @@ export function ListViewTabs<T extends string>({ label, value, onChange, tabs }:
         >
           {tab.icon}
           {tab.label}
-          {tab.count !== undefined && <span className="fade-enter text-xs tabular-nums text-muted-foreground">{tab.count}</span>}
+          {tab.count === null ? <span aria-hidden className="invisible text-xs tabular-nums">0</span>
+            : tab.count !== undefined && <span className="fade-enter text-xs tabular-nums text-muted-foreground">{tab.count}</span>}
         </Button>
       ))}
     </div>

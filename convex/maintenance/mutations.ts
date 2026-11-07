@@ -115,6 +115,15 @@ export const cleanupDeletedUsers = internalMutation({
         deferred = true;
         continue; // Skip user delete, process on next run
       }
+      // A community in their own workspace keeps it, and them, until it's deleted: dropping the workspace would leave the
+      // community, its settings and its running site with no owner. ponytail: waits for a person to delete it; deleting it
+      // with the account is OpenDevEd/openalex-count#1094.
+      if (workspace && (await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).first())) {
+        console.warn("Account cleanup waits for the communities in a deleted person's own workspace", { userId: user._id, workspaceId: workspace._id });
+        // To the back of the queue, so the accounts behind it are cleaned up meanwhile; it comes round again a retention later.
+        await ctx.db.patch("users", user._id, { updatedAt: Date.now() });
+        continue;
+      }
       // Everything else in their own workspace: searches, screenings, bookmarks, library and collections.
       if (workspace && !(await purgeWorkspace(ctx, workspace._id))) {
         deferred = true;
