@@ -1,4 +1,5 @@
 import { MAX_API_KEYS_PER_USER } from "../lib/validators";
+import { MAX_LIBRARIES_PER_WORKSPACE } from "../lib/queryBounds";
 import { SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -26,17 +27,23 @@ const COMMUNITIES_STEP = 10;
  * True while any are left. Where communities can't be deleted (production, for now) they stay, and so does the account.
  */
 async function deleteOwnCommunities(ctx: MutationCtx, workspaceId: Id<"workspaces">, user: Doc<"users">) {
-  const communities = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(COMMUNITIES_STEP);
+  const communities = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(MAX_LIBRARIES_PER_WORKSPACE);
   if (communities.length === 0) return false;
   if (!developmentTeardownEnabled()) {
     console.warn("Account cleanup waits for the communities in a deleted person's own workspace: this deployment doesn't delete communities", { userId: user._id, workspaceId });
     return true;
   }
+  // Those not being deleted yet, then those whose deletion stopped, the longest stopped first: starting one again moves
+  // it to the back, so a few that keep failing don't keep the rest from their turn.
+  const stopped: { community: Doc<"evidenceLibraries">; at: number; error?: unknown }[] = [];
   for (const community of communities) {
+    if (community.state !== "disabled") continue;
     const teardown = await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_idempotencyKey", (q) => q.eq("libraryId", community._id).eq("idempotencyKey", `development-teardown:${community._id}`)).unique();
-    if (teardown?.status === "failed") {
-      console.warn("Account cleanup starts a community's stopped deletion again", { userId: user._id, libraryId: community._id, error: teardown.error });
-    }
+    if (!teardown || teardown.status === "failed") stopped.push({ community, at: teardown?.updatedAt ?? 0, error: teardown?.error });
+  }
+  const turn = [...communities.filter((community) => community.state !== "disabled").map((community) => ({ community, at: 0, error: undefined })), ...stopped.sort((a, b) => a.at - b.at)].slice(0, COMMUNITIES_STEP);
+  for (const { community, error } of turn) {
+    if (error) console.warn("Account cleanup starts a community's stopped deletion again", { userId: user._id, libraryId: community._id, error });
     const started = await startTeardown(ctx, community, user.clerkId);
     if ("waiting" in started) console.warn("Account cleanup waits to delete a community", { userId: user._id, libraryId: community._id, waiting: started.waiting });
   }

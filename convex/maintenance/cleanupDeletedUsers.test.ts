@@ -76,10 +76,11 @@ describe("cleaning up deleted accounts", () => {
     // A deletion that stopped is started again the next time round.
     const due = () => t.run((ctx) => ctx.db.patch("users", holder, { updatedAt: Date.now() - 31 * DAY }));
     const teardownId = (await teardownOf(t, libraryId))!._id;
-    await t.run((ctx) => ctx.db.patch("evidenceLibraryConfigOperations", teardownId, { status: "failed", error: { code: "COOLIFY", message: "Coolify didn't answer", stage: "coolify" } }));
+    await t.run((ctx) => ctx.db.patch("evidenceLibraryConfigOperations", teardownId, { status: "failed", attemptCount: 5, error: { code: "COOLIFY", message: "Coolify didn't answer", stage: "coolify" } }));
     await due();
     await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
-    expect(await teardownOf(t, libraryId)).toMatchObject({ status: "queued" });
+    // With its retries back, as restarting it from the page gives them.
+    expect(await teardownOf(t, libraryId)).toMatchObject({ status: "queued", attemptCount: 0 });
     expect(await users(t)).toEqual(["holder"]);
 
     // Once the teardown has deleted the community, the workspace and the person go.
@@ -88,6 +89,40 @@ describe("cleaning up deleted accounts", () => {
     await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
     expect(await users(t)).toEqual([]);
     expect(await t.run((ctx) => ctx.db.get("workspaces", workspaceId))).toBeNull();
+  });
+
+  it("reaches every community in turn when some keep failing to delete", async () => {
+    vi.stubEnv("EL_ALLOW_DEVELOPMENT_TEARDOWN", "true");
+    vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");
+    const t = newTest();
+    const { holder, workspaceId, libraryId } = await withCommunity(t);
+    // More communities than one run starts.
+    const others = await t.run(async (ctx) => {
+      const ids: Id<"evidenceLibraries">[] = [];
+      for (let i = 0; i < 10; i++) ids.push(await ctx.db.insert("evidenceLibraries", { workspaceId, name: `Kept ${i}`, slug: `kept-${i}`, state: "active", createdByClerkUserId: "holder", updatedByClerkUserId: "holder", createdAt: 1, updatedAt: 1 } as never));
+      return ids;
+    });
+    const all = [libraryId, ...others];
+    const run = async () => {
+      await t.run((ctx) => ctx.db.patch("users", holder, { updatedAt: Date.now() - 31 * DAY }));
+      // The account deleted after them is cleaned up on the first run.
+      await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+      await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    };
+    const statuses = async () => Promise.all(all.map(async (id) => (await teardownOf(t, id))?.status ?? null));
+    const fail = async (ids: Id<"evidenceLibraries">[]) => {
+      const teardowns = await Promise.all(ids.map((id) => teardownOf(t, id)));
+      await t.run(async (ctx) => { for (const teardown of teardowns) if (teardown) await ctx.db.patch("evidenceLibraryConfigOperations", teardown._id, { status: "failed", updatedAt: Date.now() }); });
+    };
+
+    // The first run starts ten; the eleventh waits for the next.
+    await run();
+    expect((await statuses()).filter((status) => status === "queued")).toHaveLength(10);
+    const started = all.filter((_, at) => at < 10);
+    // Those ten fail, and stay failing: the next run still gets to the eleventh, before starting any of them again.
+    await fail(started);
+    await run();
+    expect((await teardownOf(t, all[10]))?.status).toBe("queued");
   });
 
   it("keeps a person with a community in their own workspace where communities can't be deleted, and cleans up the accounts behind them meanwhile", async () => {

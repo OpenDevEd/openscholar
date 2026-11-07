@@ -183,10 +183,14 @@ export async function startTeardown(
       throw createError("CONFLICT", "This community teardown cannot be retried");
     }
     operationId = teardown._id;
+    // Started again with its retries back, as restarting it from the page does.
     await ctx.db.patch(operationId, {
       status: "queued",
       stage: "coolify",
       error: undefined,
+      attemptCount: 0,
+      teardownLeaseExpiresAt: undefined,
+      teardownAttemptToken: undefined,
       completedAt: undefined,
       updatedAt: now,
     });
