@@ -106,7 +106,8 @@ function CommunityCard({ community }: { community: Card }) {
               <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
               <span className="truncate">{community.owner.name ?? t("unnamedOwner")}</span>
             </span>
-            <span className="flex min-w-0 items-center gap-3">
+            {/* The facts wrap on a narrow card, in place of running past its edge. */}
+            <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
               {community.records !== null ? (
                 <span className="flex shrink-0 items-center gap-1 tabular-nums">
                   <FileText className="size-3.5" />
@@ -120,7 +121,7 @@ function CommunityCard({ community }: { community: Card }) {
                 </span>
               ) : null}
               {countries.length > 0 ? (
-                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: countries.map((code) => regions?.of(code.toUpperCase()) ?? code.toUpperCase()).join(", ") })}>
+                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: countries.map((code) => regionName(regions, code)).join(", ") })}>
                   {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
                 </span>
               ) : null}
@@ -145,4 +146,13 @@ function FadeImage({ src, className, shown = "opacity-100" }: { src: string; cla
       className={cn(className, "transition-opacity duration-200 motion-reduce:transition-none", loaded === src ? shown : "opacity-0")}
     />
   );
+}
+
+/** A country's name in the page's language, or its code: a code the browser doesn't know as a region (a three-letter one) makes it throw. */
+function regionName(regions: Intl.DisplayNames | null, code: string) {
+  try {
+    return regions?.of(code.toUpperCase()) ?? code.toUpperCase();
+  } catch {
+    return code.toUpperCase();
+  }
 }

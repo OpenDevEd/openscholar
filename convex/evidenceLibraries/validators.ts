@@ -251,6 +251,11 @@ export const evidenceLibraryStateValidator = v.union(
   v.literal("disabled"),
 );
 
+/** Most countries a community's card names, kept on its row. */
+export const COUNTRIES_KEPT = 5;
+/** A community's countries, most of its public records' first, as its row keeps them and its card reads them. */
+export const countriesValidator = capped(v.array(v.string()), COUNTRIES_KEPT);
+
 export const evidenceLibraryFields = {
   activePublicationConfigDigest: v.optional(v.string()),
   // Set once every approved OpenAlex query version in the library's revisions is in
@@ -283,8 +288,8 @@ export const evidenceLibraryFields = {
   recordsAt: v.optional(v.number()),
   /** What its directory card shows, from the version it runs: a draft's new name isn't public until it's published. */
   card: v.optional(v.object({ name: v.optional(v.string()), tagline: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
-  /** The countries most of its public records are about, most first, as it last said (at most COUNTRIES_KEPT, ./directory.ts). */
-  countries: v.optional(v.array(v.string())),
+  /** The countries most of its public records are about, most first, as it last said (./directory.ts). */
+  countries: capped(v.optional(v.array(v.string())), COUNTRIES_KEPT),
   /** How many people work on it: its owners and everyone given a role in it (./directory.ts). */
   people: v.optional(v.number()),
 };

@@ -16,6 +16,7 @@ import schema from "../schema";
 import { libraryOwner, ownerActive, ownerName } from "./access";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 import { readLibraryPeople } from "./queries";
+import { COUNTRIES_KEPT, countriesValidator } from "./validators";
 
 /** Most cards one page of the directory holds, and the rows one read passes over looking for a search's matches. */
 const PAGE_MAX = 24;
@@ -36,7 +37,7 @@ const cardValidator = v.object({
   owner: v.object({ name: v.union(v.string(), v.null()), kind: v.union(v.literal("person"), v.literal("organization")), imageUrl: v.union(v.string(), v.null()) }),
   records: v.union(v.number(), v.null()),
   /** The countries most of its public records are about, most first; empty until its runtime names them. */
-  countries: v.array(v.string()),
+  countries: countriesValidator,
   /** How many people work on it: its owners and everyone given a role in it; null until counted. */
   people: v.union(v.number(), v.null()),
   liveAt: v.union(v.number(), v.null()),
@@ -65,9 +66,6 @@ export async function noteLive(ctx: MutationCtx, library: Doc<"evidenceLibraries
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }
-
-/** Most countries a card names. */
-const COUNTRIES_KEPT = 5;
 
 /** The record count a community just gave, and the countries most of its records are about when its runtime names them. */
 export const setRecords = internalMutation({
