@@ -163,7 +163,8 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const read = { extracts: liveExtracts ?? held.extracts, publishes: livePublishes ?? held.publishes };
   if (read.extracts !== held.extracts || read.publishes !== held.publishes) setHeld(read);
   const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : held.extracts);
-  const publishes = (livePublishes ?? (cached.look ? cached.look.publish === true : held.publishes)) ? "/evidence-communities" : null;
+  // MOCK: Communities is in every workspace; what a switch decides is only whether you can create one.
+  const publishes = "/evidence-communities";
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
