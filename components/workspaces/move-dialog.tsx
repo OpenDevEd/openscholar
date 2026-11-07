@@ -27,7 +27,7 @@ import { useCurrentWorkspace, useWorkspaces } from "./parts";
 import { switchTarget } from "@/lib/workspaces/paths";
 import { WorkspacePicker } from "./workspace-picker";
 
-export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author";
+export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author" | "community";
 
 /** What goes with each kind of item, as chips. */
 const GOES = {
@@ -37,6 +37,7 @@ const GOES = {
   screening: ["answers", "questions", "activity"],
   extraction: ["answers", "questions", "pdfs", "activity"],
   chat: ["messages", "files"],
+  community: ["address", "settings", "peopleWithRoles"],
 } as const;
 
 /** Where the item opens in the workspace it moved to. */
@@ -46,6 +47,7 @@ const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
   search: (id) => `/results/${id}`,
   screening: (id) => `/screening?job=${id}`,
   extraction: (id) => `/extraction/${id}`,
+  community: (id) => `/evidence-communities/${id}/configuration`,
 };
 
 /**
@@ -141,6 +143,7 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
               ))}
             </div>
             {kind === "collection" ? <p className="px-1 text-xs text-muted-foreground">{from?.kind === "organization" ? t("libraryKeeps", { workspace: from.name }) : t("yourLibraryKeeps")}</p> : null}
+            {kind === "community" ? <p className="px-1 text-xs text-muted-foreground">{t("workspaceOwnsIt")}</p> : null}
           </Zone>
         </div>
       </div>

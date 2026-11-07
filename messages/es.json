@@ -2009,10 +2009,13 @@
       "add": "Añadir institución"
     },
     "danger": {
-      "description": "Elimine esta comunidad. Tenga cuidado.",
+      "description": "Mueva o elimine esta comunidad. Tenga cuidado.",
       "deleteTitle": "Eliminar la comunidad",
       "deleteHint": "Elimina el sitio, la dirección y los ajustes.",
-      "deleteButton": "Eliminar comunidad"
+      "deleteButton": "Eliminar comunidad",
+      "moveTitle": "Mover a otro espacio de trabajo",
+      "moveHint": "Conserva su dirección, ajustes y personas. El espacio de trabajo al que se mueve pasa a ser su propietario.",
+      "moveButton": "Mover comunidad"
     },
     "deleteDialog": {
       "title": "¿Eliminar esta comunidad?",
@@ -4778,7 +4781,10 @@
         "itsPapers": "Sus artículos",
         "ratingsInIt": "Valoraciones que contiene",
         "publications": "Publicaciones",
-        "editors": "Editores"
+        "editors": "Editores",
+        "address": "Dirección",
+        "settings": "Ajustes",
+        "peopleWithRoles": "Personas con un rol"
       },
       "moveTo": "Mover a {workspace}",
       "move": "Mover",
@@ -4787,7 +4793,9 @@
       "collection": "Mover colección",
       "author": "Mover perfil de autor",
       "libraryKeeps": "La biblioteca de {workspace} conserva los artículos que guardó.",
-      "yourLibraryKeeps": "Su biblioteca conserva los artículos que guardó."
+      "yourLibraryKeeps": "Su biblioteca conserva los artículos que guardó.",
+      "community": "Mover comunidad",
+      "workspaceOwnsIt": "El espacio de trabajo al que se mueve pasa a ser su propietario."
     },
     "share": {
       "share": "Compartir",

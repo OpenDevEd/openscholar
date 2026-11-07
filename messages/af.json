@@ -2009,10 +2009,13 @@
       "add": "Voeg instelling by"
     },
     "danger": {
-      "description": "Verwyder hierdie gemeenskap. Wees versigtig hier.",
+      "description": "Skuif of verwyder hierdie gemeenskap. Wees versigtig hier.",
       "deleteTitle": "Verwyder die gemeenskap",
       "deleteHint": "Verwyder die webwerf, adres en instellings.",
-      "deleteButton": "Verwyder gemeenskap"
+      "deleteButton": "Verwyder gemeenskap",
+      "moveTitle": "Skuif na ’n ander werkruimte",
+      "moveHint": "Behou sy adres, instellings en mense. Die werkruimte waarheen dit skuif, besit dit.",
+      "moveButton": "Skuif gemeenskap"
     },
     "deleteDialog": {
       "title": "Verwyder hierdie gemeenskap?",
@@ -4778,7 +4781,10 @@
         "itsPapers": "Sy artikels",
         "ratingsInIt": "Graderings daarin",
         "publications": "Publikasies",
-        "editors": "Redigeerders"
+        "editors": "Redigeerders",
+        "address": "Adres",
+        "settings": "Instellings",
+        "peopleWithRoles": "Mense met ’n rol"
       },
       "moveTo": "Skuif na {workspace}",
       "move": "Skuif",
@@ -4787,7 +4793,9 @@
       "collection": "Skuif versameling",
       "author": "Skuif outeurprofiel",
       "libraryKeeps": "{workspace} se biblioteek behou die artikels wat dit gestoor het.",
-      "yourLibraryKeeps": "Jou biblioteek behou die artikels wat dit gestoor het."
+      "yourLibraryKeeps": "Jou biblioteek behou die artikels wat dit gestoor het.",
+      "community": "Skuif gemeenskap",
+      "workspaceOwnsIt": "Die werkruimte waarheen dit skuif, besit dit van dan af."
     },
     "share": {
       "share": "Deel",

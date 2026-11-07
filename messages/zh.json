@@ -2008,10 +2008,13 @@
       "add": "添加机构"
     },
     "danger": {
-      "description": "删除此文献社区。请谨慎操作。",
+      "description": "移动或删除此文献社区。请谨慎操作。",
       "deleteTitle": "删除文献社区",
       "deleteHint": "会移除网站、地址和设置。",
-      "deleteButton": "删除文献社区"
+      "deleteButton": "删除文献社区",
+      "moveTitle": "移到另一个工作区",
+      "moveHint": "保留地址、设置和成员。移入的工作区成为它的所有者。",
+      "moveButton": "移动文献社区"
     },
     "deleteDialog": {
       "title": "删除此文献社区？",
@@ -4777,7 +4780,10 @@
         "itsPapers": "其中的论文",
         "ratingsInIt": "其中的评分",
         "publications": "出版物",
-        "editors": "编辑"
+        "editors": "编辑",
+        "address": "地址",
+        "settings": "设置",
+        "peopleWithRoles": "有角色的成员"
       },
       "moveTo": "移到 {workspace}",
       "move": "移动",
@@ -4786,7 +4792,9 @@
       "collection": "移动收藏集",
       "author": "移动作者主页",
       "libraryKeeps": "{workspace} 的文献库会保留已保存的论文。",
-      "yourLibraryKeeps": "你的文献库会保留已保存的论文。"
+      "yourLibraryKeeps": "你的文献库会保留已保存的论文。",
+      "community": "移动文献社区",
+      "workspaceOwnsIt": "移入的工作区从此成为它的所有者。"
     },
     "share": {
       "share": "共享",

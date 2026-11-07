@@ -2009,10 +2009,13 @@
       "add": "Einrichtung hinzufügen"
     },
     "danger": {
-      "description": "Diese Community löschen. Seien Sie hier vorsichtig.",
+      "description": "Diese Community verschieben oder löschen. Seien Sie hier vorsichtig.",
       "deleteTitle": "Community löschen",
       "deleteHint": "Entfernt die Seite, die Adresse und die Einstellungen.",
-      "deleteButton": "Community löschen"
+      "deleteButton": "Community löschen",
+      "moveTitle": "In einen anderen Arbeitsbereich verschieben",
+      "moveHint": "Behält Adresse, Einstellungen und Personen. Der neue Arbeitsbereich ist ihr Eigentümer.",
+      "moveButton": "Community verschieben"
     },
     "deleteDialog": {
       "title": "Diese Community löschen?",
@@ -4778,7 +4781,10 @@
         "itsPapers": "Seine Artikel",
         "ratingsInIt": "Bewertungen darin",
         "publications": "Publikationen",
-        "editors": "Redakteure"
+        "editors": "Redakteure",
+        "address": "Adresse",
+        "settings": "Einstellungen",
+        "peopleWithRoles": "Personen mit einer Rolle"
       },
       "moveTo": "Nach {workspace} verschieben",
       "move": "Verschieben",
@@ -4787,7 +4793,9 @@
       "collection": "Sammlung verschieben",
       "author": "Autorenprofil verschieben",
       "libraryKeeps": "Die Bibliothek von {workspace} behält die Artikel, die sie gespeichert hat.",
-      "yourLibraryKeeps": "Ihre Bibliothek behält die Artikel, die sie gespeichert hat."
+      "yourLibraryKeeps": "Ihre Bibliothek behält die Artikel, die sie gespeichert hat.",
+      "community": "Community verschieben",
+      "workspaceOwnsIt": "Der Arbeitsbereich, in den sie verschoben wird, ist ab dann ihr Eigentümer."
     },
     "share": {
       "share": "Teilen",

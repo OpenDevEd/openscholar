@@ -1,8 +1,8 @@
 // Moving an item to another of the person's workspaces (#654): a collection with its papers, a
 // search with its screening answers, its screenings and its history, a finished screening of a
 // collection, the library or another screening, a finished extraction job, a chat they started,
-// or an author profile. Its activity goes with it and records where it came from; the person
-// goes with it too.
+// an author profile, or a community (#1092). Its activity goes with it and records where it came
+// from; the person goes with it too.
 
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
@@ -18,14 +18,16 @@ import { planLimit } from "../billing/accounts";
 import { collectionCountRow } from "../library/counter";
 import { facetsOf } from "../library/facets";
 import { removeCollectionMembership } from "../library/collectionMembership";
-import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { MAX_LIBRARIES_PER_WORKSPACE, MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { countOf, workspaceLibrariesOf } from "../lib/listCounts";
+import { createsIn } from "../organizationFeatures";
 import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersonalRating, writeRating } from "../ratings";
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
 import { requireAuthorProfiles } from "../authors/profiles";
 import { actorIn } from "./actor";
 import { workspaceName } from "./personal";
 
-export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author"] as const;
+export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author", "community"] as const;
 export type Movable = (typeof movableKinds)[number];
 
 /** A job moves once it has finished: until then its credits are held by the workspace it runs in. */
@@ -73,6 +75,10 @@ const profileIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) =
   const profileId = ctx.db.normalizeId("authorProfiles", id);
   const profile = profileId ? await ctx.db.get("authorProfiles", profileId) : null;
   return profile?.workspaceId === workspaceId ? profile : null;
+};
+const communityIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) => {
+  const libraryId = ctx.db.normalizeId("evidenceLibraries", id);
+  return inWorkspace(libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null, workspaceId);
 };
 const chatIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) => {
   const threadId = ctx.db.normalizeId("assistantThreads", id);
@@ -131,6 +137,14 @@ export async function heldBack(ctx: Read, { workspaceId, role, userId }: Pick<Ac
     const job = await extractionJobIn(ctx, workspaceId, id);
     if (!job) return gone;
     if (!FINISHED.has(job.status ?? "")) return "A running extraction moves once it has finished.";
+  } else if (kind === "community") {
+    const community = await communityIn(ctx, workspaceId, id);
+    if (!community) return gone;
+    if (community.state === "disabled") return "A community being deleted stays where it is.";
+    // A setup, publish or update running on it, or waiting to try again, started in this workspace and finishes here.
+    const running = await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_status_and_updatedAt", (q) => q.eq("libraryId", community._id).eq("status", "running")).first();
+    const retrying = await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_status_and_attemptCount", (q) => q.eq("libraryId", community._id).eq("status", "queued").gt("attemptCount", 0)).first();
+    if (running || retrying) return "A community moves once the change running on it has finished.";
   } else {
     const thread = await chatIn(ctx, workspaceId, id);
     if (!thread) return gone;
@@ -186,6 +200,17 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
     await ctx.db.patch("screeningJobs", job._id, { workspaceId: to, targetCollectionId: undefined });
     await ctx.db.patch("screenings", job.screeningId, { workspaceId: to });
     return { table: "screeningJobs", id: job._id };
+  }
+  if (kind === "community") {
+    const community = await communityIn(ctx, from, id);
+    if (!community) throw createError("NOT_FOUND", "Community not found");
+    const [person, target] = await Promise.all([ctx.db.get("users", by), ctx.db.get("workspaces", to)]);
+    if (!person || !target || !(await createsIn(ctx, person, target))) throw createError("FORBIDDEN", "A community moves to your own workspace or an organization you're an admin of, once Evidence Communities are on for it.");
+    if ((await countOf(ctx, workspaceLibrariesOf(to))) >= MAX_LIBRARIES_PER_WORKSPACE) throw createError("VALIDATION_ERROR", `${await workspaceName(ctx, to)} has the ${MAX_LIBRARIES_PER_WORKSPACE} communities a workspace can have.`);
+    // Its ID, address, settings and the people given a role in it are its own; its owners are the workspace's from now on.
+    await ctx.db.patch("evidenceLibraries", community._id, { workspaceId: to });
+    await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: community._id });
+    return null;
   }
   if (kind === "extraction") {
     const job = await extractionJobIn(ctx, from, id);
@@ -307,8 +332,8 @@ export const heldForAssistant = assistantQuery(heldAction);
 export const moveAction = defineUserMutation({
   path: "workspaces/move:move",
   description:
-    "Moves an item of the workspace the person is in to another workspace they belong to, and everyone in that workspace then sees it: a collection with its papers, which are saved to that workspace's library while the library it left keeps them; a search (by its ID in the address) with its screening answers, its screenings and its earlier queries; a finished screening of a collection, the library or another screening; a finished extraction job; a chat the person started; or an author profile with its publications and editors. " +
-    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a search's screening moves with its search; a collection an Evidence Community follows stays until the community stops following it. Its activity goes with it. Returns the workspace it went to.",
+    "Moves an item of the workspace the person is in to another workspace they belong to, and everyone in that workspace then sees it: a collection with its papers, which are saved to that workspace's library while the library it left keeps them; a search (by its ID in the address) with its screening answers, its screenings and its earlier queries; a finished screening of a collection, the library or another screening; a finished extraction job; a chat the person started; an author profile with its publications and editors; or an Evidence Community, which keeps its address, settings and the people given a role in it, and whose owners are that workspace's from then on. " +
+    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a search's screening moves with its search; a collection an Evidence Community follows stays until the community stops following it; a community moves only to a workspace the person may create one in, and once any change running on it has finished. Its activity goes with it. Returns the workspace it went to.",
   args: { kind: kindValidator, id: v.string(), to: v.id("workspaces") },
   returns: v.object({ to: v.id("workspaces") }),
   spendsCredits: false,
@@ -322,8 +347,8 @@ export const moveAction = defineUserMutation({
     const held = await heldBack(ctx, actor, kind, id);
     if (held) throw createError("VALIDATION_ERROR", held);
     const followed = await rehome(ctx, actor.userId, actor.workspaceId, to, kind, id);
-    // Chats keep no activity.
-    if (followed && kind !== "chat") {
+    // Chats and communities keep no activity.
+    if (followed && kind !== "chat" && kind !== "community") {
       await ctx.scheduler.runAfter(0, internal.workspaces.move.moveActivity, { from: actor.workspaceId, item: itemKey(kind, id), ...followed });
       await noteActivity(ctx, { workspaceId: to, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind, id, happened: "moved", detail: await workspaceName(ctx, actor.workspaceId) });
     }

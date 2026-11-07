@@ -13,7 +13,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, ExternalLink, Layers, MoreHorizontal, RotateCcw, Settings2, Share2, UserRound, X } from "@/components/icons";
+import { Check, ChevronDown, ExternalLink, Layers, MoreHorizontal, Move, RotateCcw, Settings2, Share2, UserRound, X } from "@/components/icons";
+import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { Button } from "@/components/ui/button";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Spinner } from "@/components/ui/spinner";
@@ -214,8 +215,12 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
   const t = useTranslations("libraryList");
   const ts = useTranslations("libraryList.sidebar");
   const role = t(community.role);
+  const tm = useTranslations("workspaces.move");
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState(false);
+  const [moving, setMoving] = useState(false);
+  // Its owners move it, from the workspace it's in, unless it's being deleted.
+  const movesFrom = community.role === "owner" && community.status !== "deleting" ? community.owner.workspaceId : undefined;
   const live = !community.pending && !community.draft;
   // The whole row opens it: the name's link covers the row, under the buttons.
   const name = community.configuration
@@ -274,9 +279,12 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
                 finally { setRetrying(false); }
               }}><RotateCcw />{t("retryDeletion")}</DropdownMenuItem>
             )}
+            {movesFrom && <DropdownMenuItem onSelect={() => setMoving(true)}><Move />{tm("toAnother")}</DropdownMenuItem>}
           </DropdownMenuContent>
         </DropdownMenu>
       )}
+      {/* Mounted once asked for: a page of rows doesn't each ask whether theirs can move. */}
+      {movesFrom && moving ? <MoveDialog open onOpenChange={setMoving} kind="community" id={community.id} name={community.name} from={movesFrom as Id<"workspaces">} /> : null}
     </li>
   );
 }
