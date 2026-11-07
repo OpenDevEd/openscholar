@@ -50,15 +50,24 @@ export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover",
       measure();
     });
     added.observe(element, { childList: true });
-    // Choosing another item moves it too: a browser centres a control the keyboard (or a click that scrolls it into
-    // view) focuses, which cuts the start of one wider than the row.
+    // Choosing an item, or tabbing back to the chosen one, moves it too: a browser centres a control the keyboard (or
+    // a click that scrolls it into view) focuses, which cuts the start of one wider than the row. The browser scrolls
+    // after the focus event, so that one waits a frame. Only keyboard focus: a mouse press on another item focuses it
+    // before the click, and the row mustn't move under the pointer.
     const chosen = new MutationObserver(keep);
-    if (keepInView) chosen.observe(element, { subtree: true, attributes: true, attributeFilter: ["aria-checked", "aria-selected"] });
+    const focused = (event: FocusEvent) => {
+      if (event.target instanceof Element && event.target.matches(":focus-visible")) requestAnimationFrame(keep);
+    };
+    if (keepInView) {
+      chosen.observe(element, { subtree: true, attributes: true, attributeFilter: ["aria-checked", "aria-selected"] });
+      element.addEventListener("focusin", focused);
+    }
     element.addEventListener("scroll", measure, { passive: true });
     return () => {
       resize.disconnect();
       added.disconnect();
       chosen.disconnect();
+      element.removeEventListener("focusin", focused);
       element.removeEventListener("scroll", measure);
     };
   }, [keepInView]);
