@@ -112,37 +112,42 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
     : filter === "shared" ? (personal ? t("emptyShared") : t("emptySharedHere", { name: workspaceName }))
     : filter === "own" ? t("emptyOwn")
     : t("emptyWorkspace", { name: filterName });
+  // MOCK: in the sidebar the filter heads the card, and the bar above names the sidebar, as the page's names the page.
+  // "More workspaces" reads the next of the person's workspaces into the list, and leaves the filter as it was.
+  const filterSelect = (
+    <Select value={filter} onValueChange={(value) => (value === MORE ? workspaces.loadMore() : onFilter(value as CommunityFilter))}>
+      <SelectTrigger aria-label={t("showFrom")} className="w-full border-transparent bg-transparent font-medium shadow-none hover:bg-muted">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all"><Layers />{personal ? t("allWorkspaces") : t("allCommunities")}</SelectItem>
+        <SelectSeparator />
+        {personal ? (
+          <SelectGroup>
+            <SelectLabel>{t("workspaces")}</SelectLabel>
+            <SelectItem value="own"><UserRound />{t("yours")}</SelectItem>
+            {organizations.map((row) => <SelectItem key={row.workspaceId} value={row.workspaceId}><IdentityAvatar name={row.name} imageUrl={row.imageUrl} kind="organization" className="size-4 rounded-sm" />{row.name}</SelectItem>)}
+            {workspaces.more ? <SelectItem value={MORE} disabled={workspaces.loading}><ChevronDown />{t("moreWorkspaces")}</SelectItem> : null}
+          </SelectGroup>
+        ) : (
+          <SelectItem value="here"><IdentityAvatar name={workspaceName} imageUrl={workspaceImage} kind="organization" className="size-4 rounded-sm" />{workspaceName}</SelectItem>
+        )}
+        <SelectSeparator />
+        <SelectItem value="shared"><Share2 />{shared}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
   return (
     <div className="flex h-full min-h-0 flex-col">
       {/* As tall as the page's bar, with its bottom line, so the bar reads as running on under the sidebar. */}
       <div className="box-content flex h-16 shrink-0 items-center border-b border-sidebar-border px-3">
-        {/* "More workspaces" reads the next of the person's workspaces into the list, and leaves the filter as it was. */}
-        <Select value={filter} onValueChange={(value) => (value === MORE ? workspaces.loadMore() : onFilter(value as CommunityFilter))}>
-          <SelectTrigger aria-label={t("showFrom")} className="w-full border-transparent bg-transparent font-medium shadow-none hover:bg-muted">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all"><Layers />{personal ? t("allWorkspaces") : t("allCommunities")}</SelectItem>
-            <SelectSeparator />
-            {personal ? (
-              <SelectGroup>
-                <SelectLabel>{t("workspaces")}</SelectLabel>
-                <SelectItem value="own"><UserRound />{t("yours")}</SelectItem>
-                {organizations.map((row) => <SelectItem key={row.workspaceId} value={row.workspaceId}><IdentityAvatar name={row.name} imageUrl={row.imageUrl} kind="organization" className="size-4 rounded-sm" />{row.name}</SelectItem>)}
-                {workspaces.more ? <SelectItem value={MORE} disabled={workspaces.loading}><ChevronDown />{t("moreWorkspaces")}</SelectItem> : null}
-              </SelectGroup>
-            ) : (
-              <SelectItem value="here"><IdentityAvatar name={workspaceName} imageUrl={workspaceImage} kind="organization" className="size-4 rounded-sm" />{workspaceName}</SelectItem>
-            )}
-            <SelectSeparator />
-            <SelectItem value="shared"><Share2 />{shared}</SelectItem>
-          </SelectContent>
-        </Select>
+        {framed ? <h2 className="px-2 text-base font-semibold">{t("label")}</h2> : filterSelect}
       </div>
       {/* MOCK: in the sidebar the list sits on a card like the page's own, level with it; the card takes its rows' height, up to the window's. */}
       <div className={cn("flex min-h-0 flex-1 flex-col", framed && "py-4 ps-4 sm:py-6 sm:ps-6")}>
       <div className={cn("relative flex min-h-0 flex-col", framed && "overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface")}>
       {framed ? <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent" /> : null}
+      {framed ? <div className="relative shrink-0 border-b border-border-subtle p-2">{filterSelect}</div> : null}
       <div className="relative min-h-0 flex-1 overflow-y-auto p-2 scrollbar-hide">
         {/* The list arrives after the page, and changes length with the filter: it slides to its height. */}
         <AutoHeight>
