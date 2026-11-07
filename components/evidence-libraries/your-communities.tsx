@@ -139,10 +139,8 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
   );
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* As tall as the page's bar, with its bottom line, so the bar reads as running on under the sidebar. */}
-      <div className="box-content flex h-16 shrink-0 items-center border-b border-sidebar-border px-3">
-        {framed ? <h2 className="px-2 text-base font-semibold">{t("label")}</h2> : filterSelect}
-      </div>
+      {/* On a phone the filter heads the list; in the sidebar it heads the list's card. */}
+      {framed ? null : <div className="flex h-16 shrink-0 items-center border-b border-border-subtle px-3">{filterSelect}</div>}
       {/* MOCK: in the sidebar the list sits on a card like the page's own, level with it; the card takes its rows' height, up to the window's. */}
       <div className={cn("flex min-h-0 flex-1 flex-col", framed && "py-4 ps-4 sm:py-6 sm:ps-6")}>
       <div className={cn("relative flex min-h-0 flex-col", framed && "overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface")}>

@@ -15,9 +15,8 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
 import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
 
-const PER_PAGE = 6;
-/** A full page of cards, one, two or three to a row by the section's width; and with its pager under it (its top padding and buttons, and its margin). */
-const FULL_PAGE = "min-h-[calc(6*var(--card-h)+5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem)]";
+const PER_PAGE = 100;
+/** Two rows of cards and the pager under them (its top padding and buttons, and its margin): the place held while the first are read. */
 const FULL_PAGE_WITH_PAGER = "min-h-[calc(6*var(--card-h)+5rem+4.5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem+4.5rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem+4.5rem)]";
 const SORTS = ["newest", "name", "records"] as const;
 type Sort = (typeof SORTS)[number];
@@ -43,11 +42,11 @@ export function PublicCommunities({ search, workspaceId }: { search: string; wor
       </div>
       {/* The cards arrive after the page: the grid slides to their height instead of moving what's below in one frame. */}
       <AutoHeight>
-        {/* Until the cards are read, a full page of them and its pager hold their place, so arriving cards don't push the page down. */}
+        {/* Until the cards are read, two rows of them and a pager hold their place; more slide the page longer below the window. */}
         {read.isLoading ? <div className={cn("grid place-items-center", FULL_PAGE_WITH_PAGER)}><ListLoading label={t("loading")} /></div> : read.items.length ? (
           // A full page's height while there are pages, so a short last page keeps the pager where it was.
           <ul
-            className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.hasPages && FULL_PAGE, read.isStale && "opacity-60")}
+            className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && "opacity-60")}
             inert={read.isStale || undefined}
           >
             {/* By place on the page: another sort or page changes what each card holds, in place of moving cards about. */}

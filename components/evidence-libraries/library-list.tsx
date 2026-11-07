@@ -26,7 +26,7 @@ import {
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { PageWrapper } from "@/components/PageWrapper";
-import { LibraryPageShell } from "./library-page-shell";
+import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { ListSearch } from "./list-controls";
 import { PublicCommunities } from "./public-communities";
@@ -94,26 +94,31 @@ export function LibraryList({ preloadedOpens }: {
       }
       rightColumn={
         <PageWrapper>
-          <LibraryPageShell
-            title={t("evidenceLibraries")}
-            above={<div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface lg:hidden">{yours}</div>}
-            actions={creates &&
-              <Button asChild size="sm" className={BAR_ACTION}>
-                <Link href="/evidence-communities/new">
-                  <Plus />
-                  <span className={BAR_LABEL}>{t("newLibrary")}</span>
-                </Link>
-              </Button>
-            }
-            filters={
-              <ListSearch
-                aria-label={t("searchLibraries")}
-                placeholder={t("findALibrary")}
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            }
-          >
+          {/* MOCK: no header bar. The page's search and New community head its card, level with the sidebar's. */}
+          <div className="@container w-full pb-16">
+          <h1 className="sr-only">{t("evidenceLibraries")}</h1>
+          <div className="container mx-auto max-w-6xl p-4 sm:p-6">
+          <div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface lg:hidden">{yours}</div>
+          <CommandCenterContainer>
+            <div className="relative flex items-center gap-2 border-b border-border-subtle p-4">
+              <div className="min-w-0 flex-1">
+                <ListSearch
+                  aria-label={t("searchLibraries")}
+                  placeholder={t("findALibrary")}
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="w-full"
+                />
+              </div>
+              {creates ? (
+                <Button asChild size="sm" className={BAR_ACTION}>
+                  <Link href="/evidence-communities/new">
+                    <Plus />
+                    <span className={BAR_LABEL}>{t("newLibrary")}</span>
+                  </Link>
+                </Button>
+              ) : null}
+            </div>
             {notice && (
               <p role="status" className="flex items-center gap-2 border-b border-border-subtle bg-inset px-4 py-3 text-xs text-muted-foreground">
                 <Check className="size-3.5" />
@@ -150,7 +155,9 @@ export function LibraryList({ preloadedOpens }: {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </LibraryPageShell>
+          </CommandCenterContainer>
+          </div>
+          </div>
         </PageWrapper>
       }
     />
