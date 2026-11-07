@@ -69,11 +69,13 @@ async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisi
 }
 
 /**
- * Keeps a community's card on its row once `revisionId` runs, and when it first went live, then asks
- * it for its record count. Called where a setup or a publish is put live.
+ * Keeps a community's card on its row once `revisionId` runs, when it first went live and when the
+ * settings it runs were published, then asks it for its record count. Called where a setup or a
+ * publish is put live. A runtime update puts the same settings live again, so their publish time stays.
  */
 export async function noteLive(ctx: MutationCtx, library: Doc<"evidenceLibraries">, revisionId: Id<"evidenceLibraryConfigRevisions">, now: number) {
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), publishedAt: now, ...(library.liveAt === undefined ? { liveAt: now } : {}) });
+  const revision = await ctx.db.get("evidenceLibraryConfigRevisions", revisionId);
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), publishedAt: revision?.createdAt ?? now, ...(library.liveAt === undefined ? { liveAt: now } : {}) });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }
@@ -179,12 +181,15 @@ export const listPublicAction = defineUserQuery({
 export const listPublic = userQuery(listPublicAction);
 export const listPublicForAssistant = assistantQuery(listPublicAction);
 
-/** The card and when it went live, for a community that was live before cards were kept (../migrations/communityDirectory.ts). */
+/**
+ * The card, when it went live and when the settings it runs were published, for a live community whose
+ * row doesn't say so yet (../migrations/communityDirectory.ts). One that already does is left alone.
+ */
 export async function backfillCard(ctx: MutationCtx, library: Doc<"evidenceLibraries">) {
-  if (library.state !== "active" || !library.activeRevisionId || library.publishedAt !== undefined) return;
-  const deployment = library.activeDeploymentOperationId ? await ctx.db.get("evidenceLibraryConfigOperations", library.activeDeploymentOperationId) : null;
-  const publishedAt = deployment?.receipt?.activatedAt ?? library.liveAt ?? library.createdAt;
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId), liveAt: library.liveAt ?? publishedAt, publishedAt });
-  await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
-  await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
+  if (library.state !== "active" || !library.activeRevisionId) return;
+  const revision = await ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId);
+  if (!revision || library.publishedAt === revision.createdAt) return;
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revision._id), liveAt: library.liveAt ?? library.createdAt, publishedAt: revision.createdAt });
+  if (library.records === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
+  if (library.people === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }

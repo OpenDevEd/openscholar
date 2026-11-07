@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
-import { backfillCard } from "./directory";
+import { backfillCard, noteLive } from "./directory";
 import { grantLibraryRole } from "./team.test-support";
 
 type Fixture = Awaited<ReturnType<typeof createReadySetupFixture>>;
@@ -31,7 +31,11 @@ describe("the public directory", () => {
     const { fixture, library } = await live("directory_card");
     expect(library.card).toEqual({ name: "Climate Evidence", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
     expect(library.liveAt).toEqual(expect.any(Number));
-    expect(library.publishedAt).toBe(library.liveAt);
+    // When its settings were published; a runtime update puts the same settings live again and leaves that alone.
+    const settings = (await fixture.t.run((ctx) => ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId!)))!;
+    expect(library.publishedAt).toBe(settings.createdAt);
+    await fixture.t.run(async (ctx) => noteLive(ctx, (await ctx.db.get("evidenceLibraries", library._id))!, settings._id, settings.createdAt + 60_000));
+    expect((await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id)))?.publishedAt).toBe(settings.createdAt);
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 1234 });
     expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ records: 1234, recordsAt: expect.any(Number) });
   });
@@ -115,10 +119,12 @@ describe("the public directory", () => {
     expect((await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id)))?.unlisted).toBeUndefined();
   });
 
-  it("gives a community that was live before cards were kept its card, when it went live and when it was last published", async () => {
+  it("gives a community whose row doesn't say so its card, when it went live and when the settings it runs were published", async () => {
     const { fixture, library } = await live("directory_backfill");
-    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", library._id, { card: undefined, liveAt: undefined, publishedAt: undefined }));
+    const settings = (await fixture.t.run((ctx) => ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId!)))!;
+    // No card yet, and a publish time taken from a runtime update rather than its settings.
+    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", library._id, { card: undefined, liveAt: undefined, publishedAt: settings.createdAt + 60_000 }));
     await fixture.t.run(async (ctx) => backfillCard(ctx, (await ctx.db.get("evidenceLibraries", library._id))!));
-    expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ card: { accentColor: "#005A9C" }, liveAt: expect.any(Number), publishedAt: expect.any(Number) });
+    expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ card: { accentColor: "#005A9C" }, liveAt: expect.any(Number), publishedAt: settings.createdAt });
   });
 });
