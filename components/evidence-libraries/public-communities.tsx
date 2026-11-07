@@ -77,6 +77,9 @@ function CommunityCard({ community }: { community: Card }) {
   const locale = useLocale();
   // The countries' names in the page's language, for the flags' accessible name.
   const regions = useMemo(() => { try { return new Intl.DisplayNames([locale], { type: "region" }); } catch { return null; } }, [locale]);
+  // A backend from before these were kept sends neither, for the minute a deploy takes to reach it.
+  const countries = community.countries ?? [];
+  const people = community.people ?? null;
   // A community with no colour or icon of its own shows Openscholar's, as its site does.
   const accent = community.accentColor ?? "var(--primary)";
   const icon = community.faviconUrl ?? "/icon.svg";
@@ -110,15 +113,15 @@ function CommunityCard({ community }: { community: Card }) {
                   {t("records", { count: community.records, shown: format.number(community.records) })}
                 </span>
               ) : null}
-              {community.people !== null ? (
+              {people !== null ? (
                 <span className="flex shrink-0 items-center gap-1 tabular-nums">
                   <Users className="size-3.5" />
-                  {t("people", { count: community.people, shown: format.number(community.people) })}
+                  {t("people", { count: people, shown: format.number(people) })}
                 </span>
               ) : null}
-              {community.countries.length > 0 ? (
-                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: community.countries.map((code) => regions?.of(code.toUpperCase()) ?? code.toUpperCase()).join(", ") })}>
-                  {community.countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
+              {countries.length > 0 ? (
+                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: countries.map((code) => regions?.of(code.toUpperCase()) ?? code.toUpperCase()).join(", ") })}>
+                  {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
                 </span>
               ) : null}
             </span>
