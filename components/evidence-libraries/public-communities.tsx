@@ -8,6 +8,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { SearchX } from "@/components/icons";
 import { THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
+import { useWorkspaces, WorkspaceTile } from "@/components/workspaces/parts";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -91,6 +92,8 @@ function CommunityCard({ community }: { community: Card }) {
   const accent = community.accentColor ?? THEME_DEFAULTS.colors.accent;
   const icon = community.faviconUrl ?? "/icon.svg";
   const named = countries.map((code) => regionName(regions, code));
+  // MOCK: an organization the person is in, as the switcher has it, until the card sends its owner's workspace.
+  const mine = useWorkspaces().list ?? [];
   return (
     // One height for every card, so a new sort changes what each holds without moving the rows.
     <li className="fade-enter h-(--card-h)">
@@ -129,7 +132,8 @@ function CommunityCard({ community }: { community: Card }) {
               ) : null}
             </dl>
             <div className="mt-3 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-              <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
+              {/* MOCK: the owner as the switcher draws a workspace. The real card sends its workspace and colour, so the mark is the switcher's own. */}
+              <WorkspaceTile workspace={(community.owner.kind === "organization" ? mine.find((row) => row.kind === "organization" && row.name === community.owner.name) : undefined) ?? { kind: community.owner.kind === "organization" ? "organization" : "personal", name: community.owner.name ?? "", imageUrl: community.owner.imageUrl ?? undefined }} size="xxs" />
               <span className="min-w-0 truncate">{community.owner.name ?? t("unnamedOwner")}</span>
               {/* MOCK: when it went live stands in for its last publish, which the real card keeps. */}
               {community.liveAt !== null ? <span className="ms-auto shrink-0 text-subtle-foreground">{format.relativeTime(community.liveAt)}</span> : null}
