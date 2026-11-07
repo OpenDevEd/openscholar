@@ -21,6 +21,8 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { TwoColumnLayout } from "@/components/layout/two-column-layout";
+import { PageWrapper } from "@/components/PageWrapper";
 import { LibraryPageShell } from "./library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { ListLoading, ListSearch } from "./list-controls";
@@ -28,7 +30,7 @@ import { PublicCommunities } from "./public-communities";
 import { YourCommunities, type Community } from "./your-communities";
 
 /**
- * MOCK: the communities you can open, in a column of their own beside every public one.
+ * MOCK: the communities you can open, in the page's sidebar, beside every public one in its card.
  * `pending` renders the page before access is confirmed: the frame and toolbar show at
  * once and only the lists wait.
  */
@@ -41,6 +43,7 @@ export function LibraryList({ pending = false, preloadedOrganizations, organizat
   const t = useTranslations("libraryList");
   const owner = useLibraryOrganizationChoice(preloadedOrganizations);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   // The switcher's list is read once for the whole page, so after a switch the workspace is known from the first frame; the address says which.
   const slug = useWorkspaceSlug();
   const listed = useWorkspaces().list?.find((row) => (slug ? row.slug === slug : row.kind === "personal"));
@@ -61,83 +64,92 @@ export function LibraryList({ pending = false, preloadedOrganizations, organizat
     } catch (error) { setNotice(getErrorMessage(error, t("unableToAcceptInvitation"))); }
     finally { setAnswering(null); }
   };
+  // The sidebar on a wide screen and above the card on a narrow one: CSS shows one copy, and both read the same filter.
+  const yours = pending || !workspace ? <ListLoading label={t("loadingLibraries")} /> : (
+    <YourCommunities
+      search={search.trim()}
+      personal={workspace.kind === "personal"}
+      workspaceName={workspace.name}
+      workspaceImage={workspace.imageUrl}
+      organization={organization}
+      filter={filter}
+      onFilter={setFilter}
+      answering={answering}
+      onAccept={accept}
+      onDecline={setDeclining}
+      notify={setNotice}
+    />
+  );
   return (
-    <LibraryPageShell
-      // The column of your own stays in view beside the public cards, which a clipped card would stop.
-      allowOverflow
-      title={t("evidenceLibraries")}
-      actions={owner.organizations.some((org) => org.id === organization) &&
-        <Button asChild size="sm" className={BAR_ACTION}>
-          <Link href="/evidence-communities/new">
-            <Plus />
-            <span className={BAR_LABEL}>{t("newLibrary")}</span>
-          </Link>
-        </Button>
-      }
-      filters={
-        <ListSearch
-          aria-label={t("searchLibraries")}
-          placeholder={t("findALibrary")}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-      }
-    >
-      {notice && (
-        <p role="status" className="flex items-center gap-2 border-b border-border-subtle bg-inset px-4 py-3 text-xs text-muted-foreground">
-          <Check className="size-3.5" />
-          {notice}
-        </p>
-      )}
-      <div className="grid @4xl:grid-cols-[19rem_minmax(0,1fr)]">
-        <aside aria-label="Your communities" className="border-b border-border-subtle pb-2 @4xl:border-b-0 @4xl:border-e">
-          <div className="@4xl:sticky @4xl:top-20">
-            {pending || !workspace ? <ListLoading label={t("loadingLibraries")} /> : (
-              <YourCommunities
-                search={search.trim()}
-                personal={workspace.kind === "personal"}
-                workspaceName={workspace.name}
-                workspaceImage={workspace.imageUrl}
-                organization={organization}
-                answering={answering}
-                onAccept={accept}
-                onDecline={setDeclining}
-                notify={setNotice}
-              />
-            )}
-          </div>
+    <TwoColumnLayout
+      leftColumn={
+        <aside aria-label="Your communities" className="relative hidden h-full w-80 border-s border-border-subtle bg-background lg:block">
+          {/* The same wash as the page's other side panels. */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent" />
+          <div className="relative h-full">{yours}</div>
         </aside>
-        <PublicCommunities search={search} />
-      </div>
-      <Dialog open={Boolean(declining)} onOpenChange={(open) => { if (!open) setDeclining(null); }}>
-        <DialogContent showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>{t("declineInvitation")}</DialogTitle>
-            <DialogDescription>{t("declineBody", { name: declining?.name ?? "" })}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">{t("keepInvitation")}</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              disabled={answering !== null}
-              onClick={async () => {
-                if (!declining?.invitationId) return;
-                setAnswering(declining.invitationId);
-                try {
-                  await respond({ invitationId: declining.invitationId, accept: false });
-                  setDeclining(null);
-                  setNotice(t("invitationDeclined"));
-                } catch (error) { setNotice(getErrorMessage(error, t("unableToDeclineInvitation"))); }
-                finally { setAnswering(null); }
-              }}
-            >
-              {t("declineInvitation2")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </LibraryPageShell>
+      }
+      rightColumn={
+        <PageWrapper>
+          <LibraryPageShell
+            title={t("evidenceLibraries")}
+            above={<div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-background lg:hidden">{yours}</div>}
+            actions={owner.organizations.some((org) => org.id === organization) &&
+              <Button asChild size="sm" className={BAR_ACTION}>
+                <Link href="/evidence-communities/new">
+                  <Plus />
+                  <span className={BAR_LABEL}>{t("newLibrary")}</span>
+                </Link>
+              </Button>
+            }
+            filters={
+              <ListSearch
+                aria-label={t("searchLibraries")}
+                placeholder={t("findALibrary")}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            }
+          >
+            {notice && (
+              <p role="status" className="flex items-center gap-2 border-b border-border-subtle bg-inset px-4 py-3 text-xs text-muted-foreground">
+                <Check className="size-3.5" />
+                {notice}
+              </p>
+            )}
+            <PublicCommunities search={search} />
+            <Dialog open={Boolean(declining)} onOpenChange={(open) => { if (!open) setDeclining(null); }}>
+              <DialogContent showCloseButton={false}>
+                <DialogHeader>
+                  <DialogTitle>{t("declineInvitation")}</DialogTitle>
+                  <DialogDescription>{t("declineBody", { name: declining?.name ?? "" })}</DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">{t("keepInvitation")}</Button>
+                  </DialogClose>
+                  <Button
+                    variant="destructive"
+                    disabled={answering !== null}
+                    onClick={async () => {
+                      if (!declining?.invitationId) return;
+                      setAnswering(declining.invitationId);
+                      try {
+                        await respond({ invitationId: declining.invitationId, accept: false });
+                        setDeclining(null);
+                        setNotice(t("invitationDeclined"));
+                      } catch (error) { setNotice(getErrorMessage(error, t("unableToDeclineInvitation"))); }
+                      finally { setAnswering(null); }
+                    }}
+                  >
+                    {t("declineInvitation2")}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </LibraryPageShell>
+        </PageWrapper>
+      }
+    />
   );
 }

@@ -29,6 +29,7 @@ export function LibraryPageShell({
   intro,
   filtersInCard = false,
   allowOverflow = false,
+  above,
   children,
 }: {
   icon?: AppIcon | null;
@@ -46,6 +47,8 @@ export function LibraryPageShell({
   filtersInCard?: boolean;
   /** Let the card's content overflow, for a sticky footer or popovers inside it. */
   allowOverflow?: boolean;
+  /** Above the card, outside it: what a page shows in its sidebar on a wide screen, at a narrow one. */
+  above?: ReactNode;
   children: ReactNode;
 }) {
   // A tab can drop its filters. The last ones stay rendered while their row closes.
@@ -73,6 +76,7 @@ export function LibraryPageShell({
       </StickyPageHeader>
 
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
+        {above}
         <CommandCenterContainer allowOverflow={allowOverflow}>
           {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
           {tabs || cardFilters ? (
