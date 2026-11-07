@@ -24,6 +24,8 @@ import { createsIn } from "../organizationFeatures";
 import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersonalRating, writeRating } from "../ratings";
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
 import { requireAuthorProfiles } from "../authors/profiles";
+import { MAKERS, profileMaker } from "../authors/access";
+import { give } from "../sharing/access";
 import { actorIn } from "./actor";
 import { workspaceName } from "./personal";
 
@@ -176,8 +178,13 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
     const profile = await profileIn(ctx, from, id);
     if (!profile) throw createError("NOT_FOUND", "Author profile not found");
     await requireAuthorProfiles(ctx, to);
+    // It goes where the person may make one (#1093), and they edit it there when they don't run that workspace.
+    const person = await ctx.db.get("users", by);
+    const may = person ? await profileMaker(ctx, person, to) : null;
+    if (!person || !may) throw createError("FORBIDDEN", MAKERS);
     // Its publications and editors are its own, by its ID.
     await ctx.db.patch("authorProfiles", profile._id, { workspaceId: to });
+    if (!may.runs) await give(ctx, { kind: "author", id: profile._id, workspaceId: to, name: profile.name, createdBy: profile.createdBy }, person, "editor", { userId: by, author: "user" });
     return { table: "authorProfiles", id: profile._id };
   }
   if (kind === "search") {

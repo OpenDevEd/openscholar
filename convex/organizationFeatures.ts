@@ -7,6 +7,7 @@ import { createError } from "./lib/errors";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { readActiveOrganizationMembership } from "./evidenceLibraries/access";
 import { workspaceQuery } from "./lib/userActions";
+import { profileMaker } from "./authors/access";
 
 /** The same active memberships drive feature access and organization pickers. */
 export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, person?: Doc<"users"> | null) {
@@ -59,10 +60,16 @@ export async function requireCommunityWorkspace(ctx: QueryCtx | MutationCtx, wor
  */
 export const opens = workspaceQuery({
   args: {},
-  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean(), createsCommunities: v.boolean() }),
-  signedOut: { evidenceLibraries: false, authors: false, createsCommunities: false },
+  // `createsAuthors`: whether they may make an author profile in it (../authors/access.ts, #1093).
+  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean(), createsCommunities: v.boolean(), createsAuthors: v.boolean() }),
+  signedOut: { evidenceLibraries: false, authors: false, createsCommunities: false, createsAuthors: false },
   handler: async (ctx, actor) => {
     const [on, user, workspace] = await Promise.all([opensLibraries(ctx, actor.workspaceId), ctx.db.get("users", actor.userId), ctx.db.get("workspaces", actor.workspaceId)]);
-    return { evidenceLibraries: on, authors: on, createsCommunities: on && user !== null && workspace !== null && (await createsIn(ctx, user, workspace)) };
+    return {
+      evidenceLibraries: on,
+      authors: on,
+      createsCommunities: on && user !== null && workspace !== null && (await createsIn(ctx, user, workspace)),
+      createsAuthors: on && user !== null && (await profileMaker(ctx, user, actor.workspaceId)) !== null,
+    };
   },
 });

@@ -16,9 +16,9 @@ import { createEvidenceLibrarySetup } from "./evidenceLibraries/mutations";
 import { requireEvidenceLibraryAccess } from "./evidenceLibraries/access";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const off = { evidenceLibraries: false, authors: false, createsCommunities: false };
-// For a member who isn't an admin: on for the workspace, but creating a community is its admins'.
-const on = { evidenceLibraries: true, authors: true, createsCommunities: false };
+const off = { evidenceLibraries: false, authors: false, createsCommunities: false, createsAuthors: false };
+// For a member who isn't an admin: on for the workspace, but creating a community, or an author profile, is its admins' (#1093).
+const on = { evidenceLibraries: true, authors: true, createsCommunities: false, createsAuthors: false };
 
 /** Sets what the plan of an organization's workspace grants, as when it changes plan. */
 async function planGrants(ctx: MutationCtx, organizationId: Id<"organizations">, features: string[]) {
@@ -48,7 +48,8 @@ describe("what a workspace opens", () => {
     const member = t.withIdentity({ subject: "member" });
     await expect(member.mutation(api.authors.profiles.create, { name: "Someone" })).rejects.toThrow(/FORBIDDEN/);
     await expect(member.mutation(api.authors.profiles.create, { workspaceId: without, name: "Someone" })).rejects.toThrow(/FORBIDDEN/);
-    await member.mutation(api.authors.profiles.create, { workspaceId: withThem, name: "Someone" });
+    // Nor, where they are on, by a member who neither runs the organization nor edits one of its communities (#1093).
+    await expect(member.mutation(api.authors.profiles.create, { workspaceId: withThem, name: "Someone" })).rejects.toThrow(/owners and admins/);
   });
 
   test("a change of plan takes it away at once, and a workspace the person can no longer act in answers nothing", async () => {
