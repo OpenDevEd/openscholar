@@ -3,7 +3,7 @@ import {
   readPublicationProviderPayload,
   requireUnchangedPublicationProviders,
 } from "./publicationProviders";
-import { noteLive } from "./directory";
+import { noteLive, publishesSettings } from "./directory";
 import { publicationPayloadValidator } from "./publicationValidators";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -1463,7 +1463,7 @@ export const completeConfigurationDeployment = internalMutation({
       updatedAt: now,
     });
     // Its directory card follows the version it now runs.
-    await noteLive(ctx, deployment.library, deployment.revision._id, now);
+    await noteLive(ctx, deployment.library, deployment.revision._id, now, publishesSettings(deployment.operation));
     // A custom domain change finishes here, and only here.
     const domainChange = deployment.operation.domainChange;
     let domainsToActivate: Id<"evidenceLibraryDomains">[] = [];

@@ -541,7 +541,7 @@ export async function recordEvidenceLibrarySetupStep(
     updatedAt: now,
   });
   // Live now: it joins the directory, unless its owners unlist it.
-  await noteLive(ctx, setup.library, setup.revision._id, now);
+  await noteLive(ctx, setup.library, setup.revision._id, now, true);
   return { nextStep: null, status: "succeeded" as const };
 }
 

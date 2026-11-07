@@ -31,11 +31,14 @@ describe("the public directory", () => {
     const { fixture, library } = await live("directory_card");
     expect(library.card).toEqual({ name: "Climate Evidence", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
     expect(library.liveAt).toEqual(expect.any(Number));
-    // When its settings were published; a runtime update puts the same settings live again and leaves that alone.
-    const settings = (await fixture.t.run((ctx) => ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId!)))!;
-    expect(library.publishedAt).toBe(settings.createdAt);
-    await fixture.t.run(async (ctx) => noteLive(ctx, (await ctx.db.get("evidenceLibraries", library._id))!, settings._id, settings.createdAt + 60_000));
-    expect((await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id)))?.publishedAt).toBe(settings.createdAt);
+    // Its card's time is when its owners last put their settings live: a software update leaves it, a publish moves it.
+    expect(library.publishedAt).toBe(library.liveAt);
+    const putLive = (at: number, published: boolean) => fixture.t.run(async (ctx) => {
+      await noteLive(ctx, (await ctx.db.get("evidenceLibraries", library._id))!, library.activeRevisionId!, at, published);
+      return (await ctx.db.get("evidenceLibraries", library._id))?.publishedAt;
+    });
+    expect(await putLive(library.liveAt! + 60_000, false)).toBe(library.liveAt);
+    expect(await putLive(library.liveAt! + 120_000, true)).toBe(library.liveAt! + 120_000);
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 1234 });
     expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ records: 1234, recordsAt: expect.any(Number) });
   });
@@ -119,14 +122,21 @@ describe("the public directory", () => {
     expect((await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id)))?.unlisted).toBeUndefined();
   });
 
-  it("gives a community whose row doesn't say so its card, when it went live and when the settings it runs were published", async () => {
+  it("gives a community whose row doesn't say so its card, when it went live and when its owners last put their settings live", async () => {
     const { fixture, library } = await live("directory_backfill");
-    const settings = (await fixture.t.run((ctx) => ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId!)))!;
+    const setup = (await fixture.t.run((ctx) => ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_kind_and_createdAt", (q) => q.eq("libraryId", library._id).eq("kind", "setup")).first()))!;
     // It went live with its first settings.
     const first = (await fixture.t.run((ctx) => ctx.db.query("evidenceLibraryConfigRevisions").withIndex("by_libraryId_and_revisionNumber", (q) => q.eq("libraryId", library._id)).first()))!;
-    // No card yet, and a publish time taken from a runtime update rather than its settings.
-    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", library._id, { card: undefined, liveAt: undefined, publishedAt: settings.createdAt + 60_000 }));
+    // Since then, a software update put the same settings live again, and its time was taken for a publish.
+    const later = setup.completedAt! + 60_000;
+    await fixture.t.run(async (ctx) => {
+      const { _id, _creationTime, ...operation } = setup;
+      await ctx.db.insert("evidenceLibraryConfigOperations", { ...operation, kind: "publish", idempotencyKey: "runtime-update", activationEditVersion: undefined, createdAt: later, completedAt: later, runtimeUpdate: { from: "a", to: "b", fromImage: "a", toImage: "b" } });
+      // An activation of theirs that failed doesn't count either.
+      await ctx.db.insert("evidenceLibraryConfigOperations", { ...operation, kind: "publish", status: "failed", idempotencyKey: "failed-publish", activationEditVersion: 2, createdAt: later, completedAt: later });
+      await ctx.db.patch("evidenceLibraries", library._id, { card: undefined, liveAt: undefined, publishedAt: later });
+    });
     await fixture.t.run(async (ctx) => backfillCard(ctx, (await ctx.db.get("evidenceLibraries", library._id))!));
-    expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ card: { accentColor: "#005A9C" }, liveAt: first.createdAt, publishedAt: settings.createdAt });
+    expect(await fixture.t.run((ctx) => ctx.db.get("evidenceLibraries", library._id))).toMatchObject({ card: { accentColor: "#005A9C" }, liveAt: first.createdAt, publishedAt: setup.completedAt });
   });
 });

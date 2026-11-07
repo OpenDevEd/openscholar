@@ -69,13 +69,22 @@ async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisi
 }
 
 /**
- * Keeps a community's card on its row once `revisionId` runs, when it first went live and when the
- * settings it runs were published, then asks it for its record count. Called where a setup or a
- * publish is put live. A runtime update puts the same settings live again, so their publish time stays.
+ * Whether an operation is its owners putting their settings live: a setup, or an activation of their
+ * draft or of an earlier version, which carries the draft's edit version (and may update the software
+ * or a domain on the way). A software update, an address move or a domain change alone puts the same
+ * settings live again, even when it saves them as a new version in a newer format.
  */
-export async function noteLive(ctx: MutationCtx, library: Doc<"evidenceLibraries">, revisionId: Id<"evidenceLibraryConfigRevisions">, now: number) {
-  const revision = await ctx.db.get("evidenceLibraryConfigRevisions", revisionId);
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), publishedAt: revision?.createdAt ?? now, ...(library.liveAt === undefined ? { liveAt: now } : {}) });
+export function publishesSettings(operation: Doc<"evidenceLibraryConfigOperations">) {
+  return operation.kind === "setup" || (operation.kind === "publish" && operation.activationEditVersion !== undefined);
+}
+
+/**
+ * Keeps a community's card on its row once `revisionId` runs and when it first went live, then asks it
+ * for its record count. Called where a setup or a publish is put live; `published` when its owners put
+ * their settings live (`publishesSettings`), which is the time its card shows.
+ */
+export async function noteLive(ctx: MutationCtx, library: Doc<"evidenceLibraries">, revisionId: Id<"evidenceLibraryConfigRevisions">, now: number, published: boolean) {
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), ...(published || library.publishedAt === undefined ? { publishedAt: now } : {}), ...(library.liveAt === undefined ? { liveAt: now } : {}) });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }
@@ -181,17 +190,24 @@ export const listPublicAction = defineUserQuery({
 export const listPublic = userQuery(listPublicAction);
 export const listPublicForAssistant = assistantQuery(listPublicAction);
 
+/** The latest activations by its owners the backfill reads for the last that went live. */
+const OPERATIONS_READ = 10;
+
 /**
- * The card, when it went live and when the settings it runs were published, for a live community whose
- * row doesn't say so yet (../migrations/communityDirectory.ts). One that already does is left alone.
+ * The card, when it went live and when its owners last put their settings live, for a live community whose
+ * row doesn't say so (../migrations/communityDirectory.ts). One that already does is left alone.
  */
 export async function backfillCard(ctx: MutationCtx, library: Doc<"evidenceLibraries">) {
   if (library.state !== "active" || !library.activeRevisionId) return;
-  const revision = await ctx.db.get("evidenceLibraryConfigRevisions", library.activeRevisionId);
-  if (!revision || library.publishedAt === revision.createdAt) return;
+  // Its owners' activations, newest first, and its setup when none went live.
+  const activations = await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_activationEditVersion", (q) => q.eq("libraryId", library._id).gte("activationEditVersion", 0)).order("desc").take(OPERATIONS_READ);
+  const published = activations.find((operation) => operation.status === "succeeded" && operation.kind === "publish")
+    ?? await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_kind_and_createdAt", (q) => q.eq("libraryId", library._id).eq("kind", "setup")).order("desc").first();
+  const publishedAt = published?.completedAt ?? library.liveAt ?? library.createdAt;
+  if (library.publishedAt === publishedAt && library.liveAt !== undefined && library.card) return;
   // When it went live: its first settings' publish, which a setup puts live.
   const first = library.liveAt === undefined ? await ctx.db.query("evidenceLibraryConfigRevisions").withIndex("by_libraryId_and_revisionNumber", (q) => q.eq("libraryId", library._id)).first() : null;
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revision._id), liveAt: library.liveAt ?? first?.createdAt ?? revision.createdAt, publishedAt: revision.createdAt });
+  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId), liveAt: library.liveAt ?? first?.createdAt ?? publishedAt, publishedAt });
   if (library.records === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   if (library.people === undefined) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }
