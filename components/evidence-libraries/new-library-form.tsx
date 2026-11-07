@@ -2,7 +2,8 @@
 
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
-import { useAction } from "convex/react";
+import { useAction, type Preloaded } from "convex/react";
+import { preloadedQueryResult } from "convex/nextjs";
 import { Building2, Check, Lock, RotateCw } from "@/components/icons";
 import Link from "@/components/workspace-link";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
@@ -48,13 +49,14 @@ type AddressCheck =
 
 const CHECK_DELAY_MS = 300;
 
-export function NewLibraryForm() {
-  const features = useWorkspaceFeatures().data;
+export function NewLibraryForm({ preloadedOpens }: { preloadedOpens?: Preloaded<typeof api.organizationFeatures.opens> }) {
+  // The server's answer until the live one arrives, so the page doesn't change once it does.
+  const features = useWorkspaceFeatures().data ?? (preloadedOpens ? preloadedQueryResult(preloadedOpens) : undefined);
   const t = useTranslations("evidenceLibraries.new");
   // A new community belongs to the workspace you're in: your own, or an organization you're an admin of, with Evidence Communities on for it.
   const workspace = useCurrentWorkspace();
+  if (features && !features.createsCommunities) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
   if (!features || !workspace) return <AuthStatePanel variant="loading" layout="fullscreen" />;
-  if (!features.createsCommunities) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
   return <OwnerForm key={workspace.workspaceId} workspaceId={workspace.workspaceId}
     organization={<WorkspaceTag workspace={workspace} />} />;
 }

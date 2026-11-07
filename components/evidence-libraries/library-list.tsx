@@ -152,7 +152,7 @@ export function LibraryList({ preloadedOpens }: {
             value: each,
             label: each === "libraries" ? t("sharedWithYou") : t("invitations"),
             icon: each === "libraries" ? <Layers className="size-3.5" /> : <Mail className="size-3.5" />,
-            count: loading ? undefined : each === "libraries" ? (overviews.hasPages ? undefined : overviews.items.length) : invited.length,
+            count: loading ? null : each === "libraries" ? (overviews.hasPages ? undefined : overviews.items.length) : invited.length,
           }))}
         />
       }
