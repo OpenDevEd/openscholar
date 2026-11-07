@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { RoleLabel } from "@/components/ui/identity";
 import { useMutation, useQueries } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -30,7 +31,7 @@ type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibr
 type Invitation = FunctionReturnType<typeof api.evidenceLibraries.invitations.listInvitations>["page"][number];
 type Role = "Owner" | "Editor" | "Creator" | "Viewer";
 /** Where a community is listed from: your own workspace, an organization's, or someone else's that shares it. */
-type Source = { key: string; kind: "own" | "organization" | "shared"; name: string; imageUrl?: string | null };
+type Source = { key: string; kind: "own" | "organization" | "shared"; name: string; imageUrl?: string | null; avatar: "person" | "organization" };
 export type Community = {
   id: string;
   invitationId?: Id<"itemInvitations">;
@@ -47,6 +48,7 @@ export type Community = {
   operation?: LibraryOperation | null;
 };
 const ROLES = { owner: "Owner", editor: "Editor", creator: "Creator", viewer: "Viewer" } as const;
+const ROLE_KINDS = { Owner: "owner", Editor: "editor", Creator: "creator", Viewer: "view" } as const;
 
 const fromOverview = (library: Overview, from: Source): Community => ({
   id: library._id, name: library.name, role: ROLES[library.role], faviconUrl: library.faviconUrl, from,
@@ -56,7 +58,7 @@ const fromOverview = (library: Overview, from: Source): Community => ({
 });
 const fromInvitation = (invitation: Invitation): Community => ({
   id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: ROLES[invitation.role], address: "", pending: true,
-  from: { key: "shared", kind: "shared", name: invitation.organization.name, imageUrl: invitation.organization.imageUrl },
+  from: { key: "shared", kind: "shared", name: invitation.organization.name, imageUrl: invitation.organization.imageUrl, avatar: "organization" },
 });
 
 const PER_PAGE = 100;
@@ -83,8 +85,10 @@ export function YourCommunities({ search, personal, workspaceName, workspaceImag
   filter: string;
   onFilter: (filter: string) => void;
 }) {
-  const organizations = (useWorkspaces().list ?? []).filter((row): row is Organization => row.kind === "organization" && row.organizationId !== undefined);
-  const read = useEverything({ search, personal, organizations, organization, workspaceName, workspaceImage });
+  const workspaces = useWorkspaces().list ?? [];
+  const organizations = workspaces.filter((row): row is Organization => row.kind === "organization" && row.organizationId !== undefined);
+  const photo = workspaces.find((row) => row.kind === "personal")?.imageUrl;
+  const read = useEverything({ search, personal, organizations, organization, workspaceName, workspaceImage, photo });
   const list = read.list.filter((row) => filter === "all" || row.from.key === filter);
   // A new filter or search starts at the first page.
   const pageKey = `${filter}\n${search}`;
@@ -156,7 +160,7 @@ export function YourCommunities({ search, personal, workspaceName, workspaceImag
  * read the last list stays up, dimmed. MOCK: an organization's shared communities are a sample
  * invitation held here; accepting or declining it saves nothing.
  */
-function useEverything({ search, personal, organizations, organization, workspaceName, workspaceImage }: { search: string; personal: boolean; organizations: Organization[]; organization?: Id<"organizations">; workspaceName: string; workspaceImage?: string }) {
+function useEverything({ search, personal, organizations, organization, workspaceName, workspaceImage, photo }: { search: string; personal: boolean; organizations: Organization[]; organization?: Id<"organizations">; workspaceName: string; workspaceImage?: string; photo?: string }) {
   const { canRunProtectedQueries } = useAuthReadiness();
   const sources = personal
     ? [{ key: "own" }, ...organizations.map((row) => ({ key: row.workspaceId as string, organization: row.organizationId as string }))]
@@ -181,14 +185,14 @@ function useEverything({ search, personal, organizations, organization, workspac
   const list: Community[] = [];
   if (personal) {
     list.push(...(invitations.data?.page ?? []).filter((row) => `${row.name} ${row.organization.name}`.toLowerCase().includes(needle)).map(fromInvitation));
-    for (const row of rows("own")) list.push(fromOverview(row, row.role === "owner" ? { key: "own", kind: "own", name: "Yours" } : { key: "shared", kind: "shared", name: row.organization.name, imageUrl: row.organization.imageUrl }));
-    for (const org of organizations) for (const row of rows(org.workspaceId)) list.push(fromOverview(row, { key: org.workspaceId, kind: "organization", name: org.name, imageUrl: org.imageUrl }));
+    for (const row of rows("own")) list.push(fromOverview(row, row.role === "owner" ? { key: "own", kind: "own", name: "Yours", imageUrl: photo, avatar: "person" } : { key: "shared", kind: "shared", name: row.organization.name, imageUrl: row.organization.imageUrl, avatar: "organization" }));
+    for (const org of organizations) for (const row of rows(org.workspaceId)) list.push(fromOverview(row, { key: org.workspaceId, kind: "organization", name: org.name, imageUrl: org.imageUrl, avatar: "organization" }));
   } else {
     const example = PUBLIC_COMMUNITIES.find((row) => row.id === "p13")!;
     if (sample !== "declined" && example.name.toLowerCase().includes(needle)) {
-      list.push({ id: example.id, name: example.name, faviconUrl: example.faviconUrl, role: "Editor", address: example.address, status: "active", pending: sample === "invited", draft: false, from: { key: "shared", kind: "shared", name: example.owner.name } });
+      list.push({ id: example.id, name: example.name, faviconUrl: example.faviconUrl, role: "Editor", address: example.address, status: "active", pending: sample === "invited", draft: false, from: { key: "shared", kind: "shared", name: example.owner.name, avatar: example.owner.kind } });
     }
-    for (const row of rows("here")) list.push(fromOverview(row, { key: "here", kind: "organization", name: workspaceName, imageUrl: workspaceImage }));
+    for (const row of rows("here")) list.push(fromOverview(row, { key: "here", kind: "organization", name: workspaceName, imageUrl: workspaceImage, avatar: "organization" }));
   }
   // MOCK: sample rows shared with you, so the list is long enough to page.
   if (personal) list.push(...SAMPLE_SHARED.filter((row) => row.name.toLowerCase().includes(needle)));
@@ -208,7 +212,7 @@ function useEverything({ search, personal, organizations, organization, workspac
 const SAMPLE_SHARED: Community[] = PUBLIC_COMMUNITIES.slice(0, 10).map((row, at): Community => ({
   id: `sample-${row.id}`, name: row.name, faviconUrl: row.faviconUrl, address: row.address, status: "active", draft: false,
   role: (["Editor", "Viewer", "Creator", "Viewer", "Editor"] as const)[at % 5],
-  from: { key: "shared", kind: "shared", name: row.owner.name },
+  from: { key: "shared", kind: "shared", name: row.owner.name, avatar: row.owner.kind },
 }));
 
 /** A community with no icon of its own shows Openscholar's, as its page's header does. */
@@ -229,12 +233,14 @@ function Tile() {
   );
 }
 
-/** A row's one line under its name: your role, and while the list shows more than one place, where it's from. */
-function detail(community: Community, showSource: boolean) {
-  const role = community.role.toLowerCase();
-  if (community.pending) return `Invited as ${role} by ${community.from.name}`;
-  if (community.from.kind === "shared") return `${community.role}, shared by ${community.from.name}`;
-  return showSource && community.from.kind === "organization" ? `${community.role} in ${community.from.name}` : community.role;
+/** Where a row is from, after its role: the organization's logo and name, your photo for yours, or the owner's for one shared with you. */
+function SourceLabel({ from }: { from: Source }) {
+  return (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <IdentityAvatar name={from.name} imageUrl={from.imageUrl} kind={from.avatar} className={cn("size-3.5", from.avatar === "organization" && "rounded-[0.2rem]")} />
+      <span className="truncate">{from.name}</span>
+    </span>
+  );
 }
 
 /** One community: its name opens it, and everything else it offers is in its menu. */
@@ -255,9 +261,10 @@ function CommunityRow({ community, showSource, actions }: { community: Community
       {community.faviconUrl ? <LibraryImage src={community.faviconUrl} className="flex size-8 shrink-0 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
       <div className="flex min-w-0 flex-1 flex-col">
         {name}
-        <span className="truncate text-xs text-muted-foreground">
-          {detail(community, showSource)}
-          {status && <span className={status === "setup_failed" ? "text-destructive" : undefined}>{`, ${tStatus(status).toLowerCase()}`}</span>}
+        <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <RoleLabel role={ROLE_KINDS[community.role]}>{community.pending ? `Invited as ${community.role.toLowerCase()}` : community.role}</RoleLabel>
+          {status && <span className={cn("shrink-0", status === "setup_failed" && "text-destructive")}>{tStatus(status)}</span>}
+          {showSource && <SourceLabel from={community.from} />}
         </span>
       </div>
       {community.pending ? (
