@@ -6,7 +6,9 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { FileText, SearchX, Users } from "@/components/icons";
+import { Clock, FileText, SearchX, Users } from "@/components/icons";
+import { workspaceTint } from "@/components/workspaces/parts";
+import { THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -34,7 +36,7 @@ export function PublicCommunities({ search, workspaceId, preloaded }: { search: 
   const first = preloaded && live.isLoading && sort === "newest" && !search ? preloadedQueryResult(preloaded) : undefined;
   const read = first ? { ...live, items: first.page, isLoading: false, hasPages: !first.isDone } : live;
   return (
-    <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "16.5rem" } as React.CSSProperties}>
+    <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "17.25rem" } as React.CSSProperties}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 id="public-communities" className="text-base font-semibold">{t("title")}</h2>
         <Select value={sort} onValueChange={(value) => setSort(value as Sort)}>
@@ -51,12 +53,13 @@ export function PublicCommunities({ search, workspaceId, preloaded }: { search: 
         {/* Until the cards are read, two rows of them and a pager hold their place; more slide the page longer below the window. */}
         {read.isLoading ? <div className={cn("grid place-items-center", FULL_PAGE_WITH_PAGER)}><ListLoading label={t("loading")} /></div> : read.items.length ? (
           // A full page's height while there are pages, so a short last page keeps the pager where it was.
+          // Another sort, search or page is a new list: its cards fade in, in place of each card's text changing where it stood.
           <ul
+            key={read.items.map((community) => community._id).join(",")}
             className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && "opacity-60")}
             inert={read.isStale || undefined}
           >
-            {/* By place on the page: another sort or page changes what each card holds, in place of moving cards about. */}
-            {read.items.map((community, at) => <CommunityCard key={at} community={community} />)}
+            {read.items.map((community) => <CommunityCard key={community._id} community={community} />)}
           </ul>
         ) : (
           <ListEmpty icon={SearchX}>{search ? t("noMatches") : t("none")}</ListEmpty>
@@ -85,19 +88,25 @@ function CommunityCard({ community }: { community: Card }) {
   // A backend from before these were kept sends neither, for the minute a deploy takes to reach it.
   const countries = community.countries ?? [];
   const people = community.people ?? null;
-  // A community with no colour or icon of its own shows Openscholar's, as its site does.
-  const accent = community.accentColor ?? "var(--primary)";
+  // A community with no colour of its own takes one seeded from its ID, from the palette organizations take theirs from,
+  // so the cards of communities that set none don't all look alike. With no icon it shows Openscholar's, as its site does.
+  // Openscholar's own accent, which every community starts with, counts as none of its own.
+  const own = community.accentColor && community.accentColor.toLowerCase() !== THEME_DEFAULTS.colors.accent ? community.accentColor : null;
+  const accent = own ?? workspaceTint({ kind: "organization", name: community.name, workspaceId: community._id });
   const icon = community.faviconUrl ?? "/icon.svg";
+  const named = countries.map((code) => regionName(regions, code));
   return (
-    <li className="h-(--card-h)">
+    // One height for every card, so a new sort changes what each holds without moving the rows.
+    <li className="fade-enter h-(--card-h)">
       <a
         href={community.address}
         target="_blank"
         rel="noopener noreferrer"
         className="group flex h-full flex-col overflow-hidden rounded-xl border border-border-subtle bg-background outline-offset-2 transition-[border-color,translate] duration-200 hover:-translate-y-0.5 hover:border-border focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
       >
-        <div aria-hidden className="relative h-20 shrink-0 overflow-hidden" style={{ backgroundColor: accent }}>
-          <FadeImage src={icon} className="absolute -inset-4 size-[calc(100%+2rem)] object-cover blur-xl saturate-150" shown="opacity-90" />
+        {/* Its own icon blurred across its colour; without one, its colour alone, in place of Openscholar's orange on every card. */}
+        <div aria-hidden className="relative h-20 shrink-0 overflow-hidden" style={{ background: community.faviconUrl ? accent : `linear-gradient(135deg, ${accent}, color-mix(in oklab, ${accent} 55%, var(--background)))` }}>
+          {community.faviconUrl ? <FadeImage src={icon} className="absolute -inset-4 size-[calc(100%+2rem)] object-cover blur-xl saturate-150" shown="opacity-90" /> : null}
         </div>
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
           {/* The icon's tile holds its place, and the icon fades into it. */}
@@ -105,11 +114,14 @@ function CommunityCard({ community }: { community: Card }) {
             <FadeImage src={icon} className="size-full object-cover" />
           </span>
           <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
+          {/* MOCK: the real card falls back to the community's description when it has no tagline. */}
           {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : null}
-          <div className="mt-auto flex flex-col gap-1.5 pt-3 text-xs text-muted-foreground">
+          <div className="mt-auto flex flex-col gap-1.5 pt-4 text-xs text-muted-foreground">
             <span className="flex min-w-0 items-center gap-1.5">
               <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
-              <span className="truncate">{community.owner.name ?? t("unnamedOwner")}</span>
+              <span className="min-w-0 truncate">{community.owner.name ?? t("unnamedOwner")}</span>
+              {/* MOCK: when it went live stands in for its last publish, which the real card keeps. */}
+              {community.liveAt !== null ? <span className="ms-auto flex shrink-0 items-center gap-1"><Clock className="size-3.5" />Updated {format.relativeTime(community.liveAt)}</span> : null}
             </span>
             {/* The facts wrap on a narrow card, in place of running past its edge. */}
             <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
@@ -125,12 +137,16 @@ function CommunityCard({ community }: { community: Card }) {
                   {t("people", { count: people, shown: format.number(people) })}
                 </span>
               ) : null}
-              {countries.length > 0 ? (
-                <span className="ms-auto flex shrink-0 items-center gap-1" role="img" aria-label={t("countries", { names: countries.map((code) => regionName(regions, code)).join(", ") })}>
-                  {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
-                </span>
-              ) : null}
             </span>
+            {/* The countries by name beside their flags: the two it's most about, and how many more. Its line is kept when it has none. */}
+            {countries.length === 0 ? <span aria-hidden className="h-4" /> : null}
+            {countries.length > 0 ? (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="sr-only">{t("countries", { names: named.join(", ") })}</span>
+                <span aria-hidden className="flex shrink-0 items-center gap-1">{countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}</span>
+                <span aria-hidden className="min-w-0 truncate">{named.slice(0, 2).join(", ")}{named.length > 2 ? ` +${named.length - 2}` : ""}</span>
+              </span>
+            ) : null}
           </div>
         </div>
       </a>
