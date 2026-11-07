@@ -425,8 +425,8 @@ export const invitationsForAssistant = assistantQuery(invitationsAction);
 
 export const answerInvitationAction = defineChangingAction({
   path: "evidenceLibraries/assistant:answerInvitation",
-  description: "Accepts or declines an invitation to an Evidence Community waiting for the person, by its ID evidenceLibraries/assistant:invitations gives. It must be to an address their account has verified. Done in their own workspace; asks the person first.",
-  args: { invitationId: v.id("itemInvitations"), accept: v.boolean() },
+  description: "Accepts or declines an invitation to an Evidence Community waiting for the person, by its ID evidenceLibraries/assistant:invitations gives. It must be to an address their account has verified. One for an organization (`toOrganization`) is accepted for an organization the person is an admin of: give its ID as `organizationId` (organizations/queries:workspaces lists theirs, with their role). Done in their own workspace; asks the person first.",
+  args: { invitationId: v.id("itemInvitations"), accept: v.boolean(), organizationId: v.optional(v.id("organizations")) },
   returns: v.null(),
   spendsCredits: false,
   // The library's owners see who joined, and nothing takes an answer back.

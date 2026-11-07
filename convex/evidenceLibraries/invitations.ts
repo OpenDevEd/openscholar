@@ -32,9 +32,10 @@ export const prepare = internalMutation({
     // A deleted account keeps its address, so one address can name several accounts.
     const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).take(MAX_ACCOUNTS_PER_EMAIL + 1);
     if (users.length > MAX_ACCOUNTS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many accounts have used this address to check which of them already has access. Invite a different address.");
-    // Someone with a role of their own can still take it for an organization of theirs.
+    // Someone with a role of their own can still take it for an organization of theirs; someone with one through an
+    // organization it's shared with can still be given one of their own.
     for (const user of args.toOrganization ? [] : users) {
-      if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has community access");
+      if ((await readLibraryRole(ctx, access.library, user.clerkId)) === "owner" || (await libraryGrant(ctx, access.library._id, user._id))) throw createError("CONFLICT", "This person already has community access");
     }
     const inviter = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", access.clerkUserId)).unique();
     if (!inviter) throw createError("UNAUTHENTICATED", "Sign in to invite");

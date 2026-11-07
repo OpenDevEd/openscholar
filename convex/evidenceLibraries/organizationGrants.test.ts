@@ -6,6 +6,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { readLibraryRole } from "./access";
+import { ensureWorkspace } from "../workspaces/create";
 
 type Fixture = Awaited<ReturnType<typeof createReadySetupFixture>>;
 
@@ -55,6 +56,23 @@ describe("sharing a community with an organization", () => {
     expect(await roleOf(fixture, "user_partner_member")).toBeNull();
     await fixture.admin.mutation(api.evidenceLibraries.organizationGrants.remove, { libraryId, organizationId });
     expect(await roleOf(fixture, "user_partner_admin")).toBeNull();
+  });
+
+  it("lets a member be given a role of their own beside their organization's, and drops a deleted organization's", async () => {
+    const fixture = await createReadySetupFixture("org_grant_alongside");
+    const { organizationId } = await partners(fixture, { ownerAdmins: true });
+    const libraryId = fixture.created.libraryId;
+    await fixture.admin.mutation(api.evidenceLibraries.organizationGrants.grant, { libraryId, organizationId, role: "creator" });
+    const owner = (await fixture.t.run((ctx) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", fixture.clerkUserId)).unique()))!._id;
+    // A creator through Partners can still be invited as an editor of their own.
+    await expect(fixture.t.mutation(internal.evidenceLibraries.invitations.prepare, { libraryId, email: "user_partner_member@example.org", role: "editor", actingAs: owner })).resolves.toBeTruthy();
+    // Partners is deleted: its place among the organizations the community is shared with goes with it.
+    await fixture.t.run(async (ctx) => {
+      await ensureWorkspace(ctx, { kind: "organization", organizationId });
+      await ctx.db.patch("organizations", organizationId, { state: "deleted" });
+    });
+    await fixture.t.mutation(internal.workspaces.purge.purgeOrganization, { organizationId });
+    expect(await fixture.t.run((ctx) => ctx.db.query("libraryOrganizationGrants").collect())).toEqual([]);
   });
 
   it("lets only an organization's admin share it with that organization", async () => {
