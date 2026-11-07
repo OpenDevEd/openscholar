@@ -2008,10 +2008,13 @@
       "add": "Ajouter un établissement"
     },
     "danger": {
-      "description": "Supprimer cette communauté. Soyez prudent.",
+      "description": "Déplacer ou supprimer cette communauté. Soyez prudent.",
       "deleteTitle": "Supprimer la communauté",
       "deleteHint": "Supprime le site, l’adresse et les paramètres.",
-      "deleteButton": "Supprimer la communauté"
+      "deleteButton": "Supprimer la communauté",
+      "moveTitle": "Déplacer vers un autre espace de travail",
+      "moveHint": "Garde son adresse, ses paramètres et ses personnes. L’espace de travail de destination en devient le propriétaire.",
+      "moveButton": "Déplacer la communauté"
     },
     "deleteDialog": {
       "title": "Supprimer cette communauté ?",
@@ -4777,7 +4780,10 @@
         "itsPapers": "Ses articles",
         "ratingsInIt": "Ses notes",
         "publications": "Publications",
-        "editors": "Éditeurs"
+        "editors": "Éditeurs",
+        "address": "Adresse",
+        "settings": "Paramètres",
+        "peopleWithRoles": "Personnes ayant un rôle"
       },
       "moveTo": "Déplacer vers {workspace}",
       "move": "Déplacer",
@@ -4786,7 +4792,9 @@
       "collection": "Déplacer la collection",
       "author": "Déplacer le profil d'auteur",
       "libraryKeeps": "La bibliothèque de {workspace} garde les articles qu'elle a enregistrés.",
-      "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés."
+      "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés.",
+      "community": "Déplacer la communauté",
+      "workspaceOwnsIt": "L’espace de travail où elle est déplacée en devient le propriétaire."
     },
     "share": {
       "share": "Partager",

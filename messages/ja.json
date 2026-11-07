@@ -2008,10 +2008,13 @@
       "add": "機関を追加"
     },
     "danger": {
-      "description": "このコミュニティを削除します。慎重に操作してください。",
+      "description": "このコミュニティを移動または削除します。慎重に操作してください。",
       "deleteTitle": "コミュニティを削除",
       "deleteHint": "サイト、アドレス、設定を削除します。",
-      "deleteButton": "コミュニティを削除"
+      "deleteButton": "コミュニティを削除",
+      "moveTitle": "別のワークスペースに移動",
+      "moveHint": "アドレス、設定、メンバーはそのままです。移動先のワークスペースが所有者になります。",
+      "moveButton": "コミュニティを移動"
     },
     "deleteDialog": {
       "title": "このコミュニティを削除しますか？",
@@ -4777,7 +4780,10 @@
         "itsPapers": "論文",
         "ratingsInIt": "その中の評価",
         "publications": "出版物",
-        "editors": "編集者"
+        "editors": "編集者",
+        "address": "アドレス",
+        "settings": "設定",
+        "peopleWithRoles": "ロールを持つメンバー"
       },
       "moveTo": "{workspace} に移動",
       "move": "移動",
@@ -4786,7 +4792,9 @@
       "collection": "コレクションを移動",
       "author": "著者プロフィールを移動",
       "libraryKeeps": "{workspace} のライブラリには保存済みの論文が残ります。",
-      "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。"
+      "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。",
+      "community": "コミュニティを移動",
+      "workspaceOwnsIt": "移動先のワークスペースが以後の所有者になります。"
     },
     "share": {
       "share": "共有",

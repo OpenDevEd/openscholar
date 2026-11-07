@@ -2009,10 +2009,13 @@
       "add": "Ongeza taasisi"
     },
     "danger": {
-      "description": "Futa jumuiya hii. Kuwa mwangalifu hapa.",
+      "description": "Hamisha au futa jumuiya hii. Kuwa mwangalifu hapa.",
       "deleteTitle": "Futa jumuiya",
       "deleteHint": "Huondoa tovuti, anwani na mipangilio.",
-      "deleteButton": "Futa jumuiya"
+      "deleteButton": "Futa jumuiya",
+      "moveTitle": "Hamisha kwenda nafasi kazi nyingine",
+      "moveHint": "Inabaki na anwani, mipangilio na watu wake. Nafasi kazi inayohamishiwa inaimiliki.",
+      "moveButton": "Hamisha jumuiya"
     },
     "deleteDialog": {
       "title": "Futa jumuiya hii?",
@@ -4778,7 +4781,10 @@
         "itsPapers": "Makala zake",
         "ratingsInIt": "Ukadiriaji ndani yake",
         "publications": "Machapisho",
-        "editors": "Wahariri"
+        "editors": "Wahariri",
+        "address": "Anwani",
+        "settings": "Mipangilio",
+        "peopleWithRoles": "Watu wenye jukumu"
       },
       "moveTo": "Hamia {workspace}",
       "move": "Hamisha",
@@ -4787,7 +4793,9 @@
       "collection": "Hamisha mkusanyiko",
       "author": "Hamisha wasifu wa mwandishi",
       "libraryKeeps": "Maktaba ya {workspace} inabaki na makala ilizohifadhi.",
-      "yourLibraryKeeps": "Maktaba yako inabaki na makala ilizohifadhi."
+      "yourLibraryKeeps": "Maktaba yako inabaki na makala ilizohifadhi.",
+      "community": "Hamisha jumuiya",
+      "workspaceOwnsIt": "Nafasi kazi inayohamishiwa itaimiliki kuanzia hapo."
     },
     "share": {
       "share": "Shiriki",

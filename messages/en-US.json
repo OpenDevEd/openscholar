@@ -2008,10 +2008,13 @@
       "add": "Add institution"
     },
     "danger": {
-      "description": "Delete this community. Be careful here.",
+      "description": "Move or delete this community. Be careful here.",
       "deleteTitle": "Delete the community",
       "deleteHint": "Removes the site, address and settings.",
-      "deleteButton": "Delete community"
+      "deleteButton": "Delete community",
+      "moveTitle": "Move to another workspace",
+      "moveHint": "Keeps its address, settings and people. The workspace it moves to owns it.",
+      "moveButton": "Move community"
     },
     "deleteDialog": {
       "title": "Delete this community?",
@@ -4777,7 +4780,10 @@
         "itsPapers": "Its papers",
         "ratingsInIt": "Ratings in it",
         "publications": "Publications",
-        "editors": "Editors"
+        "editors": "Editors",
+        "address": "Address",
+        "settings": "Settings",
+        "peopleWithRoles": "People with a role"
       },
       "moveTo": "Move to {workspace}",
       "move": "Move",
@@ -4786,7 +4792,9 @@
       "collection": "Move collection",
       "author": "Move author profile",
       "libraryKeeps": "{workspace}'s library keeps the papers it saved.",
-      "yourLibraryKeeps": "Your library keeps the papers it saved."
+      "yourLibraryKeeps": "Your library keeps the papers it saved.",
+      "community": "Move community",
+      "workspaceOwnsIt": "The workspace it moves to owns it from then on."
     },
     "share": {
       "share": "Share",

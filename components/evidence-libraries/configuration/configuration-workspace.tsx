@@ -101,6 +101,7 @@ import { PublicationSection } from "./sections/publication-section";
 import { DomainSection } from "./sections/domain-section";
 import { ListingSection } from "./sections/listing-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
+import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { FeaturesSection } from "./sections/features-section";
 import { FooterSection } from "./sections/footer-section";
 import { HomeSection } from "./sections/home-section";
@@ -259,6 +260,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       libraryId={draft.libraryId}
       libraryName={library.name}
       libraryState={library.state}
+      workspaceId={library.workspaceId}
       unlisted={library.unlisted === true}
       liveAddress={liveAddress}
       latest={{ editVersion: draft.editVersion, rows: sections }}
@@ -274,6 +276,7 @@ function Workspace({
   libraryId,
   libraryName,
   libraryState,
+  workspaceId,
   unlisted,
   liveAddress,
   latest,
@@ -286,6 +289,8 @@ function Workspace({
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
   libraryState: DraftResult["library"]["state"];
+  /** The workspace it's in, which a move takes it out of. */
+  workspaceId: Id<"workspaces">;
   /** Left out of the public directory by its owners (#1090). */
   unlisted: boolean;
   liveAddress: string | null;
@@ -356,6 +361,7 @@ function Workspace({
   const [uploading, setUploading] = useState(0);
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   const [section, setSection] = useQueryState(
     "section",
@@ -664,6 +670,8 @@ function Workspace({
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Its owners move it: mounted with their page, so it opens knowing whether the community can move. Someone given a role isn't in its workspace to ask. */}
+        {editable ? <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} kind="community" id={libraryId} name={libraryName} from={workspaceId} /> : null}
         <DeleteLibraryDialog
           libraryId={libraryId}
           name={libraryName}
@@ -727,7 +735,7 @@ function Workspace({
                       refreshKey={runtimeRefreshKey}
                     />
                     <TeamSection libraryId={libraryId} />
-                    <DangerSection onDelete={() => setDeleteOpen(true)} />
+                    <DangerSection onMove={() => setMoveOpen(true)} onDelete={() => setDeleteOpen(true)} />
                   </>
                 ) : null}
                 </ReadOnlyContext>

@@ -118,6 +118,7 @@ vi.mock("@/convex/_generated/api", () => ({
         setDomainPrimary: "setDomainPrimary",
       },
     },
+    workspaces: { move: { held: "moveHeld", move: "moveItem" } },
     zotero: {
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },

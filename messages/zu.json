@@ -2008,10 +2008,13 @@
       "add": "Engeza isikhungo"
     },
     "danger": {
-      "description": "Susa lo mphakathi. Qaphela lapha.",
+      "description": "Hambisa noma susa lo mphakathi. Qaphela lapha.",
       "deleteTitle": "Susa umphakathi",
       "deleteHint": "Kususa isayithi, ikheli, nezilungiselelo.",
-      "deleteButton": "Susa umphakathi"
+      "deleteButton": "Susa umphakathi",
+      "moveTitle": "Hambisela esikhaleni sokusebenzela esihlukile",
+      "moveHint": "Ugcina ikheli, izilungiselelo nabantu bawo. Isikhala sokusebenzela esiyiswa kuso siba ngumnikazi wawo.",
+      "moveButton": "Hambisa umphakathi"
     },
     "deleteDialog": {
       "title": "Susa lo mphakathi?",
@@ -4777,7 +4780,10 @@
         "itsPapers": "Amaphepha ayo",
         "ratingsInIt": "Izilinganiso kuyo",
         "publications": "Okushicilelwe",
-        "editors": "Abahleli"
+        "editors": "Abahleli",
+        "address": "Ikheli",
+        "settings": "Izilungiselelo",
+        "peopleWithRoles": "Abantu abanendima"
       },
       "moveTo": "Hambisela ku-{workspace}",
       "move": "Hambisa",
@@ -4786,7 +4792,9 @@
       "collection": "Hambisa iqoqo",
       "author": "Hambisa iphrofayili lombhali",
       "libraryKeeps": "Umtapo wolwazi we-{workspace} ugcina amaphepha ayo agciniwe.",
-      "yourLibraryKeeps": "Umtapo wakho wolwazi ugcina amaphepha agciniwe."
+      "yourLibraryKeeps": "Umtapo wakho wolwazi ugcina amaphepha agciniwe.",
+      "community": "Hambisa umphakathi",
+      "workspaceOwnsIt": "Isikhala sokusebenzela esiyiswa kuso siba ngumnikazi wawo kusukela lapho."
     },
     "share": {
       "share": "Yabelana",
