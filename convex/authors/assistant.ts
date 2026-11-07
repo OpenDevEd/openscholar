@@ -12,7 +12,7 @@ import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, assistantQuery, defineUserAction, defineUserMutation, defineUserQuery, signedInAs, userAction, userMutation, userQuery } from "../lib/userActions";
 import { inOwnWorkspace } from "../workspaces/actor";
 import { guestRole } from "../sharing/items";
-import { createProfile, readProfile, requireAuthorProfiles, searchProfilePage } from "./profiles";
+import { createProfile, readProfile, searchProfilePage } from "./profiles";
 import { readProfileMembers } from "./members";
 import { readProfileInvitations } from "./invitations";
 import { AUTHOR_PUBLICATIONS_READ, AUTHORS_LISTED, authorDirectoryValidator, authorProfileReadValidator, authorPublicationsReadValidator, profileAccessValidator, profileInvitationsWaitingValidator } from "./validators";
@@ -106,8 +106,7 @@ export const createAction = defineUserMutation({
   outsideEffect: true,
   undoable: false,
   run: async (ctx, { userId, workspaceId, author }, { name }) => {
-    await requireAuthorProfiles(ctx, workspaceId);
-    const profileId = await createProfile(ctx, userId, workspaceId, name, author === "assistant");
+    const profileId = await createProfile(ctx, userId, workspaceId, name, { viaAssistant: author === "assistant" });
     return { profileId, name: (await ctx.db.get("authorProfiles", profileId))!.name };
   },
 });

@@ -6,7 +6,11 @@ import schema from "../schema";
 import { v, type Infer } from "convex/values";
 import { query, internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import { libraryOf, readLibraryRole } from "../evidenceLibraries/access";
+import { MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
+import { give } from "../sharing/access";
+import { actorIn } from "../workspaces/actor";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
 import { profileViewer, requireProfileAccess } from "./access";
@@ -36,12 +40,39 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   return next;
 }
 
-/** A profile owned by `workspaceId`, made by `createdBy` (#650), or by the assistant for them. */
-export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string, viaAssistant = false) {
+/**
+ * A profile owned by `workspaceId`, made by `createdBy` (#650), or by the assistant for them; `community`, the one it's
+ * made from, in its admin. Refused unless they may make one there (#1093): the workspace has Evidence Communities on,
+ * and they own or run it, or own or edit one of its communities (that one, when it's made from one). Its owners are the
+ * workspace's; a maker who isn't one of them edits it.
+ */
+export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string, { viaAssistant = false, community }: { viaAssistant?: boolean; community?: Doc<"evidenceLibraries"> } = {}) {
+  await requireAuthorProfiles(ctx, workspaceId);
+  const maker = await ctx.db.get("users", createdBy);
+  const runs = maker ? (await actorIn(ctx, maker, workspaceId))?.role === "admin" : false;
+  if (!maker || (!runs && !(await editsCommunityIn(ctx, maker, workspaceId, community)))) {
+    throw createError("FORBIDDEN", "Author profiles are made by a workspace's owners and admins, and by the owners and editors of its communities.");
+  }
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
   const id = await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy, revision: 1, updatedAt: Date.now()});
   await noteActivity(ctx, {workspaceId, by: createdBy, viaAssistant}, {kind: "author", id, happened: "created", detail: content.name});
+  if (!runs) await give(ctx, {kind: "author", id, workspaceId, name: content.name, createdBy}, maker, "editor", {userId: createdBy, author: viaAssistant ? "assistant" : "user"});
   return id;
+}
+
+/**
+ * Whether a person owns or edits a community in the workspace: `community` when the profile is made from one, by
+ * whatever role they have in it; otherwise one they were given the editor's role in themselves.
+ */
+async function editsCommunityIn(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, community?: Doc<"evidenceLibraries">) {
+  if (community) {
+    const role = community.workspaceId === workspaceId ? await readLibraryRole(ctx, community, user.clerkId) : null;
+    return role === "owner" || role === "editor";
+  }
+  // A person holds at most MAX_LIBRARY_GRANTS_PER_PERSON, which giving them one enforces.
+  const grants = await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", user._id).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON);
+  for (const grant of grants) if (grant.role === "editor" && (await libraryOf(ctx, grant))?.workspaceId === workspaceId) return true;
+  return false;
 }
 
 /** A profile as pages show it, with its photo's URL. */
@@ -61,7 +92,6 @@ export const create = workspaceMutation({
   args: {name: v.string()},
   returns: v.id("authorProfiles"),
   handler: async (ctx, {userId, workspaceId}, args) => {
-    await requireAuthorProfiles(ctx, workspaceId);
     return await createProfile(ctx, userId, workspaceId, args.name);
   },
 });

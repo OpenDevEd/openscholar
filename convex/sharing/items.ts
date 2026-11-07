@@ -84,7 +84,10 @@ export async function sharedIn(ctx: Read, actor: Pick<Actor, "userId" | "workspa
   const search = kind === "search" ? await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).unique() : null;
   const shared = await findShared(ctx, kind, search?._id ?? id);
   if (shared?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "It isn't in this workspace.");
-  if ("ownersShare" in KINDS[kind] && !(actor.role === "admin" || shared.createdBy === actor.userId)) throw createError("FORBIDDEN", `Only whoever made this ${KINDS[kind].word}, or an admin of its workspace, shares it.`);
+  // A chat is its maker's to share too; an author profile is its workspace's owners' alone (#1093).
+  if ("ownersShare" in KINDS[kind] && !(actor.role === "admin" || (!ownersHold(kind) && shared.createdBy === actor.userId))) {
+    throw createError("FORBIDDEN", ownersHold(kind) ? `Only an owner or admin of its workspace shares this ${KINDS[kind].word}.` : `Only whoever made this ${KINDS[kind].word}, or an admin of its workspace, shares it.`);
+  }
   return shared;
 }
 
