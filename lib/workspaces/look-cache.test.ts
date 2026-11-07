@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { lookCookieIn, readCache, writeCache, type CachedLook } from "./look-cache";
 
-const lab = (n: number): CachedLook => ({ kind: "organization", workspaceId: `w${n}`, name: `Lab ${n}`, colour: "#16a34a", extract: true, publish: true });
+const lab = (n: number): CachedLook => ({ kind: "organization", workspaceId: `w${n}`, name: `Lab ${n}`, colour: "#16a34a", extract: true });
 const own: CachedLook = { kind: "personal", workspaceId: "w0", name: "Ada" };
 const ada = { name: "Ada", imageUrl: "https://img.clerk.com/ada" };
 

@@ -31,10 +31,7 @@ describe("library invitations", () => {
 
   it("accepts external access only after verified email confirmation without joining the organization", async () => {
     const fixture = await setup();
-    const features = () => fixture.outside.query(api.organizationFeatures.opens, {});
-    expect(await features()).toEqual({ evidenceLibraries: false, authors: false });
     await fixture.invite();
-    expect(await features()).toEqual({ evidenceLibraries: true, authors: false });
     const invitations = (await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
     expect(invitations).toEqual([expect.objectContaining({ libraryId: fixture.libraryId, role: "creator" })]);
     expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
@@ -44,15 +41,12 @@ describe("library invitations", () => {
     expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
     expect(await fixture.t.run(ctx => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", "outside").eq("state", "active")).collect())).toEqual([]);
     expect((await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page).toEqual([]);
-    expect(await features()).toEqual({ evidenceLibraries: true, authors: false });
-    expect((await fixture.outside.query(api.organizationFeatures.listLibraryOrganizations, {})).page).toEqual([]);
     await fixture.t.run(async ctx => {
       const assignment = await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", q => q.eq("item", fixture.libraryId)).unique();
       // Its role is a row of the table every shared item's guests are in, under the library's own kind.
       expect(assignment).toMatchObject({ kind: "library", role: "creator" });
       await ctx.db.delete("itemAccess", assignment!._id);
     });
-    expect(await features()).toEqual({ evidenceLibraries: false, authors: false });
     expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-communities?view=invitations") });
   });
 
@@ -67,13 +61,12 @@ describe("library invitations", () => {
     await fixture.admin.action(api.evidenceLibraries.invitationActions.invite, { libraryId: fixture.libraryId, email: "Second@example.org", role: "editor" });
     const [invitation] = (await second.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
     expect(invitation).toMatchObject({ libraryId: fixture.libraryId, role: "editor" });
-    expect(await second.query(api.organizationFeatures.opens, {})).toEqual({ evidenceLibraries: true, authors: false });
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ email_addresses: [{ email_address: "first@example.org", verification: { status: "verified" } }, { email_address: "second@example.org", verification: { status: "verified" } }] })));
     await second.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitation.invitationId, accept: true });
     expect((await second.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "editor" })]);
   });
 
-  it.each(["expired", "cancelled", "disabled-library", "deleted-organization", "suspended-account"] as const)("does not open library navigation for an %s invitation", async reason => {
+  it.each(["expired", "cancelled", "disabled-library", "deleted-organization", "suspended-account"] as const)("does not list an %s invitation", async reason => {
     const fixture = await setup();
     await fixture.invite();
     const [invitation] = (await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
@@ -90,7 +83,6 @@ describe("library invitations", () => {
       }
     });
     if (reason === "expired") await fixture.t.mutation(internal.sharing.invitations.expire, { invitationId: invitation.invitationId });
-    expect(await fixture.outside.query(api.organizationFeatures.opens, {})).toEqual({ evidenceLibraries: false, authors: false });
     expect((await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page).toEqual([]);
   });
 

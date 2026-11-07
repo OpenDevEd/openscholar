@@ -149,21 +149,17 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const { phase } = useAuthReadiness();
   const live: CachedMe | undefined = user ? { name: user.fullName || user.primaryEmailAddress?.emailAddress || "", ...(user.imageUrl ? { imageUrl: user.imageUrl } : {}) } : undefined;
   const me = live ?? cached.me;
-  // The sections the workspace opens: Extract, which its flags turn on, and Publish, which its plan does. Until they're read, each shows as it did last time.
+  // Extract, which the workspace's flags turn on. Until they're read, it shows as it did last time. Communities shows in every workspace.
   const { planFeatures } = useSubscriptionState();
   const extractionOn = useFeatureFlagForPlan("extraction.enabled", planFeatures);
   const extractionStarts = useFeatureFlagForPlan("extraction.start", planFeatures);
   const liveExtracts = planFeatures === null ? undefined : extractionOn && extractionStarts;
-  const features = useWorkspaceFeatures().data;
-  const livePublishes = features?.evidenceLibraries;
   // Kept for the Authors page's "Create author", which its plan opens.
-  const liveAuthors = features?.authors;
-  // The rail's last answers, held while a switch reads the next workspace, so a section doesn't leave and come back.
-  const [held, setHeld] = useState({ extracts: false, publishes: false });
-  const read = { extracts: liveExtracts ?? held.extracts, publishes: livePublishes ?? held.publishes };
-  if (read.extracts !== held.extracts || read.publishes !== held.publishes) setHeld(read);
-  const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : held.extracts);
-  const publishes = (livePublishes ?? (cached.look ? cached.look.publish === true : held.publishes)) ? "/evidence-communities" : null;
+  const liveAuthors = useWorkspaceFeatures().data?.authors;
+  // The rail's last answer, held while a switch reads the next workspace, so Extract doesn't leave and come back.
+  const [held, setHeld] = useState(false);
+  if (liveExtracts !== undefined && liveExtracts !== held) setHeld(liveExtracts);
+  const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : held);
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
@@ -172,13 +168,12 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
     const cache = readCache(raw, userId);
     const was = cache.looks[lookKey(slug)];
     const extract = liveExtracts ?? was?.extract === true;
-    const publish = livePublishes ?? was?.publish === true;
     const author = liveAuthors ?? was?.author === true;
-    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}), ...(publish ? { publish: true as const } : {}), ...(author ? { author: true as const } : {}) } : undefined;
+    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}), ...(author ? { author: true as const } : {}) } : undefined;
     if (!look && !live) return;
     const next = writeCache(cache, userId, lookKey(slug), look, live);
     if (next && next !== raw) document.cookie = `${LOOK_COOKIE}=${next}; Path=/; Max-Age=${LOOK_KEPT_S}; SameSite=Lax`;
-  }, [userId, slug, loaded, live?.name, live?.imageUrl, liveExtracts, livePublishes, liveAuthors]);
+  }, [userId, slug, loaded, live?.name, live?.imageUrl, liveExtracts, liveAuthors]);
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 
@@ -189,7 +184,6 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const hasBookmarkSyntax = /(\w[\w-]*)\.\.\./g.test(activeQuery);
 
   const is = (p: string) => (p === "/" ? path === "/" || path.startsWith("/results") : path === p || path.startsWith(`${p}/`));
-  // Sections a workspace's features open, until plans hold them (#652): extraction, and Evidence Libraries or author profiles behind Publish.
   const { data: screening } = useProtectedQuery(api.screening.queries.getActiveScreeningJobProgress, inWorkspace(here, {}));
   const { data: extraction } = useProtectedQuery(api.extraction.queries.jobs.runningJob, inWorkspace(here, {}));
   const tint = current ? workspaceTint(current) : undefined;
@@ -266,7 +260,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                     })}
                   </Opening>
                 ) : null}
-                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-communities") })}</Opening> : null}
+                <Opening key="communities">{item({ href: "/evidence-communities", icon: EvidenceLibrariesIcon, label: t("communities"), active: is("/evidence-communities") })}</Opening>
                 {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
                 {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
               </AnimatePresence>

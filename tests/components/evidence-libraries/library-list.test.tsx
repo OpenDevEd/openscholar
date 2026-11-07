@@ -5,14 +5,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactElement } from "react";
 import { renderWithTooltip } from "../../helpers/render-with-tooltip";
-const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn(), workspace: { kind: "personal" } as { kind: string; name?: string; organizationId?: string } }));
+const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn(), creates: false, workspace: { kind: "personal" } as { kind: string; name?: string; organizationId?: string } }));
+vi.mock("@/lib/workspaces/use-workspace-features", () => ({ useWorkspaceFeatures: () => ({ data: { evidenceLibraries: mocks.creates, authors: mocks.creates, createsCommunities: mocks.creates } }) }));
 vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace }));
 vi.mock("next-intl", async () => {
   const messages = (await import("@/messages/en-US.json")).default as unknown as Record<string, Record<string, string>>;
   return { useTranslations: (namespace: string) => (key: string) => messages[namespace]?.[key] ?? key };
 });
 vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
-vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {listLibraryOrganizations: "organizations"}, evidenceLibraries: {
+vi.mock("@/convex/_generated/api", () => ({ api: { evidenceLibraries: {
   teardown: { restartDevelopmentTeardown: "restart" },
   queries: { listLibraries: "libraries" },
   invitations: { listInvitations: "invitations" }, invitationActions: { respond: "respond" },
@@ -32,7 +33,8 @@ const libraries = ["owner", "editor", "creator"].map(role => ({ _id: role, name:
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.workspace = { kind: "personal" };
-  mocks.query.mockImplementation((name: string) => ({ isReady: true, data: name === "libraries" ? libraries : name === "organizations" ? [{id: "org_1", name: "Research team"}] : [] }));
+  mocks.creates = false;
+  mocks.query.mockImplementation((name: string) => ({ isReady: true, data: name === "libraries" ? libraries : [] }));
 });
 describe("Library access list", () => {
   it("uses each library role for configuration access and sends admin links to the library itself", () => {
@@ -59,16 +61,16 @@ describe("Library access list", () => {
     await userEvent.setup().click(screen.getByRole("button", {name: "Retry deletion"}));
     expect(mocks.restart).toHaveBeenCalledWith({libraryId: "delete"});
   });
-  it("in an organization, lists its libraries without invitations, and makes new ones only where you may", () => {
+  it("in an organization, lists its libraries without invitations, and offers New community only where you may create one", () => {
     mocks.workspace = { kind: "organization", name: "Research team", organizationId: "org_1" };
     render(<LibraryList />, "?view=invitations");
     // Invitations are yours, in your own workspace: an organization shows its libraries.
     expect(screen.queryByRole("tab", { name: /Invitations/ })).not.toBeInTheDocument();
     expect(screen.getByText("owner library")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "New community" })).toHaveAttribute("href", "/evidence-communities/new");
-    mocks.workspace = { kind: "organization", name: "Partner", organizationId: "org_2" };
+    expect(screen.queryByRole("link", { name: "New community" })).not.toBeInTheDocument();
+    mocks.creates = true;
     render(<LibraryList />);
-    expect(screen.getAllByRole("link", { name: "New community" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "New community" })).toHaveAttribute("href", "/evidence-communities/new");
   });
   it("opens pending invitations from the invitation email link", () => {
     mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? libraries : name === "invitations" ? [{invitationId: "invite_1", libraryId: "invited", name: "Invited library", role: "editor", organization: {name: "Partner organization", imageUrl: null}}] : []}));

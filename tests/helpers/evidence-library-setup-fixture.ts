@@ -1,4 +1,5 @@
-import { seedFeatureUser } from "../../convex/organizationFeatures.test-support";
+import { creatableWorkspace, seedFeatureUser } from "../../convex/organizationFeatures.test-support";
+import { ensureWorkspace } from "../../convex/workspaces/create";
 import { grantPlanFeaturesForTest } from "../../convex/billing/billing.test-support";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { convexTest } from "convex-test";
@@ -35,32 +36,31 @@ export const essentialSetupSections = {
   footer: { poweredBy: true },
 };
 
-type TestClient = Pick<ReturnType<typeof convexTest>, "mutation" | "query">;
+type TestClient = Pick<ReturnType<typeof convexTest>, "mutation" | "query" | "run">;
 
 // Reserves the first address our database has free for this name, the way
 // the address action does without the Coolify and HTTP checks.
 export async function reserveLibraryAddressByName(
   as: TestClient,
   name: string,
-  organizationId?: Id<"organizations">,
+  workspaceId?: Id<"workspaces">,
 ) {
-  const selectedOrganizationId = organizationId ?? ((await as.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]?.id;
-  if (!selectedOrganizationId) throw new Error("No eligible test organization");
+  const selectedWorkspaceId = workspaceId ?? (await creatableWorkspace(as));
   const state = await as.query(
     internal.evidenceLibraries.queries.readAddressCandidates,
-    { name, organizationId: selectedOrganizationId },
+    { name, workspaceId: selectedWorkspaceId },
   );
   const candidate =
     state.status === "candidates" ? state.candidates[0] : undefined;
   if (!candidate) throw new Error(`No address is free for ${name}`);
-  return await reserveLibraryAddress(as, { name, organizationId: selectedOrganizationId, ...candidate });
+  return await reserveLibraryAddress(as, { name, workspaceId: selectedWorkspaceId, ...candidate });
 }
 
 // Reserves an address the way the address action does, without the Coolify
 // and HTTP checks that only the action can run.
 async function reserveLibraryAddress(
   as: TestClient,
-  args: { name: string; publicAddress: string; slug: string; organizationId: Id<"organizations"> },
+  args: { name: string; publicAddress: string; slug: string; workspaceId: Id<"workspaces"> },
 ) {
   const reserved = await as.mutation(
     internal.evidenceLibraries.mutations.reserveAddress,
@@ -126,7 +126,7 @@ export async function createDraftSetupFixture(suffix: string) {
     o: { id: clerkOrganizationId, rol: "org:admin" },
   });
   const created = await reserveLibraryAddress(admin, {
-    organizationId,
+    workspaceId: await t.run((ctx) => ensureWorkspace(ctx, { kind: "organization", organizationId })),
     name: essentialSetupSections.identity.name,
     publicAddress: essentialSetupSections.identity.baseUrl,
     slug: "climate-evidence",

@@ -171,11 +171,11 @@ export async function findFreeEvidenceLibraryAddress(
 
 async function checkEvidenceLibraryAddress(
   ctx: ActionCtx,
-  args: { name: string; organizationId: Id<"organizations">; actingAs?: Id<"users"> },
+  args: { name: string; workspaceId: Id<"workspaces">; actingAs?: Id<"users"> },
 ): Promise<AddressCheckResult> {
   const state = await ctx.runQuery(
     internal.evidenceLibraries.queries.readAddressCandidates,
-    { name: args.name, organizationId: args.organizationId, ...(args.actingAs ? { actingAs: args.actingAs } : {}) },
+    { name: args.name, workspaceId: args.workspaceId, ...(args.actingAs ? { actingAs: args.actingAs } : {}) },
   );
   if (state.status === "name-taken") return state;
 
@@ -201,18 +201,18 @@ async function checkEvidenceLibraryAddress(
 
 /**
  * One answer for "what address would this name get?": the name is free and
- * this address is free everywhere we can look, the organisation already has
- * a library with this name, or the check could not run.
+ * this address is free everywhere we can look, the workspace already has
+ * a community with this name, or the check could not run.
  */
 export const checkAddress = action({
-  args: { name: v.string(), organizationId: v.id("organizations") },
+  args: { name: v.string(), workspaceId: v.id("workspaces") },
   returns: addressCheckValidator,
   handler: async (ctx, args): Promise<AddressCheckResult> =>
-    await checkEvidenceLibraryAddress(ctx, { name: args.name, organizationId: args.organizationId }),
+    await checkEvidenceLibraryAddress(ctx, { name: args.name, workspaceId: args.workspaceId }),
 });
 
 /** Checks the address a name would get and keeps it, as the caller or, with `actingAs`, the person the assistant acts for. */
-async function reserveLibraryAddress(ctx: ActionCtx, args: { name: string; organizationId: Id<"organizations">; actingAs?: Id<"users"> }): Promise<AddressReservationResult> {
+async function reserveLibraryAddress(ctx: ActionCtx, args: { name: string; workspaceId: Id<"workspaces">; actingAs?: Id<"users"> }): Promise<AddressReservationResult> {
   const checked = await checkEvidenceLibraryAddress(ctx, args);
   if (checked.status !== "available") return checked;
   const reserved = await ctx.runMutation(
@@ -220,7 +220,7 @@ async function reserveLibraryAddress(ctx: ActionCtx, args: { name: string; organ
     {
       ...(args.actingAs ? { actingAs: args.actingAs } : {}),
       name: checked.name,
-      organizationId: args.organizationId,
+      workspaceId: args.workspaceId,
       publicAddress: checked.publicAddress,
       slug: checked.slug,
     },
@@ -242,14 +242,14 @@ async function reserveLibraryAddress(ctx: ActionCtx, args: { name: string; organ
  * Runs the same check and keeps the address it found, in one transaction.
  */
 export const reserveAddress = action({
-  args: { name: v.string(), organizationId: v.id("organizations") },
+  args: { name: v.string(), workspaceId: v.id("workspaces") },
   returns: addressReservationValidator,
   handler: async (ctx, args): Promise<AddressReservationResult> => await reserveLibraryAddress(ctx, args),
 });
 
 /** The same, for the person the assistant acts for (./assistant.ts). */
 export const reserveAddressFor = internalAction({
-  args: { name: v.string(), organizationId: v.id("organizations"), actingAs: v.id("users") },
+  args: { name: v.string(), workspaceId: v.id("workspaces"), actingAs: v.id("users") },
   returns: addressReservationValidator,
   handler: async (ctx, args): Promise<AddressReservationResult> => await reserveLibraryAddress(ctx, args),
 });

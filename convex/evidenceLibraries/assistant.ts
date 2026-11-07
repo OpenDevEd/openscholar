@@ -13,7 +13,7 @@ import { internal } from "../_generated/api";
 import { internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineChangingAction, defineUserAction, defineUserMutation, defineUserQuery, userAction, userMutation, userQuery } from "../lib/userActions";
-import { requireLibraryOrganization } from "../organizationFeatures";
+import { requireCommunityWorkspace } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
 import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../lib/evidence-libraries/configuration/rules";
@@ -359,17 +359,6 @@ export const reachable = internalQuery({
   },
 });
 
-/** The organization whose workspace the reply runs in, where a new library is made: a person's own workspace has none. */
-export const organizationHere = internalQuery({
-  args: { workspaceId: v.id("workspaces") },
-  returns: v.id("organizations"),
-  handler: async (ctx, { workspaceId }) => {
-    const workspace = await ctx.db.get("workspaces", workspaceId);
-    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Communities are made in an organization. Switch to one, then ask again.");
-    return workspace.organizationId;
-  },
-});
-
 const roleOrNone = v.optional(v.union(roleValidator, v.null()));
 
 export const inviteAction = defineChangingAction({
@@ -447,28 +436,25 @@ export const ownWorkspace = internalQuery({
 export const startLibraryAction = defineChangingAction({
   path: "evidenceLibraries/assistant:startLibrary",
   description:
-    "Starts a new Evidence Community as a draft, for an admin of the organization the reply runs in whose plan has Evidence Communities: reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
+    "Starts a new Evidence Community as a draft in the workspace the reply runs in, for someone who may create one there (their own workspace, or an organization they're an admin of, with Evidence Communities on for it): reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
     "Nothing is public until the draft is put live, on the community's page. Asks the person first.",
   args: { name: v.string() },
   returns: addressReservedValidator,
   spendsCredits: false,
-  // It takes an address and a place among the organization's libraries, and nothing gives them back by itself.
+  // It takes an address and a place among the workspace's communities, and nothing gives them back by itself.
   outsideEffect: true,
   undoable: false,
   check: async (ctx, actor) => {
-    const workspace = await ctx.db.get("workspaces", actor.workspaceId);
-    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Communities are made in an organization. Switch to one, then ask again.");
-    await requireLibraryOrganization(await asSignedIn(ctx, await personOf(ctx, actor.userId)), workspace.organizationId);
+    await requireCommunityWorkspace(await asSignedIn(ctx, await personOf(ctx, actor.userId)), actor.workspaceId);
   },
   run: async (ctx, actor, { name }): Promise<Infer<typeof addressReservedValidator>> => {
-    const organizationId = await ctx.runQuery(internal.evidenceLibraries.assistant.organizationHere, { workspaceId: actor.workspaceId });
-    const reserved = await ctx.runAction(internal.evidenceLibraries.addressActions.reserveAddressFor, { name, organizationId, actingAs: actor.userId });
+    const reserved = await ctx.runAction(internal.evidenceLibraries.addressActions.reserveAddressFor, { name, workspaceId: actor.workspaceId, actingAs: actor.userId });
     // One not made is a failed step, never a done one.
     if (reserved.status === "reserved") return reserved;
     throw createError(
       "CONFLICT",
       reserved.status === "name-taken"
-        ? "The organization already has a community with that name. Pick another."
+        ? "This workspace already has a community with that name. Pick another."
         : reserved.status === "address-taken"
           ? "Someone took that address while it was being reserved. Try again."
           : reserved.reason === "check-failed"

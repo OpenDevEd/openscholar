@@ -1,9 +1,16 @@
 /**
- * Which organizations have Evidence Libraries, which OpenScholar's admins switch on one at a time
- * (Settings, Evidence Libraries). The switch is the organization's and leaves its plan as it is.
+ * Which workspaces can create Evidence Communities, which OpenScholar's admins switch on one at a time
+ * (Settings, Evidence Communities): an organization's, for its admins, or a person's own. The switch
+ * leaves the workspace's plan as it is, and only decides creating.
  */
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
+import { stream } from "convex-helpers/server/stream";
+import schema from "../schema";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
+import { normalizeEmail } from "../admins/access";
+import { ensureWorkspace } from "../workspaces/create";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { internalMutation, mutation } from "../lib/functions";
 import { requireAdmin, requireAdminUser } from "../admins/access";
@@ -79,7 +86,7 @@ export const countAction = defineUserQuery({
 export const count = userQuery(countAction);
 export const countForAssistant = assistantQuery(countAction);
 
-/** Switches Evidence Libraries on or off for an organization. Off is refused while it has a library, which would be left with nobody able to open it. */
+/** Switches Evidence Communities on or off for an organization: whether its admins can create them. Off takes nothing away from the communities it has. */
 export const set = mutation({
   args: { organizationId: v.id("organizations"), on: v.boolean() },
   returns: v.null(),
@@ -88,11 +95,6 @@ export const set = mutation({
     await requireAdmin(ctx);
     const organization = await ctx.db.get("organizations", organizationId);
     if (!organization) throw createError("NOT_FOUND", "This organization is gone.");
-    if (!on) {
-      const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
-      const library = workspace && (await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).first());
-      if (library) throw createError("VALIDATION_ERROR", `${library.name} is one of this organization's Evidence Communities. Move or delete its communities first.`);
-    }
     // Off is absent, so the index lists organizations that were never switched on with those switched off.
     await ctx.db.patch("organizations", organizationId, { evidenceLibraries: on ? true : undefined });
     return null;
@@ -114,5 +116,93 @@ export const switchOnPlanHolders = internalMutation({
       }
     }
     return changed;
+  },
+});
+
+const personValidator = v.object({
+  _id: v.id("users"),
+  email: v.string(),
+  name: v.optional(v.string()),
+  imageUrl: v.optional(v.string()),
+  on: v.boolean(),
+  libraries: v.number(),
+});
+
+/** Rows a page of people reads at most, so a filter that skips many still answers. */
+const PEOPLE_ROWS_READ = 500;
+
+const personalWorkspaceOf = async (ctx: QueryCtx, userId: Id<"users">) => {
+  const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+  return workspace?.kind === "personal" ? workspace : null;
+};
+
+async function personRow(ctx: QueryCtx, user: Doc<"users">) {
+  const workspace = await personalWorkspaceOf(ctx, user._id);
+  const libraries = workspace ? await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).take(MAX_LIBRARIES_PER_WORKSPACE) : [];
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  return { _id: user._id, email: user.email, ...(name ? { name } : {}), ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), on: workspace?.evidenceLibraries === true, libraries: libraries.length };
+}
+
+export const listPeopleAction = defineUserQuery({
+  path: "organizations/libraryAccess:listPeople",
+  description:
+    "Lists active people by email, a page at a time, with whether they can create Evidence Communities in their own workspace and how many communities it has. Admins only. `show` narrows it to those switched on or off; given `search`, those whose email starts with it.",
+  args: { paginationOpts: paginationOptsValidator, show: v.optional(showValidator), search: v.optional(v.string()) },
+  returns: paginationResultValidator(personValidator),
+  run: async (ctx, { userId }, { paginationOpts, show = "all", search }) => {
+    await requireAdminUser(ctx, userId);
+    const prefix = normalizeEmail(search ?? "");
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumRowsRead: PEOPLE_ROWS_READ };
+    const matches = (user: Doc<"users"> | null): user is Doc<"users"> => user !== null && user.state === "active" && (!prefix || user.email.startsWith(prefix));
+    if (show === "on") {
+      return await stream(ctx.db, schema)
+        .query("workspaces")
+        .withIndex("by_evidenceLibraries", (q) => q.eq("evidenceLibraries", true))
+        .map(async (workspace) => (workspace.kind === "personal" ? await ctx.db.get("users", workspace.userId) : null))
+        .filterWith(async (user) => matches(user))
+        .map(async (user) => await personRow(ctx, user!))
+        .paginate(opts);
+    }
+    return await stream(ctx.db, schema)
+      .query("users")
+      .withIndex("by_state_and_email", (q) => (prefix ? q.eq("state", "active").gte("email", prefix).lt("email", `${prefix}\uffff`) : q.eq("state", "active")))
+      .map(async (user) => await personRow(ctx, user))
+      .filterWith(async (row) => show === "all" || !row.on)
+      .paginate(opts);
+  },
+});
+export const listPeople = userQuery(listPeopleAction);
+export const listPeopleForAssistant = assistantQuery(listPeopleAction);
+
+export const countPeopleAction = defineUserQuery({
+  path: "organizations/libraryAccess:countPeople",
+  description: `Says how many active people there are, those who can create Evidence Communities in their own workspace or can't when \`show\` says so, up to ${COUNT_READ}. Admins only.`,
+  args: { show: v.optional(showValidator) },
+  returns: v.number(),
+  run: async (ctx, { userId }, { show = "all" }) => {
+    await requireAdminUser(ctx, userId);
+    // ponytail: counted by reading rows, up to COUNT_READ; a sharded count (lib/listCounts) once people pass it.
+    const on = (await ctx.db.query("workspaces").withIndex("by_evidenceLibraries", (q) => q.eq("evidenceLibraries", true)).take(COUNT_READ)).filter((workspace) => workspace.kind === "personal").length;
+    if (show === "on") return on;
+    const all = (await ctx.db.query("users").withIndex("by_state", (q) => q.eq("state", "active")).take(COUNT_READ)).length;
+    return show === "all" ? all : Math.max(0, all - on);
+  },
+});
+export const countPeople = userQuery(countPeopleAction);
+export const countPeopleForAssistant = assistantQuery(countPeopleAction);
+
+/** Switches Evidence Communities on or off for a person's own workspace: whether they can create them there. Off takes nothing away from the communities it has. */
+export const setPerson = mutation({
+  args: { userId: v.id("users"), on: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { userId, on }) => {
+    await refuseApps(ctx);
+    await requireAdmin(ctx);
+    const user = await ctx.db.get("users", userId);
+    if (!user || user.state !== "active") throw createError("NOT_FOUND", "This account is gone.");
+    const workspaceId = await ensureWorkspace(ctx, { kind: "personal", userId });
+    // Off is absent, so the index holds only those switched on.
+    await ctx.db.patch("workspaces", workspaceId, { evidenceLibraries: on ? true : undefined });
+    return null;
   },
 });

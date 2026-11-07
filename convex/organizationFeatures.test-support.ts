@@ -1,6 +1,9 @@
 import type { MutationCtx } from "./_generated/server";
 import { grantPlanFeaturesForTest } from "./billing/billing.test-support";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../lib/billing/plans";
+import { getCurrentUser } from "./lib/auth";
+import { createsIn, readMemberOrganizations } from "./organizationFeatures";
+import { ensureWorkspace } from "./workspaces/create";
 
 /** An organization with these members, on a plan that includes Evidence Libraries when asked. */
 export async function seedOrganizationFeatures(
@@ -42,3 +45,20 @@ export async function seedFeatureUser(ctx: MutationCtx, clerkId: string) {
     clerkId, email: clerkId + "@example.org", state: "active", createdAt: 1, updatedAt: 1,
   });
 }
+
+/**
+ * The first of the signed-in person's organizations they may create a community in, its workspace
+ * made if the test hasn't, as the organization's webhook makes it in a deployment.
+ */
+export async function creatableWorkspaceIn(ctx: MutationCtx) {
+  const user = await getCurrentUser(ctx);
+  if (!user) throw new Error("No signed-in test user");
+  for (const { organization } of await readMemberOrganizations(ctx, user)) {
+    const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId: organization._id });
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    if (workspace && (await createsIn(ctx, user, workspace))) return workspaceId;
+  }
+  throw new Error("No workspace this test user can create a community in");
+}
+
+export const creatableWorkspace = (as: { run: <T>(fn: (ctx: MutationCtx) => Promise<T>) => Promise<T> }) => as.run(creatableWorkspaceIn);

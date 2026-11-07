@@ -90,13 +90,31 @@ it("switches Evidence Libraries on for an organization without touching its plan
   expect(await row("off")).toEqual([]);
   expect(await as("zed").query(api.organizations.libraryAccess.count, { workspaceId: own, show: "on" })).toBe(1);
 
-  // A library it holds keeps the switch on, so nobody is shut out of one.
-  await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId, name: "Reading", slug: "reading", state: "active", createdBy: ada, createdByClerkUserId: "user_ada", updatedByClerkUserId: "user_ada", createdAt: 1, updatedAt: 1 } as never));
-  await expect(as("zed").mutation(api.organizations.libraryAccess.set, { organizationId, on: false })).rejects.toThrow(/Move or delete/);
-  await t.run(async (ctx) => ctx.db.delete("evidenceLibraries", (await ctx.db.query("evidenceLibraries").first())!._id));
+  // Off only stops new ones: a community it holds stays, and the switch goes off all the same.
+  const library = await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId, name: "Reading", slug: "reading", state: "active", createdBy: ada, createdByClerkUserId: "user_ada", updatedByClerkUserId: "user_ada", createdAt: 1, updatedAt: 1 } as never));
   await as("zed").mutation(api.organizations.libraryAccess.set, { organizationId, on: false });
-  expect(await opens()).toMatchObject({ evidenceLibraries: false });
+  expect(await opens()).toMatchObject({ evidenceLibraries: false, createsCommunities: false });
+  expect(await t.run((ctx) => ctx.db.get("evidenceLibraries", library))).not.toBeNull();
   await expect(as("ada").query(api.organizations.libraryAccess.list, { workspaceId, paginationOpts: { cursor: null, numItems: 8 } })).rejects.toThrow(/Admins only/);
+});
+
+it("switches Evidence Communities on for a person's own workspace, for OpenScholar's admins alone", async () => {
+  const { t, as, zed, ada } = await lab();
+  const adaOwn = await t.run(async (ctx) => (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", ada)).unique())!._id);
+  const zedOwn = await t.run(async (ctx) => (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", zed)).unique())!._id);
+  const creates = async () => (await as("ada").query(api.organizationFeatures.opens, { workspaceId: adaOwn })).createsCommunities;
+  const people = async (show: "all" | "on" | "off") => (await as("zed").query(api.organizations.libraryAccess.listPeople, { workspaceId: zedOwn, show, paginationOpts: { cursor: null, numItems: 8 } })).page;
+  expect(await creates()).toBe(false);
+  await expect(as("ada").mutation(api.organizations.libraryAccess.setPerson, { userId: ada, on: true })).rejects.toThrow(/Admins only/);
+  await as("zed").mutation(api.organizations.libraryAccess.setPerson, { userId: ada, on: true });
+  expect(await creates()).toBe(true);
+  expect(await people("on")).toEqual([expect.objectContaining({ _id: ada, on: true, libraries: 0 })]);
+  expect((await people("off")).map((row) => row._id)).not.toContain(ada);
+  expect(await as("zed").query(api.organizations.libraryAccess.countPeople, { workspaceId: zedOwn, show: "on" })).toBe(1);
+  await expect(as("ada").query(api.organizations.libraryAccess.listPeople, { workspaceId: adaOwn, paginationOpts: { cursor: null, numItems: 8 } })).rejects.toThrow(/Admins only/);
+  await as("zed").mutation(api.organizations.libraryAccess.setPerson, { userId: ada, on: false });
+  expect(await creates()).toBe(false);
+  expect(await people("on")).toEqual([]);
 });
 
 it("switches libraries on for the organizations on Team, so moving them off it takes nothing away", async () => {

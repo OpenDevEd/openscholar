@@ -165,13 +165,14 @@ describe("a library's invitations, its start and the running library, for the as
     expect((await t.query(assistant.librariesForAssistant, outside)).libraries).toEqual([expect.objectContaining({ libraryId, editable: false })]);
   });
 
-  it("starts a library only in an organization, and reads the running library only from its workspace", async () => {
+  it("starts a community only where the person may create one, and reads the running library only from its workspace", async () => {
     const { t, owner, ownerAlone, libraryId } = await activated();
     const assistant = internal.evidenceLibraries.assistant;
-    await expect(t.action(assistant.startLibraryForAssistant, { ...ownerAlone, name: "Tutoring evidence", approved: true })).rejects.toThrow(/made in an organization/);
+    // Their own workspace, with Evidence Communities off for it.
+    await expect(t.action(assistant.startLibraryForAssistant, { ...ownerAlone, name: "Tutoring evidence", approved: true })).rejects.toThrow(/FORBIDDEN/);
     // What would refuse a change is found before the person is asked about it.
     const refusal = (where: typeof owner, path: string, input: object) => t.query(internal.assistant.asking.check, { ...where, path: `evidenceLibraries/assistant:${path}`, input: JSON.stringify(input) });
-    expect(await refusal(ownerAlone, "startLibrary", { name: "Tutoring evidence" })).toMatch(/made in an organization/);
+    expect(await refusal(ownerAlone, "startLibrary", { name: "Tutoring evidence" })).toMatch(/once Evidence Communities are on for it/);
     expect(await refusal(ownerAlone, "invite", { libraryId, email: "other@example.org", role: "editor" })).toMatch(/not found/);
     expect(await refusal(owner, "answerInvitation", { invitationId: "x", accept: true })).toMatch(/own workspace/);
     expect(await refusal(owner, "syncSource", { libraryId, sourceKey: "openalex" })).toBeNull();
