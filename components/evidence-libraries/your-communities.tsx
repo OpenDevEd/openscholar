@@ -76,7 +76,7 @@ type Organization = WorkspaceRow & { organizationId: Id<"organizations"> };
  * it's from. In your own workspace that's yours, each organization's you're in and the ones
  * shared with you, with their invitations; in an organization's, its own and the ones shared with it.
  */
-export function YourCommunities({ search, personal, workspaceName, workspaceImage, organization, filter, onFilter, ...actions }: Actions & {
+export function YourCommunities({ waiting = false, search, personal, workspaceName, workspaceImage, organization, filter, onFilter, ...actions }: Actions & {
   search: string;
   personal: boolean;
   workspaceName: string;
@@ -84,11 +84,15 @@ export function YourCommunities({ search, personal, workspaceName, workspaceImag
   organization?: Id<"organizations">;
   filter: string;
   onFilter: (filter: string) => void;
+  /** Until the page knows the workspace, the list shows its spinner under the header. */
+  waiting?: boolean;
 }) {
-  const workspaces = useWorkspaces().list ?? [];
+  const listed = useWorkspaces().list;
+  const workspaces = listed ?? [];
   const organizations = workspaces.filter((row): row is Organization => row.kind === "organization" && row.organizationId !== undefined);
   const photo = workspaces.find((row) => row.kind === "personal")?.imageUrl;
-  const read = useEverything({ search, personal, organizations, organization, workspaceName, workspaceImage, photo });
+  // Your own workspace lists every organization's too, so it waits for the list of them.
+  const read = useEverything({ known: !waiting && (!personal || listed !== undefined), search, personal, organizations, organization, workspaceName, workspaceImage, photo });
   const list = read.list.filter((row) => filter === "all" || row.from.key === filter);
   // A new filter or search starts at the first page.
   const pageKey = `${filter}\n${search}`;
@@ -160,13 +164,13 @@ export function YourCommunities({ search, personal, workspaceName, workspaceImag
  * read the last list stays up, dimmed. MOCK: an organization's shared communities are a sample
  * invitation held here; accepting or declining it saves nothing.
  */
-function useEverything({ search, personal, organizations, organization, workspaceName, workspaceImage, photo }: { search: string; personal: boolean; organizations: Organization[]; organization?: Id<"organizations">; workspaceName: string; workspaceImage?: string; photo?: string }) {
+function useEverything({ known, search, personal, organizations, organization, workspaceName, workspaceImage, photo }: { known: boolean; search: string; personal: boolean; organizations: Organization[]; organization?: Id<"organizations">; workspaceName: string; workspaceImage?: string; photo?: string }) {
   const { canRunProtectedQueries } = useAuthReadiness();
   const sources = personal
     ? [{ key: "own" }, ...organizations.map((row) => ({ key: row.workspaceId as string, organization: row.organizationId as string }))]
     : organization ? [{ key: "here", organization: organization as string }] : [];
   // useQueries subscribes again whenever its request object changes, so it changes only with what's read.
-  const signature = JSON.stringify([sources, search, canRunProtectedQueries]);
+  const signature = JSON.stringify([sources, search, canRunProtectedQueries && known]);
   const requests = useMemo(() => {
     const [wanted, needle, run] = JSON.parse(signature) as [Array<{ key: string; organization?: Id<"organizations"> }>, string, boolean];
     if (!run) return {};
@@ -180,7 +184,7 @@ function useEverything({ search, personal, organizations, organization, workspac
   const [sample, setSample] = useState<"invited" | "accepted" | "declined">("invited");
 
   const rows = (key: string) => { const result = results[key]; return result && !(result instanceof Error) ? result.page : []; };
-  const loading = !canRunProtectedQueries || sources.some((source) => results[source.key] === undefined) || (personal && !invitations.data);
+  const loading = !known || !canRunProtectedQueries || sources.some((source) => results[source.key] === undefined) || (personal && !invitations.data);
   const needle = search.toLowerCase();
   const list: Community[] = [];
   if (personal) {

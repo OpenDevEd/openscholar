@@ -25,7 +25,7 @@ import { TwoColumnLayout } from "@/components/layout/two-column-layout";
 import { PageWrapper } from "@/components/PageWrapper";
 import { LibraryPageShell } from "./library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
-import { ListLoading, ListSearch } from "./list-controls";
+import { ListSearch } from "./list-controls";
 import { PublicCommunities } from "./public-communities";
 import { YourCommunities, type Community } from "./your-communities";
 
@@ -65,12 +65,14 @@ export function LibraryList({ pending = false, preloadedOrganizations, organizat
     finally { setAnswering(null); }
   };
   // The sidebar on a wide screen and above the card on a narrow one: CSS shows one copy, and both read the same filter.
-  const yours = pending || !workspace ? <ListLoading label={t("loadingLibraries")} /> : (
+  // The header is there from the first frame: the address says whose workspace it is; only the list waits.
+  const yours = (
     <YourCommunities
+      waiting={pending || !workspace}
       search={search.trim()}
-      personal={workspace.kind === "personal"}
-      workspaceName={workspace.name}
-      workspaceImage={workspace.imageUrl}
+      personal={workspace ? workspace.kind === "personal" : !slug}
+      workspaceName={workspace?.name ?? ""}
+      workspaceImage={workspace?.imageUrl}
       organization={organization}
       filter={filter}
       onFilter={setFilter}
@@ -80,6 +82,7 @@ export function LibraryList({ pending = false, preloadedOrganizations, organizat
       notify={setNotice}
     />
   );
+
   return (
     <TwoColumnLayout
       leftColumn={
