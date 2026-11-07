@@ -59,7 +59,7 @@ const fromInvitation = (invitation: Invitation): Community => ({
   from: { key: "shared", kind: "shared", name: invitation.organization.name, imageUrl: invitation.organization.imageUrl },
 });
 
-const PER_PAGE = 12;
+const PER_PAGE = 100;
 /** A row's height, which every row of a page keeps, so a short last page doesn't move the pager. */
 const ROW_REM = 3;
 /** MOCK: every source's first rows, merged and paged here; the real query pages them all with one cursor. */
