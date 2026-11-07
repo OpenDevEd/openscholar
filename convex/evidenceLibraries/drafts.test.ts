@@ -534,7 +534,8 @@ describe("Evidence Library draft storage", () => {
     const { page: libraries } = await asMember.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 12 } });
 
     expect(saved.editVersion).toBe(1);
-    expect(libraries).toEqual([]);
+    // A member of its organization views it, from their own workspace too (#1090).
+    expect(libraries.map(({ _id, role }) => ({ _id, role }))).toEqual([{ _id: created.libraryId, role: "viewer" }]);
     expect(reloaded.draft.editVersion).toBe(1);
     expect(reloaded.library.name).toBe("Climate Evidence");
     expect(

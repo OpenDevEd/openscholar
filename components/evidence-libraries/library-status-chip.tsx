@@ -2,10 +2,11 @@
 
 import { Clock, CloudUpload, PencilLine, RefreshCw, Trash2, type AppIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "@/convex/_generated/api";
 import type { LibraryOverviewStatus } from "@/convex/evidenceLibraries/queries";
-import { StatusChip, type StatusTone } from "./configuration/status-chip";
+import { StatusChip, StatusIcon, type StatusTone } from "./configuration/status-chip";
 
 export type LibraryStatus = LibraryOverviewStatus;
 
@@ -80,4 +81,25 @@ function LibraryOperationChip({ operation, labelClassName }: { operation: Librar
       <span className={labelClassName}>{t(queued ? "queued" : update ? "updating" : "applying")}</span>
     </StatusChip>
   );
+}
+
+/** The same status as an icon alone, its word on hover, for a row with no room for the chip. */
+export function LibraryStatusIcon({ status, operation, className }: { status: LibraryStatus; operation?: LibraryOperation | null; className?: string }) {
+  const t = useTranslations("evidenceLibraries.status");
+  const tOperation = useTranslations("evidenceLibraries.operation");
+  if (status === "active" && operation) {
+    const update = Boolean(operation.runtimeUpdate);
+    const queued = operation.stage === "queued";
+    return (
+      <StatusIcon
+        tone={queued ? "neutral" : "running"}
+        icon={queued ? Clock : update ? RefreshCw : CloudUpload}
+        label={tOperation(queued ? "queued" : update ? "updating" : "applying")}
+        data-status={queued ? "queued" : update ? "updating" : "applying"}
+        className={cn(update && !queued && "[&>svg]:animate-spin [&>svg]:[animation-duration:2s] motion-reduce:[&>svg]:animate-none", className)}
+      />
+    );
+  }
+  const icon = LIBRARY_ICON[status];
+  return <StatusIcon tone={LIBRARY_TONE[status]} icon={icon === "tone" ? undefined : icon} label={t(status)} data-status={status} className={className} />;
 }

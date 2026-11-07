@@ -52,7 +52,9 @@ describe("library overviews", () => {
       {
         _id: libraryId,
         role: "owner",
-        organization: { name: "Team overview_status", imageUrl: null },
+        organization: { name: "Team overview_status", imageUrl: null, kind: "organization" },
+        from: "organization",
+        workspaceId: expect.any(String),
         name: "Climate Evidence",
         publicAddress: "https://climate-evidence-lib.libraries.example.test",
         status: "setting_up",
@@ -110,7 +112,9 @@ describe("library overviews", () => {
     expect(overviews.find((row) => row._id === draft.libraryId)).toEqual({
       _id: draft.libraryId,
       role: "owner",
-      organization: { name: "Team overview_draft", imageUrl: null },
+      organization: { name: "Team overview_draft", imageUrl: null, kind: "organization" },
+      from: "organization",
+      workspaceId: expect.any(String),
       name: "Second Library",
       publicAddress: "https://second-library-lib.libraries.example.test",
       status: "draft",

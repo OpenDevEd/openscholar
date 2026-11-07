@@ -1815,7 +1815,15 @@
       "versions": "Matoleo",
       "ai": "AI",
       "domain": "Kikoa",
+      "listing": "Orodha",
       "publication": "Uchapishaji"
+    },
+    "listing": {
+      "description": "Kama jumuiya hii inaorodheshwa kwenye saraka ya umma ya jumuiya. Tovuti yake inabaki wazi kwa yeyote mwenye anwani yake kwa vyovyote vile.",
+      "public": "Ya umma",
+      "publicHint": "Imeorodheshwa kwenye saraka ya umma, ambapo yeyote anaweza kuipata.",
+      "unlisted": "Haijaorodheshwa",
+      "unlistedHint": "Haiko kwenye saraka. Yeyote mwenye anwani yake bado anaweza kuifungua."
     },
     "sectionState": {
       "complete": "Imekamilika",
@@ -4205,6 +4213,18 @@
         "where": "Evidence Communities",
         "ask": "Anzisha rasimu ya jumuiya"
       },
+      "publicCommunities": {
+        "doing": "Inasoma jumuiya za umma",
+        "did": "Imesoma jumuiya za umma",
+        "where": "Evidence Communities",
+        "ask": "Soma jumuiya za umma"
+      },
+      "communityVisibility": {
+        "doing": "Inabadilisha kama jumuiya inaorodheshwa",
+        "did": "Imebadilisha kama jumuiya inaorodheshwa",
+        "where": "Evidence Communities",
+        "ask": "Badilisha kama jumuiya inaorodheshwa"
+      },
       "librarySources": {
         "doing": "Inasoma vyanzo vya jumuiya",
         "did": "Imesoma vyanzo vya jumuiya",
@@ -5373,6 +5393,40 @@
     "keepThisUnderCharacters": "Weka chini ya herufi {maxLength}."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Jumuiya zako",
+      "showFrom": "Onyesha jumuiya kutoka",
+      "allWorkspaces": "Nafasi zote za kazi",
+      "allCommunities": "Jumuiya zote",
+      "workspaces": "Nafasi za kazi",
+      "yours": "Zako",
+      "sharedWithYou": "Zilizoshirikiwa nawe",
+      "sharedWith": "Zilizoshirikiwa na {name}",
+      "loading": "Inapakia jumuiya",
+      "noMatches": "Hakuna kati ya hizi inayolingana na utafutaji huu.",
+      "emptyAll": "Jumuiya za nafasi zako za kazi, na zile zilizoshirikiwa nawe, zinaonekana hapa.",
+      "emptyHere": "Jumuiya za {name}, na zile zilizoshirikiwa nayo, zinaonekana hapa.",
+      "emptyShared": "Jumuiya ambazo watu hushiriki nawe zinaonekana hapa.",
+      "emptySharedHere": "Jumuiya zilizoshirikiwa na {name} zinaonekana hapa.",
+      "emptyOwn": "Jumuiya unazounda zinaonekana hapa.",
+      "emptyWorkspace": "{name} bado haina jumuiya.",
+      "invitedAs": "Umealikwa kama {role}",
+      "accept": "Kubali",
+      "accepted": "Umekubali {name}."
+    },
+    "directory": {
+      "title": "Jumuiya za umma",
+      "sortLabel": "Panga jumuiya za umma",
+      "sort": {
+        "newest": "Mpya zaidi",
+        "name": "Jina",
+        "records": "Rekodi nyingi zaidi"
+      },
+      "loading": "Inapakia jumuiya za umma",
+      "noMatches": "Hakuna jumuiya ya umma inayolingana na utafutaji huu",
+      "none": "Jumuiya za umma zinaonekana hapa zikiwa hewani",
+      "records": "{count, plural, one {rekodi {shown}} other {rekodi {shown}}}"
+    },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Jumuiya mpya",
     "libraryView": "Mwonekano wa jumuiya",

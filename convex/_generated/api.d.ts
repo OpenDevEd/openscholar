@@ -130,6 +130,7 @@ import type * as evidenceLibraries_digests_manualActions from "../evidenceLibrar
 import type * as evidenceLibraries_digests_review from "../evidenceLibraries/digests/review.js";
 import type * as evidenceLibraries_digests_service from "../evidenceLibraries/digests/service.js";
 import type * as evidenceLibraries_digests_unslop from "../evidenceLibraries/digests/unslop.js";
+import type * as evidenceLibraries_directory from "../evidenceLibraries/directory.js";
 import type * as evidenceLibraries_dnsClient from "../evidenceLibraries/dnsClient.js";
 import type * as evidenceLibraries_domainActions from "../evidenceLibraries/domainActions.js";
 import type * as evidenceLibraries_domainConfig from "../evidenceLibraries/domainConfig.js";
@@ -330,6 +331,7 @@ import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_authorRecordLinks from "../migrations/authorRecordLinks.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
+import type * as migrations_communityDirectory from "../migrations/communityDirectory.js";
 import type * as migrations_communityMoveCounts from "../migrations/communityMoveCounts.js";
 import type * as migrations_copyCollection from "../migrations/copyCollection.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
@@ -605,6 +607,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/digests/review": typeof evidenceLibraries_digests_review;
   "evidenceLibraries/digests/service": typeof evidenceLibraries_digests_service;
   "evidenceLibraries/digests/unslop": typeof evidenceLibraries_digests_unslop;
+  "evidenceLibraries/directory": typeof evidenceLibraries_directory;
   "evidenceLibraries/dnsClient": typeof evidenceLibraries_dnsClient;
   "evidenceLibraries/domainActions": typeof evidenceLibraries_domainActions;
   "evidenceLibraries/domainConfig": typeof evidenceLibraries_domainConfig;
@@ -805,6 +808,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/authorRecordLinks": typeof migrations_authorRecordLinks;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
+  "migrations/communityDirectory": typeof migrations_communityDirectory;
   "migrations/communityMoveCounts": typeof migrations_communityMoveCounts;
   "migrations/copyCollection": typeof migrations_copyCollection;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;

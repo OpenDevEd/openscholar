@@ -44,7 +44,8 @@ export function StatusIcon({ tone, label, icon, className, ...rest }: HTMLAttrib
     <Tooltip>
       <TooltipTrigger asChild>
         <span role="img" aria-label={label} className={cn("inline-flex shrink-0", className)} {...rest}>
-          <Icon aria-hidden className={cn("size-4", toneClass)} />
+          {/* A state's own sign keeps still; only the tone's spinner turns. */}
+          <Icon aria-hidden className={cn("size-4", toneClass, icon && "animate-none")} />
         </span>
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>

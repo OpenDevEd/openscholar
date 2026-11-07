@@ -1815,7 +1815,15 @@
       "versions": "Versionen",
       "ai": "KI",
       "domain": "Domain",
+      "listing": "Verzeichnis",
       "publication": "Veröffentlichung"
+    },
+    "listing": {
+      "description": "Ob diese Community im öffentlichen Verzeichnis der Communities steht. Ihre Website bleibt für alle mit ihrer Adresse so oder so offen.",
+      "public": "Öffentlich",
+      "publicHint": "Im öffentlichen Verzeichnis gelistet, wo alle sie finden.",
+      "unlisted": "Nicht gelistet",
+      "unlistedHint": "Nicht im Verzeichnis. Wer die Adresse hat, kann sie weiterhin öffnen."
     },
     "sectionState": {
       "complete": "Vollständig",
@@ -4205,6 +4213,18 @@
         "where": "Evidence Communities",
         "ask": "Einen Community-Entwurf starten"
       },
+      "publicCommunities": {
+        "doing": "Liest die öffentlichen Communities",
+        "did": "Hat die öffentlichen Communities gelesen",
+        "where": "Evidence Communities",
+        "ask": "Die öffentlichen Communities lesen"
+      },
+      "communityVisibility": {
+        "doing": "Ändert, ob eine Community gelistet ist",
+        "did": "Hat geändert, ob eine Community gelistet ist",
+        "where": "Evidence Communities",
+        "ask": "Ändern, ob eine Community gelistet ist"
+      },
       "librarySources": {
         "doing": "Die Quellen einer Community werden gelesen",
         "did": "Die Quellen einer Community wurden gelesen",
@@ -5373,6 +5393,40 @@
     "keepThisUnderCharacters": "Bitte höchstens {maxLength} Zeichen verwenden."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Deine Communities",
+      "showFrom": "Communities anzeigen aus",
+      "allWorkspaces": "Alle Arbeitsbereiche",
+      "allCommunities": "Alle Communities",
+      "workspaces": "Arbeitsbereiche",
+      "yours": "Deine",
+      "sharedWithYou": "Mit dir geteilt",
+      "sharedWith": "Mit {name} geteilt",
+      "loading": "Communities werden geladen",
+      "noMatches": "Keine davon passt zu dieser Suche.",
+      "emptyAll": "Communities in deinen Arbeitsbereichen und die mit dir geteilten erscheinen hier.",
+      "emptyHere": "Communities von {name} und die mit ihr geteilten erscheinen hier.",
+      "emptyShared": "Communities, die andere mit dir teilen, erscheinen hier.",
+      "emptySharedHere": "Mit {name} geteilte Communities erscheinen hier.",
+      "emptyOwn": "Communities, die du erstellst, erscheinen hier.",
+      "emptyWorkspace": "{name} hat noch keine Communities.",
+      "invitedAs": "Eingeladen als {role}",
+      "accept": "Annehmen",
+      "accepted": "{name} angenommen."
+    },
+    "directory": {
+      "title": "Öffentliche Communities",
+      "sortLabel": "Öffentliche Communities sortieren",
+      "sort": {
+        "newest": "Neueste",
+        "name": "Name",
+        "records": "Meiste Einträge"
+      },
+      "loading": "Öffentliche Communities werden geladen",
+      "noMatches": "Keine öffentliche Community passt zu dieser Suche",
+      "none": "Öffentliche Communities erscheinen hier, sobald sie live sind",
+      "records": "{count, plural, one {{shown} Eintrag} other {{shown} Einträge}}"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Neue Community",
     "libraryView": "Community-Ansicht",

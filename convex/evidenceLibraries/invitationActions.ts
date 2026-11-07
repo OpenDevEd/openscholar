@@ -15,7 +15,7 @@ const inviteArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), ro
 async function sendInvitation(ctx: ActionCtx, args: { libraryId: Id<"evidenceLibraries">; email: string; role: "editor" | "creator"; actingAs?: Id<"users"> }): Promise<null> {
   const mail = requireInvitationMail();
   const origin = requireAppUrl();
-  const invitationsUrl = new URL("/evidence-communities?view=invitations", origin).href;
+  const invitationsUrl = new URL("/evidence-communities?from=shared", origin).href;
   const invitationId = await ctx.runMutation(internal.evidenceLibraries.invitations.prepare, args);
   const invitation = await ctx.runQuery(internal.evidenceLibraries.invitations.readDelivery, { invitationId, ...(args.actingAs ? { actingAs: args.actingAs } : {}) });
   if (!invitation) throw createError("CONFLICT", "Invitation is no longer available");

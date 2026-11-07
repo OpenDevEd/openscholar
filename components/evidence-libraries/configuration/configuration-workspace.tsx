@@ -99,6 +99,7 @@ import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
 import { PublicationSection } from "./sections/publication-section";
 import { DomainSection } from "./sections/domain-section";
+import { ListingSection } from "./sections/listing-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { FeaturesSection } from "./sections/features-section";
 import { FooterSection } from "./sections/footer-section";
@@ -146,7 +147,7 @@ function isOperationRunning(operation: Operation): boolean {
 }
 
 /** Rail entries: the page cards in their groups, then versions, the team and the danger zone. */
-type RailKey = PageSectionKey | "publication" | "domain" | "versions" | "team" | "danger";
+type RailKey = PageSectionKey | "publication" | "domain" | "listing" | "versions" | "team" | "danger";
 const RAIL_GROUPS: {
   key: "brand" | "content" | "discovery" | "platform" | "team" | "danger";
   sections: readonly RailKey[];
@@ -154,7 +155,7 @@ const RAIL_GROUPS: {
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["home", "navigation", "footer", "contact", "collections"] },
   { key: "discovery", sections: ["search", "citations", "features", "sources", "ai"] },
-  { key: "platform", sections: ["languages", "analytics", "publication", "domain", "versions"] },
+  { key: "platform", sections: ["languages", "analytics", "publication", "domain", "listing", "versions"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
@@ -176,6 +177,7 @@ const SECTION_ICONS: Record<RailKey, AppIcon> = {
   languages: LanguagesIcon,
   analytics: AnalyticsIcon,
   domain: LinkIcon,
+  listing: Eye,
   publication: PublishIcon,
   versions: HistoryIcon,
   team: TeamIcon,
@@ -225,6 +227,7 @@ const RAIL_KEYS: readonly RailKey[] = [
   ...PAGE_SECTION_KEYS,
   "publication",
   "domain",
+  "listing",
   "versions",
   "team",
   "danger",
@@ -256,6 +259,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       libraryId={draft.libraryId}
       libraryName={library.name}
       libraryState={library.state}
+      unlisted={library.unlisted === true}
       liveAddress={liveAddress}
       latest={{ editVersion: draft.editVersion, rows: sections }}
       hasUnpublishedChanges={hasUnpublishedChanges}
@@ -270,6 +274,7 @@ function Workspace({
   libraryId,
   libraryName,
   libraryState,
+  unlisted,
   liveAddress,
   latest,
   hasUnpublishedChanges,
@@ -281,6 +286,8 @@ function Workspace({
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
   libraryState: DraftResult["library"]["state"];
+  /** Left out of the public directory by its owners (#1090). */
+  unlisted: boolean;
   liveAddress: string | null;
   /** The rows the platform holds now, and the edit version they belong to. */
   latest: { editVersion: number; rows: readonly SectionRow[] };
@@ -712,6 +719,7 @@ function Workspace({
                   <>
                     <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
                     <DomainSection libraryId={libraryId} />
+                    <ListingSection libraryId={libraryId} unlisted={unlisted} />
                     <VersionsSection
                       libraryId={libraryId}
                       live={libraryState === "active"}

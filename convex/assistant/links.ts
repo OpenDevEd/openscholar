@@ -76,7 +76,7 @@ const OPENS: Record<string, (args: Row) => string | undefined> = {
   "evidenceLibraries/assistant:runningPublications": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
   "evidenceLibraries/assistant:runningPublication": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
   "evidenceLibraries/assistant:syncSource": (args) => (typeof args.libraryId === "string" ? `/evidence-communities/${args.libraryId}/configuration` : undefined),
-  "evidenceLibraries/assistant:invitations": () => "/evidence-communities?view=invitations",
+  "evidenceLibraries/assistant:invitations": () => "/evidence-communities?from=shared",
   // A research area, by its topic ID as the read checked it.
   "authors/assistant:directory": () => "/authors",
   "authors/assistant:invitations": () => "/authors",

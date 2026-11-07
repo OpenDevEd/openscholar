@@ -1815,7 +1815,15 @@
       "versions": "Versiones",
       "ai": "IA",
       "domain": "Dominio",
+      "listing": "Directorio",
       "publication": "Publicación"
+    },
+    "listing": {
+      "description": "Si esta comunidad aparece en el directorio público de comunidades. Su sitio sigue abierto para quien tenga su dirección en ambos casos.",
+      "public": "Pública",
+      "publicHint": "Aparece en el directorio público, donde cualquiera puede encontrarla.",
+      "unlisted": "No listada",
+      "unlistedHint": "Fuera del directorio. Quien tenga su dirección puede seguir abriéndola."
     },
     "sectionState": {
       "complete": "Completa",
@@ -4205,6 +4213,18 @@
         "where": "Evidence Communities",
         "ask": "Iniciar un borrador de comunidad"
       },
+      "publicCommunities": {
+        "doing": "Leyendo las comunidades públicas",
+        "did": "Leyó las comunidades públicas",
+        "where": "Evidence Communities",
+        "ask": "Leer las comunidades públicas"
+      },
+      "communityVisibility": {
+        "doing": "Cambiando si una comunidad aparece en el directorio",
+        "did": "Cambió si una comunidad aparece en el directorio",
+        "where": "Evidence Communities",
+        "ask": "Cambiar si una comunidad aparece en el directorio"
+      },
       "librarySources": {
         "doing": "Leyendo las fuentes de una comunidad",
         "did": "Leyó las fuentes de una comunidad",
@@ -5373,6 +5393,40 @@
     "keepThisUnderCharacters": "Use menos de {maxLength} caracteres."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Tus comunidades",
+      "showFrom": "Mostrar comunidades de",
+      "allWorkspaces": "Todos los espacios de trabajo",
+      "allCommunities": "Todas las comunidades",
+      "workspaces": "Espacios de trabajo",
+      "yours": "Tuyas",
+      "sharedWithYou": "Compartidas contigo",
+      "sharedWith": "Compartidas con {name}",
+      "loading": "Cargando comunidades",
+      "noMatches": "Ninguna coincide con esta búsqueda.",
+      "emptyAll": "Aquí aparecen las comunidades de tus espacios de trabajo y las que se comparten contigo.",
+      "emptyHere": "Aquí aparecen las comunidades de {name} y las que se comparten con ella.",
+      "emptyShared": "Aquí aparecen las comunidades que otras personas comparten contigo.",
+      "emptySharedHere": "Aquí aparecen las comunidades compartidas con {name}.",
+      "emptyOwn": "Aquí aparecen las comunidades que creas.",
+      "emptyWorkspace": "{name} aún no tiene comunidades.",
+      "invitedAs": "Invitación como {role}",
+      "accept": "Aceptar",
+      "accepted": "Aceptaste {name}."
+    },
+    "directory": {
+      "title": "Comunidades públicas",
+      "sortLabel": "Ordenar comunidades públicas",
+      "sort": {
+        "newest": "Más recientes",
+        "name": "Nombre",
+        "records": "Más registros"
+      },
+      "loading": "Cargando comunidades públicas",
+      "noMatches": "Ninguna comunidad pública coincide con esta búsqueda",
+      "none": "Las comunidades públicas aparecen aquí cuando están en línea",
+      "records": "{count, plural, one {{shown} registro} other {{shown} registros}}"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nueva comunidad",
     "libraryView": "Vista de comunidad",

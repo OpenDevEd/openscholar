@@ -1,4 +1,5 @@
 import { internalMutation, type MutationCtx } from "../lib/functions";
+import { noteLive } from "./directory";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
@@ -539,6 +540,8 @@ export async function recordEvidenceLibrarySetupStep(
     updatedByClerkUserId: operation.requestedByClerkUserId,
     updatedAt: now,
   });
+  // Live now: it joins the directory, unless its owners unlist it.
+  await noteLive(ctx, setup.library, setup.revision._id, now);
   return { nextStep: null, status: "succeeded" as const };
 }
 

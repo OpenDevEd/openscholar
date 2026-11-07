@@ -193,7 +193,11 @@ function libraryOverviewStatus(
 const libraryOverviewValidator = v.object({
   _id: v.id("evidenceLibraries"),
   role: libraryListRoleValidator,
-  organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+  /** Who it belongs to: an organization, or the person whose own workspace it's in. */
+  organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()), kind: v.union(v.literal("person"), v.literal("organization")) }),
+  /** Where the list has it from: the person's own workspace, one of their organizations, or shared with them. */
+  from: v.union(v.literal("own"), v.literal("organization"), v.literal("shared")),
+  workspaceId: v.id("workspaces"),
   name: v.string(),
   publicAddress: v.string(),
   status: libraryOverviewStatusValidator,
@@ -343,28 +347,11 @@ const LIBRARY_ROWS_READ = 1_000;
 /** Where the granted libraries sit in the list: after every organization the person owns. */
 const GRANTED = "granted";
 
-/** The organizations a person owns, each with its workspace (#650), by name, then by ID so two of one name keep their order. */
-async function ownedOrganizations(ctx: QueryCtx) {
-  const owned = (await readMemberOrganizations(ctx))
-    .filter(({ membership }) => membership.role === "org:admin")
-    .map(({ organization }) => organization)
-    .sort((a, b) => a.name.localeCompare(b.name) || (a._id < b._id ? -1 : 1));
-  return await Promise.all(owned.map(async (organization) => ({ ...organization, workspaceId: await organizationWorkspaceOf(ctx, organization._id) })));
-}
-
 /** The person's own workspace, where their own libraries are (#650), with the name it goes by. */
 async function ownWorkspace(ctx: QueryCtx) {
   const user = await getCurrentUser(ctx);
   const workspace = user ? await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique() : null;
   return user && workspace ? { userId: user._id, workspaceId: workspace._id, shown: await ownerName(ctx, { workspace, organization: null, person: user }) } : null;
-}
-
-/** The organization a page is in, for a member who isn't one of its admins: they view its libraries (#653). Null for anyone else. */
-async function viewedOrganization(ctx: QueryCtx, clerkUserId: string, organizationId: Id<"organizations">) {
-  const [organization, person] = await Promise.all([ctx.db.get("organizations", organizationId), userOf(ctx, clerkUserId)]);
-  // A membership outlives a suspended or deleted account for a while: it views nothing.
-  if (organization?.state !== "active" || person?.state !== "active" || !(await readActiveOrganizationMembership(ctx, organizationId, clerkUserId))) return null;
-  return { name: organization.name, imageUrl: organization.imageUrl ?? null, workspaceId: await organizationWorkspaceOf(ctx, organizationId) };
 }
 
 /** A library a person was granted, with their role and who it belongs to, unless it's in a workspace they own, where it is listed already. */
@@ -376,119 +363,114 @@ async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<
   return role && owner ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
 }
 
+type Shown = { name: string; imageUrl: string | null; kind: "person" | "organization" };
+type From = { from: "own" | "organization" | "shared"; workspaceId: Id<"workspaces"> };
+
 /**
  * A library as its list shows it. A viewer's row keeps its name, address and state: how it is being
  * set up, updated or taken down is for the people with a role in it, and so is the look of one
  * that isn't live yet.
  */
-const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof libraryListRoleValidator>, owner: { name: string; imageUrl: string | null }) => {
+const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof libraryListRoleValidator>, owner: Shown, where: From) => {
   const { teardownFailedStep, ...overview } = await readLibraryOverview(ctx, library);
-  if (role !== "viewer") return { ...overview, ...(teardownFailedStep ? { teardownFailedStep } : {}), role, organization: owner };
-  return { ...overview, setupStage: null, teardownStage: null, operation: null, lastActivatedAt: null, ...(overview.status === "active" ? {} : { accentColor: null, faviconUrl: null }), role, organization: owner };
+  if (role !== "viewer") return { ...overview, ...(teardownFailedStep ? { teardownFailedStep } : {}), role, organization: owner, ...where };
+  return { ...overview, setupStage: null, teardownStage: null, operation: null, lastActivatedAt: null, ...(overview.status === "active" ? {} : { accentColor: null, faviconUrl: null }), role, organization: owner, ...where };
 };
 
+/** The organizations a person is in, each with its workspace and whether they own it, by name, then by ID so two of one name keep their order. */
+async function memberOrganizations(ctx: QueryCtx) {
+  const rows = (await readMemberOrganizations(ctx)).sort((a, b) => a.organization.name.localeCompare(b.organization.name) || (a.organization._id < b.organization._id ? -1 : 1));
+  return await Promise.all(rows.map(async ({ organization, membership }) => ({ ...organization, owns: membership.role === "org:admin", workspaceId: await organizationWorkspaceOf(ctx, organization._id) })));
+}
+
 /**
- * One page of the libraries a person can open: those in their own workspace, then those of
- * each organization they own, one organization after another by name and each in the order
- * they were made, then the libraries they were granted. Given `organization`, only that organization's; given `search`, only
- * those whose name, or whose organization's name, contains it. The cursor names the
- * organization the page stopped in and where.
- */
-/**
- * The libraries of the workspace a page is in (#651), a page at a time: an organization's own,
- * which its admins own and its other members view, each with the role they were given in it if
- * any (#653); or, in the person's own workspace, theirs and the ones shared with them from
- * organizations they don't own.
+ * The libraries a person can open, a page at a time, filtered on the server (#651, #1090). In an
+ * organization's workspace (`organization`), that organization's: its admins own them and its other
+ * members view them, with the role they were given in one if any (#653). In their own workspace,
+ * everything: their own, then each organization's they're in, one after another by name, then the
+ * ones shared with them (on the page of an organization they aren't in, its ones shared with them); `from` narrows it to their own (`own`), one workspace's, or the shared ones.
+ * Given `search`, those whose name, or whose owner's name, contains it. The cursor names the source
+ * the page stopped in and where.
  */
 export const listLibraries = query({
-  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), organization: v.optional(v.id("organizations")) },
+  args: {
+    paginationOpts: paginationOptsValidator,
+    search: v.optional(v.string()),
+    organization: v.optional(v.id("organizations")),
+    from: v.optional(v.union(v.literal("own"), v.literal("shared"), v.id("workspaces"))),
+  },
   returns: paginationResultValidator(libraryOverviewValidator),
-  handler: async (ctx, { paginationOpts, search, organization }) => {
+  handler: async (ctx, { paginationOpts, search, organization, from }) => {
     const identity = await getIdentity(ctx);
-    if (!identity) return { page: [], isDone: true, continueCursor: "" };
-    const [owned, own] = await Promise.all([ownedOrganizations(ctx), ownWorkspace(ctx)]);
-    const viewed = organization && !owned.some((entry) => entry._id === organization) ? await viewedOrganization(ctx, identity.subject, organization) : null;
-    // Listed by their workspace, so not again among the ones the person was granted.
-    const ownedIds = new Set([...owned.map((entry) => entry.workspaceId), ...(own ? [own.workspaceId] : []), ...(viewed ? [viewed.workspaceId] : [])]);
+    const person = identity ? await userOf(ctx, identity.subject) : null;
+    // A membership or a grant outlives a suspended or deleted account for a while: it lists nothing.
+    if (!identity || person?.state !== "active") return { page: [], isDone: true, continueCursor: "" };
+    const [members, own] = await Promise.all([memberOrganizations(ctx), ownWorkspace(ctx)]);
+    const here = organization ? members.find((entry) => entry._id === organization) : undefined;
+    // An organization's page lists its own; the person's own lists every organization they're in.
+    const organizations = organization ? (here ? [here] : []) : members;
+    // Listed by their workspace, so not again among the ones shared with the person.
+    const listedIds = new Set([...members.map((entry) => entry.workspaceId), ...(own ? [own.workspaceId] : [])]);
+    const wants = (key: "own" | "shared" | Id<"workspaces">) => !from || from === key;
     const needle = search?.trim().toLowerCase();
     const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
-    // What the page has read so far: every organization of one page shares one allowance of rows.
+    // What the page has read so far: every source of one page shares one allowance of rows.
     let rows = 0;
-    const within = (name: string, organizationName: string) => {
+    const within = (name: string, ownerName: string) => {
       rows++;
-      return !needle || name.toLowerCase().includes(needle) || organizationName.toLowerCase().includes(needle);
+      return !needle || name.toLowerCase().includes(needle) || ownerName.toLowerCase().includes(needle);
     };
-    const sources: Array<{ key: string; name: string; read: (cursor: string | null, room: number) => Promise<{ page: Infer<typeof libraryOverviewValidator>[]; after: string | null }> }> = [
-      // Their own workspace's come first, in their own workspace.
-      ...(own && !organization
-        ? [{
-            key: own.workspaceId as string,
-            name: "",
-            read: async (cursor: string | null, room: number) => {
-              const read = await stream(ctx.db, schema)
-                .query("evidenceLibraries")
-                .withIndex("by_workspace", (index) => index.eq("workspaceId", own.workspaceId))
-                .filterWith(async (library) => within(library.name, own.shown.name))
-                .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-              return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", own.shown))), after: read.isDone ? null : read.continueCursor };
-            },
-          }]
-        : []),
-      ...owned
-        .filter((entry) => entry._id === organization)
-        .map((entry) => ({
-          key: entry._id as string,
-          name: entry.name,
-          read: async (cursor: string | null, room: number) => {
-            const read = await stream(ctx.db, schema)
-              .query("evidenceLibraries")
-              .withIndex("by_workspace", (index) => index.eq("workspaceId", entry.workspaceId))
-              .filterWith(async (library) => within(library.name, entry.name))
-              .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-            const shown = { name: entry.name, imageUrl: entry.imageUrl ?? null };
-            return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", shown))), after: read.isDone ? null : read.continueCursor };
-          },
-        })),
-      ...(viewed
-        ? [{
-            key: viewed.workspaceId as string,
-            name: viewed.name,
-            read: async (cursor: string | null, room: number) => {
-              const read = await stream(ctx.db, schema)
-                .query("evidenceLibraries")
-                .withIndex("by_workspace", (index) => index.eq("workspaceId", viewed.workspaceId))
-                .filterWith(async (library) => within(library.name, viewed.name))
-                .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-              const shown = { name: viewed.name, imageUrl: viewed.imageUrl };
-              return { page: await Promise.all(read.page.map(async (library) => overviewRow(ctx, library, (await readLibraryRole(ctx, library, identity.subject)) ?? "viewer", shown))), after: read.isDone ? null : read.continueCursor };
-            },
-          }]
-        : []),
-      {
-        key: GRANTED,
-        name: "",
-        read: async (cursor: string | null, room: number) => {
-          // Their roles in libraries are rows of the table every shared item's guests are in (./access.ts).
-          if (!own) return { page: [], after: null };
-          const read = await stream(ctx.db, schema)
-            .query("itemAccess")
-            .withIndex("by_user_and_kind_and_grantedAt", (index) => index.eq("userId", own.userId).eq("kind", "library"))
-            .map(async (grant) => grantedLibrary(ctx, identity.subject, ownedIds, grant))
-            .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library.name, granted.shown.name))
-            .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-          return { page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, granted!.shown))), after: read.isDone ? null : read.continueCursor };
-        },
+    type Read = { page: Infer<typeof libraryOverviewValidator>[]; after: string | null };
+    const workspaceSource = (key: string, name: string, workspaceId: Id<"workspaces">, shown: Shown, where: From, roleOf: (library: Doc<"evidenceLibraries">) => Promise<Infer<typeof libraryListRoleValidator>>) => ({
+      key,
+      name,
+      read: async (cursor: string | null, room: number): Promise<Read> => {
+        const read = await stream(ctx.db, schema)
+          .query("evidenceLibraries")
+          .withIndex("by_workspace", (index) => index.eq("workspaceId", workspaceId))
+          .filterWith(async (library) => within(library.name, shown.name))
+          .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+        return { page: await Promise.all(read.page.map(async (library) => overviewRow(ctx, library, await roleOf(library), shown, where))), after: read.isDone ? null : read.continueCursor };
       },
+    });
+    const sources = [
+      // Their own workspace's come first, in their own workspace.
+      ...(own && !organization && wants("own") ? [workspaceSource(own.workspaceId, "", own.workspaceId, { ...own.shown, kind: "person" }, { from: "own", workspaceId: own.workspaceId }, async () => "owner")] : []),
+      ...organizations
+        .filter((entry) => organization || wants(entry.workspaceId))
+        .map((entry) => workspaceSource(entry._id, entry.name, entry.workspaceId, { name: entry.name, imageUrl: entry.imageUrl ?? null, kind: "organization" }, { from: "organization", workspaceId: entry.workspaceId }, async (library) =>
+          entry.owns ? "owner" : ((await readLibraryRole(ctx, library, identity.subject)) ?? "viewer"))),
+      // In their own workspace, the ones shared with them; on the page of an organization they aren't in, its ones shared with them.
+      ...(own && (organization ? !here : wants("shared"))
+        ? [{
+            key: GRANTED,
+            name: "",
+            read: async (cursor: string | null, room: number): Promise<Read> => {
+              // Their roles in libraries are rows of the table every shared item's guests are in (./access.ts).
+              const read = await stream(ctx.db, schema)
+                .query("itemAccess")
+                .withIndex("by_user_and_kind_and_grantedAt", (index) => index.eq("userId", own.userId).eq("kind", "library"))
+                .map(async (grant) => grantedLibrary(ctx, identity.subject, listedIds, grant))
+                .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library.name, granted.shown.name))
+                .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+              return {
+                page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, { ...granted!.shown, kind: granted!.owner.organization ? "organization" : "person" }, { from: "shared", workspaceId: granted!.library.workspaceId }))),
+                after: read.isDone ? null : read.continueCursor,
+              };
+            },
+          }]
+        : []),
     ];
     const stoppedAt = (at: number, after: string | null) => JSON.stringify({ source: sources[at].key, name: sources[at].name, after });
-    const from: { source: string; name: string; after: string | null } | null = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : null;
-    const same = from ? sources.findIndex((source) => source.key === from.source) : 0;
-    // The organization the page before stopped in is no longer one the person owns: the list goes on from the next one after it by name.
-    const start = same !== -1 ? same : sources.findIndex((source) => source.key === GRANTED || (source.name.localeCompare(from!.name) || (source.key < from!.source ? -1 : 1)) > 0);
+    const startFrom: { source: string; name: string; after: string | null } | null = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : null;
+    const same = startFrom ? sources.findIndex((source) => source.key === startFrom.source) : 0;
+    // The organization the page before stopped in is no longer one the person is in: the list goes on from the next one after it by name.
+    const start = same !== -1 ? same : sources.findIndex((source) => source.key === GRANTED || (source.name.localeCompare(startFrom!.name) || (source.key < startFrom!.source ? -1 : 1)) > 0);
     const page: Infer<typeof libraryOverviewValidator>[] = [];
+    if (start === -1) return { page, isDone: true, continueCursor: "" };
     for (let at = start; at < sources.length; at++) {
       if (page.length >= numItems) return { page, isDone: false, continueCursor: stoppedAt(at, null) };
-      const read = await sources[at].read(at === same ? (from?.after ?? null) : null, numItems - page.length);
+      const read = await sources[at].read(at === same ? (startFrom?.after ?? null) : null, numItems - page.length);
       page.push(...read.page);
       if (read.after !== null) return { page, isDone: false, continueCursor: stoppedAt(at, read.after) };
     }

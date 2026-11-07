@@ -321,6 +321,25 @@ export const addMemberAction = defineUserMutation({
     return await addLibraryMember(signedIn, { libraryId, clerkUserId, role });
   },
 });
+export const setVisibilityAction = defineUserMutation({
+  path: "evidenceLibraries/assistant:setVisibility",
+  description:
+    "Says whether an Evidence Community is listed in the public directory of communities, for an owner: `public` lists it, `unlisted` leaves it out. " +
+    "It decides only the listing: the community's site stays open to anyone with its address either way.",
+  args: { libraryId: v.id("evidenceLibraries"), visibility: v.union(v.literal("public"), v.literal("unlisted")) },
+  returns: v.null(),
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
+  run: async (ctx, actor, { libraryId, visibility }) => {
+    if (!(await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "manage"))) throw createError("FORBIDDEN", "Only an owner of the community changes whether it's listed.");
+    await ctx.db.patch("evidenceLibraries", libraryId, { unlisted: visibility === "unlisted" ? true : undefined });
+    return null;
+  },
+});
+export const setVisibility = userMutation(setVisibilityAction);
+export const setVisibilityForAssistant = assistantMutation(setVisibilityAction);
+
 export const addMember = userMutation(addMemberAction);
 export const addMemberForAssistant = assistantMutation(addMemberAction);
 
