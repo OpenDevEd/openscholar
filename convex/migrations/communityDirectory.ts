@@ -6,9 +6,9 @@ import { backfillCard } from "../evidenceLibraries/directory";
 
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
-// Gives every live community its directory card (#1090): its card, when it went live and when the settings it runs
-// were published, and a record count, which it otherwise gets at its next publish. Safe to repeat.
-// Ten at a time: each reads the settings it runs.
-export const cardsFromSettings = migrations.define({ table: "evidenceLibraries", batchSize: 10, migrateOne: (ctx, library) => backfillCard(ctx, library) });
+// Gives every live community its directory card (#1090): its card, when it went live and when its owners last put
+// their settings live, and a record count, which it otherwise gets at its next publish. Safe to repeat.
+// A few at a time: each reads up to ten of its operations, and one can be over 100 kB.
+export const cardsFromPublishes = migrations.define({ table: "evidenceLibraries", batchSize: 5, migrateOne: (ctx, library) => backfillCard(ctx, library) });
 
-export const run = migrations.runner([internal.migrations.communityDirectory.cardsFromSettings]);
+export const run = migrations.runner([internal.migrations.communityDirectory.cardsFromPublishes]);
