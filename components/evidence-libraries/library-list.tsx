@@ -37,8 +37,10 @@ import { YourCommunities, type Community, type CommunityFilter } from "./your-co
  * public one in its card. `preloadedOpens` is the server's answer to whether the person may create
  * one here, so New community is there from the first frame.
  */
-export function LibraryList({ preloadedOpens }: {
+export function LibraryList({ preloadedOpens, preloadedPublic }: {
   preloadedOpens?: Preloaded<typeof api.organizationFeatures.opens>;
+  /** The directory's first page, newest first, as the server read it with the page. */
+  preloadedPublic?: Preloaded<typeof api.evidenceLibraries.directory.listPublic>;
 }) {
   const t = useTranslations("libraryList");
   const live = useWorkspaceFeatures().data;
@@ -125,7 +127,7 @@ export function LibraryList({ preloadedOpens }: {
                 {notice}
               </p>
             )}
-            <PublicCommunities search={text} workspaceId={workspace?.workspaceId as Id<"workspaces"> | undefined} />
+            <PublicCommunities search={text} workspaceId={workspace?.workspaceId as Id<"workspaces"> | undefined} preloaded={preloadedPublic} />
             <Dialog open={Boolean(declining)} onOpenChange={(open) => { if (!open) setDeclining(null); }}>
               <DialogContent showCloseButton={false}>
                 <DialogHeader>

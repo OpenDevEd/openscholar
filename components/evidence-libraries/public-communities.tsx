@@ -12,10 +12,13 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { PUBLIC_PER_PAGE } from "@/lib/evidence-libraries/directory";
+import type { Preloaded } from "convex/react";
+import { preloadedQueryResult } from "convex/nextjs";
 import { cn } from "@/lib/utils";
 import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
 
-const PER_PAGE = 100;
+const PER_PAGE = PUBLIC_PER_PAGE;
 /** Two rows of cards and the pager under them (its top padding and buttons, and its margin): the place held while the first are read. */
 const FULL_PAGE_WITH_PAGER = "min-h-[calc(6*var(--card-h)+5rem+4.5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem+4.5rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem+4.5rem)]";
 const SORTS = ["newest", "name", "records"] as const;
@@ -23,10 +26,13 @@ type Sort = (typeof SORTS)[number];
 type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.listPublic>["page"][number];
 
 /** Every public community, as cards, a page at a time, sorted and searched on the server (#1090). */
-export function PublicCommunities({ search, workspaceId }: { search: string; workspaceId?: Id<"workspaces"> }) {
+export function PublicCommunities({ search, workspaceId, preloaded }: { search: string; workspaceId?: Id<"workspaces">; preloaded?: Preloaded<typeof api.evidenceLibraries.directory.listPublic> }) {
   const t = useTranslations("libraryList.directory");
   const [sort, setSort] = useState<Sort>("newest");
-  const read = useCursorPage(api.evidenceLibraries.directory.listPublic, workspaceId ? { workspaceId, sort, ...(search ? { search } : {}) } : "skip", PER_PAGE);
+  const live = useCursorPage(api.evidenceLibraries.directory.listPublic, workspaceId ? { workspaceId, sort, ...(search ? { search } : {}) } : "skip", PER_PAGE);
+  // The server's first page, newest first, until the live one arrives: the cards are there from the first frame.
+  const first = preloaded && live.isLoading && sort === "newest" && !search ? preloadedQueryResult(preloaded) : undefined;
+  const read = first ? { ...live, items: first.page, isLoading: false, hasPages: !first.isDone } : live;
   return (
     <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "16.5rem" } as React.CSSProperties}>
       <div className="mb-4 flex items-center justify-between gap-3">
