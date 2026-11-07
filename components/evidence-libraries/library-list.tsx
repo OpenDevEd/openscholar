@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useAction, type Preloaded } from "convex/react";
 import { preloadedQueryResult } from "convex/nextjs";
-import { useState } from "react";
+import { cloneElement, useState } from "react";
 import { parseAsString, useQueryState } from "nuqs";
 import { useCurrentWorkspace, useWorkspaces } from "@/components/workspaces/parts";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
@@ -88,17 +88,15 @@ export function LibraryList({ preloadedOpens }: {
   return (
     <TwoColumnLayout
       leftColumn={
-        <aside aria-label={t("sidebar.label")} className="relative hidden h-full w-80 border-s border-border-subtle bg-background lg:block">
-          {/* The same wash as the page's other side panels. */}
-          <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent" />
-          <div className="relative h-full">{yours}</div>
+        <aside aria-label={t("sidebar.label")} className="relative hidden h-full w-80 bg-background lg:block">
+          {cloneElement(yours, { framed: true })}
         </aside>
       }
       rightColumn={
         <PageWrapper>
           <LibraryPageShell
             title={t("evidenceLibraries")}
-            above={<div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-background lg:hidden">{yours}</div>}
+            above={<div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface lg:hidden">{yours}</div>}
             actions={creates &&
               <Button asChild size="sm" className={BAR_ACTION}>
                 <Link href="/evidence-communities/new">

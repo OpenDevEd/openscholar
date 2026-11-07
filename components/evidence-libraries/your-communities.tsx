@@ -76,7 +76,7 @@ export type CommunityFilter = "all" | "own" | "here" | "shared" | Id<"workspaces
  * from (#1090). In your own workspace that's yours, each organization's you're in and the ones
  * shared with you, invitations first; in an organization's, its own and the ones shared with it.
  */
-export function YourCommunities({ waiting = false, search, personal, workspaceName, workspaceImage, organization, filter, onFilter, ...actions }: Actions & {
+export function YourCommunities({ waiting = false, framed = false, search, personal, workspaceName, workspaceImage, organization, filter, onFilter, ...actions }: Actions & {
   search: string;
   personal: boolean;
   workspaceName: string;
@@ -86,6 +86,8 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
   onFilter: (filter: CommunityFilter) => void;
   /** Until the page knows the workspace, the list shows its spinner under the header. */
   waiting?: boolean;
+  /** In the page's sidebar: the list on a card of its own, beside the page's. */
+  framed?: boolean;
 }) {
   const t = useTranslations("libraryList.sidebar");
   const workspaces = useWorkspaces();
@@ -137,7 +139,11 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
           </SelectContent>
         </Select>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2 scrollbar-hide">
+      {/* MOCK: in the sidebar the list sits on a card like the page's own, level with it; the card takes its rows' height, up to the window's. */}
+      <div className={cn("flex min-h-0 flex-1 flex-col", framed && "py-4 ps-4 sm:py-6 sm:ps-6")}>
+      <div className={cn("relative flex min-h-0 flex-col", framed && "overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface")}>
+      {framed ? <div aria-hidden className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent" /> : null}
+      <div className="relative min-h-0 flex-1 overflow-y-auto p-2 scrollbar-hide">
         {/* The list arrives after the page, and changes length with the filter: it slides to its height. */}
         <AutoHeight>
           {loading && !read.isStale ? (
@@ -157,6 +163,8 @@ export function YourCommunities({ waiting = false, search, personal, workspaceNa
             <PageStepper className="px-2 pt-2" page={read.page} canPrevious={read.canPrevious} canNext={read.canNext} onPrevious={read.previous} onNext={read.next} />
           )}
         </AutoHeight>
+      </div>
+      </div>
       </div>
     </div>
   );
