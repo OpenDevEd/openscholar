@@ -115,7 +115,8 @@ function CommunityCard({ community }: { community: Card }) {
           </span>
           <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
           {/* MOCK: the real card falls back to the community's description when it has no tagline. */}
-          {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : null}
+          {/* MOCK: one with neither says so, quieter than a description, so the space reads as empty on purpose. */}
+          {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : <p className="mt-1 text-xs leading-relaxed text-subtle-foreground">No description yet</p>}
           <div className="mt-auto flex flex-col gap-1.5 pt-4 text-xs text-muted-foreground">
             <span className="flex min-w-0 items-center gap-1.5">
               <IdentityAvatar name={community.owner.name ?? ""} imageUrl={community.owner.imageUrl} kind={community.owner.kind} className={community.owner.kind === "organization" ? "size-4 rounded-sm" : "size-4"} />
