@@ -172,6 +172,8 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "admins/queries:listCandidates": { kind: "other", words: "admins" },
   "organizations/libraryAccess:list": { kind: "other", words: "libraryAccess" },
   "organizations/libraryAccess:count": { kind: "other", words: "libraryAccess" },
+  "organizations/libraryAccess:listPeople": { kind: "other", words: "libraryAccess" },
+  "organizations/libraryAccess:countPeople": { kind: "other", words: "libraryAccess" },
   "library/collections:raters": { kind: "paper", words: "ratings" },
   "activity/queries:list": { kind: "other", words: "activity" },
   "activity/queries:startedBy": { kind: "other", words: "activity" },
