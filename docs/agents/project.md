@@ -56,6 +56,8 @@ supported process changed. Read the page back before claiming success.
   | No "Loading" text; the shared Spinner or the final size | `check:ui-rules` (`loading-text`) |
   | A dialog, popover or picker comes from `components/ui`, never a raw primitive | `check:ui-rules` (`raw-primitive`) |
   | No "Coolify" in text people read | `check:ui-rules` (`coolify`) |
+  | A name people can act on uses its hover card, link or filter | `check:ui-rules` (`entity-name`) |
+  | A country shows its flag | `check:ui-rules` (`country-flag`) |
   | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
   | A dialog, sheet, popover or menu opens with its data in it | `npm run verify -- shift` with a `--do` step that opens it |
 
