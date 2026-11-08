@@ -17,6 +17,17 @@ const statusSchema = z
     status: z.enum(["queued", "published", "returned", "withdrawn"]),
     note: z.string().max(4000).nullable(),
     at: z.string().datetime({ offset: true }),
+    /** What the paper is, so one sent from the community's own site becomes the person's submission here. */
+    paper: z
+      .object({
+        title: z.string().min(1).max(1000),
+        authors: z.string().max(2000),
+        year: z.number().int().nullable(),
+        openalexId: z.string().max(64).nullable(),
+        doi: z.string().max(512).nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -26,9 +37,9 @@ export const paperSubmissionStatus: ReturnType<typeof httpAction> = httpAction(a
   if (!credential) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   const parsed = statusSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return jsonResponse(400, { error: { code: "invalid_request", retryable: false } });
-  const { idempotencyKey, libraryId, itemKey, generation, clerkUserId, status, note, at } = parsed.data;
+  const { idempotencyKey, libraryId, itemKey, generation, clerkUserId, status, note, at, paper } = parsed.data;
   try {
-    await ctx.runMutation(internal.evidenceLibraries.submissions.applyStatus, { libraryId, credentialDigest: await digestOpaqueToken(credential), itemKey, generation, clerkUserId, status, note, at: Date.parse(at) });
+    await ctx.runMutation(internal.evidenceLibraries.submissions.applyStatus, { libraryId, credentialDigest: await digestOpaqueToken(credential), itemKey, generation, clerkUserId, status, note, at: Date.parse(at), ...(paper ? { paper } : {}) });
     return jsonResponse(200, { idempotencyKey, generation });
   } catch (error) {
     const code = readConvexErrorData(error)?.code;

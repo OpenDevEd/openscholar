@@ -115,3 +115,26 @@ it("removes a deleted account's submissions", async () => {
   expect(await t.run((ctx) => purgeSubmissions(ctx, userId))).toBe(true);
   expect(await t.run((ctx) => ctx.db.query("paperSubmissions").collect())).toEqual([]);
 });
+
+it("makes a paper sent from the community's own site the person's submission, from the community's first word on it", async () => {
+  const t = convexTest(schema, modules);
+  const { libraryId, userId, workspaceId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "reader", email: "reader@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    return { libraryId, userId, workspaceId };
+  });
+  const paper = { title: "Coaching teachers", authors: "Amina Yusuf", year: 2021, openalexId: "W60", doi: "10.1000/w60" };
+  const tell = (generation: number, status: string, withPaper: boolean) =>
+    t.fetch("/api/v1/evidence-libraries/paper-submissions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ contractVersion: 1, idempotencyKey: `${libraryId}:SITE0001:${generation}`, libraryId, itemKey: "SITE0001", generation, clerkUserId: "reader", status, note: null, at: "2026-11-08T12:00:00Z", ...(withPaper ? { paper } : {}) }),
+    });
+  // Published before its first word arrives: held, then applied once the paper is theirs.
+  expect((await tell(2, "published", true)).status).toBe(200);
+  expect((await tell(1, "queued", true)).status).toBe(200);
+  const mine = await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId });
+  expect(mine.page).toMatchObject([{ itemKey: "SITE0001", ...paper, status: "published", community: { libraryId } }]);
+});
