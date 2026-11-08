@@ -174,8 +174,9 @@ function AddedLine({ paper, libraryId, community, onChanged }: {
       toast.success(outcome === "removed" ? t("removed") : t("withdrawn"));
       onChanged();
     } catch (error) {
-      setBusy(false);
       toast.error(refusalOr(error, t("removeFailed")));
+    } finally {
+      setBusy(false);
     }
   };
   return (

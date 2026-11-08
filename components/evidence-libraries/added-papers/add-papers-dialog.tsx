@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useTranslations } from "next-intl";
@@ -103,6 +103,8 @@ export function AddPapersDialog({
   // One ID per set of papers found, so a send tried again adds nothing twice.
   const [requestId, setRequestId] = useState("");
   const [sending, setSending] = useState<"publish" | "queue" | null>(null);
+  // The lookup the dialog waits for: one started for an earlier paste, or before it closed, is ignored.
+  const lookup = useRef(0);
   const parsed = parsePaste(text);
   const tooMany = parsed.papers.length > ADDED_PAPERS_MAX;
   const looking = found?.some((row) => !row.answer) ?? false;
@@ -110,6 +112,7 @@ export function AddPapersDialog({
   const doiOnly = ready.filter((row) => row.answer?.foundBy === "doi").length;
 
   const reset = () => {
+    lookup.current += 1;
     setText("");
     setFound(null);
     setSending(null);
@@ -118,12 +121,14 @@ export function AddPapersDialog({
   const find = async () => {
     if (!workspaceId) return;
     const papers = parsed.papers;
+    const asked = ++lookup.current;
     setFound(papers);
     setRequestId(crypto.randomUUID());
     try {
       const answers = await preview({ libraryId, workspaceId, papers: papers.map(({ openalexId, doi }) => ({ openalexId, doi })) });
-      setFound(papers.map((paper, at) => ({ ...paper, answer: answers[at] })));
+      if (asked === lookup.current) setFound(papers.map((paper, at) => ({ ...paper, answer: answers[at] })));
     } catch (error) {
+      if (asked !== lookup.current) return;
       setFound(null);
       toast.error(refusalOr(error, t("lookupFailed")));
     }
@@ -164,6 +169,7 @@ export function AddPapersDialog({
           <Textarea
             value={text}
             onChange={(event) => {
+              lookup.current += 1;
               setText(event.target.value);
               setFound(null);
             }}

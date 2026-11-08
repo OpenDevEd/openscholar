@@ -47,7 +47,8 @@ export function useAddedPapers(libraryId: Id<"evidenceLibraries">, read: boolean
         {
           optimisticData: (data) => data?.map((page, at) => (at === 0 ? { ...page, settings: { ...page.settings, ...next } } : page)) ?? [],
           rollbackOnError: true,
-          revalidate: false,
+          // Read back from the community, so two changes sent together end showing what it holds.
+          revalidate: true,
         },
       ),
   };
