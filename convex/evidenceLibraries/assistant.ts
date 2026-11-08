@@ -739,7 +739,7 @@ export const addPapersAction = defineChangingAction({
         ? [{ itemKey: result.itemKey, ...result.paper, status: result.outcome === "added" ? ("published" as const) : ("queued" as const) }]
         : [],
     );
-    if (papers.length) await ctx.runMutation(internal.evidenceLibraries.submissions.recordSent, { userId: actor.userId, libraryId: args.libraryId, papers });
+    if (papers.length) await ctx.runMutation(internal.evidenceLibraries.submissions.recordSent, { userId: actor.userId, libraryId: args.libraryId, requestId: args.requestId, papers });
     return results;
   },
 });

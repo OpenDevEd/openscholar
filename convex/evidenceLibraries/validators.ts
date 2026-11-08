@@ -1535,6 +1535,19 @@ export const paperSubmissionFields = {
   updatedAt: v.number(),
   /** The community's last change it applied: an older one, arriving late, changes nothing. */
   generation: v.optional(v.number()),
+  /** The request that sent it, so a replay of that request doesn't undo what the community said since. */
+  requestId: v.optional(v.string()),
+};
+
+/** A community's word on a paper that came before Openscholar recorded the paper as sent: applied when it is. */
+export const pendingSubmissionStatusFields = {
+  libraryId: v.id("evidenceLibraries"),
+  itemKey: v.string(),
+  clerkUserId: v.string(),
+  generation: v.number(),
+  status: submissionStatusValidator,
+  note: v.optional(v.string()),
+  at: v.number(),
 };
 
 /** The papers one request sent, to record for Your submissions: published at once, or waiting for review. */

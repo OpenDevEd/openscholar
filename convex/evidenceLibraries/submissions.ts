@@ -1,17 +1,17 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
+import { SUBMISSIONS_COUNTED } from "../../lib/evidence-libraries/added-papers";
 import type { Doc, Id } from "../_generated/dataModel";
-import { query, type QueryCtx } from "../_generated/server";
+import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
-import { libraryOwner, ownerName } from "./access";
+import { libraryOwner, ownerName, readActiveOrganizationMembership } from "./access";
 import { sentPapersValidator, submissionStatusValidator } from "./validators";
 
 /** Submissions a page of Your submissions shows at most. */
 const SUBMISSIONS_PAGE_MAX = 50;
-/** The most of one status the status filter counts; past it, it says so. */
-export const SUBMISSIONS_COUNTED = 500;
 /** Everyone who sent the same paper to a community, whose rows a change from it updates. */
 const SENDERS_PER_PAPER = 100;
 
@@ -19,22 +19,43 @@ const SENDERS_PER_PAPER = 100;
 const byPaper = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, libraryId: Id<"evidenceLibraries">, itemKey: string) =>
   ctx.db.query("paperSubmissions").withIndex("by_user_and_library_and_itemKey", (q) => q.eq("userId", userId).eq("libraryId", libraryId).eq("itemKey", itemKey)).unique();
 
-/** Records the papers someone just sent to a community, published or waiting for review. One sent again is sent anew. */
+/**
+ * Records the papers someone just sent to a community, published or waiting for review. One sent again by a new request
+ * is sent anew; the same request replayed changes nothing, so what the community said since stands. A word from the
+ * community that came before this, held until now, applies.
+ */
 export const recordSent = internalMutation({
-  args: { userId: v.id("users"), libraryId: v.id("evidenceLibraries"), papers: sentPapersValidator },
+  args: { userId: v.id("users"), libraryId: v.id("evidenceLibraries"), requestId: v.string(), papers: sentPapersValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, libraryId, papers }) => {
+  handler: async (ctx, { userId, libraryId, requestId, papers }) => {
     const now = Date.now();
     const community = (await communityOf(ctx, libraryId)).name;
+    const person = await ctx.db.get("users", userId);
     for (const paper of papers) {
       const existing = await byPaper(ctx, userId, libraryId, paper.itemKey);
-      const row = { ...paper, searchText: `${paper.title} ${community}`.slice(0, 2000), note: undefined, sentAt: now, updatedAt: now };
-      if (existing) await ctx.db.patch("paperSubmissions", existing._id, row);
-      else await ctx.db.insert("paperSubmissions", { ...row, userId, libraryId });
+      if (existing?.requestId === requestId) continue;
+      const row = { ...paper, requestId, searchText: searchTextOf(paper.title, community), note: undefined, sentAt: now, updatedAt: now };
+      const id = existing ? (await ctx.db.patch("paperSubmissions", existing._id, row), existing._id) : await ctx.db.insert("paperSubmissions", { ...row, userId, libraryId });
+      if (person) await applyHeld(ctx, id, libraryId, paper.itemKey, person.clerkId);
     }
     return null;
   },
 });
+
+const searchTextOf = (title: string, community: string) => `${title} ${community}`.slice(0, 2000);
+
+/** Applies a word from the community held for this paper, when it's about this sender or says it's published. */
+async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId: Id<"evidenceLibraries">, itemKey: string, clerkUserId: string) {
+  const held = await ctx.db.query("pendingSubmissionStatus").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
+  for (const event of held) {
+    if (event.status !== "published" && event.clerkUserId !== clerkUserId) continue;
+    await ctx.db.delete("pendingSubmissionStatus", event._id);
+    const row = await ctx.db.get("paperSubmissions", id);
+    if (!row || (row.generation ?? 0) >= event.generation) continue;
+    if (event.status === "withdrawn") await ctx.db.delete("paperSubmissions", id);
+    else await ctx.db.patch("paperSubmissions", id, { status: event.status, note: event.note, generation: event.generation, updatedAt: event.at });
+  }
+}
 
 /** Forgets a paper the person withdrew from a community's review queue: it's no longer one of their submissions. */
 export const forgetSent = internalMutation({
@@ -73,6 +94,11 @@ export const applyStatus = internalMutation({
     const rows = sender
       ? [await byPaper(ctx, sender._id, libraryId, itemKey)].filter((row) => row !== null)
       : await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
+    // Before Openscholar recorded the paper as sent, as when the community answers first: it's held until it is.
+    if (!rows.length) {
+      await ctx.db.insert("pendingSubmissionStatus", { libraryId, itemKey, clerkUserId, generation, status, note: note ?? undefined, at });
+      return null;
+    }
     for (const row of rows) {
       if ((row.generation ?? 0) >= generation) continue;
       // Taken back by the person who sent it, it's no longer one of their submissions.
@@ -94,6 +120,8 @@ const submissionValidator = v.object({
   status: submissionStatusValidator,
   note: v.union(v.string(), v.null()),
   sentAt: v.number(),
+  /** A workspace the person acts for the community from, as Withdraw does: its own, if they're in it, or theirs. */
+  workspaceId: v.union(v.id("workspaces"), v.null()),
   community: v.object({
     libraryId: v.id("evidenceLibraries"),
     name: v.string(),
@@ -132,7 +160,20 @@ async function ownerOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     : { name: person, kind: "person" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id };
 }
 
-const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">) => ({
+/**
+ * Where the person acts for a community: the workspace it's in, when it's their own or their organization's;
+ * otherwise their own, where a community shared with them, or a public one, is reached.
+ */
+async function actingWorkspaceOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, person: Doc<"users">) {
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  const workspace = library ? await ctx.db.get("workspaces", library.workspaceId) : null;
+  const inIt = workspace?.kind === "personal" ? workspace.userId === person._id : workspace ? (await readActiveOrganizationMembership(ctx, workspace.organizationId, person.clerkId)) !== null : false;
+  if (workspace && inIt) return workspace._id;
+  const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", person._id)).unique();
+  return own?._id ?? null;
+}
+
+const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">, person: Doc<"users">) => ({
   submissionId: row._id,
   itemKey: row.itemKey,
   title: row.title,
@@ -143,6 +184,7 @@ const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">) => ({
   status: row.status,
   note: row.note ?? null,
   sentAt: row.sentAt,
+  workspaceId: await actingWorkspaceOf(ctx, row.libraryId, person),
   community: await communityOf(ctx, row.libraryId),
 });
 
@@ -173,19 +215,37 @@ export const mine = query({
         )
           .order("desc")
           .paginate(read);
-    return { ...page, page: await Promise.all(page.page.map((row) => rowOf(ctx, row))) };
+    return { ...page, page: await Promise.all(page.page.map((row) => rowOf(ctx, row, person))) };
   },
 });
 
 /** How many papers the signed-in person has of each status, up to SUBMISSIONS_COUNTED each, for the status filter. */
 export const counts = query({
   args: {},
-  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), all: v.number() }),
+  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), all: v.number(), capped: v.boolean() }),
   handler: async (ctx) => {
     const person = await senderOf(ctx);
     const count = async (status: "queued" | "published" | "returned") =>
       person ? (await ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status)).take(SUBMISSIONS_COUNTED + 1)).length : 0;
-    const [queued, published, returned] = await Promise.all([count("queued"), count("published"), count("returned")]);
-    return { queued, published, returned, all: queued + published + returned };
+    const read = await Promise.all([count("queued"), count("published"), count("returned")]);
+    // Past the cap, a count is at least it: `capped` says so, and the filter shows it with a plus.
+    const [queued, published, returned] = read.map((n) => Math.min(n, SUBMISSIONS_COUNTED));
+    return { queued: queued!, published: published!, returned: returned!, all: queued! + published! + returned!, capped: read.some((n) => n > SUBMISSIONS_COUNTED) };
+  },
+});
+
+/** Submissions a community's rename refreshes per run; it schedules itself for the rest. */
+const RENAME_STEP = 200;
+
+/** Puts a community's new name in the search text of every submission to it, a step at a time. */
+export const refreshCommunityName = internalMutation({
+  args: { libraryId: v.id("evidenceLibraries"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { libraryId, cursor }) => {
+    const community = (await communityOf(ctx, libraryId)).name;
+    const page = await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId)).paginate({ cursor, numItems: RENAME_STEP });
+    for (const row of page.page) await ctx.db.patch("paperSubmissions", row._id, { searchText: searchTextOf(row.title, community) });
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.submissions.refreshCommunityName, { libraryId, cursor: page.continueCursor });
+    return null;
   },
 });

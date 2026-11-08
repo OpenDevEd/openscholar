@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { paperHref, recordHref } from "@/lib/evidence-libraries/added-papers";
+import { paperHref, recordHref, SUBMISSIONS_COUNTED } from "@/lib/evidence-libraries/added-papers";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspaces/url";
@@ -65,7 +65,13 @@ export function YourSubmissions({ search, heading, submissions }: { search: stri
               <SelectItem key={id} value={id}>
                 <span className="flex w-full items-center justify-between gap-3">
                   {label[id]}
-                  {counts ? <span className="fade-enter tabular-nums text-muted-foreground">{format.number(counts[id])}</span> : null}
+                  {counts ? (
+                    <span className="fade-enter tabular-nums text-muted-foreground">
+                      {/* Past the count's cap, it's at least that many. */}
+                      {format.number(counts[id])}
+                      {counts.capped && (id === "all" || counts[id] >= SUBMISSIONS_COUNTED) ? "+" : ""}
+                    </span>
+                  ) : null}
                 </span>
               </SelectItem>
             ))}
@@ -110,7 +116,9 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
   const t = useTranslations("addedPapers");
   const { community, status } = submission;
   const remove = useAction(api.evidenceLibraries.assistant.removeAddedPaper);
-  const workspaceId = useWorkspace();
+  // Withdrawn from a workspace that reaches the community, whichever one the page is in.
+  const here = useWorkspace();
+  const workspaceId = submission.workspaceId ?? here;
   const [withdrawing, setWithdrawing] = useState(false);
   const withdraw = async () => {
     if (!workspaceId) return;
