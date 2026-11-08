@@ -12,11 +12,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { StatusChip } from "../configuration/status-chip";
-import { communityPapers, distinctPapers, lookUp, parsePaste, useAddedPapers, type FoundPaper } from "@/lib/evidence-libraries/added-papers-mock";
+import { communityPapers, distinctPapers, lookUp, paperHref, parsePaste, useAddedPapers, type FoundPaper } from "@/lib/evidence-libraries/added-papers-mock";
 import { PublishChoice } from "./publish-choice";
 
 /** A paper on one line and its authors under it, with where it was found as its icon. Every list of added papers uses it. */
-export function PaperLine({ paper, trailing, muted }: { paper: Pick<FoundPaper, "title" | "authors" | "year" | "foundBy">; trailing?: ReactNode; muted?: boolean }) {
+/** A link that reads as one: underlined on hover and when focused. */
+export const LINK = "underline-offset-2 decoration-foreground/40 outline-none hover:underline focus-visible:underline";
+
+export function PaperLine({ paper, trailing, muted, newTab }: {
+  paper: Pick<FoundPaper, "title" | "authors" | "year" | "foundBy" | "openalexId" | "doi">;
+  trailing?: ReactNode;
+  muted?: boolean;
+  /** Opens the paper's page in a new tab, as from a dialog, which the page would otherwise replace. */
+  newTab?: boolean;
+}) {
   return (
     <div className={cn("flex h-14 items-center gap-3 px-3", muted && "opacity-60")}>
       <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted" aria-hidden>
@@ -24,7 +33,9 @@ export function PaperLine({ paper, trailing, muted }: { paper: Pick<FoundPaper, 
       </span>
       <div className="min-w-0 flex-1">
         <TooltipHint label={paper.title} onlyWhenClipped>
-          <p className="truncate text-sm font-medium">{paper.title}</p>
+          <a href={paperHref(paper)} {...(newTab || !paper.openalexId ? { target: "_blank", rel: "noopener noreferrer" } : {})} className={cn("block truncate text-sm font-medium", LINK)}>
+            {paper.title}
+          </a>
         </TooltipHint>
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="min-w-0 truncate">{paper.authors || "No authors listed"}</span>
@@ -161,6 +172,7 @@ export function AddPapersDialog({
                     </div>
                   ) : (
                     <PaperLine
+                      newTab
                       paper={row.paper}
                       muted={isAdded(row.paper)}
                       trailing={

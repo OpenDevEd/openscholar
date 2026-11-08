@@ -12,7 +12,7 @@ import { openalexWork, normalDoi } from "@/lib/papers/paper-ref";
 export type FoundBy = "openalex" | "doi";
 /** `synced`: on the community and kept up to date from OpenAlex. `retrying`: on the community from its DOI, and looked
  * for on OpenAlex at each sync until it's there. `queued`: waiting in the community's review queue. */
-export type AddedState = "synced" | "retrying" | "queued";
+export type AddedState = "synced" | "retrying" | "queued" | "returned";
 
 export type FoundPaper = {
   key: string;
@@ -24,7 +24,13 @@ export type FoundPaper = {
   foundBy: FoundBy;
 };
 
-export type AddedPaper = FoundPaper & { state: AddedState; addedAt: number; by: string };
+export type AddedPaper = FoundPaper & { state: AddedState; addedAt: number; by: string; /** Why a reviewer returned it. */ note?: string };
+
+/** A community as the submissions list shows it, kept when a paper is sent to it. */
+export type CommunityRef = { id: string; name: string; faviconUrl?: string | null; address: string; owner: { name: string; imageUrl: string | null; kind: "person" | "organization"; workspaceId?: string } };
+
+/** One paper you sent to a community, and where it got to. */
+export type Submission = { paper: AddedPaper; community: CommunityRef };
 
 const DAY = 86_400_000;
 const seedAt = Date.parse("2026-11-08T09:00:00Z");
@@ -47,21 +53,38 @@ const NEWEST_FIRST = [...SEED].sort((a, b) => b.addedAt - a.addedAt);
 type Store = {
   /** Each community's added papers, newest first. A community not in here has the seed. */
   byCommunity: Record<string, AddedPaper[]>;
-  add: (communityId: string, papers: FoundPaper[], publish: boolean) => void;
+  /** The communities papers were sent to from Discover, for the submissions list and Recent. */
+  communities: Record<string, CommunityRef>;
+  add: (communityId: string, papers: FoundPaper[], publish: boolean, community?: CommunityRef) => void;
   remove: (communityId: string, key: string) => void;
+  /** Submissions you took back, as `communityId:paperKey`: the samples aren't in `byCommunity` to remove. */
+  withdrawn: string[];
+  withdraw: (communityId: string, key: string) => void;
 };
 
 export const useAddedPapers = create<Store>()(
   persist(
     (set) => ({
       byCommunity: {},
-      add: (communityId, papers, publish) =>
+      communities: {},
+      withdrawn: [],
+      withdraw: (communityId, key) =>
+        set((state) => ({
+          withdrawn: [...state.withdrawn, `${communityId}:${key}`],
+          byCommunity: state.byCommunity[communityId]
+            ? { ...state.byCommunity, [communityId]: state.byCommunity[communityId].filter((row) => row.key !== key) }
+            : state.byCommunity,
+        })),
+      add: (communityId, papers, publish, community) =>
         set((state) => {
           const current = state.byCommunity[communityId] ?? NEWEST_FIRST;
           const fresh = distinctPapers(papers)
             .filter((paper) => !current.some((row) => row.key === paper.key || (paper.doi !== null && row.doi === paper.doi)))
             .map((paper): AddedPaper => ({ ...paper, addedAt: Date.now(), by: "You", state: !publish ? "queued" : paper.foundBy === "doi" ? "retrying" : "synced" }));
-          return { byCommunity: { ...state.byCommunity, [communityId]: [...fresh, ...current] } };
+          return {
+            byCommunity: { ...state.byCommunity, [communityId]: [...fresh, ...current] },
+            communities: community ? { ...state.communities, [communityId]: community } : state.communities,
+          };
         }),
       remove: (communityId, key) =>
         set((state) => ({
@@ -132,3 +155,42 @@ export async function lookUp(ref: { key: string; doi: string | null; openalexId:
     foundBy: "doi",
   };
 }
+
+/** Sample papers sent by you to other people's public communities, so the list shows every state before you send any. */
+const SAMPLE_SUBMISSIONS: { at: number; card: number; paper: AddedPaper }[] = [
+  { card: 0, at: 1, paper: { key: "W2146928503", openalexId: "W2146928503", doi: "10.38140/aa.v41i2.1212", title: "Effective implementation of continuing professional development for South African teachers", authors: "Trudie Steyn", year: 2009, foundBy: "openalex", state: "queued", addedAt: seedAt - DAY, by: "You" } },
+  { card: 1, at: 3, paper: { key: "W4389554609", openalexId: "W4389554609", doi: "10.20525/ijrbs.v12i8.2898", title: "Teacher professional development activities in Africa", authors: "Oluwatoyin Ayodele Ajani", year: 2023, foundBy: "openalex", state: "synced", addedAt: seedAt - 3 * DAY, by: "You" } },
+  { card: 2, at: 5, paper: { key: "W2737893103", openalexId: "W2737893103", doi: "10.17159/sajs.2017/20160364", title: "Teacher participation in science fairs as professional development in South Africa", authors: "Clement Kapase Mbowane, J.J.R. De Villiers, Max W. H. Braun", year: 2017, foundBy: "openalex", state: "returned", note: "Outside this community's focus", addedAt: seedAt - 5 * DAY, by: "You" } },
+  { card: 0, at: 9, paper: { key: "W2079517805", openalexId: "W2079517805", doi: "10.1080/09585176.2012.747725", title: "Rethinking teacher preparation and professional development in Africa: an analysis of the curriculum of teacher education in the teaching of early reading and mathematics", authors: "John Pryor, Kwame Akyeampong, Jo Westbrook", year: 2012, foundBy: "openalex", state: "synced", addedAt: seedAt - 9 * DAY, by: "You" } },
+];
+
+/**
+ * Every paper you sent, newest first: the ones sent in this tab, then the samples, which go to the first public
+ * communities `samples` names, so their links open real communities.
+ */
+export function mySubmissions(store: Pick<Store, "byCommunity" | "communities" | "withdrawn">, samples: CommunityRef[]): Submission[] {
+  const sent = Object.entries(store.communities).flatMap(([id, community]) =>
+    communityPapers(store.byCommunity, id).filter((paper) => paper.by === "You" && paper.addedAt > seedAt).map((paper) => ({ paper, community })),
+  );
+  const sampled = SAMPLE_SUBMISSIONS.flatMap(({ card, paper }) => (samples[card] ? [{ paper, community: samples[card] }] : []));
+  return [...sent, ...sampled]
+    .filter(({ paper, community }) => !store.withdrawn.includes(`${community.id}:${paper.key}`))
+    .sort((a, b) => b.paper.addedAt - a.paper.addedAt);
+}
+
+/** The community's own address, from one written with or without its scheme. */
+export const communityUrl = (address: string) => (/^https?:\/\//.test(address) ? address : `https://${address}`);
+
+/**
+ * The paper's own page in Openscholar. The paper-pages work (mock/paper-pages) serves `/papers/<id>` and sends an
+ * OpenAlex ID on to the canonical address. A paper OpenAlex doesn't have yet opens at its DOI.
+ */
+export const paperHref = (paper: Pick<FoundPaper, "openalexId" | "doi">) =>
+  paper.openalexId ? `/papers/${paper.openalexId}` : `https://doi.org/${paper.doi}`;
+
+/**
+ * The record on the community's site. MOCK: the community searched for the paper's DOI; once new-el approves a paper
+ * it returns the record's key, and this becomes `/lib/<key>`.
+ */
+export const recordHref = (address: string, paper: Pick<FoundPaper, "doi" | "title">) =>
+  `${communityUrl(address)}/lib?search=${encodeURIComponent(paper.doi ?? paper.title)}`;

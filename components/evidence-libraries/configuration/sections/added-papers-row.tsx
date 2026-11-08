@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AddedPapersIcon, Plus, ReviewQueueIcon, Trash2 } from "@/components/icons";
+import { AddedPapersIcon, ExternalLink, Plus, ReviewQueueIcon, Trash2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Collapsible } from "@/components/ui/collapsible";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { AdminAreaLink } from "@/components/evidence-libraries/admin-area-link";
 import { AddPapersDialog, PaperLine } from "@/components/evidence-libraries/added-papers/add-papers-dialog";
-import { communityPapers, useAddedPapers, type AddedPaper } from "@/lib/evidence-libraries/added-papers-mock";
+import { communityPapers, recordHref, useAddedPapers, type AddedPaper } from "@/lib/evidence-libraries/added-papers-mock";
 import { DisclosureButton, DisclosureContent } from "../disclosure-button";
 import { StatusChip } from "../status-chip";
 import { SourceRow, SourceSwitch } from "./source-row";
@@ -75,7 +75,7 @@ export function AddedPapersRow({ libraryId, name, address, adding, onAddingChang
                 <ul className="min-h-[calc(5*3.5rem+4*1px)] divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background">
                   {papers.slice((shown - 1) * PER_PAGE, shown * PER_PAGE).map((paper) => (
                     <li key={paper.key}>
-                      <PaperLine paper={paper} trailing={<AddedTrailing paper={paper} libraryId={libraryId} />} />
+                      <PaperLine paper={paper} trailing={<AddedTrailing paper={paper} libraryId={libraryId} community={address ? { name, address } : null} />} />
                     </li>
                   ))}
                 </ul>
@@ -113,7 +113,7 @@ export function AddedPapersRow({ libraryId, name, address, adding, onAddingChang
 }
 
 /** A paper's state, when it has one to tell, and taking it off the community. */
-function AddedTrailing({ paper, libraryId }: { paper: AddedPaper; libraryId: string }) {
+function AddedTrailing({ paper, libraryId, community }: { paper: AddedPaper; libraryId: string; community: { name: string; address: string } | null }) {
   const remove = useAddedPapers((state) => state.remove);
   return (
     <div className="flex shrink-0 items-center gap-1">
@@ -121,6 +121,15 @@ function AddedTrailing({ paper, libraryId }: { paper: AddedPaper; libraryId: str
         <StatusChip tone="running" icon={ReviewQueueIcon}>{paper.by === "You" ? "In review queue" : `From ${paper.by}`}</StatusChip>
       ) : paper.state === "retrying" ? (
         <StatusChip tone="warning">DOI only</StatusChip>
+      ) : null}
+      {community && paper.state !== "queued" ? (
+        <TooltipHint label={`Open in ${community.name}`}>
+          <Button asChild variant="ghost" size="icon-sm" className="text-muted-foreground">
+            <a href={recordHref(community.address, paper)} target="_blank" rel="noopener noreferrer" aria-label={`Open ${paper.title} in ${community.name}`}>
+              <ExternalLink />
+            </a>
+          </Button>
+        </TooltipHint>
       ) : null}
       {paper.state === "queued" && paper.by !== "You" ? null : (
       <TooltipHint label={paper.state === "queued" ? "Withdraw" : "Remove"}>
