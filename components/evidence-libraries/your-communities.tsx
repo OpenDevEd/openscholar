@@ -115,7 +115,9 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
   const needle = search.toLowerCase();
   // The server's first page, until the live one arrives: the rows are there from the first frame, so the card doesn't grow when they come.
   const fromServer = preloaded && preloaded.filter === filter && !search;
-  const firstList = fromServer && (waiting || read.isLoading) ? preloadedQueryResult(preloaded.list) : undefined;
+  // Only a whole list stands in: the sidebar's page joins several reads, and the server's is one.
+  const served = fromServer ? preloadedQueryResult(preloaded.list) : undefined;
+  const firstList = served?.isDone && (waiting || read.isLoading) ? served : undefined;
   const invitationRows = invitations.data ?? (fromServer && preloaded.invitations ? preloadedQueryResult(preloaded.invitations) : undefined);
   const items = firstList?.page ?? read.items;
   const invited = read.page === 1 ? (invitationRows?.page ?? []).filter((row) => `${row.name} ${row.organization.name}`.toLowerCase().includes(needle)).map(fromInvitation) : [];

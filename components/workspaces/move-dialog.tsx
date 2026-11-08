@@ -81,6 +81,7 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
   const { data: held } = useProtectedQuery(api.workspaces.move.held, inWorkspace(workspaceId, { kind, id }));
   // The workspaces that won't take it, which the picker shows as such before one is picked: only a community or an author profile is turned away.
   const refusals = useProtectedQuery(api.workspaces.move.refusals, kind === "community" || kind === "author" ? inWorkspace(workspaceId, { kind, id }) : "skip").data?.page;
+  const checking = (kind === "community" || kind === "author") && refusals === undefined;
   const refusalOf = (workspace: { workspaceId: string }) => {
     const refusal = refusals?.find((row) => row.workspaceId === workspace.workspaceId)?.refusal;
     return refusal ? t(`refused.${refusal}`) : undefined;
@@ -160,7 +161,8 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
           {tc("cancel")}
         </Button>
         {/* Until it's known whether it can move, it can't. */}
-        <Button disabled={!target || held !== null || busy} onClick={() => void go()}>
+        {/* Until it's known which workspaces turn it away, nothing is moved; a picked one turned away isn't either. */}
+        <Button disabled={!target || held !== null || busy || checking || (target && refusalOf(target) !== undefined)} onClick={() => void go()}>
           {target ? t("moveTo", { workspace: target.name }) : t("move")}
           <ArrowRight />
         </Button>

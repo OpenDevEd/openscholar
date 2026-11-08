@@ -23,7 +23,7 @@ import { countOf, workspaceLibrariesOf } from "../lib/listCounts";
 import { createsIn } from "../organizationFeatures";
 import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersonalRating, writeRating } from "../ratings";
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
-import { MAKERS, profileMaker } from "../authors/access";
+import { MAKERS, editedWorkspaces, profileMaker } from "../authors/access";
 import { give } from "../sharing/access";
 import { actorIn } from "./actor";
 import { workspaceName, workspacesOf } from "./personal";
@@ -167,7 +167,7 @@ const REFUSED: Record<Refusal, string> = {
   profilesOff: "Author profiles come with Evidence Communities, which aren't on for that workspace.",
   noProfiles: MAKERS,
 };
-async function refusalAt(ctx: QueryCtx, person: Doc<"users">, kind: Movable, to: Id<"workspaces">): Promise<Refusal | null> {
+async function refusalAt(ctx: QueryCtx, person: Doc<"users">, kind: Movable, to: Id<"workspaces">, edited?: Set<Id<"workspaces">>): Promise<Refusal | null> {
   if (kind === "community") {
     const target = await ctx.db.get("workspaces", to);
     if (!target || !(await createsIn(ctx, person, target))) return "noCommunities";
@@ -175,7 +175,9 @@ async function refusalAt(ctx: QueryCtx, person: Doc<"users">, kind: Movable, to:
   }
   if (kind === "author") {
     if (!(await opensLibraries(ctx, to))) return "profilesOff";
-    if (!(await profileMaker(ctx, person, to))) return "noProfiles";
+    // `edited`, read once for every workspace of theirs, stands for profileMaker's reading of their grants.
+    const runs = (await actorIn(ctx, person, to))?.role === "admin";
+    if (!runs && !(edited ? edited.has(to) : await profileMaker(ctx, person, to))) return "noProfiles";
   }
   return null;
 }
@@ -369,7 +371,8 @@ export const refusalsAction = defineUserQuery({
   run: async (ctx, actor, { kind }) => {
     const person = await ctx.db.get("users", actor.userId);
     const others = person && (kind === "community" || kind === "author") ? (await workspacesOf(ctx, person._id)).filter((workspace) => workspace._id !== actor.workspaceId) : [];
-    const page = await Promise.all(others.map(async (workspace) => ({ workspaceId: workspace._id, refusal: await refusalAt(ctx, person!, kind, workspace._id) })));
+    const edited = person && kind === "author" ? await editedWorkspaces(ctx, person) : undefined;
+    const page = await Promise.all(others.map(async (workspace) => ({ workspaceId: workspace._id, refusal: await refusalAt(ctx, person!, kind, workspace._id, edited) })));
     return { page: page.flatMap((row) => (row.refusal ? [{ workspaceId: row.workspaceId, refusal: row.refusal }] : [])), isDone: true, continueCursor: "" };
   },
 });

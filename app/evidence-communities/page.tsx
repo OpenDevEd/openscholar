@@ -11,8 +11,9 @@ export default async function EvidenceLibrariesPage({ params, searchParams }: { 
   const workspaceId = token ? (slug ? await fetchQuery(api.workspaces.queries.bySlug, { slug }, { token }) : await fetchQuery(api.workspaces.queries.personal, {}, { token })) : null;
   const organization = slug && workspaceId ? (await fetchQuery(api.organizations.queries.workspace, { workspaceId }, { token })).organizationId : undefined;
   // The sidebar's filter as its address names it; one naming a workspace is read in the browser.
-  const filter = !from || from === "all" ? ("all" as const) : from === "own" ? ("own" as const) : from === "shared" ? ("shared" as const) : null;
-  const sidebarArgs = { ...(organization ? { organization } : {}), ...(filter && filter !== "all" ? { from: filter } : {}), paginationOpts: { numItems: SIDEBAR_PER_PAGE, cursor: null } };
+  const filter = !from || from === "all" ? ("all" as const) : from === "here" ? ("here" as const) : from === "own" ? ("own" as const) : from === "shared" ? ("shared" as const) : null;
+  // "All" and an organization's own ("here") read the same list as the sidebar does.
+  const sidebarArgs = { ...(organization ? { organization } : {}), ...(filter === "own" || filter === "shared" ? { from: filter } : {}), paginationOpts: { numItems: SIDEBAR_PER_PAGE, cursor: null } };
   // The directory's and the sidebar's first pages too, so their rows are there from the first frame instead of arriving after it.
   const [opens, firstPublic, firstSidebar, invitations] = workspaceId
     ? await Promise.all([
