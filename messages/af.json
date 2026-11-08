@@ -14,7 +14,8 @@
     "noStyles": "Geen ooreenstemmende style nie.",
     "commonStyles": "Algemene style",
     "otherStyles": "Ander style",
-    "copiedIn": "{style}-verwysing gekopieer"
+    "copiedIn": "{style}-verwysing gekopieer",
+    "download": "Laai af"
   },
   "common": {
     "search": "Soek",

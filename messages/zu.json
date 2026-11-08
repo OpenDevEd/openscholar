@@ -14,7 +14,8 @@
     "noStyles": "Akukho zitayela ezihambisanayo.",
     "commonStyles": "Izitayela ezivamile",
     "otherStyles": "Ezinye izitayela",
-    "copiedIn": "Ingcaphuno ye-{style} ikopishiwe"
+    "copiedIn": "Ingcaphuno ye-{style} ikopishiwe",
+    "download": "Landa"
   },
   "common": {
     "search": "Sesha",

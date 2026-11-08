@@ -14,7 +14,8 @@
     "noStyles": "कोई मिलती-जुलती शैली नहीं मिली।",
     "commonStyles": "प्रचलित शैलियाँ",
     "otherStyles": "अन्य शैलियाँ",
-    "copiedIn": "{style} उद्धरण कॉपी हुआ"
+    "copiedIn": "{style} उद्धरण कॉपी हुआ",
+    "download": "डाउनलोड करें"
   },
   "common": {
     "search": "खोजें",

@@ -18,6 +18,8 @@ export function AutoHeight({ className, children }: { className?: string; childr
   useLayoutEffect(() => {
     const element = inner.current;
     if (!element) return;
+    // Measured before the first paint, so content that changes before the observer first reports slides too.
+    setHeight(element.offsetHeight);
     const observer = new ResizeObserver(() => setHeight(element.offsetHeight));
     observer.observe(element);
     return () => observer.disconnect();

@@ -14,7 +14,8 @@
     "noStyles": "Nenhum estilo corresponde.",
     "commonStyles": "Estilos comuns",
     "otherStyles": "Outros estilos",
-    "copiedIn": "Citação em {style} copiada"
+    "copiedIn": "Citação em {style} copiada",
+    "download": "Transferir"
   },
   "common": {
     "search": "Pesquisar",

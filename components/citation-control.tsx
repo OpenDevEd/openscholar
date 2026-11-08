@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR, { preload } from "swr";
-import { Check, Copy, Quote } from "@/components/icons";
+import { Check, Copy, Download, Quote } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -14,6 +14,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { CitationStylePicker } from "@/components/citation-style-picker";
 import { CitationText } from "@/components/citation-text";
 import { Spinner } from "@/components/ui/spinner";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { enrichPaperCitationMetadata } from "@/app/actions/citations";
 import {
   loadPaperCitations,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/citations/client";
 import { paperToCitationData } from "@/lib/citations/paper-data";
 import { type CitationData } from "@/lib/citations/formats";
+import type { CitationFile } from "@/lib/citations/formatter";
 import { useCitationStyle } from "@/lib/citations/use-citation-style";
 import { useAppToast } from "@/lib/toast/use-app-toast";
 import { toast as sonner } from "sonner";
@@ -115,6 +117,8 @@ function CitationPanel({ data }: { data: CitationData }) {
           {copied === text && text ? t("copied") : t("copy")}
         </Button>
       </div>
+      {/* The citation arrives after the panel opens: its height animates, so the download row below glides instead of jumping. */}
+      <AutoHeight>
       {loading && !failed && !displayed ? (
         <div className="flex justify-center py-5">
           <Spinner className="size-5" aria-label={t("loading")} />
@@ -137,11 +141,45 @@ function CitationPanel({ data }: { data: CitationData }) {
         <div
           aria-live="polite"
           aria-busy={loading}
-          className="max-h-72 overflow-y-auto text-sm text-foreground/80"
+          className="max-h-72 overflow-y-auto text-sm text-foreground/80 animate-in fade-in duration-200"
         >
           {displayed && <CitationText citation={displayed} />}
         </div>
       )}
+      </AutoHeight>
+      <CitationFiles data={enriched ?? data} />
+    </div>
+  );
+}
+
+/** The paper as a file for a reference manager, made here from the same record the citation is. */
+function CitationFiles({ data }: { data: CitationData }) {
+  const t = useTranslations("citation");
+  const toast = useAppToast();
+  const save = async (kind: CitationFile) => {
+    try {
+      const { citationFile } = await import("@/lib/citations/formatter");
+      const file = citationFile(data, kind);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([file.text], { type: file.type }));
+      link.download = file.name;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      toast.clipboard.copyFailed(t("citation"));
+    }
+  };
+  return (
+    <div className="-mx-1 flex items-center gap-1 border-t pt-2">
+      <span className="me-auto ps-1 text-xs text-muted-foreground">{t("download")}</span>
+      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => void save("ris")}>
+        <Download className="size-3.5" />
+        RIS
+      </Button>
+      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => void save("bibtex")}>
+        <Download className="size-3.5" />
+        BibTeX
+      </Button>
     </div>
   );
 }
