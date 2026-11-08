@@ -184,9 +184,9 @@ function NewAppDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
       }}
     >
       <DialogContent className={created ? "sm:max-w-2xl" : "sm:max-w-lg"}>
-        {/* min-w-0: the dialog is a grid, and a grid item is as wide as its truncated title's whole text without it. */}
+        {/* The dialog is a grid, and a grid item is as wide as an unbroken name without min-w-0: the name wraps instead. */}
         <DialogHeader className="min-w-0">
-          <DialogTitle className="truncate leading-snug">{created ? created.app.name : t("newApp")}</DialogTitle>
+          <DialogTitle className="wrap-anywhere">{created ? created.app.name : t("newApp")}</DialogTitle>
         </DialogHeader>
         <AutoHeight className="min-w-0">
           {created ? (
