@@ -303,6 +303,7 @@ const faq = [
       form.style.setProperty("--fh", `${form.offsetHeight}px`);
       form.classList.add("done"); sent.hidden = false;
       form.querySelector<HTMLElement>("[data-sent-h]")!.focus({ preventScroll: true });
+      document.dispatchEvent(new CustomEvent("contact-sent", { detail: topicId }));
     });
     form.querySelector("[data-again]")!.addEventListener("click", () => {
       form.reset(); unpick(); orgList.replaceChildren(); say(null); form.classList.remove("done"); sent.hidden = true;

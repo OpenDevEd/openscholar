@@ -1,0 +1,53 @@
+---
+import { APP, COMMUNITIES, GA_ID, POSTHOG_KEY } from "../data/site.mjs";
+import { CONSENT_COOKIE } from "../../../lib/consent-cookie";
+const communities = JSON.stringify(Object.fromEntries(COMMUNITIES.map((c) => [c.host, c.key])));
+---
+{/* One answer for openscholar.ai and the app, in a cookie both read (lib/consent-cookie.ts). Asked before the first paint, so the banner never pops in late. */}
+<script is:inline define:vars={{ name: CONSENT_COOKIE }}>
+  if (!document.cookie.split("; ").some((c) => c.startsWith(name + "="))) document.documentElement.classList.add("ask");
+</script>
+{/* scripts/analytics.ts answers the buttons and reads its settings from here. */}
+<section class="consent" aria-labelledby="consent-title" data-consent data-app={APP} data-posthog-key={POSTHOG_KEY} data-ga-id={GA_ID} data-communities={communities}>
+  <img class="cookie" src="/img/cookie-glass.avif" width="84" height="84" alt="" decoding="async" />
+  <h2 id="consent-title">We value your privacy</h2>
+  <p>We and our analytics providers, PostHog and Google, use cookies to understand how Openscholar is used and improve it. If you reject, we only count visits, without cookies. <a href={`${APP}/cookie-policy`}>Cookie policy</a></p>
+  <div class="c-acts">
+    <button type="button" data-choice="denied">Reject non-essential</button>
+    <button type="button" data-choice="granted">Accept all</button>
+  </div>
+</section>
+<script>
+  {
+    // Light from the pointer catches the panel's edge, as on the header.
+    const panel = document.querySelector<HTMLElement>("[data-consent]")!;
+    panel.addEventListener("pointermove", (e) => {
+      const r = panel.getBoundingClientRect();
+      panel.style.setProperty("--mx", `${e.clientX - r.left}px`);
+      panel.style.setProperty("--my", `${e.clientY - r.top}px`);
+    });
+  }
+</script>
+<style>
+  /* The header's dark glass, warmed by the cookie's light, at the foot of the screen. */
+  .consent { position: fixed; z-index: 60; right: var(--gap); bottom: max(16px, env(safe-area-inset-bottom)); width: min(372px, calc(100% - 2 * var(--gap))); padding: 16px 16px 14px; border-radius: 20px; color: #fff;
+    background: radial-gradient(260px 160px at 50px 0, rgb(255 157 54 / .26), transparent 70%), radial-gradient(260px 140px at 100% 100%, rgb(224 101 10 / .12), transparent 70%), linear-gradient(#171c2b, #0b0f1a);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 40px 80px -30px rgb(4 7 16 / .9), 0 0 0 1px rgb(4 7 16 / .4);
+    opacity: 0; visibility: hidden; translate: 0 32px; transition: opacity .3s var(--ease), translate .45s var(--ease), visibility 0s .45s; }
+  :global(.ask) .consent { opacity: 1; visibility: visible; translate: 0 0; transition: opacity .4s var(--ease) .5s, translate .7s var(--ease) .5s, visibility 0s; }
+  .consent::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 0), rgb(255 222 186 / .9), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; }
+  .consent:hover::before { opacity: 1; }
+  /* The cookie sits on the panel's edge and settles in just after it. */
+  .cookie { position: absolute; left: 8px; top: -38px; width: 84px; height: 84px; filter: drop-shadow(0 16px 22px rgb(224 101 10 / .35)); rotate: -30deg; scale: .6; opacity: 0; transition: rotate .3s var(--ease), scale .3s var(--ease), opacity .2s var(--ease); pointer-events: none; }
+  :global(.ask) .cookie { rotate: -8deg; scale: 1; opacity: 1; transition: rotate .9s cubic-bezier(.34, 1.56, .64, 1) .75s, scale .9s cubic-bezier(.34, 1.56, .64, 1) .75s, opacity .3s var(--ease) .75s; }
+  h2 { margin: 0 0 8px 88px; min-height: 32px; display: flex; align-items: center; font-size: 17px; font-weight: 500; line-height: 1.2; letter-spacing: -.02em; }
+  p { margin: 0; font-size: 13px; line-height: 1.5; color: rgb(255 255 255 / .72); }
+  p a { color: #fff; text-decoration: underline; text-decoration-color: rgb(255 255 255 / .35); text-underline-offset: 3px; transition: text-decoration-color .15s var(--ease); } p a:hover { text-decoration-color: #fff; }
+  /* Both answers weigh the same, so neither is the easy way out. */
+  .c-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .c-acts button { height: 38px; padding-inline: 12px; border: 0; border-radius: 11px; background: linear-gradient(rgb(255 255 255 / .14), rgb(255 255 255 / .06)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), inset 0 0 0 1px rgb(255 255 255 / .1); color: #fff; font: 500 14px var(--sans); white-space: nowrap; cursor: pointer; transition: background .15s var(--ease), box-shadow .15s var(--ease); }
+  .c-acts button:hover { background: linear-gradient(rgb(255 255 255 / .2), rgb(255 255 255 / .1)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .26), inset 0 0 0 1px rgb(255 222 186 / .35); }
+  .c-acts button:focus-visible { outline: 2px solid var(--brand-bright); outline-offset: 2px; }
+  @media (max-width: 360px) { .c-acts { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .consent, :global(.ask) .consent { translate: none; } .cookie, :global(.ask) .cookie { rotate: -8deg; scale: 1; transition: opacity .3s; } }
+</style>

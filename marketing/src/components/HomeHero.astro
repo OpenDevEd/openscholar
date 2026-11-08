@@ -15,7 +15,7 @@ const stars = Array.from({ length: 340 }, (_, i) => { const x = +(rng() * 2560).
      is the smaller one, which every level starts on (src/planet/earth.js). -->
 <script is:inline>(() => { const c = navigator.connection; let l = -1; try { l = Number(sessionStorage.getItem("openscholar.planet-level") ?? -1); } catch {} if (l === 0 || (c && (c.saveData || /(^|-)2g$/.test(c.effectiveType || "")))) return; for (const n of ["day-2048", "night", "clouds", "water"]) { const k = document.createElement("link"); k.rel = "preload"; k.as = "image"; k.fetchPriority = "high"; k.href = `/img/earth-${n}.avif`; document.head.append(k); } })();</script>
 <link rel="preload" as="image" href="/img/sky-plate.avif" />
-<section class="bleed sky" data-orbit>
+<section class="bleed sky" data-orbit data-placement="hero">
   <img class="plate" src="/img/sky-plate.avif" width="2560" height="820" alt="" decoding="async" onload="this.dataset.loaded = ''" />
   {[0, 1, 2].map((g) => <svg class={`stars s${g}`} viewBox="0 0 2560 820" aria-hidden="true" fill="#e6eaf5">{stars.filter((s) => s[4] === g).map(([x, y, r, o]) => <circle cx={x} cy={y} r={r} opacity={o} />)}</svg>)}
   <div class="inner say">
