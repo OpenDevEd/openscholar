@@ -287,7 +287,7 @@ export const evidenceLibraryFields = {
   records: v.optional(v.number()),
   recordsAt: v.optional(v.number()),
   /** What its directory card shows, from the version it runs: a draft's new name isn't public until it's published. */
-  card: v.optional(v.object({ name: v.optional(v.string()), tagline: v.optional(v.string()), description: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
+  card: v.optional(v.object({ name: v.optional(v.string()), nameKey: v.optional(v.string()), tagline: v.optional(v.string()), description: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
   /** When its last version went live: the directory card's "updated". */
   publishedAt: v.optional(v.number()),
   /** The countries most of its public records are about, most first, as it last said (./directory.ts). */

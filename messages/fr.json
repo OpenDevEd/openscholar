@@ -2022,7 +2022,7 @@
       "typeToConfirm": "Saisissez {name} pour confirmer",
       "confirm": "Supprimer la communauté",
       "startedTitle": "Suppression de la communauté",
-      "startedDescription": "{name} est en cours de suppression. Cela prend quelques secondes.",
+      "startedDescription": "{name} est en cours de suppression. Cela prend une à deux minutes.",
       "error": "La communauté n’a pas pu être supprimée. Terminez l’opération en cours sur la communauté, puis réessayez."
     },
     "links": {
@@ -4794,7 +4794,13 @@
       "libraryKeeps": "La bibliothèque de {workspace} garde les articles qu'elle a enregistrés.",
       "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés.",
       "community": "Déplacer la communauté",
-      "workspaceOwnsIt": "L’espace de travail où elle est déplacée en devient le propriétaire."
+      "workspaceOwnsIt": "L’espace de travail où elle est déplacée en devient le propriétaire.",
+      "refused": {
+        "noCommunities": "Vous ne pouvez pas créer de communautés ici",
+        "communitiesFull": "A autant de communautés qu’un espace de travail peut en avoir",
+        "profilesOff": "Les profils d’auteur ne sont pas activés ici",
+        "noProfiles": "Vous ne pouvez pas créer de profils d’auteur ici"
+      }
     },
     "share": {
       "share": "Partager",
@@ -5347,7 +5353,8 @@
     "everyoneInIt": "Toutes les personnes de l’organisation",
     "forTheirOrganization": "Pour une organisation dont {email} est administrateur",
     "removeThisOrganization": "Retirer cette organisation ? Ses membres ne gardent que les rôles qui leur ont été donnés personnellement.",
-    "organizationLabel": "Organisation"
+    "organizationLabel": "Organisation",
+    "ownWorkspaceOwner": "Elle est dans son propre espace de travail, elle lui appartient donc."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Résumé mis en file pour # publication.} other {Résumé mis en file pour # publications.}}",
@@ -5453,7 +5460,8 @@
       "countries": "Sur {names}",
       "recordsLabel": "{count, plural, one {notice} other {notices}}",
       "peopleLabel": "{count, plural, one {personne} other {personnes}}",
-      "noDescription": "Pas encore de description"
+      "noDescription": "Pas encore de description",
+      "notCounted": "Pas encore compté"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Nouvelle communauté",

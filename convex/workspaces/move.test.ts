@@ -281,7 +281,8 @@ it("leaves a community where it is for an organization's member, for a workspace
   });
   // Only the lab's admins move its work out.
   await expect(bob.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "community", id: libraryId, to: bobOwn })).rejects.toThrow(/admins/);
-  // Alice's own workspace doesn't have communities on.
+  // Alice's own workspace doesn't have communities on, which the Move dialog says before she picks it.
+  expect((await alice.query(api.workspaces.move.refusals, { workspaceId: labId, kind: "community", id: libraryId })).page).toEqual([{ workspaceId: aliceOwn, refusal: "noCommunities" }]);
   await expect(alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "community", id: libraryId, to: aliceOwn })).rejects.toThrow(/Evidence Communities are on/);
   // A publish running on it holds it.
   await t.run(async (ctx) => {

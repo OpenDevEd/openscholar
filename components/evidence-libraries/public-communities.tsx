@@ -10,6 +10,7 @@ import { SearchX } from "@/components/icons";
 import { THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
 import { WorkspaceTile, type WorkspaceLook } from "@/components/workspaces/parts";
 import { CountryFlag } from "@/components/ui/country-flag";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
@@ -55,7 +56,8 @@ export function PublicCommunities({ search, workspaceId, preloaded }: { search: 
           // Another sort, search or page is a new list: its cards fade in, in place of each card's text changing where it stood.
           <ul
             key={read.items.map((community) => community._id).join(",")}
-            className={cn("grid content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && "opacity-60")}
+            // One column of the panel's width on a phone: an implicit column would be as wide as a card's whole name.
+            className={cn("grid grid-cols-1 content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && "opacity-60")}
             inert={read.isStale || undefined}
           >
             {read.items.map((community) => <CommunityCard key={community._id} community={community} />)}
@@ -110,14 +112,16 @@ function CommunityCard({ community }: { community: Card }) {
           <span className="relative -mt-7 mb-2 block size-14 overflow-hidden rounded-xl bg-background ring-4 ring-background">
             <FadeImage src={icon} className="size-full object-cover" />
           </span>
-          <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
+          <TooltipHint label={community.name} onlyWhenClipped>
+            <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
+          </TooltipHint>
           {/* Its tagline, or its description; one with neither says so, quieter, so the space reads as empty on purpose. */}
           {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : <p className="mt-1 text-xs leading-relaxed text-subtle-foreground">{t("noDescription")}</p>}
           {/* What it holds as a strip of figures over their labels, then who runs it and when it last changed. */}
           <div className="mt-auto pt-3">
             <dl className="grid grid-cols-3 gap-3 border-t border-border-subtle pt-3">
-              <Stat label={t("recordsLabel", { count: community.records ?? 0 })}>{community.records !== null ? format.number(community.records) : null}</Stat>
-              <Stat label={t("peopleLabel", { count: people ?? 0 })}>{people !== null ? format.number(people) : null}</Stat>
+              <Stat label={t("recordsLabel", { count: community.records ?? 0 })}>{community.records !== null ? format.number(community.records) : <NotCounted />}</Stat>
+              <Stat label={t("peopleLabel", { count: people ?? 0 })}>{people !== null ? format.number(people) : <NotCounted />}</Stat>
               {/* Its countries when its records name any: the flags, and the one it's most about with how many more. */}
               {countries.length ? (
                 <Stat label={`${named[0]}${named.length > 1 ? ` +${named.length - 1}` : ""}`}>
@@ -165,7 +169,13 @@ function regionName(regions: Intl.DisplayNames | null, code: string) {
   }
 }
 
-/** One figure of a card's strip over its label; blank while it isn't counted yet. */
+/** A figure not counted yet: a dash, and the words for a screen reader. */
+function NotCounted() {
+  const t = useTranslations("libraryList.directory");
+  return <><span aria-hidden className="text-subtle-foreground">–</span><span className="sr-only">{t("notCounted")}</span></>;
+}
+
+/** One figure of a card's strip over its label. */
 function Stat({ label, children }: { label: string; children: ReactNode }) {
   return (
     // The label comes first, as a list of terms reads; the figure shows above it.

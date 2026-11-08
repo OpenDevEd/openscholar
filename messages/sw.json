@@ -2023,7 +2023,7 @@
       "typeToConfirm": "Andika {name} ili uthibitishe",
       "confirm": "Futa jumuiya",
       "startedTitle": "Inafuta jumuiya",
-      "startedDescription": "{name} inaondolewa. Inachukua sekunde chache.",
+      "startedDescription": "{name} inaondolewa. Inachukua dakika moja au mbili.",
       "error": "Jumuiya haikuweza kufutwa. Maliza operesheni yoyote ya jumuiya inayoendelea, kisha ujaribu tena."
     },
     "links": {
@@ -4795,7 +4795,13 @@
       "libraryKeeps": "Maktaba ya {workspace} inabaki na makala ilizohifadhi.",
       "yourLibraryKeeps": "Maktaba yako inabaki na makala ilizohifadhi.",
       "community": "Hamisha jumuiya",
-      "workspaceOwnsIt": "Nafasi kazi inayohamishiwa itaimiliki kuanzia hapo."
+      "workspaceOwnsIt": "Nafasi kazi inayohamishiwa itaimiliki kuanzia hapo.",
+      "refused": {
+        "noCommunities": "Huwezi kuunda jumuiya hapa",
+        "communitiesFull": "Ina jumuiya nyingi kadiri nafasi kazi inavyoweza",
+        "profilesOff": "Wasifu wa waandishi haujawashwa hapa",
+        "noProfiles": "Huwezi kuunda wasifu wa waandishi hapa"
+      }
     },
     "share": {
       "share": "Shiriki",
@@ -5348,7 +5354,8 @@
     "everyoneInIt": "Kila mtu ndani yake",
     "forTheirOrganization": "Kwa shirika ambalo {email} ni msimamizi wake",
     "removeThisOrganization": "Ondoa shirika hili? Wanachama wake wanabaki tu na majukumu waliyopewa wenyewe.",
-    "organizationLabel": "Shirika"
+    "organizationLabel": "Shirika",
+    "ownWorkspaceOwner": "Iko kwenye nafasi kazi yao wenyewe, kwa hiyo ni yao."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Ripoti imewekwa kwenye foleni kwa chapisho #.} other {Ripoti imewekwa kwenye foleni kwa machapisho #.}}",
@@ -5454,7 +5461,8 @@
       "countries": "Kuhusu {names}",
       "recordsLabel": "{count, plural, one {rekodi} other {rekodi}}",
       "peopleLabel": "{count, plural, one {mtu} other {watu}}",
-      "noDescription": "Hakuna maelezo bado"
+      "noDescription": "Hakuna maelezo bado",
+      "notCounted": "Bado haijahesabiwa"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Jumuiya mpya",

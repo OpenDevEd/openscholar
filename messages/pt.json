@@ -2023,7 +2023,7 @@
       "typeToConfirm": "Escreva {name} para confirmar",
       "confirm": "Eliminar comunidade",
       "startedTitle": "A eliminar a comunidade",
-      "startedDescription": "{name} está a ser removida. Demora alguns segundos.",
+      "startedDescription": "{name} está a ser removida. Demora um ou dois minutos.",
       "error": "Não foi possível eliminar a comunidade. Conclua qualquer operação em curso na comunidade e tente novamente."
     },
     "links": {
@@ -4795,7 +4795,13 @@
       "libraryKeeps": "A biblioteca de {workspace} mantém os artigos que guardou.",
       "yourLibraryKeeps": "A sua biblioteca mantém os artigos que guardou.",
       "community": "Mover comunidade",
-      "workspaceOwnsIt": "O espaço de trabalho para onde se move passa a ser o seu proprietário."
+      "workspaceOwnsIt": "O espaço de trabalho para onde se move passa a ser o seu proprietário.",
+      "refused": {
+        "noCommunities": "Aqui não pode criar comunidades",
+        "communitiesFull": "Tem tantas comunidades quanto um espaço de trabalho pode ter",
+        "profilesOff": "Os perfis de autor não estão ativos aqui",
+        "noProfiles": "Aqui não pode criar perfis de autor"
+      }
     },
     "share": {
       "share": "Partilhar",
@@ -5348,7 +5354,8 @@
     "everyoneInIt": "Todos nela",
     "forTheirOrganization": "Para uma organização da qual {email} é administrador",
     "removeThisOrganization": "Remover esta organização? Os membros ficam só com as funções que receberam pessoalmente.",
-    "organizationLabel": "Organização"
+    "organizationLabel": "Organização",
+    "ownWorkspaceOwner": "Está no espaço de trabalho dessa pessoa, por isso é dela."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Resumo em fila para # publicação.} other {Resumo em fila para # publicações.}}",
@@ -5454,7 +5461,8 @@
       "countries": "Sobre {names}",
       "recordsLabel": "{count, plural, one {registo} other {registos}}",
       "peopleLabel": "{count, plural, one {pessoa} other {pessoas}}",
-      "noDescription": "Ainda sem descrição"
+      "noDescription": "Ainda sem descrição",
+      "notCounted": "Ainda não contado"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Nova comunidade",

@@ -2023,7 +2023,7 @@
       "typeToConfirm": "اكتب {name} للتأكيد",
       "confirm": "حذف المجتمع",
       "startedTitle": "جارٍ حذف المجتمع",
-      "startedDescription": "جارٍ إزالة {name}. يستغرق ذلك بضع ثوانٍ.",
+      "startedDescription": "جارٍ إزالة {name}. يستغرق ذلك دقيقة أو دقيقتين.",
       "error": "تعذّر حذف المجتمع. أنهِ أي عملية تجري على المجتمع، ثم حاول مرة أخرى."
     },
     "links": {
@@ -4795,7 +4795,13 @@
       "libraryKeeps": "تحتفظ مكتبة {workspace} بالأوراق التي حفظتها.",
       "yourLibraryKeeps": "تحتفظ مكتبتك بالأوراق التي حفظتها.",
       "community": "نقل المجتمع",
-      "workspaceOwnsIt": "تصبح مساحة العمل التي ينتقل إليها مالكته من ذلك الحين."
+      "workspaceOwnsIt": "تصبح مساحة العمل التي ينتقل إليها مالكته من ذلك الحين.",
+      "refused": {
+        "noCommunities": "لا يمكنك إنشاء مجتمعات هنا",
+        "communitiesFull": "بلغت الحد الأقصى من المجتمعات لمساحة عمل",
+        "profilesOff": "ملفات المؤلفين غير مفعّلة هنا",
+        "noProfiles": "لا يمكنك إنشاء ملفات مؤلفين هنا"
+      }
     },
     "share": {
       "share": "مشاركة",
@@ -5348,7 +5354,8 @@
     "everyoneInIt": "كل من فيها",
     "forTheirOrganization": "لمؤسسة يكون {email} مسؤولًا فيها",
     "removeThisOrganization": "إزالة هذه المؤسسة؟ يحتفظ أعضاؤها فقط بالأدوار الممنوحة لهم شخصيًا.",
-    "organizationLabel": "المؤسسة"
+    "organizationLabel": "المؤسسة",
+    "ownWorkspaceOwner": "إنه في مساحة عمله الخاصة، لذا فهو ملكه."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, zero {لا يوجد ملخص في الانتظار} one {ملخص في الانتظار لمنشور واحد.} two {ملخص في الانتظار لمنشورين.} few {ملخص في الانتظار لـ # منشورات.} many {ملخص في الانتظار لـ # منشورًا.} other {ملخص في الانتظار لـ # منشور.}}",
@@ -5454,7 +5461,8 @@
       "countries": "عن {names}",
       "recordsLabel": "{count, plural, zero {سجل} one {سجل} two {سجلان} few {سجلات} many {سجلًا} other {سجل}}",
       "peopleLabel": "{count, plural, zero {شخص} one {شخص} two {شخصان} few {أشخاص} many {شخصًا} other {شخص}}",
-      "noDescription": "لا يوجد وصف بعد"
+      "noDescription": "لا يوجد وصف بعد",
+      "notCounted": "لم يُحتسب بعد"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "مجتمع جديد",

@@ -3,7 +3,9 @@
 import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { RoleLabel } from "@/components/ui/identity";
-import { useMutation } from "convex/react";
+import { useMutation, type Preloaded } from "convex/react";
+import { preloadedQueryResult } from "convex/nextjs";
+import { SIDEBAR_PER_PAGE } from "@/lib/evidence-libraries/directory";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
@@ -29,6 +31,8 @@ import { LibraryImage } from "./library-image";
 import { LibraryStatusIcon, type LibraryOperation } from "./library-status-chip";
 
 type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number];
+/** The sidebar's first page as the page's server read it, for the filter in its address. */
+export type SidebarFirstPage = { filter: CommunityFilter; list: Preloaded<typeof api.evidenceLibraries.queries.listLibraries>; invitations?: Preloaded<typeof api.evidenceLibraries.invitations.listInvitations> };
 type Invitation = FunctionReturnType<typeof api.evidenceLibraries.invitations.listInvitations>["page"][number];
 type Role = "owner" | "editor" | "creator" | "viewer";
 /** Who a community belongs to, for the badge on its icon: an organization's logo, or a person's photo. */
@@ -63,7 +67,7 @@ const fromInvitation = (invitation: Invitation): Community => ({
   owner: { name: invitation.organization.name, imageUrl: invitation.organization.imageUrl, kind: invitation.organization.id ? "organization" : "person" },
 });
 
-const PER_PAGE = 100;
+const PER_PAGE = SIDEBAR_PER_PAGE;
 /** The filter's "More workspaces" item, which is no filter of its own. */
 const MORE = "more-workspaces";
 /** A row's height, which every row of a page keeps, so a short last page doesn't move the pager. */
@@ -82,7 +86,7 @@ export type CommunityFilter = "all" | "own" | "here" | "shared" | Id<"workspaces
  * from (#1090). In your own workspace that's yours, each organization's you're in and the ones
  * shared with you, invitations first; in an organization's, its own and the ones shared with it.
  */
-export function YourCommunities({ waiting = false, framed = false, search, personal, workspaceName, workspaceImage, organization, filter, onFilter, ...actions }: Actions & {
+export function YourCommunities({ waiting = false, framed = false, search, personal, workspaceName, workspaceImage, organization, filter, onFilter, preloaded, ...actions }: Actions & {
   search: string;
   personal: boolean;
   workspaceName: string;
@@ -94,6 +98,8 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
   waiting?: boolean;
   /** In the page's sidebar: the list on a card of its own, beside the page's. */
   framed?: boolean;
+  /** The list's first page, and its invitations, as the server read them with the page for `filter`. */
+  preloaded?: SidebarFirstPage;
 }) {
   const t = useTranslations("libraryList.sidebar");
   const workspaces = useWorkspaces();
@@ -107,10 +113,16 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
   // Invitations are yours, in your own workspace, and wait for an answer: they come first.
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listInvitations, personal && !waiting && (filter === "all" || filter === "shared") ? {} : "skip");
   const needle = search.toLowerCase();
-  const invited = read.page === 1 ? (invitations.data?.page ?? []).filter((row) => `${row.name} ${row.organization.name}`.toLowerCase().includes(needle)).map(fromInvitation) : [];
+  // The server's first page, until the live one arrives: the rows are there from the first frame, so the card doesn't grow when they come.
+  const fromServer = preloaded && preloaded.filter === filter && !search;
+  const firstList = fromServer && (waiting || read.isLoading) ? preloadedQueryResult(preloaded.list) : undefined;
+  const invitationRows = invitations.data ?? (fromServer && preloaded.invitations ? preloadedQueryResult(preloaded.invitations) : undefined);
+  const items = firstList?.page ?? read.items;
+  const invited = read.page === 1 ? (invitationRows?.page ?? []).filter((row) => `${row.name} ${row.organization.name}`.toLowerCase().includes(needle)).map(fromInvitation) : [];
   // ponytail: a page is sorted by name here; the server pages place by place. Sorting across pages needs an index by name across workspaces.
-  const rows = [...invited, ...read.items.map(fromOverview).sort((a, b) => a.name.localeCompare(b.name))];
-  const loading = waiting || read.isLoading || (invitations.data === undefined && personal && (filter === "all" || filter === "shared"));
+  const rows = [...invited, ...items.map(fromOverview).sort((a, b) => a.name.localeCompare(b.name))];
+  const loading = !firstList && (waiting || read.isLoading || (invitationRows === undefined && personal && (filter === "all" || filter === "shared")));
+  const hasPages = firstList ? !firstList.isDone : read.hasPages;
   const shared = personal ? t("sharedWithYou") : t("sharedWith", { name: workspaceName });
   const filterName = filter === "own" ? t("yours") : organizations.find((row) => row.workspaceId === filter)?.name ?? workspaceName;
   const empty = search ? t("noMatches")
@@ -160,7 +172,7 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
             <div style={{ height: `${ROW_REM}rem` }} className="grid place-items-center"><Spinner aria-label={t("loading")} className="size-5 text-primary" /></div>
           ) : rows.length ? (
             <ul
-              style={read.hasPages ? { minHeight: `${PER_PAGE * ROW_REM}rem` } : undefined}
+              style={hasPages ? { minHeight: `${PER_PAGE * ROW_REM}rem` } : undefined}
               className={cn(read.isStale && "opacity-60")}
               inert={read.isStale || undefined}
             >
@@ -169,7 +181,7 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
           ) : (
             <p className="fade-enter px-2 py-3 text-xs text-muted-foreground">{empty}</p>
           )}
-          {!loading && read.hasPages && (
+          {!loading && hasPages && (
             <PageStepper className="px-2 pt-2" page={read.page} canPrevious={read.canPrevious} canNext={read.canNext} onPrevious={read.previous} onNext={read.next} />
           )}
         </AutoHeight>
@@ -242,7 +254,8 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
           {name}
         </span>
         <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-          <RoleLabel role={ROLE_KINDS[community.role]}>{community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role}</RoleLabel>
+          {/* Cut off at the row's edge, before the invitation's buttons, as the name above it is. */}
+          <RoleLabel role={ROLE_KINDS[community.role]} className="min-w-0 shrink"><span className="truncate">{community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role}</span></RoleLabel>
         </span>
       </div>
       {community.pending ? (

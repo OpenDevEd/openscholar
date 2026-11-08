@@ -1,4 +1,6 @@
 "use client";
+
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useRatedPapers } from "@/lib/research/reads";
 import {
   LinkedInIcon,
@@ -194,7 +196,7 @@ export default function AuthorPage({
       setFormError("");
       return true;
     }
-    catch (error) { setFormError(error instanceof Error ? error.message : tLabels("couldNotSaveThisProfile")); return false; }
+    catch (error) { setFormError(getErrorMessage(error, tLabels("couldNotSaveThisProfile"))); return false; }
     finally { setSaving(false); }
   };
   const openMatch = () => {

@@ -65,7 +65,8 @@ async function cardOf(ctx: QueryCtx, revisionId: Id<"evidenceLibraryConfigRevisi
   const description = text(identity?.description);
   const accentColor = text(theme?.colors?.accent);
   const faviconUrl = text(identity?.assets?.favicon);
-  return { ...(name ? { name } : {}), ...(tagline ? { tagline } : {}), ...(description ? { description } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
+  // The name the directory sorts by: in lower case, so "new lib" comes before "OpenDevEd".
+  return { ...(name ? { name, nameKey: name.toLowerCase() } : {}), ...(tagline ? { tagline } : {}), ...(description ? { description } : {}), ...(accentColor ? { accentColor } : {}), ...(faviconUrl ? { faviconUrl } : {}) };
 }
 
 /**
@@ -216,7 +217,7 @@ export async function backfillCard(ctx: MutationCtx, library: Doc<"evidenceLibra
   const published = activations.find((operation) => operation.status === "succeeded" && operation.kind === "publish")
     ?? await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_kind_and_createdAt", (q) => q.eq("libraryId", library._id).eq("kind", "setup")).order("desc").first();
   const publishedAt = published?.completedAt ?? library.liveAt ?? library.createdAt;
-  if (library.publishedAt === publishedAt && library.liveAt !== undefined && library.card) return;
+  if (library.publishedAt === publishedAt && library.liveAt !== undefined && library.card && (!library.card.name || library.card.nameKey)) return;
   // When it went live: its first settings' publish, which a setup puts live.
   const first = library.liveAt === undefined ? await ctx.db.query("evidenceLibraryConfigRevisions").withIndex("by_libraryId_and_revisionNumber", (q) => q.eq("libraryId", library._id)).first() : null;
   await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, library.activeRevisionId), liveAt: library.liveAt ?? first?.createdAt ?? publishedAt, publishedAt });

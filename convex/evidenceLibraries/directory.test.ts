@@ -20,7 +20,7 @@ async function live(suffix: string) {
 const another = (fixture: Fixture, workspaceId: Id<"workspaces">, name: string, extra: { liveAt: number; records?: number; tagline?: string; description?: string }) =>
   fixture.t.run((ctx) => ctx.db.insert("evidenceLibraries", {
     workspaceId, name, slug: name.toLowerCase().replaceAll(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1,
-    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, ...(extra.tagline ? { tagline: extra.tagline } : {}), ...(extra.description ? { description: extra.description } : {}) },
+    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, nameKey: name.toLowerCase(), ...(extra.tagline ? { tagline: extra.tagline } : {}), ...(extra.description ? { description: extra.description } : {}) },
   }));
 
 const list = (fixture: Fixture, workspaceId: Id<"workspaces">, sort: "newest" | "name" | "records", search?: string) =>
@@ -29,7 +29,7 @@ const list = (fixture: Fixture, workspaceId: Id<"workspaces">, sort: "newest" | 
 describe("the public directory", () => {
   it("keeps a community's card on its row once it goes live, and its record count once it says it", async () => {
     const { fixture, library } = await live("directory_card");
-    expect(library.card).toEqual({ name: "Climate Evidence", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
+    expect(library.card).toEqual({ name: "Climate Evidence", nameKey: "climate evidence", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
     expect(library.liveAt).toEqual(expect.any(Number));
     // Its card's time is when its owners last put their settings live: a software update leaves it, a publish moves it.
     expect(library.publishedAt).toBe(library.liveAt);
@@ -74,6 +74,10 @@ describe("the public directory", () => {
     const names = async (sort: "newest" | "name" | "records", search?: string) => (await list(fixture, workspaceId, sort, search)).map((card) => card.name);
     expect(await names("newest")).toEqual(["Water Evidence", "Climate Evidence", "Agriculture Evidence"]);
     expect(await names("name")).toEqual(["Agriculture Evidence", "Climate Evidence", "Water Evidence"]);
+    // By name whatever its case: one in lower case sorts among the rest, not after them.
+    const lower = await another(fixture, workspaceId, "bees evidence", { liveAt: 1 });
+    expect(await names("name")).toEqual(["Agriculture Evidence", "bees evidence", "Climate Evidence", "Water Evidence"]);
+    await fixture.t.run((ctx) => ctx.db.delete("evidenceLibraries", lower));
     // Most first; one not counted yet goes last.
     expect(await names("records")).toEqual(["Water Evidence", "Climate Evidence", "Agriculture Evidence"]);
     expect(await names("name", "sanitation")).toEqual(["Water Evidence"]);

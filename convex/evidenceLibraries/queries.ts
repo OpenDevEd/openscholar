@@ -490,15 +490,17 @@ export const listLibraries = query({
     ];
     // The ones shared with organizations they're in (#1091): in their own workspace, every organization's, after the
     // ones shared with them; on an organization's page, that one's, as what's shared with it.
-    const sharedWith = own ? (organization ? (here && (!from || from === "shared") ? [here] : []) : wants("shared") ? members : []) : [];
+    // In their own workspace, filtering by an organization lists what's shared with it too, as its own page does.
+    const sharedWith = own ? (organization ? (here && (!from || from === "shared") ? [here] : []) : members.filter((entry) => wants("shared") || from === entry.workspaceId)) : [];
     const memberOf = new Map(members.map((entry) => [entry._id, entry.owns]));
     // Each row of these takes a few reads of its own, so together they pass over at most SHARED_ROWS_READ.
     let sharedRows = 0;
-    sources.push(...sharedWith.map((entry, at) => ({
+    sources.push(...sharedWith.map((entry) => ({
       key: `shared:${entry._id}`,
       name: entry.name,
       read: async (cursor: string | null, room: number): Promise<Read> => {
-        const dedupe = organization ? null : { listed: listedIds, before: new Set(members.slice(0, at).map((earlier) => earlier._id)) };
+        // One list of everything leaves out what's listed elsewhere in it; an organization's page, or the filter for one organization, lists all that's shared with it.
+        const dedupe = organization || from === entry.workspaceId ? null : { listed: listedIds, before: new Set(members.slice(0, members.indexOf(entry)).map((earlier) => earlier._id)) };
         const read = await stream(ctx.db, schema)
           .query("libraryOrganizationGrants")
           .withIndex("by_organization_and_grantedAt", (index) => index.eq("organizationId", entry._id))

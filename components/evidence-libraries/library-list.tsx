@@ -30,17 +30,19 @@ import { CommandCenterContainer } from "@/components/command-center/command-cent
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { ListSearch } from "./list-controls";
 import { PublicCommunities } from "./public-communities";
-import { YourCommunities, type Accept, type Community, type CommunityFilter } from "./your-communities";
+import { YourCommunities, type Accept, type Community, type CommunityFilter, type SidebarFirstPage } from "./your-communities";
 
 /**
  * The Communities page (#1090): every community you can open, in the page's sidebar, beside every
  * public one in its card. `preloadedOpens` is the server's answer to whether the person may create
  * one here, so New community is there from the first frame.
  */
-export function LibraryList({ preloadedOpens, preloadedPublic }: {
+export function LibraryList({ preloadedOpens, preloadedPublic, preloadedSidebar }: {
   preloadedOpens?: Preloaded<typeof api.organizationFeatures.opens>;
   /** The directory's first page, newest first, as the server read it with the page. */
   preloadedPublic?: Preloaded<typeof api.evidenceLibraries.directory.listPublic>;
+  /** The sidebar's first page, for the filter in the address. */
+  preloadedSidebar?: SidebarFirstPage;
 }) {
   const t = useTranslations("libraryList");
   const live = useWorkspaceFeatures().data;
@@ -85,6 +87,7 @@ export function LibraryList({ preloadedOpens, preloadedPublic }: {
       onAccept={accept}
       onDecline={setDeclining}
       notify={setNotice}
+      preloaded={preloadedSidebar}
     />
   );
   return (

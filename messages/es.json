@@ -2023,7 +2023,7 @@
       "typeToConfirm": "Escriba {name} para confirmar",
       "confirm": "Eliminar comunidad",
       "startedTitle": "Eliminando comunidad",
-      "startedDescription": "Se está eliminando {name}. Tarda unos segundos.",
+      "startedDescription": "Se está eliminando {name}. Tarda uno o dos minutos.",
       "error": "No se pudo eliminar la comunidad. Termine cualquier operación en curso de la comunidad y vuelva a intentarlo."
     },
     "links": {
@@ -4795,7 +4795,13 @@
       "libraryKeeps": "La biblioteca de {workspace} conserva los artículos que guardó.",
       "yourLibraryKeeps": "Su biblioteca conserva los artículos que guardó.",
       "community": "Mover comunidad",
-      "workspaceOwnsIt": "El espacio de trabajo al que se mueve pasa a ser su propietario."
+      "workspaceOwnsIt": "El espacio de trabajo al que se mueve pasa a ser su propietario.",
+      "refused": {
+        "noCommunities": "Aquí no puede crear comunidades",
+        "communitiesFull": "Tiene todas las comunidades que admite un espacio de trabajo",
+        "profilesOff": "Los perfiles de autor no están activados aquí",
+        "noProfiles": "Aquí no puede crear perfiles de autor"
+      }
     },
     "share": {
       "share": "Compartir",
@@ -5348,7 +5354,8 @@
     "everyoneInIt": "Todos en ella",
     "forTheirOrganization": "Para una organización de la que {email} es administrador",
     "removeThisOrganization": "¿Quitar esta organización? Sus miembros conservan solo los roles que recibieron personalmente.",
-    "organizationLabel": "Organización"
+    "organizationLabel": "Organización",
+    "ownWorkspaceOwner": "Está en su propio espacio de trabajo, así que es suya."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Resumen en cola para # publicación.} other {Resumen en cola para # publicaciones.}}",
@@ -5454,7 +5461,8 @@
       "countries": "Sobre {names}",
       "recordsLabel": "{count, plural, one {registro} other {registros}}",
       "peopleLabel": "{count, plural, one {persona} other {personas}}",
-      "noDescription": "Aún no hay descripción"
+      "noDescription": "Aún no hay descripción",
+      "notCounted": "Aún sin contar"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nueva comunidad",
