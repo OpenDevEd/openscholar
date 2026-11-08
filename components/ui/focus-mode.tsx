@@ -285,7 +285,8 @@ export function FocusMode({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // The menu keeps its keys, and Escape shuts only what handled it.
-      if (!isOpen || translationMenuOpen || e.defaultPrevented) return;
+      // A key with Cmd, Ctrl or Alt is the browser's or the system's: Cmd+C copies, Cmd+L goes to the address bar.
+      if (!isOpen || translationMenuOpen || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       // Keys typed in a field, or in an open popover or menu such as Cite's, are that control's.
       if ((e.target as Element | null)?.closest?.("input, textarea, select, [contenteditable='true'], [data-radix-popper-content-wrapper]")) return;
 

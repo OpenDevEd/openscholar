@@ -51,7 +51,7 @@ import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/f
 import { inApp, recordOf } from "@/lib/assistant/view";
 import { recordLinks } from "./record-links";
 import { defaultRemarkPlugins } from "streamdown";
-import useSWR, { preload } from "swr";
+import useSWR, { mutate, preload } from "swr";
 import { readWork } from "@/app/actions/topics";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { useRatedPapers } from "@/lib/research/reads";
@@ -1019,11 +1019,15 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
           // Read while the pointer is on it, so focus mode opens on the click.
           onPointerEnter={() => void preload(workKey(paperId), readWorkOf).catch(() => {})}
           onClick={async (event) => {
+            // Cmd, Ctrl or Shift opens the page in a new tab or window, as any link does.
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
             event.preventDefault();
-            // Focus mode on it, beside the chat; a paper it can't read opens on its page instead.
-            const work = await preload(workKey(paperId), readWorkOf).catch(() => null);
-            if (work) setReading({ paperId, open: true });
-            else router.push(page);
+            // Focus mode on it, beside the chat; a paper it can't read opens on its page instead. Read again on each
+            // click, so a read that failed once (the network dropped) doesn't keep it from opening.
+            const work = await readWorkOf(workKey(paperId)).catch(() => null);
+            if (!work) return router.push(page);
+            await mutate(workKey(paperId), work, { revalidate: false });
+            setReading({ paperId, open: true });
           }}
         >
           {inside}

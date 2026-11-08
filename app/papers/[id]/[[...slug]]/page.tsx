@@ -18,7 +18,8 @@ const quietly = <T,>(what: string, id: string, fallback: T) => (error: unknown) 
 /** The paper the address names, both its records as one, or the page's 404. Read once per request, for the metadata and the page. */
 const paperOf = cache(async (raw: string) => {
   const asked = paperPageId(raw);
-  const paper = asked ? await readPaperForPage(asked) : null;
+  // A paper our index doesn't hold yet, by its OpenAlex ID, is read from OpenAlex, so no OpenAlex result's link ends in a 404.
+  const paper = asked ? ((await readPaperForPage(asked)) ?? (asked.startsWith("W") ? await readOpenAlexForPage(asked).catch(quietly("OpenAlex record", asked, null)) : null)) : null;
   if (!paper) notFound();
   // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
   const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;

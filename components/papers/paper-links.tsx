@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent, ReactElement } from "react";
+import type { KeyboardEvent, MouseEvent, ReactElement } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
@@ -13,8 +13,11 @@ import { cn } from "@/lib/utils";
 
 type Paper = Parameters<typeof ourPaperPage>[0];
 
-/** Sits inside cards and rows that open on a click of their own, as Cite does. */
+/** Sits inside cards and rows that open on a click or Enter of their own, as Cite does. */
 const keepClick = (event: MouseEvent) => event.stopPropagation();
+const keepKeys = (event: KeyboardEvent) => {
+  if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+};
 
 /** A control on a card (`compact`: an icon with its name as a tooltip, like Cite) or in a bar (its name beside the icon). */
 function Control({ compact, label, className, children }: { compact: boolean; label: string; className?: string; children: (button: { variant: "ghost" | "outline"; size: "icon" | "sm"; className: string; "aria-label"?: string }) => ReactElement }) {
@@ -32,7 +35,7 @@ export function PaperPageLink({ paper, compact = true, className, labelClassName
     <Control compact={compact} label={t("paperPage")} className={className}>
       {(button) => (
         <Button {...button} asChild>
-          <Link href={href} onClick={keepClick} onNavigate={closeFocus}>
+          <Link href={href} onClick={keepClick} onKeyDown={keepKeys} onNavigate={closeFocus}>
             <ArrowUpRight aria-hidden className="size-4" />
             {compact ? null : <span className={labelClassName}>{t("paperPage")}</span>}
           </Link>
@@ -80,7 +83,7 @@ export function PaperShare({ paper, href, compact = true, className, labelClassN
   return (
     <Control compact={compact} label={t("share")} className={className}>
       {(button) => (
-        <Button {...button} type="button" onClick={(event) => { keepClick(event); void share(); }}>
+        <Button {...button} type="button" onKeyDown={keepKeys} onClick={(event) => { keepClick(event); void share(); }}>
           <Share2 aria-hidden className="size-4" />
           {compact ? null : <span className={labelClassName}>{t("share")}</span>}
         </Button>
