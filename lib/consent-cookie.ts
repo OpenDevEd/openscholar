@@ -80,8 +80,9 @@ export function applyConsentToPostHog(posthog: PostHog, choice = readConsent()?.
 }
 
 /**
- * The answer can change on the other site in another tab. Each site reads it again when its tab is back in view and
- * calls back if it changed, so a rejection on one site stops the other before anything else is sent.
+ * The answer can change on the other site in another tab or window. Each site reads it again when it comes back into
+ * view or focus, or as soon as the cookie changes where the browser reports that, and calls back if it changed, so a
+ * rejection on one site stops the other.
  */
 export function watchConsent(onChange: (choice: ConsentChoice | undefined) => void) {
   let last = readConsent()?.choice;
@@ -89,11 +90,15 @@ export function watchConsent(onChange: (choice: ConsentChoice | undefined) => vo
   window.addEventListener(CONSENT_UPDATED_EVENT, () => {
     last = readConsent()?.choice;
   });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
+  const check = () => {
     const now = readConsent()?.choice;
     if (now === last) return;
     last = now;
     onChange(now);
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") check();
   });
+  window.addEventListener("focus", check);
+  (window as Window & { cookieStore?: EventTarget }).cookieStore?.addEventListener("change", check);
 }
