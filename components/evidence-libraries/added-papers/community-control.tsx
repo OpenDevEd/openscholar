@@ -221,9 +221,8 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
         >
           <CommunityIcon community={community} fadeIn />
           <span className="flex min-w-0 flex-1 flex-col">
-            <TooltipHint label={community.name} onlyWhenClipped>
-              <span className="truncate text-sm font-medium">{community.name}</span>
-            </TooltipHint>
+            {/* No tooltip for a cut-off name: the card beside the popover shows it whole. */}
+            <span className="truncate text-sm font-medium">{community.name}</span>
             <span className="flex min-w-0 items-center text-xs text-muted-foreground">{sub(community)}</span>
           </span>
           {state === "queued" ? (
