@@ -158,7 +158,11 @@ describe("a library's invitations, its start and the running library, for the as
     expect(await refusal(outside, "addedPapers", { libraryId })).toMatch(/Only the community's team reads/);
     expect(await refusal(outside, "setAddedPapersSettings", { libraryId, enabled: false })).toMatch(/Only the community's owner/);
     // Its owner gone, it's out of the directory and takes no suggestions.
-    const organizationId = await t.run(async (ctx) => (await ctx.db.get("workspaces", owner.workspaceId))!.organizationId!);
+    const organizationId = await t.run(async (ctx) => {
+      const workspace = await ctx.db.get("workspaces", owner.workspaceId);
+      if (workspace?.kind !== "organization") throw new Error("The community's workspace is an organization's");
+      return workspace.organizationId;
+    });
     await t.run((ctx) => ctx.db.patch("organizations", organizationId, { state: "deleted" }));
     expect(await refusal(outside, "addPapers", { ...papers, publish: false })).toMatch(/Only the community's team adds papers/);
     await t.run((ctx) => ctx.db.patch("organizations", organizationId, { state: "active" }));
