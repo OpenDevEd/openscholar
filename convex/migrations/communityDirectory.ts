@@ -11,4 +11,7 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 // A few at a time: each reads up to ten of its operations, and one can be over 100 kB.
 export const cardsFromPublishes = migrations.define({ table: "evidenceLibraries", batchSize: 5, migrateOne: (ctx, library) => backfillCard(ctx, library) });
 
-export const run = migrations.runner([internal.migrations.communityDirectory.cardsFromPublishes]);
+// The same again for cards kept before they had the lower-case name the directory sorts by.
+export const cardNameKeys = migrations.define({ table: "evidenceLibraries", batchSize: 5, migrateOne: (ctx, library) => backfillCard(ctx, library) });
+
+export const run = migrations.runner([internal.migrations.communityDirectory.cardsFromPublishes, internal.migrations.communityDirectory.cardNameKeys]);

@@ -2022,7 +2022,7 @@
       "typeToConfirm": "输入 {name} 以确认",
       "confirm": "删除文献社区",
       "startedTitle": "正在删除文献社区",
-      "startedDescription": "{name} 正在被移除。大约需要几秒钟。",
+      "startedDescription": "{name} 正在被移除。大约需要一两分钟。",
       "error": "无法删除文献社区。请先结束正在进行的文献社区操作，然后重试。"
     },
     "links": {
@@ -4794,7 +4794,13 @@
       "libraryKeeps": "{workspace} 的文献库会保留已保存的论文。",
       "yourLibraryKeeps": "你的文献库会保留已保存的论文。",
       "community": "移动文献社区",
-      "workspaceOwnsIt": "移入的工作区从此成为它的所有者。"
+      "workspaceOwnsIt": "移入的工作区从此成为它的所有者。",
+      "refused": {
+        "noCommunities": "你不能在这里创建文献社区",
+        "communitiesFull": "文献社区数量已达工作区上限",
+        "profilesOff": "这里未开启作者资料",
+        "noProfiles": "你不能在这里创建作者资料"
+      }
     },
     "share": {
       "share": "共享",
@@ -5347,7 +5353,8 @@
     "everyoneInIt": "其中所有人",
     "forTheirOrganization": "面向 {email} 担任管理员的组织",
     "removeThisOrganization": "移除此组织？其成员只保留个人获得的角色。",
-    "organizationLabel": "组织"
+    "organizationLabel": "组织",
+    "ownWorkspaceOwner": "它在其本人的工作区中，因此归其所有。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {已为 # 篇出版物排队摘要。}}",
@@ -5453,7 +5460,8 @@
       "countries": "关于 {names}",
       "recordsLabel": "{count, plural, other {条记录}}",
       "peopleLabel": "{count, plural, other {人}}",
-      "noDescription": "暂无描述"
+      "noDescription": "暂无描述",
+      "notCounted": "尚未统计"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新建文献社区",

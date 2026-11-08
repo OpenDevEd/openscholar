@@ -23,11 +23,23 @@ export async function profileMaker(ctx: QueryCtx | MutationCtx, user: Doc<"users
     return role === "owner" || role === "editor";
   };
   if (community) return (await edits(community)) ? {runs: false} : null;
-  // Otherwise one of its communities they were given the editor's role in, as it stands: a community being deleted gives none.
-  // A person holds at most MAX_LIBRARY_GRANTS_PER_PERSON, which giving them one enforces.
+  return (await editedWorkspaces(ctx, user)).has(workspaceId) ? {runs: false} : null;
+}
+
+/**
+ * The workspaces a person edits a community in, through the editor's role given to them, as each community stands: one
+ * being deleted gives none. Read once for many workspaces (../workspaces/move.ts). A person holds at most
+ * MAX_LIBRARY_GRANTS_PER_PERSON, which giving them one enforces.
+ */
+export async function editedWorkspaces(ctx: QueryCtx | MutationCtx, user: Doc<"users">) {
   const grants = await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON);
-  for (const grant of grants) if (grant.role === "editor" && (await edits(await libraryOf(ctx, grant)))) return {runs: false};
-  return null;
+  const edited = new Set<Id<"workspaces">>();
+  for (const grant of grants) {
+    if (grant.role !== "editor") continue;
+    const library = await libraryOf(ctx, grant);
+    if (library?.workspaceId && library.state !== "disabled") edited.add(library.workspaceId);
+  }
+  return edited;
 }
 
 /** What the person reading a profile is to it: their role, and whether they act in the workspace that owns it, whose members see its Activity and who has it open (#656, #657). */

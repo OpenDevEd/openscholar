@@ -134,8 +134,14 @@ export const respondVerified = internalMutation({
     const library = invitation ? await libraryOf(ctx, invitation) : null;
     // One to anything else is answered where it was sent from (../sharing/invitations.ts).
     if (!invitation || invitation.kind !== "library" || !args.emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
-    // Accepting again what they accepted already, as a second press or a second tab does, changes nothing.
-    if (args.accept && invitation.state === "accepted" && library && (invitation.toOrganization || (await libraryGrant(ctx, library._id, user._id)))) return null;
+    // Accepting again what they accepted already, as a second press or a second tab does, changes nothing. One for an
+    // organization was accepted for one of them: picking another in a second tab says so, and gives that one nothing.
+    if (args.accept && invitation.state === "accepted" && library && invitation.toOrganization) {
+      const given = args.organizationId ? await ctx.db.query("libraryOrganizationGrants").withIndex("by_library_and_organization", (q) => q.eq("libraryId", library._id).eq("organizationId", args.organizationId!)).unique() : null;
+      if (given) return null;
+      throw createError("CONFLICT", "This invitation was accepted already, for another of your organizations.");
+    }
+    if (args.accept && invitation.state === "accepted" && library && (await libraryGrant(ctx, library._id, user._id))) return null;
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!library || library.state === "disabled" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Community unavailable");
     if (args.accept && invitation.toOrganization) {

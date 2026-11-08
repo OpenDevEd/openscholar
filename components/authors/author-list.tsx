@@ -1,4 +1,6 @@
 "use client";
+
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useTranslations } from "next-intl";
 import { parseAsString, useQueryState } from "nuqs";
 import { useState } from "react";
@@ -74,7 +76,7 @@ export function AuthorList({createsBefore, firstPage, examples}: {createsBefore:
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{t("createAuthorProfile")}</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (creating) return; setCreating(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }
-      catch (error) { setError(error instanceof Error ? error.message : tLabels("couldNotCreateProfile")); }
+      catch (error) { setError(getErrorMessage(error, tLabels("couldNotCreateProfile"))); }
       finally { setCreating(false); }
     }}><Field label={t("name")}>{id => <Input id={id} value={name} onChange={event => setName(event.target.value)} required maxLength={500} autoFocus />}</Field>{error && <FieldError>{error}</FieldError>}<DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="submit" disabled={creating || !name.trim()}><Plus />{t("createProfile")}</Button></DialogFooter></form></DialogContent></Dialog>
   </LibraryPageShell>;

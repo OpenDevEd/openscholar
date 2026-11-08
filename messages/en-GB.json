@@ -2022,7 +2022,7 @@
       "typeToConfirm": "Type {name} to confirm",
       "confirm": "Delete community",
       "startedTitle": "Deleting community",
-      "startedDescription": "{name} is being removed. Takes a few seconds.",
+      "startedDescription": "{name} is being removed. This takes a minute or two.",
       "error": "The community could not be deleted. Finish any running community operation, then try again."
     },
     "links": {
@@ -4794,7 +4794,13 @@
       "libraryKeeps": "{workspace}'s library keeps the papers it saved.",
       "yourLibraryKeeps": "Your library keeps the papers it saved.",
       "community": "Move community",
-      "workspaceOwnsIt": "The workspace it moves to owns it from then on."
+      "workspaceOwnsIt": "The workspace it moves to owns it from then on.",
+      "refused": {
+        "noCommunities": "You can't create communities here",
+        "communitiesFull": "Has as many communities as a workspace can",
+        "profilesOff": "Author profiles aren't on here",
+        "noProfiles": "You can't make author profiles here"
+      }
     },
     "share": {
       "share": "Share",
@@ -5347,7 +5353,8 @@
     "everyoneInIt": "Everyone in it",
     "forTheirOrganization": "For an organization {email} is an admin of",
     "removeThisOrganization": "Remove this organization? Its members keep only roles they were given themselves.",
-    "organizationLabel": "Organization"
+    "organizationLabel": "Organization",
+    "ownWorkspaceOwner": "It's in their own workspace, so it's theirs."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Digest queued for # publication.} other {Digest queued for # publications.}}",
@@ -5453,7 +5460,8 @@
       "peopleLabel": "{count, plural, one {person} other {people}}",
       "people": "{count, plural, one {{shown} person} other {{shown} people}}",
       "countries": "About {names}",
-      "noDescription": "No description yet"
+      "noDescription": "No description yet",
+      "notCounted": "Not counted yet"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "New community",

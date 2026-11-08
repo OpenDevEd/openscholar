@@ -19,6 +19,7 @@ import {
   Building2,
 } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { EmailAvatar, PersonName, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
 import { WorkspaceTile, type WorkspaceLook } from "@/components/workspaces/parts";
@@ -199,7 +200,7 @@ export function TeamAccess({
       current.map((member) =>
         member.id === id ? { ...member, role } : member,
       ),
-    ).catch((error: unknown) => setNotice(error instanceof Error ? error.message : tLabels("unableToChangeRole")));
+    ).catch((error: unknown) => setNotice(getErrorMessage(error, tLabels("unableToChangeRole"))));
   function people(
     list: AccessMember[],
     emptyMessage = tLabels("noMembersInThisRoleYet"),
@@ -214,7 +215,8 @@ export function TeamAccess({
           <li key={member.id} className="px-4 py-4 hover:bg-muted">
             <div className="flex flex-wrap items-center gap-3">
               {member.organization ? <WorkspaceTile workspace={member.organization} size="row" /> : member.invited ? <EmailAvatar /> : <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />}
-              <div className="min-w-0 flex-1">
+              {/* At least 10rem for who it is: on a phone the role and its menu go to the next line rather than squeeze the name away. */}
+              <div className="min-w-0 flex-[1_1_10rem]">
                 <PersonName name={member.name} you={member.you === true} className="text-sm font-medium" />
                 <p className="truncate text-xs text-muted-foreground">
                   {member.organization ? t("everyoneInIt") : member.toOrganization ? t("forTheirOrganization", { email: member.email }) : member.email}
@@ -250,7 +252,7 @@ export function TeamAccess({
                     {member.invited && (
                       <DropdownMenuItem
                         onSelect={() => {
-                          void runChange(() => onResend(member)).then(() => setNotice(tLabels("invitationSentTo", { email: member.email }))).catch((error: unknown) => setNotice(error instanceof Error ? error.message : tLabels("unableToSendInvitation")));
+                          void runChange(() => onResend(member)).then(() => setNotice(tLabels("invitationSentTo", { email: member.email }))).catch((error: unknown) => setNotice(getErrorMessage(error, tLabels("unableToSendInvitation"))));
                         }}
                       >
                         <RotateCcw />
@@ -306,7 +308,7 @@ export function TeamAccess({
                           ? tLabels("invitationCancelled")
                           : tLabels(scope === "library" ? "removedFromLibrary" : "removedFromProfile"),
                       );
-                    } catch (error) { setNotice(error instanceof Error ? error.message : tLabels("unableToRemoveAccess")); }
+                    } catch (error) { setNotice(getErrorMessage(error, tLabels("unableToRemoveAccess"))); }
                     }}
                   >
                     {member.invited
@@ -444,7 +446,7 @@ export function TeamAccess({
               setInvite(false);
               setView("invitations");
               setSearch("");
-              } catch (error) { setError(error instanceof Error ? error.message : tLabels("unableToAddMember")); }
+              } catch (error) { setError(getErrorMessage(error, tLabels("unableToAddMember"))); }
             }}
           >
             <div className="flex items-center justify-between gap-3">
@@ -639,9 +641,10 @@ export function TeamAccess({
         {!isProfile && (
           <div className="border-b border-border-subtle bg-inset">
             <div className="px-4 pt-4">
-              <h4 className="text-xs font-medium">{t("organizationOwners")}</h4>
+              {/* A community in a person's own workspace has them as its owner, and no organization. */}
+              <h4 className="text-xs font-medium">{organization ? t("organizationOwners") : t("roleNames.Owner")}</h4>
               <p className="mt-1 text-xs text-muted-foreground">
-                {t("accessToAllLibrariesManagedIn")}
+                {organization ? t("accessToAllLibrariesManagedIn") : t("ownWorkspaceOwner")}
               </p>
             </div>
             {people(members.filter((member) => member.role === "Owner"))}

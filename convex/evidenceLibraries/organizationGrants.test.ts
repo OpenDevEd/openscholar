@@ -45,6 +45,10 @@ describe("sharing a community with an organization", () => {
     const member = fixture.t.withIdentity({ subject: "user_partner_member" });
     const shared = await member.query(api.evidenceLibraries.queries.listLibraries, { from: "shared", paginationOpts: { cursor: null, numItems: 10 } });
     expect(shared.page.map((row) => [row.name, row.role])).toEqual([["Climate Evidence", "creator"]]);
+    // Filtered to Partners, their own page lists what's shared with Partners too.
+    const partnersWorkspace = await fixture.t.run((ctx) => ensureWorkspace(ctx, { kind: "organization", organizationId }));
+    const filtered = await member.query(api.evidenceLibraries.queries.listLibraries, { from: partnersWorkspace, paginationOpts: { cursor: null, numItems: 10 } });
+    expect(filtered.page.map((row) => row.name)).toEqual(["Climate Evidence"]);
 
     await fixture.admin.mutation(api.evidenceLibraries.organizationGrants.changeRole, { libraryId, organizationId, role: "editor" });
     expect(await roleOf(fixture, "user_partner_member")).toBe("editor");
@@ -100,6 +104,16 @@ describe("sharing a community with an organization", () => {
     await answer(users.user_partner_admin, { organizationId });
     expect(await roleOf(fixture, "user_partner_member")).toBe("editor");
     expect((await fixture.t.run((ctx) => ctx.db.get("itemInvitations", invitationId)))?.state).toBe("accepted");
+
+    // A second tab picking another of their organizations is told it went to the first, and that one gets nothing.
+    const other = await fixture.t.run(async (ctx) => {
+      const id = await ctx.db.insert("organizations", { clerkOrganizationId: "org_partners_two", name: "Partners Two", slug: "partners-two", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("organizationMemberships", { organizationId: id, clerkMembershipId: "orgmem_two", clerkUserId: "user_partner_admin", role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      return id;
+    });
+    await expect(answer(users.user_partner_admin, { organizationId: other })).rejects.toThrow(/accepted already/);
+    expect(await fixture.t.run((ctx) => ctx.db.query("libraryOrganizationGrants").collect())).toHaveLength(1);
+    await answer(users.user_partner_admin, { organizationId });
 
     // Its owner lowers the organization's role; an invitation accepted after that doesn't raise it again.
     await fixture.admin.mutation(api.evidenceLibraries.organizationGrants.changeRole, { libraryId, organizationId, role: "creator" });

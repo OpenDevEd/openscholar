@@ -2023,7 +2023,7 @@
       "typeToConfirm": "Tik {name} om te bevestig",
       "confirm": "Verwyder gemeenskap",
       "startedTitle": "Gemeenskap word verwyder",
-      "startedDescription": "{name} word verwyder. Neem ’n paar sekondes.",
+      "startedDescription": "{name} word verwyder. Dit neem ’n minuut of twee.",
       "error": "Die gemeenskap kon nie verwyder word nie. Voltooi enige lopende gemeenskapsbewerking, en probeer dan weer."
     },
     "links": {
@@ -4795,7 +4795,13 @@
       "libraryKeeps": "{workspace} se biblioteek behou die artikels wat dit gestoor het.",
       "yourLibraryKeeps": "Jou biblioteek behou die artikels wat dit gestoor het.",
       "community": "Skuif gemeenskap",
-      "workspaceOwnsIt": "Die werkruimte waarheen dit skuif, besit dit van dan af."
+      "workspaceOwnsIt": "Die werkruimte waarheen dit skuif, besit dit van dan af.",
+      "refused": {
+        "noCommunities": "Jy kan nie hier gemeenskappe skep nie",
+        "communitiesFull": "Het soveel gemeenskappe as wat ’n werkruimte kan hê",
+        "profilesOff": "Outeursprofiele is nie hier aan nie",
+        "noProfiles": "Jy kan nie hier outeursprofiele maak nie"
+      }
     },
     "share": {
       "share": "Deel",
@@ -5348,7 +5354,8 @@
     "everyoneInIt": "Almal daarin",
     "forTheirOrganization": "Vir ’n organisasie waarvan {email} ’n admin is",
     "removeThisOrganization": "Verwyder hierdie organisasie? Sy lede behou net rolle wat hulle self gekry het.",
-    "organizationLabel": "Organisasie"
+    "organizationLabel": "Organisasie",
+    "ownWorkspaceOwner": "Dit is in hul eie werkruimte, dus is dit hulle s’n."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Opsomming in die ry vir # publikasie.} other {Opsomming in die ry vir # publikasies.}}",
@@ -5454,7 +5461,8 @@
       "countries": "Oor {names}",
       "recordsLabel": "{count, plural, one {rekord} other {rekords}}",
       "peopleLabel": "{count, plural, one {persoon} other {mense}}",
-      "noDescription": "Nog geen beskrywing nie"
+      "noDescription": "Nog geen beskrywing nie",
+      "notCounted": "Nog nie getel nie"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nuwe gemeenskap",

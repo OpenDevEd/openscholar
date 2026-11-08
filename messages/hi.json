@@ -2022,7 +2022,7 @@
       "typeToConfirm": "पुष्टि के लिए {name} लिखें",
       "confirm": "कम्युनिटी हटाएं",
       "startedTitle": "कम्युनिटी हटाई जा रही है",
-      "startedDescription": "{name} हटाई जा रही है। इसमें कुछ सेकंड लगते हैं।",
+      "startedDescription": "{name} हटाई जा रही है। इसमें एक-दो मिनट लगते हैं।",
       "error": "कम्युनिटी हटाई नहीं जा सकी। कोई चल रहा कम्युनिटी काम पूरा करें, फिर से कोशिश करें।"
     },
     "links": {
@@ -4794,7 +4794,13 @@
       "libraryKeeps": "{workspace} की लाइब्रेरी इसके सहेजे पेपर रखती है।",
       "yourLibraryKeeps": "आपकी लाइब्रेरी इसके सहेजे पेपर रखती है।",
       "community": "कम्युनिटी ले जाएँ",
-      "workspaceOwnsIt": "जिस वर्कस्पेस में यह जाएगी, उसके बाद वही इसका मालिक होगा।"
+      "workspaceOwnsIt": "जिस वर्कस्पेस में यह जाएगी, उसके बाद वही इसका मालिक होगा।",
+      "refused": {
+        "noCommunities": "आप यहाँ कम्युनिटी नहीं बना सकते",
+        "communitiesFull": "इसमें उतनी कम्युनिटी हैं जितनी एक वर्कस्पेस में हो सकती हैं",
+        "profilesOff": "यहाँ लेखक प्रोफ़ाइल चालू नहीं हैं",
+        "noProfiles": "आप यहाँ लेखक प्रोफ़ाइल नहीं बना सकते"
+      }
     },
     "share": {
       "share": "साझा करें",
@@ -5347,7 +5353,8 @@
     "everyoneInIt": "इसके सभी लोग",
     "forTheirOrganization": "ऐसे संगठन के लिए जिसका एडमिन {email} है",
     "removeThisOrganization": "यह संगठन हटाएं? इसके सदस्यों के पास बस वही भूमिकाएँ रहेंगी जो उन्हें खुद दी गई थीं।",
-    "organizationLabel": "संगठन"
+    "organizationLabel": "संगठन",
+    "ownWorkspaceOwner": "यह उनके अपने वर्कस्पेस में है, इसलिए उनकी है।"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {# प्रकाशन के लिए डाइजेस्ट कतार में है।} other {# प्रकाशनों के लिए डाइजेस्ट कतार में है।}}",
@@ -5453,7 +5460,8 @@
       "countries": "{names} के बारे में",
       "recordsLabel": "{count, plural, one {रिकॉर्ड} other {रिकॉर्ड}}",
       "peopleLabel": "{count, plural, one {व्यक्ति} other {लोग}}",
-      "noDescription": "अभी कोई विवरण नहीं"
+      "noDescription": "अभी कोई विवरण नहीं",
+      "notCounted": "अभी गिना नहीं गया"
     },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "नई कम्युनिटी",

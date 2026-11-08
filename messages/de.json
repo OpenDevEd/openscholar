@@ -2023,7 +2023,7 @@
       "typeToConfirm": "Geben Sie {name} zur Bestätigung ein",
       "confirm": "Community löschen",
       "startedTitle": "Community wird gelöscht",
-      "startedDescription": "{name} wird entfernt. Dies dauert einige Sekunden.",
+      "startedDescription": "{name} wird entfernt. Das dauert ein bis zwei Minuten.",
       "error": "Die Community konnte nicht gelöscht werden. Beenden Sie einen laufenden Community-Vorgang und versuchen Sie es dann erneut."
     },
     "links": {
@@ -4795,7 +4795,13 @@
       "libraryKeeps": "Die Bibliothek von {workspace} behält die Artikel, die sie gespeichert hat.",
       "yourLibraryKeeps": "Ihre Bibliothek behält die Artikel, die sie gespeichert hat.",
       "community": "Community verschieben",
-      "workspaceOwnsIt": "Der Arbeitsbereich, in den sie verschoben wird, ist ab dann ihr Eigentümer."
+      "workspaceOwnsIt": "Der Arbeitsbereich, in den sie verschoben wird, ist ab dann ihr Eigentümer.",
+      "refused": {
+        "noCommunities": "Hier können Sie keine Communities anlegen",
+        "communitiesFull": "Hat so viele Communities, wie ein Arbeitsbereich haben kann",
+        "profilesOff": "Autorenprofile sind hier nicht aktiviert",
+        "noProfiles": "Hier können Sie keine Autorenprofile anlegen"
+      }
     },
     "share": {
       "share": "Teilen",
@@ -5348,7 +5354,8 @@
     "everyoneInIt": "Alle darin",
     "forTheirOrganization": "Für eine Organisation, in der {email} Admin ist",
     "removeThisOrganization": "Diese Organisation entfernen? Ihre Mitglieder behalten nur Rollen, die sie selbst erhalten haben.",
-    "organizationLabel": "Organisation"
+    "organizationLabel": "Organisation",
+    "ownWorkspaceOwner": "Sie liegt in ihrem eigenen Arbeitsbereich und gehört daher ihnen."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Übersicht für # Publikation eingeplant.} other {Übersicht für # Publikationen eingeplant.}}",
@@ -5454,7 +5461,8 @@
       "countries": "Über {names}",
       "recordsLabel": "{count, plural, one {Eintrag} other {Einträge}}",
       "peopleLabel": "{count, plural, one {Person} other {Personen}}",
-      "noDescription": "Noch keine Beschreibung"
+      "noDescription": "Noch keine Beschreibung",
+      "notCounted": "Noch nicht gezählt"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Neue Community",

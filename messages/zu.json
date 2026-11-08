@@ -2022,7 +2022,7 @@
       "typeToConfirm": "Thayipha {name} ukuze uqinisekise",
       "confirm": "Susa umphakathi",
       "startedTitle": "Iyasusa umphakathi",
-      "startedDescription": "I-{name} iyasuswa. Kuthatha imizuzwana embalwa.",
+      "startedDescription": "I-{name} iyasuswa. Kuthatha umzuzu noma emibili.",
       "error": "Umphakathi awukwazanga ukususwa. Qeda noma yimuphi umsebenzi womphakathi osebenzayo, bese uzama futhi."
     },
     "links": {
@@ -4794,7 +4794,13 @@
       "libraryKeeps": "Umtapo wolwazi we-{workspace} ugcina amaphepha ayo agciniwe.",
       "yourLibraryKeeps": "Umtapo wakho wolwazi ugcina amaphepha agciniwe.",
       "community": "Hambisa umphakathi",
-      "workspaceOwnsIt": "Isikhala sokusebenzela esiyiswa kuso siba ngumnikazi wawo kusukela lapho."
+      "workspaceOwnsIt": "Isikhala sokusebenzela esiyiswa kuso siba ngumnikazi wawo kusukela lapho.",
+      "refused": {
+        "noCommunities": "Awukwazi ukudala imiphakathi lapha",
+        "communitiesFull": "Inemiphakathi eminingi njengoba isikhala sokusebenzela singaba nayo",
+        "profilesOff": "Amaphrofayela ababhali awavuliwe lapha",
+        "noProfiles": "Awukwazi ukwenza amaphrofayela ababhali lapha"
+      }
     },
     "share": {
       "share": "Yabelana",
@@ -5347,7 +5353,8 @@
     "everyoneInIt": "Wonke umuntu kuyo",
     "forTheirOrganization": "Enhlanganweni u-{email} ongumlawuli wayo",
     "removeThisOrganization": "Susa le nhlangano? Amalungu ayo agcina kuphela izindima azinikwe wona ngokwawo.",
-    "organizationLabel": "Inhlangano"
+    "organizationLabel": "Inhlangano",
+    "ownWorkspaceOwner": "Kusesikhaleni sabo sokusebenzela, ngakho kungokwabo."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Isifinyezo sibekwe emgqeni ushicilelo olu-#.} other {Isifinyezo sibekwe emgqeni ukushicilelwa okungu-#.}}",
@@ -5453,7 +5460,8 @@
       "countries": "Mayelana ne-{names}",
       "recordsLabel": "{count, plural, one {irekhodi} other {amarekhodi}}",
       "peopleLabel": "{count, plural, one {umuntu} other {abantu}}",
-      "noDescription": "Akukho ncazelo okwamanje"
+      "noDescription": "Akukho ncazelo okwamanje",
+      "notCounted": "Akukabalwa okwamanje"
     },
     "evidenceLibraries": "Imiphakathi yobufakazi",
     "newLibrary": "Umphakathi omusha",

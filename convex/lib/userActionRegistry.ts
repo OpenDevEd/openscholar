@@ -25,7 +25,7 @@ import { createAction as chatCreateAction, getAction as chatAction, listAction a
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
 import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction,  setColourAction, setRoleAction } from "../organizations/manage";
 import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, summaryAction as workspaceSummaryAction, workspaceAction, workspacesAction } from "../organizations/queries";
-import { heldAction as moveHeldAction, moveAction } from "../workspaces/move";
+import { heldAction as moveHeldAction, moveAction, refusalsAction as moveRefusalsAction } from "../workspaces/move";
 import { addAction as guestAddAction, candidatesAction as guestCandidatesAction, invitedAction as guestInvitedAction, leaveAction as guestLeaveAction, listAction as guestListAction, removeAction as guestRemoveAction, roomAction as guestRoomAction, setRoleAction as guestRoleAction } from "../sharing/guests";
 import { getAction as guestInvitationAction, inviteAction as guestInviteAction, respondAction as guestRespondAction } from "../sharing/invitations";
 import { countsAction as sharedCountsAction, editableCollectionsAction as sharedEditableCollectionsAction, listAction as sharedListAction } from "../sharing/shared";
@@ -230,6 +230,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   setColourAction,
   deleteOrganizationAction,
   moveHeldAction,
+  moveRefusalsAction,
   moveAction,
   guestAddAction,
   guestInviteAction,

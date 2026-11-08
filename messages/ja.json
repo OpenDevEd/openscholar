@@ -2022,7 +2022,7 @@
       "typeToConfirm": "確認のため {name} と入力してください",
       "confirm": "コミュニティを削除",
       "startedTitle": "コミュニティを削除しています",
-      "startedDescription": "{name} を削除しています。数秒かかります。",
+      "startedDescription": "{name} を削除しています。1〜2分かかります。",
       "error": "コミュニティを削除できませんでした。実行中のコミュニティの操作が終わってから、もう一度試してください。"
     },
     "links": {
@@ -4794,7 +4794,13 @@
       "libraryKeeps": "{workspace} のライブラリには保存済みの論文が残ります。",
       "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。",
       "community": "コミュニティを移動",
-      "workspaceOwnsIt": "移動先のワークスペースが以後の所有者になります。"
+      "workspaceOwnsIt": "移動先のワークスペースが以後の所有者になります。",
+      "refused": {
+        "noCommunities": "ここではコミュニティを作成できません",
+        "communitiesFull": "ワークスペースに作成できる上限までコミュニティがあります",
+        "profilesOff": "ここでは著者プロフィールが有効になっていません",
+        "noProfiles": "ここでは著者プロフィールを作成できません"
+      }
     },
     "share": {
       "share": "共有",
@@ -5347,7 +5353,8 @@
     "everyoneInIt": "組織の全員",
     "forTheirOrganization": "{email} が管理者を務める組織向け",
     "removeThisOrganization": "この組織を削除しますか？メンバーには個別に付与された役割だけが残ります。",
-    "organizationLabel": "組織"
+    "organizationLabel": "組織",
+    "ownWorkspaceOwner": "本人のワークスペースにあるため、本人のものです。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {# 件の出版物のダイジェストを待機中です。}}",
@@ -5453,7 +5460,8 @@
       "countries": "対象：{names}",
       "recordsLabel": "{count, plural, other {件の記録}}",
       "peopleLabel": "{count, plural, other {人}}",
-      "noDescription": "説明はまだありません"
+      "noDescription": "説明はまだありません",
+      "notCounted": "まだ集計されていません"
     },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新しいコミュニティ",

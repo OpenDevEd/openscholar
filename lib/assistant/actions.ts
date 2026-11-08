@@ -202,6 +202,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "organizations/manage:setColour": { kind: "other", words: "workspaceColour" },
   "organizations/manage:resendInvitation": { kind: "other", words: "resendInvite" },
   "workspaces/move:held": { kind: "other", words: "moveCheck" },
+  "workspaces/move:refusals": { kind: "other", words: "moveCheck" },
   "workspaces/move:move": { kind: "other", words: "moveItem" },
   "sharing/guests:add": { kind: "other", words: "shareItem" },
   "sharing/invitations:invite": { kind: "other", words: "shareItem" },

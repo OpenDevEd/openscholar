@@ -23,11 +23,12 @@ import { countOf, workspaceLibrariesOf } from "../lib/listCounts";
 import { createsIn } from "../organizationFeatures";
 import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersonalRating, writeRating } from "../ratings";
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
-import { requireAuthorProfiles } from "../authors/profiles";
-import { MAKERS, profileMaker } from "../authors/access";
+import { MAKERS, editedWorkspaces, profileMaker } from "../authors/access";
 import { give } from "../sharing/access";
 import { actorIn } from "./actor";
-import { workspaceName } from "./personal";
+import { workspaceName, workspacesOf } from "./personal";
+import { opensLibraries } from "../billing/accounts";
+import { paginationResultValidator } from "convex/server";
 
 export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author", "community"] as const;
 export type Movable = (typeof movableKinds)[number];
@@ -157,6 +158,30 @@ export async function heldBack(ctx: Read, { workspaceId, role, userId }: Pick<Ac
   return null;
 }
 
+/** Why a workspace won't take an item of this kind from this person, as the Move dialog names it, or null. Only communities and author profiles ask. */
+const refusalValidator = v.union(v.literal("noCommunities"), v.literal("communitiesFull"), v.literal("profilesOff"), v.literal("noProfiles"));
+type Refusal = Infer<typeof refusalValidator>;
+const REFUSED: Record<Refusal, string> = {
+  noCommunities: "A community moves to your own workspace or an organization you're an admin of, once Evidence Communities are on for it.",
+  communitiesFull: `That workspace has the ${MAX_LIBRARIES_PER_WORKSPACE} communities a workspace can have.`,
+  profilesOff: "Author profiles come with Evidence Communities, which aren't on for that workspace.",
+  noProfiles: MAKERS,
+};
+async function refusalAt(ctx: QueryCtx, person: Doc<"users">, kind: Movable, to: Id<"workspaces">, edited?: Set<Id<"workspaces">>): Promise<Refusal | null> {
+  if (kind === "community") {
+    const target = await ctx.db.get("workspaces", to);
+    if (!target || !(await createsIn(ctx, person, target))) return "noCommunities";
+    if ((await countOf(ctx, workspaceLibrariesOf(to))) >= MAX_LIBRARIES_PER_WORKSPACE) return "communitiesFull";
+  }
+  if (kind === "author") {
+    if (!(await opensLibraries(ctx, to))) return "profilesOff";
+    // `edited`, read once for every workspace of theirs, stands for profileMaker's reading of their grants.
+    const runs = (await actorIn(ctx, person, to))?.role === "admin";
+    if (!runs && !(edited ? edited.has(to) : await profileMaker(ctx, person, to))) return "noProfiles";
+  }
+  return null;
+}
+
 /** Puts the item, and what's stored with it by its workspace, in `to`; returns the row its activity follows. */
 async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">, to: Id<"workspaces">, kind: Movable, id: string): Promise<{ table: Followed; id: string } | null> {
   if (kind === "collection") {
@@ -177,14 +202,14 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
   if (kind === "author") {
     const profile = await profileIn(ctx, from, id);
     if (!profile) throw createError("NOT_FOUND", "Author profile not found");
-    await requireAuthorProfiles(ctx, to);
     // It goes where the person may make one (#1093), and they edit it there when they don't run that workspace.
     const person = await ctx.db.get("users", by);
-    const may = person ? await profileMaker(ctx, person, to) : null;
-    if (!person || !may) throw createError("FORBIDDEN", MAKERS);
+    const refused = person ? await refusalAt(ctx, person, kind, to) : "noProfiles";
+    if (refused) throw createError("FORBIDDEN", REFUSED[refused]);
+    const may = (await profileMaker(ctx, person!, to))!;
     // Its publications and editors are its own, by its ID.
     await ctx.db.patch("authorProfiles", profile._id, { workspaceId: to });
-    if (!may.runs) await give(ctx, { kind: "author", id: profile._id, workspaceId: to, name: profile.name, createdBy: profile.createdBy }, person, "editor", { userId: by, author: "user" });
+    if (!may.runs) await give(ctx, { kind: "author", id: profile._id, workspaceId: to, name: profile.name, createdBy: profile.createdBy }, person!, "editor", { userId: by, author: "user" });
     return { table: "authorProfiles", id: profile._id };
   }
   if (kind === "search") {
@@ -211,9 +236,9 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
   if (kind === "community") {
     const community = await communityIn(ctx, from, id);
     if (!community) throw createError("NOT_FOUND", "Community not found");
-    const [person, target] = await Promise.all([ctx.db.get("users", by), ctx.db.get("workspaces", to)]);
-    if (!person || !target || !(await createsIn(ctx, person, target))) throw createError("FORBIDDEN", "A community moves to your own workspace or an organization you're an admin of, once Evidence Communities are on for it.");
-    if ((await countOf(ctx, workspaceLibrariesOf(to))) >= MAX_LIBRARIES_PER_WORKSPACE) throw createError("VALIDATION_ERROR", `${await workspaceName(ctx, to)} has the ${MAX_LIBRARIES_PER_WORKSPACE} communities a workspace can have.`);
+    const person = await ctx.db.get("users", by);
+    const refused = person ? await refusalAt(ctx, person, kind, to) : "noCommunities";
+    if (refused) throw createError(refused === "communitiesFull" ? "VALIDATION_ERROR" : "FORBIDDEN", REFUSED[refused]);
     // Its ID, address, settings and the people given a role in it are its own; its owners are the workspace's from now on.
     await ctx.db.patch("evidenceLibraries", community._id, { workspaceId: to });
     await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: community._id });
@@ -335,6 +360,24 @@ export const heldAction = defineUserQuery({
 });
 export const held = userQuery(heldAction);
 export const heldForAssistant = assistantQuery(heldAction);
+
+/** The person's other workspaces that won't take the item, and why, for the Move dialog to show before it's picked. */
+export const refusalsAction = defineUserQuery({
+  path: "workspaces/move:refusals",
+  description: "Says which of the person's other workspaces won't take an item of the workspace they're in, and why: a community goes only where they may create one, an author profile only where they may make one. Every other kind goes to any of them.",
+  args: { kind: kindValidator, id: v.string() },
+  // One page: a person is in at most MAX_ORGANIZATIONS_PER_PERSON organizations, besides their own workspace (./personal.ts).
+  returns: paginationResultValidator(v.object({ workspaceId: v.id("workspaces"), refusal: refusalValidator })),
+  run: async (ctx, actor, { kind }) => {
+    const person = await ctx.db.get("users", actor.userId);
+    const others = person && (kind === "community" || kind === "author") ? (await workspacesOf(ctx, person._id)).filter((workspace) => workspace._id !== actor.workspaceId) : [];
+    const edited = person && kind === "author" ? await editedWorkspaces(ctx, person) : undefined;
+    const page = await Promise.all(others.map(async (workspace) => ({ workspaceId: workspace._id, refusal: await refusalAt(ctx, person!, kind, workspace._id, edited) })));
+    return { page: page.flatMap((row) => (row.refusal ? [{ workspaceId: row.workspaceId, refusal: row.refusal }] : [])), isDone: true, continueCursor: "" };
+  },
+});
+export const refusals = userQuery(refusalsAction);
+export const refusalsForAssistant = assistantQuery(refusalsAction);
 
 export const moveAction = defineUserMutation({
   path: "workspaces/move:move",
