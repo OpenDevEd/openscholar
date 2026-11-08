@@ -3,6 +3,7 @@
 // carries the library's machine credential and the contract version; the library decides what the
 // person may read. A library on an older runtime answers 404 to these paths.
 import { z } from "zod";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
 import { LIBRARY_SOURCE_MAX, type LibrarySource } from "../../lib/evidence-libraries/source-address";
 
@@ -180,8 +181,7 @@ export async function matchLibraryRecords(fetchImpl: typeof fetch, target: Libra
 
 // Papers added to a community by DOI or OpenAlex ID (OpenDevEd/new-el#773, #782): looked up, added and listed.
 
-/** Papers one call looks up or adds at most. */
-export const ADDED_PAPERS_MAX = 100;
+export { ADDED_PAPERS_MAX };
 const ADD_TIMEOUT_MS = 120_000;
 
 export type PaperReference = { openalexId?: string | null; doi?: string | null };
@@ -247,7 +247,7 @@ const listedSchema = z.object({
     }),
   ).max(100),
   next: z.string().nullable(),
-  counts: z.object({ live: z.number().int(), waiting: z.number().int() }),
+  counts: z.object({ total: z.number().int(), live: z.number().int(), waiting: z.number().int() }),
   settings: z.object({ enabled: z.boolean(), downloadPdfs: z.boolean() }),
 });
 export type AddedPapersPage = z.infer<typeof listedSchema>;

@@ -35,8 +35,7 @@ import { memberIdWithEmail } from "../organizations/read";
 import { saveEvidenceLibraryDraftSections } from "./mutations";
 import { libraryTeamValidator, readEvidenceLibraryDraft, readEvidenceLibraryRevision, readLibraryTeam, revisionReadValidator } from "./queries";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { addedPapersPageValidator, addedPapersSettingsValidator, paperAddedValidator, paperPreviewValidator } from "./sourceActions";
-import { addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
+import { addedPapersPageValidator, addedPapersSettingsValidator, paperPreviewsValidator, papersAddedValidator, addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
 
 const EDIT_PATH = "evidenceLibraries/assistant:editDraft" as const;
 type Change = Infer<typeof draftChangesValidator>[number];
@@ -667,10 +666,10 @@ export const previewPapersAction = defineUserAction({
     "Looks papers up for a community by DOI, OpenAlex ID or a link to either, up to 100, without adding them: each one's title, authors and year, how it was found (OpenAlex, or its DOI alone), and whether it's new to the community, already in it, waiting in its review queue or not found. " +
     "Add them with evidenceLibraries/assistant:addPapers.",
   args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences },
-  returns: v.array(paperPreviewValidator),
+  returns: paperPreviewsValidator,
   ...running,
   check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
-  run: async (ctx, actor, { libraryId, papers }): Promise<Array<Infer<typeof paperPreviewValidator>>> => {
+  run: async (ctx, actor, { libraryId, papers }): Promise<Infer<typeof paperPreviewsValidator>> => {
     await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
     return await ctx.runAction(internal.evidenceLibraries.sourceActions.previewPapers, { libraryId, papers });
   },
@@ -684,7 +683,7 @@ export const addPapersAction = defineChangingAction({
     "Adds papers to a community by DOI, OpenAlex ID or a link to either, up to 100, kept up to date from OpenAlex afterwards. With `publish`, an owner or editor puts them live at once; otherwise, and always for a creator, they wait in the community's review queue. " +
     "`requestId` is any ID for this request: sent again, it adds nothing twice. Each paper's answer: added, queued, returned (its review was returned or withdrawn), already in the community, not found, or failed. Asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences, publish: v.boolean(), requestId: v.string() },
-  returns: v.array(paperAddedValidator),
+  returns: papersAddedValidator,
   spendsCredits: false,
   outsideEffect: true,
   undoable: false,
@@ -692,7 +691,7 @@ export const addPapersAction = defineChangingAction({
     const { role } = await paperSenderOf(ctx, actor, libraryId);
     if (publish && role === "creator") throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
   },
-  run: async (ctx, actor, args): Promise<Array<Infer<typeof paperAddedValidator>>> => {
+  run: async (ctx, actor, args): Promise<Infer<typeof papersAddedValidator>> => {
     const sender: { role: "owner" | "editor" | "creator"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
     if (args.publish && sender.role === "creator") throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
     return await ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, userId: actor.userId, ...sender });

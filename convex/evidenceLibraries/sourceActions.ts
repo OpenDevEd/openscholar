@@ -16,7 +16,7 @@ import { paperKey } from "../../lib/papers/paper-ref";
 import { LIBRARY_COLLECTION_DESCRIPTION_MAX, LIBRARY_COLLECTION_NAME_MAX, LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
 import { LIBRARY_KEYS_WINDOW } from "../paperSets/libraryKeys";
 import { libraryDestinationValidator } from "../screening/validators";
-import { LIBRARY_ROWS_MAX, LIBRARY_SOURCE_RECORDS_MAX, handoffRecordsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
+import { LIBRARY_ROWS_MAX, LIBRARY_SOURCE_RECORDS_MAX, handoffRecordsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator, addedPapersPageValidator, addedPapersSettingsValidator, paperPreviewsValidator, papersAddedValidator } from "./validators";
 import {
   LIBRARY_BATCH_MAX,
   LibrarySourceError,
@@ -483,51 +483,12 @@ export const refreshRecords = internalAction({
 // Papers added to a community by DOI or OpenAlex ID (OS-29, OpenDevEd/openalex-count#1122).
 
 const paperReferenceValidator = v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())) });
-const foundByValidator = v.union(v.literal("openalex"), v.literal("doi"));
-const summaryFields = { title: v.string(), authors: v.string(), year: v.union(v.number(), v.null()) };
-
-export const addedPapersSettingsValidator = v.object({ enabled: v.boolean(), downloadPdfs: v.boolean() });
 const teamRoleValidator = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"));
-
-export const paperPreviewValidator = v.object({
-  at: v.number(),
-  outcome: v.union(v.literal("found"), v.literal("existing"), v.literal("queued"), v.literal("returned"), v.literal("not_found")),
-  itemKey: v.optional(v.string()),
-  foundBy: v.optional(foundByValidator),
-  paper: v.optional(v.object({ ...summaryFields, openalexId: v.union(v.string(), v.null()), doi: v.union(v.string(), v.null()) })),
-  message: v.optional(v.string()),
-});
-
-export const paperAddedValidator = v.object({
-  at: v.number(),
-  outcome: v.union(v.literal("added"), v.literal("queued"), v.literal("returned"), v.literal("existing"), v.literal("not_found"), v.literal("failed")),
-  itemKey: v.optional(v.string()),
-  foundBy: v.optional(foundByValidator),
-  message: v.optional(v.string()),
-});
-
-export const addedPapersPageValidator = v.object({
-  papers: v.array(v.object({
-    ...summaryFields,
-    itemKey: v.string(),
-    openalexId: v.union(v.string(), v.null()),
-    doi: v.union(v.string(), v.null()),
-    status: v.union(v.literal("live"), v.literal("doi_only"), v.literal("queued"), v.literal("returned")),
-    note: v.union(v.string(), v.null()),
-    /** Sent by the person reading the list, who may withdraw it while it waits. */
-    mine: v.boolean(),
-    addedByName: v.union(v.string(), v.null()),
-    addedAt: v.string(),
-  })),
-  next: v.union(v.string(), v.null()),
-  counts: v.object({ live: v.number(), waiting: v.number() }),
-  settings: addedPapersSettingsValidator,
-});
 
 /** What adding papers to a running community would find, saving nothing. */
 export const previewPapers = internalAction({
   args: { libraryId: v.id("evidenceLibraries"), papers: v.array(paperReferenceValidator) },
-  returns: v.array(paperPreviewValidator),
+  returns: paperPreviewsValidator,
   handler: async (ctx, { libraryId, papers }) => {
     if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Look up at most ${ADDED_PAPERS_MAX} papers at once.`);
     const target = await libraryTarget(ctx, libraryId);
@@ -546,7 +507,7 @@ export const addPapers = internalAction({
     publish: v.boolean(),
     papers: v.array(paperReferenceValidator),
   },
-  returns: v.array(paperAddedValidator),
+  returns: papersAddedValidator,
   handler: async (ctx, { libraryId, userId, role, name, requestId, publish, papers }) => {
     if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Add at most ${ADDED_PAPERS_MAX} papers at once.`);
     const target = await libraryTarget(ctx, libraryId);

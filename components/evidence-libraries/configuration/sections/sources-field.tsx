@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Settings2,
+  AddedPapersIcon,
 } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
@@ -45,6 +46,7 @@ import type {
 } from "@/lib/evidence-libraries/configuration/sources";
 import { ChipInput, EmptyList, MetaList, Panel } from "../fields";
 import { FieldError } from "../section-card";
+import { AddedPapersRow, useAddedPapersCommunity } from "./added-papers-row";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import {
   Dialog,
@@ -162,6 +164,7 @@ export function SourcesField({
   aiReady,
 }: SourcesFieldProps) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
+  const tp = useTranslations("addedPapers");
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
   const groups = useProtectedQuery(
     api.zotero.libraryGroups.listZoteroGroups,
@@ -180,7 +183,10 @@ export function SourcesField({
   const [connectionsOpen, setConnectionsOpen] = useState(zoteroSignIn.failed);
   const [connectionTab, setConnectionTab] = useState("zotero");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [addingPapers, setAddingPapers] = useState(false);
   const addButton = useRef<HTMLButtonElement>(null);
+  // A running community always lists its added papers, so its list is never empty.
+  const running = useAddedPapersCommunity(libraryId) !== null;
   const openalex = useOpenAlexSources({ libraryId, value, onChange });
   const liveFor = useSourceActivity(libraryId);
   const workspaceId = useWorkspace();
@@ -277,7 +283,7 @@ export function SourcesField({
   return (
     <SourceScreeningProvider value={{ libraryId, workspaceId, aiReady }}>
       <div className="space-y-4" data-library-sources>
-        {value.length === 0 ? (
+        {value.length === 0 && !running ? (
           <EmptyList>{t("noSources")}</EmptyList>
         ) : (
           <ul
@@ -315,6 +321,7 @@ export function SourcesField({
                 onRemove={() => setRemoveTarget({ kind: "collection", entry })}
               />
             ))}
+            <AddedPapersRow libraryId={libraryId} adding={addingPapers} onAddingChange={setAddingPapers} />
           </ul>
         )}
 
@@ -396,6 +403,15 @@ export function SourcesField({
                     </span>
                   </span>
                 </DropdownMenuItem>
+                {running ? (
+                  <DropdownMenuItem onSelect={() => setAddingPapers(true)}>
+                    <AddedPapersIcon className="size-4 text-primary" />
+                    <span>
+                      {tp("menu")}
+                      <span className="block text-xs text-muted-foreground">{tp("menuHint")}</span>
+                    </span>
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onSelect={() => collections.open()}>
                   <CollectionSourceIcon />
                   <span>

@@ -149,6 +149,9 @@ export { AddFolderIcon as FolderPlus } from "@solar-icons/react/bold-duotone/add
 export { RemoveFolderIcon as FolderMinus } from "@solar-icons/react/bold-duotone/remove-folder";
 export { SpeedometerMiddleIcon as Gauge } from "@solar-icons/react/bold-duotone/speedometer-middle";
 export { HourglassIcon as Hourglass } from "@solar-icons/react/bold-duotone/hourglass";
+// Added papers: a community's papers added one at a time. The review queue is where a suggestion waits.
+export { DocumentAddIcon as AddedPapersIcon } from "@solar-icons/react/bold-duotone/document-add";
+export { InboxInIcon as ReviewQueueIcon } from "@solar-icons/react/bold-duotone/inbox-in";
 export { StopIcon as Square } from "@solar-icons/react/bold-duotone/stop";
 export { FileSendIcon as FileUp } from "@solar-icons/react/bold-duotone/file-send";
 export { CameraIcon as Camera } from "@solar-icons/react/bold-duotone/camera";

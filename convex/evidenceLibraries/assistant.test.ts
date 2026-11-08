@@ -165,6 +165,26 @@ describe("a library's invitations, its start and the running library, for the as
     expect((await t.query(assistant.librariesForAssistant, outside)).libraries).toEqual([expect.objectContaining({ libraryId, editable: false })]);
   });
 
+  it("lets the community's team add papers, publishing only as an owner or editor, and leaves its added papers' settings to the owner", async () => {
+    const { t, as, libraryId } = await setup();
+    const colleague = { userId: (await t.run((ctx) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "user_colleague")).unique()))!._id, workspaceId: as.workspaceId };
+    const refusal = (where: typeof as, path: string, input: object) => t.query(internal.assistant.asking.check, { ...where, path: `evidenceLibraries/assistant:${path}`, input: JSON.stringify(input) });
+    const papers = { libraryId, papers: [{ doi: "10.1000/w1" }], requestId: "r1" };
+    expect(await refusal(as, "addPapers", { ...papers, publish: true })).toBeNull();
+    expect(await refusal(as, "setAddedPapersSettings", { libraryId, enabled: false })).toBeNull();
+    // Someone with no role on it adds nothing.
+    expect(await refusal(colleague, "addPapers", { ...papers, publish: false })).toMatch(/Only the community's team adds papers/);
+    await t.mutation(internal.evidenceLibraries.assistant.addMemberForAssistant, { ...as, libraryId, approved: true, email: "user_colleague@example.org", role: "creator" });
+    // A creator sends papers to the review queue, withdraws their own, and changes no setting.
+    expect(await refusal(colleague, "addPapers", { ...papers, publish: false })).toBeNull();
+    expect(await refusal(colleague, "addPapers", { ...papers, publish: true })).toMatch(/Only an owner or editor publishes papers/);
+    expect(await refusal(colleague, "removeAddedPaper", { libraryId, itemKey: "ABCD1234" })).toBeNull();
+    expect(await refusal(colleague, "setAddedPapersSettings", { libraryId, downloadPdfs: false })).toMatch(/Only the community's owner/);
+    await t.mutation(internal.evidenceLibraries.assistant.changeRoleForAssistant, { ...as, libraryId, approved: true, clerkUserId: "user_colleague", role: "editor" });
+    expect(await refusal(colleague, "addPapers", { ...papers, publish: true })).toBeNull();
+    expect(await refusal(colleague, "setAddedPapersSettings", { libraryId, downloadPdfs: false })).toMatch(/Only the community's owner/);
+  });
+
   it("starts a community only where the person may create one, and reads the running library only from its workspace", async () => {
     const { t, owner, ownerAlone, libraryId } = await activated();
     const assistant = internal.evidenceLibraries.assistant;

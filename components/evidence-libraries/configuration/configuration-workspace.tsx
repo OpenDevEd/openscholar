@@ -113,6 +113,7 @@ import { NavigationSection } from "./sections/navigation-section";
 import { SearchSection } from "./sections/search-section";
 import { SourcesSection } from "./sections/sources-section";
 import { TeamSection } from "./sections/team-section";
+import { AddedPapersCard } from "./sections/added-papers-row";
 import { ThemeSection } from "./sections/theme-section";
 import { VersionsSection } from "./sections/versions-section";
 import { InlineNotice } from "./section-card";
@@ -743,6 +744,8 @@ function Workspace({
               </fieldset>
               {/* Everyone else sees who works on it, outside the disabled fieldset so its search and list stay usable. */}
               {/* Its people arrive after the page: the card slides to their height instead of jumping. */}
+              {/* An editor or creator still adds papers, outside the disabled fieldset like the team. */}
+              {editable ? null : <AddedPapersCard libraryId={libraryId} />}
               {editable ? null : <AutoHeight><div className="pt-4"><TeamSection libraryId={libraryId} readOnly /></div></AutoHeight>}
               </div>
       </ConfigurationLayout>
