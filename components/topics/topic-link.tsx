@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { TopicHoverCard, useCloseFocus } from "@/components/entity-cards";
+import { TopicHoverCard } from "@/components/entity-cards";
+import { useCloseFocus } from "@/components/focus-mode/close-context";
 import { useTopicFilter } from "@/components/paper-card/hooks";
 import { FilterName } from "@/components/paper-card/shared";
 

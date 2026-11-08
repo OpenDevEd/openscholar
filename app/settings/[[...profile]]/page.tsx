@@ -6,7 +6,9 @@ import { UserProfile, useReverification, useSession, useUser } from "@clerk/next
 import { isReverificationCancelledError } from "@clerk/nextjs/errors";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
+import { CountryFlag } from "@/components/ui/country-flag";
+import { countryCodeOf, getRegionDisplayName } from "@/lib/i18n/region-names";
 import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone, Tablet, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -220,6 +222,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
   const revoke = useReverification((targets: Sessions) => Promise.all(targets.map((s) => s.revoke())));
   const { session: current } = useSession();
   const format = useFormatter();
+  const locale = useLocale();
   const now = useNow({ updateInterval: 60_000 });
   // Sessions Clerk has confirmed revoked leave the list at once, before the next read.
   const [revoked, setRevoked] = useState<ReadonlySet<string>>(new Set());
@@ -227,12 +230,14 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
   const [page, setPage] = useState(1);
   const sessions = use(sessionsPromise).filter((s) => s.status === "active" && !revoked.has(s.id));
 
-  type Entry = { key: string; sessions: Sessions; here: boolean; last: Date; title: string; place: string; ip?: string; device: Device };
+  type Entry = { key: string; sessions: Sessions; here: boolean; last: Date; title: string; place: string; country: string | null; ip?: string; device: Device };
   const entries = new Map<string, Entry>();
   for (const s of sessions) {
     const a = s.latestActivity;
     const here = s.id === current?.id;
-    const place = [a?.city, a?.country].filter(Boolean).join(", ");
+    // Clerk names the country by its code or its name; either way it shows with its flag and its name in the page's language.
+    const country = countryCodeOf(a?.country);
+    const place = [a?.city, country ? getRegionDisplayName(country, locale) : a?.country].filter(Boolean).join(", ");
     const key = here ? "here" : `${a?.browserName}|${a?.deviceType}|${place}`;
     const e = entries.get(key);
     if (e) {
@@ -241,7 +246,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
     } else {
       const platform = a?.deviceType === "X11" ? "Linux" : a?.deviceType;
       entries.set(key, {
-        key, sessions: [s], here, last: s.lastActiveAt, place, ip: a?.ipAddress,
+        key, sessions: [s], here, last: s.lastActiveAt, place, country, ip: a?.ipAddress,
         title: platform
           ? t("browserOn", { browser: a?.browserName ?? t("aBrowser"), platform })
           : (a?.browserName ?? t("aBrowser")),
@@ -314,7 +319,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                     {e.here ? <span className="text-xs font-normal text-primary">{t("thisDevice")}</span> : null}
                   </p>
                   <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
-                    {e.place ? <span className="truncate">{e.place}</span> : null}
+                    {e.place ? <span className="flex min-w-0 items-center gap-1.5">{e.country ? <CountryFlag countryCode={e.country} className="shrink-0" /> : null}<span className="truncate">{e.place}</span></span> : null}
                     {e.ip ? <span className="font-mono text-2xs text-muted-foreground/70">{e.ip}</span> : null}
                   </p>
                 </div>

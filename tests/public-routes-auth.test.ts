@@ -82,6 +82,8 @@ describe("public route auth matrix", () => {
       // The public communities, for anyone (#1090).
       "/evidence-communities",
       "/history",
+      // A paper's page, which search engines read signed out.
+      "/papers/x/x",
       "/pricing",
       "/privacy",
       // The question stage's planet script and its first-paint hold, loaded by a visitor arriving signed out from the home page.

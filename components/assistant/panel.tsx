@@ -5,7 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
-import { useSearchSource } from "@/lib/search/use-search-source";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useKeyboardViewport } from "@/lib/hooks/use-keyboard-viewport";
 import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
@@ -51,7 +51,7 @@ import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/f
 import { inApp, recordOf } from "@/lib/assistant/view";
 import { recordLinks } from "./record-links";
 import { defaultRemarkPlugins } from "streamdown";
-import useSWR, { preload } from "swr";
+import useSWR, { mutate, preload } from "swr";
 import { readWork } from "@/app/actions/topics";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { useRatedPapers } from "@/lib/research/reads";
@@ -987,6 +987,7 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   const [asking, setAsking] = useState(false);
   // The paper focus mode is on, and whether it's open: it stays mounted once read, so it slides out when closed.
   const [reading, setReading] = useState<{ paperId: string; open: boolean } | null>(null);
+  const router = useWorkspaceRouter();
   // Its address hasn't arrived yet: a chip already, with room for its icon, so nothing moves when it does.
   if (!href || href === UNFINISHED_LINK) {
     return (
@@ -1007,28 +1008,31 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   );
   if (record?.paperId) {
     const paperId = record.paperId;
+    // Its page here, whatever address the reply wrote (older replies wrote OpenAlex's): a new tab opens it there.
+    const page = `/papers/${paperId}`;
     return (
       <>
         <a
-          href={href}
+          href={page}
           className={CHIP_LINK}
           style={recordChipStyle(tint)}
           // Read while the pointer is on it, so focus mode opens on the click.
           onPointerEnter={() => void preload(workKey(paperId), readWorkOf).catch(() => {})}
-          onClick={(event) => {
+          onClick={async (event) => {
+            // Cmd, Ctrl or Shift opens the page in a new tab or window, as any link does.
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
             event.preventDefault();
-            setReading({ paperId, open: true });
-          }}
-          onAuxClick={(event) => {
-            // The middle button opens it here too: a paper has no page of the app's to open in a new tab.
-            if (event.button !== 1) return;
-            event.preventDefault();
+            // Focus mode on it, beside the chat; a paper it can't read opens on its page instead. Read again on each
+            // click, so a read that failed once (the network dropped) doesn't keep it from opening.
+            const work = await readWorkOf(workKey(paperId)).catch(() => null);
+            if (!work) return router.push(page);
+            await mutate(workKey(paperId), work, { revalidate: false });
             setReading({ paperId, open: true });
           }}
         >
           {inside}
         </a>
-        {reading ? <PaperFocus paperId={reading.paperId} open={reading.open} href={href} onClose={() => setReading({ ...reading, open: false })} /> : null}
+        {reading ? <PaperFocus paperId={reading.paperId} open={reading.open} onClose={() => setReading({ ...reading, open: false })} /> : null}
       </>
     );
   }
@@ -1075,28 +1079,12 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
 
 /**
  * Focus mode on the one paper a reply links to, with no list to step through. It opens once
- * the paper and the person's rating of it are read, so it opens whole. A paper OpenAlex can't
- * give falls back to asking before opening its OpenAlex page.
+ * the paper and the person's rating of it are read, so it opens whole. Its chip opens only a paper it could read.
  */
-function PaperFocus({ paperId, open, href, onClose }: { paperId: string; open: boolean; href: string; onClose: () => void }) {
+function PaperFocus({ paperId, open, onClose }: { paperId: string; open: boolean; onClose: () => void }) {
   const { data, error } = useSWR(workKey(paperId), readWorkOf, { revalidateOnFocus: false });
   const rated = useRatedPapers(data ? [data as PaperResult] : []);
-  const onOpenAlex = useSearchSource() === "openalex";
-  if (error !== undefined || data === null) {
-    // Nothing opens OpenAlex while our index is what people search, so a paper it can't read just doesn't open.
-    if (!onOpenAlex || href.includes("openscholar.ai")) return null;
-    return (
-      <LinkSafetyDialog
-        isOpen={open}
-        url={href}
-        onClose={onClose}
-        onConfirm={() => {
-          window.open(href, "_blank", "noreferrer");
-          onClose();
-        }}
-      />
-    );
-  }
+  if (error !== undefined || data === null) return null;
   const paper = rated.papers[0];
   if (!paper || rated.loading) return null;
   return <FocusMode isOpen={open} onClose={onClose} papers={[paper]} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />;

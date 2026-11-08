@@ -67,8 +67,8 @@ export interface FilterItem {
   label: string;
   /** Formatted display value */
   displayValue: string;
-  /** Country codes for geographic filters (for flag display) */
-  countryCodes?: string[];
+  /** A geographic filter's places, each with its name, a country with its flag before it. */
+  places?: { id: string; name: string; country: boolean }[];
   /** Rating range for star display */
   ratingRange?: [number, number];
 }

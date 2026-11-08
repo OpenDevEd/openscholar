@@ -41,6 +41,9 @@ export default async function proxy(
 ) {
   const bareLink = bareWorkLink(request.nextUrl);
   if (bareLink) return NextResponse.redirect(bareLink);
+  // Our index names each record by an address, openscholar.ai/OS…, which reaches here: it's that paper's page.
+  const ownRecord = /^\/(OS\d+)$/i.exec(request.nextUrl.pathname)?.[1];
+  if (ownRecord) return NextResponse.redirect(new URL(`/papers/${ownRecord.toUpperCase()}`, request.url), 308);
 
   const needsLocaleCookie = !hasValidLocaleCookie(request);
   const detectedLocale = needsLocaleCookie
