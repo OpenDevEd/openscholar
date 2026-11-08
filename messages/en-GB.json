@@ -5850,6 +5850,7 @@
     "cardDescription": "Papers added one at a time by DOI or OpenAlex ID, kept in sync from OpenAlex.",
     "menu": "Papers by DOI or ID",
     "menuHint": "One or many, kept in sync",
+    "menuNotLive": "Available once the community is live",
     "add": "Add papers",
     "title": "Add papers",
     "description": "Paste DOIs, OpenAlex IDs or links to them, up to {max} at a time.",

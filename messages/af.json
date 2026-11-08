@@ -5851,6 +5851,7 @@
     "cardDescription": "Artikels een vir een bygevoeg met 'n DOI of OpenAlex-ID, gesinkroniseer met OpenAlex.",
     "menu": "Artikels volgens DOI of ID",
     "menuHint": "Een of baie, gesinkroniseer",
+    "menuNotLive": "Beskikbaar sodra die gemeenskap regstreeks is",
     "add": "Voeg artikels by",
     "title": "Voeg artikels by",
     "description": "Plak DOI's, OpenAlex-ID's of skakels daarna, tot {max} op 'n slag.",

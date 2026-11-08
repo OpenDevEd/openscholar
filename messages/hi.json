@@ -5850,6 +5850,7 @@
     "cardDescription": "DOI या OpenAlex ID से एक-एक करके जोड़े गए पेपर, OpenAlex के साथ सिंक रहते हैं।",
     "menu": "DOI या ID से पेपर",
     "menuHint": "एक या कई, सिंक रहते हैं",
+    "menuNotLive": "समुदाय के लाइव होने के बाद उपलब्ध",
     "add": "पेपर जोड़ें",
     "title": "पेपर जोड़ें",
     "description": "DOI, OpenAlex ID या उनके लिंक पेस्ट करें, एक बार में {max} तक।",

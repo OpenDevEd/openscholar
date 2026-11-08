@@ -5851,6 +5851,7 @@
     "cardDescription": "Makala zilizoongezwa moja moja kwa DOI au kitambulisho cha OpenAlex, zikisawazishwa na OpenAlex.",
     "menu": "Makala kwa DOI au kitambulisho",
     "menuHint": "Moja au nyingi, zikisawazishwa",
+    "menuNotLive": "Inapatikana jumuiya ikishachapishwa",
     "add": "Ongeza makala",
     "title": "Ongeza makala",
     "description": "Bandika DOI, vitambulisho vya OpenAlex au viungo vyake, hadi {max} kwa wakati mmoja.",

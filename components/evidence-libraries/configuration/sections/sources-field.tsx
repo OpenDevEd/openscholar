@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
+  TooltipHint,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
@@ -414,7 +415,21 @@ export function SourcesField({
                       <span className="block text-xs text-muted-foreground">{tp("menuHint")}</span>
                     </span>
                   </DropdownMenuItem>
-                ) : null}
+                ) : (
+                  // Papers are kept by the running community, so a draft has nowhere to put them yet. A disabled item
+                  // fires no pointer events: the span takes the hover.
+                  <TooltipHint label={tp("menuNotLive")}>
+                    <span className="block">
+                      <DropdownMenuItem disabled>
+                        <AddedPapersIcon className="size-4 text-primary" />
+                        <span>
+                          {tp("menu")}
+                          <span className="block text-xs text-muted-foreground">{tp("menuHint")}</span>
+                        </span>
+                      </DropdownMenuItem>
+                    </span>
+                  </TooltipHint>
+                )}
                 <DropdownMenuItem onSelect={() => collections.open()}>
                   <CollectionSourceIcon />
                   <span>

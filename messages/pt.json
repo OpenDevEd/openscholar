@@ -5851,6 +5851,7 @@
     "cardDescription": "Artigos adicionados um a um por DOI ou ID do OpenAlex, sincronizados com o OpenAlex.",
     "menu": "Artigos por DOI ou ID",
     "menuHint": "Um ou vários, sincronizados",
+    "menuNotLive": "Disponível quando a comunidade estiver publicada",
     "add": "Adicionar artigos",
     "title": "Adicionar artigos",
     "description": "Cole DOIs, IDs do OpenAlex ou links para eles, até {max} de cada vez.",

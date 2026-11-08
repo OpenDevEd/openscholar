@@ -5850,6 +5850,7 @@
     "cardDescription": "Articles ajoutés un par un par DOI ou identifiant OpenAlex, synchronisés avec OpenAlex.",
     "menu": "Articles par DOI ou identifiant",
     "menuHint": "Un ou plusieurs, synchronisés",
+    "menuNotLive": "Disponible une fois la communauté en ligne",
     "add": "Ajouter des articles",
     "title": "Ajouter des articles",
     "description": "Collez des DOI, des identifiants OpenAlex ou des liens vers eux, jusqu'à {max} à la fois.",
