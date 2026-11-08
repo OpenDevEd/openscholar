@@ -95,7 +95,9 @@
       "DOMAIN_CLAIMS_READ": "the claims of one host; a host is served for one library, and claimed by a few at most",
       "RECENT_SEARCHES": "the person's newest searches in a workspace, which their suggested searches are written from; older ones don't count",
       "SUBMISSIONS_COUNTED": "the papers of one status a person sent, counted for Your submissions' status filter; past it the filter says so",
-      "SENDERS_PER_PAPER": "the people who sent the same paper to a community, whose rows a change from it updates; past it the first hundred are updated"
+      "SENDERS_PER_PAPER": "the people who sent the same paper to a community, whose rows a change from it updates; past it the first hundred are updated",
+      "RECENT_SUBMISSIONS_READ": "a person's latest submissions, looked through for the communities Add to community lists as recent",
+      "PAPER_SENT_TO": "the communities one paper is listed as sent to, for Add to community's row states"
     },
     "batches": {
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",

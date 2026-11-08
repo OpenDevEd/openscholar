@@ -256,7 +256,9 @@
     "evidenceLibraries/collectionSources:connectCollectionSource": "#329",
     "evidenceLibraries/collectionSources:listCollectionSources": "#329",
     "evidenceLibraries/submissions:mine": "#1125",
-    "evidenceLibraries/submissions:counts": "#1125"
+    "evidenceLibraries/submissions:counts": "#1125",
+    "evidenceLibraries/submissions:recentCommunities": "#1125",
+    "evidenceLibraries/submissions:sentTo": "#1125"
   },
   "inWorkspace": [
     "research/records",

@@ -298,6 +298,7 @@ export default defineSchema({
     .index("by_user_and_status_and_sentAt", ["userId", "status", "sentAt"])
     .index("by_user_and_library_and_itemKey", ["userId", "libraryId", "itemKey"])
     .index("by_library_and_itemKey", ["libraryId", "itemKey"])
+    .index("by_user_and_openalexId", ["userId", "openalexId"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "status"] }),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     // A workspace's libraries, in the order they were made.

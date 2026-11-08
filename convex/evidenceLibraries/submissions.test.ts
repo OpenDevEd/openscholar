@@ -44,6 +44,9 @@ it("lists the papers someone sent, and takes where each stands from the communit
   const mine = await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } });
   expect(mine.page).toMatchObject([{ itemKey: "PAPER001", ...paper, status: "returned", note: "Outside this community's focus", community: { libraryId, name: "Teacher Education" } }]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, status: "queued" })).page).toEqual([]);
+  // Add to community lists the community as recent, with the person's role there (its owner: it's in their own workspace), and the paper as returned there.
+  expect(await sender.query(api.evidenceLibraries.submissions.recentCommunities, {})).toMatchObject([{ libraryId, name: "Teacher Education", role: "owner" }]);
+  expect(await sender.query(api.evidenceLibraries.submissions.sentTo, { openalexId: "W60" })).toEqual([{ libraryId, status: "returned" }]);
   // Searched by its title or its community's name, and counted by status for the filter.
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher education" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "astronomy" })).page).toEqual([]);

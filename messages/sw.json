@@ -5898,6 +5898,19 @@
     "statusPublished": "Imechapishwa",
     "noneYet": "Bado hakuna mawasilisho",
     "noneYetHint": "Ongeza makala kwenye jumuiya kutoka kwenye tokeo lolote la utafutaji.",
-    "noMatches": "Hakuna mawasilisho yanayolingana"
+    "noMatches": "Hakuna mawasilisho yanayolingana",
+    "addToCommunity": "Ongeza kwenye jumuiya",
+    "searchCommunities": "Tafuta jumuiya",
+    "recent": "Za hivi karibuni",
+    "yourCommunities": "Jumuiya zako",
+    "noCommunitiesMatch": "Hakuna jumuiya zinazolingana",
+    "noCommunities": "Bado hakuna jumuiya",
+    "inQueueShort": "Kwenye foleni",
+    "added": "Imeongezwa",
+    "publishOrReview": "Ichapishe sasa, au acha timu iikague kwanza.",
+    "reviewFirst": "Timu ya jumuiya huikagua kabla haijachapishwa.",
+    "publishedTo": "Imechapishwa kwenye {community}",
+    "queuedTo": "Imetumwa kwenye foleni ya ukaguzi ya {community}",
+    "alreadyIn": "{community} tayari ina makala hii"
   }
 }

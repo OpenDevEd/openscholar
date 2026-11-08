@@ -5897,6 +5897,19 @@
     "statusPublished": "प्रकाशित",
     "noneYet": "अभी तक कोई सबमिशन नहीं",
     "noneYetHint": "किसी भी खोज परिणाम से किसी समुदाय में पेपर जोड़ें।",
-    "noMatches": "कोई सबमिशन मेल नहीं खाता"
+    "noMatches": "कोई सबमिशन मेल नहीं खाता",
+    "addToCommunity": "समुदाय में जोड़ें",
+    "searchCommunities": "समुदाय खोजें",
+    "recent": "हाल के",
+    "yourCommunities": "आपके समुदाय",
+    "noCommunitiesMatch": "कोई समुदाय मेल नहीं खाता",
+    "noCommunities": "अभी तक कोई समुदाय नहीं",
+    "inQueueShort": "कतार में",
+    "added": "जोड़ा गया",
+    "publishOrReview": "इसे अभी प्रकाशित करें, या पहले टीम को समीक्षा करने दें।",
+    "reviewFirst": "समुदाय की टीम प्रकाशित होने से पहले इसकी समीक्षा करती है।",
+    "publishedTo": "{community} में प्रकाशित",
+    "queuedTo": "{community} की समीक्षा कतार में भेजा गया",
+    "alreadyIn": "{community} में यह पेपर पहले से है"
   }
 }

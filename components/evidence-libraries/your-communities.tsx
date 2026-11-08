@@ -54,7 +54,7 @@ export type Community = {
   /** An invitation for an organization the person is an admin of, which they pick on accepting (#1091). */
   toOrganization?: boolean;
 };
-const ROLE_KINDS = { owner: "owner", editor: "editor", creator: "creator", viewer: "view" } as const;
+export const ROLE_KINDS = { owner: "owner", editor: "editor", creator: "creator", viewer: "view" } as const;
 
 const fromOverview = (library: Overview): Community => ({
   id: library._id, name: library.name, role: library.role, faviconUrl: library.faviconUrl, owner: { ...library.organization, workspaceId: library.workspaceId },

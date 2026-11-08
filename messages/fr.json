@@ -5897,6 +5897,19 @@
     "statusPublished": "Publié",
     "noneYet": "Aucune proposition pour l'instant",
     "noneYetHint": "Ajoutez un article à une communauté depuis n'importe quel résultat de recherche.",
-    "noMatches": "Aucune proposition ne correspond"
+    "noMatches": "Aucune proposition ne correspond",
+    "addToCommunity": "Ajouter à une communauté",
+    "searchCommunities": "Rechercher des communautés",
+    "recent": "Récentes",
+    "yourCommunities": "Vos communautés",
+    "noCommunitiesMatch": "Aucune communauté ne correspond",
+    "noCommunities": "Aucune communauté pour l'instant",
+    "inQueueShort": "En file",
+    "added": "Ajouté",
+    "publishOrReview": "Publiez-le maintenant, ou laissez l'équipe le relire d'abord.",
+    "reviewFirst": "L'équipe de la communauté le relit avant sa mise en ligne.",
+    "publishedTo": "Publié dans {community}",
+    "queuedTo": "Envoyé dans la file de relecture de {community}",
+    "alreadyIn": "{community} a déjà cet article"
   }
 }

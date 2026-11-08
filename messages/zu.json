@@ -5897,6 +5897,19 @@
     "statusPublished": "Kushicilelwe",
     "noneYet": "Akukabi khona okuthunyelwe",
     "noneYetHint": "Engeza iphepha emphakathini kunoma yimuphi umphumela wosesho.",
-    "noMatches": "Akukho okuthunyelwe okufanayo"
+    "noMatches": "Akukho okuthunyelwe okufanayo",
+    "addToCommunity": "Engeza emphakathini",
+    "searchCommunities": "Sesha imiphakathi",
+    "recent": "Kwakamuva",
+    "yourCommunities": "Imiphakathi yakho",
+    "noCommunitiesMatch": "Ayikho imiphakathi efanayo",
+    "noCommunities": "Ayikabi khona imiphakathi",
+    "inQueueShort": "Ohlwini",
+    "added": "Kungeziwe",
+    "publishOrReview": "Lishicilele manje, noma uvumele ithimba libuyekeze kuqala.",
+    "reviewFirst": "Ithimba lomphakathi liyalibuyekeza ngaphambi kokuthi lishicilelwe.",
+    "publishedTo": "Kushicilelwe ku-{community}",
+    "queuedTo": "Kuthunyelwe ohlwini lokubuyekeza lwe-{community}",
+    "alreadyIn": "I-{community} isivele inaleli phepha"
   }
 }

@@ -5898,6 +5898,19 @@
     "statusPublished": "Publicado",
     "noneYet": "Nenhum envio ainda",
     "noneYetHint": "Adicione um artigo a uma comunidade a partir de qualquer resultado de pesquisa.",
-    "noMatches": "Nenhum envio corresponde"
+    "noMatches": "Nenhum envio corresponde",
+    "addToCommunity": "Adicionar a uma comunidade",
+    "searchCommunities": "Pesquisar comunidades",
+    "recent": "Recentes",
+    "yourCommunities": "Suas comunidades",
+    "noCommunitiesMatch": "Nenhuma comunidade corresponde",
+    "noCommunities": "Nenhuma comunidade ainda",
+    "inQueueShort": "Na fila",
+    "added": "Adicionado",
+    "publishOrReview": "Publique agora ou deixe a equipe revisar primeiro.",
+    "reviewFirst": "A equipe da comunidade revisa antes de publicar.",
+    "publishedTo": "Publicado em {community}",
+    "queuedTo": "Enviado para a fila de revisão de {community}",
+    "alreadyIn": "{community} já tem este artigo"
   }
 }

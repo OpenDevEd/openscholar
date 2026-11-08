@@ -1,12 +1,12 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { query, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
-import { libraryOwner, ownerName } from "./access";
-import { sentPapersValidator, submissionStatusValidator } from "./validators";
+import { libraryOwner, ownerName, readLibraryRole } from "./access";
+import { PAPER_SENT_TO, RECENT_COMMUNITIES, recentCommunitiesValidator, sentPapersValidator, sentToValidator, submissionOwnerValidator, submissionStatusValidator } from "./validators";
 
 /** Submissions a page of Your submissions shows at most. */
 const SUBMISSIONS_PAGE_MAX = 50;
@@ -14,6 +14,8 @@ const SUBMISSIONS_PAGE_MAX = 50;
 export const SUBMISSIONS_COUNTED = 500;
 /** Everyone who sent the same paper to a community, whose rows a change from it updates. */
 const SENDERS_PER_PAPER = 100;
+/** The latest submissions Add to community looks through for its recent communities. */
+const RECENT_SUBMISSIONS_READ = 50;
 
 
 const byPaper = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, libraryId: Id<"evidenceLibraries">, itemKey: string) =>
@@ -101,10 +103,7 @@ const submissionValidator = v.object({
     /** Where it answers, while it runs. */
     address: v.union(v.string(), v.null()),
     /** Who it belongs to, as its icon's corner shows them. */
-    owner: v.union(
-      v.object({ name: v.string(), kind: v.union(v.literal("organization"), v.literal("person")), imageUrl: v.union(v.string(), v.null()), workspaceId: v.id("workspaces") }),
-      v.null(),
-    ),
+    owner: submissionOwnerValidator,
   }),
 });
 
@@ -187,5 +186,38 @@ export const counts = query({
       person ? (await ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status)).take(SUBMISSIONS_COUNTED + 1)).length : 0;
     const [queued, published, returned] = await Promise.all([count("queued"), count("published"), count("returned")]);
     return { queued, published, returned, all: queued + published + returned };
+  },
+});
+
+/** The communities the signed-in person sent papers to lately, most recent first, for the top of Add to community. */
+export const recentCommunities = query({
+  args: {},
+  returns: recentCommunitiesValidator,
+  handler: async (ctx) => {
+    const person = await senderOf(ctx);
+    if (!person) return [];
+    const rows = await ctx.db.query("paperSubmissions").withIndex("by_user_and_sentAt", (q) => q.eq("userId", person._id)).order("desc").take(RECENT_SUBMISSIONS_READ);
+    const ids = [...new Set(rows.map((row) => row.libraryId))].slice(0, RECENT_COMMUNITIES);
+    const recent: Infer<typeof recentCommunitiesValidator> = [];
+    for (const libraryId of ids) {
+      const library = await ctx.db.get("evidenceLibraries", libraryId);
+      if (!library || library.state !== "active") continue;
+      const community = await communityOf(ctx, libraryId);
+      const role = (await readLibraryRole(ctx, library, person.clerkId)) ?? ("viewer" as const);
+      recent.push({ ...community, role, workspaceId: library.workspaceId });
+    }
+    return recent;
+  },
+});
+
+/** Where one paper stands in each community the signed-in person sent it to, by its OpenAlex work. */
+export const sentTo = query({
+  args: { openalexId: v.string() },
+  returns: sentToValidator,
+  handler: async (ctx, { openalexId }) => {
+    const person = await senderOf(ctx);
+    if (!person) return [];
+    const rows = await ctx.db.query("paperSubmissions").withIndex("by_user_and_openalexId", (q) => q.eq("userId", person._id).eq("openalexId", openalexId)).take(PAPER_SENT_TO);
+    return rows.map((row) => ({ libraryId: row.libraryId, status: row.status }));
   },
 });

@@ -30,6 +30,7 @@ import { useCollectionPicker } from "./use-collection-picker";
 import { NewCollectionDialog, useCollectionDialogsReady } from "./collection-dialogs";
 import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 
 /** A removal's ID: the server keeps what was removed for a day, for Undo. */
 type Removal = Id<"libraryRemovals">;
@@ -290,6 +291,8 @@ export function SaveControl({
           {cloneElement(folderButton, { onClick: isSignedIn ? undefined : () => openSignIn() })}
         </TooltipHint>
       )}
+      {/* The paper onto a community (#1123): published, or to its review queue. */}
+      <CommunityControl paper={paper} />
       {/* In the group, whose handlers keep the dialog's clicks and keys from reaching the card. */}
       <NewCollectionDialog open={making} onOpenChange={setMaking} paper={{ title: paper.title || paper.display_name || "", add: (id) => setIn(id, true) }} returnFocus={() => folderRef.current} />
     </ButtonGroup>

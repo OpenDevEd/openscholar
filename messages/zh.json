@@ -5897,6 +5897,19 @@
     "statusPublished": "已发布",
     "noneYet": "还没有提交",
     "noneYetHint": "从任意搜索结果把论文添加到社区。",
-    "noMatches": "没有匹配的提交"
+    "noMatches": "没有匹配的提交",
+    "addToCommunity": "添加到社区",
+    "searchCommunities": "搜索社区",
+    "recent": "最近",
+    "yourCommunities": "你的社区",
+    "noCommunitiesMatch": "没有匹配的社区",
+    "noCommunities": "还没有社区",
+    "inQueueShort": "在队列中",
+    "added": "已添加",
+    "publishOrReview": "现在发布，或先让团队审核。",
+    "reviewFirst": "社区团队会在发布前审核。",
+    "publishedTo": "已发布到 {community}",
+    "queuedTo": "已送入 {community} 的审核队列",
+    "alreadyIn": "{community} 已有这篇论文"
   }
 }

@@ -5897,6 +5897,19 @@
     "statusPublished": "Published",
     "noneYet": "No submissions yet",
     "noneYetHint": "Add a paper to a community from any search result.",
-    "noMatches": "No submissions match"
+    "noMatches": "No submissions match",
+    "addToCommunity": "Add to community",
+    "searchCommunities": "Search communities",
+    "recent": "Recent",
+    "yourCommunities": "Your communities",
+    "noCommunitiesMatch": "No communities match",
+    "noCommunities": "No communities yet",
+    "inQueueShort": "In queue",
+    "added": "Added",
+    "publishOrReview": "Publish it now, or let the team review it first.",
+    "reviewFirst": "The community's team reviews it before it goes live.",
+    "publishedTo": "Published to {community}",
+    "queuedTo": "Sent to {community}'s review queue",
+    "alreadyIn": "{community} already has this paper"
   }
 }

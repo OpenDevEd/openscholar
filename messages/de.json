@@ -5898,6 +5898,19 @@
     "statusPublished": "Veröffentlicht",
     "noneYet": "Noch keine Einreichungen",
     "noneYetHint": "Füge eine Arbeit aus einem beliebigen Suchergebnis einer Community hinzu.",
-    "noMatches": "Keine Einreichungen gefunden"
+    "noMatches": "Keine Einreichungen gefunden",
+    "addToCommunity": "Zu Community hinzufügen",
+    "searchCommunities": "Communities durchsuchen",
+    "recent": "Zuletzt",
+    "yourCommunities": "Deine Communities",
+    "noCommunitiesMatch": "Keine Communities gefunden",
+    "noCommunities": "Noch keine Communities",
+    "inQueueShort": "In Warteschlange",
+    "added": "Hinzugefügt",
+    "publishOrReview": "Jetzt veröffentlichen oder erst vom Team prüfen lassen.",
+    "reviewFirst": "Das Team der Community prüft sie, bevor sie online geht.",
+    "publishedTo": "In {community} veröffentlicht",
+    "queuedTo": "An die Prüfwarteschlange von {community} gesendet",
+    "alreadyIn": "{community} hat diese Arbeit bereits"
   }
 }
