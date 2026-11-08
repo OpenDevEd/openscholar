@@ -170,16 +170,14 @@ function CitationFiles({ data }: { data: CitationData }) {
     }
   };
   return (
-    <div className="-mx-1 flex items-center gap-1 border-t pt-2">
-      <span className="me-auto ps-1 text-xs text-muted-foreground">{t("download")}</span>
-      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => void save("ris")}>
-        <Download className="size-3.5" />
-        RIS
-      </Button>
-      <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => void save("bibtex")}>
-        <Download className="size-3.5" />
-        BibTeX
-      </Button>
+    // Ghost buttons, pulled into the popover's padding so their invisible padding doesn't add a chin.
+    <div className="-me-2 -mb-2 -mt-1 flex justify-end gap-1">
+      {(["ris", "bibtex"] as const).map((kind) => (
+        <Button key={kind} size="sm" variant="ghost" className="h-7 px-2 text-xs" aria-label={`${t("download")} ${kind === "ris" ? "RIS" : "BibTeX"}`} onClick={() => void save(kind)}>
+          <Download className="size-3.5" />
+          {kind === "ris" ? "RIS" : "BibTeX"}
+        </Button>
+      ))}
     </div>
   );
 }
