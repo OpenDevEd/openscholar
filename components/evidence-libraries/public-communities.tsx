@@ -109,7 +109,8 @@ function CommunityCard({ community }: { community: Card }) {
         <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
           {/* The icon's tile holds its place, and the icon fades into it. */}
           <span className="relative -mt-7 mb-2 block size-14 overflow-hidden rounded-xl bg-background ring-4 ring-background">
-            <FadeImage src={icon} className="size-full object-cover" />
+            {/* One that won't load gives way to Openscholar's, as a community with no icon shows. */}
+            <FadeImage src={icon} fallback="/icon.svg" className="size-full object-cover" />
           </span>
           <TooltipHint label={community.name} onlyWhenClipped>
             <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
@@ -123,9 +124,10 @@ function CommunityCard({ community }: { community: Card }) {
               <Stat label={t("peopleLabel", { count: people ?? 0 })}>{people !== null ? format.number(people) : <NotCounted />}</Stat>
               {/* Its countries when its records name any: the flags, and the one it's most about with how many more. */}
               {countries.length ? (
-                <Stat label={`${named[0]}${named.length > 1 ? ` +${named.length - 1}` : ""}`}>
+                <Stat byBrowser label={`${named[0]}${named.length > 1 ? ` +${named.length - 1}` : ""}`}>
                   <span className="flex items-center gap-1">
-                    <span className="sr-only">{t("countries", { names: named.join(", ") })}</span>
+                    {/* Browsers name a few places their own way ("China mainland"): the page keeps the server's name for them. */}
+                    <span suppressHydrationWarning className="sr-only">{t("countries", { names: named.join(", ") })}</span>
                     {countries.slice(0, 3).map((code) => <CountryFlag key={code} countryCode={code} />)}
                   </span>
                 </Stat>
@@ -144,9 +146,11 @@ function CommunityCard({ community }: { community: Card }) {
   );
 }
 
-/** An owner's picture that fades in once it has loaded, in place of appearing in one frame. */
-function FadeImage({ src, className, shown = "opacity-100" }: { src: string; className: string; shown?: string }) {
+/** An owner's picture that fades in once it has loaded, in place of appearing in one frame; `fallback` stands in for one that fails. */
+function FadeImage({ src: wanted, className, shown = "opacity-100", fallback }: { src: string; className: string; shown?: string; fallback?: string }) {
   const [loaded, setLoaded] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const src = failed === wanted && fallback ? fallback : wanted;
   return (
     // eslint-disable-next-line @next/next/no-img-element -- owner-hosted image, any domain
     <img
@@ -154,6 +158,7 @@ function FadeImage({ src, className, shown = "opacity-100" }: { src: string; cla
       src={src}
       alt=""
       onLoad={() => setLoaded(src)}
+      onError={() => setFailed(wanted)}
       className={cn(className, "transition-opacity duration-200 motion-reduce:transition-none", loaded === src ? shown : "opacity-0")}
     />
   );
@@ -175,11 +180,12 @@ function NotCounted() {
 }
 
 /** One figure of a card's strip over its label. */
-function Stat({ label, children }: { label: string; children: ReactNode }) {
+/** `byBrowser`: a label the browser words (a country's name), which may differ from the server's, whose wording the page keeps. */
+function Stat({ label, byBrowser = false, children }: { label: string; byBrowser?: boolean; children: ReactNode }) {
   return (
     // The label comes first, as a list of terms reads; the figure shows above it.
     <div className="flex min-w-0 flex-col-reverse">
-      <dt className="truncate text-[11px] text-muted-foreground">{label}</dt>
+      <dt suppressHydrationWarning={byBrowser} className="truncate text-[11px] text-muted-foreground">{label}</dt>
       <dd className="flex h-5 items-center text-sm font-semibold tabular-nums text-foreground">{children}</dd>
     </div>
   );

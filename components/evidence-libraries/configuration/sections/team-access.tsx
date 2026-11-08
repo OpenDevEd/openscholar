@@ -661,7 +661,8 @@ export function TeamAccess({
             </div>
             <div className="flex flex-wrap items-center gap-3 px-4 py-4">
               <WorkspaceTile workspace={organization} size="row" />
-              <div className="min-w-0 flex-1">
+              {/* As every team row: on a phone the role goes to the next line rather than squeeze the name away. */}
+              <div className="min-w-0 flex-[1_1_10rem]">
                 <p className="truncate text-sm font-medium">{t("everyoneIn", { name: organization.name })}</p>
                 <p className="truncate text-xs text-muted-foreground">{t("everyoneWithoutARoleInThis")}</p>
               </div>

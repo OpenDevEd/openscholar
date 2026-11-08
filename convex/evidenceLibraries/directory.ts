@@ -96,7 +96,30 @@ export const setRecords = internalMutation({
   returns: v.null(),
   handler: async (ctx, { libraryId, records, countries }) => {
     const library = await ctx.db.get("evidenceLibraries", libraryId);
-    if (library) await ctx.db.patch("evidenceLibraries", libraryId, { records, recordsAt: Date.now(), ...(countries ? { countries: countries.map((code) => code.toLowerCase()).slice(0, COUNTRIES_KEPT) } : {}) });
+    // Its site answered: it's in the directory again if it was out.
+    if (library) await ctx.db.patch("evidenceLibraries", libraryId, { records, recordsAt: Date.now(), unreachableSince: undefined, ...(countries ? { countries: countries.map((code) => code.toLowerCase()).slice(0, COUNTRIES_KEPT) } : {}) });
+    return null;
+  },
+});
+
+/** How long the record check waits to ask a site again that didn't answer. */
+const UNREACHABLE_RETRY_MS = 30 * 60 * 1000;
+
+/**
+ * A community whose site didn't answer the record check: the directory leaves it out, as its card would open a site
+ * that isn't there, and asks again in a while. The first time it answers, it's back (`setRecords`).
+ */
+export const noteUnreachable = internalMutation({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId }) => {
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (!library || library.state !== "active") return null;
+    // Asked again once soon after the first miss, so a slow moment doesn't leave it out until tomorrow's check.
+    if (library.unreachableSince === undefined) {
+      await ctx.db.patch("evidenceLibraries", libraryId, { unreachableSince: Date.now() });
+      await ctx.scheduler.runAfter(UNREACHABLE_RETRY_MS, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId });
+    }
     return null;
   },
 });
@@ -153,8 +176,10 @@ export const refreshAllRecords = internalMutation({
   },
 });
 
-/** One card, or null for a community whose owner is gone. */
+/** One card, or null for a community whose owner is gone or whose site isn't answering. */
 async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  // A community whose site isn't answering would open onto nothing.
+  if (library.unreachableSince !== undefined) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner || !ownerActive(owner)) return null;
   const binding = library.runtimeBindingId ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId) : null;

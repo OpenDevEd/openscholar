@@ -459,12 +459,17 @@ export const refreshRecords = internalAction({
   handler: async (ctx, { libraryId }) => {
     const target = await runningTarget(ctx, libraryId).catch(() => null);
     if (!target) return null;
+    let overview: Awaited<ReturnType<typeof readLibraryOverview>>;
     try {
-      const { records, countries } = await readLibraryOverview(fetch, target, LIST_TIMEOUT_MS);
-      await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records, ...(countries ? { countries: countries.map((country) => country.code) } : {}) });
+      overview = await readLibraryOverview(fetch, target, LIST_TIMEOUT_MS);
     } catch (error) {
       console.warn("[community directory] the record count couldn't be read", { libraryId, reason: error instanceof Error ? error.message : String(error) });
+      // Only a site that didn't answer, or answered with a server error, leaves the directory: one that refused or
+      // answered oddly is still there for its visitors.
+      if (error instanceof LibrarySourceError && error.code === "unavailable") await ctx.runMutation(internal.evidenceLibraries.directory.noteUnreachable, { libraryId });
+      return null;
     }
+    await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records: overview.records, ...(overview.countries ? { countries: overview.countries.map((country) => country.code) } : {}) });
     return null;
   },
 });
