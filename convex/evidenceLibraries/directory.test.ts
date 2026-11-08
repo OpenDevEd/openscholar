@@ -23,8 +23,9 @@ const another = (fixture: Fixture, workspaceId: Id<"workspaces">, name: string, 
     liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, nameKey: name.toLowerCase(), ...(extra.tagline ? { tagline: extra.tagline } : {}), ...(extra.description ? { description: extra.description } : {}) },
   }));
 
-const list = (fixture: Fixture, workspaceId: Id<"workspaces">, sort: "newest" | "name" | "records", search?: string) =>
-  fixture.admin.query(api.evidenceLibraries.directory.listPublic, { workspaceId, sort, ...(search ? { search } : {}), paginationOpts: { cursor: null, numItems: 10 } }).then((page) => page.page);
+// Read signed out: the directory is everyone's (#1090).
+const list = (fixture: Fixture, sort: "newest" | "name" | "records", search?: string) =>
+  fixture.t.query(api.evidenceLibraries.directory.directory, { sort, ...(search ? { search } : {}), paginationOpts: { cursor: null, numItems: 10 } }).then((page) => page.page);
 
 describe("the public directory", () => {
   it("keeps a community's card on its row once it goes live, and its record count once it says it", async () => {
@@ -50,7 +51,7 @@ describe("the public directory", () => {
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 12 });
     const people = async () => {
       await fixture.t.mutation(internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
-      return (await list(fixture, workspaceId, "name", "climate"))[0];
+      return (await list(fixture, "name", "climate"))[0];
     };
     // The organization's one admin owns it.
     expect(await people()).toMatchObject({ records: 12, countries: ["ke", "ug", "tz", "in", "bd"], people: 1 });
@@ -71,7 +72,7 @@ describe("the public directory", () => {
     // Not live yet: not listed.
     await fixture.t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId, name: "Draft", slug: "draft", state: "provisioning", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 }));
 
-    const names = async (sort: "newest" | "name" | "records", search?: string) => (await list(fixture, workspaceId, sort, search)).map((card) => card.name);
+    const names = async (sort: "newest" | "name" | "records", search?: string) => (await list(fixture, sort, search)).map((card) => card.name);
     expect(await names("newest")).toEqual(["Water Evidence", "Climate Evidence", "Agriculture Evidence"]);
     expect(await names("name")).toEqual(["Agriculture Evidence", "Climate Evidence", "Water Evidence"]);
     // By name whatever its case: one in lower case sorts among the rest, not after them.
@@ -82,9 +83,9 @@ describe("the public directory", () => {
     expect(await names("records")).toEqual(["Water Evidence", "Climate Evidence", "Agriculture Evidence"]);
     expect(await names("name", "sanitation")).toEqual(["Water Evidence"]);
     // One with no tagline shows its description, and is found by it.
-    expect((await list(fixture, workspaceId, "name", "smallholder"))[0]).toMatchObject({ name: "Agriculture Evidence", tagline: "Crop yields in smallholder farms" });
+    expect((await list(fixture, "name", "smallholder"))[0]).toMatchObject({ name: "Agriculture Evidence", tagline: "Crop yields in smallholder farms" });
     expect(await names("name", "team directory_list")).toHaveLength(3);
-    expect((await list(fixture, workspaceId, "name", "climate"))[0]).toMatchObject({
+    expect((await list(fixture, "name", "climate"))[0]).toMatchObject({
       _id: library._id, accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico", records: 50,
       address: "https://climate-evidence-lib.libraries.example.test", owner: { name: "Team directory_list", kind: "organization", workspaceId },
     });
@@ -108,9 +109,9 @@ describe("the public directory", () => {
       return (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id;
     });
     await another(fixture, personal, "Solo Evidence", { liveAt: 1 });
-    const solo = (await list(fixture, workspaceId, "name", "solo"))[0];
+    const solo = (await list(fixture, "name", "solo"))[0];
     expect(solo.owner).toEqual({ name: null, kind: "person", imageUrl: null, workspaceId: personal, colour: null });
-    expect(JSON.stringify(await list(fixture, workspaceId, "name"))).not.toContain("private@example.org");
+    expect(JSON.stringify(await list(fixture, "name"))).not.toContain("private@example.org");
   });
 
   it("lets only an owner unlist a community", async () => {

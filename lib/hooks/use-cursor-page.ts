@@ -40,7 +40,8 @@ const invalidCursor = (error: Error) =>
  * A list that ends exactly on a full page finds that out from the empty page after it, and
  * stops offering next there until a row is added after it.
  */
-export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number) {
+/** `open`: a query anyone may read, signed in or not, which doesn't wait for sign-in. */
+export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number, { open = false }: { open?: boolean } = {}) {
   const { canRunProtectedQueries } = useAuthReadiness();
   // A page of another size starts somewhere else, so the size is part of what the pages are of.
   const key = JSON.stringify([args, pageSize]);
@@ -54,7 +55,7 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
   const { starts, reads, id } = current;
   const ended = current.end?.page === starts.length ? current.end.cursor : undefined;
 
-  const run = args !== "skip" && canRunProtectedQueries;
+  const run = args !== "skip" && (open || canRunProtectedQueries);
   // useQueries subscribes again whenever its request object changes, so it changes only with the reads.
   const requests = useMemo(
     () => {

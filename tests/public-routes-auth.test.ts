@@ -29,6 +29,14 @@ describe("public route auth matrix", () => {
     expect(isPublicPath("/evidence-communities/library-id/configuration")).toBe(false);
   });
 
+  it("opens the Communities page's public communities to anyone, and nothing under it (#1090)", () => {
+    expect(isPublicPath("/evidence-communities")).toBe(true);
+    expect(isPublicPath("/evidence-communities/")).toBe(true);
+    expect(isPublicPath("/evidence-communities/new")).toBe(false);
+    expect(isPublicPath("/evidence-communities/library-id")).toBe(false);
+    expect(isPublicPath("/evidence-communities/library-id/setup")).toBe(false);
+  });
+
   it("normalizes trailing slashes and hash/query segments", () => {
     expect(isPublicPath("/sign-in/")).toBe(true);
     expect(isPublicPath("/sign-up/?return_url=%2Fsettings")).toBe(true);
@@ -71,6 +79,8 @@ describe("public route auth matrix", () => {
       "/connect",
       "/cookie-policy",
       "/credits",
+      // The public communities, for anyone (#1090).
+      "/evidence-communities",
       "/history",
       "/pricing",
       "/privacy",

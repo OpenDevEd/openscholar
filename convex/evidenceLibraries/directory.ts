@@ -6,11 +6,11 @@
  */
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { internalMutation } from "../lib/functions";
+import { internalMutation, query } from "../lib/functions";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import { libraryOwner, ownerActive, ownerName } from "./access";
@@ -180,28 +180,43 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   };
 }
 
+const directoryArgs = { paginationOpts: paginationOptsValidator, sort: directorySortValidator, search: v.optional(v.string()) };
+
+/**
+ * The public directory, a page at a time: every live community its owners haven't unlisted. Nothing in a card is
+ * anyone's private business (the owner's email never is), so it's read signed in or not.
+ */
+async function readDirectory(ctx: QueryCtx, { paginationOpts, sort, search }: Infer<ReturnType<typeof v.object<typeof directoryArgs>>>) {
+  const needle = search?.trim().toLowerCase();
+  const index = sort === "newest" ? "by_state_and_unlisted_and_liveAt" : sort === "name" ? "by_state_and_unlisted_and_cardName" : "by_state_and_unlisted_and_records";
+  return await stream(ctx.db, schema)
+    .query("evidenceLibraries")
+    .withIndex(index, (q) => q.eq("state", "active").eq("unlisted", undefined))
+    .order(sort === "name" ? "asc" : "desc")
+    .map(async (library) => await cardRow(ctx, library))
+    .filterWith(async (card) => card !== null && (!needle || `${card.name} ${card.tagline ?? ""} ${card.owner.name ?? ""}`.toLowerCase().includes(needle)))
+    .map(async (card) => card!)
+    .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumRowsRead: ROWS_READ });
+}
+
 export const listPublicAction = defineUserQuery({
   path: "evidenceLibraries/directory:listPublic",
   description:
     "Lists the public Evidence Communities, a page at a time: every live community its owners haven't unlisted, the person's own included, with its tagline, address, owner and how many records it holds. " +
     "`sort` is newest (when it went live), name, or records (most first); given `search`, those whose name, tagline or owner contains it.",
-  args: { paginationOpts: paginationOptsValidator, sort: directorySortValidator, search: v.optional(v.string()) },
+  args: directoryArgs,
   returns: paginationResultValidator(cardValidator),
-  run: async (ctx, _actor, { paginationOpts, sort, search }) => {
-    const needle = search?.trim().toLowerCase();
-    const index = sort === "newest" ? "by_state_and_unlisted_and_liveAt" : sort === "name" ? "by_state_and_unlisted_and_cardName" : "by_state_and_unlisted_and_records";
-    return await stream(ctx.db, schema)
-      .query("evidenceLibraries")
-      .withIndex(index, (q) => q.eq("state", "active").eq("unlisted", undefined))
-      .order(sort === "name" ? "asc" : "desc")
-      .map(async (library) => await cardRow(ctx, library))
-      .filterWith(async (card) => card !== null && (!needle || `${card.name} ${card.tagline ?? ""} ${card.owner.name ?? ""}`.toLowerCase().includes(needle)))
-      .map(async (card) => card!)
-      .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumRowsRead: ROWS_READ });
-  },
+  run: async (ctx, _actor, args) => await readDirectory(ctx, args),
 });
 export const listPublic = userQuery(listPublicAction);
 export const listPublicForAssistant = assistantQuery(listPublicAction);
+
+/** The same directory for the Communities page, which anyone opens, signed in or not. */
+export const directory = query({
+  args: directoryArgs,
+  returns: paginationResultValidator(cardValidator),
+  handler: async (ctx, args) => await readDirectory(ctx, args),
+});
 
 /** The latest activations by its owners the backfill reads for the last that went live. */
 const OPERATIONS_READ = 10;

@@ -9,7 +9,6 @@ const PRIVATE_PATHS = [
   "/library/:path*",
   "/screening/:path*",
   "/extraction/:path*",
-  "/evidence-communities/:path*",
   "/settings/:path*",
   "/shared/:path*",
   "/join/:path*",
@@ -48,6 +47,8 @@ export function isPublicPath(pathname: string) {
 
   if ((OPEN_INSIDE_PRIVATE as readonly string[]).includes(normalizedPath)) return true;
   if (/^\/authors\/[^/]+\/configuration$/.test(normalizedPath)) return false;
+  // The Communities page is open, its public communities everyone's (#1090); a community's own pages, and making one, take an account.
+  if (/^\/evidence-communities\/.+/.test(normalizedPath)) return false;
 
   return !PRIVATE_PATHS.some((pattern) => matchesPattern(normalizedPath, pattern));
 }
