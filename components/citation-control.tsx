@@ -23,6 +23,7 @@ import { paperToCitationData } from "@/lib/citations/paper-data";
 import { type CitationData } from "@/lib/citations/formats";
 import { useCitationStyle } from "@/lib/citations/use-citation-style";
 import { useAppToast } from "@/lib/toast/use-app-toast";
+import { toast as sonner } from "sonner";
 import type { PaperResult } from "@/lib/types";
 
 function CitationPanel({ data }: { data: CitationData }) {
@@ -148,9 +149,12 @@ function CitationPanel({ data }: { data: CitationData }) {
 export function CitationControl({
   paper,
   compact = true,
+  iconOnly = false,
 }: {
   paper: PaperResult;
   compact?: boolean;
+  /** An outlined icon, as the focus mode header draws its controls, each with its key beside it. */
+  iconOnly?: boolean;
 }) {
   const t = useTranslations("citation");
   const [open, setOpen] = useState(false);
@@ -173,22 +177,23 @@ export function CitationControl({
   return (
     <div
       onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => event.stopPropagation()}
+      // Enter and Space on it stay with it, so a card it sits in doesn't open; other keys reach the page, so focus mode's shortcuts work after it.
+      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") event.stopPropagation(); }}
     >
       <Popover open={open} onOpenChange={setOpen}>
-        <TooltipHint label={compact ? t("cite") : undefined}>
+        <TooltipHint label={compact && !iconOnly ? t("cite") : undefined}>
           <PopoverTrigger asChild>
             <Button
               onPointerEnter={prepare}
               onFocus={prepare}
-              variant={compact ? "ghost" : "outline"}
-              size={compact ? "icon" : "sm"}
-              className={compact ? "size-8" : "max-sm:w-8 max-sm:px-0"}
+              variant={compact && !iconOnly ? "ghost" : "outline"}
+              size={iconOnly ? "icon-sm" : compact ? "icon" : "sm"}
+              className={iconOnly ? undefined : compact ? "size-8" : "max-sm:w-8 max-sm:px-0"}
               aria-label={t("cite")}
             >
-              <Quote className="size-4" />
+              <Quote className={iconOnly ? "h-3 w-3" : "size-4"} />
               {/* Phones show the icon alone, as the rest of the focus mode header does. */}
-              {!compact && <span className="hidden sm:inline">{t("cite")}</span>}
+              {!compact && !iconOnly && <span className="hidden sm:inline">{t("cite")}</span>}
             </Button>
           </PopoverTrigger>
         </TooltipHint>
@@ -202,4 +207,30 @@ export function CitationControl({
       </Popover>
     </div>
   );
+}
+
+/**
+ * Copies a paper's citation in the style last picked in Cite, without opening it: what C does in focus mode. It reads
+ * through the same cache as Cite's panel, so opening Cite afterwards shows it at once.
+ */
+export function useCopyCitation() {
+  const t = useTranslations("citation");
+  const locale = useLocale();
+  const toast = useAppToast();
+  const { style } = useCitationStyle();
+  return async (paper: PaperResult) => {
+    const data = paperToCitationData(paper);
+    if (!data || !style) return;
+    try {
+      const enriched = data.DOI ? await preload(["citation-metadata", data], () => enrichPaperCitationMetadata(data)).catch(() => data) : data;
+      const citation = style.asset !== undefined
+        ? await preload(["citation-style", enriched, locale, style] as const, loadAdditionalCitation)
+        : (await preload(["paper-citations", enriched, locale], loadPaperCitations)).citations[style.id];
+      if (!citation?.text) throw new Error("No citation in that style");
+      await navigator.clipboard.writeText(citation.text);
+      sonner.success(t("copiedIn", { style: style.label }));
+    } catch {
+      toast.clipboard.copyFailed(t("citation"));
+    }
+  };
 }

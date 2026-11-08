@@ -14,7 +14,8 @@ export async function readSimilarPapers(paperId: string, count: number): Promise
   const answer = await fetchOwnWorks({ filter: { is_retracted: false } as never }, { perPage: count }, { similar_to: paperId.split("/").at(-1)! });
   if (!answer.ok) throw new Error(answer.message);
   return answer.data.results.map((work) => ({
-    id: work.id,
+    // Our own ID, so each row links straight to its paper's page.
+    id: (work as { openscholar_id?: string }).openscholar_id ?? work.id,
     title: work.title ?? work.display_name ?? "",
     year: work.publication_year ?? null,
     citations: work.cited_by_count ?? 0,

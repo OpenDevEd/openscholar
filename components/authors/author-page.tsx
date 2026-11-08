@@ -75,7 +75,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { AuthorCard } from "@/app/actions/author-card";
-import { InstitutionHoverCard, Stat, TopTopics } from "@/components/entity-cards";
+import { InstitutionHoverCard, IntroGlow, Stat, TopTopics } from "@/components/entity-cards";
 import { useInstitutionFilter } from "@/components/paper-card/hooks";
 import { FilterName } from "@/components/paper-card/shared";
 import { Button } from "@/components/ui/button";
@@ -686,33 +686,7 @@ export default function AuthorPage({
           filtersInCard
           intro={<>
               <header className="relative isolate overflow-hidden p-5 sm:p-6">
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_0%,var(--primary),transparent_65%)] opacity-[0.09] dark:opacity-[0.12]"
-                />
-                <svg
-                  aria-hidden="true"
-                  focusable="false"
-                  viewBox="0 0 480 320"
-                  fill="none"
-                  className="pointer-events-none absolute -bottom-20 -end-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]"
-                >
-                  {[90, 125, 160, 195, 230, 265].map((radius) => (
-                    <circle
-                      key={radius}
-                      cx="370"
-                      cy="240"
-                      r={radius}
-                      stroke="currentColor"
-                      strokeWidth="1"
-                    />
-                  ))}
-                  <path
-                    d="M0 240H480M370 0V320"
-                    stroke="currentColor"
-                    strokeWidth="1"
-                  />
-                </svg>
+                <IntroGlow />
                 <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.85fr)] lg:gap-14">
                   <div>
                     <div className="flex items-center gap-5">

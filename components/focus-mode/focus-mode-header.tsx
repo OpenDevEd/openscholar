@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Star,
   ExternalLink,
+  ArrowUpRight,
+  Share2,
   Settings,
   X,
 } from "@/components/icons";
@@ -24,6 +26,10 @@ import type { PaperResult } from "@/lib/types";
 import { saveablePaper, toPaperKey } from "@/lib/papers/paper-ref";
 import { ItemPresence } from "@/components/workspaces/presence";
 import { usePaperPage } from "@/lib/papers/use-paper-page";
+import { ourPaperPage } from "@/lib/papers/page-address";
+import { usePaperShare } from "@/components/papers/paper-links";
+import { useCloseFocus } from "@/components/focus-mode/close-context";
+import Link from "@/components/workspace-link";
 import { FocusTranslationControl } from "./focus-translation-control";
 
 export interface FocusModeHeaderProps {
@@ -78,7 +84,13 @@ export function FocusModeHeader({
   const saveable = saveablePaper(currentPaper.id);
   // Who else in the workspace is reading it is read by the paper's key, wherever they opened it.
   const key = toPaperKey(currentPaper.id, { pdfUrl: currentPaper.primary_location?.pdf_url });
-  const page = usePaperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
+  // A paper from OpenAlex or our index opens its page here (Paper page); one that lives elsewhere opens there.
+  const ownPage = ourPaperPage(currentPaper);
+  const elsewhere = usePaperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
+  const page = ownPage ? null : elsewhere;
+  const share = usePaperShare(currentPaper);
+  const tPaper = useTranslations("paperPage");
+  const closeFocus = useCloseFocus();
   const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
   const previous = (
     <Button variant="outline" size="icon-sm" aria-label={tCommon("previous")} onClick={onGoToPrevious} disabled={currentIndex === 0}>
@@ -291,7 +303,34 @@ export function FocusModeHeader({
                   </span>
                 </div>
               ) : null}
-              <CitationControl paper={currentPaper} compact={false} />
+              {ownPage ? (
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="icon-sm" aria-label={tPaper("paperPage")} asChild>
+                    <Link href={ownPage} onNavigate={closeFocus}>
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    O
+                  </span>
+                </div>
+              ) : null}
+              {share ? (
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="icon-sm" aria-label={tPaper("share")} onClick={() => void share()}>
+                    <Share2 className="h-3 w-3" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    L
+                  </span>
+                </div>
+              ) : null}
+              <div className="flex items-center gap-1">
+                <CitationControl paper={currentPaper} iconOnly />
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                  C
+                </span>
+              </div>
               <div className="flex items-center gap-1">
                 <DownloadMenu
                   variant="outline"

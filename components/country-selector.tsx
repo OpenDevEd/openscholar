@@ -108,6 +108,8 @@ export function CountrySelector({
         options={options}
         selected={selectedRegions}
         names={Object.fromEntries(selectedRegions.map((id) => [id, name(id)]))}
+        // Each chip shows what its row does: a country its flag, a region the globe.
+        icons={Object.fromEntries(all.filter((option) => selectedRegions.includes(option.id)).map((option) => [option.id, option.icon]))}
         onSearch={setSearch}
         onToggle={(id) =>
           onSelectionChange(selectedRegions.includes(id) ? selectedRegions.filter((one) => one !== id) : [...selectedRegions, id])

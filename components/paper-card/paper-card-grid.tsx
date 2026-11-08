@@ -1,6 +1,7 @@
 "use client";
 
 import { CitationControl } from "@/components/citation-control";
+import { PaperPageLink, PaperShare } from "@/components/papers/paper-links";
 
 import React from "react";
 import { QueryMatchText } from "@/components/query-highlight";
@@ -121,6 +122,8 @@ export function PaperCardGrid({
                 compact
               />
               <DOIBadge doi={result.doi} compact />
+              <PaperPageLink paper={result} />
+              <PaperShare paper={result} />
               <CitationControl paper={result} />
               {!hide?.download && (
                 <DownloadMenuCompact
