@@ -129,15 +129,18 @@ function CardHeader({ icon, name, line }: { icon: ReactNode; name: string; line:
   );
 }
 
-/** The brand's light behind a detail page's intro, an author's or a paper's: a glow from the start corner and rings at the end. Put it first in a `relative isolate overflow-hidden` header. */
-export function IntroGlow() {
+/**
+ * The brand's light behind a detail page's intro, an author's or a paper's: a glow from the start corner and, where the end
+ * would otherwise be empty, rings there. Put it first in a `relative isolate overflow-hidden` header.
+ */
+export function IntroGlow({ rings = true }: { rings?: boolean }) {
   return (
     <>
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_0%,var(--primary),transparent_65%)] opacity-[0.09] dark:opacity-[0.12]" />
-      <svg aria-hidden focusable="false" viewBox="0 0 480 320" fill="none" className="pointer-events-none absolute -bottom-20 -end-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]">
+      {rings && <svg aria-hidden focusable="false" viewBox="0 0 480 320" fill="none" className="pointer-events-none absolute -bottom-20 -end-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]">
         {[90, 125, 160, 195, 230, 265].map((radius) => <circle key={radius} cx="370" cy="240" r={radius} stroke="currentColor" strokeWidth="1" />)}
         <path d="M0 240H480M370 0V320" stroke="currentColor" strokeWidth="1" />
-      </svg>
+      </svg>}
     </>
   );
 }

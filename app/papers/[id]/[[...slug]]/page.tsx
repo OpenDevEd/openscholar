@@ -5,7 +5,8 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { PaperPage } from "@/components/papers/paper-page";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
 import { paperPageId, paperPath, paperSlug } from "@/lib/papers/page-address";
-import { openalexIdOf, readCommunityCopies, readPaperForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
+import { openalexIdOf, readCommunityCopies, readOpenAlexForPage, readPaperForPage, readReferencesForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
+import { paperDetail } from "@/lib/papers/paper-detail";
 import { topicHref } from "@/lib/topics/links";
 import type { PaperResult } from "@/lib/types/search.types";
 
@@ -75,10 +76,16 @@ export default async function Page({ params }: Params) {
   const title = paper.title ?? paper.display_name ?? "";
   // One address per paper: an OpenAlex ID, our bare ID or an old title all lead to it.
   if (asked !== id || slugOf(slug?.[0]) !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
-  const [similar, communities] = await Promise.all([
-    readSimilarForPage(id).catch((error: unknown) => (console.error("[paper page] similar papers unavailable", { id, error }), [])),
-    readCommunityCopies(paper.doi ?? null, openalexIdOf(paper)).catch((error: unknown) => (console.error("[paper page] community copies unavailable", { id, error }), [])),
+  const references = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((work) => work.split("/").at(-1)!).slice(0, 100);
+  const work = openalexIdOf(paper);
+  const quietly = <T,>(what: string, fallback: T) => (error: unknown) => (console.error(`[paper page] ${what} unavailable`, { id, error }), fallback);
+  const [similar, referenceRows, communities, openalex] = await Promise.all([
+    readSimilarForPage(id).catch(quietly("similar papers", [])),
+    readReferencesForPage(references).catch(quietly("references", [])),
+    readCommunityCopies(paper.doi ?? null, work).catch(quietly("community copies", [])),
+    work ? readOpenAlexForPage(work).catch(quietly("OpenAlex record", null)) : null,
   ]);
+  const detail = paperDetail(paper, openalex, id, new Date().getUTCFullYear());
   const address = `${SITE_URL}${paperPath(id, title)}`;
   const topic = paper.primary_topic;
   const structured = {
@@ -90,12 +97,21 @@ export default async function Page({ params }: Params) {
         url: address,
         headline: title.slice(0, 110),
         name: title,
-        author: paper.authorships?.map((authorship) => ({ "@type": "Person", name: authorship.author.display_name })),
+        author: detail.authors.map((author) => ({
+          "@type": "Person",
+          name: author.name,
+          sameAs: author.orcid ?? undefined,
+          affiliation: author.institutions.map((institution) => ({ "@type": "Organization", name: institution.name })),
+        })),
         datePublished: dateOf(paper),
-        isPartOf: paper.primary_location?.source?.display_name ? { "@type": "Periodical", name: paper.primary_location.source.display_name } : undefined,
+        isPartOf: paper.primary_location?.source?.display_name ? { "@type": "Periodical", name: paper.primary_location.source.display_name, issn: detail.ids.issn ?? undefined, publisher: detail.publisher ?? undefined } : undefined,
         abstract: paper.abstract ?? undefined,
         sameAs: paper.doi ?? undefined,
-        about: topic ? { "@type": "Thing", name: topic.display_name } : undefined,
+        inLanguage: detail.language ?? undefined,
+        keywords: detail.keywords.join(", ") || undefined,
+        funder: detail.funding.map((funding) => ({ "@type": "Organization", name: funding.funder })),
+        about: detail.topics.map((topic) => ({ "@type": "Thing", name: topic.name })),
+        citation: referenceRows.map((row) => ({ "@type": "ScholarlyArticle", name: row.title, url: `${SITE_URL}${paperPath(row.id, row.title)}` })),
       },
       topic && {
         "@type": "BreadcrumbList",
@@ -107,7 +123,7 @@ export default async function Page({ params }: Params) {
     <PageWrapper>
       {/* `<` escaped, so a title can't close the script. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
-      <PaperPage paper={paper} id={id} similar={similar} communities={communities} />
+      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} />
     </PageWrapper>
   );
 }
