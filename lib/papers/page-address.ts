@@ -3,7 +3,7 @@ const PAGE_ID = /^(OS|W)(\d+)$/i;
 
 /** The bare ID a paper page takes, upper-cased, or null for anything else. */
 export function paperPageId(raw: string): string | null {
-  const match = PAGE_ID.exec(decodeURIComponent(raw).trim().split("/").at(-1) ?? "");
+  const match = PAGE_ID.exec(raw.trim().split("/").at(-1) ?? "");
   return match ? `${match[1]!.toUpperCase()}${match[2]}` : null;
 }
 
@@ -18,8 +18,8 @@ export function paperSlug(title: string | null | undefined): string {
   return slug;
 }
 
-/** A paper page's own address: its ID, then its title's words when it has any. */
+/** A paper page's own address: its ID, then its title's words when it has any, percent-encoded, as a redirect's header must carry them. */
 export function paperPath(id: string, title: string | null | undefined): string {
   const slug = paperSlug(title);
-  return slug ? `/papers/${id}/${slug}` : `/papers/${id}`;
+  return slug ? `/papers/${id}/${encodeURIComponent(slug)}` : `/papers/${id}`;
 }

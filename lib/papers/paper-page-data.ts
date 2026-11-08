@@ -28,7 +28,8 @@ export const readPaperForPage = unstable_cache(
 export const readSimilarForPage = unstable_cache(
   async (id: string): Promise<SimilarPaper[]> => {
     const answer = await fetchOwnWorks({ filter: { is_retracted: false } as never }, { perPage: 8 }, { similar_to: id });
-    if (!answer.ok) return [];
+    // Thrown, not cached as an empty list: the last good list stays until a read succeeds.
+    if (!answer.ok) throw new Error(answer.message);
     return answer.data.results.map((work) => ({
       // Our own ID, so each row links straight to that paper's page instead of through a redirect.
       id: ((work as { openscholar_id?: string }).openscholar_id ?? work.id).split("/").at(-1)!,
@@ -49,6 +50,8 @@ export const readCommunityCopies = unstable_cache(
   async (doi: string | null, openalexId: string | null): Promise<CommunityCopy[]> => {
     const keys = [normalizeDoi(doi) && `doi:${normalizeDoi(doi)}`, openalexId && `openalex:${openalexId}`].filter((key): key is string => !!key);
     const pages = await Promise.all(keys.map((groupKey) => fetchQuery(api.topics.publications.listLocations, { groupKey, paginationOpts: { cursor: null, numItems: MAX_LOCATIONS } })));
+    // ponytail: a paper's first 100 copies per key, as topic pages read them. One with more says so in the logs; page through when a paper ever has that many.
+    if (pages.some((page) => !page.isDone)) console.error("[paper page] a paper has more community copies than one page lists", { doi, openalexId, listed: MAX_LOCATIONS });
     const copies = new Map<string, CommunityCopy>();
     for (const location of pages.flatMap((page) => page.page)) {
       copies.set(location.id, { id: location.id, name: location.library.name, url: new URL(`/lib/${location.itemKey}`, location.library.url).href });

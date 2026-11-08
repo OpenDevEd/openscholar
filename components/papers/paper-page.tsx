@@ -49,9 +49,9 @@ export function PaperPage({ paper, id, similar, communities }: { paper: PaperRes
 
   return (
     <LibraryPageShell icon={FileText} title={title} actions={<>
-      <AskAbout id={id} title={title} />
+      <AskAbout id={paper.id.split("/").at(-1)!} title={title} />
       <CitationControl paper={paper} compact={false} />
-      <SaveControl paper={paper} compact className="max-sm:hidden" />
+      <SaveControl paper={paper} compact />
       <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
         try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
         catch { toast.error(tTopics("copyFailed")); }

@@ -6,6 +6,7 @@ import { PaperPage } from "@/components/papers/paper-page";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
 import { paperPageId, paperPath, paperSlug } from "@/lib/papers/page-address";
 import { openalexIdOf, readCommunityCopies, readPaperForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
+import { topicHref } from "@/lib/topics/links";
 import type { PaperResult } from "@/lib/types/search.types";
 
 type Params = { params: Promise<{ id: string; slug?: string[] }> };
@@ -27,15 +28,24 @@ function snippet(text: string, length = 160) {
   return `${text.slice(0, text.lastIndexOf(" ", length - 1))}…`;
 }
 
+/** The slug as the title gives it: Next passes some slugs still percent-encoded, and a stray `%` mustn't throw. */
+function slugOf(given: string | undefined) {
+  try {
+    return decodeURIComponent(given ?? "");
+  } catch {
+    return given ?? "";
+  }
+}
+
 const dateOf = (paper: PaperResult) => paper.publication_date ?? (paper.publication_year ? String(paper.publication_year) : undefined);
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { paper, id } = await paperOf(params);
   const t = await getTranslations("metadata");
-  const title = paper.title ?? paper.display_name ?? id;
+  const title = paper.title ?? paper.display_name ?? "";
   const journal = paper.primary_location?.source?.display_name;
   const description = paper.abstract ? snippet(paper.abstract) : [title, journal, paper.publication_year].filter(Boolean).join(", ");
-  const page = await indexedPage({ path: paperPath(id, title), title: `${title} | ${t("siteName")}`, description });
+  const page = await indexedPage({ path: paperPath(id, title), title: `${title || id} | ${t("siteName")}`, description });
   const live = await isLiveSite();
   const pdf = paper.best_oa_location?.pdf_url ?? paper.primary_location?.pdf_url;
   return {
@@ -64,7 +74,7 @@ export default async function Page({ params }: Params) {
   const { id: asked, slug } = await params;
   const title = paper.title ?? paper.display_name ?? "";
   // One address per paper: an OpenAlex ID, our bare ID or an old title all lead to it.
-  if (asked !== id || (slug?.[0] ? decodeURIComponent(slug[0]) : "") !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
+  if (asked !== id || slugOf(slug?.[0]) !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
   const [similar, communities] = await Promise.all([
     readSimilarForPage(id).catch((error: unknown) => (console.error("[paper page] similar papers unavailable", { id, error }), [])),
     readCommunityCopies(paper.doi ?? null, openalexIdOf(paper)).catch((error: unknown) => (console.error("[paper page] community copies unavailable", { id, error }), [])),
@@ -89,7 +99,7 @@ export default async function Page({ params }: Params) {
       },
       topic && {
         "@type": "BreadcrumbList",
-        itemListElement: [topic.domain, topic.field, topic.subfield, topic].filter(Boolean).map((node, index) => ({ "@type": "ListItem", position: index + 1, name: node!.display_name })),
+        itemListElement: [topic.domain, topic.field, topic.subfield, topic].filter(Boolean).map((node, index) => ({ "@type": "ListItem", position: index + 1, name: node!.display_name, item: new URL(topicHref(node!.id, node!.display_name), SITE_URL).href })),
       },
     ].filter(Boolean),
   };
