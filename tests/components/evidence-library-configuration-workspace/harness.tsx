@@ -71,7 +71,7 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
-      assistant: { setVisibility: "setVisibility" },
+      assistant: { setVisibility: "setVisibility", addedPapers: "addedPapers" },
       digests: { manual: { available: "manualDigestAvailable" }, manualActions: { send: "sendManualDigest" } },
       publicationProviders: {get: "getPublicationProviders"},
       publicationProviderActions: {verifyAndSave: "verifyPublicationProviders"},
@@ -188,7 +188,9 @@ vi.mock("convex/react", () => ({
           ? homeQuestionsMock
           : action === "listPublications"
             ? reviewedPublicationsMock
-            : mutationMock(action),
+            : action === "addedPapers"
+              ? async () => ({ papers: [], next: null, counts: { total: 0, live: 0, waiting: 0 }, settings: { enabled: true, downloadPdfs: true } })
+              : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
