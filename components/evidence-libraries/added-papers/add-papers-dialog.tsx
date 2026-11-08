@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { StatusChip } from "../configuration/status-chip";
-import { communityPapers, distinctPapers, lookUp, paperHref, parsePaste, useAddedPapers, type FoundPaper } from "@/lib/evidence-libraries/added-papers-mock";
+import { communityPapers, distinctPapers, lookUp, paperHref, parsePaste, useAddedPapers, type CommunityRef, type FoundPaper } from "@/lib/evidence-libraries/added-papers-mock";
 import { PublishChoice } from "./publish-choice";
 
 /** A paper on one line and its authors under it, with where it was found as its icon. Every list of added papers uses it. */
@@ -59,12 +59,15 @@ export function AddPapersDialog({
   communityId,
   communityName,
   canPublish,
+  community,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   communityId: string;
   communityName: string;
   canPublish: boolean;
+  /** The community as Your submissions and Recent show it. */
+  community?: CommunityRef;
 }) {
   const [text, setText] = useState("");
   const [found, setFound] = useState<Found[] | null>(null);
@@ -98,7 +101,7 @@ export function AddPapersDialog({
     setSending(publish ? "publish" : "queue");
     // MOCK: the real call goes to new-el, which drafts the records and publishes or queues them.
     window.setTimeout(() => {
-      add(communityId, ready, publish);
+      add(communityId, ready, publish, community);
       toast.success(
         publish
           ? `${ready.length === 1 ? "1 paper" : `${ready.length} papers`} published to ${communityName}`

@@ -57,7 +57,7 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
   // Where the sidebar's communities are from, kept in the address so a link or a reload keeps it.
   const [from, setFrom] = useQueryState("from", parseAsString.withDefault("all"));
   // MOCK (mock/added-papers): the card's two views, kept in the address.
-  const submissions = useMySubmissions();
+  const submissions = useMySubmissions(preloadedPublic);
   const [view, setView] = useQueryState("view", parseAsStringLiteral(["public", "submissions"] as const).withDefault("public"));
   const tabs = (
     <Tabs value={view} onValueChange={(next) => void setView(next === "public" ? null : (next as "submissions"))}>

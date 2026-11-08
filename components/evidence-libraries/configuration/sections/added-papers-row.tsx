@@ -11,6 +11,7 @@ import { AdminAreaLink } from "@/components/evidence-libraries/admin-area-link";
 import { AddPapersDialog, PaperLine } from "@/components/evidence-libraries/added-papers/add-papers-dialog";
 import { communityPapers, recordHref, useAddedPapers, type AddedPaper } from "@/lib/evidence-libraries/added-papers-mock";
 import { DisclosureButton, DisclosureContent } from "../disclosure-button";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { StatusChip } from "../status-chip";
 import { SourceRow, SourceSwitch } from "./source-row";
 
@@ -33,6 +34,7 @@ export function AddedPapersRow({ libraryId, name, address, adding, onAddingChang
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const locale = useLocale();
   const papers = useAddedPapers((state) => communityPapers(state.byCommunity, libraryId));
+  const workspace = useCurrentWorkspace();
   const [paused, setPaused] = useState(false);
   // MOCK: on for Added papers from the start; other sources start with it off.
   const [pdfs, setPdfs] = useState(true);
@@ -107,7 +109,11 @@ export function AddedPapersRow({ libraryId, name, address, adding, onAddingChang
           </>
         }
       />
-      <AddPapersDialog open={adding} onOpenChange={onAddingChange} communityId={libraryId} communityName={name} canPublish />
+      <AddPapersDialog open={adding} onOpenChange={onAddingChange} communityId={libraryId}
+        communityName={name}
+        canPublish
+        community={address ? { id: libraryId, name, address, owner: { name: workspace?.name ?? "", imageUrl: workspace?.imageUrl ?? null, kind: workspace?.kind === "organization" ? "organization" : "person", workspaceId: workspace?.workspaceId } } : undefined}
+      />
     </>
   );
 }

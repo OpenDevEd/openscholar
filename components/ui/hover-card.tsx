@@ -7,10 +7,13 @@ import { cn } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 import { ignoreFocusAfterPointer } from "@/components/ui/tooltip"
 
+/** Opens a moment after the pointer arrives and stays a moment after it leaves, so the pointer can reach what the card holds. */
 function HoverCard({
+  openDelay = 250,
+  closeDelay = 80,
   ...props
 }: React.ComponentProps<typeof HoverCardPrimitive.Root>) {
-  return <TrackOpen {...props}>{(root) => <HoverCardPrimitive.Root data-slot="hover-card" {...props} {...root} />}</TrackOpen>
+  return <TrackOpen {...props}>{(root) => <HoverCardPrimitive.Root data-slot="hover-card" openDelay={openDelay} closeDelay={closeDelay} {...props} {...root} />}</TrackOpen>
 }
 
 function HoverCardTrigger({

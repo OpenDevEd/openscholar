@@ -81,7 +81,10 @@ export const useAddedPapers = create<Store>()(
           const fresh = distinctPapers(papers)
             .filter((paper) => !current.some((row) => row.key === paper.key || (paper.doi !== null && row.doi === paper.doi)))
             .map((paper): AddedPaper => ({ ...paper, addedAt: Date.now(), by: "You", state: !publish ? "queued" : paper.foundBy === "doi" ? "retrying" : "synced" }));
+          // Sending a paper again takes back an earlier withdrawal of it.
+          const sentAgain = new Set(fresh.map((paper) => `${communityId}:${paper.key}`));
           return {
+            withdrawn: state.withdrawn.filter((entry) => !sentAgain.has(entry)),
             byCommunity: { ...state.byCommunity, [communityId]: [...fresh, ...current] },
             communities: community ? { ...state.communities, [communityId]: community } : state.communities,
           };
@@ -172,7 +175,11 @@ export function mySubmissions(store: Pick<Store, "byCommunity" | "communities" |
   const sent = Object.entries(store.communities).flatMap(([id, community]) =>
     communityPapers(store.byCommunity, id).filter((paper) => paper.by === "You" && paper.addedAt > seedAt).map((paper) => ({ paper, community })),
   );
-  const sampled = SAMPLE_SUBMISSIONS.flatMap(({ card, paper }) => (samples[card] ? [{ paper, community: samples[card] }] : []));
+  const sentKeys = new Set(sent.map(({ paper, community }) => `${community.id}:${paper.key}`));
+  // A sample sent again in this tab shows as what was sent.
+  const sampled = SAMPLE_SUBMISSIONS.flatMap(({ card, paper }) =>
+    samples[card] && !sentKeys.has(`${samples[card].id}:${paper.key}`) ? [{ paper, community: samples[card] }] : [],
+  );
   return [...sent, ...sampled]
     .filter(({ paper, community }) => !store.withdrawn.includes(`${community.id}:${paper.key}`))
     .sort((a, b) => b.paper.addedAt - a.paper.addedAt);

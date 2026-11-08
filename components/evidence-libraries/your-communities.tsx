@@ -30,7 +30,7 @@ import { LIST_FILTER } from "./list-controls";
 import { LibraryImage } from "./library-image";
 import { LibraryStatusIcon, type LibraryOperation } from "./library-status-chip";
 
-type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number];
+export type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number];
 /** The sidebar's first page as the page's server read it, for the filter in its address. */
 export type SidebarFirstPage = { filter: CommunityFilter; list: Preloaded<typeof api.evidenceLibraries.queries.listLibraries>; invitations?: Preloaded<typeof api.evidenceLibraries.invitations.listInvitations> };
 type Invitation = FunctionReturnType<typeof api.evidenceLibraries.invitations.listInvitations>["page"][number];

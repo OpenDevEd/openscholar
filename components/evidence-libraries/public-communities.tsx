@@ -25,7 +25,7 @@ const PER_PAGE = PUBLIC_PER_PAGE;
 const FULL_PAGE_WITH_PAGER = "min-h-[calc(6*var(--card-h)+5rem+4.5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem+4.5rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem+4.5rem)]";
 const SORTS = ["newest", "name", "records"] as const;
 type Sort = (typeof SORTS)[number];
-type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.directory>["page"][number];
+export type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.directory>["page"][number];
 
 /** Every public community, as cards, a page at a time, sorted and searched on the server (#1090), for anyone, signed in or not. */
 export function PublicCommunities({ search, preloaded, heading }: {
@@ -86,7 +86,7 @@ export function PublicCommunities({ search, preloaded, heading }: {
 }
 
 /** One public community: its colour with its icon blurred across it, the icon itself, then what it holds. Opens its public site. */
-function CommunityCard({ community }: { community: Card }) {
+export function CommunityCard({ community }: { community: Card }) {
   const t = useTranslations("libraryList.directory");
   const format = useFormatter();
   const locale = useLocale();
