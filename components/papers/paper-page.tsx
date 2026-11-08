@@ -54,7 +54,8 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
   const title = paper.title ?? paper.display_name ?? "";
   // The ID the app saves, rates and searches by: OpenAlex's where our index pairs one.
   const appId = paper.id.split("/").at(-1)!;
-  const pdf = detail.copies.find((copy) => copy.pdf)?.url ?? null;
+  // A PDF from a source, or else the one a community holds.
+  const pdf = detail.copies.find((copy) => copy.pdf)?.url ?? communities.find((copy) => copy.pdf)?.pdf ?? null;
   const doi = detail.ids.doi ? `https://doi.org/${detail.ids.doi}` : null;
   const topic = paper.primary_topic;
   const topicPath = topic ? [topic.domain, topic.field, topic.subfield, topic].filter((node): node is { id: string; display_name: string } => !!node) : [];
@@ -92,10 +93,10 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
             source={detail.journal?.name ?? detail.publisher}
             year={paper.publication_year ?? null}
             type={paper.type ?? null}
-            // A community's picture of the first page opens its record, where its PDF is.
+            // A community's picture of its PDF's first page opens that PDF.
             image={communityCover?.cover ?? null}
-            href={communityCover?.url ?? pdf ?? doi}
-            pdf={!!communityCover || !!pdf}
+            href={communityCover?.pdf ?? pdf ?? doi}
+            pdf={!!communityCover?.pdf || !!pdf}
           />
           <div className="flex min-w-0 flex-col">
             <HeaderChips paper={paper} detail={detail} />
@@ -367,8 +368,9 @@ function Authors({ detail }: { detail: PaperDetail }) {
               {author.institutions.length ? (
                 <ul className="mt-0.5 text-xs leading-5 text-muted-foreground">
                   {author.institutions.map((institution, place) => (
-                    <li key={`${institution.name}-${place}`} className="flex items-center gap-1.5">
-                      {institution.country && <CountryFilterFlag code={institution.country} />}
+                    <li key={`${institution.name}-${place}`} className="flex items-start gap-1.5">
+                      {/* The flag stays on the name's first line when a long name wraps. */}
+                      {institution.country && <CountryFilterFlag code={institution.country} className="mt-1" />}
                       <InstitutionName institution={institution} className="min-w-0" />
                     </li>
                   ))}

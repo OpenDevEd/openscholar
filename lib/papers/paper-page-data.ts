@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { fetchOwnWorks, readOpenAlexWorks } from "@/lib/openalex/read-works";
 import { MAX_LOCATIONS } from "@/lib/topics/publications";
 import { normalizeDoi } from "@/lib/topics/identity";
-import { readPublicationCard } from "@/lib/evidence-libraries/publication-card";
+import { fetchPublicationPdf } from "@/lib/evidence-libraries/publication-cards";
 import type { SimilarPaper } from "@/app/actions/similar";
 import type { PaperResult } from "@/lib/types/search.types";
 
@@ -70,8 +70,8 @@ export const readOpenAlexForPage = unstable_cache(
   { revalidate: DAY },
 );
 
-/** A community's record of the paper, with the picture of its PDF's first page when the community made one. */
-export type CommunityCopy = { id: string; name: string; url: string; cover: string | null };
+/** A community's record of the paper, with its PDF and the picture of the PDF's first page when the community has them. */
+export type CommunityCopy = { id: string; name: string; url: string; pdf: string | null; cover: string | null };
 
 /** The paper's published records in public Evidence Communities, found by its DOI or OpenAlex ID as topic pages find them. */
 export const readCommunityCopies = unstable_cache(
@@ -84,16 +84,18 @@ export const readCommunityCopies = unstable_cache(
     // ponytail: a paper's first 100 copies per key, as topic pages read them. One with more says so in the logs; page through when a paper ever has that many.
     if (pages.some((page) => !page.isDone)) console.error("[paper page] a paper has more community copies than one page lists", { doi, openalexId, listed: MAX_LOCATIONS });
     const locations = [...new Map(pages.flatMap((page) => page.page).map((location) => [location.id, location])).values()];
-    // Each record's card says whether its community holds a picture of the PDF's first page; a card that can't be read just has none.
-    const cards = await Promise.allSettled(locations.map((location) => readPublicationCard(location.library.id, location.itemKey, location.library.url)));
+    // Each record says whether its community has its PDF and a picture of its first page; one that can't be read just has neither.
+    const pdfs = await Promise.allSettled(locations.map((location) => fetchPublicationPdf(location.library.id, location.itemKey, location.library.url)));
     return locations.map((location, index) => {
-      const card = cards[index]!;
-      if (card.status === "rejected") console.error("[paper page] community record card unavailable", { library: location.library.id, item: location.itemKey, error: card.reason });
+      const read = pdfs[index]!;
+      if (read.status === "rejected") console.error("[paper page] community record unavailable", { library: location.library.id, item: location.itemKey, error: read.reason });
+      const pdf = read.status === "fulfilled" ? read.value : null;
       return {
         id: location.id,
         name: location.library.name,
         url: new URL(`/lib/${location.itemKey}`, location.library.url).href,
-        cover: card.status === "fulfilled" ? (card.value?.PDFCoverPageImage ?? null) : null,
+        pdf: pdf?.url ?? null,
+        cover: pdf?.cover ?? null,
       };
     });
   },
