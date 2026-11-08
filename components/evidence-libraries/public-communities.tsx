@@ -18,6 +18,7 @@ import type { Preloaded } from "convex/react";
 import { preloadedQueryResult } from "convex/nextjs";
 import { cn } from "@/lib/utils";
 import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
+import { noticeEarlyFailure } from "./library-image";
 
 const PER_PAGE = PUBLIC_PER_PAGE;
 /** Two rows of cards and the pager under them (its top padding and buttons, and its margin): the place held while the first are read. */
@@ -154,7 +155,10 @@ function FadeImage({ src: wanted, className, shown = "opacity-100", fallback }: 
   return (
     // eslint-disable-next-line @next/next/no-img-element -- owner-hosted image, any domain
     <img
-      ref={(image) => { if (image?.complete && image.naturalWidth > 0) setLoaded(src); }}
+      ref={(image) => {
+        if (image?.complete && image.naturalWidth > 0) setLoaded(src);
+        else if (failed !== wanted) noticeEarlyFailure(image, () => setFailed(wanted));
+      }}
       src={src}
       alt=""
       onLoad={() => setLoaded(src)}
