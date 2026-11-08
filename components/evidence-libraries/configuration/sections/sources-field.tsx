@@ -47,6 +47,7 @@ import type {
 import { ChipInput, EmptyList, MetaList, Panel } from "../fields";
 import { FieldError } from "../section-card";
 import { AddedPapersRow, useAddedPapersCommunity } from "./added-papers-row";
+import { useReadOnly } from "../read-only";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import {
   Dialog,
@@ -185,8 +186,10 @@ export function SourcesField({
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [addingPapers, setAddingPapers] = useState(false);
   const addButton = useRef<HTMLButtonElement>(null);
-  // A running community always lists its added papers, so its list is never empty.
-  const running = useAddedPapersCommunity(libraryId) !== null;
+  // A running community always lists its added papers, so its list is never empty. Read-only, its team adds them
+  // from their own card outside the settings (AddedPapersCard).
+  const readOnly = useReadOnly();
+  const running = useAddedPapersCommunity(libraryId) !== null && !readOnly;
   const openalex = useOpenAlexSources({ libraryId, value, onChange });
   const liveFor = useSourceActivity(libraryId);
   const workspaceId = useWorkspace();
@@ -321,7 +324,7 @@ export function SourcesField({
                 onRemove={() => setRemoveTarget({ kind: "collection", entry })}
               />
             ))}
-            <AddedPapersRow libraryId={libraryId} adding={addingPapers} onAddingChange={setAddingPapers} />
+            {running ? <AddedPapersRow libraryId={libraryId} adding={addingPapers} onAddingChange={setAddingPapers} /> : null}
           </ul>
         )}
 
