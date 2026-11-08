@@ -30,6 +30,10 @@ import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
 import { saveablePaper } from "@/lib/papers/paper-ref";
 import { usePaperPage } from "@/lib/papers/use-paper-page";
+import { ourPaperPage } from "@/lib/papers/page-address";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { usePaperShare } from "@/components/papers/paper-links";
+import { useCopyCitation } from "@/components/citation-control";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 
 interface FocusModeProps {
@@ -90,6 +94,13 @@ export function FocusMode({
   // Any paper named by its source but an upload is rated and saved (a rating saves it; an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = currentPaper ? saveablePaper(currentPaper.id) : false;
   const page = usePaperPage(currentPaper?.id, currentPaper?.primary_location?.pdf_url);
+  // O opens a paper from OpenAlex or our index on its page here, as the header's Paper page does.
+  const ownPage = currentPaper ? ourPaperPage(currentPaper) : null;
+  const router = useWorkspaceRouter();
+  // L shares it, as the header's Share does.
+  const share = usePaperShare(currentPaper);
+  // C copies its citation in the style last picked in Cite.
+  const copyCitation = useCopyCitation();
   const authorFilter = useAuthorFilter();
   const journalFilter = useJournalFilter();
   const institutionFilter = useInstitutionFilter();
@@ -275,6 +286,8 @@ export function FocusMode({
     const handleKeyDown = (e: KeyboardEvent) => {
       // The menu keeps its keys, and Escape shuts only what handled it.
       if (!isOpen || translationMenuOpen || e.defaultPrevented) return;
+      // Keys typed in a field, or in an open popover or menu such as Cite's, are that control's.
+      if ((e.target as Element | null)?.closest?.("input, textarea, select, [contenteditable='true'], [data-radix-popper-content-wrapper]")) return;
 
       switch (e.key) {
         case "ArrowLeft":
@@ -306,10 +319,23 @@ export function FocusMode({
           // Download JSON directly
           onDownloadItem(currentPaper, "json");
           break;
+        case "c":
+        case "C":
+          e.preventDefault();
+          void copyCitation(currentPaper);
+          break;
+        case "l":
+        case "L":
+          e.preventDefault();
+          void share?.();
+          break;
         case "o":
         case "O":
           e.preventDefault();
-          if (page) window.open(page, "_blank");
+          if (ownPage) {
+            onClose();
+            router.push(ownPage);
+          } else if (page) window.open(page, "_blank");
           break;
         case "a":
         case "A":
@@ -373,6 +399,8 @@ export function FocusMode({
   }, [
     isOpen,
     translationMenuOpen,
+    share,
+    copyCitation,
     currentIndex,
     papers.length,
     currentPaper,
@@ -382,6 +410,9 @@ export function FocusMode({
     savePaper.toggle,
     saveable,
     page,
+    ownPage,
+    router,
+    onClose,
   ]);
 
   const goToIndex = (index: number) => {

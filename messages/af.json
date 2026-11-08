@@ -13,7 +13,8 @@
     "stylesFailed": "Kon nie style laai nie.",
     "noStyles": "Geen ooreenstemmende style nie.",
     "commonStyles": "Algemene style",
-    "otherStyles": "Ander style"
+    "otherStyles": "Ander style",
+    "copiedIn": "{style}-verwysing gekopieer"
   },
   "common": {
     "search": "Soek",
@@ -5808,6 +5809,8 @@
     "openscholarId": "Openscholar-ID",
     "copyDoi": "Kopieer DOI",
     "doiCopied": "DOI gekopieer",
-    "doiCopyFailed": "Kon nie die DOI kopieer nie"
+    "doiCopyFailed": "Kon nie die DOI kopieer nie",
+    "paperPage": "Artikelblad",
+    "share": "Deel"
   }
 }

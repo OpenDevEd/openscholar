@@ -1,3 +1,5 @@
+import { legacyPaperRef } from "./paper-ref";
+
 /** A paper page's ID: one of our index (OS…) or an OpenAlex work (W…), which redirects to ours. */
 const PAGE_ID = /^(OS|W)(\d+)$/i;
 
@@ -22,4 +24,14 @@ export function paperSlug(title: string | null | undefined): string {
 export function paperPath(id: string, title: string | null | undefined): string {
   const slug = paperSlug(title);
   return slug ? `/papers/${id}/${encodeURIComponent(slug)}` : `/papers/${id}`;
+}
+
+/**
+ * A search result's own page here, for a paper from OpenAlex or our index; null for one that lives elsewhere (a
+ * community's record, Zotero, an upload). Named by our ID when the paper carries it, so the link needs no redirect.
+ */
+export function ourPaperPage(paper: { id: string; title?: string | null; display_name?: string | null; openscholar_id?: string }): string | null {
+  const ref = legacyPaperRef(paper.id);
+  if (ref?.source !== "openalex" && ref?.source !== "openscholar") return null;
+  return paperPath(paper.openscholar_id?.split("/").at(-1) ?? ref.work, paper.title ?? paper.display_name);
 }

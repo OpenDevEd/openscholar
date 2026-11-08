@@ -13,7 +13,8 @@
     "stylesFailed": "Stile konnten nicht geladen werden.",
     "noStyles": "Keine passenden Stile.",
     "commonStyles": "Häufige Stile",
-    "otherStyles": "Weitere Stile"
+    "otherStyles": "Weitere Stile",
+    "copiedIn": "Zitation im Stil {style} kopiert"
   },
   "common": {
     "search": "Suchen",
@@ -5808,6 +5809,8 @@
     "openscholarId": "Openscholar-ID",
     "copyDoi": "DOI kopieren",
     "doiCopied": "DOI kopiert",
-    "doiCopyFailed": "DOI konnte nicht kopiert werden"
+    "doiCopyFailed": "DOI konnte nicht kopiert werden",
+    "paperPage": "Artikelseite",
+    "share": "Teilen"
   }
 }

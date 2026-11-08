@@ -13,7 +13,8 @@
     "stylesFailed": "Imeshindwa kupakia mitindo.",
     "noStyles": "Hakuna mtindo unaolingana.",
     "commonStyles": "Mitindo ya kawaida",
-    "otherStyles": "Mitindo mingine"
+    "otherStyles": "Mitindo mingine",
+    "copiedIn": "Nukuu ya {style} imenakiliwa"
   },
   "common": {
     "search": "Tafuta",
@@ -5808,6 +5809,8 @@
     "openscholarId": "Kitambulisho cha Openscholar",
     "copyDoi": "Nakili DOI",
     "doiCopied": "DOI imenakiliwa",
-    "doiCopyFailed": "Imeshindwa kunakili DOI"
+    "doiCopyFailed": "Imeshindwa kunakili DOI",
+    "paperPage": "Ukurasa wa makala",
+    "share": "Shiriki"
   }
 }

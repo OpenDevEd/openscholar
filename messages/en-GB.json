@@ -13,7 +13,8 @@
     "stylesFailed": "Could not load styles.",
     "noStyles": "No matching styles.",
     "commonStyles": "Common styles",
-    "otherStyles": "Other styles"
+    "otherStyles": "Other styles",
+    "copiedIn": "{style} citation copied"
   },
   "common": {
     "search": "Search",
@@ -5807,6 +5808,8 @@
     "openscholarId": "Openscholar ID",
     "copyDoi": "Copy DOI",
     "doiCopied": "DOI copied",
-    "doiCopyFailed": "Couldn't copy the DOI"
+    "doiCopyFailed": "Couldn't copy the DOI",
+    "paperPage": "Paper page",
+    "share": "Share"
   }
 }

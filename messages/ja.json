@@ -13,7 +13,8 @@
     "stylesFailed": "スタイルを読み込めませんでした。",
     "noStyles": "一致するスタイルはありません。",
     "commonStyles": "よく使うスタイル",
-    "otherStyles": "その他のスタイル"
+    "otherStyles": "その他のスタイル",
+    "copiedIn": "{style}形式の引用をコピーしました"
   },
   "common": {
     "search": "検索",
@@ -5807,6 +5808,8 @@
     "openscholarId": "Openscholar ID",
     "copyDoi": "DOIをコピー",
     "doiCopied": "DOIをコピーしました",
-    "doiCopyFailed": "DOIをコピーできませんでした"
+    "doiCopyFailed": "DOIをコピーできませんでした",
+    "paperPage": "論文ページ",
+    "share": "共有"
   }
 }

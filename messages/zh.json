@@ -13,7 +13,8 @@
     "stylesFailed": "无法加载样式。",
     "noStyles": "没有匹配的样式。",
     "commonStyles": "常用格式",
-    "otherStyles": "其他格式"
+    "otherStyles": "其他格式",
+    "copiedIn": "已复制 {style} 格式的引文"
   },
   "common": {
     "search": "搜索",
@@ -5807,6 +5808,8 @@
     "openscholarId": "Openscholar ID",
     "copyDoi": "复制 DOI",
     "doiCopied": "已复制 DOI",
-    "doiCopyFailed": "无法复制 DOI"
+    "doiCopyFailed": "无法复制 DOI",
+    "paperPage": "论文页面",
+    "share": "分享"
   }
 }

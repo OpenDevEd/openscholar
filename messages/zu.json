@@ -13,7 +13,8 @@
     "stylesFailed": "Ayikwazanga ukulayisha izitayela.",
     "noStyles": "Akukho zitayela ezihambisanayo.",
     "commonStyles": "Izitayela ezivamile",
-    "otherStyles": "Ezinye izitayela"
+    "otherStyles": "Ezinye izitayela",
+    "copiedIn": "Ingcaphuno ye-{style} ikopishiwe"
   },
   "common": {
     "search": "Sesha",
@@ -5807,6 +5808,8 @@
     "openscholarId": "I-ID ye-Openscholar",
     "copyDoi": "Kopisha i-DOI",
     "doiCopied": "I-DOI ikopishiwe",
-    "doiCopyFailed": "Ayikwazanga ukukopisha i-DOI"
+    "doiCopyFailed": "Ayikwazanga ukukopisha i-DOI",
+    "paperPage": "Ikhasi lephepha",
+    "share": "Yabelana"
   }
 }

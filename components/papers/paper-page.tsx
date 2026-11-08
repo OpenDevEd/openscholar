@@ -9,6 +9,7 @@ import { LibraryPageShell } from "@/components/evidence-libraries/library-page-s
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { IntroGlow, Stat } from "@/components/entity-cards";
 import { PaperRows } from "@/components/papers/paper-rows";
+import { PaperShare } from "@/components/papers/paper-links";
 import { AuthorName, FunderName, InstitutionName, JournalName } from "@/components/papers/paper-entities";
 import { CountryFilterFlag } from "@/components/country-filter-flag";
 import { PaperCover } from "@/components/papers/paper-cover";
@@ -70,10 +71,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
       <AskAbout id={appId} title={title} />
       <CitationControl paper={paper} compact={false} />
       <SaveControl paper={paper} compact />
-      <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
-        try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
-        catch { toast.error(tTopics("copyFailed")); }
-      }}><Copy aria-hidden /><span className={BAR_LABEL}>{tTopics("copyLink")}</span></Button>
+      <PaperShare paper={paper} href={paperPath(id, title)} compact={false} className={BAR_ACTION} labelClassName={BAR_LABEL} />
       {(pdf ?? doi) && <Button size="sm" className={BAR_ACTION} asChild>
         <a href={(pdf ?? doi)!} target="_blank" rel="noopener noreferrer">
           {pdf ? <FileText aria-hidden /> : <ArrowUpRight aria-hidden />}
@@ -250,7 +248,7 @@ function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetai
   const format = useFormatter();
   const locale = useLocale();
   const date = paper.publication_date ? new Date(`${paper.publication_date}T00:00:00Z`) : null;
-  const license = detail.copies.find((copy) => copy.license)?.license;
+  const license = detail.copies.find((copy) => licenseName(copy.license))?.license;
   const language = detail.language && detail.language !== locale.split("-")[0] ? new Intl.DisplayNames([locale], { type: "language" }).of(detail.language) : null;
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -258,14 +256,15 @@ function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetai
       {date || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{date ? format.dateTime(date, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }) : paper.publication_year}</span> : null}
       {paper.type ? <span className={`${CHIP} capitalize`}><FileText aria-hidden className="size-3.5" />{paper.type.replace(/-/g, " ")}</span> : null}
       {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t("openAccess")}</span> : null}
-      {license ? <span className={CHIP}>{licenseName(license)}</span> : null}
+      {licenseName(license) ? <span className={CHIP}>{licenseName(license)}</span> : null}
       {language ? <span className={CHIP}><Globe aria-hidden className="size-3.5" />{language}</span> : null}
     </div>
   );
 }
 
 /** cc-by-nc-nd as people write it: CC BY-NC-ND. */
-const licenseName = (license: string) => (license.startsWith("cc-") ? `CC ${license.slice(3).toUpperCase()}` : license.replace(/-/g, " "));
+/** A Creative Commons licence as people write it (cc-by-nc-nd: CC BY-NC-ND); null for OpenAlex's other codes (other-oa, implied-oa), which the open access chip already says. */
+const licenseName = (license: string | null | undefined) => (license?.startsWith("cc-") ? `CC ${license.slice(3).toUpperCase()}` : null);
 
 /** The first few authors under the title; the rest are in the Authors part below. */
 function AuthorLine({ detail, fallback }: { detail: PaperDetail; fallback?: string }) {
@@ -410,7 +409,7 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium group-hover:text-primary">{copy.name}</span>
-                  <span className="block text-xs text-muted-foreground">{kind[copy.kind]}{copy.pdf ? <span className="ms-1.5 ink-success">{t("pdf")}</span> : null}{copy.license ? <span className="ms-1.5">{licenseName(copy.license)}</span> : null}</span>
+                  <span className="block text-xs text-muted-foreground">{kind[copy.kind]}{copy.pdf ? <span className="ms-1.5 ink-success">{t("pdf")}</span> : null}{licenseName(copy.license) ? <span className="ms-1.5">{licenseName(copy.license)}</span> : null}</span>
                 </span>
                 <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
               </a>

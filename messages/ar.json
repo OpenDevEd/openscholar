@@ -13,7 +13,8 @@
     "stylesFailed": "تعذّر تحميل الأنماط.",
     "noStyles": "لا توجد أنماط مطابقة.",
     "commonStyles": "الأنماط الشائعة",
-    "otherStyles": "أنماط أخرى"
+    "otherStyles": "أنماط أخرى",
+    "copiedIn": "تم نسخ الاستشهاد بنمط {style}"
   },
   "common": {
     "search": "بحث",
@@ -5808,6 +5809,8 @@
     "openscholarId": "معرّف Openscholar",
     "copyDoi": "نسخ DOI",
     "doiCopied": "تم نسخ DOI",
-    "doiCopyFailed": "تعذّر نسخ DOI"
+    "doiCopyFailed": "تعذّر نسخ DOI",
+    "paperPage": "صفحة الورقة",
+    "share": "مشاركة"
   }
 }

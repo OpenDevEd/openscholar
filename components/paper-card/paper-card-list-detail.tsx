@@ -4,6 +4,7 @@ import { similarSearchHref } from "@/lib/search/similar-href";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
 import { CitationControl } from "@/components/citation-control";
+import { PaperPageLink, PaperShare } from "@/components/papers/paper-links";
 
 import React, { useCallback } from "react";
 import { QueryMatchText } from "@/components/query-highlight";
@@ -375,6 +376,8 @@ export function PaperCardListDetail({
                 </div>
               )}
               <div className="flex items-center gap-2">
+                <PaperPageLink paper={result} />
+                <PaperShare paper={result} />
                 <CitationControl paper={result} />
                 {!hide?.download && (
                   <DownloadMenu
@@ -468,6 +471,8 @@ export function PaperCardListDetail({
                 oaUrl={result.open_access?.oa_url}
               />
               <DOIBadge doi={result.doi} />
+              <PaperPageLink paper={result} />
+              <PaperShare paper={result} />
               <CitationControl paper={result} />
               {!hide?.download && (
                 <DownloadMenu

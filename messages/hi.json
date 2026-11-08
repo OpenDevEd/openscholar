@@ -13,7 +13,8 @@
     "stylesFailed": "शैलियाँ लोड नहीं हो सकीं।",
     "noStyles": "कोई मिलती-जुलती शैली नहीं मिली।",
     "commonStyles": "प्रचलित शैलियाँ",
-    "otherStyles": "अन्य शैलियाँ"
+    "otherStyles": "अन्य शैलियाँ",
+    "copiedIn": "{style} उद्धरण कॉपी हुआ"
   },
   "common": {
     "search": "खोजें",
@@ -5807,6 +5808,8 @@
     "openscholarId": "Openscholar ID",
     "copyDoi": "DOI कॉपी करें",
     "doiCopied": "DOI कॉपी हुआ",
-    "doiCopyFailed": "DOI कॉपी नहीं हो सका"
+    "doiCopyFailed": "DOI कॉपी नहीं हो सका",
+    "paperPage": "शोधपत्र का पेज",
+    "share": "साझा करें"
   }
 }

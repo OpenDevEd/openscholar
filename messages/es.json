@@ -13,7 +13,8 @@
     "stylesFailed": "No se pudieron cargar los estilos.",
     "noStyles": "No hay estilos que coincidan.",
     "commonStyles": "Estilos habituales",
-    "otherStyles": "Otros estilos"
+    "otherStyles": "Otros estilos",
+    "copiedIn": "Cita en {style} copiada"
   },
   "common": {
     "search": "Buscar",
@@ -5808,6 +5809,8 @@
     "openscholarId": "ID de Openscholar",
     "copyDoi": "Copiar DOI",
     "doiCopied": "DOI copiado",
-    "doiCopyFailed": "No se pudo copiar el DOI"
+    "doiCopyFailed": "No se pudo copiar el DOI",
+    "paperPage": "Página del artículo",
+    "share": "Compartir"
   }
 }
