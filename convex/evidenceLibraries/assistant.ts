@@ -20,7 +20,7 @@ import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 import { readCredentialMetadata } from "./credentials";
 import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
-import { libraryGrant, libraryOf, organizationGrantsOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
+import { libraryGrant, libraryOf, libraryOwner, organizationGrantsOf, ownerActive, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
 import { readScreeningRequest, requestScreeningGrade } from "./screeningRequests";
 import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
@@ -55,14 +55,19 @@ async function personOf(ctx: QueryCtx, userId: Id<"users">) {
  * workspace's library to the people who read it.
  */
 async function signedInFor<Ctx extends QueryCtx>(ctx: Ctx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<Ctx> {
+  if (!(await reaches(ctx, actor, libraryId))) throw createError("NOT_FOUND", "Evidence Community not found");
+  return await asSignedIn(ctx, await personOf(ctx, actor.userId));
+}
+
+/** Whether a reply in this workspace reaches the community: its own, one it's shared with, or a grant of the person's in their own workspace. */
+async function reaches(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  const here =
+  return (
     library !== null &&
     (library.workspaceId === actor.workspaceId ||
       ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null) ||
-      (await sharedWithWorkspace(ctx, libraryId, actor.workspaceId)));
-  if (!here) throw createError("NOT_FOUND", "Evidence Community not found");
-  return await asSignedIn(ctx, await personOf(ctx, actor.userId));
+      (await sharedWithWorkspace(ctx, libraryId, actor.workspaceId)))
+  );
 }
 
 /** Whether the community is shared with the organization whose workspace the person acts in (#1091). Their role there comes from the grant. */
@@ -660,17 +665,38 @@ const teamRole = v.union(v.literal("owner"), v.literal("editor"), v.literal("cre
 /** The person's role on a community the reply reaches, and their name for its review queue; refused without one. */
 export const paperSender = internalQuery({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
-  returns: v.object({ role: teamRole, name: v.union(v.string(), v.null()) }),
+  returns: v.object({ role: v.union(teamRole, v.literal("reader")), name: v.union(v.string(), v.null()) }),
   handler: async (ctx, { libraryId, ...actor }) => await paperSenderOf(ctx, actor, libraryId),
 });
 
-async function paperSenderOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
-  const access = await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "view");
-  if (!access || access.role === "viewer") throw createError("FORBIDDEN", "Only the community's team adds papers to it.");
+async function paperSenderOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<{ role: "owner" | "editor" | "creator" | "reader"; name: string | null }> {
   const person = await personOf(ctx, actor.userId);
-  const name = [person.firstName, person.lastName].filter(Boolean).join(" ").trim();
-  return { role: access.role, name: name || null };
+  const name = [person.firstName, person.lastName].filter(Boolean).join(" ").trim() || null;
+  const access = (await reaches(ctx, actor, libraryId)) ? await readEvidenceLibraryAccess(await asSignedIn(ctx, person), libraryId, "view") : null;
+  if (access && access.role !== "viewer") return { role: access.role, name };
+  // Anyone signed in suggests papers to a public community: they go to its review queue (#777).
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  // Public as the directory lists it: running, listed, and its owner's account still active.
+  const owner = library?.state === "active" && !library.unlisted ? await libraryOwner(ctx, library) : null;
+  if (owner && ownerActive(owner)) return { role: "reader", name };
+  throw createError("FORBIDDEN", "Only the community's team adds papers to it.");
 }
+
+/** The community's team: its list of added papers is theirs to read. */
+async function paperTeamOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
+  const sender = await paperSenderOf(ctx, actor, libraryId);
+  if (sender.role === "reader") throw createError("FORBIDDEN", "Only the community's team reads its added papers.");
+  return sender;
+}
+
+export const paperTeam = internalQuery({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId, ...actor }) => {
+    await paperTeamOf(ctx, actor, libraryId);
+    return null;
+  },
+});
 
 export const previewPapersAction = defineUserAction({
   path: "evidenceLibraries/assistant:previewPapers",
@@ -692,7 +718,7 @@ export const previewPapersForAssistant = assistantAction(previewPapersAction);
 export const addPapersAction = defineChangingAction({
   path: "evidenceLibraries/assistant:addPapers",
   description:
-    "Adds papers to a community by DOI, OpenAlex ID or a link to either, up to 100, kept up to date from OpenAlex afterwards. With `publish`, an owner or editor puts them live at once; otherwise, and always for a creator, they wait in the community's review queue. " +
+    "Adds papers to a community by DOI, OpenAlex ID or a link to either, up to 100, kept up to date from OpenAlex afterwards. With `publish`, an owner or editor puts them live at once; otherwise, and always for a creator or anyone outside the team (who may suggest papers to a public community, up to 50 a day), they wait in the community's review queue. " +
     "`requestId` is any ID for this request: sent again, it adds nothing twice. Each paper's answer: added, queued, returned (its review was returned or withdrawn), already in the community, not found, or failed. Asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences, publish: v.boolean(), requestId: v.string() },
   returns: papersAddedValidator,
@@ -701,11 +727,11 @@ export const addPapersAction = defineChangingAction({
   undoable: false,
   check: async (ctx, actor, { libraryId, publish }) => {
     const { role } = await paperSenderOf(ctx, actor, libraryId);
-    if (publish && role === "creator") throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
+    if (publish && (role === "creator" || role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
   },
   run: async (ctx, actor, args): Promise<Infer<typeof papersAddedValidator>> => {
-    const sender: { role: "owner" | "editor" | "creator"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
-    if (args.publish && sender.role === "creator") throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
+    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
+    if (args.publish && (sender.role === "creator" || sender.role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
     return await ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, userId: actor.userId, ...sender });
   },
 });
@@ -719,9 +745,9 @@ export const addedPapersAction = defineUserAction({
   args: { libraryId: v.id("evidenceLibraries"), cursor: v.optional(v.union(v.string(), v.null())), limit: v.optional(v.union(v.number(), v.null())) },
   returns: addedPapersPageValidator,
   ...running,
-  check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
+  check: async (ctx, actor, { libraryId }) => void (await paperTeamOf(ctx, actor, libraryId)),
   run: async (ctx, actor, { libraryId, cursor, limit }): Promise<Infer<typeof addedPapersPageValidator>> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.paperTeam, { ...where(actor), libraryId });
     return await ctx.runAction(internal.evidenceLibraries.sourceActions.listPapers, { libraryId, userId: actor.userId, cursor: cursor ?? null, limit: limit ?? 20 });
   },
 });
@@ -739,7 +765,7 @@ export const removeAddedPaperAction = defineChangingAction({
   undoable: false,
   check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
   run: async (ctx, actor, { libraryId, itemKey }): Promise<"withdrawn" | "removed"> => {
-    const sender: { role: "owner" | "editor" | "creator"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
     return await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
   },
 });
