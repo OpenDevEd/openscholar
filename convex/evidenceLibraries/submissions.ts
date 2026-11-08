@@ -54,8 +54,7 @@ async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId
     await ctx.db.delete("pendingSubmissionStatus", event._id);
     const row = await ctx.db.get("paperSubmissions", id);
     if (!row || (row.generation ?? 0) >= event.generation) continue;
-    if (event.status === "withdrawn") await ctx.db.delete("paperSubmissions", id);
-    else await ctx.db.patch("paperSubmissions", id, { status: event.status, note: event.note, generation: event.generation, updatedAt: event.at });
+    await ctx.db.patch("paperSubmissions", id, { status: event.status, note: event.note, generation: event.generation, updatedAt: event.at });
   }
 }
 
@@ -65,7 +64,8 @@ export const forgetSent = internalMutation({
   returns: v.null(),
   handler: async (ctx, { userId, libraryId, itemKey }) => {
     const row = await byPaper(ctx, userId, libraryId, itemKey);
-    if (row) await ctx.db.delete("paperSubmissions", row._id);
+    // Kept as withdrawn, with the community's last word, so a late repeat of an older one changes nothing.
+    if (row) await ctx.db.patch("paperSubmissions", row._id, { status: "withdrawn", note: undefined, updatedAt: Date.now() });
     return null;
   },
 });
@@ -95,7 +95,8 @@ export const applyStatus = internalMutation({
     if (status !== "published" && !sender) return null;
     const rows = sender
       ? [await byPaper(ctx, sender._id, libraryId, itemKey)].filter((row) => row !== null)
-      : await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
+      : // ponytail: the first SENDERS_PER_PAPER who sent the same paper are updated; page the rest if a paper ever has more.
+        await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
     // Before Openscholar recorded the paper as sent, as when the community answers first: it's held until it is.
     if (!rows.length) {
       await ctx.db.insert("pendingSubmissionStatus", { libraryId, itemKey, clerkUserId, generation, status, note: note ?? undefined, at });
@@ -103,9 +104,8 @@ export const applyStatus = internalMutation({
     }
     for (const row of rows) {
       if ((row.generation ?? 0) >= generation) continue;
-      // Taken back by the person who sent it, it's no longer one of their submissions.
-      if (status === "withdrawn") await ctx.db.delete("paperSubmissions", row._id);
-      else await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at });
+      // Taken back by the person who sent it, it's no longer listed, but stays with its generation.
+      await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at });
     }
     return null;
   },
@@ -207,12 +207,15 @@ export const mine = query({
       ? await ctx.db
           .query("paperSubmissions")
           .withSearchIndex("search_text", (q) => (status ? q.search("searchText", needle).eq("userId", person._id).eq("status", status) : q.search("searchText", needle).eq("userId", person._id)))
+          .filter((q) => q.neq(q.field("status"), "withdrawn"))
           .paginate(read)
       : await (status
           ? ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status))
           : ctx.db.query("paperSubmissions").withIndex("by_user_and_sentAt", (q) => q.eq("userId", person._id))
         )
           .order("desc")
+          // Withdrawn papers are kept for their generation, not listed.
+          .filter((q) => q.neq(q.field("status"), "withdrawn"))
           .paginate(read);
     return { ...page, page: await Promise.all(page.page.map((row) => rowOf(ctx, row, person))) };
   },
