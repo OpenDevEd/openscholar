@@ -21,12 +21,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: () => ({ data: 
  editors: [], creators: [{ clerkUserId: "creator", name: "Grace", email: "grace@example.org" }],
  invitations: [],
  organizations: mocks.organizations,
+ owningOrganization: { workspaceId: "ws_org", name: "Test Org", imageUrl: null, colour: null },
 } }) }));
-// The workspace the page is in: the library's organization, whose other members view it.
-vi.mock("@/components/workspaces/parts", async (original) => ({
-  ...(await original<typeof import("@/components/workspaces/parts")>()),
-  useCurrentWorkspace: () => ({ kind: "organization", name: "Test Org", members: 3 }),
-}));
 import { TeamSection } from "@/components/evidence-libraries/configuration/sections/team-section";
 const libraryId = "library_1" as Id<"evidenceLibraries">;
 beforeEach(() => {
