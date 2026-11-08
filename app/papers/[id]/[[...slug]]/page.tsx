@@ -19,7 +19,10 @@ const quietly = <T,>(what: string, id: string, fallback: T) => (error: unknown) 
 const paperOf = cache(async (raw: string) => {
   const asked = paperPageId(raw);
   // A paper our index doesn't hold yet, by its OpenAlex ID, is read from OpenAlex, so no OpenAlex result's link ends in a 404.
-  const paper = asked ? ((await readPaperForPage(asked)) ?? (asked.startsWith("W") ? await readOpenAlexForPage(asked).catch(quietly("OpenAlex record", asked, null)) : null)) : null;
+  // So is one whose index read fails (the index is down, or not set up where search runs on OpenAlex); an OS ID has nowhere else to come from.
+  const openalexId = asked?.startsWith("W") ? asked : null;
+  const indexed = asked ? await readPaperForPage(asked).catch((error: unknown) => { if (!openalexId) throw error; return quietly("our index's record", asked, null)(error); }) : null;
+  const paper = indexed ?? (openalexId ? await readOpenAlexForPage(openalexId).catch(quietly("OpenAlex record", openalexId, null)) : null);
   if (!paper) notFound();
   // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
   const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
