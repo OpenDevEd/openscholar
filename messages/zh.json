@@ -4395,6 +4395,24 @@
         "did": "已更改社区已添加的论文",
         "where": "Evidence Community",
         "ask": "暂停或恢复社区已添加的论文或其 PDF"
+      },
+      "connectCommunityCollection": {
+        "doing": "正在将收藏集添加到社区来源",
+        "did": "已将收藏集添加到社区来源",
+        "where": "Evidence Community",
+        "ask": "将你的一个收藏集添加到社区来源"
+      },
+      "putCommunityLive": {
+        "doing": "正在发布社区设置",
+        "did": "已发布社区设置",
+        "where": "Evidence Community",
+        "ask": "发布社区已保存的设置"
+      },
+      "sentPapers": {
+        "doing": "正在读取你发送给社区的论文",
+        "did": "已读取你发送给社区的论文",
+        "where": "Evidence Community",
+        "ask": "读取你发送给社区的论文"
       }
     },
     "asks": {

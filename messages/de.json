@@ -4396,6 +4396,24 @@
         "did": "Hinzugefügte Arbeiten einer Community geändert",
         "where": "Evidence Community",
         "ask": "Hinzugefügte Arbeiten einer Community oder ihre PDFs pausieren oder fortsetzen"
+      },
+      "connectCommunityCollection": {
+        "doing": "Füge eine Sammlung zu den Quellen einer Community hinzu",
+        "did": "Sammlung zu den Quellen einer Community hinzugefügt",
+        "where": "Evidence Community",
+        "ask": "Eine deiner Sammlungen zu den Quellen einer Community hinzufügen"
+      },
+      "putCommunityLive": {
+        "doing": "Stelle die Einstellungen einer Community live",
+        "did": "Einstellungen einer Community live gestellt",
+        "where": "Evidence Community",
+        "ask": "Die gespeicherten Einstellungen einer Community live stellen"
+      },
+      "sentPapers": {
+        "doing": "Lese die Artikel, die du an Communities gesendet hast",
+        "did": "Artikel gelesen, die du an Communities gesendet hast",
+        "where": "Evidence Communities",
+        "ask": "Die Artikel lesen, die du an Communities gesendet hast"
       }
     },
     "asks": {

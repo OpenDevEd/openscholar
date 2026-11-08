@@ -4395,6 +4395,24 @@
         "did": "Changed a community’s added papers",
         "where": "Evidence Community",
         "ask": "Pause or resume a community’s added papers, or their PDFs"
+      },
+      "connectCommunityCollection": {
+        "doing": "Adding a collection to a community’s sources",
+        "did": "Added a collection to a community’s sources",
+        "where": "Evidence Community",
+        "ask": "Add one of your collections to a community’s sources"
+      },
+      "putCommunityLive": {
+        "doing": "Putting a community’s settings live",
+        "did": "Put a community’s settings live",
+        "where": "Evidence Community",
+        "ask": "Put a community’s saved settings live"
+      },
+      "sentPapers": {
+        "doing": "Reading the papers you sent to communities",
+        "did": "Read the papers you sent to communities",
+        "where": "Evidence Communities",
+        "ask": "Read the papers you sent to communities"
       }
     },
     "asks": {

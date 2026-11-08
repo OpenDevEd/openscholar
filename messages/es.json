@@ -4396,6 +4396,24 @@
         "did": "Cambió los artículos añadidos de una comunidad",
         "where": "Evidence Community",
         "ask": "Pausar o reanudar los artículos añadidos de una comunidad, o sus PDF"
+      },
+      "connectCommunityCollection": {
+        "doing": "Añadiendo una colección a las fuentes de una comunidad",
+        "did": "Añadió una colección a las fuentes de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Añadir una de tus colecciones a las fuentes de una comunidad"
+      },
+      "putCommunityLive": {
+        "doing": "Publicando los ajustes de una comunidad",
+        "did": "Publicó los ajustes de una comunidad",
+        "where": "Evidence Community",
+        "ask": "Publicar los ajustes guardados de una comunidad"
+      },
+      "sentPapers": {
+        "doing": "Leyendo los artículos que enviaste a comunidades",
+        "did": "Leyó los artículos que enviaste a comunidades",
+        "where": "Evidence Communities",
+        "ask": "Leer los artículos que enviaste a comunidades"
       }
     },
     "asks": {

@@ -4,7 +4,7 @@
  * Each runs the configuration page's own reads and save as the person the assistant acts for
  * (`asSignedIn`), so the page's rules hold whole: only an owner whose plan has Evidence
  * Libraries changes a draft, and every section is checked as the page checks it. A draft isn't
- * public until it's put live, which stays on the library's page.
+ * public until it's put live (putLive); a community's first setup stays on its page.
  */
 import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
@@ -12,6 +12,7 @@ import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { refuseApps } from "../lib/auth";
 import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineChangingAction, defineUserAction, defineUserMutation, defineUserQuery, userAction, userMutation, userQuery } from "../lib/userActions";
 import { requireCommunityWorkspace } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
@@ -32,9 +33,13 @@ import { readPendingLibraryInvitations } from "./access";
 import { notSetUpValidator, reviewedPublicationValidator, runtimeCollectionValidator, runtimeInstitutionValidator, runtimePage, screeningTrialValidator } from "../zotero/runtimeReadValidators";
 import { RUNTIME_READ_PAGE_SIZE } from "../zotero/runtimeReadClient";
 import { memberIdWithEmail } from "../organizations/read";
-import { saveEvidenceLibraryDraftSections } from "./mutations";
+import { activateEvidenceLibraryConfiguration, saveEvidenceLibraryDraftSections } from "./mutations";
+import { collectionConnectedValidator, connectCollection as connectCollectionTo } from "./collectionSources";
+import { readSent, sentPapersPageValidator } from "./submissions";
+import { collectionSourceEntry, readsOpenAlexWorks } from "../../lib/evidence-libraries/configuration/sources";
 import { libraryTeamValidator, readEvidenceLibraryDraft, readEvidenceLibraryRevision, readLibraryTeam, revisionReadValidator } from "./queries";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { activationValidator, submissionStatusValidator } from "./validators";
 import { addedPapersPageValidator, addedPapersSettingsValidator, paperPreviewsValidator, papersAddedValidator, addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
 
 const EDIT_PATH = "evidenceLibraries/assistant:editDraft" as const;
@@ -96,7 +101,7 @@ export const librariesAction = defineUserQuery({
   path: "evidenceLibraries/assistant:libraries",
   description:
     `Lists the Evidence Communities the person can see here, ${LIBRARIES_LISTED} a page from \`start\` (0 first): the workspace's, and in their own workspace the ones shared with them. Each one's ID, name, address name, state, and whether they can change its settings; \`next\` is where the next \`start\` is, when there are more. ` +
-    "A community's settings are evidenceLibraries/assistant:draft; putting a draft live is done on the community's page.",
+    "A community's settings are evidenceLibraries/assistant:draft; putting a running community's draft live is evidenceLibraries/assistant:putLive.",
   args: { start: v.optional(v.union(v.number(), v.null())) },
   returns: assistantLibrariesValidator,
   run: async (ctx, actor, { start }) => {
@@ -285,7 +290,7 @@ export const editDraftAction = defineUserMutation({
     "Changes an Evidence Community's draft settings, for an owner. Each change sets the value at a `path` inside one section (its keys and list places, as evidenceLibraries/assistant:draft shows the section), or with no `value` takes that key out; an empty path sets the section whole, and a list item is added or taken out by setting the list whole. " +
     "The homepage's text is `home.intro`; `identity.tagline` and `identity.description` only feed page titles and search results. " +
     "Give the draft's `expectedEditVersion` from that read (`unchanged` is Undo's own). The result is checked as the configuration page checks it, and a refusal says what's wrong. " +
-    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live, on the community's page. Undo puts the values back. " +
+    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live with evidenceLibraries/assistant:putLive. Undo puts the values back. " +
     "Returns `problems`, what the page flags on the draft after the change: fix any it made.",
   args: { libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, expectedEditVersion: v.optional(v.number()), unchanged: v.optional(v.string()) },
   returns: assistantEditResultValidator,
@@ -814,3 +819,76 @@ export const setAddedPapersSettingsAction = defineChangingAction({
 });
 export const setAddedPapersSettings = userAction(setAddedPapersSettingsAction);
 export const setAddedPapersSettingsForAssistant = assistantAction(setAddedPapersSettingsAction);
+
+export const connectCollectionAction = defineUserMutation({
+  path: "evidenceLibraries/assistant:connectCollection",
+  description:
+    "Adds one of the person's own Openscholar collections to an Evidence Community's sources, for an owner, as its configuration page does: the community may then read the collection, and the draft's `sources` section lists it. " +
+    "The collection's papers reach the community once the draft is put live with evidenceLibraries/assistant:putLive. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), collectionId: v.id("collections") },
+  returns: collectionConnectedValidator,
+  spendsCredits: false,
+  // The community's team sees the collection's papers, and nothing takes the connection back.
+  outsideEffect: true,
+  undoable: false,
+  run: async (ctx, actor, { libraryId, collectionId }) => {
+    const signedIn = await signedInFor(ctx, actor, libraryId);
+    const connected = await connectCollectionTo(signedIn, { libraryId, collectionId });
+    const draft = await draftOf(signedIn, libraryId);
+    const { sources } = readDraft(draft.sections as Parameters<typeof readDraft>[0]);
+    if (!sources.some((source) => source.provider === "openscholar" && source.collectionId === collectionId)) {
+      // Collections read OpenAlex with the key the community's other OpenAlex sources use.
+      const keyMode = sources.filter(readsOpenAlexWorks).some((source) => source.settings.apiKeyMode === "custom") ? "custom" : "platform";
+      const saved = draft.sections.find((section) => section.sectionKey === "sources")?.payload;
+      const payload = [...(Array.isArray(saved) ? saved : []), collectionSourceEntry({ collectionId, name: connected.name }, keyMode)];
+      await saveEvidenceLibraryDraftSections(signedIn, { libraryId, sections: [{ sectionKey: "sources", payload }], expectedEditVersion: draft.draft.editVersion });
+    }
+    return connected;
+  },
+});
+export const connectCollection = userMutation(connectCollectionAction);
+export const connectCollectionForAssistant = assistantMutation(connectCollectionAction);
+
+export const putLiveAction = defineUserMutation({
+  path: "evidenceLibraries/assistant:putLive",
+  description:
+    "Puts a running Evidence Community's saved draft settings live, for an owner, as the configuration page's Activate does: the public site changes to them. Give the draft's `editVersion` from evidenceLibraries/assistant:draft; a draft with `problems` can't go live. " +
+    "A community not yet live is set up on its own page. Returns the version made and how putting it live stands: it runs on, and evidenceLibraries/assistant:draft shows it in `failed` if it fails. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), expectedEditVersion: v.number() },
+  returns: activationValidator,
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  run: async (ctx, actor, { libraryId, expectedEditVersion }) => {
+    // As on the page: an app signed in for someone never puts their community live.
+    await refuseApps(ctx);
+    const signedIn = await signedInFor(ctx, actor, libraryId);
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (library?.state !== "active") throw createError("CONFLICT", "The community isn't live yet. Its first setup is done on its configuration page.");
+    // The page's Activate is off while a card flags something.
+    const problems = await problemsOf(signedIn, libraryId, (await draftOf(signedIn, libraryId)).sections);
+    if (problems.length) throw createError("VALIDATION_ERROR", `The draft can't go live while its page flags ${problems.map(({ card, problem }) => `${problem} on ${card}`).join(", ")}. Fix those first.`);
+    return await activateEvidenceLibraryConfiguration(signedIn, { libraryId, expectedEditVersion });
+  },
+});
+export const putLive = userMutation(putLiveAction);
+export const putLiveForAssistant = assistantMutation(putLiveAction);
+
+/** Papers a page of sent papers holds. */
+const SENT_PER_PAGE = 20;
+
+export const submissionsAction = defineUserQuery({
+  path: "evidenceLibraries/assistant:submissions",
+  description:
+    `The papers the person sent to Evidence Communities, theirs or public ones, newest first, ${SENT_PER_PAGE} a page from \`cursor\`: each one's title, the community, and where it stands there: queued (waiting in its review queue), published, or returned with the reviewer's \`note\`. ` +
+    "Give `status` for one kind only (withdrawn lists the ones the person took back, which are left out otherwise), and `search` to find papers by title or community. One still queued can be withdrawn with evidenceLibraries/assistant:removeAddedPaper.",
+  args: { status: v.optional(submissionStatusValidator), search: v.optional(v.string()), cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: sentPapersPageValidator,
+  run: async (ctx, actor, { status, search, cursor }) => {
+    const person = await personOf(ctx, actor.userId);
+    if (person.state !== "active") return { page: [], isDone: true, continueCursor: "" };
+    return await readSent(ctx, person, { paginationOpts: { numItems: SENT_PER_PAGE, cursor: cursor ?? null }, ...(status ? { status } : {}), ...(search ? { search } : {}) });
+  },
+});
+export const submissions = userQuery(submissionsAction);
+export const submissionsForAssistant = assistantQuery(submissionsAction);

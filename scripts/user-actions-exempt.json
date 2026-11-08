@@ -157,7 +157,13 @@
     "app/actions/author-card:readInstitutionCard": "research/lookup:find",
     "authors/links:records": "authors/assistant:profile",
     "authors/links:profileFor": "authors/assistant:directory",
-    "evidenceLibraries/directory:directory": "evidenceLibraries/directory:listPublic"
+    "evidenceLibraries/directory:directory": "evidenceLibraries/directory:listPublic",
+    "evidenceLibraries/submissions:mine": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/submissions:counts": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/submissions:recentCommunities": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/submissions:sentTo": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/collectionSources:connectCollectionSource": "evidenceLibraries/assistant:connectCollection",
+    "evidenceLibraries/mutations:activateConfiguration": "evidenceLibraries/assistant:putLive"
   },
   "manual": {
     "evidenceLibraries/releases:overview": "Site administration, for Openscholar's own admins on the admin pages.",
@@ -198,7 +204,6 @@
     "evidenceLibraries/domainActions:removeDomain": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/domains:chooseMainAddress": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/domains:stageMainDomainRemoval": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
-    "evidenceLibraries/mutations:activateConfiguration": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/mutations:retrySetup": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/openAlexSourceKey:removeOpenAlexKey": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
     "evidenceLibraries/operations:queueOperation": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
@@ -253,12 +258,7 @@
     "evidenceLibraries/organizationGrants:remove": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches."
   },
   "pending": {
-    "evidenceLibraries/collectionSources:connectCollectionSource": "#329",
-    "evidenceLibraries/collectionSources:listCollectionSources": "#329",
-    "evidenceLibraries/submissions:mine": "#1125",
-    "evidenceLibraries/submissions:counts": "#1125",
-    "evidenceLibraries/submissions:recentCommunities": "#1125",
-    "evidenceLibraries/submissions:sentTo": "#1125"
+    "evidenceLibraries/collectionSources:listCollectionSources": "#329"
   },
   "inWorkspace": [
     "research/records",
