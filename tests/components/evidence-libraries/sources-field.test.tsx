@@ -202,7 +202,7 @@ function queries(input: {
         : query === "listCredentials"
           ? { page: input.credentials ?? [], isDone: true, continueCursor: "" }
           : query === "getDraft"
-            ? { liveAddress: "https://library.example.test" }
+            ? { liveAddress: "https://library.example.test", role: "owner", library: { name: "Library", state: "draft" } }
             : { page: input.groups ?? [], isDone: true, continueCursor: "" },
     isReady: true,
   }));

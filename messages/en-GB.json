@@ -4365,6 +4365,36 @@
         "did": "Claimed an author",
         "where": "Authors",
         "ask": "Claim an author"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Looking up papers for a community",
+        "did": "Looked up papers for a community",
+        "where": "Evidence Community",
+        "ask": "Look up papers for a community"
+      },
+      "addCommunityPapers": {
+        "doing": "Adding papers to a community",
+        "did": "Added papers to a community",
+        "where": "Evidence Community",
+        "ask": "Add papers to a community"
+      },
+      "communityAddedPapers": {
+        "doing": "Reading a community’s added papers",
+        "did": "Read a community’s added papers",
+        "where": "Evidence Community",
+        "ask": "Read a community’s added papers"
+      },
+      "removeCommunityPaper": {
+        "doing": "Taking a paper off a community",
+        "did": "Took a paper off a community",
+        "where": "Evidence Community",
+        "ask": "Take a paper off a community"
+      },
+      "communityPapersSettings": {
+        "doing": "Changing a community’s added papers",
+        "did": "Changed a community’s added papers",
+        "where": "Evidence Community",
+        "ask": "Pause or resume a community’s added papers, or their PDFs"
       }
     },
     "asks": {

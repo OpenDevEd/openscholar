@@ -4365,6 +4365,36 @@
         "did": "著者を申請しました",
         "where": "著者",
         "ask": "著者を申請"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "コミュニティの論文を検索中",
+        "did": "コミュニティの論文を検索しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの論文を検索"
+      },
+      "addCommunityPapers": {
+        "doing": "コミュニティに論文を追加中",
+        "did": "コミュニティに論文を追加しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティに論文を追加"
+      },
+      "communityAddedPapers": {
+        "doing": "コミュニティの追加した論文を読み込み中",
+        "did": "コミュニティの追加した論文を読み込みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの追加した論文を読み込む"
+      },
+      "removeCommunityPaper": {
+        "doing": "コミュニティから論文を外しています",
+        "did": "コミュニティから論文を外しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティから論文を外す"
+      },
+      "communityPapersSettings": {
+        "doing": "コミュニティの追加した論文を変更中",
+        "did": "コミュニティの追加した論文を変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの追加した論文や PDF を一時停止または再開"
       }
     },
     "asks": {

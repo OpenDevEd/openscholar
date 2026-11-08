@@ -4365,6 +4365,36 @@
         "did": "लेखक पर दावा किया",
         "where": "लेखक",
         "ask": "लेखक पर दावा करें"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "किसी समुदाय के लिए पेपर खोज रहा है",
+        "did": "किसी समुदाय के लिए पेपर खोजे",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के लिए पेपर खोजें"
+      },
+      "addCommunityPapers": {
+        "doing": "किसी समुदाय में पेपर जोड़ रहा है",
+        "did": "किसी समुदाय में पेपर जोड़े",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय में पेपर जोड़ें"
+      },
+      "communityAddedPapers": {
+        "doing": "किसी समुदाय के जोड़े गए पेपर पढ़ रहा है",
+        "did": "किसी समुदाय के जोड़े गए पेपर पढ़े",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के जोड़े गए पेपर पढ़ें"
+      },
+      "removeCommunityPaper": {
+        "doing": "किसी समुदाय से एक पेपर हटा रहा है",
+        "did": "किसी समुदाय से एक पेपर हटाया",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय से एक पेपर हटाएँ"
+      },
+      "communityPapersSettings": {
+        "doing": "किसी समुदाय के जोड़े गए पेपर बदल रहा है",
+        "did": "किसी समुदाय के जोड़े गए पेपर बदले",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के जोड़े गए पेपर या उनके PDF रोकें या फिर से शुरू करें"
       }
     },
     "asks": {

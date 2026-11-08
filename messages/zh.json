@@ -4365,6 +4365,36 @@
         "did": "已认领作者",
         "where": "作者",
         "ask": "认领作者"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "正在为社区查找论文",
+        "did": "已为社区查找论文",
+        "where": "Evidence Community",
+        "ask": "为社区查找论文"
+      },
+      "addCommunityPapers": {
+        "doing": "正在向社区添加论文",
+        "did": "已向社区添加论文",
+        "where": "Evidence Community",
+        "ask": "向社区添加论文"
+      },
+      "communityAddedPapers": {
+        "doing": "正在读取社区已添加的论文",
+        "did": "已读取社区已添加的论文",
+        "where": "Evidence Community",
+        "ask": "读取社区已添加的论文"
+      },
+      "removeCommunityPaper": {
+        "doing": "正在从社区移除论文",
+        "did": "已从社区移除论文",
+        "where": "Evidence Community",
+        "ask": "从社区移除论文"
+      },
+      "communityPapersSettings": {
+        "doing": "正在更改社区已添加的论文",
+        "did": "已更改社区已添加的论文",
+        "where": "Evidence Community",
+        "ask": "暂停或恢复社区已添加的论文或其 PDF"
       }
     },
     "asks": {

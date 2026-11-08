@@ -4366,6 +4366,36 @@
         "did": "Autor beansprucht",
         "where": "Autoren",
         "ask": "Autor beanspruchen"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Arbeiten für eine Community nachschlagen",
+        "did": "Arbeiten für eine Community nachgeschlagen",
+        "where": "Evidence Community",
+        "ask": "Arbeiten für eine Community nachschlagen"
+      },
+      "addCommunityPapers": {
+        "doing": "Arbeiten zu einer Community hinzufügen",
+        "did": "Arbeiten zu einer Community hinzugefügt",
+        "where": "Evidence Community",
+        "ask": "Arbeiten zu einer Community hinzufügen"
+      },
+      "communityAddedPapers": {
+        "doing": "Hinzugefügte Arbeiten einer Community lesen",
+        "did": "Hinzugefügte Arbeiten einer Community gelesen",
+        "where": "Evidence Community",
+        "ask": "Hinzugefügte Arbeiten einer Community lesen"
+      },
+      "removeCommunityPaper": {
+        "doing": "Eine Arbeit aus einer Community nehmen",
+        "did": "Eine Arbeit aus einer Community genommen",
+        "where": "Evidence Community",
+        "ask": "Eine Arbeit aus einer Community nehmen"
+      },
+      "communityPapersSettings": {
+        "doing": "Hinzugefügte Arbeiten einer Community ändern",
+        "did": "Hinzugefügte Arbeiten einer Community geändert",
+        "where": "Evidence Community",
+        "ask": "Hinzugefügte Arbeiten einer Community oder ihre PDFs pausieren oder fortsetzen"
       }
     },
     "asks": {

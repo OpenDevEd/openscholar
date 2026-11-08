@@ -4366,6 +4366,36 @@
         "did": "'n Outeur opgeëis",
         "where": "Outeurs",
         "ask": "Eis 'n outeur op"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Soek artikels vir 'n gemeenskap op",
+        "did": "Het artikels vir 'n gemeenskap opgesoek",
+        "where": "Evidence Community",
+        "ask": "Soek artikels vir 'n gemeenskap op"
+      },
+      "addCommunityPapers": {
+        "doing": "Voeg artikels by 'n gemeenskap",
+        "did": "Het artikels by 'n gemeenskap gevoeg",
+        "where": "Evidence Community",
+        "ask": "Voeg artikels by 'n gemeenskap"
+      },
+      "communityAddedPapers": {
+        "doing": "Lees 'n gemeenskap se bygevoegde artikels",
+        "did": "Het 'n gemeenskap se bygevoegde artikels gelees",
+        "where": "Evidence Community",
+        "ask": "Lees 'n gemeenskap se bygevoegde artikels"
+      },
+      "removeCommunityPaper": {
+        "doing": "Haal 'n artikel uit 'n gemeenskap",
+        "did": "Het 'n artikel uit 'n gemeenskap gehaal",
+        "where": "Evidence Community",
+        "ask": "Haal 'n artikel uit 'n gemeenskap"
+      },
+      "communityPapersSettings": {
+        "doing": "Verander 'n gemeenskap se bygevoegde artikels",
+        "did": "Het 'n gemeenskap se bygevoegde artikels verander",
+        "where": "Evidence Community",
+        "ask": "Onderbreek of hervat 'n gemeenskap se bygevoegde artikels, of hul PDF's"
       }
     },
     "asks": {

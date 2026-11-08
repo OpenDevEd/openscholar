@@ -4366,6 +4366,36 @@
         "did": "تمت المطالبة بمؤلف",
         "where": "المؤلفون",
         "ask": "المطالبة بمؤلف"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "البحث عن أوراق لمجتمع",
+        "did": "بحث عن أوراق لمجتمع",
+        "where": "Evidence Community",
+        "ask": "البحث عن أوراق لمجتمع"
+      },
+      "addCommunityPapers": {
+        "doing": "إضافة أوراق إلى مجتمع",
+        "did": "أضاف أوراقًا إلى مجتمع",
+        "where": "Evidence Community",
+        "ask": "إضافة أوراق إلى مجتمع"
+      },
+      "communityAddedPapers": {
+        "doing": "قراءة الأوراق المضافة لمجتمع",
+        "did": "قرأ الأوراق المضافة لمجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة الأوراق المضافة لمجتمع"
+      },
+      "removeCommunityPaper": {
+        "doing": "إزالة ورقة من مجتمع",
+        "did": "أزال ورقة من مجتمع",
+        "where": "Evidence Community",
+        "ask": "إزالة ورقة من مجتمع"
+      },
+      "communityPapersSettings": {
+        "doing": "تغيير الأوراق المضافة لمجتمع",
+        "did": "غيّر الأوراق المضافة لمجتمع",
+        "where": "Evidence Community",
+        "ask": "إيقاف الأوراق المضافة لمجتمع أو استئنافها، أو ملفات PDF الخاصة بها"
       }
     },
     "asks": {

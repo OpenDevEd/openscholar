@@ -4366,6 +4366,36 @@
         "did": "Autor reivindicado",
         "where": "Autores",
         "ask": "Reivindicar um autor"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Procurando artigos para uma comunidade",
+        "did": "Procurou artigos para uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Procurar artigos para uma comunidade"
+      },
+      "addCommunityPapers": {
+        "doing": "Adicionando artigos a uma comunidade",
+        "did": "Adicionou artigos a uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Adicionar artigos a uma comunidade"
+      },
+      "communityAddedPapers": {
+        "doing": "Lendo os artigos adicionados de uma comunidade",
+        "did": "Leu os artigos adicionados de uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Ler os artigos adicionados de uma comunidade"
+      },
+      "removeCommunityPaper": {
+        "doing": "Removendo um artigo de uma comunidade",
+        "did": "Removeu um artigo de uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Remover um artigo de uma comunidade"
+      },
+      "communityPapersSettings": {
+        "doing": "Alterando os artigos adicionados de uma comunidade",
+        "did": "Alterou os artigos adicionados de uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Pausar ou retomar os artigos adicionados de uma comunidade, ou os PDFs deles"
       }
     },
     "asks": {

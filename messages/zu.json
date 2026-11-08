@@ -4365,6 +4365,36 @@
         "did": "Kufakiwe isicelo sombhali",
         "where": "Ababhali",
         "ask": "Faka isicelo sombhali"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Ibheka amaphepha omphakathi",
+        "did": "Ibheke amaphepha omphakathi",
+        "where": "Evidence Community",
+        "ask": "Bheka amaphepha omphakathi"
+      },
+      "addCommunityPapers": {
+        "doing": "Yengeza amaphepha emphakathini",
+        "did": "Yengeze amaphepha emphakathini",
+        "where": "Evidence Community",
+        "ask": "Engeza amaphepha emphakathini"
+      },
+      "communityAddedPapers": {
+        "doing": "Ifunda amaphepha engeziwe omphakathi",
+        "did": "Ifunde amaphepha engeziwe omphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda amaphepha engeziwe omphakathi"
+      },
+      "removeCommunityPaper": {
+        "doing": "Isusa iphepha emphakathini",
+        "did": "Isuse iphepha emphakathini",
+        "where": "Evidence Community",
+        "ask": "Susa iphepha emphakathini"
+      },
+      "communityPapersSettings": {
+        "doing": "Ishintsha amaphepha engeziwe omphakathi",
+        "did": "Ishintshe amaphepha engeziwe omphakathi",
+        "where": "Evidence Community",
+        "ask": "Misa noma uqhubeke namaphepha engeziwe omphakathi, noma ama-PDF awo"
       }
     },
     "asks": {

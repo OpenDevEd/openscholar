@@ -4366,6 +4366,36 @@
         "did": "Imedai mwandishi",
         "where": "Waandishi",
         "ask": "Dai mwandishi"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Inatafuta makala kwa ajili ya jumuiya",
+        "did": "Ilitafuta makala kwa ajili ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Tafuta makala kwa ajili ya jumuiya"
+      },
+      "addCommunityPapers": {
+        "doing": "Inaongeza makala kwenye jumuiya",
+        "did": "Iliongeza makala kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ongeza makala kwenye jumuiya"
+      },
+      "communityAddedPapers": {
+        "doing": "Inasoma makala zilizoongezwa za jumuiya",
+        "did": "Ilisoma makala zilizoongezwa za jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma makala zilizoongezwa za jumuiya"
+      },
+      "removeCommunityPaper": {
+        "doing": "Inaondoa makala kwenye jumuiya",
+        "did": "Iliondoa makala kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ondoa makala kwenye jumuiya"
+      },
+      "communityPapersSettings": {
+        "doing": "Inabadilisha makala zilizoongezwa za jumuiya",
+        "did": "Ilibadilisha makala zilizoongezwa za jumuiya",
+        "where": "Evidence Community",
+        "ask": "Sitisha au endelea na makala zilizoongezwa za jumuiya, au PDF zake"
       }
     },
     "asks": {
