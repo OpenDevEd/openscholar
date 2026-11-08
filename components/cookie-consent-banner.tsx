@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { applyConsentToPostHog, readConsent, writeConsent } from "@/lib/consent-cookie";
+import { applyConsentToPostHog, CONSENT_UPDATED_EVENT, readConsent, writeConsent } from "@/lib/consent-cookie";
 import { PolicyLinks } from "@/components/legal-links";
 import { api } from "@/convex/_generated/api";
 import { subtleSpring } from "@/lib/animation-config";
@@ -86,29 +86,32 @@ export function CookieConsentBanner() {
     return !readConsent();
   }, []);
 
-  // The server's own analytics read the answer from the account. Someone signed out brings theirs when they sign in.
-  const { isAuthenticated } = useConvexAuth();
-  const saveConsent = useMutation(api.users.mutations.saveAnalyticsConsent);
-  const saveToAccount = useCallback(
-    (choice: "granted" | "denied") => {
-      if (isAuthenticated) saveConsent({ choice }).catch((error) => console.error("[consent] saving to the account failed", error));
-    },
-    [isAuthenticated, saveConsent],
-  );
-
   const handleAccept = useCallback(() => {
     applyConsentToPostHog(posthog, writeConsent("granted").choice);
-    saveToAccount("granted");
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, [saveToAccount]);
+  }, []);
 
   const handleReject = useCallback(() => {
     applyConsentToPostHog(posthog, writeConsent("denied").choice);
-    saveToAccount("denied");
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, [saveToAccount]);
+  }, []);
+
+  // The server's own analytics read the answer from the account, so every change goes there: a button here, or an
+  // answer given on openscholar.ai in another tab (instrumentation-client.ts). Someone signed out brings theirs when
+  // they sign in.
+  const { isAuthenticated } = useConvexAuth();
+  const saveConsent = useMutation(api.users.mutations.saveAnalyticsConsent);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const save = () => {
+      const choice = readConsent()?.choice;
+      if (choice) saveConsent({ choice }).catch((error) => console.error("[consent] saving to the account failed", error));
+    };
+    window.addEventListener(CONSENT_UPDATED_EVENT, save);
+    return () => window.removeEventListener(CONSENT_UPDATED_EVENT, save);
+  }, [isAuthenticated, saveConsent]);
 
   useEffect(() => {
     setMounted(true);
