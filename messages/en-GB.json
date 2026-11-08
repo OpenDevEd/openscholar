@@ -5910,6 +5910,7 @@
     "reviewFirst": "The community's team reviews it before it goes live.",
     "publishedTo": "Published to {community}",
     "queuedTo": "Sent to {community}'s review queue",
-    "alreadyIn": "{community} already has this paper"
+    "alreadyIn": "{community} already has this paper",
+    "moreCommunities": "More communities"
   }
 }

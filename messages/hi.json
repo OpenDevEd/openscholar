@@ -5910,6 +5910,7 @@
     "reviewFirst": "समुदाय की टीम प्रकाशित होने से पहले इसकी समीक्षा करती है।",
     "publishedTo": "{community} में प्रकाशित",
     "queuedTo": "{community} की समीक्षा कतार में भेजा गया",
-    "alreadyIn": "{community} में यह पेपर पहले से है"
+    "alreadyIn": "{community} में यह पेपर पहले से है",
+    "moreCommunities": "और समुदाय"
   }
 }

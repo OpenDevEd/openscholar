@@ -5910,6 +5910,7 @@
     "reviewFirst": "Ithimba lomphakathi liyalibuyekeza ngaphambi kokuthi lishicilelwe.",
     "publishedTo": "Kushicilelwe ku-{community}",
     "queuedTo": "Kuthunyelwe ohlwini lokubuyekeza lwe-{community}",
-    "alreadyIn": "I-{community} isivele inaleli phepha"
+    "alreadyIn": "I-{community} isivele inaleli phepha",
+    "moreCommunities": "Eminye imiphakathi"
   }
 }

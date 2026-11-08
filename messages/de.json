@@ -5911,6 +5911,7 @@
     "reviewFirst": "Das Team der Community prüft sie, bevor sie online geht.",
     "publishedTo": "In {community} veröffentlicht",
     "queuedTo": "An die Prüfwarteschlange von {community} gesendet",
-    "alreadyIn": "{community} hat diese Arbeit bereits"
+    "alreadyIn": "{community} hat diese Arbeit bereits",
+    "moreCommunities": "Weitere Communities"
   }
 }

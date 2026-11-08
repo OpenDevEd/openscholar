@@ -5910,6 +5910,7 @@
     "reviewFirst": "社区团队会在发布前审核。",
     "publishedTo": "已发布到 {community}",
     "queuedTo": "已送入 {community} 的审核队列",
-    "alreadyIn": "{community} 已有这篇论文"
+    "alreadyIn": "{community} 已有这篇论文",
+    "moreCommunities": "更多社区"
   }
 }

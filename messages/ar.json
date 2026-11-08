@@ -5911,6 +5911,7 @@
     "reviewFirst": "يراجعها فريق المجتمع قبل نشرها.",
     "publishedTo": "نُشرت في {community}",
     "queuedTo": "أُرسلت إلى قائمة مراجعة {community}",
-    "alreadyIn": "لدى {community} هذه الورقة بالفعل"
+    "alreadyIn": "لدى {community} هذه الورقة بالفعل",
+    "moreCommunities": "مزيد من المجتمعات"
   }
 }

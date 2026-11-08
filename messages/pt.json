@@ -5911,6 +5911,7 @@
     "reviewFirst": "A equipe da comunidade revisa antes de publicar.",
     "publishedTo": "Publicado em {community}",
     "queuedTo": "Enviado para a fila de revisão de {community}",
-    "alreadyIn": "{community} já tem este artigo"
+    "alreadyIn": "{community} já tem este artigo",
+    "moreCommunities": "Mais comunidades"
   }
 }

@@ -5910,6 +5910,7 @@
     "reviewFirst": "L'équipe de la communauté le relit avant sa mise en ligne.",
     "publishedTo": "Publié dans {community}",
     "queuedTo": "Envoyé dans la file de relecture de {community}",
-    "alreadyIn": "{community} a déjà cet article"
+    "alreadyIn": "{community} a déjà cet article",
+    "moreCommunities": "Plus de communautés"
   }
 }

@@ -26,6 +26,7 @@ import { SHEET_SPRING } from "@/lib/motion";
 import { normalDoi, openalexWork } from "@/lib/papers/paper-ref";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaces } from "@/components/workspaces/parts";
 import { CommunityCard } from "../public-communities";
 import { StatusChip } from "../configuration/status-chip";
 import { CommunityIcon, ROLE_KINDS } from "../your-communities";
@@ -52,18 +53,23 @@ type Row = {
 
 /** Communities each list reads at first, and how many more each time the list scrolls near its end. */
 const STEP = 20;
+/** Rows that fill the list enough to scroll; fewer, and a button reads the next ones instead. */
+const SCROLLABLE_ROWS = 6;
 /** How close to the bottom of the list, in pixels, the next ones start loading. */
 const LOAD_AHEAD_PX = 80;
 
-/** A community of yours, as a row and as the card beside the popover draws one that isn't listed publicly. */
-const fromOverview = (library: Overview): Row => ({
+/**
+ * A community of yours, as a row and as the card beside the popover draws one that isn't listed publicly. One shared
+ * with the person is reached from their own workspace, `own`; the rest from the workspace they're on its team in.
+ */
+const fromOverview = (library: Overview, own: Id<"workspaces"> | undefined): Row => ({
   id: library._id,
   name: library.name,
   faviconUrl: library.faviconUrl ?? null,
   owner: { ...library.organization, imageUrl: library.organization.imageUrl ?? null, workspaceId: library.workspaceId },
   address: library.publicAddress,
   role: library.role,
-  workspaceId: library.workspaceId,
+  workspaceId: library.from === "shared" ? own : library.workspaceId,
   card: {
     _id: library._id,
     name: library.name,
@@ -130,7 +136,9 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
   const [query, setQuery] = useState("");
   const [openedWith, setOpenedWith] = useState<string[] | null>(null);
   const search = useDebouncedValue(query.trim(), 300);
+  // Sent by its OpenAlex work, or by its DOI when it has no work, such as a paper only Openscholar's index has.
   const openalexId = openalexWork(paper.id);
+  const doi = normalDoi(paper.doi);
   // Read once the pointer reaches the button or it takes focus, so the list is there by the click. Only that card
   // reads: each paginated read is a subscription of its own, and every card reading would ask the server for the
   // same lists once per paper on the page. Scrolling near the end reads the next page onto it.
@@ -154,8 +162,9 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
       <EvidenceLibrariesIcon className={statusIn.size ? "text-primary" : "text-muted-foreground"} />
     </Button>
   );
-  if (!isSignedIn || !openalexId) return <TooltipHint label={t("addToCommunity")}>{button}</TooltipHint>;
-  const mine = yours.items.filter((library) => library.status === "active").map(fromOverview);
+  if (!isSignedIn || !(openalexId || doi)) return <TooltipHint label={t("addToCommunity")}>{button}</TooltipHint>;
+  const own = useWorkspaces().list?.find((row) => row.kind === "personal")?.workspaceId as Id<"workspaces"> | undefined;
+  const mine = yours.items.filter((library) => library.status === "active").map((library) => fromOverview(library, own));
   const mineById = new Map(mine.map((row) => [row.id as string, row]));
   const latest = (recentRead ?? []).map((recent) => fromRecent(recent, mineById.get(recent.libraryId)));
   // Kept as they were when the popover opened: a paper sent from it doesn't move its rows.
@@ -174,7 +183,7 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
       </TooltipHint>
       <PopoverContent align="start" className="relative flex max-h-[min(30rem,var(--radix-popover-content-available-height))] w-80 flex-col overflow-visible p-2">
         <CommunitiesPanel
-          paper={{ openalexId, doi: normalDoi(paper.doi), title: paper.title || paper.display_name || "" }}
+          paper={{ openalexId, doi, title: paper.title || paper.display_name || "" }}
           query={query}
           onQuery={setQuery}
           searching={search.length > 0}
@@ -190,14 +199,16 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
             // Yours first, then the public ones under them.
             (yours.canLoadMore ? yours : listed).loadMore();
           }}
+          // A list too short to scroll, such as one whose drafts were left out, reads on from a button instead.
+          onMore={yours.canLoadMore || listed.canLoadMore ? () => (yours.canLoadMore ? yours : listed).loadMore() : undefined}
         />
       </PopoverContent>
     </Popover>
   );
 }
 
-function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, others, statusIn, loading, stale, onScroll }: {
-  paper: { openalexId: string; doi: string | null; title: string };
+function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, others, statusIn, loading, stale, onScroll, onMore }: {
+  paper: { openalexId: string | null; doi: string | null; title: string };
   query: string;
   onQuery: (query: string) => void;
   searching: boolean;
@@ -210,6 +221,8 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
   /** A new search or more rows are being read: what's shown stays, dimmed. */
   stale: boolean;
   onScroll: (event: UIEvent<HTMLElement>) => void;
+  /** Reads more communities, while there are more. */
+  onMore?: () => void;
 }) {
   const t = useTranslations("addedPapers");
   const tl = useTranslations("libraryList");
@@ -326,13 +339,19 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
       <AutoHeight className="min-h-0">
         {loading ? (
           <div className="flex h-24 items-center justify-center"><Spinner /></div>
-        ) : recent.length + yours.length + publicOnes.length === 0 ? (
+        ) : recent.length + yours.length + publicOnes.length === 0 && !onMore ? (
           <p className="py-4 text-center text-sm text-muted-foreground">{searching ? t("noCommunitiesMatch") : t("noCommunities")}</p>
         ) : (
           <div className={cn("fade-enter max-h-[20rem] space-y-1 overflow-y-auto", stale && "opacity-60")} inert={stale || undefined} onScroll={onScroll} onPointerLeave={hover.hide}>
             {section(t("recent"), recent)}
             {section(t("yourCommunities"), yours)}
             {section(t("tabPublic"), publicOnes)}
+            {/* Only when the rows are too few to scroll further; a longer list reads on as it scrolls. */}
+            {onMore && recent.length + yours.length + publicOnes.length < SCROLLABLE_ROWS ? (
+              <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={onMore}>
+                {t("moreCommunities")}
+              </Button>
+            ) : null}
           </div>
         )}
       </AutoHeight>
@@ -347,7 +366,8 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
 function useHeld<T extends { _id: string }>(list: { results: T[]; status: "Deferred" | "LoadingFirstPage" | "CanLoadMore" | "LoadingMore" | "Exhausted"; loadMore: (count: number) => void }) {
   const [held, setHeld] = useState<{ ids: string; items: T[] }>();
   const waiting = list.status === "LoadingFirstPage" || list.status === "Deferred";
-  const ids = waiting ? undefined : list.results.map((row) => row._id).join(",");
+  // Its rows as they are now: a community that changed, such as one that went live, is taken in too.
+  const ids = waiting ? undefined : JSON.stringify(list.results);
   if (ids !== undefined && ids !== held?.ids) setHeld({ ids, items: list.results });
   return {
     items: held?.items ?? [],

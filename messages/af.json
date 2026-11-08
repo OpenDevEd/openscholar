@@ -5911,6 +5911,7 @@
     "reviewFirst": "Die gemeenskap se span hersien dit voordat dit lewendig gaan.",
     "publishedTo": "Gepubliseer in {community}",
     "queuedTo": "Na {community} se hersieningsry gestuur",
-    "alreadyIn": "{community} het reeds hierdie artikel"
+    "alreadyIn": "{community} het reeds hierdie artikel",
+    "moreCommunities": "Meer gemeenskappe"
   }
 }

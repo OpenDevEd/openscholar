@@ -5910,6 +5910,7 @@
     "reviewFirst": "公開前にコミュニティのチームがレビューします。",
     "publishedTo": "{community} に公開しました",
     "queuedTo": "{community} のレビューキューに送りました",
-    "alreadyIn": "{community} にはこの論文がすでにあります"
+    "alreadyIn": "{community} にはこの論文がすでにあります",
+    "moreCommunities": "他のコミュニティ"
   }
 }

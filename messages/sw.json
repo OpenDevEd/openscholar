@@ -5911,6 +5911,7 @@
     "reviewFirst": "Timu ya jumuiya huikagua kabla haijachapishwa.",
     "publishedTo": "Imechapishwa kwenye {community}",
     "queuedTo": "Imetumwa kwenye foleni ya ukaguzi ya {community}",
-    "alreadyIn": "{community} tayari ina makala hii"
+    "alreadyIn": "{community} tayari ina makala hii",
+    "moreCommunities": "Jumuiya zaidi"
   }
 }
