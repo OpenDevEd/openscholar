@@ -23,7 +23,13 @@ import {
   changeCollectionRecords,
   createReaderCollection,
   deleteReaderCollection,
+  ADDED_PAPERS_MAX,
+  addLibraryPapers,
+  listLibraryPapers,
+  removeLibraryPaper,
+  setLibraryPaperSettings,
   matchLibraryRecords,
+  previewLibraryPapers,
   readLibraryCollection,
   readLibraryOverview,
   readLibraryReaders,
@@ -471,5 +477,114 @@ export const refreshRecords = internalAction({
     }
     await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records: overview.records, ...(overview.countries ? { countries: overview.countries.map((country) => country.code) } : {}) });
     return null;
+  },
+});
+
+// Papers added to a community by DOI or OpenAlex ID (OS-29, OpenDevEd/openalex-count#1122).
+
+const paperReferenceValidator = v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())) });
+const foundByValidator = v.union(v.literal("openalex"), v.literal("doi"));
+const summaryFields = { title: v.string(), authors: v.string(), year: v.union(v.number(), v.null()) };
+
+export const addedPapersSettingsValidator = v.object({ enabled: v.boolean(), downloadPdfs: v.boolean() });
+const teamRoleValidator = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"));
+
+export const paperPreviewValidator = v.object({
+  at: v.number(),
+  outcome: v.union(v.literal("found"), v.literal("existing"), v.literal("queued"), v.literal("returned"), v.literal("not_found")),
+  itemKey: v.optional(v.string()),
+  foundBy: v.optional(foundByValidator),
+  paper: v.optional(v.object({ ...summaryFields, openalexId: v.union(v.string(), v.null()), doi: v.union(v.string(), v.null()) })),
+  message: v.optional(v.string()),
+});
+
+export const paperAddedValidator = v.object({
+  at: v.number(),
+  outcome: v.union(v.literal("added"), v.literal("queued"), v.literal("returned"), v.literal("existing"), v.literal("not_found"), v.literal("failed")),
+  itemKey: v.optional(v.string()),
+  foundBy: v.optional(foundByValidator),
+  message: v.optional(v.string()),
+});
+
+export const addedPapersPageValidator = v.object({
+  papers: v.array(v.object({
+    ...summaryFields,
+    itemKey: v.string(),
+    openalexId: v.union(v.string(), v.null()),
+    doi: v.union(v.string(), v.null()),
+    status: v.union(v.literal("live"), v.literal("doi_only"), v.literal("queued"), v.literal("returned")),
+    note: v.union(v.string(), v.null()),
+    /** Sent by the person reading the list, who may withdraw it while it waits. */
+    mine: v.boolean(),
+    addedByName: v.union(v.string(), v.null()),
+    addedAt: v.string(),
+  })),
+  next: v.union(v.string(), v.null()),
+  counts: v.object({ live: v.number(), waiting: v.number() }),
+  settings: addedPapersSettingsValidator,
+});
+
+/** What adding papers to a running community would find, saving nothing. */
+export const previewPapers = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), papers: v.array(paperReferenceValidator) },
+  returns: v.array(paperPreviewValidator),
+  handler: async (ctx, { libraryId, papers }) => {
+    if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Look up at most ${ADDED_PAPERS_MAX} papers at once.`);
+    const target = await libraryTarget(ctx, libraryId);
+    return await asked(libraryId, "papers/preview", null, () => previewLibraryPapers(fetch, target, papers));
+  },
+});
+
+/** Adds papers to a running community as the person, with their role there, published or to its review queue. */
+export const addPapers = internalAction({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    userId: v.id("users"),
+    role: teamRoleValidator,
+    name: v.union(v.string(), v.null()),
+    requestId: v.string(),
+    publish: v.boolean(),
+    papers: v.array(paperReferenceValidator),
+  },
+  returns: v.array(paperAddedValidator),
+  handler: async (ctx, { libraryId, userId, role, name, requestId, publish, papers }) => {
+    if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Add at most ${ADDED_PAPERS_MAX} papers at once.`);
+    const target = await libraryTarget(ctx, libraryId);
+    const clerkUserId = await readerOf(ctx, userId);
+    return await asked(libraryId, "papers/add", clerkUserId, () => addLibraryPapers(fetch, target, { requestId, publish, actor: { clerkUserId, name, role }, papers }));
+  },
+});
+
+/** A running community's added papers, newest first, a page at a time, each marked when the person sent it. */
+export const listPapers = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), cursor: v.union(v.string(), v.null()), limit: v.number() },
+  returns: addedPapersPageValidator,
+  handler: async (ctx, { libraryId, userId, cursor, limit }) => {
+    const target = await libraryTarget(ctx, libraryId);
+    const clerkUserId = await readerOf(ctx, userId);
+    const page = await asked(libraryId, "papers/list", clerkUserId, () => listLibraryPapers(fetch, target, { cursor, limit: Math.min(100, Math.max(1, Math.floor(limit))) }));
+    // Who sent each paper stays in the community: the list says only whether it was this person.
+    return { ...page, papers: page.papers.map(({ addedBy, ...paper }) => ({ ...paper, mine: addedBy === clerkUserId })) };
+  },
+});
+
+/** Pauses or resumes a running community's Added papers source, or turns its PDFs on or off. */
+export const setPaperSettings = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), enabled: v.optional(v.boolean()), downloadPdfs: v.optional(v.boolean()) },
+  returns: addedPapersSettingsValidator,
+  handler: async (ctx, { libraryId, ...change }) => {
+    const target = await libraryTarget(ctx, libraryId);
+    return await asked(libraryId, "papers/settings", null, () => setLibraryPaperSettings(fetch, target, change));
+  },
+});
+
+/** Takes an added paper off a running community as the person, with their role there. */
+export const removePaper = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), role: teamRoleValidator, name: v.union(v.string(), v.null()), itemKey: v.string() },
+  returns: v.union(v.literal("withdrawn"), v.literal("removed")),
+  handler: async (ctx, { libraryId, userId, role, name, itemKey }) => {
+    const target = await libraryTarget(ctx, libraryId);
+    const clerkUserId = await readerOf(ctx, userId);
+    return await asked(libraryId, "papers/remove", clerkUserId, () => removeLibraryPaper(fetch, target, itemKey, { clerkUserId, name, role }));
   },
 });
