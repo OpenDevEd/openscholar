@@ -1551,13 +1551,19 @@ export const pendingSubmissionStatusFields = {
 };
 
 /** The papers one request sent, to record for Your submissions: published at once, or waiting for review. */
-export const sentPapersValidator = capped(v.array(v.object({
-  itemKey: v.string(),
+/** What a sent paper is, as Your submissions shows it. */
+const sentPaperSummary = {
   title: v.string(),
   authors: v.string(),
   year: v.union(v.number(), v.null()),
   openalexId: v.union(v.string(), v.null()),
   doi: v.union(v.string(), v.null()),
+};
+export const sentPaperSummaryValidator = v.object(sentPaperSummary);
+
+export const sentPapersValidator = capped(v.array(v.object({
+  itemKey: v.string(),
+  ...sentPaperSummary,
   status: v.union(v.literal("queued"), v.literal("published")),
 })), ADDED_PAPERS_MAX);
 

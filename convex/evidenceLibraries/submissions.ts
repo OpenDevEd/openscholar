@@ -8,7 +8,7 @@ import { internalMutation } from "../lib/functions";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
 import { libraryOwner, ownerName, readActiveOrganizationMembership, readLibraryRole } from "./access";
-import { PAPER_SENT_TO, RECENT_COMMUNITIES, recentCommunitiesValidator, sentPapersValidator, sentToValidator, submissionOwnerValidator, submissionStatusValidator } from "./validators";
+import { PAPER_SENT_TO, RECENT_COMMUNITIES, recentCommunitiesValidator, sentPaperSummaryValidator, sentPapersValidator, sentToValidator, submissionOwnerValidator, submissionStatusValidator } from "./validators";
 
 /** Submissions a page of Your submissions shows at most. */
 const SUBMISSIONS_PAGE_MAX = 50;
@@ -85,9 +85,11 @@ export const applyStatus = internalMutation({
     status: submissionStatusValidator,
     note: v.union(v.string(), v.null()),
     at: v.number(),
+    /** What the paper is, when the community says so: one its own site sent has no row here until then. */
+    paper: v.optional(sentPaperSummaryValidator),
   },
   returns: v.null(),
-  handler: async (ctx, { libraryId: library, credentialDigest, itemKey, generation, clerkUserId, status, note, at }) => {
+  handler: async (ctx, { libraryId: library, credentialDigest, itemKey, generation, clerkUserId, status, note, at, paper }) => {
     const libraryId = await authenticate(ctx, library, credentialDigest);
     // Published, it's published for everyone who sent it: a paper two people suggested is one record. Waiting,
     // returned or withdrawn is the submission of whoever sent it this time.
@@ -97,6 +99,13 @@ export const applyStatus = internalMutation({
       ? [await byPaper(ctx, sender._id, libraryId, itemKey)].filter((row) => row !== null)
       : // ponytail: the first SENDERS_PER_PAPER who sent the same paper are updated; page the rest if a paper ever has more.
         await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
+    // Sent from the community's own site, it becomes their submission here with the community's first word on it.
+    if (!rows.length && sender && paper) {
+      const community = (await communityOf(ctx, libraryId)).name;
+      const id = await ctx.db.insert("paperSubmissions", { ...paper, userId: sender._id, libraryId, itemKey, status, ...(note ? { note } : {}), generation, searchText: searchTextOf(paper.title, community), sentAt: at, updatedAt: at });
+      await applyHeld(ctx, id, libraryId, itemKey, clerkUserId);
+      return null;
+    }
     // Before Openscholar recorded the paper as sent, as when the community answers first: it's held until it is.
     if (!rows.length) {
       await ctx.db.insert("pendingSubmissionStatus", { libraryId, itemKey, clerkUserId, generation, status, note: note ?? undefined, at });
