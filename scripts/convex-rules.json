@@ -93,7 +93,9 @@
       "READ_LIBRARIES_MAX": "the libraries a person used last, the first ones their roles give, and the newest grants; any other library is reached by its address",
       "SAME_KEY_READ": "the first papers of a job that share one identifier; a paper is one of them or none, since more than a few sharing a title are different papers",
       "DOMAIN_CLAIMS_READ": "the claims of one host; a host is served for one library, and claimed by a few at most",
-      "RECENT_SEARCHES": "the person's newest searches in a workspace, which their suggested searches are written from; older ones don't count"
+      "RECENT_SEARCHES": "the person's newest searches in a workspace, which their suggested searches are written from; older ones don't count",
+      "SUBMISSIONS_COUNTED": "the papers of one status a person sent, counted for Your submissions' status filter; past it the filter says so",
+      "SENDERS_PER_PAPER": "the people who sent the same paper to a community, whose rows a change from it updates; past it the first hundred are updated"
     },
     "batches": {
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",

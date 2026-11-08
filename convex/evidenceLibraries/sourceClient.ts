@@ -215,6 +215,7 @@ const addedSchema = z.object({
       outcome: z.enum(["added", "queued", "returned", "existing", "not_found", "failed"]),
       itemKey: z.string().optional(),
       foundBy: foundBySchema.optional(),
+      paper: summarySchema.extend({ openalexId: z.string().nullable(), doi: z.string().nullable() }).optional(),
       message: z.string().optional(),
     }),
   ).max(ADDED_PAPERS_MAX),
