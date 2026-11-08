@@ -1,9 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /a2/
-Disallow: /a3/
-Disallow: /a4/
-Disallow: /a5/
-Disallow: /a6/
-
-Sitemap: https://openscholar.ai/sitemap.xml
