@@ -17,5 +17,6 @@ export function useLiveCopies(initial: CommunityCopy[], keys: readonly string[])
   if ((keys[0] && !first) || (keys[1] && !second)) return initial;
   const read = new Map(initial.map((copy) => [copy.id, copy]));
   const live = new Map([...(first?.page ?? []), ...(second?.page ?? [])].map((location) => [location.id, location]));
-  return [...live.values()].map((location) => read.get(location.id) ?? { ...copyOf(location), pdf: null, cover: null });
+  // Named and placed as the community is now; the PDF and its cover are the server's, read with the page.
+  return [...live.values()].map((location) => ({ ...copyOf(location), pdf: read.get(location.id)?.pdf ?? null, cover: read.get(location.id)?.cover ?? null }));
 }
