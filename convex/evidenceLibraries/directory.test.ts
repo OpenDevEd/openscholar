@@ -95,6 +95,12 @@ describe("the public directory", () => {
     expect(await names("name")).toEqual(["Agriculture Evidence", "Climate Evidence", "Water Evidence"]);
     expect(await names("name", "renamed")).toEqual([]);
 
+    // A site that doesn't answer the record check is out of the directory, and back the first time it does.
+    await fixture.t.mutation(internal.evidenceLibraries.directory.noteUnreachable, { libraryId: library._id });
+    expect(await names("name")).toEqual(["Agriculture Evidence", "Water Evidence"]);
+    await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 50 });
+    expect(await names("name")).toHaveLength(3);
+
     // Unlisted by an owner: out of the directory, and back once public again.
     await fixture.admin.mutation(api.evidenceLibraries.assistant.setVisibility, { workspaceId, libraryId: library._id, visibility: "unlisted" });
     expect(await names("name")).toEqual(["Agriculture Evidence", "Water Evidence"]);

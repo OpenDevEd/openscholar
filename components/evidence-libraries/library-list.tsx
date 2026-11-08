@@ -99,7 +99,7 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
           <h1 className="sr-only">{t("evidenceLibraries")}</h1>
           <div className="container mx-auto max-w-6xl p-4 sm:p-6">
           {signedIn ? <div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface lg:hidden">{yours}</div> : null}
-          <CommandCenterContainer>
+          <CommandCenterContainer serverDrawn>
             <div className="relative flex items-center gap-2 border-b border-border-subtle p-4">
               <div className="min-w-0 flex-1">
                 <ListSearch

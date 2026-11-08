@@ -290,6 +290,8 @@ export const evidenceLibraryFields = {
   card: v.optional(v.object({ name: v.optional(v.string()), nameKey: v.optional(v.string()), tagline: v.optional(v.string()), description: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
   /** When its last version went live: the directory card's "updated". */
   publishedAt: v.optional(v.number()),
+  /** Since when its site hasn't answered the directory's record check (#1090): the directory leaves it out until it does. */
+  unreachableSince: v.optional(v.number()),
   /** The countries most of its public records are about, most first, as it last said (./directory.ts). */
   countries: capped(v.optional(v.array(v.string())), COUNTRIES_KEPT),
   /** How many people work on it: its owners and everyone given a role in it (./directory.ts). */

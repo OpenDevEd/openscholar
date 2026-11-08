@@ -464,6 +464,7 @@ export const refreshRecords = internalAction({
       await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records, ...(countries ? { countries: countries.map((country) => country.code) } : {}) });
     } catch (error) {
       console.warn("[community directory] the record count couldn't be read", { libraryId, reason: error instanceof Error ? error.message : String(error) });
+      await ctx.runMutation(internal.evidenceLibraries.directory.noteUnreachable, { libraryId });
     }
     return null;
   },
