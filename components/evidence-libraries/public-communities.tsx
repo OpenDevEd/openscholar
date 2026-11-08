@@ -19,6 +19,7 @@ import type { Preloaded } from "convex/react";
 import { preloadedQueryResult } from "convex/nextjs";
 import { cn } from "@/lib/utils";
 import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
+import { FadeImage } from "@/components/ui/fade-image";
 
 const PER_PAGE = PUBLIC_PER_PAGE;
 /** Two rows of cards and the pager under them (its top padding and buttons, and its margin): the place held while the first are read. */
@@ -142,21 +143,6 @@ function CommunityCard({ community }: { community: Card }) {
         </div>
       </a>
     </li>
-  );
-}
-
-/** An owner's picture that fades in once it has loaded, in place of appearing in one frame. */
-function FadeImage({ src, className, shown = "opacity-100" }: { src: string; className: string; shown?: string }) {
-  const [loaded, setLoaded] = useState<string | null>(null);
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- owner-hosted image, any domain
-    <img
-      ref={(image) => { if (image?.complete && image.naturalWidth > 0) setLoaded(src); }}
-      src={src}
-      alt=""
-      onLoad={() => setLoaded(src)}
-      className={cn(className, "transition-opacity duration-200 motion-reduce:transition-none", loaded === src ? shown : "opacity-0")}
-    />
   );
 }
 

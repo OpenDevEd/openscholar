@@ -376,7 +376,8 @@ const FILTER_ICON: Record<FilterKind, AppIcon> = { range: CalendarDays, type: Fi
 function FilterChip({ kind, value }: { kind: FilterKind; value: string }) {
   const t = useTranslations("librarySources");
   const locale = useLocale();
-  const country = kind === "country" ? countryCodeOf(value) : null;
+  // A community saves a place as its path, "Africa > Eastern Africa > KE"; a country ends it, a region doesn't.
+  const country = kind === "country" ? countryCodeOf(value.split(">").at(-1)) : null;
   if (country) return <Chip><CountryFlag countryCode={country} className="shrink-0" />{getRegionDisplayName(country, locale)}</Chip>;
   return <Chip icon={FILTER_ICON[kind]}>{kind === "sort" ? t(`sort.${value}` as "sort.desc") : value}</Chip>;
 }

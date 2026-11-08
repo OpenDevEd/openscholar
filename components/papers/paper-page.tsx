@@ -7,11 +7,12 @@ import { toast } from "sonner";
 import Link from "@/components/workspace-link";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
-import { IntroGlow, Stat, TopicHoverCard } from "@/components/entity-cards";
+import { IntroGlow, Stat } from "@/components/entity-cards";
 import { PaperRows } from "@/components/papers/paper-rows";
 import { AuthorName, FunderName, InstitutionName, JournalName } from "@/components/papers/paper-entities";
 import { CountryFilterFlag } from "@/components/country-filter-flag";
-import { COVER_KINDS, coverKindOf, PaperCover } from "@/components/papers/paper-cover";
+import { PaperCover } from "@/components/papers/paper-cover";
+import { COVER_KINDS, coverOf } from "@/lib/papers/cover";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { CitationControl } from "@/components/citation-control";
 import { SaveControl } from "@/components/library/save-control";
@@ -57,8 +58,10 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
   const doi = detail.ids.doi ? `https://doi.org/${detail.ids.doi}` : null;
   const topic = paper.primary_topic;
   const topicPath = topic ? [topic.domain, topic.field, topic.subfield, topic].filter((node): node is { id: string; display_name: string } => !!node) : [];
-  // ponytail: mock only, so each cover can be seen on any paper (?cover=journal|preprint|report). Drop once one set is agreed.
+  // ponytail: mock only, so each cover can be seen on any paper (?cover=journal|preprint|report|monograph|bulletin). Drop once the set is agreed.
   const [cover] = useQueryState("cover", parseAsStringLiteral(COVER_KINDS));
+  // The title page and ink this paper always wears; the next paper likely wears another.
+  const look = coverOf(id);
   const communityCover = cover ? undefined : communities.find((copy) => copy.cover);
 
   return (
@@ -82,7 +85,8 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
         <div className="grid gap-6 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-8 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-10">
           <PaperCover
             className="w-28 sm:w-auto sm:self-start"
-            kind={cover ?? coverKindOf(paper.type)}
+            kind={cover ?? look.kind}
+            ink={look.ink}
             title={title}
             authors={detail.authors.map((author) => author.name)}
             source={detail.journal?.name ?? detail.publisher}
@@ -427,12 +431,10 @@ function Subjects({ detail }: { detail: PaperDetail }) {
       {detail.topics.length ? (
         <div className="-mx-2 space-y-0.5">
           {detail.topics.map((topic) => (
-            <TopicHoverCard key={topic.id} id={topic.id} name={topic.name}>
-              <Link href={topicHref(topic.id, topic.name)} className="relative flex min-h-8 items-center gap-3 overflow-hidden rounded-md px-2 py-1 text-sm transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">
-                {topic.score != null && <span aria-hidden className="absolute inset-y-0 start-0 rounded-md bg-primary/10" style={{ width: `${Math.round(topic.score * 100)}%` }} />}
-                <span className="relative min-w-0 flex-1">{topic.name}</span>
-              </Link>
-            </TopicHoverCard>
+            <Link key={topic.id} href={topicHref(topic.id, topic.name)} className="relative flex min-h-8 items-center gap-3 overflow-hidden rounded-md px-2 py-1 text-sm transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">
+              {topic.score != null && <span aria-hidden className="absolute inset-y-0 start-0 rounded-md bg-primary/10" style={{ width: `${Math.round(topic.score * 100)}%` }} />}
+              <span className="relative min-w-0 flex-1">{topic.name}</span>
+            </Link>
           ))}
         </div>
       ) : null}

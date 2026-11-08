@@ -77,7 +77,10 @@ export type CommunityCopy = { id: string; name: string; url: string; cover: stri
 export const readCommunityCopies = unstable_cache(
   async (doi: string | null, openalexId: string | null): Promise<CommunityCopy[]> => {
     const keys = [normalizeDoi(doi) && `doi:${normalizeDoi(doi)}`, openalexId && `openalex:${openalexId}`].filter((key): key is string => !!key);
-    const pages = await Promise.all(keys.map((groupKey) => fetchQuery(api.topics.publications.listLocations, { groupKey, paginationOpts: { cursor: null, numItems: MAX_LOCATIONS } })));
+    // ponytail: mock only. Shared dev holds no public community records since they moved to prod, so a local mock can read
+    // prod's public list instead (PAPER_PAGE_COMMUNITIES_CONVEX_URL). Drop it before the real build.
+    const convex = process.env.PAPER_PAGE_COMMUNITIES_CONVEX_URL;
+    const pages = await Promise.all(keys.map((groupKey) => fetchQuery(api.topics.publications.listLocations, { groupKey, paginationOpts: { cursor: null, numItems: MAX_LOCATIONS } }, convex ? { url: convex } : undefined)));
     // ponytail: a paper's first 100 copies per key, as topic pages read them. One with more says so in the logs; page through when a paper ever has that many.
     if (pages.some((page) => !page.isDone)) console.error("[paper page] a paper has more community copies than one page lists", { doi, openalexId, listed: MAX_LOCATIONS });
     const locations = [...new Map(pages.flatMap((page) => page.page).map((location) => [location.id, location])).values()];

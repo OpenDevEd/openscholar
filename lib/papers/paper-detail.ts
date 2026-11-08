@@ -125,7 +125,8 @@ export function paperDetail(own: PaperResult, openalex: PaperResult | null, open
     if (award.funder_award_id && !known.awards.includes(award.funder_award_id)) known.awards.push(award.funder_award_id);
     funding.set(name, { ...known, id: known.id ?? bare(award.funder_id) });
   }
-  const source = (theirs.primary_location ?? ours.primary_location)?.source;
+  // OpenAlex can name the location but not its source, so the journal falls back on its own.
+  const source = theirs.primary_location?.source ?? ours.primary_location?.source;
   const charge = theirs.apc_list?.value ? { amount: theirs.apc_list.value, currency: theirs.apc_list.currency ?? "USD" } : null;
   return {
     abstract: own.abstract || openalex?.abstract || null,

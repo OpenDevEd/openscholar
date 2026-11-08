@@ -4,7 +4,7 @@
  */
 
 import { toBcp47Locale } from "./locale-map";
-import { COUNTRIES, COUNTRY_NAME_CHANGES } from "@/lib/constants";
+import { COUNTRIES, COUNTRY_NAME_CHANGES, COUNTRY_SEARCH_NAMES } from "@/lib/constants";
 
 /**
  * Map internal region IDs (lowercase with underscores) to UN M49 codes.
@@ -128,5 +128,6 @@ export function countryCodeOf(value: string | null | undefined): string | null {
   if (!given) return null;
   if (/^[a-z]{2}$/i.test(given) && COUNTRIES[given.toUpperCase()]) return given.toUpperCase();
   const lower = given.toLowerCase();
-  return Object.keys(COUNTRIES).find((code) => COUNTRIES[code]!.toLowerCase() === lower) ?? null;
+  // A country's name, the name papers use for it (Tanzania), or one it had (Turkey, Czech Republic).
+  return Object.keys(COUNTRIES).find((code) => [COUNTRIES[code]!, COUNTRY_SEARCH_NAMES[code], ...(COUNTRY_NAME_CHANGES[code] ?? [])].some((name) => name?.toLowerCase() === lower)) ?? null;
 }

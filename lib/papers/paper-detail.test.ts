@@ -27,11 +27,12 @@ describe("a paper page's view of both records", () => {
 
 describe("what one source has and the other lacks", () => {
   it("keeps our PDF when OpenAlex only knows the landing page, and falls back to OpenAlex's abstract", () => {
-    const ours = work({ abstract: null, cited_by_count: 11, locations: [{ pdf_url: "https://cochrane.org/a.pdf", source: null }], publication_year: 2020 });
-    const theirs = work({ abstract: "What it found.", cited_by_count: 19, counts_by_year: [{ year: 2021, cited_by_count: 19 }], locations: [{ landing_page_url: "https://doi.org/10.1/x", source: { display_name: "Journal", type: "journal" } }] });
+    const ours = work({ abstract: null, cited_by_count: 11, locations: [{ pdf_url: "https://cochrane.org/a.pdf", source: null }], primary_location: { source: { id: "https://openscholar.ai/OSV1", display_name: "Our Journal" } }, publication_year: 2020 });
+    const theirs = work({ abstract: "What it found.", primary_location: { source: null }, cited_by_count: 19, counts_by_year: [{ year: 2021, cited_by_count: 19 }], locations: [{ landing_page_url: "https://doi.org/10.1/x", source: { display_name: "Journal", type: "journal" } }] });
     const detail = paperDetail(ours, theirs, "OS1", 2026);
     expect(detail.copies.map((copy) => [copy.name, copy.pdf])).toEqual([["Journal", false], ["cochrane.org", true]]);
     expect(detail.abstract).toBe("What it found.");
     expect(detail.citations).toBe(19);
+    expect(detail.journal).toEqual({ id: "OSV1", name: "Our Journal" });
   });
 });

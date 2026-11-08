@@ -34,9 +34,9 @@ export function CountryFilterFlag({ code, className }: { code: string; className
         onClick={(event) => {
           // It sits inside cards and rows that open on a click of their own.
           event.stopPropagation();
-          if (!canFilter) return router.push(buildShareableUrl("", { reg: [code] }));
-          // Filtering changes the list behind focus mode, so that's what it goes back to.
+          // Either way the paper sheet it sits in closes: the search behind it changes, or the page does.
           closeFocus();
+          if (!canFilter) return router.push(buildShareableUrl("", { reg: [code] }));
           handleSelectionChange(pressed ? selectedValues.filter((value) => value !== code) : [...selectedValues, code]);
         }}
         className={cn("inline-flex shrink-0 rounded-[3px] outline-offset-2 transition-[box-shadow] hover:ring-2 hover:ring-primary/40 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:ring-2 aria-pressed:ring-primary", className)}
