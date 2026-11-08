@@ -1,6 +1,6 @@
 import { TRAINING_CRAWLERS } from "../../../lib/seo/training-crawlers";
 
-// Training crawlers read the home page only (`/$` is the longer match, so it wins over `/` there); everyone else reads all but the hero trials.
+// Training crawlers read the home page only (`/$` is the longer match, so it wins over `/` there); everyone else reads everything.
 export function GET() {
   const text = [
     ...TRAINING_CRAWLERS.map((name) => `User-agent: ${name}`),
@@ -9,7 +9,6 @@ export function GET() {
     "",
     "User-agent: *",
     "Allow: /",
-    ...["a2", "a3", "a4", "a5", "a6"].map((page) => `Disallow: /${page}/`),
     "",
     "Sitemap: https://openscholar.ai/sitemap.xml",
     "",
