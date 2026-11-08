@@ -8,6 +8,7 @@ import { normalizeDoi } from "@/lib/topics/identity";
 import { fetchPublicationPdf } from "@/lib/evidence-libraries/publication-cards";
 import type { SimilarPaper } from "@/app/actions/similar";
 import type { PaperResult } from "@/lib/types/search.types";
+import { copyOf, type CommunityCopy } from "./community-copies";
 
 /** How long a paper page reuses what it read: a paper's record barely changes, and crawlers read many pages once each. */
 const DAY = 60 * 60 * 24;
@@ -70,35 +71,36 @@ export const readOpenAlexForPage = unstable_cache(
   { revalidate: DAY },
 );
 
-/** A community's record of the paper, with its PDF and the picture of the PDF's first page when the community has them. */
-export type CommunityCopy = { id: string; name: string; url: string; pdf: string | null; cover: string | null };
 
-/** The paper's published records in public Evidence Communities, found by its DOI or OpenAlex ID as topic pages find them. */
-export const readCommunityCopies = unstable_cache(
-  async (doi: string | null, openalexId: string | null): Promise<CommunityCopy[]> => {
-    const keys = [normalizeDoi(doi) && `doi:${normalizeDoi(doi)}`, openalexId && `openalex:${openalexId}`].filter((key): key is string => !!key);
-    const pages = await Promise.all(keys.map((groupKey) => fetchQuery(api.topics.publications.listLocations, { groupKey, paginationOpts: { cursor: null, numItems: MAX_LOCATIONS } })));
-    // ponytail: a paper's first 100 copies per key, as topic pages read them. One with more says so in the logs; page through when a paper ever has that many.
-    if (pages.some((page) => !page.isDone)) console.error("[paper page] a paper has more community copies than one page lists", { doi, openalexId, listed: MAX_LOCATIONS });
-    const locations = [...new Map(pages.flatMap((page) => page.page).map((location) => [location.id, location])).values()];
-    // Each record says whether its community has its PDF and a picture of its first page; one that can't be read just has neither.
-    const pdfs = await Promise.allSettled(locations.map((location) => fetchPublicationPdf(location.library.id, location.itemKey, location.library.url)));
-    return locations.map((location, index) => {
-      const read = pdfs[index]!;
-      if (read.status === "rejected") console.error("[paper page] community record unavailable", { library: location.library.id, item: location.itemKey, error: read.reason });
-      const pdf = read.status === "fulfilled" ? read.value : null;
-      return {
-        id: location.id,
-        name: location.library.name,
-        url: new URL(`/lib/${location.itemKey}`, location.library.url).href,
-        pdf: pdf?.url ?? null,
-        cover: pdf?.cover ?? null,
-      };
-    });
-  },
-  ["paper-page-communities"],
+/** The keys a paper's records in communities are found by, as topic pages find them: its DOI's and its OpenAlex work's. */
+export const copyKeysOf = (doi: string | null, openalexId: string | null) =>
+  [normalizeDoi(doi) && `doi:${normalizeDoi(doi)}`, openalexId && `openalex:${openalexId}`].filter((key): key is string => !!key);
+
+/** A community record's PDF and the picture of its first page: the slow part, read from the community, so kept a while. */
+const readCopyPdf = unstable_cache(
+  async (libraryId: string, itemKey: string, url: string) => fetchPublicationPdf(libraryId, itemKey, url),
+  ["paper-page-copy-pdf"],
   { revalidate: 60 * 10 },
 );
+
+/**
+ * The paper's published records in public Evidence Communities, read as they stand, so one just published shows on the
+ * next load. Only each record's PDF is kept a while.
+ */
+export async function readCommunityCopies(doi: string | null, openalexId: string | null): Promise<CommunityCopy[]> {
+  const pages = await Promise.all(copyKeysOf(doi, openalexId).map((groupKey) => fetchQuery(api.topics.publications.listLocations, { groupKey, paginationOpts: { cursor: null, numItems: MAX_LOCATIONS } })));
+  // ponytail: a paper's first 100 copies per key, as topic pages read them. One with more says so in the logs; page through when a paper ever has that many.
+  if (pages.some((page) => !page.isDone)) console.error("[paper page] a paper has more community copies than one page lists", { doi, openalexId, listed: MAX_LOCATIONS });
+  const locations = [...new Map(pages.flatMap((page) => page.page).map((location) => [location.id, location])).values()];
+  // Each record says whether its community has its PDF and a picture of its first page; one that can't be read just has neither.
+  const pdfs = await Promise.allSettled(locations.map((location) => readCopyPdf(location.library.id, location.itemKey, location.library.url)));
+  return locations.map((location, index) => {
+    const read = pdfs[index]!;
+    if (read.status === "rejected") console.error("[paper page] community record unavailable", { library: location.library.id, item: location.itemKey, error: read.reason });
+    const pdf = read.status === "fulfilled" ? read.value : null;
+    return { ...copyOf(location), pdf: pdf?.url ?? null, cover: pdf?.cover ?? null };
+  });
+}
 
 /** The OpenAlex work a record of ours is paired with, bare, if any. */
 export const openalexIdOf = (paper: PaperResult) => (paper.ids as { openalex?: string } | undefined)?.openalex?.split("/").at(-1) ?? null;
