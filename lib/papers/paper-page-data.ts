@@ -76,16 +76,19 @@ export const readOpenAlexForPage = unstable_cache(
 export const copyKeysOf = (doi: string | null, openalexId: string | null) =>
   [normalizeDoi(doi) && `doi:${normalizeDoi(doi)}`, openalexId && `openalex:${openalexId}`].filter((key): key is string => !!key);
 
-/** A community record's PDF and the picture of its first page: the slow part, read from the community, so kept a while. */
+/**
+ * A community record's PDF and the picture of its first page: the slow part, read from the community, so kept a minute.
+ * The community adds them after it publishes the record, so a reload soon after shows them.
+ */
 const readCopyPdf = unstable_cache(
   async (libraryId: string, itemKey: string, url: string) => fetchPublicationPdf(libraryId, itemKey, url),
   ["paper-page-copy-pdf"],
-  { revalidate: 60 * 10 },
+  { revalidate: 60 },
 );
 
 /**
  * The paper's published records in public Evidence Communities, read as they stand, so one just published shows on the
- * next load. Only each record's PDF is kept a while.
+ * next load. Only each record's PDF is kept, for a minute.
  */
 export async function readCommunityCopies(doi: string | null, openalexId: string | null): Promise<CommunityCopy[]> {
   const pages = await Promise.all(copyKeysOf(doi, openalexId).map((groupKey) => fetchQuery(api.topics.publications.listLocations, { groupKey, paginationOpts: { cursor: null, numItems: MAX_LOCATIONS } })));
