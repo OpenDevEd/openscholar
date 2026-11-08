@@ -145,6 +145,24 @@ describe("a library's invitations, its start and the running library, for the as
     return { t, owner, ownerAlone, outside, libraryId: created.libraryId };
   }
 
+  it("lets anyone signed in suggest papers to a public community's review queue, and nothing more", async () => {
+    const { t, owner, outside, libraryId } = await activated();
+    const refusal = (where: typeof owner, path: string, input: object) => t.query(internal.assistant.asking.check, { ...where, path: `evidenceLibraries/assistant:${path}`, input: JSON.stringify(input) });
+    const papers = { libraryId, papers: [{ doi: "10.1000/w1" }], requestId: "r1" };
+    // Not running yet, it takes no suggestions.
+    expect(await refusal(outside, "addPapers", { ...papers, publish: false })).toMatch(/Only the community's team adds papers/);
+    await t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { state: "active" }));
+    expect(await refusal(outside, "addPapers", { ...papers, publish: false })).toBeNull();
+    expect(await refusal(outside, "previewPapers", { libraryId, papers: papers.papers })).toBeNull();
+    expect(await refusal(outside, "addPapers", { ...papers, publish: true })).toMatch(/Only an owner or editor publishes papers/);
+    expect(await refusal(outside, "addedPapers", { libraryId })).toMatch(/Only the community's team reads/);
+    expect(await refusal(outside, "setAddedPapersSettings", { libraryId, enabled: false })).toMatch(/Only the community's owner/);
+    // Left out of the directory, it takes suggestions from its team alone.
+    await t.mutation(internal.evidenceLibraries.assistant.setVisibilityForAssistant, { ...owner, libraryId, visibility: "unlisted" });
+    expect(await refusal(outside, "addPapers", { ...papers, publish: false })).toMatch(/Only the community's team adds papers/);
+    expect(await refusal(owner, "addPapers", { ...papers, publish: true })).toBeNull();
+  });
+
   it("invites by email as the owner, changes the invitation, and lets the invited person answer it in their own workspace", async () => {
     const { t, owner, ownerAlone, outside, libraryId } = await activated();
     const assistant = internal.evidenceLibraries.assistant;

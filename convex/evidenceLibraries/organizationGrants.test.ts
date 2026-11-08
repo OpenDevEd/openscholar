@@ -29,13 +29,14 @@ const roleOf = (fixture: Fixture, clerkUserId: string) =>
   fixture.t.run(async (ctx) => readLibraryRole(ctx, (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!, clerkUserId));
 
 describe("sharing a community with an organization", () => {
-  it("lets a member of an organization it's shared with add papers to it from that organization's workspace", async () => {
+  it("lets a member of an organization it's shared with read its added papers, as its team, from that organization's workspace", async () => {
     const fixture = await createReadySetupFixture("org_grant_papers");
     const { organizationId, users } = await partners(fixture, { ownerAdmins: true });
     const libraryId = fixture.created.libraryId;
     const workspaceId = await fixture.t.run((ctx) => ensureWorkspace(ctx, { kind: "organization", organizationId }));
-    const check = () => fixture.t.query(internal.assistant.asking.check, { userId: users.user_partner_member!, workspaceId, path: "evidenceLibraries/assistant:addPapers", input: JSON.stringify({ libraryId, papers: [{ doi: "10.1000/w1" }], publish: false, requestId: "r1" }) });
-    expect(await check()).toMatch(/not found/);
+    const check = () => fixture.t.query(internal.assistant.asking.check, { userId: users.user_partner_member!, workspaceId, path: "evidenceLibraries/assistant:addedPapers", input: JSON.stringify({ libraryId }) });
+    // Before the grant they're anyone signed in: they may suggest papers, not read the community's list.
+    expect(await check()).toMatch(/Only the community's team reads/);
     await fixture.admin.mutation(api.evidenceLibraries.organizationGrants.grant, { libraryId, organizationId, role: "creator" });
     expect(await check()).toBeNull();
   });

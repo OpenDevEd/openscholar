@@ -483,7 +483,8 @@ export const refreshRecords = internalAction({
 // Papers added to a community by DOI or OpenAlex ID (OS-29, OpenDevEd/openalex-count#1122).
 
 const paperReferenceValidator = v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())) });
-const teamRoleValidator = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"));
+// `reader`: anyone signed in, suggesting papers to a public community (#777).
+const teamRoleValidator = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"), v.literal("reader"));
 
 /** What adding papers to a running community would find, saving nothing. */
 export const previewPapers = internalAction({

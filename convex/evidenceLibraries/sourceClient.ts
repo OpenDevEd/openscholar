@@ -228,7 +228,7 @@ export type PaperAdded = z.infer<typeof addedSchema>["results"][number];
 export async function addLibraryPapers(
   fetchImpl: typeof fetch,
   target: LibraryTarget,
-  request: { requestId: string; publish: boolean; actor: { clerkUserId: string; name: string | null; role: "owner" | "editor" | "creator" }; papers: PaperReference[] },
+  request: { requestId: string; publish: boolean; actor: { clerkUserId: string; name: string | null; role: "owner" | "editor" | "creator" | "reader" }; papers: PaperReference[] },
 ) {
   return (await call(fetchImpl, target, "/api/v1/openscholar/papers", addedSchema, { body: request, timeoutMs: ADD_TIMEOUT_MS })).results;
 }
@@ -263,6 +263,6 @@ export async function setLibraryPaperSettings(fetchImpl: typeof fetch, target: L
 }
 
 /** Takes an added paper off the community as `actor`: withdrawn from the review queue while it waits, unpublished once live. */
-export async function removeLibraryPaper(fetchImpl: typeof fetch, target: LibraryTarget, itemKey: string, actor: { clerkUserId: string; name: string | null; role: "owner" | "editor" | "creator" }) {
+export async function removeLibraryPaper(fetchImpl: typeof fetch, target: LibraryTarget, itemKey: string, actor: { clerkUserId: string; name: string | null; role: "owner" | "editor" | "creator" | "reader" }) {
   return (await call(fetchImpl, target, `/api/v1/openscholar/papers/${encodeURIComponent(itemKey)}`, z.object({ outcome: z.enum(["withdrawn", "removed"]) }), { body: { actor }, method: "DELETE" })).outcome;
 }
