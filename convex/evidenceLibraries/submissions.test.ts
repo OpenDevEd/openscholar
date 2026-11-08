@@ -65,9 +65,12 @@ it("lists the papers someone sent, and takes where each stands from the communit
   await t.mutation(internal.evidenceLibraries.submissions.refreshCommunityName, { libraryId, cursor: null });
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher learning" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
 
-  // Withdrawn, it's no longer one of theirs.
+  // Withdrawn, it's no longer listed; sent again, a late repeat of that withdrawal leaves the new submission.
   await tell(4, "withdrawn", null);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r4", papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
+  await tell(4, "withdrawn", null);
+  expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ status: "queued" }]);
 });
 
 it("holds the community's word on a paper that comes before Openscholar recorded it, and applies it then", async () => {
