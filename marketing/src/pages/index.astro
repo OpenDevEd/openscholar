@@ -7,6 +7,7 @@ import Workspace from "../components/Workspace.astro";
 import HomeHero from "../components/HomeHero.astro";
 import Traced from "../components/Traced.astro";
 import Faq from "../components/Faq.astro";
+import Doors from "../components/Doors.astro";
 import Close from "../components/Close.astro";
 import Screening from "../components/Screening.astro";
 import AssistantBeside from "../components/AssistantBeside.astro";
@@ -14,9 +15,9 @@ import Device from "../components/Device.astro";
 import Arrow from "../components/Arrow.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const teams = [
-  ["emerald", "review-card", "2 38 29", "screen-laptop-light-1000", 1000, 625, "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export.", "/#screening"],
-  ["night", "thread", "7 11 26", "panel-citation-light", 880, 1349, "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#extraction"],
-  ["rose", "globe", "83 1 23", "c-home-laptop-light-1000", 1000, 625, "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
+  { field: "emerald", art: "review-card", sc: "2 38 29", img: "screen-laptop-light-1000", w: 1000, h: 625, title: "Review teams", text: "Run systematic and scoping reviews with explicit criteria and data you can export.", href: "/#screening" },
+  { field: "night", art: "thread", sc: "7 11 26", img: "panel-citation-light", w: 880, h: 1349, title: "Policy and programme teams", text: "Get to a defensible answer quickly, with the sources behind it ready to share.", href: "/#extraction" },
+  { field: "rose", art: "globe", sc: "83 1 23", img: "c-home-laptop-light-1000", w: 1000, h: 625, title: "Institutions and networks", text: "Give your field one trusted, public home for its evidence, under your own name.", href: "/evidence-communities/" },
 ];
 const others = COMMUNITIES.filter((c) => ["eccar", "tvet"].includes(c.key));
 const faq = [
@@ -33,7 +34,7 @@ const faq = [
   <section class="tour" id="tour"><Workspace><h2 aria-label="Every step of the work, on every screen">{"Every step of the work, on every screen".split(" ").map((w, i) => <><span aria-hidden="true" style={`--i:${i}`}>{w}</span>{" "}</>)}</h2></Workspace></section>
 
   <section class="who" id="who"><h2>For anyone whose work has to stand on the evidence</h2>
-    <div class="teams">{teams.map(([f, a, sc, img, w, h, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><Art name={a} class="card-art" style={`--sc:${sc}`} /><img class:list={["shot", { tall: h > w }]} src={`/img/screens/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt="" /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>
+    <Doors items={teams} />
   </section>
 
   <Feature id="product" class="find" field="ocean" art="sea" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it.">
@@ -65,21 +66,12 @@ const faq = [
   /* Find: the field for one real query, floating on the sea. */
   :global(.find) :global(.view) { display: grid; align-items: center; padding-right: var(--pad); }
   .who { padding: clamp(8px, 2vw, 24px) var(--pad) 0; } .who h2 { max-width: 16em; margin-bottom: 28px; }
-  /* Three doors into the product: whichever you're on opens wide and shows its real screen. Only the first frame's widths are set, so it never lays out twice. */
-  .teams { display: flex; gap: var(--gap); margin-inline: calc(var(--pad) * -1); height: 540px; }
-  .teams a { --o: 0; position: relative; flex: 1 1 0; min-width: 0; display: block; overflow: clip; transition: flex-grow .6s var(--ease); } @media (min-width: 901px) { .teams a:first-child { --o: 1; flex-grow: 2.7; } .teams:has(a:is(:hover, :focus-visible)) a { --o: 0; flex-grow: 1; } .teams a:is(:hover, :focus-visible), .teams:has(a:is(:hover, :focus-visible)) a:is(:hover, :focus-visible) { --o: 1; flex-grow: 2.7; } }
-  .teams :global(.card-art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgb(var(--sc) / 0) 30%, rgb(var(--sc) / .96) 76%); opacity: var(--o); transition: opacity .4s var(--ease); } .teams :global(.card-art img) { transition: transform .8s var(--ease); } .teams a:hover :global(.card-art img) { transform: scale(1.04); }
-  .shot { position: absolute; left: 20px; top: 20px; width: 620px; max-width: none; height: 372px; object-fit: cover; object-position: top left; border-radius: 12px; box-shadow: 0 0 0 1px rgb(255 255 255 / .28), 0 30px 60px -24px rgb(0 0 0 / .8); opacity: var(--o); translate: 0 calc((1 - var(--o)) * 14px); transition: opacity .35s var(--ease), translate .5s var(--ease); } .shot.tall { width: 450px; }
-  .teams h3 { position: absolute; left: 24px; bottom: 76px; display: flex; align-items: flex-end; gap: 10px; white-space: nowrap; font-size: clamp(19px, 1.6vw, 22px); line-height: 1.2; opacity: var(--o); translate: 0 calc((1 - var(--o)) * 8px); transition: opacity .35s var(--ease) calc(var(--o) * .2s), translate .45s var(--ease) calc(var(--o) * .2s); } .teams h3 :global(i) { flex: none; display: grid; place-items: center; width: 24px; height: 24px; transition: transform .3s var(--ease); } .teams a:hover h3 :global(i) { transform: translateX(4px); }
-  .teams p { position: absolute; left: 24px; bottom: 22px; width: min(460px, calc(100vw - 96px)); font-size: 16px; line-height: 1.4; opacity: var(--o); translate: 0 calc((1 - var(--o)) * 8px); transition: opacity .35s var(--ease) calc(var(--o) * .2s), translate .45s var(--ease) calc(var(--o) * .2s); }
-  /* Touch screens have no hover to open a panel, so all three stay open side by side. */
-  @media (hover: none) and (min-width: 901px) { .teams { height: auto; } .teams a, .teams a:first-child, .teams:has(a:is(:hover, :focus-visible)) a { --o: 1; flex: 1 1 0; display: grid; align-content: start; gap: 10px; padding: 16px; } .shot, .shot.tall { position: relative; left: 0; top: 0; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; } .teams h3, .teams p { position: static; width: auto; white-space: normal; } }
   /* Community: a laptop on the globe and a phone in front of it, each on a different theme. */
   .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: 0 0 0 var(--pad); min-height: 660px; background: #530117; } .p-copy { display: grid; gap: 18px; justify-items: start; padding-block: var(--pad); max-width: 440px; } .publish > :global(.art) { z-index: -1; } .publish > :global(.art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #530117 34%, rgb(83 1 23 / 0) 62%); }
   /* The laptop keeps moving between real communities, each one's own site under its own name. */
   .cyc { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; animation: cyc 24s var(--ease) calc(4s + var(--i) * 4s) infinite; } @keyframes cyc { 0% { opacity: 0; } 3% { opacity: 1; } 17% { opacity: 1; } 20% { opacity: 0; } } .p-lap.away .cyc { animation-play-state: paused; }
   .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }
   
-  @media (max-width: 900px) { .publish { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .who { padding-inline: 8px; } .teams { flex-direction: column; height: auto; margin-inline: -8px; } .teams a, .teams a:first-child { --o: 1; flex: none; display: grid; gap: 10px; padding: 16px; } .shot, .shot.tall { position: relative; left: 0; top: 0; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; } .teams h3, .teams p { position: static; width: auto; white-space: normal; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
+  @media (max-width: 900px) { .publish { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .who { padding-inline: 8px; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
     :global(.find) :global(.view) { padding: 0 0 var(--pad); } }
 </style>

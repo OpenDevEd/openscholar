@@ -1,16 +1,71 @@
 ---
-// The other pages of this kind, so each one leads on to the rest of the work.
+// The other pages of this kind, so each one leads on to the rest of the work. Mock: three ways to show them, behind a switch.
 import Icon from "./Icon.astro";
 import Arrow from "./Arrow.astro";
+import Doors from "./Doors.astro";
 import { INTENTS } from "../data/site.mjs";
 const here = Astro.url.pathname, others = INTENTS.filter((p) => p.href !== here);
+const doors = others.map((p) => ({ ...p, w: 1000, h: 625 }));
 ---
-<nav class="related" aria-label="More of the work"><h2>The rest of the work</h2><div>{others.map((p) => <a href={p.href} style={`--c:${p.color}`}><i><Icon name={p.icon} size={20} /></i><b>{p.title}<Arrow /></b><span>{p.text}</span></a>)}</div></nav>
+<section class="related" data-related>
+  <h2>The rest of the work</h2>
+
+  {/* A: doors, as on the home page. Whichever you point at opens and shows its real screen. */}
+  <div data-concept="doors"><Doors items={doors} height={460} /></div>
+
+  {/* B: the real screens themselves, side by side, each lit in its own colour. */}
+  <div class="screens" data-concept="screens">{others.map((p) => <a href={p.href} style={`--c:${p.color}`}><span class="frame"><img src={`/img/screens/${p.img}.avif`} width="1000" height="625" loading="lazy" decoding="async" alt="" /></span><b>{p.title}<Arrow /></b><span class="t">{p.text}</span></a>)}</div>
+
+  {/* C: the work as one line, find to publish, with this page marked on it; pointing at a step shows its screen. */}
+  <div class="path" data-concept="path">
+    <div class="stage" aria-hidden="true">{INTENTS.map((p, i) => <img data-st={i} class:list={{ on: i === 0 }} src={`/img/screens/${p.img}.avif`} width="1000" height="625" loading="lazy" decoding="async" alt="" style={`--c:${p.color}`} />)}</div>
+    <ol>{INTENTS.map((p, i) => { const now = p.href === here; return <li style={`--c:${p.color}`} class:list={{ now }}>{now ? <span class="stop" data-i={i}><i><Icon name={p.icon} size={18} /></i><em>{p.step}</em><b>You're here</b><span class="t">{p.title}</span></span> : <a class="stop" data-i={i} href={p.href}><i><Icon name={p.icon} size={18} /></i><em>{p.step}</em><b>{p.title}<Arrow /></b><span class="t">{p.text}</span></a>}</li>; })}</ol>
+  </div>
+</section>
+
+{/* Mock only: the switch between the three. */}
+<div class="pick" role="group" aria-label="Design for the rest of the work">{[["doors", "Doors"], ["screens", "Screens"], ["path", "Path"]].map(([k, l]) => <button type="button" data-pick={k}>{l}</button>)}</div>
+
+<script>
+  const root = document.querySelector("[data-related]");
+  if (root) {
+    const show = (k) => { for (const el of root.querySelectorAll("[data-concept]")) el.hidden = el.dataset.concept !== k; for (const b of document.querySelectorAll("[data-pick]")) b.setAttribute("aria-pressed", String(b.dataset.pick === k)); try { localStorage.setItem("related-concept", k); } catch {} };
+    let start = "doors"; try { start = localStorage.getItem("related-concept") ?? start; } catch {}
+    show(start);
+    for (const b of document.querySelectorAll("[data-pick]")) b.addEventListener("click", () => show(b.dataset.pick));
+    // The path's stage shows the step you point at, and goes back to this page's own when you leave.
+    const path = root.querySelector(".path"), imgs = [...path.querySelectorAll("[data-st]")], mine = path.querySelector(".now .stop")?.dataset.i ?? "0";
+    const stage = (i) => imgs.forEach((im) => im.classList.toggle("on", im.dataset.st === i));
+    stage(mine);
+    for (const s of path.querySelectorAll(".stop")) { s.addEventListener("pointerenter", () => stage(s.dataset.i)); s.addEventListener("focus", () => stage(s.dataset.i)); }
+    path.querySelector("ol").addEventListener("pointerleave", () => stage(mine));
+  }
+</script>
 <style>
-  .related { display: grid; gap: 24px; padding: clamp(40px, 5vw, 64px) var(--pad) 0; } .related h2 { font-size: clamp(26px, 2.6vw, 36px); }
-  .related div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-inline: -14px; }
-  .related a { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 2px 14px; align-items: center; padding: 14px; border-radius: 16px; color: var(--ink); transition: background-color .2s var(--ease); } .related a:hover { background: var(--soft); }
-  .related i { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: color-mix(in oklch, var(--c) 22%, #fff); color: color-mix(in oklch, var(--c) 70%, #000); }
-  .related b { display: flex; align-items: center; gap: 6px; font-weight: 500; } .related b :global(i) { display: grid; width: 18px; height: 18px; opacity: 0; transform: translateX(-4px); transition: opacity .2s var(--ease), transform .3s var(--ease); } .related a:hover b :global(i) { opacity: 1; transform: none; } .related span { color: var(--t2); font-size: 15px; line-height: 1.35; }
-  @media (max-width: 1000px) { .related div { grid-template-columns: repeat(2, minmax(0, 1fr)); } } @media (max-width: 560px) { .related div { grid-template-columns: minmax(0, 1fr); } }
+  .related { display: grid; gap: 28px; padding: clamp(40px, 5vw, 72px) var(--pad) 8px; } .related h2 { font-size: clamp(30px, 3.2vw, 44px); } [data-concept][hidden] { display: none; }
+
+  /* B: screens */
+  .screens { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
+  .screens a { display: grid; gap: 6px; color: var(--ink); }
+  .frame { position: relative; display: block; margin-bottom: 10px; padding: 6px; border-radius: 16px; background: linear-gradient(160deg, var(--c), color-mix(in oklch, var(--c) 30%, #070b1a)); box-shadow: 0 24px 40px -26px color-mix(in oklch, var(--c) 70%, #000); transition: transform .45s var(--ease), box-shadow .45s var(--ease); }
+  .frame img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; border-radius: 11px; }
+  .screens a:hover .frame { transform: translateY(-6px) rotate(-.6deg); box-shadow: 0 36px 50px -26px color-mix(in oklch, var(--c) 80%, #000); }
+  .screens b, .path b { display: flex; align-items: center; gap: 6px; font-weight: 500; font-size: 18px; letter-spacing: -.01em; } .screens b :global(i), .path a b :global(i) { display: grid; width: 18px; height: 18px; transition: transform .3s var(--ease); } .screens a:hover b :global(i), .path a:hover b :global(i) { transform: translateX(4px); }
+  /* A long title wraps with its arrow kept beside its last word. */
+  .screens b, .path a b { display: block; text-wrap: balance; } .screens b :global(i), .path a b :global(i) { display: inline-grid; vertical-align: -3px; margin-left: 6px; }
+  .t { color: var(--t2); font-size: 15px; line-height: 1.35; }
+
+  /* C: path */
+  .path { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; }
+  .stage { position: relative; aspect-ratio: 16 / 10; order: 2; } .stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; border-radius: 14px; box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px color-mix(in oklch, var(--c) 70%, #000); opacity: 0; transform: translateY(8px) scale(.985); transition: opacity .35s var(--ease), transform .45s var(--ease); } .stage img.on { opacity: 1; transform: none; }
+  .path ol { position: relative; display: grid; gap: 4px; } .path ol::before { content: ""; position: absolute; left: 25px; top: 26px; bottom: 26px; width: 2px; background: linear-gradient(in oklch, #4fc3d9, #34d399, #fde047, #7da7e6, #fb7185); border-radius: 2px; }
+  .stop { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 0 14px; align-items: center; padding: 10px 12px 10px 0; border-radius: 16px; color: var(--ink); transition: background-color .2s var(--ease); } a.stop:hover, a.stop:focus-visible { background: var(--soft); }
+  .stop i { grid-row: span 3; justify-self: center; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #fff; color: color-mix(in oklch, var(--c) 70%, #000); box-shadow: 0 0 0 2px var(--c); transition: transform .3s var(--ease); } a.stop:hover i { transform: scale(1.12); }
+  .stop em { font-style: normal; font-size: 12px; font-weight: 500; letter-spacing: .02em; color: color-mix(in oklch, var(--c) 60%, #000); }
+  .now .stop i { background: var(--c); color: #070b1a; box-shadow: 0 0 0 6px color-mix(in oklch, var(--c) 30%, #fff); } .now b { color: var(--t2); font-size: 15px; }
+
+  .pick { position: fixed; left: 16px; bottom: 16px; z-index: 60; display: flex; gap: 2px; padding: 4px; border-radius: 12px; background: #0b0f1a; box-shadow: 0 10px 30px -10px rgb(0 0 0 / .6); } .pick button { height: 32px; padding-inline: 12px; border: 0; border-radius: 9px; background: none; color: rgb(255 255 255 / .75); font: 500 14px/1 var(--sans); cursor: pointer; } .pick [aria-pressed="true"] { background: #fff; color: var(--ink); }
+
+  @media (max-width: 1000px) { .screens { grid-template-columns: repeat(2, minmax(0, 1fr)); } .path { grid-template-columns: minmax(0, 1fr); } .stage { order: 0; } }
+  @media (max-width: 560px) { .screens { grid-template-columns: minmax(0, 1fr); } }
 </style>
