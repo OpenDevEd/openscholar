@@ -5354,7 +5354,9 @@
     "forTheirOrganization": "Pour une organisation dont {email} est administrateur",
     "removeThisOrganization": "Retirer cette organisation ? Ses membres ne gardent que les rôles qui leur ont été donnés personnellement.",
     "organizationLabel": "Organisation",
-    "ownWorkspaceOwner": "Elle est dans son propre espace de travail, elle lui appartient donc."
+    "ownWorkspaceOwner": "Elle est dans son propre espace de travail, elle lui appartient donc.",
+    "whoWorksOnIt": "Qui travaille sur cette communauté. Ses propriétaires gèrent l’équipe.",
+    "viewersUntilAnOwner": "Lecteurs jusqu’à ce qu’un propriétaire leur donne un rôle."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Résumé mis en file pour # publication.} other {Résumé mis en file pour # publications.}}",

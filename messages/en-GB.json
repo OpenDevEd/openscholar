@@ -5354,7 +5354,9 @@
     "forTheirOrganization": "For an organization {email} is an admin of",
     "removeThisOrganization": "Remove this organization? Its members keep only roles they were given themselves.",
     "organizationLabel": "Organization",
-    "ownWorkspaceOwner": "It's in their own workspace, so it's theirs."
+    "ownWorkspaceOwner": "It's in their own workspace, so it's theirs.",
+    "whoWorksOnIt": "Who works on this community. Its owners manage the team.",
+    "viewersUntilAnOwner": "Viewers until an owner gives them a role."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Digest queued for # publication.} other {Digest queued for # publications.}}",

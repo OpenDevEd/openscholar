@@ -150,6 +150,7 @@ export function TeamAccess({
   libraryId,
   organization,
   onResend,
+  readOnly = false,
 }: {
   scope: "library" | "profile";
   members: AccessMember[];
@@ -159,6 +160,8 @@ export function TeamAccess({
   /** The organization a library is in, whose other members view it; none for a library in a person's own workspace. */
   organization?: WorkspaceLook;
   onResend: (member: AccessMember) => Promise<void>;
+  /** For everyone but its owners: who has access and their roles, with nothing to add, change or remove. */
+  readOnly?: boolean;
 }) {
   const tLabels = useTranslations("libraryTeamAccess");
   const t = useTranslations("libraryTeamAccess");
@@ -183,7 +186,7 @@ export function TeamAccess({
   const [notice, setNotice] = useState("");
   const [addMode, setAddMode] = useState<"existing" | "new" | "organization">(scope === "profile" ? "new" : "existing");
   // The organizations its owner can share it with straight away (#1091).
-  const grantable = useProtectedQuery(api.evidenceLibraries.organizationGrants.grantable, libraryId && !isProfile ? { libraryId } : "skip").data?.page ?? [];
+  const grantable = useProtectedQuery(api.evidenceLibraries.organizationGrants.grantable, libraryId && !isProfile && !readOnly ? { libraryId } : "skip").data?.page ?? [];
   const [organizationPick, setOrganizationPick] = useState<string>("");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selected, setSelected] = useState<Pick<AccessMember, "id" | "name" | "email" | "imageUrl"> | null>(null);
@@ -223,8 +226,8 @@ export function TeamAccess({
                 </p>
                 {member.invited && member.delivery === "failed" && <p className="text-xs text-destructive">{t("invitationNotDelivered")}</p>}
               </div>
-              {(isProfile && member.role === "Editor") || member.role === "Owner" ? (
-                <RoleLabel role={member.role === "Owner" ? "owner" : "editor"} className="w-36 gap-2 px-3">
+              {readOnly || (isProfile && member.role === "Editor") || member.role === "Owner" ? (
+                <RoleLabel role={member.role === "Owner" ? "owner" : member.role === "Creator" ? "creator" : "editor"} className="w-36 gap-2 px-3">
                   {tLabels(`roleNames.${member.role}`)}
                 </RoleLabel>
               ) : (
@@ -235,7 +238,7 @@ export function TeamAccess({
                   onChange={(value) => updateRole(member.id, value)}
                 />
               )}
-              {member.role !== "Owner" && !member.protected ? (
+              {!readOnly && member.role !== "Owner" && !member.protected ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -332,10 +335,12 @@ export function TeamAccess({
         description={
           isProfile
             ? t("theOwnerManagesAccessEditorsCan")
-            : t("manageAccessToThisLibrary")
+            : readOnly
+              ? t("whoWorksOnIt")
+              : t("manageAccessToThisLibrary")
         }
         bodyClassName="space-y-0 p-0"
-        aside={
+        aside={readOnly ? undefined : (
           <DialogTrigger asChild>
             <Button
               type="button"
@@ -351,7 +356,7 @@ export function TeamAccess({
               {isProfile ? t("addEditor") : t("addMember")}
             </Button>
           </DialogTrigger>
-        }
+        )}
       >
         <DialogContent showCloseButton={false} className="sm:max-w-xl">
           <DialogHeader>
@@ -656,7 +661,7 @@ export function TeamAccess({
             <div className="px-4 pt-4">
               <h4 className="text-xs font-medium">{t("everyoneElseInTheOrganization")}</h4>
               <p className="mt-1 text-xs text-muted-foreground">
-                {t("viewersUntilYouAddThemBelow")}
+                {readOnly ? t("viewersUntilAnOwner") : t("viewersUntilYouAddThemBelow")}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 px-4 py-4">
@@ -675,7 +680,8 @@ export function TeamAccess({
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
           <div className="flex items-center gap-1" aria-label={t("teamView")}>
-            {(["members", "invitations"] as const).map((tab) => {
+            {/* Invitations are its owners' to see. */}
+            {(readOnly ? ["members"] as const : ["members", "invitations"] as const).map((tab) => {
               const Icon = tab === "members" ? Users : Mail;
               const count = members.filter(
                 (member) =>

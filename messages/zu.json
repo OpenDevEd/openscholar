@@ -5354,7 +5354,9 @@
     "forTheirOrganization": "Enhlanganweni u-{email} ongumlawuli wayo",
     "removeThisOrganization": "Susa le nhlangano? Amalungu ayo agcina kuphela izindima azinikwe wona ngokwawo.",
     "organizationLabel": "Inhlangano",
-    "ownWorkspaceOwner": "Kusesikhaleni sabo sokusebenzela, ngakho kungokwabo."
+    "ownWorkspaceOwner": "Kusesikhaleni sabo sokusebenzela, ngakho kungokwabo.",
+    "whoWorksOnIt": "Abasebenza kulo mphakathi. Abanikazi bawo baphatha ithimba.",
+    "viewersUntilAnOwner": "Ababukeli kuze kube yilapho umnikazi ebanika indima."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Isifinyezo sibekwe emgqeni ushicilelo olu-#.} other {Isifinyezo sibekwe emgqeni ukushicilelwa okungu-#.}}",

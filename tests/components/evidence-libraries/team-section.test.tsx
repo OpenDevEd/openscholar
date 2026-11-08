@@ -62,6 +62,14 @@ describe("Library Team", () => {
    await user.click(screen.getByRole("button", { name: "Remove from community" }));
    expect(mocks.mutate).toHaveBeenCalledWith({ libraryId, clerkUserId: "creator" });
  });
+  // Everyone but its owners sees who works on it, and changes nothing.
+  it("shows the team read-only to someone who doesn't own it: names and roles, with nothing to add, change or remove", () => {
+    render(<TeamSection libraryId={libraryId} readOnly />);
+    expect(screen.getByText("Grace")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add member" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Actions for Grace" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Grace/ })).toBeNull();
+  });
  // #1091: an organization it's shared with is one row, and removing it takes the organization's access, not a person's.
  it("lists an organization it's shared with as one row, and removes the organization", async () => {
    mocks.organizations.push({ organizationId: "org_partners", workspaceId: null, name: "Partners", imageUrl: null, colour: null, role: "creator" });

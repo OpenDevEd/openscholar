@@ -5354,7 +5354,9 @@
     "forTheirOrganization": "{email} が管理者を務める組織向け",
     "removeThisOrganization": "この組織を削除しますか？メンバーには個別に付与された役割だけが残ります。",
     "organizationLabel": "組織",
-    "ownWorkspaceOwner": "本人のワークスペースにあるため、本人のものです。"
+    "ownWorkspaceOwner": "本人のワークスペースにあるため、本人のものです。",
+    "whoWorksOnIt": "このコミュニティに携わるメンバーです。チームは所有者が管理します。",
+    "viewersUntilAnOwner": "所有者が役割を付与するまでは閲覧者です。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {# 件の出版物のダイジェストを待機中です。}}",

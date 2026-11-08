@@ -12,7 +12,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { TeamAccess, type AccessMember } from "./team-access";
 
-export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> }) {
+/** The community's team: its owners manage it, and everyone else who opens its settings sees it, read-only (`readOnly`). */
+export function TeamSection({ libraryId, readOnly = false }: { libraryId: Id<"evidenceLibraries">; readOnly?: boolean }) {
   const tLabels = useTranslations("libraryTeamAccess");
   const t = useTranslations("libraryTeamAccess");
   const { user } = useUser();
@@ -43,7 +44,7 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
   const roleOf = (member: AccessMember) => member.role === "Editor" ? "editor" as const : "creator" as const;
   const resend = async (member: AccessMember) => { await invite({ libraryId, email: member.email, role: roleOf(member), ...(member.toOrganization ? { toOrganization: true } : {}) }); };
   const organizationOf = (member: AccessMember) => member.id as Id<"organizations">;
-  return <TeamAccess scope="library" members={members}
+  return <TeamAccess scope="library" members={members} readOnly={readOnly}
     libraryId={libraryId}
     organization={workspace.kind === "organization" ? workspace : undefined}
     onResend={resend}
