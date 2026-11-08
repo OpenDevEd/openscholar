@@ -14,10 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  getStoredConsent,
-  storeConsent,
-} from "@/lib/consent-storage";
+import { applyConsentToPostHog, readConsent, writeConsent } from "@/lib/consent-cookie";
 import { PolicyLinks } from "@/components/legal-links";
 import { api } from "@/convex/_generated/api";
 import { subtleSpring } from "@/lib/animation-config";
@@ -86,16 +83,7 @@ export function CookieConsentBanner() {
     if (typeof window === "undefined") return false;
     // Nothing to consent to where PostHog didn't start (instrumentation-client.ts).
     if (!posthog.__loaded) return false;
-
-    const stored = getStoredConsent();
-    if (stored) return false;
-
-    try {
-      const status = posthog.get_explicit_consent_status?.();
-      return status === "pending";
-    } catch {
-      return true;
-    }
+    return !readConsent();
   }, []);
 
   // The server's own analytics read the answer from the account. Someone signed out brings theirs when they sign in.
@@ -109,16 +97,14 @@ export function CookieConsentBanner() {
   );
 
   const handleAccept = useCallback(() => {
-    posthog.opt_in_capturing();
-    storeConsent("granted");
+    applyConsentToPostHog(posthog, writeConsent("granted").choice);
     saveToAccount("granted");
     setShowBanner(false);
     setShowPreferencesDialog(false);
   }, [saveToAccount]);
 
   const handleReject = useCallback(() => {
-    posthog.opt_out_capturing();
-    storeConsent("denied");
+    applyConsentToPostHog(posthog, writeConsent("denied").choice);
     saveToAccount("denied");
     setShowBanner(false);
     setShowPreferencesDialog(false);

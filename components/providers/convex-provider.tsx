@@ -3,7 +3,7 @@
 
 import { useConvexAuth, useMutation, type Preloaded } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { getStoredConsent } from "@/lib/consent-storage";
+import { readConsent } from "@/lib/consent-cookie";
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import type { LocalizationResource } from "@clerk/nextjs/types";
 import { useTheme } from "next-themes";
@@ -93,7 +93,7 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
   const ensureUser = useMutation(api.users.mutations.ensureUser);
   const sessionKey = `${userId ?? "anonymous"}:${sessionId ?? "initializing"}`;
   const sync = useMemo(
-    () => new UserSync(sessionKey, () => ensureUser({ analyticsConsent: getStoredConsent()?.choice })),
+    () => new UserSync(sessionKey, () => ensureUser({ analyticsConsent: readConsent()?.choice })),
     [sessionKey, ensureUser],
   );
   const canSync = Boolean(isLoaded && isSignedIn && userId && isAuthenticated && !isLoading);
