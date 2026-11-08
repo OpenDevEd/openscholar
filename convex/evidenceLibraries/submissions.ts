@@ -118,8 +118,10 @@ export const applyStatus = internalMutation({
     }
     for (const row of rows) {
       if ((row.generation ?? 0) >= generation) continue;
-      // Taken back by the person who sent it, it's no longer listed, but stays with its generation.
-      await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at });
+      // Taken back by the person who sent it, it's no longer listed, but stays with its generation. Their row takes the
+      // request this word is about, so that request, still finishing here, leaves the word as it is.
+      const sentNow = paper?.requestId && sender && row.userId === sender._id ? { requestId: paper.requestId } : {};
+      await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at, ...sentNow });
     }
     return null;
   },

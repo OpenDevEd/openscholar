@@ -161,6 +161,9 @@ it("keeps a community's word that comes before Openscholar's own send finishes, 
   await tell("RACE0001", 1, "queued", "r9");
   await tell("RACE0001", 2, "returned", "r9");
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r9", papers: [{ itemKey: "RACE0001", ...paper, status: "queued" }] });
+  // Sent again by request r11 and returned before r11 finishes here: the return stands for that send too.
+  await tell("RACE0001", 3, "returned", "r11");
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r11", papers: [{ itemKey: "RACE0001", ...paper, status: "queued" }] });
   // Approved before the word that it waits was sent: published is the first word, and it's theirs.
   await tell("RACE0002", 2, "published", "r10");
   expect((await mine()).sort((a, b) => a.itemKey.localeCompare(b.itemKey))).toEqual([{ itemKey: "RACE0001", status: "returned" }, { itemKey: "RACE0002", status: "published" }]);
