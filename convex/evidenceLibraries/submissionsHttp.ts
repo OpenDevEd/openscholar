@@ -25,6 +25,8 @@ const statusSchema = z
         year: z.number().int().nullable(),
         openalexId: z.string().max(64).nullable(),
         doi: z.string().max(512).nullable(),
+        /** The request that sent it this time, which Openscholar's own sends name the same way. */
+        requestId: z.string().min(1).max(128).optional(),
       })
       .strict()
       .optional(),
