@@ -5889,6 +5889,15 @@
     "withdrawLabel": "Retirar {title}",
     "removed": "Artículo quitado de la comunidad",
     "withdrawn": "Artículo retirado de la cola de revisión",
-    "removeFailed": "La comunidad no pudo quitar este artículo. Inténtalo de nuevo."
+    "removeFailed": "La comunidad no pudo quitar este artículo. Inténtalo de nuevo.",
+    "viewLabel": "Mostrar",
+    "tabPublic": "Comunidades públicas",
+    "tabSubmissions": "Tus envíos",
+    "statusLabel": "Estado",
+    "everyStatus": "Todos los estados",
+    "statusPublished": "Publicado",
+    "noneYet": "Aún no hay envíos",
+    "noneYetHint": "Añade un artículo a una comunidad desde cualquier resultado de búsqueda.",
+    "noMatches": "Ningún envío coincide"
   }
 }

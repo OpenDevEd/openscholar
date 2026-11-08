@@ -5888,6 +5888,15 @@
     "withdrawLabel": "Withdraw {title}",
     "removed": "Paper removed from the community",
     "withdrawn": "Paper withdrawn from the review queue",
-    "removeFailed": "The community couldn't take this paper off. Try again."
+    "removeFailed": "The community couldn't take this paper off. Try again.",
+    "viewLabel": "Show",
+    "tabPublic": "Public communities",
+    "tabSubmissions": "Your submissions",
+    "statusLabel": "Status",
+    "everyStatus": "Every status",
+    "statusPublished": "Published",
+    "noneYet": "No submissions yet",
+    "noneYetHint": "Add a paper to a community from any search result.",
+    "noMatches": "No submissions match"
   }
 }

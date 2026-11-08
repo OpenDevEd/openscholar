@@ -1,0 +1,186 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
+import { useAction } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { useFormatter, useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { CheckCircle2, ExternalLink, ReviewQueueIcon, SearchX, Undo2 } from "@/components/icons";
+import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
+import { AutoHeight } from "@/components/ui/auto-height";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { api } from "@/convex/_generated/api";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { paperHref, recordHref, SUBMISSIONS_COUNTED } from "@/lib/evidence-libraries/added-papers";
+import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { cn } from "@/lib/utils";
+import { useWorkspace } from "@/lib/workspaces/url";
+import { StatusChip } from "../configuration/status-chip";
+import { LIST_FILTER, ListEmpty, ListLoading } from "../list-controls";
+import { CommunityIcon } from "../your-communities";
+import { LINK, refusalOr } from "./add-papers-dialog";
+
+/** Submissions a page shows. */
+const PER_PAGE = 8;
+/** A row's height, which every row keeps, so a page holds its height and the pager stays put. */
+const ROW_REM = 4;
+
+const SHOWS = ["all", "queued", "published", "returned"] as const;
+type Show = (typeof SHOWS)[number];
+type Submission = FunctionReturnType<typeof api.evidenceLibraries.submissions.mine>["page"][number];
+
+/**
+ * The person's submissions, read with the Communities page whichever tab it shows, so the list is there when its tab
+ * is picked: the page shown, of the status picked and the page's search, and how many there are of each status.
+ */
+export function useSubmissions(search: string, signedIn: boolean) {
+  const [show, setShow] = useState<Show>("all");
+  const read = useCursorPage(api.evidenceLibraries.submissions.mine, signedIn ? { ...(show === "all" ? {} : { status: show }), ...(search ? { search } : {}) } : "skip", PER_PAGE);
+  const counts = useProtectedQuery(api.evidenceLibraries.submissions.counts, signedIn ? {} : "skip").data;
+  return { read, counts, show, setShow };
+}
+
+/**
+ * Every paper you sent to a community, yours or a public one, and where it got to: waiting in its review queue,
+ * published, or returned with the reviewer's reason. One still waiting can be withdrawn.
+ */
+export function YourSubmissions({ search, heading, submissions }: { search: string; heading: ReactNode; submissions: ReturnType<typeof useSubmissions> }) {
+  const t = useTranslations("addedPapers");
+  const format = useFormatter();
+  const { read, counts, show, setShow } = submissions;
+  const label: Record<Show, string> = { all: t("everyStatus"), queued: t("inQueue"), published: t("statusPublished"), returned: t("returned") };
+
+  return (
+    <section aria-label={t("tabSubmissions")} className="flex min-w-0 flex-col p-4 sm:p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        {heading}
+        <Select value={show} onValueChange={(value) => setShow(value as Show)}>
+          <SelectTrigger size="sm" aria-label={t("statusLabel")} className={cn("w-44", LIST_FILTER)}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent align="end">
+            {SHOWS.map((id) => (
+              <SelectItem key={id} value={id}>
+                <span className="flex w-full items-center justify-between gap-3">
+                  {label[id]}
+                  {counts ? (
+                    <span className="fade-enter tabular-nums text-muted-foreground">
+                      {/* Past the count's cap, it's at least that many. */}
+                      {format.number(counts[id])}
+                      {counts.capped && (id === "all" || counts[id] >= SUBMISSIONS_COUNTED) ? "+" : ""}
+                    </span>
+                  ) : null}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <AutoHeight>
+        {read.isLoading ? (
+          <ListLoading label={t("tabSubmissions")} />
+        ) : read.items.length ? (
+          // A full page's height while there are pages, so a short last page keeps the pager where it was.
+          <ul
+            key={`${show}:${search}:${read.page}`}
+            className={cn("fade-enter divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle", read.isStale && "opacity-60")}
+            inert={read.isStale || undefined}
+            style={read.hasPages ? { minHeight: `calc(${PER_PAGE * ROW_REM}rem + ${PER_PAGE + 1}px)` } : undefined}
+          >
+            {read.items.map((submission) => (
+              <SubmissionRow key={submission.submissionId} submission={submission} date={format.dateTime(submission.sentAt, { day: "numeric", month: "short" })} />
+            ))}
+          </ul>
+        ) : (
+          <ListEmpty icon={SearchX} description={search || show !== "all" ? undefined : t("noneYetHint")}>
+            {search || show !== "all" ? t("noMatches") : t("noneYet")}
+          </ListEmpty>
+        )}
+        {read.hasPages ? (
+          <CommandCenterPagination
+            className="mt-4"
+            currentPage={read.page}
+            itemLabel="submissions"
+            steps={{ canPrevious: read.canPrevious, canNext: read.canNext || (read.isStale && read.hasPages), onPrevious: read.previous, onNext: read.next, offset: read.offset, shown: read.items.length }}
+          />
+        ) : null}
+      </AutoHeight>
+    </section>
+  );
+}
+
+/** One paper sent: what it is, the community it went to, and where it stands there. */
+function SubmissionRow({ submission, date }: { submission: Submission; date: string }) {
+  const t = useTranslations("addedPapers");
+  const { community, status } = submission;
+  const remove = useAction(api.evidenceLibraries.assistant.removeAddedPaper);
+  // Withdrawn from a workspace that reaches the community, whichever one the page is in.
+  const here = useWorkspace();
+  const workspaceId = submission.workspaceId ?? here;
+  const [withdrawing, setWithdrawing] = useState(false);
+  const withdraw = async () => {
+    if (!workspaceId) return;
+    setWithdrawing(true);
+    try {
+      await remove({ libraryId: community.libraryId, workspaceId, itemKey: submission.itemKey });
+      toast.success(t("withdrawn"));
+    } catch (error) {
+      toast.error(refusalOr(error, t("removeFailed")));
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+  const name = community.address ? (
+    <a href={community.address} target="_blank" rel="noopener noreferrer" className={cn("min-w-0 truncate font-medium text-foreground/80", LINK)}>{community.name}</a>
+  ) : (
+    <span className="min-w-0 truncate font-medium text-foreground/80">{community.name}</span>
+  );
+  return (
+    <li style={{ height: `${ROW_REM}rem` }} className="flex items-center gap-3 px-3">
+      <CommunityIcon fadeIn community={{ faviconUrl: community.faviconUrl, owner: community.owner ?? { name: community.name, imageUrl: null, kind: "organization" } }} />
+      <div className="min-w-0 flex-1">
+        <TooltipHint label={submission.title} onlyWhenClipped>
+          <a href={paperHref(submission)} className={cn("block truncate text-sm font-medium", LINK)}>{submission.title}</a>
+        </TooltipHint>
+        <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <TooltipHint label={community.name} onlyWhenClipped>{name}</TooltipHint>
+          {status === "returned" && submission.note ? (
+            <span className="flex min-w-0 items-center gap-1 ink-warning">
+              <Undo2 className="size-3.5 shrink-0" />
+              <span className="truncate">{submission.note}</span>
+            </span>
+          ) : (
+            <span className="shrink-0 tabular-nums">{date}</span>
+          )}
+        </div>
+      </div>
+      {status === "queued" ? (
+        <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inQueue")}</StatusChip>
+      ) : status === "returned" ? (
+        <StatusChip tone="warning" icon={Undo2}>{t("returned")}</StatusChip>
+      ) : (
+        <StatusChip tone="success" icon={CheckCircle2}>{t("statusPublished")}</StatusChip>
+      )}
+      {/* Every row keeps the action's place, so the chips line up. */}
+      <span className="flex w-8 shrink-0 justify-center">
+        {status === "queued" ? (
+          <TooltipHint label={t("withdraw")}>
+            <Button type="button" variant="ghost" size="icon-sm" disabled={withdrawing} aria-label={t("withdrawLabel", { title: submission.title })} className="text-muted-foreground hover:text-destructive" onClick={() => void withdraw()}>
+              <Undo2 />
+            </Button>
+          </TooltipHint>
+        ) : status === "published" && community.address ? (
+          <TooltipHint label={t("openIn", { community: community.name })}>
+            <Button asChild variant="ghost" size="icon-sm" className="text-muted-foreground">
+              <a href={recordHref(community.address, submission.itemKey)} target="_blank" rel="noopener noreferrer" aria-label={t("openLabel", { title: submission.title, community: community.name })}>
+                <ExternalLink />
+              </a>
+            </Button>
+          </TooltipHint>
+        ) : null}
+      </span>
+    </li>
+  );
+}

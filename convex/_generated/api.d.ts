@@ -191,6 +191,8 @@ import type * as evidenceLibraries_sources from "../evidenceLibraries/sources.js
 import type * as evidenceLibraries_storageSetup from "../evidenceLibraries/storageSetup.js";
 import type * as evidenceLibraries_storageSetupActions from "../evidenceLibraries/storageSetupActions.js";
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
+import type * as evidenceLibraries_submissions from "../evidenceLibraries/submissions.js";
+import type * as evidenceLibraries_submissionsHttp from "../evidenceLibraries/submissionsHttp.js";
 import type * as evidenceLibraries_team from "../evidenceLibraries/team.js";
 import type * as evidenceLibraries_teardown from "../evidenceLibraries/teardown.js";
 import type * as evidenceLibraries_teardownActions from "../evidenceLibraries/teardownActions.js";
@@ -671,6 +673,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/storageSetup": typeof evidenceLibraries_storageSetup;
   "evidenceLibraries/storageSetupActions": typeof evidenceLibraries_storageSetupActions;
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
+  "evidenceLibraries/submissions": typeof evidenceLibraries_submissions;
+  "evidenceLibraries/submissionsHttp": typeof evidenceLibraries_submissionsHttp;
   "evidenceLibraries/team": typeof evidenceLibraries_team;
   "evidenceLibraries/teardown": typeof evidenceLibraries_teardown;
   "evidenceLibraries/teardownActions": typeof evidenceLibraries_teardownActions;

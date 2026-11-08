@@ -49,6 +49,8 @@ import {
   evidenceLibraryDomainRouteLeaseFields,
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
+  paperSubmissionFields,
+  pendingSubmissionStatusFields,
   evidenceLibraryRuntimeBindingValidator,
   evidenceLibraryRuntimeReleaseFields,
   evidenceLibraryReleaseCatalogFields,
@@ -292,6 +294,13 @@ export default defineSchema({
   // fingerprint, so a sources save checks versions without reading every revision (#357).
   evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
     .index("by_libraryId_and_version", ["libraryId", "version"]),
+  pendingSubmissionStatus: defineTable(pendingSubmissionStatusFields).index("by_library_and_itemKey", ["libraryId", "itemKey"]),
+  paperSubmissions: defineTable(paperSubmissionFields)
+    .index("by_user_and_sentAt", ["userId", "sentAt"])
+    .index("by_user_and_status_and_sentAt", ["userId", "status", "sentAt"])
+    .index("by_user_and_library_and_itemKey", ["userId", "libraryId", "itemKey"])
+    .index("by_library_and_itemKey", ["libraryId", "itemKey"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "status"] }),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     // A workspace's libraries, in the order they were made.
     .index("by_workspace", ["workspaceId"])

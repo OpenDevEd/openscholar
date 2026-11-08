@@ -1487,6 +1487,8 @@ export const papersAddedValidator = capped(v.array(v.object({
   outcome: v.union(v.literal("added"), v.literal("queued"), v.literal("returned"), v.literal("existing"), v.literal("not_found"), v.literal("failed")),
   itemKey: v.optional(v.string()),
   foundBy: v.optional(foundByValidator),
+  /** What was sent, for Your submissions. */
+  paper: v.optional(v.object({ ...paperSummaryFields, openalexId: v.union(v.string(), v.null()), doi: v.union(v.string(), v.null()) })),
   message: v.optional(v.string()),
 })), ADDED_PAPERS_MAX);
 
@@ -1507,3 +1509,54 @@ export const addedPapersPageValidator = v.object({
   counts: v.object({ total: v.number(), live: v.number(), waiting: v.number() }),
   settings: addedPapersSettingsValidator,
 });
+
+/** Where a paper someone sent to a community stands (OS-29, #1124): waiting for review, live, returned or withdrawn. */
+export const submissionStatusValidator = v.union(v.literal("queued"), v.literal("published"), v.literal("returned"), v.literal("withdrawn"));
+
+/**
+ * A paper someone sent to a community, as their Your submissions lists it. Openscholar records it when it's sent; the
+ * community tells it when a reviewer approves or returns it, or its sender withdraws it (new-el #778).
+ */
+export const paperSubmissionFields = {
+  userId: v.id("users"),
+  libraryId: v.id("evidenceLibraries"),
+  itemKey: v.string(),
+  title: v.string(),
+  authors: v.string(),
+  year: v.union(v.number(), v.null()),
+  openalexId: v.union(v.string(), v.null()),
+  doi: v.union(v.string(), v.null()),
+  status: submissionStatusValidator,
+  /** Why a reviewer returned it, when they said. */
+  note: v.optional(v.string()),
+  /** Its title and the community's name, which Your submissions searches. */
+  searchText: v.string(),
+  sentAt: v.number(),
+  updatedAt: v.number(),
+  /** The community's last change it applied: an older one, arriving late, changes nothing. */
+  generation: v.optional(v.number()),
+  /** The request that sent it, so a replay of that request doesn't undo what the community said since. */
+  requestId: v.optional(v.string()),
+};
+
+/** A community's word on a paper that came before Openscholar recorded the paper as sent: applied when it is. */
+export const pendingSubmissionStatusFields = {
+  libraryId: v.id("evidenceLibraries"),
+  itemKey: v.string(),
+  clerkUserId: v.string(),
+  generation: v.number(),
+  status: submissionStatusValidator,
+  note: v.optional(v.string()),
+  at: v.number(),
+};
+
+/** The papers one request sent, to record for Your submissions: published at once, or waiting for review. */
+export const sentPapersValidator = capped(v.array(v.object({
+  itemKey: v.string(),
+  title: v.string(),
+  authors: v.string(),
+  year: v.union(v.number(), v.null()),
+  openalexId: v.union(v.string(), v.null()),
+  doi: v.union(v.string(), v.null()),
+  status: v.union(v.literal("queued"), v.literal("published")),
+})), ADDED_PAPERS_MAX);

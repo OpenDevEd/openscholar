@@ -85,7 +85,10 @@ export function publishesSettings(operation: Doc<"evidenceLibraryConfigOperation
  * their settings live (`publishesSettings`), which is the time its card shows.
  */
 export async function noteLive(ctx: MutationCtx, library: Doc<"evidenceLibraries">, revisionId: Id<"evidenceLibraryConfigRevisions">, now: number, published: boolean) {
-  await ctx.db.patch("evidenceLibraries", library._id, { card: await cardOf(ctx, revisionId), ...(published || library.publishedAt === undefined ? { publishedAt: now } : {}), ...(library.liveAt === undefined ? { liveAt: now } : {}) });
+  const card = await cardOf(ctx, revisionId);
+  await ctx.db.patch("evidenceLibraries", library._id, { card, ...(published || library.publishedAt === undefined ? { publishedAt: now } : {}), ...(library.liveAt === undefined ? { liveAt: now } : {}) });
+  // Renamed, the papers people sent it are found by its new name in their Your submissions.
+  if ((card?.name ?? library.name) !== (library.card?.name ?? library.name)) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.submissions.refreshCommunityName, { libraryId: library._id, cursor: null });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.refreshRecords, { libraryId: library._id });
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.directory.recountPeople, { libraryId: library._id });
 }

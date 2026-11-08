@@ -5889,6 +5889,15 @@
     "withdrawLabel": "{title} zurückziehen",
     "removed": "Arbeit aus der Community entfernt",
     "withdrawn": "Arbeit aus der Prüfwarteschlange zurückgezogen",
-    "removeFailed": "Die Community konnte diese Arbeit nicht entfernen. Versuche es erneut."
+    "removeFailed": "Die Community konnte diese Arbeit nicht entfernen. Versuche es erneut.",
+    "viewLabel": "Anzeigen",
+    "tabPublic": "Öffentliche Communities",
+    "tabSubmissions": "Deine Einreichungen",
+    "statusLabel": "Status",
+    "everyStatus": "Jeder Status",
+    "statusPublished": "Veröffentlicht",
+    "noneYet": "Noch keine Einreichungen",
+    "noneYetHint": "Füge eine Arbeit aus einem beliebigen Suchergebnis einer Community hinzu.",
+    "noMatches": "Keine Einreichungen gefunden"
   }
 }

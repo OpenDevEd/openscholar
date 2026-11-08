@@ -5888,6 +5888,15 @@
     "withdrawLabel": "Annuler l'envoi de {title}",
     "removed": "Article retiré de la communauté",
     "withdrawn": "Article retiré de la file de relecture",
-    "removeFailed": "La communauté n'a pas pu retirer cet article. Réessayez."
+    "removeFailed": "La communauté n'a pas pu retirer cet article. Réessayez.",
+    "viewLabel": "Afficher",
+    "tabPublic": "Communautés publiques",
+    "tabSubmissions": "Vos propositions",
+    "statusLabel": "Statut",
+    "everyStatus": "Tous les statuts",
+    "statusPublished": "Publié",
+    "noneYet": "Aucune proposition pour l'instant",
+    "noneYetHint": "Ajoutez un article à une communauté depuis n'importe quel résultat de recherche.",
+    "noMatches": "Aucune proposition ne correspond"
   }
 }

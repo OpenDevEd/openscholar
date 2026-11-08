@@ -5888,6 +5888,15 @@
     "withdrawLabel": "撤回 {title}",
     "removed": "已从社区移除论文",
     "withdrawn": "已从审核队列撤回论文",
-    "removeFailed": "社区无法移除这篇论文。请重试。"
+    "removeFailed": "社区无法移除这篇论文。请重试。",
+    "viewLabel": "显示",
+    "tabPublic": "公开社区",
+    "tabSubmissions": "你的提交",
+    "statusLabel": "状态",
+    "everyStatus": "所有状态",
+    "statusPublished": "已发布",
+    "noneYet": "还没有提交",
+    "noneYetHint": "从任意搜索结果把论文添加到社区。",
+    "noMatches": "没有匹配的提交"
   }
 }

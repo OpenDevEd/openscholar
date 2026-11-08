@@ -4,6 +4,9 @@ import { normalDoi, openalexWork } from "../papers/paper-ref";
 /** Papers one request to a community looks up or adds at most, as its endpoint allows. */
 export const ADDED_PAPERS_MAX = 100;
 
+/** The most of one status Your submissions counts; past it, the count says "at least". */
+export const SUBMISSIONS_COUNTED = 500;
+
 /** A paper a paste names: by its OpenAlex work, or by its DOI. `key` tells two apart. */
 export type PastedPaper = { key: string; doi: string | null; openalexId: string | null; raw: string };
 

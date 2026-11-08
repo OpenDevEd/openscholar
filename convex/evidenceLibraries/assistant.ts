@@ -732,7 +732,15 @@ export const addPapersAction = defineChangingAction({
   run: async (ctx, actor, args): Promise<Infer<typeof papersAddedValidator>> => {
     const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
     if (args.publish && (sender.role === "creator" || sender.role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
-    return await ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, userId: actor.userId, ...sender });
+    const results = await ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, userId: actor.userId, ...sender });
+    // What went on, the person's Your submissions lists: published, or waiting in the review queue.
+    const papers = results.flatMap((result) =>
+      (result.outcome === "added" || result.outcome === "queued") && result.itemKey && result.paper
+        ? [{ itemKey: result.itemKey, ...result.paper, status: result.outcome === "added" ? ("published" as const) : ("queued" as const) }]
+        : [],
+    );
+    if (papers.length) await ctx.runMutation(internal.evidenceLibraries.submissions.recordSent, { userId: actor.userId, libraryId: args.libraryId, requestId: args.requestId, papers });
+    return results;
   },
 });
 export const addPapers = userAction(addPapersAction);
@@ -766,7 +774,9 @@ export const removeAddedPaperAction = defineChangingAction({
   check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
   run: async (ctx, actor, { libraryId, itemKey }): Promise<"withdrawn" | "removed"> => {
     const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
-    return await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
+    const outcome = await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
+    if (outcome === "withdrawn") await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey });
+    return outcome;
   },
 });
 export const removeAddedPaper = userAction(removeAddedPaperAction);
