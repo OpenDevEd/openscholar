@@ -21,6 +21,13 @@ const PREVIOUS_PAGE_READINGS = /^\$prev_pageview_(duration|(last|max)_(scroll|co
 const ADDRESSES = ["$current_url", "$pathname", "$prev_pageview_pathname", "$referrer"];
 /** PostHog needs these to accept the event. Any other text or list an event carries may be what someone typed. */
 const REQUIRED = new Set(["token", "distinct_id"]);
+/**
+ * Text from a fixed list, never typed: where on a page something was clicked, what it led to, and the campaign a
+ * link of ours carried. A value that doesn't look like one of those names is dropped like any other text.
+ */
+const NAMES = new Set(["placement", "target", "section", "community", "topic", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]);
+const NAME = /^[\w.-]{1,64}$/;
+const isName = (key: string, value: unknown) => NAMES.has(key) && typeof value === "string" && NAME.test(value);
 /** Route segments that name an account, an organization or their work, whatever they look like. */
 const PRIVATE_SEGMENT = /(\/(?:o|join|shared|results|extraction|from-library|evidence-communities)\/)[^/]+/g;
 
@@ -39,7 +46,7 @@ export function reduceWithoutConsent(event: CaptureResult): CaptureResult | null
   if (!properties.$cookieless_mode) return event;
   if (NEEDS_CONSENT.has(event.event)) return null;
   for (const [key, value] of Object.entries(properties)) {
-    const mayBeTyped = !key.startsWith("$") && !REQUIRED.has(key) && typeof value !== "number" && typeof value !== "boolean";
+    const mayBeTyped = !key.startsWith("$") && !REQUIRED.has(key) && typeof value !== "number" && typeof value !== "boolean" && !isName(key, value);
     if (mayBeTyped || REMOVED.has(key) || PREVIOUS_PAGE_READINGS.test(key)) delete properties[key];
   }
   for (const key of ADDRESSES) {
