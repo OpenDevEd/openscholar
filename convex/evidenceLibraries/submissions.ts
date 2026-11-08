@@ -284,3 +284,13 @@ export const sentTo = query({
     return rows.map((row) => ({ libraryId: row.libraryId, status: row.status }));
   },
 });
+
+/** Submissions an account's deletion removes per run. */
+const PURGE_SUBMISSIONS = 200;
+
+/** Removes a deleted account's submissions a batch at a time; true once none are left. */
+export async function purgeSubmissions(ctx: MutationCtx, userId: Id<"users">) {
+  const rows = await ctx.db.query("paperSubmissions").withIndex("by_user_and_sentAt", (q) => q.eq("userId", userId)).take(PURGE_SUBMISSIONS);
+  for (const row of rows) await ctx.db.delete("paperSubmissions", row._id);
+  return rows.length < PURGE_SUBMISSIONS;
+}

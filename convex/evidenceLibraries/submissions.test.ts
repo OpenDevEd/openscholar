@@ -5,6 +5,7 @@ import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { purgeSubmissions } from "./submissions";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "b".repeat(43);
@@ -96,4 +97,17 @@ it("holds the community's word on a paper that comes before Openscholar recorded
   // Withdrawn from the community's own workspace, which is theirs.
   expect(row).toMatchObject({ itemKey: "EARLY001", status: "published", workspaceId });
   expect(await t.run((ctx) => ctx.db.query("pendingSubmissionStatus").collect())).toEqual([]);
+});
+
+it("removes a deleted account's submissions", async () => {
+  const t = convexTest(schema, modules);
+  const { userId, libraryId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "gone", email: "gone@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Gone", slug: "gone", state: "active", createdByClerkUserId: "gone", updatedByClerkUserId: "gone", createdAt: 1, updatedAt: 1 });
+    return { userId, libraryId };
+  });
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "g1", papers: [{ itemKey: "GONE0001", title: "Phonics", authors: "", year: null, openalexId: null, doi: "10.1000/gone", status: "queued" }] });
+  expect(await t.run((ctx) => purgeSubmissions(ctx, userId))).toBe(true);
+  expect(await t.run((ctx) => ctx.db.query("paperSubmissions").collect())).toEqual([]);
 });

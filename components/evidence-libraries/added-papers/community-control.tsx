@@ -53,8 +53,6 @@ type Row = {
 
 /** Communities each list reads at first, and how many more each time the list scrolls near its end. */
 const STEP = 20;
-/** Rows that fill the list enough to scroll; fewer, and a button reads the next ones instead. */
-const SCROLLABLE_ROWS = 6;
 /** How close to the bottom of the list, in pixels, the next ones start loading. */
 const LOAD_AHEAD_PX = 80;
 
@@ -346,8 +344,8 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
             {section(t("recent"), recent)}
             {section(t("yourCommunities"), yours)}
             {section(t("tabPublic"), publicOnes)}
-            {/* Only when the rows are too few to scroll further; a longer list reads on as it scrolls. */}
-            {onMore && recent.length + yours.length + publicOnes.length < SCROLLABLE_ROWS ? (
+            {/* The list also reads on as it scrolls; this row reaches the rest when the shown ones don't fill it. */}
+            {onMore ? (
               <Button type="button" variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={onMore}>
                 {t("moreCommunities")}
               </Button>

@@ -12,6 +12,7 @@ import { purgeFiles } from "../assistant/files";
 import { dropWorkspace, purgeWorkspace } from "../workspaces/purge";
 import { purgeRatings } from "../ratings";
 import { purgeReaders } from "../evidenceLibraries/readers";
+import { purgeSubmissions } from "../evidenceLibraries/submissions";
 import { purgeGrants } from "../sharing/upkeep";
 import { purgeDeveloperApps } from "../developerApps/apps";
 
@@ -132,6 +133,11 @@ export const cleanupDeletedUsers = internalMutation({
       }
       // Their ratings are theirs alone: their own, and the ones they gave in collections.
       if (!(await purgeRatings(ctx, user._id))) {
+        deferred = true;
+        continue; // Skip user delete, process on next run
+      }
+      // The papers they sent to communities, and where each got to.
+      if (!(await purgeSubmissions(ctx, user._id))) {
         deferred = true;
         continue; // Skip user delete, process on next run
       }
