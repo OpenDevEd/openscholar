@@ -1,0 +1,5 @@
+# Server and browser must format numbers alike. Node 22.11 with ICU 74 wrote Arabic digits
+# where browsers write Latin ones, and every Arabic page failed to hydrate.
+[phases.setup]
+nixpkgsArchive = "c56a87d8e41ce69bd2af57eb35dcc117a9dfca33"
+nixPkgs = ["nodejs_26"]
