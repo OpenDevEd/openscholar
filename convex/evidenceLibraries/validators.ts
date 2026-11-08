@@ -1560,3 +1560,27 @@ export const sentPapersValidator = capped(v.array(v.object({
   doi: v.union(v.string(), v.null()),
   status: v.union(v.literal("queued"), v.literal("published")),
 })), ADDED_PAPERS_MAX);
+
+/** Who a community belongs to, as a submission's community icon shows on its corner. */
+export const submissionOwnerValidator = v.union(
+  v.object({ name: v.string(), kind: v.union(v.literal("organization"), v.literal("person")), imageUrl: v.union(v.string(), v.null()), workspaceId: v.id("workspaces") }),
+  v.null(),
+);
+
+/** The communities Add to community lists as recent. */
+export const RECENT_COMMUNITIES = 3;
+export const recentCommunitiesValidator = capped(v.array(v.object({
+  libraryId: v.id("evidenceLibraries"),
+  name: v.string(),
+  faviconUrl: v.union(v.string(), v.null()),
+  address: v.union(v.string(), v.null()),
+  owner: submissionOwnerValidator,
+  /** The person's role there; `viewer` for a public community they're not on. */
+  role: v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"), v.literal("viewer")),
+  /** The workspace it's in, which a paper sent to it as its team goes from. */
+  workspaceId: v.id("workspaces"),
+})), RECENT_COMMUNITIES);
+
+/** The communities one paper is listed as sent to, with where it stands in each. */
+export const PAPER_SENT_TO = 50;
+export const sentToValidator = capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), status: submissionStatusValidator })), PAPER_SENT_TO);

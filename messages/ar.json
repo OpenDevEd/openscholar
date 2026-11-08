@@ -5898,6 +5898,20 @@
     "statusPublished": "منشور",
     "noneYet": "لا توجد مقترحات بعد",
     "noneYetHint": "أضف ورقة إلى مجتمع من أي نتيجة بحث.",
-    "noMatches": "لا توجد مقترحات مطابقة"
+    "noMatches": "لا توجد مقترحات مطابقة",
+    "addToCommunity": "إضافة إلى مجتمع",
+    "searchCommunities": "ابحث في المجتمعات",
+    "recent": "الأخيرة",
+    "yourCommunities": "مجتمعاتك",
+    "noCommunitiesMatch": "لا توجد مجتمعات مطابقة",
+    "noCommunities": "لا توجد مجتمعات بعد",
+    "inQueueShort": "في القائمة",
+    "added": "أُضيفت",
+    "publishOrReview": "انشرها الآن، أو دع الفريق يراجعها أولًا.",
+    "reviewFirst": "يراجعها فريق المجتمع قبل نشرها.",
+    "publishedTo": "نُشرت في {community}",
+    "queuedTo": "أُرسلت إلى قائمة مراجعة {community}",
+    "alreadyIn": "لدى {community} هذه الورقة بالفعل",
+    "moreCommunities": "مزيد من المجتمعات"
   }
 }

@@ -5898,6 +5898,20 @@
     "statusPublished": "Gepubliseer",
     "noneYet": "Nog geen voorleggings nie",
     "noneYetHint": "Voeg 'n artikel by 'n gemeenskap vanuit enige soekresultaat.",
-    "noMatches": "Geen voorleggings pas nie"
+    "noMatches": "Geen voorleggings pas nie",
+    "addToCommunity": "Voeg by gemeenskap",
+    "searchCommunities": "Soek gemeenskappe",
+    "recent": "Onlangs",
+    "yourCommunities": "Jou gemeenskappe",
+    "noCommunitiesMatch": "Geen gemeenskappe pas nie",
+    "noCommunities": "Nog geen gemeenskappe nie",
+    "inQueueShort": "In die ry",
+    "added": "Bygevoeg",
+    "publishOrReview": "Publiseer dit nou, of laat die span dit eers hersien.",
+    "reviewFirst": "Die gemeenskap se span hersien dit voordat dit lewendig gaan.",
+    "publishedTo": "Gepubliseer in {community}",
+    "queuedTo": "Na {community} se hersieningsry gestuur",
+    "alreadyIn": "{community} het reeds hierdie artikel",
+    "moreCommunities": "Meer gemeenskappe"
   }
 }

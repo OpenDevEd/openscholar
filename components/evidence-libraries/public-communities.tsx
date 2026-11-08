@@ -86,7 +86,7 @@ export function PublicCommunities({ search, preloaded, heading }: {
 }
 
 /** One public community: its colour with its icon blurred across it, the icon itself, then what it holds. Opens its public site. */
-function CommunityCard({ community }: { community: Card }) {
+export function CommunityCard({ community }: { community: Card }) {
   const t = useTranslations("libraryList.directory");
   const format = useFormatter();
   const locale = useLocale();

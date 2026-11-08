@@ -5,6 +5,7 @@ import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { purgeSubmissions } from "./submissions";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "b".repeat(43);
@@ -44,6 +45,9 @@ it("lists the papers someone sent, and takes where each stands from the communit
   const mine = await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } });
   expect(mine.page).toMatchObject([{ itemKey: "PAPER001", ...paper, status: "returned", note: "Outside this community's focus", community: { libraryId, name: "Teacher Education" } }]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, status: "queued" })).page).toEqual([]);
+  // Add to community lists the community as recent, with the person's role there (its owner: it's in their own workspace), and the paper as returned there.
+  expect(await sender.query(api.evidenceLibraries.submissions.recentCommunities, {})).toMatchObject([{ libraryId, name: "Teacher Education", role: "owner" }]);
+  expect(await sender.query(api.evidenceLibraries.submissions.sentTo, { openalexId: "W60" })).toEqual([{ libraryId, status: "returned" }]);
   // Searched by its title or its community's name, and counted by status for the filter.
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher education" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "astronomy" })).page).toEqual([]);
@@ -93,4 +97,17 @@ it("holds the community's word on a paper that comes before Openscholar recorded
   // Withdrawn from the community's own workspace, which is theirs.
   expect(row).toMatchObject({ itemKey: "EARLY001", status: "published", workspaceId });
   expect(await t.run((ctx) => ctx.db.query("pendingSubmissionStatus").collect())).toEqual([]);
+});
+
+it("removes a deleted account's submissions", async () => {
+  const t = convexTest(schema, modules);
+  const { userId, libraryId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "gone", email: "gone@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Gone", slug: "gone", state: "active", createdByClerkUserId: "gone", updatedByClerkUserId: "gone", createdAt: 1, updatedAt: 1 });
+    return { userId, libraryId };
+  });
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "g1", papers: [{ itemKey: "GONE0001", title: "Phonics", authors: "", year: null, openalexId: null, doi: "10.1000/gone", status: "queued" }] });
+  expect(await t.run((ctx) => purgeSubmissions(ctx, userId))).toBe(true);
+  expect(await t.run((ctx) => ctx.db.query("paperSubmissions").collect())).toEqual([]);
 });
