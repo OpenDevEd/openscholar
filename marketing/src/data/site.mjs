@@ -44,9 +44,9 @@ export const SECTIONS = {
 };
 // Pages written for what people search when they need the product. Each links to the others, and the menu and footer link to them.
 export const INTENTS = [
-  { href: "/ai-literature-review/", title: "AI literature reviews", text: "From your question to a table of findings", icon: "search", color: "#4fc3d9", field: "ocean", art: "sea", sc: "6 36 54", img: "search-laptop-dark-1000", step: "Find" },
-  { href: "/systematic-review-screening/", title: "Screening for systematic reviews", text: "Your criteria, applied to every abstract", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve-front", sc: "2 38 29", img: "screen-laptop-dark-1000", step: "Screen" },
-  { href: "/data-extraction/", title: "Data extraction", text: "A table of answers, each with its evidence", icon: "table", color: "#fde047", field: "night", art: "thread", sc: "7 11 26", img: "extract-detail-laptop-dark-1000", step: "Extract" },
-  { href: "/research-assistant/", title: "AI research assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#7da7e6", field: "steel", art: "gate", sc: "11 21 48", img: "assistant-laptop-dark-1000", step: "Delegate" },
-  { href: "/zotero/", title: "Publish a Zotero library", text: "A public, searchable site from a Zotero group", icon: "globe", color: "#fb7185", field: "rose", art: "globe", sc: "83 1 23", img: "c-home-laptop-light-1000", step: "Publish" },
+  { href: "/ai-literature-review/", title: "AI literature reviews", text: "From your question to a table of findings", color: "#4fc3d9", img: "search-laptop-dark-1000" },
+  { href: "/systematic-review-screening/", title: "Screening for systematic reviews", text: "Your criteria, applied to every abstract", color: "#34d399", img: "screen-laptop-dark-1000" },
+  { href: "/data-extraction/", title: "Data extraction", text: "A table of answers, each with its evidence", color: "#fde047", img: "extract-detail-laptop-dark-1000" },
+  { href: "/research-assistant/", title: "AI research assistant", text: "Hand off the groundwork, keep the decisions", color: "#7da7e6", img: "assistant-laptop-dark-1000" },
+  { href: "/zotero/", title: "Publish a Zotero library", text: "A public, searchable site from a Zotero group", color: "#fb7185", img: "c-home-laptop-light-1000" },
 ];
