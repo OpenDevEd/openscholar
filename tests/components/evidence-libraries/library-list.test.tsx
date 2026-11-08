@@ -31,6 +31,8 @@ vi.mock("@/convex/_generated/api", () => ({ api: {
     queries: { listLibraries: "libraries" },
     directory: { directory: "public" },
     invitations: { listInvitations: "invitations" }, invitationActions: { respond: "respond" },
+    submissions: { mine: "submissions", counts: "submissionCounts" },
+    assistant: { removeAddedPaper: "removeAddedPaper" },
   },
 } }));
 // Invitations arrive as one page; the tests give its rows.

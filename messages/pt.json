@@ -5889,6 +5889,15 @@
     "withdrawLabel": "Retirar {title}",
     "removed": "Artigo removido da comunidade",
     "withdrawn": "Artigo retirado da fila de revisão",
-    "removeFailed": "A comunidade não conseguiu remover este artigo. Tente de novo."
+    "removeFailed": "A comunidade não conseguiu remover este artigo. Tente de novo.",
+    "viewLabel": "Mostrar",
+    "tabPublic": "Comunidades públicas",
+    "tabSubmissions": "Seus envios",
+    "statusLabel": "Status",
+    "everyStatus": "Todos os status",
+    "statusPublished": "Publicado",
+    "noneYet": "Nenhum envio ainda",
+    "noneYetHint": "Adicione um artigo a uma comunidade a partir de qualquer resultado de pesquisa.",
+    "noMatches": "Nenhum envio corresponde"
   }
 }

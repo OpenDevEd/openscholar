@@ -5889,6 +5889,15 @@
     "withdrawLabel": "Trek {title} terug",
     "removed": "Artikel uit die gemeenskap verwyder",
     "withdrawn": "Artikel uit die hersieningsry teruggetrek",
-    "removeFailed": "Die gemeenskap kon nie hierdie artikel verwyder nie. Probeer weer."
+    "removeFailed": "Die gemeenskap kon nie hierdie artikel verwyder nie. Probeer weer.",
+    "viewLabel": "Wys",
+    "tabPublic": "Openbare gemeenskappe",
+    "tabSubmissions": "Jou voorleggings",
+    "statusLabel": "Status",
+    "everyStatus": "Elke status",
+    "statusPublished": "Gepubliseer",
+    "noneYet": "Nog geen voorleggings nie",
+    "noneYetHint": "Voeg 'n artikel by 'n gemeenskap vanuit enige soekresultaat.",
+    "noMatches": "Geen voorleggings pas nie"
   }
 }

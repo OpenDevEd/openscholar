@@ -28,7 +28,12 @@ type Sort = (typeof SORTS)[number];
 type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.directory>["page"][number];
 
 /** Every public community, as cards, a page at a time, sorted and searched on the server (#1090), for anyone, signed in or not. */
-export function PublicCommunities({ search, preloaded }: { search: string; preloaded?: Preloaded<typeof api.evidenceLibraries.directory.directory> }) {
+export function PublicCommunities({ search, preloaded, heading }: {
+  search: string;
+  preloaded?: Preloaded<typeof api.evidenceLibraries.directory.directory>;
+  /** In place of the title, such as the tabs that switch to Your submissions. The title stays for screen readers. */
+  heading?: ReactNode;
+}) {
   const t = useTranslations("libraryList.directory");
   const [sort, setSort] = useState<Sort>("newest");
   const live = useCursorPage(api.evidenceLibraries.directory.directory, { sort, ...(search ? { search } : {}) }, PER_PAGE, { open: true });
@@ -38,7 +43,8 @@ export function PublicCommunities({ search, preloaded }: { search: string; prelo
   return (
     <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "17.25rem" } as React.CSSProperties}>
       <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 id="public-communities" className="text-base font-semibold">{t("title")}</h2>
+        <h2 id="public-communities" className={heading ? "sr-only" : "text-base font-semibold"}>{t("title")}</h2>
+        {heading}
         <Select value={sort} onValueChange={(value) => setSort(value as Sort)}>
           <SelectTrigger size="sm" aria-label={t("sortLabel")} className={cn("w-36", LIST_FILTER)}>
             <SelectValue />

@@ -5889,6 +5889,15 @@
     "withdrawLabel": "Rudisha {title}",
     "removed": "Makala imeondolewa kwenye jumuiya",
     "withdrawn": "Makala imerudishwa kutoka foleni ya ukaguzi",
-    "removeFailed": "Jumuiya haikuweza kuondoa makala hii. Jaribu tena."
+    "removeFailed": "Jumuiya haikuweza kuondoa makala hii. Jaribu tena.",
+    "viewLabel": "Onyesha",
+    "tabPublic": "Jumuiya za umma",
+    "tabSubmissions": "Mawasilisho yako",
+    "statusLabel": "Hali",
+    "everyStatus": "Kila hali",
+    "statusPublished": "Imechapishwa",
+    "noneYet": "Bado hakuna mawasilisho",
+    "noneYetHint": "Ongeza makala kwenye jumuiya kutoka kwenye tokeo lolote la utafutaji.",
+    "noMatches": "Hakuna mawasilisho yanayolingana"
   }
 }

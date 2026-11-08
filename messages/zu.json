@@ -5888,6 +5888,15 @@
     "withdrawLabel": "Hoxisa u-{title}",
     "removed": "Iphepha lisusiwe emphakathini",
     "withdrawn": "Iphepha lihoxisiwe ohlwini lokubuyekeza",
-    "removeFailed": "Umphakathi awukwazanga ukususa leli phepha. Zama futhi."
+    "removeFailed": "Umphakathi awukwazanga ukususa leli phepha. Zama futhi.",
+    "viewLabel": "Bonisa",
+    "tabPublic": "Imiphakathi yomphakathi",
+    "tabSubmissions": "Okuthumele kwakho",
+    "statusLabel": "Isimo",
+    "everyStatus": "Zonke izimo",
+    "statusPublished": "Kushicilelwe",
+    "noneYet": "Akukabi khona okuthunyelwe",
+    "noneYetHint": "Engeza iphepha emphakathini kunoma yimuphi umphumela wosesho.",
+    "noMatches": "Akukho okuthunyelwe okufanayo"
   }
 }

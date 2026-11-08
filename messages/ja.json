@@ -5888,6 +5888,15 @@
     "withdrawLabel": "{title} を取り下げ",
     "removed": "論文をコミュニティから削除しました",
     "withdrawn": "論文をレビューキューから取り下げました",
-    "removeFailed": "コミュニティがこの論文を削除できませんでした。もう一度お試しください。"
+    "removeFailed": "コミュニティがこの論文を削除できませんでした。もう一度お試しください。",
+    "viewLabel": "表示",
+    "tabPublic": "公開コミュニティ",
+    "tabSubmissions": "あなたの投稿",
+    "statusLabel": "ステータス",
+    "everyStatus": "すべてのステータス",
+    "statusPublished": "公開済み",
+    "noneYet": "まだ投稿はありません",
+    "noneYetHint": "検索結果から論文をコミュニティに追加できます。",
+    "noMatches": "一致する投稿はありません"
   }
 }

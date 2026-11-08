@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useAction, type Preloaded } from "convex/react";
 import { preloadedQueryResult } from "convex/nextjs";
 import { cloneElement, useState } from "react";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCurrentWorkspace, useWorkspaces } from "@/components/workspaces/parts";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
@@ -12,7 +12,9 @@ import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import Link from "@/components/workspace-link";
-import { Check, Plus } from "@/components/icons";
+import { Check, Globe, Plus, ReviewQueueIcon } from "@/components/icons";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSubmissions, YourSubmissions } from "./added-papers/your-submissions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,6 +55,18 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
   const text = useDebouncedValue(search.trim(), 300);
   // Where the sidebar's communities are from, kept in the address so a link or a reload keeps it.
   const [from, setFrom] = useQueryState("from", parseAsString.withDefault("all"));
+  // The card's two views, kept in the address: public communities, and the papers the person sent to communities.
+  const [view, setView] = useQueryState("view", parseAsStringLiteral(["public", "submissions"] as const).withDefault("public"));
+  const tp = useTranslations("addedPapers");
+  const submissions = useSubmissions(text, signedIn);
+  const tabs = (
+    <Tabs value={view} onValueChange={(next) => void setView(next === "submissions" ? "submissions" : null)}>
+      <TabsList aria-label={tp("viewLabel")}>
+        <TabsTrigger value="public"><Globe />{tp("tabPublic")}</TabsTrigger>
+        <TabsTrigger value="submissions"><ReviewQueueIcon />{tp("tabSubmissions")}</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
   // The switcher's list is read once for the whole page, so after a switch the workspace is known from the first frame; the address says which.
   const slug = useWorkspaceSlug();
   const listed = useWorkspaces().list?.find((row) => (slug ? row.slug === slug : row.kind === "personal"));
@@ -125,7 +139,11 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
                 {notice}
               </p>
             )}
-            <PublicCommunities search={text} preloaded={preloadedPublic} />
+            {signedIn && view === "submissions" ? (
+              <YourSubmissions search={text} heading={tabs} submissions={submissions} />
+            ) : (
+              <PublicCommunities search={text} preloaded={preloadedPublic} heading={signedIn ? tabs : undefined} />
+            )}
             <Dialog open={Boolean(declining)} onOpenChange={(open) => { if (!open) setDeclining(null); }}>
               <DialogContent showCloseButton={false}>
                 <DialogHeader>

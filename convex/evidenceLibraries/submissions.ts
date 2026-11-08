@@ -5,6 +5,7 @@ import { query, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
+import { libraryOwner, ownerName } from "./access";
 import { sentPapersValidator, submissionStatusValidator } from "./validators";
 
 /** Submissions a page of Your submissions shows at most. */
@@ -35,6 +36,17 @@ export const recordSent = internalMutation({
   },
 });
 
+/** Forgets a paper the person withdrew from a community's review queue: it's no longer one of their submissions. */
+export const forgetSent = internalMutation({
+  args: { userId: v.id("users"), libraryId: v.id("evidenceLibraries"), itemKey: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId, libraryId, itemKey }) => {
+    const row = await byPaper(ctx, userId, libraryId, itemKey);
+    if (row) await ctx.db.delete("paperSubmissions", row._id);
+    return null;
+  },
+});
+
 /**
  * What a community says of a paper sent to it: approved, returned with the reviewer's note, or withdrawn. It's the
  * community's machine credential that says so, and a change older than the last one applied changes nothing.
@@ -56,7 +68,9 @@ export const applyStatus = internalMutation({
     const rows = await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
     for (const row of rows) {
       if ((row.generation ?? 0) >= generation) continue;
-      await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at });
+      // Taken back by the person who sent it, it's no longer one of their submissions.
+      if (status === "withdrawn") await ctx.db.delete("paperSubmissions", row._id);
+      else await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at });
     }
     return null;
   },
@@ -79,10 +93,15 @@ const submissionValidator = v.object({
     faviconUrl: v.union(v.string(), v.null()),
     /** Where it answers, while it runs. */
     address: v.union(v.string(), v.null()),
+    /** Who it belongs to, as its icon's corner shows them. */
+    owner: v.union(
+      v.object({ name: v.string(), kind: v.union(v.literal("organization"), v.literal("person")), imageUrl: v.union(v.string(), v.null()), workspaceId: v.id("workspaces") }),
+      v.null(),
+    ),
   }),
 });
 
-/** A community as a submission names it: its directory card's name and icon, and where it answers. */
+/** A community as a submission names it: its directory card's name and icon, where it answers, and who it belongs to. */
 async function communityOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   const binding = library?.runtimeBindingId ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId) : null;
@@ -91,7 +110,19 @@ async function communityOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
     name: library?.card?.name ?? library?.name ?? "",
     faviconUrl: library?.card?.faviconUrl ?? null,
     address: library?.state === "active" ? (binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? null) : null,
+    owner: library ? await ownerOf(ctx, library) : null,
   };
+}
+
+/** Who a community belongs to: its organization, or the person whose own it is. */
+async function ownerOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  const owner = await libraryOwner(ctx, library);
+  if (!owner) return null;
+  const shown = await ownerName(ctx, owner);
+  const person = owner.person ? [owner.person.firstName, owner.person.lastName].filter(Boolean).join(" ") : "";
+  return owner.organization
+    ? { name: shown.name ?? "", kind: "organization" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id }
+    : { name: person, kind: "person" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id };
 }
 
 const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">) => ({
@@ -142,12 +173,12 @@ export const mine = query({
 /** How many papers the signed-in person has of each status, up to SUBMISSIONS_COUNTED each, for the status filter. */
 export const counts = query({
   args: {},
-  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), withdrawn: v.number(), all: v.number() }),
+  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), all: v.number() }),
   handler: async (ctx) => {
     const person = await senderOf(ctx);
-    const count = async (status: "queued" | "published" | "returned" | "withdrawn") =>
+    const count = async (status: "queued" | "published" | "returned") =>
       person ? (await ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status)).take(SUBMISSIONS_COUNTED + 1)).length : 0;
-    const [queued, published, returned, withdrawn] = await Promise.all([count("queued"), count("published"), count("returned"), count("withdrawn")]);
-    return { queued, published, returned, withdrawn, all: queued + published + returned + withdrawn };
+    const [queued, published, returned] = await Promise.all([count("queued"), count("published"), count("returned")]);
+    return { queued, published, returned, all: queued + published + returned };
   },
 });

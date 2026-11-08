@@ -42,11 +42,14 @@ it("lists the papers someone sent, and takes where each stands from the communit
   // Searched by its title or its community's name, and counted by status for the filter.
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher education" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "astronomy" })).page).toEqual([]);
-  expect(await sender.query(api.evidenceLibraries.submissions.counts, {})).toEqual({ queued: 0, published: 0, returned: 1, withdrawn: 0, all: 1 });
+  expect(await sender.query(api.evidenceLibraries.submissions.counts, {})).toEqual({ queued: 0, published: 0, returned: 1, all: 1 });
 
   // Sent again, it waits for review again, and the community's next word applies.
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page[0]).toMatchObject({ status: "queued", note: null });
   await tell(3, "published", null);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page[0]).toMatchObject({ status: "published" });
+  // Withdrawn, it's no longer one of theirs.
+  await tell(4, "withdrawn", null);
+  expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
 });
