@@ -5769,5 +5769,14 @@
     "step4": "Token erneuern",
     "step4About": "Ein Token gilt 24 Stunden. Tauschen Sie vorher das Refresh-Token gegen ein neues.",
     "cantDo": "Apps können weder Abrechnung, API-Schlüssel oder Website-Einstellungen ändern noch eine Evidence Community veröffentlichen."
+  },
+  "paperPage": {
+    "references": "Literatur",
+    "openAccess": "Open Access",
+    "readPdf": "PDF lesen",
+    "publisherPage": "Verlagsseite",
+    "askAbout": "Zu diesem Artikel fragen",
+    "noAbstract": "Keine Zusammenfassung verfügbar",
+    "linkCopied": "Link zum Artikel kopiert"
   }
 }

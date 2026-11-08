@@ -1,0 +1,63 @@
+import "server-only";
+import { unstable_cache } from "next/cache";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { fetchOwnWorks, readOpenAlexWorks } from "@/lib/openalex/read-works";
+import { MAX_LOCATIONS } from "@/lib/topics/publications";
+import { normalizeDoi } from "@/lib/topics/identity";
+import type { SimilarPaper } from "@/app/actions/similar";
+import type { PaperResult } from "@/lib/types/search.types";
+
+/** How long a paper page reuses what it read: a paper's record barely changes, and crawlers read many pages once each. */
+const DAY = 60 * 60 * 24;
+
+// ponytail: paper pages read our index without the per-visitor request limits, so crawlers can read them; each ID is
+// read once a day at most, and an ID that isn't ours costs one read. Rate-limit at Cloudflare if someone walks the IDs.
+
+/** A paper as our index holds it, by our ID or its OpenAlex ID. Null when our index has none. */
+export const readPaperForPage = unstable_cache(
+  async (id: string): Promise<PaperResult | null> => {
+    const read = await readOpenAlexWorks({ filter: { openalex_id: id } as never, cursor: "*", perPage: 1 }, "openscholar");
+    return (read.results[0] as PaperResult | undefined) ?? null;
+  },
+  ["paper-page"],
+  { revalidate: DAY },
+);
+
+/** The papers closest in meaning to it, for the page's list. Empty when our index can't say. */
+export const readSimilarForPage = unstable_cache(
+  async (id: string): Promise<SimilarPaper[]> => {
+    const answer = await fetchOwnWorks({ filter: { is_retracted: false } as never }, { perPage: 8 }, { similar_to: id });
+    if (!answer.ok) return [];
+    return answer.data.results.map((work) => ({
+      // Our own ID, so each row links straight to that paper's page instead of through a redirect.
+      id: ((work as { openscholar_id?: string }).openscholar_id ?? work.id).split("/").at(-1)!,
+      title: work.title ?? work.display_name ?? "",
+      year: work.publication_year ?? null,
+      citations: work.cited_by_count ?? 0,
+      doi: work.doi ?? null,
+    }));
+  },
+  ["paper-page-similar"],
+  { revalidate: DAY },
+);
+
+export type CommunityCopy = { id: string; name: string; url: string };
+
+/** The paper's published records in public Evidence Communities, found by its DOI or OpenAlex ID as topic pages find them. */
+export const readCommunityCopies = unstable_cache(
+  async (doi: string | null, openalexId: string | null): Promise<CommunityCopy[]> => {
+    const keys = [normalizeDoi(doi) && `doi:${normalizeDoi(doi)}`, openalexId && `openalex:${openalexId}`].filter((key): key is string => !!key);
+    const pages = await Promise.all(keys.map((groupKey) => fetchQuery(api.topics.publications.listLocations, { groupKey, paginationOpts: { cursor: null, numItems: MAX_LOCATIONS } })));
+    const copies = new Map<string, CommunityCopy>();
+    for (const location of pages.flatMap((page) => page.page)) {
+      copies.set(location.id, { id: location.id, name: location.library.name, url: new URL(`/lib/${location.itemKey}`, location.library.url).href });
+    }
+    return [...copies.values()];
+  },
+  ["paper-page-communities"],
+  { revalidate: 60 * 10 },
+);
+
+/** The OpenAlex work a record of ours is paired with, bare, if any. */
+export const openalexIdOf = (paper: PaperResult) => (paper.ids as { openalex?: string } | undefined)?.openalex?.split("/").at(-1) ?? null;

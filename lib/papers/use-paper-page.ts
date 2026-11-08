@@ -11,8 +11,10 @@ export function usePaperPage(paper: string | undefined, file?: string | null) {
   const workspaceId = useWorkspace();
   const libraryId = paper ? libraryOfPaper(paper) : null;
   const { data: libraryAddress } = useProtectedQuery(api.evidenceLibraries.readers.address, inWorkspace(workspaceId, libraryId ? { libraryId } : "skip"));
-  // Nothing opens OpenAlex while our index is what people search.
+  // Nothing opens OpenAlex while our index is what people search: a paper it pairs with OpenAlex opens our page, which finds it by that ID.
   const onOpenAlex = useSearchSource() === "openalex";
-  if (!paper || (!onOpenAlex && legacyPaperRef(paper)?.source === "openalex")) return null;
+  if (!paper) return null;
+  const ref = legacyPaperRef(paper);
+  if (!onOpenAlex && ref?.source === "openalex") return `/papers/${ref.work}`;
   return paperPage(paper, { file, libraryAddress });
 }

@@ -4,7 +4,8 @@ import useSWR from "swr";
 import { useFormatter, useTranslations } from "next-intl";
 import { useCloseFocus } from "@/components/entity-cards";
 import { Compass, Quote } from "@/components/icons";
-import { readSimilarPapers } from "@/app/actions/similar";
+import { readSimilarPapers, type SimilarPaper } from "@/app/actions/similar";
+import { paperPath } from "@/lib/papers/page-address";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "@/components/workspace-link";
@@ -13,12 +14,15 @@ import { similarSearchHref } from "@/lib/search/similar-href";
 
 const SHOWN = 8;
 
-/** The papers closest in meaning to the open one. It holds its height while they're read, so nothing moves. */
-export function SimilarPapers({ paperId }: { paperId: string }) {
+/**
+ * The papers closest in meaning to the open one. It holds its height while they're read, so nothing moves.
+ * A paper's page gives the list it read on the server as `initial`, and each row then opens that paper's page.
+ */
+export function SimilarPapers({ paperId, initial }: { paperId: string; initial?: SimilarPaper[] }) {
   const format = useFormatter();
   const t = useTranslations("similarPapers");
   const closeFocus = useCloseFocus();
-  const { data, error, isLoading } = useSWR(["similar-papers", paperId], ([, id]) => unlessLimited(readSimilarPapers(id, SHOWN)), { revalidateOnFocus: false });
+  const { data, error, isLoading } = useSWR(["similar-papers", paperId], ([, id]) => unlessLimited(readSimilarPapers(id, SHOWN)), { revalidateOnFocus: false, fallbackData: initial, revalidateOnMount: !initial });
   return (
     <section aria-label={t("title")} className="border-t pt-2">
       <div className="mb-1 flex min-h-8 items-center justify-between gap-2">
@@ -30,7 +34,7 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
           </Link>
         </Button>
       </div>
-      <div className="min-h-88">
+      <div className={initial ? undefined : "min-h-88"}>
         {isLoading ? (
           <div className="flex h-88 items-center justify-center text-muted-foreground"><Spinner aria-label={t("finding")} /></div>
         ) : error ? (
@@ -41,7 +45,9 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
           <ol className="fade-enter divide-y divide-border-subtle">
             {data.map((paper) => (
               <li key={paper.id} className="flex items-baseline justify-between gap-4 py-2 text-sm">
-                {paper.doi ? (
+                {initial ? (
+                  <Link href={paperPath(paper.id.split("/").at(-1)!, paper.title)} className="min-w-0 hover:underline">{paper.title}</Link>
+                ) : paper.doi ? (
                   <a href={paper.doi} target="_blank" rel="noopener noreferrer" className="min-w-0 hover:underline">{paper.title}</a>
                 ) : (
                   // No DOI to open: what's like it is the next best place to go.

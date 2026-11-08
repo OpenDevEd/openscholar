@@ -121,6 +121,7 @@ export const saveablePaper = (paper: string) => {
 export function paperPage(paper: string, { file, libraryAddress }: { file?: string | null; libraryAddress?: string | null } = {}): string | null {
   const ref = legacyPaperRef(paper);
   if (ref?.source === "openalex") return `https://openalex.org/${ref.work}`;
+  if (ref?.source === "openscholar") return `/papers/${ref.work}`;
   if (ref?.source === "library") return libraryAddress ? new URL(`/lib/${encodeURIComponent(ref.key)}`, libraryAddress).href : null;
   if (ref?.source === "zotero") return `zotero://select/${ref.library === "group" ? "groups" : "users"}/${ref.owner}/items/${ref.key}`;
   if (ref?.source === "upload") return file ?? null;

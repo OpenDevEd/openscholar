@@ -5768,5 +5768,14 @@
     "step4": "Vuselela ithokheni",
     "step4About": "Ithokheni lihlala amahora angu-24. Shintsha ithokheni lokuvuselela libe elisha ngaphambi kwalokho.",
     "cantDo": "Izinhlelo azikwazi ukushintsha ukukhokha, okhiye be-API noma izilungiselelo zesayithi, noma ukushicilela i-Evidence Community."
+  },
+  "paperPage": {
+    "references": "Izinkomba",
+    "openAccess": "Ukufinyelela okuvulekile",
+    "readPdf": "Funda i-PDF",
+    "publisherPage": "Ikhasi lomshicileli",
+    "askAbout": "Buza ngaleli phepha",
+    "noAbstract": "Asikho isifinyezo",
+    "linkCopied": "Ilinki yephepha ikopishiwe"
   }
 }

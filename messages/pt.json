@@ -5769,5 +5769,14 @@
     "step4": "Renovar o token",
     "step4About": "Um token dura 24 horas. Troque antes o token de atualização por um novo.",
     "cantDo": "As aplicações não podem alterar a faturação, as chaves de API ou as definições do site, nem publicar uma Evidence Community."
+  },
+  "paperPage": {
+    "references": "Referências",
+    "openAccess": "Acesso aberto",
+    "readPdf": "Ler PDF",
+    "publisherPage": "Página da editora",
+    "askAbout": "Perguntar sobre este artigo",
+    "noAbstract": "Resumo indisponível",
+    "linkCopied": "Link do artigo copiado"
   }
 }

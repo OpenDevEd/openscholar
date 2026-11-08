@@ -5768,5 +5768,14 @@
     "step4": "トークンを更新",
     "step4About": "トークンの有効期間は 24 時間です。その前にリフレッシュトークンを新しいトークンに交換してください。",
     "cantDo": "アプリは請求、API キー、サイト設定を変更したり、Evidence Community を公開したりできません。"
+  },
+  "paperPage": {
+    "references": "参考文献",
+    "openAccess": "オープンアクセス",
+    "readPdf": "PDFを読む",
+    "publisherPage": "出版社のページ",
+    "askAbout": "この論文について質問",
+    "noAbstract": "抄録はありません",
+    "linkCopied": "論文のリンクをコピーしました"
   }
 }

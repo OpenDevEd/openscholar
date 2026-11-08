@@ -5769,5 +5769,14 @@
     "step4": "Hernu die teken",
     "step4About": "’n Teken hou 24 uur. Ruil die hernuwingsteken voor dan vir ’n nuwe een.",
     "cantDo": "Programme kan nie fakturering, API-sleutels of werfinstellings verander of ’n Evidence Community regstreeks sit nie."
+  },
+  "paperPage": {
+    "references": "Verwysings",
+    "openAccess": "Oop toegang",
+    "readPdf": "Lees PDF",
+    "publisherPage": "Uitgewer se bladsy",
+    "askAbout": "Vra oor hierdie artikel",
+    "noAbstract": "Geen opsomming beskikbaar nie",
+    "linkCopied": "Artikelskakel gekopieer"
   }
 }

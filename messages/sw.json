@@ -5769,5 +5769,14 @@
     "step4": "Onyesha upya tokeni",
     "step4About": "Tokeni hudumu saa 24. Badilisha tokeni ya kuonyesha upya kwa mpya kabla ya hapo.",
     "cantDo": "Programu haziwezi kubadilisha malipo, funguo za API au mipangilio ya tovuti, wala kuchapisha Evidence Community."
+  },
+  "paperPage": {
+    "references": "Marejeleo",
+    "openAccess": "Ufikiaji huria",
+    "readPdf": "Soma PDF",
+    "publisherPage": "Ukurasa wa mchapishaji",
+    "askAbout": "Uliza kuhusu makala hii",
+    "noAbstract": "Hakuna muhtasari",
+    "linkCopied": "Kiungo cha makala kimenakiliwa"
   }
 }

@@ -5768,5 +5768,14 @@
     "step4": "Refresh the token",
     "step4About": "A token lasts 24 hours. Swap the refresh token for a new one before then.",
     "cantDo": "Apps can't change billing, API keys or site settings, or put an Evidence Community live."
+  },
+  "paperPage": {
+    "references": "References",
+    "openAccess": "Open access",
+    "readPdf": "Read PDF",
+    "publisherPage": "Publisher's page",
+    "askAbout": "Ask about this paper",
+    "noAbstract": "No abstract available",
+    "linkCopied": "Paper link copied"
   }
 }

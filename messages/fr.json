@@ -5768,5 +5768,14 @@
     "step4": "Renouveler le jeton",
     "step4About": "Un jeton dure 24 heures. Échangez le jeton d'actualisation contre un nouveau avant.",
     "cantDo": "Les applications ne peuvent pas modifier la facturation, les clés API ou les paramètres du site, ni mettre en ligne une Evidence Community."
+  },
+  "paperPage": {
+    "references": "Références",
+    "openAccess": "Accès libre",
+    "readPdf": "Lire le PDF",
+    "publisherPage": "Page de l'éditeur",
+    "askAbout": "Poser une question sur cet article",
+    "noAbstract": "Aucun résumé disponible",
+    "linkCopied": "Lien de l'article copié"
   }
 }
