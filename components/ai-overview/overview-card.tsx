@@ -153,9 +153,9 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   if (missing) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="@container flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
+      <header className="@container flex flex-wrap items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
         <AiIcon size={18} working={working} className="shrink-0" />
-        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="flex-1">
+        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="min-w-16 flex-1">
           <div className="w-max">
             <Pills
               label={t("lens")}
@@ -498,9 +498,9 @@ export function SignedOutOverview({ params }: { params: string }) {
   if (off) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="@container flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
+      <header className="@container flex flex-wrap items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
         <AiIcon size={18} working={working} className="shrink-0" />
-        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="flex-1">
+        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="min-w-16 flex-1">
           <div className="w-max">
             <Pills
               label={t("lens")}
