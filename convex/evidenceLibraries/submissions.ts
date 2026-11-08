@@ -1,4 +1,4 @@
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { SUBMISSIONS_COUNTED } from "../../lib/evidence-libraries/added-papers";
@@ -194,30 +194,36 @@ async function senderOf(ctx: QueryCtx) {
   return person?.state === "active" ? person : null;
 }
 
-/** The papers the signed-in person sent to communities, newest first, of one status or all; searched by title and community, best match first. */
+/** A page of the papers the person sent to communities, newest first, of one status or all; searched by title and community, best match first. */
+export async function readSent(ctx: QueryCtx, person: Doc<"users">, { paginationOpts, status, search }: { paginationOpts: PaginationOptions; status?: Infer<typeof submissionStatusValidator>; search?: string }) {
+  const read = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SUBMISSIONS_PAGE_MAX) };
+  const needle = search?.trim().slice(0, 200);
+  const page = needle
+    ? await ctx.db
+        .query("paperSubmissions")
+        .withSearchIndex("search_text", (q) => (status ? q.search("searchText", needle).eq("userId", person._id).eq("status", status) : q.search("searchText", needle).eq("userId", person._id)))
+        .filter((q) => (status ? q.eq(q.field("status"), status) : q.neq(q.field("status"), "withdrawn")))
+        .paginate(read)
+    : await (status
+        ? ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status))
+        : ctx.db.query("paperSubmissions").withIndex("by_user_and_sentAt", (q) => q.eq("userId", person._id))
+      )
+        .order("desc")
+        // Withdrawn papers are kept for their generation, and listed only when asked for.
+        .filter((q) => (status ? q.eq(q.field("status"), status) : q.neq(q.field("status"), "withdrawn")))
+        .paginate(read);
+  return { ...page, page: await Promise.all(page.page.map((row) => rowOf(ctx, row, person))) };
+}
+
+export const sentPapersPageValidator = paginationResultValidator(submissionValidator);
+
+/** The signed-in person's sent papers, for Your submissions. */
 export const mine = query({
   args: { paginationOpts: paginationOptsValidator, status: v.optional(submissionStatusValidator), search: v.optional(v.string()) },
-  returns: paginationResultValidator(submissionValidator),
-  handler: async (ctx, { paginationOpts, status, search }) => {
+  returns: sentPapersPageValidator,
+  handler: async (ctx, args) => {
     const person = await senderOf(ctx);
-    if (!person) return { page: [], isDone: true, continueCursor: "" };
-    const read = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SUBMISSIONS_PAGE_MAX) };
-    const needle = search?.trim().slice(0, 200);
-    const page = needle
-      ? await ctx.db
-          .query("paperSubmissions")
-          .withSearchIndex("search_text", (q) => (status ? q.search("searchText", needle).eq("userId", person._id).eq("status", status) : q.search("searchText", needle).eq("userId", person._id)))
-          .filter((q) => q.neq(q.field("status"), "withdrawn"))
-          .paginate(read)
-      : await (status
-          ? ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status))
-          : ctx.db.query("paperSubmissions").withIndex("by_user_and_sentAt", (q) => q.eq("userId", person._id))
-        )
-          .order("desc")
-          // Withdrawn papers are kept for their generation, not listed.
-          .filter((q) => q.neq(q.field("status"), "withdrawn"))
-          .paginate(read);
-    return { ...page, page: await Promise.all(page.page.map((row) => rowOf(ctx, row, person))) };
+    return person ? await readSent(ctx, person, args) : { page: [], isDone: true, continueCursor: "" };
   },
 });
 

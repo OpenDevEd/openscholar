@@ -4395,6 +4395,24 @@
         "did": "Ishintshe amaphepha engeziwe omphakathi",
         "where": "Evidence Community",
         "ask": "Misa noma uqhubeke namaphepha engeziwe omphakathi, noma ama-PDF awo"
+      },
+      "connectCommunityCollection": {
+        "doing": "Kufakwa iqoqo emithonjeni yomphakathi",
+        "did": "Kufakwe iqoqo emithonjeni yomphakathi",
+        "where": "Evidence Community",
+        "ask": "Faka elinye lamaqoqo akho emithonjeni yomphakathi"
+      },
+      "putCommunityLive": {
+        "doing": "Kushicilelwa izilungiselelo zomphakathi",
+        "did": "Kushicilelwe izilungiselelo zomphakathi",
+        "where": "Evidence Community",
+        "ask": "Shicilela izilungiselelo ezigciniwe zomphakathi"
+      },
+      "sentPapers": {
+        "doing": "Kufundwa amaphepha owathumele emiphakathini",
+        "did": "Kufundwe amaphepha owathumele emiphakathini",
+        "where": "Evidence Communities",
+        "ask": "Funda amaphepha owathumele emiphakathini"
       }
     },
     "asks": {

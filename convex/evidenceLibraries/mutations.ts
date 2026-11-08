@@ -74,6 +74,7 @@ import {
   persistDraftConfigurationSnapshot,
 } from "./configurationSnapshot";
 import {
+  activationValidator,
   evidenceLibrarySetupIdentityFields,
   sectionRowValidator,
 } from "./validators";
@@ -1040,20 +1041,7 @@ export const activateConfiguration = mutation({
     libraryId: v.id("evidenceLibraries"),
     expectedEditVersion: v.number(),
   },
-  returns: v.object({
-    editVersion: v.number(),
-    kind: v.union(v.literal("setup"), v.literal("publish")),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    revisionId: v.id("evidenceLibraryConfigRevisions"),
-    revisionKey: v.string(),
-    revisionNumber: v.number(),
-    status: v.union(
-      v.literal("queued"),
-      v.literal("running"),
-      v.literal("succeeded"),
-      v.literal("failed"),
-    ),
-  }),
+  returns: activationValidator,
   handler: async (ctx, args): ReturnType<typeof activateEvidenceLibraryConfiguration> => {
     await refuseApps(ctx);
     return await activateEvidenceLibraryConfiguration(ctx, args);

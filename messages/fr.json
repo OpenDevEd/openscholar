@@ -4395,6 +4395,24 @@
         "did": "A modifié les articles ajoutés d'une communauté",
         "where": "Evidence Community",
         "ask": "Suspendre ou reprendre les articles ajoutés d'une communauté, ou leurs PDF"
+      },
+      "connectCommunityCollection": {
+        "doing": "Ajout d’une collection aux sources d’une communauté",
+        "did": "A ajouté une collection aux sources d’une communauté",
+        "where": "Evidence Community",
+        "ask": "Ajouter une de vos collections aux sources d’une communauté"
+      },
+      "putCommunityLive": {
+        "doing": "Mise en ligne des paramètres d’une communauté",
+        "did": "A mis en ligne les paramètres d’une communauté",
+        "where": "Evidence Community",
+        "ask": "Mettre en ligne les paramètres enregistrés d’une communauté"
+      },
+      "sentPapers": {
+        "doing": "Lecture des articles que vous avez envoyés aux communautés",
+        "did": "A lu les articles que vous avez envoyés aux communautés",
+        "where": "Evidence Communities",
+        "ask": "Lire les articles que vous avez envoyés aux communautés"
       }
     },
     "asks": {

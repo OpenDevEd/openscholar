@@ -104,6 +104,24 @@ describe("an Evidence Library's draft, for the assistant", () => {
     vi.unstubAllEnvs();
   });
 
+  it("adds the person's own collection to the draft's sources and leaves a community not yet live to its page", async () => {
+    const { t, admin, as, libraryId } = await setup();
+    const { id: collectionId } = await admin.mutation(api.library.collections.createCollection, { name: "Reading list" });
+    const connect = () => t.mutation(internal.evidenceLibraries.assistant.connectCollectionForAssistant, { ...as, libraryId, collectionId, approved: true });
+    expect(await connect()).toMatchObject({ collectionId, name: "Reading list" });
+    // Connected again, it's listed once.
+    await connect();
+    const sources = (await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["sources"] })).sections[0].payload as { provider: string; collectionId?: string }[];
+    expect(sources.filter((source) => source.provider === "openscholar")).toMatchObject([{ collectionId }]);
+    // Putting it live the first time is its setup, on its page.
+    const { editVersion } = await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId });
+    await expect(t.mutation(internal.evidenceLibraries.assistant.putLiveForAssistant, { ...as, libraryId, expectedEditVersion: editVersion, approved: true })).rejects.toThrow(/isn't live yet/);
+    // Running, it still doesn't go live while its page flags a card.
+    await t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { state: "active" }));
+    const flagged = await t.mutation(internal.evidenceLibraries.assistant.editDraftForAssistant, { ...as, libraryId, changes: [{ sectionKey: "localization", path: ["defaultLocale"], value: "fr" }], expectedEditVersion: editVersion });
+    await expect(t.mutation(internal.evidenceLibraries.assistant.putLiveForAssistant, { ...as, libraryId, expectedEditVersion: flagged.editVersion, approved: true })).rejects.toThrow(/languages on languages/);
+  });
+
   it("changes a library's team as its owner, once the person allows it: a colleague by email, then their role, then not at all", async () => {
     const { t, as, libraryId } = await setup();
     const team = () => t.query(internal.evidenceLibraries.assistant.teamForAssistant, { ...as, libraryId });

@@ -4396,6 +4396,24 @@
         "did": "Ilibadilisha makala zilizoongezwa za jumuiya",
         "where": "Evidence Community",
         "ask": "Sitisha au endelea na makala zilizoongezwa za jumuiya, au PDF zake"
+      },
+      "connectCommunityCollection": {
+        "doing": "Inaongeza mkusanyiko kwenye vyanzo vya jumuiya",
+        "did": "Iliongeza mkusanyiko kwenye vyanzo vya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ongeza mmoja wa mikusanyiko yako kwenye vyanzo vya jumuiya"
+      },
+      "putCommunityLive": {
+        "doing": "Inachapisha mipangilio ya jumuiya",
+        "did": "Ilichapisha mipangilio ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Chapisha mipangilio iliyohifadhiwa ya jumuiya"
+      },
+      "sentPapers": {
+        "doing": "Inasoma makala ulizotuma kwa jumuiya",
+        "did": "Ilisoma makala ulizotuma kwa jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Soma makala ulizotuma kwa jumuiya"
       }
     },
     "asks": {

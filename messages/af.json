@@ -4396,6 +4396,24 @@
         "did": "Het 'n gemeenskap se bygevoegde artikels verander",
         "where": "Evidence Community",
         "ask": "Onderbreek of hervat 'n gemeenskap se bygevoegde artikels, of hul PDF's"
+      },
+      "connectCommunityCollection": {
+        "doing": "Voeg ’n versameling by ’n gemeenskap se bronne",
+        "did": "Het ’n versameling by ’n gemeenskap se bronne gevoeg",
+        "where": "Evidence Community",
+        "ask": "Voeg een van jou versamelings by ’n gemeenskap se bronne"
+      },
+      "putCommunityLive": {
+        "doing": "Stel ’n gemeenskap se instellings regstreeks",
+        "did": "Het ’n gemeenskap se instellings regstreeks gestel",
+        "where": "Evidence Community",
+        "ask": "Stel ’n gemeenskap se gestoorde instellings regstreeks"
+      },
+      "sentPapers": {
+        "doing": "Lees die artikels wat jy na gemeenskappe gestuur het",
+        "did": "Het die artikels gelees wat jy na gemeenskappe gestuur het",
+        "where": "Evidence Communities",
+        "ask": "Lees die artikels wat jy na gemeenskappe gestuur het"
       }
     },
     "asks": {

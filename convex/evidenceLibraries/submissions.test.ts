@@ -12,12 +12,12 @@ const token = "els_" + "b".repeat(43);
 
 it("lists the papers someone sent, and takes where each stands from the community that holds it, in order", async () => {
   const t = convexTest(schema, modules);
-  const { libraryId, userId } = await t.run(async (ctx) => {
+  const { libraryId, userId, workspaceId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "sender", email: "sender@example.org", state: "active", createdAt: 1, updatedAt: 1 });
     const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
     const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
-    return { libraryId, userId };
+    return { libraryId, userId, workspaceId };
   });
   const paper = { title: "Coaching teachers", authors: "Amina Yusuf", year: 2021, openalexId: "W60", doi: "10.1000/w60" };
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r1", papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
@@ -52,6 +52,8 @@ it("lists the papers someone sent, and takes where each stands from the communit
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher education" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "astronomy" })).page).toEqual([]);
   expect(await sender.query(api.evidenceLibraries.submissions.counts, {})).toEqual({ queued: 0, published: 0, returned: 1, all: 1, capped: false });
+  // The assistant reads the same list for them, from a chat in any of their workspaces, and only theirs.
+  expect((await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId, status: "returned" })).page).toMatchObject([{ itemKey: "PAPER001", status: "returned", note: "Outside this community's focus" }]);
 
   // Sent again, it waits for review again, and the community's next word applies.
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r3", papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
@@ -72,6 +74,8 @@ it("lists the papers someone sent, and takes where each stands from the communit
   // Withdrawn, it's no longer listed; sent again, a late repeat of that withdrawal leaves the new submission.
   await tell(4, "withdrawn", null);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
+  // Asked for, the assistant lists it as withdrawn.
+  expect((await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId, status: "withdrawn" })).page).toMatchObject([{ itemKey: "PAPER001", status: "withdrawn" }]);
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r4", papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
   await tell(4, "withdrawn", null);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ status: "queued" }]);

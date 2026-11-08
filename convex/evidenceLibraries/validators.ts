@@ -1584,3 +1584,14 @@ export const recentCommunitiesValidator = capped(v.array(v.object({
 /** The communities one paper is listed as sent to, with where it stands in each. */
 export const PAPER_SENT_TO = 50;
 export const sentToValidator = capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), status: submissionStatusValidator })), PAPER_SENT_TO);
+
+/** Settings sent to be put live: the revision made of them and how its putting live stands. */
+export const activationValidator = v.object({
+  editVersion: v.number(),
+  kind: v.union(v.literal("setup"), v.literal("publish")),
+  operationId: v.id("evidenceLibraryConfigOperations"),
+  revisionId: v.id("evidenceLibraryConfigRevisions"),
+  revisionKey: v.string(),
+  revisionNumber: v.number(),
+  status: v.union(v.literal("queued"), v.literal("running"), v.literal("succeeded"), v.literal("failed")),
+});
