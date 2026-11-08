@@ -201,7 +201,8 @@ describe("author profiles", () => {
     // An editor edits it from wherever they are, sees who has it, and gives it to nobody: sharing it is its workspace's.
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
     await editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content: {...content, bio: "Edited by a profile collaborator"}});
-    expect((await editor.query(api.authors.members.list, {profileId})).members.map(member => [member.email, member.role])).toEqual([["owner@example.org", "owner"], ["editor@example.org", "editor"]]);
+    // Who has it, by role: their emails are its owners'.
+    expect((await editor.query(api.authors.members.list, {profileId})).members.map(member => [member.email, member.role])).toEqual([["", "owner"], ["", "editor"]]);
     const editorOwn = await t.run(ctx => personalWorkspaceOf(ctx, ids.editor));
     await expect(t.mutation(internal.sharing.invitations.prepare, {userId: ids.editor, workspaceId: editorOwn, author: "user", kind: "author", id: profileId, email: "third@example.org", role: "editor"})).rejects.toThrow();
     await expect(editor.mutation(api.sharing.guests.remove, {...item, workspaceId: editorOwn, guest: {userId: ids.owner}})).rejects.toThrow();
