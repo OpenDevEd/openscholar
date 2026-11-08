@@ -790,6 +790,7 @@
     "typeToSearchInstitutions": "किसी संस्थान का नाम लिखें",
     "institutionsUnavailable": "संस्थान लोड नहीं हो सके। फिर से कोशिश करें।",
     "filterByThisInstitution": "केवल {name} के कार्य",
+    "filterByInstitutionCountry": "केवल {country} के संस्थानों के कार्य",
     "studyDesign": "अध्ययन का प्रकार",
     "anyStudyDesign": "कोई भी अध्ययन प्रकार",
     "searchStudyDesigns": "अध्ययन प्रकार खोजें",

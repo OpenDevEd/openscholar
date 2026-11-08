@@ -791,6 +791,7 @@
     "typeToSearchInstitutions": "Tik ’n instelling se naam",
     "institutionsUnavailable": "Instellings kon nie gelaai word nie. Probeer weer.",
     "filterByThisInstitution": "Werk net van {name}",
+    "filterByInstitutionCountry": "Slegs werke van instellings in {country}",
     "studyDesign": "Studieontwerp",
     "anyStudyDesign": "Enige studieontwerp",
     "searchStudyDesigns": "Soek studieontwerpe",

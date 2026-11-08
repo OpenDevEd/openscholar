@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
-import { useCloseFocus } from "@/components/entity-cards";
+import { useCloseFocus } from "@/components/focus-mode/close-context";
 import { Compass } from "@/components/icons";
 import { readSimilarPapers } from "@/app/actions/similar";
 import { PaperRows } from "@/components/papers/paper-rows";

@@ -790,6 +790,7 @@
     "typeToSearchInstitutions": "输入机构名称",
     "institutionsUnavailable": "无法加载机构，请重试。",
     "filterByThisInstitution": "仅限 {name} 的文献",
+    "filterByInstitutionCountry": "仅限来自{country}机构的论文",
     "studyDesign": "研究设计",
     "anyStudyDesign": "任何研究设计",
     "searchStudyDesigns": "搜索研究设计",

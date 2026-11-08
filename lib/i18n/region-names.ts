@@ -121,3 +121,12 @@ export function getRegionDisplayName(
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
+
+/** A country's two-letter code from its code or its English name, as services such as Clerk give it; null for a region or anything else. */
+export function countryCodeOf(value: string | null | undefined): string | null {
+  const given = value?.trim();
+  if (!given) return null;
+  if (/^[a-z]{2}$/i.test(given) && COUNTRIES[given.toUpperCase()]) return given.toUpperCase();
+  const lower = given.toLowerCase();
+  return Object.keys(COUNTRIES).find((code) => COUNTRIES[code]!.toLowerCase() === lower) ?? null;
+}

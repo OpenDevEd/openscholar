@@ -791,6 +791,7 @@
     "typeToSearchInstitutions": "Andika jina la taasisi",
     "institutionsUnavailable": "Taasisi hazikuweza kupakiwa. Jaribu tena.",
     "filterByThisInstitution": "Hufanya kazi kutoka {name} pekee",
+    "filterByInstitutionCountry": "Kazi kutoka taasisi za {country} pekee",
     "studyDesign": "Muundo wa utafiti",
     "anyStudyDesign": "Muundo wowote wa utafiti",
     "searchStudyDesigns": "Tafuta miundo ya utafiti",

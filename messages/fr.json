@@ -790,6 +790,7 @@
     "typeToSearchInstitutions": "Saisissez le nom d'une institution",
     "institutionsUnavailable": "Impossible de charger les institutions. Réessayez.",
     "filterByThisInstitution": "Uniquement les travaux de {name}",
+    "filterByInstitutionCountry": "Uniquement les travaux d’établissements en {country}",
     "studyDesign": "Type d'étude",
     "anyStudyDesign": "Tout type d'étude",
     "searchStudyDesigns": "Rechercher des types d'étude",

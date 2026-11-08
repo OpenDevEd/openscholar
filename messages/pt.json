@@ -791,6 +791,7 @@
     "typeToSearchInstitutions": "Escreva o nome de uma instituição",
     "institutionsUnavailable": "Não foi possível carregar as instituições. Tente novamente.",
     "filterByThisInstitution": "Só funciona a partir de {name}",
+    "filterByInstitutionCountry": "Apenas trabalhos de instituições em {country}",
     "studyDesign": "Desenho do estudo",
     "anyStudyDesign": "Qualquer desenho do estudo",
     "searchStudyDesigns": "Pesquisar desenhos do estudo",

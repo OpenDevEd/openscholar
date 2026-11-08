@@ -791,6 +791,7 @@
     "typeToSearchInstitutions": "Namen einer Einrichtung eingeben",
     "institutionsUnavailable": "Einrichtungen konnten nicht geladen werden. Versuchen Sie es erneut.",
     "filterByThisInstitution": "Funktioniert nur von {name} aus",
+    "filterByInstitutionCountry": "Nur Arbeiten von Einrichtungen in {country}",
     "studyDesign": "Studiendesign",
     "anyStudyDesign": "Alle Studiendesigns",
     "searchStudyDesigns": "Studiendesigns durchsuchen",

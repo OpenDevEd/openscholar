@@ -12,7 +12,9 @@ import { preload } from "react-dom";
 import useSWR from "swr";
 import { useAuth } from "@clerk/nextjs";
 import { AnimatePresence, motion } from "motion/react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { CountryFlag } from "@/components/ui/country-flag";
+import { countryCodeOf, getRegionDisplayName } from "@/lib/i18n/region-names";
 import { ArrowUpDown, Building2, CalendarDays, EvidenceLibrariesIcon, Eye, FileText, Folder, Globe, Link2, ListChecks, Lock, Pencil, Search, TopicsIcon, TriangleAlert, UserRound, type AppIcon } from "@/components/icons";
 import { LibraryImage } from "@/components/evidence-libraries/library-image";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
@@ -370,6 +372,15 @@ export function LibrarySources({
 /** Each filter of a library search by its icon, as the search page's own chips tell them apart. */
 const FILTER_ICON: Record<FilterKind, AppIcon> = { range: CalendarDays, type: FileText, topics: TopicsIcon, institution: Building2, country: Globe, author: UserRound, collections: Folder, study: ListChecks, sort: ArrowUpDown };
 
+/** One filter of a saved community search: its kind's icon, or a country's flag, then its value. */
+function FilterChip({ kind, value }: { kind: FilterKind; value: string }) {
+  const t = useTranslations("librarySources");
+  const locale = useLocale();
+  const country = kind === "country" ? countryCodeOf(value) : null;
+  if (country) return <Chip><CountryFlag countryCode={country} className="shrink-0" />{getRegionDisplayName(country, locale)}</Chip>;
+  return <Chip icon={FILTER_ICON[kind]}>{kind === "sort" ? t(`sort.${value}` as "sort.desc") : value}</Chip>;
+}
+
 /** What a row is, as chips on one line that scrolls sideways when crowded. */
 export function RowFacts({ row, pasted, address }: { row: LibraryRow; pasted: boolean; address: string }) {
   const t = useTranslations("librarySources");
@@ -381,7 +392,7 @@ export function RowFacts({ row, pasted, address }: { row: LibraryRow; pasted: bo
   if (row.access === "viewer" && row.what !== "other") chips.push(<Chip key="access" icon={Eye}>{t("canView")}</Chip>);
   if (row.private !== undefined) chips.push(<Chip key="private" icon={row.private ? Lock : Globe}>{row.private ? t("private") : t("public")}</Chip>);
   if (row.parent) chips.push(<Chip key="parent" icon={Folder}>{t("in", { name: row.parent })}</Chip>);
-  if ("search" in row.source) for (const { kind, value } of filtersOf(row.source.search)) chips.push(<Chip key={`${kind}:${value}`} icon={FILTER_ICON[kind]}>{kind === "sort" ? t(`sort.${value}` as "sort.desc") : value}</Chip>);
+  if ("search" in row.source) for (const { kind, value } of filtersOf(row.source.search)) chips.push(<FilterChip key={`${kind}:${value}`} kind={kind} value={value} />);
   if (!chips.length) return null;
   return (
     <FadeRow as="span" scrolls className="flex gap-1">

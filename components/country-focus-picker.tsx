@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { isCountryFocusActive } from "@/lib/utils";
 import { COUNTRIES, getCountryCodesForRegions } from "@/lib/constants";
 import { CountrySelector } from "./country-selector";
+import { CountryFlag } from "@/components/ui/country-flag";
 import { useCountryFilter } from "@/hooks/use-country-filter";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 
@@ -19,14 +20,14 @@ export function CountryFocusPicker() {
 
   // Get country names for display and search enhancement (localized)
   const countryNames = useMemo(() => {
-    const names: string[] = [];
+    const names: { code: string; name: string }[] = [];
     const countryData = getCountryCodesForRegions(selectedValues);
 
     countryData.countries.forEach((code) => {
       if (COUNTRIES[code]) {
         const name = getRegionDisplayName(code, locale, (k) => (tf as (key: string) => string)(k));
-        if (!names.includes(name)) {
-          names.push(name);
+        if (!names.some((entry) => entry.name === name)) {
+          names.push({ code, name });
         }
       }
     });
@@ -57,12 +58,13 @@ export function CountryFocusPicker() {
                 {tf("searchFocusDescription")}
               </p>
               <div className="flex flex-wrap gap-1">
-                {countryNames.slice(0, 10).map((countryName) => (
-                  <span 
-                    key={countryName}
-                    className="text-xs bg-sidebar-accent text-sidebar-primary px-2 py-1 rounded-md border border-border-subtle"
+                {countryNames.slice(0, 10).map(({ code, name }) => (
+                  <span
+                    key={code}
+                    className="inline-flex items-center gap-1.5 text-xs bg-sidebar-accent text-sidebar-primary px-2 py-1 rounded-md border border-border-subtle"
                   >
-                    {countryName}
+                    <CountryFlag countryCode={code} className="shrink-0" />
+                    {name}
                   </span>
                 ))}
                 {countryNames.length > 10 && (

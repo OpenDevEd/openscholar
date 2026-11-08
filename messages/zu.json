@@ -790,6 +790,7 @@
     "typeToSearchInstitutions": "Bhala igama lesikhungo",
     "institutionsUnavailable": "Izikhungo azikwazanga ukulayisha. Zama futhi.",
     "filterByThisInstitution": "Isebenza kuphela kusuka ku-{name}",
+    "filterByInstitutionCountry": "Imisebenzi evela ezikhungweni zase-{country} kuphela",
     "studyDesign": "Ukwakheka kocwaningo",
     "anyStudyDesign": "Noma yiluphi ukwakheka kocwaningo",
     "searchStudyDesigns": "Sesha ukwakheka kocwaningo",

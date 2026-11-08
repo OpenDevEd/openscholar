@@ -790,6 +790,7 @@
     "typeToSearchInstitutions": "機関名を入力",
     "institutionsUnavailable": "機関を読み込めませんでした。もう一度お試しください。",
     "filterByThisInstitution": "{name} の文献のみ",
+    "filterByInstitutionCountry": "{country}の機関による論文のみ",
     "studyDesign": "研究デザイン",
     "anyStudyDesign": "すべての研究デザイン",
     "searchStudyDesigns": "研究デザインを検索",

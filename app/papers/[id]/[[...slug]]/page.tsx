@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -12,16 +13,19 @@ import type { PaperResult } from "@/lib/types/search.types";
 
 type Params = { params: Promise<{ id: string; slug?: string[] }> };
 
-/** The paper the address names, or the page's 404. */
-async function paperOf(params: Params["params"]) {
-  const { id: raw } = await params;
-  const id = paperPageId(raw);
-  const paper = id ? await readPaperForPage(id) : null;
+const quietly = <T,>(what: string, id: string, fallback: T) => (error: unknown) => (console.error(`[paper page] ${what} unavailable`, { id, error }), fallback);
+
+/** The paper the address names, both its records as one, or the page's 404. Read once per request, for the metadata and the page. */
+const paperOf = cache(async (raw: string) => {
+  const asked = paperPageId(raw);
+  const paper = asked ? await readPaperForPage(asked) : null;
   if (!paper) notFound();
   // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
-  const own = (paper as { openscholar_id?: string }).openscholar_id ?? paper.id;
-  return { paper, id: own.split("/").at(-1)! };
-}
+  const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
+  const work = openalexIdOf(paper);
+  const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : null;
+  return { paper, id, work, detail: paperDetail(paper, openalex, id, new Date().getUTCFullYear()) };
+});
 
 /** The abstract cut at a word, about as long as a search result shows. */
 function snippet(text: string, length = 160) {
@@ -41,22 +45,22 @@ function slugOf(given: string | undefined) {
 const dateOf = (paper: PaperResult) => paper.publication_date ?? (paper.publication_year ? String(paper.publication_year) : undefined);
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const { paper, id } = await paperOf(params);
+  const { paper, id, detail } = await paperOf((await params).id);
   const t = await getTranslations("metadata");
   const title = paper.title ?? paper.display_name ?? "";
   const journal = paper.primary_location?.source?.display_name;
-  const description = paper.abstract ? snippet(paper.abstract) : [title, journal, paper.publication_year].filter(Boolean).join(", ");
+  const description = detail.abstract ? snippet(detail.abstract) : [title, journal, paper.publication_year].filter(Boolean).join(", ");
   const page = await indexedPage({ path: paperPath(id, title), title: `${title || id} | ${t("siteName")}`, description });
   const live = await isLiveSite();
-  const pdf = paper.best_oa_location?.pdf_url ?? paper.primary_location?.pdf_url;
+  const pdf = detail.copies.find((copy) => copy.pdf)?.url;
   return {
     ...page,
     // Only a page with its abstract is worth a search result; the rest stay out, as OpenAlex keeps them out of its sitemaps.
-    robots: { index: live && !!paper.abstract, follow: live },
+    robots: { index: live && !!detail.abstract, follow: live },
     // What Google Scholar reads (its inclusion guidelines name these tags).
     other: Object.fromEntries(Object.entries({
       citation_title: title,
-      citation_author: paper.authorships?.map((authorship) => authorship.author.display_name).filter(Boolean),
+      citation_author: detail.authors.map((author) => author.name),
       citation_publication_date: dateOf(paper)?.replaceAll("-", "/"),
       citation_journal_title: journal,
       citation_volume: paper.biblio?.volume,
@@ -71,21 +75,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function Page({ params }: Params) {
-  const { paper, id } = await paperOf(params);
   const { id: asked, slug } = await params;
+  const { paper, id, work, detail } = await paperOf(asked);
   const title = paper.title ?? paper.display_name ?? "";
   // One address per paper: an OpenAlex ID, our bare ID or an old title all lead to it.
   if (asked !== id || slugOf(slug?.[0]) !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
-  const references = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((work) => work.split("/").at(-1)!).slice(0, 100);
-  const work = openalexIdOf(paper);
-  const quietly = <T,>(what: string, fallback: T) => (error: unknown) => (console.error(`[paper page] ${what} unavailable`, { id, error }), fallback);
-  const [similar, referenceRows, communities, openalex] = await Promise.all([
-    readSimilarForPage(id).catch(quietly("similar papers", [])),
-    readReferencesForPage(references).catch(quietly("references", [])),
-    readCommunityCopies(paper.doi ?? null, work).catch(quietly("community copies", [])),
-    work ? readOpenAlexForPage(work).catch(quietly("OpenAlex record", null)) : null,
+  const references = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((reference) => reference.split("/").at(-1)!).slice(0, 100);
+  const [similar, referenceRows, communities] = await Promise.all([
+    readSimilarForPage(id).catch(quietly("similar papers", id, [])),
+    readReferencesForPage(references).catch(quietly("references", id, [])),
+    readCommunityCopies(paper.doi ?? null, work).catch(quietly("community copies", id, [])),
   ]);
-  const detail = paperDetail(paper, openalex, id, new Date().getUTCFullYear());
   const address = `${SITE_URL}${paperPath(id, title)}`;
   const topic = paper.primary_topic;
   const structured = {
@@ -105,7 +105,7 @@ export default async function Page({ params }: Params) {
         })),
         datePublished: dateOf(paper),
         isPartOf: paper.primary_location?.source?.display_name ? { "@type": "Periodical", name: paper.primary_location.source.display_name, issn: detail.ids.issn ?? undefined, publisher: detail.publisher ?? undefined } : undefined,
-        abstract: paper.abstract ?? undefined,
+        abstract: detail.abstract ?? undefined,
         sameAs: paper.doi ?? undefined,
         inLanguage: detail.language ?? undefined,
         keywords: detail.keywords.join(", ") || undefined,

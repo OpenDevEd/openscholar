@@ -7,9 +7,9 @@ const work = (fields: Record<string, unknown>) => ({ id: "https://openalex.org/W
 describe("a paper page's view of both records", () => {
   it("takes authors' institutions from OpenAlex when our index has none, and keeps our influence counts", () => {
     const ours = work({ authorships: [{ author: { display_name: "A. Author" }, institutions: [] }], influential_citation_count: 7, publication_year: 2021 });
-    const theirs = work({ authorships: [{ author: { display_name: "Ann Author", orcid: "https://orcid.org/0000-0001" }, institutions: [{ display_name: "Uni &amp; College", country_code: "GB" }], is_corresponding: true }] });
+    const theirs = work({ authorships: [{ author: { id: "https://openalex.org/A9", display_name: "Ann Author", orcid: "https://orcid.org/0000-0001" }, institutions: [{ id: "https://openalex.org/I7", display_name: "Uni &amp; College", country_code: "GB" }], is_corresponding: true }] });
     const detail = paperDetail(ours, theirs, "OS1", 2026);
-    expect(detail.authors).toEqual([{ name: "Ann Author", orcid: "https://orcid.org/0000-0001", corresponding: true, institutions: [{ name: "Uni & College", country: "GB" }] }]);
+    expect(detail.authors).toEqual([{ id: "A9", name: "Ann Author", orcid: "https://orcid.org/0000-0001", corresponding: true, institutions: [{ id: "I7", name: "Uni & College", country: "GB" }] }]);
     expect(detail.influentialCitations).toBe(7);
   });
 
@@ -22,5 +22,16 @@ describe("a paper page's view of both records", () => {
     const detail = paperDetail(ours, null, "OS1", 2026);
     expect(detail.copies).toEqual([]);
     expect(detail.citationsByYear).toEqual([{ year: 2022, count: 2 }, { year: 2023, count: 0 }, { year: 2024, count: 5 }]);
+  });
+});
+
+describe("what one source has and the other lacks", () => {
+  it("keeps our PDF when OpenAlex only knows the landing page, and falls back to OpenAlex's abstract", () => {
+    const ours = work({ abstract: null, cited_by_count: 11, locations: [{ pdf_url: "https://cochrane.org/a.pdf", source: null }], publication_year: 2020 });
+    const theirs = work({ abstract: "What it found.", cited_by_count: 19, counts_by_year: [{ year: 2021, cited_by_count: 19 }], locations: [{ landing_page_url: "https://doi.org/10.1/x", source: { display_name: "Journal", type: "journal" } }] });
+    const detail = paperDetail(ours, theirs, "OS1", 2026);
+    expect(detail.copies.map((copy) => [copy.name, copy.pdf])).toEqual([["Journal", false], ["cochrane.org", true]]);
+    expect(detail.abstract).toBe("What it found.");
+    expect(detail.citations).toBe(19);
   });
 });

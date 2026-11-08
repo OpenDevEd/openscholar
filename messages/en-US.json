@@ -790,6 +790,7 @@
     "typeToSearchInstitutions": "Type an institution's name",
     "institutionsUnavailable": "Institutions could not be loaded. Try again.",
     "filterByThisInstitution": "Only works from {name}",
+    "filterByInstitutionCountry": "Only works from institutions in {country}",
     "studyDesign": "Study design",
     "anyStudyDesign": "Any study design",
     "searchStudyDesigns": "Search study designs",

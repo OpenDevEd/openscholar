@@ -7,8 +7,10 @@ import { toast } from "sonner";
 import Link from "@/components/workspace-link";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
-import { IntroGlow, Stat } from "@/components/entity-cards";
+import { IntroGlow, Stat, TopicHoverCard } from "@/components/entity-cards";
 import { PaperRows } from "@/components/papers/paper-rows";
+import { AuthorName, FunderName, InstitutionName, JournalName } from "@/components/papers/paper-entities";
+import { CountryFilterFlag } from "@/components/country-filter-flag";
 import { COVER_KINDS, coverKindOf, PaperCover } from "@/components/papers/paper-cover";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { CitationControl } from "@/components/citation-control";
@@ -83,7 +85,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
             kind={cover ?? coverKindOf(paper.type)}
             title={title}
             authors={detail.authors.map((author) => author.name)}
-            source={paper.primary_location?.source?.display_name ?? detail.publisher}
+            source={detail.journal?.name ?? detail.publisher}
             year={paper.publication_year ?? null}
             type={paper.type ?? null}
             // A community's picture of the first page opens its record, where its PDF is.
@@ -96,11 +98,11 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
             {/* The bar's heading is the title; this is the title at reading size. */}
             <p dir="auto" className="mt-4 text-pretty text-2xl font-semibold leading-tight tracking-tight sm:text-[2rem]">{title}</p>
             <AuthorLine detail={detail} fallback={paper.authors_unparsed} />
-            {paper.primary_location?.source?.display_name ? (
+            {detail.journal ? (
               <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
                 <BookOpen aria-hidden className="mt-0.5 size-4 shrink-0" />
                 <span>
-                  <span className="italic text-foreground">{paper.primary_location.source.display_name}</span>
+                  <JournalName journal={detail.journal} className="italic text-foreground" />
                   {paper.biblio?.volume && `, ${tp("vol")} ${paper.biblio.volume}`}
                   {paper.biblio?.issue && ` (${paper.biblio.issue})`}
                   {paper.biblio?.first_page && `, ${tp("pp")} ${paper.biblio.first_page}${paper.biblio.last_page && paper.biblio.last_page !== paper.biblio.first_page ? `-${paper.biblio.last_page}` : ""}`}
@@ -136,7 +138,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
       <div className="grid gap-x-12 gap-y-10 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-10">
           <Section id="paper-abstract" title={tc("abstract")}>
-            {paper.abstract ? <Abstract text={paper.abstract} /> : <p className="text-sm text-muted-foreground">{t("noAbstract")}</p>}
+            {detail.abstract ? <Abstract text={detail.abstract} /> : <p className="text-sm text-muted-foreground">{t("noAbstract")}</p>}
             {detail.keywords.length ? (
               <div className="mt-5 flex flex-wrap gap-2" aria-label={tTopics("keywords")}>
                 {detail.keywords.map((keyword) => <Link key={keyword} href={buildShareableUrl("", { q: keyword })} className="rounded-md bg-inset px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">{keyword}</Link>)}
@@ -158,7 +160,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
         {/* On a phone the citations come before the abstract; beside it they head the sidebar. */}
         <aside className="contents lg:block lg:min-w-0 lg:space-y-10">
           <div className="-order-1 lg:order-none">
-            <Impact detail={detail} citations={paper.cited_by_count ?? 0} references={paper.referenced_works_count ?? null} fwci={paper.fwci ?? null} year={paper.publication_year ?? null} citingHref={buildShareableUrl("", { cites: appId })} />
+            <Impact detail={detail} citations={detail.citations} references={paper.referenced_works_count ?? null} fwci={paper.fwci ?? null} year={paper.publication_year ?? null} citingHref={buildShareableUrl("", { cites: appId })} />
           </div>
           <Copies copies={detail.copies} />
           {detail.funding.length ? (
@@ -166,7 +168,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
               <ul className="space-y-3">
                 {detail.funding.map((funding) => (
                   <li key={funding.funder} className="text-sm">
-                    <p className="font-medium">{funding.funder}</p>
+                    <p className="font-medium"><FunderName id={funding.id} name={funding.funder} /></p>
                     {funding.awards.length ? <div className="mt-1 flex flex-wrap gap-1.5">{funding.awards.map((award) => <span key={award} dir="ltr" className="rounded bg-inset px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">{award}</span>)}</div> : null}
                   </li>
                 ))}
@@ -218,7 +220,7 @@ function Section({ id, title, count, action, children }: { id: string; title: st
   return (
     <section aria-labelledby={id} className="min-w-0">
       <div className="mb-3 flex min-h-7 items-center justify-between gap-3">
-        <h2 id={id} className="flex items-baseline gap-2 text-sm font-medium text-muted-foreground">
+        <h2 id={id} className="flex scroll-mt-36 items-baseline gap-2 text-sm font-medium text-muted-foreground">
           {title}
           {count != null && <span className="text-xs tabular-nums text-muted-foreground/70">{format.number(count)}</span>}
         </h2>
@@ -263,17 +265,21 @@ const licenseName = (license: string) => (license.startsWith("cc-") ? `CC ${lice
 /** The first few authors under the title; the rest are in the Authors part below. */
 function AuthorLine({ detail, fallback }: { detail: PaperDetail; fallback?: string }) {
   const t = useTranslations("paperPage");
-  const shown = detail.authors.slice(0, 6).map((author) => author.name);
+  const [all, setAll] = useState(false);
+  const shown = all ? detail.authors : detail.authors.slice(0, 6);
   if (!shown.length && !fallback) return null;
   const more = detail.authors.length - shown.length;
   return (
-    <p className="mt-4 flex items-start gap-2 text-sm">
-      <Users aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <span>
-        {shown.length ? shown.join(", ") : fallback}
-        {more > 0 && <> <a href="#paper-authors" className="text-muted-foreground underline-offset-2 hover:text-primary hover:underline">{t("andMore", { count: more })}</a></>}
-      </span>
-    </p>
+    // Every name opens where the first few are, the frame sliding to its new height.
+    <AutoHeight className="mt-4">
+      <p className="flex items-start gap-2 text-sm">
+        <Users aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <span>
+          {shown.length ? shown.map((author, index) => <Fragment key={`${author.name}-${index}`}>{index > 0 && ", "}<AuthorName id={author.id} name={author.name} /></Fragment>) : fallback}
+          {more > 0 && <> <button type="button" onClick={() => setAll(true)} className="rounded-sm text-muted-foreground underline-offset-2 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">{t("andMore", { count: more })}</button></>}
+        </span>
+      </p>
+    </AutoHeight>
   );
 }
 
@@ -346,7 +352,7 @@ function Authors({ detail }: { detail: PaperDetail }) {
           {detail.authors.map((author, index) => (
             <li key={`${author.name}-${index}`} className={cn("min-w-0", !all && index >= AUTHORS_SHOWN && "hidden")}>
               <div className="flex items-center gap-1.5 text-sm font-medium">
-                <span className="break-words">{author.name}</span>
+                <AuthorName id={author.id} name={author.name} className="break-words" />
                 {author.orcid ? (
                   <TooltipHint label={t("orcidOf", { name: author.name })}>
                     <a href={author.orcid} target="_blank" rel="noreferrer" aria-label={t("orcidOf", { name: author.name })} className="shrink-0 rounded-sm focus-visible:outline-2 focus-visible:outline-ring"><OrcidIcon className="size-3.5" /></a>
@@ -355,13 +361,14 @@ function Authors({ detail }: { detail: PaperDetail }) {
                 {author.corresponding ? <span className="shrink-0 rounded bg-primary/10 px-1.5 py-px text-[10px] font-medium text-primary">{t("corresponding")}</span> : null}
               </div>
               {author.institutions.length ? (
-                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-                  {author.institutions.map((institution, place) => <Fragment key={`${institution.name}-${place}`}>
-                    {place > 0 && ", "}
-                    {institution.name}
-                    {institution.country && <span className="ms-1 rounded bg-inset px-1 text-[10px]">{institution.country}</span>}
-                  </Fragment>)}
-                </p>
+                <ul className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                  {author.institutions.map((institution, place) => (
+                    <li key={`${institution.name}-${place}`} className="flex items-center gap-1.5">
+                      {institution.country && <CountryFilterFlag code={institution.country} />}
+                      <InstitutionName institution={institution} className="min-w-0" />
+                    </li>
+                  ))}
+                </ul>
               ) : null}
             </li>
           ))}
@@ -370,7 +377,7 @@ function Authors({ detail }: { detail: PaperDetail }) {
       {/* Our index lists a paper's institutions without saying whose they are. */}
       {!anyAffiliation && detail.institutions.length ? (
         <div className="mt-4 flex flex-wrap gap-1.5" aria-label={t("institutions")}>
-          {detail.institutions.map((institution, index) => <span key={`${institution.name}-${index}`} className={CHIP}>{institution.name}{institution.country && <span className="text-[10px] opacity-70">{institution.country}</span>}</span>)}
+          {detail.institutions.map((institution, index) => <span key={`${institution.name}-${index}`} className={CHIP}>{institution.country && <CountryFilterFlag code={institution.country} />}<InstitutionName institution={institution} /></span>)}
         </div>
       ) : null}
     </Section>
@@ -420,16 +427,18 @@ function Subjects({ detail }: { detail: PaperDetail }) {
       {detail.topics.length ? (
         <div className="-mx-2 space-y-0.5">
           {detail.topics.map((topic) => (
-            <Link key={topic.id} href={topicHref(topic.id, topic.name)} className="relative flex min-h-8 items-center gap-3 overflow-hidden rounded-md px-2 py-1 text-sm transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">
-              {topic.score != null && <span aria-hidden className="absolute inset-y-0 start-0 rounded-md bg-primary/10" style={{ width: `${Math.round(topic.score * 100)}%` }} />}
-              <span className="relative min-w-0 flex-1">{topic.name}</span>
-            </Link>
+            <TopicHoverCard key={topic.id} id={topic.id} name={topic.name}>
+              <Link href={topicHref(topic.id, topic.name)} className="relative flex min-h-8 items-center gap-3 overflow-hidden rounded-md px-2 py-1 text-sm transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">
+                {topic.score != null && <span aria-hidden className="absolute inset-y-0 start-0 rounded-md bg-primary/10" style={{ width: `${Math.round(topic.score * 100)}%` }} />}
+                <span className="relative min-w-0 flex-1">{topic.name}</span>
+              </Link>
+            </TopicHoverCard>
           ))}
         </div>
       ) : null}
       {detail.sdgs.length ? (
         <div className="mt-4 flex flex-wrap gap-1.5" aria-label={t("sdgs")}>
-          {detail.sdgs.map((goal) => <span key={goal} className={`${CHIP} bg-success/10 ink-success`}><Target aria-hidden className="size-3.5" />{goal}</span>)}
+          {detail.sdgs.map((goal) => <Link key={goal.id} href={buildShareableUrl("", { sdg: [goal.id] })} className={`${CHIP} bg-success/10 ink-success transition-colors hover:bg-success/20`}><Target aria-hidden className="size-3.5" />{goal.name}</Link>)}
         </div>
       ) : null}
       {detail.mesh.length ? (

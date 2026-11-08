@@ -791,6 +791,7 @@
     "typeToSearchInstitutions": "اكتب اسم المؤسسة",
     "institutionsUnavailable": "تعذّر تحميل المؤسسات. حاول مرة أخرى.",
     "filterByThisInstitution": "يعمل فقط من {name}",
+    "filterByInstitutionCountry": "الأعمال من مؤسسات في {country} فقط",
     "studyDesign": "تصميم الدراسة",
     "anyStudyDesign": "أي تصميم دراسة",
     "searchStudyDesigns": "ابحث في تصاميم الدراسات",
