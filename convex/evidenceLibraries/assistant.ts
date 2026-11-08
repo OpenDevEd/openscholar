@@ -20,7 +20,7 @@ import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 import { readCredentialMetadata } from "./credentials";
 import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
-import { libraryGrant, libraryOf, organizationGrantsOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
+import { libraryGrant, libraryOf, libraryOwner, organizationGrantsOf, ownerActive, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
 import { readScreeningRequest, requestScreeningGrade } from "./screeningRequests";
 import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
@@ -676,7 +676,9 @@ async function paperSenderOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"e
   if (access && access.role !== "viewer") return { role: access.role, name };
   // Anyone signed in suggests papers to a public community: they go to its review queue (#777).
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  if (library?.state === "active" && !library.unlisted) return { role: "reader", name };
+  // Public as the directory lists it: running, listed, and its owner's account still active.
+  const owner = library?.state === "active" && !library.unlisted ? await libraryOwner(ctx, library) : null;
+  if (owner && ownerActive(owner)) return { role: "reader", name };
   throw createError("FORBIDDEN", "Only the community's team adds papers to it.");
 }
 
