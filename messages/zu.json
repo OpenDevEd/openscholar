@@ -5868,6 +5868,7 @@
     "cardDescription": "Amaphepha engezwa elilodwa ngelilodwa nge-DOI noma nge-ID ye-OpenAlex, ahambisana ne-OpenAlex.",
     "menu": "Amaphepha nge-DOI noma i-ID",
     "menuHint": "Elilodwa noma amaningi, ahambisanayo",
+    "menuNotLive": "Kuyatholakala uma umphakathi usushicilelwe",
     "add": "Engeza amaphepha",
     "title": "Engeza amaphepha",
     "description": "Namathisela ama-DOI, ama-ID e-OpenAlex noma izixhumanisi zawo, afike ku-{max} ngesikhathi esisodwa.",

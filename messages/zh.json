@@ -5868,6 +5868,7 @@
     "cardDescription": "按 DOI 或 OpenAlex ID 逐篇添加的论文，与 OpenAlex 保持同步。",
     "menu": "按 DOI 或 ID 添加论文",
     "menuHint": "一篇或多篇，保持同步",
+    "menuNotLive": "社区上线后可用",
     "add": "添加论文",
     "title": "添加论文",
     "description": "粘贴 DOI、OpenAlex ID 或它们的链接，一次最多 {max} 个。",

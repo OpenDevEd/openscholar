@@ -5868,6 +5868,7 @@
     "cardDescription": "DOI または OpenAlex ID で 1 本ずつ追加した論文。OpenAlex と同期されます。",
     "menu": "DOI または ID で論文を追加",
     "menuHint": "1 本でも複数でも、同期されます",
+    "menuNotLive": "コミュニティの公開後に利用できます",
     "add": "論文を追加",
     "title": "論文を追加",
     "description": "DOI、OpenAlex ID、またはそのリンクを貼り付けてください。一度に {max} 件まで。",

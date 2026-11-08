@@ -5869,6 +5869,7 @@
     "cardDescription": "Einzeln per DOI oder OpenAlex-ID hinzugefügte Arbeiten, mit OpenAlex synchron gehalten.",
     "menu": "Arbeiten per DOI oder ID",
     "menuHint": "Eine oder viele, synchron gehalten",
+    "menuNotLive": "Verfügbar, sobald die Community live ist",
     "add": "Arbeiten hinzufügen",
     "title": "Arbeiten hinzufügen",
     "description": "Füge DOIs, OpenAlex-IDs oder Links dazu ein, bis zu {max} auf einmal.",
