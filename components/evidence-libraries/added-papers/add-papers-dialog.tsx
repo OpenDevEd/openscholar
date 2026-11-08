@@ -105,6 +105,8 @@ export function AddPapersDialog({
   const [sending, setSending] = useState<"publish" | "queue" | null>(null);
   // The lookup the dialog waits for: one started for an earlier paste, or before it closed, is ignored.
   const lookup = useRef(0);
+  // Each opening of the dialog: a send that ends after it was closed leaves a later opening as it is.
+  const session = useRef(0);
   const parsed = parsePaste(text);
   const tooMany = parsed.papers.length > ADDED_PAPERS_MAX;
   const looking = found?.some((row) => !row.answer) ?? false;
@@ -113,6 +115,7 @@ export function AddPapersDialog({
 
   const reset = () => {
     lookup.current += 1;
+    session.current += 1;
     setText("");
     setFound(null);
     setSending(null);
@@ -136,6 +139,7 @@ export function AddPapersDialog({
 
   const send = async (publish: boolean) => {
     if (!workspaceId) return;
+    const opened = session.current;
     setSending(publish ? "publish" : "queue");
     try {
       const results = await add({ libraryId, workspaceId, publish, requestId, papers: ready.map(({ openalexId, doi }) => ({ openalexId, doi })) });
@@ -144,10 +148,11 @@ export function AddPapersDialog({
       if (sent) toast.success(publish ? t("published", { count: sent, community: communityName }) : t("queued", { count: sent }));
       if (failed) toast.error(t("someFailed", { count: failed }));
       onAdded();
+      if (opened !== session.current) return;
       onOpenChange(false);
       reset();
     } catch (error) {
-      setSending(null);
+      if (opened === session.current) setSending(null);
       toast.error(refusalOr(error, t("addFailed")));
     }
   };

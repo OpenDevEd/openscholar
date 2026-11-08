@@ -20,7 +20,7 @@ import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 import { readCredentialMetadata } from "./credentials";
 import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
-import { libraryGrant, libraryOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
+import { libraryGrant, libraryOf, organizationGrantsOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
 import { readScreeningRequest, requestScreeningGrade } from "./screeningRequests";
 import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
@@ -56,9 +56,21 @@ async function personOf(ctx: QueryCtx, userId: Id<"users">) {
  */
 async function signedInFor<Ctx extends QueryCtx>(ctx: Ctx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<Ctx> {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  const here = library !== null && (library.workspaceId === actor.workspaceId || ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null));
+  const here =
+    library !== null &&
+    (library.workspaceId === actor.workspaceId ||
+      ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null) ||
+      (await sharedWithWorkspace(ctx, libraryId, actor.workspaceId)));
   if (!here) throw createError("NOT_FOUND", "Evidence Community not found");
   return await asSignedIn(ctx, await personOf(ctx, actor.userId));
+}
+
+/** Whether the community is shared with the organization whose workspace the person acts in (#1091). Their role there comes from the grant. */
+async function sharedWithWorkspace(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, workspaceId: Id<"workspaces">) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind !== "organization") return false;
+  const organizationId = workspace.organizationId;
+  return (await organizationGrantsOf(ctx, libraryId)).some((grant) => grant.organizationId === organizationId);
 }
 
 /** Refuses, before the person is asked, what only an owner of a library the reply reaches does. */
