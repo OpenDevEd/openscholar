@@ -1,21 +1,22 @@
 "use client";
 
 import useSWR from "swr";
-import { useFormatter, useTranslations } from "next-intl";
-import { useCloseFocus } from "@/components/entity-cards";
-import { Compass, Quote } from "@/components/icons";
+import { useTranslations } from "next-intl";
+import { useCloseFocus } from "@/components/focus-mode/close-context";
+import { Compass } from "@/components/icons";
 import { readSimilarPapers } from "@/app/actions/similar";
+import { PaperRows } from "@/components/papers/paper-rows";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import Link from "@/components/workspace-link";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { similarSearchHref } from "@/lib/search/similar-href";
+import { paperPath } from "@/lib/papers/page-address";
 
 const SHOWN = 8;
 
 /** The papers closest in meaning to the open one. It holds its height while they're read, so nothing moves. */
 export function SimilarPapers({ paperId }: { paperId: string }) {
-  const format = useFormatter();
   const t = useTranslations("similarPapers");
   const closeFocus = useCloseFocus();
   const { data, error, isLoading } = useSWR(["similar-papers", paperId], ([, id]) => unlessLimited(readSimilarPapers(id, SHOWN)), { revalidateOnFocus: false });
@@ -38,22 +39,12 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
         ) : !data?.length ? (
           <p className="py-2 text-sm text-muted-foreground">{t("none")}</p>
         ) : (
-          <ol className="fade-enter divide-y divide-border-subtle">
-            {data.map((paper) => (
-              <li key={paper.id} className="flex items-baseline justify-between gap-4 py-2 text-sm">
-                {paper.doi ? (
-                  <a href={paper.doi} target="_blank" rel="noopener noreferrer" className="min-w-0 hover:underline">{paper.title}</a>
-                ) : (
-                  // No DOI to open: what's like it is the next best place to go.
-                  <Link href={similarSearchHref([paper.id]) ?? "/results"} onNavigate={closeFocus} className="min-w-0 hover:underline">{paper.title}</Link>
-                )}
-                <span className="flex shrink-0 items-center gap-3 text-xs tabular-nums text-muted-foreground">
-                  {paper.year ? <span>{paper.year}</span> : null}
-                  <span className="flex items-center gap-1"><Quote aria-hidden className="size-3" />{format.number(paper.citations)}</span>
-                </span>
-              </li>
-            ))}
-          </ol>
+          <PaperRows
+            className="fade-enter"
+            papers={data}
+            // Each opens its page here, which holds its DOI and where to read it; focus mode closes as it goes.
+            link={(paper) => ({ href: paperPath(paper.id.split("/").at(-1)!, paper.title), onNavigate: closeFocus })}
+          />
         )}
       </div>
     </section>

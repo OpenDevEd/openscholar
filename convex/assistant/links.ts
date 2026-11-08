@@ -1,4 +1,4 @@
-import { paperPage, ownWork } from "../../lib/papers/paper-ref";
+import { openalexWork, paperPage, ownWork } from "../../lib/papers/paper-ref";
 
 /**
  * The link to each record a read returns, written the way a reply writes it: `[name](address)`.
@@ -8,14 +8,17 @@ import { paperPage, ownWork } from "../../lib/papers/paper-ref";
 type Row = Record<string, unknown>;
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() ? value : undefined);
-/** Where a paper opens, from its key or ID, when that is a web page: a reply links nothing else. */
+/**
+ * Where a paper opens, from its key or ID. One from OpenAlex or our index has its own page here, which the panel opens in
+ * focus mode and a new tab opens as the page; a community's record its page there. A reply links nothing else.
+ */
 const paperUrl = (id: unknown) => {
   const value = text(id);
-  const page = value ? paperPage(value) : null;
-  if (page?.startsWith("https://")) return page;
-  // A paper only our index has opens in focus mode from this address, which the panel reads as that paper.
-  const own = value ? ownWork(value.replace(/^openscholar:/, "")) : null;
-  return own ? `https://openscholar.ai/${own}` : undefined;
+  if (!value) return undefined;
+  const work = openalexWork(value) ?? ownWork(value.replace(/^openscholar:/, ""));
+  if (work) return `/papers/${work}`;
+  const page = paperPage(value);
+  return page?.startsWith("https://") ? page : undefined;
 };
 
 /** A saved search's page. An imported search keeps its outside ID, which may hold a `/`, a space or a bracket. */

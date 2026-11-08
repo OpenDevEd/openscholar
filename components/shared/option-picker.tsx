@@ -30,6 +30,7 @@ export function OptionPicker({
   options,
   selected,
   names,
+  icons,
   onSearch,
   onToggle,
 }: {
@@ -42,6 +43,8 @@ export function OptionPicker({
   options: readonly PickerOption[];
   selected: readonly string[];
   names: Record<string, string>;
+  /** What each chip shows before its name, as its row does, such as a country's flag. */
+  icons?: Record<string, React.ReactNode>;
   /** Given when the caller searches; otherwise the list filters itself. */
   onSearch?: (value: string) => void;
   onToggle: (id: string) => void;
@@ -89,6 +92,7 @@ export function OptionPicker({
         <div className="flex flex-wrap gap-1.5">
           {selected.map((id) => (
             <span key={id} className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+              {icons?.[id]}
               <TooltipHint label={names[id] ?? id} onlyWhenClipped>
                 <span className="truncate">
                   {names[id] ?? id}

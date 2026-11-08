@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { Star } from "@/components/icons";
 import { Badge } from "@/components/ui/badge";
@@ -90,15 +91,16 @@ function FilterChip({ item, compact, singleLine, valuesOnly }: { item: FilterIte
       <Icon className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden />
       <span className="min-w-0 [overflow-wrap:anywhere]">
         {item.label !== item.displayValue ? <span className={valuesOnly && !NAMED_BY_ID.has(item.type) ? "sr-only" : "text-muted-foreground"}>{item.label} </span> : null}
-        {item.ratingRange ? <RatingStars range={item.ratingRange} label={item.displayValue} /> : item.displayValue}
+        {item.ratingRange ? <RatingStars range={item.ratingRange} label={item.displayValue} /> : item.places ? (
+          // Each country with its flag in front, as countries read everywhere in the app; a region by its name.
+          item.places.map((place, index) => (
+            <Fragment key={place.id}>
+              {index > 0 && ", "}
+              <span className="whitespace-nowrap">{place.country && <CountryFlag countryCode={place.id} className="me-1 h-[1em] w-[1.33em] align-[-0.125em]" />}{place.name}</span>
+            </Fragment>
+          ))
+        ) : item.displayValue}
       </span>
-      {item.countryCodes?.length ? (
-        <span className="flex shrink-0 items-center gap-0.5 self-center" aria-hidden>
-          {item.countryCodes.slice(0, 3).map((code) => (
-            <CountryFlag key={code} countryCode={code} />
-          ))}
-        </span>
-      ) : null}
     </Badge>
   );
 }

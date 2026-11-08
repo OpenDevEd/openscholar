@@ -95,10 +95,6 @@ function getSortLabel(sort?: string, t?: FilterT): string {
 /**
  * Extract valid country codes from a list of region/country IDs
  */
-function extractCountryCodes(ids: string[]): string[] {
-  return ids.filter((id) => id.length === 2 && COUNTRIES[id]);
-}
-
 /**
  * Format rating range for display (e.g., "3-5 stars")
  */
@@ -137,7 +133,7 @@ function createFilterItem(
   type: FilterItem["type"],
   displayValue: string,
   label: string,
-  extra?: Partial<Pick<FilterItem, "countryCodes" | "ratingRange">>
+  extra?: Partial<Pick<FilterItem, "places" | "ratingRange">>
 ): FilterItem {
   return {
     key,
@@ -184,8 +180,9 @@ export function buildFilterData(
   names: FilterNames = {}
 ): FilterSection[] {
   const sections: FilterSection[] = [];
-  const placeNames = (ids: string[]) =>
-    ids.map((id) => names.place?.(id) ?? COUNTRIES[id] ?? id).join(", ");
+  const placeName = (id: string) => names.place?.(id) ?? COUNTRIES[id] ?? id;
+  const placeNames = (ids: string[]) => ids.map(placeName).join(", ");
+  const places = (ids: string[]) => ids.map((id) => ({ id, name: placeName(id), country: id.length === 2 && !!COUNTRIES[id] }));
 
   // Search section (field + sort) - only include when different from defaults
   const searchItems: FilterItem[] = [];
@@ -261,26 +258,24 @@ export function buildFilterData(
   // Geographic section (regions + country focus)
   const geoItems: FilterItem[] = [];
   if (isCountryFilterActive(params.selectedRegions)) {
-    const countryCodes = extractCountryCodes(params.selectedRegions!);
     geoItems.push(
       createFilterItem(
         "regions",
         "regions",
         placeNames(params.selectedRegions!),
         t ? t("filterLabelInstitutionLocation") : "Institution location",
-        { countryCodes }
+        { places: places(params.selectedRegions!) }
       )
     );
   }
   if (isCountryFocusActive(params.selectedCountryFocus)) {
-    const countryCodes = extractCountryCodes(params.selectedCountryFocus!);
     geoItems.push(
       createFilterItem(
         "countryFocus",
         "countryFocus",
         placeNames(params.selectedCountryFocus!),
         t ? t("filterLabelCountryFocus") : "Country focus",
-        { countryCodes }
+        { places: places(params.selectedCountryFocus!) }
       )
     );
   }
