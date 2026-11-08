@@ -18,12 +18,17 @@ export async function readProfileMembers(ctx: QueryCtx, profileId: Id<"authorPro
   const guests = await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", q => q.eq("item", profileId)).take(MAX_PROFILE_MEMBERS);
   const invitations = role === "owner" ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", profileId).eq("state", "pending")).take(MAX_PROFILE_MEMBERS) : [];
   const editors = (await Promise.all(guests.map(guest => ctx.db.get("users", guest.userId)))).filter(user => user && !ownerIds.has(user._id));
+  // An email is its owners', who manage its people: an editor reads names, photos and roles, as a community's team does.
+  const owner = role === "owner";
   return {
     role,
-    members: [...owners, ...editors].filter(user => user?.state === "active").map(user => ({
-      userId: user!._id, name: [user!.firstName, user!.lastName].filter(Boolean).join(" ") || user!.email,
-      email: user!.email, imageUrl: user!.avatarUrl, role: ownerIds.has(user!._id) ? "owner" as const : "editor" as const, you: user!._id === reader._id,
-    })),
+    members: [...owners, ...editors].filter(user => user?.state === "active").map(user => {
+      const name = [user!.firstName, user!.lastName].filter(Boolean).join(" ");
+      return {
+        userId: user!._id, name: owner ? name || user!.email : name,
+        email: owner ? user!.email : "", imageUrl: user!.avatarUrl, role: ownerIds.has(user!._id) ? "owner" as const : "editor" as const, you: user!._id === reader._id,
+      };
+    }),
     invitations: invitations.map(({_id, email, delivery}) => ({_id, email, delivery})),
   };
 }

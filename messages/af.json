@@ -5355,7 +5355,9 @@
     "forTheirOrganization": "Vir ’n organisasie waarvan {email} ’n admin is",
     "removeThisOrganization": "Verwyder hierdie organisasie? Sy lede behou net rolle wat hulle self gekry het.",
     "organizationLabel": "Organisasie",
-    "ownWorkspaceOwner": "Dit is in hul eie werkruimte, dus is dit hulle s’n."
+    "ownWorkspaceOwner": "Dit is in hul eie werkruimte, dus is dit hulle s’n.",
+    "whoWorksOnIt": "Wie aan hierdie gemeenskap werk. Sy eienaars bestuur die span.",
+    "viewersUntilAnOwner": "Kykers totdat ’n eienaar hulle ’n rol gee."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Opsomming in die ry vir # publikasie.} other {Opsomming in die ry vir # publikasies.}}",

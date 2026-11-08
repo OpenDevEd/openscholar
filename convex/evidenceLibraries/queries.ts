@@ -1011,6 +1011,8 @@ export const libraryTeamValidator = v.object({
   creators: grantedPeopleValidator,
   invitations: teamInvitationsValidator,
   organizations: teamOrganizationsValidator,
+  /** The organization that owns it, whose other members view it; null for one in a person's own workspace. */
+  owningOrganization: v.union(v.null(), v.object({ workspaceId: v.id("workspaces"), name: v.string(), imageUrl: v.union(v.string(), v.null()), colour: v.union(v.string(), v.null()) })),
 });
 
 /** A library's people by role, which everyone who views it reads; its invitations are for its owners, who manage them (#653). */
@@ -1030,6 +1032,8 @@ export async function readLibraryTeam(ctx: QueryCtx, args: { libraryId: Id<"evid
     invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery, toOrganization: i.toOrganization === true })),
     organizations: organizations.flat().sort((a, b) => a.name.localeCompare(b.name)),
     organizationName: (await ownerName(ctx, access.owner)).name,
+    // From the community itself, not the workspace its page is open in: a guest opens it from their own.
+    owningOrganization: access.owner.organization ? { workspaceId: access.owner.workspace._id, name: access.owner.organization.name, imageUrl: access.owner.organization.imageUrl ?? null, colour: access.owner.organization.colour ?? null } : null,
     owners: shown("owner"),
     editors: shown("editor"),
     creators: shown("creator"),

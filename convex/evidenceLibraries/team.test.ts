@@ -84,6 +84,8 @@ describe("listTeam", () => {
       organizationName: "Team team",
       invitations: [],
       organizations: [],
+      // Its owning organization, as the team card names it to anyone, a guest from their own workspace included.
+      owningOrganization: { workspaceId: expect.any(String), name: "Team team", imageUrl: null, colour: null },
       owners: [{ clerkUserId: "user_team", name: "Ada Lovelace", email: "ada@example.org", imageUrl: "https://images.example.org/ada.png" }],
       editors: [],
       creators: [],

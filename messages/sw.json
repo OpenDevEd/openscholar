@@ -5355,7 +5355,9 @@
     "forTheirOrganization": "Kwa shirika ambalo {email} ni msimamizi wake",
     "removeThisOrganization": "Ondoa shirika hili? Wanachama wake wanabaki tu na majukumu waliyopewa wenyewe.",
     "organizationLabel": "Shirika",
-    "ownWorkspaceOwner": "Iko kwenye nafasi kazi yao wenyewe, kwa hiyo ni yao."
+    "ownWorkspaceOwner": "Iko kwenye nafasi kazi yao wenyewe, kwa hiyo ni yao.",
+    "whoWorksOnIt": "Wanaofanya kazi kwenye jumuiya hii. Wamiliki wake husimamia timu.",
+    "viewersUntilAnOwner": "Watazamaji hadi mmiliki awape jukumu."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Ripoti imewekwa kwenye foleni kwa chapisho #.} other {Ripoti imewekwa kwenye foleni kwa machapisho #.}}",

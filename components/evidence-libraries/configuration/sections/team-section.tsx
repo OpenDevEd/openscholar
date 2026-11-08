@@ -9,10 +9,10 @@ import { useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { TeamAccess, type AccessMember } from "./team-access";
 
-export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> }) {
+/** The community's team: its owners manage it, and everyone else who opens its settings sees it, read-only (`readOnly`). */
+export function TeamSection({ libraryId, readOnly = false }: { libraryId: Id<"evidenceLibraries">; readOnly?: boolean }) {
   const tLabels = useTranslations("libraryTeamAccess");
   const t = useTranslations("libraryTeamAccess");
   const { user } = useUser();
@@ -25,9 +25,7 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
   const grantOrganization = useMutation(api.evidenceLibraries.organizationGrants.grant);
   const changeOrganizationRole = useMutation(api.evidenceLibraries.organizationGrants.changeRole);
   const removeOrganization = useMutation(api.evidenceLibraries.organizationGrants.remove);
-  // The workspace the page is in is the library's (components/workspaces/item-home.tsx): an organization's other members view it.
-  const workspace = useCurrentWorkspace();
-  if (!data || !workspace) return (
+  if (!data) return (
     <SectionCard id="sec-team" icon={Users} title={t("team")} description={t("manageAccessToThisLibrary")} aria-busy="true">
       <Spinner aria-label={t("loadingTeam")} />
     </SectionCard>
@@ -43,9 +41,10 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
   const roleOf = (member: AccessMember) => member.role === "Editor" ? "editor" as const : "creator" as const;
   const resend = async (member: AccessMember) => { await invite({ libraryId, email: member.email, role: roleOf(member), ...(member.toOrganization ? { toOrganization: true } : {}) }); };
   const organizationOf = (member: AccessMember) => member.id as Id<"organizations">;
-  return <TeamAccess scope="library" members={members}
+  return <TeamAccess scope="library" members={members} readOnly={readOnly}
     libraryId={libraryId}
-    organization={workspace.kind === "organization" ? workspace : undefined}
+    // The organization that owns it, as the team read it: a guest opens its page from their own workspace.
+    organization={data.owningOrganization ? { kind: "organization", name: data.owningOrganization.name, workspaceId: data.owningOrganization.workspaceId, ...(data.owningOrganization.imageUrl ? { imageUrl: data.owningOrganization.imageUrl } : {}), ...(data.owningOrganization.colour ? { colour: data.owningOrganization.colour } : {}) } : undefined}
     onResend={resend}
     onMembersChange={async next => {
       for (const member of next) {

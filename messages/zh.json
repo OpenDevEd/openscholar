@@ -5354,7 +5354,9 @@
     "forTheirOrganization": "面向 {email} 担任管理员的组织",
     "removeThisOrganization": "移除此组织？其成员只保留个人获得的角色。",
     "organizationLabel": "组织",
-    "ownWorkspaceOwner": "它在其本人的工作区中，因此归其所有。"
+    "ownWorkspaceOwner": "它在其本人的工作区中，因此归其所有。",
+    "whoWorksOnIt": "参与此文献社区的成员。团队由所有者管理。",
+    "viewersUntilAnOwner": "在所有者授予角色之前为查看者。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {已为 # 篇出版物排队摘要。}}",

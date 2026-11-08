@@ -5355,7 +5355,9 @@
     "forTheirOrganization": "لمؤسسة يكون {email} مسؤولًا فيها",
     "removeThisOrganization": "إزالة هذه المؤسسة؟ يحتفظ أعضاؤها فقط بالأدوار الممنوحة لهم شخصيًا.",
     "organizationLabel": "المؤسسة",
-    "ownWorkspaceOwner": "إنه في مساحة عمله الخاصة، لذا فهو ملكه."
+    "ownWorkspaceOwner": "إنه في مساحة عمله الخاصة، لذا فهو ملكه.",
+    "whoWorksOnIt": "من يعمل على هذا المجتمع. يدير مالكوه الفريق.",
+    "viewersUntilAnOwner": "مشاهدون حتى يمنحهم أحد المالكين دورًا."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, zero {لا يوجد ملخص في الانتظار} one {ملخص في الانتظار لمنشور واحد.} two {ملخص في الانتظار لمنشورين.} few {ملخص في الانتظار لـ # منشورات.} many {ملخص في الانتظار لـ # منشورًا.} other {ملخص في الانتظار لـ # منشور.}}",

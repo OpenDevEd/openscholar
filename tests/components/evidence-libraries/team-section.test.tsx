@@ -21,12 +21,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: () => ({ data: 
  editors: [], creators: [{ clerkUserId: "creator", name: "Grace", email: "grace@example.org" }],
  invitations: [],
  organizations: mocks.organizations,
+ owningOrganization: { workspaceId: "ws_org", name: "Test Org", imageUrl: null, colour: null },
 } }) }));
-// The workspace the page is in: the library's organization, whose other members view it.
-vi.mock("@/components/workspaces/parts", async (original) => ({
-  ...(await original<typeof import("@/components/workspaces/parts")>()),
-  useCurrentWorkspace: () => ({ kind: "organization", name: "Test Org", members: 3 }),
-}));
 import { TeamSection } from "@/components/evidence-libraries/configuration/sections/team-section";
 const libraryId = "library_1" as Id<"evidenceLibraries">;
 beforeEach(() => {
@@ -62,6 +58,14 @@ describe("Library Team", () => {
    await user.click(screen.getByRole("button", { name: "Remove from community" }));
    expect(mocks.mutate).toHaveBeenCalledWith({ libraryId, clerkUserId: "creator" });
  });
+  // Everyone but its owners sees who works on it, and changes nothing.
+  it("shows the team read-only to someone who doesn't own it: names and roles, with nothing to add, change or remove", () => {
+    render(<TeamSection libraryId={libraryId} readOnly />);
+    expect(screen.getByText("Grace")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add member" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Actions for Grace" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /Grace/ })).toBeNull();
+  });
  // #1091: an organization it's shared with is one row, and removing it takes the organization's access, not a person's.
  it("lists an organization it's shared with as one row, and removes the organization", async () => {
    mocks.organizations.push({ organizationId: "org_partners", workspaceId: null, name: "Partners", imageUrl: null, colour: null, role: "creator" });

@@ -5354,7 +5354,9 @@
     "forTheirOrganization": "ऐसे संगठन के लिए जिसका एडमिन {email} है",
     "removeThisOrganization": "यह संगठन हटाएं? इसके सदस्यों के पास बस वही भूमिकाएँ रहेंगी जो उन्हें खुद दी गई थीं।",
     "organizationLabel": "संगठन",
-    "ownWorkspaceOwner": "यह उनके अपने वर्कस्पेस में है, इसलिए उनकी है।"
+    "ownWorkspaceOwner": "यह उनके अपने वर्कस्पेस में है, इसलिए उनकी है।",
+    "whoWorksOnIt": "इस कम्युनिटी पर कौन काम करता है। इसकी टीम इसके मालिक संभालते हैं।",
+    "viewersUntilAnOwner": "जब तक कोई मालिक उन्हें भूमिका न दे, वे दर्शक हैं।"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {# प्रकाशन के लिए डाइजेस्ट कतार में है।} other {# प्रकाशनों के लिए डाइजेस्ट कतार में है।}}",

@@ -102,6 +102,7 @@ import { DomainSection } from "./sections/domain-section";
 import { ListingSection } from "./sections/listing-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
 import { MoveDialog } from "@/components/workspaces/move-dialog";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { FeaturesSection } from "./sections/features-section";
 import { FooterSection } from "./sections/footer-section";
 import { HomeSection } from "./sections/home-section";
@@ -371,9 +372,9 @@ function Workspace({
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);
-  // Read-only, the rail lists the settings cards only.
+  // Read-only, the rail lists the settings cards and the team, which everyone sees.
   const railGroups = editable ? RAIL_GROUPS : RAIL_GROUPS.flatMap((group) => {
-    const sections = group.sections.filter(isPageSection);
+    const sections = group.sections.filter((key) => isPageSection(key) || key === "team");
     return sections.length ? [{ ...group, sections }] : [];
   });
   const problems = hasProblems(draft);
@@ -740,6 +741,9 @@ function Workspace({
                 ) : null}
                 </ReadOnlyContext>
               </fieldset>
+              {/* Everyone else sees who works on it, outside the disabled fieldset so its search and list stay usable. */}
+              {/* Its people arrive after the page: the card slides to their height instead of jumping. */}
+              {editable ? null : <AutoHeight><div className="pt-4"><TeamSection libraryId={libraryId} readOnly /></div></AutoHeight>}
               </div>
       </ConfigurationLayout>
     </FileUploadsProvider>
