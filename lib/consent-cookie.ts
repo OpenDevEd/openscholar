@@ -85,6 +85,10 @@ export function applyConsentToPostHog(posthog: PostHog, choice = readConsent()?.
  */
 export function watchConsent(onChange: (choice: ConsentChoice | undefined) => void) {
   let last = readConsent()?.choice;
+  // An answer given in this tab moves the baseline too, so a later change elsewhere is still seen.
+  window.addEventListener(CONSENT_UPDATED_EVENT, () => {
+    last = readConsent()?.choice;
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
     const now = readConsent()?.choice;
