@@ -4366,6 +4366,36 @@
         "did": "Autor reivindicado",
         "where": "Autores",
         "ask": "Reivindicar um autor"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Procurando artigos para uma comunidade",
+        "did": "Procurou artigos para uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Procurar artigos para uma comunidade"
+      },
+      "addCommunityPapers": {
+        "doing": "Adicionando artigos a uma comunidade",
+        "did": "Adicionou artigos a uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Adicionar artigos a uma comunidade"
+      },
+      "communityAddedPapers": {
+        "doing": "Lendo os artigos adicionados de uma comunidade",
+        "did": "Leu os artigos adicionados de uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Ler os artigos adicionados de uma comunidade"
+      },
+      "removeCommunityPaper": {
+        "doing": "Removendo um artigo de uma comunidade",
+        "did": "Removeu um artigo de uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Remover um artigo de uma comunidade"
+      },
+      "communityPapersSettings": {
+        "doing": "Alterando os artigos adicionados de uma comunidade",
+        "did": "Alterou os artigos adicionados de uma comunidade",
+        "where": "Evidence Community",
+        "ask": "Pausar ou retomar os artigos adicionados de uma comunidade, ou os PDFs deles"
       }
     },
     "asks": {
@@ -5814,5 +5844,51 @@
     "doiCopyFailed": "Não foi possível copiar o DOI",
     "paperPage": "Página do artigo",
     "share": "Compartilhar"
+  },
+  "addedPapers": {
+    "name": "Artigos adicionados",
+    "provider": "DOIs e IDs do OpenAlex",
+    "cardDescription": "Artigos adicionados um a um por DOI ou ID do OpenAlex, sincronizados com o OpenAlex.",
+    "menu": "Artigos por DOI ou ID",
+    "menuHint": "Um ou vários, sincronizados",
+    "add": "Adicionar artigos",
+    "title": "Adicionar artigos",
+    "description": "Cole DOIs, IDs do OpenAlex ou links para eles, até {max} de cada vez.",
+    "inputLabel": "DOIs, IDs do OpenAlex ou links",
+    "papers": "{count, plural, one {# artigo} other {# artigos}}",
+    "tooMany": "Mais de {max} artigos",
+    "invalid": "Não é DOI nem ID: {values}",
+    "find": "Encontrar artigos",
+    "found": "Artigos encontrados",
+    "notFound": "Não encontrado",
+    "alreadyAdded": "Já adicionado",
+    "inQueue": "Na fila de revisão",
+    "doiOnly": "Só DOI",
+    "leaveOut": "Deixar de fora",
+    "leaveOutLabel": "Deixar de fora {title}",
+    "doiOnlyNote": "{count, plural, one {O OpenAlex ainda não tem um deles. Ele entra pelo DOI, e cada sincronização verifica o OpenAlex de novo.} other {O OpenAlex ainda não tem # deles. Eles entram pelos DOIs, e cada sincronização verifica o OpenAlex de novo.}}",
+    "toAdd": "{count, plural, one {# artigo para adicionar} other {# artigos para adicionar}}",
+    "sendToQueue": "Enviar para a fila",
+    "publish": "Publicar",
+    "published": "{count, plural, one {# artigo publicado em {community}} other {# artigos publicados em {community}}}",
+    "queued": "{count, plural, one {# artigo enviado para a fila de revisão} other {# artigos enviados para a fila de revisão}}",
+    "someFailed": "{count, plural, one {# artigo foi salvo como rascunho, mas não enviado. Abra-o no admin para enviá-lo.} other {# artigos foram salvos como rascunhos, mas não enviados. Abra-os no admin para enviá-los.}}",
+    "lookupFailed": "A comunidade não conseguiu procurar estes artigos. Tente de novo.",
+    "addFailed": "A comunidade não conseguiu adicionar estes artigos. Tente de novo.",
+    "noAuthors": "Sem autores indicados",
+    "unavailable": "Indisponível",
+    "settingsFailed": "A comunidade não aceitou a alteração. Tente de novo.",
+    "ownerOnly": "Só o proprietário altera isto",
+    "from": "De {name}",
+    "returned": "Devolvido",
+    "openIn": "Abrir em {community}",
+    "openLabel": "Abrir {title} em {community}",
+    "remove": "Remover",
+    "removeLabel": "Remover {title}",
+    "withdraw": "Retirar",
+    "withdrawLabel": "Retirar {title}",
+    "removed": "Artigo removido da comunidade",
+    "withdrawn": "Artigo retirado da fila de revisão",
+    "removeFailed": "A comunidade não conseguiu remover este artigo. Tente de novo."
   }
 }

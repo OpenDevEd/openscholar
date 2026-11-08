@@ -4366,6 +4366,36 @@
         "did": "'n Outeur opgeëis",
         "where": "Outeurs",
         "ask": "Eis 'n outeur op"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Soek artikels vir 'n gemeenskap op",
+        "did": "Het artikels vir 'n gemeenskap opgesoek",
+        "where": "Evidence Community",
+        "ask": "Soek artikels vir 'n gemeenskap op"
+      },
+      "addCommunityPapers": {
+        "doing": "Voeg artikels by 'n gemeenskap",
+        "did": "Het artikels by 'n gemeenskap gevoeg",
+        "where": "Evidence Community",
+        "ask": "Voeg artikels by 'n gemeenskap"
+      },
+      "communityAddedPapers": {
+        "doing": "Lees 'n gemeenskap se bygevoegde artikels",
+        "did": "Het 'n gemeenskap se bygevoegde artikels gelees",
+        "where": "Evidence Community",
+        "ask": "Lees 'n gemeenskap se bygevoegde artikels"
+      },
+      "removeCommunityPaper": {
+        "doing": "Haal 'n artikel uit 'n gemeenskap",
+        "did": "Het 'n artikel uit 'n gemeenskap gehaal",
+        "where": "Evidence Community",
+        "ask": "Haal 'n artikel uit 'n gemeenskap"
+      },
+      "communityPapersSettings": {
+        "doing": "Verander 'n gemeenskap se bygevoegde artikels",
+        "did": "Het 'n gemeenskap se bygevoegde artikels verander",
+        "where": "Evidence Community",
+        "ask": "Onderbreek of hervat 'n gemeenskap se bygevoegde artikels, of hul PDF's"
       }
     },
     "asks": {
@@ -5814,5 +5844,51 @@
     "doiCopyFailed": "Kon nie die DOI kopieer nie",
     "paperPage": "Artikelblad",
     "share": "Deel"
+  },
+  "addedPapers": {
+    "name": "Bygevoegde artikels",
+    "provider": "DOI's en OpenAlex-ID's",
+    "cardDescription": "Artikels een vir een bygevoeg met 'n DOI of OpenAlex-ID, gesinkroniseer met OpenAlex.",
+    "menu": "Artikels volgens DOI of ID",
+    "menuHint": "Een of baie, gesinkroniseer",
+    "add": "Voeg artikels by",
+    "title": "Voeg artikels by",
+    "description": "Plak DOI's, OpenAlex-ID's of skakels daarna, tot {max} op 'n slag.",
+    "inputLabel": "DOI's, OpenAlex-ID's of skakels",
+    "papers": "{count, plural, one {# artikel} other {# artikels}}",
+    "tooMany": "Meer as {max} artikels",
+    "invalid": "Nie 'n DOI of ID nie: {values}",
+    "find": "Soek artikels",
+    "found": "Artikels gevind",
+    "notFound": "Nie gevind nie",
+    "alreadyAdded": "Reeds bygevoeg",
+    "inQueue": "In die hersieningsry",
+    "doiOnly": "Net DOI",
+    "leaveOut": "Laat uit",
+    "leaveOutLabel": "Laat {title} uit",
+    "doiOnlyNote": "{count, plural, one {OpenAlex het een hiervan nog nie. Dit kom in deur sy DOI, en elke sinkronisasie kyk weer in OpenAlex.} other {OpenAlex het # hiervan nog nie. Hulle kom in deur hul DOI's, en elke sinkronisasie kyk weer in OpenAlex.}}",
+    "toAdd": "{count, plural, one {# artikel om by te voeg} other {# artikels om by te voeg}}",
+    "sendToQueue": "Stuur na die ry",
+    "publish": "Publiseer",
+    "published": "{count, plural, one {# artikel in {community} gepubliseer} other {# artikels in {community} gepubliseer}}",
+    "queued": "{count, plural, one {# artikel na die hersieningsry gestuur} other {# artikels na die hersieningsry gestuur}}",
+    "someFailed": "{count, plural, one {# artikel is as 'n konsep gestoor maar nie gestuur nie. Maak dit in die admin oop om dit te stuur.} other {# artikels is as konsepte gestoor maar nie gestuur nie. Maak hulle in die admin oop om hulle te stuur.}}",
+    "lookupFailed": "Die gemeenskap kon nie hierdie artikels opsoek nie. Probeer weer.",
+    "addFailed": "Die gemeenskap kon nie hierdie artikels byvoeg nie. Probeer weer.",
+    "noAuthors": "Geen outeurs gelys nie",
+    "unavailable": "Nie beskikbaar nie",
+    "settingsFailed": "Die gemeenskap het nie die verandering aanvaar nie. Probeer weer.",
+    "ownerOnly": "Net die eienaar verander dit",
+    "from": "Van {name}",
+    "returned": "Teruggestuur",
+    "openIn": "Maak oop in {community}",
+    "openLabel": "Maak {title} in {community} oop",
+    "remove": "Verwyder",
+    "removeLabel": "Verwyder {title}",
+    "withdraw": "Trek terug",
+    "withdrawLabel": "Trek {title} terug",
+    "removed": "Artikel uit die gemeenskap verwyder",
+    "withdrawn": "Artikel uit die hersieningsry teruggetrek",
+    "removeFailed": "Die gemeenskap kon nie hierdie artikel verwyder nie. Probeer weer."
   }
 }

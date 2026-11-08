@@ -4365,6 +4365,36 @@
         "did": "Auteur revendiqué",
         "where": "Auteurs",
         "ask": "Revendiquer un auteur"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Recherche d'articles pour une communauté",
+        "did": "A recherché des articles pour une communauté",
+        "where": "Evidence Community",
+        "ask": "Rechercher des articles pour une communauté"
+      },
+      "addCommunityPapers": {
+        "doing": "Ajout d'articles à une communauté",
+        "did": "A ajouté des articles à une communauté",
+        "where": "Evidence Community",
+        "ask": "Ajouter des articles à une communauté"
+      },
+      "communityAddedPapers": {
+        "doing": "Lecture des articles ajoutés d'une communauté",
+        "did": "A lu les articles ajoutés d'une communauté",
+        "where": "Evidence Community",
+        "ask": "Lire les articles ajoutés d'une communauté"
+      },
+      "removeCommunityPaper": {
+        "doing": "Retrait d'un article d'une communauté",
+        "did": "A retiré un article d'une communauté",
+        "where": "Evidence Community",
+        "ask": "Retirer un article d'une communauté"
+      },
+      "communityPapersSettings": {
+        "doing": "Modification des articles ajoutés d'une communauté",
+        "did": "A modifié les articles ajoutés d'une communauté",
+        "where": "Evidence Community",
+        "ask": "Suspendre ou reprendre les articles ajoutés d'une communauté, ou leurs PDF"
       }
     },
     "asks": {
@@ -5813,5 +5843,51 @@
     "doiCopyFailed": "Impossible de copier le DOI",
     "paperPage": "Page de l’article",
     "share": "Partager"
+  },
+  "addedPapers": {
+    "name": "Articles ajoutés",
+    "provider": "DOI et identifiants OpenAlex",
+    "cardDescription": "Articles ajoutés un par un par DOI ou identifiant OpenAlex, synchronisés avec OpenAlex.",
+    "menu": "Articles par DOI ou identifiant",
+    "menuHint": "Un ou plusieurs, synchronisés",
+    "add": "Ajouter des articles",
+    "title": "Ajouter des articles",
+    "description": "Collez des DOI, des identifiants OpenAlex ou des liens vers eux, jusqu'à {max} à la fois.",
+    "inputLabel": "DOI, identifiants OpenAlex ou liens",
+    "papers": "{count, plural, one {# article} other {# articles}}",
+    "tooMany": "Plus de {max} articles",
+    "invalid": "Ni DOI ni identifiant : {values}",
+    "find": "Trouver les articles",
+    "found": "Articles trouvés",
+    "notFound": "Introuvable",
+    "alreadyAdded": "Déjà ajouté",
+    "inQueue": "Dans la file de relecture",
+    "doiOnly": "DOI seul",
+    "leaveOut": "Écarter",
+    "leaveOutLabel": "Écarter {title}",
+    "doiOnlyNote": "{count, plural, one {OpenAlex n'a pas encore l'un d'eux. Il arrive par son DOI, et chaque synchronisation revérifie OpenAlex.} other {OpenAlex n'a pas encore # d'entre eux. Ils arrivent par leur DOI, et chaque synchronisation revérifie OpenAlex.}}",
+    "toAdd": "{count, plural, one {# article à ajouter} other {# articles à ajouter}}",
+    "sendToQueue": "Envoyer en file",
+    "publish": "Publier",
+    "published": "{count, plural, one {# article publié dans {community}} other {# articles publiés dans {community}}}",
+    "queued": "{count, plural, one {# article envoyé dans la file de relecture} other {# articles envoyés dans la file de relecture}}",
+    "someFailed": "{count, plural, one {# article a été enregistré comme brouillon mais pas envoyé. Ouvrez-le dans l'admin pour l'envoyer.} other {# articles ont été enregistrés comme brouillons mais pas envoyés. Ouvrez-les dans l'admin pour les envoyer.}}",
+    "lookupFailed": "La communauté n'a pas pu rechercher ces articles. Réessayez.",
+    "addFailed": "La communauté n'a pas pu ajouter ces articles. Réessayez.",
+    "noAuthors": "Aucun auteur indiqué",
+    "unavailable": "Indisponible",
+    "settingsFailed": "La communauté n'a pas pris en compte le changement. Réessayez.",
+    "ownerOnly": "Seul le propriétaire modifie ceci",
+    "from": "De {name}",
+    "returned": "Renvoyé",
+    "openIn": "Ouvrir dans {community}",
+    "openLabel": "Ouvrir {title} dans {community}",
+    "remove": "Retirer",
+    "removeLabel": "Retirer {title}",
+    "withdraw": "Annuler l'envoi",
+    "withdrawLabel": "Annuler l'envoi de {title}",
+    "removed": "Article retiré de la communauté",
+    "withdrawn": "Article retiré de la file de relecture",
+    "removeFailed": "La communauté n'a pas pu retirer cet article. Réessayez."
   }
 }

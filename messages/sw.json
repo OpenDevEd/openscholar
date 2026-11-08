@@ -4366,6 +4366,36 @@
         "did": "Imedai mwandishi",
         "where": "Waandishi",
         "ask": "Dai mwandishi"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Inatafuta makala kwa ajili ya jumuiya",
+        "did": "Ilitafuta makala kwa ajili ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Tafuta makala kwa ajili ya jumuiya"
+      },
+      "addCommunityPapers": {
+        "doing": "Inaongeza makala kwenye jumuiya",
+        "did": "Iliongeza makala kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ongeza makala kwenye jumuiya"
+      },
+      "communityAddedPapers": {
+        "doing": "Inasoma makala zilizoongezwa za jumuiya",
+        "did": "Ilisoma makala zilizoongezwa za jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma makala zilizoongezwa za jumuiya"
+      },
+      "removeCommunityPaper": {
+        "doing": "Inaondoa makala kwenye jumuiya",
+        "did": "Iliondoa makala kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ondoa makala kwenye jumuiya"
+      },
+      "communityPapersSettings": {
+        "doing": "Inabadilisha makala zilizoongezwa za jumuiya",
+        "did": "Ilibadilisha makala zilizoongezwa za jumuiya",
+        "where": "Evidence Community",
+        "ask": "Sitisha au endelea na makala zilizoongezwa za jumuiya, au PDF zake"
       }
     },
     "asks": {
@@ -5814,5 +5844,51 @@
     "doiCopyFailed": "Imeshindwa kunakili DOI",
     "paperPage": "Ukurasa wa makala",
     "share": "Shiriki"
+  },
+  "addedPapers": {
+    "name": "Makala zilizoongezwa",
+    "provider": "DOI na vitambulisho vya OpenAlex",
+    "cardDescription": "Makala zilizoongezwa moja moja kwa DOI au kitambulisho cha OpenAlex, zikisawazishwa na OpenAlex.",
+    "menu": "Makala kwa DOI au kitambulisho",
+    "menuHint": "Moja au nyingi, zikisawazishwa",
+    "add": "Ongeza makala",
+    "title": "Ongeza makala",
+    "description": "Bandika DOI, vitambulisho vya OpenAlex au viungo vyake, hadi {max} kwa wakati mmoja.",
+    "inputLabel": "DOI, vitambulisho vya OpenAlex au viungo",
+    "papers": "{count, plural, one {makala #} other {makala #}}",
+    "tooMany": "Zaidi ya makala {max}",
+    "invalid": "Si DOI wala kitambulisho: {values}",
+    "find": "Tafuta makala",
+    "found": "Makala zilizopatikana",
+    "notFound": "Haikupatikana",
+    "alreadyAdded": "Tayari imeongezwa",
+    "inQueue": "Kwenye foleni ya ukaguzi",
+    "doiOnly": "DOI tu",
+    "leaveOut": "Acha",
+    "leaveOutLabel": "Acha {title}",
+    "doiOnlyNote": "{count, plural, one {OpenAlex bado haina mojawapo ya hizi. Inaingia kupitia DOI yake, na kila usawazishaji hukagua OpenAlex tena.} other {OpenAlex bado haina # kati ya hizi. Zinaingia kupitia DOI zake, na kila usawazishaji hukagua OpenAlex tena.}}",
+    "toAdd": "{count, plural, one {makala # ya kuongeza} other {makala # za kuongeza}}",
+    "sendToQueue": "Tuma kwenye foleni",
+    "publish": "Chapisha",
+    "published": "{count, plural, one {makala # imechapishwa kwenye {community}} other {makala # zimechapishwa kwenye {community}}}",
+    "queued": "{count, plural, one {makala # imetumwa kwenye foleni ya ukaguzi} other {makala # zimetumwa kwenye foleni ya ukaguzi}}",
+    "someFailed": "{count, plural, one {makala # imehifadhiwa kama rasimu lakini haikutumwa. Ifungue kwenye admin ili uitume.} other {makala # zimehifadhiwa kama rasimu lakini hazikutumwa. Zifungue kwenye admin ili uzitume.}}",
+    "lookupFailed": "Jumuiya haikuweza kutafuta makala hizi. Jaribu tena.",
+    "addFailed": "Jumuiya haikuweza kuongeza makala hizi. Jaribu tena.",
+    "noAuthors": "Hakuna waandishi walioorodheshwa",
+    "unavailable": "Haipatikani",
+    "settingsFailed": "Jumuiya haikupokea mabadiliko. Jaribu tena.",
+    "ownerOnly": "Mmiliki pekee hubadilisha hili",
+    "from": "Kutoka kwa {name}",
+    "returned": "Imerudishwa",
+    "openIn": "Fungua kwenye {community}",
+    "openLabel": "Fungua {title} kwenye {community}",
+    "remove": "Ondoa",
+    "removeLabel": "Ondoa {title}",
+    "withdraw": "Rudisha",
+    "withdrawLabel": "Rudisha {title}",
+    "removed": "Makala imeondolewa kwenye jumuiya",
+    "withdrawn": "Makala imerudishwa kutoka foleni ya ukaguzi",
+    "removeFailed": "Jumuiya haikuweza kuondoa makala hii. Jaribu tena."
   }
 }

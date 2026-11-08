@@ -29,6 +29,17 @@ const roleOf = (fixture: Fixture, clerkUserId: string) =>
   fixture.t.run(async (ctx) => readLibraryRole(ctx, (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!, clerkUserId));
 
 describe("sharing a community with an organization", () => {
+  it("lets a member of an organization it's shared with add papers to it from that organization's workspace", async () => {
+    const fixture = await createReadySetupFixture("org_grant_papers");
+    const { organizationId, users } = await partners(fixture, { ownerAdmins: true });
+    const libraryId = fixture.created.libraryId;
+    const workspaceId = await fixture.t.run((ctx) => ensureWorkspace(ctx, { kind: "organization", organizationId }));
+    const check = () => fixture.t.query(internal.assistant.asking.check, { userId: users.user_partner_member!, workspaceId, path: "evidenceLibraries/assistant:addPapers", input: JSON.stringify({ libraryId, papers: [{ doi: "10.1000/w1" }], publish: false, requestId: "r1" }) });
+    expect(await check()).toMatch(/not found/);
+    await fixture.admin.mutation(api.evidenceLibraries.organizationGrants.grant, { libraryId, organizationId, role: "creator" });
+    expect(await check()).toBeNull();
+  });
+
   it("gives every member of an organization its owner shares it with the role, until they leave or the grant goes", async () => {
     const fixture = await createReadySetupFixture("org_grant");
     const { organizationId } = await partners(fixture, { ownerAdmins: true });

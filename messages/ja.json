@@ -4365,6 +4365,36 @@
         "did": "著者を申請しました",
         "where": "著者",
         "ask": "著者を申請"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "コミュニティの論文を検索中",
+        "did": "コミュニティの論文を検索しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの論文を検索"
+      },
+      "addCommunityPapers": {
+        "doing": "コミュニティに論文を追加中",
+        "did": "コミュニティに論文を追加しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティに論文を追加"
+      },
+      "communityAddedPapers": {
+        "doing": "コミュニティの追加した論文を読み込み中",
+        "did": "コミュニティの追加した論文を読み込みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの追加した論文を読み込む"
+      },
+      "removeCommunityPaper": {
+        "doing": "コミュニティから論文を外しています",
+        "did": "コミュニティから論文を外しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティから論文を外す"
+      },
+      "communityPapersSettings": {
+        "doing": "コミュニティの追加した論文を変更中",
+        "did": "コミュニティの追加した論文を変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの追加した論文や PDF を一時停止または再開"
       }
     },
     "asks": {
@@ -5813,5 +5843,51 @@
     "doiCopyFailed": "DOIをコピーできませんでした",
     "paperPage": "論文ページ",
     "share": "共有"
+  },
+  "addedPapers": {
+    "name": "追加した論文",
+    "provider": "DOI と OpenAlex ID",
+    "cardDescription": "DOI または OpenAlex ID で 1 本ずつ追加した論文。OpenAlex と同期されます。",
+    "menu": "DOI または ID で論文を追加",
+    "menuHint": "1 本でも複数でも、同期されます",
+    "add": "論文を追加",
+    "title": "論文を追加",
+    "description": "DOI、OpenAlex ID、またはそのリンクを貼り付けてください。一度に {max} 件まで。",
+    "inputLabel": "DOI、OpenAlex ID、またはリンク",
+    "papers": "{count, plural, other {# 件の論文}}",
+    "tooMany": "{max} 件を超えています",
+    "invalid": "DOI でも ID でもありません: {values}",
+    "find": "論文を探す",
+    "found": "見つかった論文",
+    "notFound": "見つかりません",
+    "alreadyAdded": "追加済み",
+    "inQueue": "レビュー待ち",
+    "doiOnly": "DOI のみ",
+    "leaveOut": "除外",
+    "leaveOutLabel": "{title} を除外",
+    "doiOnlyNote": "{count, plural, other {このうち # 件はまだ OpenAlex にありません。DOI から取り込まれ、同期のたびに OpenAlex を確認します。}}",
+    "toAdd": "{count, plural, other {追加する論文 # 件}}",
+    "sendToQueue": "キューに送る",
+    "publish": "公開",
+    "published": "{count, plural, other {# 件の論文を {community} に公開しました}}",
+    "queued": "{count, plural, other {# 件の論文をレビューキューに送りました}}",
+    "someFailed": "{count, plural, other {# 件の論文は下書きとして保存されましたが、送信されませんでした。管理画面で開いて送信してください。}}",
+    "lookupFailed": "コミュニティがこれらの論文を検索できませんでした。もう一度お試しください。",
+    "addFailed": "コミュニティがこれらの論文を追加できませんでした。もう一度お試しください。",
+    "noAuthors": "著者の記載なし",
+    "unavailable": "利用できません",
+    "settingsFailed": "コミュニティが変更を受け付けませんでした。もう一度お試しください。",
+    "ownerOnly": "オーナーだけが変更できます",
+    "from": "{name} から",
+    "returned": "差し戻し",
+    "openIn": "{community} で開く",
+    "openLabel": "{title} を {community} で開く",
+    "remove": "削除",
+    "removeLabel": "{title} を削除",
+    "withdraw": "取り下げ",
+    "withdrawLabel": "{title} を取り下げ",
+    "removed": "論文をコミュニティから削除しました",
+    "withdrawn": "論文をレビューキューから取り下げました",
+    "removeFailed": "コミュニティがこの論文を削除できませんでした。もう一度お試しください。"
   }
 }

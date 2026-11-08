@@ -20,7 +20,7 @@ import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 import { readCredentialMetadata } from "./credentials";
 import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
-import { libraryGrant, libraryOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
+import { libraryGrant, libraryOf, organizationGrantsOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
 import { readScreeningRequest, requestScreeningGrade } from "./screeningRequests";
 import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
@@ -35,7 +35,7 @@ import { memberIdWithEmail } from "../organizations/read";
 import { saveEvidenceLibraryDraftSections } from "./mutations";
 import { libraryTeamValidator, readEvidenceLibraryDraft, readEvidenceLibraryRevision, readLibraryTeam, revisionReadValidator } from "./queries";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
+import { addedPapersPageValidator, addedPapersSettingsValidator, paperPreviewsValidator, papersAddedValidator, addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
 
 const EDIT_PATH = "evidenceLibraries/assistant:editDraft" as const;
 type Change = Infer<typeof draftChangesValidator>[number];
@@ -56,9 +56,21 @@ async function personOf(ctx: QueryCtx, userId: Id<"users">) {
  */
 async function signedInFor<Ctx extends QueryCtx>(ctx: Ctx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<Ctx> {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  const here = library !== null && (library.workspaceId === actor.workspaceId || ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null));
+  const here =
+    library !== null &&
+    (library.workspaceId === actor.workspaceId ||
+      ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null) ||
+      (await sharedWithWorkspace(ctx, libraryId, actor.workspaceId)));
   if (!here) throw createError("NOT_FOUND", "Evidence Community not found");
   return await asSignedIn(ctx, await personOf(ctx, actor.userId));
+}
+
+/** Whether the community is shared with the organization whose workspace the person acts in (#1091). Their role there comes from the grant. */
+async function sharedWithWorkspace(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, workspaceId: Id<"workspaces">) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind !== "organization") return false;
+  const organizationId = workspace.organizationId;
+  return (await organizationGrantsOf(ctx, libraryId)).some((grant) => grant.organizationId === organizationId);
 }
 
 /** Refuses, before the person is asked, what only an owner of a library the reply reaches does. */
@@ -638,3 +650,131 @@ export const trySourceSubjectAction = defineUserAction({
 export const trySourceSubject = userAction(trySourceSubjectAction);
 export const trySourceSubjectForAssistant = assistantAction(trySourceSubjectAction);
 
+
+// Papers added to a community by DOI, OpenAlex ID or link (OS-29, #1122): looked up, added, and listed on its Sources
+// tab. Its owners and editors publish them or send them to its review queue; its creators send them to the queue.
+
+const paperReferences = v.array(v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())) }));
+const teamRole = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"));
+
+/** The person's role on a community the reply reaches, and their name for its review queue; refused without one. */
+export const paperSender = internalQuery({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
+  returns: v.object({ role: teamRole, name: v.union(v.string(), v.null()) }),
+  handler: async (ctx, { libraryId, ...actor }) => await paperSenderOf(ctx, actor, libraryId),
+});
+
+async function paperSenderOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
+  const access = await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "view");
+  if (!access || access.role === "viewer") throw createError("FORBIDDEN", "Only the community's team adds papers to it.");
+  const person = await personOf(ctx, actor.userId);
+  const name = [person.firstName, person.lastName].filter(Boolean).join(" ").trim();
+  return { role: access.role, name: name || null };
+}
+
+export const previewPapersAction = defineUserAction({
+  path: "evidenceLibraries/assistant:previewPapers",
+  description:
+    "Looks papers up for a community by DOI, OpenAlex ID or a link to either, up to 100, without adding them: each one's title, authors and year, how it was found (OpenAlex, or its DOI alone), and whether it's new to the community, already in it, waiting in its review queue or not found. " +
+    "Add them with evidenceLibraries/assistant:addPapers.",
+  args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences },
+  returns: paperPreviewsValidator,
+  ...running,
+  check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
+  run: async (ctx, actor, { libraryId, papers }): Promise<Infer<typeof paperPreviewsValidator>> => {
+    await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    return await ctx.runAction(internal.evidenceLibraries.sourceActions.previewPapers, { libraryId, papers });
+  },
+});
+export const previewPapers = userAction(previewPapersAction);
+export const previewPapersForAssistant = assistantAction(previewPapersAction);
+
+export const addPapersAction = defineChangingAction({
+  path: "evidenceLibraries/assistant:addPapers",
+  description:
+    "Adds papers to a community by DOI, OpenAlex ID or a link to either, up to 100, kept up to date from OpenAlex afterwards. With `publish`, an owner or editor puts them live at once; otherwise, and always for a creator, they wait in the community's review queue. " +
+    "`requestId` is any ID for this request: sent again, it adds nothing twice. Each paper's answer: added, queued, returned (its review was returned or withdrawn), already in the community, not found, or failed. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences, publish: v.boolean(), requestId: v.string() },
+  returns: papersAddedValidator,
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  check: async (ctx, actor, { libraryId, publish }) => {
+    const { role } = await paperSenderOf(ctx, actor, libraryId);
+    if (publish && role === "creator") throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
+  },
+  run: async (ctx, actor, args): Promise<Infer<typeof papersAddedValidator>> => {
+    const sender: { role: "owner" | "editor" | "creator"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
+    if (args.publish && sender.role === "creator") throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
+    return await ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, userId: actor.userId, ...sender });
+  },
+});
+export const addPapers = userAction(addPapersAction);
+export const addPapersForAssistant = assistantAction(addPapersAction);
+
+export const addedPapersAction = defineUserAction({
+  path: "evidenceLibraries/assistant:addedPapers",
+  description:
+    "Lists the papers added to a community by DOI or OpenAlex ID, newest first, `limit` (up to 100) a page from `cursor`: each one's title, authors, year, DOI, OpenAlex ID, where it stands (live, DOI only while OpenAlex doesn't have it, waiting in the review queue, or returned with the reviewer's note) and whether the person sent it; how many are live and waiting; and whether the source is paused and fetches PDFs.",
+  args: { libraryId: v.id("evidenceLibraries"), cursor: v.optional(v.union(v.string(), v.null())), limit: v.optional(v.union(v.number(), v.null())) },
+  returns: addedPapersPageValidator,
+  ...running,
+  check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
+  run: async (ctx, actor, { libraryId, cursor, limit }): Promise<Infer<typeof addedPapersPageValidator>> => {
+    await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    return await ctx.runAction(internal.evidenceLibraries.sourceActions.listPapers, { libraryId, userId: actor.userId, cursor: cursor ?? null, limit: limit ?? 20 });
+  },
+});
+export const addedPapers = userAction(addedPapersAction);
+export const addedPapersForAssistant = assistantAction(addedPapersAction);
+
+export const removeAddedPaperAction = defineChangingAction({
+  path: "evidenceLibraries/assistant:removeAddedPaper",
+  description:
+    "Takes a paper added by DOI or OpenAlex ID off a community, by its `itemKey` from evidenceLibraries/assistant:addedPapers. One waiting in the review queue is withdrawn, which a creator may do only for papers they sent; one live on the community is unpublished, which only an owner or editor may do. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), itemKey: v.string() },
+  returns: v.union(v.literal("withdrawn"), v.literal("removed")),
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
+  run: async (ctx, actor, { libraryId, itemKey }): Promise<"withdrawn" | "removed"> => {
+    const sender: { role: "owner" | "editor" | "creator"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    return await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
+  },
+});
+export const removeAddedPaper = userAction(removeAddedPaperAction);
+export const removeAddedPaperForAssistant = assistantAction(removeAddedPaperAction);
+
+/** The owner's alone, as the rest of the community's settings are. */
+async function ownerOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
+  const { role } = await paperSenderOf(ctx, actor, libraryId);
+  if (role !== "owner") throw createError("FORBIDDEN", "Only the community's owner pauses its added papers or turns their PDFs on or off.");
+}
+
+export const paperOwner = internalQuery({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId, ...actor }) => {
+    await ownerOf(ctx, actor, libraryId);
+    return null;
+  },
+});
+
+export const setAddedPapersSettingsAction = defineChangingAction({
+  path: "evidenceLibraries/assistant:setAddedPapersSettings",
+  description:
+    "Pauses or resumes a community's Added papers source (`enabled`), or turns fetching its papers' PDFs on or off (`downloadPdfs`). Takes effect at once, without publishing the settings. Only the owner may. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), enabled: v.optional(v.boolean()), downloadPdfs: v.optional(v.boolean()) },
+  returns: addedPapersSettingsValidator,
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  check: async (ctx, actor, { libraryId }) => ownerOf(ctx, actor, libraryId),
+  run: async (ctx, actor, { libraryId, ...change }): Promise<Infer<typeof addedPapersSettingsValidator>> => {
+    await ctx.runQuery(internal.evidenceLibraries.assistant.paperOwner, { ...where(actor), libraryId });
+    return await ctx.runAction(internal.evidenceLibraries.sourceActions.setPaperSettings, { libraryId, ...change });
+  },
+});
+export const setAddedPapersSettings = userAction(setAddedPapersSettingsAction);
+export const setAddedPapersSettingsForAssistant = assistantAction(setAddedPapersSettingsAction);

@@ -4366,6 +4366,36 @@
         "did": "تمت المطالبة بمؤلف",
         "where": "المؤلفون",
         "ask": "المطالبة بمؤلف"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "البحث عن أوراق لمجتمع",
+        "did": "بحث عن أوراق لمجتمع",
+        "where": "Evidence Community",
+        "ask": "البحث عن أوراق لمجتمع"
+      },
+      "addCommunityPapers": {
+        "doing": "إضافة أوراق إلى مجتمع",
+        "did": "أضاف أوراقًا إلى مجتمع",
+        "where": "Evidence Community",
+        "ask": "إضافة أوراق إلى مجتمع"
+      },
+      "communityAddedPapers": {
+        "doing": "قراءة الأوراق المضافة لمجتمع",
+        "did": "قرأ الأوراق المضافة لمجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة الأوراق المضافة لمجتمع"
+      },
+      "removeCommunityPaper": {
+        "doing": "إزالة ورقة من مجتمع",
+        "did": "أزال ورقة من مجتمع",
+        "where": "Evidence Community",
+        "ask": "إزالة ورقة من مجتمع"
+      },
+      "communityPapersSettings": {
+        "doing": "تغيير الأوراق المضافة لمجتمع",
+        "did": "غيّر الأوراق المضافة لمجتمع",
+        "where": "Evidence Community",
+        "ask": "إيقاف الأوراق المضافة لمجتمع أو استئنافها، أو ملفات PDF الخاصة بها"
       }
     },
     "asks": {
@@ -5814,5 +5844,51 @@
     "doiCopyFailed": "تعذّر نسخ DOI",
     "paperPage": "صفحة الورقة",
     "share": "مشاركة"
+  },
+  "addedPapers": {
+    "name": "الأوراق المضافة",
+    "provider": "معرّفات DOI ومعرّفات OpenAlex",
+    "cardDescription": "أوراق تُضاف واحدة تلو الأخرى بمعرّف DOI أو معرّف OpenAlex، وتبقى متزامنة مع OpenAlex.",
+    "menu": "أوراق بمعرّف DOI أو معرّف",
+    "menuHint": "ورقة أو أكثر، متزامنة",
+    "add": "إضافة أوراق",
+    "title": "إضافة أوراق",
+    "description": "الصق معرّفات DOI أو معرّفات OpenAlex أو روابط إليها، حتى {max} في المرة الواحدة.",
+    "inputLabel": "معرّفات DOI أو معرّفات OpenAlex أو روابط",
+    "papers": "{count, plural, one {ورقة واحدة} two {ورقتان} few {# أوراق} many {# ورقة} other {# ورقة}}",
+    "tooMany": "أكثر من {max} ورقة",
+    "invalid": "ليس معرّف DOI ولا معرّفًا: {values}",
+    "find": "البحث عن الأوراق",
+    "found": "الأوراق التي عُثر عليها",
+    "notFound": "لم يُعثر عليها",
+    "alreadyAdded": "مضافة بالفعل",
+    "inQueue": "في قائمة المراجعة",
+    "doiOnly": "DOI فقط",
+    "leaveOut": "استبعاد",
+    "leaveOutLabel": "استبعاد {title}",
+    "doiOnlyNote": "{count, plural, one {لا تتوفر إحدى هذه الأوراق في OpenAlex بعد. تُضاف من معرّف DOI الخاص بها، وتتحقق كل مزامنة من OpenAlex مجددًا.} other {لا تتوفر # من هذه الأوراق في OpenAlex بعد. تُضاف من معرّفات DOI الخاصة بها، وتتحقق كل مزامنة من OpenAlex مجددًا.}}",
+    "toAdd": "{count, plural, one {ورقة واحدة للإضافة} two {ورقتان للإضافة} few {# أوراق للإضافة} many {# ورقة للإضافة} other {# ورقة للإضافة}}",
+    "sendToQueue": "إرسال إلى القائمة",
+    "publish": "نشر",
+    "published": "{count, plural, one {نُشرت ورقة واحدة في {community}} other {نُشرت # ورقة في {community}}}",
+    "queued": "{count, plural, one {أُرسلت ورقة واحدة إلى قائمة المراجعة} other {أُرسلت # ورقة إلى قائمة المراجعة}}",
+    "someFailed": "{count, plural, one {حُفظت ورقة واحدة كمسودة لكنها لم تُرسل. افتحها في لوحة الإدارة لإرسالها.} other {حُفظت # ورقة كمسودات لكنها لم تُرسل. افتحها في لوحة الإدارة لإرسالها.}}",
+    "lookupFailed": "تعذّر على المجتمع البحث عن هذه الأوراق. حاول مرة أخرى.",
+    "addFailed": "تعذّر على المجتمع إضافة هذه الأوراق. حاول مرة أخرى.",
+    "noAuthors": "لا يوجد مؤلفون",
+    "unavailable": "غير متاح",
+    "settingsFailed": "لم يقبل المجتمع التغيير. حاول مرة أخرى.",
+    "ownerOnly": "المالك وحده يغيّر هذا",
+    "from": "من {name}",
+    "returned": "أُعيدت",
+    "openIn": "فتح في {community}",
+    "openLabel": "فتح {title} في {community}",
+    "remove": "إزالة",
+    "removeLabel": "إزالة {title}",
+    "withdraw": "سحب",
+    "withdrawLabel": "سحب {title}",
+    "removed": "أُزيلت الورقة من المجتمع",
+    "withdrawn": "سُحبت الورقة من قائمة المراجعة",
+    "removeFailed": "تعذّر على المجتمع إزالة هذه الورقة. حاول مرة أخرى."
   }
 }

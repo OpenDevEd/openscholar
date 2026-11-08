@@ -46,7 +46,8 @@ export function SourceRow({
   activity?: ReactNode;
   onEdit?: () => void;
   onToggle: () => void;
-  onRemove: () => void;
+  /** Left out for a source that is always there, such as Added papers. */
+  onRemove?: () => void;
   disabled?: boolean;
   toggleDisabled?: boolean;
 }) {
@@ -63,7 +64,7 @@ export function SourceRow({
       onClick: onToggle,
       disabled: disabled || toggleDisabled,
     },
-    { key: "remove", label: tc("remove"), icon: Trash2, onClick: onRemove, disabled },
+    ...(onRemove ? [{ key: "remove", label: tc("remove"), icon: Trash2, onClick: onRemove, disabled }] : []),
   ];
   // Its width checks answer to the settings box, 4rem + 6px wider than a row's content: the card's and the row's padding, the card's and the list's border.
   return (

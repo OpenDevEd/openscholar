@@ -3,6 +3,7 @@
 // carries the library's machine credential and the contract version; the library decides what the
 // person may read. A library on an older runtime answers 404 to these paths.
 import { z } from "zod";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
 import { LIBRARY_SOURCE_MAX, type LibrarySource } from "../../lib/evidence-libraries/source-address";
 
@@ -30,7 +31,7 @@ export class LibrarySourceError extends Error {
 const refusalSchema = z.object({ error: z.string(), message: z.string().optional() });
 
 /** One call to the library; a refusal or a failure throws, with why. */
-async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: string, schema: z.ZodType<T>, { body, params, timeoutMs = TIMEOUT_MS, method = body === undefined ? "GET" : "POST" }: { body?: unknown; params?: Record<string, string | undefined>; timeoutMs?: number; method?: "GET" | "POST" | "DELETE" } = {}): Promise<T> {
+async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: string, schema: z.ZodType<T>, { body, params, timeoutMs = TIMEOUT_MS, method = body === undefined ? "GET" : "POST" }: { body?: unknown; params?: Record<string, string | undefined>; timeoutMs?: number; method?: "GET" | "POST" | "PATCH" | "DELETE" } = {}): Promise<T> {
   const url = new URL(path, target.baseUrl);
   for (const [key, value] of Object.entries(params ?? {})) if (value) url.searchParams.set(key, value);
   let response: Response;
@@ -176,4 +177,92 @@ export async function deleteReaderCollection(fetchImpl: typeof fetch, target: Li
 /** The records the library holds for papers by their OpenAlex ID or DOI: each match names the paper by its place (`at`). */
 export async function matchLibraryRecords(fetchImpl: typeof fetch, target: LibraryTarget, reader: string | null, papers: Array<{ openalexId?: string; doi?: string }>) {
   return (await call(fetchImpl, target, "/api/v1/openscholar/records/match", z.object({ matches: z.array(z.object({ at: z.number().int(), key: z.string() })).max(LIBRARY_CHANGE_MAX) }), { body: { reader, papers } })).matches;
+}
+
+// Papers added to a community by DOI or OpenAlex ID (OpenDevEd/new-el#773, #782): looked up, added and listed.
+
+export { ADDED_PAPERS_MAX };
+const ADD_TIMEOUT_MS = 120_000;
+
+export type PaperReference = { openalexId?: string | null; doi?: string | null };
+
+const foundBySchema = z.enum(["openalex", "doi"]);
+const summarySchema = z.object({ title: z.string(), authors: z.string(), year: z.number().int().nullable() });
+
+const previewSchema = z.object({
+  results: z.array(
+    z.object({
+      at: z.number().int(),
+      outcome: z.enum(["found", "existing", "queued", "returned", "not_found"]),
+      itemKey: z.string().optional(),
+      foundBy: foundBySchema.optional(),
+      paper: summarySchema.extend({ openalexId: z.string().nullable(), doi: z.string().nullable() }).optional(),
+      message: z.string().optional(),
+    }),
+  ).max(ADDED_PAPERS_MAX),
+});
+export type PaperPreview = z.infer<typeof previewSchema>["results"][number];
+
+/** What adding these papers would find, saving nothing: each new to the community, already in it, waiting for review, or not found. */
+export async function previewLibraryPapers(fetchImpl: typeof fetch, target: LibraryTarget, papers: PaperReference[]) {
+  return (await call(fetchImpl, target, "/api/v1/openscholar/papers", previewSchema, { body: { preview: true, papers }, timeoutMs: ADD_TIMEOUT_MS })).results;
+}
+
+const addedSchema = z.object({
+  results: z.array(
+    z.object({
+      at: z.number().int(),
+      outcome: z.enum(["added", "queued", "returned", "existing", "not_found", "failed"]),
+      itemKey: z.string().optional(),
+      foundBy: foundBySchema.optional(),
+      message: z.string().optional(),
+    }),
+  ).max(ADDED_PAPERS_MAX),
+});
+export type PaperAdded = z.infer<typeof addedSchema>["results"][number];
+
+/**
+ * Adds papers to the community as `actor`, published at once when they may and chose to, or sent to its review queue.
+ * Sent again with the same `requestId`, it adds nothing twice.
+ */
+export async function addLibraryPapers(
+  fetchImpl: typeof fetch,
+  target: LibraryTarget,
+  request: { requestId: string; publish: boolean; actor: { clerkUserId: string; name: string | null; role: "owner" | "editor" | "creator" }; papers: PaperReference[] },
+) {
+  return (await call(fetchImpl, target, "/api/v1/openscholar/papers", addedSchema, { body: request, timeoutMs: ADD_TIMEOUT_MS })).results;
+}
+
+const listedSchema = z.object({
+  papers: z.array(
+    summarySchema.extend({
+      itemKey: z.string(),
+      openalexId: z.string().nullable(),
+      doi: z.string().nullable(),
+      status: z.enum(["live", "doi_only", "queued", "returned"]),
+      note: z.string().nullable(),
+      addedBy: z.string(),
+      addedByName: z.string().nullable(),
+      addedAt: z.string(),
+    }),
+  ).max(100),
+  next: z.string().nullable(),
+  counts: z.object({ total: z.number().int(), live: z.number().int(), waiting: z.number().int() }),
+  settings: z.object({ enabled: z.boolean(), downloadPdfs: z.boolean() }),
+});
+export type AddedPapersPage = z.infer<typeof listedSchema>;
+
+/** The community's added papers, newest first, a page at a time, with where each stands and the counts. */
+export async function listLibraryPapers(fetchImpl: typeof fetch, target: LibraryTarget, page: { cursor: string | null; limit: number }) {
+  return await call(fetchImpl, target, "/api/v1/openscholar/papers", listedSchema, { params: { cursor: page.cursor ?? undefined, limit: String(page.limit) } });
+}
+
+/** Pauses or resumes the community's Added papers source, or turns its PDFs on or off. */
+export async function setLibraryPaperSettings(fetchImpl: typeof fetch, target: LibraryTarget, change: { enabled?: boolean; downloadPdfs?: boolean }) {
+  return (await call(fetchImpl, target, "/api/v1/openscholar/papers", z.object({ settings: z.object({ enabled: z.boolean(), downloadPdfs: z.boolean() }) }), { body: change, method: "PATCH" })).settings;
+}
+
+/** Takes an added paper off the community as `actor`: withdrawn from the review queue while it waits, unpublished once live. */
+export async function removeLibraryPaper(fetchImpl: typeof fetch, target: LibraryTarget, itemKey: string, actor: { clerkUserId: string; name: string | null; role: "owner" | "editor" | "creator" }) {
+  return (await call(fetchImpl, target, `/api/v1/openscholar/papers/${encodeURIComponent(itemKey)}`, z.object({ outcome: z.enum(["withdrawn", "removed"]) }), { body: { actor }, method: "DELETE" })).outcome;
 }

@@ -4366,6 +4366,36 @@
         "did": "Autor beansprucht",
         "where": "Autoren",
         "ask": "Autor beanspruchen"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Arbeiten für eine Community nachschlagen",
+        "did": "Arbeiten für eine Community nachgeschlagen",
+        "where": "Evidence Community",
+        "ask": "Arbeiten für eine Community nachschlagen"
+      },
+      "addCommunityPapers": {
+        "doing": "Arbeiten zu einer Community hinzufügen",
+        "did": "Arbeiten zu einer Community hinzugefügt",
+        "where": "Evidence Community",
+        "ask": "Arbeiten zu einer Community hinzufügen"
+      },
+      "communityAddedPapers": {
+        "doing": "Hinzugefügte Arbeiten einer Community lesen",
+        "did": "Hinzugefügte Arbeiten einer Community gelesen",
+        "where": "Evidence Community",
+        "ask": "Hinzugefügte Arbeiten einer Community lesen"
+      },
+      "removeCommunityPaper": {
+        "doing": "Eine Arbeit aus einer Community nehmen",
+        "did": "Eine Arbeit aus einer Community genommen",
+        "where": "Evidence Community",
+        "ask": "Eine Arbeit aus einer Community nehmen"
+      },
+      "communityPapersSettings": {
+        "doing": "Hinzugefügte Arbeiten einer Community ändern",
+        "did": "Hinzugefügte Arbeiten einer Community geändert",
+        "where": "Evidence Community",
+        "ask": "Hinzugefügte Arbeiten einer Community oder ihre PDFs pausieren oder fortsetzen"
       }
     },
     "asks": {
@@ -5814,5 +5844,51 @@
     "doiCopyFailed": "DOI konnte nicht kopiert werden",
     "paperPage": "Artikelseite",
     "share": "Teilen"
+  },
+  "addedPapers": {
+    "name": "Hinzugefügte Arbeiten",
+    "provider": "DOIs und OpenAlex-IDs",
+    "cardDescription": "Einzeln per DOI oder OpenAlex-ID hinzugefügte Arbeiten, mit OpenAlex synchron gehalten.",
+    "menu": "Arbeiten per DOI oder ID",
+    "menuHint": "Eine oder viele, synchron gehalten",
+    "add": "Arbeiten hinzufügen",
+    "title": "Arbeiten hinzufügen",
+    "description": "Füge DOIs, OpenAlex-IDs oder Links dazu ein, bis zu {max} auf einmal.",
+    "inputLabel": "DOIs, OpenAlex-IDs oder Links",
+    "papers": "{count, plural, one {# Arbeit} other {# Arbeiten}}",
+    "tooMany": "Mehr als {max} Arbeiten",
+    "invalid": "Keine DOI oder ID: {values}",
+    "find": "Arbeiten suchen",
+    "found": "Gefundene Arbeiten",
+    "notFound": "Nicht gefunden",
+    "alreadyAdded": "Bereits hinzugefügt",
+    "inQueue": "In der Prüfwarteschlange",
+    "doiOnly": "Nur DOI",
+    "leaveOut": "Weglassen",
+    "leaveOutLabel": "{title} weglassen",
+    "doiOnlyNote": "{count, plural, one {OpenAlex hat eine davon noch nicht. Sie kommt über ihre DOI, und jede Synchronisierung prüft OpenAlex erneut.} other {OpenAlex hat # davon noch nicht. Sie kommen über ihre DOIs, und jede Synchronisierung prüft OpenAlex erneut.}}",
+    "toAdd": "{count, plural, one {# Arbeit zum Hinzufügen} other {# Arbeiten zum Hinzufügen}}",
+    "sendToQueue": "In die Warteschlange",
+    "publish": "Veröffentlichen",
+    "published": "{count, plural, one {# Arbeit in {community} veröffentlicht} other {# Arbeiten in {community} veröffentlicht}}",
+    "queued": "{count, plural, one {# Arbeit an die Prüfwarteschlange gesendet} other {# Arbeiten an die Prüfwarteschlange gesendet}}",
+    "someFailed": "{count, plural, one {# Arbeit wurde als Entwurf gespeichert, aber nicht gesendet. Öffne sie im Admin, um sie zu senden.} other {# Arbeiten wurden als Entwürfe gespeichert, aber nicht gesendet. Öffne sie im Admin, um sie zu senden.}}",
+    "lookupFailed": "Die Community konnte diese Arbeiten nicht nachschlagen. Versuche es erneut.",
+    "addFailed": "Die Community konnte diese Arbeiten nicht hinzufügen. Versuche es erneut.",
+    "noAuthors": "Keine Autoren angegeben",
+    "unavailable": "Nicht verfügbar",
+    "settingsFailed": "Die Community hat die Änderung nicht übernommen. Versuche es erneut.",
+    "ownerOnly": "Nur der Eigentümer ändert das",
+    "from": "Von {name}",
+    "returned": "Zurückgegeben",
+    "openIn": "In {community} öffnen",
+    "openLabel": "{title} in {community} öffnen",
+    "remove": "Entfernen",
+    "removeLabel": "{title} entfernen",
+    "withdraw": "Zurückziehen",
+    "withdrawLabel": "{title} zurückziehen",
+    "removed": "Arbeit aus der Community entfernt",
+    "withdrawn": "Arbeit aus der Prüfwarteschlange zurückgezogen",
+    "removeFailed": "Die Community konnte diese Arbeit nicht entfernen. Versuche es erneut."
   }
 }

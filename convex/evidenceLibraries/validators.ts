@@ -7,6 +7,7 @@ import {
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_GRANTS_PER_LIBRARY, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_CITATION_REPAIRS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized, MAX_ROLLOUT_COMMUNITIES } from "../lib/listCaps";
 
 export type { SectionKey };
@@ -1463,3 +1464,46 @@ export const sourceAddressErrorValidator = v.union(
   v.literal("outdated"),
   v.literal("unreadable"),
 );
+
+// Papers added to a community by DOI or OpenAlex ID (OS-29, #1122), as the community answers for them: at most
+// ADDED_PAPERS_MAX a request, and a page of the list at a time.
+
+const foundByValidator = v.union(v.literal("openalex"), v.literal("doi"));
+const paperSummaryFields = { title: v.string(), authors: v.string(), year: v.union(v.number(), v.null()) };
+
+export const addedPapersSettingsValidator = v.object({ enabled: v.boolean(), downloadPdfs: v.boolean() });
+
+export const paperPreviewsValidator = capped(v.array(v.object({
+  at: v.number(),
+  outcome: v.union(v.literal("found"), v.literal("existing"), v.literal("queued"), v.literal("returned"), v.literal("not_found")),
+  itemKey: v.optional(v.string()),
+  foundBy: v.optional(foundByValidator),
+  paper: v.optional(v.object({ ...paperSummaryFields, openalexId: v.union(v.string(), v.null()), doi: v.union(v.string(), v.null()) })),
+  message: v.optional(v.string()),
+})), ADDED_PAPERS_MAX);
+
+export const papersAddedValidator = capped(v.array(v.object({
+  at: v.number(),
+  outcome: v.union(v.literal("added"), v.literal("queued"), v.literal("returned"), v.literal("existing"), v.literal("not_found"), v.literal("failed")),
+  itemKey: v.optional(v.string()),
+  foundBy: v.optional(foundByValidator),
+  message: v.optional(v.string()),
+})), ADDED_PAPERS_MAX);
+
+export const addedPapersPageValidator = v.object({
+  papers: capped(v.array(v.object({
+    ...paperSummaryFields,
+    itemKey: v.string(),
+    openalexId: v.union(v.string(), v.null()),
+    doi: v.union(v.string(), v.null()),
+    status: v.union(v.literal("live"), v.literal("doi_only"), v.literal("queued"), v.literal("returned")),
+    note: v.union(v.string(), v.null()),
+    /** Sent by the person reading the list, who may withdraw it while it waits. */
+    mine: v.boolean(),
+    addedByName: v.union(v.string(), v.null()),
+    addedAt: v.string(),
+  })), ADDED_PAPERS_MAX),
+  next: v.union(v.string(), v.null()),
+  counts: v.object({ total: v.number(), live: v.number(), waiting: v.number() }),
+  settings: addedPapersSettingsValidator,
+});

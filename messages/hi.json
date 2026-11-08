@@ -4365,6 +4365,36 @@
         "did": "लेखक पर दावा किया",
         "where": "लेखक",
         "ask": "लेखक पर दावा करें"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "किसी समुदाय के लिए पेपर खोज रहा है",
+        "did": "किसी समुदाय के लिए पेपर खोजे",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के लिए पेपर खोजें"
+      },
+      "addCommunityPapers": {
+        "doing": "किसी समुदाय में पेपर जोड़ रहा है",
+        "did": "किसी समुदाय में पेपर जोड़े",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय में पेपर जोड़ें"
+      },
+      "communityAddedPapers": {
+        "doing": "किसी समुदाय के जोड़े गए पेपर पढ़ रहा है",
+        "did": "किसी समुदाय के जोड़े गए पेपर पढ़े",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के जोड़े गए पेपर पढ़ें"
+      },
+      "removeCommunityPaper": {
+        "doing": "किसी समुदाय से एक पेपर हटा रहा है",
+        "did": "किसी समुदाय से एक पेपर हटाया",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय से एक पेपर हटाएँ"
+      },
+      "communityPapersSettings": {
+        "doing": "किसी समुदाय के जोड़े गए पेपर बदल रहा है",
+        "did": "किसी समुदाय के जोड़े गए पेपर बदले",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के जोड़े गए पेपर या उनके PDF रोकें या फिर से शुरू करें"
       }
     },
     "asks": {
@@ -5813,5 +5843,51 @@
     "doiCopyFailed": "DOI कॉपी नहीं हो सका",
     "paperPage": "शोधपत्र का पेज",
     "share": "साझा करें"
+  },
+  "addedPapers": {
+    "name": "जोड़े गए पेपर",
+    "provider": "DOI और OpenAlex ID",
+    "cardDescription": "DOI या OpenAlex ID से एक-एक करके जोड़े गए पेपर, OpenAlex के साथ सिंक रहते हैं।",
+    "menu": "DOI या ID से पेपर",
+    "menuHint": "एक या कई, सिंक रहते हैं",
+    "add": "पेपर जोड़ें",
+    "title": "पेपर जोड़ें",
+    "description": "DOI, OpenAlex ID या उनके लिंक पेस्ट करें, एक बार में {max} तक।",
+    "inputLabel": "DOI, OpenAlex ID या लिंक",
+    "papers": "{count, plural, one {# पेपर} other {# पेपर}}",
+    "tooMany": "{max} से ज़्यादा पेपर",
+    "invalid": "DOI या ID नहीं: {values}",
+    "find": "पेपर खोजें",
+    "found": "मिले पेपर",
+    "notFound": "नहीं मिला",
+    "alreadyAdded": "पहले से जोड़ा गया",
+    "inQueue": "समीक्षा कतार में",
+    "doiOnly": "केवल DOI",
+    "leaveOut": "छोड़ दें",
+    "leaveOutLabel": "{title} छोड़ दें",
+    "doiOnlyNote": "{count, plural, one {OpenAlex में इनमें से एक अभी नहीं है। यह अपने DOI से आता है, और हर सिंक OpenAlex को फिर से देखता है।} other {OpenAlex में इनमें से # अभी नहीं हैं। ये अपने DOI से आते हैं, और हर सिंक OpenAlex को फिर से देखता है।}}",
+    "toAdd": "{count, plural, one {जोड़ने के लिए # पेपर} other {जोड़ने के लिए # पेपर}}",
+    "sendToQueue": "कतार में भेजें",
+    "publish": "प्रकाशित करें",
+    "published": "{count, plural, one {# पेपर {community} में प्रकाशित हुआ} other {# पेपर {community} में प्रकाशित हुए}}",
+    "queued": "{count, plural, one {# पेपर समीक्षा कतार में भेजा गया} other {# पेपर समीक्षा कतार में भेजे गए}}",
+    "someFailed": "{count, plural, one {# पेपर ड्राफ़्ट के रूप में सहेजा गया पर भेजा नहीं गया। भेजने के लिए इसे admin में खोलें।} other {# पेपर ड्राफ़्ट के रूप में सहेजे गए पर भेजे नहीं गए। भेजने के लिए इन्हें admin में खोलें।}}",
+    "lookupFailed": "समुदाय ये पेपर नहीं खोज सका। फिर से कोशिश करें।",
+    "addFailed": "समुदाय ये पेपर नहीं जोड़ सका। फिर से कोशिश करें।",
+    "noAuthors": "कोई लेखक नहीं दिया गया",
+    "unavailable": "उपलब्ध नहीं",
+    "settingsFailed": "समुदाय ने बदलाव नहीं लिया। फिर से कोशिश करें।",
+    "ownerOnly": "इसे केवल मालिक बदलता है",
+    "from": "{name} से",
+    "returned": "लौटाया गया",
+    "openIn": "{community} में खोलें",
+    "openLabel": "{title} को {community} में खोलें",
+    "remove": "हटाएँ",
+    "removeLabel": "{title} हटाएँ",
+    "withdraw": "वापस लें",
+    "withdrawLabel": "{title} वापस लें",
+    "removed": "पेपर समुदाय से हटाया गया",
+    "withdrawn": "पेपर समीक्षा कतार से वापस लिया गया",
+    "removeFailed": "समुदाय यह पेपर नहीं हटा सका। फिर से कोशिश करें।"
   }
 }

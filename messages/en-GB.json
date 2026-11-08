@@ -4365,6 +4365,36 @@
         "did": "Claimed an author",
         "where": "Authors",
         "ask": "Claim an author"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Looking up papers for a community",
+        "did": "Looked up papers for a community",
+        "where": "Evidence Community",
+        "ask": "Look up papers for a community"
+      },
+      "addCommunityPapers": {
+        "doing": "Adding papers to a community",
+        "did": "Added papers to a community",
+        "where": "Evidence Community",
+        "ask": "Add papers to a community"
+      },
+      "communityAddedPapers": {
+        "doing": "Reading a community’s added papers",
+        "did": "Read a community’s added papers",
+        "where": "Evidence Community",
+        "ask": "Read a community’s added papers"
+      },
+      "removeCommunityPaper": {
+        "doing": "Taking a paper off a community",
+        "did": "Took a paper off a community",
+        "where": "Evidence Community",
+        "ask": "Take a paper off a community"
+      },
+      "communityPapersSettings": {
+        "doing": "Changing a community’s added papers",
+        "did": "Changed a community’s added papers",
+        "where": "Evidence Community",
+        "ask": "Pause or resume a community’s added papers, or their PDFs"
       }
     },
     "asks": {
@@ -5813,5 +5843,51 @@
     "doiCopyFailed": "Couldn't copy the DOI",
     "paperPage": "Paper page",
     "share": "Share"
+  },
+  "addedPapers": {
+    "name": "Added papers",
+    "provider": "DOIs and OpenAlex IDs",
+    "cardDescription": "Papers added one at a time by DOI or OpenAlex ID, kept in sync from OpenAlex.",
+    "menu": "Papers by DOI or ID",
+    "menuHint": "One or many, kept in sync",
+    "add": "Add papers",
+    "title": "Add papers",
+    "description": "Paste DOIs, OpenAlex IDs or links to them, up to {max} at a time.",
+    "inputLabel": "DOIs, OpenAlex IDs or links",
+    "papers": "{count, plural, one {# paper} other {# papers}}",
+    "tooMany": "More than {max} papers",
+    "invalid": "Not a DOI or ID: {values}",
+    "find": "Find papers",
+    "found": "Papers found",
+    "notFound": "Not found",
+    "alreadyAdded": "Already added",
+    "inQueue": "In review queue",
+    "doiOnly": "DOI only",
+    "leaveOut": "Leave out",
+    "leaveOutLabel": "Leave out {title}",
+    "doiOnlyNote": "{count, plural, one {OpenAlex doesn't have one of these yet. It comes in from its DOI, and each sync checks OpenAlex again.} other {OpenAlex doesn't have # of these yet. They come in from their DOIs, and each sync checks OpenAlex again.}}",
+    "toAdd": "{count, plural, one {# paper to add} other {# papers to add}}",
+    "sendToQueue": "Send to queue",
+    "publish": "Publish",
+    "published": "{count, plural, one {# paper published to {community}} other {# papers published to {community}}}",
+    "queued": "{count, plural, one {# paper sent to the review queue} other {# papers sent to the review queue}}",
+    "someFailed": "{count, plural, one {# paper was saved as a draft but not sent. Open it in the admin to send it.} other {# papers were saved as drafts but not sent. Open them in the admin to send them.}}",
+    "lookupFailed": "The community couldn't look these papers up. Try again.",
+    "addFailed": "The community couldn't add these papers. Try again.",
+    "noAuthors": "No authors listed",
+    "unavailable": "Unavailable",
+    "settingsFailed": "The community didn't take the change. Try again.",
+    "ownerOnly": "Only the owner changes this",
+    "from": "From {name}",
+    "returned": "Returned",
+    "openIn": "Open in {community}",
+    "openLabel": "Open {title} in {community}",
+    "remove": "Remove",
+    "removeLabel": "Remove {title}",
+    "withdraw": "Withdraw",
+    "withdrawLabel": "Withdraw {title}",
+    "removed": "Paper removed from the community",
+    "withdrawn": "Paper withdrawn from the review queue",
+    "removeFailed": "The community couldn't take this paper off. Try again."
   }
 }

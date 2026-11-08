@@ -4365,6 +4365,36 @@
         "did": "已认领作者",
         "where": "作者",
         "ask": "认领作者"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "正在为社区查找论文",
+        "did": "已为社区查找论文",
+        "where": "Evidence Community",
+        "ask": "为社区查找论文"
+      },
+      "addCommunityPapers": {
+        "doing": "正在向社区添加论文",
+        "did": "已向社区添加论文",
+        "where": "Evidence Community",
+        "ask": "向社区添加论文"
+      },
+      "communityAddedPapers": {
+        "doing": "正在读取社区已添加的论文",
+        "did": "已读取社区已添加的论文",
+        "where": "Evidence Community",
+        "ask": "读取社区已添加的论文"
+      },
+      "removeCommunityPaper": {
+        "doing": "正在从社区移除论文",
+        "did": "已从社区移除论文",
+        "where": "Evidence Community",
+        "ask": "从社区移除论文"
+      },
+      "communityPapersSettings": {
+        "doing": "正在更改社区已添加的论文",
+        "did": "已更改社区已添加的论文",
+        "where": "Evidence Community",
+        "ask": "暂停或恢复社区已添加的论文或其 PDF"
       }
     },
     "asks": {
@@ -5813,5 +5843,51 @@
     "doiCopyFailed": "无法复制 DOI",
     "paperPage": "论文页面",
     "share": "分享"
+  },
+  "addedPapers": {
+    "name": "已添加的论文",
+    "provider": "DOI 和 OpenAlex ID",
+    "cardDescription": "按 DOI 或 OpenAlex ID 逐篇添加的论文，与 OpenAlex 保持同步。",
+    "menu": "按 DOI 或 ID 添加论文",
+    "menuHint": "一篇或多篇，保持同步",
+    "add": "添加论文",
+    "title": "添加论文",
+    "description": "粘贴 DOI、OpenAlex ID 或它们的链接，一次最多 {max} 个。",
+    "inputLabel": "DOI、OpenAlex ID 或链接",
+    "papers": "{count, plural, other {# 篇论文}}",
+    "tooMany": "超过 {max} 篇论文",
+    "invalid": "不是 DOI 或 ID：{values}",
+    "find": "查找论文",
+    "found": "找到的论文",
+    "notFound": "未找到",
+    "alreadyAdded": "已添加",
+    "inQueue": "在审核队列中",
+    "doiOnly": "仅 DOI",
+    "leaveOut": "排除",
+    "leaveOutLabel": "排除 {title}",
+    "doiOnlyNote": "{count, plural, other {其中 # 篇 OpenAlex 还没有收录。它们通过 DOI 导入，每次同步都会再次检查 OpenAlex。}}",
+    "toAdd": "{count, plural, other {待添加 # 篇论文}}",
+    "sendToQueue": "送入队列",
+    "publish": "发布",
+    "published": "{count, plural, other {已将 # 篇论文发布到 {community}}}",
+    "queued": "{count, plural, other {已将 # 篇论文送入审核队列}}",
+    "someFailed": "{count, plural, other {# 篇论文已保存为草稿但未发送。请在管理后台打开并发送。}}",
+    "lookupFailed": "社区无法查找这些论文。请重试。",
+    "addFailed": "社区无法添加这些论文。请重试。",
+    "noAuthors": "未列出作者",
+    "unavailable": "不可用",
+    "settingsFailed": "社区未接受此更改。请重试。",
+    "ownerOnly": "只有所有者可以更改",
+    "from": "来自 {name}",
+    "returned": "已退回",
+    "openIn": "在 {community} 中打开",
+    "openLabel": "在 {community} 中打开 {title}",
+    "remove": "移除",
+    "removeLabel": "移除 {title}",
+    "withdraw": "撤回",
+    "withdrawLabel": "撤回 {title}",
+    "removed": "已从社区移除论文",
+    "withdrawn": "已从审核队列撤回论文",
+    "removeFailed": "社区无法移除这篇论文。请重试。"
   }
 }
