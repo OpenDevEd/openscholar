@@ -256,7 +256,7 @@ async function verifyUser(env: Record<string, string>, as: string | undefined): 
 // PostHog doesn't start. Declining keeps the two sites alike, and keeps the
 // check's visits out of the product's analytics.
 const declineCookies = (context: BrowserContext) =>
-  context.addInitScript(() => localStorage.setItem("openscholar_cookie_consent", JSON.stringify({ version: "1.0", timestamp: new Date().toISOString(), choice: "denied", policyVersion: "1.0" })));
+  context.addInitScript(() => { document.cookie = `openscholar_consent=${encodeURIComponent(JSON.stringify({ choice: "denied", timestamp: new Date().toISOString(), policyVersion: "1.0" }))}; path=/`; });
 
 async function prepareFor(values: Values): Promise<RunOptions["prepare"]> {
   const env = ensureEnv();

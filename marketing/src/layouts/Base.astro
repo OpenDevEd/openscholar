@@ -4,6 +4,7 @@ import { APP, COMMUNITIES, NAV, SECTIONS } from "../data/site.mjs";
 import { GUIDES } from "../data/docs.mjs";
 import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
+import Consent from "../components/Consent.astro";
 import markFile from "../data/mark.svg?raw";
 const { title, description, og = "/og.jpg", top = "#091026" } = Astro.props;
 const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
@@ -73,13 +74,15 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
       <nav aria-label="Footer">
         <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a></div>
         <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a><a href="/contact/"><span class="roll" data-t="Contact"><span>Contact</span></span></a></div>
-        <div><b>Legal</b><a href={`${APP}/privacy`}><span class="roll" data-t="Privacy"><span>Privacy</span></span></a><a href={`${APP}/cookie-policy`}><span class="roll" data-t="Cookies"><span>Cookies</span></span></a><a href={`${APP}/credits`}><span class="roll" data-t="Attributions"><span>Attributions</span></span></a></div>
+        <div><b>Legal</b><a href={`${APP}/privacy`}><span class="roll" data-t="Privacy"><span>Privacy</span></span></a><a href={`${APP}/cookie-policy`}><span class="roll" data-t="Cookies"><span>Cookies</span></span></a><a href={`${APP}/credits`}><span class="roll" data-t="Attributions"><span>Attributions</span></span></a><button type="button" class="prefs" data-consent-open><span class="roll" data-t="Cookie preferences"><span>Cookie preferences</span></span></button></div>
       </nav>
       <p class="credit">Built by <a href="https://www.opendeved.net">OpenDevEd</a> and <a href="https://www.ekitabu.com">eKitabu</a></p>
     </div>
     <div class="stand" aria-hidden="true"><div class="word">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><i class="veil"></i><div class="word edge2">{[..."Openscholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div></div>
   </footer>
+  <Consent />
   <script src="../scripts/fx.js"></script>
+  <script src="../scripts/analytics.ts"></script>
 </body>
 </html>
 <style>
@@ -135,6 +138,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   .belt ul { display: flex; flex: none; } .belt a { display: flex; align-items: center; gap: 14px; padding-inline: 28px; font-size: clamp(18px, 1.9vw, 26px); letter-spacing: -.015em; white-space: nowrap; color: rgb(255 255 255 / .82); transition: color .2s var(--ease); } .belt img { filter: saturate(1.5); width: 56px; height: 56px; object-fit: contain; transition: transform .45s var(--ease); } .belt a:hover { color: var(--c); } .belt a:hover img { transform: rotate(-8deg) scale(1.16); }
   .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 48px calc(var(--gap) + var(--pad)) 28px; }
   .f-brand { display: grid; justify-items: start; align-content: start; gap: 12px; } .f-brand p { color: rgb(255 255 255 / .78); max-width: 18em; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.25; letter-spacing: -.01em; } .f-go { display: inline-flex; align-items: center; gap: 10px; margin-top: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; } .f-go :global(i) { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--brand); color: var(--brand-on); }
+  .prefs { width: fit-content; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; } .prefs:hover { color: #fff; }
   .foot nav:not(.belt) { display: flex; gap: 56px; } .foot nav:not(.belt) div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .78); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav:not(.belt) a { width: fit-content; } .foot nav:not(.belt) a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .62); } .credit a { color: rgb(255 255 255 / .82); text-decoration: underline; text-decoration-color: rgb(255 255 255 / .3); text-underline-offset: 3px; transition: color .15s var(--ease), text-decoration-color .15s var(--ease); } .credit a:hover { color: #fff; text-decoration-color: currentColor; }
   /* The name runs off the bottom of the page, cut from lit glass. A dark veil with one bright window slides across it, following the pointer or sweeping by itself, and only ever moves as a transform. */
   /* The name in dark glass, its edges catching a little light, with the sunrise showing only in the one bright window that moves across it. */
