@@ -11,6 +11,7 @@ import { Spinner } from "@/components/ui/spinner";
 import Link from "@/components/workspace-link";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { similarSearchHref } from "@/lib/search/similar-href";
+import { paperPath } from "@/lib/papers/page-address";
 
 const SHOWN = 8;
 
@@ -41,8 +42,8 @@ export function SimilarPapers({ paperId }: { paperId: string }) {
           <PaperRows
             className="fade-enter"
             papers={data}
-            // A DOI opens the paper; without one, what's like it is the next best place to go.
-            link={(paper) => (paper.doi ? { href: paper.doi, external: true } : { href: similarSearchHref([paper.id]) ?? "/results", onNavigate: closeFocus })}
+            // Each opens its page here, which holds its DOI and where to read it; focus mode closes as it goes.
+            link={(paper) => ({ href: paperPath(paper.id.split("/").at(-1)!, paper.title), onNavigate: closeFocus })}
           />
         )}
       </div>

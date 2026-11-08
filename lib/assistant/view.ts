@@ -103,6 +103,9 @@ export function recordOf(address: string): LinkedRecord | null {
   if (!inApp(address)) return null;
   const url = new URL(address, SITE);
   const path = url.pathname.replace(/\/+$/, "");
+  // A paper's own page, which the assistant links papers to.
+  const onPage = /^\/papers\/((?:OS|W)\d+)(?:\/[^/]*)?$/i.exec(path)?.[1];
+  if (onPage) return { kind: "paper", paperId: onPage.toUpperCase() };
   const has = (key: string) => Boolean(url.searchParams.get(key));
   if (has("chat")) return { kind: "chat" };
   if (/^\/results\/[^/]+$/.test(path)) return { kind: "search" };
