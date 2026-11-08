@@ -26,9 +26,9 @@ export const paperSubmissionStatus: ReturnType<typeof httpAction> = httpAction(a
   if (!credential) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   const parsed = statusSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return jsonResponse(400, { error: { code: "invalid_request", retryable: false } });
-  const { idempotencyKey, libraryId, itemKey, generation, status, note, at } = parsed.data;
+  const { idempotencyKey, libraryId, itemKey, generation, clerkUserId, status, note, at } = parsed.data;
   try {
-    await ctx.runMutation(internal.evidenceLibraries.submissions.applyStatus, { libraryId, credentialDigest: await digestOpaqueToken(credential), itemKey, generation, status, note, at: Date.parse(at) });
+    await ctx.runMutation(internal.evidenceLibraries.submissions.applyStatus, { libraryId, credentialDigest: await digestOpaqueToken(credential), itemKey, generation, clerkUserId, status, note, at: Date.parse(at) });
     return jsonResponse(200, { idempotencyKey, generation });
   } catch (error) {
     const code = readConvexErrorData(error)?.code;

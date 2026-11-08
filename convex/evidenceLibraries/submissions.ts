@@ -57,15 +57,22 @@ export const applyStatus = internalMutation({
     credentialDigest: v.string(),
     itemKey: v.string(),
     generation: v.number(),
+    /** Who submitted the review it's about. */
+    clerkUserId: v.string(),
     status: submissionStatusValidator,
     note: v.union(v.string(), v.null()),
     at: v.number(),
   },
   returns: v.null(),
-  handler: async (ctx, { libraryId: library, credentialDigest, itemKey, generation, status, note, at }) => {
+  handler: async (ctx, { libraryId: library, credentialDigest, itemKey, generation, clerkUserId, status, note, at }) => {
     const libraryId = await authenticate(ctx, library, credentialDigest);
-    // Everyone who sent the paper sees where it stands: a paper two people suggested is one record.
-    const rows = await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
+    // Published, it's published for everyone who sent it: a paper two people suggested is one record. Waiting,
+    // returned or withdrawn is the submission of whoever sent it this time.
+    const sender = status === "published" ? null : await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
+    if (status !== "published" && !sender) return null;
+    const rows = sender
+      ? [await byPaper(ctx, sender._id, libraryId, itemKey)].filter((row) => row !== null)
+      : await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
     for (const row of rows) {
       if ((row.generation ?? 0) >= generation) continue;
       // Taken back by the person who sent it, it's no longer one of their submissions.
