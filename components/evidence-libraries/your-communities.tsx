@@ -54,9 +54,9 @@ export type Community = {
   /** An invitation for an organization the person is an admin of, which they pick on accepting (#1091). */
   toOrganization?: boolean;
 };
-const ROLE_KINDS = { owner: "owner", editor: "editor", creator: "creator", viewer: "view" } as const;
+export const ROLE_KINDS = { owner: "owner", editor: "editor", creator: "creator", viewer: "view" } as const;
 
-const fromOverview = (library: Overview): Community => ({
+export const fromOverview = (library: Overview): Community => ({
   id: library._id, name: library.name, role: library.role, faviconUrl: library.faviconUrl, owner: { ...library.organization, workspaceId: library.workspaceId },
   address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation,
   deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active",
@@ -213,13 +213,13 @@ function Tile() {
 }
 
 /** The community's icon, with who it belongs to on its corner: the organization's logo, or the person's photo. */
-function CommunityIcon({ community }: { community: Community }) {
+export function CommunityIcon({ community, fadeIn = false }: { community: Community; fadeIn?: boolean }) {
   const { owner } = community;
   // The person's own workspaces, with the colours their admins picked, as the switcher has them.
   const known = new Map((useWorkspaces().list ?? []).map((row) => [row.workspaceId as string, row]));
   return (
     <div className="relative shrink-0">
-      {community.faviconUrl ? <LibraryImage src={community.faviconUrl} className="flex size-8 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
+      {community.faviconUrl ? <LibraryImage fadeIn={fadeIn} src={community.faviconUrl} className="flex size-8 overflow-hidden rounded-lg bg-inset" imageClassName="size-full object-cover" fallback={<Tile />} /> : <Tile />}
       {/* Its owner as the switcher draws a workspace: its logo, or the mark made for it in its colour; a person's photo. */}
       <span className="absolute -bottom-1 -end-1 flex rounded-[0.35rem] bg-background ring-2 ring-background transition-shadow group-hover/row:ring-muted group-has-[[data-state=open]]/row:ring-muted">
         <WorkspaceTile workspace={known.get(owner.workspaceId ?? "") ?? { kind: owner.kind === "organization" ? "organization" : "personal", name: owner.name, imageUrl: owner.imageUrl ?? undefined, workspaceId: owner.workspaceId }} size="xxs" />

@@ -9,6 +9,7 @@ import {
   Plus,
   RefreshCw,
   Settings2,
+  AddedPapersIcon,
 } from "@/components/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
@@ -43,7 +44,8 @@ import type {
   EvidenceSourceEntry,
   OpenScholarCollectionSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
-import { ChipInput, EmptyList, MetaList, Panel } from "../fields";
+import { ChipInput, MetaList, Panel } from "../fields";
+import { AddedPapersRow } from "./added-papers-row";
 import { FieldError } from "../section-card";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import {
@@ -147,6 +149,8 @@ export type SourcesFieldProps = {
   onTagsChange: (tags: TagRules) => void;
   /** AI answers are on and an OpenRouter key is saved, which screening reads with. */
   aiReady: boolean;
+  /** The community's name and address, for the Added papers row. */
+  community?: { name: string; address: string | null };
 };
 
 /**
@@ -160,6 +164,7 @@ export function SourcesField({
   tags,
   onTagsChange,
   aiReady,
+  community,
 }: SourcesFieldProps) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
@@ -180,6 +185,7 @@ export function SourcesField({
   const [connectionsOpen, setConnectionsOpen] = useState(zoteroSignIn.failed);
   const [connectionTab, setConnectionTab] = useState("zotero");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [addingPapers, setAddingPapers] = useState(false);
   const addButton = useRef<HTMLButtonElement>(null);
   const openalex = useOpenAlexSources({ libraryId, value, onChange });
   const liveFor = useSourceActivity(libraryId);
@@ -277,10 +283,7 @@ export function SourcesField({
   return (
     <SourceScreeningProvider value={{ libraryId, workspaceId, aiReady }}>
       <div className="space-y-4" data-library-sources>
-        {value.length === 0 ? (
-          <EmptyList>{t("noSources")}</EmptyList>
-        ) : (
-          <ul
+        <ul
             aria-label={t("listLabel")}
             className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background"
           >
@@ -315,8 +318,15 @@ export function SourcesField({
                 onRemove={() => setRemoveTarget({ kind: "collection", entry })}
               />
             ))}
+            {/* MOCK (mock/added-papers): always on the list, last. */}
+            {community ? <AddedPapersRow
+              libraryId={libraryId}
+              name={community.name}
+              address={community.address}
+              adding={addingPapers}
+              onAddingChange={setAddingPapers}
+            /> : null}
           </ul>
-        )}
 
         <div className="flex items-center justify-end gap-2">
           <Tooltip>
@@ -393,6 +403,15 @@ export function SourcesField({
                     {t("openAlexSearch")}
                     <span className="block text-xs text-muted-foreground">
                       {t("openAlexSearchHint")}
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={!community} onSelect={() => setAddingPapers(true)}>
+                  <AddedPapersIcon className="size-4 text-primary" />
+                  <span>
+                    Papers by DOI or ID
+                    <span className="block text-xs text-muted-foreground">
+                      One or many, kept in sync
                     </span>
                   </span>
                 </DropdownMenuItem>

@@ -26,6 +26,7 @@ export function SourcesSection({ libraryId, draft, saved, patch, reset }: Sectio
           })
         }
         aiReady={draft.features.ai && draft.ai.keySaved}
+        community={{ name: draft.identity.name, address: draft.identity.baseUrl || null }}
         tags={draft.content.tags}
         onTagsChange={(tags) =>
           patch((d) => {
