@@ -184,8 +184,9 @@ function NewAppDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
       }}
     >
       <DialogContent className={created ? "sm:max-w-2xl" : "sm:max-w-lg"}>
-        <DialogHeader>
-          <DialogTitle>{created ? created.app.name : t("newApp")}</DialogTitle>
+        {/* min-w-0: the dialog is a grid, and a grid item is as wide as its truncated title's whole text without it. */}
+        <DialogHeader className="min-w-0">
+          <DialogTitle className="truncate leading-snug">{created ? created.app.name : t("newApp")}</DialogTitle>
         </DialogHeader>
         <AutoHeight className="min-w-0">
           {created ? (
@@ -406,12 +407,13 @@ function AppDialog({ app, onClose }: { app: DevApp | null; onClose: () => void }
                   }}
                 >
                   <AppFields draft={draft} onChange={setDraft} kindFixed />
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle px-3 py-2.5">
-                    <p className="min-w-0 text-xs text-muted-foreground">
+                  {/* Where the text can't keep 6rem beside the buttons (200% text), the buttons take their own line. */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-subtle px-3 py-2.5">
+                    <p className="min-w-24 flex-1 text-xs text-muted-foreground">
                       <span className="block text-sm font-medium text-foreground">{t("deleteApp")}</span>
                       {t("deleteAbout")}
                     </p>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex max-w-full flex-wrap items-center gap-1">
                       {confirmDelete ? (
                         <>
                           <Button type="button" variant="ghost" size="sm" disabled={busy === "delete"} onClick={() => setConfirmDelete(false)}>{t("cancel")}</Button>
