@@ -96,7 +96,7 @@ function FilterChip({ item, compact, singleLine, valuesOnly }: { item: FilterIte
           item.places.map((place, index) => (
             <Fragment key={place.id}>
               {index > 0 && ", "}
-              <span className="whitespace-nowrap">{place.country && <CountryFlag countryCode={place.id} className="me-1 align-middle" />}{place.name}</span>
+              <span className="whitespace-nowrap">{place.country && <CountryFlag countryCode={place.id} className="me-1 h-[1em] w-[1.33em] align-[-0.125em]" />}{place.name}</span>
             </Fragment>
           ))
         ) : item.displayValue}
