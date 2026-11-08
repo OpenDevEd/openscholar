@@ -1,0 +1,16 @@
+---
+// The other pages of this kind, so each one leads on to the rest of the work.
+import Icon from "./Icon.astro";
+import Arrow from "./Arrow.astro";
+import { INTENTS } from "../data/site.mjs";
+const here = Astro.url.pathname, others = INTENTS.filter((p) => p.href !== here);
+---
+<nav class="related" aria-label="More of the work"><h2>The rest of the work</h2><div>{others.map((p) => <a href={p.href} style={`--c:${p.color}`}><i><Icon name={p.icon} size={20} /></i><b>{p.title}<Arrow /></b><span>{p.text}</span></a>)}</div></nav>
+<style>
+  .related { display: grid; gap: 24px; padding: clamp(40px, 5vw, 64px) var(--pad) 0; } .related h2 { font-size: clamp(26px, 2.6vw, 36px); }
+  .related div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-inline: -14px; }
+  .related a { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 2px 14px; align-items: center; padding: 14px; border-radius: 16px; color: var(--ink); transition: background-color .2s var(--ease); } .related a:hover { background: var(--soft); }
+  .related i { grid-row: span 2; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: color-mix(in oklch, var(--c) 22%, #fff); color: color-mix(in oklch, var(--c) 70%, #000); }
+  .related b { display: flex; align-items: center; gap: 6px; font-weight: 500; } .related b :global(i) { display: grid; width: 18px; height: 18px; opacity: 0; transform: translateX(-4px); transition: opacity .2s var(--ease), transform .3s var(--ease); } .related a:hover b :global(i) { opacity: 1; transform: none; } .related span { color: var(--t2); font-size: 15px; line-height: 1.35; }
+  @media (max-width: 1000px) { .related div { grid-template-columns: repeat(2, minmax(0, 1fr)); } } @media (max-width: 560px) { .related div { grid-template-columns: minmax(0, 1fr); } }
+</style>

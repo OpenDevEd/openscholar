@@ -7,10 +7,10 @@ import Workspace from "../components/Workspace.astro";
 import HomeHero from "../components/HomeHero.astro";
 import Traced from "../components/Traced.astro";
 import Faq from "../components/Faq.astro";
+import Close from "../components/Close.astro";
+import Screening from "../components/Screening.astro";
 import AssistantBeside from "../components/AssistantBeside.astro";
-import AskBar from "../components/AskBar.astro";
 import Device from "../components/Device.astro";
-import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const teams = [
@@ -19,8 +19,6 @@ const teams = [
   ["rose", "globe", "83 1 23", "c-home-laptop-light-1000", 1000, 625, "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
 ];
 const others = COMMUNITIES.filter((c) => ["eccar", "tvet"].includes(c.key));
-const questions = [["Is this an intervention study?", 11, 1, 3], ["Is it about reading or literacy?", 15, 0, 0], ["Is it in primary school?", 13, 1, 1]];
-const beams = [[287, "Tutoring as a reading intervention for bilingual learners", "yyy"], [350, "Peer tutoring and children's e-book reading comprehension", "yyy"], [414, "Effect of peer tutoring in reading for boys in French immersion", "yyy"], [477, "Role of peer tutoring in urban primary school reading skills", "yuy"], [541, "An online peer tutoring intervention to promote reading skills", "yyy"], [604, "Peer tutor-based Quranic learning in elementary schools", "xyy"], [667, "Applying peer-tutoring to spelling in an elementary classroom", "yyy"]];
 const faq = [
   ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat. Answers show how well they're grounded and link to their source where they can, and the assistant tells you when it couldn't read something."],
   ["Can we choose the model?", "Yes. Choose a preset, pick a model for each task, or use your own provider key."],
@@ -42,24 +40,7 @@ const faq = [
     <Literature />
   </Feature>
 
-  <section class="bleed sieve" id="screening">
-    <div class="inner s-head"><h2>Decide what counts once, then apply it to every paper</h2><p class="lead">Write your questions and what each answer is worth. AI answers for every paper, your rules decide what's included, and you can overrule any answer.</p></div>
-    <div class="s-wrap"><div class="scene" data-in>
-      <Art name="sieve-front" />
-      <div class="pane-ui" data-pass>
-        <b class="pt">Your criteria</b>
-        <ol>{questions.map(([q, y, u, n], i) => <li style={`--i:${i}`}><span class="n">{i + 1}</span><span class="q">{q}</span><span class="tri" role="img" aria-label={`${y} yes, ${u} unclear, ${n} no`}><i style={`flex:${y}`} class="y"></i><i style={`flex:${u}`} class="u"></i><i style={`flex:${n}`} class="x"></i></span></li>)}</ol>
-        <p class="pass">Included at <span class="marks3" role="group" aria-label="Pass mark">{[1, 2, 3].map((n) => <button type="button" aria-pressed={n === 2 ? "true" : "false"} data-n={n}>{n}</button>)}</span> of 3 points</p>
-        <div class="wall15" aria-hidden="true">{Array.from({ length: 15 }, (_, i) => <i class:list={{ u: i === 9 }} style={`--i:${i}`}></i>)}</div>
-        <div class="count" aria-live="polite"><span><b data-inc>14</b>included</span><span class="amber"><b data-dec>1</b>for you to decide</span></div>
-      </div>
-      <ul class="beams" aria-label="Papers that met the criteria">{beams.map(([y, t, marks], i) => <li class:list={{ amber: marks.includes("u"), short: marks.includes("x") }} style={`--y:${y};--i:${i}`}><span class="tt">{t}</span><span class="marks" aria-hidden="true">{[...marks].map((m) => <i class={m}><Icon name={m === "y" ? "check" : m === "x" ? "cross" : "flagq"} size={12} /></i>)}</span></li>)}</ul>
-    </div></div>
-    <div class="s-small" data-pass>
-      <div class="frost rules"><b>Your criteria</b><ol>{questions.map(([q, y, u, n], i) => <li><span class="n">{i + 1}</span><span class="q">{q}</span><span class="tri"><i style={`flex:${y}`} class="y"></i><i style={`flex:${u}`} class="u"></i><i style={`flex:${n}`} class="x"></i></span></li>)}</ol><p>Included at <span class="marks3" role="group" aria-label="Pass mark">{[1, 2, 3].map((n) => <button type="button" aria-pressed={n === 2 ? "true" : "false"} data-n={n}>{n}</button>)}</span> of 3 points</p></div>
-      <div class="frost out"><div class="tally"><b>Included</b><span aria-live="polite"><span data-inc>14</span> of 15 papers</span></div><ul>{[0, 1, 3, 4, 5].map((k) => beams[k]).map(([, t, marks]) => <li class:list={{ maybe: marks.includes("u"), short: marks.includes("x") }}><span class="ic"><Icon name="check" size={16} /><Icon name="flagq" size={16} /></span><span>{t}</span></li>)}</ul></div>
-    </div>
-  </section>
+  <Screening />
 
   <Traced />
 
@@ -76,40 +57,13 @@ const faq = [
 
   <Faq items={faq} />
 
-  <section class="bleed close"><Art name="dark-ribbon" pos="50% 100%" /><div class="inner"><h2>Start with your next question</h2><AskBar id="ask-end" label="Ask your next question" /></div></section>
+  <Close />
 </Base>
-<script>
-  // Move the pass mark and every paper is decided again: your rule, not the model's, draws the line.
-  const STATES = { 1: { inc: 15, dec: 0, out: [], amber: null }, 2: { inc: 14, dec: 1, out: [], amber: 9 }, 3: { inc: 10, dec: 1, out: [2, 6, 11, 13], amber: 9 } };
-  for (const pane of document.querySelectorAll("[data-pass]")) {
-    const cells = [...pane.querySelectorAll(".wall15 i")], marks = [...pane.querySelectorAll("[data-n]")], scope = pane.closest(".scene") ?? pane, beam = scope.querySelector(".beams .amber, .out .maybe"), short = scope.querySelector(".beams .short, .out .short"), inc = pane.querySelector("[data-inc]"), dec = pane.querySelector("[data-dec]");
-    marks.forEach((m) => m.addEventListener("click", () => { const n = +m.dataset.n, st = STATES[n]; marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); inc.textContent = st.inc; if (dec) { dec.textContent = st.dec; dec.parentElement.classList.toggle("none", !st.dec); } beam.classList.toggle("settled", !st.dec); short.classList.toggle("dropped", n === 3); cells.forEach((c, i) => { c.classList.toggle("u", i === st.amber); c.classList.toggle("x", st.out.includes(i)); }); }));
-  }
-</script>
 <style>
   /* The dark carries on from the hero, and the devices glow against it, before the page opens up to white. */
   .tour { --bg: var(--sky); position: relative; overflow: clip; margin-top: calc(var(--gap) * -1); display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(20px, 2.6vw, 36px); width: 100vw; margin-inline: calc(50% - 50vw); padding: clamp(32px, 4vw, 56px) calc(var(--gap) + var(--pad)) clamp(40px, 4.4vw, 64px); background: var(--bg); color: #fff; border-radius: 0 0 clamp(28px, 4vw, 56px) clamp(28px, 4vw, 56px); text-align: center; } .tour h2 { margin-inline: auto; font-size: clamp(30px, 3.6vw, 52px); } .tour :global(.ws) { width: min(100%, calc((100svh - 190px) * 1.733)); max-width: 1248px; margin-inline: auto; } @media (max-height: 519px) { .tour :global(.ws) { width: min(100%, 760px); } }
   /* Find: the field for one real query, floating on the sea. */
   :global(.find) :global(.view) { display: grid; align-items: center; padding-right: var(--pad); }
-  /* Screening: straight on and calm. Your criteria sit on the pane in the picture, scattered papers arrive on its left, and the ones that pass leave along its beams. */
-  .sieve { background: #021f18; padding-top: clamp(56px, 7vw, 96px); --g: 2 44 34; }
-  .s-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: -24px; position: relative; z-index: 1; }
-  .s-wrap { width: min(100%, 1560px); margin-inline: auto; } .scene :global(.art) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent), linear-gradient(transparent, #000 10%, #000 88%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent), linear-gradient(transparent, #000 10%, #000 88%, transparent); mask-composite: intersect; }
-  .pane-ui { position: absolute; z-index: 1; left: calc(var(--u) * 640); top: calc(var(--u) * 108); width: calc(var(--u) * 394); height: calc(var(--u) * 720); padding: calc(var(--u) * 40) calc(var(--u) * 32) calc(var(--u) * 36); display: flex; flex-direction: column; }
-  .pt { font-weight: 500; font-size: calc(var(--u) * 28); letter-spacing: -.015em; margin-bottom: calc(var(--u) * 30); } .pane-ui ol { display: grid; gap: calc(var(--u) * 28); } .pane-ui li { display: grid; grid-template-columns: calc(var(--u) * 30) minmax(0, 1fr); gap: calc(var(--u) * 10) calc(var(--u) * 12); align-items: center; font-size: max(12px, calc(var(--u) * 18)); line-height: 1.25; } .pane-ui .n { display: grid; place-items: center; width: calc(var(--u) * 30); height: calc(var(--u) * 30); border-radius: calc(var(--u) * 8); background: rgb(255 255 255 / .12); font-family: var(--mono); font-size: calc(var(--u) * 16); } .pane-ui .tri { grid-column: 2; height: calc(var(--u) * 6); border-radius: 99px; }
-  .marks3 { display: inline-flex; gap: 2px; margin-inline: 3px; vertical-align: middle; } .marks3 button { display: grid; place-items: center; min-width: 26px; height: 26px; border-radius: 7px; background: rgb(255 255 255 / .1); color: rgb(255 255 255 / .8); font: 400 max(12px, calc(var(--u) * 15))/1 var(--mono); transition: background-color .15s var(--ease), color .15s var(--ease); } .marks3 button:not([aria-pressed="true"]):hover { background: rgb(255 255 255 / .22); color: #fff; } .marks3 [aria-pressed="true"] { background: #6ee7b7; color: #02261d; } :global(html:not(.has-js)) .marks3 button:not([aria-pressed="true"]) { display: none; } .wall15 .x { background: rgb(255 255 255 / .16); } .count .none { opacity: .4 !important; } .beams .settled { box-shadow: inset 0 0 0 1px rgb(110 231 183 / .28); } .beams .settled :global(.u) { background: rgb(52 211 153 / .2); color: #6ee7b7; }
-  .pass { margin-top: calc(var(--u) * 32); padding-top: calc(var(--u) * 16); border-top: 1px solid rgb(255 255 255 / .16); font-size: max(12px, calc(var(--u) * 16)); opacity: .82; }
-  .count { margin-top: auto; display: grid; gap: calc(var(--u) * 6); font-size: max(12px, calc(var(--u) * 17)); } .count span { display: flex; align-items: baseline; gap: calc(var(--u) * 12); } .count b { font: 400 calc(var(--u) * 64)/1 var(--mono); letter-spacing: -.03em; color: #6ee7b7; } .count .amber b { font-size: calc(var(--u) * 34); color: #fbbf24; }
-  .wall15 { display: grid; grid-template-columns: repeat(5, 1fr); gap: calc(var(--u) * 6); margin-top: calc(var(--u) * 26); } .wall15 i { height: calc(var(--u) * 26); border-radius: calc(var(--u) * 6); background: #34d399; opacity: .85; } .wall15 .u { background: #fbbf24; } .js .scene .wall15 i { opacity: 0; transform: scale(.7); } .js .scene.in .wall15 i { opacity: .85; transform: none; transition: opacity .35s var(--ease) calc(.4s + var(--i) * 35ms), transform .4s var(--ease) calc(.4s + var(--i) * 35ms), background-color .3s var(--ease); }
-  .tri { display: flex; gap: 2px; overflow: hidden; } .tri .y { background: #34d399; } .tri .u { background: #fbbf24; } .tri .x { background: rgb(255 255 255 / .3); }
-  .beams { position: absolute; z-index: 1; inset: 0; pointer-events: none; } .beams li { position: absolute; left: calc(var(--u) * 1078); top: calc(var(--u) * var(--y)); translate: 0 -50%; display: flex; align-items: center; gap: calc(var(--u) * 10); max-width: calc(var(--u) * 540); padding: calc(var(--u) * 6) calc(var(--u) * 8) calc(var(--u) * 6) calc(var(--u) * 12); border-radius: calc(var(--u) * 10); background: #03332a; box-shadow: inset 0 0 0 1px rgb(110 231 183 / .28); font-size: max(11px, calc(var(--u) * 15)); line-height: 1.15; white-space: nowrap; pointer-events: auto; transition: background-color .15s var(--ease); } .beams li:hover { background: #05453a; } .beams .amber { box-shadow: inset 0 0 0 1px rgb(251 191 36 / .6); } .tt { overflow: hidden; text-overflow: ellipsis; }
-  .marks { flex: none; display: flex; gap: calc(var(--u) * 3); } .marks i { display: grid; place-items: center; width: calc(var(--u) * 20); height: calc(var(--u) * 20); border-radius: calc(var(--u) * 6); background: rgb(52 211 153 / .2); color: #6ee7b7; } .marks i :global(svg) { width: 70%; height: 70%; } .marks .u { background: rgb(251 191 36 / .2); color: #fbbf24; } .marks .x { background: rgb(255 255 255 / .1); color: rgb(255 255 255 / .7); } .beams :global(.dropped) { opacity: .28 !important; translate: calc(var(--u) * 26) -50% !important; }
-  .s-small { display: none; }
-  /* Criteria appear first, then papers run out along the beams, one after another. */
-  .js .sieve .scene[data-in] { opacity: 1; transform: none; } .js .scene .pane-ui > * { opacity: 0; } .js .scene .beams li { opacity: 0; translate: calc(var(--u) * -50) -50%; } .js .scene .pane-ui .tri { transform: scaleX(0); transform-origin: left; }
-  .js .scene.in .pane-ui > * { opacity: 1; transition: opacity .5s var(--ease) .05s; } .js .scene.in .pane-ui .tri { transform: none; transition: transform .8s var(--ease) calc(.2s + var(--i, 0) * .08s); } .js .scene.in .beams li { opacity: 1; translate: 0 -50%; transition: opacity .5s var(--ease) calc(.35s + var(--i) * .06s), translate .7s var(--ease) calc(.35s + var(--i) * .06s), background-color .15s var(--ease); }
-  .rules { padding: 18px 18px 14px; } .rules > b { display: block; font-weight: 500; font-size: 17px; margin-bottom: 12px; } .rules ol { display: grid; gap: 12px; } .rules li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px 10px; align-items: center; font-size: 14px; } .rules .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: rgb(255 255 255 / .14); font: 400 13px/1 var(--mono); } .rules .tri { grid-column: 2; height: 5px; border-radius: 3px; } .rules p { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgb(255 255 255 / .14); font-size: 13px; opacity: .85; }
-  .out { padding: 18px; } .tally { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; } .tally b { font-weight: 500; font-size: 17px; } .tally span { font: 400 13px/1 var(--mono); opacity: .85; } .out ul { display: grid; gap: 9px; font-size: 14px; line-height: 1.3; } .out li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; transition: opacity .3s var(--ease); } .ic { position: relative; display: grid; } .ic :global(svg) { grid-area: 1 / 1; margin-top: 1px; color: #6ee7b7; } .ic :global(svg:last-child) { visibility: hidden; color: #fbbf24; } .out .maybe:not(:global(.settled)) .ic :global(svg:first-child) { visibility: hidden; } .out .maybe:not(:global(.settled)) .ic :global(svg:last-child) { visibility: visible; } .out :global(.dropped) { opacity: .35; }
   .who { padding: clamp(8px, 2vw, 24px) var(--pad) 0; } .who h2 { max-width: 16em; margin-bottom: 28px; }
   /* Three doors into the product: whichever you're on opens wide and shows its real screen. Only the first frame's widths are set, so it never lays out twice. */
   .teams { display: flex; gap: var(--gap); margin-inline: calc(var(--pad) * -1); height: 540px; }
@@ -125,8 +79,6 @@ const faq = [
   /* The laptop keeps moving between real communities, each one's own site under its own name. */
   .cyc { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; animation: cyc 24s var(--ease) calc(4s + var(--i) * 4s) infinite; } @keyframes cyc { 0% { opacity: 0; } 3% { opacity: 1; } 17% { opacity: 1; } 20% { opacity: 0; } } .p-lap.away .cyc { animation-play-state: paused; }
   .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }
-  .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .close h2 { font-size: clamp(38px, 6.4vw, 92px); line-height: 1; letter-spacing: -.03em; }
-    @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .marks3 button { min-width: 36px; height: 36px; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
   
   @media (max-width: 900px) { .publish { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .who { padding-inline: 8px; } .teams { flex-direction: column; height: auto; margin-inline: -8px; } .teams a, .teams a:first-child { --o: 1; flex: none; display: grid; gap: 10px; padding: 16px; } .shot, .shot.tall { position: relative; left: 0; top: 0; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; } .teams h3, .teams p { position: static; width: auto; white-space: normal; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
     :global(.find) :global(.view) { padding: 0 0 var(--pad); } }

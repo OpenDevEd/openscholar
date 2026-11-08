@@ -1,0 +1,31 @@
+---
+import Base from "../../layouts/Base.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Feature from "../../components/Feature.astro";
+import AssistantBeside from "../../components/AssistantBeside.astro";
+import Device from "../../components/Device.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+const faq = [
+  ["Does it act without asking?", "Searches and reading happen straight away. Screenings, extractions and changes that are hard to undo wait for your approval, and bulk changes can be undone."],
+  ["What can it read?", "Papers' open-access PDFs, files and images you attach, the web, and your Zotero groups, collections and items."],
+  ["Which model does it use?", "Pick a preset, a model for each chat and how hard it thinks, or use your own provider key."],
+  ["Can my team use the same chat?", "Yes. Share a chat to read or to write, and see who else has it open."],
+  ["Does it know what I'm looking at?", "Yes. It sees the page you have open, and you can point it at a search, a collection or a paper with @."],
+];
+---
+<Base top="#0b1530" title="AI research assistant: Openscholar" description="An AI research assistant that runs your searches, screenings and extractions from one message, reads papers and your files, and asks before it does anything hard to undo.">
+  <IntentHero
+    title="A research assistant that does the work and asks first"
+    lead="Ask for a search, a screening or an extraction in one message. It builds them in your workspace, waits for your approval on anything hard to undo, and shows you what it did."
+    bg="#0b1530" art="gate" screen="assistant" theme="dark" alt="The assistant beside a search, checking papers by hand"
+    questions={["Find trials on peer tutoring and screen them for primary schools", "Extract sample sizes from my saved papers", "Summarise what my collection says about attendance"]} />
+  <AssistantBeside />
+  <Feature id="context" field="steel" art="gate" title="It starts from what you have open" text="It sees the page you're on, and @ points it at a search, a collection or a paper. It reads open-access PDFs, the files you attach and your Zotero library.">
+    <div class="f-shot"><Device kind="laptop" name="lib" theme="light" alt="A collection open, ready to point the assistant at" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <Faq items={faq} title="Questions about the assistant" />
+  <Related />
+  <Close title="Hand off your first task" />
+</Base>

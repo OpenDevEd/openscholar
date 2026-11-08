@@ -1,0 +1,34 @@
+---
+import Base from "../../layouts/Base.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Feature from "../../components/Feature.astro";
+import Traced from "../../components/Traced.astro";
+import Device from "../../components/Device.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+const faq = [
+  ["What does it read?", "Each paper's title and abstract. A paper without an abstract is left out, and the extraction tells you which ones."],
+  ["What kinds of answers can it give?", "Text, yes or no, a number, or a list, chosen for each question."],
+  ["How do I know an answer is right?", "Every answer has a confidence and the passage it came from. Open it beside the table to check it, and filter the table to the answers you want to look at first."],
+  ["Do I have to write the questions?", "You can, or have them drafted from the papers you chose and edit them before you start."],
+  ["What can I export?", "CSV, JSON or Excel. The Excel file has sheets for the results, the questions, the evidence behind each answer and a summary, and you can export only the rows you selected."],
+];
+---
+<Base top="#0c1222" title="AI data extraction for systematic reviews: Openscholar" description="Ask the same questions of every paper and get a table back, each answer with its confidence and the passage it came from. Export to Excel, CSV or JSON.">
+  <IntentHero
+    title="Extract study data into a table you can check"
+    lead="Ask the same questions of every paper and get a table back: text, numbers, yes or no, or lists, each answer with its confidence and the passage it came from."
+    bg="#0c1222" art="thread" screen="extract-detail" theme="dark" alt="An extraction table with an answer open beside the passage it came from"
+    questions={["Sample sizes in peer tutoring trials", "Outcomes measured in school feeding studies", "Countries studied in cash transfer evaluations"]} />
+  <Traced />
+  <Feature id="types" field="night" art="thread" title="The answer you need, in the shape you need" text="Each question returns text, a yes or no, a number or a list, so the table sorts and filters the way your analysis does. Read it as a table, as cards, or split beside the evidence.">
+    <div class="f-shot"><Device kind="tablet" name="extract" theme="dark" alt="An extraction on a tablet, each answer with its confidence" sizes="(max-width: 900px) 60vw, 420px" /></div>
+  </Feature>
+  <Feature id="from" field="emerald" flip title="Start from the papers you screened" text="Extract from a screening's included papers, a collection, a search or an Evidence Community. Pause, resume, or run only the papers that failed.">
+    <div class="f-shot"><Device kind="laptop" name="screen2" theme="dark" alt="A screening's included papers, ready for extraction" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <Faq items={faq} title="Questions about data extraction" />
+  <Related />
+  <Close title="Turn your papers into a table" />
+</Base>

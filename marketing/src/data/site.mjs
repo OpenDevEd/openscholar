@@ -17,10 +17,10 @@ export const COMMUNITIES = [
 ];
 export const NAV = [
   { id: "product", href: "/#product", label: "Product", rows: [
-    { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#4fc3d9", field: "ocean", art: "sea", img: "search2-laptop-dark" },
-    { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve-front", img: "screen-laptop-dark" },
-    { href: "/#extraction", title: "Extract and trace", text: "Answers you can sort, export and check", icon: "table", color: "#fde047", field: "night", art: "thread", img: "extract-laptop-dark" },
-    { href: "/#assistant", title: "Delegate to the assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#7da7e6", field: "steel", art: "gate", img: "assistant-laptop-dark" },
+    { href: "/ai-literature-review/", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#4fc3d9", field: "ocean", art: "sea", img: "search2-laptop-dark" },
+    { href: "/systematic-review-screening/", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve-front", img: "screen-laptop-dark" },
+    { href: "/data-extraction/", title: "Extract and trace", text: "Answers you can sort, export and check", icon: "table", color: "#fde047", field: "night", art: "thread", img: "extract-laptop-dark" },
+    { href: "/research-assistant/", title: "Delegate to the assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#7da7e6", field: "steel", art: "gate", img: "assistant-laptop-dark" },
   ] },
   { id: "communities", href: "/evidence-communities/", label: "Evidence Communities", rows: [
     { href: "/evidence-communities/#readers", title: "Search and read", text: "Everything your readers need to use the evidence", icon: "search", color: "#fb7185", field: "rose", art: "globe", img: "c-search-laptop-light" },
@@ -42,3 +42,11 @@ export const SECTIONS = {
   "/evidence-communities/": [["readers", "Readers", "#4fc3d9"], ["answers", "Answers", "#ff9d36"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
   "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#7da7e6"], ["publish", "Review", "#34d399"]],
 };
+// Pages written for what people search when they need the product. Each links to the others, and the menu and footer link to them.
+export const INTENTS = [
+  { href: "/ai-literature-review/", title: "AI literature reviews", text: "From your question to a table of findings", icon: "search", color: "#4fc3d9" },
+  { href: "/systematic-review-screening/", title: "Screening for systematic reviews", text: "Your criteria, applied to every abstract", icon: "sieve", color: "#34d399" },
+  { href: "/data-extraction/", title: "Data extraction", text: "A table of answers, each with its evidence", icon: "table", color: "#fde047" },
+  { href: "/research-assistant/", title: "AI research assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#7da7e6" },
+  { href: "/zotero/", title: "Publish a Zotero library", text: "A public, searchable site from a Zotero group", icon: "globe", color: "#fb7185" },
+];
