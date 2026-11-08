@@ -1,8 +1,8 @@
 // Analytics for openscholar.ai, set up as on discover.openscholar.ai and sharing its answer to the cookie banner
 // (lib/consent-cookie.ts), so someone who accepts is one person from this page to signing up in the app. Until
 // someone accepts, PostHog only counts, as on the app (lib/analytics-without-consent.ts).
-import type { PostHog, Properties } from "posthog-js";
-import { applyConsentToPostHog, readConsent, writeConsent, type ConsentChoice } from "../../../lib/consent-cookie";
+import posthog, { type Properties } from "posthog-js";
+import { applyConsentToPostHog, readConsent, watchConsent, writeConsent, type ConsentChoice } from "../../../lib/consent-cookie";
 import { loadGoogleAnalytics, setGoogleAnalyticsAllowed } from "../../../lib/google-analytics-tag";
 import { postHogOptions, sendsAnalytics } from "../../../lib/posthog-options";
 
@@ -11,34 +11,41 @@ const panel = document.querySelector<HTMLElement>("[data-consent]")!;
 const { app = "", posthogKey, gaId } = panel.dataset;
 const communities: Record<string, string> = JSON.parse(panel.dataset.communities ?? "{}");
 const on = sendsAnalytics(location.hostname);
-let posthog: Promise<PostHog> | undefined;
+
+const setGoogle = (choice: ConsentChoice | undefined) => {
+  if (!on || !gaId) return;
+  if (choice === "granted") loadGoogleAnalytics(gaId);
+  else setGoogleAnalyticsAllowed(gaId, false);
+};
 
 // Events go through the app's own proxy, so they reach PostHog from a first-party address.
 const start = () => {
   if (on && posthogKey) {
-    posthog = import("posthog-js").then(({ default: ph }) => {
-      ph.init(posthogKey, postHogOptions({ apiHost: `${app}/data`, uiHost: "https://eu.posthog.com" }));
-      applyConsentToPostHog(ph);
-      return ph;
-    });
+    posthog.init(posthogKey, postHogOptions({ apiHost: `${app}/data`, uiHost: "https://eu.posthog.com" }));
+    applyConsentToPostHog(posthog);
   }
-  if (on && gaId && readConsent()?.choice === "granted") loadGoogleAnalytics(gaId);
+  if (readConsent()?.choice === "granted") setGoogle("granted");
 };
 // A page the browser prerenders for a hover isn't a visit until it's opened.
 if ((document as Document & { prerendering?: boolean }).prerendering) document.addEventListener("prerenderingchange", start, { once: true });
 else start();
 
+// An answer changed on the app in another tab holds here as soon as this tab is back.
+watchConsent((choice) => {
+  if (posthog.__loaded) applyConsentToPostHog(posthog, choice, true);
+  setGoogle(choice);
+  root.classList.toggle("ask", !choice);
+});
+
 // A click that leaves the page still sends: the event goes at once, by beacon.
-const track = (event: string, properties: Properties) =>
-  void posthog?.then((ph) => ph.capture(event, properties, { send_instantly: true, transport: "sendBeacon" }));
+const track = (event: string, properties: Properties) => {
+  if (posthog.__loaded) posthog.capture(event, properties, { send_instantly: true, transport: "sendBeacon" });
+};
 
 const choose = (choice: ConsentChoice) => {
   writeConsent(choice);
-  void posthog?.then((ph) => applyConsentToPostHog(ph, choice));
-  if (on && gaId) {
-    if (choice === "granted") loadGoogleAnalytics(gaId);
-    else setGoogleAnalyticsAllowed(gaId, false);
-  }
+  if (posthog.__loaded) applyConsentToPostHog(posthog, choice);
+  setGoogle(choice);
   root.classList.remove("ask");
 };
 
@@ -86,15 +93,18 @@ document.addEventListener("submit", (e) => {
 document.addEventListener("contact-sent", (e) => track("contact_sent", { topic: (e as CustomEvent<string>).detail }));
 
 // How far down a page people get: each section in the header's rail, once, when its top reaches the middle of the
-// screen or someone jumps past it.
+// screen or someone jumps past it. Read on scroll, since an observer can miss a section a jump skips entirely.
 const sections = [...document.querySelectorAll<HTMLElement>("[data-to]")].flatMap((a) => document.getElementById(a.dataset.to!) ?? []);
 if (sections.length) {
-  const io = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting && entry.boundingClientRect.top > 0) continue;
-      io.unobserve(entry.target);
-      track("section_reached", { section: entry.target.id });
+  const reached = new Set<HTMLElement>();
+  let frame = 0;
+  const check = () => {
+    frame = 0;
+    for (const section of sections) {
+      if (reached.has(section) || section.getBoundingClientRect().top > innerHeight / 2) continue;
+      reached.add(section);
+      track("section_reached", { section: section.id });
     }
-  }, { rootMargin: "0px 0px -50% 0px" });
-  for (const section of sections) io.observe(section);
+  };
+  addEventListener("scroll", () => { frame ||= requestAnimationFrame(check); }, { passive: true });
 }
