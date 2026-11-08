@@ -22,7 +22,7 @@ const SET = 'Screen or extract a row\'s records with the set { kind: "evidenceLi
 export const sourcesAction = defineUserAction({
   path: "evidenceLibraries/library:sources",
   description:
-    `What each of the given Evidence Communities (from evidenceLibraries/readers:list, at most ${READ_LIBRARIES_MAX}) offers the person as a source of records, each community asked as them: ` +
+    `What each of the given Evidence Communities (from evidenceLibraries/readers:list or evidenceLibraries/directory:listPublic, at most ${READ_LIBRARIES_MAX}) offers the person as a source of records, each community asked as them: ` +
     "all its records (`what: \"all\"`), their own collections there (`yours`), the ones shared with them (`shared`), and the community's own collections (`library`, with the collection it sits in as `parent`). " +
     `A community that couldn't list them says why in \`problem\`: \`outdated\` needs an update, \`unreadable\` didn't answer. ${SET}`,
   args: { libraryIds: v.array(v.id("evidenceLibraries")) },
