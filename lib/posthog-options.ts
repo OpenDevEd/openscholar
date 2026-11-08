@@ -28,6 +28,9 @@ export function postHogOptions({ apiHost, uiHost, debug = false }: { apiHost: st
     // No cookies until someone accepts. Until then, and after a rejection, a reduced count with a daily hash.
     cookieless_mode: "on_reject",
     opt_out_capturing_by_default: true,
+    // PostHog's own record of the answer sits in a cookie on the parent domain too, so a site opening for the first time
+    // already knows it and keeps the visitor's ID instead of starting cookieless and making a new one.
+    opt_out_capturing_persistence_type: "cookie",
     capture_exceptions: true,
     debug,
     person_profiles: "always",

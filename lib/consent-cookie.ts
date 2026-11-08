@@ -69,9 +69,27 @@ export function writeConsent(choice: ConsentChoice): ConsentRecord {
   return record;
 }
 
-/** PostHog keeps its own opt-in per site, so each site takes the shared answer when it starts. */
-export function applyConsentToPostHog(posthog: PostHog, choice = readConsent()?.choice) {
+/**
+ * PostHog keeps its own record of the answer, so each site hands it the shared one when it starts. After a change in
+ * another tab its record already reads the new answer while it still runs the old way: `always` makes it switch.
+ */
+export function applyConsentToPostHog(posthog: PostHog, choice = readConsent()?.choice, always = false) {
   const status = posthog.get_explicit_consent_status();
-  if (choice === "granted" && status !== "granted") posthog.opt_in_capturing();
-  if (choice === "denied" && status !== "denied") posthog.opt_out_capturing();
+  if (choice === "granted" && (always || status !== "granted")) posthog.opt_in_capturing();
+  if (choice === "denied" && (always || status !== "denied")) posthog.opt_out_capturing();
+}
+
+/**
+ * The answer can change on the other site in another tab. Each site reads it again when its tab is back in view and
+ * calls back if it changed, so a rejection on one site stops the other before anything else is sent.
+ */
+export function watchConsent(onChange: (choice: ConsentChoice | undefined) => void) {
+  let last = readConsent()?.choice;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    const now = readConsent()?.choice;
+    if (now === last) return;
+    last = now;
+    onChange(now);
+  });
 }
