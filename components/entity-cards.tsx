@@ -237,6 +237,7 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
         line={author?.institution ? (
           <>
             {author.institution.country && <CountryFlag countryCode={author.institution.country} className="shrink-0" />}
+            {/* ui-rules-allow: entity-name -- a line inside the author's own hover card, which opens no second card */}
             <span className="truncate">{author.institution.name}</span>
           </>
         ) : author || card.data === null || card.error ? <span>{t("noInstitution")}</span> : <SkeletonBar className="h-3 w-44" />}

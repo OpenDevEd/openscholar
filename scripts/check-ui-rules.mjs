@@ -18,8 +18,14 @@
 // className uses it; and each stylesheet rule is checked the same way. new-el
 // runs the same rules (tools/uiRules.ts); keep them in step.
 //
-// raw-primitive and coolify are OpenScholar's own: new-el has no shared
-// components/ui layer and never names its host.
+// raw-primitive, coolify, entity-name and country-flag are OpenScholar's own:
+// new-el has no shared components/ui layer, never names its host, and has its
+// own country and author parts.
+//
+// entity-name: an author, institution, funder, journal or topic printed as bare
+// text leaves out the hover card, page and filter the app has for it. A name
+// inside a link, button, hover card or menu item already does something.
+// country-flag: a country printed by name or code has its flag beside it.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -249,6 +255,16 @@ function translates(callee) {
 // dialog, popover or picker the app already has.
 const PRIMITIVE = /^(radix-ui|@radix-ui\/.+|vaul|cmdk)$/;
 const COOLIFY = /coolify/i;
+// Names the app can act on, read from `author.name`, `authors[0].display_name` or `authorName`.
+const ENTITY_HOLDER = /^(author|authorship|institution|funder|journal|topic)s?$/i;
+const ENTITY_FIELD = new Set(["name", "display_name", "displayName"]);
+const ENTITY_VARIABLE = /^(author|institution|funder|journal|topic)Name$/;
+// Elements that already make what they hold do something.
+const ACTIONABLE = /^(a|button|Link|FilterName|CommandItem|SelectItem|DropdownMenuItem)$|(Link|Button|Trigger|HoverCard)$/;
+// A country by name or code, and the helpers that turn a code into a name.
+const COUNTRY = /^country(Name|Code|_name|_code)?$/;
+const COUNTRY_NAMERS = new Set(["getRegionDisplayName", "regionName"]);
+const COUNTRY_FLAG = /^Country(Filter)?Flag$/;
 // Attributes whose words people read or hear.
 const SPOKEN = new Set(["placeholder", "aria-label", "aria-description", "title", "alt", "label", "description"]);
 
@@ -264,6 +280,8 @@ const FIX = {
   "loading-text": "no \"Loading\" text; show the shared Spinner, or hold the final size until the data is there.",
   "raw-primitive": "raw primitive import; use the shared part in components/ui (Dialog, Popover, Command), or add what is missing there.",
   coolify: "\"Coolify\" is our hosting tool, not something people see; say what is happening instead.",
+  "entity-name": "a name people can act on is bare text; use AuthorHoverCard, InstitutionHoverCard or TopicHoverCard, or a link or filter (see FilterName).",
+  "country-flag": "a country is named without its flag; put CountryFlag from components/ui/country-flag before it.",
 };
 
 /** Every string in a messages file, with the key that holds it. */
@@ -467,8 +485,32 @@ function check(file) {
     const value = initializer && ts.isJsxExpression(initializer) ? initializer.expression : initializer;
     return value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) ? value.text : "";
   };
+  // The last name in an expression: `paper.author` is `author`, `authors[0]` is `authors`.
+  const lastName = (node) => {
+    const value = unwrap(node);
+    if (ts.isIdentifier(value)) return value.text;
+    if (ts.isPropertyAccessExpression(value)) return value.name.text;
+    return ts.isElementAccessExpression(value) ? lastName(value.expression) : "";
+  };
+  // The JSX elements and fragments around a node, nearest first.
+  const jsxAround = (node) => {
+    const elements = [];
+    for (let parent = node.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) if (ts.isJsxElement(parent) || ts.isJsxFragment(parent)) elements.push(parent);
+    return elements;
+  };
+  const hasFlag = (node) => ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && COUNTRY_FLAG.test(node.tagName.getText(source))) || !!ts.forEachChild(node, (child) => hasFlag(child) || undefined);
+  const shownAsText = (node) => renderedInJsx(node) && !screenReaderOnly(node);
+  // ponytail: a flag counts within three elements of the name, so a far-off flag can pass; a whole-file check would pass more.
+  const missingFlag = (node) => !jsxAround(node).slice(0, 3).some(hasFlag);
+  const readsValue = (node) => ts.isPropertyAccessExpression(node) || (ts.isIdentifier(node) && !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node));
+  const namesEntity = (node) => (ts.isPropertyAccessExpression(node) ? ENTITY_FIELD.has(node.name.text) && ENTITY_HOLDER.test(lastName(node.expression)) : false) || ENTITY_VARIABLE.test(lastName(node));
   const visit = (node) => {
     if (classValue(node) && !insideClassList(node) && clashesAlone(node)) report(node, "animation-clash");
+    if (readsValue(node) && shownAsText(node)) {
+      if (namesEntity(node) && !jsxAround(node).some((element) => ts.isJsxElement(element) && ACTIONABLE.test(element.openingElement.tagName.getText(source)))) report(node, "entity-name");
+      if (COUNTRY.test(lastName(node)) && missingFlag(node)) report(node, "country-flag");
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && COUNTRY_NAMERS.has(node.expression.text) && shownAsText(node) && missingFlag(node)) report(node, "country-flag");
     if (ts.isImportDeclaration(node) && !shared && PRIMITIVE.test(node.moduleSpecifier.text)) report(node, "raw-primitive");
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
@@ -562,4 +604,4 @@ if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
 }
-console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives or host names.");
+console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives, host names, dead names or countries without flags.");

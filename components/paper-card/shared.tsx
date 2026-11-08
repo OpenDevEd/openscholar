@@ -688,6 +688,7 @@ export function AuthorNames({ authorships, unparsed, maxLength = Infinity, selec
             {name && value ? (
               <AuthorHoverCard value={value} name={author.display_name}>{name}</AuthorHoverCard>
             ) : name ?? (
+              // ui-rules-allow: entity-name -- an author with no ID, or a list with no search to filter, has nothing to open
               author.display_name
             )}
           </React.Fragment>
