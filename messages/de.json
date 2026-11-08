@@ -14,7 +14,8 @@
     "noStyles": "Keine passenden Stile.",
     "commonStyles": "Häufige Stile",
     "otherStyles": "Weitere Stile",
-    "copiedIn": "Zitation im Stil {style} kopiert"
+    "copiedIn": "Zitation im Stil {style} kopiert",
+    "download": "Herunterladen"
   },
   "common": {
     "search": "Suchen",

@@ -14,7 +14,8 @@
     "noStyles": "Hakuna mtindo unaolingana.",
     "commonStyles": "Mitindo ya kawaida",
     "otherStyles": "Mitindo mingine",
-    "copiedIn": "Nukuu ya {style} imenakiliwa"
+    "copiedIn": "Nukuu ya {style} imenakiliwa",
+    "download": "Pakua"
   },
   "common": {
     "search": "Tafuta",
