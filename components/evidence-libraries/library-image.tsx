@@ -10,10 +10,11 @@ import { useState } from "react";
  */
 export function noticeEarlyFailure(image: HTMLImageElement | null, fail: () => void) {
   if (!image?.complete || image.naturalWidth > 0) return;
-  const url = image.currentSrc || image.src;
+  const url = image.src;
   const again = new Image();
   again.onerror = fail;
-  again.onload = () => { image.src = url; };
+  // Only if it still shows this address: a replacement icon may have come while this one was asked for.
+  again.onload = () => { if (image.src === url) image.src = url; };
   again.src = url;
 }
 
