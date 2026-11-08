@@ -110,6 +110,8 @@ describe("author profiles", () => {
     expect([await role("admin"), await role("maker"), await role("member")]).toEqual(["owner", "editor", null]);
     const members = await as("admin").query(api.authors.members.list, {profileId});
     expect(members.members.map(member => [member.email, member.role]).sort()).toEqual([["admin@example.org", "owner"], ["maker@example.org", "editor"]]);
+    // Its editor sees who has it, without their emails: those are its owners' (#1093).
+    expect((await as("maker").query(api.authors.members.list, {profileId})).members.map(member => [member.email, member.role]).sort()).toEqual([["", "editor"], ["", "owner"]]);
     // Sharing it is its owners' alone: an editor, its maker included, invites nobody to it.
     const userOf = async (clerkId: string) => (await t.run(ctx => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkId)).unique()))!._id;
     const invite = async (by: string, email: string) => t.mutation(internal.sharing.invitations.prepare, {userId: await userOf(by), workspaceId: lab, author: "user", kind: "author", id: profileId, email, role: "editor"});
