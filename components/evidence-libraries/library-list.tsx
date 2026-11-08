@@ -35,18 +35,20 @@ import { YourCommunities, type Accept, type Community, type CommunityFilter, typ
 /**
  * The Communities page (#1090): every community you can open, in the page's sidebar, beside every
  * public one in its card. `preloadedOpens` is the server's answer to whether the person may create
- * one here, so New community is there from the first frame.
+ * one here, so New community is there from the first frame. Signed out, it's the public ones alone.
  */
-export function LibraryList({ preloadedOpens, preloadedPublic, preloadedSidebar }: {
+export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preloadedSidebar }: {
+  /** Whether the page was read signed in: signed out, it has no sidebar and no New community. */
+  signedIn: boolean;
   preloadedOpens?: Preloaded<typeof api.organizationFeatures.opens>;
   /** The directory's first page, newest first, as the server read it with the page. */
-  preloadedPublic?: Preloaded<typeof api.evidenceLibraries.directory.listPublic>;
+  preloadedPublic?: Preloaded<typeof api.evidenceLibraries.directory.directory>;
   /** The sidebar's first page, for the filter in the address. */
   preloadedSidebar?: SidebarFirstPage;
 }) {
   const t = useTranslations("libraryList");
   const live = useWorkspaceFeatures().data;
-  const creates = (live ?? (preloadedOpens ? preloadedQueryResult(preloadedOpens) : undefined))?.createsCommunities === true;
+  const creates = signedIn && (live ?? (preloadedOpens ? preloadedQueryResult(preloadedOpens) : undefined))?.createsCommunities === true;
   const [search, setSearch] = useState("");
   const text = useDebouncedValue(search.trim(), 300);
   // Where the sidebar's communities are from, kept in the address so a link or a reload keeps it.
@@ -90,20 +92,13 @@ export function LibraryList({ preloadedOpens, preloadedPublic, preloadedSidebar 
       preloaded={preloadedSidebar}
     />
   );
-  return (
-    <TwoColumnLayout
-      leftColumn={
-        <aside aria-label={t("sidebar.label")} className="relative hidden h-full w-80 bg-background lg:block">
-          {cloneElement(yours, { framed: true })}
-        </aside>
-      }
-      rightColumn={
+  const page = (
         <PageWrapper>
           {/* No header bar: the page's search and New community head its card, level with the sidebar's. */}
           <div className="@container w-full pb-16">
           <h1 className="sr-only">{t("evidenceLibraries")}</h1>
           <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-          <div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface lg:hidden">{yours}</div>
+          {signedIn ? <div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface lg:hidden">{yours}</div> : null}
           <CommandCenterContainer>
             <div className="relative flex items-center gap-2 border-b border-border-subtle p-4">
               <div className="min-w-0 flex-1">
@@ -130,7 +125,7 @@ export function LibraryList({ preloadedOpens, preloadedPublic, preloadedSidebar 
                 {notice}
               </p>
             )}
-            <PublicCommunities search={text} workspaceId={workspace?.workspaceId as Id<"workspaces"> | undefined} preloaded={preloadedPublic} />
+            <PublicCommunities search={text} preloaded={preloadedPublic} />
             <Dialog open={Boolean(declining)} onOpenChange={(open) => { if (!open) setDeclining(null); }}>
               <DialogContent showCloseButton={false}>
                 <DialogHeader>
@@ -164,7 +159,17 @@ export function LibraryList({ preloadedOpens, preloadedPublic, preloadedSidebar 
           </div>
           </div>
         </PageWrapper>
+  );
+  // Signed out there's nothing of theirs to list: the public communities take the page.
+  if (!signedIn) return page;
+  return (
+    <TwoColumnLayout
+      leftColumn={
+        <aside aria-label={t("sidebar.label")} className="relative hidden h-full w-80 bg-background lg:block">
+          {cloneElement(yours, { framed: true })}
+        </aside>
       }
+      rightColumn={page}
     />
   );
 }

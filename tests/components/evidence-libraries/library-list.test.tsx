@@ -29,7 +29,7 @@ vi.mock("@/convex/_generated/api", () => ({ api: {
   evidenceLibraries: {
     teardown: { restartDevelopmentTeardown: "restart" },
     queries: { listLibraries: "libraries" },
-    directory: { listPublic: "public" },
+    directory: { directory: "public" },
     invitations: { listInvitations: "invitations" }, invitationActions: { respond: "respond" },
   },
 } }));
@@ -64,7 +64,7 @@ beforeEach(() => {
 
 describe("the Communities page", () => {
   it("lists every community the person can open in the sidebar, invitations first, each opening where its role lets it", async () => {
-    render(<LibraryList />);
+    render(<LibraryList signedIn />);
     const rows = sidebar().getAllByRole("listitem");
     expect(within(rows[0]).getByText("Invited library")).toBeInTheDocument();
     expect(within(rows[0]).getByText("Invited as Editor")).toBeInTheDocument();
@@ -80,18 +80,18 @@ describe("the Communities page", () => {
 
   it("answers an invitation from its row", async () => {
     mocks.respond.mockResolvedValue(null);
-    render(<LibraryList />);
+    render(<LibraryList signedIn />);
     await userEvent.setup().click(sidebar().getByRole("button", { name: "Accept" }));
     expect(mocks.respond).toHaveBeenCalledWith({ invitationId: "invite_1", accept: true });
     expect(await screen.findByRole("status")).toHaveTextContent("Accepted Invited library.");
   });
 
   it("asks the server for one place's communities when the filter picks it, and keeps it in the address", () => {
-    render(<LibraryList />, "?from=shared");
+    render(<LibraryList signedIn />, "?from=shared");
     expect(askedFor()).toEqual({ from: "shared" });
-    render(<LibraryList />, "?from=ws_lab");
+    render(<LibraryList signedIn />, "?from=ws_lab");
     expect(askedFor()).toEqual({ from: "ws_lab" });
-    render(<LibraryList />);
+    render(<LibraryList signedIn />);
     expect(askedFor()).toEqual({});
   });
 
@@ -101,7 +101,7 @@ describe("the Communities page", () => {
       library("owner", { _id: "delete", name: "Deleting library", status: "deleting", teardownFailedStep: "database" }),
     ] : [] }));
     mocks.restart.mockResolvedValue({ status: "queued" });
-    render(<LibraryList />);
+    render(<LibraryList signedIn />);
     const user = userEvent.setup();
     await user.click(sidebar().getByRole("button", { name: "More actions for Setting up" }));
     expect(screen.getByRole("menuitem", { name: "View setup" })).toHaveAttribute("href", "/evidence-communities/setup/setup");
@@ -113,12 +113,22 @@ describe("the Communities page", () => {
 
   it("in an organization, lists its own without invitations, and offers New community only where the person may create one", () => {
     mocks.workspace = { kind: "organization", name: "Lab", workspaceId: "ws_lab", organizationId: "org_lab", slug: "lab" };
-    render(<LibraryList />);
+    render(<LibraryList signedIn />);
     expect(askedFor()).toEqual({ organization: "org_lab" });
     expect(sidebar().queryByText("Invited library")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "New community" })).not.toBeInTheDocument();
     mocks.creates = true;
-    render(<LibraryList />);
+    render(<LibraryList signedIn />);
     expect(screen.getByRole("link", { name: "New community" })).toHaveAttribute("href", "/evidence-communities/new");
+  });
+
+  // #1090: signed out, the page is the public communities: nothing of theirs to list, nothing to create.
+  it("signed out, shows the public communities alone, with no sidebar and no New community", () => {
+    mocks.creates = true;
+    render(<LibraryList signedIn={false} />);
+    expect(screen.queryByRole("complementary")).toBeNull();
+    expect(screen.queryByRole("link", { name: "New community" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Public communities" })).toBeInTheDocument();
+    expect(mocks.pages.mock.calls.some(([name]) => name === "public")).toBe(true);
   });
 });

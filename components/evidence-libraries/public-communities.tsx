@@ -4,7 +4,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { SearchX } from "@/components/icons";
 import { THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
@@ -25,13 +24,13 @@ const PER_PAGE = PUBLIC_PER_PAGE;
 const FULL_PAGE_WITH_PAGER = "min-h-[calc(6*var(--card-h)+5rem+4.5rem)] @xl/public:min-h-[calc(3*var(--card-h)+2rem+4.5rem)] @4xl/public:min-h-[calc(2*var(--card-h)+1rem+4.5rem)]";
 const SORTS = ["newest", "name", "records"] as const;
 type Sort = (typeof SORTS)[number];
-type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.listPublic>["page"][number];
+type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.directory>["page"][number];
 
-/** Every public community, as cards, a page at a time, sorted and searched on the server (#1090). */
-export function PublicCommunities({ search, workspaceId, preloaded }: { search: string; workspaceId?: Id<"workspaces">; preloaded?: Preloaded<typeof api.evidenceLibraries.directory.listPublic> }) {
+/** Every public community, as cards, a page at a time, sorted and searched on the server (#1090), for anyone, signed in or not. */
+export function PublicCommunities({ search, preloaded }: { search: string; preloaded?: Preloaded<typeof api.evidenceLibraries.directory.directory> }) {
   const t = useTranslations("libraryList.directory");
   const [sort, setSort] = useState<Sort>("newest");
-  const live = useCursorPage(api.evidenceLibraries.directory.listPublic, workspaceId ? { workspaceId, sort, ...(search ? { search } : {}) } : "skip", PER_PAGE);
+  const live = useCursorPage(api.evidenceLibraries.directory.directory, { sort, ...(search ? { search } : {}) }, PER_PAGE, { open: true });
   // The server's first page, newest first, until the live one arrives: the cards are there from the first frame.
   const first = preloaded && live.isLoading && sort === "newest" && !search ? preloadedQueryResult(preloaded) : undefined;
   const read = first ? { ...live, items: first.page, isLoading: false, hasPages: !first.isDone } : live;
