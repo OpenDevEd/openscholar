@@ -157,7 +157,7 @@ function FadeImage({ src: wanted, className, shown = "opacity-100", fallback }: 
     <img
       ref={(image) => {
         if (image?.complete && image.naturalWidth > 0) setLoaded(src);
-        else if (failed !== wanted) noticeEarlyFailure(image, () => setFailed(wanted));
+        else if (failed !== wanted && loaded !== src) noticeEarlyFailure(image, () => setFailed(wanted));
       }}
       src={src}
       alt=""

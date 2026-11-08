@@ -5,13 +5,16 @@ import { useState } from "react";
 
 /**
  * An image the server sent can fail before the page's code runs, when nothing is listening for its error yet.
- * The browser only tells a later listener if asked again, so load it once more: `fail` runs if that fails too.
+ * The browser only tells a later listener if asked again, so load it once more: `fail` runs if that fails too, and
+ * if it works this time the image shows it.
  */
 export function noticeEarlyFailure(image: HTMLImageElement | null, fail: () => void) {
   if (!image?.complete || image.naturalWidth > 0) return;
+  const url = image.currentSrc || image.src;
   const again = new Image();
   again.onerror = fail;
-  again.src = image.currentSrc || image.src;
+  again.onload = () => { image.src = url; };
+  again.src = url;
 }
 
 /**
