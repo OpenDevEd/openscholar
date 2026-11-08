@@ -22,10 +22,11 @@ const ADDRESSES = ["$current_url", "$pathname", "$prev_pageview_pathname", "$ref
 /** PostHog needs these to accept the event. Any other text or list an event carries may be what someone typed. */
 const REQUIRED = new Set(["token", "distinct_id"]);
 /**
- * Text from a fixed list, never typed: where on a page something was clicked, what it led to, and the campaign a
- * link of ours carried. A value that doesn't look like one of those names is dropped like any other text.
+ * Text from a fixed list, never typed: where on a page something was clicked, what it led to, and which campaign a
+ * link of ours belongs to. Not `utm_content` or `utm_term`, which a mailing can fill per recipient. A value that
+ * doesn't look like one of those names is dropped like any other text.
  */
-const NAMES = new Set(["placement", "target", "section", "community", "topic", "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"]);
+const NAMES = new Set(["placement", "target", "section", "community", "topic", "utm_source", "utm_medium", "utm_campaign"]);
 const NAME = /^[\w.-]{1,64}$/;
 const isName = (key: string, value: unknown) => NAMES.has(key) && typeof value === "string" && NAME.test(value);
 /** Route segments that name an account, an organization or their work, whatever they look like. */
