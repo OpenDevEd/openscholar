@@ -94,7 +94,7 @@
     "papaparse": "5.5.3",
     "patch-package": "8.0.1",
     "pdfjs-dist": "^5.4.296",
-    "posthog-js": "^1.446.0",
+    "posthog-js": "^1.447.3",
     "posthog-node": "^5.61.2",
     "radix-ui": "^1.4.3",
     "react": "^19.2.5",

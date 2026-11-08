@@ -75,3 +75,27 @@ describe("analytics without consent", () => {
     });
   });
 });
+
+describe("analytics without consent, names from a fixed list", () => {
+  it("keeps where a click was and the campaign, and drops per-recipient campaign fields and text in a kept field", () => {
+    const reduced = reduceWithoutConsent(
+      event("cta_clicked", {
+        $cookieless_mode: true,
+        placement: "hero",
+        target: "get_started",
+        utm_source: "newsletter",
+        utm_campaign: "launch-2026",
+        utm_content: "customer-12345",
+        topic: "a@b.org is my email",
+        query: "hero",
+      }),
+    );
+    expect(reduced?.properties).toEqual({
+      $cookieless_mode: true,
+      placement: "hero",
+      target: "get_started",
+      utm_source: "newsletter",
+      utm_campaign: "launch-2026",
+    });
+  });
+});

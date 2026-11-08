@@ -3,6 +3,9 @@ export const APP = process.env.APP_URL ?? "https://discover.openscholar.ai";
 // The Turnstile widget the contact form proves a visitor is a person with: production's, whose secret the app checks it with.
 // A local copy pointed at another app sets the key that app checks.
 export const TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY ?? "0x4AAAAAAF1cTpm8gRNzExmz";
+// Analytics, the same PostHog project and Google property as the app. A local copy sends nothing (lib/posthog-options.ts).
+export const POSTHOG_KEY = process.env.POSTHOG_KEY ?? "phc_9MBX1GmcLFij9i2EOaZkrlcMU92ZaHpNqF5bGQf05Xj";
+export const GA_ID = process.env.GA_ID ?? "G-KL62MG5H1G";
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
 // Live Evidence Communities, shown in the home hero and the menu.
 export const COMMUNITIES = [

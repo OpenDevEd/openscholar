@@ -14,10 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  getStoredConsent,
-  storeConsent,
-} from "@/lib/consent-storage";
+import { applyConsentToPostHog, CONSENT_UPDATED_EVENT, readConsent, writeConsent } from "@/lib/consent-cookie";
 import { PolicyLinks } from "@/components/legal-links";
 import { api } from "@/convex/_generated/api";
 import { subtleSpring } from "@/lib/animation-config";
@@ -86,43 +83,35 @@ export function CookieConsentBanner() {
     if (typeof window === "undefined") return false;
     // Nothing to consent to where PostHog didn't start (instrumentation-client.ts).
     if (!posthog.__loaded) return false;
-
-    const stored = getStoredConsent();
-    if (stored) return false;
-
-    try {
-      const status = posthog.get_explicit_consent_status?.();
-      return status === "pending";
-    } catch {
-      return true;
-    }
+    return !readConsent();
   }, []);
 
-  // The server's own analytics read the answer from the account. Someone signed out brings theirs when they sign in.
-  const { isAuthenticated } = useConvexAuth();
-  const saveConsent = useMutation(api.users.mutations.saveAnalyticsConsent);
-  const saveToAccount = useCallback(
-    (choice: "granted" | "denied") => {
-      if (isAuthenticated) saveConsent({ choice }).catch((error) => console.error("[consent] saving to the account failed", error));
-    },
-    [isAuthenticated, saveConsent],
-  );
-
   const handleAccept = useCallback(() => {
-    posthog.opt_in_capturing();
-    storeConsent("granted");
-    saveToAccount("granted");
+    applyConsentToPostHog(posthog, writeConsent("granted").choice);
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, [saveToAccount]);
+  }, []);
 
   const handleReject = useCallback(() => {
-    posthog.opt_out_capturing();
-    storeConsent("denied");
-    saveToAccount("denied");
+    applyConsentToPostHog(posthog, writeConsent("denied").choice);
     setShowBanner(false);
     setShowPreferencesDialog(false);
-  }, [saveToAccount]);
+  }, []);
+
+  // The server's own analytics read the answer from the account, so every change goes there: a button here, or an
+  // answer given on openscholar.ai in another tab (instrumentation-client.ts). Someone signed out brings theirs when
+  // they sign in.
+  const { isAuthenticated } = useConvexAuth();
+  const saveConsent = useMutation(api.users.mutations.saveAnalyticsConsent);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const save = () => {
+      const choice = readConsent()?.choice;
+      if (choice) saveConsent({ choice }).catch((error) => console.error("[consent] saving to the account failed", error));
+    };
+    window.addEventListener(CONSENT_UPDATED_EVENT, save);
+    return () => window.removeEventListener(CONSENT_UPDATED_EVENT, save);
+  }, [isAuthenticated, saveConsent]);
 
   useEffect(() => {
     setMounted(true);
