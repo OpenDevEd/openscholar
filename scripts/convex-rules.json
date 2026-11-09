@@ -131,7 +131,8 @@
       "MOST_ROWS": "One run over the live deployment, whose largest workspace or job is a few hundred rows; the file is deleted once it has run.",
       "REBUILD_BATCH": "One step of a rebuild that schedules the next; the rows are small and the whole table is meant to be read.",
       "GRANT_BATCH": "a deleted developer app's rows on people's lists of sites, a batch at a time; it reschedules itself until none are left",
-      "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left"
+      "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left",
+      "PURGE_APPLICATIONS": "a deleted account's applications to join communities, a batch per cleanup run; the run defers the account until none are left"
     }
   }
 }
