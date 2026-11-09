@@ -1,0 +1,40 @@
+---
+import Base from "../../layouts/Base.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Feature from "../../components/Feature.astro";
+import Literature from "../../components/Literature.astro";
+import Traced from "../../components/Traced.astro";
+import AssistantBeside from "../../components/AssistantBeside.astro";
+import Device from "../../components/Device.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+const faq = [
+  ["How is this different from a systematic review?", "A rapid review answers a question faster than a full systematic review, with a lighter process. Openscholar gives you the same tools for both: a search you can read, criteria you set, and data you can check."],
+  ["Can I share what I found?", "Yes. Share a search with a link, share a screening or an extraction with your team or a guest, and export any of them as CSV, JSON or Excel."],
+  ["Can I see what the field looks like before I read?", "Yes. The overview sums up your search from its counts and its most relevant papers: what it covers, how it has grown, where it comes from and what to read first."],
+  ["Can the assistant do the groundwork?", "Yes. Ask it in one message to search, screen and extract. It asks before it starts anything hard to undo, and you keep every decision."],
+  ["Does it cite its sources?", "Every extracted answer links to the passage it came from, and every paper can be cited in the style your report needs."],
+];
+---
+<Base og="/og-rapid-evidence-review.jpg" top="#091026" title="Rapid evidence reviews with AI: Openscholar" description="Answer a policy or programme question from the research quickly: see the whole field, screen and extract with AI, and share findings with every source attached.">
+  <IntentHero
+    title="Rapid evidence reviews, sources attached"
+    lead="Get to a defensible answer quickly: see what the field says, screen and extract with AI, and share the findings with the sources behind them."
+    bg="#091026" art="dark-ribbon" screen="search" theme="light" alt="A search with its overview of the field"
+    questions={["What works to reduce school dropout?", "Do cash transfers improve child nutrition?", "How effective is mobile tutoring in low-income countries?"]} />
+  <Feature id="field" class="find" field="ocean" art="sea" title="Know the field before you read it" text="The overview sums up your search from its counts and its most relevant papers: what it covers, how it has grown, where the research comes from and what to read first.">
+    <Literature />
+  </Feature>
+  <AssistantBeside />
+  <Traced />
+  <Feature id="share" field="night" flip title="Share it with the people who decide" text="Send a search as a link, share a screening or an extraction with a colleague or a guest, and export the table with the evidence behind each answer.">
+    <div class="f-shot"><Device kind="laptop" name="screen" theme="light" alt="A shared screening, with Share and Export beside its title" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <Faq items={faq} title="Questions about rapid reviews" />
+  <Related />
+  <Close title="Answer your next question" />
+</Base>
+<style>
+  :global(.find) :global(.view) { display: grid; align-items: center; padding-right: var(--pad); } @media (max-width: 900px) { :global(.find) :global(.view) { padding: 0 0 var(--pad); } }
+</style>

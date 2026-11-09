@@ -91,3 +91,6 @@ details::details-content { height: 0; overflow: clip; transition: height .35s va
 .close > .art img { transform-origin: 50% 80%; animation: ribbon 26s ease-in-out infinite alternate; } @keyframes ribbon { from { transform: scale(1.02) translateX(-1%); } to { transform: scale(1.08) translateX(1.5%); } } .close.away > .art img { animation-play-state: paused; }
 /* A closing line this large needs a button to match. */
 .close > .btn { height: 62px; padding-inline: 28px 10px; font-size: 19px; border-radius: 16px; }
+
+/* A real screen in a Feature's view: centred in the panel, kept off its edges. */
+.f-shot { display: grid; align-items: center; height: 100%; padding: var(--pad) var(--pad) var(--pad) 0; } .flip .f-shot { padding: var(--pad) 0 var(--pad) var(--pad); } @media (max-width: 900px) { .f-shot, .flip .f-shot { padding: 0 0 var(--pad); } }

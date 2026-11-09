@@ -1,0 +1,34 @@
+---
+import Base from "../../layouts/Base.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Feature from "../../components/Feature.astro";
+import Screening from "../../components/Screening.astro";
+import Device from "../../components/Device.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+const faq = [
+  ["Does it replace the reviewers?", "No. It answers every question for every paper and shows how sure it is, and your team makes the calls. Use it as a first pass, then look closely at the papers it marks unclear."],
+  ["Does it read full texts?", "Screening works from each paper's title and abstract, the same information a first screening stage uses."],
+  ["Where do the papers come from?", "A search, a collection, your saved papers or an Evidence Community. Through the assistant, also a Zotero collection."],
+  ["Can the whole team work on one screening?", "Yes. In an organization, a screening is shared: everyone sees it as it changes, and every change has a name beside it."],
+  ["What do we get at the end?", "Included papers can go straight into a collection, and the whole screening exports as CSV, JSON or Excel with a results sheet and a summary."],
+];
+---
+<Base og="/og-systematic-review-screening.jpg" top="#021f18" title="Screening software for systematic reviews: Openscholar" description="Screen titles and abstracts against your inclusion criteria with AI. Your questions and pass mark decide what's included, and you can overrule any answer.">
+  <IntentHero
+    title="Screen every abstract against your criteria"
+    lead="Write your inclusion questions and what each answer is worth. AI answers them for every paper, your pass mark decides what's in, and you can overrule any answer."
+    bg="#021f18" art="sieve-front" screen="screen" theme="dark" alt="A shared screening with its progress and its questions"
+    questions={["Peer tutoring and reading in primary schools", "School feeding and attendance in low-income countries", "Mobile phone reminders and vaccination uptake"]} />
+  <Screening title="Your rules draw the line, not the model" text="Each answer is worth the points you set. Move the pass mark and every paper is decided again, so you can see what a stricter or looser review would include." />
+  <Feature id="review" field="emerald" title="Look at every answer, overrule any of them" text="Open a paper to see each answer and how sure the model was. Change it, or put the model's answer back, and the paper's score follows.">
+    <div class="f-shot"><Device kind="laptop" name="screen2" theme="dark" alt="Included papers, each with its answers and stars" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <Feature id="sources" field="ocean" flip title="Bring the papers you already have" text="Screen a search, a collection, your saved papers or a whole Evidence Community. Not sure what to ask? Have the questions drafted from your research question and edit them.">
+    <div class="f-shot"><Device kind="laptop" name="lib" theme="light" alt="A library of saved papers in collections" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <Faq items={faq} title="Questions about screening" />
+  <Related />
+  <Close title="Screen your first set of papers" />
+</Base>
