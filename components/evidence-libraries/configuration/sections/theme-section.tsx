@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import {
   type ColourKey,
+  DARK_COLOUR_KEYS,
+  type DarkColourKey,
   FONT_FAMILIES,
   type FontFamily,
   THEME_LAYOUTS,
@@ -21,7 +23,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/rules";
 import { COLOUR_PRESETS } from "../colours";
 import { Field } from "../section-card";
-import { ChoiceCards, ColourField, FieldGroup, UploadField } from "../fields";
+import { ChoiceCards, ColourField, FieldGroup, ToggleRow, UploadField } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { Disclosure } from "../disclosure-button";
 import { PaletteIcon } from "@/components/icons";
@@ -48,7 +50,23 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
     });
   }
 
-  function setColour(key: ColourKey, value: string) {
+  // Dark mode follows the light colours until it is given its own. The switch stays on while its fields are being
+  // edited, even if every one of them is cleared; an empty field follows the light colour.
+  const [darkOpened, setDarkOpened] = useState(false);
+  const darkSeparate = darkOpened || DARK_COLOUR_KEYS.some((key) => theme.colors[key]);
+
+  function setDarkSeparate(on: boolean) {
+    setDarkOpened(on);
+    if (on) return;
+    patch((d) => {
+      for (const key of DARK_COLOUR_KEYS) d.theme.colors[key] = "";
+      return d;
+    });
+  }
+
+  function setColour(key: ColourKey | DarkColourKey, value: string) {
+    // A saved dark colour opens the switch without this flag; editing one keeps it open even if the field is cleared.
+    if ((DARK_COLOUR_KEYS as readonly string[]).includes(key)) setDarkOpened(true);
     patch((d) => {
       d.theme.colors[key] = value;
       return d;
@@ -189,7 +207,7 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
                   className="gap-2"
                   onClick={() =>
                     patch((d) => {
-                      d.theme.colors = { ...p.colors };
+                      d.theme.colors = { ...p.colors, accentDark: "", tertiaryDark: "", linkDark: "" };
                       return d;
                     })
                   }
@@ -224,12 +242,46 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
           />
           <ColourField
             label={t("linkLabel")}
-            hint={t("linkHint")}
+            hint={t(darkSeparate ? "linkLightHint" : "linkHint")}
             value={theme.colors.link}
-            contrastAgainst={[theme.colors.backgroundDark, theme.colors.backgroundLight]}
+            contrastAgainst={
+              darkSeparate
+                ? [theme.colors.backgroundLight]
+                : [theme.colors.backgroundDark, theme.colors.backgroundLight]
+            }
             onChange={(v) => setColour("link", v)}
           />
         </div>
+        <ToggleRow
+          label={t("darkColoursLabel")}
+          hint={t("darkColoursHint")}
+          checked={darkSeparate}
+          onChange={setDarkSeparate}
+        />
+        {darkSeparate ? (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <ColourField
+              label={t("accentDarkLabel")}
+              value={theme.colors.accentDark}
+              fallback={theme.colors.accent}
+              onChange={(v) => setColour("accentDark", v)}
+            />
+            <ColourField
+              label={t("secondaryDarkLabel")}
+              value={theme.colors.tertiaryDark}
+              fallback={theme.colors.tertiary}
+              onChange={(v) => setColour("tertiaryDark", v)}
+            />
+            <ColourField
+              label={t("linkDarkLabel")}
+              hint={t("linkDarkHint")}
+              value={theme.colors.linkDark}
+              fallback={theme.colors.link}
+              contrastAgainst={[theme.colors.backgroundDark]}
+              onChange={(v) => setColour("linkDark", v)}
+            />
+          </div>
+        ) : null}
       </FieldGroup>
 
       <Disclosure

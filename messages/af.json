@@ -1992,6 +1992,13 @@
       "secondaryHint": "Etikette en uitligtings.",
       "linkLabel": "Skakelkleur",
       "linkHint": "Skakels in teks. Nagegaan teen albei agtergronde.",
+      "darkColoursLabel": "Ander kleure in donkermodus",
+      "darkColoursHint": "As dit af is, gebruik donkermodus die kleure hierbo.",
+      "accentDarkLabel": "Aksentkleur (donkermodus)",
+      "secondaryDarkLabel": "Sekondêre kleur (donkermodus)",
+      "linkDarkLabel": "Skakelkleur (donkermodus)",
+      "linkLightHint": "Skakels in teks. Nagegaan teen die ligte agtergrond.",
+      "linkDarkHint": "Nagegaan teen die donker agtergrond.",
       "advanced": "Gevorderd",
       "advancedColour": {
         "backgroundDark": "Agtergrond (donkermodus)",

@@ -1,4 +1,4 @@
-import { HEX_COLOUR, THEME_DEFAULTS, type ThemeDraft } from "@/lib/evidence-libraries/configuration/rules";
+import { type ColourKey, HEX_COLOUR, THEME_DEFAULTS } from "@/lib/evidence-libraries/configuration/rules";
 
 export type ColourPresetKey =
   | "openscholar"
@@ -14,7 +14,7 @@ export type ColourPresetKey =
 /** `key` is the translation key under `evidenceLibraryConfiguration.theme.presets`. */
 export const COLOUR_PRESETS: {
   key: ColourPresetKey;
-  colors: ThemeDraft["colors"];
+  colors: Record<ColourKey, string>;
 }[] = [
   // The brand orange: deep enough for the white text on a community's buttons, the brand ink, and a deeper orange for links.
   { key: "openscholar", colors: { ...THEME_DEFAULTS.colors, accent: "#c9500a", tertiary: "#361307", link: "#b2440a" } },

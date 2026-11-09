@@ -1992,6 +1992,13 @@
       "secondaryHint": "Lebo na mambo yanayoangaziwa.",
       "linkLabel": "Rangi ya viungo",
       "linkHint": "Viungo ndani ya maandishi. Inakaguliwa dhidi ya historia zote mbili.",
+      "darkColoursLabel": "Rangi tofauti katika hali ya giza",
+      "darkColoursHint": "Ikizimwa, hali ya giza inatumia rangi zilizo juu.",
+      "accentDarkLabel": "Rangi kuu (hali ya giza)",
+      "secondaryDarkLabel": "Rangi ya pili (hali ya giza)",
+      "linkDarkLabel": "Rangi ya viungo (hali ya giza)",
+      "linkLightHint": "Viungo ndani ya maandishi. Inakaguliwa dhidi ya mandharinyuma angavu.",
+      "linkDarkHint": "Inakaguliwa dhidi ya mandharinyuma meusi.",
       "advanced": "Kina",
       "advancedColour": {
         "backgroundDark": "Mandharinyuma (hali ya giza)",

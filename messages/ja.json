@@ -1991,6 +1991,13 @@
       "secondaryHint": "タグとハイライトに使われます。",
       "linkLabel": "リンクの色",
       "linkHint": "本文中のリンクです。両方の背景に対してコントラストを確認します。",
+      "darkColoursLabel": "ダークモードで別の色を使う",
+      "darkColoursHint": "オフのときは、ダークモードでも上の色を使います。",
+      "accentDarkLabel": "アクセントカラー（ダークモード）",
+      "secondaryDarkLabel": "サブカラー（ダークモード）",
+      "linkDarkLabel": "リンクの色（ダークモード）",
+      "linkLightHint": "本文中のリンクです。明るい背景に対してコントラストを確認します。",
+      "linkDarkHint": "暗い背景に対してコントラストを確認します。",
       "advanced": "詳細設定",
       "advancedColour": {
         "backgroundDark": "背景（ダークモード）",

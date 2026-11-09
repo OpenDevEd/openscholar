@@ -1991,6 +1991,13 @@
       "secondaryHint": "Tags and highlights.",
       "linkLabel": "Link colour",
       "linkHint": "Links in text. Checked against both backgrounds.",
+      "darkColoursLabel": "Different colours in dark mode",
+      "darkColoursHint": "When this is off, dark mode uses the colours above.",
+      "accentDarkLabel": "Accent colour (dark mode)",
+      "secondaryDarkLabel": "Secondary colour (dark mode)",
+      "linkDarkLabel": "Link colour (dark mode)",
+      "linkLightHint": "Links in text. Checked against the light background.",
+      "linkDarkHint": "Checked against the dark background.",
       "advanced": "Advanced",
       "advancedColour": {
         "backgroundDark": "Background (dark mode)",

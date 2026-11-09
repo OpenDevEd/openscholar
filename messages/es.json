@@ -1992,6 +1992,13 @@
       "secondaryHint": "Etiquetas y resaltados.",
       "linkLabel": "Color de los enlaces",
       "linkHint": "Enlaces en el texto. Se comprueba con ambos fondos.",
+      "darkColoursLabel": "Colores distintos en modo oscuro",
+      "darkColoursHint": "Si está desactivado, el modo oscuro usa los colores de arriba.",
+      "accentDarkLabel": "Color de acento (modo oscuro)",
+      "secondaryDarkLabel": "Color secundario (modo oscuro)",
+      "linkDarkLabel": "Color de los enlaces (modo oscuro)",
+      "linkLightHint": "Enlaces en el texto. Se comprueba con el fondo claro.",
+      "linkDarkHint": "Se comprueba con el fondo oscuro.",
       "advanced": "Avanzado",
       "advancedColour": {
         "backgroundDark": "Fondo (modo oscuro)",

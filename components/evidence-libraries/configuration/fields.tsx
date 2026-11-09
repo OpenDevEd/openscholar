@@ -393,6 +393,7 @@ export function ColourField({
   value,
   onChange,
   contrastAgainst,
+  fallback,
   className,
 }: {
   label: ReactNode;
@@ -401,15 +402,18 @@ export function ColourField({
   onChange: (value: string) => void;
   /** Background colours; warns when the colour fails WCAG AA (4.5:1) on all of them. */
   contrastAgainst?: string[];
+  /** The colour used while the field is empty, which makes empty valid. */
+  fallback?: string;
   className?: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.fields");
   const tp = useTranslations("evidenceLibraryConfiguration.theme.presets");
-  const valid = HEX_COLOUR.test(value);
+  const shown = value || fallback || "";
+  const valid = HEX_COLOUR.test(shown);
   // Warn only when the colour fails on every background, like the runtime check.
   const backgrounds = contrastAgainst ?? [];
   const low =
-    valid && backgrounds.length > 0 && backgrounds.every((bg) => contrastRatio(value, bg) < 4.5)
+    valid && backgrounds.length > 0 && backgrounds.every((bg) => contrastRatio(shown, bg) < 4.5)
       ? backgrounds
       : [];
   return (
@@ -428,14 +432,14 @@ export function ColourField({
                   type="button"
                   aria-label={t("pickColour")}
                   className="size-9 shrink-0 rounded-md border border-border-subtle shadow-xs"
-                  style={{ background: valid ? value : "transparent" }}
+                  style={{ background: valid ? shown : "transparent" }}
                 />
               </PopoverTrigger>
               <PopoverContent align="start" className="flex w-64 flex-col gap-3">
                 <input
                   type="color"
                   aria-label={t("pickColour")}
-                  value={valid ? value.slice(0, 7) : "#000000"}
+                  value={valid ? shown.slice(0, 7) : "#000000"}
                   onChange={(e) => onChange(e.target.value)}
                   className="h-10 w-full cursor-pointer rounded-md border border-border-subtle bg-background p-0.5"
                 />
@@ -450,7 +454,7 @@ export function ColourField({
                           className="flex size-6 items-center justify-center rounded-md border border-border-subtle"
                           style={{ background: p.colors.accent }}
                         >
-                          {p.colors.accent.toLowerCase() === value.toLowerCase() ? (
+                          {p.colors.accent.toLowerCase() === shown.toLowerCase() ? (
                             <Check className="h-3 w-3 text-white" />
                           ) : null}
                         </button>
@@ -465,13 +469,14 @@ export function ColourField({
               id={id}
               className="bg-background font-mono text-sm"
               value={value}
+              placeholder={fallback}
               aria-invalid={invalid || undefined}
               onChange={(e) => onChange(e.target.value)}
             />
           </div>
           {low.length > 0 ? (
             <p role="status" className="text-xs ink-warning" data-contrast="low">
-              {t("lowContrast", { ratio: contrastRatio(value, low[0]!).toFixed(1) })}
+              {t("lowContrast", { ratio: contrastRatio(shown, low[0]!).toFixed(1) })}
             </p>
           ) : null}
         </div>
