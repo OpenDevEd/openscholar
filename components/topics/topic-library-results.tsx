@@ -3,17 +3,19 @@ import useSWRInfinite from "swr/infinite";
 import {useTranslations} from "next-intl";
 import {parseAsString, useQueryState} from "nuqs";
 import {readTopicPublications} from "@/app/actions/topic-publications";
+import type {TopicPublicationPage} from "@/lib/topics/publications";
 import {PublicationListItem} from "@/components/evidence-libraries/publication-list-item";
 import {Button} from "@/components/ui/button";
 import {Spinner} from "@/components/ui/spinner";
 import {ListEmpty, ListLoading} from "@/components/evidence-libraries/list-controls";
 import {BookOpen, SearchX} from "@/components/icons";
 
-/** The topic's library publications, loaded by the page so its tab can show the count. */
-export function useTopicLibraryResults(topicId: string) {
+/** The topic's library publications, loaded by the page so its tab can show the count. The server may send the first page with the page. */
+export function useTopicLibraryResults(topicId: string, firstPage: TopicPublicationPage | null) {
   const [query, setQuery] = useQueryState("libraryQuery", parseAsString.withDefault(""));
+  const sent = firstPage && !query ? [firstPage] : undefined;
   const results = useSWRInfinite((index, previous) => index > 0 && !previous?.nextCursor ? null : ["topic-publications", topicId, query, previous?.nextCursor ?? null] as const,
-    ([, id, search, cursor]) => readTopicPublications(id, search, cursor));
+    ([, id, search, cursor]) => readTopicPublications(id, search, cursor), {fallbackData: sent, revalidateOnMount: !sent, revalidateFirstPage: !sent});
   const papers = results.data?.flatMap(page => page.papers) ?? [];
   const unavailable = results.data?.some(page => page.unavailableCount);
   const complete = results.data?.at(-1)?.complete && !unavailable;
@@ -28,7 +30,8 @@ export function TopicLibraryResults({state: {query, results, papers, unavailable
   const more = results.data?.at(-1)?.nextCursor;
   return <div>
     {(results.error || unavailable || updating) && <div role="alert" className="flex flex-wrap items-center gap-3 px-6 py-4 text-sm"><span>{results.error ? t("publicationsFailed") : updating ? t("updating") : t("unavailable")}</span><Button variant="outline" size="sm" onClick={async () => {await results.setSize(1); await results.mutate();}}>{t("tryAgain")}</Button></div>}
-    {results.isLoading && <ListLoading label={t("loadingLibrary")} />}
+    {/* The server may have sent the first records; the browser still reads them again, so loading only shows while there are none. */}
+    {results.isLoading && !papers.length && <ListLoading label={t("loadingLibrary")} />}
     {papers.map(paper => <PublicationListItem key={paper.id} publication={paper} locations={paper.locations} />)}
     {!results.isLoading && !results.error && !papers.length && <ListEmpty icon={more || query ? SearchX : BookOpen}>{more ? t("noPageMatches") : query ? t("noLibraryMatches") : t("noLibraryRecords")}</ListEmpty>}
     {more && <div className="flex justify-center p-3"><Button variant="ghost" disabled={results.isValidating} onClick={() => void results.setSize(results.size + 1)}>{results.isValidating && <Spinner />}{t("showMore")}</Button></div>}

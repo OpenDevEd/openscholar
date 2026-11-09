@@ -25,11 +25,12 @@ import { useUIStore } from "@/lib/store";
 import type { TopicNode } from "@/lib/topics/catalog";
 import { topicHref } from "@/lib/topics/links";
 import { TopicLibraryResults, useTopicLibraryResults } from "./topic-library-results";
+import type { TopicPublicationPage } from "@/lib/topics/publications";
 import { ListEmpty, ListLoading, ListSearch, ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { buildShareableUrl } from "@/lib/search-params";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
-export function TopicPage({ topic, path, related, detail: initialDetail }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[]; detail: Awaited<ReturnType<typeof readTopic>> | null }) {
+export function TopicPage({ topic, path, related, detail: initialDetail, publications }: { topic: TopicNode; path: TopicNode[]; related: TopicNode[]; detail: Awaited<ReturnType<typeof readTopic>> | null; publications: TopicPublicationPage | null }) {
   const t = useTranslations("topics");
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
@@ -37,7 +38,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const [tab, setTab] = useState<"libraries" | "openalex">("libraries");
   const source = useSearchSource();
   const SourceIcon = source === "openalex" ? OpenAlexIcon : LogoMark;
-  const library = useTopicLibraryResults(topic.id);
+  const library = useTopicLibraryResults(topic.id, publications);
   const [showRelated, setShowRelated] = useState(false);
   // The server sends the saved description; the browser only asks when that failed.
   const detail = useSWR(["topic", topic.id, source], ([, id]) => readTopic(id), {fallbackData: initialDetail ?? undefined, revalidateOnMount: !initialDetail, revalidateOnFocus: false});
