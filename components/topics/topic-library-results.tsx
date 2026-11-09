@@ -15,7 +15,7 @@ export function useTopicLibraryResults(topicId: string, firstPage: TopicPublicat
   const [query, setQuery] = useQueryState("libraryQuery", parseAsString.withDefault(""));
   const sent = firstPage && !query ? [firstPage] : undefined;
   const results = useSWRInfinite((index, previous) => index > 0 && !previous?.nextCursor ? null : ["topic-publications", topicId, query, previous?.nextCursor ?? null] as const,
-    ([, id, search, cursor]) => readTopicPublications(id, search, cursor), {fallbackData: sent, revalidateOnMount: !sent, revalidateFirstPage: !sent});
+    ([, id, search, cursor]) => readTopicPublications(id, search, cursor), {fallbackData: sent});
   const papers = results.data?.flatMap(page => page.papers) ?? [];
   const unavailable = results.data?.some(page => page.unavailableCount);
   const complete = results.data?.at(-1)?.complete && !unavailable;

@@ -14,14 +14,15 @@ import {readTopicPublicationsForPage} from "@/lib/topics/topic-page-data";
 const detailOf = cache((topicId: string) => readTopic(topicId).catch(() => null));
 const publicationsOf = cache((topicId: string) => readTopicPublicationsForPage(topicId));
 
-export async function generateMetadata({params}: {params: Promise<{topicId: string}>}): Promise<Metadata> {
-  const {topicId} = await params;
+export async function generateMetadata({params, searchParams}: {params: Promise<{topicId: string}>; searchParams: Promise<{libraryQuery?: string}>}): Promise<Metadata> {
+  const [{topicId}, {libraryQuery}] = await Promise.all([params, searchParams]);
   const topic = catalogNode(topicId);
   if (topic?.level !== "topic") return {};
   const [detail, publications, t, live] = await Promise.all([detailOf(topicId), publicationsOf(topicId), getTranslations("metadata"), isLiveSite()]);
   const page = await indexedPage({path: topicHref(topic.id, topic.name), title: `${topic.name} | ${t("siteName")}`, description: detail?.description || topic.name});
   // Only a topic whose records arrived with the page is worth a search result; the rest stay out, as they all did before.
-  return {...page, robots: {index: live && !!publications?.papers.length, follow: live}};
+  // A search within the topic shows other records than the ones sent, so its address stays out too.
+  return {...page, robots: {index: live && !libraryQuery && !!publications?.papers.length, follow: live}};
 }
 
 export default async function Page({params}: {params: Promise<{topicId: string}>}) {
