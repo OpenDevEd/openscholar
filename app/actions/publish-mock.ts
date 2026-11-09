@@ -1,16 +1,15 @@
 "use server";
 // MOCK (mock/publish-reports): the Publish flow and its admin page, against the mock's local store. The real build
 // makes these Convex functions with their user-action registry entries.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { cookies } from "next/headers";
 import { currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { searchOpenAlex } from "@/lib/openalex/lookup";
-import { alreadyPublished } from "@/lib/publish-mock/published";
 import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
 import { suggestTopics } from "@/lib/publish-mock/topics";
 import { MOCK_DIR, nextKey, pdfPath, readState, writeState } from "@/lib/publish-mock/store";
-import { bylineOf, doiOf, isPassFail, type Affiliation, type Check, type CheckResult, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { doiOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -48,6 +47,7 @@ export async function signAgreement({ name, onBehalfOfAll }: { name: string; onB
   const user = await currentUser();
   return change((state) =>
     touch(openDraft(state), {
+      ...(user ? { ownerId: user.id } : {}),
       signedBy: { name: name.trim(), email: user?.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
       signedAt: Date.now(),
       agreementVersion: state.settings.agreement.version,
@@ -138,54 +138,14 @@ export async function uploadPdf(form: FormData) {
   });
 }
 
-const squash = (text: string) => text.toLowerCase().replace(/\s+/g, "");
-
-/** Whether a score clears a check: at least its threshold, or for scores that must stay low, at most it. */
-const passes = (score: number, check: Check) => (check.direction === "atMost" ? score <= check.threshold : score >= check.threshold);
-
-/** MOCK: each check's answer. Text match really reads the PDF's text; the others are made up from the file's name. */
-async function runCheck(check: Check, settings: Settings, draft: Submission, text: string, metadata: Metadata): Promise<CheckResult> {
-  const base = { checkId: check.id, name: check.name, engine: check.engine, threshold: check.threshold, direction: check.direction, blocking: check.blocking, ...(isPassFail(check) ? { passFail: true } : {}) };
-  const name = draft.pdf?.name.toLowerCase() ?? "";
-  if (check.engine === "llm") {
-    const score = name.includes("advert") ? 0.22 : 0.93;
-    const research = score >= 0.5;
-    return {
-      ...base,
-      score,
-      pass: passes(score, check),
-      reasoning: research
-        ? "A study with a question, a method and findings. It names no product and links only to its own data."
-        : "Most pages describe a paid training course and link to its sign-up page; the study itself is two pages long.",
-    };
-  }
-  let score = 0.01;
-  // The text to find, with {byline} as this report's. Wrapping and line breaks in the PDF don't count.
-  if (check.decisionModel === "text-match") {
-    score = squash(text).includes(squash(check.instructions.replaceAll("{byline}", bylineOf(settings, draft.doi)))) ? 1 : 0;
-    return { ...base, score, pass: score === 1, detail: score === 1 ? "The PDF carries the byline with its DOI." : "The PDF doesn't carry the byline with its DOI." };
-  } else if (check.decisionModel === "already-published") {
-    // The check compares candidates with the model the admin page sets for reading reports.
-    const found = await alreadyPublished(metadata, settings.metadataModel);
-    return found
-      ? { ...base, score: 1, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
-      : { ...base, score: 0, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };
-  } else if (check.decisionModel === "language-id") score = 0.98;
-  return { ...base, score, pass: passes(score, check) };
-}
-
-/** Runs the checks that are on now, with their version kept on the report, and decides what happens to it. */
-export async function runChecks(metadata: Metadata) {
-  return change(async (state) => {
-    const draft = draftOf(state);
-    const text = await readFile(pdfPath(draft.id).replace(/\.pdf$/, ".txt"), "utf8").catch(() => "");
-    const checks = state.settings.checks.filter((c) => c.enabled);
-    const results = await Promise.all(checks.map((check) => runCheck(check, state.settings, draft, text, metadata)));
-    const blocked = results.some((r) => !r.pass && r.blocking);
-    const flagged = results.some((r) => !r.pass && !r.blocking);
-    // Passing makes the report: live at once, or once someone approves it when review is on or an advisory check flagged it.
-    const status = blocked ? "failed" : state.settings.humanReview || flagged ? "review" : "live";
-    return touch(draft, { metadata, results, checksVersion: state.settings.checksVersion, status, step: "done", deposit: status === "live" ? "queued" : "none" });
+/** One of your reports, made the one the Publish page shows: a draft or a failed one carries on from where it stopped. */
+export async function openReport(id: string) {
+  const user = await currentUser();
+  return change((state) => {
+    const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
+    if (!report) throw new Error("No such report of yours.");
+    state.draftId = id;
+    return report;
   });
 }
 

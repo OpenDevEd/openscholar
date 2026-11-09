@@ -39,8 +39,11 @@ import {
   Hash,
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
-import { goTo, runChecks, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
-import { bylineOf, type CheckResult, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { goTo, openReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { YourReports } from "@/components/publish-mock/your-reports";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { bylineOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -66,53 +69,133 @@ function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
 }
 
-export function PublishFlow({ settings, initial, userName }: { settings: Settings; initial: Submission | null; userName: string }) {
-  const [draft, setDraft] = useState(initial);
-  // Results that came back in this visit reveal one by one; ones read with the page are just there.
-  const [fresh, setFresh] = useState(false);
-  const place = placeOf(draft);
+type Running = { checks: Array<{ id: string; name: string; engine: CheckResult["engine"] }>; results: Record<string, CheckResult> };
+
+/** Reads the checks' answers as the route sends them, one line each, and the report as saved at the end. */
+async function streamChecks(metadata: Metadata, onResult: (r: CheckResult) => void): Promise<Submission> {
+  const response = await fetch("/publish/checks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ metadata }) });
+  if (!response.ok || !response.body) throw new Error("The checks couldn't start");
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines.filter(Boolean)) {
+      const message = JSON.parse(line) as { type: "result"; result: CheckResult } | { type: "done"; draft: Submission };
+      if (message.type === "result") onResult(message.result);
+      else return message.draft;
+    }
+  }
+  throw new Error("The checks stopped before they finished");
+}
+
+export function PublishFlow({ settings, initial, reports: initialReports, userName }: { settings: Settings; initial: Submission | null; reports: Submission[]; userName: string }) {
+  const [view, setView] = useQueryState("view", parseAsStringLiteral(["new", "reports"] as const).withDefault("new"));
+  const [draft, setDraftOnly] = useState(initial);
+  const [reports, setReports] = useState(initialReports);
+  const [running, setRunning] = useState<Running | null>(null);
+  // Every change to the report shows on Your reports too.
+  const setDraft = (next: Submission | null) => {
+    setDraftOnly(next);
+    if (next) setReports((all) => [next, ...all.filter((r) => r.id !== next.id)]);
+  };
+  const place = running ? 4 : placeOf(draft);
   const step: Step = draft?.step ?? "agreement";
   const back = (to: Step) => {
     void goTo(to).then(setDraft);
   };
+  const run = async (metadata: Metadata) => {
+    // The rows are there at once, one per check that's on; each settles as its answer comes.
+    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name, engine: c.engine })), results: {} });
+    try {
+      const saved = await streamChecks(metadata, (result) => setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)));
+      setDraft(saved);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The checks couldn't run");
+    } finally {
+      setRunning(null);
+    }
+  };
+  const tabs = (
+    <Tabs value={view} onValueChange={(next) => void setView(next === "reports" ? "reports" : null)}>
+      <TabsList aria-label="Publish" className="max-w-full max-[380px]:[&_svg]:hidden">
+        <TabsTrigger value="new">
+          <PublishIcon />
+          {draft ? "Your report" : "New report"}
+        </TabsTrigger>
+        <TabsTrigger value="reports">
+          <FileText />
+          Your reports
+          <span className="text-xs tabular-nums text-muted-foreground">{reports.length}</span>
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
 
   return (
-    <LibraryPageShell icon={PublishIcon} title="Publish" intro={<StepTrail place={place} canGoBack={draft?.step !== "done"} onBack={back} draft={draft} />}>
+    // The tabs head the card, as on the Communities page: given to the shell, its card toolbar would open and close on load.
+    <LibraryPageShell
+      icon={PublishIcon}
+      title="Publish"
+      intro={
+        view === "new" ? (
+          <>
+            <div className="px-4 pt-4 sm:px-6">{tabs}</div>
+            <StepTrail place={place} canGoBack={draft?.step !== "done" && !running} onBack={back} draft={running ? null : draft} />
+          </>
+        ) : undefined
+      }
+    >
+      {view === "reports" ? (
+        <YourReports
+          heading={tabs}
+          reports={reports}
+          onNew={() => {
+            void startOver().then(() => {
+              setDraftOnly(null);
+              void setView(null);
+            });
+          }}
+          onOpen={(id) => {
+            openReport(id)
+              .then((report) => {
+                setDraftOnly(report);
+                void setView(null);
+              })
+              .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "That report couldn't be opened"));
+          }}
+        />
+      ) : (
       <div className="grid gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_17rem] @3xl:gap-10">
         <AutoHeight>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={step === "done" ? `done:${draft?.status}` : step}
+              key={running || step === "done" ? "checks" : step}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.25, ease: EASE }}
             >
-              {step === "agreement" ? (
+              {running ? (
+                <Checks rows={running.checks.map((c) => ({ ...c, result: running.results[c.id] }))} draft={null} />
+              ) : step === "agreement" ? (
                 <AgreementStep settings={settings} userName={draft?.signedBy?.name ?? userName} onSigned={setDraft} />
               ) : step === "doi" && draft ? (
                 <DoiStep settings={settings} draft={draft} onNext={() => back("upload")} />
               ) : step === "upload" && draft ? (
                 <UploadStep settings={settings} draft={draft} onRead={setDraft} />
               ) : step === "details" && draft?.metadata ? (
-                <DetailsStep
-                  initial={draft.metadata}
-                  onRun={async (metadata) => {
-                    const next = await runChecks(metadata);
-                    setFresh(true);
-                    setDraft(next);
-                  }}
-                />
+                <DetailsStep initial={draft.metadata} onRun={run} />
               ) : draft ? (
-                <Outcome
+                <Checks
+                  rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, engine: r.engine, result: r }))}
                   draft={draft}
-                  fresh={fresh}
                   onFix={() => back("upload")}
                   onAnother={() => {
-                    void startOver().then(() => {
-                      setFresh(false);
-                      setDraft(null);
-                    });
+                    void startOver().then(() => setDraftOnly(null));
                   }}
                 />
               ) : null}
@@ -121,6 +204,7 @@ export function PublishFlow({ settings, initial, userName }: { settings: Setting
         </AutoHeight>
         <ReportCover settings={settings} draft={draft} />
       </div>
+      )}
     </LibraryPageShell>
   );
 }
@@ -345,150 +429,168 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
   );
 }
 
-/** One check's answer: its score against what it needs, as a bar with the line it has to clear. */
-export function CheckRow({ result, delay = 0 }: { result: CheckResult; delay?: number }) {
+/**
+ * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
+ * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
+ */
+export function CheckRow({ name, engine, result }: { name: string; engine: CheckResult["engine"]; result?: CheckResult }) {
   const reduce = useReducedMotion();
-  const wait = reduce ? 0 : delay;
-  const tone = result.pass ? "success" : result.blocking ? "danger" : "warning";
-  const pct = Math.round(result.score * 100);
-  const need = Math.round(result.threshold * 100);
+  const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
+  const pct = result ? Math.round(result.score * 100) : 0;
+  const need = result ? Math.round(result.threshold * 100) : 0;
   // Results saved before checks said whether they have a score.
-  const passFail = result.passFail ?? (result.checkId === "byline" || result.checkId === "published");
-  const above = result.direction === "atMost";
+  const passFail = result ? (result.passFail ?? (result.checkId === "byline" || result.checkId === "published")) : false;
+  const above = result?.direction === "atMost";
+  const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.2 } };
   return (
     <li className="px-4 py-3.5">
       <div className="flex items-center gap-3">
         <span className="relative flex size-5 shrink-0 items-center justify-center">
-          <motion.span className="absolute" initial={{ opacity: wait ? 1 : 0 }} animate={{ opacity: 0 }} transition={{ delay: wait, duration: 0.15 }}>
-            <Spinner className="size-4 text-primary" />
-          </motion.span>
-          <motion.span className="absolute" initial={{ opacity: wait ? 0 : 1, scale: wait ? 0.6 : 1 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: wait, type: "spring", stiffness: 500, damping: 26 }}>
-            {result.pass ? <CircleCheck className="size-5 ink-success" /> : result.blocking ? <CircleX className="size-5 text-destructive" /> : <TriangleAlert className="size-5 ink-warning" />}
-          </motion.span>
+          <AnimatePresence initial={false} mode="popLayout">
+            {result ? (
+              <motion.span
+                key="done"
+                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={reduce ? { duration: 0.15 } : { type: "spring", stiffness: 500, damping: 26 }}
+              >
+                {result.pass ? <CircleCheck className="size-5 ink-success" /> : result.blocking ? <CircleX className="size-5 text-destructive" /> : <TriangleAlert className="size-5 ink-warning" />}
+              </motion.span>
+            ) : (
+              <motion.span key="running" {...fade}>
+                <Spinner className="size-4 text-primary" />
+              </motion.span>
+            )}
+          </AnimatePresence>
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{result.name}</span>
+          <span className="block truncate text-sm font-medium">{name}</span>
         </span>
-        <span className="hidden text-xs text-muted-foreground sm:inline">{result.engine === "llm" ? "LLM" : "Decision model"}</span>
-        <motion.span initial={{ opacity: wait ? 0 : 1 }} animate={{ opacity: 1 }} transition={{ delay: wait, duration: 0.2 }}>
-          <StatusChip tone={tone}>{result.pass ? "Passed" : result.blocking ? "Failed" : "Flagged"}</StatusChip>
-        </motion.span>
+        <span className="hidden text-xs text-muted-foreground sm:inline">{engine === "llm" ? "LLM" : "Decision model"}</span>
+        {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
+        <span className="flex min-w-[4.75rem] justify-end">
+          <AnimatePresence initial={false}>
+            {result && tone ? (
+              <motion.span key="chip" {...fade}>
+                <StatusChip tone={tone}>{result.pass ? "Passed" : result.blocking ? "Failed" : "Flagged"}</StatusChip>
+              </motion.span>
+            ) : null}
+          </AnimatePresence>
+        </span>
       </div>
-      {/* A check that finds something or doesn't says what; a scored one shows its score against the line, the failing side tinted. */}
-      {passFail ? (
-        result.evidence ? null : (
-          <motion.p initial={{ opacity: wait ? 0 : 1 }} animate={{ opacity: 1 }} transition={{ delay: wait, duration: 0.2 }} className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">
-            {result.detail ?? (result.pass ? "Found." : "Not found.")}
-          </motion.p>
-        )
-      ) : (
-        <div className="ms-8 mt-2.5 flex items-center gap-3">
-          <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
-            <span
-              aria-hidden
-              className={cn("absolute inset-y-0", result.blocking ? "bg-destructive/15" : "bg-warning/20")}
-              style={above ? { insetInlineStart: `${need}%`, insetInlineEnd: 0 } : { insetInlineStart: 0, width: `${need}%` }}
-            />
-            <motion.div
-              className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")}
-              initial={{ width: wait ? "0%" : `${Math.max(pct, 2)}%` }}
-              animate={{ width: `${Math.max(pct, 2)}%` }}
-              transition={{ delay: wait, duration: 0.5, ease: EASE }}
-            />
-            <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
-          </div>
-          <span className="w-36 shrink-0 text-end text-xs tabular-nums">
-            <span className="font-medium text-foreground/80">{pct}%</span>{" "}
-            <span className="text-muted-foreground">{above ? `fails above ${need}%` : `fails below ${need}%`}</span>
-          </span>
-        </div>
-      )}
-      {result.evidence ? (
-        <motion.a
-          href={result.evidence.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          initial={{ opacity: wait ? 0 : 1 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: wait + 0.1, duration: 0.25 }}
-          className="ms-8 mt-2 flex min-w-0 items-center gap-1.5 text-xs/5 text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
-        >
-          <span className="shrink-0">{result.evidence.where ? `Found in ${result.evidence.where}:` : "Found as"}</span>
-          <span className="truncate font-medium text-foreground/80">{result.evidence.title}</span>
-          <ArrowUpRight className="size-3 shrink-0" />
-        </motion.a>
-      ) : null}
-      {result.reasoning ? (
-        <motion.p initial={{ opacity: wait ? 0 : 1 }} animate={{ opacity: 1 }} transition={{ delay: wait + 0.1, duration: 0.25 }} className="ms-8 mt-2 text-xs/5 text-muted-foreground">
-          {result.reasoning}
-        </motion.p>
-      ) : null}
+      <AutoHeight>
+        <AnimatePresence initial={false}>
+          {result ? (
+            <motion.div key="body" {...fade}>
+              {passFail ? (
+                result.evidence ? null : <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail ?? (result.pass ? "Found." : "Not found.")}</p>
+              ) : (
+                <div className="ms-8 mt-2.5 flex items-center gap-3">
+                  <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
+                    <span
+                      aria-hidden
+                      className={cn("absolute inset-y-0", result.blocking ? "bg-destructive/15" : "bg-warning/20")}
+                      style={above ? { insetInlineStart: `${need}%`, insetInlineEnd: 0 } : { insetInlineStart: 0, width: `${need}%` }}
+                    />
+                    <motion.div
+                      className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")}
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${Math.max(pct, 2)}%` }}
+                      transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }}
+                    />
+                    <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
+                  </div>
+                  <span className="w-36 shrink-0 text-end text-xs tabular-nums">
+                    <span className="font-medium text-foreground/80">{pct}%</span>{" "}
+                    <span className="text-muted-foreground">{above ? `fails above ${need}%` : `fails below ${need}%`}</span>
+                  </span>
+                </div>
+              )}
+              {result.evidence ? (
+                <a
+                  href={result.evidence.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ms-8 mt-2 flex min-w-0 items-center gap-1.5 text-xs/5 text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+                >
+                  <span className="shrink-0">{result.evidence.where ? `Found in ${result.evidence.where}:` : "Found as"}</span>
+                  <span className="truncate font-medium text-foreground/80">{result.evidence.title}</span>
+                  <ArrowUpRight className="size-3 shrink-0" />
+                </a>
+              ) : null}
+              {result.reasoning ? <p className="ms-8 mt-2 text-xs/5 text-muted-foreground">{result.reasoning}</p> : null}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </AutoHeight>
     </li>
   );
 }
 
-function Outcome({ draft, fresh, onFix, onAnother }: { draft: Submission; fresh: boolean; onFix: () => void; onAnother: () => void }) {
-  const results = draft.results ?? [];
-  const STAGGER = 0.55;
-  const done = fresh ? results.length * STAGGER + 0.2 : 0;
-  const head =
-    draft.status === "live" ? (
-      <StepHead title="Published" aside={<StatusChip tone="success" icon={BadgeCheck}>DOI active</StatusChip>}>
-        Your report is live. Communities can add it now; the DOI resolves once Crossref has registered it.
-      </StepHead>
-    ) : draft.status === "review" ? (
-      <StepHead title="Waiting for review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
-        Your report passed its checks. A reviewer approves it before the DOI goes live.
-      </StepHead>
-    ) : draft.status === "declined" ? (
-      <StepHead title="Not published" aside={<StatusChip tone="danger" icon={CircleX}>Declined</StatusChip>}>
-        {draft.note ?? "The reviewer declined this report."}
-      </StepHead>
-    ) : (
-      <StepHead title="Not published yet" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
-        Fix the PDF and upload it again. Your DOI stays reserved.
-      </StepHead>
-    );
+/** The checks, running or answered, under a head that says where the report stands, and what to do next. */
+function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; name: string; engine: CheckResult["engine"]; result?: CheckResult }>; draft: Submission | null; onFix?: () => void; onAnother?: () => void }) {
+  const answered = rows.filter((r) => r.result).length;
+  const head = !draft ? (
+    <StepHead key="running" title="Running the checks" aside={<StatusChip tone="running" icon="tone">{answered} of {rows.length}</StatusChip>}>
+      Looking for earlier copies takes a few seconds.
+    </StepHead>
+  ) : draft.status === "live" ? (
+    <StepHead key="live" title="Published" aside={<StatusChip tone="success" icon={BadgeCheck}>DOI active</StatusChip>}>
+      Your report is live. Communities can add it now; the DOI resolves once Crossref has registered it.
+    </StepHead>
+  ) : draft.status === "review" ? (
+    <StepHead key="review" title="Waiting for review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
+      Your report passed its checks. A reviewer approves it before the DOI goes live.
+    </StepHead>
+  ) : draft.status === "declined" ? (
+    <StepHead key="declined" title="Not published" aside={<StatusChip tone="danger" icon={CircleX}>Declined</StatusChip>}>
+      {draft.note ?? "The reviewer declined this report."}
+    </StepHead>
+  ) : (
+    <StepHead key="failed" title="Not published yet" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
+      Fix the PDF and upload it again. Your DOI stays reserved.
+    </StepHead>
+  );
   return (
     <div>
-      {/* While fresh results reveal, a running head holds the outcome's place; the outcome fades in over it once the last check is in. */}
-      <div className="grid [&>*]:col-start-1 [&>*]:row-start-1">
-        {fresh ? (
-          <motion.div initial={{ opacity: 1 }} animate={{ opacity: 0 }} transition={{ delay: done, duration: 0.2 }} aria-hidden>
-            <StepHead title="Running the checks" aside={<StatusChip tone="running" icon="tone">{results.length} checks</StatusChip>}>
-              Each check reads your PDF and its details.
-            </StepHead>
+      <AutoHeight>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={draft ? draft.status : "running"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+            {head}
           </motion.div>
-        ) : null}
-        <motion.div initial={{ opacity: fresh ? 0 : 1 }} animate={{ opacity: 1 }} transition={{ delay: done, duration: 0.3 }}>
-          {head}
-        </motion.div>
-      </div>
+        </AnimatePresence>
+      </AutoHeight>
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
-        {results.map((r, i) => (
-          <CheckRow key={r.checkId} result={r} delay={fresh ? 0.3 + i * STAGGER : 0} />
+        {rows.map((r) => (
+          <CheckRow key={r.id} name={r.name} engine={r.engine} result={r.result} />
         ))}
       </ul>
-      <motion.div initial={{ opacity: fresh ? 0 : 1 }} animate={{ opacity: 1 }} transition={{ delay: done, duration: 0.3 }} className="mt-6 flex flex-wrap justify-end gap-2">
-        {draft.status === "failed" ? (
-          <Button onClick={onFix}>
-            <RotateCcw /> Upload a new PDF
-          </Button>
-        ) : (
-          <>
-            {draft.status === "live" ? (
-              <Button asChild variant="outline">
-                <Link href={`/papers/${draft.id}`}>
-                  Open its page <ArrowUpRight />
-                </Link>
-              </Button>
-            ) : null}
-            <Button variant={draft.status === "live" ? "default" : "outline"} onClick={onAnother}>
-              <Plus /> Publish another
-            </Button>
-          </>
-        )}
-      </motion.div>
+      <AutoHeight>
+        <AnimatePresence initial={false}>
+          {draft ? (
+            <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6 flex flex-wrap justify-end gap-2">
+              {draft.status === "failed" ? (
+                <Button onClick={onFix}>
+                  <RotateCcw /> Upload a new PDF
+                </Button>
+              ) : (
+                <>
+                  {draft.status === "live" ? (
+                    <Button asChild variant="outline">
+                      <Link href={`/papers/${draft.id}`}>
+                        Open its page <ArrowUpRight />
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <Button variant={draft.status === "live" ? "default" : "outline"} onClick={onAnother}>
+                    <Plus /> Publish another
+                  </Button>
+                </>
+              )}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </AutoHeight>
     </div>
   );
 }

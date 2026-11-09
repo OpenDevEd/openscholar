@@ -3,11 +3,11 @@
 // MOCK (mock/publish-reports): the report's details as the metadata model read them from the PDF, for the author to
 // correct. Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
-import { Paged, Working, pagerOf } from "@/components/settings/parts";
+import { Paged, pagerOf } from "@/components/settings/parts";
 import { FunderName } from "@/components/papers/paper-entities";
 import { OrcidIcon } from "@/components/icons/author-service-icons";
 import { Button } from "@/components/ui/button";
@@ -201,7 +201,6 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
   const [topicSearch, setTopicSearch] = useState("");
   const [doi, setDoi] = useState("");
   const [refPage, setRefPage] = useState(1);
-  const [busy, start] = useTransition();
   const set = <K extends keyof Metadata>(key: K, value: Metadata[K]) => setM((was) => ({ ...was, [key]: value }));
   const setAuthor = (i: number, patch: Partial<Author>) => set("authors", m.authors.map((a, at) => (at === i ? { ...a, ...patch } : a)));
   const moveAuthor = (i: number, by: -1 | 1) => {
@@ -485,12 +484,9 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
         </Section>
       </div>
       <div className="mt-8 flex justify-end">
-        <Button className="relative" disabled={busy || !m.title.trim() || !m.authors.some((a) => a.name.trim())} onClick={() => start(() => onRun(m))}>
-          <Working busy={busy}>
-            <span className="flex items-center gap-2">
-              <ShieldCheck /> Run the checks
-            </span>
-          </Working>
+        {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim())} onClick={() => void onRun(m)}>
+          <ShieldCheck /> Run the checks
         </Button>
       </div>
     </div>

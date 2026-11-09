@@ -115,6 +115,10 @@ export type Deposit = "none" | "queued" | "deposited" | "failed";
 export type Submission = {
   /** The report's key, which its paper page is named by. */
   id: string;
+  /** Who is publishing it, by their Clerk user. */
+  ownerId?: string;
+  /** MOCK: a sample report every viewer sees as their own, so Your reports has something in it. */
+  demo?: boolean;
   doi: string;
   step: Step;
   status: Status;

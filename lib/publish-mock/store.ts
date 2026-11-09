@@ -168,6 +168,8 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
     id,
     doi: doiOf(settings, id),
     ...state,
+    // A few with each status show as the viewer's own on Your reports.
+    ...([0, 3, 5, 6, 8].includes(n) ? { demo: true } : {}),
     signedBy: { name, email: `${name.split(" ")[0]!.toLowerCase()}@example.org`, onBehalfOfAll: true },
     signedAt: at,
     agreementVersion: n < 9 ? 2 : 1,

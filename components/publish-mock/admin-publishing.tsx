@@ -319,7 +319,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
               {s.results?.length ? (
                 <ul className={LIST}>
                   {s.results.map((r) => (
-                    <CheckRow key={r.checkId} result={r} />
+                    <CheckRow key={r.checkId} name={r.name} engine={r.engine} result={r} />
                   ))}
                 </ul>
               ) : null}
