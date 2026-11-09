@@ -157,7 +157,7 @@ function CitationFiles({ data }: { data: CitationData }) {
   const toast = useAppToast();
   const save = async (kind: CitationFile) => {
     try {
-      const { citationFile } = await import("@/lib/citations/formatter");
+      const { citationFile } = await import("@/lib/citations/files");
       const file = citationFile(data, kind);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(new Blob([file.text], { type: file.type }));

@@ -3,8 +3,7 @@ import { CSL } from "citeproc-ts";
 import { withoutCitationNumbers } from "./citation-numbering";
 import { Cite } from "@citation-js/core";
 import "@citation-js/plugin-bibtex";
-import "@citation-js/plugin-ris";
-import { CITATION_FILES, CITATION_FORMATS, type CitationData, type CitationFile, type CitationFormat, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
+import { CITATION_FORMATS, type CitationData, type CitationFormat, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
 
 import { loadCitationStyleAssets } from "./styles";
 
@@ -43,15 +42,4 @@ export async function formatAdditionalCitation(data: CitationData, language: str
   const style = extra.styles[selected.id];
   if (!style) throw new Error("Citation style not found");
   return renderCitation(data, locales[language] ?? language, style, { ...localeAssets, ...extra.locales });
-}
-
-
-export function citationFile(data: CitationData, kind: CitationFile) {
-	const file = CITATION_FILES[kind];
-	const text = new Cite([data]).format(file.format, { format: "text" }).trim();
-	// Named as people name the paper: first author and year, such as datoo-2021.ris.
-	const author = (data.author as { family?: string; literal?: string }[] | undefined)?.[0];
-	const year = (data.issued as { "date-parts"?: number[][] } | undefined)?.["date-parts"]?.[0]?.[0];
-	const stem = [author?.family ?? author?.literal, year].filter(Boolean).join(" ").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
-	return { text, name: `${stem || "citation"}.${file.extension}`, type: file.type };
 }
