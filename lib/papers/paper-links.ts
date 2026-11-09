@@ -33,6 +33,16 @@ function urlOf(given: string) {
   }
 }
 
+/** The paper a web address names: one of Openscholar's paper pages, or a community's record page. */
+function paperAt(given: string): PaperLink | null {
+  const url = urlOf(given);
+  if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) return null;
+  const page = OURS.test(url.hostname) ? url.pathname.match(PAPER_PATH)?.[1]?.toUpperCase() : undefined;
+  if (page) return page.startsWith("W") ? { kind: "work", openalexId: page } : { kind: "own", work: page };
+  const record = url.pathname.match(RECORD_PATH)?.[1];
+  return record ? { kind: "record", origin: url.origin, itemKey: record } : null;
+}
+
 /** The paper one pasted word names, or null for anything else. */
 export function paperLinkOf(raw: string): PaperLink | null {
   // What a sentence or list wraps an address in: brackets, quotes, and punctuation after it. A DOI keeps its own brackets (trimDoi).
@@ -41,13 +51,8 @@ export function paperLinkOf(raw: string): PaperLink | null {
   if (work) return { kind: "work", openalexId: work };
   const own = ownWork(given.replace(/^openscholar:/i, ""));
   if (own) return { kind: "own", work: own };
-  const url = urlOf(given);
-  if (url && (url.protocol === "https:" || url.protocol === "http:")) {
-    const page = OURS.test(url.hostname) ? url.pathname.match(PAPER_PATH)?.[1]?.toUpperCase() : undefined;
-    if (page) return page.startsWith("W") ? { kind: "work", openalexId: page } : { kind: "own", work: page };
-    const record = url.pathname.match(RECORD_PATH)?.[1];
-    if (record) return { kind: "record", origin: url.origin, itemKey: record };
-  }
+  const address = paperAt(given);
+  if (address) return address;
   const doi = raw.match(/10\.\d{4,9}\/\S+/i)?.[0];
   return doi ? { kind: "doi", doi: normalDoi(trimDoi(doi))! } : null;
 }
