@@ -45,4 +45,10 @@ it("shows the community and the papers the call adds, and sends them where the p
   expect(JSON.parse(step!.input)).toMatchObject({ libraryId, publish: true, requestId: "r1" });
   // Answered, it asks nothing more.
   expect(await who.asAda.query(api.assistant.replies.askedPapers, { threadId, stepId })).toBeNull();
+  // A call whose arguments were cut too long to read is asked about with the plain card.
+  const cut = await t.run(async (ctx) => {
+    const thread = (await ctx.db.get("assistantThreads", threadId))!;
+    return await ctx.db.insert("assistantSteps", { threadId, order: 1, userId: who.ada, workspaceId: thread.workspaceId, toolCallId: "c2", tool: "run_action", path: ADD_PAPERS, input: '{"libraryId":"x","papers":[{"link":"https://', prompt: "p1", status: "asking", startedAt: 1 } as never);
+  });
+  expect(await who.asAda.query(api.assistant.replies.askedPapers, { threadId, stepId: cut })).toBeNull();
 });

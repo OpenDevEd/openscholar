@@ -183,13 +183,11 @@ export function Steps({
     <div className="space-y-3">
       {steps.length ? <RunMap threadId={threadId} steps={steps} earlier={status === "CanLoadMore" ? () => loadMore(STEPS_SHOWN) : status === "LoadingMore" ? "loading" : null} /> : null}
       <AnimatePresence initial={false}>
-        {askedGroups(asked).map((group) =>
-          // Adding papers to a community asks with what it adds and lets the person choose where they go.
-          group.length === 1 && group[0].action === ADD_PAPERS ? (
-            <AddPapersAsk key={group[0].id} threadId={threadId} stepId={group[0].id as Id<"assistantSteps">} fallback={<ApprovalCard threadId={threadId} steps={group} />} />
-          ) : (
-            <ApprovalCard key={group[0].id} threadId={threadId} steps={group} />
-          ),
+        {askedGroups(asked).flatMap((group) =>
+          // Adding papers to a community asks call by call, each with what it adds and where the person sends it.
+          group[0].action === ADD_PAPERS
+            ? group.map((step) => <AddPapersAsk key={step.id} threadId={threadId} stepId={step.id as Id<"assistantSteps">} fallback={<ApprovalCard threadId={threadId} steps={[step]} />} />)
+            : [<ApprovalCard key={group[0].id} threadId={threadId} steps={group} />],
         )}
       </AnimatePresence>
       {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. As it

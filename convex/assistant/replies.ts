@@ -230,6 +230,9 @@ const waitingAttempt = (waiting: { order: number; askedAt: number }) => `${waiti
 /** Adding papers to a community, whose ask lets the person choose where they go (components/assistant/add-papers-ask.tsx). */
 const ADD_PAPERS = "evidenceLibraries/assistant:addPapers";
 
+/** A string an argument gives, or null. */
+const text = (value: unknown) => (typeof value === "string" ? value : null);
+
 /**
  * What a paused call to add papers to a community asks, for its card: the community as Add to community shows it,
  * the papers as the call names them, where the assistant meant them to go, and whether the person may publish there.
@@ -243,8 +246,16 @@ export const askedPapers = query({
     await requireThread(ctx, person._id, threadId, "read");
     const step = await ctx.db.get("assistantSteps", stepId);
     if (!step || step.threadId !== threadId || step.userId !== person._id || step.path !== ADD_PAPERS || step.status !== "asking") return null;
-    const args = JSON.parse(step.input) as { libraryId?: string; publish?: boolean; papers?: Array<{ openalexId?: string | null; doi?: string | null; link?: string | null }> };
-    const libraryId = args.libraryId ? ctx.db.normalizeId("evidenceLibraries", args.libraryId) : null;
+    // Arguments too long to keep whole were cut, and don't parse: such a call is asked about with the plain card.
+    let args: { libraryId?: unknown; publish?: unknown; papers?: unknown };
+    try {
+      args = JSON.parse(step.input) as typeof args;
+    } catch {
+      return null;
+    }
+    if (typeof args.libraryId !== "string" || !Array.isArray(args.papers)) return null;
+    const papers = (args.papers as Array<Record<string, unknown>>).map((paper) => ({ openalexId: text(paper?.openalexId), doi: text(paper?.doi), link: text(paper?.link) }));
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
     const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
     if (!library) return null;
     const role = await readLibraryRole(ctx, library, person.clerkId);
@@ -253,7 +264,7 @@ export const askedPapers = query({
       libraryId: library._id,
       publish: args.publish === true,
       canPublish: role === "owner" || role === "editor",
-      papers: (args.papers ?? []).slice(0, ADDED_PAPERS_MAX).map(({ openalexId, doi, link }) => ({ openalexId: openalexId ?? null, doi: doi ?? null, link: link ?? null })),
+      papers: papers.slice(0, ADDED_PAPERS_MAX),
       community: { name, faviconUrl, owner },
     };
   },

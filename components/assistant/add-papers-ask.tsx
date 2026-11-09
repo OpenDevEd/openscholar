@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import useSWR from "swr";
 import { Check, Hourglass, PublishIcon, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ export function AddPapersAsk({ threadId, stepId, fallback }: { threadId: Id<"ass
   const [choice, setChoice] = useState<boolean | null>(null);
   // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
   const [sent, setSent] = useState(false);
+  const reduceMotion = useReducedMotion();
   if (asked === undefined) return null;
   if (asked === null) return <>{fallback}</>;
   const publish = asked.canPublish && (choice ?? asked.publish);
@@ -56,7 +57,8 @@ export function AddPapersAsk({ threadId, stepId, fallback }: { threadId: Id<"ass
     });
   };
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden rounded-2xl border border-primary/30 bg-primary/[0.04]">
+    // It arrives once the call it asks about is read: laid out whole, its frame opens to it instead of the chat jumping.
+    <motion.div initial={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0 }} transition={reduceMotion ? { duration: 0.2 } : { duration: 0.3, ease: EASE }} className="overflow-hidden rounded-2xl border border-primary/30 bg-primary/[0.04]">
       <div className="flex items-start gap-3 p-4 pb-3">
         <KindTile kind="library" />
         <div className="min-w-0 flex-1">
