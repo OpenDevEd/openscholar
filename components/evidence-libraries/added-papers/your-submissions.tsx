@@ -153,6 +153,8 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
           <TooltipHint label={community.name} onlyWhenClipped>{name}</TooltipHint>
           {status === "returned" && submission.note ? (
             <span className="flex min-w-0 items-center gap-1 ink-warning">
+              {/* A narrow row's status shows as its icon alone: the word comes before the team's reason. Seen only, as the chip says it. */}
+              <span aria-hidden className="shrink-0 font-medium @md/subs:hidden">{words.returned}</span>
               <Undo2 className="size-3.5 shrink-0" />
               <TooltipHint label={submission.note} onlyWhenClipped>
                 <span className="truncate">{submission.note}</span>
