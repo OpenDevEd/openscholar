@@ -3,7 +3,7 @@
 // MOCK (mock/publish-reports): every report you started, where it got to, and a way back into it. The rows follow Your
 // submissions on the Communities page (components/evidence-libraries/added-papers/your-submissions.tsx).
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useState } from "react";
 import Link from "@/components/workspace-link";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LIST_FILTER, ListEmpty } from "@/components/evidence-libraries/list-controls";
@@ -18,8 +18,6 @@ import { cn } from "@/lib/utils";
 const PER_PAGE = 8;
 /** A row's height with its divider, which every row keeps so a page holds its height. */
 const ROW = 65;
-const SHOWS = ["all", "draft", "review", "live", "failed", "declined"] as const;
-type Show = (typeof SHOWS)[number];
 const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", live: "Live", failed: "Failed checks", declined: "Declined" };
 const STATUS: Record<Status, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
   draft: { label: "Draft", tone: "neutral", icon: PenLine },
@@ -30,40 +28,45 @@ const STATUS: Record<Status, { label: string; tone: "neutral" | "running" | "suc
 };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export function YourReports({ heading, reports, onOpen, onNew }: { heading: ReactNode; reports: Submission[]; onOpen: (id: string) => void; onNew: () => void }) {
-  const [show, setShow] = useState<Show>("all");
+export const SHOWS = ["all", "draft", "review", "live", "failed", "declined"] as const;
+export type Show = (typeof SHOWS)[number];
+
+/** The status filter, which sits in the page's header bar beside the tabs. */
+export function StatusFilter({ reports, show, onShow }: { reports: Submission[]; show: Show; onShow: (show: Show) => void }) {
+  const counts = Object.fromEntries(SHOWS.map((s) => [s, s === "all" ? reports.length : reports.filter((r) => r.status === s).length])) as Record<Show, number>;
+  return (
+    <Select value={show} onValueChange={(value) => onShow(value as Show)}>
+      <SelectTrigger size="sm" aria-label="Status" className={cn("w-44", LIST_FILTER)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent align="end">
+        {SHOWS.map((id) => (
+          <SelectItem key={id} value={id}>
+            <span className="flex w-full items-center justify-between gap-3">
+              {SHOW_LABEL[id]}
+              <span className="tabular-nums text-muted-foreground">{counts[id]}</span>
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
+export function YourReports({ reports, show, onOpen, onNew }: { reports: Submission[]; show: Show; onOpen: (id: string) => void; onNew: () => void }) {
   const [page, setPage] = useState(1);
-  const counts = useMemo(() => Object.fromEntries(SHOWS.map((s) => [s, s === "all" ? reports.length : reports.filter((r) => r.status === s).length])) as Record<Show, number>, [reports]);
+  // A new filter starts at its first page.
+  const [shownFor, setShownFor] = useState(show);
+  if (shownFor !== show) {
+    setShownFor(show);
+    setPage(1);
+  }
   const listed = reports.filter((r) => show === "all" || r.status === show);
   const pager = pagerOf(listed.length, PER_PAGE, page, setPage);
   const shown = listed.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
 
   return (
     <section aria-label="Your reports" className="@container/reports p-4 sm:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        {heading}
-        <Select
-          value={show}
-          onValueChange={(value) => {
-            setShow(value as Show);
-            setPage(1);
-          }}
-        >
-          <SelectTrigger size="sm" aria-label="Status" className={cn("w-44", LIST_FILTER)}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent align="end">
-            {SHOWS.map((id) => (
-              <SelectItem key={id} value={id}>
-                <span className="flex w-full items-center justify-between gap-3">
-                  {SHOW_LABEL[id]}
-                  <span className="tabular-nums text-muted-foreground">{counts[id]}</span>
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
       {shown.length ? (
         <Paged pager={pager} rowHeight={ROW} label="reports">
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">

@@ -40,8 +40,8 @@ import {
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
 import { goTo, openReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
-import { YourReports } from "@/components/publish-mock/your-reports";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatusFilter, YourReports, type Show } from "@/components/publish-mock/your-reports";
+import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { bylineOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
@@ -119,39 +119,31 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
       setRunning(null);
     }
   };
+  const [show, setShow] = useState<Show>("all");
+  // In the header bar, as on Explore: the page's two views, and on Your reports its status filter.
   const tabs = (
-    <Tabs value={view} onValueChange={(next) => void setView(next === "reports" ? "reports" : null)}>
-      <TabsList aria-label="Publish" className="max-w-full max-[380px]:[&_svg]:hidden">
-        <TabsTrigger value="new">
-          <PublishIcon />
-          {draft ? "Your report" : "New report"}
-        </TabsTrigger>
-        <TabsTrigger value="reports">
-          <FileText />
-          Your reports
-          <span className="text-xs tabular-nums text-muted-foreground">{reports.length}</span>
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
+    <ListViewTabs
+      label="Publish"
+      value={view}
+      onChange={(next) => void setView(next === "reports" ? "reports" : null)}
+      tabs={[
+        { value: "new", label: draft ? "Your report" : "New report", icon: <PublishIcon aria-hidden className="size-3.5" /> },
+        { value: "reports", label: "Your reports", icon: <FileText aria-hidden className="size-3.5" />, count: reports.length },
+      ]}
+    />
   );
 
   return (
-    // The tabs head the card, as on the Communities page: given to the shell, its card toolbar would open and close on load.
     <LibraryPageShell
       icon={PublishIcon}
       title="Publish"
-      intro={
-        view === "new" ? (
-          <>
-            <div className="px-4 pt-4 sm:px-6">{tabs}</div>
-            <StepTrail place={place} canGoBack={draft?.step !== "done" && !running} onBack={back} draft={running ? null : draft} />
-          </>
-        ) : undefined
-      }
+      tabs={tabs}
+      filters={view === "reports" ? <StatusFilter reports={reports} show={show} onShow={setShow} /> : undefined}
+      intro={view === "new" ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !running} onBack={back} draft={running ? null : draft} /> : undefined}
     >
       {view === "reports" ? (
         <YourReports
-          heading={tabs}
+          show={show}
           reports={reports}
           onNew={() => {
             void startOver().then(() => {
