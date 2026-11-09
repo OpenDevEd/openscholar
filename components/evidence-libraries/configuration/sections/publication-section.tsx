@@ -14,6 +14,7 @@ import type {
   PublicationSecrets,
 } from "@/convex/evidenceLibraries/publicationValidators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useWithPage } from "../preloads";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -82,10 +83,10 @@ export function PublicationSection({
   operationRunning: boolean;
 }) {
   const t = useTranslations("publicationSettings");
-  const { data } = useProtectedQuery(
+  const data = useWithPage<typeof api.evidenceLibraries.publicationProviders.get>("publication", useProtectedQuery(
     api.evidenceLibraries.publicationProviders.get,
     { libraryId },
-  );
+  ).data);
   return (
     <SectionCard
       id="sec-publication"

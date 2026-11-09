@@ -26,6 +26,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { readConvexErrorData } from "@/convex/lib/errors";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useWithPage } from "../preloads";
 import { LibraryAddressLink } from "../../library-address-link";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip, type StatusTone } from "../status-chip";
@@ -97,12 +98,12 @@ export const DomainSection = memo(function DomainSection({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.domain");
   const ts = useTranslations("evidenceLibraryConfiguration.sections");
-  const { data } = useProtectedQuery(
+  const data = useWithPage<typeof api.evidenceLibraries.domains.listDomains>("domains", useProtectedQuery(
     api.evidenceLibraries.domains.listDomains,
     {
       libraryId,
     },
-  );
+  ).data);
   const addDomain = useAction(api.evidenceLibraries.domainActions.addDomain);
   const checkDomains = useAction(
     api.evidenceLibraries.domainActions.checkDomains,

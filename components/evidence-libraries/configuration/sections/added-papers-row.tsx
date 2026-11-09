@@ -16,6 +16,7 @@ import { PAPERS_PER_PAGE, useAddedPapers, type AddedPaper } from "@/components/e
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useWithPage } from "../preloads";
 import { recordHref } from "@/lib/evidence-libraries/added-papers";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspaces/url";
@@ -26,7 +27,7 @@ import { SourceCount, SourceRow, SourceSwitch } from "./source-row";
 
 /** The running community the Added papers row reads, and the person's role there; null until it runs. */
 export function useAddedPapersCommunity(libraryId: Id<"evidenceLibraries">) {
-  const draft = useProtectedQuery(api.evidenceLibraries.queries.getDraft, { libraryId }).data;
+  const draft = useWithPage<typeof api.evidenceLibraries.queries.getDraft>("draft", useProtectedQuery(api.evidenceLibraries.queries.getDraft, { libraryId }).data);
   if (!draft || draft.library.state !== "active" || !draft.liveAddress || draft.role === "viewer") return null;
   return { name: draft.library.name, address: draft.liveAddress, role: draft.role };
 }

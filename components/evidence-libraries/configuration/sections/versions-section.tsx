@@ -5,7 +5,7 @@ import { useAction, useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { RefreshCw, HistoryIcon } from "@/components/icons";
 import { useFormatter, useTranslations } from "next-intl";
-import { Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
+import { Fragment, Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -27,9 +27,11 @@ import {
   shortCommit,
 } from "@/lib/evidence-libraries/configuration/versions";
 import { FieldGroup, Panel } from "../fields";
+import { useWithPage } from "../preloads";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip } from "../status-chip";
-import { ReleaseNotes, VERSIONS_PAGE_SIZE, VersionHistory } from "./versions-views";
+import { ReleaseNotes, VersionHistory } from "./versions-views";
+import { VERSIONS_PAGE_SIZE } from "@/lib/evidence-libraries/versions";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
@@ -139,17 +141,21 @@ export function VersionsSection({
     { libraryId },
     { initialNumItems: VERSIONS_PAGE_SIZE },
   );
-  const versionCount = useProtectedQuery(
+  const versionCount = useWithPage<typeof api.evidenceLibraries.versions.countVersions>("versionCount", useProtectedQuery(
     api.evidenceLibraries.versions.countVersions,
     { libraryId },
-  );
+  ).data);
+  // Until the live history arrives, its first page as the page's server read it.
+  const firstPage = useWithPage<typeof api.evidenceLibraries.versions.listVersionRows>("versions", undefined);
+  const rows = versions.isInitialLoading ? firstPage?.page : versions.results;
+  const canLoadMore = versions.isInitialLoading ? firstPage?.isDone === false : versions.status === "CanLoadMore";
   // The address answer the last check stored. It stays right even when the
   // software check cannot reach GitHub, and clears itself once a move lands.
-  const addressNotice =
-    useProtectedQuery(
-      api.evidenceLibraries.updates.getAddressNotice,
-      live ? { libraryId } : "skip",
-    ).data ?? null;
+  const noticeRead = useWithPage<typeof api.evidenceLibraries.updates.getAddressNotice>("addressNotice", useProtectedQuery(
+    api.evidenceLibraries.updates.getAddressNotice,
+    live ? { libraryId } : "skip",
+  ).data);
+  const addressNotice = live ? noticeRead ?? null : null;
   // A silent custom domain is not fixed by moving the platform address: the
   // way out is to send the library back to it.
   const domains = useProtectedQuery(
@@ -281,16 +287,8 @@ export function VersionsSection({
       <div data-section-part="software">
         {checkPromise ? (
           <Suspense
-            fallback={
-              <Panel
-                tone="muted"
-                role="status"
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Spinner className="h-4 w-4" />
-                {t("versions.checking")}
-              </Panel>
-            }
+            // The panel the answer fills, in its shape when up to date, so nothing below moves when it arrives.
+            fallback={<CheckingPanel />}
           >
             <SoftwarePanel
               promise={deferredCheckPromise ?? checkPromise}
@@ -321,16 +319,17 @@ export function VersionsSection({
       </div>
 
       <FieldGroup title={t("versions.historyHeading")}>
-        {versions.isInitialLoading || versionCount.data === undefined ? (
+        {rows === undefined || versionCount === undefined ? (
           <Panel tone="muted" className="flex items-center">
             <Spinner className="my-0.5 h-4 w-4" aria-label={t("versions.loading")} />
           </Panel>
         ) : (
           <VersionHistory
-            rows={versions.results}
-            total={versionCount.data}
-            more={versions.status === "CanLoadMore" ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
-            loading={versions.status === "LoadingMore"}
+            rows={rows}
+            total={versionCount}
+            more={canLoadMore ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
+            // Until the live list arrives, Show more waits with it: asking for more before it has nothing to add to.
+            loading={versions.status === "LoadingMore" || (versions.isInitialLoading && canLoadMore)}
             blocked={blocked}
             onRestore={setRestoring}
           />
@@ -408,6 +407,42 @@ export function VersionsSection({
   );
 }
 
+function CheckingPanel() {
+  const t = useTranslations("evidenceLibraryConfiguration");
+  return (
+    <SummaryShape role="status" state="checking" status={<StatusChip tone="running" icon="tone">{t("versions.checking")}</StatusChip>}>
+      <Button type="button" variant="ghost" size="sm" disabled>
+        <RefreshCw />
+        {t("versions.checkAgain")}
+      </Button>
+    </SummaryShape>
+  );
+}
+
+/**
+ * The software summary's shape without its answer, for while it's checked and when the check fails: the status and
+ * its button, then the running, latest and checked rows, blank. The answer then fills the same space.
+ */
+function SummaryShape({ role, state, status, children }: { role: "status" | "alert"; state: string; status: ReactNode; children: ReactNode }) {
+  const t = useTranslations("evidenceLibraryConfiguration");
+  return (
+    <Panel tone="muted" className="space-y-3" role={role} data-runtime-state={state}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {status}
+        {children}
+      </div>
+      <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+        {(["runningLabel", "latestLabel", "checkedLabel"] as const).map((label) => (
+          <Fragment key={label}>
+            <dt className="text-xs font-medium text-muted-foreground">{t(`versions.${label}`)}</dt>
+            <dd aria-hidden className="text-subtle-foreground">–</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </Panel>
+  );
+}
+
 function SoftwarePanel({
   promise,
   blocked,
@@ -425,15 +460,9 @@ function SoftwarePanel({
   const result = use(promise);
   if (!result.ok) {
     return (
-      <Panel
-        tone="muted"
-        role="alert"
-        data-runtime-state="check-failed"
-        className="flex flex-wrap items-center justify-between gap-3"
-      >
-        <p className="text-sm text-destructive">{result.message}</p>
+      <SummaryShape role="alert" state="check-failed" status={<p className="text-sm text-destructive">{result.message}</p>}>
         {checkAgain}
-      </Panel>
+      </SummaryShape>
     );
   }
   const { running, latest, changes, releases, checkedAt } = result.state;

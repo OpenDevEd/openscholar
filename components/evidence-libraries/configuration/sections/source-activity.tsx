@@ -28,6 +28,7 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AdminAreaLink } from "@/components/evidence-libraries/admin-area-link";
 import { cn } from "@/lib/utils";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useWithPage } from "../preloads";
 import { Collapsible } from "@/components/ui/collapsible";
 import { DisclosureContent, DisclosureTrigger } from "../disclosure-button";
 import { useReadOnly } from "../read-only";
@@ -461,9 +462,11 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
       ? { report: { query: api.evidenceLibraries.sourceStatus.listForLibrary, args: { libraryId } } }
       : {},
   ).report as FunctionReturnType<typeof api.evidenceLibraries.sourceStatus.listForLibrary> | Error | undefined;
-  const report = result instanceof Error ? null : result;
+  // Until the live report arrives, the one the page's server read.
+  const withPage = useWithPage<typeof api.evidenceLibraries.sourceStatus.listForLibrary>("sourceStatus", result instanceof Error ? undefined : result);
+  const report = result instanceof Error ? null : withPage;
   // The configuration page already reads this; Convex shares the subscription.
-  const liveAddress = useProtectedQuery(api.evidenceLibraries.queries.getDraft, { libraryId }).data?.liveAddress ?? null;
+  const liveAddress = useWithPage<typeof api.evidenceLibraries.queries.getDraft>("draft", useProtectedQuery(api.evidenceLibraries.queries.getDraft, { libraryId }).data)?.liveAddress ?? null;
   const requestRun = useAction(api.zotero.runtimeReadActions.requestSourceRun);
   const [retrying, setRetrying] = useState<ReadonlySet<string>>(new Set());
   const now = useNow({ updateInterval: 30_000 });
