@@ -351,7 +351,8 @@ function NewOrganization({ close }: { close: () => void }) {
             ))}
             <input
               value={draft}
-              disabled={full}
+              // At the limit no address can be added, but a wrong entry still has to be fixable.
+              disabled={full && notEmails.length === 0}
               // A pasted list has its separators in it already.
               onChange={(e) => (/[\s,;]/.test(e.target.value) ? take(e.target.value) : setDraft(e.target.value))}
               onKeyDown={(e) => {
