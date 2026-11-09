@@ -173,7 +173,7 @@ export function PaperContent({
                 {isPreview
                   ? "2.34"
                   : paper.fwci
-                  ? paper.fwci.toFixed(2)
+                  ? `${paper.fwci.toFixed(2)}×`
                   : tCommon("notAvailable")}
               </span>
             </span>

@@ -1297,7 +1297,7 @@
     "type": "类型",
     "refs": "参考文献",
     "cited": "被引用",
-    "fwci": "FWCI",
+    "fwci": "相对领域平均",
     "topic": "主题",
     "field": "领域",
     "subfield": "子领域",
