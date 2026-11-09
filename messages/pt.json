@@ -2856,7 +2856,8 @@
       "confirmAction": "Mudar o endereço"
     },
     "retry": "Tentar novamente",
-    "retryError": "Não foi possível iniciar. Tente novamente."
+    "retryError": "Não foi possível iniciar. Tente novamente.",
+    "saveDraft": "Guardar rascunho"
   },
   "topics": {
     "title": "Tópicos",

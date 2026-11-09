@@ -556,7 +556,7 @@ function Workspace({
                   onClick={handleSave}
                 >
                   {saving ? <Spinner /> : <Save />}
-                  <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
+                  <span className={BAR_LABEL}>{saving ? t("saving") : t("saveDraft")}</span>
                 </Button>
               ) : null}
               {/* The library's own admin is for the people with a role in it; a viewer has none. */}

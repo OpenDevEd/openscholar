@@ -2855,7 +2855,8 @@
       "confirmAction": "更改地址"
     },
     "retry": "重试",
-    "retryError": "无法启动。请重试。"
+    "retryError": "无法启动。请重试。",
+    "saveDraft": "保存草稿"
   },
   "topics": {
     "title": "主题",

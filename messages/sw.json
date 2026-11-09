@@ -2856,7 +2856,8 @@
       "confirmAction": "Badilisha anwani"
     },
     "retry": "Jaribu tena",
-    "retryError": "Hilo halikuweza kuanza. Jaribu tena."
+    "retryError": "Hilo halikuweza kuanza. Jaribu tena.",
+    "saveDraft": "Hifadhi rasimu"
   },
   "topics": {
     "title": "Mada",
