@@ -161,7 +161,8 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
           ) : (
             <>
               {/* A narrow row's status shows as its icon alone, so its words take the date's place here. */}
-              <span className="shrink-0 font-medium text-foreground/80 @md/subs:hidden">{words[status]}</span>
+              {/* Seen only: the chip at the row's end already says it to a screen reader. */}
+              <span aria-hidden className="shrink-0 font-medium text-foreground/80 @md/subs:hidden">{words[status]}</span>
               <span className="hidden shrink-0 tabular-nums @md/subs:inline">{date}</span>
             </>
           )}
