@@ -1,6 +1,9 @@
 ---
 const { items, title = "Questions teams ask" } = Astro.props;
+// The same questions as structured data, so search engines can show them with the page.
+const schema = { "@context": "https://schema.org", "@type": "FAQPage", mainEntity: items.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })) };
 ---
+<script type="application/ld+json" set:html={JSON.stringify(schema).replace(/</g, "\\u003c")} />
 <section class="faq"><h2>{title}</h2><div>{items.map(([q, a]) => <details><summary>{q}<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg></summary><p>{a}</p></details>)}</div></section>
 <style>
   .faq { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 32px clamp(24px, 4vw, 64px); padding: clamp(40px, 6vw, 80px) var(--pad); }
