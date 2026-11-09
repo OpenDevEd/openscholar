@@ -368,7 +368,7 @@
     "signInRequiredTitle": "需要登录",
     "signInRequiredDescription": "登录以访问此页面。",
     "noAccessTitle": "访问受限",
-    "noAccessDescription": "您没有权限查看此资源。",
+    "noAccessDescription": "你无权访问此页面。如果有人曾与你共享，可能已停止共享：请让对方重新共享。",
     "syncErrorTitle": "会话同步问题",
     "syncErrorDescription": "我们无法完成您的账户初始化。请重试以继续。",
     "syncErrorAccess": "您的会话有效，但账户同步未完成。请重试以继续。",
@@ -1762,7 +1762,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "未命名文献社区",
     "unsaved": "未保存的更改",
-    "viewOnly": "仅查看",
+    "viewOnly": "设置仅可查看",
     "save": "保存",
     "saving": "正在保存…",
     "saveError": "无法保存更改。请重试。",

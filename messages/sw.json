@@ -368,7 +368,7 @@
     "signInRequiredTitle": "Inahitaji kuingia",
     "signInRequiredDescription": "Ingia ili kufikia ukurasa huu.",
     "noAccessTitle": "Ufikiaji umezuiwa",
-    "noAccessDescription": "Huna ruhusa ya kuona rasilimali hii.",
+    "noAccessDescription": "Huna ruhusa ya kufikia ukurasa huu. Ikiwa mtu aliushiriki nawe, huenda ameacha: mwombe aushiriki tena.",
     "syncErrorTitle": "Tatizo la kusawazisha kipindi",
     "syncErrorDescription": "Hatukuweza kukamilisha kuanzisha akaunti yako. Jaribu tena ili uendelee.",
     "syncErrorAccess": "Kipindi chako ni halali, lakini usawazishaji wa akaunti haujakamilika. Jaribu tena ili uendelee.",
@@ -1763,7 +1763,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Jumuiya isiyo na jina",
     "unsaved": "Mabadiliko ambayo hayajahifadhiwa",
-    "viewOnly": "Kuona pekee",
+    "viewOnly": "Mipangilio ni ya kutazama tu",
     "save": "Hifadhi",
     "saving": "Inahifadhi…",
     "saveError": "Mabadiliko hayakuweza kuhifadhiwa. Jaribu tena.",

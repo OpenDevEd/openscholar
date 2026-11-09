@@ -368,7 +368,7 @@
     "signInRequiredTitle": "Início de sessão necessário",
     "signInRequiredDescription": "Inicie sessão para aceder a esta página.",
     "noAccessTitle": "Acesso restrito",
-    "noAccessDescription": "Não tem permissão para ver este recurso.",
+    "noAccessDescription": "Você não tem acesso a esta página. Se alguém a compartilhou com você, pode ter parado: peça para compartilhar de novo.",
     "syncErrorTitle": "Problema na sincronização da sessão",
     "syncErrorDescription": "Não foi possível concluir a configuração da sua conta. Tente novamente para continuar.",
     "syncErrorAccess": "A sua sessão é válida, mas a sincronização da conta está incompleta. Tente novamente para continuar.",
@@ -1763,7 +1763,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Comunidade sem título",
     "unsaved": "Alterações não guardadas",
-    "viewOnly": "Só de leitura",
+    "viewOnly": "Configurações só para ver",
     "save": "Guardar",
     "saving": "A guardar…",
     "saveError": "Não foi possível guardar as alterações. Tente novamente.",

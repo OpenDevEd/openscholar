@@ -368,7 +368,7 @@
     "signInRequiredTitle": "Anmeldung erforderlich",
     "signInRequiredDescription": "Melden Sie sich an, um auf diese Seite zuzugreifen.",
     "noAccessTitle": "Zugriff eingeschränkt",
-    "noAccessDescription": "Sie haben keine Berechtigung, diese Ressource anzusehen.",
+    "noAccessDescription": "Du hast keinen Zugriff auf diese Seite. Wenn jemand sie mit dir geteilt hat, hat er das vielleicht beendet: Bitte ihn, sie erneut zu teilen.",
     "syncErrorTitle": "Problem bei der Sitzungssynchronisierung",
     "syncErrorDescription": "Ihr Konto konnte nicht vollständig eingerichtet werden. Versuchen Sie es erneut, um fortzufahren.",
     "syncErrorAccess": "Ihre Sitzung ist gültig, aber die Kontosynchronisierung ist unvollständig. Versuchen Sie es erneut, um fortzufahren.",
@@ -1763,7 +1763,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Community ohne Titel",
     "unsaved": "Nicht gespeicherte Änderungen",
-    "viewOnly": "Nur Ansicht",
+    "viewOnly": "Einstellungen nur ansehen",
     "save": "Speichern",
     "saving": "Wird gespeichert…",
     "saveError": "Die Änderungen konnten nicht gespeichert werden. Versuchen Sie es erneut.",

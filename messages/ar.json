@@ -368,7 +368,7 @@
     "signInRequiredTitle": "يلزم تسجيل الدخول",
     "signInRequiredDescription": "سجّل الدخول للوصول إلى هذه الصفحة.",
     "noAccessTitle": "الوصول مقيّد",
-    "noAccessDescription": "ليست لديك صلاحية لعرض هذا المورد.",
+    "noAccessDescription": "ليس لديك وصول إلى هذه الصفحة. إن شاركها أحد معك فربما أوقف المشاركة: اطلب منه مشاركتها مجددًا.",
     "syncErrorTitle": "مشكلة في مزامنة الجلسة",
     "syncErrorDescription": "تعذّر إكمال تهيئة حسابك. أعد المحاولة للمتابعة.",
     "syncErrorAccess": "الجلسة صالحة، لكن مزامنة الحساب غير مكتملة. أعد المحاولة للمتابعة.",
@@ -1763,7 +1763,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "مجتمع بلا عنوان",
     "unsaved": "تغييرات غير محفوظة",
-    "viewOnly": "للعرض فقط",
+    "viewOnly": "الإعدادات للعرض فقط",
     "save": "حفظ",
     "saving": "جارٍ الحفظ…",
     "saveError": "تعذّر حفظ التغييرات. حاول مرة أخرى.",

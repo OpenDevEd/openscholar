@@ -368,7 +368,7 @@
     "signInRequiredTitle": "Kudingeka ukungena",
     "signInRequiredDescription": "Ngena ukuze ufinyelele leli khasi.",
     "noAccessTitle": "Ukufinyelela kuvinjiwe",
-    "noAccessDescription": "Awunayo imvume yokubona lo mthombo.",
+    "noAccessDescription": "Awunakho ukufinyelela kuleli khasi. Uma othile ebelihlanganyele nawe, kungenzeka ukuthi uyekile: mcele ukuthi alihlanganyele futhi.",
     "syncErrorTitle": "Inkinga yokuvumelanisa iseshini",
     "syncErrorDescription": "Asikwazanga ukuqeda ukuqalisa i-akhawunti yakho. Zama futhi ukuze uqhubeke.",
     "syncErrorAccess": "Iseshini yakho isebenza, kodwa ukuvumelanisa i-akhawunti akuphelele. Zama futhi ukuze uqhubeke.",
@@ -1762,7 +1762,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Umphakathi ongenasihloko",
     "unsaved": "Izinguquko ezingagciniwe",
-    "viewOnly": "Ukubuka kuphela",
+    "viewOnly": "Izilungiselelo zokubuka kuphela",
     "save": "Gcina",
     "saving": "Iyagcina…",
     "saveError": "Izinguquko azikwazanga ukugcinwa. Zama futhi.",
