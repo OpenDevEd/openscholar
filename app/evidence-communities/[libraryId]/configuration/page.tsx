@@ -30,7 +30,7 @@ async function readWithPage(libraryId: string, token: string): Promise<Configura
   const id = libraryId as Id<"evidenceLibraries">;
   const read = <T,>(promise: Promise<T>) => promise.catch(() => undefined);
   const el = api.evidenceLibraries;
-  const [draft, credentials, publication, domains, versions, versionCount, addressNotice, team, sourceStatus] = await Promise.all([
+  const [draft, credentials, publication, domains, versions, versionCount, addressNotice, team, sourceStatus, lastCheck] = await Promise.all([
     read(preloadQuery(el.queries.getDraft, { libraryId }, { token })),
     read(preloadQuery(el.credentials.listCredentials, { libraryId: id }, { token })),
     read(preloadQuery(el.publicationProviders.get, { libraryId: id }, { token })),
@@ -40,6 +40,7 @@ async function readWithPage(libraryId: string, token: string): Promise<Configura
     read(preloadQuery(el.updates.getAddressNotice, { libraryId: id }, { token })),
     read(preloadQuery(el.queries.listTeam, { libraryId: id }, { token })),
     read(preloadQuery(el.sourceStatus.listForLibrary, { libraryId: id }, { token })),
+    read(preloadQuery(el.updates.lastCheck, { libraryId: id }, { token })),
   ]);
-  return Object.fromEntries(Object.entries({ draft, credentials, publication, domains, versions, versionCount, addressNotice, team, sourceStatus }).filter(([, value]) => value !== undefined));
+  return Object.fromEntries(Object.entries({ draft, credentials, publication, domains, versions, versionCount, addressNotice, team, sourceStatus, lastCheck }).filter(([, value]) => value !== undefined));
 }

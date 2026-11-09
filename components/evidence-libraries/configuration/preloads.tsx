@@ -23,6 +23,7 @@ export type ConfigurationPreloads = {
   addressNotice?: Preloaded<EL["updates"]["getAddressNotice"]>;
   team?: Preloaded<EL["queries"]["listTeam"]>;
   sourceStatus?: Preloaded<EL["sourceStatus"]["listForLibrary"]>;
+  lastCheck?: Preloaded<EL["updates"]["lastCheck"]>;
 };
 
 const Preloads = createContext<ConfigurationPreloads>({});
