@@ -332,7 +332,22 @@ function Impact({ detail, citations, references, fwci, year, citingHref }: { det
       {bars.length > 1 ? (
         <div>
           <p className="mb-2 h-4 text-xs tabular-nums text-muted-foreground" aria-live="polite">{shown ? t("citationsIn", { count: shown.count, year: shown.year }) : t("citationsPerYear")}</p>
-          <div role="img" aria-label={bars.map((bar) => t("citationsIn", { count: bar.count, year: bar.year })).join(", ")} className="flex h-20 items-end gap-[3px]" onPointerLeave={() => setPointed(null)}>
+          {/* Tab reaches it and the arrow keys move between years, as the pointer does, so the readout above shows each one. */}
+          <div
+            role="img"
+            tabIndex={0}
+            aria-label={bars.map((bar) => t("citationsIn", { count: bar.count, year: bar.year })).join(", ")}
+            className="flex h-20 items-end gap-[3px] rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
+            onPointerLeave={() => setPointed(null)}
+            onFocus={() => setPointed(bars.length - 1)}
+            onBlur={() => setPointed(null)}
+            onKeyDown={(event) => {
+              const step = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+              if (!step) return;
+              event.preventDefault();
+              setPointed(Math.min(bars.length - 1, Math.max(0, (pointed ?? bars.length - 1) + step)));
+            }}
+          >
             {bars.map((bar, index) => (
               <div key={bar.year} className="flex h-full flex-1 items-end" onPointerEnter={() => setPointed(index)}>
                 <div
