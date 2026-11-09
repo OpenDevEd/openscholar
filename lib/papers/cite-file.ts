@@ -12,6 +12,7 @@ export async function citeFileResponse(params: Promise<{ id: string }>, kind: Ci
   // The record as the page shows it: OpenAlex's full author names where our index has initials, and the merged details.
   const { detail } = read;
   if (detail.authors.length) data.author = detail.authors.map((author) => ({ literal: author.name }));
+  if (detail.journal) data["container-title"] = detail.journal.name;
   if (detail.ids.issn) data.ISSN = detail.ids.issn;
   if (detail.language) data.language = detail.language;
   if (detail.publisher) data.publisher = detail.publisher;
