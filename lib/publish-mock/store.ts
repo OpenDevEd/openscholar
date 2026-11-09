@@ -20,7 +20,8 @@ const CHECKS: Check[] = [
     name: "Already published",
     engine: "decision",
     decisionModel: "already-published",
-    instructions: "Search OpenAlex, our index and our communities for the title and two sentences of the abstract. A match counts when an author's surname or the year agrees too.",
+    instructions:
+      "OpenAlex: the exact title or a sentence of the abstract, with an author's surname or the year agreeing. Openscholar's index: the five works closest in meaning to the abstract. Our communities: their records for the title. The same title from the same year is a match; the metadata model judges the rest.",
     threshold: 0.8,
     direction: "atMost",
     // A match goes to a reviewer: the author may be the one who published it.

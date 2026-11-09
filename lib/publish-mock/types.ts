@@ -36,7 +36,7 @@ export type Check = {
 };
 
 /** What every check returns, whichever engine runs it. `reasoning` comes from an LLM only. */
-export type CheckResult = { checkId: string; name: string; engine: Engine; pass: boolean; score: number; threshold: number; direction: Check["direction"]; blocking: boolean; reasoning?: string; evidence?: { title: string; url: string } };
+export type CheckResult = { checkId: string; name: string; engine: Engine; pass: boolean; score: number; threshold: number; direction: Check["direction"]; blocking: boolean; reasoning?: string; evidence?: { title: string; url: string; where?: string } };
 
 export type Settings = {
   enabled: boolean;

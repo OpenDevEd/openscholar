@@ -163,8 +163,9 @@ async function runCheck(check: Check, settings: Settings, draft: Submission, tex
   // The text to find, with {byline} as this report's. Wrapping and line breaks in the PDF don't count.
   if (check.decisionModel === "text-match") score = squash(text).includes(squash(check.instructions.replaceAll("{byline}", bylineOf(settings, draft.doi)))) ? 1 : 0;
   else if (check.decisionModel === "already-published") {
-    const found = await alreadyPublished(metadata);
-    return { ...base, score: found ? 1 : 0, pass: passes(found ? 1 : 0, check), ...(found ? { evidence: found } : {}) };
+    // The check compares candidates with the model the admin page sets for reading reports.
+    const found = await alreadyPublished(metadata, settings.metadataModel);
+    return { ...base, score: found ? 1 : 0, pass: passes(found ? 1 : 0, check), ...(found ? { evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) } : {}) };
   }
   else if (check.decisionModel === "language-id") score = 0.98;
   return { ...base, score, pass: passes(score, check) };
