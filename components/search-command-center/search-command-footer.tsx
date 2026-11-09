@@ -121,14 +121,10 @@ export function SearchCommandFooter({
       return;
     }
 
-    // Signed out, AI needs an account first: the sign-in says so, where "configure your AI" would send them nowhere.
-    if (phase === "anonymous") {
-      goToSignIn();
-      return;
-    }
-
     if (!isConfigured) {
-      toast.ai.configRequired(tv("aiConfigRequired"));
+      // Signed out with no key of their own, AI needs an account first: the sign-in says so, where "configure your AI" would send them nowhere.
+      if (phase === "anonymous") goToSignIn();
+      else toast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
@@ -182,14 +178,10 @@ Return a more inclusive version of this query.`;
       return;
     }
 
-    // Signed out, AI needs an account first: the sign-in says so, where "configure your AI" would send them nowhere.
-    if (phase === "anonymous") {
-      goToSignIn();
-      return;
-    }
-
     if (!isConfigured) {
-      toast.ai.configRequired(tv("aiConfigRequired"));
+      // Signed out with no key of their own, AI needs an account first: the sign-in says so, where "configure your AI" would send them nowhere.
+      if (phase === "anonymous") goToSignIn();
+      else toast.ai.configRequired(tv("aiConfigRequired"));
       return;
     }
 
