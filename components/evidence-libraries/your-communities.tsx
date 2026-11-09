@@ -87,7 +87,7 @@ const fromApplication = (application: MyApplication): Community => ({
     community: { libraryId: application.libraryId, name: application.name, faviconUrl: application.faviconUrl, address: application.address, owner: application.owner, applicationsOpen: true },
     standing: {
       libraryId: application.libraryId, member: false,
-      application: { state: application.state, message: application.message, createdAt: application.createdAt, decidedAt: application.decidedAt, reason: application.reason, appliesAgainAt: application.appliesAgainAt, hidden: false },
+      application: { state: application.state, message: application.message, createdAt: application.createdAt, decidedAt: application.decidedAt, reason: application.reason, reasonPreset: application.reasonPreset, appliesAgainAt: application.appliesAgainAt, hidden: false },
     },
   },
 });

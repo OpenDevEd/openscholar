@@ -13,6 +13,9 @@ async function read(ctx: ActionCtx, applicationId: Id<"libraryApplications">) {
   return await ctx.runQuery(internal.evidenceLibraries.applications.readForEmail, { applicationId });
 }
 
+/** The ready-made decline reasons as the emails word them. */
+const PRESETS = { topic: "Outside our topic", moreAbout: "Tell us more about your work", notNow: "Not adding people right now" } as const;
+
 /** Owners and editors one run emails; the next run takes the next ones. */
 const REVIEWERS_PER_RUN = 20;
 
@@ -63,17 +66,19 @@ export const toApplicant = internalAction({
     const origin = requireAppUrl();
     const url = new URL("/evidence-communities", origin).href;
     const accepted = found.state === "accepted";
-    const appliesAgainOn = new Date(found.appliesAgainAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    const reason = [found.reasonPreset ? PRESETS[found.reasonPreset] : "", found.reason ?? ""].filter(Boolean).join("\n") || null;
+    // Null: they can apply again at once, as when the team asked to hear more about their work.
+    const appliesAgainOn = found.appliesAgainAt > Date.now() ? new Date(found.appliesAgainAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : null;
     try {
       await sendInvitationEmail(mail, {
         senderName: found.libraryName,
         senderEmail: found.contactEmail,
         to: found.applicant.email,
         subject: accepted ? `You're in: ${found.libraryName}` : `Your application to ${found.libraryName}`,
-        html: renderApplicationAnswer({ identity: { ...found.emailIdentity, baseUrl: found.emailIdentity.baseUrl ?? origin }, accepted, reason: found.reason, appliesAgainOn, url }),
+        html: renderApplicationAnswer({ identity: { ...found.emailIdentity, baseUrl: found.emailIdentity.baseUrl ?? origin }, accepted, reason, appliesAgainOn, url }),
         text: accepted
           ? `Your application to join ${found.libraryName} was accepted. You're a Creator: add papers, edit records and submit your work for review.\n\n${url}`
-          : `Your application to join ${found.libraryName} wasn't accepted.${found.reason ? `\n\nTheir reason:\n${found.reason}` : ""}\n\nYou can apply again from ${appliesAgainOn}.\n\n${url}`,
+          : `Your application to join ${found.libraryName} wasn't accepted.${reason ? `\n\nTheir reason:\n${reason}` : ""}\n\n${appliesAgainOn ? `You can apply again from ${appliesAgainOn}.` : "You can apply again now, with more about your work."}\n\n${url}`,
       });
     } catch (error) {
       console.error("Community application answer email failed", { applicationId, error });

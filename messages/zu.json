@@ -6117,6 +6117,8 @@
     "closedNow": "Lo mphakathi awamukeli izicelo okwamanje.",
     "couldNotSend": "Isicelo sakho asikwazanga ukuthunyelwa. Zama futhi.",
     "couldNotChange": "Lokho akuphumelelanga. Zama futhi.",
-    "showMore": "Bonisa okwengeziwe"
+    "showMore": "Bonisa okwengeziwe",
+    "linkUnavailable": "Lesi sixhumanisi asivuli umphakathi owamukela izicelo. Kungenzeka sibhalwe kabi, noma umphakathi awusesona owomphakathi.",
+    "sayMore": "Chaza kabanzi ngomsebenzi wakho emlayezweni ongezansi, bese uwuthumela futhi."
   }
 }

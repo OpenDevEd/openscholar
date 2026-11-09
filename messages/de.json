@@ -6118,6 +6118,8 @@
     "closedNow": "Diese Community nimmt gerade keine Bewerbungen an.",
     "couldNotSend": "Deine Bewerbung konnte nicht gesendet werden. Versuch es noch einmal.",
     "couldNotChange": "Das hat nicht geklappt. Versuch es noch einmal.",
-    "showMore": "Mehr anzeigen"
+    "showMore": "Mehr anzeigen",
+    "linkUnavailable": "Dieser Link öffnet keine Community, die Bewerbungen annimmt. Vielleicht ist er falsch geschrieben, oder die Community ist nicht mehr öffentlich.",
+    "sayMore": "Erzähl unten in der Nachricht mehr über deine Arbeit und sende sie dann noch einmal."
   }
 }

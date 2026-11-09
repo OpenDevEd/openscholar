@@ -1638,6 +1638,8 @@ export const activationValidator = v.object({
  * declined one until they hide it.
  */
 export const applicationStateValidator = v.union(v.literal("waiting"), v.literal("accepted"), v.literal("declined"));
+/** A decline's ready-made reason, kept as its key so each applicant reads it in their own language. */
+export const reasonPresetValidator = v.union(v.literal("topic"), v.literal("moreAbout"), v.literal("notNow"));
 export const libraryApplicationFields = {
   libraryId: v.id("evidenceLibraries"),
   userId: v.id("users"),
@@ -1647,6 +1649,7 @@ export const libraryApplicationFields = {
   createdAt: v.number(),
   decidedAt: v.optional(v.number()),
   decidedBy: v.optional(v.id("users")),
-  /** Why it was declined, as the people who decided wrote it; the applicant reads it. */
+  /** Why it was declined: a ready-made reason, and what the people who decided wrote; the applicant reads both. */
+  reasonPreset: v.optional(reasonPresetValidator),
   reason: v.optional(v.string()),
 };

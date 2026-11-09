@@ -46,14 +46,18 @@ export const fromCard = (card: Card): AppliedCommunity => ({
 });
 
 /** What the card or row that opens the dialog knows, so it opens with everything in it rather than filling in. */
-export type ApplySeed = { community: AppliedCommunity; standing: Standing | null };
+export type ApplySeed = { community: AppliedCommunity; standing: Standing | null; returnTo?: HTMLElement | null };
 const Seeds = createContext<(seed: ApplySeed) => void>(() => {});
 export const ApplySeedProvider = Seeds.Provider;
 /** Opens the dialog for a community, with what the caller knows of it. */
 export function useOpenApply() {
   const [, open] = useApplyParam();
   const seed = useContext(Seeds);
-  return (given: ApplySeed) => { seed(given); void open(given.community.libraryId); };
+  // The button that opened it gets the focus back when it closes, as a dialog's own trigger would.
+  return (given: ApplySeed) => {
+    seed({ ...given, returnTo: document.activeElement instanceof HTMLElement ? document.activeElement : null });
+    void open(given.community.libraryId);
+  };
 }
 
 /** A message being written, kept in the tab through a sign-in. */
@@ -91,7 +95,15 @@ export function ApplyDialog({ signedIn, seed }: { signedIn: boolean; seed: Apply
   return (
     <Dialog open={Boolean(libraryId) && ready} onOpenChange={(open) => { if (!open) close(); }}>
       {/* Scrolls on a short screen, so Send is always reachable, without a scrollbar. */}
-      <DialogContent className="gap-0 p-0 scrollbar-hide sm:max-w-lg">
+      <DialogContent
+        className="gap-0 p-0 scrollbar-hide sm:max-w-lg"
+        onCloseAutoFocus={(event) => {
+          // The seed still names its opener after the address stops naming the community.
+          if (!seed?.returnTo?.isConnected) return;
+          event.preventDefault();
+          seed.returnTo.focus();
+        }}
+      >
         {community ? (
           <>
             <CommunityHeader community={community} />
@@ -100,12 +112,12 @@ export function ApplyDialog({ signedIn, seed }: { signedIn: boolean; seed: Apply
                 : standing?.member ? <Member community={community} onClose={close} />
                 : application?.state === "waiting" || waits ? <Status community={community} application={application!} onClose={close} />
                 : !community.applicationsOpen ? <p className="p-5 text-sm text-muted-foreground">{t("closedNow")}</p>
-                : <ApplyForm community={community} signedIn={signedIn} onSent={() => setSentTo(community.libraryId)} />}
+                : <ApplyForm community={community} signedIn={signedIn} previous={application?.state === "declined" ? application : null} onSent={() => setSentTo(community.libraryId)} />}
             </AutoHeight>
           </>
         ) : (
           <DialogHeader className="p-5 pe-12">
-            <DialogTitle className="text-base">{t("closedNow")}</DialogTitle>
+            <DialogTitle className="text-base">{t("linkUnavailable")}</DialogTitle>
           </DialogHeader>
         )}
       </DialogContent>
@@ -132,7 +144,8 @@ function CommunityHeader({ community }: { community: AppliedCommunity }) {
   );
 }
 
-function ApplyForm({ community, signedIn, onSent }: { community: AppliedCommunity; signedIn: boolean; onSent: () => void }) {
+/** `previous`: a declined application they may follow up, as when the team asked to hear more about their work. */
+function ApplyForm({ community, signedIn, previous, onSent }: { community: AppliedCommunity; signedIn: boolean; previous: Application | null; onSent: () => void }) {
   const t = useTranslations("communityApplications");
   const apply = useWorkspaceMutation(api.evidenceLibraries.applications.apply);
   // Drawn once the dialog opens, in the browser: the tab's kept message is there from its first frame.
@@ -168,6 +181,15 @@ function ApplyForm({ community, signedIn, onSent }: { community: AppliedCommunit
   };
   return (
     <form className="space-y-5 p-5" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+      {previous ? (
+        <div className="rounded-lg bg-inset p-3">
+          <p className="text-xs font-medium">{t("theirReason")}</p>
+          <p className="mt-1 whitespace-pre-line text-sm [overflow-wrap:anywhere]">
+            {[previous.reasonPreset ? t(`reasons.${previous.reasonPreset}`) : "", previous.reason ?? ""].filter(Boolean).join("\n") || t("noReason")}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">{t("sayMore")}</p>
+        </div>
+      ) : null}
       <section aria-labelledby="apply-can">
         <h3 id="apply-can" className="text-sm font-medium">{t("asACreator")}</h3>
         <ul className="mt-2 grid gap-1.5 sm:grid-cols-3 sm:gap-2">
@@ -179,7 +201,8 @@ function ApplyForm({ community, signedIn, onSent }: { community: AppliedCommunit
       <div>
         <div className="flex items-baseline justify-between gap-3">
           <label htmlFor="apply-message" className="text-sm font-medium">{t("messageLabel")}</label>
-          <span aria-hidden className={cn("text-xs tabular-nums", draft.length >= MESSAGE_MAX ? "ink-warning" : "text-subtle-foreground")}>{draft.length} / {MESSAGE_MAX}</span>
+          {/* Left to right in every language, so it reads "64 / 500" and not the other way round. */}
+          <span aria-hidden dir="ltr" className={cn("text-xs tabular-nums", draft.length >= MESSAGE_MAX ? "ink-warning" : "text-subtle-foreground")}>{draft.length} / {MESSAGE_MAX}</span>
         </div>
         <p id="apply-message-hint" className="mt-0.5 text-xs text-muted-foreground">{t("messageHint")}</p>
         <Textarea
@@ -288,7 +311,10 @@ function Status({ community, application, onClose }: { community: AppliedCommuni
       {application.state === "declined" ? (
         <div className="rounded-lg bg-inset p-3">
           <p className="text-xs font-medium">{t("theirReason")}</p>
-          <p className="mt-1 whitespace-pre-line text-sm">{application.reason ?? t("noReason")}</p>
+          {/* The ready-made reason in the applicant's own language, then what the team wrote. */}
+          <p className="mt-1 whitespace-pre-line text-sm [overflow-wrap:anywhere]">
+            {[application.reasonPreset ? t(`reasons.${application.reasonPreset}`) : "", application.reason ?? ""].filter(Boolean).join("\n") || t("noReason")}
+          </p>
           {application.appliesAgainAt !== null ? (
             <p className="mt-2 text-xs text-muted-foreground">{t("applyAgainFrom", { date: format.dateTime(application.appliesAgainAt, { day: "numeric", month: "long" }) })}</p>
           ) : null}
@@ -296,7 +322,7 @@ function Status({ community, application, onClose }: { community: AppliedCommuni
       ) : null}
       <div>
         <p className="text-xs font-medium">{t("yourMessage")}</p>
-        <blockquote className="mt-1 whitespace-pre-line border-s-2 border-border ps-3 text-sm text-muted-foreground">{application.message}</blockquote>
+        <blockquote className="mt-1 whitespace-pre-line border-s-2 border-border ps-3 text-sm text-muted-foreground [overflow-wrap:anywhere]">{application.message}</blockquote>
       </div>
       <DialogFooter className="-mx-5 -mb-5 border-t border-border-subtle bg-inset px-5 py-4 sm:justify-between">
         {application.state === "waiting" ? (

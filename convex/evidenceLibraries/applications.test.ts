@@ -101,9 +101,10 @@ describe("applying to join a community", () => {
     vi.setSystemTime(new Date("2026-11-09T10:00:00Z"));
     const { libraryId, applicant, apply, owner } = await community("applications_decline");
     const applicationId = await apply();
-    await owner.as.mutation(api.evidenceLibraries.applications.decline, { workspaceId: owner.workspaceId, applicationId, reason: "  Outside our topic.  " });
+    // The ready-made reason goes by its key, for the applicant to read in their own language, and the note as written.
+    await owner.as.mutation(api.evidenceLibraries.applications.decline, { workspaceId: owner.workspaceId, applicationId, preset: "topic", reason: "  Outside our topic.  " });
     const mine = (state: "waiting" | "declined" = "declined") => applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, state, paginationOpts: page }).then((result) => result.page);
-    expect(await mine()).toEqual([expect.objectContaining({ state: "declined", reason: "Outside our topic.", appliesAgainAt: Date.now() + 14 * DAY })]);
+    expect(await mine()).toEqual([expect.objectContaining({ state: "declined", reasonPreset: "topic", reason: "Outside our topic.", appliesAgainAt: Date.now() + 14 * DAY })]);
     await expect(apply()).rejects.toThrow(/again from 2026-11-23/);
 
     await applicant.as.mutation(api.evidenceLibraries.applications.hide, { workspaceId: applicant.workspaceId, libraryId });
@@ -113,6 +114,15 @@ describe("applying to join a community", () => {
     vi.setSystemTime(Date.now() + 14 * DAY + 1);
     expect(await apply()).toBe(applicationId);
     expect(await mine("waiting")).toEqual([expect.objectContaining({ state: "waiting" })]);
+  });
+
+  it("lets someone the team asked to say more about their work apply again at once", async () => {
+    const { applicant, apply, owner } = await community("applications_more");
+    const applicationId = await apply();
+    await owner.as.mutation(api.evidenceLibraries.applications.decline, { workspaceId: owner.workspaceId, applicationId, preset: "moreAbout" });
+    expect(await apply("I run a 40-school coaching study and would add its 30 papers.")).toBe(applicationId);
+    expect((await applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, state: "waiting", paginationOpts: page })).page)
+      .toEqual([expect.objectContaining({ message: "I run a 40-school coaching study and would add its 30 papers." })]);
   });
 
   it("takes back a waiting application, after which the person can apply again at once", async () => {

@@ -6117,6 +6117,8 @@
     "closedNow": "This community isn't taking applications right now.",
     "couldNotSend": "Your application couldn't be sent. Try again.",
     "couldNotChange": "That didn't go through. Try again.",
-    "showMore": "Show more"
+    "showMore": "Show more",
+    "linkUnavailable": "This link doesn't open a community that takes applications. It may be mistyped, or the community may no longer be public.",
+    "sayMore": "Say more about your work in the message below, then send it again."
   }
 }

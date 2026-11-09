@@ -706,7 +706,8 @@ export function TeamAccess({
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
-          <div className="flex items-center gap-1" aria-label={t("teamView")}>
+          {/* Wraps on a phone, so every list stays on the card. */}
+          <div className="flex flex-wrap items-center gap-1" aria-label={t("teamView")}>
             {/* Invitations are its owners' to see. */}
             {tabs.map((tab) => {
               const Icon = tab === "members" ? Users : tab === "invitations" ? Mail : UserPlus;
