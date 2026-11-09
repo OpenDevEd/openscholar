@@ -44,12 +44,14 @@ it("answers a community that asks with its credential, link by link in order, an
   const ask = (links: string[], credential = token) =>
     t.fetch("/api/v1/evidence-libraries/papers/resolve", { method: "POST", headers: { Authorization: `Bearer ${credential}`, "Content-Type": "application/json" }, body: JSON.stringify({ contractVersion: 1, libraryId, links }) });
   // A record Openscholar has no word of is read from the community's own site, as its public record.
-  const site = vi.fn(async (url: string) => (url === `${origin}/api/item/QQQQ2345` ? Response.json({ item: { key: "QQQQ2345", openalexId: "W9", DOI: "10.1000/Nine" } }) : new Response("Not found", { status: 404 })));
+  const site = vi.fn(async (url: string, _init?: RequestInit) => (url === `${origin}/api/item/QQQQ2345` ? Response.json({ item: { key: "QQQQ2345", openalexId: "W9", DOI: "10.1000/Nine" } }) : new Response("Not found", { status: 404 })));
   vi.stubGlobal("fetch", site);
   const answered = await ask([`${origin}/lib/ABCD2345`, "https://example.org/nothing", "https://doi.org/10.1000/Two", `${origin}/lib/QQQQ2345`, `${origin}/lib/ZZZZ2345`]);
   expect(answered.status).toBe(200);
   expect(await answered.json()).toEqual({ papers: [{ openalexId: "W1", doi: null }, null, { openalexId: null, doi: "10.1000/two" }, { openalexId: "W9", doi: "10.1000/nine" }, null] });
   // Only the known community's site was asked: an address no community serves isn't fetched.
   expect(site.mock.calls.map(([url]) => url)).toEqual([`${origin}/api/item/QQQQ2345`, `${origin}/api/item/ZZZZ2345`]);
+  // With the shield's check, which a shielded community needs to answer a read at all.
+  expect(site.mock.calls[0]![1]?.headers).toMatchObject({ cookie: expect.stringContaining("ode_browser_check") });
   expect((await ask(["W1"], "els_" + "d".repeat(43))).status).toBe(401);
 });

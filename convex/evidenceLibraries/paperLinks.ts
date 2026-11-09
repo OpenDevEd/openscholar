@@ -12,6 +12,7 @@ import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { normalDoi, openalexWork } from "../../lib/papers/paper-ref";
 import { paperLinkOf } from "../../lib/papers/paper-links";
 import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
+import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
 
 /** A paper as a community takes it: its OpenAlex work, its DOI, or both. */
 export type PaperIds = { openalexId: string | null; doi: string | null };
@@ -42,7 +43,8 @@ export const recordPaper = internalQuery({
 
 /** The paper a community's public record is, as its own site serves it; null for one it doesn't show. Asked only of a known community's address. */
 async function recordOnSite(origin: string, itemKey: string): Promise<PaperIds | null> {
-  const response = await fetch(`${origin}/api/item/${encodeURIComponent(itemKey)}`, { headers: { Accept: "application/json", "User-Agent": "Openscholar paper links" }, signal: AbortSignal.timeout(8_000) });
+  // With the shield's check, as every read of a community's public pages carries it (../../lib/evidence-libraries/library-shield.ts).
+  const response = await fetch(`${origin}/api/item/${encodeURIComponent(itemKey)}`, { headers: publicLibraryHeaders("application/json"), signal: AbortSignal.timeout(8_000) });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`The community at ${origin} answered ${response.status} for record ${itemKey}`);
   const { item } = (await response.json()) as { item?: { openalexId?: unknown; sourceRecordKey?: unknown; DOI?: unknown } | null };
