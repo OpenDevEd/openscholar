@@ -14,6 +14,10 @@ describe("a paper someone pastes", () => {
     expect(paperLinkOf("https://aievidencehub.org/lib/WMYN7Q2X/")).toEqual({ kind: "record", origin: "https://aievidencehub.org", itemKey: "WMYN7Q2X" });
     expect(paperLinkOf("https://doi.org/10.1016/j.tate.2015.06.010.")).toEqual({ kind: "doi", doi: "10.1016/j.tate.2015.06.010" });
     expect(paperLinkOf("(10.1000/xyz(1)),")).toEqual({ kind: "doi", doi: "10.1000/xyz(1)" });
+    // As a sentence or a list writes them: after a word, in brackets, with a full stop.
+    expect(paperLinkOf("https://dev.openscholar.ai/papers/OS79563844.")).toEqual({ kind: "own", work: "OS79563844" });
+    expect(paperLinkOf("(https://dev.openscholar.ai/papers/OS79563844)")).toEqual({ kind: "own", work: "OS79563844" });
+    expect(paperLinkOf("<https://aievidencehub.org/lib/WMYN7Q2X>.")).toEqual({ kind: "record", origin: "https://aievidencehub.org", itemKey: "WMYN7Q2X" });
   });
 
   it("isn't found where nothing names one: another site's /papers/ path, a page that isn't a record, or a word", () => {

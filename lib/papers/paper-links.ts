@@ -35,7 +35,8 @@ function urlOf(given: string) {
 
 /** The paper one pasted word names, or null for anything else. */
 export function paperLinkOf(raw: string): PaperLink | null {
-  const given = raw.trim().replace(/[,;]$/, "").replace(/^<(.*)>$/, "$1");
+  // What a sentence or list wraps an address in: brackets, quotes, and punctuation after it. A DOI keeps its own brackets (trimDoi).
+  const given = raw.trim().replace(/^[<(["']+/, "").replace(/[>)\]"'.,;:!?]+$/, "");
   const work = openalexWork(given);
   if (work) return { kind: "work", openalexId: work };
   const own = ownWork(given.replace(/^openscholar:/i, ""));
@@ -47,7 +48,7 @@ export function paperLinkOf(raw: string): PaperLink | null {
     const record = url.pathname.match(RECORD_PATH)?.[1];
     if (record) return { kind: "record", origin: url.origin, itemKey: record };
   }
-  const doi = given.match(/10\.\d{4,9}\/\S+/i)?.[0];
+  const doi = raw.match(/10\.\d{4,9}\/\S+/i)?.[0];
   return doi ? { kind: "doi", doi: normalDoi(trimDoi(doi))! } : null;
 }
 

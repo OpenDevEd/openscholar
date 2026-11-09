@@ -16,6 +16,7 @@ import { refuseApps } from "../lib/auth";
 import { paperOfLink, type PaperIds } from "./paperLinks";
 import { spender } from "../paperSets/search";
 import { openalexWork } from "../../lib/papers/paper-ref";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineChangingAction, defineUserAction, defineUserMutation, defineUserQuery, userAction, userMutation, userQuery } from "../lib/userActions";
 import { requireCommunityWorkspace } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
@@ -649,6 +650,7 @@ type PaperReference = Infer<typeof paperReferences>[number];
  * `ask` sends the rest and answers each by its place among them.
  */
 async function withLinksFollowed<Answer extends { at: number }>(ctx: ActionCtx, actor: InWorkspace, papers: PaperReference[], ask: (papers: PaperIds[]) => Promise<Answer[]>): Promise<Array<Answer | { at: number; outcome: "not_found"; message: string }>> {
+  if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Give at most ${ADDED_PAPERS_MAX} papers at once.`);
   let spend: ((pages: number) => Promise<boolean>) | null = null;
   const reads = async (pages: number) => {
     if (!spend) {

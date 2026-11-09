@@ -47,10 +47,8 @@ export async function paperOfLink(ctx: Pick<ActionCtx, "runQuery">, raw: string,
   // An OpenAlex work is taken as it is, unless its DOI is wanted too, which our index gives as it does an own work's.
   if (link.kind === "work" && !withDoi) return { openalexId: link.openalexId, doi: null };
   const id = link.kind === "work" ? link.openalexId : link.work;
-  const work = await readWork<{ id?: string; doi?: string | null }>(id, "id,doi", spend, "openscholar").catch((error: unknown) => {
-    console.error("[paper links] our index didn't answer", { work: id, error: String(error) });
-    return null;
-  });
+  // A failure to read (an allowance spent, the index down) is the caller's to report: only no such work is null.
+  const work = await readWork<{ id?: string; doi?: string | null }>(id, "id,doi", spend, "openscholar");
   const ids = { openalexId: openalexWork(work?.id ?? "") ?? (link.kind === "work" ? link.openalexId : null), doi: normalDoi(work?.doi) };
   return ids.openalexId || ids.doi ? ids : null;
 }
@@ -80,6 +78,11 @@ export const resolvePapers: ReturnType<typeof httpAction> = httpAction(async (ct
     return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   }
   // ponytail: a community's reads of our index aren't counted against anyone; at most ADDED_PAPERS_MAX a request, from a signed community.
-  const papers = await Promise.all(links.map((link) => paperOfLink(ctx, link, async () => true, { withDoi: true })));
-  return jsonResponse(200, { papers });
+  try {
+    const papers = await Promise.all(links.map((link) => paperOfLink(ctx, link, async () => true, { withDoi: true })));
+    return jsonResponse(200, { papers });
+  } catch (error) {
+    console.error("[paper links] couldn't follow a community's links", { libraryId, error: String(error) });
+    return jsonResponse(503, { error: { code: "temporarily_unavailable", retryable: true } });
+  }
 });
