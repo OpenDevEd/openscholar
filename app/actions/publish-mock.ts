@@ -3,7 +3,7 @@
 // makes these Convex functions with their user-action registry entries.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { cookies } from "next/headers";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
@@ -16,8 +16,16 @@ const OFF_COOKIE = "os-publish-off";
 
 const change = changeState;
 
-function draftOf(state: MockState) {
-  const draft = state.submissions.find((s) => s.id === state.draftId);
+/** Who is acting. Each person has a report of their own open, so every step needs to know whose it is. */
+async function me() {
+  const { userId } = await auth();
+  if (!userId) throw new Error("Sign in to publish.");
+  return userId;
+}
+
+/** The report this person has open on the Publish page. */
+function draftOf(state: MockState, userId: string) {
+  const draft = state.submissions.find((s) => s.id === state.drafts[userId]);
   if (!draft) throw new Error("No report is being published.");
   return draft;
 }
@@ -27,14 +35,14 @@ function touch(submission: Submission, patch: Partial<Submission>) {
   return submission;
 }
 
-/** The report being published, made when there's none: signing the agreement starts one. */
-function openDraft(state: MockState) {
-  const open = state.submissions.find((s) => s.id === state.draftId);
+/** The report this person is publishing, made when they have none open: signing the agreement starts one. */
+function openDraft(state: MockState, userId: string) {
+  const open = state.submissions.find((s) => s.id === state.drafts[userId]);
   if (open && open.step !== "done") return open;
   const id = nextKey(state);
-  const draft: Submission = { id, doi: doiOf(state.settings, id), step: "agreement", status: "draft", deposit: "none", archive: "none", createdAt: Date.now(), updatedAt: Date.now() };
+  const draft: Submission = { id, ownerId: userId, doi: doiOf(state.settings, id), step: "agreement", status: "draft", deposit: "none", archive: "none", createdAt: Date.now(), updatedAt: Date.now() };
   state.submissions.unshift(draft);
-  state.draftId = id;
+  state.drafts[userId] = id;
   return draft;
 }
 
@@ -43,18 +51,18 @@ export async function signAgreement({ name, onBehalfOfAll }: { name: string; onB
   return change((state) => {
     if (!canPublish(state.settings)) throw new Error("Publishing is off until Crossref or Zenodo is connected.");
     const registration = registrationOf(state.settings);
-    const draft = openDraft(state);
+    if (!user) throw new Error("Sign in to publish.");
+    const draft = openDraft(state, user.id);
     // Signed once: a second signing, say from a tab left open, never moves a reserved DOI or its route.
     if (draft.step !== "agreement") return draft;
     return touch(draft, {
-      ...(user ? { ownerId: user.id } : {}),
-      signedBy: { name: name.trim(), email: user?.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
+      signedBy: { name: name.trim(), email: user.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
       signedAt: Date.now(),
       agreementVersion: state.settings.agreement.version,
       // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
       // the report registers is fixed with it. With Zenodo on, Zenodo holds a draft for the file from here, as for
       // a community's record.
-      doi: doiOf(state.settings, state.draftId!),
+      doi: doiOf(state.settings, draft.id),
       registration,
       archive: registration.zenodo ? "draft" : "none",
       step: "doi",
@@ -64,8 +72,9 @@ export async function signAgreement({ name, onBehalfOfAll }: { name: string; onB
 
 /** Back to a step already done, or on to the next one the report is ready for. */
 export async function goTo(step: Step) {
+  const userId = await me();
   return change((state) => {
-    const draft = draftOf(state);
+    const draft = draftOf(state, userId);
     // A report past its checks goes back only to replace a PDF that failed them: one that passed or is live stays as checked.
     if (draft.step === "done" && draft.status !== "failed") throw new Error("This report has been checked. Start another to publish a new PDF.");
     return touch(draft, { step });
@@ -86,8 +95,9 @@ export async function uploadPdf(form: FormData) {
       return null;
     }),
   ]);
+  const userId = await me();
   return change(async (state) => {
-    const draft = draftOf(state);
+    const draft = draftOf(state, userId);
     if (draft.step === "done") throw new Error("This report has been checked. Start another to publish a new PDF.");
     await mkdir(MOCK_DIR, { recursive: true });
     await writeFile(pdfPath(draft.id), Buffer.from(bytes));
@@ -138,16 +148,17 @@ export async function openReport(id: string) {
   const user = await currentUser();
   return change((state) => {
     const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
-    if (!report) throw new Error("No such report of yours.");
-    state.draftId = id;
+    if (!user || !report) throw new Error("No such report of yours.");
+    state.drafts[user.id] = id;
     return report;
   });
 }
 
 /** Starts a new report after one that's done. */
 export async function startOver() {
+  const userId = await me();
   await change((state) => {
-    state.draftId = null;
+    delete state.drafts[userId];
   });
 }
 

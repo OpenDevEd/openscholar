@@ -71,6 +71,12 @@ function placeOf(draft: Submission | null) {
 
 const bytes = (n: number) => (n > 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.round(n / 1000)} kB`);
 
+/** What went wrong, in words for a toast. A request that never arrived, as when the connection drops, says so plainly. */
+const reasonOf = (error: unknown, otherwise: string) => (error instanceof TypeError ? "Openscholar couldn't be reached. Try again." : error instanceof Error ? error.message : otherwise);
+
+/** A handler for a request that failed: its reason in a toast. */
+const said = (otherwise: string) => (error: unknown) => void toast.error(reasonOf(error, otherwise));
+
 function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
 }
@@ -116,7 +122,14 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
   const step: Step = draft?.step ?? "agreement";
   const back = (to: Step) => {
     setFresh(null);
-    void goTo(to).then(setDraft);
+    goTo(to).then(setDraft, said("That step couldn't be opened"));
+  };
+  // Starts a new report in place of one that's done.
+  const another = (then?: () => void) => {
+    startOver().then(() => {
+      setDraftOnly(null);
+      then?.();
+    }, said("A new report couldn't be started"));
   };
   const run = async (metadata: Metadata) => {
     if (!draft) return;
@@ -131,7 +144,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
       // Another report opened while these ran stays the one shown.
       setDraftOnly((current) => (current?.id === saved.id ? saved : current));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The checks couldn't run");
+      toast.error(reasonOf(error, "The checks couldn't run"));
     } finally {
       setRunning(null);
     }
@@ -168,10 +181,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
           show={show}
           reports={reports}
           onNew={() => {
-            void startOver().then(() => {
-              setDraftOnly(null);
-              void setView(null);
-            });
+            another(() => void setView(null));
           }}
           onOpen={(id) => {
             openReport(id)
@@ -179,7 +189,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                 setDraftOnly(report);
                 void setView(null);
               })
-              .catch((error: unknown) => toast.error(error instanceof Error ? error.message : "That report couldn't be opened"));
+              .catch((error: unknown) => toast.error(reasonOf(error, "That report couldn't be opened")));
           }}
         />
       ) : (
@@ -217,7 +227,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                     setDraftOnly((current) => (current?.id === next.id ? next : current));
                   }}
                   onAnother={() => {
-                    void startOver().then(() => setDraftOnly(null));
+                    another();
                   }}
                 />
               ) : draft ? (
@@ -233,7 +243,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                   }
                   onFix={() => back("upload")}
                   onAnother={() => {
-                    void startOver().then(() => setDraftOnly(null));
+                    another();
                   }}
                 />
               ) : null}
@@ -345,7 +355,15 @@ function AgreementStep({ settings, userName, onSigned }: { settings: Settings; u
         <Button
           className="relative"
           disabled={!agreed || !name.trim() || busy}
-          onClick={() => start(async () => onSigned(await signAgreement({ name, onBehalfOfAll: all })))}
+          onClick={() =>
+            start(async () => {
+              try {
+                onSigned(await signAgreement({ name, onBehalfOfAll: all }));
+              } catch (error) {
+                toast.error(reasonOf(error, "The agreement couldn't be signed"));
+              }
+            })
+          }
         >
           <Working busy={busy}>
             <span className="flex items-center gap-2">
@@ -490,7 +508,7 @@ function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings;
       if (!wasRead) toast.info("The details couldn't be read from this PDF", { description: "Fill them in on the next step." });
       onRead(read);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "The PDF couldn't be read");
+      toast.error(reasonOf(error, "The PDF couldn't be read"));
       setFile(null);
     } finally {
       setStage(null);
@@ -655,7 +673,7 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
       try {
         await onActivate?.();
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "It couldn't be activated");
+        toast.error(reasonOf(error, "It couldn't be activated"));
       }
     });
   const head = !draft ? (

@@ -164,7 +164,8 @@ export type Submission = {
   updatedAt: number;
 };
 
-export type MockState = { settings: Settings; submissions: Submission[]; draftId: string | null; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
+/** `drafts` is the report each person has open on the Publish page, by their Clerk user: one person's never shows for another. */
+export type MockState = { settings: Settings; submissions: Submission[]; drafts: Record<string, string>; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
 /** Where a report's cover is served from. Its address changes with the picture, so it can be cached for good. */
 export const coverUrlOf = (report: Pick<Submission, "id" | "cover">) => (report.cover ? `/publish/files/${report.id}/cover?v=${report.cover}` : null);

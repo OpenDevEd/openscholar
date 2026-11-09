@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Publish | Openscholar" };
 export default async function PublishPage() {
   const [state, user] = await Promise.all([readState(), currentUser()]);
   if (!canPublish(state.settings)) notFound();
-  const draft = state.submissions.find((s) => s.id === state.draftId) ?? null;
+  const draft = (user && state.submissions.find((s) => s.id === state.drafts[user.id])) || null;
   // Yours: the reports you started, and the mock's samples. Newest first.
   const reports = state.submissions.filter((s) => s.demo || (user && s.ownerId === user.id)).sort((a, b) => b.updatedAt - a.updatedAt);
   return <PublishFlow settings={state.settings} initial={draft} reports={reports} userName={user?.fullName ?? ""} />;

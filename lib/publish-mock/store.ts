@@ -223,7 +223,7 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
 
 async function seed(): Promise<MockState> {
   const settings = await seedSettings();
-  return { settings, submissions: await Promise.all(TITLES.map((_, n) => seedSubmission(settings, n))), draftId: null, checkVersions: { "3": settings.checks } };
+  return { settings, submissions: await Promise.all(TITLES.map((_, n) => seedSubmission(settings, n))), drafts: {}, checkVersions: { "3": settings.checks } };
 }
 
 /** MOCK: Crossref takes a little while; a report sent over 15 seconds ago is registered. */
