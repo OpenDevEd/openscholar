@@ -50,14 +50,16 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
     });
   }
 
-  // Dark mode follows the light colours until it is given its own.
-  const darkSeparate = DARK_COLOUR_KEYS.some((key) => theme.colors[key]);
+  // Dark mode follows the light colours until it is given its own. The switch stays on while its fields are being
+  // edited, even if every one of them is cleared; an empty field follows the light colour.
+  const [darkOpened, setDarkOpened] = useState(false);
+  const darkSeparate = darkOpened || DARK_COLOUR_KEYS.some((key) => theme.colors[key]);
 
   function setDarkSeparate(on: boolean) {
+    setDarkOpened(on);
+    if (on) return;
     patch((d) => {
-      d.theme.colors.accentDark = on ? d.theme.colors.accent : "";
-      d.theme.colors.tertiaryDark = on ? d.theme.colors.tertiary : "";
-      d.theme.colors.linkDark = on ? d.theme.colors.link : "";
+      for (const key of DARK_COLOUR_KEYS) d.theme.colors[key] = "";
       return d;
     });
   }
@@ -259,17 +261,20 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
             <ColourField
               label={t("accentDarkLabel")}
               value={theme.colors.accentDark}
+              fallback={theme.colors.accent}
               onChange={(v) => setColour("accentDark", v)}
             />
             <ColourField
               label={t("secondaryDarkLabel")}
               value={theme.colors.tertiaryDark}
+              fallback={theme.colors.tertiary}
               onChange={(v) => setColour("tertiaryDark", v)}
             />
             <ColourField
               label={t("linkDarkLabel")}
               hint={t("linkDarkHint")}
               value={theme.colors.linkDark}
+              fallback={theme.colors.link}
               contrastAgainst={[theme.colors.backgroundDark]}
               onChange={(v) => setColour("linkDark", v)}
             />

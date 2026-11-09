@@ -339,9 +339,15 @@ describe("changedSectionRows", () => {
     expect(changedSectionRows(draft, savedRows)).toEqual([]);
 
     draft.theme.colors.accentDark = "#60a5fa";
-    const colors = (changedSectionRows(draft, savedRows)[0]?.payload as { colors: Record<string, string> }).colors;
+    const rows = changedSectionRows(draft, savedRows);
+    const colors = (rows[0]?.payload as { colors: Record<string, string> }).colors;
     expect(colors.accentDark).toBe("#60a5fa");
     expect(colors).not.toHaveProperty("linkDark");
+    expect(
+      validateOwnerSections(rows, {
+        expectedBaseUrl: "https://saved-library.libraries.example.test",
+      }).issues,
+    ).toEqual([]);
 
     draft.theme.colors.linkDark = "blue";
     expect(sectionProblems(draft, "theme")).toEqual(["badColour"]);

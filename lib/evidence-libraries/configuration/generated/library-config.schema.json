@@ -215,6 +215,26 @@
 							"type": "string",
 							"pattern": "^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$"
 						},
+						"accentDark": {
+							"type": "string",
+							"pattern": "^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$"
+						},
+						"linkDark": {
+							"type": "string",
+							"pattern": "^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$"
+						},
+						"collectionDark": {
+							"type": "string",
+							"pattern": "^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$"
+						},
+						"doiDark": {
+							"type": "string",
+							"pattern": "^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$"
+						},
+						"tertiaryDark": {
+							"type": "string",
+							"pattern": "^#[0-9A-Fa-f]{6}(?:[0-9A-Fa-f]{2})?$"
+						},
 						"backgroundDark": {
 							"default": "#0f0f0f",
 							"type": "string",
