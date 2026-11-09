@@ -1230,7 +1230,8 @@
     "noMatches": "Hakuna kinachofanana na vichujio vya sasa",
     "clearFilters": "Futa vichujio",
     "progressOfPapers": "Makala {processed} kati ya {total}",
-    "loadingExtractionResults": "Inapakia matokeo ya uchimbaji..."
+    "loadingExtractionResults": "Inapakia matokeo ya uchimbaji...",
+    "skippedNoText": "{count, plural, one {Makala # imeachwa: haina muhtasari wa kusoma, na maandishi kamili yalizimwa} other {Makala # zimeachwa: hazina muhtasari wa kusoma, na maandishi kamili yalizimwa}}"
   },
   "reportBuilder": {
     "grounded": "Imethibitishwa",

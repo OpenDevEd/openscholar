@@ -313,6 +313,8 @@ export const setupPlaceValidator = v.object({
   resume: v.optional(v.string()),
   papers: v.number(),
   processable: v.number(),
+  /** Papers left out because, with full texts off, they have nothing to read: the job's page says how many. */
+  skipped: v.optional(v.number()),
   done: v.optional(v.literal(true)),
 });
 

@@ -1229,7 +1229,8 @@
     "noMatches": "現在のフィルターに一致するものはありません",
     "clearFilters": "フィルターをクリア",
     "progressOfPapers": "{total} 論文中 {processed} 件",
-    "loadingExtractionResults": "抽出結果を読み込み中..."
+    "loadingExtractionResults": "抽出結果を読み込み中...",
+    "skippedNoText": "{count, plural, other {#件の論文を除外: 読める要旨がなく、全文の読み込みはオフでした}}"
   },
   "reportBuilder": {
     "grounded": "根拠あり",

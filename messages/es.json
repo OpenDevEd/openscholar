@@ -1230,7 +1230,8 @@
     "noMatches": "Ningún resultado coincide con los filtros actuales",
     "clearFilters": "Quitar filtros",
     "progressOfPapers": "{processed} de {total, plural, =1 {# artículo} other {# artículos}}",
-    "loadingExtractionResults": "Cargando resultados de extracción..."
+    "loadingExtractionResults": "Cargando resultados de extracción...",
+    "skippedNoText": "{count, plural, one {# artículo omitido: no tiene resumen que leer y los textos completos estaban desactivados} other {# artículos omitidos: no tienen resumen que leer y los textos completos estaban desactivados}}"
   },
   "reportBuilder": {
     "grounded": "Con fuentes",

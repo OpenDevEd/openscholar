@@ -1229,7 +1229,8 @@
     "noMatches": "Akukho okuhambisanayo nezihlungi zamanje",
     "clearFilters": "Sula izihlungi",
     "progressOfPapers": "{processed} kwa-{total, plural, =1 {# iphepha} other {# amaphepha}}",
-    "loadingExtractionResults": "Iyalayisha imiphumela yokukhishwa..."
+    "loadingExtractionResults": "Iyalayisha imiphumela yokukhishwa...",
+    "skippedNoText": "{count, plural, one {Iphepha elingu-# lishiywe ngaphandle: alikho isifinyezo okufundwa, futhi imibhalo ephelele ibivaliwe} other {Amaphepha angu-# ashiywe ngaphandle: asikho isifinyezo okufundwa, futhi imibhalo ephelele ibivaliwe}}"
   },
   "reportBuilder": {
     "grounded": "Esekelwe ebufakazini",

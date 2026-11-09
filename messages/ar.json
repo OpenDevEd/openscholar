@@ -1230,7 +1230,8 @@
     "noMatches": "لا توجد تطابقات مع عوامل التصفية الحالية",
     "clearFilters": "مسح عوامل التصفية",
     "progressOfPapers": "{processed} من أصل {total} ورقة",
-    "loadingExtractionResults": "جارٍ تحميل نتائج الاستخلاص..."
+    "loadingExtractionResults": "جارٍ تحميل نتائج الاستخلاص...",
+    "skippedNoText": "{count, plural, one {استُبعدت ورقة واحدة: لا يوجد ملخص لقراءته، والنصوص الكاملة كانت متوقفة} other {استُبعدت # أوراق: لا يوجد ملخص لقراءته، والنصوص الكاملة كانت متوقفة}}"
   },
   "reportBuilder": {
     "grounded": "مدعوم بالأدلة",

@@ -1229,7 +1229,8 @@
     "noMatches": "वर्तमान फ़िल्टर के लिए कोई मैच नहीं",
     "clearFilters": "फ़िल्टर साफ़ करें",
     "progressOfPapers": "{total} में से {processed} पेपर",
-    "loadingExtractionResults": "एक्सट्रैक्शन परिणाम लोड हो रहे हैं..."
+    "loadingExtractionResults": "एक्सट्रैक्शन परिणाम लोड हो रहे हैं...",
+    "skippedNoText": "{count, plural, one {# शोधपत्र छोड़ा गया: पढ़ने को सार नहीं था, और पूरे पाठ बंद थे} other {# शोधपत्र छोड़े गए: पढ़ने को सार नहीं था, और पूरे पाठ बंद थे}}"
   },
   "reportBuilder": {
     "grounded": "आधारित",

@@ -87,6 +87,7 @@ export const createPaperRecords = internalMutation({
     // How the step moved the job's papers, and its processable ones.
     let papers = 0;
     let processableCount = 0;
+    let skipped = 0;
     for (const sent of args.papers) {
       const paper = keyed(sent);
       const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
@@ -112,6 +113,7 @@ export const createPaperRecords = internalMutation({
         if (!kept) {
           await ctx.db.delete("extractionPapers", existing._id);
           papers -= 1;
+          skipped += 1;
           if (wasProcessable) processableCount -= 1;
           continue;
         }
@@ -120,7 +122,10 @@ export const createPaperRecords = internalMutation({
         processableCount += Number(processable) - Number(wasProcessable);
         continue;
       }
-      if (!kept) continue;
+      if (!kept) {
+        skipped += 1;
+        continue;
+      }
       const paperId = await ctx.db.insert("extractionPapers", { ...paperFields(paper, sanitizedStorageId, processable), jobId: args.jobId, status: "pending" });
       paperIds.push(paperId);
       papers += 1;
@@ -132,7 +137,7 @@ export const createPaperRecords = internalMutation({
       const processable = next.processable + processableCount;
       // The job's count goes up with its rows, a step at a time: a setup stopped part-way (cancelled between two steps)
       // leaves a job whose header, bar and exports count the papers it has (#822).
-      await ctx.db.patch("extractionJobs", args.jobId, { setup: { ...next, papers: next.papers + papers, processable }, totalPapers: processable, updatedAt: Date.now() });
+      await ctx.db.patch("extractionJobs", args.jobId, { setup: { ...next, papers: next.papers + papers, processable, ...(skipped || next.skipped ? { skipped: (next.skipped ?? 0) + skipped } : {}) }, totalPapers: processable, updatedAt: Date.now() });
     }
     return { paperIds, processableCount };
   },
