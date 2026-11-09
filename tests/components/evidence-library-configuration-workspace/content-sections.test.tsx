@@ -32,7 +32,7 @@ describe("<ConfigurationWorkspace>", () => {
       await renderWorkspace();
       await user.click(card("navigation").getByRole("switch", { name: "navigation.showSearch" }));
       expect(card("navigation").getByText("sectionState.edited")).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: "save" }));
+      await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
@@ -67,7 +67,7 @@ describe("<ConfigurationWorkspace>", () => {
 
       expect(home.getByText("sectionState.edited")).toBeInTheDocument();
       expect(card("features").getByText("sectionState.complete")).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: "save" }));
+      await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
@@ -129,7 +129,7 @@ describe("<ConfigurationWorkspace>", () => {
 
       await user.click(takedown);
       expect(contact.queryByLabelText("contact.takedownRecipient")).not.toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: "save" }));
+      await user.click(screen.getByRole("button", { name: "saveDraft" }));
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
       expect(request.sections).toEqual([
@@ -177,7 +177,7 @@ describe("<ConfigurationWorkspace>", () => {
         await within(privacy).findByText("Privacy");
         expect(within(privacy).getByRole("button", { name: "fields.view" })).toBeInTheDocument();
 
-        await user.click(screen.getByRole("button", { name: "save" }));
+        await user.click(screen.getByRole("button", { name: "saveDraft" }));
         await waitFor(() => expect(saved).toHaveLength(1));
         const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
         expect(request.sections).toEqual([

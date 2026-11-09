@@ -67,8 +67,8 @@ describe("<ConfigurationWorkspace> when the draft is saved somewhere else", () =
     await user.clear(name);
     await fillField(user, name, "My name");
     // The save is answered, and the page still holds the rows from before it.
-    await user.click(screen.getByRole("button", { name: "save" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "save" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "saveDraft" })).toBeEnabled());
     const disclaimer = footerCard().getByRole("textbox", { name: /disclaimer/ });
     await fillField(user, disclaimer, "Typed since");
 
@@ -97,7 +97,7 @@ describe("<ConfigurationWorkspace> when the draft is saved somewhere else", () =
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
     await fillField(user, name, "my name");
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
     await reread();
 
     await waitFor(() => expect(identityCard().getByLabelText("identity.nameLabel")).toHaveValue("My Name"));

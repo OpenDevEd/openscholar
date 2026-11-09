@@ -79,7 +79,7 @@ describe("<ConfigurationWorkspace>", () => {
     await user.clear(name);
     await fillField(user, name, "Renamed Library");
     expect(screen.getByText("unsaved")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
     await waitFor(() =>
       expect(saved).toEqual([
@@ -101,7 +101,7 @@ describe("<ConfigurationWorkspace>", () => {
     const user = userEvent.setup();
     await renderWorkspace();
     await user.click(screen.getByRole("radio", { name: /theme\.layout\.wide/ }));
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
     await waitFor(() => expect(saved).toHaveLength(1));
     const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
@@ -135,7 +135,7 @@ describe("<ConfigurationWorkspace>", () => {
     })) {
       expect(theme.getByLabelText(`theme.advancedColour.${key}`)).toHaveValue(value);
     }
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
     await waitFor(() => expect(saved).toHaveLength(1));
     expect(saved[0]).toEqual({
       libraryId: "library_123",
@@ -165,7 +165,7 @@ describe("<ConfigurationWorkspace>", () => {
     );
     expect(screen.getByRole("button", { name: "activate" })).toBeDisabled();
 
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
     expect(saved).toEqual([]);
     expect(toastMock.error).toHaveBeenCalledWith("fixFirstToast", expect.anything());
   });
@@ -194,7 +194,7 @@ describe("<ConfigurationWorkspace>", () => {
     await renderWorkspace();
     expect(screen.getByText("viewOnly")).toBeInTheDocument();
     expect(identityCard().getByLabelText("identity.nameLabel")).toBeDisabled();
-    expect(screen.queryByRole("button", { name: "save" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "saveDraft" })).toBeNull();
     expect(screen.queryByRole("button", { name: "activate" })).toBeNull();
     expect(screen.queryByRole("link", { name: /sections.danger/ })).toBeNull();
   });

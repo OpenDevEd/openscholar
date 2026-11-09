@@ -30,7 +30,7 @@ describe("<ConfigurationWorkspace>", () => {
       await user.click(search.getByRole("switch", { name: "search.fullText" }));
       expect(documents).toBeDisabled();
       expect(documents).not.toBeChecked();
-      await user.click(screen.getByRole("button", { name: "save" }));
+      await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
@@ -87,7 +87,7 @@ describe("<ConfigurationWorkspace>", () => {
       expect(atomLink).toBeDisabled();
       await user.click(card("citations").getByRole("switch", { name: "citations.formats.atom" }));
       expect(atomLink).toBeEnabled();
-      await user.click(screen.getByRole("button", { name: "save" }));
+      await user.click(screen.getByRole("button", { name: "saveDraft" }));
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
       expect(request.sections).toEqual([
@@ -123,7 +123,7 @@ describe("<ConfigurationWorkspace>", () => {
       await fill("analytics.keyLabel", "phc_12345678901234567890");
       expect(analytics.getByText("sectionState.edited")).toBeInTheDocument();
 
-      await user.click(screen.getByRole("button", { name: "save" }));
+      await user.click(screen.getByRole("button", { name: "saveDraft" }));
       await waitFor(() => expect(saved).toHaveLength(1));
       const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
       expect(request.sections).toEqual([
@@ -189,7 +189,7 @@ describe("<ConfigurationWorkspace>", () => {
         expect(analytics.getByText("problems.consentVersion")).toBeInTheDocument();
         await user.clear(version);
         await user.type(version, "3");
-        await user.click(screen.getByRole("button", { name: "save" }));
+        await user.click(screen.getByRole("button", { name: "saveDraft" }));
         await waitFor(() => expect(saved).toHaveLength(1));
         const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
         expect(request.sections).toEqual([

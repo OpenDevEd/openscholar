@@ -85,7 +85,7 @@ describe("<ConfigurationWorkspace>", () => {
         await user.click(
           await screen.findByRole("option", { name: TEST_AI_MODELS[1] }),
         );
-        await user.click(screen.getByRole("button", { name: "save" }));
+        await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
         await waitFor(() => expect(saved).toHaveLength(1));
         const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };
@@ -283,7 +283,7 @@ describe("<ConfigurationWorkspace>", () => {
       await renderWorkspace();
       await replaceLogo(user);
 
-      await user.click(screen.getByRole("button", { name: "save" }));
+      await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
       await waitFor(() => expect(saved).toHaveLength(1));
       await waitFor(() =>

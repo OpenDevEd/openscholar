@@ -45,7 +45,7 @@ describe("<ConfigurationWorkspace>", () => {
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
     await user.type(name, "Renamed Library");
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
     const refusal = await waitFor(() => identityCard().getByRole("alert"));
     expect(refusal).toHaveTextContent("saveRefused");
@@ -78,11 +78,11 @@ describe("<ConfigurationWorkspace>", () => {
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
     await user.type(name, "Renamed Library");
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
     await waitFor(() => identityCard().getByRole("alert"));
 
     refuse = false;
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
     await waitFor(() => expect(saved).toHaveLength(1));
     expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
@@ -172,7 +172,7 @@ describe("<ConfigurationWorkspace>", () => {
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
     await user.type(name, "Renamed Library");
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
     const refusal = await waitFor(() => screen.getByRole("alert"));
     expect(refusal).toHaveTextContent("saveRefusedAll");
@@ -190,13 +190,13 @@ describe("<ConfigurationWorkspace>", () => {
     const name = identityCard().getByLabelText("identity.nameLabel");
     await user.clear(name);
     await user.type(name, "Renamed Library");
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
     await waitFor(() => identityCard().getByRole("alert"));
 
     await user.type(identityCard().getByLabelText("identity.nameLabel"), "!");
     expect(identityCard().queryByRole("alert")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
     await waitFor(() => identityCard().getByRole("alert"));
 
     await user.click(identityCard().getByRole("button", { name: "fields.reset" }));
@@ -215,7 +215,7 @@ describe("<ConfigurationWorkspace>", () => {
 
     expect(identityCard().getByLabelText("identity.nameLabel")).toHaveValue("Saved Library");
     expect(identityCard().getByText("sectionState.complete")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "saveDraft" })).toBeDisabled();
     expect(screen.queryByText("unsaved")).not.toBeInTheDocument();
   });
 });
