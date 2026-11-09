@@ -23,13 +23,24 @@ export async function readSimilarPapers(paperId: string, count: number): Promise
   }));
 }
 
-/** These papers, closest first to the ones liked and furthest from the ones disliked. Each is named by our index's ID. */
+/** The most papers the API scores in one request. */
+const MOST_WORKS = 200;
+
+/**
+ * These papers, closest first to the ones liked and furthest from the ones disliked. Each is named by our index's ID.
+ * More than the API takes at once are scored in batches: a paper's score doesn't depend on the rest of its batch.
+ */
 export async function orderByCloseness(works: string[], liked: string[], disliked: string[]): Promise<string[] | OpenAlexLimited> {
-  const limited = await spendOpenAlexRequests();
+  const batches = Array.from({ length: Math.ceil(works.length / MOST_WORKS) }, (_, at) => works.slice(at * MOST_WORKS, (at + 1) * MOST_WORKS));
+  const limited = await spendOpenAlexRequests(batches.length);
   if (limited) return limited;
-  const url = searchUrl("openscholar", "works/closeness", { works: works.join("|"), similar_to: liked.join("|"), dissimilar_to: disliked.length ? disliked.join("|") : undefined });
-  const response = await openAlexFetch(url, { timeoutMs: OPENALEX_TIMEOUT_MS });
-  if (!response.ok) throw new Error(`Ordering failed (${response.status})`);
-  const body = (await response.json()) as { results: Array<{ id: string }> };
-  return body.results.map((work) => work.id.split("/").at(-1)!);
+  const scored = await Promise.all(
+    batches.map(async (batch) => {
+      const url = searchUrl("openscholar", "works/closeness", { works: batch.join("|"), similar_to: liked.join("|"), dissimilar_to: disliked.length ? disliked.join("|") : undefined });
+      const response = await openAlexFetch(url, { timeoutMs: OPENALEX_TIMEOUT_MS });
+      if (!response.ok) throw new Error(`Ordering failed (${response.status}): ${(await response.text()).slice(0, 300)}`);
+      return ((await response.json()) as { results: Array<{ id: string; relevance_score: number }> }).results;
+    }),
+  );
+  return scored.flat().sort((a, b) => b.relevance_score - a.relevance_score).map((work) => work.id.split("/").at(-1)!);
 }
