@@ -14,7 +14,8 @@ const metadataSchema = z.object({
   "container-title": text.optional(), publisher: text.optional(), "publisher-place": text.optional(),
   volume: text.optional(), issue: text.optional(), page: text.optional(), edition: text.optional(), language: text.optional(),
 });
-const inputSchema = metadataSchema.extend({ id: z.string().regex(/^(?:W|OS)\d+$/), "citation-key": z.string().regex(/^os_(?:W|OS)\d+$/) });
+// MOCK (mock/publish-reports): an Openscholar Report (R…) is cited like any paper of ours.
+const inputSchema = metadataSchema.extend({ id: z.string().regex(/^(?:W|OS|R)\d+$/), "citation-key": z.string().regex(/^os_(?:W|OS|R)\d+$/) });
 
 export async function getPaperCitationMetadata(input: unknown) {
   const data: CitationData = inputSchema.parse(input);

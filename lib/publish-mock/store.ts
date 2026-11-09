@@ -12,6 +12,18 @@ const FILE = path.join(MOCK_DIR, "state.json");
 export const pdfPath = (key: string) => path.join(MOCK_DIR, `${key}.pdf`);
 export const coverPath = (key: string) => path.join(MOCK_DIR, `${key}.cover.jpg`);
 
+/**
+ * Whether a report's PDF and cover may be read: anyone reads a live report's, and only its author reads one that
+ * isn't live yet or didn't pass. `public` says which, for how the file may be cached.
+ */
+export async function fileAccess(key: string, userId: string | null): Promise<{ public: boolean } | null> {
+  if (!/^R\d+$/.test(key)) return null;
+  const report = (await readState()).submissions.find((s) => s.id === key);
+  if (!report) return null;
+  if (report.status === "live") return { public: true };
+  return report.demo || (userId !== null && report.ownerId === userId) ? { public: false } : null;
+}
+
 const DAY = 86_400_000;
 
 const CHECKS: Check[] = [

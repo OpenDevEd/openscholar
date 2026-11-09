@@ -104,8 +104,9 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
   const [draft, setDraftOnly] = useState(initial);
   const [reports, setReports] = useState(initialReports);
   const [running, setRunning] = useState<Running | null>(null);
-  // The report activated here and now: only it plays the live moment; one opened live is already settled.
-  const [activated, setActivated] = useState<string | null>(null);
+  // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
+  // any other way is already settled.
+  const [fresh, setFresh] = useState<{ id: string; step: "doi" | "live" } | null>(null);
   // Every change to the report shows on Your reports too.
   const setDraft = (next: Submission | null) => {
     setDraftOnly(next);
@@ -114,6 +115,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
   const place = running ? 4 : placeOf(draft);
   const step: Step = draft?.step ?? "agreement";
   const back = (to: Step) => {
+    setFresh(null);
     void goTo(to).then(setDraft);
   };
   const run = async (metadata: Metadata) => {
@@ -142,7 +144,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
       value={view}
       onChange={(next) => {
         // The live moment plays once: coming back to the report shows it settled.
-        setActivated(null);
+        setFresh(null);
         void setView(next === "reports" ? "reports" : null);
       }}
       tabs={[
@@ -194,9 +196,13 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
               {running ? (
                 <Checks rows={running.checks.map((c) => ({ ...c, result: running.results[c.id] }))} draft={null} />
               ) : step === "agreement" ? (
-                <AgreementStep settings={settings} userName={draft?.signedBy?.name ?? userName} onSigned={setDraft} />
+                <AgreementStep settings={settings} userName={draft?.signedBy?.name ?? userName} onSigned={(signed) => {
+                    setFresh({ id: signed.id, step: "doi" });
+                    setDraft(signed);
+                  }}
+                />
               ) : step === "doi" && draft ? (
-                <DoiStep settings={settings} draft={draft} onNext={() => back("upload")} />
+                <DoiStep draft={draft} fresh={fresh?.id === draft.id && fresh.step === "doi"} onNext={() => back("upload")} />
               ) : step === "upload" && draft ? (
                 <UploadStep settings={settings} draft={draft} onRead={setDraft} />
               ) : step === "details" && draft?.metadata ? (
@@ -205,7 +211,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                 <LiveReport
                   settings={settings}
                   draft={draft}
-                  fresh={activated === draft.id}
+                  fresh={fresh?.id === draft.id && fresh.step === "live"}
                   onChange={(next) => {
                     setReports((all) => all.map((r) => (r.id === next.id ? next : r)));
                     setDraftOnly((current) => (current?.id === next.id ? next : current));
@@ -221,7 +227,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                   settings={settings}
                   onActivate={() =>
                     activate(draft.id).then((live) => {
-                      setActivated(live.id);
+                      setFresh({ id: live.id, step: "live" });
                       setDraft(live);
                     })
                   }
@@ -368,29 +374,88 @@ function CopyField({ label, value, mono = false, what }: { label: string; value:
   );
 }
 
-function DoiStep({ settings, draft, onNext }: { settings: Settings; draft: Submission; onNext: () => void }) {
+/**
+ * The DOI, and nothing else: its mark, then the DOI itself set large and arriving letter by letter, with one sweep of
+ * light across it. Plays only right after signing; opened any other way it is already settled.
+ */
+function DoiStep({ draft, fresh, onNext }: { draft: Submission; fresh: boolean; onNext: () => void }) {
+  const reduce = useReducedMotion();
+  const play = fresh && !reduce;
+  const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
+  // The prefix and what follows it: a narrow screen breaks the DOI between them, never inside one.
+  const slash = draft.doi.indexOf("/") + 1;
+  const parts = [draft.doi.slice(0, slash), draft.doi.slice(slash)];
+  const LETTERS_AT = 0.55;
+  const LETTER = 0.03;
+  const crossref = draft.registration?.crossref ?? true;
   return (
-    <div>
-      <StepHead
-        title="Your DOI is reserved"
-        aside={
-          <>
-            <StatusChip tone="neutral" icon={Hash}>{(draft.registration?.crossref ?? true) ? "Reserved with Crossref" : "Reserved with Zenodo"}</StatusChip>
-            {(draft.registration?.crossref ?? true) && draft.archive === "draft" ? <StatusChip tone="neutral" icon={FileText}>Zenodo draft ready</StatusChip> : null}
-          </>
-        }
-      >
-        Put the byline on the cover or the first page of your PDF. The checks look for the DOI in it.
-      </StepHead>
-      <div className="grid gap-4">
-        <CopyField label="DOI" value={`https://doi.org/${draft.doi}`} mono what="DOI" />
-        <CopyField label="Byline" value={bylineOf(settings, draft.doi)} what="Byline" />
+    <div className="flex flex-col items-center pb-2 pt-3 text-center">
+      <div className="relative size-20">
+        {play ? (
+          <motion.span
+            aria-hidden
+            className="absolute inset-0 rounded-[1.75rem] border-2 border-primary"
+            initial={{ opacity: 0.6, scale: 1 }}
+            animate={{ opacity: 0, scale: 1.6 }}
+            transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }}
+          />
+        ) : null}
+        <motion.span
+          className="relative flex size-20 items-center justify-center rounded-[1.75rem] bg-primary text-primary-foreground shadow-[0_10px_30px_-10px_var(--primary)]"
+          initial={play ? { scale: 0.5, opacity: 0, rotate: -12 } : false}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 300, damping: 16 }}
+        >
+          <Hash className="size-9" />
+        </motion.span>
       </div>
-      <div className="mt-6 flex justify-end">
+      <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.3)}>
+        Your DOI is reserved
+      </motion.h2>
+      <motion.p className="mt-1.5 max-w-md text-sm text-muted-foreground" {...rise(0.4)}>
+        It is your report&apos;s for good, and goes live when the report does.
+      </motion.p>
+      <motion.div className="relative mt-7 w-full max-w-xl overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.06] px-5 py-6" {...rise(0.45)}>
+        <p className="sr-only">{draft.doi}</p>
+        <p aria-hidden className="flex flex-wrap justify-center font-mono text-xl font-semibold tracking-tight sm:text-[1.625rem]">
+          {parts.map((part, group) => (
+            <span key={group} className="whitespace-nowrap">
+              {[...part].map((letter, i) => (
+                <motion.span
+                  key={i}
+                  className="inline-block"
+                  initial={play ? { opacity: 0, y: 14, filter: "blur(6px)" } : false}
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  transition={{ delay: LETTERS_AT + (group ? slash + i : i) * LETTER, duration: 0.35, ease: EASE }}
+                >
+                  {letter}
+                </motion.span>
+              ))}
+            </span>
+          ))}
+        </p>
+        {play ? (
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/70 to-transparent dark:via-white/15"
+            initial={{ x: "-130%" }}
+            animate={{ x: "430%" }}
+            transition={{ delay: LETTERS_AT + draft.doi.length * LETTER + 0.1, duration: 0.9, ease: "easeInOut" }}
+          />
+        ) : null}
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <StatusChip tone="neutral" icon={Hash}>{crossref ? "Reserved with Crossref" : "Reserved with Zenodo"}</StatusChip>
+          {crossref && draft.archive === "draft" ? <StatusChip tone="neutral" icon={FileText}>Zenodo draft ready</StatusChip> : null}
+        </div>
+      </motion.div>
+      <motion.div className="mt-6 flex flex-wrap justify-center gap-2" {...rise(LETTERS_AT + draft.doi.length * LETTER)}>
+        <Button variant="outline" onClick={() => copy(`https://doi.org/${draft.doi}`, "DOI")}>
+          <Copy /> Copy the DOI
+        </Button>
         <Button onClick={onNext}>
           <FileUp /> Upload the PDF
         </Button>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -424,7 +489,11 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
   };
   return (
     <div>
-      <StepHead title="Upload the PDF">The PDF must carry the byline with your DOI, {draft.doi}.</StepHead>
+      <StepHead title="Upload the PDF">Put the byline on the cover or the first page before you upload. The checks look for it and for the DOI in it.</StepHead>
+      <div className="mb-5 grid gap-4">
+        <CopyField label="Byline" value={bylineOf(settings, draft.doi)} what="Byline" />
+        <CopyField label="DOI" value={`https://doi.org/${draft.doi}`} mono what="DOI" />
+      </div>
       <button
         type="button"
         onClick={() => input.current?.click()}
@@ -440,7 +509,7 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
         }}
         disabled={busy}
         className={cn(
-          "flex h-52 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors",
+          "flex h-44 w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed text-center transition-colors",
           over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50",
         )}
       >
@@ -465,7 +534,6 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
           Uploading again replaces {draft.pdf.name}
         </p>
       ) : null}
-      <p className="sr-only">{settings.series.name}</p>
     </div>
   );
 }
