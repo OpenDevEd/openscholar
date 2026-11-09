@@ -2,55 +2,51 @@
 // Convex table yet; the real build moves them there.
 
 import type { Effort } from "@/lib/ai/core/call-options";
+import { JEV_MODEL } from "@/lib/ai/decisions";
 
-export type Engine = "decision" | "llm";
-
-/** The decision models a check can run on, which answer without a language model. */
-export const DECISION_MODELS = [
-  { id: "text-match", name: "Text match", maker: "Openscholar", hint: "Looks for a required text in the PDF" },
-  { id: "already-published", name: "Already published", maker: "OpenAlex, our index, communities", hint: "Whether the work already exists, under its own DOI or none" },
-  { id: "omni-moderation", name: "Moderation", maker: "OpenAI", hint: "Hate, harassment, violence and self-harm" },
-  { id: "language-id", name: "Language ID", maker: "fastText", hint: "The language the text is written in" },
-] as const;
-export type DecisionModelId = (typeof DECISION_MODELS)[number]["id"];
-/** Decision models that find something or don't, with no score to set a threshold on. */
-export const isPassFail = (check: { engine: Engine; decisionModel?: DecisionModelId }) => check.engine === "decision" && (check.decisionModel === "text-match" || check.decisionModel === "already-published");
-
-/** An LLM a check or the metadata reader runs on, as the model picker gives it, with the effort it runs at. */
+/** A model a check or the metadata reader runs on, as the model picker gives it, with the effort it runs at. */
 export type LlmModel = { id: string; name: string; inputPricePerMillion: number; outputPricePerMillion: number; effort?: Effort; reasoningEfforts?: Effort[] };
 /** GPT-6 Luna at medium: read 30 of our communities' reports as well as Opus 5.5 and GPT-6.1 Sol, at a fiftieth of Opus's cost (2026-11-09). */
 export const DEFAULT_LLM: LlmModel = { id: "openai/gpt-6-luna", name: "GPT-6 Luna", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, effort: "medium", reasoningEfforts: ["low", "medium", "high"] };
+/** TypeSafe's Jev: a decision model, answering yes or no with how sure it is, as screening uses it. */
+export const JEV: LlmModel = { id: JEV_MODEL, name: "Jev 1.13", inputPricePerMillion: 0.042, outputPricePerMillion: 0 };
 
+/**
+ * A check is a yes-or-no question about the report, answered by a model: a decision model like Jev, or an LLM, which
+ * also says why. Yes passes, when the model is at least `threshold` sure of it. The one built-in check, Already
+ * published, searches instead of asking, and uses its model to compare what it finds with the report.
+ */
 export type Check = {
   id: string;
   name: string;
-  engine: Engine;
-  decisionModel?: DecisionModelId;
-  llm?: LlmModel;
-  /** What the check looks for: the text to find, or the LLM's instructions. */
-  instructions: string;
-  /** The score a report needs, 0 to 1; `atMost` for a score that must stay under it, like a match with existing work. */
+  /** Asked about the report's details and its PDF's text. `{byline}` and `{doi}` are this report's. */
+  question: string;
+  model: LlmModel;
+  /** How sure of yes the model must be, 0 to 1. */
   threshold: number;
-  direction: "atLeast" | "atMost";
-  /** A failed blocking check stops the report; an advisory one only flags it for review. */
+  /** A failed blocking check stops the report; another only sends it to review. */
   blocking: boolean;
   enabled: boolean;
+  builtIn?: "already-published";
 };
 
-/** What every check returns, whichever engine runs it. `reasoning` comes from an LLM only. */
+export type Answer = "yes" | "no" | "unclear";
+
+/** A check's answer. `confidence` is how sure the model is of yes; Already published has none, only what it found. */
 export type CheckResult = {
   checkId: string;
   name: string;
-  engine: Engine;
+  /** The model that answered, by name. */
+  model: string;
   pass: boolean;
-  /** Found or not, with no score; `detail` says what was found. */
-  passFail?: boolean;
-  detail?: string;
-  score: number;
-  threshold: number;
-  direction: Check["direction"];
   blocking: boolean;
+  answer?: Answer;
+  confidence?: number;
+  threshold?: number;
+  /** An LLM's reason for its answer, or the judge's for a match. */
   reasoning?: string;
+  /** What a search found or didn't. */
+  detail?: string;
   evidence?: { title: string; url: string; where?: string };
 };
 

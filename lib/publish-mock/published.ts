@@ -39,7 +39,10 @@ const abstractOf = (inverted: Record<string, number[]> | null | undefined) =>
     .map(([, word]) => word)
     .join(" ");
 
-async function onOpenAlex(m: Report): Promise<Found | null> {
+/** Where a search couldn't be made: a check that missed one can't say the report is new. */
+type Missed = string[];
+
+async function onOpenAlex(m: Report, missed: Missed): Promise<Found | null> {
   const sentence = m.abstract.split(/(?<=[.!?])\s+/).find((s) => s.length > 80 && s.length < 260);
   // A title can be shared by unrelated works of the same year; a sentence of the abstract rarely is.
   const searches = [{ filter: `title.search:${quoted(m.title)}`, byTitle: true }, ...(sentence ? [{ filter: `title_and_abstract.search:${quoted(sentence)}`, byTitle: false }] : [])];
@@ -58,16 +61,18 @@ async function onOpenAlex(m: Report): Promise<Found | null> {
       if (match) return { title: match.title, url: match.doi ?? match.id, where: "OpenAlex" };
     } catch (error) {
       console.error("[publish mock] OpenAlex search failed", { filter, error: String(error) });
+      if (!missed.includes("OpenAlex")) missed.push("OpenAlex");
     }
   }
   return null;
 }
 
 /** The works our index finds closest in meaning to the report's abstract. */
-async function inOurIndex(m: Report): Promise<Candidate[]> {
+async function inOurIndex(m: Report, missed: Missed): Promise<Candidate[]> {
   const url = process.env.OPENSCHOLAR_API_URL;
   if (!url || !process.env.OPENSCHOLAR_API_KEY) {
     console.error("[publish mock] our index isn't configured: OPENSCHOLAR_API_URL and _KEY");
+    missed.push("Openscholar's index");
     return [];
   }
   try {
@@ -89,12 +94,13 @@ async function inOurIndex(m: Report): Promise<Candidate[]> {
     });
   } catch (error) {
     console.error("[publish mock] our index search failed", String(error));
+    missed.push("Openscholar's index");
     return [];
   }
 }
 
 /** Each community's records that its own search finds for the report's title. */
-async function inOurCommunities(m: Report): Promise<Candidate[]> {
+async function inOurCommunities(m: Report, missed: Missed): Promise<Candidate[]> {
   const found = await Promise.all(
     COMMUNITIES.map(async ({ name, host }) => {
       try {
@@ -105,6 +111,7 @@ async function inOurCommunities(m: Report): Promise<Candidate[]> {
         return items.map((item) => ({ title: item.title, abstract: item.abstractNote ?? "", url: `https://${host}/lib/${item.key}`, where: name, year: item.year ?? "" }));
       } catch (error) {
         console.error("[publish mock] community search failed", { host, error: String(error) });
+        missed.push(name);
         return [];
       }
     }),
@@ -133,15 +140,20 @@ async function sameWork(m: Report, c: Candidate, model: LlmModel): Promise<boole
   return result.output.same ? result.output.reason : false;
 }
 
-/** The work the report already is, where it was found and why; null when none of the three places has it. */
+/**
+ * The work the report already is, where it was found and why; null when none of the three places has it. When a place
+ * couldn't be searched, or a candidate couldn't be judged, and nothing was found, it throws: the report is held for a
+ * reviewer rather than called new.
+ */
 export async function alreadyPublished(m: Report, model: LlmModel): Promise<Found | null> {
-  const exact = await onOpenAlex(m);
+  const missed: Missed = [];
+  const exact = await onOpenAlex(m, missed);
   if (exact) return exact;
-  const candidates = [...(await inOurIndex(m)), ...(await inOurCommunities(m))].filter((c) => c.abstract || c.title);
-  // The very same title from the same year is the work: no model needed. The judge decides only the near matches, where
-  // on 2026-11-09 it once took a sibling report from the same assessment for the report itself.
+  const candidates = [...(await inOurIndex(m, missed)), ...(await inOurCommunities(m, missed))].filter((c) => c.abstract || c.title);
+  // The very same title from the same year is the work: no model needed. Both years must be known. The judge decides the
+  // near matches, where on 2026-11-09 it once took a sibling report from the same assessment for the report itself.
   const year = m.date.slice(0, 4);
-  const identical = candidates.find((c) => plain(c.title) === plain(m.title) && (!year || !c.year || c.year === year));
+  const identical = candidates.find((c) => plain(c.title) === plain(m.title) && year !== "" && c.year === year);
   if (identical) return { title: identical.title, url: identical.url, where: identical.where, reason: "The same title, from the same year." };
   const judged = await Promise.all(
     candidates.map(async (c) => {
@@ -149,10 +161,13 @@ export async function alreadyPublished(m: Report, model: LlmModel): Promise<Foun
         return { c, same: await sameWork(m, c, model) };
       } catch (error) {
         console.error("[publish mock] same-work judge failed", { url: c.url, error: String(error) });
+        missed.push(`a comparison with ${c.where}`);
         return { c, same: false as const };
       }
     }),
   );
   const hit = judged.find((j) => j.same !== false);
-  return hit ? { title: hit.c.title, url: hit.c.url, where: hit.c.where, reason: hit.same as string } : null;
+  if (hit) return { title: hit.c.title, url: hit.c.url, where: hit.c.where, reason: hit.same as string };
+  if (missed.length) throw new Error(`it couldn't search ${[...new Set(missed)].join(", ")}`);
+  return null;
 }

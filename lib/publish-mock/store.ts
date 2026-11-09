@@ -1,11 +1,11 @@
 // MOCK (mock/publish-reports): the Publish mock's store, one JSON file in the checkout, read and written by its server
 // actions. The real build keeps all of this in Convex.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Check, Metadata, MockState, Settings, Submission } from "./types";
+import type { Check, CheckResult, Metadata, MockState, Settings, Submission } from "./types";
 import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
 import { suggestTopics } from "./topics";
-import { DEFAULT_LLM, doiOf, isPassFail } from "./types";
+import { DEFAULT_LLM, JEV, doiOf } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
@@ -14,29 +14,41 @@ export const pdfPath = (key: string) => path.join(MOCK_DIR, `${key}.pdf`);
 const DAY = 86_400_000;
 
 const CHECKS: Check[] = [
-  { id: "byline", name: "Byline and DOI in the PDF", engine: "decision", decisionModel: "text-match", instructions: "{byline}", threshold: 1, direction: "atLeast", blocking: true, enabled: true },
+  {
+    id: "byline",
+    name: "Byline and DOI in the PDF",
+    question: "Does the text include this line, allowing for line breaks and spacing: \"{byline}\"?",
+    model: JEV,
+    threshold: 0.8,
+    blocking: true,
+    enabled: true,
+  },
   {
     id: "published",
     name: "Already published",
-    engine: "decision",
-    decisionModel: "already-published",
-    instructions:
-      "OpenAlex: the exact title or a sentence of the abstract, with an author's surname or the year agreeing. Openscholar's index: the five works closest in meaning to the abstract. Our communities: their records for the title. The same title from the same year is a match; the metadata model judges the rest.",
-    threshold: 0.8,
-    direction: "atMost",
+    question: "Is this report the same work as the record found?",
+    model: DEFAULT_LLM,
+    threshold: 0.5,
     // A match goes to a reviewer: the author may be the one who published it.
     blocking: false,
     enabled: true,
+    builtIn: "already-published",
   },
-  { id: "moderation", name: "Hate speech and harassment", engine: "decision", decisionModel: "omni-moderation", instructions: "Flag hate, harassment, threats and violence.", threshold: 0.2, direction: "atMost", blocking: true, enabled: true },
   {
-    id: "advertising",
-    name: "Advertising and spam",
-    engine: "llm",
-    llm: DEFAULT_LLM,
-    instructions: "Is this a research output, or does it mainly sell a product or service, or link to unrelated sites? Answer with how likely it is research, from 0 to 1.",
+    id: "harm",
+    name: "No hate speech or harassment",
+    question: "Is the text free of hate speech, harassment and threats against people? Research that studies these as its subject is fine.",
+    model: JEV,
     threshold: 0.7,
-    direction: "atLeast",
+    blocking: true,
+    enabled: true,
+  },
+  {
+    id: "research",
+    name: "Research, not advertising",
+    question: "Is this a research output, rather than an advertisement, a sales brochure or a page that mostly links to unrelated sites?",
+    model: DEFAULT_LLM,
+    threshold: 0.7,
     blocking: false,
     enabled: true,
   },
@@ -145,23 +157,21 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
   const state = STATES[n]!;
   const id = keyOf(n + 1);
   const at = Date.now() - (n + 1) * 0.8 * DAY;
-  const results = settings.checks.map((check) => {
+  const results = settings.checks.map((check): CheckResult => {
     const fails = state.failed === check.id;
-    const score = check.direction === "atMost" ? (fails ? 1 : 0.01 + (n % 4) * 0.02) : fails ? 0 : check.engine === "llm" ? 0.91 : 1;
+    const base = { checkId: check.id, name: check.name, model: check.model.name, pass: !fails, blocking: check.blocking };
+    if (check.builtIn === "already-published") {
+      return fails
+        ? { ...base, evidence: { title: TITLES[n]!, url: "https://usaid.openscholar.ai/lib/6XBK3HE5", where: "USAID" }, reasoning: "The same study: the same programme, districts and findings, under a shorter title." }
+        : { ...base, detail: "Not in OpenAlex, Openscholar's index or our communities." };
+    }
+    const confidence = fails ? 0.04 : 0.86 + (n % 4) * 0.03;
     return {
-      checkId: check.id,
-      name: check.name,
-      engine: check.engine,
-      pass: !fails,
-      score,
+      ...base,
+      answer: fails ? "no" : "yes",
+      confidence,
       threshold: check.threshold,
-      direction: check.direction,
-      blocking: check.blocking,
-      ...(check.engine === "llm" ? { reasoning: "A study with a method, data and findings. It names no product and links only to the data repository." } : {}),
-      ...(isPassFail(check) ? { passFail: true } : {}),
-      ...(check.id === "byline" ? { detail: fails ? "The PDF doesn't carry the byline with its DOI." : "The PDF carries the byline with its DOI." } : {}),
-      ...(check.id === "published" && !fails ? { detail: "Not in OpenAlex, Openscholar's index or our communities." } : {}),
-      ...(fails && check.id === "published" ? { evidence: { title: TITLES[n]!, url: "https://usaid.openscholar.ai/lib/6XBK3HE5", where: "USAID" }, reasoning: "The same study: the same programme, districts and findings, under a shorter title." } : {}),
+      ...(check.model.id === JEV.id ? {} : { reasoning: "A study with a method, data and findings. It names no product and links only to the data repository." }),
     };
   });
   return {
@@ -206,7 +216,8 @@ function settle(state: MockState) {
 export async function readState(): Promise<MockState> {
   try {
     const state = JSON.parse(await readFile(FILE, "utf8")) as MockState;
-    if (settle(state)) await writeState(state);
+    // Settled on every read; saved with the next change, so a read never writes.
+    settle(state);
     return state;
   } catch {
     const state = await seed();
@@ -215,9 +226,27 @@ export async function readState(): Promise<MockState> {
   }
 }
 
+/** The whole file at once: written beside it, then renamed over it, so a reader never sees half of it. */
 export async function writeState(state: MockState) {
   await mkdir(MOCK_DIR, { recursive: true });
-  await writeFile(FILE, JSON.stringify(state, null, 2));
+  const temporary = `${FILE}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(temporary, JSON.stringify(state, null, 2));
+  await rename(temporary, FILE);
+}
+
+// ponytail: one queue in this process; the real build's Convex mutations are transactions, so this goes with the mock.
+let queue: Promise<unknown> = Promise.resolve();
+
+/** Reads the store, applies `edit` and saves it, one change at a time, so two changes never overwrite each other. */
+export function changeState<T>(edit: (state: MockState) => T | Promise<T>): Promise<T> {
+  const run = queue.then(async () => {
+    const state = await readState();
+    const out = await edit(state);
+    await writeState(state);
+    return out;
+  });
+  queue = run.catch(() => undefined);
+  return run;
 }
 
 /** The next report key, after every key in the store. */

@@ -69,12 +69,12 @@ function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
 }
 
-type Running = { checks: Array<{ id: string; name: string; engine: CheckResult["engine"] }>; results: Record<string, CheckResult> };
+type Running = { checks: Array<{ id: string; name: string; model: string }>; results: Record<string, CheckResult> };
 
 /** Reads the checks' answers as the route sends them, one line each, and the report as saved at the end. */
-async function streamChecks(metadata: Metadata, onResult: (r: CheckResult) => void): Promise<Submission> {
-  const response = await fetch("/publish/checks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ metadata }) });
-  if (!response.ok || !response.body) throw new Error("The checks couldn't start");
+async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckResult) => void): Promise<Submission> {
+  const response = await fetch("/publish/checks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, metadata }) });
+  if (!response.ok || !response.body) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? "The checks couldn't start");
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "";
   for (;;) {
@@ -108,11 +108,17 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
     void goTo(to).then(setDraft);
   };
   const run = async (metadata: Metadata) => {
+    if (!draft) return;
+    const id = draft.id;
+    // The author's corrections are kept on the report, so a run that fails comes back to them, not to what the PDF said.
+    setDraftOnly({ ...draft, metadata });
     // The rows are there at once, one per check that's on; each settles as its answer comes.
-    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name, engine: c.engine })), results: {} });
+    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name, model: c.model.name })), results: {} });
     try {
-      const saved = await streamChecks(metadata, (result) => setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)));
-      setDraft(saved);
+      const saved = await streamChecks(id, metadata, (result) => setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)));
+      setReports((all) => [saved, ...all.filter((r) => r.id !== saved.id)]);
+      // Another report opened while these ran stays the one shown.
+      setDraftOnly((current) => (current?.id === saved.id ? saved : current));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "The checks couldn't run");
     } finally {
@@ -183,7 +189,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                 <DetailsStep initial={draft.metadata} onRun={run} />
               ) : draft ? (
                 <Checks
-                  rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, engine: r.engine, result: r }))}
+                  rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, model: r.model, result: r }))}
                   draft={draft}
                   onFix={() => back("upload")}
                   onAnother={() => {
@@ -425,14 +431,12 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
  * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
  * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
  */
-export function CheckRow({ name, engine, result }: { name: string; engine: CheckResult["engine"]; result?: CheckResult }) {
+export function CheckRow({ name, model, result }: { name: string; model: string; result?: CheckResult }) {
   const reduce = useReducedMotion();
   const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
-  const pct = result ? Math.round(result.score * 100) : 0;
-  const need = result ? Math.round(result.threshold * 100) : 0;
-  // Results saved before checks said whether they have a score.
-  const passFail = result ? (result.passFail ?? (result.checkId === "byline" || result.checkId === "published")) : false;
-  const above = result?.direction === "atMost";
+  const asked = result?.confidence !== undefined && result.threshold !== undefined;
+  const sure = Math.round((result?.confidence ?? 0) * 100);
+  const need = Math.round((result?.threshold ?? 0) * 100);
   const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.2 } };
   return (
     <li className="px-4 py-3.5">
@@ -458,7 +462,7 @@ export function CheckRow({ name, engine, result }: { name: string; engine: Check
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{name}</span>
         </span>
-        <span className="hidden text-xs text-muted-foreground sm:inline">{engine === "llm" ? "LLM" : "Decision model"}</span>
+        <span className="hidden truncate text-xs text-muted-foreground sm:inline">{model}</span>
         {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
         <span className="flex min-w-[4.75rem] justify-end">
           <AnimatePresence initial={false}>
@@ -474,30 +478,27 @@ export function CheckRow({ name, engine, result }: { name: string; engine: Check
         <AnimatePresence initial={false}>
           {result ? (
             <motion.div key="body" {...fade}>
-              {passFail ? (
-                result.evidence ? null : <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail ?? (result.pass ? "Found." : "Not found.")}</p>
-              ) : (
+              {/* A question's answer: how sure the model is of yes, against the line it has to clear, the side short of it tinted. */}
+              {asked ? (
                 <div className="ms-8 mt-2.5 flex items-center gap-3">
                   <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
-                    <span
-                      aria-hidden
-                      className={cn("absolute inset-y-0", result.blocking ? "bg-destructive/15" : "bg-warning/20")}
-                      style={above ? { insetInlineStart: `${need}%`, insetInlineEnd: 0 } : { insetInlineStart: 0, width: `${need}%` }}
-                    />
+                    <span aria-hidden className={cn("absolute inset-y-0 start-0", result.blocking ? "bg-destructive/15" : "bg-warning/20")} style={{ width: `${need}%` }} />
                     <motion.div
                       className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")}
                       initial={{ width: "0%" }}
-                      animate={{ width: `${Math.max(pct, 2)}%` }}
+                      animate={{ width: `${Math.max(sure, 2)}%` }}
                       transition={reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }}
                     />
                     <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
                   </div>
-                  <span className="w-36 shrink-0 text-end text-xs tabular-nums">
-                    <span className="font-medium text-foreground/80">{pct}%</span>{" "}
-                    <span className="text-muted-foreground">{above ? `fails above ${need}%` : `fails below ${need}%`}</span>
+                  <span className="w-40 shrink-0 text-end text-xs tabular-nums">
+                    <span className="font-medium text-foreground/80">{result.answer === "unclear" ? "Unclear" : `${sure}% sure of yes`}</span>
                   </span>
                 </div>
+              ) : result.evidence ? null : (
+                <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail}</p>
               )}
+              {asked && result.detail ? <p className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">{result.detail}</p> : null}
               {result.evidence ? (
                 <a
                   href={result.evidence.url}
@@ -520,7 +521,7 @@ export function CheckRow({ name, engine, result }: { name: string; engine: Check
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; name: string; engine: CheckResult["engine"]; result?: CheckResult }>; draft: Submission | null; onFix?: () => void; onAnother?: () => void }) {
+function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; name: string; model: string; result?: CheckResult }>; draft: Submission | null; onFix?: () => void; onAnother?: () => void }) {
   const answered = rows.filter((r) => r.result).length;
   const head = !draft ? (
     <StepHead key="running" title="Running the checks" aside={<StatusChip tone="running" icon="tone">{answered} of {rows.length}</StatusChip>}>
@@ -554,7 +555,7 @@ function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; n
       </AutoHeight>
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {rows.map((r) => (
-          <CheckRow key={r.id} name={r.name} engine={r.engine} result={r.result} />
+          <CheckRow key={r.id} name={r.name} model={r.model} result={r.result} />
         ))}
       </ul>
       <AutoHeight>

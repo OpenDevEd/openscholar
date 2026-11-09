@@ -8,18 +8,13 @@ import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
 import { suggestTopics } from "@/lib/publish-mock/topics";
-import { MOCK_DIR, nextKey, pdfPath, readState, writeState } from "@/lib/publish-mock/store";
+import { MOCK_DIR, changeState, nextKey, pdfPath } from "@/lib/publish-mock/store";
 import { doiOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
 
-async function change<T>(edit: (state: MockState) => T | Promise<T>) {
-  const state = await readState();
-  const out = await edit(state);
-  await writeState(state);
-  return out;
-}
+const change = changeState;
 
 function draftOf(state: MockState) {
   const draft = state.submissions.find((s) => s.id === state.draftId);

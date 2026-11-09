@@ -9,7 +9,9 @@ import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
 import { Enter, LIST, Paged, Segmented, Tile, Working, Zone, pagerOf } from "@/components/settings/parts";
-import { NodeCard } from "@/components/settings/model-map";
+import { NodeCard, tintOf } from "@/components/settings/model-map";
+import { getModelIcon } from "@/components/icons/provider-icons";
+import { isDecisionModel } from "@/lib/ai/decisions";
 import { ModelPicker } from "@/components/models/model-picker";
 import { StatusChip, StatusIcon } from "@/components/evidence-libraries/configuration/status-chip";
 import { MarkdownContent } from "@/components/markdown-content";
@@ -23,13 +25,11 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import {
-  AiIcon,
   ArrowUpRight,
   BadgeCheck,
   Check,
   CircleX,
   FileText,
-  Gauge,
   Hash,
   PenLine,
   Pencil,
@@ -48,7 +48,7 @@ import { usePlaceName } from "@/components/publish-mock/report-extras";
 import { removeCheck, retryDeposit, review, saveCheck, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
-import { DEFAULT_LLM, DECISION_MODELS, isPassFail, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
+import { JEV, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -319,7 +319,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
               {s.results?.length ? (
                 <ul className={LIST}>
                   {s.results.map((r) => (
-                    <CheckRow key={r.checkId} name={r.name} engine={r.engine} result={r} />
+                    <CheckRow key={r.checkId} name={r.name} model={r.model} result={r} />
                   ))}
                 </ul>
               ) : null}
@@ -558,15 +558,18 @@ function SavedInput({ value, onSave, className, placeholder }: { value: string; 
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckDef; onEdit: () => void; onToggle: (on: boolean) => void }) {
-  const model = check.engine === "llm" ? check.llm?.name : DECISION_MODELS.find((m) => m.id === check.decisionModel)?.name;
+  const Brand = getModelIcon(check.model.id);
   return (
     <li className={cn("flex items-center gap-3 px-4 py-3", !check.enabled && "opacity-60")}>
-      <Tile icon={check.engine === "llm" ? AiIcon : Gauge} tint={check.engine === "llm" ? "var(--primary)" : "oklch(0.62 0.13 230)"} />
+      <Tile icon={Brand} tint={tintOf(check.model.id)} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{check.name}</span>
+        <span className="flex items-center gap-2">
+          <span className="truncate text-sm font-medium">{check.name}</span>
+          {check.builtIn ? <Tag>Built in</Tag> : null}
+        </span>
         <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="truncate">{model}</span>
-          <Tag>{isPassFail(check) ? "Pass or fail" : `${check.direction === "atMost" ? "fails above" : "fails below"} ${pct(check.threshold)}`}</Tag>
+          <span className="truncate">{check.model.name}</span>
+          {check.builtIn ? null : <Tag>passes at {pct(check.threshold)} sure</Tag>}
           <Tag>{check.blocking ? "Blocks" : "Flags for review"}</Tag>
         </span>
       </span>
@@ -578,8 +581,9 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckDef; onEdit:
   );
 }
 
-const BLANK: CheckDef = { id: "", name: "", engine: "decision", decisionModel: "omni-moderation", instructions: "", threshold: 0.5, direction: "atLeast", blocking: true, enabled: true };
+const BLANK: CheckDef = { id: "", name: "", question: "", model: JEV, threshold: 0.7, blocking: true, enabled: true };
 
+/** A check: a yes-or-no question, the model that answers it, how sure of yes it must be, and what a fail does. */
 function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | null; onClose: () => void; onSaved: (s: Settings) => void }) {
   const open = check !== null;
   const [form, setForm] = useState<CheckDef>(BLANK);
@@ -591,87 +595,57 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
   const [busy, start] = useTransition();
   const set = <K extends keyof CheckDef>(key: K, value: CheckDef[K]) => setForm((f) => ({ ...f, [key]: value }));
   const isNew = check === "new";
-  const textMatch = form.engine === "decision" && form.decisionModel === "text-match";
-  const sample = isPassFail(form) ? { pass: true } : { pass: true, score: form.engine === "llm" ? 0.93 : 0.04, ...(form.engine === "llm" ? { reasoning: "A study with a question, a method and findings." } : {}) };
-  const ready = form.name.trim() && (form.engine === "decision" ? form.decisionModel : form.llm);
+  const builtIn = form.builtIn === "already-published";
+  const decides = isDecisionModel(form.model.id);
+  const sample = builtIn ? { found: null } : { answer: "yes", confidence: 0.94, ...(decides ? {} : { reasoning: "The report states its method and findings and sells nothing." }) };
+  const ready = form.name.trim() && (builtIn || form.question.trim());
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{isNew ? "Add a check" : "Edit check"}</DialogTitle>
-          <DialogDescription>Every check passes or fails. A scored one also gives a score from 0 to 1, and an LLM its reasoning.</DialogDescription>
+          <DialogDescription>
+            {builtIn
+              ? "Searches OpenAlex, Openscholar's index and our communities for the report, then asks the model whether each match is the same work."
+              : "A yes-or-no question about the report, which the model answers from its details and its PDF. Yes passes."}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
           <label className="block space-y-1.5">
             <span className="ps-1 text-xs font-medium text-muted-foreground">Name</span>
-            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Hate speech and harassment" />
+            <Input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="No hate speech or harassment" />
           </label>
+          {builtIn ? null : (
+            <label className="block space-y-1.5">
+              <span className="ps-1 text-xs font-medium text-muted-foreground">Question</span>
+              <Textarea value={form.question} onChange={(e) => set("question", e.target.value)} rows={4} placeholder="Is the text free of hate speech, harassment and threats against people?" />
+              <span className="block ps-1 text-xs text-muted-foreground">{"{byline}"} and {"{doi}"} are filled in with the report&apos;s own.</span>
+            </label>
+          )}
           <div className="space-y-1.5">
-            <span className="ps-1 text-xs font-medium text-muted-foreground">Runs on</span>
-            <Segmented
-              label="Runs on"
-              value={form.engine}
-              fill
-              onChange={(engine) => setForm((f) => ({ ...f, engine, ...(engine === "llm" && !f.llm ? { llm: DEFAULT_LLM } : {}) }))}
-              options={[
-                { id: "decision", label: "Decision model", icon: Gauge },
-                { id: "llm", label: "LLM", icon: AiIcon },
-              ]}
-            />
-          </div>
-          {form.engine === "decision" ? (
-            <Select value={form.decisionModel} onValueChange={(v) => set("decisionModel", v as CheckDef["decisionModel"])}>
-              <SelectTrigger className="h-auto w-full py-2" aria-label="Decision model">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DECISION_MODELS.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    <span className="flex flex-col items-start">
-                      <span className="text-sm">
-                        {m.name} <span className="text-muted-foreground">{m.maker}</span>
-                      </span>
-                      <span className="text-xs text-muted-foreground">{m.hint}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : form.llm ? (
+            <span className="ps-1 text-xs font-medium text-muted-foreground">{builtIn ? "Model that compares matches" : "Model"}</span>
             <ModelPicker
               align="start"
-              current={form.llm}
+              current={form.model}
               efforts
-              onChange={(m, effort) => set("llm", { id: m.id, name: m.name, inputPricePerMillion: m.inputPricePerMillion, outputPricePerMillion: m.outputPricePerMillion, reasoningEfforts: m.reasoningEfforts, ...(effort ? { effort } : {}) })}
-              trigger={<NodeCard model={form.llm} paidBy="credits" interactive />}
+              tasks={builtIn ? [] : ["screening"]}
+              onChange={(m, effort) => set("model", { id: m.id, name: m.name, inputPricePerMillion: m.inputPricePerMillion, outputPricePerMillion: m.outputPricePerMillion, reasoningEfforts: m.reasoningEfforts, ...(effort ? { effort } : {}) })}
+              trigger={<NodeCard model={form.model} paidBy="credits" interactive />}
             />
-          ) : null}
-          <label className="block space-y-1.5">
-            <span className="ps-1 text-xs font-medium text-muted-foreground">{textMatch ? "Text to find" : form.engine === "llm" ? "Instructions" : "What it looks for"}</span>
-            <Textarea value={form.instructions} onChange={(e) => set("instructions", e.target.value)} rows={textMatch ? 2 : 4} className={cn(textMatch && "font-mono text-xs")} />
-            {textMatch ? <span className="block ps-1 text-xs text-muted-foreground">{"{byline}"} is the series&apos; byline, with the report&apos;s DOI</span> : null}
-          </label>
-          {isPassFail(form) ? (
-            <p className="rounded-xl bg-inset px-3.5 py-2.5 text-xs text-muted-foreground">It finds what it looks for or it doesn&apos;t: there&apos;s no score to set a line on.</p>
-          ) : (
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">Passes when the score is</span>
-              <Segmented
-                label="Passes when the score is"
-                value={form.direction}
-                onChange={(direction) => set("direction", direction)}
-                options={[
-                  { id: "atLeast", label: "At least" },
-                  { id: "atMost", label: "At most" },
-                ]}
-              />
-            </div>
-            <div className="flex items-center gap-4 px-1">
-              <Slider value={[Math.round(form.threshold * 100)]} min={0} max={100} step={1} onValueChange={([v]) => set("threshold", (v ?? 0) / 100)} aria-label="Threshold" />
-              <span className="w-12 text-end text-sm font-medium tabular-nums">{pct(form.threshold)}</span>
-            </div>
+            {builtIn ? null : (
+              <span className="block ps-1 text-xs text-muted-foreground">
+                {decides ? "A decision model answers yes or no with how sure it is." : "An LLM answers yes or no, how sure it is, and why."}
+              </span>
+            )}
           </div>
+          {builtIn ? null : (
+            <div className="space-y-2.5">
+              <span className="ps-1 text-xs font-medium text-muted-foreground">Passes when the model is this sure of yes</span>
+              <div className="flex items-center gap-4 px-1">
+                <Slider value={[Math.round(form.threshold * 100)]} min={50} max={99} step={1} onValueChange={([v]) => set("threshold", (v ?? 50) / 100)} aria-label="How sure of yes" />
+                <span className="w-12 text-end text-sm font-medium tabular-nums">{pct(form.threshold)}</span>
+              </div>
+            </div>
           )}
           <label className="flex cursor-pointer items-center justify-between gap-6 rounded-2xl border border-border-subtle px-4 py-3">
             <span className="min-w-0">
@@ -686,7 +660,7 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
           </div>
         </div>
         <DialogFooter className="sm:justify-between">
-          {!isNew ? (
+          {!isNew && !builtIn ? (
             <Button
               variant="ghost"
               className="text-destructive hover:text-destructive"
@@ -716,7 +690,7 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
               onClick={() =>
                 start(async () => {
                   try {
-                    onSaved(await saveCheck({ ...form, name: form.name.trim() }));
+                    onSaved(await saveCheck({ ...form, name: form.name.trim(), question: form.question.trim() }));
                   } catch (error) {
                     failed(error);
                   }
