@@ -29,6 +29,14 @@ describe("public route auth matrix", () => {
     expect(isPublicPath("/evidence-communities/library-id/configuration")).toBe(false);
   });
 
+  it("opens the Communities page's public communities to anyone, and nothing under it (#1090)", () => {
+    expect(isPublicPath("/evidence-communities")).toBe(true);
+    expect(isPublicPath("/evidence-communities/")).toBe(true);
+    expect(isPublicPath("/evidence-communities/new")).toBe(false);
+    expect(isPublicPath("/evidence-communities/library-id")).toBe(false);
+    expect(isPublicPath("/evidence-communities/library-id/setup")).toBe(false);
+  });
+
   it("normalizes trailing slashes and hash/query segments", () => {
     expect(isPublicPath("/sign-in/")).toBe(true);
     expect(isPublicPath("/sign-up/?return_url=%2Fsettings")).toBe(true);
@@ -68,10 +76,23 @@ describe("public route auth matrix", () => {
       "/authors",
       "/authors/x",
       "/bookmarks",
+      // The short address people guess for the public communities, which sends them there.
+      "/communities",
       "/connect",
       "/cookie-policy",
       "/credits",
+      // The public communities, for anyone (#1090).
+      "/evidence-communities",
       "/history",
+      // A paper's page, which search engines read signed out.
+      // A paper's citation files, for reference managers and tools that follow a paper page's links.
+      // A paper's page by its DOI, for lists that know only the DOI.
+      "/papers/doi/x",
+      "/papers/x/cite.bib",
+      "/papers/x/cite.ris",
+      // The paper's picture, for link previews and search engines.
+      "/papers/x/cover.png",
+      "/papers/x/x",
       "/pricing",
       "/privacy",
       // The question stage's planet script and its first-paint hold, loaded by a visitor arriving signed out from the home page.

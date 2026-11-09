@@ -4,6 +4,7 @@ import { similarSearchHref } from "@/lib/search/similar-href";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
 import { CitationControl } from "@/components/citation-control";
+import { PaperPageLink, PaperShare } from "@/components/papers/paper-links";
 
 import React, { useCallback } from "react";
 import { QueryMatchText } from "@/components/query-highlight";
@@ -49,6 +50,7 @@ import {
 } from "./shared";
 import posthog from "posthog-js";
 import { useTranslations, useFormatter } from "next-intl";
+import { plainAbstract } from "@/lib/papers/abstract-text";
 
 export function PaperCardListDetail({
   result,
@@ -201,14 +203,14 @@ export function PaperCardListDetail({
               <QueryMatchText text={isExpanded
                 ? showTranslated && translatedContent
                   ? translatedContent.translatedAbstract
-                  : result.abstract
+                  : plainAbstract(result.abstract)
                 : showTranslated && translatedContent
                   ? translatedContent.translatedAbstract.length > 500
                     ? `${translatedContent.translatedAbstract.slice(0, 500)}...`
                     : translatedContent.translatedAbstract
-                  : result.abstract.length > 500
-                    ? `${result.abstract.slice(0, 500)}...`
-                    : result.abstract} />
+                  : plainAbstract(result.abstract).length > 500
+                    ? `${plainAbstract(result.abstract).slice(0, 500)}...`
+                    : plainAbstract(result.abstract)} />
             </p>
 
             {/* Expanded Metadata */}
@@ -331,7 +333,7 @@ export function PaperCardListDetail({
                     <BarChart3 className="h-3.5 w-3.5" />
                     <span className="font-medium">{tp("fwciLabel")}</span>
                     <span className="text-foreground">
-                      {result.fwci ? result.fwci.toFixed(2) : tc("notAvailable")}
+                      {result.fwci ? `${result.fwci.toFixed(2)}×` : tc("notAvailable")}
                     </span>
                   </div>
                 </div>
@@ -375,6 +377,8 @@ export function PaperCardListDetail({
                 </div>
               )}
               <div className="flex items-center gap-2">
+                <PaperPageLink paper={result} />
+                <PaperShare paper={result} />
                 <CitationControl paper={result} />
                 {!hide?.download && (
                   <DownloadMenu
@@ -468,6 +472,8 @@ export function PaperCardListDetail({
                 oaUrl={result.open_access?.oa_url}
               />
               <DOIBadge doi={result.doi} />
+              <PaperPageLink paper={result} />
+              <PaperShare paper={result} />
               <CitationControl paper={result} />
               {!hide?.download && (
                 <DownloadMenu

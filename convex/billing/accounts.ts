@@ -147,12 +147,14 @@ export async function hasPlanFeature(
 }
 
 /**
- * Whether the workspace opens Evidence Libraries and the managing of author profiles: its plan
- * grants them, or it's an organization OpenScholar's admins switched them on for.
+ * Whether Evidence Communities, and author profiles with them, can be created in the workspace: its plan
+ * grants them, or OpenScholar's admins switched them on for it, a person's own workspace or an organization.
+ * Only creating asks: everything else about a community follows the person's role on it.
  */
 export async function opensLibraries(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">): Promise<boolean> {
   if (await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) return true;
   const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind === "personal") return workspace.evidenceLibraries === true;
   return workspace?.kind === "organization" && (await ctx.db.get("organizations", workspace.organizationId))?.evidenceLibraries === true;
 }
 

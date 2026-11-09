@@ -1,8 +1,9 @@
 "use client";
 
-import { useLibraryOrganizationChoice } from "./organization-picker";
+import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
-import { useAction } from "convex/react";
+import { useAction, type Preloaded } from "convex/react";
+import { preloadedQueryResult } from "convex/nextjs";
 import { Building2, Check, Lock, RotateCw } from "@/components/icons";
 import Link from "@/components/workspace-link";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
@@ -48,20 +49,20 @@ type AddressCheck =
 
 const CHECK_DELAY_MS = 300;
 
-export function NewLibraryForm() {
-  const owner = useLibraryOrganizationChoice();
+export function NewLibraryForm({ preloadedOpens }: { preloadedOpens?: Preloaded<typeof api.organizationFeatures.opens> }) {
+  // The server's answer until the live one arrives, so the page doesn't change once it does.
+  const features = useWorkspaceFeatures().data ?? (preloadedOpens ? preloadedQueryResult(preloadedOpens) : undefined);
   const t = useTranslations("evidenceLibraries.new");
-  // A new library belongs to the workspace you're in: an organization you're an admin of (#651).
+  // A new community belongs to the workspace you're in: your own, or an organization you're an admin of, with Evidence Communities on for it.
   const workspace = useCurrentWorkspace();
-  const selected = owner.organizations.find((org) => org.id === workspace?.organizationId);
-  if (!owner.isReady || !workspace) return <AuthStatePanel variant="loading" layout="fullscreen" />;
-  if (!selected) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
-  return <OwnerForm key={selected.id} organizationId={selected.id}
+  if (features && !features.createsCommunities) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
+  if (!features || !workspace) return <AuthStatePanel variant="loading" layout="fullscreen" />;
+  return <OwnerForm key={workspace.workspaceId} workspaceId={workspace.workspaceId}
     organization={<WorkspaceTag workspace={workspace} />} />;
 }
 
-function OwnerForm({ organizationId, organization }: {
-  organizationId: Id<"organizations">;
+function OwnerForm({ workspaceId, organization }: {
+  workspaceId: Id<"workspaces">;
   organization: React.ReactNode;
 }) {
   const t = useTranslations("evidenceLibraries.new");
@@ -118,7 +119,7 @@ function OwnerForm({ organizationId, organization }: {
   function runCheck(wanted: string) {
     wantedName.current = wanted;
     setCheck({ status: "checking", name: wanted });
-    void checkAddress({ organizationId, name: wanted })
+    void checkAddress({ workspaceId, name: wanted })
       .then((result) => {
         if (wantedName.current !== wanted) return;
         if (result.status === "available") {
@@ -166,7 +167,7 @@ function OwnerForm({ organizationId, organization }: {
       return;
     }
     setReserving(true);
-    void reserveAddress({ organizationId, name: trimmed })
+    void reserveAddress({ workspaceId, name: trimmed })
       .then((result) => {
         if (result.status === "name-taken") {
           setCheck({

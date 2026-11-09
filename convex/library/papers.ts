@@ -5,7 +5,7 @@
  * record is read from OpenAlex and saved as the page would have saved it (./mutations.ts).
  */
 import { v, type Infer } from "convex/values";
-import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { abstractFromIndex } from "../../lib/papers/abstract-text";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, userAction, userMutation } from "../lib/userActions";
@@ -55,7 +55,7 @@ export const saveAction = defineUserAction({
     // The record as the results page holds it: the abstract as text, in place of the index OpenAlex sends.
     const { abstract_inverted_index: index, ...rest } = read;
     // Its ID as the source gives it: a paper asked for by our index's ID that OpenAlex knows too goes by OpenAlex's, as it does in results.
-    const work: WorkInput = { ...rest, id: rest.id || openalexId, ...(index ? { abstract: convertAbstractArrayToString(index) } : {}) };
+    const work: WorkInput = { ...rest, id: rest.id || openalexId, ...(index ? { abstract: abstractFromIndex(index) } : {}) };
     const paper = { ...trimPaperData(work), paperData: JSON.stringify(work) };
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const saved: Infer<typeof savedByIdValidator> = await ctx.runMutation(internal.library.mutations.saveRead, { userId, workspaceId, paper, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }), author, ...(call?.stepId ? { stepId: call.stepId } : {}), ...(call?.approved ? { approved: true } : {}) });

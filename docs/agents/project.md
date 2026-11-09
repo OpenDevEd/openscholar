@@ -56,6 +56,8 @@ supported process changed. Read the page back before claiming success.
   | No "Loading" text; the shared Spinner or the final size | `check:ui-rules` (`loading-text`) |
   | A dialog, popover or picker comes from `components/ui`, never a raw primitive | `check:ui-rules` (`raw-primitive`) |
   | No "Coolify" in text people read | `check:ui-rules` (`coolify`) |
+  | A name people can act on uses its hover card, link or filter | `check:ui-rules` (`entity-name`) |
+  | A country shows its flag | `check:ui-rules` (`country-flag`) |
   | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
   | A dialog, sheet, popover or menu opens with its data in it | `npm run verify -- shift` with a `--do` step that opens it |
 
@@ -115,6 +117,9 @@ development Convex service.
 
 - `prod` is live: the app at `discover.openscholar.ai` on self-hosted Convex (`convex.openscholar.ai`), and the marketing site from `marketing/` at `openscholar.ai`. Both Coolify apps build from it with auto-deploy off. Never push to or deploy `prod` unless the user asks. `main` and `prod-old` are history.
 - `dev` deploys to `dev.openscholar.ai` and is where all current work lands.
+- Before deploying to prod or moving or updating a community, read
+  `docs/deploy-lessons.md`: what went wrong in the launch week and what to do
+  instead.
 - Community releases: new-el publishes each runtime release as a GitHub
   prerelease. Shared dev's Convex sets `EL_OFFER_PRERELEASES=true` and offers it
   at once; prod offers a release only once it's promoted at
@@ -197,3 +202,5 @@ Every page, export and count works at the largest sizes the product allows
 
 - Test rules: `docs/test-quality.md`.
 - Cross-repository follow-ups: `docs/evidence-library-follow-ups.md`.
+- Deploy lessons: `docs/deploy-lessons.md`, also in Outline as
+  `dae6c74d-9d76-495f-a5fa-84c1ade7e688`.

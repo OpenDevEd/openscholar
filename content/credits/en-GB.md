@@ -1,4 +1,4 @@
-# Credits
+# Attributions
 
 Openscholar uses work that other people have made and shared. This page names it.
 

@@ -73,7 +73,8 @@ export function LibraryPageShell({
       </StickyPageHeader>
 
       <div className="container mx-auto max-w-6xl p-4 sm:p-6">
-        <CommandCenterContainer allowOverflow={allowOverflow}>
+        {/* Its pages come from the server (papers, topics, authors): the card rises in CSS from the first paint, not once the code loads. */}
+        <CommandCenterContainer allowOverflow={allowOverflow} serverDrawn>
           {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>

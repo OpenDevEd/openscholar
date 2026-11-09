@@ -12,7 +12,7 @@ When you browse openscholar.ai, small data files called cookies may be stored on
 | `NEXT_LOCALE` | Remembers your language | 1 year |
 | `__cf_bm`, `_cfuvid` | Cloudflare uses these to protect the site from automated traffic | 30 minutes, or until you close your browser |
 
-Your cookie choice and display settings, such as open panels, stay in your browser's local storage.
+Your cookie choice stays in a cookie named openscholar_consent. Display settings, such as open panels, stay in your browser's local storage.
 
 ## Performance and analytics cookies (optional)
 
@@ -74,7 +74,7 @@ Before you choose, or if you reject analytics cookies, we only count visits, wit
 
 ## Managing your cookie preferences
 
-You can update your cookie preferences at any time by clicking the "Cookie settings" link available in the footer of every page on openscholar.ai.
+You can update your cookie preferences at any time by clicking the "Cookie preferences" link available in the footer of every page on openscholar.ai.
 
 Additionally, all major web browsers provide settings to control cookies. For comprehensive information about cookies and how to view which ones are stored on your device, visit [www.aboutcookies.org](http://www.aboutcookies.org/) or [www.allaboutcookies.org](http://www.allaboutcookies.org/).
 
@@ -128,7 +128,7 @@ If you'd prefer to stop our analytics cookie from being created:
 2. **Block only third-party cookies**: This stops external trackers while allowing our first-party analytics cookie - this won't block the openscholar.ai cookie
 3. **Install privacy browser extensions**: Privacy-focused tools like Privacy Badger or uBlock Origin can prevent analytics cookies
 4. **Enable Do Not Track**: Although openscholar.ai doesn't currently honour DNT signals, you can activate this option in your browser settings
-5. **Use our cookie settings**: Click "Cookie settings" in the footer of any openscholar.ai page to adjust your preferences
+5. **Use our cookie settings**: Click "Cookie preferences" in the footer of any openscholar.ai page to adjust your preferences
 
 ### Get in touch
 

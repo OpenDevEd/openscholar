@@ -13,7 +13,9 @@
     "stylesFailed": "Impossible de charger les styles.",
     "noStyles": "Aucun style correspondant.",
     "commonStyles": "Styles courants",
-    "otherStyles": "Autres styles"
+    "otherStyles": "Autres styles",
+    "copiedIn": "Citation {style} copiée",
+    "download": "Télécharger"
   },
   "common": {
     "search": "Rechercher",
@@ -307,10 +309,10 @@
     "metadataTitle": "Tarifs",
     "metadataDescription": "Des tarifs simples et transparents pour les équipes de toutes tailles.",
     "everyFeature": "Toutes les fonctionnalités d'Openscholar",
-    "papersRunning": "{running, number} articles traités en même temps",
-    "papersInRequest": "{request, number} articles par demande",
+    "papersRunning": "L'IA trie ou extrait {running, number} articles à la fois",
+    "papersInRequest": "Jusqu'à {request, number} articles par tri ou extraction",
     "unlimitedCollectionsAndGuests": "Collections et invités illimités",
-    "southernDescription": "Pour les chercheurs des pays à revenu faible ou intermédiaire.",
+    "southernDescription": "Pour les équipes du Sud, pour des projets précis.",
     "southernFeature1": "Tout ce qui est inclus dans Free",
     "southernFeature2": "Ajouté à votre compte après nous avoir contactés",
     "onRequest": "Sur demande"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "Connexion requise",
     "signInRequiredDescription": "Connectez-vous pour accéder à cette page.",
     "noAccessTitle": "Accès restreint",
-    "noAccessDescription": "Vous n'avez pas l'autorisation de voir cette ressource.",
+    "noAccessDescription": "Vous n'avez pas accès à cette page. Si quelqu'un l'a partagée avec vous, il a peut-être arrêté : demandez-lui de la partager à nouveau.",
     "syncErrorTitle": "Problème de synchronisation de session",
     "syncErrorDescription": "Nous n'avons pas pu terminer l'initialisation de votre compte. Réessayez pour continuer.",
     "syncErrorAccess": "Votre session est valide, mais la synchronisation du compte est incomplète. Réessayez pour continuer.",
     "retrySync": "Réessayer la synchronisation"
   },
   "aiSetupGate": {
-    "title": "Configurer l'IA pour enrichir vos recherches",
-    "description": "Openscholar utilise l'IA pour affiner les requêtes, filtrer les articles et traduire les résultats.",
+    "title": "La recherche est gratuite. L'IA est en plus",
+    "description": "Connectez-vous et l'IA rédige vos recherches, vérifie les articles selon vos critères et traduit les résultats, avec des crédits gratuits chaque mois.",
     "signInForCredits": "Se connecter pour 50k crédits gratuits",
     "useOwnApiKey": "Utiliser votre propre clé API"
   },
@@ -676,7 +678,7 @@
     "uploadFailed": "Échec du téléversement",
     "uploadFailedDescription": "Impossible de téléverser {format}. Veuillez réessayer.",
     "accountChanged": "Votre compte a changé. Réessayez.",
-    "copyFailedDescription": "Impossible de copier dans le presse-papiers. Veuillez réessayer.",
+    "copyFailedDescription": "Votre navigateur ne nous a pas laissé le copier. Sélectionnez le texte et copiez-le vous-même.",
     "validationFailed": "Échec de la validation",
     "entityCreated": "{entity} créé",
     "entityUpdated": "{entity} mis à jour",
@@ -790,6 +792,7 @@
     "typeToSearchInstitutions": "Saisissez le nom d'une institution",
     "institutionsUnavailable": "Impossible de charger les institutions. Réessayez.",
     "filterByThisInstitution": "Uniquement les travaux de {name}",
+    "filterByInstitutionCountry": "Uniquement les travaux d’établissements en {country}",
     "studyDesign": "Type d'étude",
     "anyStudyDesign": "Tout type d'étude",
     "searchStudyDesigns": "Rechercher des types d'étude",
@@ -852,8 +855,8 @@
     "titleAndAbstract": "Titre et résumé",
     "searchScope": "Portée de la recherche",
     "sortResultsBy": "Trier les résultats par",
-    "citationFilter": "Filtre de citation",
-    "citedByFilter": "Filtre citations reçues",
+    "citationFilter": "Articles qui citent un article",
+    "citedByFilter": "Articles cités par un article",
     "relatedWorksFilter": "Filtre travaux apparentés",
     "clearAllCount": "Tout effacer ({count})",
     "searchFiltersTitle": "Filtres de recherche",
@@ -976,7 +979,7 @@
     "domainLabel": "Domaine :",
     "sdgsLabel": "ODD :",
     "referencesLabel": "Références :",
-    "fwciLabel": "FWCI :",
+    "fwciLabel": "vs moyenne du domaine :",
     "citedBy": "Cité par",
     "cites": "Cite",
     "questionN": "Question {n} : {question}",
@@ -1063,7 +1066,7 @@
     "cookiePolicyDescription": "Découvrez comment Openscholar.ai utilise les cookies pour l'analyse et comment gérer vos préférences de cookies.",
     "libraryTitle": "Bibliothèque",
     "libraryDescription": "Parcourez et gérez vos articles académiques sauvegardés",
-    "creditsTitle": "Crédits",
+    "creditsTitle": "Attributions",
     "creditsDescription": "Les projets, données et licences sur lesquels Openscholar s’appuie.",
     "sharedTitle": "Partagés avec moi",
     "termsTitle": "Conditions d’utilisation",
@@ -1162,7 +1165,7 @@
     "translationSettings": "Paramètres de traduction",
     "autoTranslateResults": "Traduire automatiquement les résultats listés",
     "listedItemsOnly": "S'applique uniquement aux éléments actuellement listés.",
-    "useCurrentLocaleTarget": "Utiliser la locale actuelle comme cible",
+    "useCurrentLocaleTarget": "Utiliser la langue du site",
     "runResultsTranslation": "Lancer la traduction",
     "translatingResults": "Traduction des résultats...",
     "undoTranslation": "Annuler la traduction",
@@ -1207,13 +1210,16 @@
     "keepRunning": "Continuer",
     "yesCancel": "Oui, annuler la tâche",
     "deleteJob": "Supprimer cette tâche ?",
-    "deleteJobDescription": "Cela supprimera définitivement cette tâche et tous ses résultats d'extraction."
+    "deleteJobDescription": "Cela supprimera définitivement cette tâche et tous ses résultats d'extraction.",
+    "rerunJob": "La relancer en copie ?",
+    "rerunJobDescription": "Une nouvelle extraction avec les mêmes articles et questions démarre aussitôt et dépense des crédits, à peu près autant que celle-ci. Celle-ci reste telle quelle.",
+    "rerunJobConfirm": "Relancer"
   },
   "emptyStates": {
     "noScreeningQuestions": "Pas encore de questions de sélection"
   },
   "jobStatus": {
-    "restart": "Redémarrer",
+    "restart": "Relancer en copie…",
     "papersCount": "{count, plural, =1 {# article} other {# articles}}",
     "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "En attente",
@@ -1226,7 +1232,8 @@
     "noMatches": "Aucune correspondance pour les filtres actuels",
     "clearFilters": "Effacer les filtres",
     "progressOfPapers": "{processed} sur {total, plural, =1 {# article} other {# articles}}",
-    "loadingExtractionResults": "Chargement des résultats de l'extraction..."
+    "loadingExtractionResults": "Chargement des résultats de l'extraction...",
+    "skippedNoText": "{count, plural, one {# article laissé de côté : pas de résumé à lire, et les textes intégraux étaient désactivés} other {# articles laissés de côté : pas de résumé à lire, et les textes intégraux étaient désactivés}}"
   },
   "reportBuilder": {
     "grounded": "Fondé",
@@ -1259,7 +1266,8 @@
   },
   "rating": {
     "noRating": "Sans note",
-    "nStars": "{count} étoiles"
+    "nStars": "{count} étoiles",
+    "yourRating": "Votre note"
   },
   "pagination": {
     "currentPage": "Page {page}",
@@ -1292,7 +1300,7 @@
     "type": "Type",
     "refs": "Réf.",
     "cited": "Cité",
-    "fwci": "FWCI",
+    "fwci": "vs moyenne du domaine",
     "topic": "Sujet",
     "field": "Domaine",
     "subfield": "Sous-domaine",
@@ -1366,7 +1374,7 @@
     "privacyPolicy": "Politique de confidentialité",
     "cookiePolicy": "Politique de cookies",
     "cookiePreferences": "Préférences de cookies",
-    "credits": "Crédits"
+    "credits": "Attributions"
   },
   "focusMode": {
     "settingsTitle": "Paramètres du mode focus",
@@ -1513,7 +1521,8 @@
     "planAllowsCollections": "{plan} permet {limit, number} collections",
     "nameTheCollection": "Nommez la collection",
     "newName": "Nouveau nom pour {name}",
-    "clearSearch": "Effacer la recherche"
+    "clearSearch": "Effacer la recherche",
+    "collectionDeletedPapersStay": "{name} : ses articles restent dans votre bibliothèque"
   },
   "sidebarLayout": {
     "expandFilters": "Afficher les filtres (Ctrl+Shift+F)",
@@ -1715,7 +1724,7 @@
   "connectionsPage": {
     "connectedApps": "Applications connectées",
     "noConnectedApps": "Aucune application connectée",
-    "noConnectedAppsDescription": "Lorsque des applications externes se connectent à votre portefeuille, elles apparaîtront ici.",
+    "noConnectedAppsDescription": "Lorsque des applications externes se connectent à votre compte Openscholar, elles apparaîtront ici.",
     "revoking": "Révocation...",
     "revoke": "Révoquer",
     "revokedBadge": "Révoquée",
@@ -1759,7 +1768,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Communauté sans titre",
     "unsaved": "Modifications non enregistrées",
-    "viewOnly": "Lecture seule",
+    "viewOnly": "Paramètres en lecture seule",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "saveError": "Les modifications n’ont pas pu être enregistrées. Réessayez.",
@@ -1814,7 +1823,15 @@
       "versions": "Versions",
       "ai": "IA",
       "domain": "Domaine",
+      "listing": "Annuaire",
       "publication": "Publication"
+    },
+    "listing": {
+      "description": "Indique si cette communauté figure dans l’annuaire public des communautés. Son site reste ouvert à toute personne qui a son adresse dans les deux cas.",
+      "public": "Publique",
+      "publicHint": "Figure dans l’annuaire public, où chacun peut la trouver.",
+      "unlisted": "Non listée",
+      "unlistedHint": "Absente de l’annuaire. Toute personne qui a son adresse peut toujours l’ouvrir."
     },
     "sectionState": {
       "complete": "Terminée",
@@ -1917,6 +1934,9 @@
       "taglineLabel": "Slogan",
       "taglineHint": "Le titre au-dessus de la recherche de la communauté. Laissez vide pour afficher « Rechercher ».",
       "taglinePlaceholder": "Des preuves pour de meilleures décisions",
+      "searchTitleLabel": "Titre dans les résultats de recherche",
+      "searchTitleHint": "Ce que les moteurs de recherche affichent pour la page d'accueil. Laissez vide pour utiliser le nom et le slogan.",
+      "searchTitlePlaceholder": "Recherches et données sur l'adaptation au climat",
       "descriptionLabel": "Description",
       "descriptionHint": "Affichée sur la page d’accueil et dans les résultats de recherche.",
       "partnersHeading": "Partenaires de financement",
@@ -2000,10 +2020,13 @@
       "add": "Ajouter un établissement"
     },
     "danger": {
-      "description": "Supprimer cette communauté. Soyez prudent.",
+      "description": "Déplacer ou supprimer cette communauté. Soyez prudent.",
       "deleteTitle": "Supprimer la communauté",
       "deleteHint": "Supprime le site, l’adresse et les paramètres.",
-      "deleteButton": "Supprimer la communauté"
+      "deleteButton": "Supprimer la communauté",
+      "moveTitle": "Déplacer vers un autre espace de travail",
+      "moveHint": "Garde son adresse, ses paramètres et ses personnes. L’espace de travail de destination en devient le propriétaire.",
+      "moveButton": "Déplacer la communauté"
     },
     "deleteDialog": {
       "title": "Supprimer cette communauté ?",
@@ -2011,7 +2034,7 @@
       "typeToConfirm": "Saisissez {name} pour confirmer",
       "confirm": "Supprimer la communauté",
       "startedTitle": "Suppression de la communauté",
-      "startedDescription": "{name} est en cours de suppression. Cela prend quelques secondes.",
+      "startedDescription": "{name} est en cours de suppression. Cela prend une à deux minutes.",
       "error": "La communauté n’a pas pu être supprimée. Terminez l’opération en cours sur la communauté, puis réessayez."
     },
     "links": {
@@ -2835,7 +2858,8 @@
       "confirmAction": "Modifier l’adresse"
     },
     "retry": "Réessayer",
-    "retryError": "Cette action n’a pas pu démarrer. Réessayez."
+    "retryError": "Cette action n’a pas pu démarrer. Réessayez.",
+    "saveDraft": "Enregistrer le brouillon"
   },
   "topics": {
     "title": "Sujets",
@@ -2910,8 +2934,8 @@
       "title": "Nouvelle Evidence Community",
       "backToLibraries": "Retour aux communautés",
       "ownerTitle": "Propriétaire",
-      "ownerOnlyTitle": "Réservé aux propriétaires",
-      "ownerOnlyDescription": "Seul un propriétaire de l’organisation peut créer une communauté.",
+      "ownerOnlyTitle": "Impossible de créer une communauté ici",
+      "ownerOnlyDescription": "Les communautés se créent dans votre propre espace de travail, ou dans une organisation dont vous êtes admin, une fois Evidence Communities activé pour elle.",
       "libraryTitle": "Communauté",
       "libraryDescription": "Le nom apparaît sur le site public et définit l’adresse publique.",
       "nameLabel": "Nom",
@@ -3151,8 +3175,13 @@
       "off": "Désactivé",
       "libraries": "{count, plural, one {# communauté} other {# communautés}}",
       "switchLabel": "Evidence Communities pour {name}",
-      "moveFirst": "Déplacez ou supprimez d'abord ses communautés",
-      "noMatches": "Aucune organisation ne correspond"
+      "noMatches": "Aucune organisation ne correspond",
+      "kind": "Espaces de travail",
+      "organizationsTab": "Organisations",
+      "peopleTab": "Personnes",
+      "searchPeople": "Rechercher des personnes par e-mail",
+      "people": "personnes",
+      "noPeopleMatch": "Aucune personne ne correspond"
     },
     "communityReleases": {
       "releases": "Versions",
@@ -3413,7 +3442,7 @@
       "times": "fois",
       "unfold": "Afficher chacune",
       "fold": "Regrouper",
-      "declined": "Non autorisé",
+      "declined": "Vous avez refusé",
       "waiting": "En attente d'une réponse",
       "allowed": "Autorisé",
       "searches": {
@@ -4199,6 +4228,18 @@
         "where": "Evidence Communities",
         "ask": "Créer un brouillon de communauté"
       },
+      "publicCommunities": {
+        "doing": "Lecture des communautés publiques",
+        "did": "A lu les communautés publiques",
+        "where": "Evidence Communities",
+        "ask": "Lire les communautés publiques"
+      },
+      "communityVisibility": {
+        "doing": "Modifie l’affichage d’une communauté dans l’annuaire",
+        "did": "A modifié l’affichage d’une communauté dans l’annuaire",
+        "where": "Evidence Communities",
+        "ask": "Modifier l’affichage d’une communauté dans l’annuaire"
+      },
       "librarySources": {
         "doing": "Lecture des sources d'une communauté",
         "did": "Sources d'une communauté lues",
@@ -4335,6 +4376,54 @@
         "did": "Auteur revendiqué",
         "where": "Auteurs",
         "ask": "Revendiquer un auteur"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Recherche d'articles pour une communauté",
+        "did": "A recherché des articles pour une communauté",
+        "where": "Evidence Community",
+        "ask": "Rechercher des articles pour une communauté"
+      },
+      "addCommunityPapers": {
+        "doing": "Ajout d'articles à une communauté",
+        "did": "A ajouté des articles à une communauté",
+        "where": "Evidence Community",
+        "ask": "Ajouter des articles à une communauté"
+      },
+      "communityAddedPapers": {
+        "doing": "Lecture des articles ajoutés d'une communauté",
+        "did": "A lu les articles ajoutés d'une communauté",
+        "where": "Evidence Community",
+        "ask": "Lire les articles ajoutés d'une communauté"
+      },
+      "removeCommunityPaper": {
+        "doing": "Retrait d'un article d'une communauté",
+        "did": "A retiré un article d'une communauté",
+        "where": "Evidence Community",
+        "ask": "Retirer un article d'une communauté"
+      },
+      "communityPapersSettings": {
+        "doing": "Modification des articles ajoutés d'une communauté",
+        "did": "A modifié les articles ajoutés d'une communauté",
+        "where": "Evidence Community",
+        "ask": "Suspendre ou reprendre les articles ajoutés d'une communauté, ou leurs PDF"
+      },
+      "connectCommunityCollection": {
+        "doing": "Ajout d’une collection aux sources d’une communauté",
+        "did": "A ajouté une collection aux sources d’une communauté",
+        "where": "Evidence Community",
+        "ask": "Ajouter une de vos collections aux sources d’une communauté"
+      },
+      "putCommunityLive": {
+        "doing": "Mise en ligne des paramètres d’une communauté",
+        "did": "A mis en ligne les paramètres d’une communauté",
+        "where": "Evidence Community",
+        "ask": "Mettre en ligne les paramètres enregistrés d’une communauté"
+      },
+      "sentPapers": {
+        "doing": "Lecture des articles que vous avez envoyés aux communautés",
+        "did": "A lu les articles que vous avez envoyés aux communautés",
+        "where": "Evidence Communities",
+        "ask": "Lire les articles que vous avez envoyés aux communautés"
       }
     },
     "asks": {
@@ -4509,7 +4598,7 @@
     "main": "Principal",
     "screen": "Cribler",
     "extract": "Extraire",
-    "publish": "Publier",
+    "communities": "Communautés",
     "explore": "Explorer",
     "authors": "Auteurs",
     "workspacesCard": "Espaces de travail",
@@ -4590,9 +4679,6 @@
       "leave": "Quitter",
       "deleteName": "Supprimer {name}",
       "stillHasLibrary": "{library} est l'une de ses communautés de données probantes. Déplacez-la ou supprimez-la d'abord.",
-      "deleteLibrary": "Supprimer la communauté",
-      "libraryBeingDeleted": "{library} est en cours de suppression.",
-      "libraryDeleteFailed": "{library} n'a pas pu être supprimée. Réessayez.",
       "deleteDetail": "La supprime pour {count, plural, one {son # membre} other {ses # membres}}",
       "moveLibrariesFirst": "Déplacez ou supprimez d'abord ses communautés de données probantes",
       "delete": "Supprimer",
@@ -4755,7 +4841,10 @@
         "itsPapers": "Ses articles",
         "ratingsInIt": "Ses notes",
         "publications": "Publications",
-        "editors": "Éditeurs"
+        "editors": "Éditeurs",
+        "address": "Adresse",
+        "settings": "Paramètres",
+        "peopleWithRoles": "Personnes ayant un rôle"
       },
       "moveTo": "Déplacer vers {workspace}",
       "move": "Déplacer",
@@ -4764,7 +4853,15 @@
       "collection": "Déplacer la collection",
       "author": "Déplacer le profil d'auteur",
       "libraryKeeps": "La bibliothèque de {workspace} garde les articles qu'elle a enregistrés.",
-      "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés."
+      "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés.",
+      "community": "Déplacer la communauté",
+      "workspaceOwnsIt": "L’espace de travail où elle est déplacée en devient le propriétaire.",
+      "refused": {
+        "noCommunities": "Les communautés ne sont pas activées pour cet espace de travail",
+        "communitiesFull": "A autant de communautés qu’un espace de travail peut en avoir",
+        "profilesOff": "Les profils d’auteur ne sont pas activés ici",
+        "noProfiles": "Vous ne pouvez pas créer de profils d’auteur ici"
+      }
     },
     "share": {
       "share": "Partager",
@@ -4864,7 +4961,11 @@
       "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau",
       "otherTitle": "Cette invitation a été envoyée à une autre adresse",
       "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue"
-    }
+    },
+    "notEmails": "{count, plural, one {Ce n'est pas une adresse e-mail : {values}. Corrigez-la ou retirez-la pour créer l'organisation.} other {Ce ne sont pas des adresses e-mail : {values}. Corrigez-les ou retirez-les pour créer l'organisation.}}",
+    "asRole": "en tant que {role}",
+    "memberCan": "Les membres recherchent, enregistrent, trient et extraient avec tout ce que l'organisation partage.",
+    "adminCan": "Les admins peuvent faire de même, et aussi inviter et retirer des personnes et gérer les paramètres et les dépenses."
   },
   "models": {
     "changeInSettings": "Modifier dans les paramètres IA"
@@ -5307,7 +5408,20 @@
     "removedFromLibrary": "Retiré de cette communauté.",
     "removedFromProfile": "Retiré de ce profil.",
     "addedToLibrary": "{name} a rejoint cette communauté.",
-    "addedToProfile": "{name} a rejoint ce profil."
+    "addedToProfile": "{name} a rejoint ce profil.",
+    "anOrganization": "Une organisation",
+    "chooseAnOrganization": "Choisir une organisation",
+    "anotherOrganization": "Une autre organisation",
+    "adminEmail": "E-mail de son administrateur",
+    "organizationGetsIt": "Toutes les personnes de l’organisation reçoivent ce rôle et le perdent en la quittant.",
+    "theirAdminAccepts": "Son administrateur l’accepte pour une organisation qu’il gère, et toutes les personnes qui en font partie reçoivent ce rôle.",
+    "everyoneInIt": "Toutes les personnes de l’organisation",
+    "forTheirOrganization": "Pour une organisation dont {email} est administrateur",
+    "removeThisOrganization": "Retirer cette organisation ? Ses membres ne gardent que les rôles qui leur ont été donnés personnellement.",
+    "organizationLabel": "Organisation",
+    "ownWorkspaceOwner": "Elle est dans son propre espace de travail, elle lui appartient donc.",
+    "whoWorksOnIt": "Qui travaille sur cette communauté. Ses propriétaires gèrent l’équipe.",
+    "viewersUntilAnOwner": "Lecteurs jusqu’à ce qu’un propriétaire leur donne un rôle."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Résumé mis en file pour # publication.} other {Résumé mis en file pour # publications.}}",
@@ -5370,6 +5484,54 @@
     "keepThisUnderCharacters": "Ne dépassez pas {maxLength} caractères."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Vos communautés",
+      "showFrom": "Afficher les communautés de",
+      "allWorkspaces": "Tous les espaces de travail",
+      "allCommunities": "Toutes les communautés",
+      "workspaces": "Espaces de travail",
+      "yours": "Les vôtres",
+      "sharedWithYou": "Partagées avec vous",
+      "sharedWith": "Partagées avec {name}",
+      "loading": "Chargement des communautés",
+      "noMatches": "Aucune ne correspond à cette recherche.",
+      "emptyAll": "Vous ne faites encore partie d'aucune communauté. Quand quelqu'un vous en partage une, ou que votre organisation en a une, elle apparaît ici.",
+      "emptyHere": "Les communautés de {name}, et celles partagées avec elle, apparaissent ici.",
+      "emptyShared": "Les communautés que d’autres partagent avec vous apparaissent ici.",
+      "emptySharedHere": "Les communautés partagées avec {name} apparaissent ici.",
+      "emptyOwn": "Les communautés que vous créez apparaissent ici.",
+      "emptyWorkspace": "{name} n’a pas encore de communauté.",
+      "invitedAs": "Invité comme {role}",
+      "accept": "Accepter",
+      "accepted": "{name} acceptée.",
+      "moreWorkspaces": "Plus d’espaces de travail",
+      "invitedForOrganization": "Invité comme {role}, pour votre organisation",
+      "acceptAsAnAdmin": "Acceptez-la en tant qu’administrateur d’une organisation",
+      "acceptForWhich": "Accepter {name} pour quelle organisation",
+      "acceptedFor": "{name} acceptée pour {organization}."
+    },
+    "directory": {
+      "title": "Communautés publiques",
+      "sortLabel": "Trier les communautés publiques",
+      "sort": {
+        "newest": "Plus récentes",
+        "name": "Nom",
+        "records": "Le plus d'articles"
+      },
+      "loading": "Chargement des communautés publiques",
+      "noMatches": "Aucune communauté publique ne correspond à cette recherche",
+      "none": "Les communautés publiques apparaissent ici dès qu’elles sont en ligne",
+      "records": "{count, plural, one {{shown} article} other {{shown} articles}}",
+      "unnamedOwner": "Un membre d’Openscholar",
+      "people": "{count, plural, one {{shown} membre de l'équipe} other {{shown} membres de l'équipe}}",
+      "countries": "Sur {names}",
+      "recordsLabel": "{count, plural, one {article} other {articles}}",
+      "peopleLabel": "{count, plural, one {membre de l'équipe} other {membres de l'équipe}}",
+      "noDescription": "Pas encore de description",
+      "notCounted": "Pas encore compté",
+      "intro": "Chaque communauté est un site qui rassemble la recherche sur un sujet. Ouvrez-en une pour parcourir ses articles.",
+      "updated": "Mise à jour {when}"
+    },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Nouvelle communauté",
     "libraryView": "Vue des communautés",
@@ -5413,7 +5575,9 @@
     "deletionRestartedFor": "La suppression a repris pour {name}.",
     "couldNotRestartDeletion": "Impossible de relancer la suppression",
     "invitationDeclined": "Invitation refusée.",
-    "unableToDeclineInvitation": "Impossible de refuser l’invitation"
+    "unableToDeclineInvitation": "Impossible de refuser l’invitation",
+    "searchSubmissions": "Rechercher dans vos envois",
+    "findASubmission": "Trouver un article envoyé…"
   },
   "authorPages": {
     "profileSettings": "Paramètres du profil",
@@ -5544,10 +5708,10 @@
     "creatingKey": "Création de la clé...",
     "redirecting": "Redirection...",
     "approve": "Approuver",
-    "wantsToConnect": "<strong>{appName}</strong> souhaite se connecter à votre portefeuille Openscholar.",
+    "wantsToConnect": "<strong>{appName}</strong> souhaite se connecter à votre compte Openscholar.",
     "copyKey": "Copiez cette clé API et collez-la dans <strong>{appName}</strong>. Elle ne sera affichée qu’une seule fois.",
     "originUnregisteredBody": "L’application à l’adresse <code>{origin}</code> n’est pas enregistrée pour se connecter à Openscholar.",
-    "originHelp": "Seules les origines approuvées à l’avance peuvent créer des connexions au portefeuille. Si vous êtes le développeur de <strong>{appName}</strong>, contactez l’équipe Openscholar pour enregistrer votre origine.",
+    "originHelp": "Seules les origines approuvées à l’avance peuvent créer des connexions au compte. Si vous êtes le développeur de <strong>{appName}</strong>, contactez l’équipe Openscholar pour enregistrer votre origine.",
     "wantsToUseCredits": "<strong>{appName}</strong> souhaite utiliser la génération par IA avec vos crédits Openscholar.",
     "unknownApp": "Application inconnue",
     "thisApplicationSOriginIsNot": "L’origine de cette application n’est pas enregistrée.",
@@ -5675,5 +5839,129 @@
     "step4": "Renouveler le jeton",
     "step4About": "Un jeton dure 24 heures. Échangez le jeton d'actualisation contre un nouveau avant.",
     "cantDo": "Les applications ne peuvent pas modifier la facturation, les clés API ou les paramètres du site, ni mettre en ligne une Evidence Community."
+  },
+  "paperPage": {
+    "references": "Références",
+    "openAccess": "Accès libre",
+    "readPdf": "Lire le PDF",
+    "publisherPage": "Page de l'éditeur",
+    "askAbout": "Poser une question sur cet article",
+    "noAbstract": "Aucun résumé disponible",
+    "linkCopied": "Lien de l'article copié",
+    "citationsPerYear": "Citations par an",
+    "citationsIn": "{count, plural, one {# citation} other {# citations}} en {year}",
+    "seeCiting": "Voir les articles qui le citent",
+    "top1": "Top 1 % de son domaine",
+    "top10": "Top 10 % de son domaine",
+    "aheadOf": "Plus cité que {percent} % de tous les articles de {year}",
+    "influential": "s'appuient dessus",
+    "authors": "Auteurs",
+    "andMore": "et {count} autres",
+    "showAll": "Tout afficher ({count})",
+    "showFewer": "Afficher moins",
+    "corresponding": "Correspondant",
+    "orcidOf": "ORCID iD de {name}",
+    "institutions": "Établissements",
+    "whereToRead": "Où le lire",
+    "kindPublisher": "Éditeur",
+    "kindRepository": "Archive ouverte",
+    "kindIndex": "Index",
+    "pdf": "PDF",
+    "funding": "Financement",
+    "topics": "Sujets",
+    "sdgs": "Objectifs de développement durable",
+    "mesh": "Termes MeSH",
+    "details": "Détails",
+    "charge": "Frais de publication",
+    "retracted": "Rétracté",
+    "openscholarId": "ID Openscholar",
+    "copyDoi": "Copier le DOI",
+    "doiCopied": "DOI copié",
+    "doiCopyFailed": "Impossible de copier le DOI",
+    "paperPage": "Page de l’article",
+    "share": "Partager",
+    "inCommunities": "Dans ces communautés",
+    "fieldAverage": "× moyenne du domaine"
+  },
+  "addedPapers": {
+    "name": "Articles ajoutés",
+    "provider": "DOI et identifiants OpenAlex",
+    "cardDescription": "Articles ajoutés un par un par DOI ou identifiant OpenAlex, synchronisés avec OpenAlex.",
+    "menu": "Articles par DOI ou identifiant",
+    "menuHint": "Un ou plusieurs, synchronisés",
+    "menuNotLive": "Disponible une fois la communauté en ligne",
+    "add": "Ajouter des articles",
+    "title": "Ajouter des articles",
+    "description": "Collez des liens vers des articles (d'Openscholar, du site d'une communauté, d'OpenAlex ou de doi.org), des DOI ou des identifiants OpenAlex, jusqu'à {max} à la fois.",
+    "inputLabel": "DOI, identifiants OpenAlex ou liens",
+    "papers": "{count, plural, one {# article} other {# articles}}",
+    "tooMany": "Plus de {max} articles",
+    "invalid": "Ni lien vers un article, ni DOI, ni identifiant : {values}",
+    "find": "Trouver les articles",
+    "found": "Articles trouvés",
+    "notFound": "Introuvable",
+    "alreadyAdded": "Déjà ajouté",
+    "inQueue": "En attente de relecture",
+    "doiOnly": "DOI seul",
+    "leaveOut": "Écarter",
+    "leaveOutLabel": "Écarter {title}",
+    "doiOnlyNote": "{count, plural, one {OpenAlex n'a pas encore l'un d'eux. Il arrive par son DOI, et chaque synchronisation revérifie OpenAlex.} other {OpenAlex n'a pas encore # d'entre eux. Ils arrivent par leur DOI, et chaque synchronisation revérifie OpenAlex.}}",
+    "toAdd": "{count, plural, one {# article à ajouter} other {# articles à ajouter}}",
+    "sendToQueue": "Envoyer en relecture",
+    "publish": "Publier",
+    "published": "{count, plural, one {# article publié dans {community}} other {# articles publiés dans {community}}}",
+    "queued": "{count, plural, one {# article envoyé dans la file de relecture} other {# articles envoyés dans la file de relecture}}",
+    "someFailed": "{count, plural, one {# article a été enregistré comme brouillon mais pas envoyé. Ouvrez-le dans l'admin pour l'envoyer.} other {# articles ont été enregistrés comme brouillons mais pas envoyés. Ouvrez-les dans l'admin pour les envoyer.}}",
+    "lookupFailed": "La communauté n'a pas pu rechercher ces articles. Réessayez.",
+    "addFailed": "La communauté n'a pas pu ajouter ces articles. Réessayez.",
+    "noAuthors": "Aucun auteur indiqué",
+    "unavailable": "Indisponible",
+    "settingsFailed": "La communauté n'a pas pris en compte le changement. Réessayez.",
+    "ownerOnly": "Seul le propriétaire modifie ceci",
+    "from": "De {name}",
+    "returned": "Refusé",
+    "statusWithdrawn": "Retiré par vous",
+    "statusRemoved": "Retiré par la communauté",
+    "openIn": "Ouvrir dans {community}",
+    "openLabel": "Ouvrir {title} dans {community}",
+    "remove": "Retirer",
+    "removeLabel": "Retirer {title}",
+    "withdraw": "Annuler l'envoi",
+    "withdrawLabel": "Annuler l'envoi de {title}",
+    "removed": "Article retiré de la communauté",
+    "withdrawn": "Article retiré de la file de relecture",
+    "removeFailed": "La communauté n'a pas pu retirer cet article. Réessayez.",
+    "viewLabel": "Afficher",
+    "tabPublic": "Communautés publiques",
+    "tabSubmissions": "Vos propositions",
+    "statusLabel": "Statut",
+    "everyStatus": "Tous les statuts",
+    "statusPublished": "Publié",
+    "noneYet": "Aucune proposition pour l'instant",
+    "noneYetHint": "Ajoutez un article à une communauté depuis n'importe quel résultat de recherche.",
+    "noMatches": "Aucune proposition ne correspond",
+    "addToCommunity": "Ajouter à une communauté",
+    "searchCommunities": "Rechercher des communautés",
+    "recent": "Récentes",
+    "yourCommunities": "Vos communautés",
+    "noCommunitiesMatch": "Aucune communauté ne correspond",
+    "noCommunities": "Aucune communauté pour l'instant",
+    "inQueueShort": "En file",
+    "added": "Ajouté",
+    "publishOrReview": "Publiez-le maintenant, ou laissez l'équipe le relire d'abord.",
+    "reviewFirst": "L'équipe de la communauté le relit avant sa mise en ligne.",
+    "publishedTo": "Publié dans {community}",
+    "queuedTo": "Envoyé dans la file de relecture de {community}",
+    "alreadyIn": "{community} a déjà cet article",
+    "moreCommunities": "Plus de communautés",
+    "askTitle": "Ajouter {count, plural, one {# article} other {# articles}} à une communauté",
+    "publishNow": "Publier maintenant",
+    "reviewQueue": "File de relecture",
+    "askPublishHint": "{count, plural, one {Il est mis} other {Ils sont mis}} en ligne sur {community} dès que vous l'autorisez.",
+    "askQueueHint": "{count, plural, one {Il attend} other {Ils attendent}} dans la file de relecture de {community} jusqu'à ce que son équipe {count, plural, one {l'approuve} other {les approuve}}.",
+    "askPublish": "Publier {count, plural, one {# article} other {# articles}}",
+    "askQueue": "Envoyer {count, plural, one {# article} other {# articles}} en relecture",
+    "alreadyInIt": "Déjà présent",
+    "inReview": "En relecture"
   }
 }

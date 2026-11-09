@@ -71,6 +71,7 @@ vi.mock("@clerk/nextjs", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
+      assistant: { setVisibility: "setVisibility", addedPapers: "addedPapers" },
       digests: { manual: { available: "manualDigestAvailable" }, manualActions: { send: "sendManualDigest" } },
       publicationProviders: {get: "getPublicationProviders"},
       publicationProviderActions: {verifyAndSave: "verifyPublicationProviders"},
@@ -78,6 +79,7 @@ vi.mock("@/convex/_generated/api", () => ({
       team: { addOrganizationMember: "addOrganizationMember", changeRole: "changeRole", removeMember: "removeMember" },
       invitations: { change: "changeInvitation" },
       invitationActions: { invite: "inviteMember" },
+      organizationGrants: { grant: "grantOrganization", changeRole: "changeOrganizationRole", remove: "removeOrganization", grantable: "grantableOrganizations" },
       credentials: { listCredentials: "listCredentials" },
       credentialActions: { writeCredential: "writeCredential" },
       aiProviderKey: { removeAiProviderKey: "removeAiProviderKey" },
@@ -117,6 +119,7 @@ vi.mock("@/convex/_generated/api", () => ({
         setDomainPrimary: "setDomainPrimary",
       },
     },
+    workspaces: { move: { held: "moveHeld", move: "moveItem", refusals: "moveRefusals" } },
     zotero: {
       actions: { startOAuth: "startOAuth" },
       mutations: { disconnect: "disconnect" },
@@ -185,7 +188,9 @@ vi.mock("convex/react", () => ({
           ? homeQuestionsMock
           : action === "listPublications"
             ? reviewedPublicationsMock
-            : mutationMock(action),
+            : action === "addedPapers"
+              ? async () => ({ papers: [], next: null, counts: { total: 0, live: 0, waiting: 0 }, settings: { enabled: true, downloadPdfs: true } })
+              : mutationMock(action),
 }));
 
 vi.mock("@/lib/auth/use-auth-query", () => ({
@@ -203,7 +208,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
           ? { data: { page: harness.storedCredentials, isDone: true, continueCursor: "" }, isReady: true }
           : query === "listTeam"
             ? {
-                data: { organizationName: "Test Org", owners: [], editors: [], creators: [], invitations: [], availablePeople: [] },
+                data: { organizationName: "Test Org", owners: [], editors: [], creators: [], invitations: [], organizations: [], availablePeople: [] },
                 isReady: true,
               }
             : query === "listDomains"

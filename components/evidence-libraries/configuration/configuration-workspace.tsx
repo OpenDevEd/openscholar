@@ -99,7 +99,10 @@ import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
 import { PublicationSection } from "./sections/publication-section";
 import { DomainSection } from "./sections/domain-section";
+import { ListingSection } from "./sections/listing-section";
 import { DeleteLibraryDialog } from "./delete-library-dialog";
+import { MoveDialog } from "@/components/workspaces/move-dialog";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { FeaturesSection } from "./sections/features-section";
 import { FooterSection } from "./sections/footer-section";
 import { HomeSection } from "./sections/home-section";
@@ -110,6 +113,7 @@ import { NavigationSection } from "./sections/navigation-section";
 import { SearchSection } from "./sections/search-section";
 import { SourcesSection } from "./sections/sources-section";
 import { TeamSection } from "./sections/team-section";
+import { AddedPapersCard } from "./sections/added-papers-row";
 import { ThemeSection } from "./sections/theme-section";
 import { VersionsSection } from "./sections/versions-section";
 import { InlineNotice } from "./section-card";
@@ -146,7 +150,7 @@ function isOperationRunning(operation: Operation): boolean {
 }
 
 /** Rail entries: the page cards in their groups, then versions, the team and the danger zone. */
-type RailKey = PageSectionKey | "publication" | "domain" | "versions" | "team" | "danger";
+type RailKey = PageSectionKey | "publication" | "domain" | "listing" | "versions" | "team" | "danger";
 const RAIL_GROUPS: {
   key: "brand" | "content" | "discovery" | "platform" | "team" | "danger";
   sections: readonly RailKey[];
@@ -154,7 +158,7 @@ const RAIL_GROUPS: {
   { key: "brand", sections: ["identity", "theme", "institutions"] },
   { key: "content", sections: ["home", "navigation", "footer", "contact", "collections"] },
   { key: "discovery", sections: ["search", "citations", "features", "sources", "ai"] },
-  { key: "platform", sections: ["languages", "analytics", "publication", "domain", "versions"] },
+  { key: "platform", sections: ["languages", "analytics", "publication", "domain", "listing", "versions"] },
   { key: "team", sections: ["team"] },
   { key: "danger", sections: ["danger"] },
 ];
@@ -176,6 +180,7 @@ const SECTION_ICONS: Record<RailKey, AppIcon> = {
   languages: LanguagesIcon,
   analytics: AnalyticsIcon,
   domain: LinkIcon,
+  listing: Eye,
   publication: PublishIcon,
   versions: HistoryIcon,
   team: TeamIcon,
@@ -225,6 +230,7 @@ const RAIL_KEYS: readonly RailKey[] = [
   ...PAGE_SECTION_KEYS,
   "publication",
   "domain",
+  "listing",
   "versions",
   "team",
   "danger",
@@ -256,6 +262,8 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       libraryId={draft.libraryId}
       libraryName={library.name}
       libraryState={library.state}
+      workspaceId={library.workspaceId}
+      unlisted={library.unlisted === true}
       liveAddress={liveAddress}
       latest={{ editVersion: draft.editVersion, rows: sections }}
       hasUnpublishedChanges={hasUnpublishedChanges}
@@ -270,6 +278,8 @@ function Workspace({
   libraryId,
   libraryName,
   libraryState,
+  workspaceId,
+  unlisted,
   liveAddress,
   latest,
   hasUnpublishedChanges,
@@ -281,6 +291,10 @@ function Workspace({
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
   libraryState: DraftResult["library"]["state"];
+  /** The workspace it's in, which a move takes it out of. */
+  workspaceId: Id<"workspaces">;
+  /** Left out of the public directory by its owners (#1090). */
+  unlisted: boolean;
   liveAddress: string | null;
   /** The rows the platform holds now, and the edit version they belong to. */
   latest: { editVersion: number; rows: readonly SectionRow[] };
@@ -349,6 +363,7 @@ function Workspace({
   const [uploading, setUploading] = useState(0);
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   const [section, setSection] = useQueryState(
     "section",
@@ -358,9 +373,9 @@ function Workspace({
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);
-  // Read-only, the rail lists the settings cards only.
+  // Read-only, the rail lists the settings cards and the team, which everyone sees.
   const railGroups = editable ? RAIL_GROUPS : RAIL_GROUPS.flatMap((group) => {
-    const sections = group.sections.filter(isPageSection);
+    const sections = group.sections.filter((key) => isPageSection(key) || key === "team");
     return sections.length ? [{ ...group, sections }] : [];
   });
   const problems = hasProblems(draft);
@@ -541,7 +556,7 @@ function Workspace({
                   onClick={handleSave}
                 >
                   {saving ? <Spinner /> : <Save />}
-                  <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
+                  <span className={BAR_LABEL}>{saving ? t("saving") : t("saveDraft")}</span>
                 </Button>
               ) : null}
               {/* The library's own admin is for the people with a role in it; a viewer has none. */}
@@ -657,6 +672,8 @@ function Workspace({
           </AlertDialogContent>
         </AlertDialog>
 
+        {/* Its owners move it: mounted with their page, so it opens knowing whether the community can move. Someone given a role isn't in its workspace to ask. */}
+        {editable ? <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} kind="community" id={libraryId} name={libraryName} from={workspaceId} /> : null}
         <DeleteLibraryDialog
           libraryId={libraryId}
           name={libraryName}
@@ -712,6 +729,7 @@ function Workspace({
                   <>
                     <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
                     <DomainSection libraryId={libraryId} />
+                    <ListingSection libraryId={libraryId} unlisted={unlisted} />
                     <VersionsSection
                       libraryId={libraryId}
                       live={libraryState === "active"}
@@ -719,11 +737,16 @@ function Workspace({
                       refreshKey={runtimeRefreshKey}
                     />
                     <TeamSection libraryId={libraryId} />
-                    <DangerSection onDelete={() => setDeleteOpen(true)} />
+                    <DangerSection onMove={() => setMoveOpen(true)} onDelete={() => setDeleteOpen(true)} />
                   </>
                 ) : null}
                 </ReadOnlyContext>
               </fieldset>
+              {/* Everyone else sees who works on it, outside the disabled fieldset so its search and list stay usable. */}
+              {/* Its people arrive after the page: the card slides to their height instead of jumping. */}
+              {/* An editor or creator still adds papers, outside the disabled fieldset like the team. */}
+              {editable ? null : <AddedPapersCard libraryId={libraryId} />}
+              {editable ? null : <AutoHeight><div className="pt-4"><TeamSection libraryId={libraryId} readOnly /></div></AutoHeight>}
               </div>
       </ConfigurationLayout>
     </FileUploadsProvider>

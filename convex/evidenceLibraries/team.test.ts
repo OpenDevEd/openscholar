@@ -83,6 +83,9 @@ describe("listTeam", () => {
     ).resolves.toEqual({
       organizationName: "Team team",
       invitations: [],
+      organizations: [],
+      // Its owning organization, as the team card names it to anyone, a guest from their own workspace included.
+      owningOrganization: { workspaceId: expect.any(String), name: "Team team", imageUrl: null, colour: null },
       owners: [{ clerkUserId: "user_team", name: "Ada Lovelace", email: "ada@example.org", imageUrl: "https://images.example.org/ada.png" }],
       editors: [],
       creators: [],
@@ -131,7 +134,9 @@ describe("listTeam", () => {
     const creator = fixture.t.withIdentity({ subject: "user_creator" });
     const organization = await fixture.t.run(ctx => organizationOfLibrary(ctx, libraryId));
     const inOrganization = async () => (await creator.query(api.evidenceLibraries.queries.listLibraries, { organization, paginationOpts: { cursor: null, numItems: 50 } })).page.map(({ _id, role }) => ({ _id, role }));
-    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
+    // Their own workspace lists their organizations' too (#1090).
+    const everything = async () => (await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page.map(({ _id, role, from }) => ({ _id, role, from }));
+    expect(await everything()).toEqual([{ _id: libraryId, role: "viewer", from: "organization" }]);
     // With no role in it, a member of its organization views it there, and has nothing to do with its admin.
     expect(await inOrganization()).toEqual([{ _id: libraryId, role: "viewer" }]);
     // Their account suspended, the membership that outlives it views nothing.
@@ -155,7 +160,7 @@ describe("listTeam", () => {
       expect.objectContaining({ _id: libraryId, role: "editor" }),
     ]);
     await fixture.admin.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "user_creator" });
-    expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
+    expect(await everything()).toEqual([{ _id: libraryId, role: "viewer", from: "organization" }]);
     expect(await inOrganization()).toEqual([{ _id: libraryId, role: "viewer" }]);
   });
 

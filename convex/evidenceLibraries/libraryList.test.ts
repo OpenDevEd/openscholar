@@ -41,7 +41,7 @@ async function setup() {
 }
 
 type Me = Awaited<ReturnType<typeof setup>>["me"];
-async function names(me: Me, filters: { search?: string; organization?: Id<"organizations"> } = {}, numItems = 2) {
+async function names(me: Me, filters: { search?: string; organization?: Id<"organizations">; from?: "own" | "shared" | Id<"workspaces"> } = {}, numItems = 2) {
   const seen: string[][] = [];
   let cursor: string | null = null;
   for (let reads = 0; reads < 10; reads++) {
@@ -62,8 +62,15 @@ describe("the library list", () => {
     expect((await names(t.withIdentity({ subject: "member" }), { organization: alpha })).flat()).toEqual(["Alpha one (editor)", "Alpha two (viewer)", "Alpha three (viewer)"]);
     // One they're given a role in a library of: that library.
     expect((await names(me, { organization: partner })).flat()).toEqual(["Shared reading (editor)"]);
-    // Their own workspace: theirs, and what was shared with them from organizations they don't own.
-    expect((await names(me)).flat()).toEqual(["Shared reading (editor)"]);
+    // Their own workspace (#1090): theirs, each organization's they're in by name, then what was shared with them from others.
+    expect((await names(me)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)", "Beta one (owner)", "Shared reading (editor)"]);
+    // Narrowed to one place: an organization's workspace, or what's shared.
+    const alphaWorkspace = await t.run((ctx) => organizationWorkspaceOf(ctx, alpha));
+    expect((await names(me, { from: alphaWorkspace }, 10)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)"]);
+    expect((await names(me, { from: "shared" }, 10)).flat()).toEqual(["Shared reading (editor)"]);
+    expect((await names(me, { from: "own" }, 10)).flat()).toEqual([]);
+    // On an organization's page, "Shared with" it lists what's shared with it, not its own.
+    expect((await names(me, { organization: alpha, from: "shared" }, 10)).flat()).toEqual([]);
   });
 
   it("goes on to the granted libraries when the organization a page stopped in is no longer the person's", async () => {

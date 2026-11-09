@@ -85,32 +85,36 @@ export const listCollectionSources = query({
  * connection stays when the source leaves a draft, so a discarded draft or an
  * older revision still reads it; only the owner leaving ends the library's access.
  */
+export async function connectCollection(ctx: MutationCtx, args: { libraryId: Id<"evidenceLibraries">; collectionId: Id<"collections"> }) {
+  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+  const user = await requireAuth(ctx);
+  const collection = await ctx.db.get("collections", args.collectionId);
+  if (!collection || collection.createdBy !== user._id) {
+    throw createError("FORBIDDEN", "Only the collection's owner can add it to a community");
+  }
+  const fields = {
+    libraryId: args.libraryId,
+    collectionId: args.collectionId,
+    connectedByClerkUserId: access.clerkUserId,
+    connectedAt: Date.now(),
+  };
+  const existing = await findConnection(ctx, args.libraryId, args.collectionId);
+  if (existing) await ctx.db.replace("evidenceLibraryCollectionSources", existing._id, fields);
+  else await ctx.db.insert("evidenceLibraryCollectionSources", fields);
+  await writeAuditLogRecord(ctx, {
+    action: "evidence_library.collection_source.connected",
+    userId: access.clerkUserId,
+    metadata: { libraryId: args.libraryId, collectionId: args.collectionId },
+  });
+  return { collectionId: collection._id, name: collection.name, itemCount: collection.itemCount ?? 0 };
+}
+
+export const collectionConnectedValidator = v.object({ collectionId: v.id("collections"), name: v.string(), itemCount: v.number() });
+
 export const connectCollectionSource = mutation({
   args: { libraryId: v.id("evidenceLibraries"), collectionId: v.id("collections") },
-  returns: v.object({ collectionId: v.id("collections"), name: v.string(), itemCount: v.number() }),
-  handler: async (ctx, args) => {
-    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const user = await requireAuth(ctx);
-    const collection = await ctx.db.get("collections", args.collectionId);
-    if (!collection || collection.createdBy !== user._id) {
-      throw createError("FORBIDDEN", "Only the collection's owner can add it to a community");
-    }
-    const fields = {
-      libraryId: args.libraryId,
-      collectionId: args.collectionId,
-      connectedByClerkUserId: access.clerkUserId,
-      connectedAt: Date.now(),
-    };
-    const existing = await findConnection(ctx, args.libraryId, args.collectionId);
-    if (existing) await ctx.db.replace("evidenceLibraryCollectionSources", existing._id, fields);
-    else await ctx.db.insert("evidenceLibraryCollectionSources", fields);
-    await writeAuditLogRecord(ctx, {
-      action: "evidence_library.collection_source.connected",
-      userId: access.clerkUserId,
-      metadata: { libraryId: args.libraryId, collectionId: args.collectionId },
-    });
-    return { collectionId: collection._id, name: collection.name, itemCount: collection.itemCount ?? 0 };
-  },
+  returns: collectionConnectedValidator,
+  handler: connectCollection,
 });
 
 const REFUSALS = ["not_configured", "owner_left", "collection_not_found"] as const;

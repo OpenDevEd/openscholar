@@ -8,6 +8,7 @@ import schema from "../schema";
 import { ensureWorkspace } from "./create";
 import { personalWorkspaceOf } from "./personal";
 import { paperOf } from "../lib/paperRef.test-support";
+import { grantLibraryRole } from "../evidenceLibraries/team.test-support";
 
 /** Alice, an admin of the lab, and Bob, a member. */
 async function lab() {
@@ -148,6 +149,27 @@ it("moves an author profile only to a workspace that has author profiles", async
   ]);
 });
 
+it("moves an author profile to a workspace its mover may make one in, where they edit it when they don't run it", async () => {
+  const { t, bob, lab: labId, bobOwn, users } = await lab();
+  const profile = await t.run(async (ctx) => {
+    await ctx.db.insert("billingAccounts", { workspaceId: labId, plan: "team", features: ["evidence_libraries"], pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: Date.now() });
+    return await ctx.db.insert("authorProfiles", { name: "Ada", headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: "", workspaceId: bobOwn, createdBy: users.bob, revision: 1, updatedAt: 1 });
+  });
+  // Bob, a member of the lab who edits none of its communities, makes none there, and moves none there.
+  await expect(bob.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId })).rejects.toThrow(/owners and admins/);
+  // As an editor of one of its communities he does, and edits it there (#1093).
+  const libraryId = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("evidenceLibraries", { workspaceId: labId, name: "Lab Evidence", slug: "lab-evidence", state: "active", createdByClerkUserId: "alice", updatedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 } as never);
+    await grantLibraryRole(ctx, id, "bob", "editor");
+    return id;
+  });
+  await bob.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId });
+  expect((await bob.query(api.authors.profiles.get, { profileId: profile }))?.role).toBe("editor");
+  // A community being deleted gives its editors no profiles to make.
+  await t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { state: "disabled" }));
+  await expect(bob.mutation(api.authors.profiles.create, { workspaceId: labId, name: "Not now" })).rejects.toThrow(/owners and admins/);
+});
+
 /** A collection's places, each with the rating it sorts by there and how many gave it. */
 const ratedPlaces = (t: Awaited<ReturnType<typeof lab>>["t"], collectionId: Id<"collections">) =>
   t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect()).map(({ rating, ratingCount }) => ({ rating, ratingCount })));
@@ -223,4 +245,53 @@ it("keeps one place for a paper put in a moved collection before its papers have
   const places = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect());
   expect(places).toHaveLength(2);
   expect((await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount).toBe(2);
+});
+
+it("moves a community between a person's own workspace and an organization, both ways, keeping its ID, address and the people given a role in it", async () => {
+  const { t, alice, lab: labId, aliceOwn } = await lab();
+  const libraryId = await t.run(async (ctx) => {
+    // Communities are on for both.
+    await ctx.db.patch("workspaces", aliceOwn, { evidenceLibraries: true });
+    const lab = await ctx.db.get("workspaces", labId);
+    if (lab?.kind === "organization") await ctx.db.patch("organizations", lab.organizationId, { evidenceLibraries: true });
+    const id = await ctx.db.insert("evidenceLibraries", { workspaceId: aliceOwn, name: "Coaching Evidence", slug: "coaching-evidence", state: "active", createdByClerkUserId: "alice", updatedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 } as never);
+    await grantLibraryRole(ctx, id, "carol", "editor");
+    return id;
+  });
+  const community = () => t.run((ctx) => ctx.db.get("evidenceLibraries", libraryId));
+  const grants = () => t.run((ctx) => ctx.db.query("itemAccess").collect().then((rows) => rows.filter((row) => row.item === libraryId).map((row) => row.role)));
+
+  expect(await alice.query(api.workspaces.move.held, { workspaceId: aliceOwn, kind: "community", id: libraryId })).toBeNull();
+  await alice.mutation(api.workspaces.move.move, { workspaceId: aliceOwn, kind: "community", id: libraryId, to: labId });
+  expect(await community()).toMatchObject({ _id: libraryId, workspaceId: labId, slug: "coaching-evidence" });
+  expect(await grants()).toEqual(["editor"]);
+
+  // Back from her own workspace, where her Communities page lists the lab's: owning it, she moves it from wherever she is (OS-28).
+  expect(await alice.query(api.workspaces.move.held, { workspaceId: aliceOwn, kind: "community", id: libraryId })).toBeNull();
+  await alice.mutation(api.workspaces.move.move, { workspaceId: aliceOwn, kind: "community", id: libraryId, to: aliceOwn });
+  expect(await community()).toMatchObject({ workspaceId: aliceOwn, slug: "coaching-evidence" });
+  expect(await grants()).toEqual(["editor"]);
+});
+
+it("leaves a community where it is for an organization's member, for a workspace without communities, and while a change runs on it", async () => {
+  const { t, alice, bob, lab: labId, aliceOwn, bobOwn } = await lab();
+  const libraryId = await t.run(async (ctx) => {
+    const lab = await ctx.db.get("workspaces", labId);
+    if (lab?.kind === "organization") await ctx.db.patch("organizations", lab.organizationId, { evidenceLibraries: true });
+    await ctx.db.patch("workspaces", bobOwn, { evidenceLibraries: true });
+    return await ctx.db.insert("evidenceLibraries", { workspaceId: labId, name: "Lab Evidence", slug: "lab-evidence", state: "active", createdByClerkUserId: "alice", updatedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 } as never);
+  });
+  // Only the lab's admins move its work out.
+  await expect(bob.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "community", id: libraryId, to: bobOwn })).rejects.toThrow(/admins/);
+  // Alice's own workspace doesn't have communities on, which the Move dialog says before she picks it.
+  expect((await alice.query(api.workspaces.move.refusals, { workspaceId: labId, kind: "community", id: libraryId })).page).toEqual([{ workspaceId: aliceOwn, refusal: "noCommunities" }]);
+  await expect(alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "community", id: libraryId, to: aliceOwn })).rejects.toThrow(/Evidence Communities are on/);
+  // A publish running on it holds it.
+  await t.run(async (ctx) => {
+    await ctx.db.patch("workspaces", aliceOwn, { evidenceLibraries: true });
+    await ctx.db.insert("evidenceLibraryConfigOperations", { libraryId, kind: "publish", idempotencyKey: "publish", status: "running", stage: "coolify", attemptCount: 1, requestedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 } as never);
+  });
+  expect(await alice.query(api.workspaces.move.held, { workspaceId: labId, kind: "community", id: libraryId })).toMatch(/change running/);
+  await expect(alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "community", id: libraryId, to: aliceOwn })).rejects.toThrow(/change running/);
+  expect((await t.run((ctx) => ctx.db.get("evidenceLibraries", libraryId)))?.workspaceId).toBe(labId);
 });

@@ -1,6 +1,7 @@
 "use node";
 
 import { renderLibraryInvitation } from "../../lib/emails/library-template";
+import { renderOrganizationInvitation } from "../../lib/emails/organization-invitation";
 import { v } from "convex/values";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -9,13 +10,14 @@ import { requireInvitationMail, sendInvitationEmail, verifiedEmailsOf, verifiedI
 import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 
-const inviteArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")) };
+// `toOrganization`: for an organization the invited person is an admin of (#1091).
+const inviteArgs = { libraryId: v.id("evidenceLibraries"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), toOrganization: v.optional(v.boolean()) };
 
 /** Keeps an invitation and emails it, as the caller or, with `actingAs`, the person the assistant acts for. */
-async function sendInvitation(ctx: ActionCtx, args: { libraryId: Id<"evidenceLibraries">; email: string; role: "editor" | "creator"; actingAs?: Id<"users"> }): Promise<null> {
+async function sendInvitation(ctx: ActionCtx, args: { libraryId: Id<"evidenceLibraries">; email: string; role: "editor" | "creator"; toOrganization?: boolean; actingAs?: Id<"users"> }): Promise<null> {
   const mail = requireInvitationMail();
   const origin = requireAppUrl();
-  const invitationsUrl = new URL("/evidence-communities?view=invitations", origin).href;
+  const invitationsUrl = new URL("/evidence-communities?from=shared", origin).href;
   const invitationId = await ctx.runMutation(internal.evidenceLibraries.invitations.prepare, args);
   const invitation = await ctx.runQuery(internal.evidenceLibraries.invitations.readDelivery, { invitationId, ...(args.actingAs ? { actingAs: args.actingAs } : {}) });
   if (!invitation) throw createError("CONFLICT", "Invitation is no longer available");
@@ -25,11 +27,13 @@ async function sendInvitation(ctx: ActionCtx, args: { libraryId: Id<"evidenceLib
       senderEmail: invitation.contactEmail,
       to: invitation.email,
       subject: `Invitation to ${invitation.libraryName}`,
-      html: renderLibraryInvitation({
+      html: (invitation.toOrganization ? renderOrganizationInvitation : renderLibraryInvitation)({
         identity: {...invitation.emailIdentity, baseUrl: invitation.emailIdentity.baseUrl ?? origin},
         role: invitation.role, acceptUrl: invitationsUrl,
       }),
-      text: `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} to view and accept the invitation:\n${invitationsUrl}\n\nThis invitation expires in seven days. It grants access to this community only.`,
+      text: invitation.toOrganization
+        ? `Your organization has been invited to ${invitation.libraryName} with the ${invitation.role} role: everyone in it gets that role.\n\nSign in with ${invitation.email} to accept it for an organization you're an admin of:\n${invitationsUrl}\n\nThis invitation expires in seven days. It grants access to this community only.`
+        : `You have been invited to ${invitation.libraryName} with the ${invitation.role} role.\n\nSign in with ${invitation.email} to view and accept the invitation:\n${invitationsUrl}\n\nThis invitation expires in seven days. It grants access to this community only.`,
     });
   } catch (error) {
     console.error("Community invitation email failed", { invitationId, error });
@@ -53,7 +57,8 @@ export const inviteFor = internalAction({
   handler: async (ctx, args): Promise<null> => await sendInvitation(ctx, args),
 });
 
-const answerArgs = { invitationId: v.id("itemInvitations"), accept: v.boolean() };
+// `organizationId`: on accepting one for an organization, which of the person's gets it (#1091).
+const answerArgs = { invitationId: v.id("itemInvitations"), accept: v.boolean(), organizationId: v.optional(v.id("organizations")) };
 
 export const respond = action({
   args: answerArgs,

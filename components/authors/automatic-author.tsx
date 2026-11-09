@@ -26,7 +26,7 @@ function ClaimAuthor({ card }: { card: AuthorCard }) {
   const router = useWorkspaceRouter();
   const toast = useAppToast();
   const [claiming, setClaiming] = useState(false);
-  if (!useWorkspaceFeatures().data?.authors) return null;
+  if (!useWorkspaceFeatures().data?.createsAuthors) return null;
   return (
     <Button
       size="sm"

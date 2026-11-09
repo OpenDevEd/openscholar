@@ -2,14 +2,14 @@ import { publicName, publicPhoto } from "../../lib/evidence-libraries/configurat
 import { actingArg, signedInAs } from "../lib/userActions";
 import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readDomainActivationPlan } from "./domainPlan";
-import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
+import { readMemberOrganizations, requireCommunityWorkspace } from "../organizationFeatures";
 import {
   internalQuery,
   query,
   type QueryCtx,
 } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { type Infer, v } from "convex/values";
+import { type Infer, type ObjectType, v } from "convex/values";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
@@ -24,15 +24,22 @@ import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib
 import { searchTerms } from "../lib/searchText";
 import { memberWithEmail } from "../organizations/read";
 import {
+  cardFactsValidator,
+  libraryOverviewStatusValidator,
   draftSectionsValidator,
   evidenceLibraryTeardownStepValidator,
   grantedPeopleValidator,
   revisionSectionsValidator,
   teamInvitationsValidator,
+  teamOrganizationsValidator,
   teamPersonValidator,
 } from "./validators";
 import {
+  betterGrant,
+  cardFacts,
   grantedRole,
+  ownerActive,
+  organizationGrantsOf,
   libraryGrant,
   libraryOf,
   readActiveOrganizationMembership,
@@ -135,14 +142,6 @@ export function projectRevisionConfigurationSections(
   });
 }
 
-export const libraryOverviewStatusValidator = v.union(
-  v.literal("draft"),
-  v.literal("setting_up"),
-  v.literal("setup_failed"),
-  v.literal("active"),
-  v.literal("deleting"),
-);
-
 const SETUP_STAGES = [
   "queued",
   "database",
@@ -193,7 +192,17 @@ function libraryOverviewStatus(
 const libraryOverviewValidator = v.object({
   _id: v.id("evidenceLibraries"),
   role: libraryListRoleValidator,
-  organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+  /** Who it belongs to: an organization, or the person whose own workspace it's in. */
+  organization: v.object({
+    name: v.string(),
+    imageUrl: v.union(v.string(), v.null()),
+    kind: v.union(v.literal("person"), v.literal("organization")),
+    /** The colour an organization's admins picked, which its mark is drawn in when it has no logo. */
+    colour: v.union(v.string(), v.null()),
+  }),
+  /** Where the list has it from: the person's own workspace, one of their organizations, or shared with them. */
+  from: v.union(v.literal("own"), v.literal("organization"), v.literal("shared")),
+  workspaceId: v.id("workspaces"),
   name: v.string(),
   publicAddress: v.string(),
   status: libraryOverviewStatusValidator,
@@ -216,6 +225,8 @@ const libraryOverviewValidator = v.object({
   accentColor: v.union(v.string(), v.null()),
   /** The favicon the owner uploaded; null means the pages show the OpenScholar icon. */
   faviconUrl: v.union(v.string(), v.null()),
+  /** What its card shows, as the public directory draws it. */
+  card: cardFactsValidator,
 });
 
 /** Read the migrated draft payloads used by list and setup pages. */
@@ -340,31 +351,16 @@ async function readLibraryOverview(
 /** Most libraries one page of the list holds, and the rows one read of it passes over looking for matches. */
 const LIBRARIES_PAGE_MAX = 50;
 const LIBRARY_ROWS_READ = 1_000;
+/** Rows of what's shared with the person's organizations one page passes over, in all: each takes a few reads (`sharedLibrary`). */
+const SHARED_ROWS_READ = 300;
 /** Where the granted libraries sit in the list: after every organization the person owns. */
 const GRANTED = "granted";
-
-/** The organizations a person owns, each with its workspace (#650), by name, then by ID so two of one name keep their order. */
-async function ownedOrganizations(ctx: QueryCtx) {
-  const owned = (await readMemberOrganizations(ctx))
-    .filter(({ membership }) => membership.role === "org:admin")
-    .map(({ organization }) => organization)
-    .sort((a, b) => a.name.localeCompare(b.name) || (a._id < b._id ? -1 : 1));
-  return await Promise.all(owned.map(async (organization) => ({ ...organization, workspaceId: await organizationWorkspaceOf(ctx, organization._id) })));
-}
 
 /** The person's own workspace, where their own libraries are (#650), with the name it goes by. */
 async function ownWorkspace(ctx: QueryCtx) {
   const user = await getCurrentUser(ctx);
   const workspace = user ? await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique() : null;
   return user && workspace ? { userId: user._id, workspaceId: workspace._id, shown: await ownerName(ctx, { workspace, organization: null, person: user }) } : null;
-}
-
-/** The organization a page is in, for a member who isn't one of its admins: they view its libraries (#653). Null for anyone else. */
-async function viewedOrganization(ctx: QueryCtx, clerkUserId: string, organizationId: Id<"organizations">) {
-  const [organization, person] = await Promise.all([ctx.db.get("organizations", organizationId), userOf(ctx, clerkUserId)]);
-  // A membership outlives a suspended or deleted account for a while: it views nothing.
-  if (organization?.state !== "active" || person?.state !== "active" || !(await readActiveOrganizationMembership(ctx, organizationId, clerkUserId))) return null;
-  return { name: organization.name, imageUrl: organization.imageUrl ?? null, workspaceId: await organizationWorkspaceOf(ctx, organizationId) };
 }
 
 /** A library a person was granted, with their role and who it belongs to, unless it's in a workspace they own, where it is listed already. */
@@ -377,123 +373,174 @@ async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<
 }
 
 /**
+ * A library shared with one of the person's organizations (#1091), with their role and who it belongs to, from a few
+ * reads: its owner, the role given to them, and the organizations it's shared with, of which they're in `members`.
+ * In their own workspace, where everything is one list (`dedupe`), one listed already is left out: one in a
+ * workspace of theirs, one given to them, or one shared with an organization of theirs listed before this one.
+ */
+async function sharedLibrary(ctx: QueryCtx, userId: Id<"users">, members: Map<Id<"organizations">, boolean>, grant: Doc<"libraryOrganizationGrants">, dedupe: { listed: Set<Id<"workspaces">>; before: Set<Id<"organizations">> } | null) {
+  const library = await ctx.db.get("evidenceLibraries", grant.libraryId);
+  if (!library?.workspaceId || library.state === "disabled") return null;
+  const owner = await libraryOwner(ctx, library);
+  if (!owner || !ownerActive(owner)) return null;
+  const [personal, shared] = await Promise.all([libraryGrant(ctx, library._id, userId), organizationGrantsOf(ctx, library._id)]);
+  if (dedupe && (dedupe.listed.has(library.workspaceId) || personal || shared.some((row) => dedupe.before.has(row.organizationId)))) return null;
+  // Its owners are an organization's admins, or the person whose own workspace it's in; the rest have the better role given to them or an organization of theirs.
+  const owns = owner.organization ? members.get(owner.organization._id) === true : owner.workspace.kind === "personal" && owner.workspace.userId === userId;
+  const given = shared.filter((row) => members.has(row.organizationId)).reduce<Pick<Doc<"itemAccess">, "role"> | null>((best, row) => betterGrant(best, row), personal);
+  const role = owns ? "owner" as const : given ? grantedRole(given) : null;
+  return role ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
+}
+
+type Shown = { name: string; imageUrl: string | null; kind: "person" | "organization"; colour: string | null };
+type From = { from: "own" | "organization" | "shared"; workspaceId: Id<"workspaces"> };
+
+/**
  * A library as its list shows it. A viewer's row keeps its name, address and state: how it is being
  * set up, updated or taken down is for the people with a role in it, and so is the look of one
  * that isn't live yet.
  */
-const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof libraryListRoleValidator>, owner: { name: string; imageUrl: string | null }) => {
-  const { teardownFailedStep, ...overview } = await readLibraryOverview(ctx, library);
-  if (role !== "viewer") return { ...overview, ...(teardownFailedStep ? { teardownFailedStep } : {}), role, organization: owner };
-  return { ...overview, setupStage: null, teardownStage: null, operation: null, lastActivatedAt: null, ...(overview.status === "active" ? {} : { accentColor: null, faviconUrl: null }), role, organization: owner };
+const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof libraryListRoleValidator>, owner: Shown, where: From) => {
+  const { teardownFailedStep, ...read } = await readLibraryOverview(ctx, library);
+  const overview = { ...read, card: cardFacts(library) };
+  if (role !== "viewer") return { ...overview, ...(teardownFailedStep ? { teardownFailedStep } : {}), role, organization: owner, ...where };
+  return { ...overview, setupStage: null, teardownStage: null, operation: null, lastActivatedAt: null, ...(overview.status === "active" ? {} : { accentColor: null, faviconUrl: null }), role, organization: owner, ...where };
+};
+
+/** The organizations a person is in, each with its workspace and whether they own it, by name, then by ID so two of one name keep their order. */
+async function memberOrganizations(ctx: QueryCtx) {
+  const rows = (await readMemberOrganizations(ctx)).sort((a, b) => a.organization.name.localeCompare(b.organization.name) || (a.organization._id < b.organization._id ? -1 : 1));
+  return await Promise.all(rows.map(async ({ organization, membership }) => ({ ...organization, owns: membership.role === "org:admin", workspaceId: await organizationWorkspaceOf(ctx, organization._id) })));
+}
+
+/** listLibraries's arguments: a page, what to search for, an organization's page and the filter. */
+export const listLibrariesArgs = {
+  paginationOpts: paginationOptsValidator,
+  search: v.optional(v.string()),
+  organization: v.optional(v.id("organizations")),
+  from: v.optional(v.union(v.literal("own"), v.literal("shared"), v.id("workspaces"))),
 };
 
 /**
- * One page of the libraries a person can open: those in their own workspace, then those of
- * each organization they own, one organization after another by name and each in the order
- * they were made, then the libraries they were granted. Given `organization`, only that organization's; given `search`, only
- * those whose name, or whose organization's name, contains it. The cursor names the
- * organization the page stopped in and where.
+ * The libraries a person can open, a page at a time, filtered on the server (#651, #1090). In an
+ * organization's workspace (`organization`), that organization's: its admins own them and its other
+ * members view them, with the role they were given in one if any (#653). In their own workspace,
+ * everything: their own, then each organization's they're in, one after another by name, then the
+ * ones shared with them (on the page of an organization they aren't in, its ones shared with them); `from` narrows it to their own (`own`), one workspace's, or the shared ones.
+ * Given `search`, those whose name, or whose owner's name, contains it. The cursor names the source
+ * the page stopped in and where. The Communities page and the assistant both list them through this.
  */
-/**
- * The libraries of the workspace a page is in (#651), a page at a time: an organization's own,
- * which its admins own and its other members view, each with the role they were given in it if
- * any (#653); or, in the person's own workspace, theirs and the ones shared with them from
- * organizations they don't own.
- */
-export const listLibraries = query({
-  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), organization: v.optional(v.id("organizations")) },
-  returns: paginationResultValidator(libraryOverviewValidator),
-  handler: async (ctx, { paginationOpts, search, organization }) => {
-    const identity = await getIdentity(ctx);
-    if (!identity) return { page: [], isDone: true, continueCursor: "" };
-    const [owned, own] = await Promise.all([ownedOrganizations(ctx), ownWorkspace(ctx)]);
-    const viewed = organization && !owned.some((entry) => entry._id === organization) ? await viewedOrganization(ctx, identity.subject, organization) : null;
-    // Listed by their workspace, so not again among the ones the person was granted.
-    const ownedIds = new Set([...owned.map((entry) => entry.workspaceId), ...(own ? [own.workspaceId] : []), ...(viewed ? [viewed.workspaceId] : [])]);
-    const needle = search?.trim().toLowerCase();
-    const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
-    // What the page has read so far: every organization of one page shares one allowance of rows.
-    let rows = 0;
-    const within = (name: string, organizationName: string) => {
-      rows++;
-      return !needle || name.toLowerCase().includes(needle) || organizationName.toLowerCase().includes(needle);
-    };
-    const sources: Array<{ key: string; name: string; read: (cursor: string | null, room: number) => Promise<{ page: Infer<typeof libraryOverviewValidator>[]; after: string | null }> }> = [
-      // Their own workspace's come first, in their own workspace.
-      ...(own && !organization
-        ? [{
-            key: own.workspaceId as string,
-            name: "",
-            read: async (cursor: string | null, room: number) => {
-              const read = await stream(ctx.db, schema)
-                .query("evidenceLibraries")
-                .withIndex("by_workspace", (index) => index.eq("workspaceId", own.workspaceId))
-                .filterWith(async (library) => within(library.name, own.shown.name))
-                .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-              return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", own.shown))), after: read.isDone ? null : read.continueCursor };
-            },
-          }]
-        : []),
-      ...owned
-        .filter((entry) => entry._id === organization)
-        .map((entry) => ({
-          key: entry._id as string,
-          name: entry.name,
-          read: async (cursor: string | null, room: number) => {
+export async function readLibraries(ctx: QueryCtx, { paginationOpts, search, organization, from }: ObjectType<typeof listLibrariesArgs>): Promise<{ page: Infer<typeof libraryOverviewValidator>[]; isDone: boolean; continueCursor: string }> {
+  const identity = await getIdentity(ctx);
+  const person = identity ? await userOf(ctx, identity.subject) : null;
+  // A membership or a grant outlives a suspended or deleted account for a while: it lists nothing.
+  if (!identity || person?.state !== "active") return { page: [], isDone: true, continueCursor: "" };
+  const [members, own] = await Promise.all([memberOrganizations(ctx), ownWorkspace(ctx)]);
+  const here = organization ? members.find((entry) => entry._id === organization) : undefined;
+  // An organization's page lists its own; the person's own lists every organization they're in.
+  const organizations = organization ? (here ? [here] : []) : members;
+  // Listed by their workspace, so not again among the ones shared with the person.
+  const listedIds = new Set([...members.map((entry) => entry.workspaceId), ...(own ? [own.workspaceId] : [])]);
+  const wants = (key: "own" | "shared" | Id<"workspaces">) => !from || from === key;
+  const needle = search?.trim().toLowerCase();
+  const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
+  // What the page has read so far: every source of one page shares one allowance of rows.
+  let rows = 0;
+  const within = (name: string, ownerName: string) => {
+    rows++;
+    return !needle || name.toLowerCase().includes(needle) || ownerName.toLowerCase().includes(needle);
+  };
+  type Read = { page: Infer<typeof libraryOverviewValidator>[]; after: string | null };
+  const workspaceSource = (key: string, name: string, workspaceId: Id<"workspaces">, shown: Shown, where: From, roleOf: (library: Doc<"evidenceLibraries">) => Promise<Infer<typeof libraryListRoleValidator>>) => ({
+    key,
+    name,
+    read: async (cursor: string | null, room: number): Promise<Read> => {
+      const read = await stream(ctx.db, schema)
+        .query("evidenceLibraries")
+        .withIndex("by_workspace", (index) => index.eq("workspaceId", workspaceId))
+        .filterWith(async (library) => within(library.name, shown.name))
+        .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
+      return { page: await Promise.all(read.page.map(async (library) => overviewRow(ctx, library, await roleOf(library), shown, where))), after: read.isDone ? null : read.continueCursor };
+    },
+  });
+  const sources = [
+    // Their own workspace's come first, in their own workspace.
+    ...(own && !organization && wants("own") ? [workspaceSource(own.workspaceId, "", own.workspaceId, { ...own.shown, kind: "person", colour: null }, { from: "own", workspaceId: own.workspaceId }, async () => "owner")] : []),
+    ...organizations
+      // On an organization's page its own are listed unless the filter asks for what's shared with it.
+      .filter((entry) => (organization ? from !== "shared" : wants(entry.workspaceId)))
+      .map((entry) => workspaceSource(entry._id, entry.name, entry.workspaceId, { name: entry.name, imageUrl: entry.imageUrl ?? null, kind: "organization", colour: entry.colour ?? null }, { from: "organization", workspaceId: entry.workspaceId }, async (library) =>
+        entry.owns ? "owner" : ((await readLibraryRole(ctx, library, identity.subject)) ?? "viewer"))),
+    // In their own workspace, the ones shared with them; on the page of an organization they aren't in, its ones shared with them.
+    ...(own && (organization ? !here : wants("shared"))
+      ? [{
+          key: GRANTED,
+          name: "",
+          read: async (cursor: string | null, room: number): Promise<Read> => {
+            // Their roles in libraries are rows of the table every shared item's guests are in (./access.ts).
             const read = await stream(ctx.db, schema)
-              .query("evidenceLibraries")
-              .withIndex("by_workspace", (index) => index.eq("workspaceId", entry.workspaceId))
-              .filterWith(async (library) => within(library.name, entry.name))
+              .query("itemAccess")
+              .withIndex("by_user_and_kind_and_grantedAt", (index) => index.eq("userId", own.userId).eq("kind", "library"))
+              .map(async (grant) => grantedLibrary(ctx, identity.subject, listedIds, grant))
+              .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library.name, granted.shown.name))
               .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-            const shown = { name: entry.name, imageUrl: entry.imageUrl ?? null };
-            return { page: await Promise.all(read.page.map((library) => overviewRow(ctx, library, "owner", shown))), after: read.isDone ? null : read.continueCursor };
+            return {
+              page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, { ...granted!.shown, kind: granted!.owner.organization ? "organization" : "person", colour: granted!.owner.organization?.colour ?? null }, { from: "shared", workspaceId: granted!.library.workspaceId }))),
+              after: read.isDone ? null : read.continueCursor,
+            };
           },
-        })),
-      ...(viewed
-        ? [{
-            key: viewed.workspaceId as string,
-            name: viewed.name,
-            read: async (cursor: string | null, room: number) => {
-              const read = await stream(ctx.db, schema)
-                .query("evidenceLibraries")
-                .withIndex("by_workspace", (index) => index.eq("workspaceId", viewed.workspaceId))
-                .filterWith(async (library) => within(library.name, viewed.name))
-                .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-              const shown = { name: viewed.name, imageUrl: viewed.imageUrl };
-              return { page: await Promise.all(read.page.map(async (library) => overviewRow(ctx, library, (await readLibraryRole(ctx, library, identity.subject)) ?? "viewer", shown))), after: read.isDone ? null : read.continueCursor };
-            },
-          }]
-        : []),
-      {
-        key: GRANTED,
-        name: "",
-        read: async (cursor: string | null, room: number) => {
-          // Their roles in libraries are rows of the table every shared item's guests are in (./access.ts).
-          if (!own) return { page: [], after: null };
-          const read = await stream(ctx.db, schema)
-            .query("itemAccess")
-            .withIndex("by_user_and_kind_and_grantedAt", (index) => index.eq("userId", own.userId).eq("kind", "library"))
-            .map(async (grant) => grantedLibrary(ctx, identity.subject, ownedIds, grant))
-            .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library.name, granted.shown.name))
-            .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
-          return { page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, granted!.shown))), after: read.isDone ? null : read.continueCursor };
-        },
-      },
-    ];
-    const stoppedAt = (at: number, after: string | null) => JSON.stringify({ source: sources[at].key, name: sources[at].name, after });
-    const from: { source: string; name: string; after: string | null } | null = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : null;
-    const same = from ? sources.findIndex((source) => source.key === from.source) : 0;
-    // The organization the page before stopped in is no longer one the person owns: the list goes on from the next one after it by name.
-    const start = same !== -1 ? same : sources.findIndex((source) => source.key === GRANTED || (source.name.localeCompare(from!.name) || (source.key < from!.source ? -1 : 1)) > 0);
-    const page: Infer<typeof libraryOverviewValidator>[] = [];
-    for (let at = start; at < sources.length; at++) {
-      if (page.length >= numItems) return { page, isDone: false, continueCursor: stoppedAt(at, null) };
-      const read = await sources[at].read(at === same ? (from?.after ?? null) : null, numItems - page.length);
-      page.push(...read.page);
-      if (read.after !== null) return { page, isDone: false, continueCursor: stoppedAt(at, read.after) };
-    }
-    return { page, isDone: true, continueCursor: "" };
-  },
+        }]
+      : []),
+  ];
+  // The ones shared with organizations they're in (#1091): in their own workspace, every organization's, after the
+  // ones shared with them; on an organization's page, that one's, as what's shared with it.
+  // In their own workspace, filtering by an organization lists what's shared with it too, as its own page does.
+  const sharedWith = own ? (organization ? (here && (!from || from === "shared") ? [here] : []) : members.filter((entry) => wants("shared") || from === entry.workspaceId)) : [];
+  const memberOf = new Map(members.map((entry) => [entry._id, entry.owns]));
+  // Each row of these takes a few reads of its own, so together they pass over at most SHARED_ROWS_READ.
+  let sharedRows = 0;
+  sources.push(...sharedWith.map((entry) => ({
+    key: `shared:${entry._id}`,
+    name: entry.name,
+    read: async (cursor: string | null, room: number): Promise<Read> => {
+      // One list of everything leaves out what's listed elsewhere in it; an organization's page, or the filter for one organization, lists all that's shared with it.
+      const dedupe = organization || from === entry.workspaceId ? null : { listed: listedIds, before: new Set(members.slice(0, members.indexOf(entry)).map((earlier) => earlier._id)) };
+      const read = await stream(ctx.db, schema)
+        .query("libraryOrganizationGrants")
+        .withIndex("by_organization_and_grantedAt", (index) => index.eq("organizationId", entry._id))
+        .order("desc")
+        .map(async (grant) => {
+          sharedRows++;
+          return sharedLibrary(ctx, own!.userId, memberOf, grant, dedupe);
+        })
+        .filterWith(async (shared) => shared !== null && within(shared.library.name, shared.shown.name))
+        .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, Math.min(SHARED_ROWS_READ - sharedRows, LIBRARY_ROWS_READ - rows)) });
+      return {
+        page: await Promise.all(read.page.map((shared) => overviewRow(ctx, shared!.library, shared!.role, { ...shared!.shown, kind: shared!.owner.organization ? "organization" : "person", colour: shared!.owner.organization?.colour ?? null }, { from: "shared", workspaceId: shared!.library.workspaceId }))),
+        after: read.isDone ? null : read.continueCursor,
+      };
+    },
+  })));
+  const stoppedAt = (at: number, after: string | null) => JSON.stringify({ source: sources[at].key, name: sources[at].name, after });
+  const startFrom: { source: string; name: string; after: string | null } | null = paginationOpts.cursor ? JSON.parse(paginationOpts.cursor) : null;
+  const same = startFrom ? sources.findIndex((source) => source.key === startFrom.source) : 0;
+  // The organization the page before stopped in is no longer one the person is in: the list goes on from the next one after it by name.
+  const start = same !== -1 ? same : sources.findIndex((source) => source.key === GRANTED || (source.name.localeCompare(startFrom!.name) || (source.key < startFrom!.source ? -1 : 1)) > 0);
+  const page: Infer<typeof libraryOverviewValidator>[] = [];
+  if (start === -1) return { page, isDone: true, continueCursor: "" };
+  for (let at = start; at < sources.length; at++) {
+    if (page.length >= numItems) return { page, isDone: false, continueCursor: stoppedAt(at, null) };
+    const read = await sources[at].read(at === same ? (startFrom?.after ?? null) : null, numItems - page.length);
+    page.push(...read.page);
+    if (read.after !== null) return { page, isDone: false, continueCursor: stoppedAt(at, read.after) };
+  }
+  return { page, isDone: true, continueCursor: "" };
+}
+
+export const listLibraries = query({
+  args: listLibrariesArgs,
+  returns: paginationResultValidator(libraryOverviewValidator),
+  handler: async (ctx, args) => await readLibraries(ctx, args),
 });
 
 /**
@@ -503,7 +550,7 @@ export const listLibraries = query({
  */
 export const readAddressCandidates = internalQuery({
   args: { ...actingArg,
-    organizationId: v.id("organizations"), name: v.string() },
+    workspaceId: v.id("workspaces"), name: v.string() },
   returns: v.union(
     v.object({
       status: v.literal("name-taken"),
@@ -520,8 +567,7 @@ export const readAddressCandidates = internalQuery({
   ),
   handler: async (caller, { actingAs: as, ...args }) => {
     const ctx = await signedInAs(caller, as);
-    const access = await requireLibraryOrganization(ctx, args.organizationId);
-    const workspaceId = await organizationWorkspaceOf(ctx, access.organization._id);
+    const { workspaceId } = await requireCommunityWorkspace(ctx, args.workspaceId);
     const named = await readEvidenceLibraryByName(ctx, {
       workspaceId,
       name: normalizeEvidenceLibraryName(args.name),
@@ -884,7 +930,12 @@ const userOf = (ctx: QueryCtx, clerkUserId: string) => ctx.db.query("users").wit
  * role, and the people it grants a role to. The organization's other members aren't read: the
  * team picker searches them a page at a time (`listOrganizationPeople`).
  */
-async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+/**
+ * Everyone with a role on a library and the role. With `organizations`, the members of the organizations it's
+ * shared with too (#1091), as its count of people and its published team name them; its team page lists those
+ * organizations as themselves.
+ */
+export async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries">, { organizations = false } = {}) {
   const owner = await libraryOwner(ctx, library);
   const organization = owner?.organization;
   const person = owner?.workspace.kind === "personal" ? await ctx.db.get("users", owner.workspace.userId) : null;
@@ -901,12 +952,21 @@ async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries"
   const ownerOf = new Map<string, Pick<Doc<"organizationMemberships">, "role">>(owners.map(m => [m.clerkUserId, m]));
   const granted = await Promise.all(assignments.map(async assignment => ({ assignment, user: await ctx.db.get("users", assignment.userId) })));
   const grantOf = new Map(granted.flatMap(({ assignment, user }) => (user ? [[user.clerkId, { assignment, user }] as const] : [])));
+  // The members of the organizations it's shared with, with the better role any of them gives.
+  const viaOrganization = new Map<string, Pick<Doc<"itemAccess">, "role">>();
+  for (const grant of organizations ? await organizationGrantsOf(ctx, library._id) : []) {
+    if (viaOrganization.size >= MAX_LIBRARY_MEMBERS || (await ctx.db.get("organizations", grant.organizationId))?.state !== "active") continue;
+    // ponytail: MAX_LIBRARY_MEMBERS members in all are read; past it, the first are counted and named.
+    const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", q => q.eq("organizationId", grant.organizationId).eq("state", "active")).take(MAX_LIBRARY_MEMBERS - viaOrganization.size);
+    for (const member of members) viaOrganization.set(member.clerkUserId, betterGrant(viaOrganization.get(member.clerkUserId) ?? null, grant)!);
+  }
   // A library in a person's own workspace is theirs.
-  const people = [...new Set([...(person ? [person.clerkId] : []), ...ownerOf.keys(), ...grantOf.keys()])];
+  const people = [...new Set([...(person ? [person.clerkId] : []), ...ownerOf.keys(), ...grantOf.keys(), ...viaOrganization.keys()])];
   return await Promise.all(people.map(async clerkUserId => {
-    // Only an owner's membership changes their role; a grant holder's role is their grant's, in the organization or not.
+    // Only an owner's membership changes their role; a grant holder's role is their grant's, or their organization's, in the owning organization or not.
     const user = grantOf.get(clerkUserId)?.user ?? (await userOf(ctx, clerkUserId));
-    return { role: libraryRoleFrom(library, owner, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment: grantOf.get(clerkUserId)?.assignment ?? null }), person: personOf(clerkUserId, user) };
+    const assignment = betterGrant(grantOf.get(clerkUserId)?.assignment ?? null, viaOrganization.get(clerkUserId) ?? null);
+    return { role: libraryRoleFrom(library, owner, { user, membership: ownerOf.get(clerkUserId) ?? null, assignment }), person: personOf(clerkUserId, user) };
   }));
 }
 
@@ -959,6 +1019,9 @@ export const libraryTeamValidator = v.object({
   editors: grantedPeopleValidator,
   creators: grantedPeopleValidator,
   invitations: teamInvitationsValidator,
+  organizations: teamOrganizationsValidator,
+  /** The organization that owns it, whose other members view it; null for one in a person's own workspace. */
+  owningOrganization: v.union(v.null(), v.object({ workspaceId: v.id("workspaces"), name: v.string(), imageUrl: v.union(v.string(), v.null()), colour: v.union(v.string(), v.null()) })),
 });
 
 /** A library's people by role, which everyone who views it reads; its invitations are for its owners, who manage them (#653). */
@@ -970,9 +1033,16 @@ export async function readLibraryTeam(ctx: QueryCtx, args: { libraryId: Id<"evid
   const invitations = owner ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY) : [];
   // Everyone else is told names, photos and roles: an email is the owners', who manage the team.
   const shown = (role: "owner" | "editor" | "creator") => people.filter(p => p.role === role).map(p => (owner ? p.person : { ...p.person, email: "" }));
+  const organizations = await Promise.all((await organizationGrantsOf(ctx, args.libraryId)).map(async grant => {
+    const [organization, workspace] = await Promise.all([ctx.db.get("organizations", grant.organizationId), ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", grant.organizationId)).unique()]);
+    return organization?.state === "active" ? [{ organizationId: organization._id, workspaceId: workspace?._id ?? null, name: organization.name, imageUrl: organization.imageUrl ?? null, colour: organization.colour ?? null, role: grantedRole(grant) }] : [];
+  }));
   return {
-    invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery })),
+    invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery, toOrganization: i.toOrganization === true })),
+    organizations: organizations.flat().sort((a, b) => a.name.localeCompare(b.name)),
     organizationName: (await ownerName(ctx, access.owner)).name,
+    // From the community itself, not the workspace its page is open in: a guest opens it from their own.
+    owningOrganization: access.owner.organization ? { workspaceId: access.owner.workspace._id, name: access.owner.organization.name, imageUrl: access.owner.organization.imageUrl ?? null, colour: access.owner.organization.colour ?? null } : null,
     owners: shown("owner"),
     editors: shown("editor"),
     creators: shown("creator"),
@@ -995,7 +1065,7 @@ export const readLibraryTeamForAssembly = internalQuery({
   handler: async (ctx, args) => {
     const library = await ctx.db.get("evidenceLibraries", args.libraryId);
     if (!library) return [];
-    return (await readLibraryPeople(ctx, library)).flatMap(({ role, person }) => {
+    return (await readLibraryPeople(ctx, library, { organizations: true })).flatMap(({ role, person }) => {
       const name = publicName(person.name);
       if (!role || !name) return [];
       const photo = publicPhoto(person.imageUrl);

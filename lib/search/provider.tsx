@@ -598,9 +598,10 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       : urlParams.field;
     const oqlInvolved = !local && (field === OQL_FIELD || routeIsOql);
 
-    // Update URL (source of truth for filtering)
-    setUrlParams(field === urlParams.field ? { q } : { q, field });
-    if (field !== urlParams.field) syncToStore({ field });
+    // Update URL (source of truth for filtering). Other words are another search: it starts at its first page.
+    const fresh = q !== urlParams.q;
+    setUrlParams({ q, ...(field === urlParams.field ? {} : { field }), ...(fresh ? { page: 1 } : {}) });
+    if (field !== urlParams.field || fresh) syncToStore({ ...(field === urlParams.field ? {} : { field }), ...(fresh ? { page: 1 } : {}) });
     
     // Track in history if query actually changed and we have a valid searchId
     // Skip history tracking when navigating through history (preview mode)
@@ -610,7 +611,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       // The URL does not carry an OQL query, so the entry must follow previews too.
       updateSearchResult(searchId, { query: q });
     }
-  }, [setUrlParams, searchId, getSearchResult, addQueryToHistory, local, routeIsOql, updateSearchResult, urlParams.field, syncToStore, account]);
+  }, [setUrlParams, searchId, getSearchResult, addQueryToHistory, local, routeIsOql, updateSearchResult, urlParams.field, urlParams.q, syncToStore, account]);
   
   const setField = useCallback((field: SearchField) => {
     setUrlParams({ field });

@@ -52,9 +52,11 @@ function contextLabel(tokens: number | undefined) {
   return `${Math.round(tokens / 1_000)}K`;
 }
 
-// Name, what it reads, intelligence, context, cost, check. Context drops out when the picker is narrow.
+// Name, what it reads, intelligence, context, cost, check. Context drops out when the picker is narrow. On a phone what it
+// reads does too, and the name takes a line of its own above the rest, so it can be read whole.
 const GRID =
-  "grid grid-cols-[minmax(0,1fr)_2.5rem_6.5rem_6rem_1rem] items-center gap-3 @[32rem]/picker:grid-cols-[minmax(0,1fr)_2.5rem_6.5rem_3rem_6rem_1rem]";
+  "grid grid-cols-[minmax(0,1fr)_6rem_1rem] items-center gap-x-3 gap-y-1 @[26rem]/picker:grid-cols-[minmax(0,1fr)_2.5rem_6.5rem_6rem_1rem] @[32rem]/picker:grid-cols-[minmax(0,1fr)_2.5rem_6.5rem_3rem_6rem_1rem]";
+const NAME_CELL = "col-span-3 @[26rem]/picker:col-span-1";
 
 /** What a model takes in besides text, from OpenRouter's modality ("text+image+file->text"). */
 const inputsOf = (modality: string | undefined) => new Set((modality?.split("->")[0] ?? "").split("+"));
@@ -67,13 +69,14 @@ function Reads({ model }: { model: CatalogModel | undefined }) {
   const file = inputs.has("file");
   const label = [image && t("readsImages"), file && t("readsPdfs")].filter(Boolean).join(", ");
   return (
-    <span className="flex items-center gap-1.5 text-foreground/60" aria-label={label || undefined}>
+    <span className={cn(READS_CELL, "items-center gap-1.5 text-foreground/60")} aria-label={label || undefined}>
       <ImageIcon className={cn("size-4", !image && "invisible")} aria-hidden />
       <FileText className={cn("size-4", !file && "invisible")} aria-hidden />
     </span>
   );
 }
 const CONTEXT_CELL = "hidden text-end @[32rem]/picker:block";
+const READS_CELL = "hidden @[26rem]/picker:flex";
 
 /** The intelligence meter, context and cost of a model, as row cells. */
 function Stats({ model }: { model: CatalogModel | undefined }) {
@@ -146,7 +149,7 @@ function EffortStep({
           animate={{ y: 0 }}
           transition={{ duration: 0.42, ease: EASE }}
         >
-          <span className="flex min-w-0 items-center gap-2">
+          <span className={cn(NAME_CELL, "flex min-w-0 items-center gap-2")}>
             <TooltipHint label={t("back")}>
               <button
                 type="button"
@@ -407,8 +410,8 @@ export function ModelPicker({
             ) : null}
           </div>
           <div className={cn(GRID, "border-y border-border-subtle bg-inset px-4 py-1.5 text-2xs font-medium text-muted-foreground")}>
-            <span>{t("model")}</span>
-            <span>{t("reads")}</span>
+            <span className="hidden @[26rem]/picker:block">{t("model")}</span>
+            <span className={READS_CELL}>{t("reads")}</span>
             <a
               href="https://artificialanalysis.ai/methodology/intelligence-benchmarking"
               target="_blank"
@@ -447,7 +450,7 @@ export function ModelPicker({
                       onSelect={pick(preset.onSelect)}
                       className={ROW}
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
+                      <span className={cn(NAME_CELL, "flex min-w-0 items-center gap-2.5")}>
                         <Icon className="size-4 shrink-0 text-muted-foreground" />
                         <span className="min-w-0">
                           <span className="block font-medium">{tm(`presets.${preset.id}`)}</span>
@@ -494,7 +497,7 @@ export function ModelPicker({
                         data-model-option={row.modelId}
                         ref={selected ? revealCurrent : undefined}
                       >
-                        <span className="flex min-w-0 items-center gap-2.5">
+                        <span className={cn(NAME_CELL, "flex min-w-0 items-center gap-2.5")}>
                           <Brand className={cn("size-4 shrink-0", selected ? "text-foreground" : "text-muted-foreground")} />
                           <span dir="auto" className={cn("truncate", selected && "font-medium")}>{stripProviderPrefix(row.name)}</span>
                         </span>

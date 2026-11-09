@@ -5,8 +5,9 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
-import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { MAX_LIBRARY_MEMBERS, MAX_ORGANIZATION_GRANTS_PER_LIBRARY, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_CITATION_REPAIRS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized, MAX_ROLLOUT_COMMUNITIES } from "../lib/listCaps";
 
 export type { SectionKey };
@@ -251,6 +252,26 @@ export const evidenceLibraryStateValidator = v.union(
   v.literal("disabled"),
 );
 
+/** Most countries a community's card names, kept on its row. */
+export const COUNTRIES_KEPT = 5;
+/** A community's countries, most of its public records' first, as its row keeps them and its card reads them. */
+export const countriesValidator = capped(v.array(v.string()), COUNTRIES_KEPT);
+
+/** What a community's card shows from its own row (./access.ts cardFacts): what its published settings say about it, and its counts. */
+export const cardFactsValidator = v.object({
+  /** Its tagline, or its description when it has none; null when it has neither. */
+  tagline: v.union(v.string(), v.null()),
+  accentColor: v.union(v.string(), v.null()),
+  records: v.union(v.number(), v.null()),
+  /** The countries most of its public records are about, most first; empty until its runtime names them. */
+  countries: countriesValidator,
+  /** How many people work on it: its owners and everyone given a role in it; null until counted. */
+  people: v.union(v.number(), v.null()),
+  liveAt: v.union(v.number(), v.null()),
+  /** When its last version went live. */
+  publishedAt: v.union(v.number(), v.null()),
+});
+
 export const evidenceLibraryFields = {
   activePublicationConfigDigest: v.optional(v.string()),
   // Set once every approved OpenAlex query version in the library's revisions is in
@@ -274,6 +295,23 @@ export const evidenceLibraryFields = {
   updatedByClerkUserId: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
+  /** Left out of the public directory by its owners; absent is public. It decides only the listing. */
+  unlisted: v.optional(v.literal(true)),
+  /** When it first went live: the directory's Newest. */
+  liveAt: v.optional(v.number()),
+  /** The public records it last said it holds, and when (./directory.ts); the directory sorts by it. */
+  records: v.optional(v.number()),
+  recordsAt: v.optional(v.number()),
+  /** What its directory card shows, from the version it runs: a draft's new name isn't public until it's published. */
+  card: v.optional(v.object({ name: v.optional(v.string()), nameKey: v.optional(v.string()), tagline: v.optional(v.string()), description: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
+  /** When its last version went live: the directory card's "updated". */
+  publishedAt: v.optional(v.number()),
+  /** Since when its site hasn't answered the directory's record check (#1090): the directory leaves it out until it does. */
+  unreachableSince: v.optional(v.number()),
+  /** The countries most of its public records are about, most first, as it last said (./directory.ts). */
+  countries: capped(v.optional(v.array(v.string())), COUNTRIES_KEPT),
+  /** How many people work on it: its owners and everyone given a role in it (./directory.ts). */
+  people: v.optional(v.number()),
 };
 
 // One custom domain of one library. `host` is unique across the platform.
@@ -1217,8 +1255,25 @@ export const teamPersonValidator = v.object({
 export const grantedPeopleValidator = capped(v.array(teamPersonValidator), MAX_LIBRARY_MEMBERS);
 /** A library's invitations waiting: inviting another past this is refused. */
 export const teamInvitationsValidator = capped(
-  v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+  v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")), toOrganization: v.boolean() })),
   MAX_PENDING_INVITATIONS_PER_LIBRARY,
+);
+
+/**
+ * A community shared with an organization (#1091): every active member of it, its admins included, has
+ * the role, and loses it on leaving the organization or once the grant goes.
+ */
+export const libraryOrganizationGrantFields = {
+  libraryId: v.id("evidenceLibraries"),
+  organizationId: v.id("organizations"),
+  role: v.union(v.literal("editor"), v.literal("creator")),
+  grantedBy: v.id("users"),
+  grantedAt: v.number(),
+};
+/** The organizations a community is shared with, as its team shows them. */
+export const teamOrganizationsValidator = capped(
+  v.array(v.object({ organizationId: v.id("organizations"), workspaceId: v.union(v.id("workspaces"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()), colour: v.union(v.string(), v.null()), role: v.union(v.literal("editor"), v.literal("creator")) })),
+  MAX_ORGANIZATION_GRANTS_PER_LIBRARY,
 );
 
 /** An address check's or reservation's answer that the name is the organization's library already, or that no address could be checked or found (./addressActions.ts). */
@@ -1237,6 +1292,8 @@ export const addressReservationValidator = v.union(
 export const pendingInvitationValidator = v.object({
   invitationId: v.id("itemInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
   role: v.union(v.literal("editor"), v.literal("creator")),
+  // For an organization the person is an admin of, which they pick on accepting (#1091).
+  toOrganization: v.boolean(),
   // Who the library belongs to: its organization, or with no ID the person whose own workspace it's in.
   organization: v.object({ id: v.union(v.id("organizations"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
 });
@@ -1244,10 +1301,21 @@ export const pendingInvitationValidator = v.object({
 export const pendingInvitationsValidator = capped(v.array(pendingInvitationValidator), MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
 
 /** Libraries one list of the assistant's gives (./assistant.ts). */
-export const LIBRARIES_LISTED = 50;
+/** Where a library stands, as its list shows it. */
+export const libraryOverviewStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("setting_up"),
+  v.literal("setup_failed"),
+  v.literal("active"),
+  v.literal("deleting"),
+);
+
+/** Communities a page of the assistant's list holds: few enough that a page of long names and addresses reads whole. */
+export const LIBRARIES_LISTED = 25;
+/** A page of the person's communities, as the assistant reads it (./assistant.ts). */
 export const assistantLibrariesValidator = v.object({
-  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })), LIBRARIES_LISTED),
-  next: v.optional(v.number()),
+  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), status: libraryOverviewStatusValidator, role: libraryListRoleValidator, owner: v.string(), address: v.string(), editable: v.boolean() })), LIBRARIES_LISTED),
+  cursor: v.optional(v.string()),
 });
 /** What the configuration page flags on a draft's cards, by card and the page's name for each problem: a few to a card at most. */
 export const DRAFT_PROBLEMS_MAX = 300;
@@ -1422,3 +1490,142 @@ export const sourceAddressErrorValidator = v.union(
   v.literal("outdated"),
   v.literal("unreadable"),
 );
+
+// Papers added to a community by DOI or OpenAlex ID (OS-29, #1122), as the community answers for them: at most
+// ADDED_PAPERS_MAX a request, and a page of the list at a time.
+
+const foundByValidator = v.union(v.literal("openalex"), v.literal("doi"));
+const paperSummaryFields = { title: v.string(), authors: v.string(), year: v.union(v.number(), v.null()) };
+
+export const addedPapersSettingsValidator = v.object({ enabled: v.boolean(), downloadPdfs: v.boolean() });
+
+export const paperPreviewsValidator = capped(v.array(v.object({
+  at: v.number(),
+  outcome: v.union(v.literal("found"), v.literal("existing"), v.literal("queued"), v.literal("returned"), v.literal("not_found")),
+  itemKey: v.optional(v.string()),
+  foundBy: v.optional(foundByValidator),
+  paper: v.optional(v.object({ ...paperSummaryFields, openalexId: v.union(v.string(), v.null()), doi: v.union(v.string(), v.null()) })),
+  message: v.optional(v.string()),
+})), ADDED_PAPERS_MAX);
+
+export const papersAddedValidator = capped(v.array(v.object({
+  at: v.number(),
+  outcome: v.union(v.literal("added"), v.literal("queued"), v.literal("returned"), v.literal("existing"), v.literal("not_found"), v.literal("failed")),
+  itemKey: v.optional(v.string()),
+  foundBy: v.optional(foundByValidator),
+  /** What was sent, for Your submissions. */
+  paper: v.optional(v.object({ ...paperSummaryFields, openalexId: v.union(v.string(), v.null()), doi: v.union(v.string(), v.null()) })),
+  message: v.optional(v.string()),
+})), ADDED_PAPERS_MAX);
+
+export const addedPapersPageValidator = v.object({
+  papers: capped(v.array(v.object({
+    ...paperSummaryFields,
+    itemKey: v.string(),
+    openalexId: v.union(v.string(), v.null()),
+    doi: v.union(v.string(), v.null()),
+    status: v.union(v.literal("live"), v.literal("doi_only"), v.literal("queued"), v.literal("returned")),
+    note: v.union(v.string(), v.null()),
+    /** Sent by the person reading the list, who may withdraw it while it waits. */
+    mine: v.boolean(),
+    addedByName: v.union(v.string(), v.null()),
+    addedAt: v.string(),
+  })), ADDED_PAPERS_MAX),
+  next: v.union(v.string(), v.null()),
+  counts: v.object({ total: v.number(), live: v.number(), waiting: v.number() }),
+  settings: addedPapersSettingsValidator,
+});
+
+/** Where a paper someone sent to a community stands (OS-29, #1124): waiting for review, live, returned or withdrawn. */
+// `removed`: published, then taken off the community by its team, which Openscholar records when it does that itself.
+export const submissionStatusValidator = v.union(v.literal("queued"), v.literal("published"), v.literal("returned"), v.literal("withdrawn"), v.literal("removed"));
+
+/**
+ * A paper someone sent to a community, as their Your submissions lists it. Openscholar records it when it's sent; the
+ * community tells it when a reviewer approves or returns it, or its sender withdraws it (new-el #778).
+ */
+export const paperSubmissionFields = {
+  userId: v.id("users"),
+  libraryId: v.id("evidenceLibraries"),
+  itemKey: v.string(),
+  title: v.string(),
+  authors: v.string(),
+  year: v.union(v.number(), v.null()),
+  openalexId: v.union(v.string(), v.null()),
+  doi: v.union(v.string(), v.null()),
+  status: submissionStatusValidator,
+  /** Why a reviewer returned it, when they said. */
+  note: v.optional(v.string()),
+  /** Its title and the community's name, which Your submissions searches. */
+  searchText: v.string(),
+  sentAt: v.number(),
+  updatedAt: v.number(),
+  /** The community's last change it applied: an older one, arriving late, changes nothing. */
+  generation: v.optional(v.number()),
+  /** The request that sent it, so a replay of that request doesn't undo what the community said since. */
+  requestId: v.optional(v.string()),
+};
+
+/** A community's word on a paper that came before Openscholar recorded the paper as sent: applied when it is. */
+export const pendingSubmissionStatusFields = {
+  libraryId: v.id("evidenceLibraries"),
+  itemKey: v.string(),
+  clerkUserId: v.string(),
+  generation: v.number(),
+  status: submissionStatusValidator,
+  note: v.optional(v.string()),
+  at: v.number(),
+};
+
+/** The papers one request sent, to record for Your submissions: published at once, or waiting for review. */
+/** What a sent paper is, as Your submissions shows it. */
+const sentPaperSummary = {
+  title: v.string(),
+  authors: v.string(),
+  year: v.union(v.number(), v.null()),
+  openalexId: v.union(v.string(), v.null()),
+  doi: v.union(v.string(), v.null()),
+};
+export const sentPaperSummaryValidator = v.object(sentPaperSummary);
+
+export const sentPapersValidator = capped(v.array(v.object({
+  itemKey: v.string(),
+  ...sentPaperSummary,
+  status: v.union(v.literal("queued"), v.literal("published")),
+})), ADDED_PAPERS_MAX);
+
+/** Who a community belongs to, as a submission's community icon shows on its corner. */
+export const submissionOwnerValidator = v.union(
+  v.object({ name: v.string(), kind: v.union(v.literal("organization"), v.literal("person")), imageUrl: v.union(v.string(), v.null()), workspaceId: v.id("workspaces"), colour: v.union(v.string(), v.null()) }),
+  v.null(),
+);
+
+/** The communities Add to community lists as recent. */
+export const RECENT_COMMUNITIES = 3;
+export const recentCommunitiesValidator = capped(v.array(v.object({
+  libraryId: v.id("evidenceLibraries"),
+  name: v.string(),
+  faviconUrl: v.union(v.string(), v.null()),
+  address: v.union(v.string(), v.null()),
+  owner: submissionOwnerValidator,
+  /** The person's role there; `viewer` for a public community they're not on. */
+  role: v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"), v.literal("viewer")),
+  /** The workspace it's in. */
+  workspaceId: v.id("workspaces"),
+  card: cardFactsValidator,
+})), RECENT_COMMUNITIES);
+
+/** The communities one paper is listed as sent to, with where it stands in each. */
+export const PAPER_SENT_TO = 50;
+export const sentToValidator = capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), status: submissionStatusValidator })), PAPER_SENT_TO);
+
+/** Settings sent to be put live: the revision made of them and how its putting live stands. */
+export const activationValidator = v.object({
+  editVersion: v.number(),
+  kind: v.union(v.literal("setup"), v.literal("publish")),
+  operationId: v.id("evidenceLibraryConfigOperations"),
+  revisionId: v.id("evidenceLibraryConfigRevisions"),
+  revisionKey: v.string(),
+  revisionNumber: v.number(),
+  status: v.union(v.literal("queued"), v.literal("running"), v.literal("succeeded"), v.literal("failed")),
+});

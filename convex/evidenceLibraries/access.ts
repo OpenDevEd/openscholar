@@ -1,9 +1,8 @@
-import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { MAX_ORGANIZATION_GRANTS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { getIdentity } from "../lib/auth";
-import { opensLibraries } from "../billing/accounts";
 import { addressesOf } from "../lib/people";
 
 /**
@@ -49,6 +48,17 @@ export async function ownerName(ctx: Pick<QueryCtx, "db">, owner: LibraryOwner) 
   return { name: [person?.firstName, person?.lastName].filter(Boolean).join(" ") || (person?.email ?? ""), imageUrl: person?.avatarUrl ?? null };
 }
 
+/** What a community's card shows from its own row (./validators.ts cardFactsValidator). */
+export const cardFacts = (library: Doc<"evidenceLibraries">) => ({
+  tagline: library.card?.tagline ?? library.card?.description ?? null,
+  accentColor: library.card?.accentColor ?? null,
+  records: library.records ?? null,
+  countries: library.countries ?? [],
+  people: library.people ?? null,
+  liveAt: library.liveAt ?? null,
+  publishedAt: library.publishedAt ?? library.liveAt ?? null,
+});
+
 /** Whether the library's owner is still there: an active organization, or the active account whose own workspace it's in. */
 export const ownerActive = (owner: LibraryOwner | null) => owner !== null && (owner.workspace.kind === "personal" ? owner.person?.state === "active" : owner.organization?.state === "active");
 
@@ -85,23 +95,9 @@ export async function readPendingLibraryInvitations(
     if (!library || library.state === "disabled") return null;
     const owner = await libraryOwner(ctx, library);
     if (!owner || !ownerActive(owner)) return null;
-    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: grantedRole(invitation), organization: { id: owner.organization?._id ?? null, ...(await ownerName(ctx, owner)) } };
+    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: grantedRole(invitation), toOrganization: invitation.toOrganization === true, organization: { id: owner.organization?._id ?? null, ...(await ownerName(ctx, owner)) } };
   }));
   return rows.filter(row => row !== null);
-}
-
-export async function hasDirectLibraryAccess(
-  ctx: Pick<QueryCtx | MutationCtx, "db">,
-  user: Doc<"users">,
-) {
-  if (user.state !== "active") return false;
-  // A person has at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts).
-  for (const assignment of await ctx.db.query("itemAccess")
-    .withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON)) {
-    const library = await libraryOf(ctx, assignment);
-    if (library && await readLibraryRole(ctx, library, user.clerkId)) return true;
-  }
-  return (await readPendingLibraryInvitations(ctx, user)).length > 0;
 }
 
 /** The person's active membership of the organization, or null once they left it. */
@@ -124,6 +120,11 @@ async function viewerOf(ctx: Pick<QueryCtx | MutationCtx, "db">, library: Doc<"e
   return (await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId)) ? "viewer" as const : null;
 }
 
+/** The person's role on a library, or "viewer" for a member of its organization with none, as its pages show it to them: whichever workspace they're in. */
+export async function readLibraryViewRole(ctx: Pick<QueryCtx | MutationCtx, "db">, library: Doc<"evidenceLibraries">, clerkUserId: string) {
+  return (await readLibraryRole(ctx, library, clerkUserId)) ?? (await viewerOf(ctx, library, clerkUserId));
+}
+
 /** Current library access does not depend on the active Clerk organization. */
 export async function readLibraryRole(
   ctx: Pick<QueryCtx | MutationCtx, "db">,
@@ -136,7 +137,30 @@ export async function readLibraryRole(
   if (!owner || !ownerActive(owner)) return null;
   const membership = owner.organization ? await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId) : null;
   const assignment = user ? await libraryGrant(ctx, library._id, user._id) : null;
-  return libraryRoleFrom(library, owner, { user, membership, assignment });
+  // A role given to them, or to an organization they're in: the better of the two.
+  const shared = user && assignment?.role !== "editor" ? await organizationGrantRole(ctx, library._id, clerkUserId) : null;
+  return libraryRoleFrom(library, owner, { user, membership, assignment: betterGrant(assignment, shared) });
+}
+
+/** The better of two roles given in a community: an editor's over a creator's. */
+export function betterGrant(a: Pick<Doc<"itemAccess">, "role"> | null, b: Pick<Doc<"itemAccess">, "role"> | null) {
+  if (!a || !b) return a ?? b;
+  return grantedRole(a) === "editor" ? a : b;
+}
+
+/** The organizations a community is shared with (#1091), at most MAX_ORGANIZATION_GRANTS_PER_LIBRARY, which granting enforces. */
+export const organizationGrantsOf = (ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">) =>
+  ctx.db.query("libraryOrganizationGrants").withIndex("by_library_and_organization", q => q.eq("libraryId", libraryId)).take(MAX_ORGANIZATION_GRANTS_PER_LIBRARY);
+
+/** The role a person has in a community through the organizations it's shared with that they're an active member of, or null. */
+export async function organizationGrantRole(ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">, clerkUserId: string) {
+  let best: Pick<Doc<"itemAccess">, "role"> | null = null;
+  for (const grant of await organizationGrantsOf(ctx, libraryId)) {
+    if (best?.role === "editor") break;
+    if ((await ctx.db.get("organizations", grant.organizationId))?.state !== "active") continue;
+    if (await readActiveOrganizationMembership(ctx, grant.organizationId, clerkUserId)) best = betterGrant(best, grant);
+  }
+  return best;
 }
 
 /**
@@ -169,12 +193,10 @@ export async function readEvidenceLibraryAccess(
   // Viewing reaches settings no role reached before (#653): a suspended account views nothing, whatever it was given.
   const account = action === "view" ? await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique() : null;
   if (account && account.state !== "active") return null;
-  const role = (await readLibraryRole(ctx, library, identity.subject)) ?? (action === "view" ? await viewerOf(ctx, library, identity.subject) : null);
+  const role = action === "view" ? await readLibraryViewRole(ctx, library, identity.subject) : await readLibraryRole(ctx, library, identity.subject);
   if (!role || ((action === "manage" || action === "remove") && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
-  // Managing takes Evidence Libraries in the workspace that owns the library (#652).
-  if (action === "manage" && !(await opensLibraries(ctx, owner.workspace._id))) return null;
   return { clerkUserId: identity.subject, owner, organization: owner.organization, role, library };
 }
 

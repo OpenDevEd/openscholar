@@ -13,7 +13,9 @@
     "stylesFailed": "Kon nie style laai nie.",
     "noStyles": "Geen ooreenstemmende style nie.",
     "commonStyles": "Algemene style",
-    "otherStyles": "Ander style"
+    "otherStyles": "Ander style",
+    "copiedIn": "{style}-verwysing gekopieer",
+    "download": "Laai af"
   },
   "common": {
     "search": "Soek",
@@ -307,10 +309,10 @@
     "metadataTitle": "Pryse",
     "metadataDescription": "Eenvoudige, deursigtige pryse vir spanne van alle groottes.",
     "everyFeature": "Elke funksie in Openscholar",
-    "papersRunning": "{running, number} artikels wat gelyktydig loop",
-    "papersInRequest": "{request, number} artikels in een versoek",
+    "papersRunning": "KI sif of onttrek {running, number} artikels gelyktydig",
+    "papersInRequest": "Tot {request, number} artikels in een sifting of onttrekking",
     "unlimitedCollectionsAndGuests": "Onbeperkte versamelings en gaste",
-    "southernDescription": "Vir navorsers in lae- en middelinkomstelande.",
+    "southernDescription": "Vir Suidelike spanne, vir spesifieke projekte.",
     "southernFeature1": "Alles in Free",
     "southernFeature2": "By jou rekening gevoeg nadat jy ons gekontak het",
     "onRequest": "Op versoek"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "Aanmelding benodig",
     "signInRequiredDescription": "Meld aan om hierdie bladsy te open.",
     "noAccessTitle": "Toegang beperk",
-    "noAccessDescription": "Jy het nie toestemming om hierdie hulpbron te sien nie.",
+    "noAccessDescription": "Jy het nie toegang tot hierdie bladsy nie. As iemand dit met jou gedeel het, het hulle dalk opgehou: vra hulle om dit weer te deel.",
     "syncErrorTitle": "Probleem met sessiesinkronisering",
     "syncErrorDescription": "Ons kon nie jou rekening klaar opstel nie. Probeer weer om voort te gaan.",
     "syncErrorAccess": "Jou sessie is geldig, maar rekeningsinkronisering is onvolledig. Probeer weer om voort te gaan.",
     "retrySync": "Probeer sinkronisering weer"
   },
   "aiSetupGate": {
-    "title": "Stel KI op om jou soektog te verbeter",
-    "description": "Openscholar gebruik KI om navrae te verfyn, artikels te sif en resultate te vertaal.",
+    "title": "Soek is gratis. KI is ekstra",
+    "description": "Teken aan en KI skryf jou soektogte, toets artikels teen jou kriteria en vertaal resultate, met gratis krediete elke maand.",
     "signInForCredits": "Meld aan vir 50k gratis krediete",
     "useOwnApiKey": "Gebruik jou eie API-sleutel"
   },
@@ -677,7 +679,7 @@
     "uploadFailed": "Oplaai het misluk",
     "uploadFailedDescription": "Kon nie {format} oplaai nie. Probeer weer.",
     "accountChanged": "Jou rekening het verander. Probeer weer.",
-    "copyFailedDescription": "Kon nie na die klembord kopieer nie. Probeer weer.",
+    "copyFailedDescription": "Jou blaaier het ons nie toegelaat om dit te kopieer nie. Kies die teks en kopieer dit self.",
     "validationFailed": "Validering het misluk",
     "entityCreated": "{entity} geskep",
     "entityUpdated": "{entity} opgedateer",
@@ -791,6 +793,7 @@
     "typeToSearchInstitutions": "Tik ’n instelling se naam",
     "institutionsUnavailable": "Instellings kon nie gelaai word nie. Probeer weer.",
     "filterByThisInstitution": "Werk net van {name}",
+    "filterByInstitutionCountry": "Slegs werke van instellings in {country}",
     "studyDesign": "Studieontwerp",
     "anyStudyDesign": "Enige studieontwerp",
     "searchStudyDesigns": "Soek studieontwerpe",
@@ -853,8 +856,8 @@
     "titleAndAbstract": "Titel en opsomming",
     "searchScope": "Soekomvang",
     "sortResultsBy": "Sorteer resultate volgens",
-    "citationFilter": "Aanhalingsfilter",
-    "citedByFilter": "Aangehaal deur-filter",
+    "citationFilter": "Artikels wat 'n artikel aanhaal",
+    "citedByFilter": "Artikels wat 'n artikel self aanhaal",
     "relatedWorksFilter": "Verwante werke-filter",
     "clearAllCount": "Maak alles leeg ({count})",
     "searchFiltersTitle": "Soekfilters",
@@ -977,7 +980,7 @@
     "domainLabel": "Domein:",
     "sdgsLabel": "SDG’s:",
     "referencesLabel": "Verwysings:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "teenoor veldgemiddeld:",
     "citedBy": "Aangehaal deur",
     "cites": "Haal aan",
     "questionN": "Vraag {n}: {question}",
@@ -1163,7 +1166,7 @@
     "translationSettings": "Vertaalinstellings",
     "autoTranslateResults": "Vertaal gelyste resultate outomaties",
     "listedItemsOnly": "Geld net vir die items wat nou gelys is.",
-    "useCurrentLocaleTarget": "Gebruik huidige landinstelling as teiken",
+    "useCurrentLocaleTarget": "Gebruik die webwerf se taal",
     "runResultsTranslation": "Begin vertaling",
     "translatingResults": "Vertaal resultate...",
     "undoTranslation": "Maak vertaling ongedaan",
@@ -1208,13 +1211,16 @@
     "keepRunning": "Hou aan loop",
     "yesCancel": "Kanselleer taak",
     "deleteJob": "Verwyder hierdie taak?",
-    "deleteJobDescription": "Dit sal hierdie taak en al sy ekstraksieresultate permanent verwyder."
+    "deleteJobDescription": "Dit sal hierdie taak en al sy ekstraksieresultate permanent verwyder.",
+    "rerunJob": "Laat dit weer loop as 'n kopie?",
+    "rerunJobDescription": "'n Nuwe onttrekking met dieselfde artikels en vrae begin dadelik en spandeer krediete, omtrent soveel as hierdie een. Hierdie een bly soos dit is.",
+    "rerunJobConfirm": "Laat weer loop"
   },
   "emptyStates": {
     "noScreeningQuestions": "Nog geen siftingsvrae nie"
   },
   "jobStatus": {
-    "restart": "Herbegin",
+    "restart": "Laat weer loop as 'n kopie…",
     "papersCount": "{count, plural, =1 {# artikel} other {# artikels}}",
     "questionsCount": "{count, plural, one {# vraag} other {# vrae}}",
     "statusPending": "Hangende",
@@ -1227,7 +1233,8 @@
     "noMatches": "Geen passings vir die huidige filters nie",
     "clearFilters": "Maak filters leeg",
     "progressOfPapers": "{processed} van {total, plural, =1 {# artikel} other {# artikels}}",
-    "loadingExtractionResults": "Laai ekstraksieresultate..."
+    "loadingExtractionResults": "Laai ekstraksieresultate...",
+    "skippedNoText": "{count, plural, one {# artikel weggelaat: geen opsomming om te lees nie, en volle tekste was af} other {# artikels weggelaat: geen opsomming om te lees nie, en volle tekste was af}}"
   },
   "reportBuilder": {
     "grounded": "Gegrond",
@@ -1260,7 +1267,8 @@
   },
   "rating": {
     "noRating": "Geen gradering nie",
-    "nStars": "{count} sterre"
+    "nStars": "{count} sterre",
+    "yourRating": "Jou gradering"
   },
   "pagination": {
     "currentPage": "Bladsy {page}",
@@ -1293,7 +1301,7 @@
     "type": "Tipe",
     "refs": "Verw.",
     "cited": "Aangehaal",
-    "fwci": "FWCI",
+    "fwci": "teenoor veldgemiddeld",
     "topic": "Onderwerp",
     "field": "Veld",
     "subfield": "Subveld",
@@ -1514,7 +1522,8 @@
     "planAllowsCollections": "{plan} laat {limit, number} versamelings toe",
     "nameTheCollection": "Gee die versameling ’n naam",
     "newName": "Nuwe naam vir {name}",
-    "clearSearch": "Maak soektog leeg"
+    "clearSearch": "Maak soektog leeg",
+    "collectionDeletedPapersStay": "{name}: sy artikels bly in jou biblioteek"
   },
   "sidebarLayout": {
     "expandFilters": "Vou filters oop (Ctrl+Shift+F)",
@@ -1716,7 +1725,7 @@
   "connectionsPage": {
     "connectedApps": "Gekoppelde programme",
     "noConnectedApps": "Geen gekoppelde programme nie",
-    "noConnectedAppsDescription": "Wanneer eksterne programme aan jou beursie koppel, verskyn hulle hier.",
+    "noConnectedAppsDescription": "Wanneer eksterne programme aan jou Openscholar-rekening koppel, verskyn hulle hier.",
     "revoking": "Herroep...",
     "revoke": "Herroep",
     "revokedBadge": "Herroep",
@@ -1760,7 +1769,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Gemeenskap sonder titel",
     "unsaved": "Ongestoorde veranderinge",
-    "viewOnly": "Net kyk",
+    "viewOnly": "Instellings slegs om te bekyk",
     "save": "Stoor",
     "saving": "Stoor…",
     "saveError": "Die veranderinge kon nie gestoor word nie. Probeer weer.",
@@ -1815,7 +1824,15 @@
       "versions": "Weergawes",
       "ai": "KI",
       "domain": "Domein",
+      "listing": "Lys",
       "publication": "Publikasie"
+    },
+    "listing": {
+      "description": "Of hierdie gemeenskap in die openbare gids van gemeenskappe gelys word. Die webwerf bly in elk geval oop vir enigiemand met die adres.",
+      "public": "Openbaar",
+      "publicHint": "In die openbare gids gelys, waar enigiemand dit kan vind.",
+      "unlisted": "Ongelys",
+      "unlistedHint": "Uit die gids gelaat. Enigiemand met die adres kan dit steeds oopmaak."
     },
     "sectionState": {
       "complete": "Voltooi",
@@ -1918,6 +1935,9 @@
       "taglineLabel": "Leuse",
       "taglineHint": "Die opskrif bo die gemeenskapssoektog. Laat leeg om Soek te wys.",
       "taglinePlaceholder": "Bewyse vir beter besluite",
+      "searchTitleLabel": "Titel in soekresultate",
+      "searchTitleHint": "Wat soekenjins vir die tuisblad wys. Laat leeg om die naam en slagspreuk te gebruik.",
+      "searchTitlePlaceholder": "Navorsing en bewyse oor klimaataanpassing",
       "descriptionLabel": "Beskrywing",
       "descriptionHint": "Word op die tuisblad en in soekresultate gewys.",
       "partnersHeading": "Befondsingsvennote",
@@ -2001,10 +2021,13 @@
       "add": "Voeg instelling by"
     },
     "danger": {
-      "description": "Verwyder hierdie gemeenskap. Wees versigtig hier.",
+      "description": "Skuif of verwyder hierdie gemeenskap. Wees versigtig hier.",
       "deleteTitle": "Verwyder die gemeenskap",
       "deleteHint": "Verwyder die webwerf, adres en instellings.",
-      "deleteButton": "Verwyder gemeenskap"
+      "deleteButton": "Verwyder gemeenskap",
+      "moveTitle": "Skuif na ’n ander werkruimte",
+      "moveHint": "Behou sy adres, instellings en mense. Die werkruimte waarheen dit skuif, besit dit.",
+      "moveButton": "Skuif gemeenskap"
     },
     "deleteDialog": {
       "title": "Verwyder hierdie gemeenskap?",
@@ -2012,7 +2035,7 @@
       "typeToConfirm": "Tik {name} om te bevestig",
       "confirm": "Verwyder gemeenskap",
       "startedTitle": "Gemeenskap word verwyder",
-      "startedDescription": "{name} word verwyder. Neem ’n paar sekondes.",
+      "startedDescription": "{name} word verwyder. Dit neem ’n minuut of twee.",
       "error": "Die gemeenskap kon nie verwyder word nie. Voltooi enige lopende gemeenskapsbewerking, en probeer dan weer."
     },
     "links": {
@@ -2836,7 +2859,8 @@
       "confirmAction": "Verander die adres"
     },
     "retry": "Probeer weer",
-    "retryError": "Dit kon nie begin word nie. Probeer weer."
+    "retryError": "Dit kon nie begin word nie. Probeer weer.",
+    "saveDraft": "Stoor konsep"
   },
   "topics": {
     "title": "Onderwerpe",
@@ -2911,8 +2935,8 @@
       "title": "Nuwe Evidence Community",
       "backToLibraries": "Terug na gemeenskappe",
       "ownerTitle": "Eienaar",
-      "ownerOnlyTitle": "Net eienaars",
-      "ownerOnlyDescription": "Slegs ’n eienaar van die organisasie kan ’n gemeenskap skep.",
+      "ownerOnlyTitle": "Kan nie hier ’n gemeenskap skep nie",
+      "ownerOnlyDescription": "Gemeenskappe word in jou eie werkruimte geskep, of in ’n organisasie waarvan jy ’n admin is, sodra Evidence Communities daarvoor aan is.",
       "libraryTitle": "Gemeenskap",
       "libraryDescription": "Die naam verskyn op die openbare webwerf en bepaal die openbare adres.",
       "nameLabel": "Naam",
@@ -3152,8 +3176,13 @@
       "off": "Af",
       "libraries": "{count, plural, one {# gemeenskap} other {# gemeenskappe}}",
       "switchLabel": "Evidence Communities vir {name}",
-      "moveFirst": "Skuif of verwyder eers sy gemeenskappe",
-      "noMatches": "Geen organisasies pas nie"
+      "noMatches": "Geen organisasies pas nie",
+      "kind": "Werkruimtes",
+      "organizationsTab": "Organisasies",
+      "peopleTab": "Mense",
+      "searchPeople": "Soek mense volgens e-pos",
+      "people": "mense",
+      "noPeopleMatch": "Geen mense pas nie"
     },
     "communityReleases": {
       "releases": "Vrystellings",
@@ -3414,7 +3443,7 @@
       "times": "{count, plural, one {keer} other {keer}}",
       "unfold": "Wys elkeen",
       "fold": "Wys as een",
-      "declined": "Nie toegelaat nie",
+      "declined": "Jy het nee gesê",
       "waiting": "Wag vir ’n antwoord",
       "allowed": "Toegelaat",
       "searches": {
@@ -4200,6 +4229,18 @@
         "where": "Evidence Communities",
         "ask": "Begin ’n gemeenskapskonsep"
       },
+      "publicCommunities": {
+        "doing": "Lees die openbare gemeenskappe",
+        "did": "Het die openbare gemeenskappe gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees die openbare gemeenskappe"
+      },
+      "communityVisibility": {
+        "doing": "Verander of ’n gemeenskap gelys word",
+        "did": "Het verander of ’n gemeenskap gelys word",
+        "where": "Evidence Communities",
+        "ask": "Verander of ’n gemeenskap gelys word"
+      },
       "librarySources": {
         "doing": "Lees ’n gemeenskap se bronne",
         "did": "Het ’n gemeenskap se bronne gelees",
@@ -4336,6 +4377,54 @@
         "did": "'n Outeur opgeëis",
         "where": "Outeurs",
         "ask": "Eis 'n outeur op"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Soek artikels vir 'n gemeenskap op",
+        "did": "Het artikels vir 'n gemeenskap opgesoek",
+        "where": "Evidence Community",
+        "ask": "Soek artikels vir 'n gemeenskap op"
+      },
+      "addCommunityPapers": {
+        "doing": "Voeg artikels by 'n gemeenskap",
+        "did": "Het artikels by 'n gemeenskap gevoeg",
+        "where": "Evidence Community",
+        "ask": "Voeg artikels by 'n gemeenskap"
+      },
+      "communityAddedPapers": {
+        "doing": "Lees 'n gemeenskap se bygevoegde artikels",
+        "did": "Het 'n gemeenskap se bygevoegde artikels gelees",
+        "where": "Evidence Community",
+        "ask": "Lees 'n gemeenskap se bygevoegde artikels"
+      },
+      "removeCommunityPaper": {
+        "doing": "Haal 'n artikel uit 'n gemeenskap",
+        "did": "Het 'n artikel uit 'n gemeenskap gehaal",
+        "where": "Evidence Community",
+        "ask": "Haal 'n artikel uit 'n gemeenskap"
+      },
+      "communityPapersSettings": {
+        "doing": "Verander 'n gemeenskap se bygevoegde artikels",
+        "did": "Het 'n gemeenskap se bygevoegde artikels verander",
+        "where": "Evidence Community",
+        "ask": "Onderbreek of hervat 'n gemeenskap se bygevoegde artikels, of hul PDF's"
+      },
+      "connectCommunityCollection": {
+        "doing": "Voeg ’n versameling by ’n gemeenskap se bronne",
+        "did": "Het ’n versameling by ’n gemeenskap se bronne gevoeg",
+        "where": "Evidence Community",
+        "ask": "Voeg een van jou versamelings by ’n gemeenskap se bronne"
+      },
+      "putCommunityLive": {
+        "doing": "Stel ’n gemeenskap se instellings regstreeks",
+        "did": "Het ’n gemeenskap se instellings regstreeks gestel",
+        "where": "Evidence Community",
+        "ask": "Stel ’n gemeenskap se gestoorde instellings regstreeks"
+      },
+      "sentPapers": {
+        "doing": "Lees die artikels wat jy na gemeenskappe gestuur het",
+        "did": "Het die artikels gelees wat jy na gemeenskappe gestuur het",
+        "where": "Evidence Communities",
+        "ask": "Lees die artikels wat jy na gemeenskappe gestuur het"
       }
     },
     "asks": {
@@ -4510,7 +4599,7 @@
     "main": "Hoof",
     "screen": "Sif",
     "extract": "Onttrek",
-    "publish": "Publiseer",
+    "communities": "Gemeenskappe",
     "explore": "Verken",
     "authors": "Outeurs",
     "workspacesCard": "Werkruimtes",
@@ -4591,9 +4680,6 @@
       "leave": "Verlaat",
       "deleteName": "Verwyder {name}",
       "stillHasLibrary": "{library} is een van sy Evidence Communities. Skuif of verwyder dit eers.",
-      "deleteLibrary": "Verwyder gemeenskap",
-      "libraryBeingDeleted": "{library} word verwyder.",
-      "libraryDeleteFailed": "{library} kon nie verwyder word nie. Probeer weer.",
       "deleteDetail": "Verwyder dit vir {count, plural, one {sy # lid} other {al # lede}}",
       "moveLibrariesFirst": "Skuif of verwyder sy Evidence Communities eers",
       "delete": "Verwyder",
@@ -4756,7 +4842,10 @@
         "itsPapers": "Sy artikels",
         "ratingsInIt": "Graderings daarin",
         "publications": "Publikasies",
-        "editors": "Redigeerders"
+        "editors": "Redigeerders",
+        "address": "Adres",
+        "settings": "Instellings",
+        "peopleWithRoles": "Mense met ’n rol"
       },
       "moveTo": "Skuif na {workspace}",
       "move": "Skuif",
@@ -4765,7 +4854,15 @@
       "collection": "Skuif versameling",
       "author": "Skuif outeurprofiel",
       "libraryKeeps": "{workspace} se biblioteek behou die artikels wat dit gestoor het.",
-      "yourLibraryKeeps": "Jou biblioteek behou die artikels wat dit gestoor het."
+      "yourLibraryKeeps": "Jou biblioteek behou die artikels wat dit gestoor het.",
+      "community": "Skuif gemeenskap",
+      "workspaceOwnsIt": "Die werkruimte waarheen dit skuif, besit dit van dan af.",
+      "refused": {
+        "noCommunities": "Gemeenskappe is nie vir hierdie werkspasie aangeskakel nie",
+        "communitiesFull": "Het soveel gemeenskappe as wat ’n werkruimte kan hê",
+        "profilesOff": "Outeursprofiele is nie hier aan nie",
+        "noProfiles": "Jy kan nie hier outeursprofiele maak nie"
+      }
     },
     "share": {
       "share": "Deel",
@@ -4865,7 +4962,11 @@
       "goneDetail": "Vra wie dit gedeel het om dit weer te deel",
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
       "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is"
-    }
+    },
+    "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
+    "asRole": "as {role}",
+    "memberCan": "Lede soek, stoor, sif en onttrek met alles wat die organisasie deel.",
+    "adminCan": "Admins kan dieselfde doen, en ook mense nooi en verwyder en instellings en besteding bestuur."
   },
   "models": {
     "changeInSettings": "Verander in KI-instellings"
@@ -5308,7 +5409,20 @@
     "removedFromLibrary": "Uit hierdie gemeenskap verwyder.",
     "removedFromProfile": "Uit hierdie profiel verwyder.",
     "addedToLibrary": "{name} by hierdie gemeenskap gevoeg.",
-    "addedToProfile": "{name} by hierdie profiel gevoeg."
+    "addedToProfile": "{name} by hierdie profiel gevoeg.",
+    "anOrganization": "’n Organisasie",
+    "chooseAnOrganization": "Kies ’n organisasie",
+    "anotherOrganization": "’n Ander organisasie",
+    "adminEmail": "Sy admin se e-pos",
+    "organizationGetsIt": "Almal in die organisasie kry hierdie rol, en verloor dit wanneer hulle vertrek.",
+    "theirAdminAccepts": "Sy admin aanvaar dit vir ’n organisasie wat hulle bestuur, en almal daarin kry hierdie rol.",
+    "everyoneInIt": "Almal daarin",
+    "forTheirOrganization": "Vir ’n organisasie waarvan {email} ’n admin is",
+    "removeThisOrganization": "Verwyder hierdie organisasie? Sy lede behou net rolle wat hulle self gekry het.",
+    "organizationLabel": "Organisasie",
+    "ownWorkspaceOwner": "Dit is in hul eie werkruimte, dus is dit hulle s’n.",
+    "whoWorksOnIt": "Wie aan hierdie gemeenskap werk. Sy eienaars bestuur die span.",
+    "viewersUntilAnOwner": "Kykers totdat ’n eienaar hulle ’n rol gee."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Opsomming in die ry vir # publikasie.} other {Opsomming in die ry vir # publikasies.}}",
@@ -5371,6 +5485,54 @@
     "keepThisUnderCharacters": "Hou dit onder {maxLength} karakters."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Jou gemeenskappe",
+      "showFrom": "Wys gemeenskappe van",
+      "allWorkspaces": "Alle werkruimtes",
+      "allCommunities": "Alle gemeenskappe",
+      "workspaces": "Werkruimtes",
+      "yours": "Joune",
+      "sharedWithYou": "Met jou gedeel",
+      "sharedWith": "Met {name} gedeel",
+      "loading": "Laai gemeenskappe",
+      "noMatches": "Niks hiervan pas by hierdie soektog nie.",
+      "emptyAll": "Jy is nog nie in 'n gemeenskap nie. Wanneer iemand een met jou deel, of jou organisasie een het, verskyn dit hier.",
+      "emptyHere": "Gemeenskappe wat {name} besit, en dié wat daarmee gedeel is, verskyn hier.",
+      "emptyShared": "Gemeenskappe wat mense met jou deel, verskyn hier.",
+      "emptySharedHere": "Gemeenskappe wat met {name} gedeel is, verskyn hier.",
+      "emptyOwn": "Gemeenskappe wat jy skep, verskyn hier.",
+      "emptyWorkspace": "{name} het nog geen gemeenskappe nie.",
+      "invitedAs": "Uitgenooi as {role}",
+      "accept": "Aanvaar",
+      "accepted": "{name} aanvaar.",
+      "moreWorkspaces": "Meer werkruimtes",
+      "invitedForOrganization": "Uitgenooi as {role}, vir jou organisasie",
+      "acceptAsAnAdmin": "Aanvaar dit as ’n admin van ’n organisasie",
+      "acceptForWhich": "Aanvaar {name} vir watter organisasie",
+      "acceptedFor": "{name} aanvaar vir {organization}."
+    },
+    "directory": {
+      "title": "Openbare gemeenskappe",
+      "sortLabel": "Sorteer openbare gemeenskappe",
+      "sort": {
+        "newest": "Nuutste",
+        "name": "Naam",
+        "records": "Meeste artikels"
+      },
+      "loading": "Laai openbare gemeenskappe",
+      "noMatches": "Geen openbare gemeenskappe pas by hierdie soektog nie",
+      "none": "Openbare gemeenskappe verskyn hier sodra hulle regstreeks is",
+      "records": "{count, plural, one {{shown} artikel} other {{shown} artikels}}",
+      "unnamedOwner": "’n Openscholar-lid",
+      "people": "{count, plural, one {{shown} spanlid} other {{shown} spanlede}}",
+      "countries": "Oor {names}",
+      "recordsLabel": "{count, plural, one {artikel} other {artikels}}",
+      "peopleLabel": "{count, plural, one {spanlid} other {spanlede}}",
+      "noDescription": "Nog geen beskrywing nie",
+      "notCounted": "Nog nie getel nie",
+      "intro": "Elke gemeenskap is 'n webwerf wat navorsing oor een onderwerp versamel. Maak een oop om sy artikels te deurblaai.",
+      "updated": "Bygewerk {when}"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Nuwe gemeenskap",
     "libraryView": "Gemeenskapsaansig",
@@ -5414,7 +5576,9 @@
     "deletionRestartedFor": "Verwydering is weer begin vir {name}.",
     "couldNotRestartDeletion": "Kon nie verwydering weer begin nie",
     "invitationDeclined": "Uitnodiging geweier.",
-    "unableToDeclineInvitation": "Kan nie uitnodiging weier nie"
+    "unableToDeclineInvitation": "Kan nie uitnodiging weier nie",
+    "searchSubmissions": "Deursoek jou voorleggings",
+    "findASubmission": "Vind 'n artikel wat jy gestuur het…"
   },
   "authorPages": {
     "profileSettings": "Profielinstellings",
@@ -5545,10 +5709,10 @@
     "creatingKey": "Sleutel word geskep...",
     "redirecting": "Stuur deur...",
     "approve": "Keur goed",
-    "wantsToConnect": "<strong>{appName}</strong> wil aan jou Openscholar-beursie koppel.",
+    "wantsToConnect": "<strong>{appName}</strong> wil aan jou Openscholar-rekening koppel.",
     "copyKey": "Kopieer hierdie API-sleutel en plak dit in <strong>{appName}</strong>. Dit sal net een keer gewys word.",
     "originUnregisteredBody": "Die program by <code>{origin}</code> is nie geregistreer om aan Openscholar te koppel nie.",
-    "originHelp": "Slegs vooraf goedgekeurde oorspronge kan beursiekoppelings skep. As jy die ontwikkelaar van <strong>{appName}</strong> is, kontak die Openscholar-span om jou oorsprong te registreer.",
+    "originHelp": "Slegs vooraf goedgekeurde oorspronge kan rekeningkoppelings skep. As jy die ontwikkelaar van <strong>{appName}</strong> is, kontak die Openscholar-span om jou oorsprong te registreer.",
     "wantsToUseCredits": "<strong>{appName}</strong> wil KI-generering met jou Openscholar-krediete gebruik.",
     "unknownApp": "Onbekende app",
     "thisApplicationSOriginIsNot": "Die oorsprong van hierdie toepassing is nie geregistreer nie.",
@@ -5676,5 +5840,129 @@
     "step4": "Hernu die teken",
     "step4About": "’n Teken hou 24 uur. Ruil die hernuwingsteken voor dan vir ’n nuwe een.",
     "cantDo": "Programme kan nie fakturering, API-sleutels of werfinstellings verander of ’n Evidence Community regstreeks sit nie."
+  },
+  "paperPage": {
+    "references": "Verwysings",
+    "openAccess": "Oop toegang",
+    "readPdf": "Lees PDF",
+    "publisherPage": "Uitgewer se bladsy",
+    "askAbout": "Vra oor hierdie artikel",
+    "noAbstract": "Geen opsomming beskikbaar nie",
+    "linkCopied": "Artikelskakel gekopieer",
+    "citationsPerYear": "Aanhalings per jaar",
+    "citationsIn": "{count, plural, one {# aanhaling} other {# aanhalings}} in {year}",
+    "seeCiting": "Sien die artikels wat dit aanhaal",
+    "top1": "Top 1% in sy veld",
+    "top10": "Top 10% in sy veld",
+    "aheadOf": "Meer aangehaal as {percent}% van alle artikels van {year}",
+    "influential": "bou daarop voort",
+    "authors": "Outeurs",
+    "andMore": "en {count} meer",
+    "showAll": "Wys al {count}",
+    "showFewer": "Wys minder",
+    "corresponding": "Korresponderend",
+    "orcidOf": "ORCID iD van {name}",
+    "institutions": "Instellings",
+    "whereToRead": "Waar om te lees",
+    "kindPublisher": "Uitgewer",
+    "kindRepository": "Bewaarplek",
+    "kindIndex": "Indeks",
+    "pdf": "PDF",
+    "funding": "Befondsing",
+    "topics": "Onderwerpe",
+    "sdgs": "Volhoubare Ontwikkelingsdoelwitte",
+    "mesh": "MeSH-terme",
+    "details": "Besonderhede",
+    "charge": "Publikasiefooi",
+    "retracted": "Teruggetrek",
+    "openscholarId": "Openscholar-ID",
+    "copyDoi": "Kopieer DOI",
+    "doiCopied": "DOI gekopieer",
+    "doiCopyFailed": "Kon nie die DOI kopieer nie",
+    "paperPage": "Artikelblad",
+    "share": "Deel",
+    "inCommunities": "In hierdie gemeenskappe",
+    "fieldAverage": "× veldgemiddeld"
+  },
+  "addedPapers": {
+    "name": "Bygevoegde artikels",
+    "provider": "DOI's en OpenAlex-ID's",
+    "cardDescription": "Artikels een vir een bygevoeg met 'n DOI of OpenAlex-ID, gesinkroniseer met OpenAlex.",
+    "menu": "Artikels volgens DOI of ID",
+    "menuHint": "Een of baie, gesinkroniseer",
+    "menuNotLive": "Beskikbaar sodra die gemeenskap regstreeks is",
+    "add": "Voeg artikels by",
+    "title": "Voeg artikels by",
+    "description": "Plak skakels na artikels (van Openscholar, 'n gemeenskap se webwerf, OpenAlex of doi.org), DOI's of OpenAlex-ID's, tot {max} op 'n slag.",
+    "inputLabel": "DOI's, OpenAlex-ID's of skakels",
+    "papers": "{count, plural, one {# artikel} other {# artikels}}",
+    "tooMany": "Meer as {max} artikels",
+    "invalid": "Nie 'n artikelskakel, DOI of ID nie: {values}",
+    "find": "Soek artikels",
+    "found": "Artikels gevind",
+    "notFound": "Nie gevind nie",
+    "alreadyAdded": "Reeds bygevoeg",
+    "inQueue": "Wag vir hersiening",
+    "doiOnly": "Net DOI",
+    "leaveOut": "Laat uit",
+    "leaveOutLabel": "Laat {title} uit",
+    "doiOnlyNote": "{count, plural, one {OpenAlex het een hiervan nog nie. Dit kom in deur sy DOI, en elke sinkronisasie kyk weer in OpenAlex.} other {OpenAlex het # hiervan nog nie. Hulle kom in deur hul DOI's, en elke sinkronisasie kyk weer in OpenAlex.}}",
+    "toAdd": "{count, plural, one {# artikel om by te voeg} other {# artikels om by te voeg}}",
+    "sendToQueue": "Stuur vir hersiening",
+    "publish": "Publiseer",
+    "published": "{count, plural, one {# artikel in {community} gepubliseer} other {# artikels in {community} gepubliseer}}",
+    "queued": "{count, plural, one {# artikel na die hersieningsry gestuur} other {# artikels na die hersieningsry gestuur}}",
+    "someFailed": "{count, plural, one {# artikel is as 'n konsep gestoor maar nie gestuur nie. Maak dit in die admin oop om dit te stuur.} other {# artikels is as konsepte gestoor maar nie gestuur nie. Maak hulle in die admin oop om hulle te stuur.}}",
+    "lookupFailed": "Die gemeenskap kon nie hierdie artikels opsoek nie. Probeer weer.",
+    "addFailed": "Die gemeenskap kon nie hierdie artikels byvoeg nie. Probeer weer.",
+    "noAuthors": "Geen outeurs gelys nie",
+    "unavailable": "Nie beskikbaar nie",
+    "settingsFailed": "Die gemeenskap het nie die verandering aanvaar nie. Probeer weer.",
+    "ownerOnly": "Net die eienaar verander dit",
+    "from": "Van {name}",
+    "returned": "Afgekeur",
+    "statusWithdrawn": "Deur jou teruggetrek",
+    "statusRemoved": "Deur die gemeenskap verwyder",
+    "openIn": "Maak oop in {community}",
+    "openLabel": "Maak {title} in {community} oop",
+    "remove": "Verwyder",
+    "removeLabel": "Verwyder {title}",
+    "withdraw": "Trek terug",
+    "withdrawLabel": "Trek {title} terug",
+    "removed": "Artikel uit die gemeenskap verwyder",
+    "withdrawn": "Artikel uit die hersieningsry teruggetrek",
+    "removeFailed": "Die gemeenskap kon nie hierdie artikel verwyder nie. Probeer weer.",
+    "viewLabel": "Wys",
+    "tabPublic": "Openbare gemeenskappe",
+    "tabSubmissions": "Jou voorleggings",
+    "statusLabel": "Status",
+    "everyStatus": "Elke status",
+    "statusPublished": "Gepubliseer",
+    "noneYet": "Nog geen voorleggings nie",
+    "noneYetHint": "Voeg 'n artikel by 'n gemeenskap vanuit enige soekresultaat.",
+    "noMatches": "Geen voorleggings pas nie",
+    "addToCommunity": "Voeg by gemeenskap",
+    "searchCommunities": "Soek gemeenskappe",
+    "recent": "Onlangs",
+    "yourCommunities": "Jou gemeenskappe",
+    "noCommunitiesMatch": "Geen gemeenskappe pas nie",
+    "noCommunities": "Nog geen gemeenskappe nie",
+    "inQueueShort": "In die ry",
+    "added": "Bygevoeg",
+    "publishOrReview": "Publiseer dit nou, of laat die span dit eers hersien.",
+    "reviewFirst": "Die gemeenskap se span hersien dit voordat dit lewendig gaan.",
+    "publishedTo": "Gepubliseer in {community}",
+    "queuedTo": "Na {community} se hersieningsry gestuur",
+    "alreadyIn": "{community} het reeds hierdie artikel",
+    "moreCommunities": "Meer gemeenskappe",
+    "askTitle": "Voeg {count, plural, one {# artikel} other {# artikels}} by 'n gemeenskap",
+    "publishNow": "Publiseer nou",
+    "reviewQueue": "Hersieningsry",
+    "askPublishHint": "{count, plural, one {Dit gaan} other {Hulle gaan}} op {community} lewendig sodra jy dit toelaat.",
+    "askQueueHint": "{count, plural, one {Dit wag} other {Hulle wag}} in {community} se hersieningsry totdat sy span {count, plural, one {dit} other {hulle}} goedkeur.",
+    "askPublish": "Publiseer {count, plural, one {# artikel} other {# artikels}}",
+    "askQueue": "Stuur {count, plural, one {# artikel} other {# artikels}} vir hersiening",
+    "alreadyInIt": "Reeds daarin",
+    "inReview": "In hersiening"
   }
 }

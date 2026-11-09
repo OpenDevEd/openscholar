@@ -1,7 +1,7 @@
 export type Kind = "web" | "file" | "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "library" | "topic" | "zotero" | "author" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "libraryAccess" | "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "shareItem" | "guestRole" | "unshareItem" | "leaveShared" | "answerShare" | "guests" | "sharedWithMe" | "readInvite" | "stopExtraction" | "deleteExtraction" | "pauseExtraction" | "resumeExtraction" | "retryExtraction" | "extractionCost" | "stopScreening" | "zoteroGroups" | "zoteroCollections" | "zoteroItems" | "zoteroPdf" | "readAuthor" | "readTopic" | "nameFilters" | "cite" | "chatModels" | "libraries" | "readerLibraries" | "readerSources" | "readerAddress" | "readerSource" | "readerRecords" | "newLibraryCollection" | "deleteLibraryCollection" | "changeLibraryRecords" | "readHandoff" | "readLibraryDraft" | "readLibraryRevision" | "readLibraryTeam" | "editLibraryDraft" | "addLibraryMember" | "changeLibraryRole" | "removeLibraryMember" | "inviteLibraryMember" | "changeLibraryInvite" | "libraryInvites" | "answerLibraryInvite" | "startLibrary" | "librarySources" | "runningCollections" | "runningInstitutions" | "runningPublications" | "runningPublication" | "syncLibrarySource" | "gradeLibrarySource" | "trySourceSubject" | "authorProfiles" | "readAuthorProfile" | "authorProfileEditors" | "authorInvites" | "newAuthorProfile" | "linkAuthorRecord" | "unlinkAuthorRecord" | "claimAuthor" | "authorPublications" | "topicPublications" | "other";
+type Words = "libraryAccess" | "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "shareItem" | "guestRole" | "unshareItem" | "leaveShared" | "answerShare" | "guests" | "sharedWithMe" | "readInvite" | "stopExtraction" | "deleteExtraction" | "pauseExtraction" | "resumeExtraction" | "retryExtraction" | "extractionCost" | "stopScreening" | "zoteroGroups" | "zoteroCollections" | "zoteroItems" | "zoteroPdf" | "readAuthor" | "readTopic" | "nameFilters" | "cite" | "chatModels" | "libraries" | "readerLibraries" | "readerSources" | "readerAddress" | "readerSource" | "readerRecords" | "newLibraryCollection" | "deleteLibraryCollection" | "changeLibraryRecords" | "readHandoff" | "readLibraryDraft" | "readLibraryRevision" | "readLibraryTeam" | "editLibraryDraft" | "addLibraryMember" | "changeLibraryRole" | "removeLibraryMember" | "inviteLibraryMember" | "changeLibraryInvite" | "libraryInvites" | "answerLibraryInvite" | "startLibrary" | "communityVisibility" | "publicCommunities" | "librarySources" | "runningCollections" | "runningInstitutions" | "runningPublications" | "runningPublication" | "syncLibrarySource" | "gradeLibrarySource" | "trySourceSubject" | "lookUpCommunityPapers" | "addCommunityPapers" | "communityAddedPapers" | "removeCommunityPaper" | "communityPapersSettings" | "connectCommunityCollection" | "putCommunityLive" | "sentPapers" | "authorProfiles" | "readAuthorProfile" | "authorProfileEditors" | "authorInvites" | "newAuthorProfile" | "linkAuthorRecord" | "unlinkAuthorRecord" | "claimAuthor" | "authorPublications" | "topicPublications" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -42,6 +42,8 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "evidenceLibraries/assistant:invitations": { kind: "library", words: "libraryInvites", searching: true },
   "evidenceLibraries/assistant:answerInvitation": { kind: "library", words: "answerLibraryInvite" },
   "evidenceLibraries/assistant:startLibrary": { kind: "library", words: "startLibrary" },
+  "evidenceLibraries/assistant:setVisibility": { kind: "library", words: "communityVisibility" },
+  "evidenceLibraries/directory:listPublic": { kind: "library", words: "publicCommunities", searching: true },
   "evidenceLibraries/assistant:sources": { kind: "library", words: "librarySources", searching: true },
   "evidenceLibraries/assistant:runningCollections": { kind: "library", words: "runningCollections", searching: true },
   "evidenceLibraries/assistant:runningInstitutions": { kind: "library", words: "runningInstitutions", searching: true },
@@ -51,6 +53,14 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "evidenceLibraries/assistant:screeningRequest": { kind: "library", words: "librarySources", searching: true },
   "evidenceLibraries/assistant:gradeSource": { kind: "library", words: "gradeLibrarySource" },
   "evidenceLibraries/assistant:trySourceSubject": { kind: "library", words: "trySourceSubject" },
+  "evidenceLibraries/assistant:previewPapers": { kind: "library", words: "lookUpCommunityPapers", searching: true },
+  "evidenceLibraries/assistant:addPapers": { kind: "library", words: "addCommunityPapers" },
+  "evidenceLibraries/assistant:addedPapers": { kind: "library", words: "communityAddedPapers", searching: true },
+  "evidenceLibraries/assistant:removeAddedPaper": { kind: "library", words: "removeCommunityPaper" },
+  "evidenceLibraries/assistant:setAddedPapersSettings": { kind: "library", words: "communityPapersSettings" },
+  "evidenceLibraries/assistant:connectCollection": { kind: "library", words: "connectCommunityCollection" },
+  "evidenceLibraries/assistant:putLive": { kind: "library", words: "putCommunityLive" },
+  "evidenceLibraries/assistant:submissions": { kind: "library", words: "sentPapers", searching: true },
   "assistant/files:read": { kind: "file", words: "readFile", searching: true },
   "research/papers:readPdf": { kind: "file", words: "readPaperPdf", searching: true },
   "research/records:listedSearches": { kind: "search", words: "searches" },
@@ -172,6 +182,8 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "admins/queries:listCandidates": { kind: "other", words: "admins" },
   "organizations/libraryAccess:list": { kind: "other", words: "libraryAccess" },
   "organizations/libraryAccess:count": { kind: "other", words: "libraryAccess" },
+  "organizations/libraryAccess:listPeople": { kind: "other", words: "libraryAccess" },
+  "organizations/libraryAccess:countPeople": { kind: "other", words: "libraryAccess" },
   "library/collections:raters": { kind: "paper", words: "ratings" },
   "activity/queries:list": { kind: "other", words: "activity" },
   "activity/queries:startedBy": { kind: "other", words: "activity" },
@@ -198,6 +210,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "organizations/manage:setColour": { kind: "other", words: "workspaceColour" },
   "organizations/manage:resendInvitation": { kind: "other", words: "resendInvite" },
   "workspaces/move:held": { kind: "other", words: "moveCheck" },
+  "workspaces/move:refusals": { kind: "other", words: "moveCheck" },
   "workspaces/move:move": { kind: "other", words: "moveItem" },
   "sharing/guests:add": { kind: "other", words: "shareItem" },
   "sharing/invitations:invite": { kind: "other", words: "shareItem" },

@@ -30,6 +30,7 @@ import { useCollectionPicker } from "./use-collection-picker";
 import { NewCollectionDialog, useCollectionDialogsReady } from "./collection-dialogs";
 import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 
 /** A removal's ID: the server keeps what was removed for a day, for Undo. */
 type Removal = Id<"libraryRemovals">;
@@ -159,6 +160,8 @@ export function useSavePaper(paper: WorkInput | undefined) {
     if (!ready || !paper) return;
     const key = `${userId}:${paper.id}`;
     if (!isSaved) {
+      // Saved again: the note that it was removed no longer holds.
+      toast.dismiss(`removed:${key}`);
       saveBack(paper, removals.get(key));
       return;
     }
@@ -170,8 +173,10 @@ export function useSavePaper(paper: WorkInput | undefined) {
     removals.set(key, removal);
     request
       .then((removed) => {
-        if (!removed) return;
+        // Saved again before the removal came back: the note would say the opposite of what the button shows.
+        if (!removed || usePending.getState().saved[paper.id]?.value === true) return;
         toast(t("removed"), {
+          id: `removed:${key}`,
           description: paper.title,
           duration: 5000,
           action: {
@@ -290,6 +295,8 @@ export function SaveControl({
           {cloneElement(folderButton, { onClick: isSignedIn ? undefined : () => openSignIn() })}
         </TooltipHint>
       )}
+      {/* The paper onto a community (#1123): published, or to its review queue. */}
+      <CommunityControl paper={paper} />
       {/* In the group, whose handlers keep the dialog's clicks and keys from reaching the card. */}
       <NewCollectionDialog open={making} onOpenChange={setMaking} paper={{ title: paper.title || paper.display_name || "", add: (id) => setIn(id, true) }} returnFocus={() => folderRef.current} />
     </ButtonGroup>

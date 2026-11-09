@@ -63,6 +63,16 @@ it("groups DOI variants, returns all enabled public locations, and retains priva
   await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", a.sectionId, {payload: {enabled: true}}));
   expect((await read()).page).toHaveLength(2);
 });
+it("keeps a record's PDF and cover as its community last sent them, so a paper page shows them live", async () => {
+  const {t, request, send} = await fixture();
+  const read = async () => (await t.query(api.topics.publications.listLocations, {groupKey: "doi:10.1234/abc", paginationOpts: {cursor: null, numItems: 10}})).page[0]?.metadata.pdf;
+  await send(request());
+  // A runtime that doesn't send it says nothing either way.
+  expect(await read()).toBeUndefined();
+  const pdf = {url: "https://first.example.test/lib/ABCD1234/download/PDFAAAAA", cover: "https://first.example.test/covers/ABCD1234.png"};
+  await send(request(undefined, {generation: 2, idempotencyKey: "pdf", metadata: {...request().metadata!, pdf}}));
+  expect(await read()).toEqual(pdf);
+});
 it("does not bridge conflicting DOIs through an OpenAlex-only location and keeps manual records separate", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());

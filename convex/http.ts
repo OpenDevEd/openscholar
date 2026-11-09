@@ -1,3 +1,5 @@
+import { paperSubmissionStatus } from "./evidenceLibraries/submissionsHttp";
+import { resolvePapers } from "./evidenceLibraries/paperLinks";
 import { catalog as topicCatalog, detail as topicDetail, associations as topicAssociations } from "./topics/serviceHttp";
 import { generate as generateLibraryDigest } from "./evidenceLibraries/digests/service";
 import { replacePublicationAssociations, authorProfileCatalog } from "./authors/serviceHttp";
@@ -41,6 +43,9 @@ http.route({path: "/api/v1/evidence-libraries/digests/generate", method: "POST",
 http.route({path: "/api/v1/evidence-libraries/author-profiles", method: "POST", handler: authorProfileCatalog});
 http.route({path: "/api/v1/evidence-libraries/source-collections/items", method: "POST", handler: readCollectionItems});
 http.route({path: "/api/v1/evidence-libraries/author-associations", method: "POST", handler: replacePublicationAssociations});
+// A community says where a paper someone sent it stands: approved, returned or withdrawn (new-el #778).
+http.route({path: "/api/v1/evidence-libraries/paper-submissions", method: "POST", handler: paperSubmissionStatus});
+http.route({path: "/api/v1/evidence-libraries/papers/resolve", method: "POST", handler: resolvePapers});
 // Clerk webhook for user sync
 http.route({
   path: "/api/v1/evidence-libraries/admin-session/check",

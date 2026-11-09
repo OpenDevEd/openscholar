@@ -218,7 +218,7 @@ export async function resumeJob(ctx: MutationCtx, job: Doc<"extractionJobs">, { 
   // a paper run before then could miss a screening copy still to come.
   // A job paused before any of its papers was saved, from before jobs kept their setup's place, sets up from the start.
   const unread = job.setup === undefined && (await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).first()) === null;
-  if (unread) await ctx.db.patch(jobId, { setup: { position: 0, read: 0, papers: 0, processable: 0 } });
+  if (unread) await ctx.db.patch(jobId, { setup: { position: 0, read: 0, papers: 0, processable: 0 }, skippedPapers: undefined });
   if (unread || (job.setup !== undefined && !job.setup.done)) {
     await ctx.scheduler.runAfter(0, internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch: nextEpoch });
   } else {

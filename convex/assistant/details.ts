@@ -13,13 +13,14 @@ import { findSearch } from "../research/records";
 
 import { currentSearch } from "../../lib/research/records";
 import { roleIn } from "./access";
-import { libraryOf } from "../evidenceLibraries/access";
+import { libraryOf, readLibraryRole, readLibraryViewRole } from "../evidenceLibraries/access";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { personName } from "../lib/people";
 import { toPaperKey } from "../../lib/papers/paper-ref";
 import { findItem } from "../library/find";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 import { addressesOf } from "../lib/people";
+import { sentTitle } from "../evidenceLibraries/submissions";
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -94,18 +95,19 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
       const file = await ctx.db.get("assistantFiles", fileId);
       return file?.threadId && (await opens(file.threadId)) ? file.name : null;
     }
-    // An invitation to a library, by who it's for and the library: to the person it's for, or to someone in the library's workspace.
+    // An invitation to a library, by who it's for and the library.
     const invitationId = ctx.db.normalizeId("itemInvitations", id);
     if (invitationId) {
       const invitation = await ctx.db.get("itemInvitations", invitationId);
       const library = invitation ? await libraryOf(ctx, invitation) : null;
-      return invitation && library && (addressesOf(reader).includes(invitation.email) || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
+      // Its email is the recipient's own, or its owners', who read the team's invitations.
+      return invitation && library && (addressesOf(reader).includes(invitation.email) || (await readLibraryRole(ctx, library, reader.clerkId)) === "owner") ? `${invitation.email}, ${library.name}` : null;
     }
-    // An Evidence Library, by its name: the workspace's own, or one that is running, whose site is public.
+    // An Evidence Library, by its name: one the reader has a role on, whichever workspace, or one that is running, whose site is public.
     const evidenceLibraryId = ctx.db.normalizeId("evidenceLibraries", id);
     if (evidenceLibraryId) {
       const library = await ctx.db.get("evidenceLibraries", evidenceLibraryId);
-      return library && (library.workspaceId === workspaceId || (await readEvidenceLibraryAdminLaunchTarget(ctx, library)) !== null) ? library.name : null;
+      return library && ((await readLibraryViewRole(ctx, library, reader.clerkId)) !== null || (await readEvidenceLibraryAdminLaunchTarget(ctx, library)) !== null) ? library.name : null;
     }
     // An author profile, by its name: its page is public.
     const profileId = ctx.db.normalizeId("authorProfiles", id);
@@ -157,10 +159,12 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
   const details: Array<{ name: string; value: string; record: boolean; within: string; key: string }> = [];
   for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
-    const record = typeof value === "string" ? await named(value, path.at(-1) ?? "").catch(() => null) : null;
+    // A community's record by its key (taking a paper off, withdrawing it) is the paper, by its title.
+    const sent = path.length === 1 && path[0] === "itemKey" && typeof value === "string" && typeof (args as Record<string, unknown>).libraryId === "string" ? await sentTitle(ctx, reader, workspaceId, (args as { libraryId: string }).libraryId, value).catch(() => null) : null;
+    const record = sent ?? (typeof value === "string" ? await named(value, path.at(-1) ?? "").catch(() => null) : null);
     const shown = record ?? String(value);
     // A saved paper is shown by its title, so that is what its line is called, not the ID the call gave.
-    const title = record !== null && typeof value === "string" && PAPER_KEYS.has(path.at(-1) ?? "") && toPaperKey(value) !== null;
+    const title = sent !== null || (record !== null && typeof value === "string" && PAPER_KEYS.has(path.at(-1) ?? "") && toPaperKey(value) !== null);
     details.push({ name: title ? "title" : nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null, within: path.slice(0, -1).join("."), key: path.at(-1) ?? "" });
   }
   // Which kind of thing an ID beside it names ("user", "organization") is said by the record's own line.

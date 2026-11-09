@@ -1,4 +1,5 @@
 import { seedFeatureUser } from "../organizationFeatures.test-support";
+import { creatableWorkspaceIn } from "../organizationFeatures.test-support";
 import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
@@ -249,7 +250,7 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_identity_contract", rol: "org:admin" },
     });
     const created = await admin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
+      createEvidenceLibrarySetup(ctx, { workspaceId: await creatableWorkspaceIn(ctx),
         name: "Identity Library",
         slug: "identity-library",
         publicAddress: "https://identity-library.example.org",
@@ -341,7 +342,7 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_generic_sections", rol: "org:admin" },
     });
     const created = await admin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
+      createEvidenceLibrarySetup(ctx, { workspaceId: await creatableWorkspaceIn(ctx),
         name: "Generic Library",
         slug: "generic-library",
         publicAddress: "https://generic-library.example.org",
@@ -507,7 +508,7 @@ describe("Evidence Library draft storage", () => {
     });
 
     const created = await asAdmin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: ((await asAdmin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
+      createEvidenceLibrarySetup(ctx, { workspaceId: await creatableWorkspaceIn(ctx),
         name: "Climate Evidence",
         slug: "climate-evidence",
         publicAddress: "https://climate-evidence.example.org",
@@ -533,7 +534,8 @@ describe("Evidence Library draft storage", () => {
     const { page: libraries } = await asMember.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 12 } });
 
     expect(saved.editVersion).toBe(1);
-    expect(libraries).toEqual([]);
+    // A member of its organization views it, from their own workspace too (#1090).
+    expect(libraries.map(({ _id, role }) => ({ _id, role }))).toEqual([{ _id: created.libraryId, role: "viewer" }]);
     expect(reloaded.draft.editVersion).toBe(1);
     expect(reloaded.library.name).toBe("Climate Evidence");
     expect(
@@ -635,7 +637,7 @@ describe("Evidence Library draft storage", () => {
       o: { id: "org_revision", rol: "org:member" },
     });
     const created = await admin.run(async (ctx) =>
-      createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
+      createEvidenceLibrarySetup(ctx, { workspaceId: await creatableWorkspaceIn(ctx),
         name: "Revision Library",
         slug: "revision-library",
         publicAddress: "https://revision-library.example.org",

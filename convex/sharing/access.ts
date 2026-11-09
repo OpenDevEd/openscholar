@@ -45,10 +45,10 @@ export async function requireRoom(ctx: QueryCtx, shared: Shared) {
   throw createError("VALIDATION_ERROR", most === plan ? `This workspace's plan allows ${guests} on each ${kindWord(shared.kind)}. Remove one.` : `One ${kindWord(shared.kind)} has up to ${guests}. Remove one to add another.`);
 }
 
-/** Whether a person has the item already, with no guest's place: they act in its workspace, and for a kind only its owners hold, an author profile, they are one of them. */
+/** Whether a person has the item already, with no guest's place: they act in its workspace, and for a kind only its owners hold, an author profile, they own or run it (#1093). */
 export async function holds(ctx: Read, shared: Shared, person: Doc<"users">) {
   const actor = await actorIn(ctx, person, shared.workspaceId);
-  return actor !== null && (!ownersHold(shared.kind) || actor.role === "admin" || shared.createdBy === person._id);
+  return actor !== null && (!ownersHold(shared.kind) || actor.role === "admin");
 }
 
 /** What a guest's place keeps of the item for a list that orders by it: a chat's newest message time. */

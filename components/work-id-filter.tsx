@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import { useUpdateSearchFilter, useCurrentSearchFormState } from "@/lib/hooks";
 import { useAppToast } from "@/lib/toast";
 import { cn, isCitesFilterActive, isCitedByFilterActive, isRelatedToFilterActive } from "@/lib/utils";
-import { Quote, Network, ExternalLink, X, type AppIcon } from "@/components/icons";
+import { Quote, Network, ArrowUpRight, X, type AppIcon } from "@/components/icons";
+import Link from "@/components/workspace-link";
+import { paperPageId, paperPath } from "@/lib/papers/page-address";
 import { useTranslations } from "next-intl";
 import { bareWork, workId } from "@/lib/openalex/ids";
-import { isOwnId, SEARCH_SOURCE_NAMES } from "@/lib/search/source";
+import { SEARCH_SOURCE_NAMES } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
 interface WorkIdFilterProps {
@@ -30,6 +32,7 @@ export function WorkIdFilter({
 }: WorkIdFilterProps) {
   const toast = useAppToast();
   const t = useTranslations("workId");
+  const tPaper = useTranslations("paperPage");
   const source = useSearchSource();
   
   const {
@@ -190,14 +193,14 @@ export function WorkIdFilter({
            <div className="flex items-center gap-2">
              <Icon className={cn("h-3 w-3 flex-shrink-0", colors.icon)} />
              <span className="flex-shrink-0">{currentConfig.statusText}</span>
-             {source === "openalex" && !isOwnId(itemId) && <a
-               href={`https://openalex.org/${itemId}`}
-               target="_blank"
-               rel="noopener noreferrer"
+             {/* The paper the filter is about, on its page here, whichever source the search reads. */}
+             {paperPageId(itemId) ? <Link
+               href={paperPath(paperPageId(itemId)!, null)}
+               aria-label={tPaper("paperPage")}
                className={cn("ms-auto flex-shrink-0 hover:opacity-80", colors.link)}
              >
-               <ExternalLink className="h-3 w-3" />
-             </a>}
+               <ArrowUpRight className="h-3 w-3" />
+             </Link> : null}
            </div>
            <div className="w-full">
              <code className={cn(

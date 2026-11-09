@@ -36,10 +36,12 @@ export async function getPaperCitationMetadata(input: unknown) {
           metadata.type = normalizeCitationType(metadata.type);
         }
         const parsed = metadataSchema.partial().safeParse(metadata);
-        if (parsed.success && parsed.data.DOI?.toLowerCase() === doi.toLowerCase()) {
+        if (parsed.success && parsed.data.DOI?.toLowerCase() === doi.toLowerCase() && sameWork(data.title, parsed.data.title)) {
           record = { ...data, ...parsed.data, id: data.id, "citation-key": data["citation-key"] };
         } else {
-          console.warn("Citation DOI metadata rejected", { doi, reason: parsed.success ? "DOI mismatch" : parsed.error.issues });
+          // Another work's DOI isn't this one's: the citation goes without it rather than point at that work.
+          if (parsed.success && parsed.data.DOI?.toLowerCase() === doi.toLowerCase()) record = { ...data, DOI: undefined };
+          console.warn("Citation DOI metadata rejected", { doi, reason: !parsed.success ? parsed.error.issues : parsed.data.DOI?.toLowerCase() !== doi.toLowerCase() ? "DOI mismatch" : "another work's title", title: data.title, theirs: parsed.success ? parsed.data.title : undefined });
         }
       } else {
         console.warn("Citation DOI metadata unavailable", { doi, status: response.status });
@@ -50,4 +52,17 @@ export async function getPaperCitationMetadata(input: unknown) {
     }
   }
   return record;
+}
+
+/**
+ * Whether a DOI's metadata is of the work the page shows: at least half the words of the two titles are shared. A record
+ * can carry another work's DOI (one paper's page held an encyclopedia entry's), and its citation is then the page's own.
+ */
+export function sameWork(ours: string, theirs: string | undefined) {
+  if (!theirs) return true;
+  const words = (title: string) => new Set(title.toLowerCase().normalize("NFKD").replace(/\p{M}+/gu, "").replace(/[^\p{L}\p{N}]+/gu, " ").split(" ").filter(Boolean));
+  const a = words(ours);
+  const b = words(theirs);
+  const shared = [...a].filter((word) => b.has(word)).length;
+  return shared / Math.max(a.size, b.size, 1) >= 0.5;
 }

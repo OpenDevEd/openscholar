@@ -13,7 +13,9 @@
     "stylesFailed": "Imeshindwa kupakia mitindo.",
     "noStyles": "Hakuna mtindo unaolingana.",
     "commonStyles": "Mitindo ya kawaida",
-    "otherStyles": "Mitindo mingine"
+    "otherStyles": "Mitindo mingine",
+    "copiedIn": "Nukuu ya {style} imenakiliwa",
+    "download": "Pakua"
   },
   "common": {
     "search": "Tafuta",
@@ -307,10 +309,10 @@
     "metadataTitle": "Bei",
     "metadataDescription": "Bei rahisi na wazi kwa timu za ukubwa wote.",
     "everyFeature": "Kila kipengele cha Openscholar",
-    "papersRunning": "Makala {running, number} zinazoendeshwa kwa wakati mmoja",
-    "papersInRequest": "Makala {request, number} katika ombi moja",
+    "papersRunning": "AI huchuja au kutoa data ya makala {running, number} kwa wakati mmoja",
+    "papersInRequest": "Hadi makala {request, number} katika uchujaji au utoaji mmoja",
     "unlimitedCollectionsAndGuests": "Mikusanyiko na wageni bila kikomo",
-    "southernDescription": "Kwa watafiti katika nchi za kipato cha chini na cha kati.",
+    "southernDescription": "Kwa timu za Kusini, kwa miradi mahususi.",
     "southernFeature1": "Kila kitu katika Free",
     "southernFeature2": "Huongezwa kwenye akaunti yako baada ya kuwasiliana nasi",
     "onRequest": "Kwa ombi"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "Inahitaji kuingia",
     "signInRequiredDescription": "Ingia ili kufikia ukurasa huu.",
     "noAccessTitle": "Ufikiaji umezuiwa",
-    "noAccessDescription": "Huna ruhusa ya kuona rasilimali hii.",
+    "noAccessDescription": "Huna ruhusa ya kufikia ukurasa huu. Ikiwa mtu aliushiriki nawe, huenda ameacha: mwombe aushiriki tena.",
     "syncErrorTitle": "Tatizo la kusawazisha kipindi",
     "syncErrorDescription": "Hatukuweza kukamilisha kuanzisha akaunti yako. Jaribu tena ili uendelee.",
     "syncErrorAccess": "Kipindi chako ni halali, lakini usawazishaji wa akaunti haujakamilika. Jaribu tena ili uendelee.",
     "retrySync": "Jaribu kusawazisha tena"
   },
   "aiSetupGate": {
-    "title": "Sanidi AI ili kuboresha utafutaji wako",
-    "description": "Openscholar hutumia AI kuboresha maswali, kuchuja makala, na kutafsiri matokeo.",
+    "title": "Kutafuta ni bure. AI ni ziada",
+    "description": "Ingia na AI itaandika utafutaji wako, itakagua makala kulingana na vigezo vyako na kutafsiri matokeo, kwa salio la bure kila mwezi.",
     "signInForCredits": "Ingia upate krediti 50k za bure",
     "useOwnApiKey": "Tumia ufunguo wako wa API"
   },
@@ -677,7 +679,7 @@
     "uploadFailed": "Upakiaji umeshindwa",
     "uploadFailedDescription": "Haikuweza kupakia {format}. Tafadhali jaribu tena.",
     "accountChanged": "Akaunti yako imebadilika. Jaribu tena.",
-    "copyFailedDescription": "Haikuweza kunakili kwenye ubao wa kunakili. Tafadhali jaribu tena.",
+    "copyFailedDescription": "Kivinjari chako hakikuturuhusu kunakili. Chagua maandishi na uyanakili mwenyewe.",
     "validationFailed": "Uthibitishaji umeshindwa",
     "entityCreated": "{entity} imeundwa",
     "entityUpdated": "{entity} imesasishwa",
@@ -791,6 +793,7 @@
     "typeToSearchInstitutions": "Andika jina la taasisi",
     "institutionsUnavailable": "Taasisi hazikuweza kupakiwa. Jaribu tena.",
     "filterByThisInstitution": "Hufanya kazi kutoka {name} pekee",
+    "filterByInstitutionCountry": "Kazi kutoka taasisi za {country} pekee",
     "studyDesign": "Muundo wa utafiti",
     "anyStudyDesign": "Muundo wowote wa utafiti",
     "searchStudyDesigns": "Tafuta miundo ya utafiti",
@@ -853,8 +856,8 @@
     "titleAndAbstract": "Kichwa na muhtasari",
     "searchScope": "Upeo wa utafutaji",
     "sortResultsBy": "Panga matokeo kwa",
-    "citationFilter": "Kichujio cha nukuu",
-    "citedByFilter": "Kichujio cha zilizonukuu",
+    "citationFilter": "Makala zinazotaja makala",
+    "citedByFilter": "Makala ambazo makala inataja",
     "relatedWorksFilter": "Kichujio cha kazi zinazohusiana",
     "clearAllCount": "Safisha yote ({count})",
     "searchFiltersTitle": "Vichujio vya utafutaji",
@@ -977,7 +980,7 @@
     "domainLabel": "Kikoa:",
     "sdgsLabel": "SDG:",
     "referencesLabel": "Marejeo:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "dhidi ya wastani wa fani:",
     "citedBy": "Imenukuliwa na",
     "cites": "Inanukuu",
     "questionN": "Swali {n}: {question}",
@@ -1163,7 +1166,7 @@
     "translationSettings": "Mipangilio ya tafsiri",
     "autoTranslateResults": "Tafsiri kiotomatiki matokeo yaliyoorodheshwa",
     "listedItemsOnly": "Inatumika kwa vipengee vilivyoorodheshwa sasa pekee.",
-    "useCurrentLocaleTarget": "Tumia lugha ya sasa kama lengo",
+    "useCurrentLocaleTarget": "Tumia lugha ya tovuti",
     "runResultsTranslation": "Endesha tafsiri",
     "translatingResults": "Inatafsiri matokeo...",
     "undoTranslation": "Tendua tafsiri",
@@ -1208,13 +1211,16 @@
     "keepRunning": "Endelea kuendesha",
     "yesCancel": "Ghairi kazi",
     "deleteJob": "Futa kazi hii?",
-    "deleteJobDescription": "Hii itafuta kabisa kazi hii pamoja na matokeo yake yote ya uchimbaji."
+    "deleteJobDescription": "Hii itafuta kabisa kazi hii pamoja na matokeo yake yote ya uchimbaji.",
+    "rerunJob": "Iendeshe tena kama nakala?",
+    "rerunJobDescription": "Utoaji mpya wenye makala na maswali yale yale unaanza mara moja na kutumia salio, karibu kiasi ambacho huu ulitumia. Huu unabaki kama ulivyo.",
+    "rerunJobConfirm": "Endesha tena"
   },
   "emptyStates": {
     "noScreeningQuestions": "Bado hakuna maswali ya uchujaji"
   },
   "jobStatus": {
-    "restart": "Anzisha upya",
+    "restart": "Endesha tena kama nakala…",
     "papersCount": "makala {count}",
     "questionsCount": "{count, plural, one {swali #} other {maswali #}}",
     "statusPending": "Inasubiri",
@@ -1227,7 +1233,8 @@
     "noMatches": "Hakuna kinachofanana na vichujio vya sasa",
     "clearFilters": "Futa vichujio",
     "progressOfPapers": "Makala {processed} kati ya {total}",
-    "loadingExtractionResults": "Inapakia matokeo ya uchimbaji..."
+    "loadingExtractionResults": "Inapakia matokeo ya uchimbaji...",
+    "skippedNoText": "{count, plural, one {Makala # imeachwa: haina muhtasari wa kusoma, na maandishi kamili yalizimwa} other {Makala # zimeachwa: hazina muhtasari wa kusoma, na maandishi kamili yalizimwa}}"
   },
   "reportBuilder": {
     "grounded": "Imethibitishwa",
@@ -1260,7 +1267,8 @@
   },
   "rating": {
     "noRating": "Hakuna ukadiriaji",
-    "nStars": "nyota {count}"
+    "nStars": "nyota {count}",
+    "yourRating": "Ukadiriaji wako"
   },
   "pagination": {
     "currentPage": "Ukurasa {page}",
@@ -1293,7 +1301,7 @@
     "type": "Aina",
     "refs": "Marejeo",
     "cited": "Imenukuliwa",
-    "fwci": "FWCI",
+    "fwci": "dhidi ya wastani wa fani",
     "topic": "Mada",
     "field": "Nyanja",
     "subfield": "Taaluma ndogo",
@@ -1514,7 +1522,8 @@
     "planAllowsCollections": "{plan} inaruhusu mikusanyiko {limit, number}",
     "nameTheCollection": "Ipe jina mkusanyiko",
     "newName": "Jina jipya la {name}",
-    "clearSearch": "Futa utafutaji"
+    "clearSearch": "Futa utafutaji",
+    "collectionDeletedPapersStay": "{name}: makala zake zinabaki kwenye maktaba yako"
   },
   "sidebarLayout": {
     "expandFilters": "Panua vichujio (Ctrl+Shift+F)",
@@ -1716,7 +1725,7 @@
   "connectionsPage": {
     "connectedApps": "Programu zilizounganishwa",
     "noConnectedApps": "Hakuna programu zilizounganishwa",
-    "noConnectedAppsDescription": "Programu za nje zikiunganishwa na pochi yako, zitaonekana hapa.",
+    "noConnectedAppsDescription": "Programu za nje zikiunganishwa na akaunti yako ya Openscholar, zitaonekana hapa.",
     "revoking": "Inaondoa ruhusa...",
     "revoke": "Ondoa ruhusa",
     "revokedBadge": "Imeondolewa",
@@ -1760,7 +1769,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Jumuiya isiyo na jina",
     "unsaved": "Mabadiliko ambayo hayajahifadhiwa",
-    "viewOnly": "Kuona pekee",
+    "viewOnly": "Mipangilio ni ya kutazama tu",
     "save": "Hifadhi",
     "saving": "Inahifadhi…",
     "saveError": "Mabadiliko hayakuweza kuhifadhiwa. Jaribu tena.",
@@ -1815,7 +1824,15 @@
       "versions": "Matoleo",
       "ai": "AI",
       "domain": "Kikoa",
+      "listing": "Orodha",
       "publication": "Uchapishaji"
+    },
+    "listing": {
+      "description": "Kama jumuiya hii inaorodheshwa kwenye saraka ya umma ya jumuiya. Tovuti yake inabaki wazi kwa yeyote mwenye anwani yake kwa vyovyote vile.",
+      "public": "Ya umma",
+      "publicHint": "Imeorodheshwa kwenye saraka ya umma, ambapo yeyote anaweza kuipata.",
+      "unlisted": "Haijaorodheshwa",
+      "unlistedHint": "Haiko kwenye saraka. Yeyote mwenye anwani yake bado anaweza kuifungua."
     },
     "sectionState": {
       "complete": "Imekamilika",
@@ -1918,6 +1935,9 @@
       "taglineLabel": "Kauli mbiu",
       "taglineHint": "Kichwa kilicho juu ya utafutaji wa jumuiya. Acha tupu ili kuonyesha Tafuta.",
       "taglinePlaceholder": "Ushahidi kwa maamuzi bora",
+      "searchTitleLabel": "Kichwa katika matokeo ya utafutaji",
+      "searchTitleHint": "Kile injini za utafutaji zinaonyesha kwa ukurasa wa mwanzo. Acha tupu ili kutumia jina na kauli mbiu.",
+      "searchTitlePlaceholder": "Utafiti na ushahidi kuhusu kukabiliana na tabianchi",
       "descriptionLabel": "Maelezo",
       "descriptionHint": "Yanaonyeshwa kwenye ukurasa wa mwanzo na kwenye matokeo ya utafutaji.",
       "partnersHeading": "Washirika wa ufadhili",
@@ -2001,10 +2021,13 @@
       "add": "Ongeza taasisi"
     },
     "danger": {
-      "description": "Futa jumuiya hii. Kuwa mwangalifu hapa.",
+      "description": "Hamisha au futa jumuiya hii. Kuwa mwangalifu hapa.",
       "deleteTitle": "Futa jumuiya",
       "deleteHint": "Huondoa tovuti, anwani na mipangilio.",
-      "deleteButton": "Futa jumuiya"
+      "deleteButton": "Futa jumuiya",
+      "moveTitle": "Hamisha kwenda nafasi kazi nyingine",
+      "moveHint": "Inabaki na anwani, mipangilio na watu wake. Nafasi kazi inayohamishiwa inaimiliki.",
+      "moveButton": "Hamisha jumuiya"
     },
     "deleteDialog": {
       "title": "Futa jumuiya hii?",
@@ -2012,7 +2035,7 @@
       "typeToConfirm": "Andika {name} ili uthibitishe",
       "confirm": "Futa jumuiya",
       "startedTitle": "Inafuta jumuiya",
-      "startedDescription": "{name} inaondolewa. Inachukua sekunde chache.",
+      "startedDescription": "{name} inaondolewa. Inachukua dakika moja au mbili.",
       "error": "Jumuiya haikuweza kufutwa. Maliza operesheni yoyote ya jumuiya inayoendelea, kisha ujaribu tena."
     },
     "links": {
@@ -2836,7 +2859,8 @@
       "confirmAction": "Badilisha anwani"
     },
     "retry": "Jaribu tena",
-    "retryError": "Hilo halikuweza kuanza. Jaribu tena."
+    "retryError": "Hilo halikuweza kuanza. Jaribu tena.",
+    "saveDraft": "Hifadhi rasimu"
   },
   "topics": {
     "title": "Mada",
@@ -2911,8 +2935,8 @@
       "title": "Evidence Community mpya",
       "backToLibraries": "Rudi kwenye jumuiya",
       "ownerTitle": "Mmiliki",
-      "ownerOnlyTitle": "Wamiliki pekee",
-      "ownerOnlyDescription": "Mmiliki wa shirika pekee ndiye anayeweza kuunda jumuiya.",
+      "ownerOnlyTitle": "Huwezi kuunda jumuiya hapa",
+      "ownerOnlyDescription": "Jumuiya huundwa katika nafasi yako ya kazi, au katika shirika ambalo wewe ni msimamizi wake, baada ya Evidence Communities kuwashwa kwa ajili yake.",
       "libraryTitle": "Jumuiya",
       "libraryDescription": "Jina linaonekana kwenye tovuti ya umma na huweka anwani ya umma.",
       "nameLabel": "Jina",
@@ -3152,8 +3176,13 @@
       "off": "Imezimwa",
       "libraries": "{count, plural, one {Jumuiya #} other {Jumuiya #}}",
       "switchLabel": "Evidence Communities za {name}",
-      "moveFirst": "Hamisha au futa jumuiya zake kwanza",
-      "noMatches": "Hakuna mashirika yanayolingana"
+      "noMatches": "Hakuna mashirika yanayolingana",
+      "kind": "Nafasi za kazi",
+      "organizationsTab": "Mashirika",
+      "peopleTab": "Watu",
+      "searchPeople": "Tafuta watu kwa barua pepe",
+      "people": "watu",
+      "noPeopleMatch": "Hakuna watu wanaolingana"
     },
     "communityReleases": {
       "releases": "Matoleo",
@@ -3414,7 +3443,7 @@
       "times": "{count, plural, one {mara} other {mara}}",
       "unfold": "Onyesha kila moja",
       "fold": "Onyesha kama moja",
-      "declined": "Hairuhusiwi",
+      "declined": "Ulikataa",
       "waiting": "Inasubiri jibu",
       "allowed": "Imeruhusiwa",
       "searches": {
@@ -4200,6 +4229,18 @@
         "where": "Evidence Communities",
         "ask": "Anzisha rasimu ya jumuiya"
       },
+      "publicCommunities": {
+        "doing": "Inasoma jumuiya za umma",
+        "did": "Imesoma jumuiya za umma",
+        "where": "Evidence Communities",
+        "ask": "Soma jumuiya za umma"
+      },
+      "communityVisibility": {
+        "doing": "Inabadilisha kama jumuiya inaorodheshwa",
+        "did": "Imebadilisha kama jumuiya inaorodheshwa",
+        "where": "Evidence Communities",
+        "ask": "Badilisha kama jumuiya inaorodheshwa"
+      },
       "librarySources": {
         "doing": "Inasoma vyanzo vya jumuiya",
         "did": "Imesoma vyanzo vya jumuiya",
@@ -4336,6 +4377,54 @@
         "did": "Imedai mwandishi",
         "where": "Waandishi",
         "ask": "Dai mwandishi"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Inatafuta makala kwa ajili ya jumuiya",
+        "did": "Ilitafuta makala kwa ajili ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Tafuta makala kwa ajili ya jumuiya"
+      },
+      "addCommunityPapers": {
+        "doing": "Inaongeza makala kwenye jumuiya",
+        "did": "Iliongeza makala kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ongeza makala kwenye jumuiya"
+      },
+      "communityAddedPapers": {
+        "doing": "Inasoma makala zilizoongezwa za jumuiya",
+        "did": "Ilisoma makala zilizoongezwa za jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma makala zilizoongezwa za jumuiya"
+      },
+      "removeCommunityPaper": {
+        "doing": "Inaondoa makala kwenye jumuiya",
+        "did": "Iliondoa makala kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ondoa makala kwenye jumuiya"
+      },
+      "communityPapersSettings": {
+        "doing": "Inabadilisha makala zilizoongezwa za jumuiya",
+        "did": "Ilibadilisha makala zilizoongezwa za jumuiya",
+        "where": "Evidence Community",
+        "ask": "Sitisha au endelea na makala zilizoongezwa za jumuiya, au PDF zake"
+      },
+      "connectCommunityCollection": {
+        "doing": "Inaongeza mkusanyiko kwenye vyanzo vya jumuiya",
+        "did": "Iliongeza mkusanyiko kwenye vyanzo vya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Ongeza mmoja wa mikusanyiko yako kwenye vyanzo vya jumuiya"
+      },
+      "putCommunityLive": {
+        "doing": "Inachapisha mipangilio ya jumuiya",
+        "did": "Ilichapisha mipangilio ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Chapisha mipangilio iliyohifadhiwa ya jumuiya"
+      },
+      "sentPapers": {
+        "doing": "Inasoma makala ulizotuma kwa jumuiya",
+        "did": "Ilisoma makala ulizotuma kwa jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Soma makala ulizotuma kwa jumuiya"
       }
     },
     "asks": {
@@ -4510,7 +4599,7 @@
     "main": "Kuu",
     "screen": "Chuja",
     "extract": "Chimba",
-    "publish": "Chapisha",
+    "communities": "Jumuiya",
     "explore": "Gundua",
     "authors": "Waandishi",
     "workspacesCard": "Nafasi kazi",
@@ -4591,9 +4680,6 @@
       "leave": "Ondoka",
       "deleteName": "Futa {name}",
       "stillHasLibrary": "{library} ni mojawapo ya Evidence Communities zake. Ihamishe au uifute kwanza.",
-      "deleteLibrary": "Futa jumuiya",
-      "libraryBeingDeleted": "{library} inafutwa.",
-      "libraryDeleteFailed": "{library} haikuweza kufutwa. Jaribu tena.",
       "deleteDetail": "Huiondoa kwa {count, plural, one {mwanachama wake #} other {wanachama wote #}}",
       "moveLibrariesFirst": "Hamisha au futa Evidence Communities zake kwanza",
       "delete": "Futa",
@@ -4756,7 +4842,10 @@
         "itsPapers": "Makala zake",
         "ratingsInIt": "Ukadiriaji ndani yake",
         "publications": "Machapisho",
-        "editors": "Wahariri"
+        "editors": "Wahariri",
+        "address": "Anwani",
+        "settings": "Mipangilio",
+        "peopleWithRoles": "Watu wenye jukumu"
       },
       "moveTo": "Hamia {workspace}",
       "move": "Hamisha",
@@ -4765,7 +4854,15 @@
       "collection": "Hamisha mkusanyiko",
       "author": "Hamisha wasifu wa mwandishi",
       "libraryKeeps": "Maktaba ya {workspace} inabaki na makala ilizohifadhi.",
-      "yourLibraryKeeps": "Maktaba yako inabaki na makala ilizohifadhi."
+      "yourLibraryKeeps": "Maktaba yako inabaki na makala ilizohifadhi.",
+      "community": "Hamisha jumuiya",
+      "workspaceOwnsIt": "Nafasi kazi inayohamishiwa itaimiliki kuanzia hapo.",
+      "refused": {
+        "noCommunities": "Jumuiya hazijawashwa kwa eneo hili la kazi",
+        "communitiesFull": "Ina jumuiya nyingi kadiri nafasi kazi inavyoweza",
+        "profilesOff": "Wasifu wa waandishi haujawashwa hapa",
+        "noProfiles": "Huwezi kuunda wasifu wa waandishi hapa"
+      }
     },
     "share": {
       "share": "Shiriki",
@@ -4865,7 +4962,11 @@
       "goneDetail": "Muulize aliyekishiriki akishiriki tena",
       "otherTitle": "Mwaliko huu ulitumwa kwenye anwani nyingine",
       "otherDetail": "Ufungue ikiwa akaunti hii pia ina anwani hiyo, au ingia kwa anwani ambayo ulitumwa"
-    }
+    },
+    "notEmails": "{count, plural, one {Hii si anwani ya barua pepe: {values}. Irekebishe au iondoe ili kuunda shirika.} other {Hizi si anwani za barua pepe: {values}. Zirekebishe au ziondoe ili kuunda shirika.}}",
+    "asRole": "kama {role}",
+    "memberCan": "Wanachama hutafuta, huhifadhi, huchuja na kutoa data kwa kila kitu ambacho shirika linashiriki.",
+    "adminCan": "Wasimamizi wanaweza kufanya hivyo hivyo, na pia kualika na kuondoa watu na kusimamia mipangilio na matumizi."
   },
   "models": {
     "changeInSettings": "Badilisha kwenye mipangilio ya AI"
@@ -5308,7 +5409,20 @@
     "removedFromLibrary": "Imeondolewa kwenye jumuiya hii.",
     "removedFromProfile": "Imeondolewa kwenye wasifu huu.",
     "addedToLibrary": "{name} ameongezwa kwenye jumuiya hii.",
-    "addedToProfile": "{name} ameongezwa kwenye wasifu huu."
+    "addedToProfile": "{name} ameongezwa kwenye wasifu huu.",
+    "anOrganization": "Shirika",
+    "chooseAnOrganization": "Chagua shirika",
+    "anotherOrganization": "Shirika lingine",
+    "adminEmail": "Barua pepe ya msimamizi wake",
+    "organizationGetsIt": "Kila mtu kwenye shirika anapata jukumu hili, na hulipoteza akiondoka.",
+    "theirAdminAccepts": "Msimamizi wake huikubali kwa shirika analoliendesha, na kila mtu ndani yake anapata jukumu hili.",
+    "everyoneInIt": "Kila mtu ndani yake",
+    "forTheirOrganization": "Kwa shirika ambalo {email} ni msimamizi wake",
+    "removeThisOrganization": "Ondoa shirika hili? Wanachama wake wanabaki tu na majukumu waliyopewa wenyewe.",
+    "organizationLabel": "Shirika",
+    "ownWorkspaceOwner": "Iko kwenye nafasi kazi yao wenyewe, kwa hiyo ni yao.",
+    "whoWorksOnIt": "Wanaofanya kazi kwenye jumuiya hii. Wamiliki wake husimamia timu.",
+    "viewersUntilAnOwner": "Watazamaji hadi mmiliki awape jukumu."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Ripoti imewekwa kwenye foleni kwa chapisho #.} other {Ripoti imewekwa kwenye foleni kwa machapisho #.}}",
@@ -5371,6 +5485,54 @@
     "keepThisUnderCharacters": "Weka chini ya herufi {maxLength}."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Jumuiya zako",
+      "showFrom": "Onyesha jumuiya kutoka",
+      "allWorkspaces": "Nafasi zote za kazi",
+      "allCommunities": "Jumuiya zote",
+      "workspaces": "Nafasi za kazi",
+      "yours": "Zako",
+      "sharedWithYou": "Zilizoshirikiwa nawe",
+      "sharedWith": "Zilizoshirikiwa na {name}",
+      "loading": "Inapakia jumuiya",
+      "noMatches": "Hakuna kati ya hizi inayolingana na utafutaji huu.",
+      "emptyAll": "Bado hauko katika jumuiya yoyote. Mtu akishiriki moja nawe, au shirika lako likiwa na moja, itaonekana hapa.",
+      "emptyHere": "Jumuiya za {name}, na zile zilizoshirikiwa nayo, zinaonekana hapa.",
+      "emptyShared": "Jumuiya ambazo watu hushiriki nawe zinaonekana hapa.",
+      "emptySharedHere": "Jumuiya zilizoshirikiwa na {name} zinaonekana hapa.",
+      "emptyOwn": "Jumuiya unazounda zinaonekana hapa.",
+      "emptyWorkspace": "{name} bado haina jumuiya.",
+      "invitedAs": "Umealikwa kama {role}",
+      "accept": "Kubali",
+      "accepted": "Umekubali {name}.",
+      "moreWorkspaces": "Nafasi zaidi za kazi",
+      "invitedForOrganization": "Umealikwa kama {role}, kwa shirika lako",
+      "acceptAsAnAdmin": "Ikubali ukiwa msimamizi wa shirika",
+      "acceptForWhich": "Kubali {name} kwa shirika gani",
+      "acceptedFor": "Umekubali {name} kwa {organization}."
+    },
+    "directory": {
+      "title": "Jumuiya za umma",
+      "sortLabel": "Panga jumuiya za umma",
+      "sort": {
+        "newest": "Mpya zaidi",
+        "name": "Jina",
+        "records": "Makala nyingi zaidi"
+      },
+      "loading": "Inapakia jumuiya za umma",
+      "noMatches": "Hakuna jumuiya ya umma inayolingana na utafutaji huu",
+      "none": "Jumuiya za umma zinaonekana hapa zikiwa hewani",
+      "records": "{count, plural, one {makala {shown}} other {makala {shown}}}",
+      "unnamedOwner": "Mwanachama wa Openscholar",
+      "people": "{count, plural, one {mwanatimu {shown}} other {wanatimu {shown}}}",
+      "countries": "Kuhusu {names}",
+      "recordsLabel": "{count, plural, one {makala} other {makala}}",
+      "peopleLabel": "{count, plural, one {mwanatimu} other {wanatimu}}",
+      "noDescription": "Hakuna maelezo bado",
+      "notCounted": "Bado haijahesabiwa",
+      "intro": "Kila jumuiya ni tovuti inayokusanya utafiti kuhusu mada moja. Fungua mojawapo kuvinjari makala zake.",
+      "updated": "Imesasishwa {when}"
+    },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "Jumuiya mpya",
     "libraryView": "Mwonekano wa jumuiya",
@@ -5414,7 +5576,9 @@
     "deletionRestartedFor": "Ufutaji umeanzishwa upya kwa {name}.",
     "couldNotRestartDeletion": "Imeshindwa kuanzisha upya ufutaji",
     "invitationDeclined": "Mwaliko umekataliwa.",
-    "unableToDeclineInvitation": "Imeshindwa kukataa mwaliko"
+    "unableToDeclineInvitation": "Imeshindwa kukataa mwaliko",
+    "searchSubmissions": "Tafuta ulichotuma",
+    "findASubmission": "Tafuta makala uliyotuma…"
   },
   "authorPages": {
     "profileSettings": "Mipangilio ya wasifu",
@@ -5545,10 +5709,10 @@
     "creatingKey": "Inaunda ufunguo...",
     "redirecting": "Inaelekezwa upya...",
     "approve": "Idhinisha",
-    "wantsToConnect": "<strong>{appName}</strong> inataka kuunganishwa na pochi yako ya Openscholar.",
+    "wantsToConnect": "<strong>{appName}</strong> inataka kuunganishwa na akaunti yako ya Openscholar.",
     "copyKey": "Nakili ufunguo huu wa API na uubandike kwenye <strong>{appName}</strong>. Utaonyeshwa mara moja tu.",
     "originUnregisteredBody": "Programu iliyo kwenye <code>{origin}</code> haijasajiliwa kuunganishwa na Openscholar.",
-    "originHelp": "Ni chanzo kilichoidhinishwa awali pekee kinachoweza kuunda miunganisho ya pochi. Ikiwa wewe ni msanidi wa <strong>{appName}</strong>, wasiliana na timu ya Openscholar ili usajili chanzo chako.",
+    "originHelp": "Ni chanzo kilichoidhinishwa awali pekee kinachoweza kuunda miunganisho ya akaunti. Ikiwa wewe ni msanidi wa <strong>{appName}</strong>, wasiliana na timu ya Openscholar ili usajili chanzo chako.",
     "wantsToUseCredits": "<strong>{appName}</strong> inataka kutumia uzalishaji wa AI kupitia krediti zako za Openscholar.",
     "unknownApp": "Programu isiyojulikana",
     "thisApplicationSOriginIsNot": "Chanzo cha programu hii hakijasajiliwa.",
@@ -5676,5 +5840,129 @@
     "step4": "Onyesha upya tokeni",
     "step4About": "Tokeni hudumu saa 24. Badilisha tokeni ya kuonyesha upya kwa mpya kabla ya hapo.",
     "cantDo": "Programu haziwezi kubadilisha malipo, funguo za API au mipangilio ya tovuti, wala kuchapisha Evidence Community."
+  },
+  "paperPage": {
+    "references": "Marejeleo",
+    "openAccess": "Ufikiaji huria",
+    "readPdf": "Soma PDF",
+    "publisherPage": "Ukurasa wa mchapishaji",
+    "askAbout": "Uliza kuhusu makala hii",
+    "noAbstract": "Hakuna muhtasari",
+    "linkCopied": "Kiungo cha makala kimenakiliwa",
+    "citationsPerYear": "Manukuu kwa mwaka",
+    "citationsIn": "{count, plural, one {Nukuu #} other {Manukuu #}} mwaka {year}",
+    "seeCiting": "Ona makala zinazoinukuu",
+    "top1": "Asilimia 1 ya juu katika fani yake",
+    "top10": "Asilimia 10 ya juu katika fani yake",
+    "aheadOf": "Imetajwa zaidi ya asilimia {percent} ya makala zote za {year}",
+    "influential": "zinajenga juu yake",
+    "authors": "Waandishi",
+    "andMore": "na wengine {count}",
+    "showAll": "Onyesha zote {count}",
+    "showFewer": "Onyesha chache",
+    "corresponding": "Mwandishi wa mawasiliano",
+    "orcidOf": "ORCID iD ya {name}",
+    "institutions": "Taasisi",
+    "whereToRead": "Mahali pa kusoma",
+    "kindPublisher": "Mchapishaji",
+    "kindRepository": "Hifadhi",
+    "kindIndex": "Faharasa",
+    "pdf": "PDF",
+    "funding": "Ufadhili",
+    "topics": "Mada",
+    "sdgs": "Malengo ya Maendeleo Endelevu",
+    "mesh": "Istilahi za MeSH",
+    "details": "Maelezo",
+    "charge": "Ada ya uchapishaji",
+    "retracted": "Imeondolewa",
+    "openscholarId": "Kitambulisho cha Openscholar",
+    "copyDoi": "Nakili DOI",
+    "doiCopied": "DOI imenakiliwa",
+    "doiCopyFailed": "Imeshindwa kunakili DOI",
+    "paperPage": "Ukurasa wa makala",
+    "share": "Shiriki",
+    "inCommunities": "Katika jumuiya hizi",
+    "fieldAverage": "× wastani wa fani"
+  },
+  "addedPapers": {
+    "name": "Makala zilizoongezwa",
+    "provider": "DOI na vitambulisho vya OpenAlex",
+    "cardDescription": "Makala zilizoongezwa moja moja kwa DOI au kitambulisho cha OpenAlex, zikisawazishwa na OpenAlex.",
+    "menu": "Makala kwa DOI au kitambulisho",
+    "menuHint": "Moja au nyingi, zikisawazishwa",
+    "menuNotLive": "Inapatikana jumuiya ikishachapishwa",
+    "add": "Ongeza makala",
+    "title": "Ongeza makala",
+    "description": "Bandika viungo vya makala (kutoka Openscholar, tovuti ya jumuiya, OpenAlex au doi.org), DOI au vitambulisho vya OpenAlex, hadi {max} kwa wakati mmoja.",
+    "inputLabel": "DOI, vitambulisho vya OpenAlex au viungo",
+    "papers": "{count, plural, one {makala #} other {makala #}}",
+    "tooMany": "Zaidi ya makala {max}",
+    "invalid": "Si kiungo cha makala, DOI wala kitambulisho: {values}",
+    "find": "Tafuta makala",
+    "found": "Makala zilizopatikana",
+    "notFound": "Haikupatikana",
+    "alreadyAdded": "Tayari imeongezwa",
+    "inQueue": "Inasubiri ukaguzi",
+    "doiOnly": "DOI tu",
+    "leaveOut": "Acha",
+    "leaveOutLabel": "Acha {title}",
+    "doiOnlyNote": "{count, plural, one {OpenAlex bado haina mojawapo ya hizi. Inaingia kupitia DOI yake, na kila usawazishaji hukagua OpenAlex tena.} other {OpenAlex bado haina # kati ya hizi. Zinaingia kupitia DOI zake, na kila usawazishaji hukagua OpenAlex tena.}}",
+    "toAdd": "{count, plural, one {makala # ya kuongeza} other {makala # za kuongeza}}",
+    "sendToQueue": "Tuma kwa ukaguzi",
+    "publish": "Chapisha",
+    "published": "{count, plural, one {makala # imechapishwa kwenye {community}} other {makala # zimechapishwa kwenye {community}}}",
+    "queued": "{count, plural, one {makala # imetumwa kwenye foleni ya ukaguzi} other {makala # zimetumwa kwenye foleni ya ukaguzi}}",
+    "someFailed": "{count, plural, one {makala # imehifadhiwa kama rasimu lakini haikutumwa. Ifungue kwenye admin ili uitume.} other {makala # zimehifadhiwa kama rasimu lakini hazikutumwa. Zifungue kwenye admin ili uzitume.}}",
+    "lookupFailed": "Jumuiya haikuweza kutafuta makala hizi. Jaribu tena.",
+    "addFailed": "Jumuiya haikuweza kuongeza makala hizi. Jaribu tena.",
+    "noAuthors": "Hakuna waandishi walioorodheshwa",
+    "unavailable": "Haipatikani",
+    "settingsFailed": "Jumuiya haikupokea mabadiliko. Jaribu tena.",
+    "ownerOnly": "Mmiliki pekee hubadilisha hili",
+    "from": "Kutoka kwa {name}",
+    "returned": "Imekataliwa",
+    "statusWithdrawn": "Umeiondoa wewe",
+    "statusRemoved": "Imeondolewa na jumuiya",
+    "openIn": "Fungua kwenye {community}",
+    "openLabel": "Fungua {title} kwenye {community}",
+    "remove": "Ondoa",
+    "removeLabel": "Ondoa {title}",
+    "withdraw": "Rudisha",
+    "withdrawLabel": "Rudisha {title}",
+    "removed": "Makala imeondolewa kwenye jumuiya",
+    "withdrawn": "Makala imerudishwa kutoka foleni ya ukaguzi",
+    "removeFailed": "Jumuiya haikuweza kuondoa makala hii. Jaribu tena.",
+    "viewLabel": "Onyesha",
+    "tabPublic": "Jumuiya za umma",
+    "tabSubmissions": "Mawasilisho yako",
+    "statusLabel": "Hali",
+    "everyStatus": "Kila hali",
+    "statusPublished": "Imechapishwa",
+    "noneYet": "Bado hakuna mawasilisho",
+    "noneYetHint": "Ongeza makala kwenye jumuiya kutoka kwenye tokeo lolote la utafutaji.",
+    "noMatches": "Hakuna mawasilisho yanayolingana",
+    "addToCommunity": "Ongeza kwenye jumuiya",
+    "searchCommunities": "Tafuta jumuiya",
+    "recent": "Za hivi karibuni",
+    "yourCommunities": "Jumuiya zako",
+    "noCommunitiesMatch": "Hakuna jumuiya zinazolingana",
+    "noCommunities": "Bado hakuna jumuiya",
+    "inQueueShort": "Kwenye foleni",
+    "added": "Imeongezwa",
+    "publishOrReview": "Ichapishe sasa, au acha timu iikague kwanza.",
+    "reviewFirst": "Timu ya jumuiya huikagua kabla haijachapishwa.",
+    "publishedTo": "Imechapishwa kwenye {community}",
+    "queuedTo": "Imetumwa kwenye foleni ya ukaguzi ya {community}",
+    "alreadyIn": "{community} tayari ina makala hii",
+    "moreCommunities": "Jumuiya zaidi",
+    "askTitle": "Ongeza {count, plural, one {makala #} other {makala #}} kwenye jumuiya",
+    "publishNow": "Chapisha sasa",
+    "reviewQueue": "Foleni ya ukaguzi",
+    "askPublishHint": "{count, plural, one {Inachapishwa} other {Zinachapishwa}} kwenye {community} mara tu unaporuhusu.",
+    "askQueueHint": "{count, plural, one {Inasubiri} other {Zinasubiri}} kwenye foleni ya ukaguzi ya {community} hadi timu yake {count, plural, one {iidhinishe} other {ziidhinishe}}.",
+    "askPublish": "Chapisha {count, plural, one {makala #} other {makala #}}",
+    "askQueue": "Tuma {count, plural, one {makala #} other {makala #}} kwa ukaguzi",
+    "alreadyInIt": "Tayari imo",
+    "inReview": "Inakaguliwa"
   }
 }

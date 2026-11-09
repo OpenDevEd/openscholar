@@ -1,14 +1,13 @@
-import { paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
-import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
+import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { opensLibraries } from "./billing/accounts";
 import { getCurrentUser, getIdentity } from "./lib/auth";
 import { createError } from "./lib/errors";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
-import { hasDirectLibraryAccess } from "./evidenceLibraries/access";
+import { readActiveOrganizationMembership } from "./evidenceLibraries/access";
 import { workspaceQuery } from "./lib/userActions";
-import type { InWorkspace } from "./workspaces/actor";
+import { profileMaker } from "./authors/access";
 
 /** The same active memberships drive feature access and organization pickers. */
 export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, person?: Doc<"users"> | null) {
@@ -38,105 +37,39 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
   );
 }
 
-/** Whether an organization's workspace opens Evidence Libraries. */
-async function planGrants(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">) {
-  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
-  return workspace !== null && (await opensLibraries(ctx, workspace._id));
+/** Whether the person may create a community in the workspace: it has them switched on (`opensLibraries`), and it's their own or an organization they're an admin of. */
+export async function createsIn(ctx: QueryCtx | MutationCtx, user: Doc<"users">, workspace: Doc<"workspaces">) {
+  if (user.state !== "active") return false;
+  if (workspace.kind === "personal" ? workspace.userId !== user._id : (await ctx.db.get("organizations", workspace.organizationId))?.state !== "active" || (await readActiveOrganizationMembership(ctx, workspace.organizationId, user.clerkId))?.role !== "org:admin") return false;
+  return await opensLibraries(ctx, workspace._id);
+}
+
+/** The workspace a new community is created in, refused unless the signed-in person may create one there. */
+export async function requireCommunityWorkspace(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
+  if (!(await getIdentity(ctx))) throw createError("UNAUTHENTICATED", "Sign in to create a community.");
+  const [user, workspace] = await Promise.all([getCurrentUser(ctx), ctx.db.get("workspaces", workspaceId)]);
+  if (!user || !workspace || !(await createsIn(ctx, user, workspace))) {
+    throw createError("FORBIDDEN", "Communities can be created in your own workspace or an organization you're an admin of, once Evidence Communities are on for it.");
+  }
+  return { workspace, workspaceId, user, clerkUserId: user.clerkId };
 }
 
 /**
- * Whether the workspace a person acts in opens Evidence Libraries for them: it has them
- * (`opensLibraries`), or, in their own workspace, a library of another's was shared with them. A plan is its
- * workspace's alone: one of their organizations' opens nothing in another, nor in their own.
- */
-export async function opensEvidenceLibraries(ctx: QueryCtx | MutationCtx, { userId, workspaceId }: InWorkspace) {
-  if (await opensLibraries(ctx, workspaceId)) return true;
-  if ((await ctx.db.get("workspaces", workspaceId))?.kind !== "personal") return false;
-  const user = await ctx.db.get("users", userId);
-  return user !== null && (await hasDirectLibraryAccess(ctx, user));
-}
-
-/** The organizations the person may create a library in: those they're an admin of that have Evidence Libraries. */
-export async function readLibraryOrganizations(ctx: QueryCtx | MutationCtx) {
-  const admin = (await readMemberOrganizations(ctx)).filter(({ membership }) => membership.role === "org:admin");
-  const granted = await Promise.all(admin.map(({ organization }) => planGrants(ctx, organization._id)));
-  return admin.filter((_, i) => granted[i]);
-}
-
-export async function requireLibraryOrganization(
-  ctx: QueryCtx | MutationCtx,
-  organizationId: string,
-) {
-  if (!(await getIdentity(ctx)))
-    throw createError("UNAUTHENTICATED", "Sign in to create a community.");
-  const entry = (await readLibraryOrganizations(ctx)).find(
-    (row) => row.organization._id === organizationId,
-  );
-  if (!entry)
-    throw createError(
-      "FORBIDDEN",
-      "Choose an organization you're an admin of that has Evidence Communities.",
-    );
-  return { ...entry, clerkUserId: entry.membership.clerkUserId };
-}
-
-/**
- * What the workspace the page is in opens for the person: Evidence Libraries (see
- * `opensEvidenceLibraries`), and the managing of author profiles, which takes them in the workspace itself.
+ * What the workspace the page is in has for the person: whether Evidence Communities, and author
+ * profiles with them, are on for it, and whether the person may create a community in it.
  */
 export const opens = workspaceQuery({
   args: {},
-  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean() }),
-  signedOut: { evidenceLibraries: false, authors: false },
+  // `createsAuthors`: whether they may make an author profile in it (../authors/access.ts, #1093).
+  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean(), createsCommunities: v.boolean(), createsAuthors: v.boolean() }),
+  signedOut: { evidenceLibraries: false, authors: false, createsCommunities: false, createsAuthors: false },
   handler: async (ctx, actor) => {
-    const authors = await opensLibraries(ctx, actor.workspaceId);
-    return { authors, evidenceLibraries: authors || (await opensEvidenceLibraries(ctx, actor)) };
+    const [on, user, workspace] = await Promise.all([opensLibraries(ctx, actor.workspaceId), ctx.db.get("users", actor.userId), ctx.db.get("workspaces", actor.workspaceId)]);
+    return {
+      evidenceLibraries: on,
+      authors: on,
+      createsCommunities: on && user !== null && workspace !== null && (await createsIn(ctx, user, workspace)),
+      createsAuthors: on && user !== null && (await profileMaker(ctx, user, actor.workspaceId)) !== null,
+    };
   },
-});
-
-/**
- * What a page loaded before 2026-10-10 is told: it asks without a workspace and reads three
- * answers. A tab left open keeps what it showed, in place of failing when this deployed: Evidence
- * Libraries and authors where any of the person's organizations has them, extraction always.
- * `get` goes once those tabs are gone.
- */
-async function openedBefore(ctx: QueryCtx, user: Doc<"users">) {
-  for (const { organization } of await readMemberOrganizations(ctx, user)) if (await planGrants(ctx, organization._id)) return true;
-  return await hasDirectLibraryAccess(ctx, user);
-}
-
-export const get = query({
-  args: {},
-  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean(), extraction: v.boolean() }),
-  handler: async (ctx) => {
-    const user = await getCurrentUser(ctx);
-    const libraries = user !== null && (await openedBefore(ctx, user));
-    return { evidenceLibraries: libraries, authors: libraries, extraction: true };
-  },
-});
-
-const libraryOrganizationValidator = v.object({
-  id: v.id("organizations"),
-  name: v.string(),
-  imageUrl: v.optional(v.string()),
-});
-
-/** The organizations the person may create a library in, by name. */
-const libraryOrganizationsOf = async (ctx: QueryCtx) =>
-  (await readLibraryOrganizations(ctx))
-    .map(({ organization }) => ({
-      id: organization._id,
-      name: organization.name,
-      imageUrl: organization.imageUrl,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-/**
- * The organizations the person may create a library in, as one page: a person's organizations
- * are read up to MAX_ORGANIZATIONS_PER_PERSON, and an account in more is refused.
- */
-export const listLibraryOrganizations = query({
-  args: {},
-  returns: paginationResultValidator(libraryOrganizationValidator),
-  handler: async (ctx) => ({ page: await libraryOrganizationsOf(ctx), isDone: true, continueCursor: "" }),
 });

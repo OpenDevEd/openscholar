@@ -44,10 +44,10 @@ it("makes the person whose own workspace a library is in its owner, and an organ
     const ada = (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "ada")).unique())!;
     await ctx.db.patch("users", ada._id, { state: "active" });
   });
-  // Her own library lists in her own workspace, with her name on it; her organization's in its own.
+  // Her own library lists in her own workspace, with her name on it, then her organization's (#1090); her organization's in its own.
   const ada = t.withIdentity({ subject: "ada" });
   const listed = async (organization?: Id<"organizations">) =>
     (await ada.query(api.evidenceLibraries.queries.listLibraries, { ...(organization ? { organization } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((library) => [library.name, library.role, library.organization.name]);
-  expect(await listed()).toEqual([["Mine", "owner", "ada@example.org"]]);
+  expect(await listed()).toEqual([["Mine", "owner", "ada@example.org"], ["Team", "owner", "Feature test"]]);
   expect(await listed(team)).toEqual([["Team", "owner", "Feature test"]]);
 });

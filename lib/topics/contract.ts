@@ -25,6 +25,8 @@ export const topicAssociationRequestSchema = z.object({
   metadata: z.object({title: z.string().max(10000), date: z.string().max(500).nullable(),
     itemType: z.string().max(100), creators: z.array(z.string().max(1000)).max(1000),
     abstract: z.string().max(100000).nullable(),
+    // Its public PDF and the picture of its first page, sent again when either changes; left out by older runtimes.
+    pdf: z.object({url: z.string().url().max(2048), cover: z.string().url().max(2048).nullable()}).strict().nullable().optional(),
   }).strict().nullable(),
 }).strict().refine(value => value.state === "published" ? value.metadata !== null : value.topicIds.length === 0, "Invalid publication state");
 export type TopicAssociationRequest = z.infer<typeof topicAssociationRequestSchema>;

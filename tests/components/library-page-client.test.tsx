@@ -527,13 +527,14 @@ describe("LibraryPageClient", () => {
     expect(screen.getByText("Showing 1-20 of 1000+ papers")).toBeInTheDocument();
   });
 
-  it("renders exact collection totals and range copy", () => {
+  it("counts an open collection out of its own papers, not the whole library's", () => {
     queryStateStore.value.col = "collection_1";
     seedCollectionScopedCounts();
 
     render(<LibraryPageClient />);
 
-    expect(screen.getByText("84 / 86 results")).toBeInTheDocument();
+    expect(screen.getByText("84 results")).toBeInTheDocument();
+    expect(screen.queryByText("/ 86")).not.toBeInTheDocument();
     expect(
       screen.getByText("Showing 1-20 of 84 papers"),
     ).toBeInTheDocument();

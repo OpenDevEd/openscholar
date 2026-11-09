@@ -13,7 +13,9 @@
     "stylesFailed": "शैलियाँ लोड नहीं हो सकीं।",
     "noStyles": "कोई मिलती-जुलती शैली नहीं मिली।",
     "commonStyles": "प्रचलित शैलियाँ",
-    "otherStyles": "अन्य शैलियाँ"
+    "otherStyles": "अन्य शैलियाँ",
+    "copiedIn": "{style} उद्धरण कॉपी हुआ",
+    "download": "डाउनलोड करें"
   },
   "common": {
     "search": "खोजें",
@@ -307,10 +309,10 @@
     "metadataTitle": "मूल्य निर्धारण",
     "metadataDescription": "सभी आकार की टीमों के लिए सरल और पारदर्शी मूल्य निर्धारण।",
     "everyFeature": "Openscholar की हर सुविधा",
-    "papersRunning": "एक साथ चल रहे {running, number} शोधपत्र",
-    "papersInRequest": "एक अनुरोध में {request, number} शोधपत्र",
+    "papersRunning": "AI एक साथ {running, number} शोधपत्र स्क्रीन या निकालता है",
+    "papersInRequest": "एक स्क्रीनिंग या निष्कर्षण में {request, number} शोधपत्र तक",
     "unlimitedCollectionsAndGuests": "असीमित संग्रह और अतिथि",
-    "southernDescription": "निम्न और मध्यम आय वाले देशों के शोधकर्ताओं के लिए।",
+    "southernDescription": "दक्षिण की टीमों के लिए, विशिष्ट परियोजनाओं के लिए।",
     "southernFeature1": "Free की हर चीज़",
     "southernFeature2": "हमसे संपर्क करने के बाद आपके खाते में जोड़ा जाता है",
     "onRequest": "अनुरोध पर"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "साइन इन आवश्यक",
     "signInRequiredDescription": "इस पेज तक पहुंचने के लिए साइन इन करें।",
     "noAccessTitle": "पहुंच प्रतिबंधित",
-    "noAccessDescription": "इस संसाधन को देखने की अनुमति आपके पास नहीं है।",
+    "noAccessDescription": "आपके पास इस पेज की पहुँच नहीं है। अगर किसी ने इसे आपसे साझा किया था, तो शायद उन्होंने रोक दिया है: उनसे फिर से साझा करने को कहें।",
     "syncErrorTitle": "सत्र सिंक समस्या",
     "syncErrorDescription": "हम आपके खाते का प्रारंभिककरण पूरा नहीं कर सके। जारी रखने के लिए पुनः प्रयास करें।",
     "syncErrorAccess": "आपका सत्र वैध है, लेकिन खाता सिंक अधूरा है। जारी रखने के लिए पुनः प्रयास करें।",
     "retrySync": "सिंक पुनः प्रयास करें"
   },
   "aiSetupGate": {
-    "title": "अपनी खोज को बेहतर बनाने के लिए AI सेट करें",
-    "description": "Openscholar क्वेरी को बेहतर बनाने, पेपर की स्क्रीनिंग और परिणामों का अनुवाद करने के लिए AI का उपयोग करता है।",
+    "title": "खोज मुफ़्त है। AI अतिरिक्त है",
+    "description": "साइन इन करें और AI आपकी खोजें लिखता है, आपके मानदंडों पर शोधपत्र जाँचता है और नतीजों का अनुवाद करता है, हर महीने मुफ़्त क्रेडिट के साथ।",
     "signInForCredits": "50k मुफ्त क्रेडिट के लिए साइन इन करें",
     "useOwnApiKey": "अपनी API कुंजी का उपयोग करें"
   },
@@ -676,7 +678,7 @@
     "uploadFailed": "अपलोड विफल",
     "uploadFailedDescription": "{format} अपलोड नहीं कर सके। कृपया पुनः प्रयास करें।",
     "accountChanged": "आपका खाता बदल गया है। फिर से कोशिश करें।",
-    "copyFailedDescription": "क्लिपबोर्ड पर कॉपी नहीं कर सके। कृपया पुनः प्रयास करें।",
+    "copyFailedDescription": "आपके ब्राउज़र ने इसे कॉपी नहीं करने दिया। टेक्स्ट चुनें और खुद कॉपी करें।",
     "validationFailed": "सत्यापन विफल",
     "entityCreated": "{entity} बनाया गया",
     "entityUpdated": "{entity} अपडेट किया गया",
@@ -790,6 +792,7 @@
     "typeToSearchInstitutions": "किसी संस्थान का नाम लिखें",
     "institutionsUnavailable": "संस्थान लोड नहीं हो सके। फिर से कोशिश करें।",
     "filterByThisInstitution": "केवल {name} के कार्य",
+    "filterByInstitutionCountry": "केवल {country} के संस्थानों के कार्य",
     "studyDesign": "अध्ययन का प्रकार",
     "anyStudyDesign": "कोई भी अध्ययन प्रकार",
     "searchStudyDesigns": "अध्ययन प्रकार खोजें",
@@ -852,8 +855,8 @@
     "titleAndAbstract": "शीर्षक और सारांश",
     "searchScope": "खोज दायरा",
     "sortResultsBy": "परिणाम क्रमबद्ध करें",
-    "citationFilter": "उद्धरण फ़िल्टर",
-    "citedByFilter": "उद्धृत फ़िल्टर",
+    "citationFilter": "किसी पेपर को उद्धृत करने वाले पेपर",
+    "citedByFilter": "कोई पेपर जिन्हें उद्धृत करता है",
     "relatedWorksFilter": "संबंधित कार्य फ़िल्टर",
     "clearAllCount": "सब साफ़ करें ({count})",
     "searchFiltersTitle": "खोज फ़िल्टर्स",
@@ -976,7 +979,7 @@
     "domainLabel": "डोमेन:",
     "sdgsLabel": "SDG:",
     "referencesLabel": "संदर्भ:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "क्षेत्र औसत की तुलना में:",
     "citedBy": "उद्धृत",
     "cites": "उद्धृत करता है",
     "questionN": "प्रश्न {n}: {question}",
@@ -1063,7 +1066,7 @@
     "cookiePolicyDescription": "जानें कि Openscholar.ai विश्लेषण के लिए कुकी का उपयोग कैसे करता है और अपनी कुकी प्राथमिकताओं को कैसे प्रबंधित करें।",
     "libraryTitle": "लाइब्रेरी",
     "libraryDescription": "अपने सहेजे गए शैक्षणिक शोधपत्रों को ब्राउज़ करें और प्रबंधित करें",
-    "creditsTitle": "क्रेडिट",
+    "creditsTitle": "श्रेय",
     "creditsDescription": "वे परियोजनाएँ, डेटा और लाइसेंस जिन पर Openscholar आधारित है।",
     "sharedTitle": "मेरे साथ साझा",
     "termsTitle": "उपयोग की शर्तें",
@@ -1162,7 +1165,7 @@
     "translationSettings": "अनुवाद सेटिंग्स",
     "autoTranslateResults": "सूचीबद्ध परिणामों का स्वतः अनुवाद",
     "listedItemsOnly": "यह केवल वर्तमान में सूचीबद्ध आइटम पर लागू होता है।",
-    "useCurrentLocaleTarget": "लक्ष्य के रूप में वर्तमान लोकेल का उपयोग करें",
+    "useCurrentLocaleTarget": "वेबसाइट की भाषा उपयोग करें",
     "runResultsTranslation": "अनुवाद चलाएँ",
     "translatingResults": "परिणामों का अनुवाद हो रहा है...",
     "undoTranslation": "अनुवाद पूर्ववत करें",
@@ -1207,13 +1210,16 @@
     "keepRunning": "चलते रहो",
     "yesCancel": "हां, जॉब रद्द करें",
     "deleteJob": "यह जॉब हटाएं?",
-    "deleteJobDescription": "यह इस जॉब और इसके सभी एक्सट्रैक्शन परिणामों को स्थायी रूप से हटा देगा।"
+    "deleteJobDescription": "यह इस जॉब और इसके सभी एक्सट्रैक्शन परिणामों को स्थायी रूप से हटा देगा।",
+    "rerunJob": "इसे कॉपी के रूप में फिर चलाएँ?",
+    "rerunJobDescription": "उन्हीं शोधपत्रों और प्रश्नों वाला एक नया निष्कर्षण तुरंत शुरू होता है और क्रेडिट खर्च करता है, लगभग इतने ही जितने इसने किए। यह वैसा ही रहता है।",
+    "rerunJobConfirm": "फिर चलाएँ"
   },
   "emptyStates": {
     "noScreeningQuestions": "अभी तक कोई स्क्रीनिंग प्रश्न नहीं"
   },
   "jobStatus": {
-    "restart": "पुनः आरंभ करें",
+    "restart": "कॉपी के रूप में फिर चलाएँ…",
     "papersCount": "{count} पेपर",
     "questionsCount": "{count, plural, one {# प्रश्न} other {# प्रश्न}}",
     "statusPending": "लंबित",
@@ -1226,7 +1232,8 @@
     "noMatches": "वर्तमान फ़िल्टर के लिए कोई मैच नहीं",
     "clearFilters": "फ़िल्टर साफ़ करें",
     "progressOfPapers": "{total} में से {processed} पेपर",
-    "loadingExtractionResults": "एक्सट्रैक्शन परिणाम लोड हो रहे हैं..."
+    "loadingExtractionResults": "एक्सट्रैक्शन परिणाम लोड हो रहे हैं...",
+    "skippedNoText": "{count, plural, one {# शोधपत्र छोड़ा गया: पढ़ने को सार नहीं था, और पूरे पाठ बंद थे} other {# शोधपत्र छोड़े गए: पढ़ने को सार नहीं था, और पूरे पाठ बंद थे}}"
   },
   "reportBuilder": {
     "grounded": "आधारित",
@@ -1259,7 +1266,8 @@
   },
   "rating": {
     "noRating": "कोई रेटिंग नहीं",
-    "nStars": "{count} स्टार"
+    "nStars": "{count} स्टार",
+    "yourRating": "आपकी रेटिंग"
   },
   "pagination": {
     "currentPage": "पृष्ठ {page}",
@@ -1292,7 +1300,7 @@
     "type": "प्रकार",
     "refs": "संदर्भ",
     "cited": "उद्धृत",
-    "fwci": "FWCI",
+    "fwci": "क्षेत्र औसत की तुलना में",
     "topic": "विषय",
     "field": "क्षेत्र",
     "subfield": "उप-क्षेत्र",
@@ -1366,7 +1374,7 @@
     "privacyPolicy": "गोपनीयता नीति",
     "cookiePolicy": "कुकी नीति",
     "cookiePreferences": "कुकी प्राथमिकताएं",
-    "credits": "क्रेडिट"
+    "credits": "श्रेय"
   },
   "focusMode": {
     "settingsTitle": "फोकस मोड सेटिंग्स",
@@ -1513,7 +1521,8 @@
     "planAllowsCollections": "{plan} में {limit, number} संग्रह तक की अनुमति है",
     "nameTheCollection": "संग्रह को नाम दें",
     "newName": "{name} के लिए नया नाम",
-    "clearSearch": "खोज साफ़ करें"
+    "clearSearch": "खोज साफ़ करें",
+    "collectionDeletedPapersStay": "{name}: इसके शोधपत्र आपकी लाइब्रेरी में रहते हैं"
   },
   "sidebarLayout": {
     "expandFilters": "फ़िल्टर दिखाएं (Ctrl+Shift+F)",
@@ -1715,7 +1724,7 @@
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",
     "noConnectedApps": "कोई कनेक्टेड ऐप नहीं",
-    "noConnectedAppsDescription": "जब बाहरी ऐप्स आपके वॉलेट से कनेक्ट होंगे, तो वे यहां दिखाई देंगे।",
+    "noConnectedAppsDescription": "जब बाहरी ऐप्स आपके Openscholar खाते से कनेक्ट होंगे, तो वे यहां दिखाई देंगे।",
     "revoking": "रद्द किया जा रहा है...",
     "revoke": "रद्द करें",
     "revokedBadge": "रद्द",
@@ -1759,7 +1768,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "बिना नाम की कम्युनिटी",
     "unsaved": "बिना सहेजे बदलाव",
-    "viewOnly": "केवल देखने के लिए",
+    "viewOnly": "सेटिंग्स केवल देखने के लिए",
     "save": "सहेजें",
     "saving": "सहेजा जा रहा है…",
     "saveError": "बदलाव सहेजे नहीं जा सके। फिर से कोशिश करें।",
@@ -1814,7 +1823,15 @@
       "versions": "संस्करण",
       "ai": "AI",
       "domain": "डोमेन",
+      "listing": "सूची",
       "publication": "प्रकाशन"
+    },
+    "listing": {
+      "description": "यह कम्युनिटी कम्युनिटी की सार्वजनिक सूची में दिखेगी या नहीं। दोनों ही हालत में इसकी साइट पता रखने वाले हर व्यक्ति के लिए खुली रहती है।",
+      "public": "सार्वजनिक",
+      "publicHint": "सार्वजनिक सूची में दिखती है, जहाँ कोई भी इसे ढूँढ सकता है।",
+      "unlisted": "सूची से बाहर",
+      "unlistedHint": "सूची में नहीं दिखती। पता रखने वाला कोई भी इसे अब भी खोल सकता है।"
     },
     "sectionState": {
       "complete": "पूरा",
@@ -1917,6 +1934,9 @@
       "taglineLabel": "टैगलाइन",
       "taglineHint": "कम्युनिटी की खोज के ऊपर का शीर्षक। खाली छोड़ें तो खोज दिखेगा।",
       "taglinePlaceholder": "बेहतर फ़ैसलों के लिए सबूत",
+      "searchTitleLabel": "खोज परिणामों में शीर्षक",
+      "searchTitleHint": "खोज इंजन होम पेज के लिए क्या दिखाते हैं। नाम और टैगलाइन इस्तेमाल करने के लिए खाली छोड़ें।",
+      "searchTitlePlaceholder": "जलवायु अनुकूलन पर शोध और साक्ष्य",
       "descriptionLabel": "विवरण",
       "descriptionHint": "होम पेज और खोज परिणामों में दिखता है।",
       "partnersHeading": "फ़ंडिंग पार्टनर",
@@ -2000,10 +2020,13 @@
       "add": "संस्थान जोड़ें"
     },
     "danger": {
-      "description": "यह कम्युनिटी हटाएं। यहाँ सावधानी रखें।",
+      "description": "यह कम्युनिटी ले जाएँ या हटाएं। यहाँ सावधानी रखें।",
       "deleteTitle": "कम्युनिटी हटाएं",
       "deleteHint": "साइट, पता और सेटिंग्स हटा देता है।",
-      "deleteButton": "कम्युनिटी हटाएं"
+      "deleteButton": "कम्युनिटी हटाएं",
+      "moveTitle": "दूसरे वर्कस्पेस में ले जाएँ",
+      "moveHint": "इसका पता, सेटिंग्स और लोग बने रहते हैं। जिस वर्कस्पेस में यह जाती है, वही इसका मालिक होता है।",
+      "moveButton": "कम्युनिटी ले जाएँ"
     },
     "deleteDialog": {
       "title": "यह कम्युनिटी हटाएं?",
@@ -2011,7 +2034,7 @@
       "typeToConfirm": "पुष्टि के लिए {name} लिखें",
       "confirm": "कम्युनिटी हटाएं",
       "startedTitle": "कम्युनिटी हटाई जा रही है",
-      "startedDescription": "{name} हटाई जा रही है। इसमें कुछ सेकंड लगते हैं।",
+      "startedDescription": "{name} हटाई जा रही है। इसमें एक-दो मिनट लगते हैं।",
       "error": "कम्युनिटी हटाई नहीं जा सकी। कोई चल रहा कम्युनिटी काम पूरा करें, फिर से कोशिश करें।"
     },
     "links": {
@@ -2835,7 +2858,8 @@
       "confirmAction": "पता बदलें"
     },
     "retry": "फिर से कोशिश करें",
-    "retryError": "यह शुरू नहीं हो सका। फिर से कोशिश करें।"
+    "retryError": "यह शुरू नहीं हो सका। फिर से कोशिश करें।",
+    "saveDraft": "ड्राफ़्ट सहेजें"
   },
   "topics": {
     "title": "विषय",
@@ -2910,8 +2934,8 @@
       "title": "नई Evidence Community",
       "backToLibraries": "कम्युनिटी पर वापस जाएं",
       "ownerTitle": "मालिक",
-      "ownerOnlyTitle": "केवल मालिक",
-      "ownerOnlyDescription": "केवल संगठन का मालिक कम्युनिटी बना सकता है।",
+      "ownerOnlyTitle": "यहाँ कम्युनिटी नहीं बनाई जा सकती",
+      "ownerOnlyDescription": "कम्युनिटी आपके अपने वर्कस्पेस में, या उस संगठन में बनती हैं जिसके आप एडमिन हैं, जब उसके लिए Evidence Communities चालू हो।",
       "libraryTitle": "कम्युनिटी",
       "libraryDescription": "यह नाम सार्वजनिक वेबसाइट पर दिखता है और सार्वजनिक पता तय करता है।",
       "nameLabel": "नाम",
@@ -3151,8 +3175,13 @@
       "off": "बंद",
       "libraries": "{count, plural, one {# कम्युनिटी} other {# कम्युनिटी}}",
       "switchLabel": "{name} के लिए Evidence Communities",
-      "moveFirst": "पहले इसकी कम्युनिटी हटाएँ या दूसरी जगह ले जाएँ",
-      "noMatches": "कोई संगठन मेल नहीं खाता"
+      "noMatches": "कोई संगठन मेल नहीं खाता",
+      "kind": "वर्कस्पेस",
+      "organizationsTab": "संगठन",
+      "peopleTab": "लोग",
+      "searchPeople": "ईमेल से लोग खोजें",
+      "people": "लोग",
+      "noPeopleMatch": "कोई व्यक्ति मेल नहीं खाता"
     },
     "communityReleases": {
       "releases": "रिलीज़",
@@ -3413,7 +3442,7 @@
       "times": "बार",
       "unfold": "हर एक दिखाएँ",
       "fold": "एक साथ दिखाएँ",
-      "declined": "अनुमति नहीं दी गई",
+      "declined": "आपने मना किया",
       "waiting": "जवाब का इंतज़ार है",
       "allowed": "अनुमति दी गई",
       "searches": {
@@ -4199,6 +4228,18 @@
         "where": "Evidence Communities",
         "ask": "कम्युनिटी का ड्राफ़्ट शुरू करें"
       },
+      "publicCommunities": {
+        "doing": "सार्वजनिक कम्युनिटी पढ़ रहा है",
+        "did": "सार्वजनिक कम्युनिटी पढ़ीं",
+        "where": "Evidence Communities",
+        "ask": "सार्वजनिक कम्युनिटी पढ़ें"
+      },
+      "communityVisibility": {
+        "doing": "कम्युनिटी सूची में दिखेगी या नहीं, बदल रहा है",
+        "did": "कम्युनिटी सूची में दिखेगी या नहीं, बदला",
+        "where": "Evidence Communities",
+        "ask": "कम्युनिटी सूची में दिखेगी या नहीं, बदलें"
+      },
       "librarySources": {
         "doing": "एक कम्युनिटी के स्रोत पढ़ रहा है",
         "did": "एक कम्युनिटी के स्रोत पढ़े",
@@ -4335,6 +4376,54 @@
         "did": "लेखक पर दावा किया",
         "where": "लेखक",
         "ask": "लेखक पर दावा करें"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "किसी समुदाय के लिए पेपर खोज रहा है",
+        "did": "किसी समुदाय के लिए पेपर खोजे",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के लिए पेपर खोजें"
+      },
+      "addCommunityPapers": {
+        "doing": "किसी समुदाय में पेपर जोड़ रहा है",
+        "did": "किसी समुदाय में पेपर जोड़े",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय में पेपर जोड़ें"
+      },
+      "communityAddedPapers": {
+        "doing": "किसी समुदाय के जोड़े गए पेपर पढ़ रहा है",
+        "did": "किसी समुदाय के जोड़े गए पेपर पढ़े",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के जोड़े गए पेपर पढ़ें"
+      },
+      "removeCommunityPaper": {
+        "doing": "किसी समुदाय से एक पेपर हटा रहा है",
+        "did": "किसी समुदाय से एक पेपर हटाया",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय से एक पेपर हटाएँ"
+      },
+      "communityPapersSettings": {
+        "doing": "किसी समुदाय के जोड़े गए पेपर बदल रहा है",
+        "did": "किसी समुदाय के जोड़े गए पेपर बदले",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय के जोड़े गए पेपर या उनके PDF रोकें या फिर से शुरू करें"
+      },
+      "connectCommunityCollection": {
+        "doing": "किसी समुदाय के स्रोतों में संग्रह जोड़ा जा रहा है",
+        "did": "किसी समुदाय के स्रोतों में संग्रह जोड़ा",
+        "where": "Evidence Community",
+        "ask": "अपना कोई संग्रह किसी समुदाय के स्रोतों में जोड़ें"
+      },
+      "putCommunityLive": {
+        "doing": "किसी समुदाय की सेटिंग्स लाइव की जा रही हैं",
+        "did": "किसी समुदाय की सेटिंग्स लाइव कीं",
+        "where": "Evidence Community",
+        "ask": "किसी समुदाय की सहेजी गई सेटिंग्स लाइव करें"
+      },
+      "sentPapers": {
+        "doing": "समुदायों को भेजे गए आपके पेपर पढ़े जा रहे हैं",
+        "did": "समुदायों को भेजे गए आपके पेपर पढ़े",
+        "where": "Evidence Communities",
+        "ask": "समुदायों को भेजे गए अपने पेपर पढ़ें"
       }
     },
     "asks": {
@@ -4509,7 +4598,7 @@
     "main": "मुख्य",
     "screen": "छँटाई",
     "extract": "निकालें",
-    "publish": "प्रकाशित करें",
+    "communities": "समुदाय",
     "explore": "खोजें",
     "authors": "लेखक",
     "workspacesCard": "वर्कस्पेस",
@@ -4590,9 +4679,6 @@
       "leave": "छोड़ें",
       "deleteName": "{name} हटाएँ",
       "stillHasLibrary": "{library} इसकी एविडेंस कम्युनिटी में से एक है। पहले उसे हटाएँ या कहीं और ले जाएँ।",
-      "deleteLibrary": "कम्युनिटी हटाएँ",
-      "libraryBeingDeleted": "{library} हटाई जा रही है।",
-      "libraryDeleteFailed": "{library} को हटाया नहीं जा सका। फिर प्रयास करें।",
       "deleteDetail": "यह इसे {count, plural, one {इसके # सदस्य} other {इसके सभी # सदस्यों}} के लिए हटा देता है",
       "moveLibrariesFirst": "पहले इसकी एविडेंस कम्युनिटी हटाएँ या कहीं और ले जाएँ",
       "delete": "हटाएँ",
@@ -4755,7 +4841,10 @@
         "itsPapers": "इसके पेपर",
         "ratingsInIt": "इसकी रेटिंग",
         "publications": "प्रकाशन",
-        "editors": "संपादक"
+        "editors": "संपादक",
+        "address": "पता",
+        "settings": "सेटिंग्स",
+        "peopleWithRoles": "भूमिका वाले लोग"
       },
       "moveTo": "{workspace} में ले जाएँ",
       "move": "ले जाएँ",
@@ -4764,7 +4853,15 @@
       "collection": "संग्रह ले जाएँ",
       "author": "लेखक प्रोफ़ाइल ले जाएँ",
       "libraryKeeps": "{workspace} की लाइब्रेरी इसके सहेजे पेपर रखती है।",
-      "yourLibraryKeeps": "आपकी लाइब्रेरी इसके सहेजे पेपर रखती है।"
+      "yourLibraryKeeps": "आपकी लाइब्रेरी इसके सहेजे पेपर रखती है।",
+      "community": "कम्युनिटी ले जाएँ",
+      "workspaceOwnsIt": "जिस वर्कस्पेस में यह जाएगी, उसके बाद वही इसका मालिक होगा।",
+      "refused": {
+        "noCommunities": "इस कार्यक्षेत्र के लिए समुदाय चालू नहीं हैं",
+        "communitiesFull": "इसमें उतनी कम्युनिटी हैं जितनी एक वर्कस्पेस में हो सकती हैं",
+        "profilesOff": "यहाँ लेखक प्रोफ़ाइल चालू नहीं हैं",
+        "noProfiles": "आप यहाँ लेखक प्रोफ़ाइल नहीं बना सकते"
+      }
     },
     "share": {
       "share": "साझा करें",
@@ -4864,7 +4961,11 @@
       "goneDetail": "जिसने साझा किया था, उनसे दोबारा साझा करने को कहें",
       "otherTitle": "यह निमंत्रण किसी दूसरे पते पर भेजा गया था",
       "otherDetail": "अगर इस खाते में वह पता भी है तो इसे खोलें, या उस पते से साइन इन करें जिस पर यह भेजा गया था"
-    }
+    },
+    "notEmails": "{count, plural, one {यह ईमेल पता नहीं है: {values}. संगठन बनाने के लिए इसे ठीक करें या हटाएँ।} other {ये ईमेल पते नहीं हैं: {values}. संगठन बनाने के लिए इन्हें ठीक करें या हटाएँ।}}",
+    "asRole": "{role} के रूप में",
+    "memberCan": "सदस्य संगठन की साझा की गई हर चीज़ के साथ खोजते, सहेजते, स्क्रीन करते और निकालते हैं।",
+    "adminCan": "एडमिन भी यही कर सकते हैं, और साथ ही लोगों को आमंत्रित कर सकते हैं, हटा सकते हैं और सेटिंग्स व खर्च सँभाल सकते हैं।"
   },
   "models": {
     "changeInSettings": "AI सेटिंग्स में बदलें"
@@ -5307,7 +5408,20 @@
     "removedFromLibrary": "इस कम्युनिटी से हटाया गया।",
     "removedFromProfile": "इस प्रोफ़ाइल से हटाया गया।",
     "addedToLibrary": "{name} को इस कम्युनिटी में जोड़ा गया।",
-    "addedToProfile": "{name} को इस प्रोफ़ाइल में जोड़ा गया।"
+    "addedToProfile": "{name} को इस प्रोफ़ाइल में जोड़ा गया।",
+    "anOrganization": "एक संगठन",
+    "chooseAnOrganization": "संगठन चुनें",
+    "anotherOrganization": "दूसरा संगठन",
+    "adminEmail": "उसके एडमिन का ईमेल",
+    "organizationGetsIt": "संगठन के सभी लोगों को यह भूमिका मिलती है, और छोड़ने पर चली जाती है।",
+    "theirAdminAccepts": "उसका एडमिन इसे अपने चलाए किसी संगठन के लिए स्वीकार करता है, और उसके सभी लोगों को यह भूमिका मिलती है।",
+    "everyoneInIt": "इसके सभी लोग",
+    "forTheirOrganization": "ऐसे संगठन के लिए जिसका एडमिन {email} है",
+    "removeThisOrganization": "यह संगठन हटाएं? इसके सदस्यों के पास बस वही भूमिकाएँ रहेंगी जो उन्हें खुद दी गई थीं।",
+    "organizationLabel": "संगठन",
+    "ownWorkspaceOwner": "यह उनके अपने वर्कस्पेस में है, इसलिए उनकी है।",
+    "whoWorksOnIt": "इस कम्युनिटी पर कौन काम करता है। इसकी टीम इसके मालिक संभालते हैं।",
+    "viewersUntilAnOwner": "जब तक कोई मालिक उन्हें भूमिका न दे, वे दर्शक हैं।"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {# प्रकाशन के लिए डाइजेस्ट कतार में है।} other {# प्रकाशनों के लिए डाइजेस्ट कतार में है।}}",
@@ -5370,6 +5484,54 @@
     "keepThisUnderCharacters": "{maxLength} अक्षरों से कम रखें।"
   },
   "libraryList": {
+    "sidebar": {
+      "label": "आपकी कम्युनिटी",
+      "showFrom": "कम्युनिटी यहाँ से दिखाएँ",
+      "allWorkspaces": "सभी वर्कस्पेस",
+      "allCommunities": "सभी कम्युनिटी",
+      "workspaces": "वर्कस्पेस",
+      "yours": "आपकी",
+      "sharedWithYou": "आपके साथ साझा",
+      "sharedWith": "{name} के साथ साझा",
+      "loading": "कम्युनिटी लोड हो रही हैं",
+      "noMatches": "इनमें से कोई इस खोज से मेल नहीं खाती।",
+      "emptyAll": "आप अभी किसी समुदाय में नहीं हैं। जब कोई आपसे कोई समुदाय साझा करेगा, या आपके संगठन का कोई समुदाय होगा, तो वह यहाँ दिखेगा।",
+      "emptyHere": "{name} की कम्युनिटी, और उसके साथ साझा की गई कम्युनिटी यहाँ दिखती हैं।",
+      "emptyShared": "लोग जो कम्युनिटी आपके साथ साझा करते हैं, वे यहाँ दिखती हैं।",
+      "emptySharedHere": "{name} के साथ साझा की गई कम्युनिटी यहाँ दिखती हैं।",
+      "emptyOwn": "आपकी बनाई कम्युनिटी यहाँ दिखती हैं।",
+      "emptyWorkspace": "{name} की अभी कोई कम्युनिटी नहीं है।",
+      "invitedAs": "{role} के रूप में आमंत्रित",
+      "accept": "स्वीकार करें",
+      "accepted": "{name} स्वीकार की गई।",
+      "moreWorkspaces": "और वर्कस्पेस",
+      "invitedForOrganization": "{role} के रूप में आमंत्रित, आपके संगठन के लिए",
+      "acceptAsAnAdmin": "किसी संगठन के एडमिन के रूप में स्वीकार करें",
+      "acceptForWhich": "{name} किस संगठन के लिए स्वीकार करें",
+      "acceptedFor": "{name} {organization} के लिए स्वीकार की गई।"
+    },
+    "directory": {
+      "title": "सार्वजनिक कम्युनिटी",
+      "sortLabel": "सार्वजनिक कम्युनिटी क्रमबद्ध करें",
+      "sort": {
+        "newest": "नवीनतम",
+        "name": "नाम",
+        "records": "सबसे ज़्यादा पेपर"
+      },
+      "loading": "सार्वजनिक कम्युनिटी लोड हो रही हैं",
+      "noMatches": "कोई सार्वजनिक कम्युनिटी इस खोज से मेल नहीं खाती",
+      "none": "सार्वजनिक कम्युनिटी लाइव होने पर यहाँ दिखती हैं",
+      "records": "{count, plural, one {{shown} पेपर} other {{shown} पेपर}}",
+      "unnamedOwner": "Openscholar का एक सदस्य",
+      "people": "{count, plural, one {{shown} टीम सदस्य} other {{shown} टीम सदस्य}}",
+      "countries": "{names} के बारे में",
+      "recordsLabel": "{count, plural, one {पेपर} other {पेपर}}",
+      "peopleLabel": "{count, plural, one {टीम सदस्य} other {टीम सदस्य}}",
+      "noDescription": "अभी कोई विवरण नहीं",
+      "notCounted": "अभी गिना नहीं गया",
+      "intro": "हर समुदाय एक वेबसाइट है जो एक विषय पर शोध इकट्ठा करती है। इसके पेपर देखने के लिए कोई एक खोलें।",
+      "updated": "{when} अपडेट हुआ"
+    },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "नई कम्युनिटी",
     "libraryView": "कम्युनिटी दृश्य",
@@ -5413,7 +5575,9 @@
     "deletionRestartedFor": "{name} के लिए हटाने की प्रक्रिया फिर से शुरू की गई।",
     "couldNotRestartDeletion": "हटाने की प्रक्रिया फिर से शुरू नहीं हो सकी",
     "invitationDeclined": "आमंत्रण अस्वीकार किया गया।",
-    "unableToDeclineInvitation": "आमंत्रण अस्वीकार नहीं किया जा सका"
+    "unableToDeclineInvitation": "आमंत्रण अस्वीकार नहीं किया जा सका",
+    "searchSubmissions": "अपनी भेजी गई चीज़ें खोजें",
+    "findASubmission": "अपना भेजा कोई पेपर खोजें…"
   },
   "authorPages": {
     "profileSettings": "प्रोफ़ाइल सेटिंग्स",
@@ -5544,10 +5708,10 @@
     "creatingKey": "कुंजी बनाई जा रही है...",
     "redirecting": "पुनर्निर्देशित किया जा रहा है...",
     "approve": "मंज़ूरी दें",
-    "wantsToConnect": "<strong>{appName}</strong> आपके Openscholar वॉलेट से कनेक्ट होना चाहता है।",
+    "wantsToConnect": "<strong>{appName}</strong> आपके Openscholar खाते से कनेक्ट होना चाहता है।",
     "copyKey": "यह API कुंजी कॉपी करें और <strong>{appName}</strong> में चिपकाएं। इसे केवल एक बार दिखाया जाएगा।",
     "originUnregisteredBody": "<code>{origin}</code> पर चल रहा ऐप Openscholar से कनेक्ट होने के लिए पंजीकृत नहीं है।",
-    "originHelp": "केवल पूर्व-स्वीकृत ओरिजिन वॉलेट कनेक्शन बना सकते हैं। यदि आप <strong>{appName}</strong> के डेवलपर हैं, तो अपना ओरिजिन पंजीकृत कराने के लिए Openscholar टीम से संपर्क करें।",
+    "originHelp": "केवल पूर्व-स्वीकृत ओरिजिन खाता कनेक्शन बना सकते हैं। यदि आप <strong>{appName}</strong> के डेवलपर हैं, तो अपना ओरिजिन पंजीकृत कराने के लिए Openscholar टीम से संपर्क करें।",
     "wantsToUseCredits": "<strong>{appName}</strong> आपके Openscholar क्रेडिट से AI जनरेशन इस्तेमाल करना चाहता है।",
     "unknownApp": "अज्ञात ऐप",
     "thisApplicationSOriginIsNot": "इस एप्लिकेशन का ऑरिजिन पंजीकृत नहीं है।",
@@ -5675,5 +5839,129 @@
     "step4": "टोकन रीफ़्रेश करें",
     "step4About": "एक टोकन 24 घंटे चलता है। उससे पहले रीफ़्रेश टोकन को नए टोकन से बदल लें।",
     "cantDo": "ऐप्स बिलिंग, API कुंजियां या साइट सेटिंग्स नहीं बदल सकते, और न ही कोई Evidence Community लाइव कर सकते हैं।"
+  },
+  "paperPage": {
+    "references": "संदर्भ",
+    "openAccess": "खुली पहुँच",
+    "readPdf": "PDF पढ़ें",
+    "publisherPage": "प्रकाशक का पेज",
+    "askAbout": "इस शोधपत्र के बारे में पूछें",
+    "noAbstract": "सारांश उपलब्ध नहीं है",
+    "linkCopied": "शोधपत्र का लिंक कॉपी हुआ",
+    "citationsPerYear": "प्रति वर्ष उद्धरण",
+    "citationsIn": "{year} में {count, plural, one {# उद्धरण} other {# उद्धरण}}",
+    "seeCiting": "इसे उद्धृत करने वाले शोधपत्र देखें",
+    "top1": "अपने क्षेत्र के शीर्ष 1% में",
+    "top10": "अपने क्षेत्र के शीर्ष 10% में",
+    "aheadOf": "{year} के सभी पेपरों में से {percent}% से ज़्यादा उद्धृत",
+    "influential": "इस पर आधारित",
+    "authors": "लेखक",
+    "andMore": "और {count} अन्य",
+    "showAll": "सभी {count} दिखाएँ",
+    "showFewer": "कम दिखाएँ",
+    "corresponding": "संपर्क लेखक",
+    "orcidOf": "{name} का ORCID iD",
+    "institutions": "संस्थान",
+    "whereToRead": "कहाँ पढ़ें",
+    "kindPublisher": "प्रकाशक",
+    "kindRepository": "रिपॉज़िटरी",
+    "kindIndex": "सूचकांक",
+    "pdf": "PDF",
+    "funding": "वित्तपोषण",
+    "topics": "विषय",
+    "sdgs": "सतत विकास लक्ष्य",
+    "mesh": "MeSH शब्द",
+    "details": "विवरण",
+    "charge": "प्रकाशन शुल्क",
+    "retracted": "वापस लिया गया",
+    "openscholarId": "Openscholar ID",
+    "copyDoi": "DOI कॉपी करें",
+    "doiCopied": "DOI कॉपी हुआ",
+    "doiCopyFailed": "DOI कॉपी नहीं हो सका",
+    "paperPage": "शोधपत्र का पेज",
+    "share": "साझा करें",
+    "inCommunities": "इन समुदायों में",
+    "fieldAverage": "× क्षेत्र औसत"
+  },
+  "addedPapers": {
+    "name": "जोड़े गए पेपर",
+    "provider": "DOI और OpenAlex ID",
+    "cardDescription": "DOI या OpenAlex ID से एक-एक करके जोड़े गए पेपर, OpenAlex के साथ सिंक रहते हैं।",
+    "menu": "DOI या ID से पेपर",
+    "menuHint": "एक या कई, सिंक रहते हैं",
+    "menuNotLive": "समुदाय के लाइव होने के बाद उपलब्ध",
+    "add": "पेपर जोड़ें",
+    "title": "पेपर जोड़ें",
+    "description": "पेपरों के लिंक (Openscholar, किसी समुदाय की साइट, OpenAlex या doi.org से), DOI या OpenAlex ID चिपकाएँ, एक बार में {max} तक।",
+    "inputLabel": "DOI, OpenAlex ID या लिंक",
+    "papers": "{count, plural, one {# पेपर} other {# पेपर}}",
+    "tooMany": "{max} से ज़्यादा पेपर",
+    "invalid": "पेपर लिंक, DOI या ID नहीं: {values}",
+    "find": "पेपर खोजें",
+    "found": "मिले पेपर",
+    "notFound": "नहीं मिला",
+    "alreadyAdded": "पहले से जोड़ा गया",
+    "inQueue": "समीक्षा की प्रतीक्षा में",
+    "doiOnly": "केवल DOI",
+    "leaveOut": "छोड़ दें",
+    "leaveOutLabel": "{title} छोड़ दें",
+    "doiOnlyNote": "{count, plural, one {OpenAlex में इनमें से एक अभी नहीं है। यह अपने DOI से आता है, और हर सिंक OpenAlex को फिर से देखता है।} other {OpenAlex में इनमें से # अभी नहीं हैं। ये अपने DOI से आते हैं, और हर सिंक OpenAlex को फिर से देखता है।}}",
+    "toAdd": "{count, plural, one {जोड़ने के लिए # पेपर} other {जोड़ने के लिए # पेपर}}",
+    "sendToQueue": "समीक्षा के लिए भेजें",
+    "publish": "प्रकाशित करें",
+    "published": "{count, plural, one {# पेपर {community} में प्रकाशित हुआ} other {# पेपर {community} में प्रकाशित हुए}}",
+    "queued": "{count, plural, one {# पेपर समीक्षा कतार में भेजा गया} other {# पेपर समीक्षा कतार में भेजे गए}}",
+    "someFailed": "{count, plural, one {# पेपर ड्राफ़्ट के रूप में सहेजा गया पर भेजा नहीं गया। भेजने के लिए इसे admin में खोलें।} other {# पेपर ड्राफ़्ट के रूप में सहेजे गए पर भेजे नहीं गए। भेजने के लिए इन्हें admin में खोलें।}}",
+    "lookupFailed": "समुदाय ये पेपर नहीं खोज सका। फिर से कोशिश करें।",
+    "addFailed": "समुदाय ये पेपर नहीं जोड़ सका। फिर से कोशिश करें।",
+    "noAuthors": "कोई लेखक नहीं दिया गया",
+    "unavailable": "उपलब्ध नहीं",
+    "settingsFailed": "समुदाय ने बदलाव नहीं लिया। फिर से कोशिश करें।",
+    "ownerOnly": "इसे केवल मालिक बदलता है",
+    "from": "{name} से",
+    "returned": "अस्वीकृत",
+    "statusWithdrawn": "आपने वापस लिया",
+    "statusRemoved": "समुदाय ने हटाया",
+    "openIn": "{community} में खोलें",
+    "openLabel": "{title} को {community} में खोलें",
+    "remove": "हटाएँ",
+    "removeLabel": "{title} हटाएँ",
+    "withdraw": "वापस लें",
+    "withdrawLabel": "{title} वापस लें",
+    "removed": "पेपर समुदाय से हटाया गया",
+    "withdrawn": "पेपर समीक्षा कतार से वापस लिया गया",
+    "removeFailed": "समुदाय यह पेपर नहीं हटा सका। फिर से कोशिश करें।",
+    "viewLabel": "दिखाएँ",
+    "tabPublic": "सार्वजनिक समुदाय",
+    "tabSubmissions": "आपके सबमिशन",
+    "statusLabel": "स्थिति",
+    "everyStatus": "हर स्थिति",
+    "statusPublished": "प्रकाशित",
+    "noneYet": "अभी तक कोई सबमिशन नहीं",
+    "noneYetHint": "किसी भी खोज परिणाम से किसी समुदाय में पेपर जोड़ें।",
+    "noMatches": "कोई सबमिशन मेल नहीं खाता",
+    "addToCommunity": "समुदाय में जोड़ें",
+    "searchCommunities": "समुदाय खोजें",
+    "recent": "हाल के",
+    "yourCommunities": "आपके समुदाय",
+    "noCommunitiesMatch": "कोई समुदाय मेल नहीं खाता",
+    "noCommunities": "अभी तक कोई समुदाय नहीं",
+    "inQueueShort": "कतार में",
+    "added": "जोड़ा गया",
+    "publishOrReview": "इसे अभी प्रकाशित करें, या पहले टीम को समीक्षा करने दें।",
+    "reviewFirst": "समुदाय की टीम प्रकाशित होने से पहले इसकी समीक्षा करती है।",
+    "publishedTo": "{community} में प्रकाशित",
+    "queuedTo": "{community} की समीक्षा कतार में भेजा गया",
+    "alreadyIn": "{community} में यह पेपर पहले से है",
+    "moreCommunities": "और समुदाय",
+    "askTitle": "किसी समुदाय में {count, plural, one {# पेपर} other {# पेपर}} जोड़ें",
+    "publishNow": "अभी प्रकाशित करें",
+    "reviewQueue": "समीक्षा कतार",
+    "askPublishHint": "आपकी अनुमति मिलते ही {count, plural, one {यह} other {ये}} {community} पर लाइव हो {count, plural, one {जाएगा} other {जाएँगे}}।",
+    "askQueueHint": "{count, plural, one {यह} other {ये}} {community} की समीक्षा कतार में तब तक रहेंगे जब तक उसकी टीम मंज़ूरी न दे।",
+    "askPublish": "{count, plural, one {# पेपर} other {# पेपर}} प्रकाशित करें",
+    "askQueue": "{count, plural, one {# पेपर} other {# पेपर}} समीक्षा के लिए भेजें",
+    "alreadyInIt": "पहले से मौजूद",
+    "inReview": "समीक्षा में"
   }
 }

@@ -1,7 +1,6 @@
 import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readTopicsEnabled } from "./activeTopics";
-import { requireLibraryOrganization } from "../organizationFeatures";
-import { ensureWorkspace } from "../workspaces/create";
+import { requireCommunityWorkspace } from "../organizationFeatures";
 import {
   internalMutation,
   mutation,
@@ -75,6 +74,7 @@ import {
   persistDraftConfigurationSnapshot,
 } from "./configurationSnapshot";
 import {
+  activationValidator,
   evidenceLibrarySetupIdentityFields,
   sectionRowValidator,
 } from "./validators";
@@ -115,11 +115,11 @@ export async function createEvidenceLibrarySetup(
     name: string;
     slug: string;
     publicAddress: string;
-    organizationId: Id<"organizations">;
+    workspaceId: Id<"workspaces">;
   },
 ) {
-  const access = await requireLibraryOrganization(ctx, args.organizationId);
-  const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId: access.organization._id });
+  const access = await requireCommunityWorkspace(ctx, args.workspaceId);
+  const { workspaceId } = access;
   const name = validateEvidenceLibrarySetupName(args.name);
   const shortName = createInitialEvidenceLibraryShortName(name);
   const slug = args.slug.trim();
@@ -158,12 +158,12 @@ export async function createEvidenceLibrarySetup(
   }
 
   const now = Date.now();
-  const creator = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", access.clerkUserId)).unique();
+  const creator = access.user;
   const libraryId = await ctx.db.insert("evidenceLibraries", {
     // No revisions yet, so every version it publishes is recorded as it's saved.
     approvedQueriesRecorded: true,
     workspaceId,
-    ...(creator ? { createdBy: creator._id } : {}),
+    createdBy: creator._id,
     name,
     slug,
     state: "provisioning",
@@ -761,19 +761,21 @@ export async function activateEvidenceLibraryConfiguration(
   if (access.library.state === "active") {
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     publishRuntime = await requirePublishRuntime(ctx, access.library);
-    const topicsEnabled = readTopicsEnabled(
-      persisted.migration.snapshot.sections.find(
-        (row) => row.sectionKey === "topics",
-      )?.payload,
-    );
+    const section = (key: string) => persisted.migration.snapshot.sections.find((row) => row.sectionKey === key)?.payload;
+    // Settings older runtimes refuse: the running software has to support this contract before they go live.
+    const needsNewer = readTopicsEnabled(section("topics"))
+      ? "Topics need"
+      : (section("identity") as { searchTitle?: unknown } | undefined)?.searchTitle
+        ? "A title in search results needs"
+        : null;
     if (
-      topicsEnabled &&
+      needsNewer &&
       publishRuntime.kind === "current" &&
       (await readRunningContractSupport(ctx, access.library)) !== true
     ) {
       throw createError(
         "CONFLICT",
-        "Topics need a newer Evidence Community software version. Check for software updates, then activate again.",
+        `${needsNewer} a newer Evidence Community software version. Check for software updates, then activate again.`,
       );
     }
   }
@@ -974,7 +976,7 @@ export const pruneServedHosts = internalMutation({
  */
 export const reserveAddress = internalMutation({
   args: { ...actingArg,
-    organizationId: v.id("organizations"),
+    workspaceId: v.id("workspaces"),
     name: v.string(),
     publicAddress: v.string(),
     slug: v.string(),
@@ -999,8 +1001,7 @@ export const reserveAddress = internalMutation({
   ),
   handler: async (caller, { actingAs: as, ...args }) => {
     const ctx = await signedInAs(caller, as);
-    const access = await requireLibraryOrganization(ctx, args.organizationId);
-    const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId: access.organization._id });
+    const { workspaceId } = await requireCommunityWorkspace(ctx, args.workspaceId);
     const name = validateEvidenceLibrarySetupName(args.name);
     const named = await readEvidenceLibraryByName(ctx, { workspaceId, name });
     if (named) {
@@ -1019,7 +1020,7 @@ export const reserveAddress = internalMutation({
       status: "reserved" as const,
       ...(await createEvidenceLibrarySetup(ctx, {
         name,
-        organizationId: args.organizationId,
+        workspaceId,
         publicAddress: args.publicAddress,
         slug: args.slug,
       })),
@@ -1042,20 +1043,7 @@ export const activateConfiguration = mutation({
     libraryId: v.id("evidenceLibraries"),
     expectedEditVersion: v.number(),
   },
-  returns: v.object({
-    editVersion: v.number(),
-    kind: v.union(v.literal("setup"), v.literal("publish")),
-    operationId: v.id("evidenceLibraryConfigOperations"),
-    revisionId: v.id("evidenceLibraryConfigRevisions"),
-    revisionKey: v.string(),
-    revisionNumber: v.number(),
-    status: v.union(
-      v.literal("queued"),
-      v.literal("running"),
-      v.literal("succeeded"),
-      v.literal("failed"),
-    ),
-  }),
+  returns: activationValidator,
   handler: async (ctx, args): ReturnType<typeof activateEvidenceLibraryConfiguration> => {
     await refuseApps(ctx);
     return await activateEvidenceLibraryConfiguration(ctx, args);

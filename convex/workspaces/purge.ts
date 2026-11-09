@@ -166,7 +166,7 @@ const JOBS_WAIT_MS = 60_000;
 
 /**
  * Empties a deleted organization's workspace a step at a time (#651), then deletes it: its
- * extraction jobs, chats, and everything else in it. What its members made goes with it; their
+ * extraction jobs, the communities shared with it, chats, and everything else in it. What its members made goes with it; their
  * own ratings of papers are theirs. Each step schedules the next until nothing is left.
  */
 export const purgeOrganization = internalMutation({
@@ -180,6 +180,10 @@ export const purgeOrganization = internalMutation({
     const jobs = await ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).take(JOBS_A_STEP);
     for (const job of jobs) await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.admin.deleteExtractionInternal, { jobId: job._id });
     if (jobs.length) return (await next(JOBS_WAIT_MS), null);
+    // The communities shared with it (#1091) stop counting it, and free its place among the organizations each is shared with.
+    const shared = await ctx.db.query("libraryOrganizationGrants").withIndex("by_organization_and_grantedAt", (q) => q.eq("organizationId", organizationId)).take(JOBS_A_STEP);
+    for (const grant of shared) await ctx.db.delete("libraryOrganizationGrants", grant._id);
+    if (shared.length) return (await next(0), null);
     if (!(await purgeWorkspaceChats(ctx, workspace._id)) || !(await purgeWorkspace(ctx, workspace._id))) return (await next(0), null);
     await dropWorkspace(ctx, workspace._id);
     return null;

@@ -33,6 +33,7 @@ import { ListFocus, openListFocus } from "@/components/focus-mode/list-focus";
 import { PaperTitle } from "@/components/focus-mode/paper-title";
 import { ANSWER, AnimatedNumber, AnswerMark, Chip, ClippedChip, Meter, OUTCOME, OutcomeBar, ProgressRing, RequiredMark, SOURCE_ICON, Stars } from "./parts";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { plainAbstract } from "@/lib/papers/abstract-text";
 
 /** The chip on a paper about to move to another outcome, in that outcome's colour. */
 const MOVING: Record<Outcome, string> = {
@@ -566,7 +567,7 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
 
       <div className="space-y-1.5">
         {paper.venue ? <p className="text-xs text-muted-foreground">{paper.venue}</p> : null}
-        {paper.abstract ? <p className="text-sm leading-relaxed text-foreground/80 lg:columns-2 lg:gap-8">{paper.abstract}</p> : null}
+        {paper.abstract ? <p className="text-sm leading-relaxed text-foreground/80 lg:columns-2 lg:gap-8">{plainAbstract(paper.abstract)}</p> : null}
       </div>
     </div>
   );

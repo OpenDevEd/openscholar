@@ -322,6 +322,8 @@ export const extractionJobFields = {
   sourceType: v.optional(sourceTypeValidator),
   status: v.optional(jobStatusValidator),
   totalPapers: v.optional(v.number()),
+  /** Papers left out because, with full texts off, they had nothing to read: the job's page says how many. */
+  skippedPapers: v.optional(v.number()),
   processedPapers: v.optional(v.number()),
   failedPapers: v.optional(v.number()),
   runEpoch: v.optional(v.number()),

@@ -4,6 +4,7 @@
  * "what cites this paper" or "how many would that find" without making a search in the
  * person's history and deleting it again, which is what it did before it had them.
  */
+import { paperLinkOf } from "../../lib/papers/paper-links";
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
@@ -12,6 +13,7 @@ import { countSearch, groupSearch, readWork } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, spender, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { readPage, short } from "./searches";
 import { workUrl } from "../../lib/openalex/work-id";
+import { abstractFromIndex } from "../../lib/papers/abstract-text";
 import { AUTHORS_LISTED, countValidator, FUNDERS_LISTED, GROUPINGS, GROUPS_MAX, INSTITUTIONS_LISTED, pageValidator, paperPdfValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS, type Grouping } from "./searchValidators";
 import { assistantPick, chatModel } from "../assistant/threads";
 import { pricingOf } from "../ai/serverModel";
@@ -113,17 +115,21 @@ function workPath(id: string) {
   if (work) return work.split("/").at(-1)!;
   const own = ownWork(given);
   if (own) return own;
+  // Any address that names a paper: Openscholar's own paper pages, with or without their title, included.
+  const link = paperLinkOf(given);
+  if (link?.kind === "work") return link.openalexId;
+  if (link?.kind === "own") return link.work;
   // A DOI goes into the address as it is, so one that would change the address isn't taken: a "?" or "#", or a ".." that climbs out of the work's path.
   const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s?#]+)$/i)?.[1];
   if (doi && !doi.split("/").some((part) => part === "." || part === "..")) return `https://doi.org/${doi}`;
-  throw createError("VALIDATION_ERROR", "A paper is read by its ID, such as W2741809807, or its DOI; an Evidence Community's record by its `paper` as evidenceLibraries/library:records gives it (library:<libraryId>:<key>), or its page's address on the community.");
+  throw createError("VALIDATION_ERROR", "That isn't an address or ID Openscholar can read a paper from. Give its link, its ID (such as W2741809807) or its DOI.");
 }
 
 export const getAction = defineUserAction({
   path: "research/papers:get",
   description:
-    "Reads one paper whole, by its ID as results give it (such as W2741809807) or its DOI: its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
-    "One request against the person's search allowance.",
+    "Reads one paper whole, by its ID as results give it (such as W2741809807), its DOI, or a link to it (Openscholar's paper pages included): its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
+    "One request against the person's search allowance. An Evidence Community's record is read through evidenceLibraries/library:records instead, by its `paper` (library:<libraryId>:<key>).",
   args: { id: v.string() },
   returns: paperRecordValidator,
   spendsCredits: false,
@@ -136,9 +142,13 @@ export const getAction = defineUserAction({
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
     const source = sourceForId(path, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, spender(ctx, clerkId), source);
+    const spend = spender(ctx, clerkId);
+    const work = await readWork<Work & { ids?: { openalex?: string } }>(path, `${ASSISTANT_FIELDS},funders,ids`, spend, source);
     if (!work) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     const paper = toPaper(work);
+    // Our index lacks some abstracts OpenAlex has. The paper's page shows OpenAlex's then, so a read gives it too.
+    const paired = !paper.abstract && source === "openscholar" ? work.ids?.openalex?.split("/").at(-1) : undefined;
+    const abstract = paper.abstract ?? (paired ? await pairedAbstract(paired, spend) : undefined);
     const authors = (work.authorships ?? []).flatMap(({ author, institutions }) => {
       if (!author?.display_name) return [];
       const works = (institutions ?? []).flatMap(({ display_name: name, country_code: country }) => (name ? [`${name.slice(0, NAME_MAX)}${country ? ` (${country})` : ""}`] : []));
@@ -161,11 +171,17 @@ export const getAction = defineUserAction({
       ...(paper.pdfUrl ? { pdf: true as const } : {}),
       ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),
       ...(funders.length ? { funders: funders.slice(0, FUNDERS_LISTED) } : {}),
-      ...(paper.abstract ? { abstract: short(paper.abstract, ABSTRACT_MAX) } : {}),
+      ...(abstract ? { abstract: short(abstract, ABSTRACT_MAX) } : {}),
     };
   },
 });
 export const get = userAction(getAction);
+
+/** The abstract of the OpenAlex work a record of ours is paired with, if OpenAlex has one and can be read now. */
+async function pairedAbstract(openalexId: string, spend: ReturnType<typeof spender>) {
+  const work = await readWork<Work>(openalexId, "id,abstract_inverted_index", spend, "openalex").catch(() => null);
+  return work?.abstract_inverted_index ? abstractFromIndex(work.abstract_inverted_index) : undefined;
+}
 export const getForAssistant = assistantAction(getAction);
 
 /** Pages a paper's PDF is taken to have, for what reading it may cost. */

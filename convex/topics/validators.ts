@@ -6,7 +6,9 @@ export const topicNodeFields = {
   path: capped(v.array(v.string()), MAX_TOPIC_DEPTH), ancestors: capped(v.array(v.string()), MAX_TOPIC_DEPTH), childCount: v.number(), revision: v.string(),
   searchText: v.string(), domainId: v.string(), fieldId: v.string(), subfieldId: v.string(),
 };
-export const metadataValidator = v.object({title: v.string(), date: v.union(v.string(), v.null()), itemType: v.string(), creators: capped(v.array(v.string()), MAX_RECORD_CREATORS), abstract: v.union(v.string(), v.null())});
+export const metadataValidator = v.object({title: v.string(), date: v.union(v.string(), v.null()), itemType: v.string(), creators: capped(v.array(v.string()), MAX_RECORD_CREATORS), abstract: v.union(v.string(), v.null()),
+  /** Its public PDF and the picture of its first page, as the community last said; absent from a runtime that doesn't say. */
+  pdf: v.optional(v.union(v.null(), v.object({url: v.string(), cover: v.union(v.string(), v.null())})))});
 
 /** Topics one library record is filed under. */
 export const recordTopicIdsValidator = capped(v.array(v.string()), MAX_RECORD_TOPICS);

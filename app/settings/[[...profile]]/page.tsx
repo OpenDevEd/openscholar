@@ -6,7 +6,9 @@ import { UserProfile, useReverification, useSession, useUser } from "@clerk/next
 import { isReverificationCancelledError } from "@clerk/nextjs/errors";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
+import { CountryFlag } from "@/components/ui/country-flag";
+import { countryCodeOf, getRegionDisplayName } from "@/lib/i18n/region-names";
 import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone, Tablet, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -156,14 +158,15 @@ function Identity() {
       <div className="min-w-0 flex-1 space-y-2">
         {editing ? (
           <form
-            className="flex max-w-xl items-center gap-2"
+            // On a phone the two names keep room to be read: the buttons go to the next line.
+            className="flex max-w-xl flex-wrap items-center gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               void saveName();
             }}
           >
-            <Input autoFocus aria-label={t("firstName")} value={draft.first} onChange={(e) => setDraft((d) => ({ ...d, first: e.target.value }))} className="h-10" />
-            <Input aria-label={t("lastName")} value={draft.last} onChange={(e) => setDraft((d) => ({ ...d, last: e.target.value }))} className="h-10" />
+            <Input autoFocus aria-label={t("firstName")} value={draft.first} onChange={(e) => setDraft((d) => ({ ...d, first: e.target.value }))} className="h-10 min-w-32 flex-1" />
+            <Input aria-label={t("lastName")} value={draft.last} onChange={(e) => setDraft((d) => ({ ...d, last: e.target.value }))} className="h-10 min-w-32 flex-1" />
             <Button type="submit" size="icon" className="size-10 shrink-0" disabled={saving === "name"} aria-label={t("saveName")}>
               {saving === "name" ? <Loader2 className="animate-spin" /> : <Check />}
             </Button>
@@ -177,8 +180,9 @@ function Identity() {
             <Pencil className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
           </button>
         )}
-        <p className="inline-flex items-center gap-1.5 text-sm">
-          {user.primaryEmailAddress?.emailAddress}
+        {/* A long address is cut to the phone's width instead of widening the page; its full text is in the email card below. */}
+        <p className="inline-flex max-w-full items-center gap-1.5 text-sm">
+          <span dir="ltr" className="min-w-0 truncate">{user.primaryEmailAddress?.emailAddress}</span>
           {user.primaryEmailAddress?.verification?.status === "verified" ? (
             <BadgeCheck className="size-4 text-success" aria-label={t("verified")} />
           ) : null}
@@ -220,6 +224,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
   const revoke = useReverification((targets: Sessions) => Promise.all(targets.map((s) => s.revoke())));
   const { session: current } = useSession();
   const format = useFormatter();
+  const locale = useLocale();
   const now = useNow({ updateInterval: 60_000 });
   // Sessions Clerk has confirmed revoked leave the list at once, before the next read.
   const [revoked, setRevoked] = useState<ReadonlySet<string>>(new Set());
@@ -227,12 +232,14 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
   const [page, setPage] = useState(1);
   const sessions = use(sessionsPromise).filter((s) => s.status === "active" && !revoked.has(s.id));
 
-  type Entry = { key: string; sessions: Sessions; here: boolean; last: Date; title: string; place: string; ip?: string; device: Device };
+  type Entry = { key: string; sessions: Sessions; here: boolean; last: Date; title: string; place: string; country: string | null; ip?: string; device: Device };
   const entries = new Map<string, Entry>();
   for (const s of sessions) {
     const a = s.latestActivity;
     const here = s.id === current?.id;
-    const place = [a?.city, a?.country].filter(Boolean).join(", ");
+    // Clerk names the country by its code or its name; either way it shows with its flag and its name in the page's language.
+    const country = countryCodeOf(a?.country);
+    const place = [a?.city, country ? getRegionDisplayName(country, locale) : a?.country].filter(Boolean).join(", ");
     const key = here ? "here" : `${a?.browserName}|${a?.deviceType}|${place}`;
     const e = entries.get(key);
     if (e) {
@@ -241,7 +248,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
     } else {
       const platform = a?.deviceType === "X11" ? "Linux" : a?.deviceType;
       entries.set(key, {
-        key, sessions: [s], here, last: s.lastActiveAt, place, ip: a?.ipAddress,
+        key, sessions: [s], here, last: s.lastActiveAt, place, country, ip: a?.ipAddress,
         title: platform
           ? t("browserOn", { browser: a?.browserName ?? t("aBrowser"), platform })
           : (a?.browserName ?? t("aBrowser")),
@@ -292,12 +299,13 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
       <Paged pager={pager} rowHeight={66} label={t("devices")}>
         <ol className="relative">
           {/* The rail the devices hang from. */}
-          <span aria-hidden className="absolute bottom-6 start-[6.75rem] top-6 w-px bg-border" />
+          <span aria-hidden className="absolute bottom-6 start-5 top-6 w-px bg-border sm:start-[6.75rem]" />
           {shown.map((e) => {
             const Icon = DEVICE_ICON[e.device];
             return (
-              <li key={e.key} className="group relative grid grid-cols-[5.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2">
-                <span className={cn("text-end text-xs tabular-nums", e.here ? "font-medium text-primary" : "text-muted-foreground")}>
+              // On a phone the time column goes under the device's name, so the name keeps room to be read.
+              <li key={e.key} className="group relative grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 sm:grid-cols-[5.5rem_2.5rem_minmax(0,1fr)_auto]">
+                <span className={cn("hidden text-end text-xs tabular-nums sm:block", e.here ? "font-medium text-primary" : "text-muted-foreground")}>
                   {e.here ? t("now") : format.relativeTime(e.last, now)}
                 </span>
                 <span
@@ -314,7 +322,8 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                     {e.here ? <span className="text-xs font-normal text-primary">{t("thisDevice")}</span> : null}
                   </p>
                   <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
-                    {e.place ? <span className="truncate">{e.place}</span> : null}
+                    <span className={cn("shrink-0 tabular-nums sm:hidden", e.here && "font-medium text-primary")}>{e.here ? t("now") : format.relativeTime(e.last, now)}</span>
+                    {e.place ? <span className="flex min-w-0 items-center gap-1.5">{e.country ? <CountryFlag countryCode={e.country} className="shrink-0" /> : null}<span className="truncate">{e.place}</span></span> : null}
                     {e.ip ? <span className="font-mono text-2xs text-muted-foreground/70">{e.ip}</span> : null}
                   </p>
                 </div>

@@ -24,6 +24,8 @@ import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
 import { findItem } from "../library/find";
+import { readLibraryViewRole } from "../evidenceLibraries/access";
+import { sentTitle } from "../evidenceLibraries/submissions";
 
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
@@ -205,7 +207,7 @@ export const begin = internalMutation({
   },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => {
-    const subject = args.subject ?? (await aboutOf(ctx, args.workspaceId, args.input));
+    const subject = args.subject ?? (await aboutOf(ctx, args, args.input));
     return ctx.db.insert("assistantSteps", { ...args, ...(subject ? { subject } : {}), status: "running", startedAt: Date.now() });
   },
 });
@@ -220,17 +222,18 @@ export const chatOf = internalQuery({
 /** What a call given these arguments is about (`aboutOf`), for a tool that names its step before it has one. */
 export const about = internalQuery({
   // `input` is the arguments, as JSON.
-  args: { workspaceId: v.id("workspaces"), input: v.string() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), input: v.string() },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, { workspaceId, input }) => (await aboutOf(ctx, workspaceId, input)) ?? null,
+  handler: async (ctx, { input, ...actor }) => (await aboutOf(ctx, actor, input)) ?? null,
 });
 
 /**
  * What a call is about when its arguments name one of the workspace's records by ID alone:
  * the saved paper's title, the job's name, or else the collection's name. A paper it is about to save isn't
- * in it yet, and gets its title from what the call returns (`namedBy`).
+ * in it yet, and gets its title from what the call returns (`namedBy`). A community is named for anyone with a
+ * role on it, whichever workspace the reply runs in.
  */
-export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, input: string) {
+export async function aboutOf(ctx: Pick<QueryCtx, "db">, { userId, workspaceId }: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, input: string) {
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(input) as Record<string, unknown>;
@@ -247,11 +250,19 @@ export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"worksp
     // title its result gives, not by the collection it goes into.
     return item?.title ? cut(item.title, 200) : undefined;
   }
+  // A paper on an Evidence Community, by its record's key (taking it off, withdrawing it): named by its title.
+  if (typeof args.libraryId === "string" && typeof args.itemKey === "string") {
+    const person = await ctx.db.get("users", userId);
+    const title = person ? await sentTitle(ctx, person, workspaceId, args.libraryId, args.itemKey) : null;
+    if (title) return cut(title, 200);
+  }
   // An Evidence Library it reads or changes, by its name.
   if (typeof args.libraryId === "string") {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
     const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
-    return library?.workspaceId === workspaceId ? cut(library.name, 200) : undefined;
+    if (!library) return undefined;
+    const person = library.workspaceId === workspaceId ? null : await ctx.db.get("users", userId);
+    return library.workspaceId === workspaceId || (person && (await readLibraryViewRole(ctx, library, person.clerkId)) !== null) ? cut(library.name, 200) : undefined;
   }
   // An author profile, by its name: its page is public.
   if (typeof args.profileId === "string") {

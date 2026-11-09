@@ -35,7 +35,7 @@ describe("<ConfigurationWorkspace>", () => {
     const shortName = identityCard().getByLabelText("identity.shortNameLabel");
     await user.clear(shortName);
     await fillField(user, shortName, "Saved");
-    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "saveDraft" }));
 
     await waitFor(() => expect(saved).toHaveLength(1));
     const request = saved[0] as { sections: { sectionKey: string; payload: unknown }[] };

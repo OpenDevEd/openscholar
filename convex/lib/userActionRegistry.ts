@@ -25,7 +25,7 @@ import { createAction as chatCreateAction, getAction as chatAction, listAction a
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
 import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction,  setColourAction, setRoleAction } from "../organizations/manage";
 import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, summaryAction as workspaceSummaryAction, workspaceAction, workspacesAction } from "../organizations/queries";
-import { heldAction as moveHeldAction, moveAction } from "../workspaces/move";
+import { heldAction as moveHeldAction, moveAction, refusalsAction as moveRefusalsAction } from "../workspaces/move";
 import { addAction as guestAddAction, candidatesAction as guestCandidatesAction, invitedAction as guestInvitedAction, leaveAction as guestLeaveAction, listAction as guestListAction, removeAction as guestRemoveAction, roomAction as guestRoomAction, setRoleAction as guestRoleAction } from "../sharing/guests";
 import { getAction as guestInvitationAction, inviteAction as guestInviteAction, respondAction as guestRespondAction } from "../sharing/invitations";
 import { countsAction as sharedCountsAction, editableCollectionsAction as sharedEditableCollectionsAction, listAction as sharedListAction } from "../sharing/shared";
@@ -35,7 +35,7 @@ import { answerAction as screeningAnswerAction, getAction as screeningPaperActio
 import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
-import { countAction as countLibraryAccessAction, listAction as listLibraryAccessAction } from "../organizations/libraryAccess";
+import { countAction as countLibraryAccessAction, countPeopleAction as countLibraryAccessPeopleAction, listAction as listLibraryAccessAction, listPeopleAction as listLibraryAccessPeopleAction } from "../organizations/libraryAccess";
 import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
 import { balanceAction, countChargesAction, listChargesAction, planAction, spendingAction } from "../billing/usage";
 import { allowanceAction, setCapAction, spendingAction as memberSpendingAction } from "../billing/caps";
@@ -50,7 +50,8 @@ import { extractAction, resumeAction as extractionResumeHeldAction, retryAction 
 import { findAction as mentionFindAction } from "../assistant/mentions";
 import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
-import { addMemberAction as libraryAddMemberAction, changeRoleAction as libraryChangeRoleAction, removeMemberAction as libraryRemoveMemberAction, draftAction as libraryDraftAction, librariesAction as librariesListAction, revisionAction as libraryRevisionAction, editDraftAction as libraryEditDraftAction, teamAction as libraryTeamAction, inviteAction as libraryInviteAction, changeInvitationAction as libraryChangeInvitationAction, invitationsAction as libraryInvitationsAction, answerInvitationAction as libraryAnswerInvitationAction, startLibraryAction as libraryStartLibraryAction, sourcesAction as librarySourcesAction, runningCollectionsAction as libraryRunningCollectionsAction, runningInstitutionsAction as libraryRunningInstitutionsAction, runningPublicationsAction as libraryRunningPublicationsAction, runningPublicationAction as libraryRunningPublicationAction, syncSourceAction as librarySyncSourceAction, screeningRequestAction as libraryScreeningRequestAction, gradeSourceAction as libraryGradeSourceAction, trySourceSubjectAction as libraryTrySourceSubjectAction } from "../evidenceLibraries/assistant";
+import { addMemberAction as libraryAddMemberAction, changeRoleAction as libraryChangeRoleAction, removeMemberAction as libraryRemoveMemberAction, draftAction as libraryDraftAction, librariesAction as librariesListAction, revisionAction as libraryRevisionAction, editDraftAction as libraryEditDraftAction, teamAction as libraryTeamAction, inviteAction as libraryInviteAction, changeInvitationAction as libraryChangeInvitationAction, invitationsAction as libraryInvitationsAction, answerInvitationAction as libraryAnswerInvitationAction, startLibraryAction as libraryStartLibraryAction, sourcesAction as librarySourcesAction, runningCollectionsAction as libraryRunningCollectionsAction, runningInstitutionsAction as libraryRunningInstitutionsAction, runningPublicationsAction as libraryRunningPublicationsAction, runningPublicationAction as libraryRunningPublicationAction, syncSourceAction as librarySyncSourceAction, screeningRequestAction as libraryScreeningRequestAction, gradeSourceAction as libraryGradeSourceAction, trySourceSubjectAction as libraryTrySourceSubjectAction, setVisibilityAction as librarySetVisibilityAction, previewPapersAction as libraryPreviewPapersAction, addPapersAction as libraryAddPapersAction, addedPapersAction as libraryAddedPapersAction, removeAddedPaperAction as libraryRemoveAddedPaperAction, setAddedPapersSettingsAction as librarySetAddedPapersSettingsAction, connectCollectionAction as libraryConnectCollectionAction, putLiveAction as libraryPutLiveAction, submissionsAction as librarySubmissionsAction } from "../evidenceLibraries/assistant";
+import { listPublicAction as publicCommunitiesAction } from "../evidenceLibraries/directory";
 import { createAction as authorCreateAction, directoryAction as authorDirectoryAction, editorsAction as authorEditorsAction, invitationsAction as authorInvitationsAction, profileAction as authorProfileAction, publicationsAction as authorPublicationsAction } from "../authors/assistant";
 import { addAction as authorRecordAddAction, claimAction as authorClaimAction, removeAction as authorRecordRemoveAction } from "../authors/links";
 import { publicationsAction as topicPublicationsAction } from "../topics/assistant";
@@ -96,6 +97,16 @@ export const USER_ACTIONS: readonly UserAction[] = [
   libraryInvitationsAction,
   libraryAnswerInvitationAction,
   libraryStartLibraryAction,
+  librarySetVisibilityAction,
+  libraryPreviewPapersAction,
+  libraryAddPapersAction,
+  libraryAddedPapersAction,
+  libraryRemoveAddedPaperAction,
+  librarySetAddedPapersSettingsAction,
+  libraryConnectCollectionAction,
+  libraryPutLiveAction,
+  librarySubmissionsAction,
+  publicCommunitiesAction,
   librarySourcesAction,
   libraryRunningCollectionsAction,
   libraryRunningInstitutionsAction,
@@ -227,6 +238,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   setColourAction,
   deleteOrganizationAction,
   moveHeldAction,
+  moveRefusalsAction,
   moveAction,
   guestAddAction,
   guestInviteAction,
@@ -252,6 +264,8 @@ export const USER_ACTIONS: readonly UserAction[] = [
   countAdminsAction,
   listLibraryAccessAction,
   countLibraryAccessAction,
+  listLibraryAccessPeopleAction,
+  countLibraryAccessPeopleAction,
   listCandidatesAction,
   adminModelsAction,
   adminModelSummaryAction,

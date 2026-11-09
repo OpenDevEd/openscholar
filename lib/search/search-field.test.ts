@@ -20,3 +20,8 @@ describe("buildSearchSubfilter", () => {
     });
   });
 });
+
+it("reads a pasted sentence's commas as spaces, since in a filter a comma starts the next one", () => {
+  expect(buildSearchSubfilter("drought, school attendance, especially rural")).toEqual({ search: "drought  school attendance  especially rural" });
+  expect(buildSearchSubfilter('"climate change, education" drought')).toEqual({ search: '"climate change  education" drought' });
+});

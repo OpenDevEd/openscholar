@@ -12,6 +12,8 @@ export function getStaticPaths() {
   return COMPARISONS.map((item) => ({ params: { alternative: item.href.slice(1, -1) }, props: { item } }));
 }
 const { item } = Astro.props;
+// "an Elicit", "a Consensus".
+const a = /^[aeiou]/i.test(item.name) ? "an" : "a";
 const faq = [
   [`Can I bring my references from ${item.name}?`, `Export them from ${item.name} into Zotero, connect Zotero in Settings, and the assistant can screen that collection for you.`],
   ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat."],
@@ -20,9 +22,9 @@ const faq = [
   ["Can I try it before deciding?", "Yes. Search works without an account. Sign in to save papers and run screenings and extractions."],
 ];
 ---
-<Base og={`/og-${item.href.slice(1, -1)}.jpg`} top="#091026" title={`A ${item.name} alternative: Openscholar`} description={`Looking for a ${item.name} alternative? Openscholar finds the literature, screens it against your criteria with AI, extracts the data into a table you can check, and can publish your evidence as a public site.`}>
+<Base og={`/og-${item.href.slice(1, -1)}.jpg`} top="#091026" title={`${a === "an" ? "An" : "A"} ${item.name} alternative: Openscholar`} description={`Looking for ${a} ${item.name} alternative? Openscholar finds the literature, screens it against your criteria with AI, extracts the data into a table you can check, and can publish your evidence as a public site.`}>
   <IntentHero
-    title={`Looking for a ${item.name} alternative?`}
+    title={`Looking for ${a} ${item.name} alternative?`}
     lead="Openscholar takes a review from the question to the evidence: it finds the papers, screens them against your criteria, extracts the data with its sources, and can publish what you found."
     bg="#091026" art="sea" screen="screen" theme="dark" alt="A shared screening with its progress and its questions"
     questions={["Peer tutoring and reading in primary schools", "School feeding and attendance", "Cash transfers and child nutrition"]} />

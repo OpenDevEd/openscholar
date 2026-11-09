@@ -567,8 +567,9 @@ export function LibraryPageClient() {
                   }
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
-                  // A guest's count is of the collection: the library around it isn't theirs.
-                  totalCount={guest ? selectedCollection?.itemCount : totalCount}
+                  // In a collection the count is the collection's, for a guest and the owner alike: "1 / 36" read as one of the
+                  // collection's 36. Filtered within it, it's out of the collection's papers.
+                  totalCount={params.col ? selectedCollection?.itemCount : totalCount}
                   filteredCount={filteredTotal ?? filteredAtLeast}
                   filteredCountIsAtLeast={filteredAtLeast !== undefined}
                   activeFilterLabels={activeFilterLabels}

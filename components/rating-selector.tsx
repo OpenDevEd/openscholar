@@ -123,7 +123,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
-        <SelectTrigger size="sm" className={cn("w-auto min-w-[4rem] shrink-0 px-2", collection && "rounded-s-none shadow-none")}>
+        <SelectTrigger size="sm" aria-label={t("yourRating")} className={cn("w-auto min-w-[4rem] shrink-0 px-2", collection && "rounded-s-none shadow-none")}>
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>
@@ -155,7 +155,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
-        <SelectTrigger className="min-w-48">
+        <SelectTrigger aria-label={t("yourRating")} className="min-w-48">
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>

@@ -37,7 +37,8 @@ export function TwoColumnLayout({
     </div>
   );
   return (
-    <div className={cn("flex min-h-full", className)}>
+    // The space under the page's strips, not its column's full height: that would make the page taller than the app's rail by the strips, and scroll the rail with it.
+    <div className={cn("flex flex-1", className)}>
       {sidebar}
       {content}
     </div>

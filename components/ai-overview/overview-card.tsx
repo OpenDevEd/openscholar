@@ -153,9 +153,9 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   if (missing) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="@container flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
+      <header className="@container flex flex-wrap items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
         <AiIcon size={18} working={working} className="shrink-0" />
-        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="flex-1">
+        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="min-w-16 flex-1">
           <div className="w-max">
             <Pills
               label={t("lens")}
@@ -370,7 +370,8 @@ function Written({ blocks, overview, signedIn }: { blocks: Block[]; overview: Ov
       {blocks.map((block, i) => (
         <motion.div key={i} initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: EASE }}>
           {block.kind === "text" ? (
-            <p className="text-[0.9375rem] leading-relaxed text-foreground">{block.parts.map((part, j) => (typeof part === "string" ? part : <CiteChip key={j} cite={part} overview={overview} onOpen={openId} />))}</p>
+            // Written in the language of its papers, not the page's: its own direction, so English on an Arabic page reads left to right.
+            <p dir="auto" className="text-[0.9375rem] leading-relaxed text-foreground">{block.parts.map((part, j) => (typeof part === "string" ? part : <CiteChip key={j} cite={part} overview={overview} onOpen={openId} />))}</p>
           ) : (
             <Chart block={block} overview={overview} t={t} />
           )}
@@ -498,9 +499,9 @@ export function SignedOutOverview({ params }: { params: string }) {
   if (off) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="@container flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
+      <header className="@container flex flex-wrap items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
         <AiIcon size={18} working={working} className="shrink-0" />
-        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="flex-1">
+        <FadeRow scrolls scrollbar="none" keepInView='[aria-checked="true"]' className="min-w-16 flex-1">
           <div className="w-max">
             <Pills
               label={t("lens")}

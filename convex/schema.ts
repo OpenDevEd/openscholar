@@ -49,6 +49,8 @@ import {
   evidenceLibraryDomainRouteLeaseFields,
   evidenceLibraryFields,
   evidenceLibraryOperationFields,
+  paperSubmissionFields,
+  pendingSubmissionStatusFields,
   evidenceLibraryRuntimeBindingValidator,
   evidenceLibraryRuntimeReleaseFields,
   evidenceLibraryReleaseCatalogFields,
@@ -58,6 +60,7 @@ import {
   organizationInvitationFields,
   evidenceLibraryReaderFields,
   evidenceLibraryHandoffFields,
+  libraryOrganizationGrantFields,
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
@@ -291,12 +294,24 @@ export default defineSchema({
   // fingerprint, so a sources save checks versions without reading every revision (#357).
   evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
     .index("by_libraryId_and_version", ["libraryId", "version"]),
+  pendingSubmissionStatus: defineTable(pendingSubmissionStatusFields).index("by_library_and_itemKey", ["libraryId", "itemKey"]),
+  paperSubmissions: defineTable(paperSubmissionFields)
+    .index("by_user_and_sentAt", ["userId", "sentAt"])
+    .index("by_user_and_status_and_sentAt", ["userId", "status", "sentAt"])
+    .index("by_user_and_library_and_itemKey", ["userId", "libraryId", "itemKey"])
+    .index("by_library_and_itemKey", ["libraryId", "itemKey"])
+    .index("by_user_and_openalexId", ["userId", "openalexId"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "status"] }),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     // A workspace's libraries, in the order they were made.
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_and_state", ["workspaceId", "state"])
     .index("by_workspace_and_name_and_state", ["workspaceId", "name", "state"])
-    .index("by_workspace_and_slug", ["workspaceId", "slug"]),
+    .index("by_workspace_and_slug", ["workspaceId", "slug"])
+    // The public directory (./evidenceLibraries/directory.ts): live and not unlisted, by each of its sorts.
+    .index("by_state_and_unlisted_and_liveAt", ["state", "unlisted", "liveAt"])
+    .index("by_state_and_unlisted_and_cardName", ["state", "unlisted", "card.nameKey"])
+    .index("by_state_and_unlisted_and_records", ["state", "unlisted", "records"]),
 
   evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields)
     .index("by_libraryId", ["libraryId"])
@@ -408,6 +423,10 @@ export default defineSchema({
     .index("by_libraryId", ["libraryId"])
     .index("by_libraryId_and_groupId", ["libraryId", "groupId"]),
 
+  // The organizations a community is shared with (#1091).
+  libraryOrganizationGrants: defineTable(libraryOrganizationGrantFields)
+    .index("by_library_and_organization", ["libraryId", "organizationId"])
+    .index("by_organization_and_grantedAt", ["organizationId", "grantedAt"]),
   evidenceLibraryCollectionSources: defineTable(evidenceLibraryCollectionSourceFields)
     .index("by_libraryId_and_collectionId", ["libraryId", "collectionId"])
     // Whether any library follows a collection, which makes a change to it show outside the account.
@@ -623,12 +642,15 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   workspaces: defineTable(
     v.union(
-      v.object({ kind: v.literal("personal"), userId: v.id("users") }),
+      // `evidenceLibraries`: OpenScholar's admins let this person create Evidence Communities in it. An
+      // organization's switch is `organizations.evidenceLibraries`, which its admin list is indexed by.
+      v.object({ kind: v.literal("personal"), userId: v.id("users"), evidenceLibraries: v.optional(v.literal(true)) }),
       v.object({ kind: v.literal("organization"), organizationId: v.id("organizations") }),
     ),
   )
     .index("by_userId", ["userId"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_evidenceLibraries", ["evidenceLibraries"]),
 
   // ═══════════════════════════════════════════════════════════════
   // BILLING - balances and plans live in Autumn (convex/billing).

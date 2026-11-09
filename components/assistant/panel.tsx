@@ -5,7 +5,7 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
-import { useSearchSource } from "@/lib/search/use-search-source";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useKeyboardViewport } from "@/lib/hooks/use-keyboard-viewport";
 import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
@@ -51,7 +51,7 @@ import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/f
 import { inApp, recordOf } from "@/lib/assistant/view";
 import { recordLinks } from "./record-links";
 import { defaultRemarkPlugins } from "streamdown";
-import useSWR, { preload } from "swr";
+import useSWR, { mutate, preload } from "swr";
 import { readWork } from "@/app/actions/topics";
 import { unlessLimited } from "@/lib/openalex/limited";
 import { useRatedPapers } from "@/lib/research/reads";
@@ -60,6 +60,7 @@ import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library
 import type { PaperResult } from "@/lib/types";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, payOpenAction, useAppToast } from "@/lib/toast/use-app-toast";
+import { toast as notify } from "sonner";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
@@ -120,6 +121,16 @@ type Drafts = {
 };
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
+/** Whether the person just opened the panel, whose message box then takes the keyboard once. */
+let openFocus = false;
+const openedByKeyboard = () => {
+  openFocus = true;
+};
+const takeOpenFocus = () => {
+  const take = openFocus;
+  openFocus = false;
+  return take;
+};
 
 export function AssistantPanel() {
   const t = useTranslations("assistant");
@@ -178,7 +189,8 @@ export function AssistantPanel() {
               setTyped(({ [lost]: text, ...rest }) => (text ? { ...rest, [NEW]: text } : rest));
               setPicked(({ [lost]: mine, ...rest }) => (mine?.length ? { ...rest, [NEW]: mine } : rest));
             }
-            toast.error(t("lost"));
+            // Said plainly, not as an error: the person may have deleted it themselves, from another tab or by asking.
+            notify(t("lost"));
           }
           setThreadId(null);
         }}
@@ -286,6 +298,7 @@ function Overlay({
     },
   };
   const pop = () => setSheets((all) => all.slice(0, -1));
+  const sheetCount = sheets.length;
   // A keyboard shortcut is an outside system: ⌘J or Ctrl+J opens and closes the panel, and Escape closes the top sheet.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -294,14 +307,25 @@ function Overlay({
         // The message box goes with the panel, and a box that is taken away doesn't say it lost the keyboard.
         setFocused(false);
         setSheets([]);
-        setOpen((o) => !o);
+        setOpen((o) => {
+          if (!o) openedByKeyboard();
+          return !o;
+        });
       }
-      // A dialog over the sheet takes its own Escape, and marks it.
-      if (e.key === "Escape" && !e.defaultPrevented) setSheets((all) => all.slice(0, -1));
+      // A dialog over the sheet takes its own Escape, and marks it. With no sheet open, Escape in the message box folds
+      // the panel away, as its button does.
+      // Escape while composing with an input method cancels the composition, not the panel.
+      if (e.key === "Escape" && !e.defaultPrevented && !e.isComposing) {
+        if (sheetCount) setSheets((all) => all.slice(0, -1));
+        else if (e.target instanceof HTMLElement && e.target.closest("[data-assistant-composer]")) {
+          setFocused(false);
+          setOpen(() => false);
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setOpen]);
+  }, [setOpen, sheetCount]);
   const fold = () => {
     setFocused(false);
     setSheets([]);
@@ -415,7 +439,10 @@ function Overlay({
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>{!open ? <Launcher key="launcher" orbit={orbit} clock={clock} onComplete={completed} onOpen={() => setOpen(() => true)} /> : null}</AnimatePresence>
+      <AnimatePresence>{!open ? <Launcher key="launcher" orbit={orbit} clock={clock} onComplete={completed} onOpen={() => {
+        openedByKeyboard();
+        setOpen(() => true);
+      }} /> : null}</AnimatePresence>
     </MotionConfig>
   );
 }
@@ -532,6 +559,12 @@ function Chat({
     box.focus();
     box.setSelectionRange(box.value.length, box.value.length);
   }, [seed]);
+  // Outside system: focus. Opened by the person, from its button or ⌘J, the panel takes the keyboard at its message box,
+  // so Tab doesn't wander the page behind it. A panel open when the page loads leaves the keyboard where it is.
+  useEffect(() => {
+    // Not on a touch screen, where it would put the keyboard over the panel each time it opens.
+    if (takeOpenFocus() && matchMedia("(pointer: fine)").matches) composer.current?.focus({ preventScroll: true });
+  }, []);
   // The thread's scroller: sending a message takes the person to the end of the chat, where its reply comes.
   const scroller = useRef<StickToBottomContext>(null);
   const convex = useConvex();
@@ -987,6 +1020,7 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   const [asking, setAsking] = useState(false);
   // The paper focus mode is on, and whether it's open: it stays mounted once read, so it slides out when closed.
   const [reading, setReading] = useState<{ paperId: string; open: boolean } | null>(null);
+  const router = useWorkspaceRouter();
   // Its address hasn't arrived yet: a chip already, with room for its icon, so nothing moves when it does.
   if (!href || href === UNFINISHED_LINK) {
     return (
@@ -1007,28 +1041,31 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   );
   if (record?.paperId) {
     const paperId = record.paperId;
+    // Its page here, whatever address the reply wrote (older replies wrote OpenAlex's): a new tab opens it there.
+    const page = `/papers/${paperId}`;
     return (
       <>
         <a
-          href={href}
+          href={page}
           className={CHIP_LINK}
           style={recordChipStyle(tint)}
           // Read while the pointer is on it, so focus mode opens on the click.
           onPointerEnter={() => void preload(workKey(paperId), readWorkOf).catch(() => {})}
-          onClick={(event) => {
+          onClick={async (event) => {
+            // Cmd, Ctrl or Shift opens the page in a new tab or window, as any link does.
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
             event.preventDefault();
-            setReading({ paperId, open: true });
-          }}
-          onAuxClick={(event) => {
-            // The middle button opens it here too: a paper has no page of the app's to open in a new tab.
-            if (event.button !== 1) return;
-            event.preventDefault();
+            // Focus mode on it, beside the chat; a paper it can't read opens on its page instead. Read again on each
+            // click, so a read that failed once (the network dropped) doesn't keep it from opening.
+            const work = await readWorkOf(workKey(paperId)).catch(() => null);
+            if (!work) return router.push(page);
+            await mutate(workKey(paperId), work, { revalidate: false });
             setReading({ paperId, open: true });
           }}
         >
           {inside}
         </a>
-        {reading ? <PaperFocus paperId={reading.paperId} open={reading.open} href={href} onClose={() => setReading({ ...reading, open: false })} /> : null}
+        {reading ? <PaperFocus paperId={reading.paperId} open={reading.open} onClose={() => setReading({ ...reading, open: false })} /> : null}
       </>
     );
   }
@@ -1075,28 +1112,12 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
 
 /**
  * Focus mode on the one paper a reply links to, with no list to step through. It opens once
- * the paper and the person's rating of it are read, so it opens whole. A paper OpenAlex can't
- * give falls back to asking before opening its OpenAlex page.
+ * the paper and the person's rating of it are read, so it opens whole. Its chip opens only a paper it could read.
  */
-function PaperFocus({ paperId, open, href, onClose }: { paperId: string; open: boolean; href: string; onClose: () => void }) {
+function PaperFocus({ paperId, open, onClose }: { paperId: string; open: boolean; onClose: () => void }) {
   const { data, error } = useSWR(workKey(paperId), readWorkOf, { revalidateOnFocus: false });
   const rated = useRatedPapers(data ? [data as PaperResult] : []);
-  const onOpenAlex = useSearchSource() === "openalex";
-  if (error !== undefined || data === null) {
-    // Nothing opens OpenAlex while our index is what people search, so a paper it can't read just doesn't open.
-    if (!onOpenAlex || href.includes("openscholar.ai")) return null;
-    return (
-      <LinkSafetyDialog
-        isOpen={open}
-        url={href}
-        onClose={onClose}
-        onConfirm={() => {
-          window.open(href, "_blank", "noreferrer");
-          onClose();
-        }}
-      />
-    );
-  }
+  if (error !== undefined || data === null) return null;
   const paper = rated.papers[0];
   if (!paper || rated.loading) return null;
   return <FocusMode isOpen={open} onClose={onClose} papers={[paper]} onDownloadItem={downloadLibraryItem} onDownloadEssentialItem={downloadLibraryEssentialItem} />;

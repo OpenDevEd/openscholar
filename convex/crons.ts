@@ -3,6 +3,14 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
+// The public directory's record counts (#1090): an import runs inside the community, which doesn't tell us.
+crons.interval(
+  "refresh community record counts",
+  { hours: 24 },
+  internal.evidenceLibraries.directory.refreshAllRecords,
+  {},
+);
+
 // Custom domains that stop pointing at us should stop showing as working.
 crons.interval(
   "recheck evidence library custom domains",

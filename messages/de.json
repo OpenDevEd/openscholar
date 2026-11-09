@@ -13,7 +13,9 @@
     "stylesFailed": "Stile konnten nicht geladen werden.",
     "noStyles": "Keine passenden Stile.",
     "commonStyles": "Häufige Stile",
-    "otherStyles": "Weitere Stile"
+    "otherStyles": "Weitere Stile",
+    "copiedIn": "Zitation im Stil {style} kopiert",
+    "download": "Herunterladen"
   },
   "common": {
     "search": "Suchen",
@@ -307,10 +309,10 @@
     "metadataTitle": "Preise",
     "metadataDescription": "Einfache, transparente Preise für Teams jeder Größe.",
     "everyFeature": "Alle Funktionen von Openscholar",
-    "papersRunning": "{running, number} Paper gleichzeitig in Bearbeitung",
-    "papersInRequest": "{request, number} Paper pro Anfrage",
+    "papersRunning": "KI sichtet oder extrahiert {running, number} Artikel gleichzeitig",
+    "papersInRequest": "Bis zu {request, number} Artikel in einer Sichtung oder Extraktion",
     "unlimitedCollectionsAndGuests": "Unbegrenzte Sammlungen und Gäste",
-    "southernDescription": "Für Forschende in Ländern mit niedrigem und mittlerem Einkommen.",
+    "southernDescription": "Für Teams aus dem Globalen Süden, für bestimmte Projekte.",
     "southernFeature1": "Alles aus Free",
     "southernFeature2": "Wird Ihrem Konto hinzugefügt, nachdem Sie uns kontaktiert haben",
     "onRequest": "Auf Anfrage"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "Anmeldung erforderlich",
     "signInRequiredDescription": "Melden Sie sich an, um auf diese Seite zuzugreifen.",
     "noAccessTitle": "Zugriff eingeschränkt",
-    "noAccessDescription": "Sie haben keine Berechtigung, diese Ressource anzusehen.",
+    "noAccessDescription": "Du hast keinen Zugriff auf diese Seite. Wenn jemand sie mit dir geteilt hat, hat er das vielleicht beendet: Bitte ihn, sie erneut zu teilen.",
     "syncErrorTitle": "Problem bei der Sitzungssynchronisierung",
     "syncErrorDescription": "Ihr Konto konnte nicht vollständig eingerichtet werden. Versuchen Sie es erneut, um fortzufahren.",
     "syncErrorAccess": "Ihre Sitzung ist gültig, aber die Kontosynchronisierung ist unvollständig. Versuchen Sie es erneut, um fortzufahren.",
     "retrySync": "Synchronisierung wiederholen"
   },
   "aiSetupGate": {
-    "title": "KI für Ihre Suche einrichten",
-    "description": "Openscholar nutzt KI, um Abfragen zu verfeinern, Artikel zu prüfen und Ergebnisse zu übersetzen.",
+    "title": "Suchen ist kostenlos. KI ist ein Extra",
+    "description": "Melde dich an, und die KI schreibt deine Suchen, prüft Artikel anhand deiner Kriterien und übersetzt Ergebnisse, mit kostenlosen Credits jeden Monat.",
     "signInForCredits": "Anmelden für 50.000 kostenlose Credits",
     "useOwnApiKey": "Eigenen API-Schlüssel verwenden"
   },
@@ -677,7 +679,7 @@
     "uploadFailed": "Hochladen fehlgeschlagen",
     "uploadFailedDescription": "{format} konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.",
     "accountChanged": "Ihr Konto hat sich geändert. Versuchen Sie es erneut.",
-    "copyFailedDescription": "Konnte nicht in die Zwischenablage kopiert werden. Bitte versuchen Sie es erneut.",
+    "copyFailedDescription": "Dein Browser hat das Kopieren nicht erlaubt. Markiere den Text und kopiere ihn selbst.",
     "validationFailed": "Prüfung fehlgeschlagen",
     "entityCreated": "{entity} erstellt",
     "entityUpdated": "{entity} aktualisiert",
@@ -791,6 +793,7 @@
     "typeToSearchInstitutions": "Namen einer Einrichtung eingeben",
     "institutionsUnavailable": "Einrichtungen konnten nicht geladen werden. Versuchen Sie es erneut.",
     "filterByThisInstitution": "Funktioniert nur von {name} aus",
+    "filterByInstitutionCountry": "Nur Arbeiten von Einrichtungen in {country}",
     "studyDesign": "Studiendesign",
     "anyStudyDesign": "Alle Studiendesigns",
     "searchStudyDesigns": "Studiendesigns durchsuchen",
@@ -853,8 +856,8 @@
     "titleAndAbstract": "Titel und Abstract",
     "searchScope": "Suchbereich",
     "sortResultsBy": "Ergebnisse sortieren nach",
-    "citationFilter": "Zitationsfilter",
-    "citedByFilter": "Filter „Zitiert von“",
+    "citationFilter": "Arbeiten, die eine Arbeit zitieren",
+    "citedByFilter": "Arbeiten, die eine Arbeit zitiert",
     "relatedWorksFilter": "Filter für verwandte Werke",
     "clearAllCount": "Alle löschen ({count})",
     "searchFiltersTitle": "Suchfilter",
@@ -977,7 +980,7 @@
     "domainLabel": "Bereich:",
     "sdgsLabel": "SDGs:",
     "referencesLabel": "Referenzen:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "ggü. Fachdurchschnitt:",
     "citedBy": "Zitiert von",
     "cites": "Zitiert",
     "questionN": "Frage {n}: {question}",
@@ -1064,7 +1067,7 @@
     "cookiePolicyDescription": "Erfahren Sie, wie Openscholar.ai Cookies für Analysen nutzt und wie Sie Ihre Cookie-Einstellungen verwalten.",
     "libraryTitle": "Bibliothek",
     "libraryDescription": "Gespeicherte wissenschaftliche Artikel durchsehen und verwalten",
-    "creditsTitle": "Credits",
+    "creditsTitle": "Quellenangaben",
     "creditsDescription": "Die Projekte, Daten und Lizenzen, auf denen Openscholar aufbaut.",
     "sharedTitle": "Mit mir geteilt",
     "termsTitle": "Nutzungsbedingungen",
@@ -1163,7 +1166,7 @@
     "translationSettings": "Übersetzungseinstellungen",
     "autoTranslateResults": "Angezeigte Ergebnisse automatisch übersetzen",
     "listedItemsOnly": "Gilt nur für die aktuell angezeigten Einträge.",
-    "useCurrentLocaleTarget": "Zielsprache der aktuellen Oberfläche verwenden",
+    "useCurrentLocaleTarget": "Sprache der Website verwenden",
     "runResultsTranslation": "Übersetzung starten",
     "translatingResults": "Ergebnisse werden übersetzt...",
     "undoTranslation": "Übersetzung rückgängig machen",
@@ -1208,13 +1211,16 @@
     "keepRunning": "Weiterlaufen lassen",
     "yesCancel": "Auftrag abbrechen",
     "deleteJob": "Diesen Auftrag löschen?",
-    "deleteJobDescription": "Dadurch werden dieser Auftrag und alle seine Extraktionsergebnisse dauerhaft gelöscht."
+    "deleteJobDescription": "Dadurch werden dieser Auftrag und alle seine Extraktionsergebnisse dauerhaft gelöscht.",
+    "rerunJob": "Als Kopie erneut ausführen?",
+    "rerunJobDescription": "Eine neue Extraktion mit denselben Artikeln und Fragen startet sofort und verbraucht Credits, etwa so viele wie diese. Diese bleibt, wie sie ist.",
+    "rerunJobConfirm": "Erneut ausführen"
   },
   "emptyStates": {
     "noScreeningQuestions": "Noch keine Screening-Fragen"
   },
   "jobStatus": {
-    "restart": "Neu starten",
+    "restart": "Als Kopie erneut ausführen…",
     "papersCount": "{count} Artikel",
     "questionsCount": "{count, plural, one {# Frage} other {# Fragen}}",
     "statusPending": "Ausstehend",
@@ -1227,7 +1233,8 @@
     "noMatches": "Keine Treffer für die aktuellen Filter",
     "clearFilters": "Filter löschen",
     "progressOfPapers": "{processed} von {total, plural, =1 {# Artikel} other {# Artikeln}}",
-    "loadingExtractionResults": "Extraktionsergebnisse werden geladen..."
+    "loadingExtractionResults": "Extraktionsergebnisse werden geladen...",
+    "skippedNoText": "{count, plural, one {# Artikel ausgelassen: kein Abstract zum Lesen, und Volltexte waren aus} other {# Artikel ausgelassen: kein Abstract zum Lesen, und Volltexte waren aus}}"
   },
   "reportBuilder": {
     "grounded": "Belegt",
@@ -1260,7 +1267,8 @@
   },
   "rating": {
     "noRating": "Keine Bewertung",
-    "nStars": "{count} Sterne"
+    "nStars": "{count} Sterne",
+    "yourRating": "Deine Bewertung"
   },
   "pagination": {
     "currentPage": "Seite {page}",
@@ -1293,7 +1301,7 @@
     "type": "Typ",
     "refs": "Ref.",
     "cited": "Zitiert",
-    "fwci": "FWCI",
+    "fwci": "ggü. Fachdurchschnitt",
     "topic": "Thema",
     "field": "Fachgebiet",
     "subfield": "Teilgebiet",
@@ -1367,7 +1375,7 @@
     "privacyPolicy": "Datenschutzerklärung",
     "cookiePolicy": "Cookie-Richtlinie",
     "cookiePreferences": "Cookie-Einstellungen",
-    "credits": "Credits"
+    "credits": "Quellenangaben"
   },
   "focusMode": {
     "settingsTitle": "Einstellungen für den Fokusmodus",
@@ -1514,7 +1522,8 @@
     "planAllowsCollections": "{plan} erlaubt {limit, number} Sammlungen",
     "nameTheCollection": "Sammlung benennen",
     "newName": "Neuer Name für {name}",
-    "clearSearch": "Suche löschen"
+    "clearSearch": "Suche löschen",
+    "collectionDeletedPapersStay": "{name}: Die Artikel bleiben in deiner Bibliothek"
   },
   "sidebarLayout": {
     "expandFilters": "Filter ausklappen (Ctrl+Shift+F)",
@@ -1760,7 +1769,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Community ohne Titel",
     "unsaved": "Nicht gespeicherte Änderungen",
-    "viewOnly": "Nur Ansicht",
+    "viewOnly": "Einstellungen nur ansehen",
     "save": "Speichern",
     "saving": "Wird gespeichert…",
     "saveError": "Die Änderungen konnten nicht gespeichert werden. Versuchen Sie es erneut.",
@@ -1815,7 +1824,15 @@
       "versions": "Versionen",
       "ai": "KI",
       "domain": "Domain",
+      "listing": "Verzeichnis",
       "publication": "Veröffentlichung"
+    },
+    "listing": {
+      "description": "Ob diese Community im öffentlichen Verzeichnis der Communities steht. Ihre Website bleibt für alle mit ihrer Adresse so oder so offen.",
+      "public": "Öffentlich",
+      "publicHint": "Im öffentlichen Verzeichnis gelistet, wo alle sie finden.",
+      "unlisted": "Nicht gelistet",
+      "unlistedHint": "Nicht im Verzeichnis. Wer die Adresse hat, kann sie weiterhin öffnen."
     },
     "sectionState": {
       "complete": "Vollständig",
@@ -1918,6 +1935,9 @@
       "taglineLabel": "Slogan",
       "taglineHint": "Die Überschrift über der Community-Suche. Leer lassen, damit „Suchen“ angezeigt wird.",
       "taglinePlaceholder": "Evidenz für bessere Entscheidungen",
+      "searchTitleLabel": "Titel in Suchergebnissen",
+      "searchTitleHint": "Was Suchmaschinen für die Startseite anzeigen. Leer lassen, um Name und Slogan zu verwenden.",
+      "searchTitlePlaceholder": "Forschung und Evidenz zur Klimaanpassung",
       "descriptionLabel": "Beschreibung",
       "descriptionHint": "Wird auf der Startseite und in den Suchergebnissen angezeigt.",
       "partnersHeading": "Förderpartner",
@@ -2001,10 +2021,13 @@
       "add": "Einrichtung hinzufügen"
     },
     "danger": {
-      "description": "Diese Community löschen. Seien Sie hier vorsichtig.",
+      "description": "Diese Community verschieben oder löschen. Seien Sie hier vorsichtig.",
       "deleteTitle": "Community löschen",
       "deleteHint": "Entfernt die Seite, die Adresse und die Einstellungen.",
-      "deleteButton": "Community löschen"
+      "deleteButton": "Community löschen",
+      "moveTitle": "In einen anderen Arbeitsbereich verschieben",
+      "moveHint": "Behält Adresse, Einstellungen und Personen. Der neue Arbeitsbereich ist ihr Eigentümer.",
+      "moveButton": "Community verschieben"
     },
     "deleteDialog": {
       "title": "Diese Community löschen?",
@@ -2012,7 +2035,7 @@
       "typeToConfirm": "Geben Sie {name} zur Bestätigung ein",
       "confirm": "Community löschen",
       "startedTitle": "Community wird gelöscht",
-      "startedDescription": "{name} wird entfernt. Dies dauert einige Sekunden.",
+      "startedDescription": "{name} wird entfernt. Das dauert ein bis zwei Minuten.",
       "error": "Die Community konnte nicht gelöscht werden. Beenden Sie einen laufenden Community-Vorgang und versuchen Sie es dann erneut."
     },
     "links": {
@@ -2836,7 +2859,8 @@
       "confirmAction": "Adresse ändern"
     },
     "retry": "Erneut versuchen",
-    "retryError": "Dies konnte nicht gestartet werden. Versuchen Sie es erneut."
+    "retryError": "Dies konnte nicht gestartet werden. Versuchen Sie es erneut.",
+    "saveDraft": "Entwurf speichern"
   },
   "topics": {
     "title": "Themen",
@@ -2911,8 +2935,8 @@
       "title": "Neue Evidence Community",
       "backToLibraries": "Zurück zu den Communitys",
       "ownerTitle": "Eigentümer",
-      "ownerOnlyTitle": "Nur Eigentümer",
-      "ownerOnlyDescription": "Nur ein Eigentümer der Organisation kann eine Community erstellen.",
+      "ownerOnlyTitle": "Hier kann keine Community erstellt werden",
+      "ownerOnlyDescription": "Communities werden in deinem eigenen Arbeitsbereich erstellt oder in einer Organisation, deren Admin du bist, sobald Evidence Communities dafür eingeschaltet sind.",
       "libraryTitle": "Community",
       "libraryDescription": "Der Name erscheint auf der öffentlichen Website und legt die öffentliche Adresse fest.",
       "nameLabel": "Name",
@@ -3152,8 +3176,13 @@
       "off": "Aus",
       "libraries": "{count, plural, one {# Community} other {# Communitys}}",
       "switchLabel": "Evidence Communities für {name}",
-      "moveFirst": "Verschieben oder löschen Sie zuerst ihre Communitys",
-      "noMatches": "Keine passenden Organisationen"
+      "noMatches": "Keine passenden Organisationen",
+      "kind": "Arbeitsbereiche",
+      "organizationsTab": "Organisationen",
+      "peopleTab": "Personen",
+      "searchPeople": "Personen nach E-Mail suchen",
+      "people": "Personen",
+      "noPeopleMatch": "Keine passenden Personen"
     },
     "communityReleases": {
       "releases": "Releases",
@@ -3414,7 +3443,7 @@
       "times": "{count, plural, one {Mal} other {Mal}}",
       "unfold": "Jeden einzeln anzeigen",
       "fold": "Als einen Schritt anzeigen",
-      "declined": "Nicht erlaubt",
+      "declined": "Von dir abgelehnt",
       "waiting": "Wartet auf eine Antwort",
       "allowed": "Erlaubt",
       "searches": {
@@ -4200,6 +4229,18 @@
         "where": "Evidence Communities",
         "ask": "Einen Community-Entwurf starten"
       },
+      "publicCommunities": {
+        "doing": "Liest die öffentlichen Communities",
+        "did": "Hat die öffentlichen Communities gelesen",
+        "where": "Evidence Communities",
+        "ask": "Die öffentlichen Communities lesen"
+      },
+      "communityVisibility": {
+        "doing": "Ändert, ob eine Community gelistet ist",
+        "did": "Hat geändert, ob eine Community gelistet ist",
+        "where": "Evidence Communities",
+        "ask": "Ändern, ob eine Community gelistet ist"
+      },
       "librarySources": {
         "doing": "Die Quellen einer Community werden gelesen",
         "did": "Die Quellen einer Community wurden gelesen",
@@ -4336,6 +4377,54 @@
         "did": "Autor beansprucht",
         "where": "Autoren",
         "ask": "Autor beanspruchen"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Arbeiten für eine Community nachschlagen",
+        "did": "Arbeiten für eine Community nachgeschlagen",
+        "where": "Evidence Community",
+        "ask": "Arbeiten für eine Community nachschlagen"
+      },
+      "addCommunityPapers": {
+        "doing": "Arbeiten zu einer Community hinzufügen",
+        "did": "Arbeiten zu einer Community hinzugefügt",
+        "where": "Evidence Community",
+        "ask": "Arbeiten zu einer Community hinzufügen"
+      },
+      "communityAddedPapers": {
+        "doing": "Hinzugefügte Arbeiten einer Community lesen",
+        "did": "Hinzugefügte Arbeiten einer Community gelesen",
+        "where": "Evidence Community",
+        "ask": "Hinzugefügte Arbeiten einer Community lesen"
+      },
+      "removeCommunityPaper": {
+        "doing": "Eine Arbeit aus einer Community nehmen",
+        "did": "Eine Arbeit aus einer Community genommen",
+        "where": "Evidence Community",
+        "ask": "Eine Arbeit aus einer Community nehmen"
+      },
+      "communityPapersSettings": {
+        "doing": "Hinzugefügte Arbeiten einer Community ändern",
+        "did": "Hinzugefügte Arbeiten einer Community geändert",
+        "where": "Evidence Community",
+        "ask": "Hinzugefügte Arbeiten einer Community oder ihre PDFs pausieren oder fortsetzen"
+      },
+      "connectCommunityCollection": {
+        "doing": "Füge eine Sammlung zu den Quellen einer Community hinzu",
+        "did": "Sammlung zu den Quellen einer Community hinzugefügt",
+        "where": "Evidence Community",
+        "ask": "Eine deiner Sammlungen zu den Quellen einer Community hinzufügen"
+      },
+      "putCommunityLive": {
+        "doing": "Stelle die Einstellungen einer Community live",
+        "did": "Einstellungen einer Community live gestellt",
+        "where": "Evidence Community",
+        "ask": "Die gespeicherten Einstellungen einer Community live stellen"
+      },
+      "sentPapers": {
+        "doing": "Lese die Artikel, die du an Communities gesendet hast",
+        "did": "Artikel gelesen, die du an Communities gesendet hast",
+        "where": "Evidence Communities",
+        "ask": "Die Artikel lesen, die du an Communities gesendet hast"
       }
     },
     "asks": {
@@ -4510,7 +4599,7 @@
     "main": "Hauptbereich",
     "screen": "Screening",
     "extract": "Extraktion",
-    "publish": "Veröffentlichen",
+    "communities": "Communities",
     "explore": "Entdecken",
     "authors": "Autoren",
     "workspacesCard": "Arbeitsbereiche",
@@ -4591,9 +4680,6 @@
       "leave": "Verlassen",
       "deleteName": "{name} löschen",
       "stillHasLibrary": "{library} ist eine ihrer Evidence Communities. Verschieben oder löschen Sie sie zuerst.",
-      "deleteLibrary": "Community löschen",
-      "libraryBeingDeleted": "{library} wird gelöscht.",
-      "libraryDeleteFailed": "{library} konnte nicht gelöscht werden. Versuchen Sie es erneut.",
       "deleteDetail": "Entfernt sie für {count, plural, one {deren # Mitglied} other {alle # Mitglieder}}",
       "moveLibrariesFirst": "Verschieben oder löschen Sie zuerst ihre Evidence Communities",
       "delete": "Löschen",
@@ -4756,7 +4842,10 @@
         "itsPapers": "Seine Artikel",
         "ratingsInIt": "Bewertungen darin",
         "publications": "Publikationen",
-        "editors": "Redakteure"
+        "editors": "Redakteure",
+        "address": "Adresse",
+        "settings": "Einstellungen",
+        "peopleWithRoles": "Personen mit einer Rolle"
       },
       "moveTo": "Nach {workspace} verschieben",
       "move": "Verschieben",
@@ -4765,7 +4854,15 @@
       "collection": "Sammlung verschieben",
       "author": "Autorenprofil verschieben",
       "libraryKeeps": "Die Bibliothek von {workspace} behält die Artikel, die sie gespeichert hat.",
-      "yourLibraryKeeps": "Ihre Bibliothek behält die Artikel, die sie gespeichert hat."
+      "yourLibraryKeeps": "Ihre Bibliothek behält die Artikel, die sie gespeichert hat.",
+      "community": "Community verschieben",
+      "workspaceOwnsIt": "Der Arbeitsbereich, in den sie verschoben wird, ist ab dann ihr Eigentümer.",
+      "refused": {
+        "noCommunities": "Communities sind für diesen Arbeitsbereich nicht eingeschaltet",
+        "communitiesFull": "Hat so viele Communities, wie ein Arbeitsbereich haben kann",
+        "profilesOff": "Autorenprofile sind hier nicht aktiviert",
+        "noProfiles": "Hier können Sie keine Autorenprofile anlegen"
+      }
     },
     "share": {
       "share": "Teilen",
@@ -4865,7 +4962,11 @@
       "goneDetail": "Bitten Sie die Person, die ihn geteilt hat, ihn erneut zu teilen",
       "otherTitle": "Diese Einladung wurde an eine andere Adresse gesendet",
       "otherDetail": "Öffnen Sie sie, wenn dieses Konto diese Adresse auch hat, oder melden Sie sich mit der Adresse an, an die sie gesendet wurde"
-    }
+    },
+    "notEmails": "{count, plural, one {Das ist keine E-Mail-Adresse: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.} other {Das sind keine E-Mail-Adressen: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.}}",
+    "asRole": "als {role}",
+    "memberCan": "Mitglieder suchen, speichern, sichten und extrahieren mit allem, was die Organisation teilt.",
+    "adminCan": "Admins können dasselbe und außerdem Personen einladen und entfernen sowie Einstellungen und Ausgaben verwalten."
   },
   "models": {
     "changeInSettings": "In den KI-Einstellungen ändern"
@@ -5308,7 +5409,20 @@
     "removedFromLibrary": "Aus dieser Community entfernt.",
     "removedFromProfile": "Aus diesem Profil entfernt.",
     "addedToLibrary": "{name} zu dieser Community hinzugefügt.",
-    "addedToProfile": "{name} zu diesem Profil hinzugefügt."
+    "addedToProfile": "{name} zu diesem Profil hinzugefügt.",
+    "anOrganization": "Eine Organisation",
+    "chooseAnOrganization": "Organisation auswählen",
+    "anotherOrganization": "Andere Organisation",
+    "adminEmail": "E-Mail ihres Admins",
+    "organizationGetsIt": "Alle in der Organisation erhalten diese Rolle und verlieren sie beim Verlassen.",
+    "theirAdminAccepts": "Ihr Admin nimmt sie für eine Organisation an, die er verwaltet, und alle darin erhalten diese Rolle.",
+    "everyoneInIt": "Alle darin",
+    "forTheirOrganization": "Für eine Organisation, in der {email} Admin ist",
+    "removeThisOrganization": "Diese Organisation entfernen? Ihre Mitglieder behalten nur Rollen, die sie selbst erhalten haben.",
+    "organizationLabel": "Organisation",
+    "ownWorkspaceOwner": "Sie liegt in ihrem eigenen Arbeitsbereich und gehört daher ihnen.",
+    "whoWorksOnIt": "Wer an dieser Community arbeitet. Ihre Eigentümer verwalten das Team.",
+    "viewersUntilAnOwner": "Betrachter, bis ein Eigentümer ihnen eine Rolle gibt."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Übersicht für # Publikation eingeplant.} other {Übersicht für # Publikationen eingeplant.}}",
@@ -5371,6 +5485,54 @@
     "keepThisUnderCharacters": "Bitte höchstens {maxLength} Zeichen verwenden."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Deine Communities",
+      "showFrom": "Communities anzeigen aus",
+      "allWorkspaces": "Alle Arbeitsbereiche",
+      "allCommunities": "Alle Communities",
+      "workspaces": "Arbeitsbereiche",
+      "yours": "Deine",
+      "sharedWithYou": "Mit dir geteilt",
+      "sharedWith": "Mit {name} geteilt",
+      "loading": "Communities werden geladen",
+      "noMatches": "Keine davon passt zu dieser Suche.",
+      "emptyAll": "Du bist noch in keiner Community. Wenn jemand eine mit dir teilt oder deine Organisation eine hat, erscheint sie hier.",
+      "emptyHere": "Communities von {name} und die mit ihr geteilten erscheinen hier.",
+      "emptyShared": "Communities, die andere mit dir teilen, erscheinen hier.",
+      "emptySharedHere": "Mit {name} geteilte Communities erscheinen hier.",
+      "emptyOwn": "Communities, die du erstellst, erscheinen hier.",
+      "emptyWorkspace": "{name} hat noch keine Communities.",
+      "invitedAs": "Eingeladen als {role}",
+      "accept": "Annehmen",
+      "accepted": "{name} angenommen.",
+      "moreWorkspaces": "Weitere Arbeitsbereiche",
+      "invitedForOrganization": "Eingeladen als {role}, für Ihre Organisation",
+      "acceptAsAnAdmin": "Als Admin einer Organisation annehmen",
+      "acceptForWhich": "{name} für welche Organisation annehmen",
+      "acceptedFor": "{name} für {organization} angenommen."
+    },
+    "directory": {
+      "title": "Öffentliche Communities",
+      "sortLabel": "Öffentliche Communities sortieren",
+      "sort": {
+        "newest": "Neueste",
+        "name": "Name",
+        "records": "Meiste Arbeiten"
+      },
+      "loading": "Öffentliche Communities werden geladen",
+      "noMatches": "Keine öffentliche Community passt zu dieser Suche",
+      "none": "Öffentliche Communities erscheinen hier, sobald sie live sind",
+      "records": "{count, plural, one {{shown} Arbeit} other {{shown} Arbeiten}}",
+      "unnamedOwner": "Ein Openscholar-Mitglied",
+      "people": "{count, plural, one {{shown} Teammitglied} other {{shown} Teammitglieder}}",
+      "countries": "Über {names}",
+      "recordsLabel": "{count, plural, one {Arbeit} other {Arbeiten}}",
+      "peopleLabel": "{count, plural, one {Teammitglied} other {Teammitglieder}}",
+      "noDescription": "Noch keine Beschreibung",
+      "notCounted": "Noch nicht gezählt",
+      "intro": "Jede Community ist eine Website, die Forschung zu einem Thema sammelt. Öffne eine, um ihre Arbeiten zu durchsuchen.",
+      "updated": "Aktualisiert {when}"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "Neue Community",
     "libraryView": "Community-Ansicht",
@@ -5414,7 +5576,9 @@
     "deletionRestartedFor": "Löschung für {name} neu gestartet.",
     "couldNotRestartDeletion": "Löschung konnte nicht neu gestartet werden",
     "invitationDeclined": "Einladung abgelehnt.",
-    "unableToDeclineInvitation": "Einladung konnte nicht abgelehnt werden"
+    "unableToDeclineInvitation": "Einladung konnte nicht abgelehnt werden",
+    "searchSubmissions": "Deine Einsendungen durchsuchen",
+    "findASubmission": "Eine gesendete Arbeit finden…"
   },
   "authorPages": {
     "profileSettings": "Profileinstellungen",
@@ -5676,5 +5840,129 @@
     "step4": "Token erneuern",
     "step4About": "Ein Token gilt 24 Stunden. Tauschen Sie vorher das Refresh-Token gegen ein neues.",
     "cantDo": "Apps können weder Abrechnung, API-Schlüssel oder Website-Einstellungen ändern noch eine Evidence Community veröffentlichen."
+  },
+  "paperPage": {
+    "references": "Literatur",
+    "openAccess": "Open Access",
+    "readPdf": "PDF lesen",
+    "publisherPage": "Verlagsseite",
+    "askAbout": "Zu diesem Artikel fragen",
+    "noAbstract": "Keine Zusammenfassung verfügbar",
+    "linkCopied": "Link zum Artikel kopiert",
+    "citationsPerYear": "Zitationen pro Jahr",
+    "citationsIn": "{count, plural, one {# Zitation} other {# Zitationen}} in {year}",
+    "seeCiting": "Artikel ansehen, die ihn zitieren",
+    "top1": "Top 1 % im Fachgebiet",
+    "top10": "Top 10 % im Fachgebiet",
+    "aheadOf": "Häufiger zitiert als {percent} % aller Arbeiten von {year}",
+    "influential": "bauen darauf auf",
+    "authors": "Autorinnen und Autoren",
+    "andMore": "und {count} weitere",
+    "showAll": "Alle {count} anzeigen",
+    "showFewer": "Weniger anzeigen",
+    "corresponding": "Korrespondierend",
+    "orcidOf": "ORCID iD von {name}",
+    "institutions": "Einrichtungen",
+    "whereToRead": "Wo lesen",
+    "kindPublisher": "Verlag",
+    "kindRepository": "Repositorium",
+    "kindIndex": "Index",
+    "pdf": "PDF",
+    "funding": "Förderung",
+    "topics": "Themen",
+    "sdgs": "Ziele für nachhaltige Entwicklung",
+    "mesh": "MeSH-Begriffe",
+    "details": "Details",
+    "charge": "Veröffentlichungsgebühr",
+    "retracted": "Zurückgezogen",
+    "openscholarId": "Openscholar-ID",
+    "copyDoi": "DOI kopieren",
+    "doiCopied": "DOI kopiert",
+    "doiCopyFailed": "DOI konnte nicht kopiert werden",
+    "paperPage": "Artikelseite",
+    "share": "Teilen",
+    "inCommunities": "In diesen Communities",
+    "fieldAverage": "× Fachdurchschnitt"
+  },
+  "addedPapers": {
+    "name": "Hinzugefügte Arbeiten",
+    "provider": "DOIs und OpenAlex-IDs",
+    "cardDescription": "Einzeln per DOI oder OpenAlex-ID hinzugefügte Arbeiten, mit OpenAlex synchron gehalten.",
+    "menu": "Arbeiten per DOI oder ID",
+    "menuHint": "Eine oder viele, synchron gehalten",
+    "menuNotLive": "Verfügbar, sobald die Community live ist",
+    "add": "Arbeiten hinzufügen",
+    "title": "Arbeiten hinzufügen",
+    "description": "Füge Links zu Arbeiten (von Openscholar, der Website einer Community, OpenAlex oder doi.org), DOIs oder OpenAlex-IDs ein, bis zu {max} auf einmal.",
+    "inputLabel": "DOIs, OpenAlex-IDs oder Links",
+    "papers": "{count, plural, one {# Arbeit} other {# Arbeiten}}",
+    "tooMany": "Mehr als {max} Arbeiten",
+    "invalid": "Kein Link zu einer Arbeit, keine DOI oder ID: {values}",
+    "find": "Arbeiten suchen",
+    "found": "Gefundene Arbeiten",
+    "notFound": "Nicht gefunden",
+    "alreadyAdded": "Bereits hinzugefügt",
+    "inQueue": "Wartet auf Prüfung",
+    "doiOnly": "Nur DOI",
+    "leaveOut": "Weglassen",
+    "leaveOutLabel": "{title} weglassen",
+    "doiOnlyNote": "{count, plural, one {OpenAlex hat eine davon noch nicht. Sie kommt über ihre DOI, und jede Synchronisierung prüft OpenAlex erneut.} other {OpenAlex hat # davon noch nicht. Sie kommen über ihre DOIs, und jede Synchronisierung prüft OpenAlex erneut.}}",
+    "toAdd": "{count, plural, one {# Arbeit zum Hinzufügen} other {# Arbeiten zum Hinzufügen}}",
+    "sendToQueue": "Zur Prüfung senden",
+    "publish": "Veröffentlichen",
+    "published": "{count, plural, one {# Arbeit in {community} veröffentlicht} other {# Arbeiten in {community} veröffentlicht}}",
+    "queued": "{count, plural, one {# Arbeit an die Prüfwarteschlange gesendet} other {# Arbeiten an die Prüfwarteschlange gesendet}}",
+    "someFailed": "{count, plural, one {# Arbeit wurde als Entwurf gespeichert, aber nicht gesendet. Öffne sie im Admin, um sie zu senden.} other {# Arbeiten wurden als Entwürfe gespeichert, aber nicht gesendet. Öffne sie im Admin, um sie zu senden.}}",
+    "lookupFailed": "Die Community konnte diese Arbeiten nicht nachschlagen. Versuche es erneut.",
+    "addFailed": "Die Community konnte diese Arbeiten nicht hinzufügen. Versuche es erneut.",
+    "noAuthors": "Keine Autoren angegeben",
+    "unavailable": "Nicht verfügbar",
+    "settingsFailed": "Die Community hat die Änderung nicht übernommen. Versuche es erneut.",
+    "ownerOnly": "Nur der Eigentümer ändert das",
+    "from": "Von {name}",
+    "returned": "Abgelehnt",
+    "statusWithdrawn": "Von dir zurückgezogen",
+    "statusRemoved": "Von der Community entfernt",
+    "openIn": "In {community} öffnen",
+    "openLabel": "{title} in {community} öffnen",
+    "remove": "Entfernen",
+    "removeLabel": "{title} entfernen",
+    "withdraw": "Zurückziehen",
+    "withdrawLabel": "{title} zurückziehen",
+    "removed": "Arbeit aus der Community entfernt",
+    "withdrawn": "Arbeit aus der Prüfwarteschlange zurückgezogen",
+    "removeFailed": "Die Community konnte diese Arbeit nicht entfernen. Versuche es erneut.",
+    "viewLabel": "Anzeigen",
+    "tabPublic": "Öffentliche Communities",
+    "tabSubmissions": "Deine Einreichungen",
+    "statusLabel": "Status",
+    "everyStatus": "Jeder Status",
+    "statusPublished": "Veröffentlicht",
+    "noneYet": "Noch keine Einreichungen",
+    "noneYetHint": "Füge eine Arbeit aus einem beliebigen Suchergebnis einer Community hinzu.",
+    "noMatches": "Keine Einreichungen gefunden",
+    "addToCommunity": "Zu Community hinzufügen",
+    "searchCommunities": "Communities durchsuchen",
+    "recent": "Zuletzt",
+    "yourCommunities": "Deine Communities",
+    "noCommunitiesMatch": "Keine Communities gefunden",
+    "noCommunities": "Noch keine Communities",
+    "inQueueShort": "In Warteschlange",
+    "added": "Hinzugefügt",
+    "publishOrReview": "Jetzt veröffentlichen oder erst vom Team prüfen lassen.",
+    "reviewFirst": "Das Team der Community prüft sie, bevor sie online geht.",
+    "publishedTo": "In {community} veröffentlicht",
+    "queuedTo": "An die Prüfwarteschlange von {community} gesendet",
+    "alreadyIn": "{community} hat diese Arbeit bereits",
+    "moreCommunities": "Weitere Communities",
+    "askTitle": "{count, plural, one {# Arbeit} other {# Arbeiten}} zu einer Community hinzufügen",
+    "publishNow": "Jetzt veröffentlichen",
+    "reviewQueue": "Prüfwarteschlange",
+    "askPublishHint": "{count, plural, one {Sie geht} other {Sie gehen}} auf {community} online, sobald du es erlaubst.",
+    "askQueueHint": "{count, plural, one {Sie wartet} other {Sie warten}} in der Prüfwarteschlange von {community}, bis das Team sie freigibt.",
+    "askPublish": "{count, plural, one {# Arbeit} other {# Arbeiten}} veröffentlichen",
+    "askQueue": "{count, plural, one {# Arbeit} other {# Arbeiten}} zur Prüfung senden",
+    "alreadyInIt": "Schon enthalten",
+    "inReview": "In Prüfung"
   }
 }

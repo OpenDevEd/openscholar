@@ -1,4 +1,5 @@
 import { seedFeatureUser } from "../organizationFeatures.test-support";
+import { creatableWorkspaceIn } from "../organizationFeatures.test-support";
 import { assert } from "vitest";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
@@ -133,7 +134,7 @@ async function createActivationFixture(
     o: { id: clerkOrganizationId, rol: "org:admin" },
   });
   const created = await admin.run(async (ctx) =>
-    createEvidenceLibrarySetup(ctx, { organizationId: ((await admin.query(api.organizationFeatures.listLibraryOrganizations, {})).page)[0]!.id,
+    createEvidenceLibrarySetup(ctx, { workspaceId: await creatableWorkspaceIn(ctx),
       name: "Activation Library",
       slug: "activation-library",
       publicAddress: essentialSections.identity.baseUrl,

@@ -15,6 +15,7 @@
     "assistant/jobs:card": "A job's live card in the chat that started it. The assistant reads the same job through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/jobs:running": "Which of a chat's jobs are running, for the panel to dock their live cards. The assistant hears when each ends, and reads them through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/replies:answer": "The person's answer to a call the assistant asked about. Only the person asked can give it.",
+    "assistant/replies:askedPapers": "What a call to add papers to a community asks, for its card in the chat. Only the person asked reads it, and their choice goes back with assistant/replies:answer.",
     "assistant/replies:carryOn": "Carries on a reply that paused at a spending limit. Only the person whose credits it spends does that.",
     "assistant/replies:live": "The reply being written now, for the chat page to show as it arrives.",
     "assistant/replies:outcome": "How the chat's last reply ended, for the assistant's mark in the panel while no reply is being written.",
@@ -61,9 +62,7 @@
     "library/collections:deleteSoon": "The Library page's delete, held for its Undo. The assistant deletes with library/collections:deleteCollection, at once, and says it can't be undone.",
     "library/collections:keepCollection": "The Undo of the Library page's delete, within a few seconds of it. The assistant's delete has no undo.",
     "openalex/limits:spend": "Counts a signed-in account's OpenAlex requests for the server actions that make them.",
-    "organizationFeatures:get": "What a page loaded before the workspace's plan decided reads; it goes with those tabs.",
-    "organizationFeatures:listLibraryOrganizations": "The organizations the new-library page offers to make a library in.",
-    "organizationFeatures:opens": "Whether the workspace the page is in opens Evidence Libraries, for the pages to check.",
+    "organizationFeatures:opens": "Whether Evidence Communities are on for the workspace the page is in, and whether the person may create one there, for the pages to check.",
     "organizations/manage:confirmJoin": "Keeps the membership Clerk made when the person accepted an invitation in Clerk's own client. The assistant doesn't accept invitations for anyone.",
     "organizations/manage:setLogo": "Takes an image file the person picked in their browser. The assistant has no file to give it.",
     "organizations/queries:invitationTo": "The join page's reading of one invitation to the organization at its address. The assistant reads invitations through organizations/queries:myInvitations.",
@@ -87,7 +86,9 @@
     "zotero/runtimeReadActions:listTags": "The tag filter settings' search of the library's tags. The assistant reads the library's records and their tags with evidenceLibraries/library:records.",
     "zotero/runtimeReadActions:readHomeQuestions": "The configuration page's preview of the questions the running library asks on its home page.",
     "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library.",
-    "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`."
+    "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`.",
+    "evidenceLibraries/organizationGrants:grantable": "The Team section's list of organizations its owner can share the community with straight away. The assistant reads a community's team through evidenceLibraries/assistant:team.",
+    "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -156,7 +157,14 @@
     "app/actions/author-card:searchIndexAuthors": "research/lookup:find",
     "app/actions/author-card:readInstitutionCard": "research/lookup:find",
     "authors/links:records": "authors/assistant:profile",
-    "authors/links:profileFor": "authors/assistant:directory"
+    "authors/links:profileFor": "authors/assistant:directory",
+    "evidenceLibraries/directory:directory": "evidenceLibraries/directory:listPublic",
+    "evidenceLibraries/submissions:mine": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/submissions:counts": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/submissions:recentCommunities": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/submissions:sentTo": "evidenceLibraries/assistant:submissions",
+    "evidenceLibraries/collectionSources:connectCollectionSource": "evidenceLibraries/assistant:connectCollection",
+    "evidenceLibraries/mutations:activateConfiguration": "evidenceLibraries/assistant:putLive"
   },
   "manual": {
     "evidenceLibraries/releases:overview": "Site administration, for Openscholar's own admins on the admin pages.",
@@ -197,7 +205,6 @@
     "evidenceLibraries/domainActions:removeDomain": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/domains:chooseMainAddress": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/domains:stageMainDomainRemoval": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
-    "evidenceLibraries/mutations:activateConfiguration": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/mutations:retrySetup": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/openAlexSourceKey:removeOpenAlexKey": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
     "evidenceLibraries/operations:queueOperation": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
@@ -217,6 +224,7 @@
     "models/queries:list": "The AI settings page's model pickers, for every task, which the person sets themselves, as they do the AI preset. A chat's own model is found with assistant/threads:models.",
     "models/queries:listCatalogOptions": "The AI settings page's model pickers, for every task, which the person sets themselves, as they do the AI preset. A chat's own model is found with assistant/threads:models.",
     "organizations/libraryAccess:set": "Site administration, for Openscholar's own admins on the admin pages.",
+    "organizations/libraryAccess:setPerson": "Site administration, for Openscholar's own admins on the admin pages.",
     "organizations/manage:setAiPreset": "An organization's AI preset is its admins' choice, made on the AI settings page. The assistant doesn't change the models it runs on.",
     "userAiConfig/mutations:choose": "The account's AI preset is the person's own choice, made on the AI settings page. The assistant doesn't change the models it runs on.",
     "userAiConfig/mutations:setCustom": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
@@ -245,10 +253,12 @@
     "assistant/spending:setAllowance": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
     "assistant/spending:setForNewChats": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
     "assistant/spending:setReplyLimit": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
-    "assistant/spending:setTool": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet."
+    "assistant/spending:setTool": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
+    "evidenceLibraries/organizationGrants:grant": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
+    "evidenceLibraries/organizationGrants:changeRole": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
+    "evidenceLibraries/organizationGrants:remove": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches."
   },
   "pending": {
-    "evidenceLibraries/collectionSources:connectCollectionSource": "#329",
     "evidenceLibraries/collectionSources:listCollectionSources": "#329"
   },
   "inWorkspace": [

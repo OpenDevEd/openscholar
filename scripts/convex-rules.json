@@ -27,6 +27,7 @@
   "caps": {
     "enforced": {
       "MAX_LIBRARY_MEMBERS": "convex/evidenceLibraries/members.ts:assertLibraryHasRoom",
+      "MAX_ORGANIZATION_GRANTS_PER_LIBRARY": "convex/evidenceLibraries/organizationGrants.ts:giveOrganization",
       "MAX_LIBRARY_GRANTS_PER_PERSON": "convex/evidenceLibraries/members.ts:assertPersonHasRoom",
       "MAX_FEATURE_FLAGS": "convex/featureFlags/internal.ts",
       "MAX_PENDING_INVITATIONS_PER_LIBRARY": "convex/evidenceLibraries/invitations.ts",
@@ -65,6 +66,7 @@
       "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"
     },
     "windows": {
+      "OPERATIONS_READ": "a community's latest activations by its owners, read once by the directory backfill for the last that went live; one whose last ten all failed takes its setup's time",
       "SAVED_CHECKS_READ": "the saved update checks marked stale when a release changes channel; one past it stays fresh for at most ten minutes",
       "COUNT_READ": "organizations an admin page counts or a one-off pass switches on; one organization gets a row per customer, and the count says it stops there",
       "RECENT_CHARGES_READ": "a leaver's newest charges, read for one the ledger worker hasn't counted yet; it counts within seconds, so older ones are in the aggregate",
@@ -91,9 +93,14 @@
       "READ_LIBRARIES_MAX": "the libraries a person used last, the first ones their roles give, and the newest grants; any other library is reached by its address",
       "SAME_KEY_READ": "the first papers of a job that share one identifier; a paper is one of them or none, since more than a few sharing a title are different papers",
       "DOMAIN_CLAIMS_READ": "the claims of one host; a host is served for one library, and claimed by a few at most",
-      "RECENT_SEARCHES": "the person's newest searches in a workspace, which their suggested searches are written from; older ones don't count"
+      "RECENT_SEARCHES": "the person's newest searches in a workspace, which their suggested searches are written from; older ones don't count",
+      "SUBMISSIONS_COUNTED": "the papers of one status a person sent, counted for Your submissions' status filter; past it the filter says so",
+      "SENDERS_PER_PAPER": "the people who sent the same paper to a community, whose rows a change from it updates; past it the first hundred are updated",
+      "RECENT_SUBMISSIONS_READ": "a person's latest submissions, looked through for the communities Add to community lists as recent",
+      "PAPER_SENT_TO": "the communities one paper is listed as sent to, for Add to community's row states"
     },
     "batches": {
+      "REMOVED_AT_ONCE": "submissions of one paper marked removed in one write; past it the mutation schedules itself for the rest",
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",
       "BATCH": "a worker's batch; it pings itself for the next",
       "BATCH_SIZE": "a cascade's batch; it reschedules itself until nothing is left",
@@ -123,7 +130,8 @@
       "LIBRARY_CHANGE_MAX": "a screening's queued library writes, a batch at a time: the flush schedules itself again while more wait",
       "MOST_ROWS": "One run over the live deployment, whose largest workspace or job is a few hundred rows; the file is deleted once it has run.",
       "REBUILD_BATCH": "One step of a rebuild that schedules the next; the rows are small and the whole table is meant to be read.",
-      "GRANT_BATCH": "a deleted developer app's rows on people's lists of sites, a batch at a time; it reschedules itself until none are left"
+      "GRANT_BATCH": "a deleted developer app's rows on people's lists of sites, a batch at a time; it reschedules itself until none are left",
+      "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left"
     }
   }
 }

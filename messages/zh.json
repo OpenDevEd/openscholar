@@ -13,7 +13,9 @@
     "stylesFailed": "无法加载样式。",
     "noStyles": "没有匹配的样式。",
     "commonStyles": "常用格式",
-    "otherStyles": "其他格式"
+    "otherStyles": "其他格式",
+    "copiedIn": "已复制 {style} 格式的引文",
+    "download": "下载"
   },
   "common": {
     "search": "搜索",
@@ -307,10 +309,10 @@
     "metadataTitle": "定价",
     "metadataDescription": "适合各种规模团队的简单透明定价。",
     "everyFeature": "Openscholar 的所有功能",
-    "papersRunning": "同时处理 {running, number} 篇论文",
-    "papersInRequest": "每次请求 {request, number} 篇论文",
+    "papersRunning": "AI 一次筛查或提取 {running, number} 篇论文",
+    "papersInRequest": "一次筛查或提取最多 {request, number} 篇论文",
     "unlimitedCollectionsAndGuests": "不限合集和访客数量",
-    "southernDescription": "面向低收入和中等收入国家的研究人员。",
+    "southernDescription": "面向全球南方团队，用于特定项目。",
     "southernFeature1": "包含 Free 的全部内容",
     "southernFeature2": "联系我们后添加到你的账户",
     "onRequest": "按需申请"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "需要登录",
     "signInRequiredDescription": "登录以访问此页面。",
     "noAccessTitle": "访问受限",
-    "noAccessDescription": "您没有权限查看此资源。",
+    "noAccessDescription": "你无权访问此页面。如果有人曾与你共享，可能已停止共享：请让对方重新共享。",
     "syncErrorTitle": "会话同步问题",
     "syncErrorDescription": "我们无法完成您的账户初始化。请重试以继续。",
     "syncErrorAccess": "您的会话有效，但账户同步未完成。请重试以继续。",
     "retrySync": "重试同步"
   },
   "aiSetupGate": {
-    "title": "设置 AI 以增强搜索",
-    "description": "Openscholar 使用 AI 优化查询、筛选论文和翻译结果。",
+    "title": "搜索免费，AI 为额外功能",
+    "description": "登录后，AI 会为你撰写搜索、按你的标准筛查论文并翻译结果，每月有免费额度。",
     "signInForCredits": "登录获取 5 万免费积分",
     "useOwnApiKey": "使用自己的 API 密钥"
   },
@@ -676,7 +678,7 @@
     "uploadFailed": "上传失败",
     "uploadFailedDescription": "无法上传 {format}。请重试。",
     "accountChanged": "您的账户已更改。请重试。",
-    "copyFailedDescription": "无法复制到剪贴板。请重试。",
+    "copyFailedDescription": "你的浏览器不允许复制。请选中文字后自行复制。",
     "validationFailed": "验证失败",
     "entityCreated": "{entity} 已创建",
     "entityUpdated": "{entity} 已更新",
@@ -790,6 +792,7 @@
     "typeToSearchInstitutions": "输入机构名称",
     "institutionsUnavailable": "无法加载机构，请重试。",
     "filterByThisInstitution": "仅限 {name} 的文献",
+    "filterByInstitutionCountry": "仅限来自{country}机构的论文",
     "studyDesign": "研究设计",
     "anyStudyDesign": "任何研究设计",
     "searchStudyDesigns": "搜索研究设计",
@@ -852,8 +855,8 @@
     "titleAndAbstract": "标题和摘要",
     "searchScope": "搜索范围",
     "sortResultsBy": "结果排序方式",
-    "citationFilter": "引用筛选",
-    "citedByFilter": "被引用筛选",
+    "citationFilter": "引用某篇论文的论文",
+    "citedByFilter": "某篇论文引用的论文",
     "relatedWorksFilter": "相关作品筛选",
     "clearAllCount": "清除全部 ({count})",
     "searchFiltersTitle": "搜索筛选",
@@ -976,7 +979,7 @@
     "domainLabel": "领域：",
     "sdgsLabel": "SDGs：",
     "referencesLabel": "参考文献：",
-    "fwciLabel": "FWCI：",
+    "fwciLabel": "相对领域平均：",
     "citedBy": "被引用",
     "cites": "引用",
     "questionN": "问题 {n}：{question}",
@@ -1162,7 +1165,7 @@
     "translationSettings": "翻译设置",
     "autoTranslateResults": "自动翻译当前列表结果",
     "listedItemsOnly": "仅适用于当前列表中显示的条目。",
-    "useCurrentLocaleTarget": "使用当前语言环境作为目标语言",
+    "useCurrentLocaleTarget": "使用网站语言",
     "runResultsTranslation": "运行翻译",
     "translatingResults": "正在翻译结果...",
     "undoTranslation": "撤销翻译",
@@ -1207,13 +1210,16 @@
     "keepRunning": "继续运行",
     "yesCancel": "是的，取消任务",
     "deleteJob": "删除此任务？",
-    "deleteJobDescription": "这将永久删除此任务及其所有提取结果。"
+    "deleteJobDescription": "这将永久删除此任务及其所有提取结果。",
+    "rerunJob": "复制并重新运行？",
+    "rerunJobDescription": "将立即开始一个使用相同论文和问题的新提取，并消耗大约与本次相同的额度。本次提取保持不变。",
+    "rerunJobConfirm": "重新运行"
   },
   "emptyStates": {
     "noScreeningQuestions": "尚无筛选问题"
   },
   "jobStatus": {
-    "restart": "重新运行",
+    "restart": "复制并重新运行…",
     "papersCount": "{count} 篇论文",
     "questionsCount": "{count, plural, other {# 个问题}}",
     "statusPending": "待处理",
@@ -1226,7 +1232,8 @@
     "noMatches": "没有符合当前筛选条件的匹配项",
     "clearFilters": "清除筛选",
     "progressOfPapers": "{processed} / {total} 篇论文",
-    "loadingExtractionResults": "正在加载提取结果..."
+    "loadingExtractionResults": "正在加载提取结果...",
+    "skippedNoText": "{count, plural, other {已略过 # 篇论文：没有可读的摘要，且全文已关闭}}"
   },
   "reportBuilder": {
     "grounded": "有依据",
@@ -1259,7 +1266,8 @@
   },
   "rating": {
     "noRating": "无评分",
-    "nStars": "{count} 星"
+    "nStars": "{count} 星",
+    "yourRating": "你的评分"
   },
   "pagination": {
     "currentPage": "第 {page} 页",
@@ -1292,7 +1300,7 @@
     "type": "类型",
     "refs": "参考文献",
     "cited": "被引用",
-    "fwci": "FWCI",
+    "fwci": "相对领域平均",
     "topic": "主题",
     "field": "领域",
     "subfield": "子领域",
@@ -1513,7 +1521,8 @@
     "planAllowsCollections": "{plan} 最多可有 {limit, number} 个集合",
     "nameTheCollection": "为集合命名",
     "newName": "{name} 的新名称",
-    "clearSearch": "清除搜索"
+    "clearSearch": "清除搜索",
+    "collectionDeletedPapersStay": "{name}：其中的论文仍在你的文献库中"
   },
   "sidebarLayout": {
     "expandFilters": "展开筛选器 (Ctrl+Shift+F)",
@@ -1715,7 +1724,7 @@
   "connectionsPage": {
     "connectedApps": "已连接的应用",
     "noConnectedApps": "没有已连接的应用",
-    "noConnectedAppsDescription": "当外部应用连接到您的钱包时，它们将显示在此处。",
+    "noConnectedAppsDescription": "当外部应用连接到您的账户时，它们将显示在此处。",
     "revoking": "撤销中...",
     "revoke": "撤销",
     "revokedBadge": "已撤销",
@@ -1759,7 +1768,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "未命名文献社区",
     "unsaved": "未保存的更改",
-    "viewOnly": "仅查看",
+    "viewOnly": "设置仅可查看",
     "save": "保存",
     "saving": "正在保存…",
     "saveError": "无法保存更改。请重试。",
@@ -1814,7 +1823,15 @@
       "versions": "版本",
       "ai": "AI",
       "domain": "域名",
+      "listing": "目录展示",
       "publication": "出版"
+    },
+    "listing": {
+      "description": "此社区是否列入公开社区目录。无论如何，知道地址的人都可以打开它的网站。",
+      "public": "公开",
+      "publicHint": "列入公开目录，任何人都能找到。",
+      "unlisted": "不列出",
+      "unlistedHint": "不列入目录。知道地址的人仍可打开。"
     },
     "sectionState": {
       "complete": "已完成",
@@ -1917,6 +1934,9 @@
       "taglineLabel": "标语",
       "taglineHint": "文献社区搜索上方的标题。留空则显示“搜索”。",
       "taglinePlaceholder": "为更好的决策提供证据",
+      "searchTitleLabel": "搜索结果中的标题",
+      "searchTitleHint": "搜索引擎为主页显示的标题。留空则使用名称和标语。",
+      "searchTitlePlaceholder": "气候适应研究与证据",
       "descriptionLabel": "描述",
       "descriptionHint": "显示在首页和搜索结果中。",
       "partnersHeading": "资助方合作伙伴",
@@ -2000,10 +2020,13 @@
       "add": "添加机构"
     },
     "danger": {
-      "description": "删除此文献社区。请谨慎操作。",
+      "description": "移动或删除此文献社区。请谨慎操作。",
       "deleteTitle": "删除文献社区",
       "deleteHint": "会移除网站、地址和设置。",
-      "deleteButton": "删除文献社区"
+      "deleteButton": "删除文献社区",
+      "moveTitle": "移到另一个工作区",
+      "moveHint": "保留地址、设置和成员。移入的工作区成为它的所有者。",
+      "moveButton": "移动文献社区"
     },
     "deleteDialog": {
       "title": "删除此文献社区？",
@@ -2011,7 +2034,7 @@
       "typeToConfirm": "输入 {name} 以确认",
       "confirm": "删除文献社区",
       "startedTitle": "正在删除文献社区",
-      "startedDescription": "{name} 正在被移除。大约需要几秒钟。",
+      "startedDescription": "{name} 正在被移除。大约需要一两分钟。",
       "error": "无法删除文献社区。请先结束正在进行的文献社区操作，然后重试。"
     },
     "links": {
@@ -2835,7 +2858,8 @@
       "confirmAction": "更改地址"
     },
     "retry": "重试",
-    "retryError": "无法启动。请重试。"
+    "retryError": "无法启动。请重试。",
+    "saveDraft": "保存草稿"
   },
   "topics": {
     "title": "主题",
@@ -2910,8 +2934,8 @@
       "title": "新建 Evidence Community",
       "backToLibraries": "返回文献社区列表",
       "ownerTitle": "所有者",
-      "ownerOnlyTitle": "仅限所有者",
-      "ownerOnlyDescription": "只有组织的所有者可以创建文献社区。",
+      "ownerOnlyTitle": "无法在此创建社区",
+      "ownerOnlyDescription": "社区可在你自己的工作区中创建，或在你担任管理员的组织中创建，前提是该组织已开启 Evidence Communities。",
       "libraryTitle": "文献社区",
       "libraryDescription": "名称会显示在公开网站上，并决定公开地址。",
       "nameLabel": "名称",
@@ -3151,8 +3175,13 @@
       "off": "关闭",
       "libraries": "{count, plural, other {# 个社区}}",
       "switchLabel": "{name} 的 Evidence Communities",
-      "moveFirst": "请先移动或删除其社区",
-      "noMatches": "没有匹配的组织"
+      "noMatches": "没有匹配的组织",
+      "kind": "工作区",
+      "organizationsTab": "组织",
+      "peopleTab": "用户",
+      "searchPeople": "按邮箱搜索用户",
+      "people": "用户",
+      "noPeopleMatch": "没有匹配的用户"
     },
     "communityReleases": {
       "releases": "版本",
@@ -3413,7 +3442,7 @@
       "times": "次",
       "unfold": "逐个显示",
       "fold": "合并显示",
-      "declined": "未允许",
+      "declined": "你已拒绝",
       "waiting": "等待回答",
       "allowed": "已允许",
       "searches": {
@@ -4199,6 +4228,18 @@
         "where": "Evidence Community",
         "ask": "创建文献社区草稿"
       },
+      "publicCommunities": {
+        "doing": "正在读取公开社区",
+        "did": "已读取公开社区",
+        "where": "Evidence Community",
+        "ask": "读取公开社区"
+      },
+      "communityVisibility": {
+        "doing": "正在更改社区是否列入目录",
+        "did": "已更改社区是否列入目录",
+        "where": "Evidence Community",
+        "ask": "更改社区是否列入目录"
+      },
       "librarySources": {
         "doing": "正在读取文献社区的来源",
         "did": "已读取文献社区的来源",
@@ -4335,6 +4376,54 @@
         "did": "已认领作者",
         "where": "作者",
         "ask": "认领作者"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "正在为社区查找论文",
+        "did": "已为社区查找论文",
+        "where": "Evidence Community",
+        "ask": "为社区查找论文"
+      },
+      "addCommunityPapers": {
+        "doing": "正在向社区添加论文",
+        "did": "已向社区添加论文",
+        "where": "Evidence Community",
+        "ask": "向社区添加论文"
+      },
+      "communityAddedPapers": {
+        "doing": "正在读取社区已添加的论文",
+        "did": "已读取社区已添加的论文",
+        "where": "Evidence Community",
+        "ask": "读取社区已添加的论文"
+      },
+      "removeCommunityPaper": {
+        "doing": "正在从社区移除论文",
+        "did": "已从社区移除论文",
+        "where": "Evidence Community",
+        "ask": "从社区移除论文"
+      },
+      "communityPapersSettings": {
+        "doing": "正在更改社区已添加的论文",
+        "did": "已更改社区已添加的论文",
+        "where": "Evidence Community",
+        "ask": "暂停或恢复社区已添加的论文或其 PDF"
+      },
+      "connectCommunityCollection": {
+        "doing": "正在将收藏集添加到社区来源",
+        "did": "已将收藏集添加到社区来源",
+        "where": "Evidence Community",
+        "ask": "将你的一个收藏集添加到社区来源"
+      },
+      "putCommunityLive": {
+        "doing": "正在发布社区设置",
+        "did": "已发布社区设置",
+        "where": "Evidence Community",
+        "ask": "发布社区已保存的设置"
+      },
+      "sentPapers": {
+        "doing": "正在读取你发送给社区的论文",
+        "did": "已读取你发送给社区的论文",
+        "where": "Evidence Community",
+        "ask": "读取你发送给社区的论文"
       }
     },
     "asks": {
@@ -4509,7 +4598,7 @@
     "main": "主菜单",
     "screen": "筛选",
     "extract": "提取",
-    "publish": "发布",
+    "communities": "社区",
     "explore": "探索",
     "authors": "作者",
     "workspacesCard": "工作区",
@@ -4590,9 +4679,6 @@
       "leave": "退出",
       "deleteName": "删除 {name}",
       "stillHasLibrary": "{library} 是它的证据库之一。请先移走或删除它。",
-      "deleteLibrary": "删除证据库",
-      "libraryBeingDeleted": "正在删除 {library}。",
-      "libraryDeleteFailed": "未能删除 {library}。请重试。",
       "deleteDetail": "将为全部 {count, number} 名成员删除它",
       "moveLibrariesFirst": "请先移走或删除它的证据库",
       "delete": "删除",
@@ -4755,7 +4841,10 @@
         "itsPapers": "其中的论文",
         "ratingsInIt": "其中的评分",
         "publications": "出版物",
-        "editors": "编辑"
+        "editors": "编辑",
+        "address": "地址",
+        "settings": "设置",
+        "peopleWithRoles": "有角色的成员"
       },
       "moveTo": "移到 {workspace}",
       "move": "移动",
@@ -4764,7 +4853,15 @@
       "collection": "移动收藏集",
       "author": "移动作者主页",
       "libraryKeeps": "{workspace} 的文献库会保留已保存的论文。",
-      "yourLibraryKeeps": "你的文献库会保留已保存的论文。"
+      "yourLibraryKeeps": "你的文献库会保留已保存的论文。",
+      "community": "移动文献社区",
+      "workspaceOwnsIt": "移入的工作区从此成为它的所有者。",
+      "refused": {
+        "noCommunities": "此工作区未开启社区",
+        "communitiesFull": "文献社区数量已达工作区上限",
+        "profilesOff": "这里未开启作者资料",
+        "noProfiles": "你不能在这里创建作者资料"
+      }
     },
     "share": {
       "share": "共享",
@@ -4864,7 +4961,11 @@
       "goneDetail": "请让共享的人重新共享",
       "otherTitle": "此邀请发送到了另一个邮箱",
       "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录"
-    }
+    },
+    "notEmails": "{count, plural, other {这些不是邮箱地址：{values}。请修改或删除后再创建组织。}}",
+    "asRole": "身份：{role}",
+    "memberCan": "成员可以用组织共享的所有内容进行搜索、保存、筛查和提取。",
+    "adminCan": "管理员可以做同样的事，还可以邀请和移除成员，并管理设置和支出。"
   },
   "models": {
     "changeInSettings": "在 AI 设置中更改"
@@ -5307,7 +5408,20 @@
     "removedFromLibrary": "已从此文献社区中移除。",
     "removedFromProfile": "已从此个人资料中移除。",
     "addedToLibrary": "已将{name}添加到此文献社区。",
-    "addedToProfile": "已将{name}添加到此个人资料。"
+    "addedToProfile": "已将{name}添加到此个人资料。",
+    "anOrganization": "组织",
+    "chooseAnOrganization": "选择组织",
+    "anotherOrganization": "其他组织",
+    "adminEmail": "其管理员的邮箱",
+    "organizationGetsIt": "组织中的所有人都获得此角色，离开后失去。",
+    "theirAdminAccepts": "其管理员为自己管理的组织接受后，其中所有人都获得此角色。",
+    "everyoneInIt": "其中所有人",
+    "forTheirOrganization": "面向 {email} 担任管理员的组织",
+    "removeThisOrganization": "移除此组织？其成员只保留个人获得的角色。",
+    "organizationLabel": "组织",
+    "ownWorkspaceOwner": "它在其本人的工作区中，因此归其所有。",
+    "whoWorksOnIt": "参与此文献社区的成员。团队由所有者管理。",
+    "viewersUntilAnOwner": "在所有者授予角色之前为查看者。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {已为 # 篇出版物排队摘要。}}",
@@ -5370,6 +5484,54 @@
     "keepThisUnderCharacters": "请保持在{maxLength}个字符以内。"
   },
   "libraryList": {
+    "sidebar": {
+      "label": "你的社区",
+      "showFrom": "显示社区来源",
+      "allWorkspaces": "所有工作区",
+      "allCommunities": "所有社区",
+      "workspaces": "工作区",
+      "yours": "你的",
+      "sharedWithYou": "与你共享",
+      "sharedWith": "与 {name} 共享",
+      "loading": "正在加载社区",
+      "noMatches": "没有符合此搜索的社区。",
+      "emptyAll": "你还没有加入任何社区。当有人与你共享社区，或你的组织拥有社区时，它会显示在这里。",
+      "emptyHere": "{name} 的社区以及与其共享的社区会显示在这里。",
+      "emptyShared": "他人与你共享的社区会显示在这里。",
+      "emptySharedHere": "与 {name} 共享的社区会显示在这里。",
+      "emptyOwn": "你创建的社区会显示在这里。",
+      "emptyWorkspace": "{name} 还没有社区。",
+      "invitedAs": "受邀身份：{role}",
+      "accept": "接受",
+      "accepted": "已接受 {name}。",
+      "moreWorkspaces": "更多工作区",
+      "invitedForOrganization": "受邀身份：{role}（面向你的组织）",
+      "acceptAsAnAdmin": "请以组织管理员身份接受",
+      "acceptForWhich": "为哪个组织接受 {name}",
+      "acceptedFor": "已为 {organization} 接受 {name}。"
+    },
+    "directory": {
+      "title": "公开社区",
+      "sortLabel": "排序公开社区",
+      "sort": {
+        "newest": "最新",
+        "name": "名称",
+        "records": "论文最多"
+      },
+      "loading": "正在加载公开社区",
+      "noMatches": "没有符合此搜索的公开社区",
+      "none": "公开社区上线后会显示在这里",
+      "records": "{count, plural, other {{shown} 篇论文}}",
+      "unnamedOwner": "一位 Openscholar 成员",
+      "people": "{count, plural, other {{shown} 位团队成员}}",
+      "countries": "关于 {names}",
+      "recordsLabel": "{count, plural, other {篇论文}}",
+      "peopleLabel": "{count, plural, other {位团队成员}}",
+      "noDescription": "暂无描述",
+      "notCounted": "尚未统计",
+      "intro": "每个社区都是一个收集某一主题研究的网站。打开一个即可浏览其中的论文。",
+      "updated": "{when}更新"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新建文献社区",
     "libraryView": "文献社区视图",
@@ -5413,7 +5575,9 @@
     "deletionRestartedFor": "已为{name}重新开始删除。",
     "couldNotRestartDeletion": "无法重新开始删除",
     "invitationDeclined": "已拒绝邀请。",
-    "unableToDeclineInvitation": "无法拒绝邀请"
+    "unableToDeclineInvitation": "无法拒绝邀请",
+    "searchSubmissions": "搜索你的提交",
+    "findASubmission": "查找你发送过的论文…"
   },
   "authorPages": {
     "profileSettings": "资料设置",
@@ -5544,10 +5708,10 @@
     "creatingKey": "正在创建密钥…",
     "redirecting": "正在跳转…",
     "approve": "批准",
-    "wantsToConnect": "<strong>{appName}</strong> 想要连接您的 Openscholar 钱包。",
+    "wantsToConnect": "<strong>{appName}</strong> 想要连接您的 Openscholar 账户。",
     "copyKey": "复制此 API 密钥并粘贴到 <strong>{appName}</strong> 中。它只会显示一次。",
     "originUnregisteredBody": "位于 <code>{origin}</code> 的应用未注册以连接 Openscholar。",
-    "originHelp": "只有预先批准的来源才能创建钱包连接。如果您是 <strong>{appName}</strong> 的开发者，请联系 Openscholar 团队注册您的来源。",
+    "originHelp": "只有预先批准的来源才能创建账户连接。如果您是 <strong>{appName}</strong> 的开发者，请联系 Openscholar 团队注册您的来源。",
     "wantsToUseCredits": "<strong>{appName}</strong> 想要通过您的 Openscholar 积分使用 AI 生成功能。",
     "unknownApp": "未知应用",
     "thisApplicationSOriginIsNot": "此应用的来源未注册。",
@@ -5675,5 +5839,129 @@
     "step4": "刷新令牌",
     "step4About": "令牌有效期为 24 小时。请在此之前用刷新令牌换取新令牌。",
     "cantDo": "应用不能更改账单、API 密钥或站点设置，也不能将 Evidence Community 上线。"
+  },
+  "paperPage": {
+    "references": "参考文献",
+    "openAccess": "开放获取",
+    "readPdf": "阅读 PDF",
+    "publisherPage": "出版商页面",
+    "askAbout": "询问这篇论文",
+    "noAbstract": "暂无摘要",
+    "linkCopied": "已复制论文链接",
+    "citationsPerYear": "每年被引次数",
+    "citationsIn": "{year}年被引 {count} 次",
+    "seeCiting": "查看引用它的论文",
+    "top1": "本领域前 1%",
+    "top10": "本领域前 10%",
+    "aheadOf": "被引次数超过 {year} 年全部论文的 {percent}%",
+    "influential": "以它为基础",
+    "authors": "作者",
+    "andMore": "以及另外 {count} 位",
+    "showAll": "全部显示（{count}）",
+    "showFewer": "收起",
+    "corresponding": "通讯作者",
+    "orcidOf": "{name} 的 ORCID iD",
+    "institutions": "机构",
+    "whereToRead": "阅读途径",
+    "kindPublisher": "出版商",
+    "kindRepository": "知识库",
+    "kindIndex": "索引",
+    "pdf": "PDF",
+    "funding": "资助",
+    "topics": "主题",
+    "sdgs": "可持续发展目标",
+    "mesh": "MeSH 主题词",
+    "details": "详细信息",
+    "charge": "出版费",
+    "retracted": "已撤稿",
+    "openscholarId": "Openscholar ID",
+    "copyDoi": "复制 DOI",
+    "doiCopied": "已复制 DOI",
+    "doiCopyFailed": "无法复制 DOI",
+    "paperPage": "论文页面",
+    "share": "分享",
+    "inCommunities": "收录于这些社区",
+    "fieldAverage": "× 领域平均"
+  },
+  "addedPapers": {
+    "name": "已添加的论文",
+    "provider": "DOI 和 OpenAlex ID",
+    "cardDescription": "按 DOI 或 OpenAlex ID 逐篇添加的论文，与 OpenAlex 保持同步。",
+    "menu": "按 DOI 或 ID 添加论文",
+    "menuHint": "一篇或多篇，保持同步",
+    "menuNotLive": "社区上线后可用",
+    "add": "添加论文",
+    "title": "添加论文",
+    "description": "粘贴论文链接（来自 Openscholar、社区网站、OpenAlex 或 doi.org）、DOI 或 OpenAlex ID，每次最多 {max} 个。",
+    "inputLabel": "DOI、OpenAlex ID 或链接",
+    "papers": "{count, plural, other {# 篇论文}}",
+    "tooMany": "超过 {max} 篇论文",
+    "invalid": "不是论文链接、DOI 或 ID：{values}",
+    "find": "查找论文",
+    "found": "找到的论文",
+    "notFound": "未找到",
+    "alreadyAdded": "已添加",
+    "inQueue": "等待审核",
+    "doiOnly": "仅 DOI",
+    "leaveOut": "排除",
+    "leaveOutLabel": "排除 {title}",
+    "doiOnlyNote": "{count, plural, other {其中 # 篇 OpenAlex 还没有收录。它们通过 DOI 导入，每次同步都会再次检查 OpenAlex。}}",
+    "toAdd": "{count, plural, other {待添加 # 篇论文}}",
+    "sendToQueue": "送审",
+    "publish": "发布",
+    "published": "{count, plural, other {已将 # 篇论文发布到 {community}}}",
+    "queued": "{count, plural, other {已将 # 篇论文送入审核队列}}",
+    "someFailed": "{count, plural, other {# 篇论文已保存为草稿但未发送。请在管理后台打开并发送。}}",
+    "lookupFailed": "社区无法查找这些论文。请重试。",
+    "addFailed": "社区无法添加这些论文。请重试。",
+    "noAuthors": "未列出作者",
+    "unavailable": "不可用",
+    "settingsFailed": "社区未接受此更改。请重试。",
+    "ownerOnly": "只有所有者可以更改",
+    "from": "来自 {name}",
+    "returned": "已拒绝",
+    "statusWithdrawn": "你已撤回",
+    "statusRemoved": "已被社区移除",
+    "openIn": "在 {community} 中打开",
+    "openLabel": "在 {community} 中打开 {title}",
+    "remove": "移除",
+    "removeLabel": "移除 {title}",
+    "withdraw": "撤回",
+    "withdrawLabel": "撤回 {title}",
+    "removed": "已从社区移除论文",
+    "withdrawn": "已从审核队列撤回论文",
+    "removeFailed": "社区无法移除这篇论文。请重试。",
+    "viewLabel": "显示",
+    "tabPublic": "公开社区",
+    "tabSubmissions": "你的提交",
+    "statusLabel": "状态",
+    "everyStatus": "所有状态",
+    "statusPublished": "已发布",
+    "noneYet": "还没有提交",
+    "noneYetHint": "从任意搜索结果把论文添加到社区。",
+    "noMatches": "没有匹配的提交",
+    "addToCommunity": "添加到社区",
+    "searchCommunities": "搜索社区",
+    "recent": "最近",
+    "yourCommunities": "你的社区",
+    "noCommunitiesMatch": "没有匹配的社区",
+    "noCommunities": "还没有社区",
+    "inQueueShort": "在队列中",
+    "added": "已添加",
+    "publishOrReview": "现在发布，或先让团队审核。",
+    "reviewFirst": "社区团队会在发布前审核。",
+    "publishedTo": "已发布到 {community}",
+    "queuedTo": "已送入 {community} 的审核队列",
+    "alreadyIn": "{community} 已有这篇论文",
+    "moreCommunities": "更多社区",
+    "askTitle": "将 {count, plural, other {# 篇论文}} 添加到社区",
+    "publishNow": "立即发布",
+    "reviewQueue": "审核队列",
+    "askPublishHint": "你允许后，它们会立即在 {community} 上发布。",
+    "askQueueHint": "它们会在 {community} 的审核队列中等待，直到团队批准。",
+    "askPublish": "发布 {count, plural, other {# 篇论文}}",
+    "askQueue": "将 {count, plural, other {# 篇论文}} 送审",
+    "alreadyInIt": "已在其中",
+    "inReview": "审核中"
   }
 }

@@ -13,7 +13,9 @@
     "stylesFailed": "スタイルを読み込めませんでした。",
     "noStyles": "一致するスタイルはありません。",
     "commonStyles": "よく使うスタイル",
-    "otherStyles": "その他のスタイル"
+    "otherStyles": "その他のスタイル",
+    "copiedIn": "{style}形式の引用をコピーしました",
+    "download": "ダウンロード"
   },
   "common": {
     "search": "検索",
@@ -307,10 +309,10 @@
     "metadataTitle": "料金",
     "metadataDescription": "どの規模のチームにも使える、わかりやすく透明性の高い料金体系です。",
     "everyFeature": "Openscholar のすべての機能",
-    "papersRunning": "同時に処理する論文 {running, number} 件",
-    "papersInRequest": "1 回のリクエストで論文 {request, number} 件",
+    "papersRunning": "AIが一度に{running, number}件の論文をスクリーニングまたは抽出",
+    "papersInRequest": "1回のスクリーニングまたは抽出で最大{request, number}件の論文",
     "unlimitedCollectionsAndGuests": "コレクションとゲストは無制限",
-    "southernDescription": "低・中所得国の研究者向け。",
+    "southernDescription": "グローバルサウスのチームに、特定のプロジェクト向けに。",
     "southernFeature1": "Free のすべて",
     "southernFeature2": "お問い合わせ後にアカウントへ追加されます",
     "onRequest": "リクエスト制"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "サインインが必要です",
     "signInRequiredDescription": "このページにアクセスするにはサインインしてください。",
     "noAccessTitle": "アクセス制限",
-    "noAccessDescription": "このリソースを表示する権限がありません。",
+    "noAccessDescription": "このページにアクセスできません。誰かが共有していた場合は、共有をやめた可能性があります。もう一度共有してもらってください。",
     "syncErrorTitle": "セッション同期の問題",
     "syncErrorDescription": "アカウントの初期化を完了できませんでした。続行するには再試行してください。",
     "syncErrorAccess": "セッションは有効ですが、アカウント同期が完了していません。続行するには再試行してください。",
     "retrySync": "同期を再試行"
   },
   "aiSetupGate": {
-    "title": "AIで検索を強化する",
-    "description": "OpenscholarはAIを使用してクエリの改善、論文のスクリーニング、結果の翻訳を行います。",
+    "title": "検索は無料です。AIは追加機能です",
+    "description": "サインインすると、AIが検索を作成し、基準に沿って論文を確認し、結果を翻訳します。毎月の無料クレジットで使えます。",
     "signInForCredits": "サインインして5万無料クレジットを取得",
     "useOwnApiKey": "自分のAPIキーを使用"
   },
@@ -676,7 +678,7 @@
     "uploadFailed": "アップロードに失敗しました",
     "uploadFailedDescription": "{format} をアップロードできませんでした。もう一度お試しください。",
     "accountChanged": "アカウントが変更されました。もう一度お試しください。",
-    "copyFailedDescription": "クリップボードにコピーできませんでした。もう一度お試しください。",
+    "copyFailedDescription": "ブラウザがコピーを許可しませんでした。テキストを選択して手動でコピーしてください。",
     "validationFailed": "検証に失敗しました",
     "entityCreated": "{entity} を作成しました",
     "entityUpdated": "{entity} を更新しました",
@@ -790,6 +792,7 @@
     "typeToSearchInstitutions": "機関名を入力",
     "institutionsUnavailable": "機関を読み込めませんでした。もう一度お試しください。",
     "filterByThisInstitution": "{name} の文献のみ",
+    "filterByInstitutionCountry": "{country}の機関による論文のみ",
     "studyDesign": "研究デザイン",
     "anyStudyDesign": "すべての研究デザイン",
     "searchStudyDesigns": "研究デザインを検索",
@@ -852,8 +855,8 @@
     "titleAndAbstract": "タイトルと要約",
     "searchScope": "検索範囲",
     "sortResultsBy": "結果の並び順",
-    "citationFilter": "引用フィルター",
-    "citedByFilter": "被引用フィルター",
+    "citationFilter": "ある論文を引用している論文",
+    "citedByFilter": "ある論文が引用している論文",
     "relatedWorksFilter": "関連論文フィルター",
     "clearAllCount": "すべてクリア（{count}）",
     "searchFiltersTitle": "検索フィルター",
@@ -976,7 +979,7 @@
     "domainLabel": "ドメイン：",
     "sdgsLabel": "SDGs：",
     "referencesLabel": "参考文献：",
-    "fwciLabel": "FWCI：",
+    "fwciLabel": "分野平均比:",
     "citedBy": "被引用",
     "cites": "引用",
     "questionN": "質問 {n}：{question}",
@@ -1063,7 +1066,7 @@
     "cookiePolicyDescription": "Openscholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。",
     "libraryTitle": "ライブラリ",
     "libraryDescription": "保存した学術論文を閲覧・管理する",
-    "creditsTitle": "クレジット",
+    "creditsTitle": "帰属表示",
     "creditsDescription": "Openscholar が利用しているプロジェクト、データ、ライセンス。",
     "sharedTitle": "共有アイテム",
     "termsTitle": "利用規約",
@@ -1162,7 +1165,7 @@
     "translationSettings": "翻訳設定",
     "autoTranslateResults": "表示中の結果を自動翻訳",
     "listedItemsOnly": "現在一覧に表示されている項目にのみ適用されます。",
-    "useCurrentLocaleTarget": "現在のロケールを翻訳先にする",
+    "useCurrentLocaleTarget": "サイトの言語を使う",
     "runResultsTranslation": "翻訳を実行",
     "translatingResults": "結果を翻訳中...",
     "undoTranslation": "翻訳を元に戻す",
@@ -1207,13 +1210,16 @@
     "keepRunning": "続行",
     "yesCancel": "はい、ジョブをキャンセル",
     "deleteJob": "このジョブを削除しますか？",
-    "deleteJobDescription": "このジョブとすべての抽出結果が完全に削除されます。"
+    "deleteJobDescription": "このジョブとすべての抽出結果が完全に削除されます。",
+    "rerunJob": "コピーとして再実行しますか？",
+    "rerunJobDescription": "同じ論文と質問で新しい抽出がすぐに始まり、今回とほぼ同じだけクレジットを消費します。この抽出はそのまま残ります。",
+    "rerunJobConfirm": "再実行"
   },
   "emptyStates": {
     "noScreeningQuestions": "スクリーニング質問はまだありません"
   },
   "jobStatus": {
-    "restart": "再開",
+    "restart": "コピーとして再実行…",
     "papersCount": "{count} 論文",
     "questionsCount": "{count, plural, other {# 件の質問}}",
     "statusPending": "保留中",
@@ -1226,7 +1232,8 @@
     "noMatches": "現在のフィルターに一致するものはありません",
     "clearFilters": "フィルターをクリア",
     "progressOfPapers": "{total} 論文中 {processed} 件",
-    "loadingExtractionResults": "抽出結果を読み込み中..."
+    "loadingExtractionResults": "抽出結果を読み込み中...",
+    "skippedNoText": "{count, plural, other {#件の論文を除外: 読める要旨がなく、全文の読み込みはオフでした}}"
   },
   "reportBuilder": {
     "grounded": "根拠あり",
@@ -1259,7 +1266,8 @@
   },
   "rating": {
     "noRating": "評価なし",
-    "nStars": "{count} つ星"
+    "nStars": "{count} つ星",
+    "yourRating": "あなたの評価"
   },
   "pagination": {
     "currentPage": "ページ {page}",
@@ -1292,7 +1300,7 @@
     "type": "タイプ",
     "refs": "参照",
     "cited": "引用",
-    "fwci": "FWCI",
+    "fwci": "分野平均比",
     "topic": "トピック",
     "field": "フィールド",
     "subfield": "サブフィールド",
@@ -1366,7 +1374,7 @@
     "privacyPolicy": "プライバシーポリシー",
     "cookiePolicy": "Cookieポリシー",
     "cookiePreferences": "Cookie設定",
-    "credits": "クレジット"
+    "credits": "帰属表示"
   },
   "focusMode": {
     "settingsTitle": "フォーカスモード設定",
@@ -1513,7 +1521,8 @@
     "planAllowsCollections": "{plan} のコレクションは {limit, number} 件までです",
     "nameTheCollection": "コレクションに名前を付けてください",
     "newName": "{name} の新しい名前",
-    "clearSearch": "検索をクリア"
+    "clearSearch": "検索をクリア",
+    "collectionDeletedPapersStay": "{name}: 論文はライブラリに残ります"
   },
   "sidebarLayout": {
     "expandFilters": "フィルターを展開 (Ctrl+Shift+F)",
@@ -1715,7 +1724,7 @@
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
     "noConnectedApps": "接続済みアプリはありません",
-    "noConnectedAppsDescription": "外部アプリがウォレットに接続すると、ここに表示されます。",
+    "noConnectedAppsDescription": "外部アプリがアカウントに接続すると、ここに表示されます。",
     "revoking": "取り消し中...",
     "revoke": "取り消す",
     "revokedBadge": "取り消し済み",
@@ -1759,7 +1768,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "無題のコミュニティ",
     "unsaved": "未保存の変更",
-    "viewOnly": "閲覧のみ",
+    "viewOnly": "設定は閲覧のみ",
     "save": "保存",
     "saving": "保存しています…",
     "saveError": "変更を保存できませんでした。もう一度試してください。",
@@ -1814,7 +1823,15 @@
       "versions": "バージョン",
       "ai": "AI",
       "domain": "ドメイン",
+      "listing": "掲載",
       "publication": "出版"
+    },
+    "listing": {
+      "description": "このコミュニティを公開コミュニティの一覧に掲載するかどうかです。どちらの場合も、アドレスを知っている人はサイトを開けます。",
+      "public": "公開",
+      "publicHint": "公開一覧に掲載され、誰でも見つけられます。",
+      "unlisted": "非掲載",
+      "unlistedHint": "一覧には載りません。アドレスを知っている人は引き続き開けます。"
     },
     "sectionState": {
       "complete": "完了",
@@ -1917,6 +1934,9 @@
       "taglineLabel": "キャッチコピー",
       "taglineHint": "コミュニティ検索の上に表示される見出しです。空のままにすると「検索」と表示されます。",
       "taglinePlaceholder": "より良い判断のためのエビデンス",
+      "searchTitleLabel": "検索結果のタイトル",
+      "searchTitleHint": "検索結果に表示されるホームページのタイトルです。空欄にすると名前とキャッチフレーズを使います。",
+      "searchTitlePlaceholder": "気候適応の研究とエビデンス",
       "descriptionLabel": "説明",
       "descriptionHint": "ホームページと検索結果に表示されます。",
       "partnersHeading": "助成パートナー",
@@ -2000,10 +2020,13 @@
       "add": "機関を追加"
     },
     "danger": {
-      "description": "このコミュニティを削除します。慎重に操作してください。",
+      "description": "このコミュニティを移動または削除します。慎重に操作してください。",
       "deleteTitle": "コミュニティを削除",
       "deleteHint": "サイト、アドレス、設定を削除します。",
-      "deleteButton": "コミュニティを削除"
+      "deleteButton": "コミュニティを削除",
+      "moveTitle": "別のワークスペースに移動",
+      "moveHint": "アドレス、設定、メンバーはそのままです。移動先のワークスペースが所有者になります。",
+      "moveButton": "コミュニティを移動"
     },
     "deleteDialog": {
       "title": "このコミュニティを削除しますか？",
@@ -2011,7 +2034,7 @@
       "typeToConfirm": "確認のため {name} と入力してください",
       "confirm": "コミュニティを削除",
       "startedTitle": "コミュニティを削除しています",
-      "startedDescription": "{name} を削除しています。数秒かかります。",
+      "startedDescription": "{name} を削除しています。1〜2分かかります。",
       "error": "コミュニティを削除できませんでした。実行中のコミュニティの操作が終わってから、もう一度試してください。"
     },
     "links": {
@@ -2835,7 +2858,8 @@
       "confirmAction": "アドレスを変更"
     },
     "retry": "もう一度試す",
-    "retryError": "開始できませんでした。もう一度試してください。"
+    "retryError": "開始できませんでした。もう一度試してください。",
+    "saveDraft": "下書きを保存"
   },
   "topics": {
     "title": "トピック",
@@ -2910,8 +2934,8 @@
       "title": "新しい Evidence Community",
       "backToLibraries": "コミュニティ一覧に戻る",
       "ownerTitle": "オーナー",
-      "ownerOnlyTitle": "オーナーのみ",
-      "ownerOnlyDescription": "組織のオーナーだけが、コミュニティを作成できます。",
+      "ownerOnlyTitle": "ここではコミュニティを作成できません",
+      "ownerOnlyDescription": "コミュニティは、自分のワークスペースか、管理者を務める組織で作成できます。その組織で Evidence Communities がオンになっている必要があります。",
       "libraryTitle": "コミュニティ",
       "libraryDescription": "名前は公開サイトに表示され、公開アドレスの元になります。",
       "nameLabel": "名前",
@@ -3151,8 +3175,13 @@
       "off": "オフ",
       "libraries": "{count, plural, other {# 件のコミュニティ}}",
       "switchLabel": "{name} の Evidence Communities",
-      "moveFirst": "先にコミュニティを移動または削除してください",
-      "noMatches": "一致する組織はありません"
+      "noMatches": "一致する組織はありません",
+      "kind": "ワークスペース",
+      "organizationsTab": "組織",
+      "peopleTab": "ユーザー",
+      "searchPeople": "メールでユーザーを検索",
+      "people": "ユーザー",
+      "noPeopleMatch": "一致するユーザーはいません"
     },
     "communityReleases": {
       "releases": "リリース",
@@ -3413,7 +3442,7 @@
       "times": "回",
       "unfold": "それぞれを表示",
       "fold": "まとめて表示",
-      "declined": "許可されませんでした",
+      "declined": "許可しませんでした",
       "waiting": "回答を待っています",
       "allowed": "許可済み",
       "searches": {
@@ -4199,6 +4228,18 @@
         "where": "Evidence Community",
         "ask": "コミュニティの下書きを作成"
       },
+      "publicCommunities": {
+        "doing": "公開コミュニティを読んでいます",
+        "did": "公開コミュニティを読みました",
+        "where": "Evidence Community",
+        "ask": "公開コミュニティを読む"
+      },
+      "communityVisibility": {
+        "doing": "コミュニティの掲載を変更しています",
+        "did": "コミュニティの掲載を変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの掲載を変更する"
+      },
       "librarySources": {
         "doing": "コミュニティのソースを読んでいます",
         "did": "コミュニティのソースを読みました",
@@ -4335,6 +4376,54 @@
         "did": "著者を申請しました",
         "where": "著者",
         "ask": "著者を申請"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "コミュニティの論文を検索中",
+        "did": "コミュニティの論文を検索しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの論文を検索"
+      },
+      "addCommunityPapers": {
+        "doing": "コミュニティに論文を追加中",
+        "did": "コミュニティに論文を追加しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティに論文を追加"
+      },
+      "communityAddedPapers": {
+        "doing": "コミュニティの追加した論文を読み込み中",
+        "did": "コミュニティの追加した論文を読み込みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの追加した論文を読み込む"
+      },
+      "removeCommunityPaper": {
+        "doing": "コミュニティから論文を外しています",
+        "did": "コミュニティから論文を外しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティから論文を外す"
+      },
+      "communityPapersSettings": {
+        "doing": "コミュニティの追加した論文を変更中",
+        "did": "コミュニティの追加した論文を変更しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの追加した論文や PDF を一時停止または再開"
+      },
+      "connectCommunityCollection": {
+        "doing": "コミュニティのソースにコレクションを追加中",
+        "did": "コミュニティのソースにコレクションを追加しました",
+        "where": "Evidence Community",
+        "ask": "自分のコレクションをコミュニティのソースに追加する"
+      },
+      "putCommunityLive": {
+        "doing": "コミュニティの設定を公開中",
+        "did": "コミュニティの設定を公開しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティの保存済み設定を公開する"
+      },
+      "sentPapers": {
+        "doing": "コミュニティに送った論文を読み込み中",
+        "did": "コミュニティに送った論文を読み込みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティに送った論文を読む"
       }
     },
     "asks": {
@@ -4509,7 +4598,7 @@
     "main": "メイン",
     "screen": "スクリーニング",
     "extract": "抽出",
-    "publish": "公開",
+    "communities": "コミュニティ",
     "explore": "探索",
     "authors": "著者",
     "workspacesCard": "ワークスペース",
@@ -4590,9 +4679,6 @@
       "leave": "退出",
       "deleteName": "{name} を削除",
       "stillHasLibrary": "{library} はこの組織のエビデンスコミュニティです。先に移動するか削除してください。",
-      "deleteLibrary": "コミュニティを削除",
-      "libraryBeingDeleted": "{library} を削除しています。",
-      "libraryDeleteFailed": "{library} を削除できませんでした。もう一度お試しください。",
       "deleteDetail": "{count, number} 人のメンバー全員から削除されます",
       "moveLibrariesFirst": "先にエビデンスコミュニティを移動するか削除してください",
       "delete": "削除",
@@ -4755,7 +4841,10 @@
         "itsPapers": "論文",
         "ratingsInIt": "その中の評価",
         "publications": "出版物",
-        "editors": "編集者"
+        "editors": "編集者",
+        "address": "アドレス",
+        "settings": "設定",
+        "peopleWithRoles": "ロールを持つメンバー"
       },
       "moveTo": "{workspace} に移動",
       "move": "移動",
@@ -4764,7 +4853,15 @@
       "collection": "コレクションを移動",
       "author": "著者プロフィールを移動",
       "libraryKeeps": "{workspace} のライブラリには保存済みの論文が残ります。",
-      "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。"
+      "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。",
+      "community": "コミュニティを移動",
+      "workspaceOwnsIt": "移動先のワークスペースが以後の所有者になります。",
+      "refused": {
+        "noCommunities": "このワークスペースではコミュニティがオンになっていません",
+        "communitiesFull": "ワークスペースに作成できる上限までコミュニティがあります",
+        "profilesOff": "ここでは著者プロフィールが有効になっていません",
+        "noProfiles": "ここでは著者プロフィールを作成できません"
+      }
     },
     "share": {
       "share": "共有",
@@ -4864,7 +4961,11 @@
       "goneDetail": "共有した人にもう一度共有してもらってください",
       "otherTitle": "この招待は別のアドレスに送信されました",
       "otherDetail": "このアカウントにそのアドレスも登録されていれば開けます。そうでなければ、招待されたアドレスでサインインしてください"
-    }
+    },
+    "notEmails": "{count, plural, other {メールアドレスではありません: {values}。組織を作成するには修正するか削除してください。}}",
+    "asRole": "{role}として",
+    "memberCan": "メンバーは、組織で共有されているものすべてを使って検索・保存・スクリーニング・抽出ができます。",
+    "adminCan": "管理者は同じことに加えて、メンバーの招待と削除、設定と支出の管理ができます。"
   },
   "models": {
     "changeInSettings": "AI 設定で変更"
@@ -5307,7 +5408,20 @@
     "removedFromLibrary": "このコミュニティから削除しました。",
     "removedFromProfile": "このプロフィールから削除しました。",
     "addedToLibrary": "{name}をこのコミュニティに追加しました。",
-    "addedToProfile": "{name}をこのプロフィールに追加しました。"
+    "addedToProfile": "{name}をこのプロフィールに追加しました。",
+    "anOrganization": "組織",
+    "chooseAnOrganization": "組織を選択",
+    "anotherOrganization": "別の組織",
+    "adminEmail": "管理者のメールアドレス",
+    "organizationGetsIt": "組織の全員がこの役割を得て、退出すると失います。",
+    "theirAdminAccepts": "管理者が自分の管理する組織として承諾し、その全員がこの役割を得ます。",
+    "everyoneInIt": "組織の全員",
+    "forTheirOrganization": "{email} が管理者を務める組織向け",
+    "removeThisOrganization": "この組織を削除しますか？メンバーには個別に付与された役割だけが残ります。",
+    "organizationLabel": "組織",
+    "ownWorkspaceOwner": "本人のワークスペースにあるため、本人のものです。",
+    "whoWorksOnIt": "このコミュニティに携わるメンバーです。チームは所有者が管理します。",
+    "viewersUntilAnOwner": "所有者が役割を付与するまでは閲覧者です。"
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, other {# 件の出版物のダイジェストを待機中です。}}",
@@ -5370,6 +5484,54 @@
     "keepThisUnderCharacters": "{maxLength}文字以内で入力してください。"
   },
   "libraryList": {
+    "sidebar": {
+      "label": "あなたのコミュニティ",
+      "showFrom": "表示するコミュニティ",
+      "allWorkspaces": "すべてのワークスペース",
+      "allCommunities": "すべてのコミュニティ",
+      "workspaces": "ワークスペース",
+      "yours": "自分のもの",
+      "sharedWithYou": "共有されたもの",
+      "sharedWith": "{name} と共有",
+      "loading": "コミュニティを読み込み中",
+      "noMatches": "この検索に一致するものはありません。",
+      "emptyAll": "まだどのコミュニティにも参加していません。誰かがコミュニティを共有するか、組織がコミュニティを持つと、ここに表示されます。",
+      "emptyHere": "{name} のコミュニティと、共有されたコミュニティがここに表示されます。",
+      "emptyShared": "ほかの人が共有したコミュニティがここに表示されます。",
+      "emptySharedHere": "{name} と共有されたコミュニティがここに表示されます。",
+      "emptyOwn": "作成したコミュニティがここに表示されます。",
+      "emptyWorkspace": "{name} にはまだコミュニティがありません。",
+      "invitedAs": "{role}として招待されています",
+      "accept": "承諾",
+      "accepted": "{name} を承諾しました。",
+      "moreWorkspaces": "ほかのワークスペース",
+      "invitedForOrganization": "{role}として招待されています（あなたの組織向け）",
+      "acceptAsAnAdmin": "組織の管理者として承諾してください",
+      "acceptForWhich": "{name} をどの組織で承諾するか",
+      "acceptedFor": "{name} を {organization} として承諾しました。"
+    },
+    "directory": {
+      "title": "公開コミュニティ",
+      "sortLabel": "公開コミュニティの並び替え",
+      "sort": {
+        "newest": "新しい順",
+        "name": "名前",
+        "records": "論文が多い順"
+      },
+      "loading": "公開コミュニティを読み込み中",
+      "noMatches": "この検索に一致する公開コミュニティはありません",
+      "none": "公開コミュニティは公開されるとここに表示されます",
+      "records": "{count, plural, other {{shown} 本の論文}}",
+      "unnamedOwner": "Openscholar のメンバー",
+      "people": "{count, plural, other {{shown} 人のチームメンバー}}",
+      "countries": "対象：{names}",
+      "recordsLabel": "{count, plural, other {本の論文}}",
+      "peopleLabel": "{count, plural, other {人のチームメンバー}}",
+      "noDescription": "説明はまだありません",
+      "notCounted": "まだ集計されていません",
+      "intro": "コミュニティは、ひとつのテーマの研究を集めたウェブサイトです。開くと論文を閲覧できます。",
+      "updated": "{when}に更新"
+    },
     "evidenceLibraries": "Evidence Communities",
     "newLibrary": "新しいコミュニティ",
     "libraryView": "コミュニティの表示",
@@ -5413,7 +5575,9 @@
     "deletionRestartedFor": "{name}の削除を再開しました。",
     "couldNotRestartDeletion": "削除を再開できませんでした",
     "invitationDeclined": "招待を辞退しました。",
-    "unableToDeclineInvitation": "招待を辞退できません"
+    "unableToDeclineInvitation": "招待を辞退できません",
+    "searchSubmissions": "送った論文を検索",
+    "findASubmission": "送った論文を探す…"
   },
   "authorPages": {
     "profileSettings": "プロフィールの設定",
@@ -5544,10 +5708,10 @@
     "creatingKey": "キーを作成しています…",
     "redirecting": "移動しています…",
     "approve": "承認",
-    "wantsToConnect": "<strong>{appName}</strong> が、あなたの Openscholar ウォレットに接続しようとしています。",
+    "wantsToConnect": "<strong>{appName}</strong> が、あなたの Openscholar アカウントに接続しようとしています。",
     "copyKey": "この API キーをコピーして、<strong>{appName}</strong> に貼り付けてください。表示されるのは一度だけです。",
     "originUnregisteredBody": "<code>{origin}</code> のアプリは、Openscholar に接続するための登録がされていません。",
-    "originHelp": "事前に承認されたオリジンだけが、ウォレットの接続を作成できます。<strong>{appName}</strong> の開発者の場合は、Openscholar チームに連絡して、オリジンを登録してください。",
+    "originHelp": "事前に承認されたオリジンだけが、アカウントの接続を作成できます。<strong>{appName}</strong> の開発者の場合は、Openscholar チームに連絡して、オリジンを登録してください。",
     "wantsToUseCredits": "<strong>{appName}</strong> が、あなたの Openscholar クレジットで AI 生成を使おうとしています。",
     "unknownApp": "不明なアプリ",
     "thisApplicationSOriginIsNot": "このアプリケーションのオリジンは登録されていません。",
@@ -5675,5 +5839,129 @@
     "step4": "トークンを更新",
     "step4About": "トークンの有効期間は 24 時間です。その前にリフレッシュトークンを新しいトークンに交換してください。",
     "cantDo": "アプリは請求、API キー、サイト設定を変更したり、Evidence Community を公開したりできません。"
+  },
+  "paperPage": {
+    "references": "参考文献",
+    "openAccess": "オープンアクセス",
+    "readPdf": "PDFを読む",
+    "publisherPage": "出版社のページ",
+    "askAbout": "この論文について質問",
+    "noAbstract": "抄録はありません",
+    "linkCopied": "論文のリンクをコピーしました",
+    "citationsPerYear": "年ごとの被引用数",
+    "citationsIn": "{year}年に{count}件の被引用",
+    "seeCiting": "この論文を引用している論文を見る",
+    "top1": "分野の上位1%",
+    "top10": "分野の上位10%",
+    "aheadOf": "{year}年の全論文の{percent}%より多く引用",
+    "influential": "これを土台にした引用",
+    "authors": "著者",
+    "andMore": "ほか{count}名",
+    "showAll": "すべて表示（{count}）",
+    "showFewer": "表示を減らす",
+    "corresponding": "責任著者",
+    "orcidOf": "{name}のORCID iD",
+    "institutions": "所属機関",
+    "whereToRead": "読める場所",
+    "kindPublisher": "出版社",
+    "kindRepository": "リポジトリ",
+    "kindIndex": "索引",
+    "pdf": "PDF",
+    "funding": "研究資金",
+    "topics": "トピック",
+    "sdgs": "持続可能な開発目標",
+    "mesh": "MeSH用語",
+    "details": "詳細",
+    "charge": "掲載料",
+    "retracted": "撤回",
+    "openscholarId": "Openscholar ID",
+    "copyDoi": "DOIをコピー",
+    "doiCopied": "DOIをコピーしました",
+    "doiCopyFailed": "DOIをコピーできませんでした",
+    "paperPage": "論文ページ",
+    "share": "共有",
+    "inCommunities": "収録されているコミュニティ",
+    "fieldAverage": "× 分野平均"
+  },
+  "addedPapers": {
+    "name": "追加した論文",
+    "provider": "DOI と OpenAlex ID",
+    "cardDescription": "DOI または OpenAlex ID で 1 本ずつ追加した論文。OpenAlex と同期されます。",
+    "menu": "DOI または ID で論文を追加",
+    "menuHint": "1 本でも複数でも、同期されます",
+    "menuNotLive": "コミュニティの公開後に利用できます",
+    "add": "論文を追加",
+    "title": "論文を追加",
+    "description": "論文へのリンク（Openscholar、コミュニティのサイト、OpenAlex、doi.org）、DOI、OpenAlex IDを貼り付けてください。一度に{max}件まで。",
+    "inputLabel": "DOI、OpenAlex ID、またはリンク",
+    "papers": "{count, plural, other {# 件の論文}}",
+    "tooMany": "{max} 件を超えています",
+    "invalid": "論文のリンク・DOI・IDではありません: {values}",
+    "find": "論文を探す",
+    "found": "見つかった論文",
+    "notFound": "見つかりません",
+    "alreadyAdded": "追加済み",
+    "inQueue": "レビュー待ち",
+    "doiOnly": "DOI のみ",
+    "leaveOut": "除外",
+    "leaveOutLabel": "{title} を除外",
+    "doiOnlyNote": "{count, plural, other {このうち # 件はまだ OpenAlex にありません。DOI から取り込まれ、同期のたびに OpenAlex を確認します。}}",
+    "toAdd": "{count, plural, other {追加する論文 # 件}}",
+    "sendToQueue": "レビューに送る",
+    "publish": "公開",
+    "published": "{count, plural, other {# 件の論文を {community} に公開しました}}",
+    "queued": "{count, plural, other {# 件の論文をレビューキューに送りました}}",
+    "someFailed": "{count, plural, other {# 件の論文は下書きとして保存されましたが、送信されませんでした。管理画面で開いて送信してください。}}",
+    "lookupFailed": "コミュニティがこれらの論文を検索できませんでした。もう一度お試しください。",
+    "addFailed": "コミュニティがこれらの論文を追加できませんでした。もう一度お試しください。",
+    "noAuthors": "著者の記載なし",
+    "unavailable": "利用できません",
+    "settingsFailed": "コミュニティが変更を受け付けませんでした。もう一度お試しください。",
+    "ownerOnly": "オーナーだけが変更できます",
+    "from": "{name} から",
+    "returned": "却下",
+    "statusWithdrawn": "あなたが取り下げ",
+    "statusRemoved": "コミュニティが削除",
+    "openIn": "{community} で開く",
+    "openLabel": "{title} を {community} で開く",
+    "remove": "削除",
+    "removeLabel": "{title} を削除",
+    "withdraw": "取り下げ",
+    "withdrawLabel": "{title} を取り下げ",
+    "removed": "論文をコミュニティから削除しました",
+    "withdrawn": "論文をレビューキューから取り下げました",
+    "removeFailed": "コミュニティがこの論文を削除できませんでした。もう一度お試しください。",
+    "viewLabel": "表示",
+    "tabPublic": "公開コミュニティ",
+    "tabSubmissions": "あなたの投稿",
+    "statusLabel": "ステータス",
+    "everyStatus": "すべてのステータス",
+    "statusPublished": "公開済み",
+    "noneYet": "まだ投稿はありません",
+    "noneYetHint": "検索結果から論文をコミュニティに追加できます。",
+    "noMatches": "一致する投稿はありません",
+    "addToCommunity": "コミュニティに追加",
+    "searchCommunities": "コミュニティを検索",
+    "recent": "最近",
+    "yourCommunities": "あなたのコミュニティ",
+    "noCommunitiesMatch": "一致するコミュニティはありません",
+    "noCommunities": "まだコミュニティはありません",
+    "inQueueShort": "キュー内",
+    "added": "追加済み",
+    "publishOrReview": "今すぐ公開するか、先にチームにレビューしてもらいます。",
+    "reviewFirst": "公開前にコミュニティのチームがレビューします。",
+    "publishedTo": "{community} に公開しました",
+    "queuedTo": "{community} のレビューキューに送りました",
+    "alreadyIn": "{community} にはこの論文がすでにあります",
+    "moreCommunities": "他のコミュニティ",
+    "askTitle": "{count, plural, other {# 件の論文}}をコミュニティに追加",
+    "publishNow": "今すぐ公開",
+    "reviewQueue": "レビュー待ち",
+    "askPublishHint": "許可するとすぐに{community}で公開されます。",
+    "askQueueHint": "チームが承認するまで{community}のレビュー待ちに入ります。",
+    "askPublish": "{count, plural, other {# 件の論文}}を公開",
+    "askQueue": "{count, plural, other {# 件の論文}}をレビューに送る",
+    "alreadyInIt": "追加済み",
+    "inReview": "レビュー中"
   }
 }

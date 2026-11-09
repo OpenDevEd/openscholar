@@ -130,6 +130,7 @@ import type * as evidenceLibraries_digests_manualActions from "../evidenceLibrar
 import type * as evidenceLibraries_digests_review from "../evidenceLibraries/digests/review.js";
 import type * as evidenceLibraries_digests_service from "../evidenceLibraries/digests/service.js";
 import type * as evidenceLibraries_digests_unslop from "../evidenceLibraries/digests/unslop.js";
+import type * as evidenceLibraries_directory from "../evidenceLibraries/directory.js";
 import type * as evidenceLibraries_dnsClient from "../evidenceLibraries/dnsClient.js";
 import type * as evidenceLibraries_domainActions from "../evidenceLibraries/domainActions.js";
 import type * as evidenceLibraries_domainConfig from "../evidenceLibraries/domainConfig.js";
@@ -151,6 +152,9 @@ import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/
 import type * as evidenceLibraries_operationKinds from "../evidenceLibraries/operationKinds.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
+import type * as evidenceLibraries_organizationGrants from "../evidenceLibraries/organizationGrants.js";
+import type * as evidenceLibraries_paperLinks from "../evidenceLibraries/paperLinks.js";
+import type * as evidenceLibraries_peopleCount from "../evidenceLibraries/peopleCount.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
 import type * as evidenceLibraries_publicationCredentialVerification from "../evidenceLibraries/publicationCredentialVerification.js";
@@ -188,6 +192,8 @@ import type * as evidenceLibraries_sources from "../evidenceLibraries/sources.js
 import type * as evidenceLibraries_storageSetup from "../evidenceLibraries/storageSetup.js";
 import type * as evidenceLibraries_storageSetupActions from "../evidenceLibraries/storageSetupActions.js";
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
+import type * as evidenceLibraries_submissions from "../evidenceLibraries/submissions.js";
+import type * as evidenceLibraries_submissionsHttp from "../evidenceLibraries/submissionsHttp.js";
 import type * as evidenceLibraries_team from "../evidenceLibraries/team.js";
 import type * as evidenceLibraries_teardown from "../evidenceLibraries/teardown.js";
 import type * as evidenceLibraries_teardownActions from "../evidenceLibraries/teardownActions.js";
@@ -327,9 +333,11 @@ import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
+import type * as migrations_authorMakers from "../migrations/authorMakers.js";
 import type * as migrations_authorRecordLinks from "../migrations/authorRecordLinks.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
+import type * as migrations_communityDirectory from "../migrations/communityDirectory.js";
 import type * as migrations_communityMoveCounts from "../migrations/communityMoveCounts.js";
 import type * as migrations_copyCollection from "../migrations/copyCollection.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
@@ -605,6 +613,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/digests/review": typeof evidenceLibraries_digests_review;
   "evidenceLibraries/digests/service": typeof evidenceLibraries_digests_service;
   "evidenceLibraries/digests/unslop": typeof evidenceLibraries_digests_unslop;
+  "evidenceLibraries/directory": typeof evidenceLibraries_directory;
   "evidenceLibraries/dnsClient": typeof evidenceLibraries_dnsClient;
   "evidenceLibraries/domainActions": typeof evidenceLibraries_domainActions;
   "evidenceLibraries/domainConfig": typeof evidenceLibraries_domainConfig;
@@ -626,6 +635,9 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/operationKinds": typeof evidenceLibraries_operationKinds;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
+  "evidenceLibraries/organizationGrants": typeof evidenceLibraries_organizationGrants;
+  "evidenceLibraries/paperLinks": typeof evidenceLibraries_paperLinks;
+  "evidenceLibraries/peopleCount": typeof evidenceLibraries_peopleCount;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
   "evidenceLibraries/publicationCredentialVerification": typeof evidenceLibraries_publicationCredentialVerification;
@@ -663,6 +675,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/storageSetup": typeof evidenceLibraries_storageSetup;
   "evidenceLibraries/storageSetupActions": typeof evidenceLibraries_storageSetupActions;
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
+  "evidenceLibraries/submissions": typeof evidenceLibraries_submissions;
+  "evidenceLibraries/submissionsHttp": typeof evidenceLibraries_submissionsHttp;
   "evidenceLibraries/team": typeof evidenceLibraries_team;
   "evidenceLibraries/teardown": typeof evidenceLibraries_teardown;
   "evidenceLibraries/teardownActions": typeof evidenceLibraries_teardownActions;
@@ -802,9 +816,11 @@ declare const fullApi: ApiFromModules<{
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
+  "migrations/authorMakers": typeof migrations_authorMakers;
   "migrations/authorRecordLinks": typeof migrations_authorRecordLinks;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
+  "migrations/communityDirectory": typeof migrations_communityDirectory;
   "migrations/communityMoveCounts": typeof migrations_communityMoveCounts;
   "migrations/copyCollection": typeof migrations_copyCollection;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;

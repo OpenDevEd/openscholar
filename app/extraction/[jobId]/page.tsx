@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   FileText,
+  FileX,
   RefreshCw,
   Trash2,
   XCircle,
@@ -144,7 +145,7 @@ export default function JobDetailPage() {
 
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [confirming, setConfirming] = useState<"cancel" | "delete" | null>(null);
+  const [confirming, setConfirming] = useState<"cancel" | "delete" | "rerun" | null>(null);
   const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
   // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
@@ -587,7 +588,8 @@ export default function JobDetailPage() {
                     <TooltipContent>{tExtraction("chatHeaderMore")}</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end" className="min-w-44">
-                    <DropdownMenuItem onSelect={handleDuplicate}>
+                    {/* A copy that runs, and spends, at once: it asks first and says so. */}
+                    <DropdownMenuItem onSelect={() => setConfirming("rerun")}>
                       <RefreshCw className="size-4" />
                       {tJob('restart')}
                     </DropdownMenuItem>
@@ -622,6 +624,18 @@ export default function JobDetailPage() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+                <AlertDialog open={confirming === "rerun"} onOpenChange={(open) => !open && setConfirming(null)}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{tConfirm('rerunJob')}</AlertDialogTitle>
+                      <AlertDialogDescription>{tConfirm('rerunJobDescription')}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDuplicate}>{tConfirm('rerunJobConfirm')}</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <AlertDialog open={confirming === "delete"} onOpenChange={(open) => !open && setConfirming(null)}>
                   <AlertDialogContent>
                       <AlertDialogHeader>
@@ -652,6 +666,13 @@ export default function JobDetailPage() {
                 <FileText className="size-3.5" />
                 {tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}
               </span>
+              {/* Left out with full texts off, since there was nothing of theirs to read: said, so the count above isn't a mystery. */}
+              {job.skippedPapers ? (
+                <span className="flex items-center gap-1.5 ink-warning">
+                  <FileX className="size-3.5" />
+                  {tJob('skippedNoText', { count: job.skippedPapers })}
+                </span>
+              ) : null}
               <span className="flex items-center gap-1.5">
                 <ListChecks className="size-3.5" />
                 {tJob('questionsCount', { count: questions.length })}
@@ -840,18 +861,19 @@ export default function JobDetailPage() {
                   />
                 )}
 
-                <ExportDialog
-                  open={exportDialogOpen}
-                  onOpenChange={setExportDialogOpen}
-                  loadExport={loadAllExport}
-                  paperCount={authoritativeFilteredPapers}
-                  label={
-                    authoritativeFilteredPapers === 1
-                        ? tView('filteredPapersCount', { count: authoritativeFilteredPapers })
-                        : tView('filteredPapersCountPlural', { count: authoritativeFilteredPapers })
-                  }
-                />
               </ExtractionResultsShell>
+              {/* Outside the shell, whose phone layout draws one pane at a time: Export, in the header of both, opens from either. */}
+              <ExportDialog
+                open={exportDialogOpen}
+                onOpenChange={setExportDialogOpen}
+                loadExport={loadAllExport}
+                paperCount={authoritativeFilteredPapers}
+                label={
+                  authoritativeFilteredPapers === 1
+                      ? tView('filteredPapersCount', { count: authoritativeFilteredPapers })
+                      : tView('filteredPapersCountPlural', { count: authoritativeFilteredPapers })
+                }
+              />
             </div>
           </div>
             </LibraryPageShell>

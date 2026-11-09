@@ -25,3 +25,11 @@ export type CitationData = {
 	"citation-key": string;
 	[field: string]: string | number | CitationName[] | CitationDate | undefined;
 };
+
+/** The files reference managers import: RIS for EndNote, Mendeley and Zotero, BibTeX for LaTeX. */
+export const CITATION_FILES = {
+	ris: { extension: "ris", type: "application/x-research-info-systems", format: "ris" },
+	bibtex: { extension: "bib", type: "application/x-bibtex", format: "bibtex" },
+} as const;
+
+export type CitationFile = keyof typeof CITATION_FILES;

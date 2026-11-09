@@ -4,25 +4,30 @@
  * Each runs the configuration page's own reads and save as the person the assistant acts for
  * (`asSignedIn`), so the page's rules hold whole: only an owner whose plan has Evidence
  * Libraries changes a draft, and every section is checked as the page checks it. A draft isn't
- * public until it's put live, which stays on the library's page.
+ * public until it's put live (putLive); a community's first setup stays on its page.
  */
 import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { ActionCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { requireAppUrl } from "../lib/env";
+import { refuseApps } from "../lib/auth";
+import { paperOfLink, type PaperIds } from "./paperLinks";
+import { spender } from "../paperSets/search";
+import { openalexWork } from "../../lib/papers/paper-ref";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineChangingAction, defineUserAction, defineUserMutation, defineUserQuery, userAction, userMutation, userQuery } from "../lib/userActions";
-import { requireLibraryOrganization } from "../organizationFeatures";
+import { requireCommunityWorkspace } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
 import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../lib/evidence-libraries/configuration/rules";
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 import { readCredentialMetadata } from "./credentials";
 import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
-import { libraryGrant, libraryOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
+import { libraryOf, libraryOwner, ownerActive, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
 import { readScreeningRequest, requestScreeningGrade } from "./screeningRequests";
-import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { addLibraryMember, changeLibraryRole, removeLibraryMember } from "./team";
 import { changeLibraryInvitation } from "./invitations";
@@ -32,10 +37,14 @@ import { readPendingLibraryInvitations } from "./access";
 import { notSetUpValidator, reviewedPublicationValidator, runtimeCollectionValidator, runtimeInstitutionValidator, runtimePage, screeningTrialValidator } from "../zotero/runtimeReadValidators";
 import { RUNTIME_READ_PAGE_SIZE } from "../zotero/runtimeReadClient";
 import { memberIdWithEmail } from "../organizations/read";
-import { saveEvidenceLibraryDraftSections } from "./mutations";
-import { libraryTeamValidator, readEvidenceLibraryDraft, readEvidenceLibraryRevision, readLibraryTeam, revisionReadValidator } from "./queries";
+import { activateEvidenceLibraryConfiguration, saveEvidenceLibraryDraftSections } from "./mutations";
+import { collectionConnectedValidator, connectCollection as connectCollectionTo } from "./collectionSources";
+import { readSent, sentPapersPageValidator } from "./submissions";
+import { collectionSourceEntry, readsOpenAlexWorks } from "../../lib/evidence-libraries/configuration/sources";
+import { libraryTeamValidator, readEvidenceLibraryDraft, readEvidenceLibraryRevision, readLibraries, readLibraryTeam, revisionReadValidator } from "./queries";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
+import { activationValidator, submissionStatusValidator } from "./validators";
+import { addedPapersPageValidator, addedPapersSettingsValidator, paperPreviewsValidator, papersAddedValidator, addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
 
 const EDIT_PATH = "evidenceLibraries/assistant:editDraft" as const;
 type Change = Infer<typeof draftChangesValidator>[number];
@@ -49,19 +58,17 @@ async function personOf(ctx: QueryCtx, userId: Id<"users">) {
 }
 
 /**
- * `ctx` signed in as the person, for a library the reply may reach: one of the workspace it runs
- * in or, in the person's own workspace, one shared with them, as what's shared with someone is
- * opened there and nowhere else. Any other is not found, so a chat never carries another
- * workspace's library to the people who read it.
+ * `ctx` signed in as the person, for a community they have a role on or view as a member of its organization. What
+ * they may do there is their role's, whichever workspace the reply runs in, as on the Communities page (OS-28). Any
+ * other is not found.
  */
 async function signedInFor<Ctx extends QueryCtx>(ctx: Ctx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<Ctx> {
-  const library = await ctx.db.get("evidenceLibraries", libraryId);
-  const here = library !== null && (library.workspaceId === actor.workspaceId || ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null));
-  if (!here) throw createError("NOT_FOUND", "Evidence Community not found");
-  return await asSignedIn(ctx, await personOf(ctx, actor.userId));
+  const signedIn = await asSignedIn(ctx, await personOf(ctx, actor.userId));
+  if (!(await readEvidenceLibraryAccess(signedIn, libraryId, "view"))) throw createError("NOT_FOUND", "Evidence Community not found");
+  return signedIn;
 }
 
-/** Refuses, before the person is asked, what only an owner of a library the reply reaches does. */
+/** Refuses, before the person is asked, what only an owner of the community does. */
 async function ownerHere(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
   if (!(await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "manage"))) throw createError("FORBIDDEN", "Only an owner of the community does this.");
 }
@@ -78,30 +85,22 @@ async function waitingInvitation(ctx: QueryCtx, invitationId: Id<"itemInvitation
 export const librariesAction = defineUserQuery({
   path: "evidenceLibraries/assistant:libraries",
   description:
-    `Lists the Evidence Communities the person can see here, ${LIBRARIES_LISTED} a page from \`start\` (0 first): the workspace's, and in their own workspace the ones shared with them. Each one's ID, name, address name, state, and whether they can change its settings; \`next\` is where the next \`start\` is, when there are more. ` +
-    "A community's settings are evidenceLibraries/assistant:draft; putting a draft live is done on the community's page.",
-  args: { start: v.optional(v.union(v.number(), v.null())) },
+    `Lists the Evidence Communities the person has a role on, as their Communities page lists them here, ${LIBRARIES_LISTED} a page from \`cursor\`: in their own workspace their own, each organization's they're in and the ones shared with them; in an organization's, that organization's and the ones shared with it. ` +
+    "Given `search`, those whose name or owner's name contains it. Each one's ID, name, status, the person's role on it, who owns it, where it answers, and whether they can change its settings (owners only). " +
+    "A community's settings are evidenceLibraries/assistant:draft; putting a running community's draft live is evidenceLibraries/assistant:putLive.",
+  args: { cursor: v.optional(v.union(v.string(), v.null())), search: v.optional(v.union(v.string(), v.null())) },
   returns: assistantLibrariesValidator,
-  run: async (ctx, actor, { start }) => {
-    const signedIn = await asSignedIn(ctx, await personOf(ctx, actor.userId));
-    // Both lists are kept small by what makes them: a workspace's libraries and a person's roles in them.
-    const own = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", actor.workspaceId)).take(MAX_LIBRARIES_PER_WORKSPACE);
-    const grants = (await inOwnWorkspace(ctx, actor))
-      ? await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", actor.userId).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON)
-      : [];
-    const all = [...own.map((library) => ({ library })), ...grants.map((grant) => ({ grant }))];
-    const from = Math.max(0, Math.floor(start ?? 0));
-    const slice = all.slice(from, from + LIBRARIES_LISTED);
-    const libraries: Infer<typeof assistantLibrariesValidator>["libraries"] = [];
-    for (const entry of slice) {
-      const library = "library" in entry ? entry.library : await libraryOf(ctx, entry.grant);
-      // One shared with them that's also the workspace's is listed once, as the workspace's.
-      if (!library || ("grant" in entry && library.workspaceId === actor.workspaceId)) continue;
-      if (!(await readEvidenceLibraryAccess(signedIn, library._id, "view"))) continue;
-      const editable = (await readEvidenceLibraryAccess(signedIn, library._id, "manage")) !== null;
-      libraries.push({ libraryId: library._id, name: library.name, slug: library.slug, state: library.state, editable });
-    }
-    return { libraries, ...(all.length > from + slice.length ? { next: from + slice.length } : {}) };
+  run: async (ctx, actor, { cursor, search }) => {
+    const workspace = await ctx.db.get("workspaces", actor.workspaceId);
+    const read = await readLibraries(await asSignedIn(ctx, await personOf(ctx, actor.userId)), {
+      paginationOpts: { cursor: cursor ?? null, numItems: LIBRARIES_LISTED },
+      ...(search ? { search } : {}),
+      ...(workspace?.kind === "organization" ? { organization: workspace.organizationId } : {}),
+    });
+    return {
+      libraries: read.page.map((library) => ({ libraryId: library._id, name: library.name, status: library.status, role: library.role, owner: library.organization.name, address: library.publicAddress, editable: library.role === "owner" })),
+      ...(read.isDone ? {} : { cursor: read.continueCursor }),
+    };
   },
 });
 export const libraries = userQuery(librariesAction);
@@ -268,7 +267,7 @@ export const editDraftAction = defineUserMutation({
     "Changes an Evidence Community's draft settings, for an owner. Each change sets the value at a `path` inside one section (its keys and list places, as evidenceLibraries/assistant:draft shows the section), or with no `value` takes that key out; an empty path sets the section whole, and a list item is added or taken out by setting the list whole. " +
     "The homepage's text is `home.intro`; `identity.tagline` and `identity.description` only feed page titles and search results. " +
     "Give the draft's `expectedEditVersion` from that read (`unchanged` is Undo's own). The result is checked as the configuration page checks it, and a refusal says what's wrong. " +
-    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live, on the community's page. Undo puts the values back. " +
+    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live with evidenceLibraries/assistant:putLive. Undo puts the values back. " +
     "Returns `problems`, what the page flags on the draft after the change: fix any it made.",
   args: { libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, expectedEditVersion: v.optional(v.number()), unchanged: v.optional(v.string()) },
   returns: assistantEditResultValidator,
@@ -321,6 +320,25 @@ export const addMemberAction = defineUserMutation({
     return await addLibraryMember(signedIn, { libraryId, clerkUserId, role });
   },
 });
+export const setVisibilityAction = defineUserMutation({
+  path: "evidenceLibraries/assistant:setVisibility",
+  description:
+    "Says whether an Evidence Community is listed in the public directory of communities, for an owner: `public` lists it, `unlisted` leaves it out. " +
+    "It decides only the listing: the community's site stays open to anyone with its address either way.",
+  args: { libraryId: v.id("evidenceLibraries"), visibility: v.union(v.literal("public"), v.literal("unlisted")) },
+  returns: v.null(),
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
+  run: async (ctx, actor, { libraryId, visibility }) => {
+    if (!(await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "manage"))) throw createError("FORBIDDEN", "Only an owner of the community changes whether it's listed.");
+    await ctx.db.patch("evidenceLibraries", libraryId, { unlisted: visibility === "unlisted" ? true : undefined });
+    return null;
+  },
+});
+export const setVisibility = userMutation(setVisibilityAction);
+export const setVisibilityForAssistant = assistantMutation(setVisibilityAction);
+
 export const addMember = userMutation(addMemberAction);
 export const addMemberForAssistant = assistantMutation(addMemberAction);
 
@@ -349,24 +367,13 @@ export const removeMemberForAssistant = assistantMutation(removeMemberAction);
 /** Who acts and where, as an action passes them to a query: nothing else of the actor. */
 const where = ({ userId, workspaceId }: InWorkspace) => ({ userId, workspaceId });
 
-/** Refuses a library a reply can't reach (`signedInFor`), for an action, which reads through a query. */
-export const reachable = internalQuery({
+/** Refuses a community the person has no role on (`signedInFor`), for an action, which reads through a query. */
+export const seen = internalQuery({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
   returns: v.null(),
   handler: async (ctx, { libraryId, ...actor }) => {
     await signedInFor(ctx, actor, libraryId);
     return null;
-  },
-});
-
-/** The organization whose workspace the reply runs in, where a new library is made: a person's own workspace has none. */
-export const organizationHere = internalQuery({
-  args: { workspaceId: v.id("workspaces") },
-  returns: v.id("organizations"),
-  handler: async (ctx, { workspaceId }) => {
-    const workspace = await ctx.db.get("workspaces", workspaceId);
-    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Communities are made in an organization. Switch to one, then ask again.");
-    return workspace.organizationId;
   },
 });
 
@@ -382,7 +389,7 @@ export const inviteAction = defineChangingAction({
   ...teamChange,
   check: async (ctx, actor, { libraryId }) => await ownerHere(ctx, actor, libraryId),
   run: async (ctx, actor, args): Promise<null> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId: args.libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.seen, { ...where(actor), libraryId: args.libraryId });
     return await ctx.runAction(internal.evidenceLibraries.invitationActions.inviteFor, { ...args, actingAs: actor.userId });
   },
 });
@@ -417,8 +424,8 @@ export const invitationsForAssistant = assistantQuery(invitationsAction);
 
 export const answerInvitationAction = defineChangingAction({
   path: "evidenceLibraries/assistant:answerInvitation",
-  description: "Accepts or declines an invitation to an Evidence Community waiting for the person, by its ID evidenceLibraries/assistant:invitations gives. It must be to an address their account has verified. Done in their own workspace; asks the person first.",
-  args: { invitationId: v.id("itemInvitations"), accept: v.boolean() },
+  description: "Accepts or declines an invitation to an Evidence Community waiting for the person, by its ID evidenceLibraries/assistant:invitations gives. It must be to an address their account has verified. One for an organization (`toOrganization`) is accepted for an organization the person is an admin of: give its ID as `organizationId` (organizations/queries:workspaces lists theirs, with their role). Done in their own workspace; asks the person first.",
+  args: { invitationId: v.id("itemInvitations"), accept: v.boolean(), organizationId: v.optional(v.id("organizations")) },
   returns: v.null(),
   spendsCredits: false,
   // The library's owners see who joined, and nothing takes an answer back.
@@ -447,28 +454,25 @@ export const ownWorkspace = internalQuery({
 export const startLibraryAction = defineChangingAction({
   path: "evidenceLibraries/assistant:startLibrary",
   description:
-    "Starts a new Evidence Community as a draft, for an admin of the organization the reply runs in whose plan has Evidence Communities: reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
+    "Starts a new Evidence Community as a draft in the workspace the reply runs in, for someone who may create one there (their own workspace, or an organization they're an admin of, with Evidence Communities on for it): reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
     "Nothing is public until the draft is put live, on the community's page. Asks the person first.",
   args: { name: v.string() },
   returns: addressReservedValidator,
   spendsCredits: false,
-  // It takes an address and a place among the organization's libraries, and nothing gives them back by itself.
+  // It takes an address and a place among the workspace's communities, and nothing gives them back by itself.
   outsideEffect: true,
   undoable: false,
   check: async (ctx, actor) => {
-    const workspace = await ctx.db.get("workspaces", actor.workspaceId);
-    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Communities are made in an organization. Switch to one, then ask again.");
-    await requireLibraryOrganization(await asSignedIn(ctx, await personOf(ctx, actor.userId)), workspace.organizationId);
+    await requireCommunityWorkspace(await asSignedIn(ctx, await personOf(ctx, actor.userId)), actor.workspaceId);
   },
   run: async (ctx, actor, { name }): Promise<Infer<typeof addressReservedValidator>> => {
-    const organizationId = await ctx.runQuery(internal.evidenceLibraries.assistant.organizationHere, { workspaceId: actor.workspaceId });
-    const reserved = await ctx.runAction(internal.evidenceLibraries.addressActions.reserveAddressFor, { name, organizationId, actingAs: actor.userId });
+    const reserved = await ctx.runAction(internal.evidenceLibraries.addressActions.reserveAddressFor, { name, workspaceId: actor.workspaceId, actingAs: actor.userId });
     // One not made is a failed step, never a done one.
     if (reserved.status === "reserved") return reserved;
     throw createError(
       "CONFLICT",
       reserved.status === "name-taken"
-        ? "The organization already has a community with that name. Pick another."
+        ? "This workspace already has a community with that name. Pick another."
         : reserved.status === "address-taken"
           ? "Someone took that address while it was being reserved. Try again."
           : reserved.reason === "check-failed"
@@ -507,7 +511,7 @@ export const runningCollectionsAction = defineUserAction({
   returns: collectionsPage,
   ...running,
   run: async (ctx, actor, { libraryId, query, cursor }): Promise<Infer<typeof collectionsPage>> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.seen, { ...where(actor), libraryId });
     return await ctx.runAction(internal.zotero.runtimeReadActions.listCollectionsFor, { libraryId, ...(query ? { query } : {}), paginationOpts: pageOf({ cursor }), actingAs: actor.userId });
   },
 });
@@ -521,7 +525,7 @@ export const runningInstitutionsAction = defineUserAction({
   returns: institutionsPage,
   ...running,
   run: async (ctx, actor, { libraryId, query, cursor, sort }): Promise<Infer<typeof institutionsPage>> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.seen, { ...where(actor), libraryId });
     return await ctx.runAction(internal.zotero.runtimeReadActions.listInstitutionsFor, { libraryId, ...(query ? { query } : {}), ...(sort ? { sort, direction: sort === "name" ? "asc" as const : "desc" as const } : {}), paginationOpts: pageOf({ cursor }), actingAs: actor.userId });
   },
 });
@@ -535,7 +539,7 @@ export const runningPublicationsAction = defineUserAction({
   returns: publicationsPage,
   ...running,
   run: async (ctx, actor, { libraryId, query, cursor }): Promise<Infer<typeof publicationsPage>> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.seen, { ...where(actor), libraryId });
     return await ctx.runAction(internal.zotero.runtimeReadActions.listPublicationsFor, { libraryId, ...(query ? { query } : {}), paginationOpts: pageOf({ cursor }), actingAs: actor.userId });
   },
 });
@@ -549,7 +553,7 @@ export const runningPublicationAction = defineUserAction({
   returns: publicationRead,
   ...running,
   run: async (ctx, actor, args): Promise<Infer<typeof publicationRead>> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId: args.libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.seen, { ...where(actor), libraryId: args.libraryId });
     return await ctx.runAction(internal.zotero.runtimeReadActions.readPublicationFor, { ...args, actingAs: actor.userId });
   },
 });
@@ -567,7 +571,7 @@ export const syncSourceAction = defineChangingAction({
   undoable: false,
   check: async (ctx, actor, { libraryId }) => await ownerHere(ctx, actor, libraryId),
   run: async (ctx, actor, args): Promise<null> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId: args.libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.seen, { ...where(actor), libraryId: args.libraryId });
     const ran: { reason?: "not-set-up" } = await ctx.runAction(internal.zotero.runtimeReadActions.requestSourceRunFor, { ...args, actingAs: actor.userId });
     if (ran.reason) throw createError("CONFLICT", "The community isn't running yet, so there's no import to retry.");
     return null;
@@ -626,10 +630,275 @@ export const trySourceSubjectAction = defineUserAction({
   undoable: false,
   check: async (ctx, actor, { libraryId }) => await ownerHere(ctx, actor, libraryId),
   run: async (ctx, actor, { libraryId, sourceKey, subject }): Promise<Infer<typeof trialResult>> => {
-    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId });
+    await ctx.runQuery(internal.evidenceLibraries.assistant.seen, { ...where(actor), libraryId });
     return await ctx.runAction(internal.zotero.runtimeReadActions.trySubjectFor, { libraryId, sourceKey, subject: screeningSubject(subject), actingAs: actor.userId });
   },
 });
 export const trySourceSubject = userAction(trySourceSubjectAction);
 export const trySourceSubjectForAssistant = assistantAction(trySourceSubjectAction);
 
+
+// Papers added to a community by DOI, OpenAlex ID or link (OS-29, #1122): looked up, added, and listed on its Sources
+// tab. Its owners and editors publish them or send them to its review queue; its creators send them to the queue.
+
+/** A paper by its OpenAlex work, its DOI, or a `link`: any address that names one, Openscholar's paper pages and a community's record pages included. */
+const paperReferences = v.array(v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())), link: v.optional(v.union(v.string(), v.null())) }));
+type PaperReference = Infer<typeof paperReferences>[number];
+
+/**
+ * The papers a call names, as a community takes them: a link, or an ID given as a link, is followed to its OpenAlex
+ * work or DOI (./paperLinks.ts); one Openscholar finds nothing at is answered as not found in its place, unsent.
+ * `ask` sends the rest and answers each by its place among them.
+ */
+async function withLinksFollowed<Answer extends { at: number }>(ctx: ActionCtx, actor: InWorkspace, papers: PaperReference[], ask: (papers: PaperIds[]) => Promise<Answer[]>): Promise<Array<Answer | { at: number; outcome: "not_found"; message: string }>> {
+  if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Give at most ${ADDED_PAPERS_MAX} papers at once.`);
+  let spend: ((pages: number) => Promise<boolean>) | null = null;
+  const reads = async (pages: number) => {
+    if (!spend) {
+      const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId: actor.userId });
+      if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
+      spend = spender(ctx, person.clerkId);
+    }
+    return await spend(pages);
+  };
+  const ids = await Promise.all(papers.map(async (paper): Promise<PaperIds | null> => {
+    const work = paper.openalexId ? openalexWork(paper.openalexId) : null;
+    if (!paper.link && (work || !paper.openalexId)) return { openalexId: work, doi: paper.doi ?? null };
+    return await paperOfLink(ctx, (paper.link ?? paper.openalexId)!, reads);
+  }));
+  const sent = ids.flatMap((paper, at) => (paper ? [{ at, paper }] : []));
+  const answers = sent.length ? await ask(sent.map(({ paper }) => paper)) : [];
+  const missing = ids.flatMap((paper, at) => (paper ? [] : [{ at, outcome: "not_found" as const, message: "Openscholar finds no paper at this address." }]));
+  return [...answers.map((answer) => ({ ...answer, at: sent[answer.at]!.at })), ...missing].sort((a, b) => a.at - b.at);
+}
+const teamRole = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"));
+
+/** The person's role on a community, whichever workspace the reply runs in, and their name for its review queue; refused without one. */
+export const paperSender = internalQuery({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
+  returns: v.object({ role: v.union(teamRole, v.literal("reader")), name: v.union(v.string(), v.null()) }),
+  handler: async (ctx, { libraryId, ...actor }) => await paperSenderOf(ctx, actor, libraryId),
+});
+
+async function paperSenderOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<{ role: "owner" | "editor" | "creator" | "reader"; name: string | null }> {
+  const person = await personOf(ctx, actor.userId);
+  const name = [person.firstName, person.lastName].filter(Boolean).join(" ").trim() || null;
+  const access = await readEvidenceLibraryAccess(await asSignedIn(ctx, person), libraryId, "view");
+  if (access && access.role !== "viewer") return { role: access.role, name };
+  // Anyone signed in suggests papers to a public community: they go to its review queue (#777).
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  // Public as the directory lists it: running, listed, and its owner's account still active.
+  const owner = library?.state === "active" && !library.unlisted ? await libraryOwner(ctx, library) : null;
+  if (owner && ownerActive(owner)) return { role: "reader", name };
+  throw createError("FORBIDDEN", "Only the community's team adds papers to it.");
+}
+
+/** The community's team: its list of added papers is theirs to read. */
+async function paperTeamOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
+  const sender = await paperSenderOf(ctx, actor, libraryId);
+  if (sender.role === "reader") throw createError("FORBIDDEN", "Only the community's team reads its added papers.");
+  return sender;
+}
+
+export const paperTeam = internalQuery({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId, ...actor }) => {
+    await paperTeamOf(ctx, actor, libraryId);
+    return null;
+  },
+});
+
+export const previewPapersAction = defineUserAction({
+  path: "evidenceLibraries/assistant:previewPapers",
+  description:
+    "Looks papers up for a community by DOI, OpenAlex ID or `link` (any address that names a paper: OpenAlex, doi.org, Openscholar's paper pages, a community's record page), up to 100, without adding them: each one's title, authors and year, how it was found (OpenAlex, or its DOI alone), and whether it's new to the community, already in it, waiting in its review queue or not found. " +
+    "Add them with evidenceLibraries/assistant:addPapers.",
+  args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences },
+  returns: paperPreviewsValidator,
+  ...running,
+  check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
+  run: async (ctx, actor, { libraryId, papers }): Promise<Infer<typeof paperPreviewsValidator>> => {
+    await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    return await withLinksFollowed(ctx, actor, papers, (sent) => ctx.runAction(internal.evidenceLibraries.sourceActions.previewPapers, { libraryId, papers: sent }));
+  },
+});
+export const previewPapers = userAction(previewPapersAction);
+export const previewPapersForAssistant = assistantAction(previewPapersAction);
+
+export const addPapersAction = defineChangingAction({
+  path: "evidenceLibraries/assistant:addPapers",
+  description:
+    "Adds papers to a community by DOI, OpenAlex ID or `link` (any address that names a paper: OpenAlex, doi.org, Openscholar's paper pages, a community's record page), up to 100, kept up to date from OpenAlex afterwards. With `publish`, an owner or editor puts them live at once; otherwise, and always for a creator or anyone outside the team (who may suggest papers to a public community, up to 50 a day), they wait in the community's review queue. " +
+    "`requestId` is any ID for this request: sent again, it adds nothing twice. Each paper's answer: added, queued, returned (its review was returned or withdrawn), already in the community, not found, or failed. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences, publish: v.boolean(), requestId: v.string() },
+  returns: papersAddedValidator,
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  check: async (ctx, actor, { libraryId, publish }) => {
+    const { role } = await paperSenderOf(ctx, actor, libraryId);
+    if (publish && (role === "creator" || role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
+  },
+  run: async (ctx, actor, args): Promise<Infer<typeof papersAddedValidator>> => {
+    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
+    if (args.publish && (sender.role === "creator" || sender.role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
+    const results = await withLinksFollowed(ctx, actor, args.papers, (papers) => ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, papers, userId: actor.userId, ...sender }));
+    // What went on, the person's Your submissions lists: published, or waiting in the review queue.
+    const papers = results.flatMap((result) =>
+      (result.outcome === "added" || result.outcome === "queued") && result.itemKey && result.paper
+        ? [{ itemKey: result.itemKey, ...result.paper, status: result.outcome === "added" ? ("published" as const) : ("queued" as const) }]
+        : [],
+    );
+    if (papers.length) await ctx.runMutation(internal.evidenceLibraries.submissions.recordSent, { userId: actor.userId, libraryId: args.libraryId, requestId: args.requestId, papers });
+    return results;
+  },
+});
+export const addPapers = userAction(addPapersAction);
+export const addPapersForAssistant = assistantAction(addPapersAction);
+
+export const addedPapersAction = defineUserAction({
+  path: "evidenceLibraries/assistant:addedPapers",
+  description:
+    "Lists the papers added to a community by DOI or OpenAlex ID, newest first, `limit` (up to 100) a page from `cursor`: each one's title, authors, year, DOI, OpenAlex ID, where it stands (live, DOI only while OpenAlex doesn't have it, waiting in the review queue, or returned with the reviewer's note) and whether the person sent it; how many are live and waiting; and whether the source is paused and fetches PDFs.",
+  args: { libraryId: v.id("evidenceLibraries"), cursor: v.optional(v.union(v.string(), v.null())), limit: v.optional(v.union(v.number(), v.null())) },
+  returns: addedPapersPageValidator,
+  ...running,
+  check: async (ctx, actor, { libraryId }) => void (await paperTeamOf(ctx, actor, libraryId)),
+  run: async (ctx, actor, { libraryId, cursor, limit }): Promise<Infer<typeof addedPapersPageValidator>> => {
+    await ctx.runQuery(internal.evidenceLibraries.assistant.paperTeam, { ...where(actor), libraryId });
+    return await ctx.runAction(internal.evidenceLibraries.sourceActions.listPapers, { libraryId, userId: actor.userId, cursor: cursor ?? null, limit: limit ?? 20 });
+  },
+});
+export const addedPapers = userAction(addedPapersAction);
+export const addedPapersForAssistant = assistantAction(addedPapersAction);
+
+export const removeAddedPaperAction = defineChangingAction({
+  path: "evidenceLibraries/assistant:removeAddedPaper",
+  description:
+    "Takes a paper added by DOI or OpenAlex ID off a community, by its `itemKey` from evidenceLibraries/assistant:addedPapers. One waiting in the review queue is withdrawn, which a creator may do only for papers they sent; one live on the community is unpublished, which only an owner or editor may do. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), itemKey: v.string() },
+  returns: v.union(v.literal("withdrawn"), v.literal("removed")),
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
+  run: async (ctx, actor, { libraryId, itemKey }): Promise<"withdrawn" | "removed"> => {
+    const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
+    const outcome = await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
+    // Withdrawn from the queue or taken off the community, a paper they sent is no longer theirs there: their Your submissions says so.
+    await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey, outcome });
+    return outcome;
+  },
+});
+export const removeAddedPaper = userAction(removeAddedPaperAction);
+export const removeAddedPaperForAssistant = assistantAction(removeAddedPaperAction);
+
+/** The owner's alone, as the rest of the community's settings are. */
+async function ownerOf(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
+  const { role } = await paperSenderOf(ctx, actor, libraryId);
+  if (role !== "owner") throw createError("FORBIDDEN", "Only the community's owner pauses its added papers or turns their PDFs on or off.");
+}
+
+export const paperOwner = internalQuery({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId, ...actor }) => {
+    await ownerOf(ctx, actor, libraryId);
+    return null;
+  },
+});
+
+export const setAddedPapersSettingsAction = defineChangingAction({
+  path: "evidenceLibraries/assistant:setAddedPapersSettings",
+  description:
+    "Pauses or resumes a community's Added papers source (`enabled`), or turns fetching its papers' PDFs on or off (`downloadPdfs`). Takes effect at once, without publishing the settings. Only the owner may. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), enabled: v.optional(v.boolean()), downloadPdfs: v.optional(v.boolean()) },
+  returns: addedPapersSettingsValidator,
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  check: async (ctx, actor, { libraryId }) => ownerOf(ctx, actor, libraryId),
+  run: async (ctx, actor, { libraryId, ...change }): Promise<Infer<typeof addedPapersSettingsValidator>> => {
+    await ctx.runQuery(internal.evidenceLibraries.assistant.paperOwner, { ...where(actor), libraryId });
+    return await ctx.runAction(internal.evidenceLibraries.sourceActions.setPaperSettings, { libraryId, ...change });
+  },
+});
+export const setAddedPapersSettings = userAction(setAddedPapersSettingsAction);
+export const setAddedPapersSettingsForAssistant = assistantAction(setAddedPapersSettingsAction);
+
+export const connectCollectionAction = defineUserMutation({
+  path: "evidenceLibraries/assistant:connectCollection",
+  description:
+    "Adds one of the person's own Openscholar collections to an Evidence Community's sources, for an owner, as its configuration page does: the community may then read the collection, and the draft's `sources` section lists it. " +
+    "The collection's papers reach the community once the draft is put live with evidenceLibraries/assistant:putLive. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), collectionId: v.id("collections") },
+  returns: collectionConnectedValidator,
+  spendsCredits: false,
+  // The community's team sees the collection's papers, and nothing takes the connection back.
+  outsideEffect: true,
+  undoable: false,
+  run: async (ctx, actor, { libraryId, collectionId }) => {
+    const signedIn = await signedInFor(ctx, actor, libraryId);
+    const connected = await connectCollectionTo(signedIn, { libraryId, collectionId });
+    const draft = await draftOf(signedIn, libraryId);
+    const { sources } = readDraft(draft.sections as Parameters<typeof readDraft>[0]);
+    if (!sources.some((source) => source.provider === "openscholar" && source.collectionId === collectionId)) {
+      // Collections read OpenAlex with the key the community's other OpenAlex sources use.
+      const keyMode = sources.filter(readsOpenAlexWorks).some((source) => source.settings.apiKeyMode === "custom") ? "custom" : "platform";
+      const saved = draft.sections.find((section) => section.sectionKey === "sources")?.payload;
+      const payload = [...(Array.isArray(saved) ? saved : []), collectionSourceEntry({ collectionId, name: connected.name }, keyMode)];
+      await saveEvidenceLibraryDraftSections(signedIn, { libraryId, sections: [{ sectionKey: "sources", payload }], expectedEditVersion: draft.draft.editVersion });
+    }
+    return connected;
+  },
+});
+export const connectCollection = userMutation(connectCollectionAction);
+export const connectCollectionForAssistant = assistantMutation(connectCollectionAction);
+
+export const putLiveAction = defineUserMutation({
+  path: "evidenceLibraries/assistant:putLive",
+  description:
+    "Puts a running Evidence Community's saved draft settings live, for an owner, as the configuration page's Activate does: the public site changes to them. Give the draft's `editVersion` from evidenceLibraries/assistant:draft; a draft with `problems` can't go live. " +
+    "A community not yet live is set up on its own page. Returns the version made and how putting it live stands: it runs on, and evidenceLibraries/assistant:draft shows it in `failed` if it fails. Asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), expectedEditVersion: v.number() },
+  returns: activationValidator,
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  run: async (ctx, actor, { libraryId, expectedEditVersion }) => {
+    // As on the page: an app signed in for someone never puts their community live.
+    await refuseApps(ctx);
+    const signedIn = await signedInFor(ctx, actor, libraryId);
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (library?.state !== "active") throw createError("CONFLICT", "The community isn't live yet. Its first setup is done on its configuration page.");
+    // The page's Activate is off while a card flags something.
+    const problems = await problemsOf(signedIn, libraryId, (await draftOf(signedIn, libraryId)).sections);
+    if (problems.length) throw createError("VALIDATION_ERROR", `The draft can't go live while its page flags ${problems.map(({ card, problem }) => `${problem} on ${card}`).join(", ")}. Fix those first.`);
+    return await activateEvidenceLibraryConfiguration(signedIn, { libraryId, expectedEditVersion });
+  },
+});
+export const putLive = userMutation(putLiveAction);
+export const putLiveForAssistant = assistantMutation(putLiveAction);
+
+/** Papers a page of sent papers holds. */
+const SENT_PER_PAGE = 20;
+
+export const submissionsAction = defineUserQuery({
+  path: "evidenceLibraries/assistant:submissions",
+  description:
+    `The papers the person sent to Evidence Communities, theirs or public ones, newest first, ${SENT_PER_PAGE} a page from \`cursor\`: each one's title, the community, where it stands there: queued (waiting for the team's review), published, returned (say declined: the team turned it down, with its reason in \`note\`), withdrawn by the person, or removed from the community by its team; its \`paperLink\`, the paper's page to link it by, and once published its \`recordLink\` on the community. ` +
+    "Give `status` for one kind only (withdrawn lists the ones the person took back, which are left out otherwise), and `search` to find papers by title or community. One still queued can be withdrawn with evidenceLibraries/assistant:removeAddedPaper.",
+  args: { status: v.optional(submissionStatusValidator), search: v.optional(v.string()), cursor: v.optional(v.union(v.string(), v.null())) },
+  returns: sentPapersPageValidator,
+  run: async (ctx, actor, { status, search, cursor }) => {
+    const person = await personOf(ctx, actor.userId);
+    if (person.state !== "active") return { page: [], isDone: true, continueCursor: "" };
+    const sent = await readSent(ctx, person, { paginationOpts: { numItems: SENT_PER_PAGE, cursor: cursor ?? null }, ...(status ? { status } : {}), ...(search ? { search } : {}) });
+    // Whole addresses, so a reply links the paper on this site instead of a host the model guesses for a bare path.
+    const site = requireAppUrl();
+    return { ...sent, page: sent.page.map((row) => ({ ...row, paperLink: new URL(row.paperLink, site).href })) };
+  },
+});
+export const submissions = userQuery(submissionsAction);
+export const submissionsForAssistant = assistantQuery(submissionsAction);

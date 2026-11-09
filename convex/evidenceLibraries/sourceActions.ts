@@ -16,14 +16,20 @@ import { paperKey } from "../../lib/papers/paper-ref";
 import { LIBRARY_COLLECTION_DESCRIPTION_MAX, LIBRARY_COLLECTION_NAME_MAX, LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
 import { LIBRARY_KEYS_WINDOW } from "../paperSets/libraryKeys";
 import { libraryDestinationValidator } from "../screening/validators";
-import { LIBRARY_ROWS_MAX, LIBRARY_SOURCE_RECORDS_MAX, handoffRecordsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
+import { LIBRARY_ROWS_MAX, LIBRARY_SOURCE_RECORDS_MAX, handoffRecordsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator, addedPapersPageValidator, addedPapersSettingsValidator, paperPreviewsValidator, papersAddedValidator } from "./validators";
 import {
   LIBRARY_BATCH_MAX,
   LibrarySourceError,
   changeCollectionRecords,
   createReaderCollection,
   deleteReaderCollection,
+  ADDED_PAPERS_MAX,
+  addLibraryPapers,
+  listLibraryPapers,
+  removeLibraryPaper,
+  setLibraryPaperSettings,
   matchLibraryRecords,
+  previewLibraryPapers,
   readLibraryCollection,
   readLibraryOverview,
   readLibraryReaders,
@@ -446,5 +452,101 @@ export const flushWrites = internalAction({
     // Papers that moved while this batch was out wait for the next, which nothing else would start; one asked again waits a minute.
     if (more || waiting) await ctx.scheduler.runAfter(retried.length ? WRITE_RETRY_MS : more ? 0 : WRITE_GATHER_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job });
     return null;
+  },
+});
+
+/**
+ * Asks a running community how many public records it holds, and keeps the answer for the directory
+ * (./directory.ts). One that isn't running, or doesn't answer, keeps its last count until the next ask.
+ */
+export const refreshRecords = internalAction({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.null(),
+  handler: async (ctx, { libraryId }) => {
+    const target = await runningTarget(ctx, libraryId).catch(() => null);
+    if (!target) return null;
+    let overview: Awaited<ReturnType<typeof readLibraryOverview>>;
+    try {
+      overview = await readLibraryOverview(fetch, target, LIST_TIMEOUT_MS);
+    } catch (error) {
+      console.warn("[community directory] the record count couldn't be read", { libraryId, reason: error instanceof Error ? error.message : String(error) });
+      // Only a site that didn't answer, or answered with a server error, leaves the directory: one that refused or
+      // answered oddly is still there for its visitors.
+      if (error instanceof LibrarySourceError && error.code === "unavailable") await ctx.runMutation(internal.evidenceLibraries.directory.noteUnreachable, { libraryId });
+      return null;
+    }
+    await ctx.runMutation(internal.evidenceLibraries.directory.setRecords, { libraryId, records: overview.records, ...(overview.countries ? { countries: overview.countries.map((country) => country.code) } : {}) });
+    return null;
+  },
+});
+
+// Papers added to a community by DOI or OpenAlex ID (OS-29, OpenDevEd/openalex-count#1122).
+
+const paperReferenceValidator = v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())) });
+// `reader`: anyone signed in, suggesting papers to a public community (#777).
+const teamRoleValidator = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"), v.literal("reader"));
+
+/** What adding papers to a running community would find, saving nothing. */
+export const previewPapers = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), papers: v.array(paperReferenceValidator) },
+  returns: paperPreviewsValidator,
+  handler: async (ctx, { libraryId, papers }) => {
+    if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Look up at most ${ADDED_PAPERS_MAX} papers at once.`);
+    const target = await libraryTarget(ctx, libraryId);
+    return await asked(libraryId, "papers/preview", null, () => previewLibraryPapers(fetch, target, papers));
+  },
+});
+
+/** Adds papers to a running community as the person, with their role there, published or to its review queue. */
+export const addPapers = internalAction({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    userId: v.id("users"),
+    role: teamRoleValidator,
+    name: v.union(v.string(), v.null()),
+    requestId: v.string(),
+    publish: v.boolean(),
+    papers: v.array(paperReferenceValidator),
+  },
+  returns: papersAddedValidator,
+  handler: async (ctx, { libraryId, userId, role, name, requestId, publish, papers }) => {
+    if (papers.length > ADDED_PAPERS_MAX) throw createError("VALIDATION_ERROR", `Add at most ${ADDED_PAPERS_MAX} papers at once.`);
+    const target = await libraryTarget(ctx, libraryId);
+    const clerkUserId = await readerOf(ctx, userId);
+    return await asked(libraryId, "papers/add", clerkUserId, () => addLibraryPapers(fetch, target, { requestId, publish, actor: { clerkUserId, name, role }, papers }));
+  },
+});
+
+/** A running community's added papers, newest first, a page at a time, each marked when the person sent it. */
+export const listPapers = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), cursor: v.union(v.string(), v.null()), limit: v.number() },
+  returns: addedPapersPageValidator,
+  handler: async (ctx, { libraryId, userId, cursor, limit }) => {
+    const target = await libraryTarget(ctx, libraryId);
+    const clerkUserId = await readerOf(ctx, userId);
+    const page = await asked(libraryId, "papers/list", clerkUserId, () => listLibraryPapers(fetch, target, { cursor, limit: Math.min(100, Math.max(1, Math.floor(limit))) }));
+    // Who sent each paper stays in the community: the list says only whether it was this person.
+    return { ...page, papers: page.papers.map(({ addedBy, ...paper }) => ({ ...paper, mine: addedBy === clerkUserId })) };
+  },
+});
+
+/** Pauses or resumes a running community's Added papers source, or turns its PDFs on or off. */
+export const setPaperSettings = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), enabled: v.optional(v.boolean()), downloadPdfs: v.optional(v.boolean()) },
+  returns: addedPapersSettingsValidator,
+  handler: async (ctx, { libraryId, ...change }) => {
+    const target = await libraryTarget(ctx, libraryId);
+    return await asked(libraryId, "papers/settings", null, () => setLibraryPaperSettings(fetch, target, change));
+  },
+});
+
+/** Takes an added paper off a running community as the person, with their role there. */
+export const removePaper = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), role: teamRoleValidator, name: v.union(v.string(), v.null()), itemKey: v.string() },
+  returns: v.union(v.literal("withdrawn"), v.literal("removed")),
+  handler: async (ctx, { libraryId, userId, role, name, itemKey }) => {
+    const target = await libraryTarget(ctx, libraryId);
+    const clerkUserId = await readerOf(ctx, userId);
+    return await asked(libraryId, "papers/remove", clerkUserId, () => removeLibraryPaper(fetch, target, itemKey, { clerkUserId, name, role }));
   },
 });

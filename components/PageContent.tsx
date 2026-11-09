@@ -17,7 +17,6 @@ import { SearchInput } from "@/components/home/SearchInput";
 import { SuggestedSearches, useHasSearched } from "@/components/home/SuggestedSearches";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { SearchMode } from "@/components/home/ModeToggle";
-import { detectSearchMode } from "@/lib/search/detect-mode";
 
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -70,12 +69,10 @@ function PageContent() {
     let searchQuery = text;
     let originalQuery = text;
 
-    // Check if we need to do AI enhancement (Research Mode)
-    // Research mode is triggered if manually selected OR if query is detected as a question.
+    // Research mode, which has AI write the query: the mode the box sends, its guess unless the person picked one
+    // (SearchInput). Picking Keywords searches the words as typed, even ones that read like a question.
     // A blank submission has no question to convert, so it lists every work.
-    const isResearchMode =
-      text.trim() !== "" &&
-      (mode === "research" || detectSearchMode(text, locale) === "research");
+    const isResearchMode = text.trim() !== "" && mode === "research";
 
     if (isResearchMode) {
       try {

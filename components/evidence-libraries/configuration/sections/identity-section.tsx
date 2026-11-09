@@ -139,6 +139,28 @@ export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
       </Field>
 
       <Field
+        label={t("searchTitleLabel")}
+        hint={t("searchTitleHint")}
+        counter={`${identity.searchTitle.length} / ${LIMITS.searchTitle}`}
+      >
+        {(id) => (
+          <Input
+            id={id}
+            maxLength={LIMITS.searchTitle}
+            className="bg-background"
+            value={identity.searchTitle}
+            placeholder={t("searchTitlePlaceholder")}
+            onChange={(e) =>
+              patch((d) => {
+                d.identity.searchTitle = e.target.value;
+                return d;
+              })
+            }
+          />
+        )}
+      </Field>
+
+      <Field
         label={t("descriptionLabel")}
         hint={t("descriptionHint")}
         counter={`${identity.description.length} / ${LIMITS.description}`}

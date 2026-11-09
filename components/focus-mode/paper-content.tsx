@@ -12,6 +12,7 @@ import { AuthorNames, InstitutionsLine, JournalName } from "@/components/paper-c
 import type { FilterValue } from "@/components/paper-card/hooks";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { PaperResult } from "@/lib/types";
+import { plainAbstract } from "@/lib/papers/abstract-text";
 
 export interface PaperContentProps {
   paper: PaperResult;
@@ -172,7 +173,7 @@ export function PaperContent({
                 {isPreview
                   ? "2.34"
                   : paper.fwci
-                  ? paper.fwci.toFixed(2)
+                  ? `${paper.fwci.toFixed(2)}×`
                   : tCommon("notAvailable")}
               </span>
             </span>
@@ -329,7 +330,7 @@ export function PaperContent({
           <div dir="auto" className={cn("pe-2", fontSizeClass, lineHeightClass)}>
             {isPreview
               ? tFocus("abstractPreview")
-              : <QueryMatchText text={showTranslated && translatedContent ? translatedContent.translatedAbstract : paper.abstract} />}
+              : <QueryMatchText text={showTranslated && translatedContent ? translatedContent.translatedAbstract : plainAbstract(paper.abstract ?? "")} />}
           </div>
         </div>
       )}

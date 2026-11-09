@@ -210,7 +210,8 @@ export function BookmarksCommandCenter() {
       actions={<>
         <NewBookmarkDialog />
         <CommandCenterFileActions
-        disabled={!listReady}
+        // Until the count is read, Clear all would ask to delete "all 0 bookmarks".
+        disabled={!listReady || bookmarks.count === undefined}
         onDownloadJSON={() => void download("json")}
         onDownloadCSV={() => download("csv")}
         onUploadJSON={() => upload("json")}

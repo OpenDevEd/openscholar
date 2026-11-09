@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, useContext, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactElement, type ReactNode } from "react";
+import { cloneElement, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactElement, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import { readAuthorCard, readInstitutionCard, type AuthorCard } from "@/app/actions/author-card";
@@ -16,9 +16,8 @@ import { useNoHover } from "@/lib/hooks";
 import { isOwnId } from "@/lib/search/source";
 import { useSearchSource } from "@/lib/search/use-search-source";
 import { Button } from "@/components/ui/button";
-import { CountryFlag } from "@/components/ui/country-flag";
-import { FocusModeClose } from "@/components/focus-mode/close-context";
-import { useUIStore } from "@/lib/store";
+import { CountryFilterFlag } from "@/components/country-filter-flag";
+import { useCloseFocus } from "@/components/focus-mode/close-context";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { isAuthorId } from "@/lib/openalex/author-filter";
@@ -26,12 +25,6 @@ import { unlessLimited } from "@/lib/openalex/limited";
 import { catalogNode } from "@/lib/topics/search";
 import { topicHref } from "@/lib/topics/links";
 import { cn } from "@/lib/utils";
-
-/** Closes the focus mode the card sits in, whichever it is, before the card leaves the page. */
-export function useCloseFocus() {
-  const closeFocus = useContext(FocusModeClose);
-  return closeFocus ?? (() => useUIStore.getState().setIsFocusModeOpen(false));
-}
 
 /** How long the pointer rests before a card opens, and how long it may be away before it closes, so it can reach the card. */
 const OPEN_MS = 250;
@@ -126,6 +119,22 @@ function CardHeader({ icon, name, line }: { icon: ReactNode; name: string; line:
         <div className="mt-0.5 flex h-5 min-w-0 items-center gap-1.5 text-xs text-muted-foreground">{line}</div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The brand's light behind a detail page's intro, an author's or a paper's: a glow from the start corner and, where the end
+ * would otherwise be empty, rings there. Put it first in a `relative isolate overflow-hidden` header.
+ */
+export function IntroGlow({ rings = true }: { rings?: boolean }) {
+  return (
+    <>
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_0%_0%,var(--primary),transparent_65%)] opacity-[0.09] dark:opacity-[0.12]" />
+      {rings && <svg aria-hidden focusable="false" viewBox="0 0 480 320" fill="none" className="pointer-events-none absolute -bottom-20 -end-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]">
+        {[90, 125, 160, 195, 230, 265].map((radius) => <circle key={radius} cx="370" cy="240" r={radius} stroke="currentColor" strokeWidth="1" />)}
+        <path d="M0 240H480M370 0V320" stroke="currentColor" strokeWidth="1" />
+      </svg>}
+    </>
   );
 }
 
@@ -236,7 +245,8 @@ function AuthorCardBody({ id, name }: { id: string; name: string }) {
         name={name}
         line={author?.institution ? (
           <>
-            {author.institution.country && <CountryFlag countryCode={author.institution.country} className="shrink-0" />}
+            {author.institution.country && <CountryFilterFlag code={author.institution.country} />}
+            {/* ui-rules-allow: entity-name -- a line inside the author's own hover card, which opens no second card */}
             <span className="truncate">{author.institution.name}</span>
           </>
         ) : author || card.data === null || card.error ? <span>{t("noInstitution")}</span> : <SkeletonBar className="h-3 w-44" />}
@@ -365,7 +375,7 @@ function InstitutionCardBody({ id, name }: { id: string; name: string }) {
         name={name}
         line={institution ? (
           <>
-            {institution.country && <CountryFlag countryCode={institution.country} className="shrink-0" />}
+            {institution.country && <CountryFilterFlag code={institution.country} />}
             {institution.type && <span className="truncate capitalize">{institution.type}</span>}
           </>
         ) : card.error ? <span>{t("institutionFailed")}</span> : <SkeletonBar className="h-3 w-32" />}

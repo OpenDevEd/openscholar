@@ -34,6 +34,7 @@ import { askedGroups, runsOf, shownSteps, whyAsked } from "@/lib/assistant/step-
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { WorkingText } from "./parts";
+import { AddPapersAsk } from "./add-papers-ask";
 import { FadeRow } from "@/components/ui/fade-row";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useSpendable } from "@/components/workspaces/credit-check";
@@ -182,9 +183,12 @@ export function Steps({
     <div className="space-y-3">
       {steps.length ? <RunMap threadId={threadId} steps={steps} earlier={status === "CanLoadMore" ? () => loadMore(STEPS_SHOWN) : status === "LoadingMore" ? "loading" : null} /> : null}
       <AnimatePresence initial={false}>
-        {askedGroups(asked).map((group) => (
-          <ApprovalCard key={group[0].id} threadId={threadId} steps={group} />
-        ))}
+        {askedGroups(asked).flatMap((group) =>
+          // Adding papers to a community asks call by call, each with what it adds and where the person sends it.
+          group[0].action === ADD_PAPERS
+            ? group.map((step) => <AddPapersAsk key={step.id} threadId={threadId} stepId={step.id as Id<"assistantSteps">} fallback={<ApprovalCard threadId={threadId} steps={[step]} />} />)
+            : [<ApprovalCard key={group[0].id} threadId={threadId} steps={group} />],
+        )}
       </AnimatePresence>
       {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. As it
           ends, its place opens here and the card flies in from the dock (JobFlight), showing here once it lands; the ones already here
@@ -205,6 +209,9 @@ export function Steps({
     </div>
   );
 }
+
+/** Adding papers to a community, asked about with its own card (./add-papers-ask.tsx). */
+const ADD_PAPERS = "evidenceLibraries/assistant:addPapers";
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
 const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs", "job", "email", "clerkUser", "sectionKey", "path", "zotero", "group"] as const;

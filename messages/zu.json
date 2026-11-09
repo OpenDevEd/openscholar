@@ -13,7 +13,9 @@
     "stylesFailed": "Ayikwazanga ukulayisha izitayela.",
     "noStyles": "Akukho zitayela ezihambisanayo.",
     "commonStyles": "Izitayela ezivamile",
-    "otherStyles": "Ezinye izitayela"
+    "otherStyles": "Ezinye izitayela",
+    "copiedIn": "Ingcaphuno ye-{style} ikopishiwe",
+    "download": "Landa"
   },
   "common": {
     "search": "Sesha",
@@ -307,10 +309,10 @@
     "metadataTitle": "Amanani",
     "metadataDescription": "Amanani alula, acacile kuwo wonke amaqembu, noma angakanani.",
     "everyFeature": "Zonke izici ze-Openscholar",
-    "papersRunning": "{running, number} amaphepha asebenza ngesikhathi esisodwa",
-    "papersInRequest": "{request, number} amaphepha esicelweni esisodwa",
+    "papersRunning": "I-AI ihlunga noma ikhiphe amaphepha angu-{running, number} ngesikhathi esisodwa",
+    "papersInRequest": "Amaphepha afika ku-{request, number} ekuhlungeni noma ekukhipheni okukodwa",
     "unlimitedCollectionsAndGuests": "Amaqoqo nezivakashi ngaphandle komkhawulo",
-    "southernDescription": "Kubacwaningi emazweni anemali engenayo ephansi nephakathi.",
+    "southernDescription": "Kumaqembu aseNingizimu, kumaphrojekthi athile.",
     "southernFeature1": "Konke okukuFree",
     "southernFeature2": "Kwengezwa ku-akhawunti yakho ngemva kokuxhumana nathi",
     "onRequest": "Ngesicelo"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "Kudingeka ukungena",
     "signInRequiredDescription": "Ngena ukuze ufinyelele leli khasi.",
     "noAccessTitle": "Ukufinyelela kuvinjiwe",
-    "noAccessDescription": "Awunayo imvume yokubona lo mthombo.",
+    "noAccessDescription": "Awunakho ukufinyelela kuleli khasi. Uma othile ebelihlanganyele nawe, kungenzeka ukuthi uyekile: mcele ukuthi alihlanganyele futhi.",
     "syncErrorTitle": "Inkinga yokuvumelanisa iseshini",
     "syncErrorDescription": "Asikwazanga ukuqeda ukuqalisa i-akhawunti yakho. Zama futhi ukuze uqhubeke.",
     "syncErrorAccess": "Iseshini yakho isebenza, kodwa ukuvumelanisa i-akhawunti akuphelele. Zama futhi ukuze uqhubeke.",
     "retrySync": "Zama ukuvumelanisa futhi"
   },
   "aiSetupGate": {
-    "title": "Lungisa i-AI ukuze uthuthukise ukusesha kwakho",
-    "description": "I-Openscholar isebenzisa i-AI ukuze icwengisise imibuzo, ihlole amaphepha, futhi ihumushe imiphumela.",
+    "title": "Ukusesha kumahhala. I-AI iyengeziwe",
+    "description": "Ngena ngemvume futhi i-AI ibhala ukusesha kwakho, ihlole amaphepha ngokwezindlela zakho futhi ihumushe imiphumela, ngamakhredithi amahhala nyanga zonke.",
     "signInForCredits": "Ngena ukuze uthole amakhredithi angu-50k mahhala",
     "useOwnApiKey": "Sebenzisa ukhiye wakho we-API"
   },
@@ -676,7 +678,7 @@
     "uploadFailed": "Ukulayisha kehlulekile",
     "uploadFailedDescription": "Ayikwazanga ukulayisha i-{format}. Sicela uzame futhi.",
     "accountChanged": "I-akhawunti yakho ishintshile. Zama futhi.",
-    "copyFailedDescription": "Ayikwazanga ukukopisha. Sicela uzame futhi.",
+    "copyFailedDescription": "Isiphequluli sakho asisivumelanga ukukopisha. Khetha umbhalo bese uwukopisha ngokwakho.",
     "validationFailed": "Ukuhlola kehlulekile",
     "entityCreated": "{entity} kudalwe",
     "entityUpdated": "{entity} kubuyekeziwe",
@@ -790,6 +792,7 @@
     "typeToSearchInstitutions": "Bhala igama lesikhungo",
     "institutionsUnavailable": "Izikhungo azikwazanga ukulayisha. Zama futhi.",
     "filterByThisInstitution": "Isebenza kuphela kusuka ku-{name}",
+    "filterByInstitutionCountry": "Imisebenzi evela ezikhungweni zase-{country} kuphela",
     "studyDesign": "Ukwakheka kocwaningo",
     "anyStudyDesign": "Noma yiluphi ukwakheka kocwaningo",
     "searchStudyDesigns": "Sesha ukwakheka kocwaningo",
@@ -852,8 +855,8 @@
     "titleAndAbstract": "Isihloko nesifingqo",
     "searchScope": "Ububanzi bokusesha",
     "sortResultsBy": "Hlela imiphumela ngo-",
-    "citationFilter": "Isihlungi sokubhalisa",
-    "citedByFilter": "Isihlungi sabababhalisile",
+    "citationFilter": "Amaphepha acaphuna iphepha",
+    "citedByFilter": "Amaphepha acashunwe yiphepha",
     "relatedWorksFilter": "Isihlungi somsebenzi ohlobene",
     "clearAllCount": "Sula konke ({count})",
     "searchFiltersTitle": "Izihlungi zokusesha",
@@ -976,7 +979,7 @@
     "domainLabel": "Isizinda:",
     "sdgsLabel": "SDGs:",
     "referencesLabel": "Izinkomba:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "uma kuqhathaniswa nesilinganiso somkhakha:",
     "citedBy": "Ibhalisiwe ngu-",
     "cites": "Ubhalisa",
     "questionN": "Umbuzo {n}: {question}",
@@ -1162,7 +1165,7 @@
     "translationSettings": "Izilungiselelo zokuhumusha",
     "autoTranslateResults": "Humusha ngokuzenzakalelayo imiphumela ebhalwe",
     "listedItemsOnly": "Isebenza kuphela kwizinto ezibhalwe manje.",
-    "useCurrentLocaleTarget": "Sebenzisa ulimi lwesifunda lwamanje njengelokugcina",
+    "useCurrentLocaleTarget": "Sebenzisa ulimi lwewebhusayithi",
     "runResultsTranslation": "Qalisa ukuhumusha",
     "translatingResults": "Ihumusha imiphumela...",
     "undoTranslation": "Hlehlisa ukuhumusha",
@@ -1207,13 +1210,16 @@
     "keepRunning": "Gcina usebenza",
     "yesCancel": "Khansela umsebenzi",
     "deleteJob": "Susa lo msebenzi?",
-    "deleteJobDescription": "Lokhu kuzosusa ngokuphelele lo msebenzi nawo wonke imiphumela yawo yokukhishwa."
+    "deleteJobDescription": "Lokhu kuzosusa ngokuphelele lo msebenzi nawo wonke imiphumela yawo yokukhishwa.",
+    "rerunJob": "Uyayiqalisa futhi njengekhophi?",
+    "rerunJobDescription": "Ukukhipha okusha okunamaphepha nemibuzo efanayo kuqala ngokushesha futhi kusebenzise amakhredithi, cishe angangalawa asetshenziswe yilokhu. Lokhu kuhlala kunjalo.",
+    "rerunJobConfirm": "Qalisa futhi"
   },
   "emptyStates": {
     "noScreeningQuestions": "Azikho imibuzo yokuskrini okwamanje"
   },
   "jobStatus": {
-    "restart": "Qala kabusha",
+    "restart": "Qalisa futhi njengekhophi…",
     "papersCount": "{count, plural, =1 {# iphepha} other {# amaphepha}}",
     "questionsCount": "{count, plural, one {# umbuzo} other {# imibuzo}}",
     "statusPending": "Ilindile",
@@ -1226,7 +1232,8 @@
     "noMatches": "Akukho okuhambisanayo nezihlungi zamanje",
     "clearFilters": "Sula izihlungi",
     "progressOfPapers": "{processed} kwa-{total, plural, =1 {# iphepha} other {# amaphepha}}",
-    "loadingExtractionResults": "Iyalayisha imiphumela yokukhishwa..."
+    "loadingExtractionResults": "Iyalayisha imiphumela yokukhishwa...",
+    "skippedNoText": "{count, plural, one {Iphepha elingu-# lishiywe ngaphandle: alikho isifinyezo okufundwa, futhi imibhalo ephelele ibivaliwe} other {Amaphepha angu-# ashiywe ngaphandle: asikho isifinyezo okufundwa, futhi imibhalo ephelele ibivaliwe}}"
   },
   "reportBuilder": {
     "grounded": "Esekelwe ebufakazini",
@@ -1259,7 +1266,8 @@
   },
   "rating": {
     "noRating": "Akukho isilinganiso",
-    "nStars": "{count, plural, one {# inkanyezi} other {# izinkanyezi}}"
+    "nStars": "{count, plural, one {# inkanyezi} other {# izinkanyezi}}",
+    "yourRating": "Isilinganiso sakho"
   },
   "pagination": {
     "currentPage": "Ikhasi {page}",
@@ -1292,7 +1300,7 @@
     "type": "Uhlobo",
     "refs": "Izinkomba",
     "cited": "Ibhalisiwe",
-    "fwci": "FWCI",
+    "fwci": "uma kuqhathaniswa nesilinganiso somkhakha",
     "topic": "Ithophiki",
     "field": "Inkambu",
     "subfield": "Inkambu encane",
@@ -1513,7 +1521,8 @@
     "planAllowsCollections": "I-{plan} ivumela {limit, number} amaqoqo",
     "nameTheCollection": "Qamba igama leqoqo",
     "newName": "Igama elisha le-{name}",
-    "clearSearch": "Sula ukusesha"
+    "clearSearch": "Sula ukusesha",
+    "collectionDeletedPapersStay": "{name}: amaphepha ayo ahlala emtatsheni wakho"
   },
   "sidebarLayout": {
     "expandFilters": "Nweba izihlungi (Ctrl+Shift+F)",
@@ -1715,7 +1724,7 @@
   "connectionsPage": {
     "connectedApps": "Izinhlelo ezixhunyiwe",
     "noConnectedApps": "Azikho izinhlelo ezixhunyiwe",
-    "noConnectedAppsDescription": "Izinhlelo zangaphandle lapho zixhuma esikhwameni sakho, zizovela lapha.",
+    "noConnectedAppsDescription": "Izinhlelo zangaphandle lapho zixhuma e-akhawuntini yakho ye-Openscholar, zizovela lapha.",
     "revoking": "Iyahoxisa...",
     "revoke": "Hoxisa",
     "revokedBadge": "Kuhoxisiwe",
@@ -1759,7 +1768,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Umphakathi ongenasihloko",
     "unsaved": "Izinguquko ezingagciniwe",
-    "viewOnly": "Ukubuka kuphela",
+    "viewOnly": "Izilungiselelo zokubuka kuphela",
     "save": "Gcina",
     "saving": "Iyagcina…",
     "saveError": "Izinguquko azikwazanga ukugcinwa. Zama futhi.",
@@ -1814,7 +1823,15 @@
       "versions": "Izinguqulo",
       "ai": "AI",
       "domain": "Idomeyini",
+      "listing": "Uhlu",
       "publication": "Ukushicilela"
+    },
+    "listing": {
+      "description": "Ukuthi lo mphakathi ubalwa yini ohlwini lomphakathi lwemiphakathi. Isayithi yawo ihlala ivulekele noma ubani onekheli layo kunoma yikuphi.",
+      "public": "Okomphakathi",
+      "publicHint": "Ubalwa ohlwini lomphakathi, lapho noma ubani angawuthola khona.",
+      "unlisted": "Awubalwanga",
+      "unlistedHint": "Awukho ohlwini. Noma ubani onekheli lawo usengawuvula."
     },
     "sectionState": {
       "complete": "Kuphelele",
@@ -1917,6 +1934,9 @@
       "taglineLabel": "Isifinyezo esifushane",
       "taglineHint": "Ikhanda elingaphezulu kokusesha komphakathi. Shiya kungenalutho ukuze kuboniswe Ukusesha.",
       "taglinePlaceholder": "Ubufakazi bezinqumo ezingcono",
+      "searchTitleLabel": "Isihloko emiphumeleni yosesho",
+      "searchTitleHint": "Lokho izinjini zosesho ezikubonisayo ekhasini lasekhaya. Shiya kungenalutho ukuze kusetshenziswe igama nesiqubulo.",
+      "searchTitlePlaceholder": "Ucwaningo nobufakazi mayelana nokuzivumelanisa nesimo sezulu",
       "descriptionLabel": "Incazelo",
       "descriptionHint": "Iboniswa ekhasini lokuqala nasemiphumelweni yokusesha.",
       "partnersHeading": "Abasekela ngezimali",
@@ -2000,10 +2020,13 @@
       "add": "Engeza isikhungo"
     },
     "danger": {
-      "description": "Susa lo mphakathi. Qaphela lapha.",
+      "description": "Hambisa noma susa lo mphakathi. Qaphela lapha.",
       "deleteTitle": "Susa umphakathi",
       "deleteHint": "Kususa isayithi, ikheli, nezilungiselelo.",
-      "deleteButton": "Susa umphakathi"
+      "deleteButton": "Susa umphakathi",
+      "moveTitle": "Hambisela esikhaleni sokusebenzela esihlukile",
+      "moveHint": "Ugcina ikheli, izilungiselelo nabantu bawo. Isikhala sokusebenzela esiyiswa kuso siba ngumnikazi wawo.",
+      "moveButton": "Hambisa umphakathi"
     },
     "deleteDialog": {
       "title": "Susa lo mphakathi?",
@@ -2011,7 +2034,7 @@
       "typeToConfirm": "Thayipha {name} ukuze uqinisekise",
       "confirm": "Susa umphakathi",
       "startedTitle": "Iyasusa umphakathi",
-      "startedDescription": "I-{name} iyasuswa. Kuthatha imizuzwana embalwa.",
+      "startedDescription": "I-{name} iyasuswa. Kuthatha umzuzu noma emibili.",
       "error": "Umphakathi awukwazanga ukususwa. Qeda noma yimuphi umsebenzi womphakathi osebenzayo, bese uzama futhi."
     },
     "links": {
@@ -2835,7 +2858,8 @@
       "confirmAction": "Shintsha ikheli"
     },
     "retry": "Zama futhi",
-    "retryError": "Lokho akukwazanga ukuqala. Zama futhi."
+    "retryError": "Lokho akukwazanga ukuqala. Zama futhi.",
+    "saveDraft": "Londoloza okusalungiswa"
   },
   "topics": {
     "title": "Izihloko",
@@ -2910,8 +2934,8 @@
       "title": "Evidence Community entsha",
       "backToLibraries": "Buyela emiphakathini",
       "ownerTitle": "Umnikazi",
-      "ownerOnlyTitle": "Abanikazi kuphela",
-      "ownerOnlyDescription": "Umnikazi wenhlangano kuphela ongadala umphakathi.",
+      "ownerOnlyTitle": "Awukwazi ukudala umphakathi lapha",
+      "ownerOnlyDescription": "Imiphakathi idalwa endaweni yakho yokusebenza, noma enhlanganweni ongumphathi wayo, uma i-Evidence Communities ivuliwe kuyo.",
       "libraryTitle": "Umphakathi",
       "libraryDescription": "Igama livela kuwebhusayithi esidlangalaleni futhi lisetha ikheli lomphakathi.",
       "nameLabel": "Igama",
@@ -3151,8 +3175,13 @@
       "off": "Kuvaliwe",
       "libraries": "{count, plural, one {# umphakathi} other {# imiphakathi}}",
       "switchLabel": "Ama-Evidence Communities ka-{name}",
-      "moveFirst": "Qala ngokuhambisa noma ususe imiphakathi yayo",
-      "noMatches": "Azikho izinhlangano ezifanayo"
+      "noMatches": "Azikho izinhlangano ezifanayo",
+      "kind": "Izindawo zokusebenza",
+      "organizationsTab": "Izinhlangano",
+      "peopleTab": "Abantu",
+      "searchPeople": "Sesha abantu nge-imeyili",
+      "people": "abantu",
+      "noPeopleMatch": "Abekho abantu abafanayo"
     },
     "communityReleases": {
       "releases": "Okukhishwayo",
@@ -3413,7 +3442,7 @@
       "times": "{count, plural, one {ukuhlola} other {izikhathi}}",
       "unfold": "Bonisa ngayinye",
       "fold": "Bonisa njengoyedwa",
-      "declined": "Akuvunyelwe",
+      "declined": "Uthe cha",
       "waiting": "Kulindele impendulo",
       "allowed": "Kuvunyelwe",
       "searches": {
@@ -4199,6 +4228,18 @@
         "where": "Evidence Communities",
         "ask": "Qala ukudrafti yomphakathi"
       },
+      "publicCommunities": {
+        "doing": "Ifunda imiphakathi yomphakathi",
+        "did": "Ifunde imiphakathi yomphakathi",
+        "where": "Evidence Communities",
+        "ask": "Funda imiphakathi yomphakathi"
+      },
+      "communityVisibility": {
+        "doing": "Ishintsha ukuthi umphakathi uyabalwa yini",
+        "did": "Ishintshile ukuthi umphakathi uyabalwa yini",
+        "where": "Evidence Communities",
+        "ask": "Shintsha ukuthi umphakathi uyabalwa yini"
+      },
       "librarySources": {
         "doing": "Ifunda imithombo yomphakathi",
         "did": "Ifunde imithombo yomphakathi",
@@ -4335,6 +4376,54 @@
         "did": "Kufakiwe isicelo sombhali",
         "where": "Ababhali",
         "ask": "Faka isicelo sombhali"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Ibheka amaphepha omphakathi",
+        "did": "Ibheke amaphepha omphakathi",
+        "where": "Evidence Community",
+        "ask": "Bheka amaphepha omphakathi"
+      },
+      "addCommunityPapers": {
+        "doing": "Yengeza amaphepha emphakathini",
+        "did": "Yengeze amaphepha emphakathini",
+        "where": "Evidence Community",
+        "ask": "Engeza amaphepha emphakathini"
+      },
+      "communityAddedPapers": {
+        "doing": "Ifunda amaphepha engeziwe omphakathi",
+        "did": "Ifunde amaphepha engeziwe omphakathi",
+        "where": "Evidence Community",
+        "ask": "Funda amaphepha engeziwe omphakathi"
+      },
+      "removeCommunityPaper": {
+        "doing": "Isusa iphepha emphakathini",
+        "did": "Isuse iphepha emphakathini",
+        "where": "Evidence Community",
+        "ask": "Susa iphepha emphakathini"
+      },
+      "communityPapersSettings": {
+        "doing": "Ishintsha amaphepha engeziwe omphakathi",
+        "did": "Ishintshe amaphepha engeziwe omphakathi",
+        "where": "Evidence Community",
+        "ask": "Misa noma uqhubeke namaphepha engeziwe omphakathi, noma ama-PDF awo"
+      },
+      "connectCommunityCollection": {
+        "doing": "Kufakwa iqoqo emithonjeni yomphakathi",
+        "did": "Kufakwe iqoqo emithonjeni yomphakathi",
+        "where": "Evidence Community",
+        "ask": "Faka elinye lamaqoqo akho emithonjeni yomphakathi"
+      },
+      "putCommunityLive": {
+        "doing": "Kushicilelwa izilungiselelo zomphakathi",
+        "did": "Kushicilelwe izilungiselelo zomphakathi",
+        "where": "Evidence Community",
+        "ask": "Shicilela izilungiselelo ezigciniwe zomphakathi"
+      },
+      "sentPapers": {
+        "doing": "Kufundwa amaphepha owathumele emiphakathini",
+        "did": "Kufundwe amaphepha owathumele emiphakathini",
+        "where": "Evidence Communities",
+        "ask": "Funda amaphepha owathumele emiphakathini"
       }
     },
     "asks": {
@@ -4509,7 +4598,7 @@
     "main": "Okuyinhloko",
     "screen": "Ukuskrini",
     "extract": "Ukukhishwa",
-    "publish": "Shicilela",
+    "communities": "Imiphakathi",
     "explore": "Hlola",
     "authors": "Ababhali",
     "workspacesCard": "Izikhala zokusebenzela",
@@ -4590,9 +4679,6 @@
       "leave": "Shiya",
       "deleteName": "Susa i-{name}",
       "stillHasLibrary": "I-{library} ingenye yama-Evidence Communities ayo. Yihambise noma uyisuse kuqala.",
-      "deleteLibrary": "Susa umphakathi",
-      "libraryBeingDeleted": "I-{library} iyasuswa.",
-      "libraryDeleteFailed": "I-{library} ayikwazanga ukususwa. Zama futhi.",
       "deleteDetail": "Iyayisusa kubo {count, plural, one {ilungu layo elingu-#} other {wonke amalungu ayo angu-#}}",
       "moveLibrariesFirst": "Hambisa noma usule ama-Evidence Communities ayo kuqala",
       "delete": "Susa",
@@ -4755,7 +4841,10 @@
         "itsPapers": "Amaphepha ayo",
         "ratingsInIt": "Izilinganiso kuyo",
         "publications": "Okushicilelwe",
-        "editors": "Abahleli"
+        "editors": "Abahleli",
+        "address": "Ikheli",
+        "settings": "Izilungiselelo",
+        "peopleWithRoles": "Abantu abanendima"
       },
       "moveTo": "Hambisela ku-{workspace}",
       "move": "Hambisa",
@@ -4764,7 +4853,15 @@
       "collection": "Hambisa iqoqo",
       "author": "Hambisa iphrofayili lombhali",
       "libraryKeeps": "Umtapo wolwazi we-{workspace} ugcina amaphepha ayo agciniwe.",
-      "yourLibraryKeeps": "Umtapo wakho wolwazi ugcina amaphepha agciniwe."
+      "yourLibraryKeeps": "Umtapo wakho wolwazi ugcina amaphepha agciniwe.",
+      "community": "Hambisa umphakathi",
+      "workspaceOwnsIt": "Isikhala sokusebenzela esiyiswa kuso siba ngumnikazi wawo kusukela lapho.",
+      "refused": {
+        "noCommunities": "Imiphakathi ayivuliwe kule ndawo yokusebenza",
+        "communitiesFull": "Inemiphakathi eminingi njengoba isikhala sokusebenzela singaba nayo",
+        "profilesOff": "Amaphrofayela ababhali awavuliwe lapha",
+        "noProfiles": "Awukwazi ukwenza amaphrofayela ababhali lapha"
+      }
     },
     "share": {
       "share": "Yabelana",
@@ -4864,7 +4961,11 @@
       "goneDetail": "Cela lowo owabelana nawo ukuthi abelane futhi",
       "otherTitle": "Lesi simemo sathunyelwa ekheleni elihlukile",
       "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo"
-    }
+    },
+    "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
+    "asRole": "njenge-{role}",
+    "memberCan": "Amalungu ayasesha, alondoloze, ahlunge futhi akhiphe ngakho konke inhlangano ekwabelanayo.",
+    "adminCan": "Abaphathi bangenza okufanayo, futhi bamema futhi basuse abantu baphathe nezilungiselelo nokusetshenziswa kwemali."
   },
   "models": {
     "changeInSettings": "Shintsha ezilungiselelweni ze-AI"
@@ -5307,7 +5408,20 @@
     "removedFromLibrary": "Kususiwe kulo mphakathi.",
     "removedFromProfile": "Kususiwe kule phrofayili.",
     "addedToLibrary": "U-{name} wengeziwe kulo mphakathi.",
-    "addedToProfile": "U-{name} wengeziwe kule phrofayili."
+    "addedToProfile": "U-{name} wengeziwe kule phrofayili.",
+    "anOrganization": "Inhlangano",
+    "chooseAnOrganization": "Khetha inhlangano",
+    "anotherOrganization": "Enye inhlangano",
+    "adminEmail": "I-imeyili yomlawuli wayo",
+    "organizationGetsIt": "Wonke umuntu enhlanganweni uthola le ndima, futhi uyilahlekelwa lapho ehamba.",
+    "theirAdminAccepts": "Umlawuli wayo uyamukela enhlanganweni ayiphethe, futhi wonke umuntu kuyo uthola le ndima.",
+    "everyoneInIt": "Wonke umuntu kuyo",
+    "forTheirOrganization": "Enhlanganweni u-{email} ongumlawuli wayo",
+    "removeThisOrganization": "Susa le nhlangano? Amalungu ayo agcina kuphela izindima azinikwe wona ngokwawo.",
+    "organizationLabel": "Inhlangano",
+    "ownWorkspaceOwner": "Kusesikhaleni sabo sokusebenzela, ngakho kungokwabo.",
+    "whoWorksOnIt": "Abasebenza kulo mphakathi. Abanikazi bawo baphatha ithimba.",
+    "viewersUntilAnOwner": "Ababukeli kuze kube yilapho umnikazi ebanika indima."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Isifinyezo sibekwe emgqeni ushicilelo olu-#.} other {Isifinyezo sibekwe emgqeni ukushicilelwa okungu-#.}}",
@@ -5370,6 +5484,54 @@
     "keepThisUnderCharacters": "Gcina lokhu kungaphansi kwezinhlamvu ezingu-{maxLength}."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Imiphakathi yakho",
+      "showFrom": "Bonisa imiphakathi evela ku",
+      "allWorkspaces": "Zonke izindawo zokusebenza",
+      "allCommunities": "Yonke imiphakathi",
+      "workspaces": "Izindawo zokusebenza",
+      "yours": "Okwakho",
+      "sharedWithYou": "Kwabelwe wena",
+      "sharedWith": "Kwabelwe {name}",
+      "loading": "Ilayisha imiphakathi",
+      "noMatches": "Akukho kulokhu okufana nalokhu kusesha.",
+      "emptyAll": "Awukabi semphakathini. Uma othile ehlanganyela nawe owodwa, noma inhlangano yakho inawo, uzovela lapha.",
+      "emptyHere": "Imiphakathi ka-{name}, neyabelwe yona, ivela lapha.",
+      "emptyShared": "Imiphakathi abantu abayabelana nawe ivela lapha.",
+      "emptySharedHere": "Imiphakathi eyabelwe {name} ivela lapha.",
+      "emptyOwn": "Imiphakathi oyidalayo ivela lapha.",
+      "emptyWorkspace": "U-{name} akakabi nayo imiphakathi.",
+      "invitedAs": "Umenyiwe njengo-{role}",
+      "accept": "Yamukela",
+      "accepted": "Wamukele u-{name}.",
+      "moreWorkspaces": "Izindawo zokusebenza ezengeziwe",
+      "invitedForOrganization": "Umenyiwe njengo-{role}, enhlanganweni yakho",
+      "acceptAsAnAdmin": "Yamukele njengomlawuli wenhlangano",
+      "acceptForWhich": "Yamukela u-{name} kuyiphi inhlangano",
+      "acceptedFor": "Wamukele u-{name} ku-{organization}."
+    },
+    "directory": {
+      "title": "Imiphakathi yomphakathi",
+      "sortLabel": "Hlunga imiphakathi yomphakathi",
+      "sort": {
+        "newest": "Okusha kakhulu",
+        "name": "Igama",
+        "records": "Amaphepha amaningi"
+      },
+      "loading": "Ilayisha imiphakathi yomphakathi",
+      "noMatches": "Ayikho imiphakathi yomphakathi efana nalokhu kusesha",
+      "none": "Imiphakathi yomphakathi ivela lapha uma isisebenza",
+      "records": "{count, plural, one {iphepha elingu-{shown}} other {amaphepha angu-{shown}}}",
+      "unnamedOwner": "Ilungu le-Openscholar",
+      "people": "{count, plural, one {ilungu lethimba elingu-{shown}} other {amalungu ethimba angu-{shown}}}",
+      "countries": "Mayelana ne-{names}",
+      "recordsLabel": "{count, plural, one {iphepha} other {amaphepha}}",
+      "peopleLabel": "{count, plural, one {ilungu lethimba} other {amalungu ethimba}}",
+      "noDescription": "Akukho ncazelo okwamanje",
+      "notCounted": "Akukabalwa okwamanje",
+      "intro": "Umphakathi ngamunye uyiwebhusayithi eqoqa ucwaningo ngesihloko esisodwa. Vula owodwa ukuze ubuke amaphepha awo.",
+      "updated": "Kubuyekezwe {when}"
+    },
     "evidenceLibraries": "Imiphakathi yobufakazi",
     "newLibrary": "Umphakathi omusha",
     "libraryView": "Ukubuka umphakathi",
@@ -5413,7 +5575,9 @@
     "deletionRestartedFor": "Ukususa kuqalwe kabusha ku-{name}.",
     "couldNotRestartDeletion": "Ukususa akukwazanga ukuqalwa kabusha",
     "invitationDeclined": "Isimemo senqatshiwe.",
-    "unableToDeclineInvitation": "Isimemo asikwazanga ukunqatshwa"
+    "unableToDeclineInvitation": "Isimemo asikwazanga ukunqatshwa",
+    "searchSubmissions": "Sesha okuthumele",
+    "findASubmission": "Thola iphepha olithumele…"
   },
   "authorPages": {
     "profileSettings": "Izilungiselelo zephrofayili",
@@ -5544,7 +5708,7 @@
     "creatingKey": "Iyakha ukhiye...",
     "redirecting": "Iyaqondisa kabusha...",
     "approve": "Vuma",
-    "wantsToConnect": "I-<strong>{appName}</strong> ifuna ukuxhuma esikhwameni sakho se-Openscholar.",
+    "wantsToConnect": "I-<strong>{appName}</strong> ifuna ukuxhuma e-akhawuntini yakho ye-Openscholar.",
     "copyKey": "Kopisha lo khiye we-API bese uwunamathisela ku-<strong>{appName}</strong>. Uzobonakala kanye kuphela.",
     "originUnregisteredBody": "Uhlelo oluku-<code>{origin}</code> aluhlanganiswanga ukuze luxhume ku-Openscholar.",
     "originHelp": "Imithombo evunyelwe kuphela engakha uxhumano lwesikhwama. Uma ungumthuthukisi we-<strong>{appName}</strong>, xhumana neqembu le-Openscholar ukuze ubhalise umthombo wakho.",
@@ -5675,5 +5839,129 @@
     "step4": "Vuselela ithokheni",
     "step4About": "Ithokheni lihlala amahora angu-24. Shintsha ithokheni lokuvuselela libe elisha ngaphambi kwalokho.",
     "cantDo": "Izinhlelo azikwazi ukushintsha ukukhokha, okhiye be-API noma izilungiselelo zesayithi, noma ukushicilela i-Evidence Community."
+  },
+  "paperPage": {
+    "references": "Izinkomba",
+    "openAccess": "Ukufinyelela okuvulekile",
+    "readPdf": "Funda i-PDF",
+    "publisherPage": "Ikhasi lomshicileli",
+    "askAbout": "Buza ngaleli phepha",
+    "noAbstract": "Asikho isifinyezo",
+    "linkCopied": "Ilinki yephepha ikopishiwe",
+    "citationsPerYear": "Izingcaphuno ngonyaka",
+    "citationsIn": "{count, plural, one {Ingcaphuno #} other {Izingcaphuno #}} ngo-{year}",
+    "seeCiting": "Bona amaphepha awucaphunayo",
+    "top1": "Kwabangu-1% abaphezulu emkhakheni wayo",
+    "top10": "Kwabangu-10% abaphezulu emkhakheni wayo",
+    "aheadOf": "Icashunwe kakhulu kunamaphesenti angu-{percent} amaphepha onke ka-{year}",
+    "influential": "zakha phezu kwayo",
+    "authors": "Ababhali",
+    "andMore": "nabanye abangu-{count}",
+    "showAll": "Bonisa bonke abangu-{count}",
+    "showFewer": "Bonisa okumbalwa",
+    "corresponding": "Umbhali wokuxhumana",
+    "orcidOf": "I-ORCID iD ka-{name}",
+    "institutions": "Izikhungo",
+    "whereToRead": "Lapho ungafunda khona",
+    "kindPublisher": "Umshicileli",
+    "kindRepository": "Inqolobane",
+    "kindIndex": "Inkomba",
+    "pdf": "PDF",
+    "funding": "Uxhaso",
+    "topics": "Izihloko",
+    "sdgs": "Izinhloso Zentuthuko Esimeme",
+    "mesh": "Amagama e-MeSH",
+    "details": "Imininingwane",
+    "charge": "Imali yokushicilela",
+    "retracted": "Kuhoxisiwe",
+    "openscholarId": "I-ID ye-Openscholar",
+    "copyDoi": "Kopisha i-DOI",
+    "doiCopied": "I-DOI ikopishiwe",
+    "doiCopyFailed": "Ayikwazanga ukukopisha i-DOI",
+    "paperPage": "Ikhasi lephepha",
+    "share": "Yabelana",
+    "inCommunities": "Kule mimphakathi",
+    "fieldAverage": "× isilinganiso somkhakha"
+  },
+  "addedPapers": {
+    "name": "Amaphepha engeziwe",
+    "provider": "Ama-DOI nama-ID e-OpenAlex",
+    "cardDescription": "Amaphepha engezwa elilodwa ngelilodwa nge-DOI noma nge-ID ye-OpenAlex, ahambisana ne-OpenAlex.",
+    "menu": "Amaphepha nge-DOI noma i-ID",
+    "menuHint": "Elilodwa noma amaningi, ahambisanayo",
+    "menuNotLive": "Kuyatholakala uma umphakathi usushicilelwe",
+    "add": "Engeza amaphepha",
+    "title": "Engeza amaphepha",
+    "description": "Namathisela izixhumanisi zamaphepha (ezivela ku-Openscholar, kusayithi lomphakathi, ku-OpenAlex noma ku-doi.org), ama-DOI noma ama-ID e-OpenAlex, kufika ku-{max} ngesikhathi.",
+    "inputLabel": "Ama-DOI, ama-ID e-OpenAlex noma izixhumanisi",
+    "papers": "{count, plural, one {iphepha elingu-#} other {amaphepha angu-#}}",
+    "tooMany": "Amaphepha angaphezu kuka-{max}",
+    "invalid": "Akusona isixhumanisi sephepha, i-DOI noma i-ID: {values}",
+    "find": "Thola amaphepha",
+    "found": "Amaphepha atholakele",
+    "notFound": "Akutholakalanga",
+    "alreadyAdded": "Selingeziwe",
+    "inQueue": "Lilinde ukubuyekezwa",
+    "doiOnly": "I-DOI kuphela",
+    "leaveOut": "Shiya ngaphandle",
+    "leaveOutLabel": "Shiya ngaphandle u-{title}",
+    "doiOnlyNote": "{count, plural, one {I-OpenAlex ayikabi nalo elilodwa kulawa. Lingena nge-DOI yalo, futhi ukuvumelanisa ngakunye kuhlola i-OpenAlex futhi.} other {I-OpenAlex ayikabi nawo angu-# kulawa. Angena ngama-DOI awo, futhi ukuvumelanisa ngakunye kuhlola i-OpenAlex futhi.}}",
+    "toAdd": "{count, plural, one {iphepha elingu-# lokwengeza} other {amaphepha angu-# okwengeza}}",
+    "sendToQueue": "Thumela ukuze kubuyekezwe",
+    "publish": "Shicilela",
+    "published": "{count, plural, one {iphepha elingu-# lishicilelwe ku-{community}} other {amaphepha angu-# ashicilelwe ku-{community}}}",
+    "queued": "{count, plural, one {iphepha elingu-# lithunyelwe ohlwini lokubuyekeza} other {amaphepha angu-# athunyelwe ohlwini lokubuyekeza}}",
+    "someFailed": "{count, plural, one {iphepha elingu-# lilondolozwe njengokusalungiswa kodwa alithunyelwanga. Livule ku-admin ukuze ulithumele.} other {amaphepha angu-# alondolozwe njengokusalungiswa kodwa awathunyelwanga. Wavule ku-admin ukuze uwathumele.}}",
+    "lookupFailed": "Umphakathi awukwazanga ukubheka la maphepha. Zama futhi.",
+    "addFailed": "Umphakathi awukwazanga ukwengeza la maphepha. Zama futhi.",
+    "noAuthors": "Abukho ababhali ababhaliwe",
+    "unavailable": "Akutholakali",
+    "settingsFailed": "Umphakathi awuzange wamukele ushintsho. Zama futhi.",
+    "ownerOnly": "Umnikazi kuphela oshintsha lokhu",
+    "from": "Kusuka ku-{name}",
+    "returned": "Kwenqatshiwe",
+    "statusWithdrawn": "Ulihoxisile",
+    "statusRemoved": "Kususwe ngumphakathi",
+    "openIn": "Vula ku-{community}",
+    "openLabel": "Vula u-{title} ku-{community}",
+    "remove": "Susa",
+    "removeLabel": "Susa u-{title}",
+    "withdraw": "Hoxisa",
+    "withdrawLabel": "Hoxisa u-{title}",
+    "removed": "Iphepha lisusiwe emphakathini",
+    "withdrawn": "Iphepha lihoxisiwe ohlwini lokubuyekeza",
+    "removeFailed": "Umphakathi awukwazanga ukususa leli phepha. Zama futhi.",
+    "viewLabel": "Bonisa",
+    "tabPublic": "Imiphakathi yomphakathi",
+    "tabSubmissions": "Okuthumele kwakho",
+    "statusLabel": "Isimo",
+    "everyStatus": "Zonke izimo",
+    "statusPublished": "Kushicilelwe",
+    "noneYet": "Akukabi khona okuthunyelwe",
+    "noneYetHint": "Engeza iphepha emphakathini kunoma yimuphi umphumela wosesho.",
+    "noMatches": "Akukho okuthunyelwe okufanayo",
+    "addToCommunity": "Engeza emphakathini",
+    "searchCommunities": "Sesha imiphakathi",
+    "recent": "Kwakamuva",
+    "yourCommunities": "Imiphakathi yakho",
+    "noCommunitiesMatch": "Ayikho imiphakathi efanayo",
+    "noCommunities": "Ayikabi khona imiphakathi",
+    "inQueueShort": "Ohlwini",
+    "added": "Kungeziwe",
+    "publishOrReview": "Lishicilele manje, noma uvumele ithimba libuyekeze kuqala.",
+    "reviewFirst": "Ithimba lomphakathi liyalibuyekeza ngaphambi kokuthi lishicilelwe.",
+    "publishedTo": "Kushicilelwe ku-{community}",
+    "queuedTo": "Kuthunyelwe ohlwini lokubuyekeza lwe-{community}",
+    "alreadyIn": "I-{community} isivele inaleli phepha",
+    "moreCommunities": "Eminye imiphakathi",
+    "askTitle": "Engeza {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}} emphakathini",
+    "publishNow": "Shicilela manje",
+    "reviewQueue": "Uhlu lokubuyekeza",
+    "askPublishHint": "{count, plural, one {Lishicilelwa} other {Ashicilelwa}} ku-{community} ngokushesha uma uvumela.",
+    "askQueueHint": "{count, plural, one {Lilinda} other {Alinda}} ohlwini lokubuyekeza lwe-{community} kuze kube yilapho ithimba layo {count, plural, one {lilivuma} other {liwavuma}}.",
+    "askPublish": "Shicilela {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}}",
+    "askQueue": "Thumela {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}} ukuze libuyekezwe",
+    "alreadyInIt": "Selikhona",
+    "inReview": "Liyabuyekezwa"
   }
 }

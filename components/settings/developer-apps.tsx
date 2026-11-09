@@ -184,8 +184,9 @@ function NewAppDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (op
       }}
     >
       <DialogContent className={created ? "sm:max-w-2xl" : "sm:max-w-lg"}>
-        <DialogHeader>
-          <DialogTitle>{created ? created.app.name : t("newApp")}</DialogTitle>
+        {/* The dialog is a grid, and a grid item is as wide as an unbroken name without min-w-0: the name wraps instead. */}
+        <DialogHeader className="min-w-0">
+          <DialogTitle className="wrap-anywhere">{created ? created.app.name : t("newApp")}</DialogTitle>
         </DialogHeader>
         <AutoHeight className="min-w-0">
           {created ? (
@@ -356,9 +357,12 @@ function AppDialog({ app, onClose }: { app: DevApp | null; onClose: () => void }
       <DialogContent className="sm:max-w-2xl">
         {app && draft ? (
           <>
-            <DialogHeader className="flex-row items-center gap-3 pe-8 text-start">
+            {/* min-w-0: the dialog is a grid, and a grid item is as wide as its truncated title's whole text without it,
+                which pushed the credentials past the screen at 200% text or with a long name. Where the title can't
+                keep 6rem beside the tile and the kind, it takes its own line. */}
+            <DialogHeader className="min-w-0 flex-row flex-wrap items-center gap-3 pe-8 text-start">
               <Tile icon={AppWindow} tint={TINTS[0]!} />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-24 flex-1">
                 <DialogTitle className="truncate leading-snug">{app.name}</DialogTitle>
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Globe className="size-3 shrink-0" />
@@ -368,7 +372,9 @@ function AppDialog({ app, onClose }: { app: DevApp | null; onClose: () => void }
               <KindTag kind={app.kind} />
             </DialogHeader>
             <Segmented
-              className="self-start"
+              // Settings takes a second line where both don't fit (200% text, longer languages) instead of widening the
+              // dialog. The radius is half the row's height, so one line looks as before.
+              className="self-start flex-wrap rounded-[1.25rem]"
               label={t("view")}
               value={tab}
               onChange={setTab}
@@ -401,12 +407,13 @@ function AppDialog({ app, onClose }: { app: DevApp | null; onClose: () => void }
                   }}
                 >
                   <AppFields draft={draft} onChange={setDraft} kindFixed />
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border-subtle px-3 py-2.5">
-                    <p className="min-w-0 text-xs text-muted-foreground">
+                  {/* Where the text can't keep 6rem beside the buttons (200% text), the buttons take their own line. */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border-subtle px-3 py-2.5">
+                    <p className="min-w-24 flex-1 text-xs text-muted-foreground">
                       <span className="block text-sm font-medium text-foreground">{t("deleteApp")}</span>
                       {t("deleteAbout")}
                     </p>
-                    <div className="flex shrink-0 items-center gap-1">
+                    <div className="flex max-w-full flex-wrap items-center gap-1">
                       {confirmDelete ? (
                         <>
                           <Button type="button" variant="ghost" size="sm" disabled={busy === "delete"} onClick={() => setConfirmDelete(false)}>{t("cancel")}</Button>
@@ -458,7 +465,7 @@ function Credentials({ app, secret, onNewSecret, newSecretBusy = false }: { app:
         secret ? (
           <CopyRow label={t("clientSecret")} value={secret} note={t("secretOnce")} />
         ) : (
-          <div className="flex items-center gap-3 px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
             <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">{t("clientSecret")}</p>
               <p className="flex items-center gap-1 text-sm text-muted-foreground">

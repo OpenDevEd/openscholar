@@ -27,7 +27,7 @@ import { useCurrentWorkspace, useWorkspaces } from "./parts";
 import { switchTarget } from "@/lib/workspaces/paths";
 import { WorkspacePicker } from "./workspace-picker";
 
-export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author";
+export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author" | "community";
 
 /** What goes with each kind of item, as chips. */
 const GOES = {
@@ -37,6 +37,7 @@ const GOES = {
   screening: ["answers", "questions", "activity"],
   extraction: ["answers", "questions", "pdfs", "activity"],
   chat: ["messages", "files"],
+  community: ["address", "settings", "peopleWithRoles"],
 } as const;
 
 /** Where the item opens in the workspace it moved to. */
@@ -46,6 +47,7 @@ const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
   search: (id) => `/results/${id}`,
   screening: (id) => `/screening?job=${id}`,
   extraction: (id) => `/extraction/${id}`,
+  community: (id) => `/evidence-communities/${id}/configuration`,
 };
 
 /**
@@ -56,6 +58,7 @@ export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onO
   const page = useWorkspace();
   // Read here, while the dialog is shut, so it opens knowing whether the item can move. The same read inside shares it.
   useProtectedQuery(api.workspaces.move.held, inWorkspace(item.from ?? page, { kind: item.kind, id: item.id }));
+  useProtectedQuery(api.workspaces.move.refusals, item.kind === "community" || item.kind === "author" ? inWorkspace(item.from ?? page, { kind: item.kind, id: item.id }) : "skip");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} onOpenAutoFocus={focusContent} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
@@ -76,6 +79,13 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
   const workspaceId = itemWorkspace ?? page;
   const from = itemWorkspace ? workspaces.list?.find((workspace) => workspace.workspaceId === itemWorkspace) : current;
   const { data: held } = useProtectedQuery(api.workspaces.move.held, inWorkspace(workspaceId, { kind, id }));
+  // The workspaces that won't take it, which the picker shows as such before one is picked: only a community or an author profile is turned away.
+  const refusals = useProtectedQuery(api.workspaces.move.refusals, kind === "community" || kind === "author" ? inWorkspace(workspaceId, { kind, id }) : "skip").data?.page;
+  const checking = (kind === "community" || kind === "author") && refusals === undefined;
+  const refusalOf = (workspace: { workspaceId: string }) => {
+    const refusal = refusals?.find((row) => row.workspaceId === workspace.workspaceId)?.refusal;
+    return refusal ? t(`refused.${refusal}`) : undefined;
+  };
   const run = useMutation(api.workspaces.move.move);
   const [to, setTo] = useState<Id<"workspaces">>();
   const [busy, setBusy] = useState(false);
@@ -129,6 +139,7 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
               onChange={setTo}
               disabled={Boolean(held) || busy}
               except={workspaceId}
+              refused={refusalOf}
               detail={(workspace) => (workspace.kind === "personal" ? t("onlyYou") : t("membersSee", { count: workspace.members ?? 0 }))}
             />
           </Zone>
@@ -141,6 +152,7 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
               ))}
             </div>
             {kind === "collection" ? <p className="px-1 text-xs text-muted-foreground">{from?.kind === "organization" ? t("libraryKeeps", { workspace: from.name }) : t("yourLibraryKeeps")}</p> : null}
+            {kind === "community" ? <p className="px-1 text-xs text-muted-foreground">{t("workspaceOwnsIt")}</p> : null}
           </Zone>
         </div>
       </div>
@@ -149,7 +161,8 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
           {tc("cancel")}
         </Button>
         {/* Until it's known whether it can move, it can't. */}
-        <Button disabled={!target || held !== null || busy} onClick={() => void go()}>
+        {/* Until it's known which workspaces turn it away, nothing is moved; a picked one turned away isn't either. */}
+        <Button disabled={!target || held !== null || busy || checking || (target && refusalOf(target) !== undefined)} onClick={() => void go()}>
           {target ? t("moveTo", { workspace: target.name }) : t("move")}
           <ArrowRight />
         </Button>

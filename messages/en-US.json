@@ -13,7 +13,9 @@
     "stylesFailed": "Could not load styles.",
     "noStyles": "No matching styles.",
     "commonStyles": "Common styles",
-    "otherStyles": "Other styles"
+    "otherStyles": "Other styles",
+    "copiedIn": "{style} citation copied",
+    "download": "Download"
   },
   "common": {
     "search": "Search",
@@ -307,10 +309,10 @@
     "metadataTitle": "Pricing",
     "metadataDescription": "Simple, transparent pricing for teams of all sizes.",
     "everyFeature": "Every feature in Openscholar",
-    "papersRunning": "{running, number} papers running at once",
-    "papersInRequest": "{request, number} papers in one request",
+    "papersRunning": "AI screens or extracts {running, number} papers at once",
+    "papersInRequest": "Up to {request, number} papers in one screening or extraction",
     "unlimitedCollectionsAndGuests": "Unlimited collections and guests",
-    "southernDescription": "For researchers in low- and middle-income countries.",
+    "southernDescription": "For Southern teams, for specific projects.",
     "southernFeature1": "Everything in Free",
     "southernFeature2": "Added to your account after you contact us",
     "onRequest": "On request"
@@ -366,15 +368,15 @@
     "signInRequiredTitle": "Sign in required",
     "signInRequiredDescription": "Sign in to access this page.",
     "noAccessTitle": "Access restricted",
-    "noAccessDescription": "You do not have permission to view this resource.",
+    "noAccessDescription": "You don't have access to this page. If someone shared it with you, they may have stopped: ask them to share it again.",
     "syncErrorTitle": "Session sync issue",
     "syncErrorDescription": "We could not finish initializing your account. Retry to continue.",
     "syncErrorAccess": "Your session is valid, but account sync is incomplete. Retry to continue.",
     "retrySync": "Retry sync"
   },
   "aiSetupGate": {
-    "title": "Set up AI to enhance your search",
-    "description": "Openscholar uses AI to refine queries, screen papers, and translate results.",
+    "title": "Searching is free. AI is extra",
+    "description": "Sign in and AI writes your searches, checks papers against your criteria and translates results, on free credits each month.",
     "signInForCredits": "Sign in for 50k free credits",
     "useOwnApiKey": "Use your own API key"
   },
@@ -676,7 +678,7 @@
     "uploadFailed": "Upload failed",
     "uploadFailedDescription": "Could not upload {format}. Please try again.",
     "accountChanged": "Your account changed. Try again.",
-    "copyFailedDescription": "Could not copy to clipboard. Please try again.",
+    "copyFailedDescription": "Your browser didn't let us copy it. Select the text and copy it yourself.",
     "validationFailed": "Validation failed",
     "entityCreated": "{entity} created",
     "entityUpdated": "{entity} updated",
@@ -790,6 +792,7 @@
     "typeToSearchInstitutions": "Type an institution's name",
     "institutionsUnavailable": "Institutions could not be loaded. Try again.",
     "filterByThisInstitution": "Only works from {name}",
+    "filterByInstitutionCountry": "Only works from institutions in {country}",
     "studyDesign": "Study design",
     "anyStudyDesign": "Any study design",
     "searchStudyDesigns": "Search study designs",
@@ -852,8 +855,8 @@
     "titleAndAbstract": "Title and abstract",
     "searchScope": "Search scope",
     "sortResultsBy": "Sort results by",
-    "citationFilter": "Citation filter",
-    "citedByFilter": "Cited by filter",
+    "citationFilter": "Papers citing a paper",
+    "citedByFilter": "Papers a paper cites",
     "relatedWorksFilter": "Related works filter",
     "clearAllCount": "Clear all ({count})",
     "searchFiltersTitle": "Search filters",
@@ -976,7 +979,7 @@
     "domainLabel": "Domain:",
     "sdgsLabel": "SDGs:",
     "referencesLabel": "References:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "vs. field average:",
     "citedBy": "Cited by",
     "cites": "Cites",
     "questionN": "Question {n}: {question}",
@@ -1063,7 +1066,7 @@
     "cookiePolicyDescription": "Learn how Openscholar.ai uses cookies for analytics and how to manage your cookie preferences.",
     "libraryTitle": "Library",
     "libraryDescription": "Browse and manage your saved academic papers",
-    "creditsTitle": "Credits",
+    "creditsTitle": "Attributions",
     "creditsDescription": "The projects, data and licenses Openscholar builds on.",
     "sharedTitle": "Shared with me",
     "termsTitle": "Terms of use",
@@ -1162,7 +1165,7 @@
     "translationSettings": "Translation settings",
     "autoTranslateResults": "Auto-translate listed results",
     "listedItemsOnly": "Applies to currently listed items only.",
-    "useCurrentLocaleTarget": "Use current locale target",
+    "useCurrentLocaleTarget": "Use the website's language",
     "runResultsTranslation": "Run translation",
     "translatingResults": "Translating results...",
     "undoTranslation": "Undo translation",
@@ -1207,13 +1210,16 @@
     "keepRunning": "Keep running",
     "yesCancel": "Cancel job",
     "deleteJob": "Delete this job?",
-    "deleteJobDescription": "This will permanently delete this job and all its extraction results."
+    "deleteJobDescription": "This will permanently delete this job and all its extraction results.",
+    "rerunJob": "Run it again as a copy?",
+    "rerunJobDescription": "A new extraction with the same papers and questions starts at once and spends credits, about as many as this one did. This one stays as it is.",
+    "rerunJobConfirm": "Run again"
   },
   "emptyStates": {
     "noScreeningQuestions": "No screening questions yet"
   },
   "jobStatus": {
-    "restart": "Restart",
+    "restart": "Run again as a copy…",
     "papersCount": "{count, plural, =1 {# paper} other {# papers}}",
     "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "Pending",
@@ -1226,7 +1232,8 @@
     "noMatches": "No matches for current filters",
     "clearFilters": "Clear filters",
     "progressOfPapers": "{processed} of {total, plural, =1 {# paper} other {# papers}}",
-    "loadingExtractionResults": "Loading extraction results..."
+    "loadingExtractionResults": "Loading extraction results...",
+    "skippedNoText": "{count, plural, one {# paper left out: no abstract to read, and full texts were off} other {# papers left out: no abstract to read, and full texts were off}}"
   },
   "reportBuilder": {
     "grounded": "Grounded",
@@ -1259,7 +1266,8 @@
   },
   "rating": {
     "noRating": "No rating",
-    "nStars": "{count} stars"
+    "nStars": "{count} stars",
+    "yourRating": "Your rating"
   },
   "pagination": {
     "currentPage": "Page {page}",
@@ -1292,7 +1300,7 @@
     "type": "Type",
     "refs": "Refs",
     "cited": "Cited",
-    "fwci": "FWCI",
+    "fwci": "vs. field average",
     "topic": "Topic",
     "field": "Field",
     "subfield": "Subfield",
@@ -1366,7 +1374,7 @@
     "privacyPolicy": "Privacy policy",
     "cookiePolicy": "Cookie policy",
     "cookiePreferences": "Cookie preferences",
-    "credits": "Credits"
+    "credits": "Attributions"
   },
   "focusMode": {
     "settingsTitle": "Focus mode settings",
@@ -1513,7 +1521,8 @@
     "planAllowsCollections": "{plan} allows {limit, number} collections",
     "nameTheCollection": "Name the collection",
     "newName": "New name for {name}",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "collectionDeletedPapersStay": "{name}: its papers stay in your library"
   },
   "sidebarLayout": {
     "expandFilters": "Expand filters (Ctrl+Shift+F)",
@@ -1715,7 +1724,7 @@
   "connectionsPage": {
     "connectedApps": "Connected apps",
     "noConnectedApps": "No connected apps",
-    "noConnectedAppsDescription": "When external apps connect to your wallet, they will appear here.",
+    "noConnectedAppsDescription": "When apps you allow connect to your Openscholar account, they appear here.",
     "revoking": "Revoking...",
     "revoke": "Revoke",
     "revokedBadge": "Revoked",
@@ -1759,7 +1768,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Untitled community",
     "unsaved": "Unsaved changes",
-    "viewOnly": "View only",
+    "viewOnly": "Settings view only",
     "save": "Save",
     "saving": "Saving…",
     "saveError": "The changes could not be saved. Try again.",
@@ -1814,7 +1823,15 @@
       "versions": "Versions",
       "ai": "AI",
       "domain": "Domain",
+      "listing": "Listing",
       "publication": "Publishing"
+    },
+    "listing": {
+      "description": "Whether this community is listed in the public directory of communities. Its site stays open to anyone with its address either way.",
+      "public": "Public",
+      "publicHint": "Listed in the public directory, where anyone can find it.",
+      "unlisted": "Unlisted",
+      "unlistedHint": "Left out of the directory. Anyone with its address can still open it."
     },
     "sectionState": {
       "complete": "Complete",
@@ -1917,6 +1934,9 @@
       "taglineLabel": "Tagline",
       "taglineHint": "The heading above the community search. Leave empty to show Search.",
       "taglinePlaceholder": "Evidence for better decisions",
+      "searchTitleLabel": "Title in search results",
+      "searchTitleHint": "What search engines show for the home page. Leave empty to use the name and tagline.",
+      "searchTitlePlaceholder": "Climate adaptation research and evidence",
       "descriptionLabel": "Description",
       "descriptionHint": "Shown on the home page and in search results.",
       "partnersHeading": "Funding partners",
@@ -2000,10 +2020,13 @@
       "add": "Add institution"
     },
     "danger": {
-      "description": "Delete this community. Be careful here.",
+      "description": "Move or delete this community. Be careful here.",
       "deleteTitle": "Delete the community",
       "deleteHint": "Removes the site, address and settings.",
-      "deleteButton": "Delete community"
+      "deleteButton": "Delete community",
+      "moveTitle": "Move to another workspace",
+      "moveHint": "Keeps its address, settings and people. The workspace it moves to owns it.",
+      "moveButton": "Move community"
     },
     "deleteDialog": {
       "title": "Delete this community?",
@@ -2011,7 +2034,7 @@
       "typeToConfirm": "Type {name} to confirm",
       "confirm": "Delete community",
       "startedTitle": "Deleting community",
-      "startedDescription": "{name} is being removed. Takes a few seconds.",
+      "startedDescription": "{name} is being removed. This takes a minute or two.",
       "error": "The community could not be deleted. Finish any running community operation, then try again."
     },
     "links": {
@@ -2835,7 +2858,8 @@
       "confirmAction": "Change the address"
     },
     "retry": "Try again",
-    "retryError": "That could not be started. Try again."
+    "retryError": "That could not be started. Try again.",
+    "saveDraft": "Save draft"
   },
   "topics": {
     "title": "Topics",
@@ -2910,8 +2934,8 @@
       "title": "New Evidence Community",
       "backToLibraries": "Back to communities",
       "ownerTitle": "Owner",
-      "ownerOnlyTitle": "Owners only",
-      "ownerOnlyDescription": "Only an owner of the organisation can create a community.",
+      "ownerOnlyTitle": "Can't create a community here",
+      "ownerOnlyDescription": "Communities are created in your own workspace, or in an organization you're an admin of, once Evidence Communities are on for it.",
       "libraryTitle": "Community",
       "libraryDescription": "The name appears on the public website and sets the public address.",
       "nameLabel": "Name",
@@ -3151,8 +3175,13 @@
       "off": "Off",
       "libraries": "{count, plural, one {# community} other {# communities}}",
       "switchLabel": "Evidence Communities for {name}",
-      "moveFirst": "Move or delete its communities first",
-      "noMatches": "No organizations match"
+      "noMatches": "No organizations match",
+      "kind": "Workspaces",
+      "organizationsTab": "Organizations",
+      "peopleTab": "People",
+      "searchPeople": "Search people by email",
+      "people": "people",
+      "noPeopleMatch": "No people match"
     },
     "communityReleases": {
       "releases": "Releases",
@@ -3413,7 +3442,7 @@
       "times": "{count, plural, one {time} other {times}}",
       "unfold": "Show each one",
       "fold": "Show as one",
-      "declined": "Not allowed",
+      "declined": "You said no",
       "waiting": "Waiting for an answer",
       "allowed": "Allowed",
       "searches": {
@@ -4199,6 +4228,18 @@
         "where": "Evidence Communities",
         "ask": "Start a community draft"
       },
+      "publicCommunities": {
+        "doing": "Reading the public communities",
+        "did": "Read the public communities",
+        "where": "Evidence Communities",
+        "ask": "Read the public communities"
+      },
+      "communityVisibility": {
+        "doing": "Changing whether a community is listed",
+        "did": "Changed whether a community is listed",
+        "where": "Evidence Communities",
+        "ask": "Change whether a community is listed"
+      },
       "librarySources": {
         "doing": "Reading a community’s sources",
         "did": "Read a community’s sources",
@@ -4335,6 +4376,54 @@
         "did": "Claimed an author",
         "where": "Authors",
         "ask": "Claim an author"
+      },
+      "lookUpCommunityPapers": {
+        "doing": "Looking up papers for a community",
+        "did": "Looked up papers for a community",
+        "where": "Evidence Community",
+        "ask": "Look up papers for a community"
+      },
+      "addCommunityPapers": {
+        "doing": "Adding papers to a community",
+        "did": "Added papers to a community",
+        "where": "Evidence Community",
+        "ask": "Add papers to a community"
+      },
+      "communityAddedPapers": {
+        "doing": "Reading a community’s added papers",
+        "did": "Read a community’s added papers",
+        "where": "Evidence Community",
+        "ask": "Read a community’s added papers"
+      },
+      "removeCommunityPaper": {
+        "doing": "Taking a paper off a community",
+        "did": "Took a paper off a community",
+        "where": "Evidence Community",
+        "ask": "Take a paper off a community"
+      },
+      "communityPapersSettings": {
+        "doing": "Changing a community’s added papers",
+        "did": "Changed a community’s added papers",
+        "where": "Evidence Community",
+        "ask": "Pause or resume a community’s added papers, or their PDFs"
+      },
+      "connectCommunityCollection": {
+        "doing": "Adding a collection to a community’s sources",
+        "did": "Added a collection to a community’s sources",
+        "where": "Evidence Community",
+        "ask": "Add one of your collections to a community’s sources"
+      },
+      "putCommunityLive": {
+        "doing": "Putting a community’s settings live",
+        "did": "Put a community’s settings live",
+        "where": "Evidence Community",
+        "ask": "Put a community’s saved settings live"
+      },
+      "sentPapers": {
+        "doing": "Reading the papers you sent to communities",
+        "did": "Read the papers you sent to communities",
+        "where": "Evidence Communities",
+        "ask": "Read the papers you sent to communities"
       }
     },
     "asks": {
@@ -4509,7 +4598,7 @@
     "main": "Main",
     "screen": "Screen",
     "extract": "Extract",
-    "publish": "Publish",
+    "communities": "Communities",
     "explore": "Explore",
     "authors": "Authors",
     "workspacesCard": "Workspaces",
@@ -4590,9 +4679,6 @@
       "leave": "Leave",
       "deleteName": "Delete {name}",
       "stillHasLibrary": "{library} is one of its Evidence Communities. Move or delete it first.",
-      "deleteLibrary": "Delete community",
-      "libraryBeingDeleted": "{library} is being deleted.",
-      "libraryDeleteFailed": "{library} couldn't be deleted. Try again.",
       "deleteDetail": "Removes it for {count, plural, one {its # member} other {all # members}}",
       "moveLibrariesFirst": "Move or delete its Evidence Communities first",
       "delete": "Delete",
@@ -4755,7 +4841,10 @@
         "itsPapers": "Its papers",
         "ratingsInIt": "Ratings in it",
         "publications": "Publications",
-        "editors": "Editors"
+        "editors": "Editors",
+        "address": "Address",
+        "settings": "Settings",
+        "peopleWithRoles": "People with a role"
       },
       "moveTo": "Move to {workspace}",
       "move": "Move",
@@ -4764,7 +4853,15 @@
       "collection": "Move collection",
       "author": "Move author profile",
       "libraryKeeps": "{workspace}'s library keeps the papers it saved.",
-      "yourLibraryKeeps": "Your library keeps the papers it saved."
+      "yourLibraryKeeps": "Your library keeps the papers it saved.",
+      "community": "Move community",
+      "workspaceOwnsIt": "The workspace it moves to owns it from then on.",
+      "refused": {
+        "noCommunities": "Communities aren't turned on for this workspace",
+        "communitiesFull": "Has as many communities as a workspace can",
+        "profilesOff": "Author profiles aren't on here",
+        "noProfiles": "You can't make author profiles here"
+      }
     },
     "share": {
       "share": "Share",
@@ -4864,7 +4961,11 @@
       "goneDetail": "Ask whoever shared it to share it again",
       "otherTitle": "This invitation was sent to another address",
       "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to"
-    }
+    },
+    "notEmails": "{count, plural, one {This isn't an email address: {values}. Fix or remove it to create the organization.} other {These aren't email addresses: {values}. Fix or remove them to create the organization.}}",
+    "asRole": "as {role}",
+    "memberCan": "Members search, save, screen and extract with everything the organization shares.",
+    "adminCan": "Admins can do the same, and also invite and remove people and manage settings and spending."
   },
   "models": {
     "changeInSettings": "Change in AI settings"
@@ -5307,7 +5408,20 @@
     "removedFromLibrary": "Removed from this community.",
     "removedFromProfile": "Removed from this profile.",
     "addedToLibrary": "{name} added to this community.",
-    "addedToProfile": "{name} added to this profile."
+    "addedToProfile": "{name} added to this profile.",
+    "anOrganization": "An organization",
+    "chooseAnOrganization": "Choose an organization",
+    "anotherOrganization": "Another organization",
+    "adminEmail": "Its admin's email",
+    "organizationGetsIt": "Everyone in the organization gets this role, and loses it on leaving.",
+    "theirAdminAccepts": "Its admin accepts it for an organization they run, and everyone in it gets this role.",
+    "everyoneInIt": "Everyone in it",
+    "forTheirOrganization": "For an organization {email} is an admin of",
+    "removeThisOrganization": "Remove this organization? Its members keep only roles they were given themselves.",
+    "organizationLabel": "Organization",
+    "ownWorkspaceOwner": "It's in their own workspace, so it's theirs.",
+    "whoWorksOnIt": "Who works on this community. Its owners manage the team.",
+    "viewersUntilAnOwner": "Viewers until an owner gives them a role."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Digest queued for # publication.} other {Digest queued for # publications.}}",
@@ -5370,6 +5484,54 @@
     "keepThisUnderCharacters": "Keep this under {maxLength} characters."
   },
   "libraryList": {
+    "sidebar": {
+      "label": "Your communities",
+      "showFrom": "Show communities from",
+      "allWorkspaces": "All workspaces",
+      "allCommunities": "All communities",
+      "workspaces": "Workspaces",
+      "yours": "Yours",
+      "sharedWithYou": "Shared with you",
+      "sharedWith": "Shared with {name}",
+      "loading": "Loading communities",
+      "noMatches": "None of these match this search.",
+      "emptyAll": "You're not in any community yet. When someone shares one with you, or your organization has one, it shows up here.",
+      "emptyHere": "Communities {name} owns, and the ones shared with it, appear here.",
+      "emptyShared": "Communities people share with you appear here.",
+      "emptySharedHere": "Communities shared with {name} appear here.",
+      "emptyOwn": "Communities you create appear here.",
+      "emptyWorkspace": "{name} has no communities yet.",
+      "invitedAs": "Invited as {role}",
+      "accept": "Accept",
+      "accepted": "Accepted {name}.",
+      "moreWorkspaces": "More workspaces",
+      "invitedForOrganization": "Invited as {role}, for your organization",
+      "acceptAsAnAdmin": "Accept it as an admin of an organization",
+      "acceptForWhich": "Accept {name} for which organization",
+      "acceptedFor": "Accepted {name} for {organization}."
+    },
+    "directory": {
+      "title": "Public communities",
+      "sortLabel": "Sort public communities",
+      "sort": {
+        "newest": "Newest",
+        "name": "Name",
+        "records": "Most papers"
+      },
+      "loading": "Loading public communities",
+      "noMatches": "No public communities match this search",
+      "none": "Public communities appear here once they're live",
+      "records": "{count, plural, one {{shown} paper} other {{shown} papers}}",
+      "unnamedOwner": "An Openscholar member",
+      "recordsLabel": "{count, plural, one {paper} other {papers}}",
+      "peopleLabel": "{count, plural, one {team member} other {team members}}",
+      "people": "{count, plural, one {{shown} team member} other {{shown} team members}}",
+      "countries": "About {names}",
+      "noDescription": "No description yet",
+      "notCounted": "Not counted yet",
+      "intro": "Each community is a website that gathers research on one subject. Open one to browse its papers.",
+      "updated": "Updated {when}"
+    },
     "evidenceLibraries": "Evidence communities",
     "newLibrary": "New community",
     "libraryView": "Community view",
@@ -5413,7 +5575,9 @@
     "deletionRestartedFor": "Deletion restarted for {name}.",
     "couldNotRestartDeletion": "Could not restart deletion",
     "invitationDeclined": "Invitation declined.",
-    "unableToDeclineInvitation": "Unable to decline invitation"
+    "unableToDeclineInvitation": "Unable to decline invitation",
+    "searchSubmissions": "Search your submissions",
+    "findASubmission": "Find a paper you sent…"
   },
   "authorPages": {
     "profileSettings": "Profile settings",
@@ -5544,10 +5708,10 @@
     "creatingKey": "Creating key...",
     "redirecting": "Redirecting...",
     "approve": "Approve",
-    "wantsToConnect": "<strong>{appName}</strong> wants to connect to your Openscholar wallet.",
+    "wantsToConnect": "<strong>{appName}</strong> wants to connect to your Openscholar account.",
     "copyKey": "Copy this API key and paste it into <strong>{appName}</strong>. It will only be shown once.",
     "originUnregisteredBody": "The application at <code>{origin}</code> is not registered to connect to Openscholar.",
-    "originHelp": "Only pre-approved origins can create wallet connections. If you are the developer of <strong>{appName}</strong>, contact the Openscholar team to register your origin.",
+    "originHelp": "Only pre-approved origins can create account connections. If you are the developer of <strong>{appName}</strong>, contact the Openscholar team to register your origin.",
     "wantsToUseCredits": "<strong>{appName}</strong> wants to use AI generation through your Openscholar credits.",
     "unknownApp": "Unknown app",
     "thisApplicationSOriginIsNot": "This application’s origin is not registered",
@@ -5675,5 +5839,129 @@
     "step4": "Refresh the token",
     "step4About": "A token lasts 24 hours. Swap the refresh token for a new one before then.",
     "cantDo": "Apps can't change billing, API keys or site settings, or put an Evidence Community live."
+  },
+  "paperPage": {
+    "references": "References",
+    "openAccess": "Open access",
+    "readPdf": "Read PDF",
+    "publisherPage": "Publisher's page",
+    "askAbout": "Ask about this paper",
+    "noAbstract": "No abstract available",
+    "linkCopied": "Paper link copied",
+    "citationsPerYear": "Citations per year",
+    "citationsIn": "{count, plural, one {# citation} other {# citations}} in {year}",
+    "seeCiting": "See the papers that cite it",
+    "top1": "Top 1% in its field",
+    "top10": "Top 10% in its field",
+    "aheadOf": "Cited more than {percent}% of all papers from {year}",
+    "influential": "build on it",
+    "authors": "Authors",
+    "andMore": "and {count} more",
+    "showAll": "Show all {count}",
+    "showFewer": "Show fewer",
+    "corresponding": "Corresponding",
+    "orcidOf": "ORCID iD of {name}",
+    "institutions": "Institutions",
+    "whereToRead": "Where to read",
+    "kindPublisher": "Publisher",
+    "kindRepository": "Repository",
+    "kindIndex": "Index",
+    "pdf": "PDF",
+    "funding": "Funding",
+    "topics": "Topics",
+    "sdgs": "Sustainable Development Goals",
+    "mesh": "MeSH terms",
+    "details": "Details",
+    "charge": "Publishing fee",
+    "retracted": "Retracted",
+    "openscholarId": "Openscholar ID",
+    "copyDoi": "Copy DOI",
+    "doiCopied": "DOI copied",
+    "doiCopyFailed": "Couldn't copy the DOI",
+    "paperPage": "Paper page",
+    "share": "Share",
+    "inCommunities": "In these communities",
+    "fieldAverage": "× field average"
+  },
+  "addedPapers": {
+    "name": "Added papers",
+    "provider": "DOIs and OpenAlex IDs",
+    "cardDescription": "Papers added one at a time by DOI or OpenAlex ID, kept in sync from OpenAlex.",
+    "menu": "Papers by DOI or ID",
+    "menuHint": "One or many, kept in sync",
+    "menuNotLive": "Available once the community is live",
+    "add": "Add papers",
+    "title": "Add papers",
+    "description": "Paste links to papers (from Openscholar, a community's site, OpenAlex or doi.org), DOIs or OpenAlex IDs, up to {max} at a time.",
+    "inputLabel": "DOIs, OpenAlex IDs or links",
+    "papers": "{count, plural, one {# paper} other {# papers}}",
+    "tooMany": "More than {max} papers",
+    "invalid": "Not a paper link, DOI or ID: {values}",
+    "find": "Find papers",
+    "found": "Papers found",
+    "notFound": "Not found",
+    "alreadyAdded": "Already added",
+    "inQueue": "Waiting for review",
+    "doiOnly": "DOI only",
+    "leaveOut": "Leave out",
+    "leaveOutLabel": "Leave out {title}",
+    "doiOnlyNote": "{count, plural, one {OpenAlex doesn't have one of these yet. It comes in from its DOI, and each sync checks OpenAlex again.} other {OpenAlex doesn't have # of these yet. They come in from their DOIs, and each sync checks OpenAlex again.}}",
+    "toAdd": "{count, plural, one {# paper to add} other {# papers to add}}",
+    "sendToQueue": "Send for review",
+    "publish": "Publish",
+    "published": "{count, plural, one {# paper published to {community}} other {# papers published to {community}}}",
+    "queued": "{count, plural, one {# paper sent to the review queue} other {# papers sent to the review queue}}",
+    "someFailed": "{count, plural, one {# paper was saved as a draft but not sent. Open it in the admin to send it.} other {# papers were saved as drafts but not sent. Open them in the admin to send them.}}",
+    "lookupFailed": "The community couldn't look these papers up. Try again.",
+    "addFailed": "The community couldn't add these papers. Try again.",
+    "noAuthors": "No authors listed",
+    "unavailable": "Unavailable",
+    "settingsFailed": "The community didn't take the change. Try again.",
+    "ownerOnly": "Only the owner changes this",
+    "from": "From {name}",
+    "returned": "Declined",
+    "statusWithdrawn": "Withdrawn by you",
+    "statusRemoved": "Removed by the community",
+    "openIn": "Open in {community}",
+    "openLabel": "Open {title} in {community}",
+    "remove": "Remove",
+    "removeLabel": "Remove {title}",
+    "withdraw": "Withdraw",
+    "withdrawLabel": "Withdraw {title}",
+    "removed": "Paper removed from the community",
+    "withdrawn": "Paper withdrawn from the review queue",
+    "removeFailed": "The community couldn't take this paper off. Try again.",
+    "viewLabel": "Show",
+    "tabPublic": "Public communities",
+    "tabSubmissions": "Your submissions",
+    "statusLabel": "Status",
+    "everyStatus": "Every status",
+    "statusPublished": "Published",
+    "noneYet": "No submissions yet",
+    "noneYetHint": "Add a paper to a community from any search result.",
+    "noMatches": "No submissions match",
+    "addToCommunity": "Add to community",
+    "searchCommunities": "Search communities",
+    "recent": "Recent",
+    "yourCommunities": "Your communities",
+    "noCommunitiesMatch": "No communities match",
+    "noCommunities": "No communities yet",
+    "inQueueShort": "In queue",
+    "added": "Added",
+    "publishOrReview": "Publish it now, or let the team review it first.",
+    "reviewFirst": "The community's team reviews it before it goes live.",
+    "publishedTo": "Published to {community}",
+    "queuedTo": "Sent to {community}'s review queue",
+    "alreadyIn": "{community} already has this paper",
+    "moreCommunities": "More communities",
+    "askTitle": "Add {count, plural, one {# paper} other {# papers}} to a community",
+    "publishNow": "Publish now",
+    "reviewQueue": "Review queue",
+    "askPublishHint": "{count, plural, one {It goes} other {They go}} live on {community} as soon as you allow it.",
+    "askQueueHint": "{count, plural, one {It waits} other {They wait}} in {community}'s review queue until its team approves {count, plural, one {it} other {them}}.",
+    "askPublish": "Publish {count, plural, one {# paper} other {# papers}}",
+    "askQueue": "Send {count, plural, one {# paper} other {# papers}} for review",
+    "alreadyInIt": "Already in it",
+    "inReview": "In review"
   }
 }

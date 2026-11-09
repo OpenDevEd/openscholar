@@ -10,10 +10,11 @@ const mocks = vi.hoisted(() => ({
   checkAddress: vi.fn(),
   organization: vi.fn(),
   push: vi.fn(),
-  query: vi.fn(),
   reserveAddress: vi.fn(),
-  workspace: { kind: "organization", name: "Climate Team", organizationId: "org_1" },
+  workspace: { kind: "organization", name: "Climate Team", workspaceId: "ws_1" },
+  features: { evidenceLibraries: true, authors: true, createsCommunities: true } as { evidenceLibraries: boolean; authors: boolean; createsCommunities: boolean } | undefined,
 }));
+vi.mock("@/lib/workspaces/use-workspace-features", () => ({ useWorkspaceFeatures: () => ({ data: mocks.features }) }));
 vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace, WorkspaceTag: ({ workspace }: { workspace: { name: string } }) => <span>{workspace.name}</span> }));
 
 vi.mock("@clerk/nextjs", () => ({ useOrganization: () => mocks.organization() }));
@@ -34,7 +35,6 @@ vi.mock("sonner", () => ({
 }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
-    organizationFeatures: {listLibraryOrganizations: "listLibraryOrganizations"},
     evidenceLibraries: {
       addressActions: {
         checkAddress: "checkAddress",
@@ -42,9 +42,6 @@ vi.mock("@/convex/_generated/api", () => ({
       },
     },
   },
-}));
-vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (query: unknown, args: unknown) => mocks.query(query, args),
 }));
 vi.mock("@/components/auth/auth-state-panel", () => ({
   AuthStatePanel: ({
@@ -83,21 +80,19 @@ describe("<NewLibraryForm>", () => {
     });
     mocks.organization.mockReset();
     mocks.push.mockReset();
-    mocks.query.mockReset();
-    mocks.query.mockReturnValue({ data: { page: [{id: "org_1", name: "Climate Team"}], isDone: true, continueCursor: "" }, isReady: true });
+    mocks.features = { evidenceLibraries: true, authors: true, createsCommunities: true };
     mocks.reserveAddress.mockReset();
-    mocks.workspace = { kind: "organization", name: "Climate Team", organizationId: "org_1" };
+    mocks.workspace = { kind: "organization", name: "Climate Team", workspaceId: "ws_1" };
   });
 
-  it("makes the library in the organization the page is in, not another the person runs", async () => {
+  it("makes the community in the workspace the page is in", async () => {
     const user = userEvent.setup();
     mocks.organization.mockReturnValue(owner);
-    mocks.query.mockReturnValue({ data: { page: [{ id: "org_1", name: "Climate Team" }, { id: "org_2", name: "Health Team" }], isDone: true, continueCursor: "" }, isReady: true });
-    mocks.workspace = { kind: "organization", name: "Health Team", organizationId: "org_2" };
+    mocks.workspace = { kind: "organization", name: "Health Team", workspaceId: "ws_2" };
     render(<NewLibraryForm />);
     expect(screen.getByText("Health Team")).toBeInTheDocument();
     await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
-    await waitFor(() => expect(mocks.checkAddress).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org_2" })));
+    await waitFor(() => expect(mocks.checkAddress).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: "ws_2" })));
   });
 
   it("shows Checking…, then the address the server found, and reserves it", async () => {
@@ -126,7 +121,7 @@ describe("<NewLibraryForm>", () => {
     expect(screen.getByRole("button", { name: "reserve" })).toBeDisabled();
 
     await waitFor(() =>
-      expect(mocks.checkAddress).toHaveBeenCalledWith({ name: "Climate Evidence", organizationId: "org_1" }),
+      expect(mocks.checkAddress).toHaveBeenCalledWith({ name: "Climate Evidence", workspaceId: "ws_1" }),
     );
     // One answer for one pause in the typing.
     expect(mocks.checkAddress).toHaveBeenCalledTimes(1);
@@ -136,7 +131,7 @@ describe("<NewLibraryForm>", () => {
 
     await user.click(screen.getByRole("button", { name: "reserve" }));
     await waitFor(() =>
-      expect(mocks.reserveAddress).toHaveBeenCalledWith({ name: "Climate Evidence", organizationId: "org_1" }),
+      expect(mocks.reserveAddress).toHaveBeenCalledWith({ name: "Climate Evidence", workspaceId: "ws_1" }),
     );
     expect(await screen.findByRole("status")).toHaveAttribute("data-address-state", "reserved");
     expect(addressField).toHaveTextContent("climate-evidence-lib.example.test");
@@ -265,9 +260,9 @@ describe("<NewLibraryForm>", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("does not offer the form to an editor", () => {
+  it("does not offer the form to someone who may not create a community here", () => {
     mocks.organization.mockReturnValue({ ...owner, membership: { role: "org:member" } });
-    mocks.query.mockReturnValue({ data: { page: [], isDone: true, continueCursor: "" }, isReady: true });
+    mocks.features = { evidenceLibraries: true, authors: true, createsCommunities: false };
 
     render(<NewLibraryForm />);
 
@@ -275,9 +270,9 @@ describe("<NewLibraryForm>", () => {
     expect(screen.queryByRole("button", { name: "reserve" })).not.toBeInTheDocument();
   });
 
-  it("shows one plain panel instead of the form when the organisation is not switched on", () => {
+  it("shows one plain panel instead of the form when the workspace is not switched on", () => {
     mocks.organization.mockReturnValue(owner);
-    mocks.query.mockReturnValue({ data: { page: [], isDone: true, continueCursor: "" }, isReady: true });
+    mocks.features = { evidenceLibraries: false, authors: false, createsCommunities: false };
 
     render(<NewLibraryForm />);
 

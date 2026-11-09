@@ -7,6 +7,7 @@ import schema from "../schema";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest, seedCreditsForTest } from "../billing/billing.test-support";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { grantLibraryRole } from "../evidenceLibraries/team.test-support";
 const modules = import.meta.glob("/convex/**/*.ts");
 
 async function setupCatalog() {
@@ -50,6 +51,14 @@ it("creates profiles for the library caller but does not give library owners edi
   const libraryOwner = t.withIdentity({subject: "library-owner"});
   const profile = await libraryOwner.query(api.authors.profiles.get, {profileId: created.id});
   expect(profile?.role).toBe("owner");
+  // It's the community's workspace's (#1093), not its maker's own.
+  const community = await t.run(ctx => ctx.db.get("evidenceLibraries", service.libraryId));
+  expect(profile?.workspaceId).toBe(community?.workspaceId);
+  // An editor of the community makes one too, and edits it, as they edit the community.
+  await t.run(ctx => grantLibraryRole(ctx, service.libraryId, "profile-owner", "editor"));
+  const edited = (await (await request({operation: "create", name: "Editor-made author", clerkUserId: "profile-owner"})).json()).profiles[0];
+  expect((await profileOwner.query(api.authors.profiles.get, {profileId: edited.id}))?.role).toBe("editor");
+  expect((await libraryOwner.query(api.authors.profiles.get, {profileId: edited.id}))?.role).toBe("owner");
   expect((await profileOwner.query(api.authors.profiles.get, {profileId: created.id}))?.role).toBeNull();
   expect((await profileOwner.query(api.authors.profiles.get, {profileId: otherProfile}))?.name).toBe("Caitlin Mills");
 });
