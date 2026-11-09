@@ -9,6 +9,9 @@ import {
   reserveLibraryAddressByName,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
+// A community that has never gone live has nothing on its card yet.
+const NO_CARD_FACTS = { tagline: null, accentColor: null, records: null, countries: [], people: null, liveAt: null, publishedAt: null };
+
 describe("library overviews", () => {
   beforeEach(() => {
     vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
@@ -52,7 +55,7 @@ describe("library overviews", () => {
       {
         _id: libraryId,
         role: "owner",
-        organization: { name: "Team overview_status", imageUrl: null, kind: "organization" },
+        organization: { name: "Team overview_status", imageUrl: null, kind: "organization", colour: null },
         from: "organization",
         workspaceId: expect.any(String),
         name: "Climate Evidence",
@@ -64,6 +67,7 @@ describe("library overviews", () => {
         lastActivatedAt: null,
         accentColor: "#005A9C",
         faviconUrl: "https://assets.example.test/favicon.ico",
+        card: NO_CARD_FACTS,
       },
     ]);
 
@@ -112,7 +116,7 @@ describe("library overviews", () => {
     expect(overviews.find((row) => row._id === draft.libraryId)).toEqual({
       _id: draft.libraryId,
       role: "owner",
-      organization: { name: "Team overview_draft", imageUrl: null, kind: "organization" },
+      organization: { name: "Team overview_draft", imageUrl: null, kind: "organization", colour: null },
       from: "organization",
       workspaceId: expect.any(String),
       name: "Second Library",
@@ -124,6 +128,7 @@ describe("library overviews", () => {
       lastActivatedAt: null,
       accentColor: null,
       faviconUrl: null,
+      card: NO_CARD_FACTS,
     });
   });
 
@@ -162,6 +167,20 @@ describe("library overviews", () => {
       status: "active",
       operation: { stage: "publishing", runtimeUpdate },
     });
+  });
+
+  it("gives a live community the card the directory draws for it", async () => {
+    const fixture = await createReadySetupFixture("overview_card");
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.patch(fixture.created.libraryId, { card: { name: "Climate Evidence", tagline: "Adaptation studies" }, records: 1200, people: 4, countries: ["ke", "et"], liveAt: 1_000, publishedAt: 2_000 });
+    });
+
+    const { page: overviews } = await fixture.admin.query(
+      api.evidenceLibraries.queries.listLibraries,
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
+    );
+
+    expect(overviews[0]?.card).toEqual({ tagline: "Adaptation studies", accentColor: null, records: 1200, people: 4, countries: ["ke", "et"], liveAt: 1_000, publishedAt: 2_000 });
   });
 
   it("keeps a deleting library listable after its draft is removed", async () => {

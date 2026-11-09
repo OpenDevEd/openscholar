@@ -48,6 +48,17 @@ export async function ownerName(ctx: Pick<QueryCtx, "db">, owner: LibraryOwner) 
   return { name: [person?.firstName, person?.lastName].filter(Boolean).join(" ") || (person?.email ?? ""), imageUrl: person?.avatarUrl ?? null };
 }
 
+/** What a community's card shows from its own row (./validators.ts cardFactsValidator). */
+export const cardFacts = (library: Doc<"evidenceLibraries">) => ({
+  tagline: library.card?.tagline ?? library.card?.description ?? null,
+  accentColor: library.card?.accentColor ?? null,
+  records: library.records ?? null,
+  countries: library.countries ?? [],
+  people: library.people ?? null,
+  liveAt: library.liveAt ?? null,
+  publishedAt: library.publishedAt ?? library.liveAt ?? null,
+});
+
 /** Whether the library's owner is still there: an active organization, or the active account whose own workspace it's in. */
 export const ownerActive = (owner: LibraryOwner | null) => owner !== null && (owner.workspace.kind === "personal" ? owner.person?.state === "active" : owner.organization?.state === "active");
 

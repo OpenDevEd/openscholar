@@ -7,7 +7,7 @@ import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
-import { libraryOwner, ownerName, readActiveOrganizationMembership, readLibraryRole } from "./access";
+import { cardFacts, libraryOwner, ownerName, readActiveOrganizationMembership, readLibraryRole } from "./access";
 import { PAPER_SENT_TO, RECENT_COMMUNITIES, recentCommunitiesValidator, sentPaperSummaryValidator, sentPapersValidator, sentToValidator, submissionOwnerValidator, submissionStatusValidator } from "./validators";
 
 /** Submissions a page of Your submissions shows at most. */
@@ -172,8 +172,8 @@ async function ownerOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
   const shown = await ownerName(ctx, owner);
   const person = owner.person ? [owner.person.firstName, owner.person.lastName].filter(Boolean).join(" ") : "";
   return owner.organization
-    ? { name: shown.name ?? "", kind: "organization" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id }
-    : { name: person, kind: "person" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id };
+    ? { name: shown.name ?? "", kind: "organization" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id, colour: owner.organization.colour ?? null }
+    : { name: person, kind: "person" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id, colour: null };
 }
 
 /**
@@ -287,7 +287,7 @@ export const recentCommunities = query({
       if (!library || library.state !== "active") continue;
       const community = await communityOf(ctx, libraryId);
       const role = (await readLibraryRole(ctx, library, person.clerkId)) ?? ("viewer" as const);
-      recent.push({ ...community, role, workspaceId: library.workspaceId });
+      recent.push({ ...community, role, workspaceId: library.workspaceId, card: cardFacts(library) });
     }
     return recent;
   },

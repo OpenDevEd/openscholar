@@ -13,10 +13,10 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, query } from "../lib/functions";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
-import { libraryOwner, ownerActive, ownerName } from "./access";
+import { cardFacts, libraryOwner, ownerActive, ownerName } from "./access";
 import { loadRevisionConfigurationSnapshot } from "./configurationSnapshot";
 import { readLibraryPeople } from "./queries";
-import { COUNTRIES_KEPT, countriesValidator } from "./validators";
+import { COUNTRIES_KEPT, cardFactsValidator } from "./validators";
 
 /** Most cards one page of the directory holds, and the rows one read passes over looking for a search's matches. */
 const PAGE_MAX = 100;
@@ -27,11 +27,9 @@ const REFRESH_STEP = 50;
 export const directorySortValidator = v.union(v.literal("newest"), v.literal("name"), v.literal("records"));
 
 const cardValidator = v.object({
+  ...cardFactsValidator.fields,
   _id: v.id("evidenceLibraries"),
   name: v.string(),
-  /** Its tagline, or its description when it has none; null when it has neither. */
-  tagline: v.union(v.string(), v.null()),
-  accentColor: v.union(v.string(), v.null()),
   faviconUrl: v.union(v.string(), v.null()),
   address: v.string(),
   /** Who it belongs to. A person is named by their name alone: null when they have none, never their email. */
@@ -43,14 +41,6 @@ const cardValidator = v.object({
     workspaceId: v.id("workspaces"),
     colour: v.union(v.string(), v.null()),
   }),
-  records: v.union(v.number(), v.null()),
-  /** The countries most of its public records are about, most first; empty until its runtime names them. */
-  countries: countriesValidator,
-  /** How many people work on it: its owners and everyone given a role in it; null until counted. */
-  people: v.union(v.number(), v.null()),
-  liveAt: v.union(v.number(), v.null()),
-  /** When its last version went live. */
-  publishedAt: v.union(v.number(), v.null()),
 });
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : undefined);
@@ -193,18 +183,12 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     _id: library._id,
     // The name its site runs with; a draft's new one isn't public until it's published.
     name: library.card?.name ?? library.name,
-    tagline: library.card?.tagline ?? library.card?.description ?? null,
-    accentColor: library.card?.accentColor ?? null,
+    ...cardFacts(library),
     faviconUrl: library.card?.faviconUrl ?? null,
     address: binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "",
     owner: owner.organization
       ? { name: shown.name, kind: "organization" as const, imageUrl: shown.imageUrl, workspaceId: owner.workspace._id, colour: owner.organization.colour ?? null }
       : { name: person || null, kind: "person" as const, imageUrl: shown.imageUrl, workspaceId: owner.workspace._id, colour: null },
-    records: library.records ?? null,
-    countries: library.countries ?? [],
-    people: library.people ?? null,
-    liveAt: library.liveAt ?? null,
-    publishedAt: library.publishedAt ?? library.liveAt ?? null,
   };
 }
 

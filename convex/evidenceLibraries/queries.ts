@@ -24,6 +24,7 @@ import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib
 import { searchTerms } from "../lib/searchText";
 import { memberWithEmail } from "../organizations/read";
 import {
+  cardFactsValidator,
   draftSectionsValidator,
   evidenceLibraryTeardownStepValidator,
   grantedPeopleValidator,
@@ -34,6 +35,7 @@ import {
 } from "./validators";
 import {
   betterGrant,
+  cardFacts,
   grantedRole,
   ownerActive,
   organizationGrantsOf,
@@ -198,7 +200,13 @@ const libraryOverviewValidator = v.object({
   _id: v.id("evidenceLibraries"),
   role: libraryListRoleValidator,
   /** Who it belongs to: an organization, or the person whose own workspace it's in. */
-  organization: v.object({ name: v.string(), imageUrl: v.union(v.string(), v.null()), kind: v.union(v.literal("person"), v.literal("organization")) }),
+  organization: v.object({
+    name: v.string(),
+    imageUrl: v.union(v.string(), v.null()),
+    kind: v.union(v.literal("person"), v.literal("organization")),
+    /** The colour an organization's admins picked, which its mark is drawn in when it has no logo. */
+    colour: v.union(v.string(), v.null()),
+  }),
   /** Where the list has it from: the person's own workspace, one of their organizations, or shared with them. */
   from: v.union(v.literal("own"), v.literal("organization"), v.literal("shared")),
   workspaceId: v.id("workspaces"),
@@ -224,6 +232,8 @@ const libraryOverviewValidator = v.object({
   accentColor: v.union(v.string(), v.null()),
   /** The favicon the owner uploaded; null means the pages show the OpenScholar icon. */
   faviconUrl: v.union(v.string(), v.null()),
+  /** What its card shows, as the public directory draws it. */
+  card: cardFactsValidator,
 });
 
 /** Read the migrated draft payloads used by list and setup pages. */
@@ -389,7 +399,7 @@ async function sharedLibrary(ctx: QueryCtx, userId: Id<"users">, members: Map<Id
   return role ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
 }
 
-type Shown = { name: string; imageUrl: string | null; kind: "person" | "organization" };
+type Shown = { name: string; imageUrl: string | null; kind: "person" | "organization"; colour: string | null };
 type From = { from: "own" | "organization" | "shared"; workspaceId: Id<"workspaces"> };
 
 /**
@@ -398,7 +408,8 @@ type From = { from: "own" | "organization" | "shared"; workspaceId: Id<"workspac
  * that isn't live yet.
  */
 const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof libraryListRoleValidator>, owner: Shown, where: From) => {
-  const { teardownFailedStep, ...overview } = await readLibraryOverview(ctx, library);
+  const { teardownFailedStep, ...read } = await readLibraryOverview(ctx, library);
+  const overview = { ...read, card: cardFacts(library) };
   if (role !== "viewer") return { ...overview, ...(teardownFailedStep ? { teardownFailedStep } : {}), role, organization: owner, ...where };
   return { ...overview, setupStage: null, teardownStage: null, operation: null, lastActivatedAt: null, ...(overview.status === "active" ? {} : { accentColor: null, faviconUrl: null }), role, organization: owner, ...where };
 };
@@ -461,11 +472,11 @@ export const listLibraries = query({
     });
     const sources = [
       // Their own workspace's come first, in their own workspace.
-      ...(own && !organization && wants("own") ? [workspaceSource(own.workspaceId, "", own.workspaceId, { ...own.shown, kind: "person" }, { from: "own", workspaceId: own.workspaceId }, async () => "owner")] : []),
+      ...(own && !organization && wants("own") ? [workspaceSource(own.workspaceId, "", own.workspaceId, { ...own.shown, kind: "person", colour: null }, { from: "own", workspaceId: own.workspaceId }, async () => "owner")] : []),
       ...organizations
         // On an organization's page its own are listed unless the filter asks for what's shared with it.
         .filter((entry) => (organization ? from !== "shared" : wants(entry.workspaceId)))
-        .map((entry) => workspaceSource(entry._id, entry.name, entry.workspaceId, { name: entry.name, imageUrl: entry.imageUrl ?? null, kind: "organization" }, { from: "organization", workspaceId: entry.workspaceId }, async (library) =>
+        .map((entry) => workspaceSource(entry._id, entry.name, entry.workspaceId, { name: entry.name, imageUrl: entry.imageUrl ?? null, kind: "organization", colour: entry.colour ?? null }, { from: "organization", workspaceId: entry.workspaceId }, async (library) =>
           entry.owns ? "owner" : ((await readLibraryRole(ctx, library, identity.subject)) ?? "viewer"))),
       // In their own workspace, the ones shared with them; on the page of an organization they aren't in, its ones shared with them.
       ...(own && (organization ? !here : wants("shared"))
@@ -481,7 +492,7 @@ export const listLibraries = query({
                 .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library.name, granted.shown.name))
                 .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
               return {
-                page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, { ...granted!.shown, kind: granted!.owner.organization ? "organization" : "person" }, { from: "shared", workspaceId: granted!.library.workspaceId }))),
+                page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, { ...granted!.shown, kind: granted!.owner.organization ? "organization" : "person", colour: granted!.owner.organization?.colour ?? null }, { from: "shared", workspaceId: granted!.library.workspaceId }))),
                 after: read.isDone ? null : read.continueCursor,
               };
             },
@@ -512,7 +523,7 @@ export const listLibraries = query({
           .filterWith(async (shared) => shared !== null && within(shared.library.name, shared.shown.name))
           .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, Math.min(SHARED_ROWS_READ - sharedRows, LIBRARY_ROWS_READ - rows)) });
         return {
-          page: await Promise.all(read.page.map((shared) => overviewRow(ctx, shared!.library, shared!.role, { ...shared!.shown, kind: shared!.owner.organization ? "organization" : "person" }, { from: "shared", workspaceId: shared!.library.workspaceId }))),
+          page: await Promise.all(read.page.map((shared) => overviewRow(ctx, shared!.library, shared!.role, { ...shared!.shown, kind: shared!.owner.organization ? "organization" : "person", colour: shared!.owner.organization?.colour ?? null }, { from: "shared", workspaceId: shared!.library.workspaceId }))),
           after: read.isDone ? null : read.continueCursor,
         };
       },
