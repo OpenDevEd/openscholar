@@ -1518,7 +1518,8 @@
     "planAllowsCollections": "O {plan} permite {limit, number} coleções",
     "nameTheCollection": "Dê um nome à coleção",
     "newName": "Novo nome para {name}",
-    "clearSearch": "Limpar pesquisa"
+    "clearSearch": "Limpar pesquisa",
+    "collectionDeletedPapersStay": "{name}: os artigos continuam na sua biblioteca"
   },
   "sidebarLayout": {
     "expandFilters": "Expandir filtros (Ctrl+Shift+F)",

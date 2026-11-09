@@ -7,6 +7,7 @@ import { calculateCostInDollars, usageOf } from "../../lib/ai/core/cost";
 import { pickProviderCostUsd } from "../../lib/ai/pick-provider-cost";
 import { GROUPINGS, type Grouping } from "./searchValidators";
 import { GROUPS_KEPT, PAPERS_KEPT } from "./overviewValidators";
+import { plainAbstract } from "../../lib/papers/abstract-text";
 
 /** Model steps one overview may take: a few counts and paper reads, then the writing. */
 const STEPS = 6;
@@ -31,7 +32,7 @@ const abstractOf = (index: Work["abstract_inverted_index"]) => {
   if (!index) return undefined;
   const words: string[] = [];
   for (const [word, places] of Object.entries(index)) for (const place of places) words[place] = word;
-  return words.join(" ").slice(0, ABSTRACT_READ);
+  return plainAbstract(words.join(" ")).slice(0, ABSTRACT_READ);
 };
 
 /** What a run tells its page as it goes: a step, a count or a paper list it read, or the whole lines written so far. */

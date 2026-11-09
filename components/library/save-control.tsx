@@ -160,6 +160,8 @@ export function useSavePaper(paper: WorkInput | undefined) {
     if (!ready || !paper) return;
     const key = `${userId}:${paper.id}`;
     if (!isSaved) {
+      // Saved again: the note that it was removed no longer holds.
+      toast.dismiss(`removed:${key}`);
       saveBack(paper, removals.get(key));
       return;
     }
@@ -173,6 +175,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
       .then((removed) => {
         if (!removed) return;
         toast(t("removed"), {
+          id: `removed:${key}`,
           description: paper.title,
           duration: 5000,
           action: {

@@ -50,6 +50,7 @@ import {
 } from "./shared";
 import posthog from "posthog-js";
 import { useTranslations, useFormatter } from "next-intl";
+import { plainAbstract } from "@/lib/papers/abstract-text";
 
 export function PaperCardListDetail({
   result,
@@ -202,14 +203,14 @@ export function PaperCardListDetail({
               <QueryMatchText text={isExpanded
                 ? showTranslated && translatedContent
                   ? translatedContent.translatedAbstract
-                  : result.abstract
+                  : plainAbstract(result.abstract)
                 : showTranslated && translatedContent
                   ? translatedContent.translatedAbstract.length > 500
                     ? `${translatedContent.translatedAbstract.slice(0, 500)}...`
                     : translatedContent.translatedAbstract
-                  : result.abstract.length > 500
-                    ? `${result.abstract.slice(0, 500)}...`
-                    : result.abstract} />
+                  : plainAbstract(result.abstract).length > 500
+                    ? `${plainAbstract(result.abstract).slice(0, 500)}...`
+                    : plainAbstract(result.abstract)} />
             </p>
 
             {/* Expanded Metadata */}

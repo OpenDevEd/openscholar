@@ -13,7 +13,7 @@ import { countSearch, groupSearch, readWork } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, spender, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { readPage, short } from "./searches";
 import { workUrl } from "../../lib/openalex/work-id";
-import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { abstractFromIndex } from "../../lib/papers/abstract-text";
 import { AUTHORS_LISTED, countValidator, FUNDERS_LISTED, GROUPINGS, GROUPS_MAX, INSTITUTIONS_LISTED, pageValidator, paperPdfValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS, type Grouping } from "./searchValidators";
 import { assistantPick, chatModel } from "../assistant/threads";
 import { pricingOf } from "../ai/serverModel";
@@ -180,7 +180,7 @@ export const get = userAction(getAction);
 /** The abstract of the OpenAlex work a record of ours is paired with, if OpenAlex has one and can be read now. */
 async function pairedAbstract(openalexId: string, spend: ReturnType<typeof spender>) {
   const work = await readWork<Work>(openalexId, "id,abstract_inverted_index", spend, "openalex").catch(() => null);
-  return work?.abstract_inverted_index ? convertAbstractArrayToString(work.abstract_inverted_index) : undefined;
+  return work?.abstract_inverted_index ? abstractFromIndex(work.abstract_inverted_index) : undefined;
 }
 export const getForAssistant = assistantAction(getAction);
 

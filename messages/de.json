@@ -1518,7 +1518,8 @@
     "planAllowsCollections": "{plan} erlaubt {limit, number} Sammlungen",
     "nameTheCollection": "Sammlung benennen",
     "newName": "Neuer Name für {name}",
-    "clearSearch": "Suche löschen"
+    "clearSearch": "Suche löschen",
+    "collectionDeletedPapersStay": "{name}: Die Artikel bleiben in deiner Bibliothek"
   },
   "sidebarLayout": {
     "expandFilters": "Filter ausklappen (Ctrl+Shift+F)",

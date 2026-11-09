@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { abstractFromIndex } from "@/lib/papers/abstract-text";
 import type { SearchParameters, Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SearchSource } from "../search/source";
 import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
@@ -27,7 +27,7 @@ export async function readOpenAlexWorks(parameters: SearchParameters & {cursor: 
   return {
     meta: parsed.meta,
     results: parsed.results.map(({abstract_inverted_index, sustainable_development_goals, ...fields}) => {
-      const work: Work = appWork({...fields, ...(abstract_inverted_index ? {abstract: convertAbstractArrayToString(abstract_inverted_index)} : {})});
+      const work: Work = appWork({...fields, ...(abstract_inverted_index ? {abstract: abstractFromIndex(abstract_inverted_index)} : {})});
       return {...work, sustainable_development_goals: goals.parse(sustainable_development_goals)};
     }),
   };
@@ -62,7 +62,7 @@ export async function fetchOwnWorks(parameters: SearchParameters, at: { page: nu
       meta: body.meta,
       results: (body.results ?? []).map(({ abstract_inverted_index, ...work }: Work) => appWork({
         ...work,
-        ...(abstract_inverted_index ? { abstract: convertAbstractArrayToString(abstract_inverted_index) } : {}),
+        ...(abstract_inverted_index ? { abstract: abstractFromIndex(abstract_inverted_index) } : {}),
       })),
     } as Works,
   };

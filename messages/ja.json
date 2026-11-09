@@ -1517,7 +1517,8 @@
     "planAllowsCollections": "{plan} のコレクションは {limit, number} 件までです",
     "nameTheCollection": "コレクションに名前を付けてください",
     "newName": "{name} の新しい名前",
-    "clearSearch": "検索をクリア"
+    "clearSearch": "検索をクリア",
+    "collectionDeletedPapersStay": "{name}: 論文はライブラリに残ります"
   },
   "sidebarLayout": {
     "expandFilters": "フィルターを展開 (Ctrl+Shift+F)",

@@ -1517,7 +1517,8 @@
     "planAllowsCollections": "{plan} 最多可有 {limit, number} 个集合",
     "nameTheCollection": "为集合命名",
     "newName": "{name} 的新名称",
-    "clearSearch": "清除搜索"
+    "clearSearch": "清除搜索",
+    "collectionDeletedPapersStay": "{name}：其中的论文仍在你的文献库中"
   },
   "sidebarLayout": {
     "expandFilters": "展开筛选器 (Ctrl+Shift+F)",

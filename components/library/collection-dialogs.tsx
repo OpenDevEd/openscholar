@@ -29,6 +29,7 @@ import { COLLECTION_UNDO_MS } from "@/lib/library/limits";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { parseAsString, useQueryState } from "nuqs";
 
 const FOLDER_TINT = "#e8890c";
 /** Pinned from the top, so the name field never moves as the dialog grows. */
@@ -392,6 +393,8 @@ function ManageCollections({ manage, close, onNew }: { manage: Manage; close: ()
   const deleteSoon = useWorkspaceMutation(api.library.collections.deleteSoon);
   const keepCollection = useWorkspaceMutation(api.library.collections.keepCollection);
   const { query, setQuery, search, total, list } = manage;
+  // The collection the library shows: deleted, the library goes back to every paper instead of saying it's gone.
+  const [shownCollection, setShownCollection] = useQueryState("col", parseAsString);
   const deleting = useDeleting((s) => s.ids);
   const shown = list.items.filter((c) => !deleting.includes(c._id));
   const [editing, setEditing] = useState<Id<"collections"> | null>(null);
@@ -422,6 +425,7 @@ function ManageCollections({ manage, close, onNew }: { manage: Manage; close: ()
       toast.error(t("deleteCollectionError"));
     };
     useDeleting.setState((s) => ({ ids: [...s.ids, id] }));
+    if (shownCollection === id) void setShownCollection(null);
     // The server holds the deletion while Undo is open, so leaving the page doesn't cancel it.
     const held = deleteSoon({ collectionId: id });
     held.catch((error) => {
@@ -429,7 +433,7 @@ function ManageCollections({ manage, close, onNew }: { manage: Manage; close: ()
       show();
     });
     const notice = toast(t("collectionDeleted"), {
-      description: name,
+      description: t("collectionDeletedPapersStay", { name }),
       duration: COLLECTION_UNDO_MS,
       action: { label: t("undoDelete"), onClick: () => void held.then((deletingAt) => keepCollection({ collectionId: id, deletingAt })).then(show, failed) },
     });

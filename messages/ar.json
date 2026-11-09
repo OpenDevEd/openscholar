@@ -1518,7 +1518,8 @@
     "planAllowsCollections": "تتيح {plan} {limit, number} مجموعة",
     "nameTheCollection": "سمِّ المجموعة",
     "newName": "اسم جديد لـ {name}",
-    "clearSearch": "مسح البحث"
+    "clearSearch": "مسح البحث",
+    "collectionDeletedPapersStay": "{name}: تبقى أوراقها في مكتبتك"
   },
   "sidebarLayout": {
     "expandFilters": "توسيع عوامل التصفية (Ctrl+Shift+F)",
