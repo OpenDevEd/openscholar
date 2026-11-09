@@ -5,7 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { cookies, headers } from "next/headers";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
-import { reviewRequestedEmail } from "@/lib/publish-mock/emails";
+import { mail } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { renderCover } from "@/lib/publish-mock/cover";
@@ -119,6 +119,7 @@ export async function uploadPdf(form: FormData) {
  */
 export async function readPdfDetails(id: string): Promise<{ draft: Submission; read: boolean }> {
   const user = await currentUser();
+  const origin = (await headers()).get("origin") ?? "";
   const state = await readState();
   const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
   if (!report?.pdf || report.step === "done") throw new Error("This report has no PDF waiting to be read.");
@@ -140,7 +141,9 @@ export async function readPdfDetails(id: string): Promise<{ draft: Submission; r
     const draft = state.submissions.find((s) => s.id === id);
     // A PDF uploaded while this one was being read is the report's now: its own reading fills the details.
     if (!draft?.pdf || draft.pdf.at !== at || draft.step === "done") throw new Error("A newer PDF replaced the one being read.");
-    return { draft: touch(draft, { metadata: details, step: "details" }), read: metadata !== null };
+    touch(draft, { metadata: details, step: "details" });
+    if (!metadata) mail(state, "pdf-unread", draft, origin);
+    return { draft, read: metadata !== null };
   });
 }
 
@@ -242,8 +245,9 @@ export async function updateAgreement(text: string) {
 }
 
 /**
- * The author of a report its checks failed asks a person to look, with what they think the checks got wrong. The
- * report then waits in the review queue, and the team's inbox is told. MOCK: the email is kept in the store, not sent.
+ * The author of a report its checks failed asks a person to look, with what they think the checks got wrong. That
+ * tells the team's inbox and shows the words to a reviewer, and nothing else: a reviewer can approve or decline any
+ * report, asked or not. MOCK: the email is kept in the store, not sent.
  */
 export async function requestReview(id: string, comment: string) {
   const user = await currentUser();
@@ -254,33 +258,42 @@ export async function requestReview(id: string, comment: string) {
     if (report.status !== "failed" || report.step !== "done") throw new Error("Only a report its checks failed can be sent for review.");
     if (report.reviewRequest) return report;
     report.reviewRequest = { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() };
-    const email = reviewRequestedEmail(report, origin);
-    report.reviewRequest.email = email.id;
-    // The newest 200: the mock's store is one file.
-    state.outbox = [email, ...(state.outbox ?? [])].slice(0, 200);
+    mail(state, "review-requested", report, origin);
     return touch(report, {});
   });
 }
 
+/**
+ * A reviewer's word on any report, whatever its checks said and whether or not its author asked: approve one that
+ * isn't live yet, so its author can activate it, or decline it. Declining a live report takes it down: its page closes.
+ */
 export async function review(id: string, decision: "approve" | "decline", note?: string) {
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
-    if (!submission) throw new Error("No such report.");
-    if (stageOf(submission, state.settings) !== "review") throw new Error("This report isn't waiting for review.");
-    // Approving lets the author activate it; the author decides when it goes live.
-    return touch(submission, decision === "approve" ? { approved: true } : { status: "declined", ...(note?.trim() ? { note: note.trim().slice(0, REVIEW_TEXT_MAX) } : {}) });
+    if (!submission || submission.step !== "done") throw new Error("No such report to review.");
+    const stage = stageOf(submission, state.settings);
+    if (stage === "declined") throw new Error("This report was already declined.");
+    if (decision === "approve") {
+      if (stage !== "failed" && stage !== "review") throw new Error("This report doesn't need approving.");
+      // Approving lets the author activate it; the author decides when it goes live.
+      return touch(submission, { approved: true });
+    }
+    return touch(submission, { status: "declined", ...(note?.trim() ? { note: note.trim().slice(0, REVIEW_TEXT_MAX) } : {}) });
   });
 }
 
 /** The author makes a passed report live: its DOI goes to Crossref and its page opens. Only once no review is owed. */
 export async function activate(id: string) {
   const user = await currentUser();
+  const origin = (await headers()).get("origin") ?? "";
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
     if (!submission) throw new Error("No such report of yours.");
     if (submission.step !== "done" || stageOf(submission, state.settings) !== "ready") throw new Error("A reviewer approves this report before you can activate it.");
     const registers = providersOf(submission);
-    return touch(submission, { status: "live", activatedAt: Date.now(), archive: registers.includes("zenodo") ? "queued" : "none", deposit: registers.includes("crossref") ? "queued" : "none" });
+    touch(submission, { status: "live", activatedAt: Date.now(), archive: registers.includes("zenodo") ? "queued" : "none", deposit: registers.includes("crossref") ? "queued" : "none" });
+    mail(state, "live", submission, origin);
+    return submission;
   });
 }
 

@@ -2,12 +2,13 @@
 // it comes; the last step saves them and decides what happens to the report.
 import { readFile } from "node:fs/promises";
 import { alreadyPublished } from "./published";
+import { mail } from "./emails";
 import { changeState, textPath } from "./store";
 import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 import { decideYesNo, isDecisionModel, paperState } from "@/lib/ai/decisions";
-import { bylineOf, type Answer, type Check, type CheckResult, type Metadata, type Settings, type Submission } from "./types";
+import { bylineOf, stageOf, type Answer, type Check, type CheckResult, type Metadata, type Settings, type Submission } from "./types";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -77,7 +78,7 @@ export async function checksFor(id: string, userId: string, metadata: Metadata) 
 
 /** Saves the checks' answers with the version that ran, and decides what happens to the report. Only the latest run on
  * the PDF they read: a run that a new PDF or a later run replaced saves nothing. */
-export function finishChecks(id: string, run: string, metadata: Metadata, results: CheckResult[], version: number) {
+export function finishChecks(id: string, run: string, metadata: Metadata, results: CheckResult[], version: number, origin: string) {
   return changeState((state) => {
     const draft = state.submissions.find((s) => s.id === id);
     if (!draft) throw new Error("The report is gone.");
@@ -86,6 +87,9 @@ export function finishChecks(id: string, run: string, metadata: Metadata, result
     // Passing makes the report; whether it waits for a reviewer is decided when it's looked at (stageOf).
     const status = blocked ? "failed" : "passed";
     Object.assign(draft, { metadata, results, checksVersion: version, status, step: "done", run: undefined, deposit: "none", updatedAt: Date.now() });
+    // The team's inbox hears of what needs a person.
+    if (results.some((r) => r.errored)) mail(state, "check-unfinished", draft, origin);
+    if (stageOf(draft, state.settings) === "review") mail(state, "waiting-for-review", draft, origin);
     return draft;
   });
 }

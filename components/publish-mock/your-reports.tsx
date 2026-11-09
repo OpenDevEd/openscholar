@@ -159,7 +159,7 @@ function ReportRow({ report: r, stage, onOpen }: { report: Submission; stage: St
         </div>
       </div>
       <StatusChip tone={status.tone} icon={status.icon} className="hidden shrink-0 @md/reports:inline-flex">
-        {status.label}
+        {stage === "declined" && r.activatedAt ? "Taken down" : status.label}
       </StatusChip>
       <TooltipHint label={action.label}>{open}</TooltipHint>
     </li>

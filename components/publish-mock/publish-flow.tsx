@@ -686,20 +686,20 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
       Looking for earlier copies takes a few seconds.
     </StepHead>
   ) : stage === "ready" ? (
-    <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>Passed</StatusChip>}>
-      Your report passed its checks. Activate it to make its DOI live and open its page.
+    <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>{draft.status === "failed" ? "Approved" : "Passed"}</StatusChip>}>
+      {draft.status === "failed" ? "A reviewer approved your report. Activate it to make its DOI live and open its page." : "Your report passed its checks. Activate it to make its DOI live and open its page."}
     </StepHead>
   ) : stage === "review" ? (
     <StepHead key="review" title="Waiting for review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
-      {draft.reviewRequest ? "You asked for a human review. You can activate your report once a reviewer approves it." : "Your report passed its checks. You can activate it once a reviewer approves it."}
+      Your report passed its checks. You can activate it once a reviewer approves it.
     </StepHead>
   ) : stage === "declined" ? (
-    <StepHead key="declined" title="Not published" aside={<StatusChip tone="danger" icon={CircleX}>Declined</StatusChip>}>
-      {draft.note ?? "The reviewer declined this report."}
+    <StepHead key="declined" title={draft.activatedAt ? "Taken down" : "Not published"} aside={<StatusChip tone="danger" icon={CircleX}>{draft.activatedAt ? "Taken down" : "Declined"}</StatusChip>}>
+      {draft.note ?? (draft.activatedAt ? "A reviewer took this report down." : "The reviewer declined this report.")}
     </StepHead>
   ) : (
     <StepHead key="failed" title="Not published yet" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
-      Fix the PDF and upload it again. Your DOI stays reserved.
+      {draft.reviewRequest ? "You asked for a human review. You can also fix the PDF and upload it again." : "Fix the PDF and upload it again. Your DOI stays reserved."}
     </StepHead>
   );
   return (
@@ -711,12 +711,12 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
           </motion.div>
         </AnimatePresence>
       </AutoHeight>
-      {draft?.reviewRequest?.comment && stage === "review" ? (
+      {draft?.reviewRequest && stage === "failed" ? (
         <div className="mb-4 flex items-start gap-3 rounded-2xl bg-inset px-4 py-3">
           <ReviewQueueIcon className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="min-w-0">
             <p className="text-xs font-medium text-muted-foreground">Your request</p>
-            <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{draft.reviewRequest.comment}</p>
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{draft.reviewRequest.comment || "Sent without a comment"}</p>
           </div>
         </div>
       ) : null}
@@ -731,9 +731,11 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6 flex flex-wrap justify-end gap-2">
               {stage === "failed" ? (
                 <>
-                  <Button variant="outline" onClick={() => setAsking(true)}>
-                    <ReviewQueueIcon /> Request a human review
-                  </Button>
+                  {draft.reviewRequest ? null : (
+                    <Button variant="outline" onClick={() => setAsking(true)}>
+                      <ReviewQueueIcon /> Request a human review
+                    </Button>
+                  )}
                   <Button onClick={onFix}>
                     <RotateCcw /> Upload a new PDF
                   </Button>
@@ -791,7 +793,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Request a human review</DialogTitle>
-          <DialogDescription>A reviewer reads your report and what the checks said. Ask when a check got your report wrong.</DialogDescription>
+          <DialogDescription>Our team reads your report and what the checks said. Ask when a check got your report wrong.</DialogDescription>
         </DialogHeader>
         <Field label="What did the checks get wrong?" counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
           {(id) => <Textarea id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} autoFocus />}

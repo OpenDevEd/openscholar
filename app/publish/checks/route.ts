@@ -26,14 +26,14 @@ export async function POST(request: Request) {
           const result = await runCheck(check, settings, draft, text, metadata).catch((error: unknown): CheckResult => {
             console.error("[publish mock] check failed", { check: check.id, error: String(error) });
             // A check that can't answer holds the report for a person rather than pass it, and says why.
-            return { checkId: check.id, name: check.name, model: check.model.name, pass: false, blocking: false, detail: `This check couldn't finish: ${error instanceof Error ? error.message : "it failed"}. A reviewer looks instead.` };
+            return { checkId: check.id, name: check.name, model: check.model.name, pass: false, blocking: false, errored: true, detail: `This check couldn't finish: ${error instanceof Error ? error.message : "it failed"}. A reviewer looks instead.` };
           });
           send({ type: "result", result });
           return result;
         }),
       );
       try {
-        send({ type: "done", draft: await finishChecks(id, run, metadata, results, version) });
+        send({ type: "done", draft: await finishChecks(id, run, metadata, results, version, new URL(request.url).origin) });
       } catch (error) {
         send({ type: "error", error: error instanceof Error ? error.message : "The checks couldn't be saved." });
       }

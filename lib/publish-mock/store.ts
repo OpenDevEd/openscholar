@@ -5,6 +5,7 @@ import path from "node:path";
 import type { Check, CheckResult, Metadata, MockState, Settings, Submission } from "./types";
 import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
 import { suggestTopics } from "./topics";
+import { mail } from "./emails";
 import { DEFAULT_LLM, JEV, doiOf, providersOf, registrationOf } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
@@ -223,7 +224,10 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
 
 async function seed(): Promise<MockState> {
   const settings = await seedSettings();
-  return { settings, submissions: await Promise.all(TITLES.map((_, n) => seedSubmission(settings, n))), drafts: {}, checkVersions: { "3": settings.checks } };
+  const state: MockState = { settings, submissions: await Promise.all(TITLES.map((_, n) => seedSubmission(settings, n))), drafts: {}, checkVersions: { "3": settings.checks } };
+  // The sample whose registration was refused told the team's inbox, as a real refusal would.
+  for (const report of state.submissions) if (report.deposit === "failed" || report.archive === "failed") mail(state, "registration-refused", report, "");
+  return state;
 }
 
 /** MOCK: Crossref takes a little while; a report sent over 15 seconds ago is registered. */

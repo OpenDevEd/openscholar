@@ -28,6 +28,7 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Check,
+  Mail,
   CircleCheck,
   CircleX,
   FileText,
@@ -54,7 +55,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
-import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, stageOf, type Check as CheckDef, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, stageOf, type Check as CheckDef, type Email, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -71,6 +72,8 @@ const STATUS: Record<Exclude<Stage, "draft">, { label: string; tone: "running" |
   failed: { label: "Failed checks", tone: "danger", icon: CircleX },
   declined: { label: "Declined", tone: "neutral", icon: CircleX },
 };
+/** A report's status in words. A declined report that had been live was taken down. */
+const labelOf = (s: Submission, stage: Stage) => (stage === "declined" && s.activatedAt ? "Taken down" : stage === "draft" ? "Draft" : STATUS[stage].label);
 const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed", declined: "Declined" };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
@@ -82,6 +85,8 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
   const [view, setView] = useQueryState("view", parseAsStringLiteral(VIEWS).withDefault("submissions"));
   const [settings, setSettings] = useState(initial.settings);
   const [submissions, setSubmissions] = useState(initial.submissions.filter((s) => s.status !== "draft"));
+  // MOCK: the emails kept in the store when the page loaded, so each report can show what the team's inbox was told.
+  const outbox = initial.outbox ?? [];
   const waiting = submissions.filter((s) => stageOf(s, settings) === "review").length;
   const replace = (next: Submission) => setSubmissions((all) => all.map((s) => (s.id === next.id ? next : s)));
 
@@ -99,7 +104,7 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
           size="md"
         />
         {view === "submissions" ? (
-          <Submissions settings={settings} submissions={submissions} onChange={replace} />
+          <Submissions settings={settings} submissions={submissions} outbox={outbox} onChange={replace} />
         ) : (
           <SettingsView settings={settings} onChange={setSettings} />
         )}
@@ -108,7 +113,7 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
   );
 }
 
-function Submissions({ settings, submissions, onChange }: { settings: Settings; submissions: Submission[]; onChange: (s: Submission) => void }) {
+function Submissions({ settings, submissions, outbox, onChange }: { settings: Settings; submissions: Submission[]; outbox: Email[]; onChange: (s: Submission) => void }) {
   const [query, setQuery] = useState("");
   const [show, setShow] = useState<Show>("all");
   const [sort, setSort] = useState<Sort>("newest");
@@ -177,7 +182,7 @@ function Submissions({ settings, submissions, onChange }: { settings: Settings; 
           )}
         </Paged>
       </div>
-      <SubmissionDialog submission={opened} settings={settings} onClose={() => setOpen(null)} onChange={onChange} />
+      <SubmissionDialog submission={opened} settings={settings} emails={opened ? outbox.filter((e) => e.report === opened.id) : []} onClose={() => setOpen(null)} onChange={onChange} />
     </Zone>
   );
 }
@@ -228,7 +233,7 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
       ) : null}
       {status ? (
         <StatusChip tone={refused ? "warning" : status.tone} icon={refused ? TriangleAlert : status.icon} className="hidden shrink-0 sm:inline-flex">
-          {standing && refused ? `${PROVIDER_NAME[standing.provider]} refused` : stage === "review" && s.reviewRequest ? "Review requested" : status.label}
+          {standing && refused ? `${PROVIDER_NAME[standing.provider]} refused` : labelOf(s, stage)}
         </StatusChip>
       ) : null}
       <span className="flex w-[4.5rem] shrink-0 justify-end gap-1">
@@ -267,7 +272,7 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
   );
 }
 
-function SubmissionDialog({ submission: s, settings, onClose, onChange }: { submission: Submission | null; settings: Settings; onClose: () => void; onChange: (s: Submission) => void }) {
+function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }: { submission: Submission | null; settings: Settings; emails: Email[]; onClose: () => void; onChange: (s: Submission) => void }) {
   const [note, setNote] = useState("");
   const [busy, start] = useTransition();
   const decide = (decision: "approve" | "decline") =>
@@ -275,7 +280,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
       if (!s) return;
       try {
         onChange(await review(s.id, decision, note.trim() || undefined));
-        toast.success(decision === "approve" ? "Approved: its author can activate it" : "Declined");
+        toast.success(decision === "approve" ? "Approved: its author can activate it" : s.status === "live" ? "Taken down" : "Declined");
         setNote("");
         onClose();
       } catch (error) {
@@ -286,15 +291,16 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
   const status = stage && stage !== "draft" ? STATUS[stage] : undefined;
   return (
     <Dialog open={!!s} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      {/* One column no wider than the dialog: a long title or link wraps or is cut, and never widens it. */}
+      <DialogContent className="max-h-[85vh] grid-cols-1 overflow-y-auto sm:max-w-2xl">
         {s ? (
           <>
             <DialogHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs text-muted-foreground">{s.id}</span>
-                {status ? <StatusChip tone={status.tone} icon={status.icon}>{stage === "review" && s.reviewRequest ? "Review requested" : status.label}</StatusChip> : null}
+                {status && stage ? <StatusChip tone={status.tone} icon={status.icon}>{labelOf(s, stage)}</StatusChip> : null}
               </div>
-              <DialogTitle className="text-lg leading-snug">{s.metadata?.title}</DialogTitle>
+              <DialogTitle className="break-words text-lg leading-snug">{s.metadata?.title}</DialogTitle>
               <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 {s.metadata?.authors.map((a) => (
                   <span key={a.name} className="inline-flex items-center gap-1.5">
@@ -307,18 +313,10 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
             <div className="space-y-5">
               {s.reviewRequest ? (
                 <div className="space-y-2 rounded-xl bg-inset p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                      <ReviewQueueIcon className="size-3.5 text-primary" /> The author asked for a review
-                      <span className="tabular-nums">{day(s.reviewRequest.at)}</span>
-                    </span>
-                    {s.reviewRequest.email ? (
-                      // MOCK: opens the email as it would arrive. The real build sends it and has no such link.
-                      <a href={`/publish/emails/${s.reviewRequest.email}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:underline">
-                        Emailed to {CONTACT_EMAIL} <ArrowUpRight className="size-3" />
-                      </a>
-                    ) : null}
-                  </div>
+                  <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <ReviewQueueIcon className="size-3.5 text-primary" /> The author asked for a review
+                    <span className="tabular-nums">{day(s.reviewRequest.at)}</span>
+                  </span>
                   <p className="whitespace-pre-wrap break-words text-sm">{s.reviewRequest.comment || "No comment"}</p>
                 </div>
               ) : null}
@@ -347,6 +345,19 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
                   <RegistrationChips report={s} />
                 </div>
               ) : null}
+              {emails.length ? (
+                // MOCK: each opens the email as it would arrive. The real build sends them and has no such links.
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="size-3.5" /> Emailed to {CONTACT_EMAIL}
+                  </span>
+                  {emails.map((email) => (
+                    <a key={email.id} href={`/publish/emails/${email.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-medium text-foreground/80 underline-offset-4 hover:underline">
+                      {email.event} <ArrowUpRight className="size-3" />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
               {s.metadata?.abstract ? <p className="line-clamp-5 text-sm/6 text-muted-foreground">{s.metadata.abstract}</p> : null}
               {s.metadata ? <Subjects m={s.metadata} /> : null}
               {s.results?.length ? (
@@ -357,24 +368,27 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
                 </ul>
               ) : null}
               {s.status === "declined" && s.note ? <p className="rounded-xl bg-inset p-3 text-sm">{s.note}</p> : null}
-              {stage === "review" ? (
-                <Field label="Note to the author, if you decline" counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
+              {stage && stage !== "declined" && stage !== "draft" ? (
+                <Field label={stage === "live" ? "Note to the author, if you take it down" : "Note to the author, if you decline"} counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
                   {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={REVIEW_TEXT_MAX} />}
                 </Field>
               ) : null}
             </div>
-            {stage === "review" ? (
+            {/* A reviewer acts on any report, whatever its checks said: approve one not yet cleared, decline it, or take a live one down. */}
+            {stage && stage !== "declined" && stage !== "draft" ? (
               <DialogFooter>
                 <Button variant="outline" className="relative" disabled={busy} onClick={() => decide("decline")}>
-                  <CircleX /> Decline
+                  <CircleX /> {stage === "live" ? "Take down" : "Decline"}
                 </Button>
-                <Button className="relative" disabled={busy} onClick={() => decide("approve")}>
-                  <Working busy={busy}>
-                    <span className="flex items-center gap-2">
-                      <Check /> Approve
-                    </span>
-                  </Working>
-                </Button>
+                {stage === "failed" || stage === "review" ? (
+                  <Button className="relative" disabled={busy} onClick={() => decide("approve")}>
+                    <Working busy={busy}>
+                      <span className="flex items-center gap-2">
+                        <Check /> Approve
+                      </span>
+                    </Working>
+                  </Button>
+                ) : null}
               </DialogFooter>
             ) : null}
             <span className="sr-only">{settings.series.name}</span>

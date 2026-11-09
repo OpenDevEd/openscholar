@@ -49,6 +49,8 @@ export type CheckResult = {
   /** What a search found or didn't. */
   detail?: string;
   evidence?: { title: string; url: string; where?: string };
+  /** The check couldn't answer at all, so the report was held for a person. */
+  errored?: boolean;
 };
 
 export type Settings = {
@@ -109,14 +111,15 @@ export type Metadata = {
 
 export type Step = "agreement" | "doi" | "upload" | "details" | "checks" | "done";
 /** What is saved: a report that passed its checks stays passed until its author activates it. */
+/** `declined` is also a live report a reviewer took down: `activatedAt` tells that one from a report never published. */
 export type Status = "draft" | "failed" | "passed" | "live" | "declined";
 /** Where a report stands now. A passed report waits for a reviewer while review is on or a check flagged it, and
  * until someone approves it; then it's ready for its author to activate. Worked out from the settings as they are,
  * so switching review off releases the reports waiting only for it. */
 export type Stage = "draft" | "failed" | "review" | "ready" | "live" | "declined";
 export function stageOf(s: Submission, settings: Settings): Stage {
-  // A report its checks failed waits for a reviewer once its author asks for one. Approved, it is the author's to activate.
-  if (s.status === "failed" && s.reviewRequest) return s.approved ? "ready" : "review";
+  // A reviewer may approve a report whatever its checks said: it is then its author's to activate.
+  if (s.status === "failed") return s.approved ? "ready" : "failed";
   if (s.status !== "passed") return s.status;
   const needsReview = settings.humanReview || (s.results ?? []).some((r) => !r.pass);
   return s.approved || !needsReview ? "ready" : "review";
@@ -143,8 +146,9 @@ export type Submission = {
   status: Status;
   /** A reviewer approved it, so its author can activate it whatever the settings say. */
   approved?: boolean;
-  /** The author asked a person to look at a report its checks failed, with what they think the checks got wrong. */
-  reviewRequest?: { comment: string; at: number; email?: string };
+  /** The author asked a person to look at a report its checks failed, with what they think the checks got wrong.
+   * Asking changes nothing about the report: it tells the team's inbox, and the words show to a reviewer. */
+  reviewRequest?: { comment: string; at: number };
   signedBy?: { name: string; email: string; onBehalfOfAll: boolean };
   signedAt?: number;
   agreementVersion?: number;
@@ -171,7 +175,7 @@ export type Submission = {
 /** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
 export const REVIEW_TEXT_MAX = 3000;
 /** An email to the team's inbox. MOCK: kept here to be read; the real build sends it (convex/lib/invitationDelivery.ts). */
-export type Email = { id: string; at: number; to: string; replyTo: string; subject: string; text: string; html: string; report: string };
+export type Email = { id: string; at: number; to: string; replyTo: string; subject: string; text: string; html: string; report: string; event: string };
 /** `drafts` is the report each person has open on the Publish page, by their Clerk user: one person's never shows for another. */
 export type MockState = { settings: Settings; submissions: Submission[]; drafts: Record<string, string>; outbox?: Email[]; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
