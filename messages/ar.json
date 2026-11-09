@@ -1067,7 +1067,7 @@
     "cookiePolicyDescription": "تعرّف على كيفية استخدام Openscholar.ai لملفات تعريف الارتباط لأغراض التحليل، وكيفية إدارة تفضيلاتك لها.",
     "libraryTitle": "المكتبة",
     "libraryDescription": "تصفّح أوراقك الأكاديمية المحفوظة وأدِرها",
-    "creditsTitle": "الأرصدة",
+    "creditsTitle": "الإسنادات",
     "creditsDescription": "المشاريع والبيانات والتراخيص التي يعتمد عليها Openscholar.",
     "sharedTitle": "المشارَك معي",
     "termsTitle": "شروط الاستخدام",
@@ -1370,7 +1370,7 @@
     "privacyPolicy": "سياسة الخصوصية",
     "cookiePolicy": "سياسة ملفات تعريف الارتباط",
     "cookiePreferences": "تفضيلات ملفات تعريف الارتباط",
-    "credits": "الاعتمادات"
+    "credits": "الإسنادات"
   },
   "focusMode": {
     "settingsTitle": "إعدادات وضع التركيز",

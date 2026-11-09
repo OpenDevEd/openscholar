@@ -1066,7 +1066,7 @@
     "cookiePolicyDescription": "Learn how Openscholar.ai uses cookies for analytics and how to manage your cookie preferences.",
     "libraryTitle": "Library",
     "libraryDescription": "Browse and manage your saved academic papers",
-    "creditsTitle": "Credits",
+    "creditsTitle": "Attributions",
     "creditsDescription": "The projects, data and licenses Openscholar builds on.",
     "sharedTitle": "Shared with me",
     "termsTitle": "Terms of use",
@@ -1369,7 +1369,7 @@
     "privacyPolicy": "Privacy policy",
     "cookiePolicy": "Cookie policy",
     "cookiePreferences": "Cookie preferences",
-    "credits": "Credits"
+    "credits": "Attributions"
   },
   "focusMode": {
     "settingsTitle": "Focus mode settings",

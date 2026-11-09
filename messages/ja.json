@@ -1066,7 +1066,7 @@
     "cookiePolicyDescription": "Openscholar.aiが分析のためにCookieをどのように使用し、Cookieの設定を管理するかについて説明します。",
     "libraryTitle": "ライブラリ",
     "libraryDescription": "保存した学術論文を閲覧・管理する",
-    "creditsTitle": "クレジット",
+    "creditsTitle": "帰属表示",
     "creditsDescription": "Openscholar が利用しているプロジェクト、データ、ライセンス。",
     "sharedTitle": "共有アイテム",
     "termsTitle": "利用規約",
@@ -1369,7 +1369,7 @@
     "privacyPolicy": "プライバシーポリシー",
     "cookiePolicy": "Cookieポリシー",
     "cookiePreferences": "Cookie設定",
-    "credits": "クレジット"
+    "credits": "帰属表示"
   },
   "focusMode": {
     "settingsTitle": "フォーカスモード設定",
