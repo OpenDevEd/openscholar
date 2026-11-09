@@ -1992,6 +1992,13 @@
       "secondaryHint": "Tags und Hervorhebungen.",
       "linkLabel": "Linkfarbe",
       "linkHint": "Links im Text. Wird auf beiden Hintergründen geprüft.",
+      "darkColoursLabel": "Eigene Farben im dunklen Modus",
+      "darkColoursHint": "Wenn das aus ist, nutzt der dunkle Modus die Farben oben.",
+      "accentDarkLabel": "Akzentfarbe (dunkel)",
+      "secondaryDarkLabel": "Zweitfarbe (dunkel)",
+      "linkDarkLabel": "Linkfarbe (dunkel)",
+      "linkLightHint": "Links im Text. Wird auf dem hellen Hintergrund geprüft.",
+      "linkDarkHint": "Wird auf dem dunklen Hintergrund geprüft.",
       "advanced": "Erweitert",
       "advancedColour": {
         "backgroundDark": "Hintergrund (dunkel)",

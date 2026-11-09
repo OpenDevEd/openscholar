@@ -1991,6 +1991,13 @@
       "secondaryHint": "标签和高亮。",
       "linkLabel": "链接颜色",
       "linkHint": "正文中的链接。会与两种背景进行对比度检查。",
+      "darkColoursLabel": "深色模式使用不同颜色",
+      "darkColoursHint": "关闭时，深色模式使用上面的颜色。",
+      "accentDarkLabel": "强调色（深色模式）",
+      "secondaryDarkLabel": "辅助色（深色模式）",
+      "linkDarkLabel": "链接颜色（深色模式）",
+      "linkLightHint": "正文中的链接。会与浅色背景进行对比度检查。",
+      "linkDarkHint": "会与深色背景进行对比度检查。",
       "advanced": "高级",
       "advancedColour": {
         "backgroundDark": "背景（深色模式）",

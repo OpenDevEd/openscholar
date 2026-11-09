@@ -1992,6 +1992,13 @@
       "secondaryHint": "Etiquetas e realces.",
       "linkLabel": "Cor das ligações",
       "linkHint": "Ligações no texto. Verificadas contra os dois fundos.",
+      "darkColoursLabel": "Cores diferentes no modo escuro",
+      "darkColoursHint": "Se estiver desligado, o modo escuro usa as cores acima.",
+      "accentDarkLabel": "Cor de destaque (modo escuro)",
+      "secondaryDarkLabel": "Cor secundária (modo escuro)",
+      "linkDarkLabel": "Cor das ligações (modo escuro)",
+      "linkLightHint": "Ligações no texto. Verificadas contra o fundo claro.",
+      "linkDarkHint": "Verificada contra o fundo escuro.",
       "advanced": "Avançado",
       "advancedColour": {
         "backgroundDark": "Fundo (modo escuro)",
