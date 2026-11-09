@@ -175,7 +175,22 @@ export function PublishFlow({
     }
   };
   // A live report's details being corrected: what the author changed them to, and the checks' answers when they refused it.
-  const [correcting, setCorrecting] = useState<{ id: string; metadata: Metadata; refused?: CheckResult[] } | null>(null);
+  // A link from the report's own page asks for it in the address, which is cleared once the correcting is over.
+  const [asked, setAsked] = useQueryState("correct");
+  const [correcting, setCorrectingOnly] = useState<{ id: string; metadata: Metadata; refused?: CheckResult[] } | null>(() =>
+    asked && initial?.id === asked && initial.status === "live" && initial.metadata ? { id: initial.id, metadata: initial.metadata } : null,
+  );
+  const setCorrecting = (next: typeof correcting) => {
+    setCorrectingOnly(next);
+    if (!next && asked) void setAsked(null);
+  };
+  /** Opens a live report of the person's with its details ready to correct. */
+  const startCorrecting = (report: Submission) => {
+    if (report.status !== "live" || !report.metadata) return;
+    setDraftOnly(report);
+    setCorrectingOnly({ id: report.id, metadata: report.metadata });
+    void setView(null);
+  };
   const correct = async (metadata: Metadata) => {
     if (!draft) return;
     const id = draft.id;
@@ -244,6 +259,7 @@ export function PublishFlow({
           settings={settings}
           show={show}
           reports={reports}
+          onCorrect={(id) => openReport(id).then(startCorrecting, said("That report couldn't be opened"))}
           onDiscard={(id) =>
             discardReport(id).then(() => {
               setReports((all) => all.filter((r) => r.id !== id));

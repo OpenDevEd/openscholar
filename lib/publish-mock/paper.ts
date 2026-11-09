@@ -1,14 +1,18 @@
 // MOCK (mock/publish-reports): a live report as the paper page reads a paper. The real build reads it from Convex.
+import { auth } from "@clerk/nextjs/server";
 import type { PaperResult } from "@/lib/types/search.types";
 import { reportPaper } from "./report-paper";
 import { coverUrlOf } from "./types";
 import { readState } from "./store";
 
-/** A live report's details and its cover, for what the paper page shows beyond a paper's record. */
+/** A live report's details and its cover, for what the paper page shows beyond a paper's record, and whether the
+ * person looking is its author, who can correct it. */
 export async function readReportMetadata(key: string) {
   const state = await readState();
   const report = state.submissions.find((s) => s.id === key && s.status === "live");
-  return report?.metadata ? { m: report.metadata, cover: coverUrlOf(report) } : null;
+  if (!report?.metadata) return null;
+  const { userId } = await auth();
+  return { m: report.metadata, cover: coverUrlOf(report), mine: userId !== null && (report.demo === true || report.ownerId === userId) };
 }
 
 /** A withdrawn report by its key, for the page its address and DOI keep leading to; null for any other. */

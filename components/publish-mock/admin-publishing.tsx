@@ -45,10 +45,17 @@ import {
   ShieldCheck,
   TriangleAlert,
   Trash2,
+  UserPlus,
 } from "@/components/icons";
 import { CheckRow } from "@/components/publish-mock/publish-flow";
 import { usePlaceName } from "@/components/publish-mock/report-extras";
-import { removeCheck, removeLimit, retryDeposit, review, saveCheck, saveLimit, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
+import { findAccounts, removeCheck, removeLimit, retryDeposit, review, saveCheck, saveLimit, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
+import useSWR from "swr";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { IdentityRow } from "@/components/ui/identity";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
 import { ConvexError } from "convex/values";
@@ -56,7 +63,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
-import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, providersOf, stageOf, type Check as CheckDef, type Email, type LimitOverride, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, providersOf, stageOf, type Account, type Check as CheckDef, type Email, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -85,7 +92,7 @@ function failed(error: unknown) {
   toast.error(error instanceof Error ? error.message : "Something went wrong");
 }
 
-export function AdminPublishing({ initial }: { initial: MockState }) {
+export function AdminPublishing({ initial, accounts }: { initial: MockState; accounts: Accounts }) {
   const [view, setView] = useQueryState("view", parseAsStringLiteral(VIEWS).withDefault("submissions"));
   const [settings, setSettings] = useState(initial.settings);
   const [submissions, setSubmissions] = useState(initial.submissions.filter((s) => s.status !== "draft"));
@@ -113,7 +120,7 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
         {view === "submissions" ? (
           <Submissions settings={settings} submissions={submissions} drafts={drafts} outbox={outbox} onChange={replace} />
         ) : (
-          <SettingsView settings={settings} onChange={setSettings} />
+          <SettingsView settings={settings} accounts={accounts} onChange={setSettings} />
         )}
       </div>
     </Enter>
@@ -494,20 +501,23 @@ function Row({ label, hint, children, wide = false }: { label: string; hint?: st
   );
 }
 
-/** How many reports a person may start in a day, and the people and organisations with a limit of their own. */
-function Limits({ settings, onChange, save }: { settings: Settings; onChange: (s: Settings) => void; save: (patch: { perDay: number }) => void }) {
-  const [kind, setKind] = useState<LimitOverride["kind"]>("person");
-  const [who, setWho] = useState("");
-  const [perDay, setPerDay] = useState("5");
+type Accounts = { people: Account[]; organizations: Account[] };
+/** What someone newly given a limit of their own starts with; the admin changes it in their row. */
+const OWN_LIMIT = 5;
+
+/**
+ * How many reports a person may start in a day, and the people and organisations with a limit of their own. They
+ * are Openscholar's real accounts, from Clerk, shown as people and organisations are everywhere else in the app.
+ */
+function Limits({ settings, accounts, onChange, save }: { settings: Settings; accounts: Accounts; onChange: (s: Settings) => void; save: (patch: { perDay: number }) => void }) {
   const [busy, start] = useTransition();
   const { limits } = settings;
-  const add = () =>
+  const set = (account: Pick<Account, "kind" | "id">, perDay: number) =>
     start(async () => {
       try {
-        const result = await saveLimit({ kind, who, perDay: Number(perDay) });
+        const result = await saveLimit({ kind: account.kind, id: account.id, perDay });
         if ("refused" in result) return void toast.error(result.refused);
         onChange(result.settings);
-        setWho("");
       } catch (error) {
         failed(error);
       }
@@ -519,50 +529,88 @@ function Limits({ settings, onChange, save }: { settings: Settings; onChange: (s
           <SavedInput value={String(limits.perDay)} onSave={(value) => save({ perDay: Number(value) })} className="w-20 text-end tabular-nums" />
         </Row>
         {limits.overrides.map((o) => (
-          <li key={o.id} className="flex items-center gap-3 px-4 py-3">
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium">{o.name}</span>
-              <span className="block text-xs text-muted-foreground">{o.kind === "person" ? "Person" : "Organisation"}</span>
-            </span>
-            <span className="shrink-0 text-sm tabular-nums">
-              {o.perDay} <span className="text-xs text-muted-foreground">a day</span>
-            </span>
-            <TooltipHint label="Remove this limit">
-              <Button variant="ghost" size="icon-sm" aria-label={`Remove ${o.name}'s limit`} className="text-muted-foreground hover:text-destructive" onClick={() => removeLimit(o.id).then(onChange, failed)}>
-                <Trash2 />
-              </Button>
-            </TooltipHint>
+          <li key={o.id} className="px-4 py-2.5">
+            <IdentityRow avatar={<IdentityAvatar name={o.name} imageUrl={o.imageUrl} kind={o.kind} className="size-9" />} name={o.name} detail={o.detail ?? (o.kind === "person" ? "Person" : "Organisation")}>
+              <SavedInput value={String(o.perDay)} onSave={(value) => set(o, Number(value))} className="w-20 text-end tabular-nums" ariaLabel={`${o.name}'s reports a day`} />
+              <span className="shrink-0 text-xs text-muted-foreground">a day</span>
+              <TooltipHint label="Back to everyone's limit">
+                <Button variant="ghost" size="icon-sm" aria-label={`Remove ${o.name}'s limit`} className="text-muted-foreground hover:text-destructive" onClick={() => removeLimit(o.id).then(onChange, failed)}>
+                  <Trash2 />
+                </Button>
+              </TooltipHint>
+            </IdentityRow>
           </li>
         ))}
-        <li className="flex flex-wrap items-end gap-2 px-4 py-3.5">
-          <label className="space-y-1.5">
-            <span className="ps-1 text-xs font-medium text-muted-foreground">A limit of their own for</span>
-            <Select value={kind} onValueChange={(value) => setKind(value as LimitOverride["kind"])}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="person">A person</SelectItem>
-                <SelectItem value="organization">An organisation</SelectItem>
-              </SelectContent>
-            </Select>
-          </label>
-          <Input aria-label={kind === "person" ? "Their email" : "Its name"} className="min-w-40 flex-1" value={who} onChange={(e) => setWho(e.target.value)} placeholder={kind === "person" ? "name@example.org" : "Organisation name"} onKeyDown={(e) => e.key === "Enter" && add()} />
-          <Input aria-label="Reports a day" className="w-20 text-end tabular-nums" inputMode="numeric" value={perDay} onChange={(e) => setPerDay(e.target.value.replace(/\D/g, "").slice(0, 4))} />
-          <Button variant="outline" className="relative" disabled={busy || !who.trim() || perDay === ""} onClick={add}>
-            <Working busy={busy}>
-              <span className="flex items-center gap-2">
-                <Plus /> Add
-              </span>
-            </Working>
-          </Button>
+        <li className="px-4 py-3">
+          <AccountPicker accounts={accounts} has={(id) => limits.overrides.some((o) => o.id === id)} busy={busy} onPick={(account) => set(account, OWN_LIMIT)} />
         </li>
       </ul>
     </Zone>
   );
 }
 
-function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
+/** Picks a person or an organisation from Openscholar's accounts: the latest ones are there on opening, and typing searches them all. */
+function AccountPicker({ accounts, has, busy, onPick }: { accounts: Accounts; has: (id: string) => boolean; busy: boolean; onPick: (account: Account) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const search = useDebouncedValue(query.trim(), 250);
+  // The first accounts came with the page; a search asks Clerk, and what was shown stays until its answer is in.
+  const found = useSWR(search ? ["publish-accounts", search] : null, ([, text]) => findAccounts(text), { keepPreviousData: true, revalidateOnFocus: false });
+  const shown = search ? (found.data ?? accounts) : accounts;
+  const groups = [
+    { heading: "People", rows: shown.people },
+    { heading: "Organisations", rows: shown.organizations },
+  ].filter((group) => group.rows.length);
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setQuery("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="relative" disabled={busy}>
+          <Working busy={busy}>
+            <span className="flex items-center gap-2">
+              <UserPlus /> Give someone a limit of their own
+            </span>
+          </Working>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="Search people and organisations" value={query} onValueChange={setQuery} />
+          <CommandList className={cn("transition-opacity", search && found.isLoading && "opacity-60")}>
+            <CommandEmpty>No account or organisation has that name</CommandEmpty>
+            {groups.map((group) => (
+              <CommandGroup key={group.heading} heading={group.heading}>
+                {group.rows.map((account) => (
+                  <CommandItem
+                    key={account.id}
+                    value={account.id}
+                    disabled={has(account.id)}
+                    onSelect={() => {
+                      onPick(account);
+                      setOpen(false);
+                      setQuery("");
+                    }}
+                  >
+                    <IdentityRow className="min-w-0 flex-1" avatar={<IdentityAvatar name={account.name} imageUrl={account.imageUrl} kind={account.kind} className="size-8" />} name={account.name} detail={account.detail}>
+                      {has(account.id) ? <Check className="size-4 text-muted-foreground" /> : null}
+                    </IdentityRow>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function SettingsView({ settings, accounts, onChange }: { settings: Settings; accounts: Accounts; onChange: (s: Settings) => void }) {
   const [editing, setEditing] = useState<CheckDef | "new" | null>(null);
   const [agreementOpen, setAgreementOpen] = useState(false);
   const save = (patch: Parameters<typeof updateSettings>[0]) => {
@@ -597,7 +645,7 @@ function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s
         </ul>
       </Zone>
 
-      <Limits settings={settings} onChange={onChange} save={save} />
+      <Limits settings={settings} accounts={accounts} onChange={onChange} save={save} />
 
       <Zone label="Series">
         <ul className={LIST}>
@@ -718,7 +766,7 @@ function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s
 }
 
 /** An input that saves when it loses focus or Enter is pressed. */
-function SavedInput({ value, onSave, className, placeholder }: { value: string; onSave: (v: string) => void; className?: string; placeholder?: string }) {
+function SavedInput({ value, onSave, className, placeholder, ariaLabel }: { value: string; onSave: (v: string) => void; className?: string; placeholder?: string; ariaLabel?: string }) {
   const [draft, setDraft] = useState(value);
   const [was, setWas] = useState(value);
   if (value !== was) {
@@ -732,6 +780,7 @@ function SavedInput({ value, onSave, className, placeholder }: { value: string; 
     <Input
       value={draft}
       placeholder={placeholder}
+      aria-label={ariaLabel}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}

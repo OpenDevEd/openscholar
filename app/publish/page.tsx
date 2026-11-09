@@ -9,10 +9,12 @@ import { canPublish, limitFor, startsLeft } from "@/lib/publish-mock/types";
 export const metadata: Metadata = { title: "Publish | Openscholar" };
 
 // MOCK (mock/publish-reports): the report being published comes from the mock's local store, so it's there from the first frame.
-export default async function PublishPage() {
-  const [state, user] = await Promise.all([readState(), currentUser()]);
+export default async function PublishPage({ searchParams }: { searchParams: Promise<{ correct?: string }> }) {
+  const [state, user, { correct }] = await Promise.all([readState(), currentUser(), searchParams]);
   if (!canPublish(state.settings)) notFound();
-  const draft = (user && state.submissions.find((s) => s.id === state.drafts[user.id])) || null;
+  // A link from a live report's own page opens that report here with its details ready to correct. Only its author's.
+  const correcting = (user && state.submissions.find((s) => s.id === correct && s.status === "live" && (s.demo || s.ownerId === user.id))) || null;
+  const draft = correcting ?? ((user && state.submissions.find((s) => s.id === state.drafts[user.id])) || null);
   // Yours: the reports you started, and the mock's samples. Newest first.
   const reports = state.submissions.filter((s) => s.demo || (user && s.ownerId === user.id)).sort((a, b) => b.updatedAt - a.updatedAt);
   // Asked of Clerk only when some organisation has a limit of its own.

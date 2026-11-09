@@ -7,7 +7,10 @@ import { Section } from "@/components/papers/paper-page";
 import { Paged, pagerOf } from "@/components/settings/parts";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { CountryFlag } from "@/components/ui/country-flag";
-import { ExternalLink } from "@/components/icons";
+import { ExternalLink, PenLine } from "@/components/icons";
+import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
+import { Button } from "@/components/ui/button";
+import Link from "@/components/workspace-link";
 import { STUDY_DESIGNS } from "@/lib/openalex/vocabulary";
 import { RELATION_KINDS, type Metadata } from "@/lib/publish-mock/types";
 
@@ -124,5 +127,17 @@ export function ReportSide({ m }: { m: Metadata }) {
         </Section>
       ) : null}
     </>
+  );
+}
+
+/** On a report's own page, for its author: the way to correct its details, which opens them on the Publish page. */
+export function CorrectReport({ id }: { id: string }) {
+  return (
+    <Button size="sm" variant="outline" className={BAR_ACTION} asChild>
+      <Link href={`/publish?correct=${id}`}>
+        <PenLine aria-hidden />
+        <span className={BAR_LABEL}>Correct the details</span>
+      </Link>
+    </Button>
   );
 }

@@ -56,7 +56,7 @@ export function StatusFilter({ reports, settings, show, onShow }: { reports: Sub
   );
 }
 
-export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard }: { reports: Submission[]; settings: Settings; show: Show; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void> }) {
+export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard, onCorrect }: { reports: Submission[]; settings: Settings; show: Show; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void>; onCorrect: (id: string) => void }) {
   // The report being discarded, asked about once before it goes.
   const [discarding, setDiscarding] = useState<Submission | null>(null);
   const [page, setPage] = useState(1);
@@ -76,7 +76,7 @@ export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard 
         <Paged pager={pager} rowHeight={ROW} label="reports">
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
             {shown.map((r) => (
-              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={r.status === "draft" && !r.demo ? () => setDiscarding(r) : undefined} />
+              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={r.status === "draft" && !r.demo ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
             ))}
           </ul>
         </Paged>
@@ -118,7 +118,7 @@ export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard 
 }
 
 /** One report: its title, key and date; the reviewer's note when declined; its status; and the way back into it. */
-function ReportRow({ report: r, stage, onOpen, onDiscard }: { report: Submission; stage: Stage; onOpen: () => void; onDiscard?: () => void }) {
+function ReportRow({ report: r, stage, onOpen, onDiscard, onCorrect }: { report: Submission; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
   const status = STATUS[stage];
   const title = r.metadata?.title ?? (r.pdf?.name ? r.pdf.name : "Untitled report");
   const action =
@@ -186,6 +186,13 @@ function ReportRow({ report: r, stage, onOpen, onDiscard }: { report: Submission
         <TooltipHint label="Discard">
           <Button variant="ghost" size="icon-sm" aria-label={`Discard: ${title}`} className="text-muted-foreground hover:text-destructive" onClick={onDiscard}>
             <Trash2 />
+          </Button>
+        </TooltipHint>
+      ) : null}
+      {onCorrect ? (
+        <TooltipHint label="Correct the details">
+          <Button variant="ghost" size="icon-sm" aria-label={`Correct the details: ${title}`} className="text-muted-foreground" onClick={onCorrect}>
+            <PenLine />
           </Button>
         </TooltipHint>
       ) : null}

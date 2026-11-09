@@ -3,9 +3,9 @@
 // makes these Convex functions with their user-action registry entries.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { cookies, headers } from "next/headers";
-import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
-import { organizationsOf, requireAdmin } from "@/lib/publish-mock/admin";
+import { accountOf, accountsMatching, organizationsOf, requireAdmin } from "@/lib/publish-mock/admin";
 import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
@@ -218,34 +218,24 @@ export async function startOver() {
 /** A daily limit as kept: a whole number from 0, which stops someone starting any, to 1,000. */
 const dailyLimit = (n: number) => Math.min(1000, Math.max(0, Math.round(Number.isFinite(n) ? n : 0)));
 
-/**
- * Gives a person, by their email, or an organisation, by its name, a daily limit of their own. Clerk says who they
- * are: a name it doesn't know is refused, in words.
- */
-export async function saveLimit({ kind, who, perDay }: { kind: LimitOverride["kind"]; who: string; perDay: number }): Promise<{ settings: Settings } | { refused: string }> {
+/** Openscholar's accounts and organisations for an admin to pick from, narrowed by what's typed. */
+export async function findAccounts(query: string) {
   await requireAdmin();
-  const query = who.trim();
-  if (!query) return { refused: kind === "person" ? "Enter the person's email." : "Enter the organisation's name." };
-  const clerk = await clerkClient();
-  let found: { id: string; name: string } | undefined;
-  try {
-    if (kind === "person") {
-      const [user] = (await clerk.users.getUserList({ emailAddress: [query.toLowerCase()], limit: 1 })).data;
-      if (user) found = { id: user.id, name: [user.firstName, user.lastName].filter(Boolean).join(" ") || query.toLowerCase() };
-    } else {
-      const matches = (await clerk.organizations.getOrganizationList({ query, limit: 10 })).data;
-      const organization = matches.find((o) => o.name.toLowerCase() === query.toLowerCase()) ?? (matches.length === 1 ? matches[0] : undefined);
-      if (organization) found = { id: organization.id, name: organization.name };
-    }
-  } catch (error) {
-    console.error("[publish mock] Clerk lookup failed", { kind, error: String(error).slice(0, 300) });
-    return { refused: "We couldn't look that up just now. Try again." };
-  }
-  if (!found) return { refused: kind === "person" ? "No account has that email." : "No organisation has that name." };
-  const { id, name } = found;
+  return accountsMatching(query.slice(0, 100));
+}
+
+/** Gives a person or an organisation a daily limit of their own, or changes the one they have. Clerk says who they are. */
+export async function saveLimit({ kind, id, perDay }: { kind: LimitOverride["kind"]; id: string; perDay: number }): Promise<{ settings: Settings } | { refused: string }> {
+  await requireAdmin();
+  const account = await accountOf(kind, id);
+  if (!account) return { refused: kind === "person" ? "That account is no longer there." : "That organisation is no longer there." };
   return {
     settings: await change((state) => {
-      state.settings.limits.overrides = [...state.settings.limits.overrides.filter((o) => o.id !== id), { kind, id, name, perDay: dailyLimit(perDay) }];
+      const overrides = state.settings.limits.overrides;
+      const at = overrides.findIndex((o) => o.id === id);
+      // A changed limit keeps its place in the list; a new one goes last.
+      const entry = { ...account, perDay: dailyLimit(perDay) };
+      state.settings.limits.overrides = at < 0 ? [...overrides, entry] : overrides.map((o, i) => (i === at ? entry : o));
       return state.settings;
     }),
   };

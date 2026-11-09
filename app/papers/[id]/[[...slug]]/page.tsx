@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PaperPage } from "@/components/papers/paper-page";
-import { ReportMain, ReportSide } from "@/components/publish-mock/report-extras";
+import { CorrectReport, ReportMain, ReportSide } from "@/components/publish-mock/report-extras";
 import { WithdrawnReport } from "@/components/publish-mock/withdrawn-report";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
 import { citeFilePath, paperPath, paperSlug } from "@/lib/papers/page-address";
@@ -147,7 +147,7 @@ export default async function Page({ params }: Params) {
       {detail.copies.find((copy) => copy.pdf) && <link rel="item" type="application/pdf" href={detail.copies.find((copy) => copy.pdf)!.url} />}
       {detail.authors.flatMap((author) => author.orcid ? [<link key={author.orcid} rel="author" href={author.orcid} />] : [])}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
-      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={report ? { main: <ReportMain m={report.m} />, side: <ReportSide m={report.m} />, cover: report.cover } : undefined} />
+      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={report ? { main: <ReportMain m={report.m} />, side: <ReportSide m={report.m} />, cover: report.cover, actions: report.mine ? <CorrectReport id={id} /> : undefined } : undefined} />
     </PageWrapper>
   );
 }

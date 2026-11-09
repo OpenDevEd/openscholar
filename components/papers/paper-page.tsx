@@ -54,7 +54,7 @@ type Props = {
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
   /** MOCK (mock/publish-reports): what a report published on Openscholar has beyond a paper's record, under the authors and in the sidebar. */
-  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null };
+  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; actions?: ReactNode };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
@@ -87,6 +87,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
       <CitationControl paper={paper} compact={false} />
       <SaveControl paper={paper} compact />
       <PaperShare paper={paper} href={paperPath(id, title)} compact={false} className={BAR_ACTION} labelClassName={BAR_LABEL} />
+      {extra?.actions}
       {(pdf ?? doi) && <Button size="sm" className={BAR_ACTION} asChild>
         <a href={(pdf ?? doi)!} target="_blank" rel="noopener noreferrer">
           {pdf ? <FileText aria-hidden /> : <ArrowUpRight aria-hidden />}

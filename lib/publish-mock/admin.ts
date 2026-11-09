@@ -3,6 +3,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
+import type { Account } from "./types";
 
 export async function isAdmin() {
   const session = await auth();
@@ -29,5 +30,43 @@ export async function organizationsOf(userId: string): Promise<string[]> {
   } catch (error) {
     console.error("[publish mock] organisations couldn't be read", String(error).slice(0, 300));
     return [];
+  }
+}
+
+type ClerkUser = { id: string; firstName: string | null; lastName: string | null; imageUrl: string; primaryEmailAddress: { emailAddress: string } | null };
+type ClerkOrganization = { id: string; name: string; imageUrl: string; membersCount?: number };
+const person = (user: ClerkUser): Account => {
+  const email = user.primaryEmailAddress?.emailAddress ?? "";
+  return { kind: "person", id: user.id, name: [user.firstName, user.lastName].filter(Boolean).join(" ") || email, detail: email, imageUrl: user.imageUrl || null };
+};
+const organization = (o: ClerkOrganization): Account => ({
+  kind: "organization",
+  id: o.id,
+  name: o.name,
+  detail: o.membersCount === undefined ? "Organisation" : `${o.membersCount} ${o.membersCount === 1 ? "member" : "members"}`,
+  imageUrl: o.imageUrl || null,
+});
+
+/** How many of each a list shows at once: the ones last active first, narrowed by what's typed. */
+const ACCOUNTS = 25;
+
+/** Openscholar's accounts and organisations, as Clerk has them, for an admin to pick from. */
+export async function accountsMatching(query: string): Promise<{ people: Account[]; organizations: Account[] }> {
+  const clerk = await clerkClient();
+  const q = query.trim();
+  const [users, organizations] = await Promise.all([
+    clerk.users.getUserList({ ...(q ? { query: q } : {}), limit: ACCOUNTS, orderBy: "-last_active_at" }),
+    clerk.organizations.getOrganizationList({ ...(q ? { query: q } : {}), limit: ACCOUNTS, includeMembersCount: true }),
+  ]);
+  return { people: users.data.map(person), organizations: organizations.data.map(organization) };
+}
+
+/** One account by its Clerk ID, or null when Clerk has none such. */
+export async function accountOf(kind: Account["kind"], id: string): Promise<Account | null> {
+  const clerk = await clerkClient();
+  try {
+    return kind === "person" ? person(await clerk.users.getUser(id)) : organization(await clerk.organizations.getOrganization({ organizationId: id, includeMembersCount: true }));
+  } catch {
+    return null;
   }
 }
