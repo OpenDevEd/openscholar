@@ -1,7 +1,7 @@
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
-import { SUBMISSIONS_COUNTED } from "../../lib/evidence-libraries/added-papers";
+import { SUBMISSIONS_COUNTED, paperHref, recordHref } from "../../lib/evidence-libraries/added-papers";
 import type { Doc, Id } from "../_generated/dataModel";
 import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
@@ -139,6 +139,10 @@ const submissionValidator = v.object({
   status: submissionStatusValidator,
   note: v.union(v.string(), v.null()),
   sentAt: v.number(),
+  /** The paper's page on Openscholar, or its DOI's address for one OpenAlex doesn't have. */
+  paperLink: v.string(),
+  /** Its record on the community, once it's published there. */
+  recordLink: v.union(v.string(), v.null()),
   community: v.object({
     libraryId: v.id("evidenceLibraries"),
     name: v.string(),
@@ -174,19 +178,24 @@ async function ownerOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     : { name: person, kind: "person" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id, colour: null };
 }
 
-const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">, person: Doc<"users">) => ({
-  submissionId: row._id,
-  itemKey: row.itemKey,
-  title: row.title,
-  authors: row.authors,
-  year: row.year,
-  openalexId: row.openalexId,
-  doi: row.doi,
-  status: row.status,
-  note: row.note ?? null,
-  sentAt: row.sentAt,
-  community: await communityOf(ctx, row.libraryId),
-});
+const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">, person: Doc<"users">) => {
+  const community = await communityOf(ctx, row.libraryId);
+  return {
+    submissionId: row._id,
+    itemKey: row.itemKey,
+    title: row.title,
+    authors: row.authors,
+    year: row.year,
+    openalexId: row.openalexId,
+    doi: row.doi,
+    status: row.status,
+    note: row.note ?? null,
+    sentAt: row.sentAt,
+    paperLink: paperHref(row),
+    recordLink: row.status === "published" && community.address ? recordHref(community.address, row.itemKey) : null,
+    community,
+  };
+};
 
 /** The signed-in person, while their account is active. */
 async function senderOf(ctx: QueryCtx) {

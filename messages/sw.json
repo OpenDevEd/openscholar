@@ -5565,7 +5565,9 @@
     "deletionRestartedFor": "Ufutaji umeanzishwa upya kwa {name}.",
     "couldNotRestartDeletion": "Imeshindwa kuanzisha upya ufutaji",
     "invitationDeclined": "Mwaliko umekataliwa.",
-    "unableToDeclineInvitation": "Imeshindwa kukataa mwaliko"
+    "unableToDeclineInvitation": "Imeshindwa kukataa mwaliko",
+    "searchSubmissions": "Tafuta ulichotuma",
+    "findASubmission": "Tafuta makala uliyotuma…"
   },
   "authorPages": {
     "profileSettings": "Mipangilio ya wasifu",
@@ -5889,7 +5891,7 @@
     "found": "Makala zilizopatikana",
     "notFound": "Haikupatikana",
     "alreadyAdded": "Tayari imeongezwa",
-    "inQueue": "Kwenye foleni ya ukaguzi",
+    "inQueue": "Inasubiri ukaguzi",
     "doiOnly": "DOI tu",
     "leaveOut": "Acha",
     "leaveOutLabel": "Acha {title}",
@@ -5908,7 +5910,7 @@
     "ownerOnly": "Mmiliki pekee hubadilisha hili",
     "from": "Kutoka kwa {name}",
     "returned": "Imekataliwa",
-    "statusWithdrawn": "Imeondolewa",
+    "statusWithdrawn": "Umeiondoa wewe",
     "openIn": "Fungua kwenye {community}",
     "openLabel": "Fungua {title} kwenye {community}",
     "remove": "Ondoa",

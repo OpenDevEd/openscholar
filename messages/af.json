@@ -5565,7 +5565,9 @@
     "deletionRestartedFor": "Verwydering is weer begin vir {name}.",
     "couldNotRestartDeletion": "Kon nie verwydering weer begin nie",
     "invitationDeclined": "Uitnodiging geweier.",
-    "unableToDeclineInvitation": "Kan nie uitnodiging weier nie"
+    "unableToDeclineInvitation": "Kan nie uitnodiging weier nie",
+    "searchSubmissions": "Deursoek jou voorleggings",
+    "findASubmission": "Vind 'n artikel wat jy gestuur het…"
   },
   "authorPages": {
     "profileSettings": "Profielinstellings",
@@ -5889,7 +5891,7 @@
     "found": "Artikels gevind",
     "notFound": "Nie gevind nie",
     "alreadyAdded": "Reeds bygevoeg",
-    "inQueue": "In die hersieningsry",
+    "inQueue": "Wag vir hersiening",
     "doiOnly": "Net DOI",
     "leaveOut": "Laat uit",
     "leaveOutLabel": "Laat {title} uit",
@@ -5908,7 +5910,7 @@
     "ownerOnly": "Net die eienaar verander dit",
     "from": "Van {name}",
     "returned": "Afgekeur",
-    "statusWithdrawn": "Teruggetrek",
+    "statusWithdrawn": "Deur jou teruggetrek",
     "openIn": "Maak oop in {community}",
     "openLabel": "Maak {title} in {community} oop",
     "remove": "Verwyder",

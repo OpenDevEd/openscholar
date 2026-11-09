@@ -5565,7 +5565,9 @@
     "deletionRestartedFor": "A eliminação foi reiniciada para {name}.",
     "couldNotRestartDeletion": "Não foi possível reiniciar a eliminação",
     "invitationDeclined": "Convite recusado.",
-    "unableToDeclineInvitation": "Não foi possível recusar o convite"
+    "unableToDeclineInvitation": "Não foi possível recusar o convite",
+    "searchSubmissions": "Pesquisar seus envios",
+    "findASubmission": "Encontre um artigo que você enviou…"
   },
   "authorPages": {
     "profileSettings": "Definições do perfil",
@@ -5889,7 +5891,7 @@
     "found": "Artigos encontrados",
     "notFound": "Não encontrado",
     "alreadyAdded": "Já adicionado",
-    "inQueue": "Na fila de revisão",
+    "inQueue": "Aguardando revisão",
     "doiOnly": "Só DOI",
     "leaveOut": "Deixar de fora",
     "leaveOutLabel": "Deixar de fora {title}",
@@ -5908,7 +5910,7 @@
     "ownerOnly": "Só o proprietário altera isto",
     "from": "De {name}",
     "returned": "Recusado",
-    "statusWithdrawn": "Retirado",
+    "statusWithdrawn": "Retirado por você",
     "openIn": "Abrir em {community}",
     "openLabel": "Abrir {title} em {community}",
     "remove": "Remover",

@@ -5564,7 +5564,9 @@
     "deletionRestartedFor": "Ukususa kuqalwe kabusha ku-{name}.",
     "couldNotRestartDeletion": "Ukususa akukwazanga ukuqalwa kabusha",
     "invitationDeclined": "Isimemo senqatshiwe.",
-    "unableToDeclineInvitation": "Isimemo asikwazanga ukunqatshwa"
+    "unableToDeclineInvitation": "Isimemo asikwazanga ukunqatshwa",
+    "searchSubmissions": "Sesha okuthumele",
+    "findASubmission": "Thola iphepha olithumele…"
   },
   "authorPages": {
     "profileSettings": "Izilungiselelo zephrofayili",
@@ -5888,7 +5890,7 @@
     "found": "Amaphepha atholakele",
     "notFound": "Akutholakalanga",
     "alreadyAdded": "Selingeziwe",
-    "inQueue": "Ohlwini lokubuyekeza",
+    "inQueue": "Lilinde ukubuyekezwa",
     "doiOnly": "I-DOI kuphela",
     "leaveOut": "Shiya ngaphandle",
     "leaveOutLabel": "Shiya ngaphandle u-{title}",
@@ -5907,7 +5909,7 @@
     "ownerOnly": "Umnikazi kuphela oshintsha lokhu",
     "from": "Kusuka ku-{name}",
     "returned": "Kwenqatshiwe",
-    "statusWithdrawn": "Kuhoxisiwe",
+    "statusWithdrawn": "Ulihoxisile",
     "openIn": "Vula ku-{community}",
     "openLabel": "Vula u-{title} ku-{community}",
     "remove": "Susa",

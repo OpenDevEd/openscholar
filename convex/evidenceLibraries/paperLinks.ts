@@ -12,6 +12,7 @@ import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { normalDoi, openalexWork } from "../../lib/papers/paper-ref";
 import { paperLinkOf } from "../../lib/papers/paper-links";
 import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
+import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
 
 /** A paper as a community takes it: its OpenAlex work, its DOI, or both. */
 export type PaperIds = { openalexId: string | null; doi: string | null };
@@ -26,16 +27,30 @@ async function libraryAt(ctx: QueryCtx, origin: string) {
   return domain?.attachedAt !== undefined ? domain.libraryId : null;
 }
 
-/** The paper a community's published record is, as it told Openscholar; null for one it hasn't published, or no community there. */
+/**
+ * What Openscholar knows of a record at an address: whether a community answers there, and the paper its published
+ * record is when the community told Openscholar (records with topics do), so its own site needn't be asked.
+ */
 export const recordPaper = internalQuery({
   args: { origin: v.string(), itemKey: v.string() },
-  returns: v.union(idsValidator, v.null()),
+  returns: v.object({ community: v.boolean(), paper: v.union(idsValidator, v.null()) }),
   handler: async (ctx, { origin, itemKey }) => {
     const libraryId = await libraryAt(ctx, origin);
     const record = libraryId ? await ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).unique() : null;
-    return record?.state === "published" && (record.openalexId || record.doi) ? { openalexId: record.openalexId, doi: record.doi } : null;
+    return { community: libraryId !== null, paper: record?.state === "published" && (record.openalexId || record.doi) ? { openalexId: record.openalexId, doi: record.doi } : null };
   },
 });
+
+/** The paper a community's public record is, as its own site serves it; null for one it doesn't show. Asked only of a known community's address. */
+async function recordOnSite(origin: string, itemKey: string): Promise<PaperIds | null> {
+  // With the shield's check, as every read of a community's public pages carries it (../../lib/evidence-libraries/library-shield.ts).
+  const response = await fetch(`${origin}/api/item/${encodeURIComponent(itemKey)}`, { headers: publicLibraryHeaders("application/json"), signal: AbortSignal.timeout(8_000) });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`The community at ${origin} answered ${response.status} for record ${itemKey}`);
+  const { item } = (await response.json()) as { item?: { openalexId?: unknown; sourceRecordKey?: unknown; DOI?: unknown } | null };
+  const ids = { openalexId: openalexWork(String(item?.openalexId ?? item?.sourceRecordKey ?? "")), doi: normalDoi(typeof item?.DOI === "string" ? item.DOI : null) };
+  return ids.openalexId || ids.doi ? ids : null;
+}
 
 /**
  * The paper a pasted link names, as a community takes it: an OpenAlex work or DOI as given, a paper only our index has
@@ -46,7 +61,10 @@ export async function paperOfLink(ctx: Pick<ActionCtx, "runQuery">, raw: string,
   const link = paperLinkOf(raw);
   if (!link) return null;
   if (link.kind === "doi") return { openalexId: null, doi: link.doi };
-  if (link.kind === "record") return await ctx.runQuery(internal.evidenceLibraries.paperLinks.recordPaper, { origin: link.origin, itemKey: link.itemKey });
+  if (link.kind === "record") {
+    const known = await ctx.runQuery(internal.evidenceLibraries.paperLinks.recordPaper, { origin: link.origin, itemKey: link.itemKey });
+    return known.paper ?? (known.community ? await recordOnSite(link.origin, link.itemKey) : null);
+  }
   // An OpenAlex work is taken as it is, unless its DOI is wanted too, which our index gives as it does an own work's.
   if (link.kind === "work" && !withDoi) return { openalexId: link.openalexId, doi: null };
   const id = link.kind === "work" ? link.openalexId : link.work;
