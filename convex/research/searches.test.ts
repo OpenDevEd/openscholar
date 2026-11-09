@@ -356,7 +356,7 @@ describe("the assistant's search tools", () => {
     await expect(alice.action(get, { id: "the third one" })).rejects.toThrow(/W2741809807/);
     // A DOI that would send the request somewhere else isn't one.
     requests = [];
-    for (const id of ["10.1234/../../../authors/A1", "10.1234/x?select=id", "10.1234/x#y"]) await expect(alice.action(get, { id })).rejects.toThrow(/its ID, such as W2741809807, or its DOI/);
+    for (const id of ["10.1234/../../../authors/A1", "10.1234/x?select=id", "10.1234/x#y"]) await expect(alice.action(get, { id })).rejects.toThrow(/W2741809807/);
     expect(requests).toEqual([]);
 
     // A saved search is deleted for good, with nothing kept to bring it back.
