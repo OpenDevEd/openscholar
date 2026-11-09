@@ -12,7 +12,7 @@ Quando navega no openscholar.ai, podem ser armazenados no seu dispositivo pequen
 | `NEXT_LOCALE` | Recorda o seu idioma | 1 ano |
 | `__cf_bm`, `_cfuvid` | A Cloudflare utiliza-os para proteger o site de tráfego automatizado | 30 minutos, ou até fechar o navegador |
 
-A sua escolha sobre cookies e as definições de visualização, como painéis abertos, ficam no armazenamento local do navegador.
+A sua escolha sobre cookies fica num cookie chamado openscholar_consent. As definições de visualização, como painéis abertos, ficam no armazenamento local do navegador.
 
 ## Cookies de desempenho e de análise (opcionais)
 

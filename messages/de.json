@@ -375,8 +375,8 @@
     "retrySync": "Synchronisierung wiederholen"
   },
   "aiSetupGate": {
-    "title": "KI für Ihre Suche einrichten",
-    "description": "Openscholar nutzt KI, um Abfragen zu verfeinern, Artikel zu prüfen und Ergebnisse zu übersetzen.",
+    "title": "Suchen ist kostenlos. KI ist ein Extra",
+    "description": "Melde dich an, und die KI schreibt deine Suchen, prüft Artikel anhand deiner Kriterien und übersetzt Ergebnisse, mit kostenlosen Credits jeden Monat.",
     "signInForCredits": "Anmelden für 50.000 kostenlose Credits",
     "useOwnApiKey": "Eigenen API-Schlüssel verwenden"
   },
@@ -1067,7 +1067,7 @@
     "cookiePolicyDescription": "Erfahren Sie, wie Openscholar.ai Cookies für Analysen nutzt und wie Sie Ihre Cookie-Einstellungen verwalten.",
     "libraryTitle": "Bibliothek",
     "libraryDescription": "Gespeicherte wissenschaftliche Artikel durchsehen und verwalten",
-    "creditsTitle": "Credits",
+    "creditsTitle": "Quellenangaben",
     "creditsDescription": "Die Projekte, Daten und Lizenzen, auf denen Openscholar aufbaut.",
     "sharedTitle": "Mit mir geteilt",
     "termsTitle": "Nutzungsbedingungen",
@@ -1370,7 +1370,7 @@
     "privacyPolicy": "Datenschutzerklärung",
     "cookiePolicy": "Cookie-Richtlinie",
     "cookiePreferences": "Cookie-Einstellungen",
-    "credits": "Credits"
+    "credits": "Quellenangaben"
   },
   "focusMode": {
     "settingsTitle": "Einstellungen für den Fokusmodus",

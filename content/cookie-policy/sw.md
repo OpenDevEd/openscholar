@@ -12,7 +12,7 @@ Unapovinjari openscholar.ai, faili ndogo za data zinazoitwa vidakuzi zinaweza ku
 | `NEXT_LOCALE` | Hukumbuka lugha yako | Mwaka 1 |
 | `__cf_bm`, `_cfuvid` | Cloudflare huvitumia kulinda tovuti dhidi ya trafiki ya kiotomatiki | Dakika 30, au hadi ufunge kivinjari chako |
 
-Chaguo lako la vidakuzi na mipangilio ya onyesho, kama paneli zilizo wazi, hubaki kwenye hifadhi ya ndani ya kivinjari chako.
+Chaguo lako la vidakuzi hubaki kwenye kidakuzi kiitwacho openscholar_consent. Mipangilio ya onyesho, kama paneli zilizo wazi, hubaki kwenye hifadhi ya ndani ya kivinjari chako.
 
 ## Vidakuzi vya utendaji na uchambuzi (hiari)
 

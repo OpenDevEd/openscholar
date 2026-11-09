@@ -12,7 +12,7 @@
 | `NEXT_LOCALE` | 记住您的语言 | 1 年 |
 | `__cf_bm`, `_cfuvid` | Cloudflare 用其保护网站免受自动化流量影响 | 30 分钟，或直到您关闭浏览器 |
 
-您的 Cookie 选择和显示设置（如打开的面板）保存在浏览器的本地存储中。
+您的 Cookie 选择保存在名为 openscholar_consent 的 Cookie 中。显示设置（如打开的面板）保存在浏览器的本地存储中。
 
 ## 性能和分析Cookie（可选）
 
@@ -74,7 +74,7 @@ PostHog Cookie以结构化格式保存以下详情：
 
 ## 管理您的Cookie偏好设置
 
-您可以随时点击openscholar.ai每个页面底部提供的"Cookie设置"链接来更新您的Cookie偏好设置。
+您可以随时点击openscholar.ai每个页面底部提供的"Cookie 偏好设置"链接来更新您的Cookie偏好设置。
 
 此外，所有主流网页浏览器都提供用于控制Cookie的设置。如需了解关于Cookie的全面信息以及如何查看存储在您设备上的Cookie，请访问[www.aboutcookies.org](http://www.aboutcookies.org/)或[www.allaboutcookies.org](http://www.allaboutcookies.org/)。
 
@@ -128,7 +128,7 @@ PostHog Cookie以结构化格式保存以下详情：
 2. **仅阻止第三方Cookie**：这将阻止外部跟踪器，同时允许我们的第一方分析Cookie——这不会阻止openscholar.ai的Cookie
 3. **安装隐私浏览器扩展**：Privacy Badger或uBlock Origin等隐私工具可以阻止分析Cookie
 4. **启用"请勿跟踪"**：虽然openscholar.ai目前不响应DNT信号，但您可以在浏览器设置中激活此选项
-5. **使用我们的Cookie设置**：点击任何openscholar.ai页面底部的"Cookie设置"来调整您的偏好设置
+5. **使用我们的Cookie设置**：点击任何openscholar.ai页面底部的"Cookie 偏好设置"来调整您的偏好设置
 
 ### 联系我们
 

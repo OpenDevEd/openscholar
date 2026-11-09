@@ -76,8 +76,8 @@ p { text-wrap: pretty; }
 @property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .edge { position: relative; } .edge::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--a), transparent 62%, rgb(255 232 208 / .95) 82%, transparent 92%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
 .edge:hover::before { opacity: 1; animation: orbit 2.8s linear infinite; } @keyframes orbit { to { --a: 360deg; } }
-/* Text rolls up to a copy of itself. */
-.roll { position: relative; display: inline-block; overflow: hidden; vertical-align: top; line-height: 1.35; } .roll > span { display: block; transition: transform .32s var(--ease); } .roll::after { content: attr(data-t); position: absolute; left: 0; top: 100%; white-space: nowrap; transition: transform .32s var(--ease); } a:hover > .roll > span, a:hover > .roll::after { transform: translateY(-100%); }
+/* Text rolls up to a copy of itself. The copy has empty alt text, so a screen reader reads the label once. */
+.roll { position: relative; display: inline-block; overflow: hidden; vertical-align: top; line-height: 1.35; } .roll > span { display: block; transition: transform .32s var(--ease); } .roll::after { content: attr(data-t); content: attr(data-t) / ""; position: absolute; left: 0; top: 100%; white-space: nowrap; transition: transform .32s var(--ease); } a:hover > .roll > span, a:hover > .roll::after { transform: translateY(-100%); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } @view-transition { navigation: none; } }
 @media (max-width: 900px) { .panel > .art img, .hero > .art img { opacity: .24; } .art.dim::after { background: rgb(var(--sc, 6 36 54) / .74); } }
 @media (max-width: 700px) { :root { --gap: 10px; --r: 22px; } }

@@ -375,8 +375,8 @@
     "retrySync": "Jaribu kusawazisha tena"
   },
   "aiSetupGate": {
-    "title": "Sanidi AI ili kuboresha utafutaji wako",
-    "description": "Openscholar hutumia AI kuboresha maswali, kuchuja makala, na kutafsiri matokeo.",
+    "title": "Kutafuta ni bure. AI ni ziada",
+    "description": "Ingia na AI itaandika utafutaji wako, itakagua makala kulingana na vigezo vyako na kutafsiri matokeo, kwa salio la bure kila mwezi.",
     "signInForCredits": "Ingia upate krediti 50k za bure",
     "useOwnApiKey": "Tumia ufunguo wako wa API"
   },

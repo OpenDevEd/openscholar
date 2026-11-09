@@ -375,8 +375,8 @@
     "retrySync": "Reintentar sincronización"
   },
   "aiSetupGate": {
-    "title": "Configure la IA para mejorar su búsqueda",
-    "description": "Openscholar usa IA para refinar consultas, cribar artículos y traducir resultados.",
+    "title": "Buscar es gratis. La IA es un extra",
+    "description": "Inicia sesión y la IA escribe tus búsquedas, revisa artículos según tus criterios y traduce resultados, con créditos gratis cada mes.",
     "signInForCredits": "Inicie sesión para obtener 50k créditos gratis",
     "useOwnApiKey": "Use su propia clave de API"
   },
@@ -1067,7 +1067,7 @@
     "cookiePolicyDescription": "Descubra cómo Openscholar.ai usa las cookies para analítica y cómo gestionar sus preferencias de cookies.",
     "libraryTitle": "Biblioteca",
     "libraryDescription": "Explore y gestione sus artículos académicos guardados",
-    "creditsTitle": "Créditos",
+    "creditsTitle": "Atribuciones",
     "creditsDescription": "Los proyectos, datos y licencias en los que se basa Openscholar.",
     "sharedTitle": "Compartido conmigo",
     "termsTitle": "Condiciones de uso",
@@ -1370,7 +1370,7 @@
     "privacyPolicy": "Política de privacidad",
     "cookiePolicy": "Política de cookies",
     "cookiePreferences": "Preferencias de cookies",
-    "credits": "Créditos"
+    "credits": "Atribuciones"
   },
   "focusMode": {
     "settingsTitle": "Ajustes del modo de enfoque",
