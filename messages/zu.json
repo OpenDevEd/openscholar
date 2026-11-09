@@ -855,8 +855,8 @@
     "titleAndAbstract": "Isihloko nesifingqo",
     "searchScope": "Ububanzi bokusesha",
     "sortResultsBy": "Hlela imiphumela ngo-",
-    "citationFilter": "Isihlungi sokubhalisa",
-    "citedByFilter": "Isihlungi sabababhalisile",
+    "citationFilter": "Amaphepha acaphuna iphepha",
+    "citedByFilter": "Amaphepha acashunwe yiphepha",
     "relatedWorksFilter": "Isihlungi somsebenzi ohlobene",
     "clearAllCount": "Sula konke ({count})",
     "searchFiltersTitle": "Izihlungi zokusesha",
@@ -979,7 +979,7 @@
     "domainLabel": "Isizinda:",
     "sdgsLabel": "SDGs:",
     "referencesLabel": "Izinkomba:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "uma kuqhathaniswa nesilinganiso somkhakha:",
     "citedBy": "Ibhalisiwe ngu-",
     "cites": "Ubhalisa",
     "questionN": "Umbuzo {n}: {question}",
@@ -1262,7 +1262,8 @@
   },
   "rating": {
     "noRating": "Akukho isilinganiso",
-    "nStars": "{count, plural, one {# inkanyezi} other {# izinkanyezi}}"
+    "nStars": "{count, plural, one {# inkanyezi} other {# izinkanyezi}}",
+    "yourRating": "Isilinganiso sakho"
   },
   "pagination": {
     "currentPage": "Ikhasi {page}",

@@ -855,8 +855,8 @@
     "titleAndAbstract": "Title and abstract",
     "searchScope": "Search scope",
     "sortResultsBy": "Sort results by",
-    "citationFilter": "Citation filter",
-    "citedByFilter": "Cited by filter",
+    "citationFilter": "Papers citing a paper",
+    "citedByFilter": "Papers a paper cites",
     "relatedWorksFilter": "Related works filter",
     "clearAllCount": "Clear all ({count})",
     "searchFiltersTitle": "Search filters",
@@ -979,7 +979,7 @@
     "domainLabel": "Domain:",
     "sdgsLabel": "SDGs:",
     "referencesLabel": "References:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "vs. field average:",
     "citedBy": "Cited by",
     "cites": "Cites",
     "questionN": "Question {n}: {question}",
@@ -1262,7 +1262,8 @@
   },
   "rating": {
     "noRating": "No rating",
-    "nStars": "{count} stars"
+    "nStars": "{count} stars",
+    "yourRating": "Your rating"
   },
   "pagination": {
     "currentPage": "Page {page}",
@@ -5861,7 +5862,7 @@
     "sdgs": "Sustainable Development Goals",
     "mesh": "MeSH terms",
     "details": "Details",
-    "charge": "Publication charge",
+    "charge": "Publishing fee",
     "retracted": "Retracted",
     "openscholarId": "Openscholar ID",
     "copyDoi": "Copy DOI",

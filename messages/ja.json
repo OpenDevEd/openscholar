@@ -855,8 +855,8 @@
     "titleAndAbstract": "タイトルと要約",
     "searchScope": "検索範囲",
     "sortResultsBy": "結果の並び順",
-    "citationFilter": "引用フィルター",
-    "citedByFilter": "被引用フィルター",
+    "citationFilter": "ある論文を引用している論文",
+    "citedByFilter": "ある論文が引用している論文",
     "relatedWorksFilter": "関連論文フィルター",
     "clearAllCount": "すべてクリア（{count}）",
     "searchFiltersTitle": "検索フィルター",
@@ -979,7 +979,7 @@
     "domainLabel": "ドメイン：",
     "sdgsLabel": "SDGs：",
     "referencesLabel": "参考文献：",
-    "fwciLabel": "FWCI：",
+    "fwciLabel": "分野平均比:",
     "citedBy": "被引用",
     "cites": "引用",
     "questionN": "質問 {n}：{question}",
@@ -1262,7 +1262,8 @@
   },
   "rating": {
     "noRating": "評価なし",
-    "nStars": "{count} つ星"
+    "nStars": "{count} つ星",
+    "yourRating": "あなたの評価"
   },
   "pagination": {
     "currentPage": "ページ {page}",

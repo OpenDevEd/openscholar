@@ -82,6 +82,8 @@ export function SearchCommandHeader({
   const guest = access?.guest !== undefined;
   // A search's Activity (#656), presence and Move, where the bar shows them: they are its workspace's, not a guest's.
   const hasActivity = !queryOnly && Boolean(searchId) && !guest;
+  // Moving a search goes to another of the person's workspaces: signed out, there are none.
+  const signedIn = useResearchSession() !== null;
   // An account's search in its own workspace is shared from here; signed out, and for a guest, the link is copied as before.
   const workspace = useCurrentWorkspace();
   const shares = useResearchSession() !== null && hasActivity && access !== undefined;
@@ -259,7 +261,7 @@ export function SearchCommandHeader({
           </TooltipHint>
         ) : null}
         {hasActivity && searchId ? <ActivitySheet open={activityOpen} onOpenChange={setActivityOpen} kind="search" id={searchId} name={search?.params.q || tsc("currentQuery")} /> : null}
-        {hasActivity ? (
+        {hasActivity && signedIn ? (
           <TooltipHint label={tm("toAnother")}>
             <Button variant="ghost" size="icon" aria-label={tm("toAnother")} onClick={() => setMoveOpen(true)} className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex">
               <Move className="h-4 w-4" />
