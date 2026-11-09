@@ -20,6 +20,7 @@ import { toPaperKey } from "../../lib/papers/paper-ref";
 import { findItem } from "../library/find";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 import { addressesOf } from "../lib/people";
+import { sentTitle } from "../evidenceLibraries/submissions";
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -158,10 +159,12 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
   const details: Array<{ name: string; value: string; record: boolean; within: string; key: string }> = [];
   for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.
-    const record = typeof value === "string" ? await named(value, path.at(-1) ?? "").catch(() => null) : null;
+    // A community's record by its key (taking a paper off, withdrawing it) is the paper, by its title.
+    const sent = path.length === 1 && path[0] === "itemKey" && typeof value === "string" && typeof (args as Record<string, unknown>).libraryId === "string" ? await sentTitle(ctx, reader, workspaceId, (args as { libraryId: string }).libraryId, value).catch(() => null) : null;
+    const record = sent ?? (typeof value === "string" ? await named(value, path.at(-1) ?? "").catch(() => null) : null);
     const shown = record ?? String(value);
     // A saved paper is shown by its title, so that is what its line is called, not the ID the call gave.
-    const title = record !== null && typeof value === "string" && PAPER_KEYS.has(path.at(-1) ?? "") && toPaperKey(value) !== null;
+    const title = sent !== null || (record !== null && typeof value === "string" && PAPER_KEYS.has(path.at(-1) ?? "") && toPaperKey(value) !== null);
     details.push({ name: title ? "title" : nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null, within: path.slice(0, -1).join("."), key: path.at(-1) ?? "" });
   }
   // Which kind of thing an ID beside it names ("user", "organization") is said by the record's own line.

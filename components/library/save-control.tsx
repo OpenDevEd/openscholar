@@ -173,7 +173,8 @@ export function useSavePaper(paper: WorkInput | undefined) {
     removals.set(key, removal);
     request
       .then((removed) => {
-        if (!removed) return;
+        // Saved again before the removal came back: the note would say the opposite of what the button shows.
+        if (!removed || usePending.getState().saved[paper.id]?.value === true) return;
         toast(t("removed"), {
           id: `removed:${key}`,
           description: paper.title,

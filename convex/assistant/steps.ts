@@ -25,6 +25,7 @@ import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
 import { findItem } from "../library/find";
 import { readLibraryViewRole } from "../evidenceLibraries/access";
+import { sentTitle } from "../evidenceLibraries/submissions";
 
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
@@ -249,17 +250,11 @@ export async function aboutOf(ctx: Pick<QueryCtx, "db">, { userId, workspaceId }
     // title its result gives, not by the collection it goes into.
     return item?.title ? cut(item.title, 200) : undefined;
   }
-  // A paper on an Evidence Community, by its record's key (taking it off, withdrawing it): named by its title, as a
-  // submission of it knows it, when it's the person's own or they can see the community.
+  // A paper on an Evidence Community, by its record's key (taking it off, withdrawing it): named by its title.
   if (typeof args.libraryId === "string" && typeof args.itemKey === "string") {
-    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-    const itemKey = args.itemKey;
-    const sent = libraryId ? await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(10) : [];
-    const own = sent.find((row) => row.userId === userId);
-    const library = !own && sent.length && libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
-    const person = library ? await ctx.db.get("users", userId) : null;
-    const seen = own ?? (library && person && (library.workspaceId === workspaceId || (await readLibraryViewRole(ctx, library, person.clerkId)) !== null) ? sent[0] : undefined);
-    if (seen?.title) return cut(seen.title, 200);
+    const person = await ctx.db.get("users", userId);
+    const title = person ? await sentTitle(ctx, person, workspaceId, args.libraryId, args.itemKey) : null;
+    if (title) return cut(title, 200);
   }
   // An Evidence Library it reads or changes, by its name.
   if (typeof args.libraryId === "string") {
