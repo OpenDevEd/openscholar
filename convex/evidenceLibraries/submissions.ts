@@ -63,15 +63,20 @@ async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId
  * submission that's withdrawn. Removed from the community, it's removed for whoever sent it, so no one's list calls it
  * published or links its deleted record.
  */
+/** Submissions of one paper marked removed in one go. */
+const REMOVED_AT_ONCE = 100;
+
 export const forgetSent = internalMutation({
   args: { userId: v.id("users"), libraryId: v.id("evidenceLibraries"), itemKey: v.string(), outcome: v.union(v.literal("withdrawn"), v.literal("removed")) },
   returns: v.null(),
   handler: async (ctx, { userId, libraryId, itemKey, outcome }) => {
     const rows = outcome === "withdrawn"
       ? [await byPaper(ctx, userId, libraryId, itemKey)].filter((row) => row !== null)
-      : await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(50);
+      : await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).filter((q) => q.neq(q.field("status"), "removed")).take(REMOVED_AT_ONCE);
     // Kept with the community's last generation, so a late repeat of an older word changes nothing.
     for (const row of rows) await ctx.db.patch("paperSubmissions", row._id, { status: outcome, note: undefined, updatedAt: Date.now() });
+    // A paper many people sent is marked removed for the rest next.
+    if (outcome === "removed" && rows.length === REMOVED_AT_ONCE) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.submissions.forgetSent, { userId, libraryId, itemKey, outcome });
     return null;
   },
 });
