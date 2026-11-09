@@ -1720,7 +1720,7 @@
   "connectionsPage": {
     "connectedApps": "Aplicações ligadas",
     "noConnectedApps": "Não há aplicações ligadas",
-    "noConnectedAppsDescription": "Quando aplicações externas se ligarem à sua carteira, aparecerão aqui.",
+    "noConnectedAppsDescription": "Quando aplicações externas se ligarem à sua conta do Openscholar, aparecerão aqui.",
     "revoking": "A revogar...",
     "revoke": "Revogar",
     "revokedBadge": "Revogado",
@@ -4956,7 +4956,11 @@
       "goneDetail": "Peça a quem a partilhou que a partilhe de novo",
       "otherTitle": "Este convite foi enviado para outro endereço",
       "otherDetail": "Abra-o se esta conta também tiver esse endereço, ou inicie sessão com o endereço para onde foi enviado"
-    }
+    },
+    "notEmails": "{count, plural, one {Isto não é um endereço de email: {values}. Corrija ou remova para criar a organização.} other {Estes não são endereços de email: {values}. Corrija ou remova para criar a organização.}}",
+    "asRole": "como {role}",
+    "memberCan": "Os membros pesquisam, guardam, triam e extraem com tudo o que a organização partilha.",
+    "adminCan": "Os administradores podem fazer o mesmo e também convidar e remover pessoas e gerir definições e gastos."
   },
   "models": {
     "changeInSettings": "Alterar nas definições de IA"
@@ -5699,10 +5703,10 @@
     "creatingKey": "A criar chave...",
     "redirecting": "A redirecionar...",
     "approve": "Aprovar",
-    "wantsToConnect": "<strong>{appName}</strong> quer ligar-se à sua carteira do Openscholar.",
+    "wantsToConnect": "<strong>{appName}</strong> quer ligar-se à sua conta do Openscholar.",
     "copyKey": "Copie esta chave de API e cole-a em <strong>{appName}</strong>. Só será mostrada uma vez.",
     "originUnregisteredBody": "A aplicação em <code>{origin}</code> não está registada para se ligar ao Openscholar.",
-    "originHelp": "Só as origens pré-aprovadas podem criar ligações à carteira. Se for o programador de <strong>{appName}</strong>, contacte a equipa do Openscholar para registar a sua origem.",
+    "originHelp": "Só as origens pré-aprovadas podem criar ligações à conta. Se for o programador de <strong>{appName}</strong>, contacte a equipa do Openscholar para registar a sua origem.",
     "wantsToUseCredits": "<strong>{appName}</strong> quer usar a geração por IA através dos seus créditos do Openscholar.",
     "unknownApp": "Aplicação desconhecida",
     "thisApplicationSOriginIsNot": "A origem desta aplicação não está registada.",

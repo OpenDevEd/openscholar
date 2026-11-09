@@ -1719,7 +1719,7 @@
   "connectionsPage": {
     "connectedApps": "已连接的应用",
     "noConnectedApps": "没有已连接的应用",
-    "noConnectedAppsDescription": "当外部应用连接到您的钱包时，它们将显示在此处。",
+    "noConnectedAppsDescription": "当外部应用连接到您的账户时，它们将显示在此处。",
     "revoking": "撤销中...",
     "revoke": "撤销",
     "revokedBadge": "已撤销",
@@ -4955,7 +4955,11 @@
       "goneDetail": "请让共享的人重新共享",
       "otherTitle": "此邀请发送到了另一个邮箱",
       "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录"
-    }
+    },
+    "notEmails": "{count, plural, other {这些不是邮箱地址：{values}。请修改或删除后再创建组织。}}",
+    "asRole": "身份：{role}",
+    "memberCan": "成员可以用组织共享的所有内容进行搜索、保存、筛查和提取。",
+    "adminCan": "管理员可以做同样的事，还可以邀请和移除成员，并管理设置和支出。"
   },
   "models": {
     "changeInSettings": "在 AI 设置中更改"
@@ -5698,10 +5702,10 @@
     "creatingKey": "正在创建密钥…",
     "redirecting": "正在跳转…",
     "approve": "批准",
-    "wantsToConnect": "<strong>{appName}</strong> 想要连接您的 Openscholar 钱包。",
+    "wantsToConnect": "<strong>{appName}</strong> 想要连接您的 Openscholar 账户。",
     "copyKey": "复制此 API 密钥并粘贴到 <strong>{appName}</strong> 中。它只会显示一次。",
     "originUnregisteredBody": "位于 <code>{origin}</code> 的应用未注册以连接 Openscholar。",
-    "originHelp": "只有预先批准的来源才能创建钱包连接。如果您是 <strong>{appName}</strong> 的开发者，请联系 Openscholar 团队注册您的来源。",
+    "originHelp": "只有预先批准的来源才能创建账户连接。如果您是 <strong>{appName}</strong> 的开发者，请联系 Openscholar 团队注册您的来源。",
     "wantsToUseCredits": "<strong>{appName}</strong> 想要通过您的 Openscholar 积分使用 AI 生成功能。",
     "unknownApp": "未知应用",
     "thisApplicationSOriginIsNot": "此应用的来源未注册。",

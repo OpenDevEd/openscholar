@@ -1720,7 +1720,7 @@
   "connectionsPage": {
     "connectedApps": "Programu zilizounganishwa",
     "noConnectedApps": "Hakuna programu zilizounganishwa",
-    "noConnectedAppsDescription": "Programu za nje zikiunganishwa na pochi yako, zitaonekana hapa.",
+    "noConnectedAppsDescription": "Programu za nje zikiunganishwa na akaunti yako ya Openscholar, zitaonekana hapa.",
     "revoking": "Inaondoa ruhusa...",
     "revoke": "Ondoa ruhusa",
     "revokedBadge": "Imeondolewa",
@@ -4956,7 +4956,11 @@
       "goneDetail": "Muulize aliyekishiriki akishiriki tena",
       "otherTitle": "Mwaliko huu ulitumwa kwenye anwani nyingine",
       "otherDetail": "Ufungue ikiwa akaunti hii pia ina anwani hiyo, au ingia kwa anwani ambayo ulitumwa"
-    }
+    },
+    "notEmails": "{count, plural, one {Hii si anwani ya barua pepe: {values}. Irekebishe au iondoe ili kuunda shirika.} other {Hizi si anwani za barua pepe: {values}. Zirekebishe au ziondoe ili kuunda shirika.}}",
+    "asRole": "kama {role}",
+    "memberCan": "Wanachama hutafuta, huhifadhi, huchuja na kutoa data kwa kila kitu ambacho shirika linashiriki.",
+    "adminCan": "Wasimamizi wanaweza kufanya hivyo hivyo, na pia kualika na kuondoa watu na kusimamia mipangilio na matumizi."
   },
   "models": {
     "changeInSettings": "Badilisha kwenye mipangilio ya AI"
@@ -5699,10 +5703,10 @@
     "creatingKey": "Inaunda ufunguo...",
     "redirecting": "Inaelekezwa upya...",
     "approve": "Idhinisha",
-    "wantsToConnect": "<strong>{appName}</strong> inataka kuunganishwa na pochi yako ya Openscholar.",
+    "wantsToConnect": "<strong>{appName}</strong> inataka kuunganishwa na akaunti yako ya Openscholar.",
     "copyKey": "Nakili ufunguo huu wa API na uubandike kwenye <strong>{appName}</strong>. Utaonyeshwa mara moja tu.",
     "originUnregisteredBody": "Programu iliyo kwenye <code>{origin}</code> haijasajiliwa kuunganishwa na Openscholar.",
-    "originHelp": "Ni chanzo kilichoidhinishwa awali pekee kinachoweza kuunda miunganisho ya pochi. Ikiwa wewe ni msanidi wa <strong>{appName}</strong>, wasiliana na timu ya Openscholar ili usajili chanzo chako.",
+    "originHelp": "Ni chanzo kilichoidhinishwa awali pekee kinachoweza kuunda miunganisho ya akaunti. Ikiwa wewe ni msanidi wa <strong>{appName}</strong>, wasiliana na timu ya Openscholar ili usajili chanzo chako.",
     "wantsToUseCredits": "<strong>{appName}</strong> inataka kutumia uzalishaji wa AI kupitia krediti zako za Openscholar.",
     "unknownApp": "Programu isiyojulikana",
     "thisApplicationSOriginIsNot": "Chanzo cha programu hii hakijasajiliwa.",

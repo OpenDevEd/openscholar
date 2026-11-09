@@ -1719,7 +1719,7 @@
   "connectionsPage": {
     "connectedApps": "Connected apps",
     "noConnectedApps": "No connected apps",
-    "noConnectedAppsDescription": "When external apps connect to your wallet, they will appear here.",
+    "noConnectedAppsDescription": "When apps you allow connect to your Openscholar account, they appear here.",
     "revoking": "Revoking...",
     "revoke": "Revoke",
     "revokedBadge": "Revoked",
@@ -4955,7 +4955,11 @@
       "goneDetail": "Ask whoever shared it to share it again",
       "otherTitle": "This invitation was sent to another address",
       "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to"
-    }
+    },
+    "notEmails": "{count, plural, one {This isn't an email address: {values}. Fix or remove it to create the organization.} other {These aren't email addresses: {values}. Fix or remove them to create the organization.}}",
+    "asRole": "as {role}",
+    "memberCan": "Members search, save, screen and extract with everything the organization shares.",
+    "adminCan": "Admins can do the same, and also invite and remove people and manage settings and spending."
   },
   "models": {
     "changeInSettings": "Change in AI settings"
@@ -5698,10 +5702,10 @@
     "creatingKey": "Creating key...",
     "redirecting": "Redirecting...",
     "approve": "Approve",
-    "wantsToConnect": "<strong>{appName}</strong> wants to connect to your Openscholar wallet.",
+    "wantsToConnect": "<strong>{appName}</strong> wants to connect to your Openscholar account.",
     "copyKey": "Copy this API key and paste it into <strong>{appName}</strong>. It will only be shown once.",
     "originUnregisteredBody": "The application at <code>{origin}</code> is not registered to connect to Openscholar.",
-    "originHelp": "Only pre-approved origins can create wallet connections. If you are the developer of <strong>{appName}</strong>, contact the Openscholar team to register your origin.",
+    "originHelp": "Only pre-approved origins can create account connections. If you are the developer of <strong>{appName}</strong>, contact the Openscholar team to register your origin.",
     "wantsToUseCredits": "<strong>{appName}</strong> wants to use AI generation through your Openscholar credits.",
     "unknownApp": "Unknown app",
     "thisApplicationSOriginIsNot": "This application’s origin is not registered",

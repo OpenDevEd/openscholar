@@ -1719,7 +1719,7 @@
   "connectionsPage": {
     "connectedApps": "Izinhlelo ezixhunyiwe",
     "noConnectedApps": "Azikho izinhlelo ezixhunyiwe",
-    "noConnectedAppsDescription": "Izinhlelo zangaphandle lapho zixhuma esikhwameni sakho, zizovela lapha.",
+    "noConnectedAppsDescription": "Izinhlelo zangaphandle lapho zixhuma e-akhawuntini yakho ye-Openscholar, zizovela lapha.",
     "revoking": "Iyahoxisa...",
     "revoke": "Hoxisa",
     "revokedBadge": "Kuhoxisiwe",
@@ -4955,7 +4955,11 @@
       "goneDetail": "Cela lowo owabelana nawo ukuthi abelane futhi",
       "otherTitle": "Lesi simemo sathunyelwa ekheleni elihlukile",
       "otherDetail": "Vula uma le akhawunti nayo inalelo kheli, noma ngena ngelo elathunyelwa kulo"
-    }
+    },
+    "notEmails": "{count, plural, one {Leli akulona ikheli le-imeyili: {values}. Lilungise noma ulisuse ukuze udale inhlangano.} other {Lawa akuwona amakheli e-imeyili: {values}. Walungise noma uwasuse ukuze udale inhlangano.}}",
+    "asRole": "njenge-{role}",
+    "memberCan": "Amalungu ayasesha, alondoloze, ahlunge futhi akhiphe ngakho konke inhlangano ekwabelanayo.",
+    "adminCan": "Abaphathi bangenza okufanayo, futhi bamema futhi basuse abantu baphathe nezilungiselelo nokusetshenziswa kwemali."
   },
   "models": {
     "changeInSettings": "Shintsha ezilungiselelweni ze-AI"
@@ -5698,7 +5702,7 @@
     "creatingKey": "Iyakha ukhiye...",
     "redirecting": "Iyaqondisa kabusha...",
     "approve": "Vuma",
-    "wantsToConnect": "I-<strong>{appName}</strong> ifuna ukuxhuma esikhwameni sakho se-Openscholar.",
+    "wantsToConnect": "I-<strong>{appName}</strong> ifuna ukuxhuma e-akhawuntini yakho ye-Openscholar.",
     "copyKey": "Kopisha lo khiye we-API bese uwunamathisela ku-<strong>{appName}</strong>. Uzobonakala kanye kuphela.",
     "originUnregisteredBody": "Uhlelo oluku-<code>{origin}</code> aluhlanganiswanga ukuze luxhume ku-Openscholar.",
     "originHelp": "Imithombo evunyelwe kuphela engakha uxhumano lwesikhwama. Uma ungumthuthukisi we-<strong>{appName}</strong>, xhumana neqembu le-Openscholar ukuze ubhalise umthombo wakho.",

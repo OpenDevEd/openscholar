@@ -1719,7 +1719,7 @@
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",
     "noConnectedApps": "कोई कनेक्टेड ऐप नहीं",
-    "noConnectedAppsDescription": "जब बाहरी ऐप्स आपके वॉलेट से कनेक्ट होंगे, तो वे यहां दिखाई देंगे।",
+    "noConnectedAppsDescription": "जब बाहरी ऐप्स आपके Openscholar खाते से कनेक्ट होंगे, तो वे यहां दिखाई देंगे।",
     "revoking": "रद्द किया जा रहा है...",
     "revoke": "रद्द करें",
     "revokedBadge": "रद्द",
@@ -4955,7 +4955,11 @@
       "goneDetail": "जिसने साझा किया था, उनसे दोबारा साझा करने को कहें",
       "otherTitle": "यह निमंत्रण किसी दूसरे पते पर भेजा गया था",
       "otherDetail": "अगर इस खाते में वह पता भी है तो इसे खोलें, या उस पते से साइन इन करें जिस पर यह भेजा गया था"
-    }
+    },
+    "notEmails": "{count, plural, one {यह ईमेल पता नहीं है: {values}. संगठन बनाने के लिए इसे ठीक करें या हटाएँ।} other {ये ईमेल पते नहीं हैं: {values}. संगठन बनाने के लिए इन्हें ठीक करें या हटाएँ।}}",
+    "asRole": "{role} के रूप में",
+    "memberCan": "सदस्य संगठन की साझा की गई हर चीज़ के साथ खोजते, सहेजते, स्क्रीन करते और निकालते हैं।",
+    "adminCan": "एडमिन भी यही कर सकते हैं, और साथ ही लोगों को आमंत्रित कर सकते हैं, हटा सकते हैं और सेटिंग्स व खर्च सँभाल सकते हैं।"
   },
   "models": {
     "changeInSettings": "AI सेटिंग्स में बदलें"
@@ -5698,10 +5702,10 @@
     "creatingKey": "कुंजी बनाई जा रही है...",
     "redirecting": "पुनर्निर्देशित किया जा रहा है...",
     "approve": "मंज़ूरी दें",
-    "wantsToConnect": "<strong>{appName}</strong> आपके Openscholar वॉलेट से कनेक्ट होना चाहता है।",
+    "wantsToConnect": "<strong>{appName}</strong> आपके Openscholar खाते से कनेक्ट होना चाहता है।",
     "copyKey": "यह API कुंजी कॉपी करें और <strong>{appName}</strong> में चिपकाएं। इसे केवल एक बार दिखाया जाएगा।",
     "originUnregisteredBody": "<code>{origin}</code> पर चल रहा ऐप Openscholar से कनेक्ट होने के लिए पंजीकृत नहीं है।",
-    "originHelp": "केवल पूर्व-स्वीकृत ओरिजिन वॉलेट कनेक्शन बना सकते हैं। यदि आप <strong>{appName}</strong> के डेवलपर हैं, तो अपना ओरिजिन पंजीकृत कराने के लिए Openscholar टीम से संपर्क करें।",
+    "originHelp": "केवल पूर्व-स्वीकृत ओरिजिन खाता कनेक्शन बना सकते हैं। यदि आप <strong>{appName}</strong> के डेवलपर हैं, तो अपना ओरिजिन पंजीकृत कराने के लिए Openscholar टीम से संपर्क करें।",
     "wantsToUseCredits": "<strong>{appName}</strong> आपके Openscholar क्रेडिट से AI जनरेशन इस्तेमाल करना चाहता है।",
     "unknownApp": "अज्ञात ऐप",
     "thisApplicationSOriginIsNot": "इस एप्लिकेशन का ऑरिजिन पंजीकृत नहीं है।",

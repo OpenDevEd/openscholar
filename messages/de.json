@@ -4956,7 +4956,11 @@
       "goneDetail": "Bitten Sie die Person, die ihn geteilt hat, ihn erneut zu teilen",
       "otherTitle": "Diese Einladung wurde an eine andere Adresse gesendet",
       "otherDetail": "Öffnen Sie sie, wenn dieses Konto diese Adresse auch hat, oder melden Sie sich mit der Adresse an, an die sie gesendet wurde"
-    }
+    },
+    "notEmails": "{count, plural, one {Das ist keine E-Mail-Adresse: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.} other {Das sind keine E-Mail-Adressen: {values}. Korrigiere oder entferne sie, um die Organisation zu erstellen.}}",
+    "asRole": "als {role}",
+    "memberCan": "Mitglieder suchen, speichern, sichten und extrahieren mit allem, was die Organisation teilt.",
+    "adminCan": "Admins können dasselbe und außerdem Personen einladen und entfernen sowie Einstellungen und Ausgaben verwalten."
   },
   "models": {
     "changeInSettings": "In den KI-Einstellungen ändern"
