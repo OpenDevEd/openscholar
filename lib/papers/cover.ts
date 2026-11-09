@@ -22,7 +22,10 @@ export function coverOf(id: string): { kind: CoverKind; ink: string } {
  * Where communities keep the pictures of their PDFs' first pages, as new-el's own next.config.mjs allows them: Openscholar's
  * server resizes a cover from there to the size the page shows it at (next.config.ts).
  */
-export const COMMUNITY_FILES = ["tlxvwvgyaanqlmuyoguz", "ocivvlhqiwtxvnycqnia"].map((project) => `https://${project}.supabase.co/storage/v1/object/public/`);
+const COMMUNITY_FILES = ["tlxvwvgyaanqlmuyoguz", "ocivvlhqiwtxvnycqnia"].map((project) => `https://${project}.supabase.co/storage/v1/object/public/`);
 
-/** Whether a cover is one Openscholar's server resizes. */
-export const resizable = (src: string) => COMMUNITY_FILES.some((files) => src.startsWith(files));
+/** The `images.remotePatterns` next.config.ts gives: a pattern made from a URL allows no query. */
+export const COMMUNITY_FILE_PATTERNS = COMMUNITY_FILES.map((files) => new URL(`${files}**`));
+
+/** Whether a cover is one Openscholar's server resizes: next.config.ts allows these addresses with no query. */
+export const resizable = (src: string) => !src.includes("?") && COMMUNITY_FILES.some((files) => src.startsWith(files));

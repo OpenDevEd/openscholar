@@ -4,7 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { COMMUNITY_FILES } from "./lib/papers/cover";
+import { COMMUNITY_FILE_PATTERNS } from "./lib/papers/cover";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
   // A second local address for testing, as the free question limit counts each address on its own.
   allowedDevOrigins: ["127.0.0.1", "192.168.1.47"],
   // A paper page's cover comes from its community's files at full size; it's resized to the size it's shown at.
-  images: { remotePatterns: COMMUNITY_FILES.map((files) => new URL(`${files}**`)) },
+  images: { remotePatterns: COMMUNITY_FILE_PATTERNS },
   async headers() {
     return [
       // The marketing site fetches these ahead, so they're on hand the moment someone searches from it. Images only: the script changes.
