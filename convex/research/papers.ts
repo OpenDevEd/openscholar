@@ -13,6 +13,7 @@ import { countSearch, groupSearch, readWork } from "../paperSets/openalex";
 import { ASSISTANT_FIELDS, spender, toPaper, type SavedSearchRequest, type Work } from "../paperSets/search";
 import { readPage, short } from "./searches";
 import { workUrl } from "../../lib/openalex/work-id";
+import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
 import { AUTHORS_LISTED, countValidator, FUNDERS_LISTED, GROUPINGS, GROUPS_MAX, INSTITUTIONS_LISTED, pageValidator, paperPdfValidator, paperRecordValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS, type Grouping } from "./searchValidators";
 import { assistantPick, chatModel } from "../assistant/threads";
 import { pricingOf } from "../ai/serverModel";
@@ -141,9 +142,13 @@ export const getAction = defineUserAction({
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const { clerkId } = person;
     const source = sourceForId(path, await ctx.runQuery(internal.featureFlags.internal.searchSource, {}));
-    const work = await readWork<Work>(path, `${ASSISTANT_FIELDS},funders`, spender(ctx, clerkId), source);
+    const spend = spender(ctx, clerkId);
+    const work = await readWork<Work & { ids?: { openalex?: string } }>(path, `${ASSISTANT_FIELDS},funders,ids`, spend, source);
     if (!work) throw createError("NOT_FOUND", `${SEARCH_SOURCE_NAMES[source]} has no paper by that ID.`);
     const paper = toPaper(work);
+    // Our index lacks some abstracts OpenAlex has. The paper's page shows OpenAlex's then, so a read gives it too.
+    const paired = !paper.abstract && source === "openscholar" ? work.ids?.openalex?.split("/").at(-1) : undefined;
+    const abstract = paper.abstract ?? (paired ? await pairedAbstract(paired, spend) : undefined);
     const authors = (work.authorships ?? []).flatMap(({ author, institutions }) => {
       if (!author?.display_name) return [];
       const works = (institutions ?? []).flatMap(({ display_name: name, country_code: country }) => (name ? [`${name.slice(0, NAME_MAX)}${country ? ` (${country})` : ""}`] : []));
@@ -166,11 +171,17 @@ export const getAction = defineUserAction({
       ...(paper.pdfUrl ? { pdf: true as const } : {}),
       ...(paper.citedByCount === undefined ? {} : { citations: paper.citedByCount }),
       ...(funders.length ? { funders: funders.slice(0, FUNDERS_LISTED) } : {}),
-      ...(paper.abstract ? { abstract: short(paper.abstract, ABSTRACT_MAX) } : {}),
+      ...(abstract ? { abstract: short(abstract, ABSTRACT_MAX) } : {}),
     };
   },
 });
 export const get = userAction(getAction);
+
+/** The abstract of the OpenAlex work a record of ours is paired with, if OpenAlex has one and can be read now. */
+async function pairedAbstract(openalexId: string, spend: ReturnType<typeof spender>) {
+  const work = await readWork<Work>(openalexId, "id,abstract_inverted_index", spend, "openalex").catch(() => null);
+  return work?.abstract_inverted_index ? convertAbstractArrayToString(work.abstract_inverted_index) : undefined;
+}
 export const getForAssistant = assistantAction(getAction);
 
 /** Pages a paper's PDF is taken to have, for what reading it may cost. */

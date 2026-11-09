@@ -134,7 +134,8 @@ export function ResultCell({ result, type, searchQuery = "", clamp, selected = f
   return (
     <button
       type="button"
-      onClick={onOpen}
+      // A double-click's second click would close the answer the first opened, so it's only a click.
+      onClick={(event) => event.detail < 2 && onOpen()}
       aria-pressed={selected}
       className={cn(
         "group/cell block space-y-1.5 text-start",
