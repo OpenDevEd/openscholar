@@ -16,10 +16,10 @@ export function renderApplicationReceived({ identity, applicant, message, review
 }
 
 /** To the applicant: the answer, and the reason when it's a no. */
-export function renderApplicationAnswer({ identity, accepted, reason, appliesAgainOn, url }: { identity: LibraryEmailIdentity; accepted: boolean; reason: string | null; appliesAgainOn: string; url: string }) {
+export function renderApplicationAnswer({ identity, accepted, reason, appliesAgainOn, url }: { identity: LibraryEmailIdentity; accepted: boolean; reason: string | null; appliesAgainOn: string | null; url: string }) {
 	const content = accepted
 		? `<p style="${emailStyles.paragraph}">Your application to join <strong style="color:#202822">${escapeHtml(identity.name)}</strong> was accepted.</p>${emailPanel("Creator", "Add papers, edit records, upload files and submit your work for review.", "Your community role")}${emailButton("Open your communities", url, identity.accent)}`
-		: `<p style="${emailStyles.paragraph}">Your application to join <strong style="color:#202822">${escapeHtml(identity.name)}</strong> wasn’t accepted.</p>${reason ? `<p style="font-size:13px;color:#797b73;margin:0 0 8px">Their reason</p>${quote(reason)}` : ""}<p style="${emailStyles.paragraph}">You can apply again from ${escapeHtml(appliesAgainOn)}.</p>${emailButton("Open your communities", url, identity.accent)}`;
+		: `<p style="${emailStyles.paragraph}">Your application to join <strong style="color:#202822">${escapeHtml(identity.name)}</strong> wasn’t accepted.</p>${reason ? `<p style="font-size:13px;color:#797b73;margin:0 0 8px">Their reason</p>${quote(reason)}` : ""}<p style="${emailStyles.paragraph}">${appliesAgainOn ? `You can apply again from ${escapeHtml(appliesAgainOn)}.` : "You can apply again now, with more about your work."}</p>${emailButton("Open your communities", url, identity.accent)}`;
 	return renderLibraryEmail({
 		identity,
 		title: accepted ? "You’re in" : "About your application",

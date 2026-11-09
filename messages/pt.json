@@ -6118,6 +6118,8 @@
     "closedNow": "Esta comunidade não está recebendo pedidos agora.",
     "couldNotSend": "Não foi possível enviar seu pedido. Tente de novo.",
     "couldNotChange": "Isso não deu certo. Tente de novo.",
-    "showMore": "Mostrar mais"
+    "showMore": "Mostrar mais",
+    "linkUnavailable": "Este link não abre uma comunidade que recebe pedidos. Pode estar digitado errado, ou a comunidade não é mais pública.",
+    "sayMore": "Conte mais sobre seu trabalho na mensagem abaixo e envie de novo."
   }
 }

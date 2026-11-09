@@ -6117,6 +6117,8 @@
     "closedNow": "该社区目前不接收申请。",
     "couldNotSend": "无法发送你的申请，请重试。",
     "couldNotChange": "操作未完成，请重试。",
-    "showMore": "显示更多"
+    "showMore": "显示更多",
+    "linkUnavailable": "此链接无法打开正在接收申请的社区。可能输入有误，或该社区已不再公开。",
+    "sayMore": "请在下方留言中多介绍一下你的工作，然后再次发送。"
   }
 }

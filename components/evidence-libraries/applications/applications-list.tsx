@@ -80,7 +80,7 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState<(typeof REASONS)[number] | null>(null);
   const [note, setNote] = useState("");
-  const noteRoom = REASON_MAX - (reason ? t(`reasons.${reason}`).length + 1 : 0);
+
   // Folded to three lines; Show all only when the fold cuts something off, measured as it's drawn.
   const [long, setLong] = useState(false);
   const measure = (element: HTMLParagraphElement | null) => { if (element && !unfolded) setLong(element.scrollHeight > element.clientHeight + 1); };
@@ -97,7 +97,7 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
       </div>
       {/* Their message under their name, lined up with it; a long one opens on tap, on a phone as on a desktop. */}
       <div className="mt-3 sm:ms-12">
-        <p id={messageId} ref={measure} className={cn("whitespace-pre-line rounded-lg bg-inset px-3 py-2 text-sm leading-relaxed", !unfolded && "line-clamp-3")}>{applicant.message}</p>
+        <p id={messageId} ref={measure} className={cn("whitespace-pre-line rounded-lg bg-inset px-3 py-2 text-sm leading-relaxed [overflow-wrap:anywhere]", !unfolded && "line-clamp-3")}>{applicant.message}</p>
         {long ? (
           <Button variant="link" size="sm" className="h-7 px-0 text-xs" aria-expanded={unfolded} aria-controls={messageId} onClick={() => setUnfolded(!unfolded)}>
             {unfolded ? t("showLess") : t("showAll")}
@@ -109,8 +109,9 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
               className="mt-3 space-y-3 rounded-lg border border-border-subtle p-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                const why = [reason ? t(`reasons.${reason}`) : "", note.trim().slice(0, noteRoom)].filter(Boolean).join("\n");
-                void answer(() => decline({ applicationId: applicant.applicationId, ...(why ? { reason: why } : {}) }), t("declinedNotice", { name: applicant.name }));
+                // The ready-made reason goes by its key, so the applicant reads it in their own language.
+                const why = note.trim();
+                void answer(() => decline({ applicationId: applicant.applicationId, ...(reason ? { preset: reason } : {}), ...(why ? { reason: why } : {}) }), t("declinedNotice", { name: applicant.name }));
               }}
             >
               <div>
@@ -124,8 +125,11 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
                   ))}
                 </div>
               </div>
-              {/* The reason picked and the note are sent as one, within the 500 characters a reason holds. */}
-              <Textarea aria-label={t("addANote")} placeholder={t("addANote")} value={note} onChange={(event) => setNote(event.target.value.slice(0, noteRoom))} maxLength={noteRoom} rows={2} className="h-16 resize-none [field-sizing:fixed]" />
+              <div>
+                <Textarea aria-label={t("addANote")} placeholder={t("addANote")} value={note} onChange={(event) => setNote(event.target.value)} maxLength={REASON_MAX} rows={2} className="h-16 resize-none [field-sizing:fixed]" />
+                {/* How much fits, as the application's own message shows it. */}
+                <p aria-hidden dir="ltr" className={cn("mt-1 text-end text-xs tabular-nums", note.length >= REASON_MAX ? "ink-warning" : "text-subtle-foreground")}>{note.length} / {REASON_MAX}</p>
+              </div>
               <p className="flex items-center gap-2 text-xs text-muted-foreground"><Mail className="size-3.5 shrink-0" />{t("theyGetAnEmail")}</p>
               <div className="flex flex-wrap justify-end gap-2">
                 <Button type="button" size="sm" variant="ghost" onClick={() => setDeclining(false)}>{t("cancel")}</Button>

@@ -6118,6 +6118,8 @@
     "closedNow": "Jumuiya hii haipokei maombi kwa sasa.",
     "couldNotSend": "Ombi lako halikuweza kutumwa. Jaribu tena.",
     "couldNotChange": "Hilo halikufanikiwa. Jaribu tena.",
-    "showMore": "Onyesha zaidi"
+    "showMore": "Onyesha zaidi",
+    "linkUnavailable": "Kiungo hiki hakifungui jumuiya inayopokea maombi. Huenda kimeandikwa vibaya, au jumuiya si ya umma tena.",
+    "sayMore": "Eleza zaidi kuhusu kazi yako katika ujumbe ulio hapa chini, kisha uutume tena."
   }
 }

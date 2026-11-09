@@ -6117,6 +6117,8 @@
     "closedNow": "Cette communauté n'accepte pas de demandes pour le moment.",
     "couldNotSend": "Votre demande n'a pas pu être envoyée. Réessayez.",
     "couldNotChange": "Cela n'a pas abouti. Réessayez.",
-    "showMore": "Afficher plus"
+    "showMore": "Afficher plus",
+    "linkUnavailable": "Ce lien n'ouvre pas une communauté qui accepte des demandes. Il est peut-être mal saisi, ou la communauté n'est plus publique.",
+    "sayMore": "Parlez davantage de votre travail dans le message ci-dessous, puis renvoyez-le."
   }
 }

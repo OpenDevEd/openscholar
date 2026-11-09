@@ -19,7 +19,7 @@ import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
 import { waitingFor } from "../sharing/access";
 import { libraryEmailSender } from "./invitations";
 import { readLibraryPeople } from "./queries";
-import { applicationStateValidator } from "./validators";
+import { applicationStateValidator, reasonPresetValidator } from "./validators";
 
 const DAY = 86_400_000;
 /** Communities one call of `standing` or `waitingCounts` asks about: a page of the directory or of the sidebar. */
@@ -49,8 +49,12 @@ async function requireReviewer(ctx: QueryCtx, library: Doc<"evidenceLibraries">,
 const applicationOf = (ctx: QueryCtx, userId: Id<"users">, libraryId: Id<"evidenceLibraries">) =>
   ctx.db.query("libraryApplications").withIndex("by_userId_and_libraryId", (q) => q.eq("userId", userId).eq("libraryId", libraryId)).unique();
 
-/** When a declined person may apply to the same community again. */
-const appliesAgainAt = (application: Doc<"libraryApplications">) => (application.decidedAt ?? application.createdAt) + APPLICATION_COOL_OFF_DAYS * DAY;
+/**
+ * When a declined person may apply to the same community again: 14 days on, or at once when the team asked them to
+ * say more about their work, which they then do by applying again.
+ */
+const appliesAgainAt = (application: Doc<"libraryApplications">) =>
+  (application.decidedAt ?? application.createdAt) + (application.reasonPreset === "moreAbout" ? 0 : APPLICATION_COOL_OFF_DAYS * DAY);
 
 /** A message or reason as kept: trimmed, and within MAX_APPLICATION_MESSAGE. */
 function text(value: string, what: "message" | "reason") {
@@ -72,6 +76,7 @@ const myApplicationValidator = v.object({
   createdAt: v.number(),
   decidedAt: v.union(v.number(), v.null()),
   reason: v.union(v.string(), v.null()),
+  reasonPreset: v.union(reasonPresetValidator, v.null()),
   appliesAgainAt: v.union(v.number(), v.null()),
 });
 
@@ -93,6 +98,7 @@ async function asMine(ctx: QueryCtx, application: Doc<"libraryApplications">) {
     createdAt: application.createdAt,
     decidedAt: application.decidedAt ?? null,
     reason: application.reason ?? null,
+    reasonPreset: application.reasonPreset ?? null,
     appliesAgainAt: application.state === "declined" ? appliesAgainAt(application) : null,
   };
 }
@@ -207,6 +213,7 @@ const standingValidator = v.object({
     createdAt: v.number(),
     decidedAt: v.union(v.number(), v.null()),
     reason: v.union(v.string(), v.null()),
+    reasonPreset: v.union(reasonPresetValidator, v.null()),
     appliesAgainAt: v.union(v.number(), v.null()),
     /** Taken off the sidebar by the person: a declined one whose wait still holds. */
     hidden: v.boolean(),
@@ -233,6 +240,7 @@ export const standingAction = defineUserQuery({
           createdAt: application.createdAt,
           decidedAt: application.decidedAt ?? null,
           reason: application.reason ?? null,
+          reasonPreset: application.reasonPreset ?? null,
           appliesAgainAt: application.state === "declined" ? appliesAgainAt(application) : null,
           hidden: !application.listed && application.state === "declined",
         } : null,
@@ -350,19 +358,19 @@ export const acceptForAssistant = assistantMutation(acceptAction);
 export const declineAction = defineUserMutation({
   path: "evidenceLibraries/applications:decline",
   description:
-    "Declines an application to join an Evidence Community, for its owners and editors, with an optional reason the person reads in their email and on the Communities page. They can apply again 14 days later. Asks the person first.",
-  args: { applicationId: v.id("libraryApplications"), reason: v.optional(v.string()) },
+    "Declines an application to join an Evidence Community, for its owners and editors, with an optional ready-made reason (`preset`: topic, outside the community's topic; moreAbout, tell us more about your work; notNow, not adding people right now) and an optional written one, which the person reads in their email and on the Communities page. They can apply again 14 days later. Asks the person first.",
+  args: { applicationId: v.id("libraryApplications"), preset: v.optional(reasonPresetValidator), reason: v.optional(v.string()) },
   returns: v.null(),
   spendsCredits: false,
   outsideEffect: true,
   undoable: false,
   asksFirst: async () => true,
-  run: async (ctx, actor, { applicationId, reason }) => {
+  run: async (ctx, actor, { applicationId, preset, reason }) => {
     const { application, reviewer } = await toAnswer(ctx, actor, applicationId);
     if (application.state === "declined") return null;
     if (application.state !== "waiting") throw createError("CONFLICT", "This application was answered already.");
     const why = reason === undefined ? "" : text(reason, "reason");
-    await ctx.db.patch("libraryApplications", application._id, { state: "declined", listed: true, decidedAt: Date.now(), decidedBy: reviewer._id, ...(why ? { reason: why } : {}) });
+    await ctx.db.patch("libraryApplications", application._id, { state: "declined", listed: true, decidedAt: Date.now(), decidedBy: reviewer._id, ...(preset ? { reasonPreset: preset } : {}), ...(why ? { reason: why } : {}) });
     await ctx.scheduler.runAfter(0, internal.evidenceLibraries.applicationEmails.toApplicant, { applicationId });
     return null;
   },
@@ -409,6 +417,7 @@ export const readForEmail = internalQuery({
       message: application.message,
       state: application.state,
       reason: application.reason ?? null,
+      reasonPreset: application.reasonPreset ?? null,
       appliesAgainAt: appliesAgainAt(application),
       reviewers,
       ...(await libraryEmailSender(ctx, library)),

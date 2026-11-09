@@ -6118,6 +6118,8 @@
     "closedNow": "Esta comunidad no acepta solicitudes en este momento.",
     "couldNotSend": "No se pudo enviar tu solicitud. Inténtalo de nuevo.",
     "couldNotChange": "No se pudo completar. Inténtalo de nuevo.",
-    "showMore": "Mostrar más"
+    "showMore": "Mostrar más",
+    "linkUnavailable": "Este enlace no abre una comunidad que acepte solicitudes. Puede estar mal escrito, o la comunidad ya no es pública.",
+    "sayMore": "Cuenta más sobre tu trabajo en el mensaje de abajo y vuelve a enviarlo."
   }
 }

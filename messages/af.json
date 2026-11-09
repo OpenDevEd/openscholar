@@ -6118,6 +6118,8 @@
     "closedNow": "Hierdie gemeenskap neem nie nou aansoeke nie.",
     "couldNotSend": "Jou aansoek kon nie gestuur word nie. Probeer weer.",
     "couldNotChange": "Dit het nie deurgegaan nie. Probeer weer.",
-    "showMore": "Wys meer"
+    "showMore": "Wys meer",
+    "linkUnavailable": "Hierdie skakel maak nie 'n gemeenskap oop wat aansoeke neem nie. Dit is dalk verkeerd getik, of die gemeenskap is nie meer openbaar nie.",
+    "sayMore": "Vertel meer oor jou werk in die boodskap hieronder, en stuur dit dan weer."
   }
 }
