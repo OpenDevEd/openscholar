@@ -309,10 +309,10 @@
     "metadataTitle": "Amanani",
     "metadataDescription": "Amanani alula, acacile kuwo wonke amaqembu, noma angakanani.",
     "everyFeature": "Zonke izici ze-Openscholar",
-    "papersRunning": "{running, number} amaphepha asebenza ngesikhathi esisodwa",
-    "papersInRequest": "{request, number} amaphepha esicelweni esisodwa",
+    "papersRunning": "I-AI ihlunga noma ikhiphe amaphepha angu-{running, number} ngesikhathi esisodwa",
+    "papersInRequest": "Amaphepha afika ku-{request, number} ekuhlungeni noma ekukhipheni okukodwa",
     "unlimitedCollectionsAndGuests": "Amaqoqo nezivakashi ngaphandle komkhawulo",
-    "southernDescription": "Kubacwaningi emazweni anemali engenayo ephansi nephakathi.",
+    "southernDescription": "Kumaqembu aseNingizimu, kumaphrojekthi athile.",
     "southernFeature1": "Konke okukuFree",
     "southernFeature2": "Kwengezwa ku-akhawunti yakho ngemva kokuxhumana nathi",
     "onRequest": "Ngesicelo"

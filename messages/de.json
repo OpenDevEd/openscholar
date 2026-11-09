@@ -309,10 +309,10 @@
     "metadataTitle": "Preise",
     "metadataDescription": "Einfache, transparente Preise für Teams jeder Größe.",
     "everyFeature": "Alle Funktionen von Openscholar",
-    "papersRunning": "{running, number} Paper gleichzeitig in Bearbeitung",
-    "papersInRequest": "{request, number} Paper pro Anfrage",
+    "papersRunning": "KI sichtet oder extrahiert {running, number} Artikel gleichzeitig",
+    "papersInRequest": "Bis zu {request, number} Artikel in einer Sichtung oder Extraktion",
     "unlimitedCollectionsAndGuests": "Unbegrenzte Sammlungen und Gäste",
-    "southernDescription": "Für Forschende in Ländern mit niedrigem und mittlerem Einkommen.",
+    "southernDescription": "Für Teams aus dem Globalen Süden, für bestimmte Projekte.",
     "southernFeature1": "Alles aus Free",
     "southernFeature2": "Wird Ihrem Konto hinzugefügt, nachdem Sie uns kontaktiert haben",
     "onRequest": "Auf Anfrage"

@@ -309,10 +309,10 @@
     "metadataTitle": "Bei",
     "metadataDescription": "Bei rahisi na wazi kwa timu za ukubwa wote.",
     "everyFeature": "Kila kipengele cha Openscholar",
-    "papersRunning": "Makala {running, number} zinazoendeshwa kwa wakati mmoja",
-    "papersInRequest": "Makala {request, number} katika ombi moja",
+    "papersRunning": "AI huchuja au kutoa data ya makala {running, number} kwa wakati mmoja",
+    "papersInRequest": "Hadi makala {request, number} katika uchujaji au utoaji mmoja",
     "unlimitedCollectionsAndGuests": "Mikusanyiko na wageni bila kikomo",
-    "southernDescription": "Kwa watafiti katika nchi za kipato cha chini na cha kati.",
+    "southernDescription": "Kwa timu za Kusini, kwa miradi mahususi.",
     "southernFeature1": "Kila kitu katika Free",
     "southernFeature2": "Huongezwa kwenye akaunti yako baada ya kuwasiliana nasi",
     "onRequest": "Kwa ombi"

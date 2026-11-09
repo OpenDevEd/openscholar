@@ -309,10 +309,10 @@
     "metadataTitle": "Pryse",
     "metadataDescription": "Eenvoudige, deursigtige pryse vir spanne van alle groottes.",
     "everyFeature": "Elke funksie in Openscholar",
-    "papersRunning": "{running, number} artikels wat gelyktydig loop",
-    "papersInRequest": "{request, number} artikels in een versoek",
+    "papersRunning": "KI sif of onttrek {running, number} artikels gelyktydig",
+    "papersInRequest": "Tot {request, number} artikels in een sifting of onttrekking",
     "unlimitedCollectionsAndGuests": "Onbeperkte versamelings en gaste",
-    "southernDescription": "Vir navorsers in lae- en middelinkomstelande.",
+    "southernDescription": "Vir Suidelike spanne, vir spesifieke projekte.",
     "southernFeature1": "Alles in Free",
     "southernFeature2": "By jou rekening gevoeg nadat jy ons gekontak het",
     "onRequest": "Op versoek"
