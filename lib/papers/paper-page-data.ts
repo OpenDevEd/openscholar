@@ -95,8 +95,9 @@ export async function readCommunityCopies(doi: string | null, openalexId: string
   // ponytail: a paper's first 100 copies per key, as topic pages read them. One with more says so in the logs; page through when a paper ever has that many.
   if (pages.some((page) => !page.isDone)) console.error("[paper page] a paper has more community copies than one page lists", { doi, openalexId, listed: MAX_LOCATIONS });
   const locations = [...new Map(pages.flatMap((page) => page.page).map((location) => [location.id, location])).values()];
-  // Each record says whether its community has its PDF and a picture of its first page; one that can't be read just has neither.
-  const pdfs = await Promise.allSettled(locations.map((location) => readCopyPdf(location.library.id, location.itemKey, location.library.url)));
+  // The community says each record's PDF and the picture of its first page; one from a runtime that doesn't is asked.
+  // One that can't be read just has neither.
+  const pdfs = await Promise.allSettled(locations.map((location) => (location.metadata.pdf !== undefined ? location.metadata.pdf : readCopyPdf(location.library.id, location.itemKey, location.library.url))));
   return locations.map((location, index) => {
     const read = pdfs[index]!;
     if (read.status === "rejected") console.error("[paper page] community record unavailable", { library: location.library.id, item: location.itemKey, error: read.reason });
