@@ -2853,7 +2853,8 @@
       "confirmAction": "アドレスを変更"
     },
     "retry": "もう一度試す",
-    "retryError": "開始できませんでした。もう一度試してください。"
+    "retryError": "開始できませんでした。もう一度試してください。",
+    "saveDraft": "下書きを保存"
   },
   "topics": {
     "title": "トピック",

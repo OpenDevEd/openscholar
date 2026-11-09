@@ -2854,7 +2854,8 @@
       "confirmAction": "Adresse ändern"
     },
     "retry": "Erneut versuchen",
-    "retryError": "Dies konnte nicht gestartet werden. Versuchen Sie es erneut."
+    "retryError": "Dies konnte nicht gestartet werden. Versuchen Sie es erneut.",
+    "saveDraft": "Entwurf speichern"
   },
   "topics": {
     "title": "Themen",

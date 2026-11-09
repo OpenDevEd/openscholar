@@ -2853,7 +2853,8 @@
       "confirmAction": "Modifier l’adresse"
     },
     "retry": "Réessayer",
-    "retryError": "Cette action n’a pas pu démarrer. Réessayez."
+    "retryError": "Cette action n’a pas pu démarrer. Réessayez.",
+    "saveDraft": "Enregistrer le brouillon"
   },
   "topics": {
     "title": "Sujets",

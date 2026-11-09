@@ -2854,7 +2854,8 @@
       "confirmAction": "Verander die adres"
     },
     "retry": "Probeer weer",
-    "retryError": "Dit kon nie begin word nie. Probeer weer."
+    "retryError": "Dit kon nie begin word nie. Probeer weer.",
+    "saveDraft": "Stoor konsep"
   },
   "topics": {
     "title": "Onderwerpe",

@@ -2853,7 +2853,8 @@
       "confirmAction": "Shintsha ikheli"
     },
     "retry": "Zama futhi",
-    "retryError": "Lokho akukwazanga ukuqala. Zama futhi."
+    "retryError": "Lokho akukwazanga ukuqala. Zama futhi.",
+    "saveDraft": "Londoloza okusalungiswa"
   },
   "topics": {
     "title": "Izihloko",

@@ -2854,7 +2854,8 @@
       "confirmAction": "Cambiar la dirección"
     },
     "retry": "Inténtelo de nuevo",
-    "retryError": "No se pudo iniciar. Inténtelo de nuevo."
+    "retryError": "No se pudo iniciar. Inténtelo de nuevo.",
+    "saveDraft": "Guardar borrador"
   },
   "topics": {
     "title": "Temas",
