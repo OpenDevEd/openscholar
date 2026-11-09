@@ -22,12 +22,17 @@ import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { countryOfPlace } from "@/lib/publish-mock/read";
+import { linkHref } from "@/components/publish-mock/report-extras";
 import { CREDIT_ROLES, RELATION_KINDS, type Affiliation, type Author, type Metadata } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const LANGUAGE = new Intl.DisplayNames(["en"], { type: "language" });
 const REFS_PER_PAGE = 5;
 const REF_ROW = 41;
+const AUTHORS_PER_PAGE = 5;
+const AUTHOR_ROW = 205;
+const ROWS_PER_PAGE = 5;
+const ROW = 53;
 const BLANK_AUTHOR: Author = { name: "", orcid: "", openalexId: null, affiliations: [], corresponding: false, roles: [] };
 
 /** A part of the details, and where it goes: Crossref as well as Openscholar, or Openscholar alone. */
@@ -102,6 +107,14 @@ function Sureness({ score }: { score: number }) {
 
 const typedId = (name: string) => `typed:${name}`;
 
+/** One page of an editable list, and where it starts; `last` turns to the page a new row lands on. */
+function usePage<T>(list: T[], size: number) {
+  const [page, setPage] = useState(1);
+  const pager = pagerOf(list.length, size, page, setPage);
+  const offset = (pager.page - 1) * size;
+  return { pager, offset, shown: list.slice(offset, offset + size), last: (length: number) => setPage(Math.max(1, Math.ceil(length / size))) };
+}
+
 /** An author's places, from OpenAlex's institutions or as typed, each with its country's flag. */
 function Affiliations({ value, onChange }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void }) {
   const ids = value.map((a) => a.id ?? typedId(a.name));
@@ -128,10 +141,11 @@ function Affiliations({ value, onChange }: { value: Affiliation[]; onChange: (a:
 function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void }) {
   return (
     <li className="space-y-3 p-4">
-      <div className="flex items-center gap-2">
+      {/* On a narrow screen the ORCID iD takes a line of its own under the name. */}
+      <div className="flex flex-wrap items-center gap-2">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
-        <Input aria-label="Name" placeholder="Name" value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="min-w-0 flex-1 font-medium" />
-        <div className="relative w-52 shrink-0">
+        <Input aria-label="Name" placeholder="Name" value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="w-auto min-w-0 flex-1 font-medium" />
+        <div className="relative order-last w-full shrink-0 @xl:order-none @xl:w-52">
           <OrcidIcon className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2" />
           <Input aria-label="ORCID iD" placeholder="0000-0000-0000-0000" value={author.orcid} onChange={(e) => onChange({ orcid: e.target.value })} className="ps-8 font-mono text-xs" />
         </div>
@@ -153,7 +167,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
           </TooltipHint>
         </span>
       </div>
-      <div className="grid gap-3 ps-9 @2xl:grid-cols-2">
+      <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
         <div className="space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Affiliations</span>
           <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
@@ -174,7 +188,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
           />
         </div>
       </div>
-      <label className="flex w-fit cursor-pointer items-center gap-2 ps-9 text-xs text-muted-foreground">
+      <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted-foreground @xl:ps-9">
         <Switch checked={author.corresponding} onCheckedChange={(corresponding) => onChange({ corresponding })} />
         Corresponding author
       </label>
@@ -199,6 +213,9 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
   const funderNames = { ...useFunderNames(funderIds.filter((id) => !id.startsWith("typed:"))), ...Object.fromEntries(m.funding.map((f) => [f.funder.id ?? typedId(f.funder.name), f.funder.name])) };
   const refs = pagerOf(m.references.length, REFS_PER_PAGE, refPage, setRefPage);
   const shownRefs = m.references.slice((refs.page - 1) * REFS_PER_PAGE, refs.page * REFS_PER_PAGE);
+  const authors = usePage(m.authors, AUTHORS_PER_PAGE);
+  const funders = usePage(m.funding, ROWS_PER_PAGE);
+  const links = usePage(m.relations, ROWS_PER_PAGE);
   const addDoi = () => {
     const bare = doi.trim().toLowerCase().replace(/^https?:\/\/(dx\.)?doi\.org\//, "");
     if (/^10\.\d{4,9}\/\S+$/.test(bare) && !m.references.includes(bare)) set("references", [...m.references, bare]);
@@ -262,8 +279,11 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
         </Section>
 
         <Section title="Authors" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.authors.length}</span>}>
+          <Paged pager={authors.pager} rowHeight={AUTHOR_ROW} label="authors">
           <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
-            {m.authors.map((a, i) => (
+            {authors.shown.map((a, at) => {
+              const i = authors.offset + at;
+              return (
               <AuthorRow
                 key={i}
                 author={a}
@@ -271,11 +291,22 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
                 count={m.authors.length}
                 onChange={(patch) => setAuthor(i, patch)}
                 onMove={(by) => moveAuthor(i, by)}
-                onRemove={() => set("authors", m.authors.filter((_, at) => at !== i))}
+                onRemove={() => set("authors", m.authors.filter((_, other) => other !== i))}
               />
-            ))}
+              );
+            })}
           </ul>
-          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => set("authors", [...m.authors, { ...BLANK_AUTHOR }])}>
+          </Paged>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={() => {
+              set("authors", [...m.authors, { ...BLANK_AUTHOR }]);
+              authors.last(m.authors.length + 1);
+            }}
+          >
             <Plus /> Add an author
           </Button>
         </Section>
@@ -354,20 +385,25 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
             labels={{ label: "Funders", placeholder: "Add a funder", searchPlaceholder: "Find a funder", typeToSearch: "Type a funder's name", unavailable: "Funders can't be looked up now" }}
           />
           {m.funding.length ? (
+            <Paged pager={funders.pager} rowHeight={ROW} label="funders">
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
-              {m.funding.map((f, i) => (
+              {funders.shown.map((f, at) => {
+                const i = funders.offset + at;
+                return (
                 <li key={f.funder.id ?? f.funder.name} className="grid items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_1fr]">
                   <FunderName id={f.funder.id} name={f.funder.name} className="truncate text-sm font-medium" />
                   <ChipInput
                     values={f.awards}
-                    onChange={(awards) => set("funding", m.funding.map((x, at) => (at === i ? { ...x, awards } : x)))}
+                    onChange={(awards) => set("funding", m.funding.map((x, n) => (n === i ? { ...x, awards } : x)))}
                     placeholder="Grant numbers"
                     label={`Add a grant number for ${f.funder.name}`}
                     mono
                   />
                 </li>
-              ))}
+                );
+              })}
             </ul>
+            </Paged>
           ) : null}
         </Section>
 
@@ -400,10 +436,14 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
 
         <Section title="Data, code and other versions" crossref>
           {m.relations.length ? (
+            <Paged pager={links.pager} rowHeight={ROW} label="links">
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
-              {m.relations.map((r, i) => (
+              {links.shown.map((r, at) => {
+                const i = links.offset + at;
+                const href = linkHref(r.target);
+                return (
                 <li key={i} className="flex items-center gap-2 px-3 py-2">
-                  <Select value={r.kind} onValueChange={(kind) => set("relations", m.relations.map((x, at) => (at === i ? { ...x, kind: kind as typeof r.kind } : x)))}>
+                  <Select value={r.kind} onValueChange={(kind) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, kind: kind as typeof r.kind } : x)))}>
                     <SelectTrigger size="sm" className="w-36 shrink-0" aria-label="Kind of link">
                       <SelectValue />
                     </SelectTrigger>
@@ -415,26 +455,31 @@ export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: 
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input aria-label="Link or DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, at) => (at === i ? { ...x, target: e.target.value } : x)))} className="h-8 min-w-0 flex-1 font-mono text-xs" />
-                  {/^https?:\/\//.test(r.target) ? (
+                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="h-8 min-w-0 flex-1 font-mono text-xs" />
+                  {href ? (
                     <TooltipHint label="Open link">
                       <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
-                        <a href={r.target} target="_blank" rel="noopener noreferrer" aria-label={`Open ${r.target}`}>
+                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open ${r.target}`}>
                           <ExternalLink />
                         </a>
                       </Button>
                     </TooltipHint>
                   ) : null}
                   <TooltipHint label="Remove link">
-                    <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${r.target || "link"}`} className="text-muted-foreground hover:text-destructive" onClick={() => set("relations", m.relations.filter((_, at) => at !== i))}>
+                    <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${r.target || "link"}`} className="text-muted-foreground hover:text-destructive" onClick={() => set("relations", m.relations.filter((_, other) => other !== i))}>
                       <Trash2 />
                     </Button>
                   </TooltipHint>
                 </li>
-              ))}
+                );
+              })}
             </ul>
+            </Paged>
           ) : null}
-          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => set("relations", [...m.relations, { kind: "data", target: "" }])}>
+          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => {
+              set("relations", [...m.relations, { kind: "data", target: "" }]);
+              links.last(m.relations.length + 1);
+            }}>
             <Plus /> Add a link
           </Button>
         </Section>

@@ -1,19 +1,45 @@
 "use client";
 
 // MOCK (mock/publish-reports): a report's details that a paper's record has no place for, in the paper page's own sections.
+import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Section } from "@/components/papers/paper-page";
+import { Paged, pagerOf } from "@/components/settings/parts";
+import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { ExternalLink } from "@/components/icons";
 import { STUDY_DESIGNS } from "@/lib/openalex/vocabulary";
 import { RELATION_KINDS, type Metadata } from "@/lib/publish-mock/types";
 
 const CHIP = "inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs text-muted-foreground";
-const COUNTRY = new Intl.DisplayNames(["en"], { type: "region" });
-const REFS_SHOWN = 8;
+const REFS_PER_PAGE = 8;
+const REF_ROW = 24;
+
+/** A place's name: a country's, or a region's as the country filter names it ("africa", "eastern_africa"). */
+export function usePlaceName() {
+  const locale = useLocale();
+  const tf = useTranslations("searchFilters");
+  return (id: string) => getRegionDisplayName(id, locale, (key) => (tf as (key: string) => string)(key));
+}
+
+/** A link's address: a bare DOI goes to doi.org; anything that isn't a web address or a DOI has none. */
+export function linkHref(target: string) {
+  const text = target.trim();
+  if (/^https?:\/\/\S+$/i.test(text)) return text;
+  const doi = text.replace(/^doi:\s*/i, "");
+  return /^10\.\d{4,9}\/\S+$/.test(doi) ? `https://doi.org/${doi}` : null;
+}
 
 /** Under the authors: who did what, what the report cites, and where its data and code are. */
 export function ReportMain({ m }: { m: Metadata }) {
   const credited = m.authors.filter((a) => a.roles.length);
+  const links = m.relations.flatMap((r) => {
+    const href = linkHref(r.target);
+    return href ? [{ ...r, href }] : [];
+  });
+  const [page, setPage] = useState(1);
+  const refs = pagerOf(m.references.length, REFS_PER_PAGE, page, setPage);
+  const shownRefs = m.references.slice((refs.page - 1) * REFS_PER_PAGE, refs.page * REFS_PER_PAGE);
   return (
     <>
       {credited.length ? (
@@ -34,12 +60,12 @@ export function ReportMain({ m }: { m: Metadata }) {
           </ul>
         </Section>
       ) : null}
-      {m.relations.length ? (
+      {links.length ? (
         <Section id="report-links" title="Data, code and other versions">
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
-            {m.relations.map((r) => (
-              <li key={r.target}>
-                <a href={r.target} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center gap-3 px-3 text-sm transition-colors hover:bg-muted">
+            {links.map((r) => (
+              <li key={r.href}>
+                <a href={r.href} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center gap-3 px-3 text-sm transition-colors hover:bg-muted">
                   <span className={CHIP}>{RELATION_KINDS.find((k) => k.id === r.kind)?.name}</span>
                   <span className="min-w-0 flex-1 truncate font-mono text-xs">{r.target}</span>
                   <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
@@ -51,15 +77,17 @@ export function ReportMain({ m }: { m: Metadata }) {
       ) : null}
       {m.references.length ? (
         <Section id="report-references" title="References" count={m.references.length}>
-          <ul className="space-y-1.5">
-            {m.references.slice(0, REFS_SHOWN).map((doi) => (
-              <li key={doi}>
+          <Paged pager={refs} rowHeight={REF_ROW} label="references">
+          <ul>
+            {shownRefs.map((doi) => (
+              <li key={doi} style={{ height: REF_ROW }} className="flex items-center">
                 <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
                   {doi}
                 </a>
               </li>
             ))}
           </ul>
+          </Paged>
         </Section>
       ) : null}
     </>
@@ -68,6 +96,7 @@ export function ReportMain({ m }: { m: Metadata }) {
 
 /** In the sidebar: the places the report is about and how it was studied. */
 export function ReportSide({ m }: { m: Metadata }) {
+  const placeName = usePlaceName();
   const designs = STUDY_DESIGNS.filter((d) => m.studyDesigns.includes(d.id));
   return (
     <>
@@ -77,7 +106,7 @@ export function ReportSide({ m }: { m: Metadata }) {
             {m.countries.map((code) => (
               <span key={code} className={CHIP}>
                 {code.length === 2 ? <CountryFlag countryCode={code} /> : null}
-                {code.length === 2 ? COUNTRY.of(code.toUpperCase()) : code}
+                {placeName(code)}
               </span>
             ))}
           </div>

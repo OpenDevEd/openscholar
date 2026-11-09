@@ -141,7 +141,8 @@ function StepTrail({ place, canGoBack, onBack, draft }: { place: number; canGoBa
           const body = (
             <>
               <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
-              <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground")}>{s.label}</span>
+              {/* On a phone only the current step keeps its name; the others are their icons. */}
+              <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground", !current && "max-sm:sr-only")}>{s.label}</span>
             </>
           );
           return (

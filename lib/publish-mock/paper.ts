@@ -24,11 +24,13 @@ export async function readReportPaper(key: string): Promise<PaperResult | null> 
     source: { id: null, display_name: state.settings.series.name, type: "repository", issn_l: state.settings.series.issn || null, host_organization_name: "Openscholar" },
   };
   const year = Number(m.date.slice(0, 4));
+  // Our index keeps one title, so a subtitle goes after it, as Crossref joins them for display.
+  const title = m.subtitle.trim() ? `${m.title}: ${m.subtitle.trim()}` : m.title;
   return {
     id: report.id,
     openscholar_id: report.id,
-    title: m.title,
-    display_name: m.title,
+    title,
+    display_name: title,
     abstract: m.abstract,
     doi: `https://doi.org/${report.doi}`,
     publication_date: m.date,

@@ -44,6 +44,7 @@ import {
   Trash2,
 } from "@/components/icons";
 import { CheckRow } from "@/components/publish-mock/publish-flow";
+import { usePlaceName } from "@/components/publish-mock/report-extras";
 import { removeCheck, retryDeposit, review, saveCheck, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
@@ -300,7 +301,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
                 <Fact icon={FileText} label="PDF">
                   {s.pdf ? (
                     <a href={`/publish/files/${s.id}`} target="_blank" rel="noopener noreferrer" className="truncate underline-offset-4 hover:underline">
-                      {s.pdf.pages} pages
+                      {s.pdf.pages} {s.pdf.pages === 1 ? "page" : "pages"}
                     </a>
                   ) : (
                     "None"
@@ -354,10 +355,11 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
 
 /** What the report is about and who paid for it, as chips: topics, goals, places and funders. */
 function Subjects({ m }: { m: NonNullable<Submission["metadata"]> }) {
+  const placeName = usePlaceName();
   const groups: Array<{ label: string; chips: ReactNode[] }> = [
     { label: "Topics", chips: m.topics.map((t) => <Chip key={t.id}>{t.name}</Chip>) },
     { label: "Goals", chips: m.sdgs.map((g) => <Chip key={g}>{SDGS.find((x) => x.id === g)?.name ?? g}</Chip>) },
-    { label: "Places", chips: m.countries.map((c) => <Chip key={c}>{c.length === 2 ? <CountryFlag countryCode={c} /> : null}{COUNTRY_NAME.of(c.toUpperCase()) ?? c}</Chip>) },
+    { label: "Places", chips: m.countries.map((c) => <Chip key={c}>{c.length === 2 ? <CountryFlag countryCode={c} /> : null}{placeName(c)}</Chip>) },
     { label: "Funders", chips: m.funding.map((f) => <Chip key={f.funder.name}><FunderName id={f.funder.id} name={f.funder.name} /></Chip>) },
   ].filter((g) => g.chips.length);
   return (
@@ -372,7 +374,6 @@ function Subjects({ m }: { m: NonNullable<Submission["metadata"]> }) {
   );
 }
 
-const COUNTRY_NAME = new Intl.DisplayNames(["en"], { type: "region" });
 const Chip = ({ children }: { children: ReactNode }) => <span className="inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs">{children}</span>;
 
 function Fact({ icon: Icon, label, wide = false, children }: { icon: typeof Hash; label: string; wide?: boolean; children: ReactNode }) {
