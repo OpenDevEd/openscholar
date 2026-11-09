@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useAction, type Preloaded } from "convex/react";
 import { preloadedQueryResult } from "convex/nextjs";
-import { cloneElement, useState } from "react";
+import { cloneElement, useRef, useState } from "react";
 import { parseAsString, parseAsStringLiteral, useQueryState } from "nuqs";
 import { useCurrentWorkspace, useWorkspaces } from "@/components/workspaces/parts";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
@@ -59,11 +59,24 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
   const [view, setView] = useQueryState("view", parseAsStringLiteral(["public", "submissions"] as const).withDefault("public"));
   const tp = useTranslations("addedPapers");
   const submissions = useSubmissions(text, signedIn);
+  // Each view draws the tabs in its own header, so switching mounts them anew: a switch made from the tabs puts the focus back on the tab picked.
+  const refocus = useRef(false);
+  const focusPicked = (trigger: HTMLButtonElement | null) => {
+    if (!trigger || !refocus.current) return;
+    refocus.current = false;
+    trigger.focus();
+  };
   const tabs = (
-    <Tabs value={view} onValueChange={(next) => void setView(next === "submissions" ? "submissions" : null)}>
+    <Tabs
+      value={view}
+      onValueChange={(next) => {
+        refocus.current = document.activeElement?.getAttribute("role") === "tab";
+        void setView(next === "submissions" ? "submissions" : null);
+      }}
+    >
       <TabsList aria-label={tp("viewLabel")}>
-        <TabsTrigger value="public"><Globe />{tp("tabPublic")}</TabsTrigger>
-        <TabsTrigger value="submissions"><ReviewQueueIcon />{tp("tabSubmissions")}</TabsTrigger>
+        <TabsTrigger value="public" ref={view === "public" ? focusPicked : undefined}><Globe />{tp("tabPublic")}</TabsTrigger>
+        <TabsTrigger value="submissions" ref={view === "submissions" ? focusPicked : undefined}><ReviewQueueIcon />{tp("tabSubmissions")}</TabsTrigger>
       </TabsList>
     </Tabs>
   );
@@ -117,8 +130,8 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
             <div className="relative flex items-center gap-2 border-b border-border-subtle p-4">
               <div className="min-w-0 flex-1">
                 <ListSearch
-                  aria-label={t("searchLibraries")}
-                  placeholder={t("findALibrary")}
+                  aria-label={view === "submissions" && signedIn ? t("searchSubmissions") : t("searchLibraries")}
+                  placeholder={view === "submissions" && signedIn ? t("findASubmission") : t("findALibrary")}
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   className="w-full"

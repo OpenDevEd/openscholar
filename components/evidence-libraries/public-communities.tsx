@@ -42,7 +42,7 @@ export function PublicCommunities({ search, preloaded, heading }: {
   const read = first ? { ...live, items: first.page, isLoading: false, hasPages: !first.isDone } : live;
   return (
     <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "17.25rem" } as React.CSSProperties}>
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 id="public-communities" className={heading ? "sr-only" : "text-base font-semibold"}>{t("title")}</h2>
         {heading}
         <Select value={sort} onValueChange={(value) => setSort(value as Sort)}>

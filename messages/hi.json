@@ -5562,7 +5562,9 @@
     "deletionRestartedFor": "{name} के लिए हटाने की प्रक्रिया फिर से शुरू की गई।",
     "couldNotRestartDeletion": "हटाने की प्रक्रिया फिर से शुरू नहीं हो सकी",
     "invitationDeclined": "आमंत्रण अस्वीकार किया गया।",
-    "unableToDeclineInvitation": "आमंत्रण अस्वीकार नहीं किया जा सका"
+    "unableToDeclineInvitation": "आमंत्रण अस्वीकार नहीं किया जा सका",
+    "searchSubmissions": "अपनी भेजी गई चीज़ें खोजें",
+    "findASubmission": "अपना भेजा कोई पेपर खोजें…"
   },
   "authorPages": {
     "profileSettings": "प्रोफ़ाइल सेटिंग्स",
@@ -5884,7 +5886,7 @@
     "found": "मिले पेपर",
     "notFound": "नहीं मिला",
     "alreadyAdded": "पहले से जोड़ा गया",
-    "inQueue": "समीक्षा कतार में",
+    "inQueue": "समीक्षा की प्रतीक्षा में",
     "doiOnly": "केवल DOI",
     "leaveOut": "छोड़ दें",
     "leaveOutLabel": "{title} छोड़ दें",
@@ -5903,7 +5905,7 @@
     "ownerOnly": "इसे केवल मालिक बदलता है",
     "from": "{name} से",
     "returned": "अस्वीकृत",
-    "statusWithdrawn": "वापस लिया गया",
+    "statusWithdrawn": "आपने वापस लिया",
     "openIn": "{community} में खोलें",
     "openLabel": "{title} को {community} में खोलें",
     "remove": "हटाएँ",

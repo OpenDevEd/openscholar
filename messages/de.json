@@ -5563,7 +5563,9 @@
     "deletionRestartedFor": "Löschung für {name} neu gestartet.",
     "couldNotRestartDeletion": "Löschung konnte nicht neu gestartet werden",
     "invitationDeclined": "Einladung abgelehnt.",
-    "unableToDeclineInvitation": "Einladung konnte nicht abgelehnt werden"
+    "unableToDeclineInvitation": "Einladung konnte nicht abgelehnt werden",
+    "searchSubmissions": "Deine Einsendungen durchsuchen",
+    "findASubmission": "Eine gesendete Arbeit finden…"
   },
   "authorPages": {
     "profileSettings": "Profileinstellungen",
@@ -5885,7 +5887,7 @@
     "found": "Gefundene Arbeiten",
     "notFound": "Nicht gefunden",
     "alreadyAdded": "Bereits hinzugefügt",
-    "inQueue": "In der Prüfwarteschlange",
+    "inQueue": "Wartet auf Prüfung",
     "doiOnly": "Nur DOI",
     "leaveOut": "Weglassen",
     "leaveOutLabel": "{title} weglassen",
@@ -5904,7 +5906,7 @@
     "ownerOnly": "Nur der Eigentümer ändert das",
     "from": "Von {name}",
     "returned": "Abgelehnt",
-    "statusWithdrawn": "Zurückgezogen",
+    "statusWithdrawn": "Von dir zurückgezogen",
     "openIn": "In {community} öffnen",
     "openLabel": "{title} in {community} öffnen",
     "remove": "Entfernen",

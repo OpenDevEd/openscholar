@@ -69,7 +69,8 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   // The ID the app saves, rates and searches by: OpenAlex's where our index pairs one.
   const appId = paper.id.split("/").at(-1)!;
   // A PDF from a source, or else the one a community holds.
-  const pdf = detail.copies.find((copy) => copy.pdf)?.url ?? communities.find((copy) => copy.pdf)?.pdf ?? null;
+  // A community's copy first: it keeps the file itself, where a publisher's link can move or close.
+  const pdf = communities.find((copy) => copy.pdf)?.pdf ?? detail.copies.find((copy) => copy.pdf)?.url ?? null;
   const doi = detail.ids.doi ? `https://doi.org/${detail.ids.doi}` : null;
   const topic = paper.primary_topic;
   const topicPath = topic ? [topic.domain, topic.field, topic.subfield, topic].filter((node): node is { id: string; display_name: string } => !!node) : [];

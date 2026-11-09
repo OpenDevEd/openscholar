@@ -5562,7 +5562,9 @@
     "deletionRestartedFor": "Deletion restarted for {name}.",
     "couldNotRestartDeletion": "Could not restart deletion",
     "invitationDeclined": "Invitation declined.",
-    "unableToDeclineInvitation": "Unable to decline invitation"
+    "unableToDeclineInvitation": "Unable to decline invitation",
+    "searchSubmissions": "Search your submissions",
+    "findASubmission": "Find a paper you sent…"
   },
   "authorPages": {
     "profileSettings": "Profile settings",
@@ -5884,7 +5886,7 @@
     "found": "Papers found",
     "notFound": "Not found",
     "alreadyAdded": "Already added",
-    "inQueue": "In review queue",
+    "inQueue": "Waiting for review",
     "doiOnly": "DOI only",
     "leaveOut": "Leave out",
     "leaveOutLabel": "Leave out {title}",
@@ -5903,7 +5905,7 @@
     "ownerOnly": "Only the owner changes this",
     "from": "From {name}",
     "returned": "Declined",
-    "statusWithdrawn": "Withdrawn",
+    "statusWithdrawn": "Withdrawn by you",
     "openIn": "Open in {community}",
     "openLabel": "Open {title} in {community}",
     "remove": "Remove",

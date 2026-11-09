@@ -5562,7 +5562,9 @@
     "deletionRestartedFor": "已为{name}重新开始删除。",
     "couldNotRestartDeletion": "无法重新开始删除",
     "invitationDeclined": "已拒绝邀请。",
-    "unableToDeclineInvitation": "无法拒绝邀请"
+    "unableToDeclineInvitation": "无法拒绝邀请",
+    "searchSubmissions": "搜索你的提交",
+    "findASubmission": "查找你发送过的论文…"
   },
   "authorPages": {
     "profileSettings": "资料设置",
@@ -5884,7 +5886,7 @@
     "found": "找到的论文",
     "notFound": "未找到",
     "alreadyAdded": "已添加",
-    "inQueue": "在审核队列中",
+    "inQueue": "等待审核",
     "doiOnly": "仅 DOI",
     "leaveOut": "排除",
     "leaveOutLabel": "排除 {title}",
@@ -5903,7 +5905,7 @@
     "ownerOnly": "只有所有者可以更改",
     "from": "来自 {name}",
     "returned": "已拒绝",
-    "statusWithdrawn": "已撤回",
+    "statusWithdrawn": "你已撤回",
     "openIn": "在 {community} 中打开",
     "openLabel": "在 {community} 中打开 {title}",
     "remove": "移除",

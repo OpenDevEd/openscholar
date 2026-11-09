@@ -53,8 +53,8 @@ export function YourSubmissions({ search, heading, submissions }: { search: stri
   const label: Record<Show, string> = { all: t("everyStatus"), queued: t("inQueue"), published: t("statusPublished"), returned: t("returned"), withdrawn: t("statusWithdrawn") };
 
   return (
-    <section aria-label={t("tabSubmissions")} className="flex min-w-0 flex-col p-4 sm:p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section aria-label={t("tabSubmissions")} className="@container/subs flex min-w-0 flex-col p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         {heading}
         <Select value={show} onValueChange={(value) => setShow(value as Show)}>
           <SelectTrigger size="sm" aria-label={t("statusLabel")} className={cn("w-44", LIST_FILTER)}>
@@ -149,7 +149,9 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
           {status === "returned" && submission.note ? (
             <span className="flex min-w-0 items-center gap-1 ink-warning">
               <Undo2 className="size-3.5 shrink-0" />
-              <span className="truncate">{submission.note}</span>
+              <TooltipHint label={submission.note} onlyWhenClipped>
+                <span className="truncate">{submission.note}</span>
+              </TooltipHint>
             </span>
           ) : (
             <span className="shrink-0 tabular-nums">{date}</span>
@@ -157,13 +159,13 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
         </div>
       </div>
       {status === "queued" ? (
-        <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inQueue")}</StatusChip>
+        <StatusChip className="shrink-0" tone="running" icon={ReviewQueueIcon}><Said>{t("inQueue")}</Said></StatusChip>
       ) : status === "returned" ? (
-        <StatusChip tone="warning" icon={CircleX}>{t("returned")}</StatusChip>
+        <StatusChip className="shrink-0" tone="warning" icon={CircleX}><Said>{t("returned")}</Said></StatusChip>
       ) : status === "withdrawn" ? (
-        <StatusChip tone="neutral" icon={Undo2}>{t("statusWithdrawn")}</StatusChip>
+        <StatusChip className="shrink-0" tone="neutral" icon={Undo2}><Said>{t("statusWithdrawn")}</Said></StatusChip>
       ) : (
-        <StatusChip tone="success" icon={CheckCircle2}>{t("statusPublished")}</StatusChip>
+        <StatusChip className="shrink-0" tone="success" icon={CheckCircle2}><Said>{t("statusPublished")}</Said></StatusChip>
       )}
       {/* Every row keeps the action's place, so the chips line up. */}
       <span className="flex w-8 shrink-0 justify-center">
@@ -185,4 +187,9 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
       </span>
     </li>
   );
+}
+
+/** A status's words: on a narrow row only its icon shows, and the words are read out. */
+function Said({ children }: { children: ReactNode }) {
+  return <span className="sr-only @md/subs:not-sr-only">{children}</span>;
 }
