@@ -3,7 +3,7 @@
 import { useAction } from "convex/react";
 import { Plus } from "@/components/icons";
 import { useTranslations } from "next-intl";
-import { Suspense, useId, useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EmptyList, FieldGroup, ListRow, move, SortableList } from "../fields";
-import { type CollectionFacts, useCollectionFacts, useLearnCollections } from "./collection-facts";
+import { type CollectionFacts, useCollectionFactsSoFar, useLearnCollections } from "./collection-facts";
 import { PICKER_PAGE_SIZE, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 
 export type CollectionEntry = {
@@ -59,17 +59,7 @@ export function sortedEntries(entries: readonly CollectionEntry[]): CollectionEn
  * site, in order, with a title override, and a picker that searches the
  * library's own database one page at a time.
  */
-export function CollectionsField(props: {
-  libraryId: Id<"evidenceLibraries">;
-  value: CollectionEntry[];
-  onChange: (value: CollectionEntry[]) => void;
-}) {
-  return <CollectionsBody {...props} />;
-}
-
-const NO_FACTS: CollectionFacts = new Map();
-
-function CollectionsBody({
+export function CollectionsField({
   libraryId,
   value,
   onChange,
@@ -80,6 +70,7 @@ function CollectionsBody({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.collections");
   const listCollections = useAction(api.zotero.runtimeReadActions.listCollections) as ListAction;
+  const facts = useCollectionFactsSoFar();
   const learn = useLearnCollections();
   const [source, setSource] = useState<string | null>(null);
   const [sources, setSources] = useState<string[]>([]);
@@ -214,20 +205,14 @@ function CollectionsBody({
               data-collection-id={entry.id}
             >
               {/* While the community is asked about its collections, each row shows what the draft knows, at its full
-                  size; its database name and record count come with the answer. */}
-              <Suspense fallback={<CollectionRow entry={entry} facts={NO_FACTS} onTitle={retitle(entry)} />}>
-                <CollectionRowWithFacts entry={entry} onTitle={retitle(entry)} />
-              </Suspense>
+                  size, and stays put; its database name and record count come with the answer. */}
+              <CollectionRow entry={entry} facts={facts} onTitle={retitle(entry)} />
             </ListRow>
           ))}
         </SortableList>
       )}
     </FieldGroup>
   );
-}
-
-function CollectionRowWithFacts(props: { entry: CollectionEntry; onTitle: (title: string) => void }) {
-  return <CollectionRow {...props} facts={useCollectionFacts()} />;
 }
 
 function CollectionRow({

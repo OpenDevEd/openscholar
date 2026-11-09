@@ -28,6 +28,7 @@ import {
 } from "@/lib/evidence-libraries/configuration/versions";
 import { FieldGroup, Panel } from "../fields";
 import { useWithPage } from "../preloads";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip } from "../status-chip";
 import { ReleaseNotes, VersionHistory } from "./versions-views";
@@ -147,8 +148,9 @@ export function VersionsSection({
   ).data);
   // Until the live history arrives, its first page as the page's server read it.
   const firstPage = useWithPage<typeof api.evidenceLibraries.versions.listVersionRows>("versions", undefined);
-  const rows = versions.isInitialLoading ? firstPage?.page : versions.results;
-  const canLoadMore = versions.isInitialLoading ? firstPage?.isDone === false : versions.status === "CanLoadMore";
+  // Waiting for sign-in in the browser counts as not loaded yet too.
+  const rows = versions.hasLoadedFirstPage ? versions.results : firstPage?.page;
+  const canLoadMore = versions.hasLoadedFirstPage ? versions.status === "CanLoadMore" : firstPage?.isDone === false;
   // The address answer the last check stored. It stays right even when the
   // software check cannot reach GitHub, and clears itself once a move lands.
   const noticeRead = useWithPage<typeof api.evidenceLibraries.updates.getAddressNotice>("addressNotice", useProtectedQuery(
@@ -171,7 +173,9 @@ export function VersionsSection({
   // Opening the page checks for updates once; "Check again" asks once more.
   const [checkCount, setCheckCount] = useState(0);
   const checkError = t("versions.checkError");
-  const checkPromise = live
+  // The check runs once the browser is signed in: run before, it would be refused, and the refusal kept.
+  const { canRunProtectedQueries } = useAuthReadiness();
+  const checkPromise = live && canRunProtectedQueries
     ? runtimeCheck(check, libraryId, `${refreshKey}:${checkCount}`, checkError, checkCount > 0)
     : null;
   // Keep the last result visible while a manual or post-update check suspends.
@@ -309,6 +313,8 @@ export function VersionsSection({
               }
             />
           </Suspense>
+        ) : live ? (
+          <CheckingPanel />
         ) : (
           <Panel tone="muted" data-runtime-state="not-running">
             <p className="text-sm text-muted-foreground">
@@ -329,7 +335,7 @@ export function VersionsSection({
             total={versionCount}
             more={canLoadMore ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
             // Until the live list arrives, Show more waits with it: asking for more before it has nothing to add to.
-            loading={versions.status === "LoadingMore" || (versions.isInitialLoading && canLoadMore)}
+            loading={versions.status === "LoadingMore" || (!versions.hasLoadedFirstPage && canLoadMore)}
             blocked={blocked}
             onRestore={setRestoring}
           />
