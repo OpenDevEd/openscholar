@@ -39,6 +39,8 @@ export async function getPaperCitationMetadata(input: unknown) {
         if (parsed.success && parsed.data.DOI?.toLowerCase() === doi.toLowerCase() && sameWork(data.title, parsed.data.title)) {
           record = { ...data, ...parsed.data, id: data.id, "citation-key": data["citation-key"] };
         } else {
+          // Another work's DOI isn't this one's: the citation goes without it rather than point at that work.
+          if (parsed.success && parsed.data.DOI?.toLowerCase() === doi.toLowerCase()) record = { ...data, DOI: undefined };
           console.warn("Citation DOI metadata rejected", { doi, reason: !parsed.success ? parsed.error.issues : parsed.data.DOI?.toLowerCase() !== doi.toLowerCase() ? "DOI mismatch" : "another work's title", title: data.title, theirs: parsed.success ? parsed.data.title : undefined });
         }
       } else {
@@ -58,7 +60,7 @@ export async function getPaperCitationMetadata(input: unknown) {
  */
 export function sameWork(ours: string, theirs: string | undefined) {
   if (!theirs) return true;
-  const words = (title: string) => new Set(title.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, " ").split(" ").filter(Boolean));
+  const words = (title: string) => new Set(title.toLowerCase().normalize("NFKD").replace(/\p{M}+/gu, "").replace(/[^\p{L}\p{N}]+/gu, " ").split(" ").filter(Boolean));
   const a = words(ours);
   const b = words(theirs);
   const shared = [...a].filter((word) => b.has(word)).length;

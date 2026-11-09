@@ -7,4 +7,6 @@ it("takes a DOI's metadata only when its title is the page's work", () => {
   // One paper's record carried an encyclopedia entry's DOI.
   expect(sameWork("Self-Efficacy: The Exercise of Control", "Self-efficacy")).toBe(false);
   expect(sameWork("Anything", undefined)).toBe(true);
+  // Accents written or not are the same words.
+  expect(sameWork("Éducation au Sénégal", "Education au Senegal")).toBe(true);
 });
