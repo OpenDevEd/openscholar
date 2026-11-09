@@ -48,7 +48,7 @@ import { usePlaceName } from "@/components/publish-mock/report-extras";
 import { removeCheck, retryDeposit, review, saveCheck, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
-import { DECISION_MODELS, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
+import { DEFAULT_LLM, DECISION_MODELS, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -473,7 +473,8 @@ function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s
         <div className="space-y-2">
           <ModelPicker
             current={settings.metadataModel}
-            onChange={(m) => save({ metadataModel: { id: m.id, name: m.name, inputPricePerMillion: m.inputPricePerMillion, outputPricePerMillion: m.outputPricePerMillion } })}
+            efforts
+            onChange={(m, effort) => save({ metadataModel: { id: m.id, name: m.name, inputPricePerMillion: m.inputPricePerMillion, outputPricePerMillion: m.outputPricePerMillion, reasoningEfforts: m.reasoningEfforts, ...(effort ? { effort } : {}) } })}
             trigger={<NodeCard model={settings.metadataModel} paidBy="credits" interactive />}
           />
           <p className="ps-1 text-xs text-muted-foreground">Reads each PDF and fills in its title, authors, abstract and keywords for the author to correct.</p>
@@ -613,7 +614,7 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
               label="Runs on"
               value={form.engine}
               fill
-              onChange={(engine) => setForm((f) => ({ ...f, engine, ...(engine === "llm" && !f.llm ? { llm: { id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash Preview", inputPricePerMillion: 0.5, outputPricePerMillion: 3 } } : {}) }))}
+              onChange={(engine) => setForm((f) => ({ ...f, engine, ...(engine === "llm" && !f.llm ? { llm: DEFAULT_LLM } : {}) }))}
               options={[
                 { id: "decision", label: "Decision model", icon: Gauge },
                 { id: "llm", label: "LLM", icon: AiIcon },
@@ -642,7 +643,8 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
             <ModelPicker
               align="start"
               current={form.llm}
-              onChange={(m) => set("llm", { id: m.id, name: m.name, inputPricePerMillion: m.inputPricePerMillion, outputPricePerMillion: m.outputPricePerMillion })}
+              efforts
+              onChange={(m, effort) => set("llm", { id: m.id, name: m.name, inputPricePerMillion: m.inputPricePerMillion, outputPricePerMillion: m.outputPricePerMillion, reasoningEfforts: m.reasoningEfforts, ...(effort ? { effort } : {}) })}
               trigger={<NodeCard model={form.llm} paidBy="credits" interactive />}
             />
           ) : null}

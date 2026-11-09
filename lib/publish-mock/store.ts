@@ -5,7 +5,7 @@ import path from "node:path";
 import type { Check, Metadata, MockState, Settings, Submission } from "./types";
 import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
 import { suggestTopics } from "./topics";
-import { doiOf } from "./types";
+import { DEFAULT_LLM, doiOf } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
@@ -21,7 +21,7 @@ const CHECKS: Check[] = [
     id: "advertising",
     name: "Advertising and spam",
     engine: "llm",
-    llm: { id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash Preview", inputPricePerMillion: 0.5, outputPricePerMillion: 3 },
+    llm: DEFAULT_LLM,
     instructions: "Is this a research output, or does it mainly sell a product or service, or link to unrelated sites? Answer with how likely it is research, from 0 to 1.",
     threshold: 0.7,
     direction: "atLeast",
@@ -38,7 +38,7 @@ async function seedSettings(): Promise<Settings> {
     // Crossref's test prefix: every DOI here is a sandbox one.
     series: { name: "Openscholar Reports", issn: "", prefix: "10.5555", suffix: "openscholar-r.{key}", byline: "This publication is an Openscholar Report, ISSN {issn}, {doi}" },
     crossref: "sandbox",
-    metadataModel: { id: "google/gemini-3-flash-preview", name: "Gemini 3 Flash Preview", inputPricePerMillion: 0.5, outputPricePerMillion: 3 },
+    metadataModel: DEFAULT_LLM,
     checks: CHECKS,
     checksVersion: 3,
     agreement: { version: 2, updatedAt: Date.now() - 6 * DAY, source: "end-user-agreements/publishing-agreement-single-work.md", text },

@@ -1,6 +1,8 @@
 // MOCK (mock/publish-reports): the shapes the Publish mock keeps in its local store. Nothing here is a
 // Convex table yet; the real build moves them there.
 
+import type { Effort } from "@/lib/ai/core/call-options";
+
 export type Engine = "decision" | "llm";
 
 /** The decision models a check can run on, which answer without a language model. */
@@ -12,8 +14,10 @@ export const DECISION_MODELS = [
 ] as const;
 export type DecisionModelId = (typeof DECISION_MODELS)[number]["id"];
 
-/** An LLM a check or the metadata reader runs on, as the model picker gives it. */
-export type LlmModel = { id: string; name: string; inputPricePerMillion: number; outputPricePerMillion: number };
+/** An LLM a check or the metadata reader runs on, as the model picker gives it, with the effort it runs at. */
+export type LlmModel = { id: string; name: string; inputPricePerMillion: number; outputPricePerMillion: number; effort?: Effort; reasoningEfforts?: Effort[] };
+/** GPT-6 Luna at medium: read 30 of our communities' reports as well as Opus 5.5 and GPT-6.1 Sol, at a fiftieth of Opus's cost (2026-11-09). */
+export const DEFAULT_LLM: LlmModel = { id: "openai/gpt-6-luna", name: "GPT-6 Luna", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, effort: "medium", reasoningEfforts: ["low", "medium", "high"] };
 
 export type Check = {
   id: string;
