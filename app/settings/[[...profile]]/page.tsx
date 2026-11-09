@@ -158,14 +158,15 @@ function Identity() {
       <div className="min-w-0 flex-1 space-y-2">
         {editing ? (
           <form
-            className="flex max-w-xl items-center gap-2"
+            // On a phone the two names keep room to be read: the buttons go to the next line.
+            className="flex max-w-xl flex-wrap items-center gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               void saveName();
             }}
           >
-            <Input autoFocus aria-label={t("firstName")} value={draft.first} onChange={(e) => setDraft((d) => ({ ...d, first: e.target.value }))} className="h-10" />
-            <Input aria-label={t("lastName")} value={draft.last} onChange={(e) => setDraft((d) => ({ ...d, last: e.target.value }))} className="h-10" />
+            <Input autoFocus aria-label={t("firstName")} value={draft.first} onChange={(e) => setDraft((d) => ({ ...d, first: e.target.value }))} className="h-10 min-w-32 flex-1" />
+            <Input aria-label={t("lastName")} value={draft.last} onChange={(e) => setDraft((d) => ({ ...d, last: e.target.value }))} className="h-10 min-w-32 flex-1" />
             <Button type="submit" size="icon" className="size-10 shrink-0" disabled={saving === "name"} aria-label={t("saveName")}>
               {saving === "name" ? <Loader2 className="animate-spin" /> : <Check />}
             </Button>
@@ -298,12 +299,13 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
       <Paged pager={pager} rowHeight={66} label={t("devices")}>
         <ol className="relative">
           {/* The rail the devices hang from. */}
-          <span aria-hidden className="absolute bottom-6 start-[6.75rem] top-6 w-px bg-border" />
+          <span aria-hidden className="absolute bottom-6 start-5 top-6 w-px bg-border sm:start-[6.75rem]" />
           {shown.map((e) => {
             const Icon = DEVICE_ICON[e.device];
             return (
-              <li key={e.key} className="group relative grid grid-cols-[5.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2">
-                <span className={cn("text-end text-xs tabular-nums", e.here ? "font-medium text-primary" : "text-muted-foreground")}>
+              // On a phone the time column goes under the device's name, so the name keeps room to be read.
+              <li key={e.key} className="group relative grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2 sm:grid-cols-[5.5rem_2.5rem_minmax(0,1fr)_auto]">
+                <span className={cn("hidden text-end text-xs tabular-nums sm:block", e.here ? "font-medium text-primary" : "text-muted-foreground")}>
                   {e.here ? t("now") : format.relativeTime(e.last, now)}
                 </span>
                 <span
@@ -320,6 +322,7 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
                     {e.here ? <span className="text-xs font-normal text-primary">{t("thisDevice")}</span> : null}
                   </p>
                   <p className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
+                    <span className={cn("shrink-0 tabular-nums sm:hidden", e.here && "font-medium text-primary")}>{e.here ? t("now") : format.relativeTime(e.last, now)}</span>
                     {e.place ? <span className="flex min-w-0 items-center gap-1.5">{e.country ? <CountryFlag countryCode={e.country} className="shrink-0" /> : null}<span className="truncate">{e.place}</span></span> : null}
                     {e.ip ? <span className="font-mono text-2xs text-muted-foreground/70">{e.ip}</span> : null}
                   </p>
