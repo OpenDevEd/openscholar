@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("common");
-  return { title: t("evidenceLibraries") };
+  // The rail's own name for the page, in the reader's language.
+  const t = await getTranslations("workspaces");
+  return { title: t("communities") };
 }
 
 export default function Layout({ children }: { children: ReactNode }) {

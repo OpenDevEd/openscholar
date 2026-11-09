@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useTranslations } from "next-intl";
@@ -120,12 +120,15 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
   const here = useWorkspace();
   const workspaceId = here;
   const [withdrawing, setWithdrawing] = useState(false);
+  // Withdrawn, its button goes: the keyboard stays on the paper instead of falling to the page's start.
+  const title = useRef<HTMLAnchorElement>(null);
   const withdraw = async () => {
     if (!workspaceId) return;
     setWithdrawing(true);
     try {
       await remove({ libraryId: community.libraryId, workspaceId, itemKey: submission.itemKey });
       toast.success(t("withdrawn"));
+      title.current?.focus();
     } catch (error) {
       toast.error(refusalOr(error, t("removeFailed")));
     } finally {
@@ -144,7 +147,7 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
       <div className="min-w-0 flex-1">
         <TooltipHint label={submission.title} onlyWhenClipped>
           {/* A narrow row gives a long title two lines, so it can be told apart; a wide one cuts it at one. */}
-          <a href={paperHref(submission)} className={cn("line-clamp-2 text-sm/5 font-medium @md/subs:block @md/subs:truncate", LINK)}>{submission.title}</a>
+          <a ref={title} href={paperHref(submission)} className={cn("line-clamp-2 text-sm/5 font-medium @md/subs:block @md/subs:truncate", LINK)}>{submission.title}</a>
         </TooltipHint>
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <TooltipHint label={community.name} onlyWhenClipped>{name}</TooltipHint>

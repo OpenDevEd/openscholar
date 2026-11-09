@@ -370,7 +370,8 @@ function Written({ blocks, overview, signedIn }: { blocks: Block[]; overview: Ov
       {blocks.map((block, i) => (
         <motion.div key={i} initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: EASE }}>
           {block.kind === "text" ? (
-            <p className="text-[0.9375rem] leading-relaxed text-foreground">{block.parts.map((part, j) => (typeof part === "string" ? part : <CiteChip key={j} cite={part} overview={overview} onOpen={openId} />))}</p>
+            // Written in the language of its papers, not the page's: its own direction, so English on an Arabic page reads left to right.
+            <p dir="auto" className="text-[0.9375rem] leading-relaxed text-foreground">{block.parts.map((part, j) => (typeof part === "string" ? part : <CiteChip key={j} cite={part} overview={overview} onOpen={openId} />))}</p>
           ) : (
             <Chart block={block} overview={overview} t={t} />
           )}
