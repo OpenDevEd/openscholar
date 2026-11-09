@@ -312,7 +312,8 @@ function Overlay({
       }
       // A dialog over the sheet takes its own Escape, and marks it. With no sheet open, Escape in the message box folds
       // the panel away, as its button does.
-      if (e.key === "Escape" && !e.defaultPrevented) {
+      // Escape while composing with an input method cancels the composition, not the panel.
+      if (e.key === "Escape" && !e.defaultPrevented && !e.isComposing) {
         if (sheetCount) setSheets((all) => all.slice(0, -1));
         else if (e.target instanceof HTMLElement && e.target.closest("[data-assistant-composer]")) {
           setFocused(false);
