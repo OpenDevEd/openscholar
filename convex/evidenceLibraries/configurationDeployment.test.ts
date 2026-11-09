@@ -616,6 +616,7 @@ async function activateChangedConfiguration(
     // What the last update check found about OpenScholar's contract.
     contractSupport?: { running: boolean; latest: boolean };
     topicsEnabled?: boolean;
+    searchTitle?: string;
   } = {},
 ) {
   const fixture = await createReadyLibrary(suffix);
@@ -649,6 +650,7 @@ async function activateChangedConfiguration(
     identity: {
       ...essentialSetupSections.identity,
       name: `Changed ${suffix}`,
+      ...(options.searchTitle ? { searchTitle: options.searchTitle } : {}),
       ...(options.canonicalBaseUrl
         ? { baseUrl: options.canonicalBaseUrl }
         : {}),
@@ -2173,6 +2175,14 @@ describe("Evidence Library configuration deployment", () => {
         topicsEnabled: true,
       }),
     ).rejects.toThrow(/Topics need a newer Evidence Community software version/);
+  });
+
+  it("refuses a title in search results until the running software advertises the contract", async () => {
+    await expect(
+      activateChangedConfiguration("search-title-without-runtime-support", {
+        searchTitle: "Climate adaptation research and evidence",
+      }),
+    ).rejects.toThrow(/A title in search results needs a newer Evidence Community software version/);
   });
 
   it("continues from the exact target of this library's failed software update", async () => {
