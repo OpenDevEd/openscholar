@@ -58,14 +58,20 @@ async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId
   }
 }
 
-/** Forgets a paper the person withdrew from a community's review queue: it's no longer one of their submissions. */
+/**
+ * Records a paper taken off a community through Openscholar. Withdrawn from the review queue, it's the person's own
+ * submission that's withdrawn. Removed from the community, it's removed for whoever sent it, so no one's list calls it
+ * published or links its deleted record.
+ */
 export const forgetSent = internalMutation({
-  args: { userId: v.id("users"), libraryId: v.id("evidenceLibraries"), itemKey: v.string() },
+  args: { userId: v.id("users"), libraryId: v.id("evidenceLibraries"), itemKey: v.string(), outcome: v.union(v.literal("withdrawn"), v.literal("removed")) },
   returns: v.null(),
-  handler: async (ctx, { userId, libraryId, itemKey }) => {
-    const row = await byPaper(ctx, userId, libraryId, itemKey);
-    // Kept as withdrawn, with the community's last word, so a late repeat of an older one changes nothing.
-    if (row) await ctx.db.patch("paperSubmissions", row._id, { status: "withdrawn", note: undefined, updatedAt: Date.now() });
+  handler: async (ctx, { userId, libraryId, itemKey, outcome }) => {
+    const rows = outcome === "withdrawn"
+      ? [await byPaper(ctx, userId, libraryId, itemKey)].filter((row) => row !== null)
+      : await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(50);
+    // Kept with the community's last generation, so a late repeat of an older word changes nothing.
+    for (const row of rows) await ctx.db.patch("paperSubmissions", row._id, { status: outcome, note: undefined, updatedAt: Date.now() });
     return null;
   },
 });
@@ -237,15 +243,15 @@ export const mine = query({
 /** How many papers the signed-in person has of each status, up to SUBMISSIONS_COUNTED each, for the status filter. */
 export const counts = query({
   args: {},
-  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), withdrawn: v.number(), all: v.number(), capped: v.boolean() }),
+  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), withdrawn: v.number(), removed: v.number(), all: v.number(), capped: v.boolean() }),
   handler: async (ctx) => {
     const person = await senderOf(ctx);
     const count = async (status: Infer<typeof submissionStatusValidator>) =>
       person ? (await ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status)).take(SUBMISSIONS_COUNTED + 1)).length : 0;
-    const read = await Promise.all([count("queued"), count("published"), count("returned"), count("withdrawn")]);
+    const read = await Promise.all([count("queued"), count("published"), count("returned"), count("withdrawn"), count("removed")]);
     // Past the cap, a count is at least it: `capped` says so, and the filter shows it with a plus.
-    const [queued, published, returned, withdrawn] = read.map((n) => Math.min(n, SUBMISSIONS_COUNTED));
-    return { queued: queued!, published: published!, returned: returned!, withdrawn: withdrawn!, all: queued! + published! + returned! + withdrawn!, capped: read.some((n) => n > SUBMISSIONS_COUNTED) };
+    const [queued, published, returned, withdrawn, removed] = read.map((n) => Math.min(n, SUBMISSIONS_COUNTED));
+    return { queued: queued!, published: published!, returned: returned!, withdrawn: withdrawn!, removed: removed!, all: queued! + published! + returned! + withdrawn! + removed!, capped: read.some((n) => n > SUBMISSIONS_COUNTED) };
   },
 });
 

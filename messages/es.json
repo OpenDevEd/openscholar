@@ -5911,6 +5911,7 @@
     "from": "De {name}",
     "returned": "Rechazado",
     "statusWithdrawn": "Retirado por ti",
+    "statusRemoved": "Retirado por la comunidad",
     "openIn": "Abrir en {community}",
     "openLabel": "Abrir {title} en {community}",
     "remove": "Quitar",

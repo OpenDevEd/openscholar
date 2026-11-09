@@ -5911,6 +5911,7 @@
     "from": "من {name}",
     "returned": "مرفوض",
     "statusWithdrawn": "سحبتها أنت",
+    "statusRemoved": "أزالها المجتمع",
     "openIn": "فتح في {community}",
     "openLabel": "فتح {title} في {community}",
     "remove": "إزالة",

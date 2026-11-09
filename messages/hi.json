@@ -5910,6 +5910,7 @@
     "from": "{name} से",
     "returned": "अस्वीकृत",
     "statusWithdrawn": "आपने वापस लिया",
+    "statusRemoved": "समुदाय ने हटाया",
     "openIn": "{community} में खोलें",
     "openLabel": "{title} को {community} में खोलें",
     "remove": "हटाएँ",

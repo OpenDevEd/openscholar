@@ -5911,6 +5911,7 @@
     "from": "Kutoka kwa {name}",
     "returned": "Imekataliwa",
     "statusWithdrawn": "Umeiondoa wewe",
+    "statusRemoved": "Imeondolewa na jumuiya",
     "openIn": "Fungua kwenye {community}",
     "openLabel": "Fungua {title} kwenye {community}",
     "remove": "Ondoa",

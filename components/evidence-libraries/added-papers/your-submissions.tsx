@@ -5,7 +5,7 @@ import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CheckCircle2, CircleX, ExternalLink, ReviewQueueIcon, SearchX, Undo2 } from "@/components/icons";
+import { CheckCircle2, CircleX, ExternalLink, ReviewQueueIcon, SearchX, Trash2, Undo2 } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ const PER_PAGE = 8;
 /** A row's height, which every row keeps, so a page holds its height and the pager stays put. */
 const ROW_REM = 4;
 
-const SHOWS = ["all", "queued", "published", "returned", "withdrawn"] as const;
+const SHOWS = ["all", "queued", "published", "returned", "withdrawn", "removed"] as const;
 type Show = (typeof SHOWS)[number];
 type Submission = FunctionReturnType<typeof api.evidenceLibraries.submissions.mine>["page"][number];
 
@@ -50,7 +50,7 @@ export function YourSubmissions({ search, heading, submissions }: { search: stri
   const t = useTranslations("addedPapers");
   const format = useFormatter();
   const { read, counts, show, setShow } = submissions;
-  const label: Record<Show, string> = { all: t("everyStatus"), queued: t("inQueue"), published: t("statusPublished"), returned: t("returned"), withdrawn: t("statusWithdrawn") };
+  const label: Record<Show, string> = { all: t("everyStatus"), queued: t("inQueue"), published: t("statusPublished"), returned: t("returned"), withdrawn: t("statusWithdrawn"), removed: t("statusRemoved") };
 
   return (
     <section aria-label={t("tabSubmissions")} className="@container/subs flex min-w-0 flex-col p-4 sm:p-5">
@@ -142,7 +142,8 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
       <CommunityIcon fadeIn community={{ faviconUrl: community.faviconUrl, owner: community.owner ?? { name: community.name, imageUrl: null, kind: "organization" } }} />
       <div className="min-w-0 flex-1">
         <TooltipHint label={submission.title} onlyWhenClipped>
-          <a href={paperHref(submission)} className={cn("block truncate text-sm font-medium", LINK)}>{submission.title}</a>
+          {/* A narrow row gives a long title two lines, so it can be told apart; a wide one cuts it at one. */}
+          <a href={paperHref(submission)} className={cn("line-clamp-2 text-sm/5 font-medium @md/subs:block @md/subs:truncate", LINK)}>{submission.title}</a>
         </TooltipHint>
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <TooltipHint label={community.name} onlyWhenClipped>{name}</TooltipHint>
@@ -164,6 +165,8 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
         <StatusChip className="shrink-0" tone="warning" icon={CircleX}><Said>{t("returned")}</Said></StatusChip>
       ) : status === "withdrawn" ? (
         <StatusChip className="shrink-0" tone="neutral" icon={Undo2}><Said>{t("statusWithdrawn")}</Said></StatusChip>
+      ) : status === "removed" ? (
+        <StatusChip className="shrink-0" tone="neutral" icon={Trash2}><Said>{t("statusRemoved")}</Said></StatusChip>
       ) : (
         <StatusChip className="shrink-0" tone="success" icon={CheckCircle2}><Said>{t("statusPublished")}</Said></StatusChip>
       )}

@@ -5910,6 +5910,7 @@
     "from": "{name} から",
     "returned": "却下",
     "statusWithdrawn": "あなたが取り下げ",
+    "statusRemoved": "コミュニティが削除",
     "openIn": "{community} で開く",
     "openLabel": "{title} を {community} で開く",
     "remove": "削除",
