@@ -785,7 +785,8 @@ export const removeAddedPaperAction = defineChangingAction({
   run: async (ctx, actor, { libraryId, itemKey }): Promise<"withdrawn" | "removed"> => {
     const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
     const outcome = await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
-    if (outcome === "withdrawn") await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey });
+    // Withdrawn from the queue or taken off the community, a paper they sent is no longer theirs there: their Your submissions says so.
+    await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey });
     return outcome;
   },
 });
