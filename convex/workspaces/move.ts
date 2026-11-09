@@ -25,6 +25,7 @@ import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersona
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
 import { MAKERS, editedWorkspaces, profileMaker } from "../authors/access";
 import { give } from "../sharing/access";
+import { readLibraryRole } from "../evidenceLibraries/access";
 import { actorIn } from "./actor";
 import { workspaceName, workspacesOf } from "./personal";
 import { opensLibraries } from "../billing/accounts";
@@ -105,6 +106,18 @@ async function screeningsOf(ctx: Read, search: Doc<"searches">) {
   if (!screening) return { screening: null, jobs: [] };
   const jobs = await ctx.db.query("screeningJobs").withIndex("by_screening", (q) => q.eq("screeningId", screening._id)).take(SEARCH_SCREENINGS_MOVED + 1);
   return { screening, jobs: jobs.length > SEARCH_SCREENINGS_MOVED ? null : jobs };
+}
+
+/**
+ * Where a move acts from: the workspace the person is in, but for a community, its own, by its owners from whichever
+ * workspace they act in (OS-28), who are admins there by owning it.
+ */
+async function movingFrom<Actor extends Pick<Acting, "workspaceId" | "role" | "userId">>(ctx: Read, actor: Actor, kind: Movable, id: string): Promise<Actor> {
+  if (kind !== "community") return actor;
+  const libraryId = ctx.db.normalizeId("evidenceLibraries", id);
+  const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+  const person = library ? await ctx.db.get("users", actor.userId) : null;
+  return library && person && (await readLibraryRole(ctx, library, person.clerkId)) === "owner" ? { ...actor, workspaceId: library.workspaceId, role: "admin" } : actor;
 }
 
 /**
@@ -356,7 +369,7 @@ export const heldAction = defineUserQuery({
   description: "Says why an item of the workspace the person is in can't move to another workspace yet, or null when it can.",
   args: { kind: kindValidator, id: v.string() },
   returns: v.union(v.string(), v.null()),
-  run: (ctx, actor, { kind, id }) => heldBack(ctx, actor, kind, id),
+  run: async (ctx, actor, { kind, id }) => heldBack(ctx, await movingFrom(ctx, actor, kind, id), kind, id),
 });
 export const held = userQuery(heldAction);
 export const heldForAssistant = assistantQuery(heldAction);
@@ -368,9 +381,10 @@ export const refusalsAction = defineUserQuery({
   args: { kind: kindValidator, id: v.string() },
   // One page: a person is in at most MAX_ORGANIZATIONS_PER_PERSON organizations, besides their own workspace (./personal.ts).
   returns: paginationResultValidator(v.object({ workspaceId: v.id("workspaces"), refusal: refusalValidator })),
-  run: async (ctx, actor, { kind }) => {
+  run: async (ctx, actor, { kind, id }) => {
     const person = await ctx.db.get("users", actor.userId);
-    const others = person && (kind === "community" || kind === "author") ? (await workspacesOf(ctx, person._id)).filter((workspace) => workspace._id !== actor.workspaceId) : [];
+    const from = await movingFrom(ctx, actor, kind, id);
+    const others = person && (kind === "community" || kind === "author") ? (await workspacesOf(ctx, person._id)).filter((workspace) => workspace._id !== from.workspaceId) : [];
     const edited = person && kind === "author" ? await editedWorkspaces(ctx, person) : undefined;
     const page = await Promise.all(others.map(async (workspace) => ({ workspaceId: workspace._id, refusal: await refusalAt(ctx, person!, kind, workspace._id, edited) })));
     return { page: page.flatMap((row) => (row.refusal ? [{ workspaceId: row.workspaceId, refusal: row.refusal }] : [])), isDone: true, continueCursor: "" };
@@ -391,12 +405,13 @@ export const moveAction = defineUserMutation({
   outsideEffect: true,
   undoable: false,
   run: async (ctx, actor, { kind, id, to }) => {
-    if (to === actor.workspaceId) throw createError("VALIDATION_ERROR", "It's in that workspace already.");
+    const from = await movingFrom(ctx, actor, kind, id);
+    if (to === from.workspaceId) throw createError("VALIDATION_ERROR", "It's in that workspace already.");
     const person = await ctx.db.get("users", actor.userId);
     if (!person || !(await actorIn(ctx, person, to))) throw createError("NOT_FOUND", "Workspace not found");
-    const held = await heldBack(ctx, actor, kind, id);
+    const held = await heldBack(ctx, from, kind, id);
     if (held) throw createError("VALIDATION_ERROR", held);
-    const followed = await rehome(ctx, actor.userId, actor.workspaceId, to, kind, id);
+    const followed = await rehome(ctx, actor.userId, from.workspaceId, to, kind, id);
     // Chats and communities keep no activity.
     if (followed && kind !== "chat" && kind !== "community") {
       await ctx.scheduler.runAfter(0, internal.workspaces.move.moveActivity, { from: actor.workspaceId, item: itemKey(kind, id), ...followed });
