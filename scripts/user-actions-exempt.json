@@ -88,7 +88,18 @@
     "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library.",
     "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`.",
     "evidenceLibraries/organizationGrants:grantable": "The Team section's list of organizations its owner can share the community with straight away. The assistant reads a community's team through evidenceLibraries/assistant:team.",
-    "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces."
+    "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces.",
+    "app/actions/publish-mock:signAgreement": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:goTo": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:uploadPdf": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:runChecks": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:startOver": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:updateSettings": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:saveCheck": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:removeCheck": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:updateAgreement": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:review": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:retryDeposit": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",

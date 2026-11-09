@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { MOCK_DIR, nextKey, pdfPath, readState, writeState } from "@/lib/publish-mock/store";
-import { doiOf, type Check, type CheckResult, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { bylineOf, doiOf, type Check, type CheckResult, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -109,30 +109,31 @@ export async function uploadPdf(form: FormData) {
 
 const squash = (text: string) => text.toLowerCase().replace(/\s+/g, "");
 
-/** MOCK: each check's answer. The byline check really reads the PDF's text; the others are made up from the file's name. */
-async function runCheck(check: Check, draft: Submission, text: string): Promise<CheckResult> {
+/** Whether a score clears a check: at least its threshold, or for scores that must stay low, at most it. */
+const passes = (score: number, check: Check) => (check.direction === "atMost" ? score <= check.threshold : score >= check.threshold);
+
+/** MOCK: each check's answer. Text match really reads the PDF's text; the others are made up from the file's name. */
+async function runCheck(check: Check, settings: Settings, draft: Submission, text: string): Promise<CheckResult> {
   const base = { checkId: check.id, name: check.name, engine: check.engine, threshold: check.threshold, direction: check.direction, blocking: check.blocking };
   const name = draft.pdf?.name.toLowerCase() ?? "";
-  if (check.decisionModel === "text-match") {
-    // The DOI is what has to be there; the rest of the byline can wrap or break across lines.
-    const found = squash(text).includes(squash(draft.doi));
-    return { ...base, score: found ? 1 : 0, pass: found };
-  }
-  if (check.decisionModel === "similarity-check") {
-    const score = name.includes("copy") ? 0.46 : 0.07;
-    return { ...base, score, pass: score <= check.threshold };
-  }
-  if (check.decisionModel === "omni-moderation" || check.decisionModel === "language-id") return { ...base, score: 0.01, pass: check.direction === "atMost" };
-  const score = name.includes("advert") ? 0.22 : 0.93;
-  return {
-    ...base,
-    score,
-    pass: score >= check.threshold,
-    reasoning:
-      score >= check.threshold
+  if (check.engine === "llm") {
+    const score = name.includes("advert") ? 0.22 : 0.93;
+    const research = score >= 0.5;
+    return {
+      ...base,
+      score,
+      pass: passes(score, check),
+      reasoning: research
         ? "A study with a question, a method and findings. It names no product and links only to its own data."
         : "Most pages describe a paid training course and link to its sign-up page; the study itself is two pages long.",
-  };
+    };
+  }
+  let score = 0.01;
+  // The text to find, with {byline} as this report's. Wrapping and line breaks in the PDF don't count.
+  if (check.decisionModel === "text-match") score = squash(text).includes(squash(check.instructions.replaceAll("{byline}", bylineOf(settings, draft.doi)))) ? 1 : 0;
+  else if (check.decisionModel === "similarity-check") score = name.includes("copy") ? 0.46 : 0.07;
+  else if (check.decisionModel === "language-id") score = 0.98;
+  return { ...base, score, pass: passes(score, check) };
 }
 
 /** Runs the checks that are on now, with their version kept on the report, and decides what happens to it. */
@@ -141,7 +142,7 @@ export async function runChecks(metadata: Metadata) {
     const draft = draftOf(state);
     const text = await readFile(pdfPath(draft.id).replace(/\.pdf$/, ".txt"), "utf8").catch(() => "");
     const checks = state.settings.checks.filter((c) => c.enabled);
-    const results = await Promise.all(checks.map((check) => runCheck(check, draft, text)));
+    const results = await Promise.all(checks.map((check) => runCheck(check, state.settings, draft, text)));
     const blocked = results.some((r) => !r.pass && r.blocking);
     const flagged = results.some((r) => !r.pass && !r.blocking);
     // Passing makes the report: live at once, or once someone approves it when review is on or an advisory check flagged it.
@@ -196,6 +197,8 @@ export async function removeCheck(id: string) {
 
 export async function updateAgreement(text: string) {
   return change((state) => {
+    // The text people signed stays with its version.
+    state.agreementVersions = { ...state.agreementVersions, [String(state.settings.agreement.version)]: state.settings.agreement.text };
     state.settings.agreement = { ...state.settings.agreement, text, version: state.settings.agreement.version + 1, updatedAt: Date.now() };
     return state.settings;
   });

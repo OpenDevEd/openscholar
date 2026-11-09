@@ -71,7 +71,7 @@ export type Submission = {
   updatedAt: number;
 };
 
-export type MockState = { settings: Settings; submissions: Submission[]; draftId: string | null; checkVersions: Record<string, Check[]> };
+export type MockState = { settings: Settings; submissions: Submission[]; draftId: string | null; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
 /** The DOI a report gets: the series' prefix and its suffix, with `{key}` for the report's key. */
 export const doiOf = (settings: Settings, key: string) => `${settings.series.prefix}/${settings.series.suffix.replace("{key}", key.toLowerCase())}`;

@@ -282,6 +282,10 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
       toast.error("Choose a PDF");
       return;
     }
+    if (picked.size > 50_000_000) {
+      toast.error("The PDF is over 50 MB");
+      return;
+    }
     setFile(picked);
     const form = new FormData();
     form.set("pdf", picked);
@@ -381,7 +385,7 @@ function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: Metadat
                 <Input aria-label="Affiliation" placeholder="Affiliation" value={a.affiliation} onChange={(e) => setAuthor(i, { affiliation: e.target.value })} />
                 <div className="relative">
                   {a.country.length === 2 ? <CountryFlag countryCode={a.country} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2" /> : null}
-                  <Input aria-label="Country code" placeholder="KE" maxLength={2} value={a.country} onChange={(e) => setAuthor(i, { country: e.target.value.toUpperCase() })} className={cn("uppercase", a.country.length === 2 && "ps-8")} />
+                  <Input aria-label="Country code" placeholder="KE" maxLength={2} value={a.country} onChange={(e) => setAuthor(i, { country: e.target.value.toUpperCase() })} className={cn(a.country.length === 2 && "ps-8")} />
                 </div>
                 <TooltipHint label="Remove author">
                   <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${a.name || "author"}`} disabled={m.authors.length === 1} className="justify-self-end text-muted-foreground hover:text-destructive" onClick={() => set("authors", m.authors.filter((_, at) => at !== i))}>
@@ -592,7 +596,9 @@ function ReportCover({ settings, draft }: { settings: Settings; draft: Submissio
                 {m?.title || "Your title"}
               </motion.p>
             </AnimatePresence>
-            <p className="mt-2 line-clamp-2 text-[0.6875rem] text-muted-foreground">{m?.authors.map((a) => a.name).filter(Boolean).join(", ") || "Authors"}</p>
+            <ul className="mt-2 space-y-0.5 text-[0.6875rem] text-muted-foreground">
+              {m?.authors.some((a) => a.name) ? m.authors.filter((a) => a.name).slice(0, 4).map((a) => <li key={a.name} className="truncate">{a.name}</li>) : <li>Authors</li>}
+            </ul>
           </div>
           <div className="space-y-1 border-t border-border-subtle pt-2.5">
             <span className="block text-[0.5625rem] text-muted-foreground">This publication is an Openscholar Report</span>

@@ -26,6 +26,8 @@ const nextConfig: NextConfig = {
     testProxy: process.env.PLAYWRIGHT_TEST_PROXY === "1",
     optimizePackageImports: ["lucide-react"],
     turbopackFileSystemCacheForBuild: true,
+    // MOCK (mock/publish-reports): a report's PDF goes up through a server action, up to 50 MB.
+    serverActions: { bodySizeLimit: "51mb" },
   },
   // A second local address for testing, as the free question limit counts each address on its own.
   allowedDevOrigins: ["127.0.0.1", "192.168.1.47"],
