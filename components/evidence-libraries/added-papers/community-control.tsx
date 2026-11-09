@@ -9,7 +9,7 @@ import { useAuth, useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { CheckCircle2, EvidenceLibrariesIcon, Globe, ReviewQueueIcon, Search, Undo2 } from "@/components/icons";
+import { CheckCircle2, CircleX, EvidenceLibrariesIcon, Globe, ReviewQueueIcon, Search, Undo2 } from "@/components/icons";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -299,7 +299,7 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
           {status === "queued" ? (
             <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inQueueShort")}</StatusChip>
           ) : status === "returned" ? (
-            <StatusChip tone="warning" icon={Undo2}>{t("returned")}</StatusChip>
+            <StatusChip tone="warning" icon={CircleX}>{t("returned")}</StatusChip>
           ) : status === "published" ? (
             <StatusChip tone="success" icon={CheckCircle2}>{t("added")}</StatusChip>
           ) : null}
