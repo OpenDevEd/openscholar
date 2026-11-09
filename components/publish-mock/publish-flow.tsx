@@ -75,7 +75,7 @@ function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
 }
 
-type Running = { checks: Array<{ id: string; name: string; model: string }>; results: Record<string, CheckResult> };
+type Running = { checks: Array<{ id: string; name: string }>; results: Record<string, CheckResult> };
 
 /** Reads the checks' answers as the route sends them, one line each, and the report as saved at the end. */
 async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckResult) => void): Promise<Submission> {
@@ -124,7 +124,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
     // The author's corrections are kept on the report, so a run that fails comes back to them, not to what the PDF said.
     setDraftOnly({ ...draft, metadata });
     // The rows are there at once, one per check that's on; each settles as its answer comes.
-    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name, model: c.model.name })), results: {} });
+    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name })), results: {} });
     try {
       const saved = await streamChecks(id, metadata, (result) => setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)));
       setReports((all) => [saved, ...all.filter((r) => r.id !== saved.id)]);
@@ -222,7 +222,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                 />
               ) : draft ? (
                 <Checks
-                  rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, model: r.model, result: r }))}
+                  rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, result: r }))}
                   draft={draft}
                   settings={settings}
                   onActivate={() =>
@@ -531,7 +531,7 @@ function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings;
         ) : stage === "reading" ? (
           <>
             <AiIcon working className="size-6 text-primary" />
-            <span className="text-sm font-medium">{settings.metadataModel.name} is reading your report</span>
+            <span className="text-sm font-medium">Openscholar is reading your report</span>
             <span className="text-xs text-muted-foreground">About half a minute</span>
           </>
         ) : (
@@ -557,7 +557,7 @@ function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings;
  * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
  * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
  */
-export function CheckRow({ name, model, result }: { name: string; model: string; result?: CheckResult }) {
+export function CheckRow({ name, result }: { name: string; result?: CheckResult }) {
   const reduce = useReducedMotion();
   const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
   const asked = result?.confidence !== undefined && result.threshold !== undefined;
@@ -588,7 +588,6 @@ export function CheckRow({ name, model, result }: { name: string; model: string;
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-medium">{name}</span>
         </span>
-        <span className="hidden truncate text-xs text-muted-foreground sm:inline">{model}</span>
         {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
         <span className="flex min-w-[4.75rem] justify-end">
           <AnimatePresence initial={false}>
@@ -647,7 +646,7 @@ export function CheckRow({ name, model, result }: { name: string; model: string;
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows: Array<{ id: string; name: string; model: string; result?: CheckResult }>; draft: Submission | null; settings?: Settings; onActivate?: () => Promise<void>; onFix?: () => void; onAnother?: () => void }) {
+function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; draft: Submission | null; settings?: Settings; onActivate?: () => Promise<void>; onFix?: () => void; onAnother?: () => void }) {
   const answered = rows.filter((r) => r.result).length;
   const stage = draft && settings ? stageOf(draft, settings) : null;
   const [activating, start] = useTransition();
@@ -691,7 +690,7 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
       </AutoHeight>
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {rows.map((r) => (
-          <CheckRow key={r.id} name={r.name} model={r.model} result={r.result} />
+          <CheckRow key={r.id} name={r.name} result={r.result} />
         ))}
       </ul>
       <AutoHeight>

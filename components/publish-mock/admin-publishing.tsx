@@ -333,7 +333,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
               {s.results?.length ? (
                 <ul className={LIST}>
                   {s.results.map((r) => (
-                    <CheckRow key={r.checkId} name={r.name} model={r.model} result={r} />
+                    <CheckRow key={r.checkId} name={r.name} result={r} />
                   ))}
                 </ul>
               ) : null}
