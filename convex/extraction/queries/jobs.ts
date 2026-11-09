@@ -132,6 +132,7 @@ export const getJobDetailsAction = defineUserQuery({
   description:
     "Reads an extraction job the person may read (one of their workspace's, or one shared with them) with its questions, in order: each question's `key`, text, `type` and `description`. " +
     "Use it to say what an extraction asks, and for a question's `key` to summarize or filter its answers by. " +
+    "The job's `skippedPapers` is how many of the papers picked were left out: with full texts off, they had no abstract to read. Say so when its count is less than was picked. " +
     "One of the workspace's comes with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
     "A shared one comes with `guest`: what they may do with it and whose it is, and without what it holds or may spend, which are its workspace's.",
   args: { jobId: v.id("extractionJobs") },
