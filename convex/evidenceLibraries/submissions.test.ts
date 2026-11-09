@@ -2,13 +2,16 @@
 // where the paper got to (new-el #778).
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
-import { expect, it } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { purgeSubmissions } from "./submissions";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "b".repeat(43);
+
+// The assistant reads each paper's page as a whole address on this site.
+beforeEach(() => void vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.test"));
 
 it("lists the papers someone sent, and takes where each stands from the community that holds it, in order", async () => {
   const t = convexTest(schema, modules);
@@ -51,7 +54,7 @@ it("lists the papers someone sent, and takes where each stands from the communit
   // Searched by its title or its community's name, and counted by status for the filter.
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher education" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "astronomy" })).page).toEqual([]);
-  expect(await sender.query(api.evidenceLibraries.submissions.counts, {})).toEqual({ queued: 0, published: 0, returned: 1, withdrawn: 0, all: 1, capped: false });
+  expect(await sender.query(api.evidenceLibraries.submissions.counts, {})).toEqual({ queued: 0, published: 0, returned: 1, withdrawn: 0, removed: 0, all: 1, capped: false });
   // The assistant reads the same list for them, from a chat in any of their workspaces, and only theirs.
   expect((await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId, status: "returned" })).page).toMatchObject([{ itemKey: "PAPER001", status: "returned", note: "Outside this community's focus" }]);
 
@@ -166,4 +169,25 @@ it("keeps a community's word that comes before Openscholar's own send finishes, 
   // Approved before the word that it waits was sent: published is the first word, and it's theirs.
   await tell("RACE0002", 2, "published", "r10");
   expect((await mine()).sort((a, b) => a.itemKey.localeCompare(b.itemKey))).toEqual([{ itemKey: "RACE0001", status: "returned" }, { itemKey: "RACE0002", status: "published" }]);
+});
+
+it("calls a published paper removed for whoever sent it once the team removes it, and withdrawn only for the person who took it back", async () => {
+  const t = convexTest(schema, modules);
+  const { libraryId, sender, owner } = await t.run(async (ctx) => {
+    const sender = await ctx.db.insert("users", { clerkId: "sender", email: "sender@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const owner = await ctx.db.insert("users", { clerkId: "owner", email: "owner@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId: owner });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    return { libraryId, sender, owner };
+  });
+  const paper = { title: "Coaching teachers", authors: "Amina Yusuf", year: 2021, openalexId: "W60", doi: "10.1000/w60" };
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId: sender, libraryId, requestId: "r1", papers: [{ itemKey: "PAPER001", ...paper, status: "published" }, { itemKey: "PAPER002", ...paper, openalexId: "W61", status: "queued" }] });
+  const list = async () => (await t.withIdentity({ subject: "sender" }).query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page;
+  // The owner removes the published one: the sender's list says so and no longer links its record.
+  await t.mutation(internal.evidenceLibraries.submissions.forgetSent, { userId: owner, libraryId, itemKey: "PAPER001", outcome: "removed" });
+  // Someone else's withdrawal touches only their own submission.
+  await t.mutation(internal.evidenceLibraries.submissions.forgetSent, { userId: owner, libraryId, itemKey: "PAPER002", outcome: "withdrawn" });
+  expect(Object.fromEntries((await list()).map((row) => [row.itemKey, [row.status, row.recordLink]]))).toEqual({ PAPER001: ["removed", null], PAPER002: ["queued", null] });
+  await t.mutation(internal.evidenceLibraries.submissions.forgetSent, { userId: sender, libraryId, itemKey: "PAPER002", outcome: "withdrawn" });
+  expect((await list()).find((row) => row.itemKey === "PAPER002")?.status).toBe("withdrawn");
 });

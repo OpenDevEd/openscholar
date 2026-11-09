@@ -5912,6 +5912,7 @@
     "from": "Van {name}",
     "returned": "Afgekeur",
     "statusWithdrawn": "Deur jou teruggetrek",
+    "statusRemoved": "Deur die gemeenskap verwyder",
     "openIn": "Maak oop in {community}",
     "openLabel": "Maak {title} in {community} oop",
     "remove": "Verwyder",

@@ -5911,6 +5911,7 @@
     "from": "Kusuka ku-{name}",
     "returned": "Kwenqatshiwe",
     "statusWithdrawn": "Ulihoxisile",
+    "statusRemoved": "Kususwe ngumphakathi",
     "openIn": "Vula ku-{community}",
     "openLabel": "Vula u-{title} ku-{community}",
     "remove": "Susa",

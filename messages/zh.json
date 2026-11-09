@@ -5911,6 +5911,7 @@
     "from": "来自 {name}",
     "returned": "已拒绝",
     "statusWithdrawn": "你已撤回",
+    "statusRemoved": "已被社区移除",
     "openIn": "在 {community} 中打开",
     "openLabel": "在 {community} 中打开 {title}",
     "remove": "移除",

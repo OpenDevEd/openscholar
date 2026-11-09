@@ -12,6 +12,7 @@ import type { ActionCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { requireAppUrl } from "../lib/env";
 import { refuseApps } from "../lib/auth";
 import { paperOfLink, type PaperIds } from "./paperLinks";
 import { spender } from "../paperSets/search";
@@ -786,7 +787,7 @@ export const removeAddedPaperAction = defineChangingAction({
     const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
     const outcome = await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
     // Withdrawn from the queue or taken off the community, a paper they sent is no longer theirs there: their Your submissions says so.
-    await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey });
+    await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey, outcome });
     return outcome;
   },
 });
@@ -893,7 +894,10 @@ export const submissionsAction = defineUserQuery({
   run: async (ctx, actor, { status, search, cursor }) => {
     const person = await personOf(ctx, actor.userId);
     if (person.state !== "active") return { page: [], isDone: true, continueCursor: "" };
-    return await readSent(ctx, person, { paginationOpts: { numItems: SENT_PER_PAGE, cursor: cursor ?? null }, ...(status ? { status } : {}), ...(search ? { search } : {}) });
+    const sent = await readSent(ctx, person, { paginationOpts: { numItems: SENT_PER_PAGE, cursor: cursor ?? null }, ...(status ? { status } : {}), ...(search ? { search } : {}) });
+    // Whole addresses, so a reply links the paper on this site instead of a host the model guesses for a bare path.
+    const site = requireAppUrl();
+    return { ...sent, page: sent.page.map((row) => ({ ...row, paperLink: new URL(row.paperLink, site).href })) };
   },
 });
 export const submissions = userQuery(submissionsAction);

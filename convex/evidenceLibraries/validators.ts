@@ -1537,7 +1537,8 @@ export const addedPapersPageValidator = v.object({
 });
 
 /** Where a paper someone sent to a community stands (OS-29, #1124): waiting for review, live, returned or withdrawn. */
-export const submissionStatusValidator = v.union(v.literal("queued"), v.literal("published"), v.literal("returned"), v.literal("withdrawn"));
+// `removed`: published, then taken off the community by its team, which Openscholar records when it does that itself.
+export const submissionStatusValidator = v.union(v.literal("queued"), v.literal("published"), v.literal("returned"), v.literal("withdrawn"), v.literal("removed"));
 
 /**
  * A paper someone sent to a community, as their Your submissions lists it. Openscholar records it when it's sent; the
