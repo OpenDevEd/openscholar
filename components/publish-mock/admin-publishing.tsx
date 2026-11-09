@@ -46,10 +46,13 @@ import {
 } from "@/components/icons";
 import { CheckRow } from "@/components/publish-mock/publish-flow";
 import { usePlaceName } from "@/components/publish-mock/report-extras";
-import { removeCheck, retryDeposit, review, saveCheck, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
+import { removeCheck, retryDeposit, review, saveCheck, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
-import { JEV, bylineOf, doiOf, stageOf, type Check as CheckDef, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { ConvexError } from "convex/values";
+import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
+import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
+import { JEV, bylineOf, canRegister, doiOf, stageOf, type Check as CheckDef, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -180,6 +183,9 @@ function Submissions({ settings, submissions, onChange }: { settings: Settings; 
 function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission: Submission; stage: Stage; onOpen: () => void; onChange: (s: Submission) => void }) {
   const [busy, start] = useTransition();
   const status = stage === "draft" ? undefined : STATUS[stage];
+  // A live report's registrations: the one refused, else the one under way, else the last one done.
+  const standing = s.status === "live" ? standingOf(s) : null;
+  const refused = standing?.state === "failed";
   const first = s.metadata?.authors[0];
   const act = (run: () => Promise<Submission>, done: string) =>
     start(async () => {
@@ -205,22 +211,22 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
           <span className="hidden shrink-0 tabular-nums sm:inline">{day(s.createdAt)}</span>
         </div>
       </div>
-      {s.status === "live" ? (
-        s.deposit === "failed" ? (
-          <TooltipHint label="Send to Crossref again">
-            <Button variant="ghost" size="icon-sm" aria-label={`Send ${s.id} to Crossref again`} className="relative ink-warning" disabled={busy} onClick={() => act(() => retryDeposit(s.id), "Sent to Crossref")}>
+      {standing ? (
+        refused ? (
+          <TooltipHint label={`Send to ${PROVIDER_NAME[standing.provider]} again`}>
+            <Button variant="ghost" size="icon-sm" aria-label={`Send ${s.id} to ${PROVIDER_NAME[standing.provider]} again`} className="relative ink-warning" disabled={busy} onClick={() => act(() => retryDeposit(s.id), `Sent to ${PROVIDER_NAME[standing.provider]}`)}>
               <Working busy={busy}>
                 <RefreshCw />
               </Working>
             </Button>
           </TooltipHint>
         ) : (
-          <StatusIcon tone={s.deposit === "deposited" ? "success" : "running"} label={s.deposit === "deposited" ? "Registered with Crossref" : "Sending to Crossref"} icon={s.deposit === "deposited" ? Hash : undefined} />
+          <StatusIcon tone={stepTone(standing)} label={stepWords(standing)} icon={standing.state === "done" ? Hash : undefined} />
         )
       ) : null}
       {status ? (
-        <StatusChip tone={s.status === "live" && s.deposit === "failed" ? "warning" : status.tone} icon={s.status === "live" && s.deposit === "failed" ? TriangleAlert : status.icon} className="hidden shrink-0 sm:inline-flex">
-          {s.status === "live" && s.deposit === "failed" ? "Crossref refused" : status.label}
+        <StatusChip tone={refused ? "warning" : status.tone} icon={refused ? TriangleAlert : status.icon} className="hidden shrink-0 sm:inline-flex">
+          {standing && refused ? `${PROVIDER_NAME[standing.provider]} refused` : status.label}
         </StatusChip>
       ) : null}
       <span className="flex w-[4.5rem] shrink-0 justify-end gap-1">
@@ -317,6 +323,11 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
                   {s.results?.filter((r) => r.pass).length ?? 0} of {s.results?.length ?? 0} passed <Tag>v{s.checksVersion}</Tag>
                 </Fact>
               </div>
+              {s.status === "live" ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <RegistrationChips report={s} />
+                </div>
+              ) : null}
               {s.metadata?.abstract ? <p className="line-clamp-5 text-sm/6 text-muted-foreground">{s.metadata.abstract}</p> : null}
               {s.metadata ? <Subjects m={s.metadata} /> : null}
               {s.results?.length ? (
@@ -412,17 +423,19 @@ function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s
     updateSettings(patch).then(onChange, failed);
   };
   const sampleDoi = doiOf(settings, "R100015");
+  const { zenodo, crossref } = settings.publication;
+  const registers = canRegister(settings);
   return (
     <div className="space-y-8">
       <Zone label="Publishing">
         <ul className={LIST}>
           <li>
-            <label className="flex cursor-pointer items-center justify-between gap-6 px-4 py-3.5 transition-colors hover:bg-muted">
+            <label className={cn("flex items-center justify-between gap-6 px-4 py-3.5 transition-colors", registers && "cursor-pointer hover:bg-muted")}>
               <span className="min-w-0">
                 <span className="block text-sm font-medium">Publish button</span>
-                <span className="block text-xs text-muted-foreground">Publish in the sidebar, for everyone signed in</span>
+                <span className="block text-xs text-muted-foreground">{registers ? "Publish in the sidebar, for everyone signed in" : "Off until Crossref or Zenodo is on under DOI registration"}</span>
               </span>
-              <Switch checked={settings.enabled} onCheckedChange={(enabled) => save({ enabled })} />
+              <Switch checked={settings.enabled && registers} disabled={!registers} onCheckedChange={(enabled) => save({ enabled })} />
             </label>
           </li>
           <li>
@@ -437,19 +450,13 @@ function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s
         </ul>
       </Zone>
 
-      <Zone label="Series and DOIs" aside={<StatusChip tone={settings.crossref === "sandbox" ? "warning" : "success"}>{settings.crossref === "sandbox" ? "Crossref sandbox" : "Crossref"}</StatusChip>}>
+      <Zone label="Series">
         <ul className={LIST}>
           <Row label="Series">
             <SavedInput value={settings.series.name} onSave={(name) => save({ series: { name } })} className="w-64" />
           </Row>
           <Row label="ISSN" hint="Pending until the ISSN centre assigns it">
             <SavedInput value={settings.series.issn} placeholder="Pending" onSave={(issn) => save({ series: { issn } })} className="w-40 font-mono" />
-          </Row>
-          <Row label="DOI prefix">
-            <SavedInput value={settings.series.prefix} onSave={(prefix) => save({ series: { prefix } })} className="w-40 font-mono" />
-          </Row>
-          <Row label="DOI suffix" hint="{key} is the report's key">
-            <SavedInput value={settings.series.suffix} onSave={(suffix) => save({ series: { suffix } })} className="w-64 font-mono" />
           </Row>
           <Row label="Byline" hint="{series}, {issn} and {doi} are filled in for each report" wide>
             <SavedInput value={settings.series.byline} onSave={(byline) => save({ series: { byline } })} className="w-full" />
@@ -458,18 +465,44 @@ function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s
               <span className="min-w-0 break-words">{bylineOf(settings, sampleDoi)}</span>
             </p>
           </Row>
-          <Row label="Crossref">
-            <Segmented
-              label="Crossref"
-              value={settings.crossref}
-              onChange={(crossref) => (crossref === "production" ? toast.error("Shared dev registers sandbox DOIs only") : save({ crossref }))}
-              options={[
-                { id: "sandbox", label: "Sandbox" },
-                { id: "production", label: "Production" },
-              ]}
-            />
-          </Row>
         </ul>
+      </Zone>
+
+      {/* The form a community's settings use. Here Crossref can be on alone: Openscholar chooses whether Zenodo archives its reports. */}
+      <Zone
+        label="DOI registration"
+        aside={
+          <span className="flex flex-wrap items-center justify-end gap-2">
+            {zenodo.mode !== "off" ? <StatusChip tone={zenodo.mode === "sandbox" ? "warning" : "success"}>{zenodo.mode === "sandbox" ? "Zenodo sandbox" : "Zenodo"}</StatusChip> : null}
+            {crossref.mode !== "off" ? <StatusChip tone={crossref.mode === "sandbox" ? "warning" : "success"}>{crossref.mode === "sandbox" ? "Crossref sandbox" : "Crossref"}</StatusChip> : null}
+            {registers ? null : <StatusChip tone="neutral">Off</StatusChip>}
+          </span>
+        }
+      >
+        <div className="space-y-5 rounded-2xl border border-border-subtle p-4">
+          <PublicationForm
+            key={settings.publicationSavedAt}
+            saved={{ settings: settings.publication, updatedAt: settings.publicationSavedAt, verifiedAt: null }}
+            crossrefAlone
+            words={{
+              zenodoHint: "Archives each report's PDF. Off, reports register with Crossref alone.",
+              crossrefHint: "Each report gets a DOI under your prefix. Off, it gets the DOI Zenodo reserves.",
+              namespaceHint: "Comes before each report's key in its DOI.",
+              namespacePlaceholder: "openscholar-r",
+              savedHint: "New reports register this way. Reports with a DOI keep theirs.",
+            }}
+            onSave={async (input) => {
+              const result = await savePublication(input);
+              // The form shows a ConvexError's message under itself, as it does a community's refusal.
+              if ("refused" in result) throw new ConvexError({ message: result.refused });
+              onChange(result.settings);
+            }}
+          />
+          <p className="flex items-center gap-2 rounded-xl bg-inset px-3 py-2.5 font-mono text-xs text-muted-foreground">
+            <Hash className="size-3.5 shrink-0" />
+            <span className="min-w-0 truncate">{sampleDoi}</span>
+          </p>
+        </div>
       </Zone>
 
       <Zone label="Metadata">

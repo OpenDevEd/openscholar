@@ -86,6 +86,9 @@ export function PublicationSection({
     api.evidenceLibraries.publicationProviders.get,
     { libraryId },
   );
+  const save = useAction(
+    api.evidenceLibraries.publicationProviderActions.verifyAndSave,
+  );
   return (
     <SectionCard
       id="sec-publication"
@@ -96,9 +99,9 @@ export function PublicationSection({
       {data ? (
         <PublicationForm
           key={`${libraryId}:${data.updatedAt}`}
-          libraryId={libraryId}
           saved={data}
           disabled={operationRunning}
+          onSave={(input) => save({ libraryId, ...input })}
         />
       ) : (
         <div className="flex h-5 items-center">
@@ -109,14 +112,29 @@ export function PublicationSection({
   );
 }
 
-function PublicationForm({
-  libraryId,
+/**
+ * The Zenodo and Crossref accounts a publisher registers DOIs with: a community here, and Openscholar Reports on
+ * the admin's Publishing page. A community's Crossref can't be on without Zenodo, which archives every file.
+ */
+export function PublicationForm({
   saved,
-  disabled,
+  disabled = false,
+  onSave,
+  words,
+  crossrefAlone = false,
 }: {
-  libraryId: Id<"evidenceLibraries">;
   saved: Saved;
-  disabled: boolean;
+  disabled?: boolean;
+  /** Verifies the accounts and saves; a refusal's `message` is shown under the form. */
+  onSave: (input: {
+    settings: PublicationSettings;
+    credentials: PublicationSecrets;
+    expectedUpdatedAt: number | null;
+  }) => Promise<unknown>;
+  /** What differs from a community's wording, where the form isn't a community's. */
+  words?: { zenodoHint?: string; crossrefHint?: string; namespaceHint?: string; namespacePlaceholder?: string; savedHint?: string };
+  /** Crossref may be on without Zenodo. A community's runtime refuses that; Openscholar Reports chooses. */
+  crossrefAlone?: boolean;
 }) {
   const t = useTranslations("publicationSettings");
   const format = useFormatter();
@@ -124,9 +142,6 @@ function PublicationForm({
   const [credentials, setCredentials] = useState<PublicationSecrets>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const save = useAction(
-    api.evidenceLibraries.publicationProviderActions.verifyAndSave,
-  );
   const zenodo = settings.zenodo.mode !== "off";
   const crossref = settings.crossref.mode !== "off";
   const dirty =
@@ -150,14 +165,13 @@ function PublicationForm({
     setBusy(true);
     setError(null);
     try {
-      await save({
-        libraryId,
+      await onSave({
         settings,
         credentials,
         expectedUpdatedAt: saved.updatedAt,
       });
       toast.success(t("saved"), {
-        description: t("activateHint"),
+        description: words?.savedHint ?? t("activateHint"),
       });
     } catch (error) {
       const detail =
@@ -181,12 +195,12 @@ function PublicationForm({
               <img src="/brands/zenodo.svg" alt="Zenodo" className="h-7 w-auto" />
             </span>
           }
-          hint={crossref ? t("zenodoRequired") : t("zenodoHint")}
+          hint={crossref && !crossrefAlone ? t("zenodoRequired") : (words?.zenodoHint ?? t("zenodoHint"))}
           action={
             <Switch
               aria-label={t("enableZenodo")}
               checked={zenodo}
-              disabled={crossref}
+              disabled={crossref && !crossrefAlone}
               onCheckedChange={(enabled) =>
                 updateZenodo({ mode: enabled ? "sandbox" : "off" })
               }
@@ -281,7 +295,7 @@ function PublicationForm({
               />
             </span>
           }
-          hint={t("crossrefHint")}
+          hint={words?.crossrefHint ?? t("crossrefHint")}
           action={
             <Switch
               aria-label={t("enableCrossref")}
@@ -296,7 +310,7 @@ function PublicationForm({
                   zenodo: {
                     ...current.zenodo,
                     mode:
-                      enabled && current.zenodo.mode === "off"
+                      enabled && current.zenodo.mode === "off" && !crossrefAlone
                         ? "sandbox"
                         : current.zenodo.mode,
                     defaultIdentifierPolicy: enabled
@@ -388,12 +402,12 @@ function PublicationForm({
                   ))}
                 </div>
               </CredentialMode>
-              <Field label={t("namespace")} hint={t("namespaceHint")}>
+              <Field label={t("namespace")} hint={words?.namespaceHint ?? t("namespaceHint")}>
                 {(id) => (
                   <Input
                     id={id}
                     value={settings.crossref.suffixNamespace}
-                    placeholder={t("libraryName")}
+                    placeholder={words?.namespacePlaceholder ?? t("libraryName")}
                     onChange={(e) =>
                       updateCrossref({ suffixNamespace: e.target.value })
                     }

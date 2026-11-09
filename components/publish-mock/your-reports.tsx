@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw } from "@/components/icons";
+import { standingOf, stepWords } from "@/components/publish-mock/registration";
 import { stageOf, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
@@ -150,7 +151,7 @@ function ReportRow({ report: r, stage, onOpen }: { report: Submission; stage: St
               {r.status === "live" ? (
                 <span className="flex min-w-0 items-center gap-1">
                   <Hash className="size-3 shrink-0" />
-                  <span className="truncate">{r.deposit === "deposited" ? "Registered with Crossref" : r.deposit === "failed" ? "Crossref refused it" : "Sending to Crossref"}</span>
+                  <span className="truncate">{stepWords(standingOf(r))}</span>
                 </span>
               ) : null}
             </>

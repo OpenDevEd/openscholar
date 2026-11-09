@@ -8,8 +8,9 @@ import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
 import { suggestTopics } from "@/lib/publish-mock/topics";
-import { MOCK_DIR, changeState, nextKey, pdfPath } from "@/lib/publish-mock/store";
-import { doiOf, stageOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
+import { CROSSREF_SANDBOX, MOCK_DIR, changeState, nextKey, pdfPath, readState } from "@/lib/publish-mock/store";
+import { canPublish, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -32,7 +33,7 @@ function openDraft(state: MockState) {
   const open = state.submissions.find((s) => s.id === state.draftId);
   if (open && open.step !== "done") return open;
   const id = nextKey(state);
-  const draft: Submission = { id, doi: doiOf(state.settings, id), step: "agreement", status: "draft", deposit: "none", createdAt: Date.now(), updatedAt: Date.now() };
+  const draft: Submission = { id, doi: doiOf(state.settings, id), step: "agreement", status: "draft", deposit: "none", archive: "none", createdAt: Date.now(), updatedAt: Date.now() };
   state.submissions.unshift(draft);
   state.draftId = id;
   return draft;
@@ -40,17 +41,23 @@ function openDraft(state: MockState) {
 
 export async function signAgreement({ name, onBehalfOfAll }: { name: string; onBehalfOfAll: boolean }) {
   const user = await currentUser();
-  return change((state) =>
-    touch(openDraft(state), {
+  return change((state) => {
+    if (!canPublish(state.settings)) throw new Error("Publishing is off until Crossref or Zenodo is connected.");
+    const registration = registrationOf(state.settings);
+    return touch(openDraft(state), {
       ...(user ? { ownerId: user.id } : {}),
       signedBy: { name: name.trim(), email: user?.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
       signedAt: Date.now(),
       agreementVersion: state.settings.agreement.version,
-      // Signing reserves the DOI: it's the report's from now on, and goes live when the report passes its checks.
+      // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
+      // the report registers is fixed with it. With Zenodo on, Zenodo holds a draft for the file from here, as for
+      // a community's record.
       doi: doiOf(state.settings, state.draftId!),
+      registration,
+      archive: registration.zenodo ? "draft" : "none",
       step: "doi",
-    }),
-  );
+    });
+  });
 }
 
 /** Back to a step already done, or on to the next one the report is ready for. */
@@ -153,14 +160,46 @@ export async function startOver() {
 
 // Admin
 
-export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "humanReview" | "crossref" | "metadataModel">> & { series?: Partial<Settings["series"]> }) {
-  if (patch.enabled !== undefined) (await cookies()).set(OFF_COOKIE, patch.enabled ? "" : "1", { path: "/", maxAge: patch.enabled ? 0 : 60 * 60 * 24 * 365 });
-  return change((state) => {
+/** MOCK: the rail reads a cookie for whether Publish shows; the real build reads the setting. */
+async function showInRail(settings: Settings) {
+  const on = canPublish(settings);
+  (await cookies()).set(OFF_COOKIE, on ? "" : "1", { path: "/", maxAge: on ? 0 : 60 * 60 * 24 * 365 });
+}
+
+export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "humanReview" | "metadataModel">> & { series?: Partial<Settings["series"]> }) {
+  const settings = await change((state) => {
     const { series, ...rest } = patch;
     Object.assign(state.settings, rest);
     if (series) Object.assign(state.settings.series, series);
     return state.settings;
   });
+  await showInRail(settings);
+  return settings;
+}
+
+/**
+ * The Zenodo and Crossref accounts, saved by the form a community's settings use. One rule of a community's is
+ * lifted: Crossref may be on without Zenodo, because Openscholar decides whether its reports are archived there.
+ * A refusal comes back as words, not a throw, so it reaches the form.
+ * MOCK: sandboxes only, and nothing is checked with Zenodo or Crossref. The real build verifies both and keeps the
+ * credentials encrypted, as `publicationProviderActions.verifyAndSave` does for a community.
+ */
+export async function savePublication(input: { settings: PublicationSettings; credentials: PublicationSecrets; expectedUpdatedAt: number | null }): Promise<{ settings: Settings } | { refused: string }> {
+  const settings = structuredClone(input.settings);
+  if (settings.zenodo.mode === "custom" || settings.crossref.mode === "custom") return { refused: "Shared dev registers on the sandboxes only." };
+  if (settings.crossref.mode === "sandbox") Object.assign(settings.crossref, CROSSREF_SANDBOX);
+  settings.crossref.suffixNamespace = settings.crossref.suffixNamespace.trim().toLowerCase() || "openscholar-r";
+  settings.zenodo.license = settings.zenodo.license.trim().toLowerCase();
+  // Zenodo can archive under the Crossref DOI only while Crossref is on.
+  if (settings.crossref.mode === "off") settings.zenodo.defaultIdentifierPolicy = "mint-zenodo";
+  const saved = await change((state) => {
+    if (state.settings.publicationSavedAt !== input.expectedUpdatedAt) return null;
+    Object.assign(state.settings, { publication: settings, publicationSavedAt: Date.now() });
+    return state.settings;
+  });
+  if (!saved) return { refused: "Publishing settings changed. Reload and try again." };
+  await showInRail(saved);
+  return { settings: saved };
 }
 
 /** A changed set of checks is a new version: reports keep the version they ran. */
@@ -214,7 +253,33 @@ export async function activate(id: string) {
     const submission = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
     if (!submission) throw new Error("No such report of yours.");
     if (stageOf(submission, state.settings) !== "ready") throw new Error("A reviewer approves this report before you can activate it.");
-    return touch(submission, { status: "live", deposit: "queued" });
+    const registers = providersOf(submission);
+    return touch(submission, { status: "live", activatedAt: Date.now(), archive: registers.includes("zenodo") ? "queued" : "none", deposit: registers.includes("crossref") ? "queued" : "none" });
+  });
+}
+
+/** One of your reports as it stands now. MOCK: the live page asks again while a registration is under way; the
+ * real build is told by Convex. */
+export async function readReport(id: string) {
+  const user = await currentUser();
+  const state = await readState();
+  return state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id))) ?? null;
+}
+
+/**
+ * MOCK: adds a live report to a community, or to its review queue. Nothing is sent: a sandbox DOI is registered
+ * nowhere a community can look it up. The real build sends the DOI through `evidenceLibraries.assistant.addPapers`,
+ * and the community asks Openscholar for the report before OpenAlex and the DOI's registrar.
+ */
+export async function addToCommunity(id: string, community: { id: string; name: string }, publish: boolean): Promise<{ outcome: "added" | "queued" | "existing"; report: Submission }> {
+  const user = await currentUser();
+  return change((state) => {
+    const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
+    if (!report || report.status !== "live") throw new Error("Only a live report of yours can be added to a community.");
+    report.communities ??= [];
+    if (report.communities.some((c) => c.id === community.id)) return { outcome: "existing", report };
+    report.communities.push({ ...community, status: publish ? "published" : "queued" });
+    return { outcome: publish ? "added" : "queued", report };
   });
 }
 
@@ -222,6 +287,8 @@ export async function retryDeposit(id: string) {
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
     if (!submission) throw new Error("No such report.");
-    return touch(submission, { deposit: "deposited" });
+    // MOCK: the registration that was refused goes through this time.
+    const failed = stepsOf(submission).find((step) => step.state === "failed")?.provider;
+    return touch(submission, failed === "zenodo" ? { archive: "archived" } : { deposit: "deposited" });
   });
 }

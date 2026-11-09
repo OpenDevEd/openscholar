@@ -2,6 +2,7 @@
 // Convex table yet; the real build moves them there.
 
 import type { Effort } from "@/lib/ai/core/call-options";
+import type { PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { JEV_MODEL } from "@/lib/ai/decisions";
 
 /** A model a check or the metadata reader runs on, as the model picker gives it, with the effort it runs at. */
@@ -53,8 +54,10 @@ export type CheckResult = {
 export type Settings = {
   enabled: boolean;
   humanReview: boolean;
-  series: { name: string; issn: string; prefix: string; suffix: string; byline: string };
-  crossref: "sandbox" | "production";
+  series: { name: string; issn: string; byline: string };
+  /** The Zenodo and Crossref accounts reports register with: the settings a community has, kept the same way. */
+  publication: PublicationSettings;
+  publicationSavedAt: number | null;
   metadataModel: LlmModel;
   checks: Check[];
   checksVersion: number;
@@ -117,6 +120,14 @@ export function stageOf(s: Submission, settings: Settings): Stage {
   return s.approved || !needsReview ? "ready" : "review";
 }
 export type Deposit = "none" | "queued" | "deposited" | "failed";
+/** The report's file on Zenodo: a draft from the moment its DOI is reserved, archived once the report is live. */
+export type Archive = "none" | "draft" | "queued" | "archived" | "failed";
+/** How a report registers, fixed when its DOI is reserved, as a community's record is once it's sent to Zenodo:
+ * with Crossref alone, with Zenodo alone under the DOI Zenodo reserves, or with both, the file archived on Zenodo
+ * under the Crossref DOI or under one of Zenodo's. Unlike a community, Crossref doesn't need Zenodo here. */
+export type Registration = { crossref: boolean; zenodo?: boolean; policy: PublicationSettings["zenodo"]["defaultIdentifierPolicy"] };
+export type Provider = "zenodo" | "crossref";
+export type RegistrationStep = { provider: Provider; state: "waiting" | "working" | "done" | "failed" };
 
 export type Submission = {
   /** The report's key, which its paper page is named by. */
@@ -140,6 +151,11 @@ export type Submission = {
   metadata?: Metadata;
   results?: CheckResult[];
   deposit: Deposit;
+  archive: Archive;
+  registration?: Registration;
+  activatedAt?: number;
+  /** MOCK: the communities it was added to from its live page. The real build keeps these as Openscholar's submissions. */
+  communities?: Array<{ id: string; name: string; status: "queued" | "published" }>;
   note?: string;
   createdAt: number;
   updatedAt: number;
@@ -147,8 +163,41 @@ export type Submission = {
 
 export type MockState = { settings: Settings; submissions: Submission[]; draftId: string | null; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
-/** The DOI a report gets: the series' prefix and its suffix, with `{key}` for the report's key. */
-export const doiOf = (settings: Settings, key: string) => `${settings.series.prefix}/${settings.series.suffix.replace("{key}", key.toLowerCase())}`;
+/** A report needs a DOI, so publishing needs Crossref or Zenodo connected. */
+export const canRegister = (settings: Settings) => settings.publication.zenodo.mode !== "off" || settings.publication.crossref.mode !== "off";
+export const canPublish = (settings: Settings) => settings.enabled && canRegister(settings);
+export const registrationOf = (settings: Settings): Registration => ({
+  crossref: settings.publication.crossref.mode !== "off",
+  zenodo: settings.publication.zenodo.mode !== "off",
+  policy: settings.publication.zenodo.defaultIdentifierPolicy,
+});
+/** MOCK: the DOI Zenodo reserves for a report's draft. The real one comes back from Zenodo when the draft is made. */
+export const zenodoDoiOf = (settings: Settings, key: string) =>
+  `${settings.publication.zenodo.mode === "custom" ? "10.5281" : "10.5072"}/zenodo.${400_000 + (Number(key.slice(1)) % 100_000)}`;
+/** The DOI a report gets: under the Crossref prefix and namespace when Crossref is on, else the one Zenodo reserves. */
+export const doiOf = (settings: Settings, key: string) => {
+  const { crossref } = settings.publication;
+  return crossref.mode === "off" ? zenodoDoiOf(settings, key) : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`;
+};
+/** The order a live report registers in. Reusing the Crossref DOI, Zenodo archives once Crossref has it, as in a
+ * community; with a DOI of its own, Zenodo goes first and Crossref's record links to the archive. */
+export function providersOf(s: Pick<Submission, "registration">): Provider[] {
+  const r = s.registration ?? { crossref: true, policy: "reuse-crossref" };
+  if (!r.crossref) return ["zenodo"];
+  if (r.zenodo === false) return ["crossref"];
+  return r.policy === "reuse-crossref" ? ["crossref", "zenodo"] : ["zenodo", "crossref"];
+}
+/** Each registration of a live report and where it stands; one waits while the one before it isn't done. */
+export function stepsOf(s: Submission): RegistrationStep[] {
+  let before = true;
+  return providersOf(s).map((provider) => {
+    const at = provider === "crossref" ? s.deposit : s.archive;
+    const done = at === "deposited" || at === "archived";
+    const state = done ? "done" : at === "failed" ? "failed" : before ? "working" : "waiting";
+    before &&= done;
+    return { provider, state };
+  });
+}
 /** The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. */
 export const bylineOf = (settings: Settings, doi: string) =>
   settings.series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", settings.series.issn || "pending").replace("{series}", settings.series.name);

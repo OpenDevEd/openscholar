@@ -4,7 +4,7 @@
 // upload the PDF with the byline on it; correct the details read from it; the checks run; it goes live, or waits for
 // review. Its state lives in the mock's local store (app/actions/publish-mock.ts).
 
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
@@ -26,6 +26,7 @@ import {
   CircleCheck,
   CircleX,
   Copy,
+  EvidenceLibrariesIcon,
   FileText,
   FileUp,
   PenLine,
@@ -40,11 +41,13 @@ import {
   Hash,
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
-import { activate, goTo, openReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { activate, addToCommunity, goTo, openReport, readReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
+import { RegistrationChips, standingOf, stepWords } from "@/components/publish-mock/registration";
 import { StatusFilter, YourReports, type Show } from "@/components/publish-mock/your-reports";
 import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { bylineOf, stageOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { bylineOf, stageOf, stepsOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -197,6 +200,10 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                   settings={settings}
                   draft={draft}
                   fresh={activated === draft.id}
+                  onChange={(next) => {
+                    setReports((all) => all.map((r) => (r.id === next.id ? next : r)));
+                    setDraftOnly((current) => (current?.id === next.id ? next : current));
+                  }}
                   onAnother={() => {
                     void startOver().then(() => setDraftOnly(null));
                   }}
@@ -358,7 +365,15 @@ function CopyField({ label, value, mono = false, what }: { label: string; value:
 function DoiStep({ settings, draft, onNext }: { settings: Settings; draft: Submission; onNext: () => void }) {
   return (
     <div>
-      <StepHead title="Your DOI is reserved" aside={<StatusChip tone="neutral" icon={Hash}>Reserved</StatusChip>}>
+      <StepHead
+        title="Your DOI is reserved"
+        aside={
+          <>
+            <StatusChip tone="neutral" icon={Hash}>{(draft.registration?.crossref ?? true) ? "Reserved with Crossref" : "Reserved with Zenodo"}</StatusChip>
+            {(draft.registration?.crossref ?? true) && draft.archive === "draft" ? <StatusChip tone="neutral" icon={FileText}>Zenodo draft ready</StatusChip> : null}
+          </>
+        }
+      >
         Put the byline on the cover or the first page of your PDF. The checks look for the DOI in it.
       </StepHead>
       <div className="grid gap-4">
@@ -688,13 +703,20 @@ function citationOf(settings: Settings, draft: Submission) {
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ settings, draft, fresh, onAnother }: { settings: Settings; draft: Submission; fresh: boolean; onAnother: () => void }) {
+function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings: Settings; draft: Submission; fresh: boolean; onChange: (report: Submission) => void; onAnother: () => void }) {
   const reduce = useReducedMotion();
+  // MOCK: a timer asks for the report again while Zenodo or Crossref is still working, so each chip settles in view.
+  // The real build is told by Convex and needs no timer.
+  const settling = stepsOf(draft).some((step) => step.state === "working" || step.state === "waiting");
+  useEffect(() => {
+    if (!settling) return;
+    const timer = setInterval(() => void readReport(draft.id).then((report) => report && onChange(report)), 3000);
+    return () => clearInterval(timer);
+  }, [settling, draft.id, onChange]);
   const play = fresh && !reduce;
   // Each part rises in after the seal has drawn, in reading order.
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
   const url = `https://doi.org/${draft.doi}`;
-  const registered = draft.deposit === "deposited";
   const passed = draft.results?.filter((r) => r.pass).length ?? 0;
   return (
     <div>
@@ -713,6 +735,11 @@ function LiveReport({ settings, draft, fresh, onAnother }: { settings: Settings;
           <a href={url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
             doi.org/{draft.doi}
           </a>
+          <TooltipHint label="Copy citation">
+            <Button variant="ghost" size="icon-sm" aria-label="Copy citation" className="text-muted-foreground" onClick={() => copy(citationOf(settings, draft), "Citation")}>
+              <Quote />
+            </Button>
+          </TooltipHint>
           <TooltipHint label="Copy the DOI">
             <Button variant="ghost" size="icon-sm" aria-label="Copy the DOI" className="text-muted-foreground" onClick={() => copy(url, "DOI")}>
               <Copy />
@@ -720,9 +747,7 @@ function LiveReport({ settings, draft, fresh, onAnother }: { settings: Settings;
           </TooltipHint>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <StatusChip tone={registered ? "success" : "running"} icon={registered ? BadgeCheck : "tone"}>
-            {registered ? "Registered with Crossref" : "Sending to Crossref"}
-          </StatusChip>
+          <RegistrationChips report={draft} />
           <StatusChip tone="success" icon={ShieldCheck}>
             {passed} of {draft.results?.length ?? 0} checks passed
           </StatusChip>
@@ -732,9 +757,23 @@ function LiveReport({ settings, draft, fresh, onAnother }: { settings: Settings;
         <Button variant="outline" onClick={onAnother}>
           <Plus /> Publish another
         </Button>
-        <Button variant="outline" onClick={() => copy(citationOf(settings, draft), "Citation")}>
-          <Quote /> Copy citation
-        </Button>
+        {/* The app's own Add to community list, opened from a named button. */}
+        <CommunityControl
+          paper={{ id: draft.id, title: draft.metadata?.title ?? "", doi: draft.doi }}
+          trigger={
+            <Button variant="outline">
+              <EvidenceLibrariesIcon /> Add to community
+            </Button>
+          }
+          mock={{
+            sent: draft.communities ?? [],
+            send: async (community, publish) => {
+              const { outcome, report } = await addToCommunity(draft.id, community, publish);
+              onChange(report);
+              return outcome;
+            },
+          }}
+        />
         <Button asChild>
           <Link href={`/papers/${draft.id}`}>
             Open its page <ArrowUpRight />
@@ -747,7 +786,6 @@ function LiveReport({ settings, draft, fresh, onAnother }: { settings: Settings;
 
 function ReportCover({ settings, draft }: { settings: Settings; draft: Submission | null }) {
   const m = draft?.metadata;
-  const deposit = draft?.deposit;
   const status = draft?.step === "done" ? draft.status : null;
   return (
     <aside className="space-y-4 @3xl:sticky @3xl:top-24 @3xl:self-start">
@@ -800,7 +838,7 @@ function ReportCover({ settings, draft }: { settings: Settings; draft: Submissio
           {draft?.signedAt ? `Signed ${dateOf(draft.signedAt)}` : "Agreement not signed"}
         </Fact>
         <Fact icon={Hash} on={!!draft}>
-          {status === "live" ? (deposit === "deposited" ? "Registered with Crossref" : "Sending to Crossref") : draft ? "DOI reserved" : "No DOI yet"}
+          {draft && status === "live" ? stepWords(standingOf(draft)) : draft ? "DOI reserved" : "No DOI yet"}
         </Fact>
         <Fact icon={FileText} on={!!draft?.pdf} chip={draft?.pdf ? bytes(draft.pdf.bytes) : undefined}>
           {draft?.pdf ? `${draft.pdf.pages} ${draft.pdf.pages === 1 ? "page" : "pages"}` : "No PDF yet"}

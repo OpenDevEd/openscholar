@@ -5,7 +5,7 @@ import path from "node:path";
 import type { Check, CheckResult, Metadata, MockState, Settings, Submission } from "./types";
 import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
 import { suggestTopics } from "./topics";
-import { DEFAULT_LLM, JEV, doiOf } from "./types";
+import { DEFAULT_LLM, JEV, doiOf, providersOf, registrationOf } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
@@ -54,14 +54,22 @@ const CHECKS: Check[] = [
   },
 ];
 
+/** MOCK: the sandbox account's details, which the real build reads from the server as a community's settings do
+ * (`EL_CROSSREF_SANDBOX_*`). The prefix is shared dev's. */
+export const CROSSREF_SANDBOX = { prefix: "10.53832", depositorName: "Openscholar sandbox", email: "sandbox@openscholar.ai", registrant: "Openscholar" };
+
 async function seedSettings(): Promise<Settings> {
   const text = await readFile(path.join(process.cwd(), "lib/publish-mock/agreement.md"), "utf8");
   return {
     enabled: true,
     humanReview: true,
-    // Crossref's test prefix: every DOI here is a sandbox one.
-    series: { name: "Openscholar Reports", issn: "", prefix: "10.5555", suffix: "openscholar-r.{key}", byline: "This publication is an Openscholar Report, ISSN {issn}, {doi}" },
-    crossref: "sandbox",
+    series: { name: "Openscholar Reports", issn: "", byline: "This publication is an Openscholar Report, ISSN {issn}, {doi}" },
+    // Both on their sandboxes, and one DOI for each report: Crossref's, with the file archived on Zenodo under it.
+    publication: {
+      zenodo: { mode: "sandbox", license: "cc-by-4.0", defaultIdentifierPolicy: "reuse-crossref" },
+      crossref: { mode: "sandbox", suffixNamespace: "openscholar-r", ...CROSSREF_SANDBOX },
+    },
+    publicationSavedAt: Date.now() - 6 * DAY,
     metadataModel: DEFAULT_LLM,
     checks: CHECKS,
     checksVersion: 3,
@@ -178,6 +186,9 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
     id,
     doi: doiOf(settings, id),
     ...state,
+    registration: registrationOf(settings),
+    archive: state.status !== "live" ? "draft" : state.deposit === "deposited" ? "archived" : "queued",
+    activatedAt: at,
     // A few with each status show as the viewer's own on Your reports.
     ...([0, 3, 5, 6, 8].includes(n) ? { demo: true } : {}),
     signedBy: { name, email: `${name.split(" ")[0]!.toLowerCase()}@example.org`, onBehalfOfAll: true },
@@ -202,15 +213,22 @@ async function seed(): Promise<MockState> {
 }
 
 /** MOCK: Crossref takes a little while; a report sent over 15 seconds ago is registered. */
+/** MOCK: how long each registration takes. The real ones answer in seconds to minutes. */
+const STEP_MS = 7_000;
+
+/** Moves a live report's registrations on, in their order: each is done its turn after the report was activated. */
 function settle(state: MockState) {
-  let changed = false;
   for (const s of state.submissions) {
-    if (s.deposit === "queued" && Date.now() - s.updatedAt > 15_000) {
-      s.deposit = "deposited";
-      changed = true;
+    if (s.status !== "live") continue;
+    const since = Date.now() - (s.activatedAt ?? s.updatedAt);
+    for (const [i, provider] of providersOf(s).entries()) {
+      const due = since > STEP_MS * (i + 1);
+      if (provider === "crossref" && s.deposit === "queued" && due) s.deposit = "deposited";
+      if (provider === "zenodo" && s.archive === "queued" && due) s.archive = "archived";
+      // The next one waits for this one.
+      if ((provider === "crossref" ? s.deposit : s.archive) !== (provider === "crossref" ? "deposited" : "archived")) break;
     }
   }
-  return changed;
 }
 
 export async function readState(): Promise<MockState> {
