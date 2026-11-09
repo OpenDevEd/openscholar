@@ -57,8 +57,8 @@ const STEP = 20;
 const LOAD_AHEAD_PX = 80;
 
 /**
- * A community of yours, as a row and as the card beside the popover draws one that isn't listed publicly. One shared
- * with the person is reached from their own workspace, `own`; the rest from the workspace they're on its team in.
+ * A community of yours, as a row and with the card the directory draws for it. One shared with the person is reached
+ * from their own workspace, `own`; the rest from the workspace they're on its team in.
  */
 const fromOverview = (library: Overview, own: Id<"workspaces"> | undefined): Row => ({
   id: library._id,
@@ -69,19 +69,13 @@ const fromOverview = (library: Overview, own: Id<"workspaces"> | undefined): Row
   role: library.role,
   workspaceId: library.from === "shared" ? own : library.workspaceId,
   card: {
+    ...library.card,
     _id: library._id,
     name: library.name,
-    tagline: null,
-    accentColor: library.accentColor ?? null,
     faviconUrl: library.faviconUrl ?? null,
     address: library.publicAddress,
-    owner: { name: library.organization.name, kind: library.organization.kind, imageUrl: library.organization.imageUrl ?? null, workspaceId: library.workspaceId, colour: null },
-    records: null,
-    countries: [],
-    people: null,
-    liveAt: library.lastActivatedAt ?? null,
-    publishedAt: library.lastActivatedAt ?? null,
-  } as Card,
+    owner: { ...library.organization, workspaceId: library.workspaceId } as Card["owner"],
+  },
 });
 
 /** A public community, with no role of the person's on it. */
@@ -104,20 +98,14 @@ const fromRecent = (recent: Recent, yours: Row | undefined): Row => ({
   address: recent.address ?? "",
   role: recent.role,
   workspaceId: yours?.workspaceId ?? (recent.role === "viewer" ? undefined : recent.workspaceId),
-  card: yours?.card ?? ({
+  card: yours?.card ?? {
+    ...recent.card,
     _id: recent.libraryId,
     name: recent.name,
-    tagline: null,
-    accentColor: null,
     faviconUrl: recent.faviconUrl,
     address: recent.address ?? "",
-    owner: { name: recent.owner?.name ?? null, kind: recent.owner?.kind ?? "organization", imageUrl: recent.owner?.imageUrl ?? null, workspaceId: recent.owner?.workspaceId ?? recent.workspaceId, colour: null },
-    records: null,
-    countries: [],
-    people: null,
-    liveAt: null,
-    publishedAt: null,
-  } as Card),
+    owner: { name: recent.owner?.name ?? null, kind: recent.owner?.kind ?? "organization", imageUrl: recent.owner?.imageUrl ?? null, workspaceId: recent.owner?.workspaceId ?? recent.workspaceId, colour: recent.owner?.colour ?? null } as Card["owner"],
+  },
 });
 
 /**

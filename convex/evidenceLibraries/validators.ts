@@ -257,6 +257,21 @@ export const COUNTRIES_KEPT = 5;
 /** A community's countries, most of its public records' first, as its row keeps them and its card reads them. */
 export const countriesValidator = capped(v.array(v.string()), COUNTRIES_KEPT);
 
+/** What a community's card shows from its own row (./access.ts cardFacts): what its published settings say about it, and its counts. */
+export const cardFactsValidator = v.object({
+  /** Its tagline, or its description when it has none; null when it has neither. */
+  tagline: v.union(v.string(), v.null()),
+  accentColor: v.union(v.string(), v.null()),
+  records: v.union(v.number(), v.null()),
+  /** The countries most of its public records are about, most first; empty until its runtime names them. */
+  countries: countriesValidator,
+  /** How many people work on it: its owners and everyone given a role in it; null until counted. */
+  people: v.union(v.number(), v.null()),
+  liveAt: v.union(v.number(), v.null()),
+  /** When its last version went live. */
+  publishedAt: v.union(v.number(), v.null()),
+});
+
 export const evidenceLibraryFields = {
   activePublicationConfigDigest: v.optional(v.string()),
   // Set once every approved OpenAlex query version in the library's revisions is in
@@ -1569,7 +1584,7 @@ export const sentPapersValidator = capped(v.array(v.object({
 
 /** Who a community belongs to, as a submission's community icon shows on its corner. */
 export const submissionOwnerValidator = v.union(
-  v.object({ name: v.string(), kind: v.union(v.literal("organization"), v.literal("person")), imageUrl: v.union(v.string(), v.null()), workspaceId: v.id("workspaces") }),
+  v.object({ name: v.string(), kind: v.union(v.literal("organization"), v.literal("person")), imageUrl: v.union(v.string(), v.null()), workspaceId: v.id("workspaces"), colour: v.union(v.string(), v.null()) }),
   v.null(),
 );
 
@@ -1585,6 +1600,7 @@ export const recentCommunitiesValidator = capped(v.array(v.object({
   role: v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"), v.literal("viewer")),
   /** The workspace it's in, which a paper sent to it as its team goes from. */
   workspaceId: v.id("workspaces"),
+  card: cardFactsValidator,
 })), RECENT_COMMUNITIES);
 
 /** The communities one paper is listed as sent to, with where it stands in each. */
