@@ -36,6 +36,7 @@ import {
   userFields,
 } from "./lib/validators";
 import {
+  libraryApplicationFields,
   clerkEventLogFields,
   evidenceLibraryReaderDeletionFields,
   evidenceLibraryOAuthClientFields,
@@ -1443,6 +1444,16 @@ export default defineSchema({
     .index("by_user_and_kind_and_role_and_name", ["userId", "kind", "role", "name"])
     // The chats shared with a person, newest message first, beside their own in one list (../assistant/threads.ts).
     .index("by_user_and_kind_and_lastMessageAt", ["userId", "kind", "lastMessageAt"]),
+  // Applications to join a community (OS-31, ./evidenceLibraries/applications.ts).
+  libraryApplications: defineTable(libraryApplicationFields)
+    .index("by_userId_and_libraryId", ["userId", "libraryId"])
+    // A person's sidebar rows, newest first.
+    .index("by_userId_and_listed_and_createdAt", ["userId", "listed", "createdAt"])
+    // A person's waiting ones, counted against MAX_WAITING_APPLICATIONS_PER_PERSON.
+    .index("by_userId_and_state", ["userId", "state"])
+    // What a community's owners and editors answer, oldest first.
+    .index("by_libraryId_and_state_and_createdAt", ["libraryId", "state", "createdAt"]),
+
   itemInvitations: defineTable(itemInvitationFields)
     .index("by_item_and_email", ["item", "email"])
     .index("by_item_and_state", ["item", "state"])

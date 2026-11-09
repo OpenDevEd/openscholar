@@ -4432,6 +4432,66 @@
         "did": "Artikel gelesen, die du an Communities gesendet hast",
         "where": "Evidence Communities",
         "ask": "Die Artikel lesen, die du an Communities gesendet hast"
+      },
+      "applyToCommunity": {
+        "doing": "Bewerbung bei einer Community",
+        "did": "Bei einer Community beworben",
+        "where": "Evidence Communities",
+        "ask": "Bei einer Community bewerben"
+      },
+      "withdrawApplication": {
+        "doing": "Bewerbung bei einer Community zurückziehen",
+        "did": "Bewerbung bei einer Community zurückgezogen",
+        "where": "Evidence Communities",
+        "ask": "Bewerbung bei einer Community zurückziehen"
+      },
+      "hideApplication": {
+        "doing": "Abgelehnte Bewerbung ausblenden",
+        "did": "Abgelehnte Bewerbung ausgeblendet",
+        "where": "Evidence Communities",
+        "ask": "Abgelehnte Bewerbung ausblenden"
+      },
+      "myApplications": {
+        "doing": "Deine Bewerbungen bei Communities lesen",
+        "did": "Deine Bewerbungen bei Communities gelesen",
+        "where": "Evidence Communities",
+        "ask": "Deine Bewerbungen bei Communities lesen"
+      },
+      "applicationStanding": {
+        "doing": "Prüfen, wo du bei Communities stehst",
+        "did": "Geprüft, wo du bei Communities stehst",
+        "where": "Evidence Communities",
+        "ask": "Prüfen, wo du bei Communities stehst"
+      },
+      "applicationsWaiting": {
+        "doing": "Bewerbungen für eine Community lesen",
+        "did": "Bewerbungen für eine Community gelesen",
+        "where": "Evidence Communities",
+        "ask": "Bewerbungen für eine Community lesen"
+      },
+      "applicationCounts": {
+        "doing": "Wartende Bewerbungen zählen",
+        "did": "Wartende Bewerbungen gezählt",
+        "where": "Evidence Communities",
+        "ask": "Wartende Bewerbungen zählen"
+      },
+      "acceptApplication": {
+        "doing": "Bewerbung annehmen",
+        "did": "Bewerbung angenommen",
+        "where": "Evidence Communities",
+        "ask": "Bewerbung annehmen"
+      },
+      "declineApplication": {
+        "doing": "Bewerbung ablehnen",
+        "did": "Bewerbung abgelehnt",
+        "where": "Evidence Communities",
+        "ask": "Bewerbung ablehnen"
+      },
+      "applicationsOpen": {
+        "doing": "Bewerbungen ein- oder ausschalten",
+        "did": "Bewerbungen ein- oder ausgeschaltet",
+        "where": "Evidence Communities",
+        "ask": "Bewerbungen ein- oder ausschalten"
       }
     },
     "asks": {
@@ -5971,5 +6031,93 @@
     "askQueue": "{count, plural, one {# Arbeit} other {# Arbeiten}} zur Prüfung senden",
     "alreadyInIt": "Schon enthalten",
     "inReview": "In Prüfung"
+  },
+  "communityApplications": {
+    "joinName": "{name} beitreten",
+    "runBy": "Betrieben von {name}",
+    "anOpenscholarMember": "ein Openscholar-Mitglied",
+    "asACreator": "Als Ersteller kannst du",
+    "can": {
+      "add": {
+        "title": "Paper hinzufügen",
+        "body": "Paper, die du findest, an die Prüfliste senden."
+      },
+      "edit": {
+        "title": "Einträge bearbeiten",
+        "body": "Angaben korrigieren und PDFs hochladen."
+      },
+      "review": {
+        "title": "Zur Prüfung einreichen",
+        "body": "Die Redaktion prüft deine Arbeit und veröffentlicht sie."
+      }
+    },
+    "messageLabel": "Nachricht an das Team",
+    "messageHint": "Sag, wer du bist und warum du beitreten möchtest. Inhaber und Redaktion entscheiden.",
+    "messagePlaceholder": "Ich forsche an… Ich möchte beitragen…",
+    "messageMissing": "Schreib ein paar Worte für das Team.",
+    "whoSees": "Inhaber und Redaktion sehen deinen Namen, deine E-Mail-Adresse und diese Nachricht.",
+    "cancel": "Abbrechen",
+    "send": "Bewerbung senden",
+    "signInToSend": "Zum Senden anmelden",
+    "sentTitle": "Bewerbung gesendet",
+    "sentBody": "Sie steht unter Deine Communities, wo du sie zurückziehen kannst.",
+    "steps": {
+      "sent": "Gesendet",
+      "justNow": "Gerade eben",
+      "review": "Inhaber und Redaktion lesen sie",
+      "reviewDetail": "Sie nehmen sie an oder lehnen sie ab",
+      "email": "Du bekommst eine E-Mail mit der Antwort",
+      "emailTo": "An {email}",
+      "accepted": "Angenommen",
+      "declined": "Nicht angenommen"
+    },
+    "done": "Fertig",
+    "theirReason": "Ihre Begründung",
+    "noReason": "Sie haben keine Begründung angegeben.",
+    "applyAgainFrom": "Du kannst dich ab dem {date} erneut bewerben.",
+    "youreIn": "Du bist dabei. Als Ersteller kannst du Paper zu {name} hinzufügen.",
+    "yourMessage": "Deine Nachricht",
+    "withdrawSure": "Zurückziehen? Du kannst dich später erneut bewerben.",
+    "keep": "Behalten",
+    "withdraw": "Zurückziehen",
+    "dismiss": "In der Seitenleiste ausblenden",
+    "openCommunity": "Community öffnen",
+    "close": "Schließen",
+    "apply": "Bewerben",
+    "applied": "Beworben",
+    "member": "Mitglied",
+    "notAccepted": "Nicht angenommen",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Wartet auf Antwort",
+    "toReview": "{count, plural, one {# zu prüfen} other {# zu prüfen}}",
+    "applications": "Bewerbungen",
+    "acceptingMakesCreator": "Wer angenommen wird, wird Ersteller. Jede Person bekommt eine E-Mail mit deiner Antwort.",
+    "noMatchingApplications": "Keine Bewerbungen passen zu dieser Suche.",
+    "offForOwner": "Bewerbungen sind aus. Schalte sie unter <link>Auflistung</link> ein.",
+    "offForEditor": "Die Inhaber haben Bewerbungen ausgeschaltet.",
+    "noApplications": "Niemand wartet. Bewerbungen kommen über die Karte auf der Communities-Seite und über die Website.",
+    "appliedWhen": "Beworben {when}",
+    "showAll": "Alles anzeigen",
+    "showLess": "Weniger anzeigen",
+    "declinedNotice": "{name} abgelehnt. Wir haben die Begründung per E-Mail geschickt.",
+    "whyDecline": "Warum? Das steht in der E-Mail.",
+    "reasons": {
+      "topic": "Passt nicht zu unserem Thema",
+      "moreAbout": "Erzähl uns mehr über deine Arbeit",
+      "notNow": "Wir nehmen gerade niemanden auf"
+    },
+    "addANote": "Notiz hinzufügen (optional)",
+    "theyGetAnEmail": "Die Person bekommt eine E-Mail mit deiner Begründung.",
+    "declineAndEmail": "Ablehnen und E-Mail senden",
+    "acceptedNotice": "{name} ist jetzt Ersteller. Wir haben eine E-Mail geschickt.",
+    "acceptAsCreator": "Als Ersteller annehmen",
+    "decline": "Ablehnen",
+    "letPeopleApply": "Bewerbungen zum Beitreten erlauben",
+    "letPeopleApplyHint": "Bewerbungen kommen über die Karte auf der Communities-Seite und über die Website. Inhaber und Redaktion nehmen jede an oder lehnen sie ab.",
+    "onlyPublic": "Nur öffentliche Communities nehmen Bewerbungen an.",
+    "closedNow": "Diese Community nimmt gerade keine Bewerbungen an.",
+    "couldNotSend": "Deine Bewerbung konnte nicht gesendet werden. Versuch es noch einmal.",
+    "couldNotChange": "Das hat nicht geklappt. Versuch es noch einmal.",
+    "showMore": "Mehr anzeigen"
   }
 }

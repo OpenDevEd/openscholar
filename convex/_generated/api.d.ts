@@ -100,8 +100,10 @@ import type * as evidenceLibraries_activeTopics from "../evidenceLibraries/activ
 import type * as evidenceLibraries_addressActions from "../evidenceLibraries/addressActions.js";
 import type * as evidenceLibraries_addressRecovery from "../evidenceLibraries/addressRecovery.js";
 import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiProviderKey.js";
+import type * as evidenceLibraries_applicationEmails from "../evidenceLibraries/applicationEmails.js";
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
+import type * as evidenceLibraries_applications from "../evidenceLibraries/applications.js";
 import type * as evidenceLibraries_approvedQueries from "../evidenceLibraries/approvedQueries.js";
 import type * as evidenceLibraries_assistant from "../evidenceLibraries/assistant.js";
 import type * as evidenceLibraries_clerkOAuthApplications from "../evidenceLibraries/clerkOAuthApplications.js";
@@ -583,8 +585,10 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/addressActions": typeof evidenceLibraries_addressActions;
   "evidenceLibraries/addressRecovery": typeof evidenceLibraries_addressRecovery;
   "evidenceLibraries/aiProviderKey": typeof evidenceLibraries_aiProviderKey;
+  "evidenceLibraries/applicationEmails": typeof evidenceLibraries_applicationEmails;
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
+  "evidenceLibraries/applications": typeof evidenceLibraries_applications;
   "evidenceLibraries/approvedQueries": typeof evidenceLibraries_approvedQueries;
   "evidenceLibraries/assistant": typeof evidenceLibraries_assistant;
   "evidenceLibraries/clerkOAuthApplications": typeof evidenceLibraries_clerkOAuthApplications;

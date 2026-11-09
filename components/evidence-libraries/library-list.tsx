@@ -32,6 +32,7 @@ import { CommandCenterContainer } from "@/components/command-center/command-cent
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
 import { ListSearch } from "./list-controls";
 import { PublicCommunities } from "./public-communities";
+import { ApplyDialog, ApplySeedProvider, type ApplySeed } from "./applications/apply-dialog";
 import { YourCommunities, type Accept, type Community, type CommunityFilter, type SidebarFirstPage } from "./your-communities";
 
 /**
@@ -39,7 +40,7 @@ import { YourCommunities, type Accept, type Community, type CommunityFilter, typ
  * public one in its card. `preloadedOpens` is the server's answer to whether the person may create
  * one here, so New community is there from the first frame. Signed out, it's the public ones alone.
  */
-export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preloadedSidebar }: {
+export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preloadedSidebar, preloadedStanding }: {
   /** Whether the page was read signed in: signed out, it has no sidebar and no New community. */
   signedIn: boolean;
   preloadedOpens?: Preloaded<typeof api.organizationFeatures.opens>;
@@ -47,7 +48,11 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
   preloadedPublic?: Preloaded<typeof api.evidenceLibraries.directory.directory>;
   /** The sidebar's first page, for the filter in the address. */
   preloadedSidebar?: SidebarFirstPage;
+  /** Where the person stands with the directory's first page of cards (OS-31). */
+  preloadedStanding?: Preloaded<typeof api.evidenceLibraries.applications.standing>;
 }) {
+  // What the card or sidebar row that opened the apply dialog knew, so it opens with everything in it.
+  const [applySeed, setApplySeed] = useState<ApplySeed | null>(null);
   const t = useTranslations("libraryList");
   const live = useWorkspaceFeatures().data;
   const creates = signedIn && (live ?? (preloadedOpens ? preloadedQueryResult(preloadedOpens) : undefined))?.createsCommunities === true;
@@ -157,8 +162,9 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
             {signedIn && view === "submissions" ? (
               <YourSubmissions search={text} heading={tabs} submissions={submissions} />
             ) : (
-              <PublicCommunities search={text} preloaded={preloadedPublic} heading={signedIn ? tabs : undefined} />
+              <PublicCommunities search={text} preloaded={preloadedPublic} heading={signedIn ? tabs : undefined} signedIn={signedIn} preloadedStanding={preloadedStanding} />
             )}
+            <ApplyDialog signedIn={signedIn} seed={applySeed} />
             <Dialog open={Boolean(declining)} onOpenChange={(open) => { if (!open) setDeclining(null); }}>
               <DialogContent showCloseButton={false}>
                 <DialogHeader>
@@ -194,15 +200,17 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
         </PageWrapper>
   );
   // Signed out there's nothing of theirs to list: the public communities take the page.
-  if (!signedIn) return page;
+  if (!signedIn) return <ApplySeedProvider value={setApplySeed}>{page}</ApplySeedProvider>;
   return (
-    <TwoColumnLayout
-      leftColumn={
-        <aside aria-label={t("sidebar.label")} className="relative hidden h-full w-80 bg-background lg:block">
-          {cloneElement(yours, { framed: true })}
-        </aside>
-      }
-      rightColumn={page}
-    />
+    <ApplySeedProvider value={setApplySeed}>
+      <TwoColumnLayout
+        leftColumn={
+          <aside aria-label={t("sidebar.label")} className="relative hidden h-full w-80 bg-background lg:block">
+            {cloneElement(yours, { framed: true })}
+          </aside>
+        }
+        rightColumn={page}
+      />
+    </ApplySeedProvider>
   );
 }

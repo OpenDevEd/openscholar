@@ -130,6 +130,7 @@
     "screening/queries:getScreeningProgress": "screening/queries:getScreeningJob",
     "screening/queries:listUserScreeningJobs": "screening/queries:listJobs",
     "topics/details:get": "research/topics:get",
+    "evidenceLibraries/directory:card": "evidenceLibraries/directory:listPublic",
     "evidenceLibraries/invitationActions:invite": "evidenceLibraries/assistant:invite",
     "evidenceLibraries/invitationActions:respond": "evidenceLibraries/assistant:answerInvitation",
     "evidenceLibraries/invitations:change": "evidenceLibraries/assistant:changeInvitation",

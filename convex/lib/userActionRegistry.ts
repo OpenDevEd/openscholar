@@ -50,6 +50,7 @@ import { extractAction, resumeAction as extractionResumeHeldAction, retryAction 
 import { findAction as mentionFindAction } from "../assistant/mentions";
 import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
+import { acceptAction as applicationAcceptAction, applyAction as applicationApplyAction, declineAction as applicationDeclineAction, hideAction as applicationHideAction, mineAction as applicationMineAction, setOpenAction as applicationSetOpenAction, standingAction as applicationStandingAction, waitingAction as applicationWaitingAction, waitingCountsAction as applicationWaitingCountsAction, withdrawAction as applicationWithdrawAction } from "../evidenceLibraries/applications";
 import { addMemberAction as libraryAddMemberAction, changeRoleAction as libraryChangeRoleAction, removeMemberAction as libraryRemoveMemberAction, draftAction as libraryDraftAction, librariesAction as librariesListAction, revisionAction as libraryRevisionAction, editDraftAction as libraryEditDraftAction, teamAction as libraryTeamAction, inviteAction as libraryInviteAction, changeInvitationAction as libraryChangeInvitationAction, invitationsAction as libraryInvitationsAction, answerInvitationAction as libraryAnswerInvitationAction, startLibraryAction as libraryStartLibraryAction, sourcesAction as librarySourcesAction, runningCollectionsAction as libraryRunningCollectionsAction, runningInstitutionsAction as libraryRunningInstitutionsAction, runningPublicationsAction as libraryRunningPublicationsAction, runningPublicationAction as libraryRunningPublicationAction, syncSourceAction as librarySyncSourceAction, screeningRequestAction as libraryScreeningRequestAction, gradeSourceAction as libraryGradeSourceAction, trySourceSubjectAction as libraryTrySourceSubjectAction, setVisibilityAction as librarySetVisibilityAction, previewPapersAction as libraryPreviewPapersAction, addPapersAction as libraryAddPapersAction, addedPapersAction as libraryAddedPapersAction, removeAddedPaperAction as libraryRemoveAddedPaperAction, setAddedPapersSettingsAction as librarySetAddedPapersSettingsAction, connectCollectionAction as libraryConnectCollectionAction, putLiveAction as libraryPutLiveAction, submissionsAction as librarySubmissionsAction } from "../evidenceLibraries/assistant";
 import { listPublicAction as publicCommunitiesAction } from "../evidenceLibraries/directory";
 import { createAction as authorCreateAction, directoryAction as authorDirectoryAction, editorsAction as authorEditorsAction, invitationsAction as authorInvitationsAction, profileAction as authorProfileAction, publicationsAction as authorPublicationsAction } from "../authors/assistant";
@@ -98,6 +99,16 @@ export const USER_ACTIONS: readonly UserAction[] = [
   libraryAnswerInvitationAction,
   libraryStartLibraryAction,
   librarySetVisibilityAction,
+  applicationApplyAction,
+  applicationWithdrawAction,
+  applicationHideAction,
+  applicationMineAction,
+  applicationStandingAction,
+  applicationWaitingAction,
+  applicationWaitingCountsAction,
+  applicationAcceptAction,
+  applicationDeclineAction,
+  applicationSetOpenAction,
   libraryPreviewPapersAction,
   libraryAddPapersAction,
   libraryAddedPapersAction,

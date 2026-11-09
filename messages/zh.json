@@ -4431,6 +4431,66 @@
         "did": "已读取你发送给社区的论文",
         "where": "Evidence Community",
         "ask": "读取你发送给社区的论文"
+      },
+      "applyToCommunity": {
+        "doing": "正在申请加入社区",
+        "did": "已申请加入社区",
+        "where": "Evidence Community",
+        "ask": "申请加入社区"
+      },
+      "withdrawApplication": {
+        "doing": "正在撤回对社区的申请",
+        "did": "已撤回对社区的申请",
+        "where": "Evidence Community",
+        "ask": "撤回对社区的申请"
+      },
+      "hideApplication": {
+        "doing": "正在隐藏被拒绝的申请",
+        "did": "已隐藏被拒绝的申请",
+        "where": "Evidence Community",
+        "ask": "隐藏被拒绝的申请"
+      },
+      "myApplications": {
+        "doing": "正在读取你对社区的申请",
+        "did": "已读取你对社区的申请",
+        "where": "Evidence Community",
+        "ask": "读取你对社区的申请"
+      },
+      "applicationStanding": {
+        "doing": "正在查看你在社区中的状态",
+        "did": "已查看你在社区中的状态",
+        "where": "Evidence Community",
+        "ask": "查看你在社区中的状态"
+      },
+      "applicationsWaiting": {
+        "doing": "正在读取加入社区的申请",
+        "did": "已读取加入社区的申请",
+        "where": "Evidence Community",
+        "ask": "读取加入社区的申请"
+      },
+      "applicationCounts": {
+        "doing": "正在统计待处理的申请",
+        "did": "已统计待处理的申请",
+        "where": "Evidence Community",
+        "ask": "统计待处理的申请"
+      },
+      "acceptApplication": {
+        "doing": "正在接受加入申请",
+        "did": "已接受加入申请",
+        "where": "Evidence Community",
+        "ask": "接受加入申请"
+      },
+      "declineApplication": {
+        "doing": "正在拒绝加入申请",
+        "did": "已拒绝加入申请",
+        "where": "Evidence Community",
+        "ask": "拒绝加入申请"
+      },
+      "applicationsOpen": {
+        "doing": "正在开启或关闭加入申请",
+        "did": "已开启或关闭加入申请",
+        "where": "Evidence Community",
+        "ask": "开启或关闭加入申请"
       }
     },
     "asks": {
@@ -5970,5 +6030,93 @@
     "askQueue": "将 {count, plural, other {# 篇论文}} 送审",
     "alreadyInIt": "已在其中",
     "inReview": "审核中"
+  },
+  "communityApplications": {
+    "joinName": "加入 {name}",
+    "runBy": "由 {name} 运营",
+    "anOpenscholarMember": "一位 Openscholar 成员",
+    "asACreator": "作为创作者，你可以",
+    "can": {
+      "add": {
+        "title": "添加论文",
+        "body": "把你找到的论文发送到它的审核队列。"
+      },
+      "edit": {
+        "title": "编辑记录",
+        "body": "修正信息并上传 PDF。"
+      },
+      "review": {
+        "title": "提交审核",
+        "body": "编辑会检查你的工作，然后发布。"
+      }
+    },
+    "messageLabel": "给团队的留言",
+    "messageHint": "说说你是谁、为什么想加入。由所有者和编辑决定。",
+    "messagePlaceholder": "我是……的研究人员。我想添加……",
+    "messageMissing": "请给团队写几句话。",
+    "whoSees": "所有者和编辑会看到你的姓名、邮箱和这条留言。",
+    "cancel": "取消",
+    "send": "发送申请",
+    "signInToSend": "登录后发送",
+    "sentTitle": "申请已发送",
+    "sentBody": "它在“你的社区”中，你可以在那里撤回。",
+    "steps": {
+      "sent": "已发送",
+      "justNow": "刚刚",
+      "review": "所有者和编辑阅读申请",
+      "reviewDetail": "他们接受或拒绝",
+      "email": "你会收到一封邮件告知结果",
+      "emailTo": "发送至 {email}",
+      "accepted": "已接受",
+      "declined": "未被接受"
+    },
+    "done": "完成",
+    "theirReason": "对方的理由",
+    "noReason": "对方没有说明理由。",
+    "applyAgainFrom": "你可以在 {date} 之后再次申请。",
+    "youreIn": "你已加入，可以作为创作者向 {name} 添加论文。",
+    "yourMessage": "你的留言",
+    "withdrawSure": "要撤回吗？之后可以再次申请。",
+    "keep": "保留",
+    "withdraw": "撤回",
+    "dismiss": "从侧边栏隐藏",
+    "openCommunity": "打开社区",
+    "close": "关闭",
+    "apply": "申请",
+    "applied": "已申请",
+    "member": "成员",
+    "notAccepted": "未被接受",
+    "applyFor": "{label}：{name}",
+    "waitingForReview": "等待回复",
+    "toReview": "{count, plural, other {# 个待审核}}",
+    "applications": "申请",
+    "acceptingMakesCreator": "接受后对方成为创作者。每位申请人都会收到邮件告知你的答复。",
+    "noMatchingApplications": "没有符合此搜索的申请。",
+    "offForOwner": "申请已关闭。可在<link>展示</link>中开启。",
+    "offForEditor": "所有者已关闭申请。",
+    "noApplications": "目前没有人在等待。大家可以从“社区”页面的卡片和它的网站申请。",
+    "appliedWhen": "{when}申请",
+    "showAll": "显示全部",
+    "showLess": "收起",
+    "declinedNotice": "已拒绝 {name}，我们已把你的理由发邮件给对方。",
+    "whyDecline": "为什么？对方会在邮件中看到。",
+    "reasons": {
+      "topic": "不在我们的主题范围内",
+      "moreAbout": "请多介绍一下你的工作",
+      "notNow": "目前不添加新成员"
+    },
+    "addANote": "添加备注（可选）",
+    "theyGetAnEmail": "对方会收到附有你理由的邮件。",
+    "declineAndEmail": "拒绝并发送邮件",
+    "acceptedNotice": "{name} 现在是创作者了，我们已发邮件通知。",
+    "acceptAsCreator": "接受为创作者",
+    "decline": "拒绝",
+    "letPeopleApply": "允许申请加入",
+    "letPeopleApplyHint": "大家可以从“社区”页面的卡片和它的网站申请。所有者和编辑逐一接受或拒绝。",
+    "onlyPublic": "只有公开社区可以接收申请。",
+    "closedNow": "该社区目前不接收申请。",
+    "couldNotSend": "无法发送你的申请，请重试。",
+    "couldNotChange": "操作未完成，请重试。",
+    "showMore": "显示更多"
   }
 }

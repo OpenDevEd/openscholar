@@ -20,6 +20,8 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
   "library-digest": { kind: "token bucket", rate: 3, period: HOUR, capacity: 3 },
   "profile-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
   "library-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
+  // Applications to join communities one person sends (OS-31), each emailing its owners and editors.
+  "community-application": { kind: "fixed window", rate: 10, period: DAY, start: 0 },
   "item-invitation": { kind: "token bucket", rate: 20, period: HOUR, capacity: 20 },
   // The contact form on openscholar.ai (convex/contact.ts): a few messages an hour from one visitor, and a ceiling on
   // what everyone together can send a day.

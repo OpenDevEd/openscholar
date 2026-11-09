@@ -877,6 +877,15 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(bindings.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
+    // Applications to join it go too, so a waiting one stops counting against the person who sent it (OS-31).
+    const applications = await ctx.db
+      .query("libraryApplications")
+      .withIndex("by_libraryId_and_state_and_createdAt", (query) => query.eq("libraryId", args.libraryId))
+      .take(BATCH_SIZE);
+    if (applications.length > 0) {
+      await Promise.all(applications.map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
     // Its people's roles and its invitations go with it, a step at a time, so they don't count against the people who held them (../sharing/items.ts `followShared`).
     await ctx.db.delete(operation._id);
     await ctx.db.delete(args.libraryId);

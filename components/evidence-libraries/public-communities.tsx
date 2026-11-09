@@ -19,6 +19,10 @@ import { preloadedQueryResult } from "convex/nextjs";
 import { cn } from "@/lib/utils";
 import { LIST_FILTER, ListEmpty, ListLoading } from "./list-controls";
 import { FadeImage } from "@/components/ui/fade-image";
+import { ApplyCorner } from "./applications/apply-corner";
+import { fromCard, type Standing } from "./applications/apply-dialog";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { useWorkspace } from "@/lib/workspaces/url";
 
 const PER_PAGE = PUBLIC_PER_PAGE;
 /** Two rows of cards and the pager under them (its top padding and buttons, and its margin): the place held while the first are read. */
@@ -28,9 +32,13 @@ type Sort = (typeof SORTS)[number];
 type Card = FunctionReturnType<typeof api.evidenceLibraries.directory.directory>["page"][number];
 
 /** Every public community, as cards, a page at a time, sorted and searched on the server (#1090), for anyone, signed in or not. */
-export function PublicCommunities({ search, preloaded, heading }: {
+export function PublicCommunities({ search, preloaded, heading, signedIn = false, preloadedStanding }: {
   search: string;
   preloaded?: Preloaded<typeof api.evidenceLibraries.directory.directory>;
+  /** Signed in, each card's corner says where the person stands with it: Apply, Applied, or nothing for one they're in. */
+  signedIn?: boolean;
+  /** Where the person stands with the cards of the server's first page, read with the page. */
+  preloadedStanding?: Preloaded<typeof api.evidenceLibraries.applications.standing>;
   /** In place of the title, such as the tabs that switch to Your submissions. The title stays for screen readers. */
   heading?: ReactNode;
 }) {
@@ -40,6 +48,12 @@ export function PublicCommunities({ search, preloaded, heading }: {
   // The server's first page, newest first, until the live one arrives: the cards are there from the first frame.
   const first = preloaded && live.isLoading && sort === "newest" && !search ? preloadedQueryResult(preloaded) : undefined;
   const read = first ? { ...live, items: first.page, isLoading: false, hasPages: !first.isDone } : live;
+  // Where the person stands with each card shown, read for the page of cards; the first page's comes with the page.
+  const workspaceId = useWorkspace();
+  const ids = read.items.map((community) => community._id);
+  const standingLive = useProtectedQuery(api.evidenceLibraries.applications.standing, signedIn && workspaceId && ids.length ? { workspaceId, libraryIds: ids } : "skip").data;
+  const standingRead = standingLive ?? (preloadedStanding ? preloadedQueryResult(preloadedStanding) : undefined);
+  const standing = new Map((standingRead?.page ?? []).map((row) => [row.libraryId as string, row]));
   return (
     <section aria-labelledby="public-communities" className="@container/public flex min-w-0 flex-col p-4 sm:p-5" style={{ "--card-h": "17.25rem" } as React.CSSProperties}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -68,7 +82,7 @@ export function PublicCommunities({ search, preloaded, heading }: {
             className={cn("grid grid-cols-1 content-start gap-4 @xl/public:grid-cols-2 @4xl/public:grid-cols-3", read.isStale && "opacity-60")}
             inert={read.isStale || undefined}
           >
-            {read.items.map((community) => <CommunityCard key={community._id} community={community} />)}
+            {read.items.map((community) => <CommunityCard key={community._id} community={community} signedIn={signedIn} standing={standing.get(community._id)} />)}
           </ul>
         ) : (
           <ListEmpty icon={SearchX}>{search ? t("noMatches") : t("none")}</ListEmpty>
@@ -88,7 +102,7 @@ export function PublicCommunities({ search, preloaded, heading }: {
 }
 
 /** One public community: its colour with its icon blurred across it, the icon itself, then what it holds. Opens its public site. */
-export function CommunityCard({ community }: { community: Card }) {
+export function CommunityCard({ community, signedIn = false, standing }: { community: Card; signedIn?: boolean; standing?: Standing }) {
   const t = useTranslations("libraryList.directory");
   const format = useFormatter();
   const locale = useLocale();
@@ -105,12 +119,9 @@ export function CommunityCard({ community }: { community: Card }) {
   return (
     // One height for every card, so a new sort changes what each holds without moving the rows.
     <li className="fade-enter h-(--card-h)">
-      <a
-        href={community.address}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group flex h-full flex-col overflow-hidden rounded-xl border border-border-subtle bg-background outline-offset-2 transition-[border-color,translate] duration-200 hover:-translate-y-0.5 hover:border-border focus-visible:outline-2 focus-visible:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-      >
+      {/* The name's link covers the card, under its Apply button. */}
+      <div className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border-subtle bg-background transition-[border-color,translate] duration-200 hover:-translate-y-0.5 hover:border-border has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-ring motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <ApplyCorner community={fromCard(community)} standing={standing} signedIn={signedIn} />
         {/* Its own icon blurred across its theme's accent; without one, the accent alone. */}
         <div aria-hidden className="relative h-20 shrink-0 overflow-hidden" style={{ background: community.faviconUrl ? accent : `linear-gradient(135deg, ${accent}, color-mix(in oklab, ${accent} 55%, var(--background)))` }}>
           {community.faviconUrl ? <FadeImage src={icon} className="absolute -inset-4 size-[calc(100%+2rem)] object-cover blur-xl saturate-150" shown="opacity-90" /> : null}
@@ -122,7 +133,9 @@ export function CommunityCard({ community }: { community: Card }) {
             <FadeImage src={icon} fallback="/icon.svg" className="size-full object-cover" />
           </span>
           <TooltipHint label={community.name} onlyWhenClipped>
-            <h3 className="truncate text-sm font-semibold group-hover:underline">{community.name}</h3>
+            <h3 className="truncate text-sm font-semibold group-hover:underline">
+              <a href={community.address} target="_blank" rel="noopener noreferrer" className="outline-none after:absolute after:inset-0">{community.name}</a>
+            </h3>
           </TooltipHint>
           {/* Its tagline, or its description; one with neither says so, quieter, so the space reads as empty on purpose. */}
           {community.tagline ? <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{community.tagline}</p> : <p className="mt-1 text-xs leading-relaxed text-subtle-foreground">{t("noDescription")}</p>}
@@ -150,7 +163,7 @@ export function CommunityCard({ community }: { community: Card }) {
             </div>
           </div>
         </div>
-      </a>
+      </div>
     </li>
   );
 }

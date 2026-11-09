@@ -18,7 +18,7 @@ import { rerateOnMembership } from "../ratings";
 import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
-import { ADMIN_LIST, countList, libraryVersionList, walletKeyList, workspaceLibrariesOf } from "./listCounts";
+import { ADMIN_LIST, countList, libraryVersionList, personWaitingApplicationsOf, waitingApplicationsOf, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
 import { refreshOnSearch } from "../research/suggestionRefresh";
 import { recountOnGrant, recountOnMembership, recountOnOrganizationGrant } from "../evidenceLibraries/peopleCount";
@@ -54,6 +54,8 @@ triggers.register("walletKeys", countList(walletKeyList));
 triggers.register("admins", countList(() => ADMIN_LIST));
 triggers.register("evidenceLibraryConfigOperations", countList(libraryVersionList));
 triggers.register("evidenceLibraries", countList((library) => (library.workspaceId ? workspaceLibrariesOf(library.workspaceId) : null)));
+triggers.register("libraryApplications", countList((application) => (application.state === "waiting" ? waitingApplicationsOf(application.libraryId) : null)));
+triggers.register("libraryApplications", countList((application) => (application.state === "waiting" ? personWaitingApplicationsOf(application.userId) : null)));
 // A collection's view and every filtered count read what these keep (convex/library/facets.ts).
 triggers.register("libraryItems", copyChangedFacets);
 triggers.register("libraryItems", countItemChange);

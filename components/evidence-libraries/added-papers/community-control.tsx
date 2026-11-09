@@ -68,6 +68,8 @@ const fromOverview = (library: Overview): Row => ({
     faviconUrl: library.faviconUrl ?? null,
     address: library.publicAddress,
     owner: { ...library.organization, workspaceId: library.workspaceId } as Card["owner"],
+    // Beside the popover, the card shows the community; no Apply on it.
+    applicationsOpen: false,
   },
 });
 
@@ -79,7 +81,8 @@ const fromCard = (card: Card): Row => ({
   owner: { name: card.owner.name ?? "", imageUrl: card.owner.imageUrl ?? null, kind: card.owner.kind, workspaceId: card.owner.workspaceId },
   address: card.address,
   role: "viewer",
-  card,
+  // The apply dialog is the Communities page's: beside this popover the card only shows the community.
+  card: { ...card, applicationsOpen: false },
 });
 
 /** A community the person sent papers to lately, as Openscholar keeps it. */
@@ -97,6 +100,7 @@ const fromRecent = (recent: Recent, yours: Row | undefined): Row => ({
     faviconUrl: recent.faviconUrl,
     address: recent.address ?? "",
     owner: { name: recent.owner?.name ?? null, kind: recent.owner?.kind ?? "organization", imageUrl: recent.owner?.imageUrl ?? null, workspaceId: recent.owner?.workspaceId ?? recent.workspaceId, colour: recent.owner?.colour ?? null } as Card["owner"],
+    applicationsOpen: false,
   },
 });
 

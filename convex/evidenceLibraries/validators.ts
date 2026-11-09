@@ -297,6 +297,8 @@ export const evidenceLibraryFields = {
   updatedAt: v.number(),
   /** Left out of the public directory by its owners; absent is public. It decides only the listing. */
   unlisted: v.optional(v.literal(true)),
+  /** Its owners turned off applications to join (OS-31); absent takes them, while it's public. */
+  applicationsClosed: v.optional(v.literal(true)),
   /** When it first went live: the directory's Newest. */
   liveAt: v.optional(v.number()),
   /** The public records it last said it holds, and when (./directory.ts); the directory sorts by it. */
@@ -1629,3 +1631,22 @@ export const activationValidator = v.object({
   revisionNumber: v.number(),
   status: v.union(v.literal("queued"), v.literal("running"), v.literal("succeeded"), v.literal("failed")),
 });
+
+/**
+ * A person's application to join a community (OS-31): one row a person and community, kept and replaced when they
+ * apply again, so a decline's wait outlives it. `listed` is what their Communities sidebar shows: a waiting one, and a
+ * declined one until they hide it.
+ */
+export const applicationStateValidator = v.union(v.literal("waiting"), v.literal("accepted"), v.literal("declined"));
+export const libraryApplicationFields = {
+  libraryId: v.id("evidenceLibraries"),
+  userId: v.id("users"),
+  message: v.string(),
+  state: applicationStateValidator,
+  listed: v.boolean(),
+  createdAt: v.number(),
+  decidedAt: v.optional(v.number()),
+  decidedBy: v.optional(v.id("users")),
+  /** Why it was declined, as the people who decided wrote it; the applicant reads it. */
+  reason: v.optional(v.string()),
+};
