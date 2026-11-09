@@ -113,7 +113,7 @@ export const applyStatus = internalMutation({
     }
     for (const row of rows) {
       if ((row.generation ?? 0) >= generation) continue;
-      // Taken back by the person who sent it, it's no longer listed, but stays with its generation.
+      // Taken back by the person who sent it, it's listed as withdrawn, and keeps its generation.
       await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at });
     }
     return null;
@@ -211,15 +211,12 @@ export async function readSent(ctx: QueryCtx, person: Doc<"users">, { pagination
     ? await ctx.db
         .query("paperSubmissions")
         .withSearchIndex("search_text", (q) => (status ? q.search("searchText", needle).eq("userId", person._id).eq("status", status) : q.search("searchText", needle).eq("userId", person._id)))
-        .filter((q) => (status ? q.eq(q.field("status"), status) : q.neq(q.field("status"), "withdrawn")))
         .paginate(read)
     : await (status
         ? ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status))
         : ctx.db.query("paperSubmissions").withIndex("by_user_and_sentAt", (q) => q.eq("userId", person._id))
       )
         .order("desc")
-        // Withdrawn papers are kept for their generation, and listed only when asked for.
-        .filter((q) => (status ? q.eq(q.field("status"), status) : q.neq(q.field("status"), "withdrawn")))
         .paginate(read);
   return { ...page, page: await Promise.all(page.page.map((row) => rowOf(ctx, row, person))) };
 }
@@ -239,15 +236,15 @@ export const mine = query({
 /** How many papers the signed-in person has of each status, up to SUBMISSIONS_COUNTED each, for the status filter. */
 export const counts = query({
   args: {},
-  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), all: v.number(), capped: v.boolean() }),
+  returns: v.object({ queued: v.number(), published: v.number(), returned: v.number(), withdrawn: v.number(), all: v.number(), capped: v.boolean() }),
   handler: async (ctx) => {
     const person = await senderOf(ctx);
-    const count = async (status: "queued" | "published" | "returned") =>
+    const count = async (status: Infer<typeof submissionStatusValidator>) =>
       person ? (await ctx.db.query("paperSubmissions").withIndex("by_user_and_status_and_sentAt", (q) => q.eq("userId", person._id).eq("status", status)).take(SUBMISSIONS_COUNTED + 1)).length : 0;
-    const read = await Promise.all([count("queued"), count("published"), count("returned")]);
+    const read = await Promise.all([count("queued"), count("published"), count("returned"), count("withdrawn")]);
     // Past the cap, a count is at least it: `capped` says so, and the filter shows it with a plus.
-    const [queued, published, returned] = read.map((n) => Math.min(n, SUBMISSIONS_COUNTED));
-    return { queued: queued!, published: published!, returned: returned!, all: queued! + published! + returned!, capped: read.some((n) => n > SUBMISSIONS_COUNTED) };
+    const [queued, published, returned, withdrawn] = read.map((n) => Math.min(n, SUBMISSIONS_COUNTED));
+    return { queued: queued!, published: published!, returned: returned!, withdrawn: withdrawn!, all: queued! + published! + returned! + withdrawn!, capped: read.some((n) => n > SUBMISSIONS_COUNTED) };
   },
 });
 

@@ -5,7 +5,7 @@ import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink, ReviewQueueIcon, SearchX, Undo2 } from "@/components/icons";
+import { CheckCircle2, CircleX, ExternalLink, ReviewQueueIcon, SearchX, Undo2 } from "@/components/icons";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ const PER_PAGE = 8;
 /** A row's height, which every row keeps, so a page holds its height and the pager stays put. */
 const ROW_REM = 4;
 
-const SHOWS = ["all", "queued", "published", "returned"] as const;
+const SHOWS = ["all", "queued", "published", "returned", "withdrawn"] as const;
 type Show = (typeof SHOWS)[number];
 type Submission = FunctionReturnType<typeof api.evidenceLibraries.submissions.mine>["page"][number];
 
@@ -44,13 +44,13 @@ export function useSubmissions(search: string, signedIn: boolean) {
 
 /**
  * Every paper you sent to a community, yours or a public one, and where it got to: waiting in its review queue,
- * published, or returned with the reviewer's reason. One still waiting can be withdrawn.
+ * published, declined with the reviewer's reason, or withdrawn by you. One still waiting can be withdrawn.
  */
 export function YourSubmissions({ search, heading, submissions }: { search: string; heading: ReactNode; submissions: ReturnType<typeof useSubmissions> }) {
   const t = useTranslations("addedPapers");
   const format = useFormatter();
   const { read, counts, show, setShow } = submissions;
-  const label: Record<Show, string> = { all: t("everyStatus"), queued: t("inQueue"), published: t("statusPublished"), returned: t("returned") };
+  const label: Record<Show, string> = { all: t("everyStatus"), queued: t("inQueue"), published: t("statusPublished"), returned: t("returned"), withdrawn: t("statusWithdrawn") };
 
   return (
     <section aria-label={t("tabSubmissions")} className="flex min-w-0 flex-col p-4 sm:p-5">
@@ -159,7 +159,9 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
       {status === "queued" ? (
         <StatusChip tone="running" icon={ReviewQueueIcon}>{t("inQueue")}</StatusChip>
       ) : status === "returned" ? (
-        <StatusChip tone="warning" icon={Undo2}>{t("returned")}</StatusChip>
+        <StatusChip tone="warning" icon={CircleX}>{t("returned")}</StatusChip>
+      ) : status === "withdrawn" ? (
+        <StatusChip tone="neutral" icon={Undo2}>{t("statusWithdrawn")}</StatusChip>
       ) : (
         <StatusChip tone="success" icon={CheckCircle2}>{t("statusPublished")}</StatusChip>
       )}
