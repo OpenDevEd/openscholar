@@ -84,8 +84,12 @@ describe("public route auth matrix", () => {
       "/history",
       // A paper's page, which search engines read signed out.
       // A paper's citation files, for reference managers and tools that follow a paper page's links.
+      // A paper's page by its DOI, for lists that know only the DOI.
+      "/papers/doi/x",
       "/papers/x/cite.bib",
       "/papers/x/cite.ris",
+      // The paper's picture, for link previews and search engines.
+      "/papers/x/cover.png",
       "/papers/x/x",
       "/pricing",
       "/privacy",
