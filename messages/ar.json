@@ -3436,7 +3436,7 @@
       "times": "{count, plural, zero {مرة} one {مرة} two {مرتين} few {مرات} many {مرة} other {مرة}}",
       "unfold": "عرض كل واحدة",
       "fold": "عرضها كخطوة واحدة",
-      "declined": "غير مسموح",
+      "declined": "رفضتَ ذلك",
       "waiting": "في انتظار إجابة",
       "allowed": "مسموح",
       "searches": {

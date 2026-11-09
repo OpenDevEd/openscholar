@@ -3436,7 +3436,7 @@
       "times": "{count, plural, one {vez} other {veces}}",
       "unfold": "Mostrar cada uno",
       "fold": "Mostrar como uno",
-      "declined": "No permitido",
+      "declined": "Dijiste que no",
       "waiting": "Esperando una respuesta",
       "allowed": "Permitido",
       "searches": {

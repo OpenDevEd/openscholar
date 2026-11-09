@@ -3435,7 +3435,7 @@
       "times": "{count, plural, one {time} other {times}}",
       "unfold": "Show each one",
       "fold": "Show as one",
-      "declined": "Not allowed",
+      "declined": "You said no",
       "waiting": "Waiting for an answer",
       "allowed": "Allowed",
       "searches": {

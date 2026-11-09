@@ -3436,7 +3436,7 @@
       "times": "{count, plural, one {Mal} other {Mal}}",
       "unfold": "Jeden einzeln anzeigen",
       "fold": "Als einen Schritt anzeigen",
-      "declined": "Nicht erlaubt",
+      "declined": "Von dir abgelehnt",
       "waiting": "Wartet auf eine Antwort",
       "allowed": "Erlaubt",
       "searches": {
