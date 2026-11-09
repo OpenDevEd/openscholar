@@ -4,8 +4,11 @@ import { internal } from "../_generated/api";
 import { httpAction, type ActionCtx, type QueryCtx } from "../_generated/server";
 import { internalQuery } from "../lib/functions";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
+import { readConvexErrorData } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { readWork } from "../paperSets/openalex";
+import { spender } from "../paperSets/search";
+import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { normalDoi, openalexWork } from "../../lib/papers/paper-ref";
 import { paperLinkOf } from "../../lib/papers/paper-links";
 import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
@@ -58,6 +61,8 @@ const resolveSchema = z
     contractVersion: z.literal(1),
     libraryId: z.string().min(1).max(128),
     links: z.array(z.string().min(1).max(2048)).min(1).max(ADDED_PAPERS_MAX),
+    /** The signed-in reader the community asks for, whose search allowance our index's reads count against, as their searches do. */
+    clerkUserId: z.string().min(1).max(128).optional(),
   })
   .strict();
 
@@ -71,17 +76,19 @@ export const resolvePapers: ReturnType<typeof httpAction> = httpAction(async (ct
   if (!credential) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   const parsed = resolveSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return jsonResponse(400, { error: { code: "invalid_request", retryable: false } });
-  const { libraryId, links } = parsed.data;
+  const { libraryId, links, clerkUserId } = parsed.data;
   try {
     await ctx.runQuery(internal.topics.serviceHttp.authenticate, { libraryId, credentialDigest: await digestOpaqueToken(credential) });
   } catch {
     return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   }
-  // ponytail: a community's reads of our index aren't counted against anyone; at most ADDED_PAPERS_MAX a request, from a signed community.
+  // A reader's lookups count against their own allowance. The team's, from the admin, aren't counted: at most ADDED_PAPERS_MAX a request, from a signed community.
+  const spend = clerkUserId ? spender(ctx, clerkUserId) : async () => true;
   try {
-    const papers = await Promise.all(links.map((link) => paperOfLink(ctx, link, async () => true, { withDoi: true })));
+    const papers = await Promise.all(links.map((link) => paperOfLink(ctx, link, spend, { withDoi: true })));
     return jsonResponse(200, { papers });
   } catch (error) {
+    if (readConvexErrorData(error)?.message === new OpenAlexLimitedError().message) return jsonResponse(429, { error: { code: "rate_limited", retryable: true } });
     console.error("[paper links] couldn't follow a community's links", { libraryId, error: String(error) });
     return jsonResponse(503, { error: { code: "temporarily_unavailable", retryable: true } });
   }
