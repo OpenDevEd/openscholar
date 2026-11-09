@@ -12,7 +12,7 @@ Lorsque vous naviguez sur openscholar.ai, de petits fichiers de données appelé
 | `NEXT_LOCALE` | Mémorise votre langue | 1 an |
 | `__cf_bm`, `_cfuvid` | Cloudflare les utilise pour protéger le site du trafic automatisé | 30 minutes, ou jusqu'à la fermeture du navigateur |
 
-Votre choix concernant les cookies et vos réglages d'affichage, comme les panneaux ouverts, restent dans le stockage local de votre navigateur.
+Votre choix concernant les cookies reste dans un cookie nommé openscholar_consent. Vos réglages d'affichage, comme les panneaux ouverts, restent dans le stockage local de votre navigateur.
 
 ## Cookies de performance et d'analyse (facultatifs)
 
@@ -74,7 +74,7 @@ Avant votre choix, ou si vous refusez les cookies d'analyse, nous comptons seule
 
 ## Gestion de vos préférences en matière de cookies
 
-Vous pouvez mettre à jour vos préférences en matière de cookies à tout moment en cliquant sur le lien « Paramètres des cookies » disponible dans le pied de page de chaque page d'openscholar.ai.
+Vous pouvez mettre à jour vos préférences en matière de cookies à tout moment en cliquant sur le lien « Préférences de cookies » disponible dans le pied de page de chaque page d'openscholar.ai.
 
 De plus, tous les principaux navigateurs web proposent des paramètres pour contrôler les cookies. Pour des informations complètes sur les cookies et comment voir lesquels sont stockés sur votre appareil, consultez [www.aboutcookies.org](http://www.aboutcookies.org/) ou [www.allaboutcookies.org](http://www.allaboutcookies.org/).
 
@@ -128,7 +128,7 @@ Si vous préférez empêcher la création de notre cookie d'analyse :
 2. **Bloquer uniquement les cookies tiers** : Cela arrête les traceurs externes tout en permettant notre cookie d'analyse interne - cela ne bloquera pas le cookie openscholar.ai
 3. **Installer des extensions de navigateur axées sur la confidentialité** : Des outils comme Privacy Badger ou uBlock Origin peuvent empêcher les cookies d'analyse
 4. **Activer Ne pas suivre** : Bien qu'openscholar.ai n'honore actuellement pas les signaux DNT, vous pouvez activer cette option dans les paramètres de votre navigateur
-5. **Utiliser nos paramètres de cookies** : Cliquez sur « Paramètres des cookies » dans le pied de page de n'importe quelle page openscholar.ai pour ajuster vos préférences
+5. **Utiliser nos paramètres de cookies** : Cliquez sur « Préférences de cookies » dans le pied de page de n'importe quelle page openscholar.ai pour ajuster vos préférences
 
 ### Nous contacter
 
