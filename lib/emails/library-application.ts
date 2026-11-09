@@ -10,7 +10,7 @@ export function renderApplicationReceived({ identity, applicant, message, review
 	return renderLibraryEmail({
 		identity,
 		title: "Someone wants to join the community",
-		content: `<p style="${emailStyles.paragraph}"><strong style="color:#202822">${escapeHtml(applicant.name)}</strong> (${escapeHtml(applicant.email)}) applied to join <strong style="color:#202822">${escapeHtml(identity.name)}</strong> as a Creator.</p>${quote(message)}${emailButton("Review applications", reviewUrl, identity.accent)}<p style="font-size:13px;line-height:1.7;color:#797b73;margin:22px 0 0">Accepting makes them a Creator: they can add papers, edit records and submit work for review. They get an email with your answer.</p>`,
+		content: `<p style="${emailStyles.paragraph}"><strong style="color:#202822">${escapeHtml(applicant.name)}</strong> (${escapeHtml(applicant.email)}) applied to join <strong style="color:#202822">${escapeHtml(identity.name)}</strong> as a Creator.</p>${quote(message)}${emailButton("Review applications", reviewUrl, identity.accent)}<p style="font-size:13px;line-height:1.7;color:#797b73;margin:22px 0 0">Accepting makes them a Creator: they can add papers, edit records, upload files and submit work for review. They get an email with your answer.</p>`,
 		footerHtml: "You received this email because you’re an owner or editor of the community.",
 	});
 }
