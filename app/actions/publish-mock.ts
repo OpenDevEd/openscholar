@@ -265,20 +265,25 @@ export async function requestReview(id: string, comment: string) {
 
 /**
  * A reviewer's word on any report, whatever its checks said and whether or not its author asked: approve one that
- * isn't live yet, so its author can activate it, or decline it. Declining a live report takes it down: its page closes.
+ * isn't live yet, so its author can activate it, or decline it. Declining a live report withdraws it: its page then
+ * says it was withdrawn, since its DOI can't be removed. A withdrawn report can be reinstated, which makes it live again.
  */
-export async function review(id: string, decision: "approve" | "decline", note?: string) {
+export async function review(id: string, decision: "approve" | "decline" | "reinstate", note?: string) {
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
     if (!submission || submission.step !== "done") throw new Error("No such report to review.");
     const stage = stageOf(submission, state.settings);
+    if (decision === "reinstate") {
+      if (stage !== "declined" || !submission.withdrawnAt) throw new Error("Only a withdrawn report can be reinstated.");
+      return touch(submission, { status: "live", withdrawnAt: undefined, note: undefined });
+    }
     if (stage === "declined") throw new Error("This report was already declined.");
     if (decision === "approve") {
       if (stage !== "failed" && stage !== "review") throw new Error("This report doesn't need approving.");
       // Approving lets the author activate it; the author decides when it goes live.
       return touch(submission, { approved: true });
     }
-    return touch(submission, { status: "declined", ...(note?.trim() ? { note: note.trim().slice(0, REVIEW_TEXT_MAX) } : {}) });
+    return touch(submission, { status: "declined", ...(stage === "live" ? { withdrawnAt: Date.now() } : {}), ...(note?.trim() ? { note: note.trim().slice(0, REVIEW_TEXT_MAX) } : {}) });
   });
 }
 

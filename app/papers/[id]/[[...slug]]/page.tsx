@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PaperPage } from "@/components/papers/paper-page";
 import { ReportMain, ReportSide } from "@/components/publish-mock/report-extras";
+import { WithdrawnReport } from "@/components/publish-mock/withdrawn-report";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
 import { citeFilePath, paperPath, paperSlug } from "@/lib/papers/page-address";
 import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
@@ -37,7 +38,12 @@ const updatedOf = (paper: PaperResult) => (paper as { updated_date?: string | nu
 
 const dateOf = (paper: PaperResult) => paper.publication_date ?? (paper.publication_year ? String(paper.publication_year) : undefined);
 
+/** MOCK (mock/publish-reports): a withdrawn report, whose address and DOI keep leading to a page that says so. */
+const withdrawnOf = cache(async (id: string) => (id.startsWith("R") ? (await import("@/lib/publish-mock/paper")).readWithdrawnReport(id) : null));
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const withdrawn = await withdrawnOf((await params).id);
+  if (withdrawn) return { title: `Withdrawn: ${withdrawn.title}`, robots: { index: false, follow: false } };
   const { paper, id, detail } = await paperOf((await params).id);
   const t = await getTranslations("metadata");
   const title = paper.title ?? paper.display_name ?? "";
@@ -73,6 +79,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function Page({ params }: Params) {
   const { id: asked, slug } = await params;
+  const withdrawn = await withdrawnOf(asked);
+  if (withdrawn) return <PageWrapper><WithdrawnReport report={withdrawn} /></PageWrapper>;
   const { paper, id, work, detail } = await paperOf(asked);
   const title = paper.title ?? paper.display_name ?? "";
   // One address per paper: an OpenAlex ID, our bare ID or an old title all lead to it.

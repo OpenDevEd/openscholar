@@ -35,6 +35,7 @@ import {
   Hash,
   PenLine,
   Pencil,
+  RotateCcw,
   Plus,
   PublishIcon,
   RefreshCw,
@@ -72,8 +73,8 @@ const STATUS: Record<Exclude<Stage, "draft">, { label: string; tone: "running" |
   failed: { label: "Failed checks", tone: "danger", icon: CircleX },
   declined: { label: "Declined", tone: "neutral", icon: CircleX },
 };
-/** A report's status in words. A declined report that had been live was taken down. */
-const labelOf = (s: Submission, stage: Stage) => (stage === "declined" && s.activatedAt ? "Taken down" : stage === "draft" ? "Draft" : STATUS[stage].label);
+/** A report's status in words. A declined report that had been live was withdrawn. */
+const labelOf = (s: Submission, stage: Stage) => (stage === "declined" && s.withdrawnAt ? "Withdrawn" : stage === "draft" ? "Draft" : STATUS[stage].label);
 const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed", declined: "Declined" };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
@@ -275,12 +276,12 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
 function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }: { submission: Submission | null; settings: Settings; emails: Email[]; onClose: () => void; onChange: (s: Submission) => void }) {
   const [note, setNote] = useState("");
   const [busy, start] = useTransition();
-  const decide = (decision: "approve" | "decline") =>
+  const decide = (decision: "approve" | "decline" | "reinstate") =>
     start(async () => {
       if (!s) return;
       try {
         onChange(await review(s.id, decision, note.trim() || undefined));
-        toast.success(decision === "approve" ? "Approved: its author can activate it" : s.status === "live" ? "Taken down" : "Declined");
+        toast.success(decision === "approve" ? "Approved: its author can activate it" : decision === "reinstate" ? "Reinstated: it is live again" : s.status === "live" ? "Withdrawn" : "Declined");
         setNote("");
         onClose();
       } catch (error) {
@@ -369,16 +370,26 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
               ) : null}
               {s.status === "declined" && s.note ? <p className="rounded-xl bg-inset p-3 text-sm">{s.note}</p> : null}
               {stage && stage !== "declined" && stage !== "draft" ? (
-                <Field label={stage === "live" ? "Note to the author, if you take it down" : "Note to the author, if you decline"} counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
+                <Field label={stage === "live" ? "Note to the author, if you withdraw it" : "Note to the author, if you decline"} counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
                   {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={REVIEW_TEXT_MAX} />}
                 </Field>
               ) : null}
             </div>
-            {/* A reviewer acts on any report, whatever its checks said: approve one not yet cleared, decline it, or take a live one down. */}
-            {stage && stage !== "declined" && stage !== "draft" ? (
+            {/* A reviewer acts on any report, whatever its checks said: approve one not yet cleared, decline it, withdraw a live one, or reinstate a withdrawn one. */}
+            {stage === "declined" && s.withdrawnAt ? (
+              <DialogFooter>
+                <Button className="relative" disabled={busy} onClick={() => decide("reinstate")}>
+                  <Working busy={busy}>
+                    <span className="flex items-center gap-2">
+                      <RotateCcw /> Reinstate
+                    </span>
+                  </Working>
+                </Button>
+              </DialogFooter>
+            ) : stage && stage !== "declined" && stage !== "draft" ? (
               <DialogFooter>
                 <Button variant="outline" className="relative" disabled={busy} onClick={() => decide("decline")}>
-                  <CircleX /> {stage === "live" ? "Take down" : "Decline"}
+                  <CircleX /> {stage === "live" ? "Withdraw" : "Decline"}
                 </Button>
                 {stage === "failed" || stage === "review" ? (
                   <Button className="relative" disabled={busy} onClick={() => decide("approve")}>

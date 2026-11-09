@@ -111,7 +111,7 @@ export type Metadata = {
 
 export type Step = "agreement" | "doi" | "upload" | "details" | "checks" | "done";
 /** What is saved: a report that passed its checks stays passed until its author activates it. */
-/** `declined` is also a live report a reviewer took down: `activatedAt` tells that one from a report never published. */
+/** `declined` is also a live report a reviewer withdrew: `withdrawnAt` tells that one from a report never published. */
 export type Status = "draft" | "failed" | "passed" | "live" | "declined";
 /** Where a report stands now. A passed report waits for a reviewer while review is on or a check flagged it, and
  * until someone approves it; then it's ready for its author to activate. Worked out from the settings as they are,
@@ -165,6 +165,8 @@ export type Submission = {
   archive: Archive;
   registration?: Registration;
   activatedAt?: number;
+  /** When a reviewer withdrew it after it had gone live. Its address then shows a page saying so, and it can be reinstated. */
+  withdrawnAt?: number;
   /** MOCK: the communities it was added to from its live page. The real build keeps these as Openscholar's submissions. */
   communities?: Array<{ id: string; name: string; status: "queued" | "published" }>;
   note?: string;

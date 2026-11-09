@@ -694,8 +694,8 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
       Your report passed its checks. You can activate it once a reviewer approves it.
     </StepHead>
   ) : stage === "declined" ? (
-    <StepHead key="declined" title={draft.activatedAt ? "Taken down" : "Not published"} aside={<StatusChip tone="danger" icon={CircleX}>{draft.activatedAt ? "Taken down" : "Declined"}</StatusChip>}>
-      {draft.note ?? (draft.activatedAt ? "A reviewer took this report down." : "The reviewer declined this report.")}
+    <StepHead key="declined" title={draft.withdrawnAt ? "Withdrawn" : "Not published"} aside={<StatusChip tone="danger" icon={CircleX}>{draft.withdrawnAt ? "Withdrawn" : "Declined"}</StatusChip>}>
+      {draft.note ?? (draft.withdrawnAt ? "A reviewer withdrew this report. Its page now says so." : "The reviewer declined this report.")}
     </StepHead>
   ) : (
     <StepHead key="failed" title="Not published yet" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
