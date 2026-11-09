@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const read = await readPaperPage((await params).id);
   if (!read) return new Response("Not found", { status: 404 });
   const ratio = new URL(request.url).searchParams.get("ratio") as keyof typeof SIZES | null;
-  const [width, height] = SIZES[ratio && ratio in SIZES ? ratio : "share"];
+  const [width, height] = SIZES[ratio && Object.hasOwn(SIZES, ratio) ? ratio : "share"];
   const { paper, detail } = read;
   const title = paper.title ?? paper.display_name ?? "";
   const meta = [detail.journal?.name, paper.publication_year].filter(Boolean).join(", ");
