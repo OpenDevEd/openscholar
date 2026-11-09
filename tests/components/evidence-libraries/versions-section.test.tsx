@@ -301,6 +301,7 @@ describe("<VersionsSection>", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent("versions.checkError");
     expect(document.querySelector("[data-running]")).toHaveTextContent("aaaaaaa");
+    expect(screen.getByRole("button", { name: "versions.update" })).toBeDisabled();
   });
 
   it("shows the loading panel only before the first release result arrives", async () => {

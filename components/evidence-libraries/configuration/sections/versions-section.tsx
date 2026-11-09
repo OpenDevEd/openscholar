@@ -499,7 +499,8 @@ function SoftwareSummary({
         <div className="flex items-center gap-1">
           {checkAgain}
           {updateAvailable ? (
-            <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
+            // Over a failed check the last answer stays in view, but the platform updates only after a fresh check.
+            <Button type="button" size="sm" disabled={blocked || failure !== null} onClick={onUpdate}>
               <RefreshCw />
               {t("versions.update")}
             </Button>
