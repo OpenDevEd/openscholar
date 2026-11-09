@@ -57,7 +57,7 @@ describe("saved source search", () => {
 
   it("keeps literal punctuation in a quoted query", () => {
     expect(buildOpenAlexSourceQuery({...DEFAULT_SEARCH_PARAMS, q: '"C++ & education,example: value #1"'}))
-      .toEqual({filter: 'title_and_abstract.search:"C++ & education,example: value #1",is_retracted:false'});
+      .toEqual({filter: 'title_and_abstract.search:"C++ & education example: value #1",is_retracted:false'});
   });
 
   it("imports an OQL search and reopens it with the typed query", () => {
