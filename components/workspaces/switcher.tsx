@@ -210,6 +210,7 @@ export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }
                     <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
                       {t("from")} <IdentityAvatar name={invitation.invitedBy.name} imageUrl={invitation.invitedBy.imageUrl} className="size-4" />{" "}
                       <span className="min-w-0 truncate">{invitation.invitedBy.name}</span>
+                      <span className="shrink-0">{t("asRole", { role: invitation.role === "admin" ? t("admin") : t("member") })}</span>
                     </span>
                   ) : null}
                 </span>
@@ -307,6 +308,8 @@ function NewOrganization({ close }: { close: () => void }) {
     if (next.length !== emails.length) setEmails(next);
     setDraft(left.join(" "));
   };
+  // What's typed that isn't an email address: said under the box, and the organization waits until it's fixed or removed.
+  const notEmails = draft.split(/[\s,;]+/).filter((part) => part && !EMAIL.test(part));
   const done = async () => {
     // An address still typed in the box is invited too.
     const invited = split(draft).next;
@@ -360,9 +363,12 @@ function NewOrganization({ close }: { close: () => void }) {
               onBlur={() => take(draft)}
               placeholder={full ? "" : emails.length ? t("addAnother") : t("emailPlaceholder")}
               aria-label={t("emailToInvite")}
+              aria-invalid={notEmails.length > 0}
+              aria-describedby={notEmails.length ? "new-organization-not-emails" : undefined}
               className="min-w-32 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
             />
           </label>
+          {notEmails.length ? <p id="new-organization-not-emails" className="text-xs text-destructive">{t("notEmails", { values: notEmails.slice(0, 3).join(" "), count: notEmails.length })}</p> : null}
         </div>
         {seatBilling ? (
           <div className="space-y-2 rounded-xl bg-inset p-3">
@@ -385,7 +391,7 @@ function NewOrganization({ close }: { close: () => void }) {
         <Button variant="ghost" onClick={close} disabled={busy}>
           {tc("cancel")}
         </Button>
-        <Button disabled={!name.trim() || busy} onClick={() => void done()}>
+        <Button disabled={!name.trim() || busy || notEmails.length > 0} onClick={() => void done()}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {t("createOrganization")}
         </Button>

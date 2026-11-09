@@ -1720,7 +1720,7 @@
   "connectionsPage": {
     "connectedApps": "التطبيقات المتصلة",
     "noConnectedApps": "لا توجد تطبيقات متصلة",
-    "noConnectedAppsDescription": "عندما تتصل تطبيقات خارجية بمحفظتك، ستظهر هنا.",
+    "noConnectedAppsDescription": "عندما تتصل تطبيقات خارجية بحسابك في Openscholar، ستظهر هنا.",
     "revoking": "جارٍ السحب...",
     "revoke": "سحب الصلاحية",
     "revokedBadge": "تم سحبها",
@@ -4956,7 +4956,11 @@
       "goneDetail": "اطلب من الشخص الذي شاركه أن يشاركه مرة أخرى",
       "otherTitle": "أُرسلت هذه الدعوة إلى عنوان آخر",
       "otherDetail": "افتحها إذا كان هذا الحساب يملك ذلك العنوان أيضًا، أو سجّل الدخول بالعنوان الذي أُرسلت إليه"
-    }
+    },
+    "notEmails": "{count, plural, one {هذا ليس عنوان بريد إلكتروني: {values}. صحّحه أو احذفه لإنشاء المؤسسة.} other {هذه ليست عناوين بريد إلكتروني: {values}. صحّحها أو احذفها لإنشاء المؤسسة.}}",
+    "asRole": "بصفة {role}",
+    "memberCan": "يبحث الأعضاء ويحفظون ويفرزون ويستخرجون بكل ما تشاركه المؤسسة.",
+    "adminCan": "يستطيع المسؤولون فعل الشيء نفسه، وكذلك دعوة الأشخاص وإزالتهم وإدارة الإعدادات والإنفاق."
   },
   "models": {
     "changeInSettings": "التغيير في إعدادات الذكاء الاصطناعي"
@@ -5699,10 +5703,10 @@
     "creatingKey": "جارٍ إنشاء المفتاح...",
     "redirecting": "جارٍ إعادة التوجيه...",
     "approve": "موافقة",
-    "wantsToConnect": "يريد <strong>{appName}</strong> الاتصال بمحفظة Openscholar الخاصة بك.",
+    "wantsToConnect": "يريد <strong>{appName}</strong> الاتصال بحساب Openscholar الخاصة بك.",
     "copyKey": "انسخ مفتاح API هذا والصقه في <strong>{appName}</strong>. لن يُعرض إلا مرة واحدة.",
     "originUnregisteredBody": "التطبيق الموجود على <code>{origin}</code> غير مسجّل للاتصال بـ Openscholar.",
-    "originHelp": "لا يمكن إنشاء اتصالات المحفظة إلا من المصادر المعتمدة مسبقًا. إذا كنت مطوّر <strong>{appName}</strong>، فتواصل مع فريق Openscholar لتسجيل مصدرك.",
+    "originHelp": "لا يمكن إنشاء اتصالات الحساب إلا من المصادر المعتمدة مسبقًا. إذا كنت مطوّر <strong>{appName}</strong>، فتواصل مع فريق Openscholar لتسجيل مصدرك.",
     "wantsToUseCredits": "يريد <strong>{appName}</strong> استخدام توليد الذكاء الاصطناعي من خلال أرصدة Openscholar الخاصة بك.",
     "unknownApp": "تطبيق غير معروف",
     "thisApplicationSOriginIsNot": "مصدر هذا التطبيق غير مسجّل.",

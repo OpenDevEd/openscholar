@@ -500,6 +500,8 @@ export function WorkspaceMembers() {
                 {t("invite")}
               </Button>
             </form>
+            {/* What the role picked lets them do, so it's chosen knowing. */}
+            <p className="pt-2 text-xs text-muted-foreground">{tw(role === "admin" ? "adminCan" : "memberCan")}</p>
             <AnimatePresence initial={false}>
               {full && !team ? (
                 // A free organization at its limit is offered Team where it invites (#863).

@@ -1720,7 +1720,7 @@
   "connectionsPage": {
     "connectedApps": "Gekoppelde programme",
     "noConnectedApps": "Geen gekoppelde programme nie",
-    "noConnectedAppsDescription": "Wanneer eksterne programme aan jou beursie koppel, verskyn hulle hier.",
+    "noConnectedAppsDescription": "Wanneer eksterne programme aan jou Openscholar-rekening koppel, verskyn hulle hier.",
     "revoking": "Herroep...",
     "revoke": "Herroep",
     "revokedBadge": "Herroep",
@@ -4956,7 +4956,11 @@
       "goneDetail": "Vra wie dit gedeel het om dit weer te deel",
       "otherTitle": "Hierdie uitnodiging is na ’n ander adres gestuur",
       "otherDetail": "Maak dit oop as hierdie rekening daardie adres ook het, of meld aan met die adres waarna dit gestuur is"
-    }
+    },
+    "notEmails": "{count, plural, one {Dit is nie 'n e-posadres nie: {values}. Maak dit reg of verwyder dit om die organisasie te skep.} other {Dit is nie e-posadresse nie: {values}. Maak hulle reg of verwyder hulle om die organisasie te skep.}}",
+    "asRole": "as {role}",
+    "memberCan": "Lede soek, stoor, sif en onttrek met alles wat die organisasie deel.",
+    "adminCan": "Admins kan dieselfde doen, en ook mense nooi en verwyder en instellings en besteding bestuur."
   },
   "models": {
     "changeInSettings": "Verander in KI-instellings"
@@ -5699,10 +5703,10 @@
     "creatingKey": "Sleutel word geskep...",
     "redirecting": "Stuur deur...",
     "approve": "Keur goed",
-    "wantsToConnect": "<strong>{appName}</strong> wil aan jou Openscholar-beursie koppel.",
+    "wantsToConnect": "<strong>{appName}</strong> wil aan jou Openscholar-rekening koppel.",
     "copyKey": "Kopieer hierdie API-sleutel en plak dit in <strong>{appName}</strong>. Dit sal net een keer gewys word.",
     "originUnregisteredBody": "Die program by <code>{origin}</code> is nie geregistreer om aan Openscholar te koppel nie.",
-    "originHelp": "Slegs vooraf goedgekeurde oorspronge kan beursiekoppelings skep. As jy die ontwikkelaar van <strong>{appName}</strong> is, kontak die Openscholar-span om jou oorsprong te registreer.",
+    "originHelp": "Slegs vooraf goedgekeurde oorspronge kan rekeningkoppelings skep. As jy die ontwikkelaar van <strong>{appName}</strong> is, kontak die Openscholar-span om jou oorsprong te registreer.",
     "wantsToUseCredits": "<strong>{appName}</strong> wil KI-generering met jou Openscholar-krediete gebruik.",
     "unknownApp": "Onbekende app",
     "thisApplicationSOriginIsNot": "Die oorsprong van hierdie toepassing is nie geregistreer nie.",

@@ -1719,7 +1719,7 @@
   "connectionsPage": {
     "connectedApps": "Applications connectées",
     "noConnectedApps": "Aucune application connectée",
-    "noConnectedAppsDescription": "Lorsque des applications externes se connectent à votre portefeuille, elles apparaîtront ici.",
+    "noConnectedAppsDescription": "Lorsque des applications externes se connectent à votre compte Openscholar, elles apparaîtront ici.",
     "revoking": "Révocation...",
     "revoke": "Révoquer",
     "revokedBadge": "Révoquée",
@@ -4955,7 +4955,11 @@
       "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau",
       "otherTitle": "Cette invitation a été envoyée à une autre adresse",
       "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue"
-    }
+    },
+    "notEmails": "{count, plural, one {Ce n'est pas une adresse e-mail : {values}. Corrigez-la ou retirez-la pour créer l'organisation.} other {Ce ne sont pas des adresses e-mail : {values}. Corrigez-les ou retirez-les pour créer l'organisation.}}",
+    "asRole": "en tant que {role}",
+    "memberCan": "Les membres recherchent, enregistrent, trient et extraient avec tout ce que l'organisation partage.",
+    "adminCan": "Les admins peuvent faire de même, et aussi inviter et retirer des personnes et gérer les paramètres et les dépenses."
   },
   "models": {
     "changeInSettings": "Modifier dans les paramètres IA"
@@ -5698,10 +5702,10 @@
     "creatingKey": "Création de la clé...",
     "redirecting": "Redirection...",
     "approve": "Approuver",
-    "wantsToConnect": "<strong>{appName}</strong> souhaite se connecter à votre portefeuille Openscholar.",
+    "wantsToConnect": "<strong>{appName}</strong> souhaite se connecter à votre compte Openscholar.",
     "copyKey": "Copiez cette clé API et collez-la dans <strong>{appName}</strong>. Elle ne sera affichée qu’une seule fois.",
     "originUnregisteredBody": "L’application à l’adresse <code>{origin}</code> n’est pas enregistrée pour se connecter à Openscholar.",
-    "originHelp": "Seules les origines approuvées à l’avance peuvent créer des connexions au portefeuille. Si vous êtes le développeur de <strong>{appName}</strong>, contactez l’équipe Openscholar pour enregistrer votre origine.",
+    "originHelp": "Seules les origines approuvées à l’avance peuvent créer des connexions au compte. Si vous êtes le développeur de <strong>{appName}</strong>, contactez l’équipe Openscholar pour enregistrer votre origine.",
     "wantsToUseCredits": "<strong>{appName}</strong> souhaite utiliser la génération par IA avec vos crédits Openscholar.",
     "unknownApp": "Application inconnue",
     "thisApplicationSOriginIsNot": "L’origine de cette application n’est pas enregistrée.",

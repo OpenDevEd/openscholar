@@ -1719,7 +1719,7 @@
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
     "noConnectedApps": "接続済みアプリはありません",
-    "noConnectedAppsDescription": "外部アプリがウォレットに接続すると、ここに表示されます。",
+    "noConnectedAppsDescription": "外部アプリがアカウントに接続すると、ここに表示されます。",
     "revoking": "取り消し中...",
     "revoke": "取り消す",
     "revokedBadge": "取り消し済み",
@@ -4955,7 +4955,11 @@
       "goneDetail": "共有した人にもう一度共有してもらってください",
       "otherTitle": "この招待は別のアドレスに送信されました",
       "otherDetail": "このアカウントにそのアドレスも登録されていれば開けます。そうでなければ、招待されたアドレスでサインインしてください"
-    }
+    },
+    "notEmails": "{count, plural, other {メールアドレスではありません: {values}。組織を作成するには修正するか削除してください。}}",
+    "asRole": "{role}として",
+    "memberCan": "メンバーは、組織で共有されているものすべてを使って検索・保存・スクリーニング・抽出ができます。",
+    "adminCan": "管理者は同じことに加えて、メンバーの招待と削除、設定と支出の管理ができます。"
   },
   "models": {
     "changeInSettings": "AI 設定で変更"
@@ -5698,10 +5702,10 @@
     "creatingKey": "キーを作成しています…",
     "redirecting": "移動しています…",
     "approve": "承認",
-    "wantsToConnect": "<strong>{appName}</strong> が、あなたの Openscholar ウォレットに接続しようとしています。",
+    "wantsToConnect": "<strong>{appName}</strong> が、あなたの Openscholar アカウントに接続しようとしています。",
     "copyKey": "この API キーをコピーして、<strong>{appName}</strong> に貼り付けてください。表示されるのは一度だけです。",
     "originUnregisteredBody": "<code>{origin}</code> のアプリは、Openscholar に接続するための登録がされていません。",
-    "originHelp": "事前に承認されたオリジンだけが、ウォレットの接続を作成できます。<strong>{appName}</strong> の開発者の場合は、Openscholar チームに連絡して、オリジンを登録してください。",
+    "originHelp": "事前に承認されたオリジンだけが、アカウントの接続を作成できます。<strong>{appName}</strong> の開発者の場合は、Openscholar チームに連絡して、オリジンを登録してください。",
     "wantsToUseCredits": "<strong>{appName}</strong> が、あなたの Openscholar クレジットで AI 生成を使おうとしています。",
     "unknownApp": "不明なアプリ",
     "thisApplicationSOriginIsNot": "このアプリケーションのオリジンは登録されていません。",
