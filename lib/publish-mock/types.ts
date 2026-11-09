@@ -13,6 +13,8 @@ export const DECISION_MODELS = [
   { id: "language-id", name: "Language ID", maker: "fastText", hint: "The language the text is written in" },
 ] as const;
 export type DecisionModelId = (typeof DECISION_MODELS)[number]["id"];
+/** Decision models that find something or don't, with no score to set a threshold on. */
+export const isPassFail = (check: { engine: Engine; decisionModel?: DecisionModelId }) => check.engine === "decision" && (check.decisionModel === "text-match" || check.decisionModel === "already-published");
 
 /** An LLM a check or the metadata reader runs on, as the model picker gives it, with the effort it runs at. */
 export type LlmModel = { id: string; name: string; inputPricePerMillion: number; outputPricePerMillion: number; effort?: Effort; reasoningEfforts?: Effort[] };
@@ -36,7 +38,21 @@ export type Check = {
 };
 
 /** What every check returns, whichever engine runs it. `reasoning` comes from an LLM only. */
-export type CheckResult = { checkId: string; name: string; engine: Engine; pass: boolean; score: number; threshold: number; direction: Check["direction"]; blocking: boolean; reasoning?: string; evidence?: { title: string; url: string; where?: string } };
+export type CheckResult = {
+  checkId: string;
+  name: string;
+  engine: Engine;
+  pass: boolean;
+  /** Found or not, with no score; `detail` says what was found. */
+  passFail?: boolean;
+  detail?: string;
+  score: number;
+  threshold: number;
+  direction: Check["direction"];
+  blocking: boolean;
+  reasoning?: string;
+  evidence?: { title: string; url: string; where?: string };
+};
 
 export type Settings = {
   enabled: boolean;

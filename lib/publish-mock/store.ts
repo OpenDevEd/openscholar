@@ -5,7 +5,7 @@ import path from "node:path";
 import type { Check, Metadata, MockState, Settings, Submission } from "./types";
 import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
 import { suggestTopics } from "./topics";
-import { DEFAULT_LLM, doiOf } from "./types";
+import { DEFAULT_LLM, doiOf, isPassFail } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
@@ -158,7 +158,10 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
       direction: check.direction,
       blocking: check.blocking,
       ...(check.engine === "llm" ? { reasoning: "A study with a method, data and findings. It names no product and links only to the data repository." } : {}),
-      ...(fails && check.id === "published" ? { evidence: { title: TITLES[n]!, url: "https://doi.org/10.4060/cc7845en" } } : {}),
+      ...(isPassFail(check) ? { passFail: true } : {}),
+      ...(check.id === "byline" ? { detail: fails ? "The PDF doesn't carry the byline with its DOI." : "The PDF carries the byline with its DOI." } : {}),
+      ...(check.id === "published" && !fails ? { detail: "Not in OpenAlex, Openscholar's index or our communities." } : {}),
+      ...(fails && check.id === "published" ? { evidence: { title: TITLES[n]!, url: "https://usaid.openscholar.ai/lib/6XBK3HE5", where: "USAID" }, reasoning: "The same study: the same programme, districts and findings, under a shorter title." } : {}),
     };
   });
   return {

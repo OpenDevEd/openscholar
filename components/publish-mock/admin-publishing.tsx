@@ -48,7 +48,7 @@ import { usePlaceName } from "@/components/publish-mock/report-extras";
 import { removeCheck, retryDeposit, review, saveCheck, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
-import { DEFAULT_LLM, DECISION_MODELS, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
+import { DEFAULT_LLM, DECISION_MODELS, isPassFail, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -566,9 +566,7 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckDef; onEdit:
         <span className="block truncate text-sm font-medium">{check.name}</span>
         <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <span className="truncate">{model}</span>
-          <Tag>
-            {check.direction === "atMost" ? "max" : "min"} {pct(check.threshold)}
-          </Tag>
+          <Tag>{isPassFail(check) ? "Pass or fail" : `${check.direction === "atMost" ? "fails above" : "fails below"} ${pct(check.threshold)}`}</Tag>
           <Tag>{check.blocking ? "Blocks" : "Flags for review"}</Tag>
         </span>
       </span>
@@ -594,14 +592,14 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
   const set = <K extends keyof CheckDef>(key: K, value: CheckDef[K]) => setForm((f) => ({ ...f, [key]: value }));
   const isNew = check === "new";
   const textMatch = form.engine === "decision" && form.decisionModel === "text-match";
-  const sample = { pass: true, score: form.engine === "llm" ? 0.93 : 0.04, ...(form.engine === "llm" ? { reasoning: "A study with a question, a method and findings." } : {}) };
+  const sample = isPassFail(form) ? { pass: true } : { pass: true, score: form.engine === "llm" ? 0.93 : 0.04, ...(form.engine === "llm" ? { reasoning: "A study with a question, a method and findings." } : {}) };
   const ready = form.name.trim() && (form.engine === "decision" ? form.decisionModel : form.llm);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{isNew ? "Add a check" : "Edit check"}</DialogTitle>
-          <DialogDescription>Every check answers with a pass, a score from 0 to 1, and with an LLM, its reasoning.</DialogDescription>
+          <DialogDescription>Every check passes or fails. A scored one also gives a score from 0 to 1, and an LLM its reasoning.</DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
           <label className="block space-y-1.5">
@@ -653,6 +651,9 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
             <Textarea value={form.instructions} onChange={(e) => set("instructions", e.target.value)} rows={textMatch ? 2 : 4} className={cn(textMatch && "font-mono text-xs")} />
             {textMatch ? <span className="block ps-1 text-xs text-muted-foreground">{"{byline}"} is the series&apos; byline, with the report&apos;s DOI</span> : null}
           </label>
+          {isPassFail(form) ? (
+            <p className="rounded-xl bg-inset px-3.5 py-2.5 text-xs text-muted-foreground">It finds what it looks for or it doesn&apos;t: there&apos;s no score to set a line on.</p>
+          ) : (
           <div className="space-y-2.5">
             <div className="flex items-center justify-between gap-3">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Passes when the score is</span>
@@ -671,6 +672,7 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
               <span className="w-12 text-end text-sm font-medium tabular-nums">{pct(form.threshold)}</span>
             </div>
           </div>
+          )}
           <label className="flex cursor-pointer items-center justify-between gap-6 rounded-2xl border border-border-subtle px-4 py-3">
             <span className="min-w-0">
               <span className="block text-sm font-medium">Blocks publishing</span>

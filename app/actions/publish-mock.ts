@@ -10,7 +10,7 @@ import { alreadyPublished } from "@/lib/publish-mock/published";
 import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
 import { suggestTopics } from "@/lib/publish-mock/topics";
 import { MOCK_DIR, nextKey, pdfPath, readState, writeState } from "@/lib/publish-mock/store";
-import { bylineOf, doiOf, type Affiliation, type Check, type CheckResult, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { bylineOf, doiOf, isPassFail, type Affiliation, type Check, type CheckResult, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -145,7 +145,7 @@ const passes = (score: number, check: Check) => (check.direction === "atMost" ? 
 
 /** MOCK: each check's answer. Text match really reads the PDF's text; the others are made up from the file's name. */
 async function runCheck(check: Check, settings: Settings, draft: Submission, text: string, metadata: Metadata): Promise<CheckResult> {
-  const base = { checkId: check.id, name: check.name, engine: check.engine, threshold: check.threshold, direction: check.direction, blocking: check.blocking };
+  const base = { checkId: check.id, name: check.name, engine: check.engine, threshold: check.threshold, direction: check.direction, blocking: check.blocking, ...(isPassFail(check) ? { passFail: true } : {}) };
   const name = draft.pdf?.name.toLowerCase() ?? "";
   if (check.engine === "llm") {
     const score = name.includes("advert") ? 0.22 : 0.93;
@@ -161,13 +161,16 @@ async function runCheck(check: Check, settings: Settings, draft: Submission, tex
   }
   let score = 0.01;
   // The text to find, with {byline} as this report's. Wrapping and line breaks in the PDF don't count.
-  if (check.decisionModel === "text-match") score = squash(text).includes(squash(check.instructions.replaceAll("{byline}", bylineOf(settings, draft.doi)))) ? 1 : 0;
-  else if (check.decisionModel === "already-published") {
+  if (check.decisionModel === "text-match") {
+    score = squash(text).includes(squash(check.instructions.replaceAll("{byline}", bylineOf(settings, draft.doi)))) ? 1 : 0;
+    return { ...base, score, pass: score === 1, detail: score === 1 ? "The PDF carries the byline with its DOI." : "The PDF doesn't carry the byline with its DOI." };
+  } else if (check.decisionModel === "already-published") {
     // The check compares candidates with the model the admin page sets for reading reports.
     const found = await alreadyPublished(metadata, settings.metadataModel);
-    return { ...base, score: found ? 1 : 0, pass: passes(found ? 1 : 0, check), ...(found ? { evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) } : {}) };
-  }
-  else if (check.decisionModel === "language-id") score = 0.98;
+    return found
+      ? { ...base, score: 1, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
+      : { ...base, score: 0, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };
+  } else if (check.decisionModel === "language-id") score = 0.98;
   return { ...base, score, pass: passes(score, check) };
 }
 

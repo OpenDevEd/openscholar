@@ -352,6 +352,9 @@ export function CheckRow({ result, delay = 0 }: { result: CheckResult; delay?: n
   const tone = result.pass ? "success" : result.blocking ? "danger" : "warning";
   const pct = Math.round(result.score * 100);
   const need = Math.round(result.threshold * 100);
+  // Results saved before checks said whether they have a score.
+  const passFail = result.passFail ?? (result.checkId === "byline" || result.checkId === "published");
+  const above = result.direction === "atMost";
   return (
     <li className="px-4 py-3.5">
       <div className="flex items-center gap-3">
@@ -371,21 +374,35 @@ export function CheckRow({ result, delay = 0 }: { result: CheckResult; delay?: n
           <StatusChip tone={tone}>{result.pass ? "Passed" : result.blocking ? "Failed" : "Flagged"}</StatusChip>
         </motion.span>
       </div>
-      <div className="ms-8 mt-2.5 flex items-center gap-3">
-        <div className="relative h-1.5 flex-1 rounded-full bg-inset">
-          <motion.div
-            className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")}
-            initial={{ width: wait ? "0%" : `${Math.max(pct, 2)}%` }}
-            animate={{ width: `${Math.max(pct, 2)}%` }}
-            transition={{ delay: wait, duration: 0.5, ease: EASE }}
-          />
-          {/* The line the score has to clear: at least it, or for similarity and the like, at most it. */}
-          <span aria-hidden className="absolute -inset-y-1 w-0.5 rounded-full bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
+      {/* A check that finds something or doesn't says what; a scored one shows its score against the line, the failing side tinted. */}
+      {passFail ? (
+        result.evidence ? null : (
+          <motion.p initial={{ opacity: wait ? 0 : 1 }} animate={{ opacity: 1 }} transition={{ delay: wait, duration: 0.2 }} className="ms-8 mt-1.5 text-xs/5 text-muted-foreground">
+            {result.detail ?? (result.pass ? "Found." : "Not found.")}
+          </motion.p>
+        )
+      ) : (
+        <div className="ms-8 mt-2.5 flex items-center gap-3">
+          <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
+            <span
+              aria-hidden
+              className={cn("absolute inset-y-0", result.blocking ? "bg-destructive/15" : "bg-warning/20")}
+              style={above ? { insetInlineStart: `${need}%`, insetInlineEnd: 0 } : { insetInlineStart: 0, width: `${need}%` }}
+            />
+            <motion.div
+              className={cn("absolute inset-y-0 start-0 rounded-full", result.pass ? "bg-success" : result.blocking ? "bg-destructive" : "bg-warning")}
+              initial={{ width: wait ? "0%" : `${Math.max(pct, 2)}%` }}
+              animate={{ width: `${Math.max(pct, 2)}%` }}
+              transition={{ delay: wait, duration: 0.5, ease: EASE }}
+            />
+            <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
+          </div>
+          <span className="w-36 shrink-0 text-end text-xs tabular-nums">
+            <span className="font-medium text-foreground/80">{pct}%</span>{" "}
+            <span className="text-muted-foreground">{above ? `fails above ${need}%` : `fails below ${need}%`}</span>
+          </span>
         </div>
-        <span className="w-24 shrink-0 text-end text-xs tabular-nums text-muted-foreground">
-          {pct}% <span className="text-muted-foreground/70">{result.direction === "atMost" ? "max" : "min"} {need}%</span>
-        </span>
-      </div>
+      )}
       {result.evidence ? (
         <motion.a
           href={result.evidence.url}
