@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   versions: { status: "Exhausted", loadMore: vi.fn() },
   listDomains: vi.fn(),
   addressNotices: vi.fn(),
+  lastCheck: vi.fn(),
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
 }));
 
@@ -28,6 +29,7 @@ vi.mock("@/convex/_generated/api", () => ({
       updates: {
         check: "check",
         getAddressNotice: "getAddressNotice",
+        lastCheck: "lastCheck",
       },
       versions: {
         listVersionRows: "listVersionRows",
@@ -60,6 +62,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     data:
       reference === "getAddressNotice"
         ? (mocks.addressNotices()[0] ?? null)
+        : reference === "lastCheck"
+          ? (mocks.lastCheck() ?? null)
         : reference === "listDomains"
           ? mocks.listDomains()
           : mocks.listVersions().length,
@@ -163,6 +167,7 @@ describe("<VersionsSection>", () => {
     mocks.versions.loadMore.mockReset();
     mocks.addressNotices.mockReset();
     mocks.addressNotices.mockReturnValue([]);
+    mocks.lastCheck.mockReset();
     mocks.toast.mockReset();
     mocks.toast.error.mockReset();
     mocks.check.mockResolvedValue({
@@ -273,6 +278,29 @@ describe("<VersionsSection>", () => {
     expect(screen.getByRole("button", { name: "versions.checkAgain" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "versions.update" })).toBeEnabled();
     expect(mocks.check).toHaveBeenCalledTimes(2);
+  });
+
+  // A library far behind has pages of release notes: shown from the last check while the page checks again, they
+  // don't arrive under a link to a card further down and push it away (#1188).
+  it("shows the last check's answer while checking again, and keeps it in view when the check fails", async () => {
+    mocks.lastCheck.mockReturnValue({
+      running: "aaaaaaa1234",
+      latest: "bbbbbbb1234",
+      latestImage: "image",
+      changes: [{ sha: "bbbbbbb1234", message: "Faster search" }],
+      releases: [],
+      checkedAt: 1,
+    });
+    let fail!: (error: Error) => void;
+    mocks.check.mockReturnValueOnce(new Promise((_, reject) => { fail = reject; }));
+    await renderSection();
+    expect(screen.getByText("versions.updateAvailable")).toBeVisible();
+    expect(screen.queryByText("versions.checking")).toBeNull();
+
+    await act(async () => { fail(new Error("GitHub is down")); });
+
+    expect(screen.getByRole("alert")).toHaveTextContent("versions.checkError");
+    expect(document.querySelector("[data-running]")).toHaveTextContent("aaaaaaa");
   });
 
   it("shows the loading panel only before the first release result arrives", async () => {

@@ -181,6 +181,12 @@ export function VersionsSection({
   // Keep the last result visible while a manual or post-update check suspends.
   const deferredCheckPromise = useDeferredValue(checkPromise);
   const checking = checkPromise !== deferredCheckPromise;
+  // What the last check said, stored and read with the page: shown at its full size, release notes and all, while
+  // the page checks again, so nothing below moves when the answer arrives. Before any check, the summary's shape.
+  const stored = useWithPage<typeof api.evidenceLibraries.updates.lastCheck>("lastCheck", useProtectedQuery(
+    api.evidenceLibraries.updates.lastCheck,
+    live ? { libraryId } : "skip",
+  ).data) ?? null;
   const [busy, setBusy] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -255,6 +261,16 @@ export function VersionsSection({
       .finally(() => setBusy(false));
   }
 
+  const checkAgainButton = (busy: boolean) => (
+    <Button type="button" variant="ghost" size="sm" onClick={checkAgain} disabled={blocked || busy} aria-busy={busy}>
+      {busy ? <Spinner aria-hidden="true" /> : <RefreshCw />}
+      {t("versions.checkAgain")}
+    </Button>
+  );
+  // Update waits for the fresh check: the platform starts one only against a check of the last ten minutes.
+  const whileChecking = stored && live
+    ? <SoftwareSummary result={{ ok: true, state: stored }} stored={stored} blocked onUpdate={() => setUpdateOpen(true)} checkAgain={checkAgainButton(true)} />
+    : <CheckingPanel />;
   return (
     <SectionCard
       id="sec-versions"
@@ -290,31 +306,17 @@ export function VersionsSection({
 
       <div data-section-part="software">
         {checkPromise ? (
-          <Suspense
-            // The panel the answer fills, in its shape when up to date, so nothing below moves when it arrives.
-            fallback={<CheckingPanel />}
-          >
+          <Suspense fallback={whileChecking}>
             <SoftwarePanel
               promise={deferredCheckPromise ?? checkPromise}
+              stored={stored}
               blocked={blocked}
               onUpdate={() => setUpdateOpen(true)}
-              checkAgain={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={checkAgain}
-                  disabled={blocked}
-                  aria-busy={checking}
-                >
-                  {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
-                  {t("versions.checkAgain")}
-                </Button>
-              }
+              checkAgain={checkAgainButton(checking)}
             />
           </Suspense>
         ) : live ? (
-          <CheckingPanel />
+          whileChecking
         ) : (
           <Panel tone="muted" data-runtime-state="not-running">
             <p className="text-sm text-muted-foreground">
@@ -449,35 +451,47 @@ function SummaryShape({ role, state, status, children }: { role: "status" | "ale
   );
 }
 
-function SoftwarePanel({
-  promise,
-  blocked,
-  onUpdate,
-  checkAgain,
-}: {
-  promise: Promise<RuntimeCheck>;
+type SummaryProps = {
+  /** The last check's stored answer, which a failed check leaves in view. */
+  stored: RuntimeState | null;
   blocked: boolean;
   onUpdate: () => void;
   /** The "Check again" button; it lives inside the panel, next to Update. */
   checkAgain: ReactNode;
-}) {
+};
+
+function SoftwarePanel({ promise, ...props }: SummaryProps & { promise: Promise<RuntimeCheck> }) {
+  return <SoftwareSummary result={use(promise)} {...props} />;
+}
+
+function SoftwareSummary({
+  result,
+  stored,
+  blocked,
+  onUpdate,
+  checkAgain,
+}: SummaryProps & { result: RuntimeCheck }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const format = useFormatter();
-  const result = use(promise);
-  if (!result.ok) {
+  // A failed check says so where the status goes, over the last answer when there is one, so the panel keeps its size.
+  const shown = result.ok ? result.state : stored;
+  const failure = result.ok ? null : result.message;
+  if (!shown) {
     return (
-      <SummaryShape role="alert" state="check-failed" status={<p className="text-sm text-destructive">{result.message}</p>}>
+      <SummaryShape role="alert" state="check-failed" status={<p className="text-sm text-destructive">{failure}</p>}>
         {checkAgain}
       </SummaryShape>
     );
   }
-  const { running, latest, changes, releases, checkedAt } = result.state;
+  const { running, latest, changes, releases, checkedAt } = shown;
   const state = runtimeUpdateState({ running, latest });
   const updateAvailable = state === "update-available";
   return (
-    <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
+    <Panel tone="muted" className="space-y-3" data-runtime-state={failure ? "check-failed" : state} role={failure ? "alert" : undefined}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {updateAvailable ? (
+        {failure ? (
+          <p className="text-sm text-destructive">{failure}</p>
+        ) : updateAvailable ? (
           <StatusChip tone="warning">{t("versions.updateAvailable")}</StatusChip>
         ) : (
           <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>

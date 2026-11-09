@@ -438,6 +438,17 @@ describe("Evidence Library update check", () => {
     vi.unstubAllGlobals();
   });
 
+  it("hands the page the last check's answer: none before the first check, then what it stored", async () => {
+    const fixture = await createReadySetupFixture("update-last-check");
+    vi.stubGlobal("fetch", createGithub({ latest: LATEST }).fetchImpl);
+    const args = { libraryId: fixture.created.libraryId };
+    await expect(fixture.admin.query(api.evidenceLibraries.updates.lastCheck, args)).resolves.toBeNull();
+
+    const checked = await fixture.admin.action(api.evidenceLibraries.updates.check, args);
+
+    await expect(fixture.admin.query(api.evidenceLibraries.updates.lastCheck, args)).resolves.toEqual(checked);
+  });
+
   it("reads GitHub once, serves the cached answer for ten minutes, then checks again", async () => {
     const fixture = await createReadySetupFixture("update-check");
     const github = createGithub({ latest: LATEST });
