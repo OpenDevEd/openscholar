@@ -103,7 +103,8 @@ export const applyStatus = internalMutation({
     // is published when a reviewer approved it before the word that it waits arrived.
     // Under the request that sent it, so when that request was Openscholar's and is still finishing, it finds the
     // community's word already here and leaves it.
-    if (sender && paper && !rows.some((row) => row.userId === sender._id)) {
+    // Their own row, looked up whatever rows the status read, which for published are the first of many senders.
+    if (sender && paper && !(await byPaper(ctx, sender._id, libraryId, itemKey))) {
       const { requestId, ...summary } = paper;
       const community = (await communityOf(ctx, libraryId)).name;
       const id = await ctx.db.insert("paperSubmissions", { ...summary, ...(requestId ? { requestId } : {}), userId: sender._id, libraryId, itemKey, status, ...(note ? { note } : {}), generation, searchText: searchTextOf(paper.title, community), sentAt: at, updatedAt: at });
