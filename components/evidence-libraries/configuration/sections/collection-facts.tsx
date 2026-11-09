@@ -8,7 +8,8 @@
  */
 
 import { useAction } from "convex/react";
-import { createContext, type ReactNode, use, useContext, useState } from "react";
+import { createContext, type ReactNode, use, useCallback, useContext, useState, useSyncExternalStore } from "react";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -23,6 +24,10 @@ type ResolveAction = (args: {
 }) => Promise<{ reason?: "not-set-up"; items: ResolvedCollection[] }>;
 
 const EMPTY: CollectionFacts = new Map();
+// What's read before the browser is signed in: nothing yet.
+const UNTIL_SIGNED_IN = new Promise<Map<string, CollectionFact>>(() => {});
+// The answers that have arrived, so a reader that doesn't wait can show them once they're in.
+const settled = new WeakMap<Promise<Map<string, CollectionFact>>, Map<string, CollectionFact>>();
 // Nothing to ask about: the same answer every render, so no render loop.
 const NOTHING_TO_READ = Promise.resolve(new Map<string, CollectionFact>());
 
@@ -92,13 +97,13 @@ export function CollectionFactsProvider({
 }) {
   const resolve = useAction(api.zotero.runtimeReadActions.resolveLibraryCollections) as ResolveAction;
   const [learned, setLearned] = useState<Map<string, CollectionFact>>(new Map());
+  // Asked once the browser is signed in: asked before, the library would refuse, and the refusal be kept.
+  const { canRunProtectedQueries } = useAuthReadiness();
   // Only ids the picker has not already read are asked about, so adding a
   // collection never sends the page back to its loading state.
-  const promise = readFacts(
-    resolve,
-    libraryId,
-    ids.filter((id) => !learned.has(id)),
-  );
+  const promise = canRunProtectedQueries
+    ? readFacts(resolve, libraryId, ids.filter((id) => !learned.has(id)))
+    : UNTIL_SIGNED_IN;
   return (
     <CollectionFactsContext
       value={{
@@ -128,6 +133,24 @@ export function useCollectionFacts(): CollectionFacts {
   if (!context) return EMPTY;
   const read = use(context.promise);
   if (context.learned.size === 0) return read;
+  return new Map([...read, ...context.learned]);
+}
+
+/**
+ * The facts read so far, without waiting: none until the answer arrives, then the answer. For a row that stays
+ * mounted, such as one with a field being typed in, where waiting would replace it.
+ */
+export function useCollectionFactsSoFar(): CollectionFacts {
+  const context = useContext(CollectionFactsContext);
+  const promise = context?.promise;
+  // The answer is an outside system the row listens to, as a store.
+  const subscribe = useCallback((onChange: () => void) => {
+    let listening = true;
+    void promise?.then((facts) => { settled.set(promise, facts); if (listening) onChange(); });
+    return () => { listening = false; };
+  }, [promise]);
+  const read = useSyncExternalStore(subscribe, () => (promise && settled.get(promise)) || EMPTY, () => EMPTY);
+  if (!context || context.learned.size === 0) return read;
   return new Map([...read, ...context.learned]);
 }
 

@@ -3,17 +3,17 @@
 import { useAction } from "convex/react";
 import { Plus } from "@/components/icons";
 import { useTranslations } from "next-intl";
-import { Suspense, useId, useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { EmptyList, FieldGroup, ListRow, move, SortableList } from "../fields";
-import { type CollectionFacts, useCollectionFacts, useLearnCollections } from "./collection-facts";
+import { type CollectionFacts, useCollectionFactsSoFar, useLearnCollections } from "./collection-facts";
 import { PICKER_PAGE_SIZE, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 
 export type CollectionEntry = {
@@ -59,28 +59,7 @@ export function sortedEntries(entries: readonly CollectionEntry[]): CollectionEn
  * site, in order, with a title override, and a picker that searches the
  * library's own database one page at a time.
  */
-export function CollectionsField(props: {
-  libraryId: Id<"evidenceLibraries">;
-  value: CollectionEntry[];
-  onChange: (value: CollectionEntry[]) => void;
-}) {
-  const t = useTranslations("evidenceLibraryConfiguration.collections");
-  return (
-    <Suspense
-      fallback={
-        <FieldGroup title={t("shownHeading")} hint={t("introHint")}>
-          <div className="flex h-5 items-center">
-            <Spinner className="h-4 w-4" aria-label={t("loading")} />
-          </div>
-        </FieldGroup>
-      }
-    >
-      <CollectionsBody {...props} />
-    </Suspense>
-  );
-}
-
-function CollectionsBody({
+export function CollectionsField({
   libraryId,
   value,
   onChange,
@@ -91,7 +70,7 @@ function CollectionsBody({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.collections");
   const listCollections = useAction(api.zotero.runtimeReadActions.listCollections) as ListAction;
-  const facts = useCollectionFacts();
+  const facts = useCollectionFactsSoFar();
   const learn = useLearnCollections();
   const [source, setSource] = useState<string | null>(null);
   const [sources, setSources] = useState<string[]>([]);
@@ -124,6 +103,9 @@ function CollectionsBody({
       nextCursor: page.isDone ? null : page.continueCursor,
     };
   };
+
+  const retitle = (entry: CollectionEntry) => (title: string) =>
+    onChange(shown.map((row) => (row.id === entry.id ? { ...row, title: title || undefined } : row)));
 
   function add(rows: PickerRow[]) {
     const next = [...shown];
@@ -222,17 +204,9 @@ function CollectionsBody({
               onRemove={() => onChange(renumber(shown.filter((row) => row.id !== entry.id)))}
               data-collection-id={entry.id}
             >
-              <CollectionRow
-                entry={entry}
-                facts={facts}
-                onTitle={(title) =>
-                  onChange(
-                    shown.map((row) =>
-                      row.id === entry.id ? { ...row, title: title || undefined } : row,
-                    ),
-                  )
-                }
-              />
+              {/* While the community is asked about its collections, each row shows what the draft knows, at its full
+                  size, and stays put; its database name and record count come with the answer. */}
+              <CollectionRow entry={entry} facts={facts} onTitle={retitle(entry)} />
             </ListRow>
           ))}
         </SortableList>
@@ -256,10 +230,13 @@ function CollectionRow({
   const databaseTitle = known?.title ?? entry.title ?? entry.id;
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">{databaseTitle}</span>
+      {/* One line whatever the name, so the row keeps its height when the database's name replaces the ID. */}
+      <div className="flex min-w-0 items-center gap-2">
+        <TooltipHint label={databaseTitle} onlyWhenClipped>
+          <span className="min-w-0 truncate text-sm font-medium">{databaseTitle}</span>
+        </TooltipHint>
         {known ? (
-          <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
+          <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground">
             {t("records", { count: known.count })}
           </span>
         ) : null}

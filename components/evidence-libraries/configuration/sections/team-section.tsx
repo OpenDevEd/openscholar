@@ -10,13 +10,14 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { TeamAccess, type AccessMember } from "./team-access";
+import { useWithPage } from "../preloads";
 
 /** The community's team: its owners manage it, and everyone else who opens its settings sees it, read-only (`readOnly`). */
 export function TeamSection({ libraryId, readOnly = false }: { libraryId: Id<"evidenceLibraries">; readOnly?: boolean }) {
   const tLabels = useTranslations("libraryTeamAccess");
   const t = useTranslations("libraryTeamAccess");
   const { user } = useUser();
-  const { data } = useProtectedQuery(api.evidenceLibraries.queries.listTeam, { libraryId });
+  const data = useWithPage<typeof api.evidenceLibraries.queries.listTeam>("team", useProtectedQuery(api.evidenceLibraries.queries.listTeam, { libraryId }).data);
   const add = useMutation(api.evidenceLibraries.team.addOrganizationMember);
   const changeRole = useMutation(api.evidenceLibraries.team.changeRole);
   const remove = useMutation(api.evidenceLibraries.team.removeMember);
