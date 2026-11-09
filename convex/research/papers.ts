@@ -4,6 +4,7 @@
  * "what cites this paper" or "how many would that find" without making a search in the
  * person's history and deleting it again, which is what it did before it had them.
  */
+import { paperLinkOf } from "../../lib/papers/paper-links";
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
@@ -113,17 +114,21 @@ function workPath(id: string) {
   if (work) return work.split("/").at(-1)!;
   const own = ownWork(given);
   if (own) return own;
+  // Any address that names a paper: Openscholar's own paper pages, with or without their title, included.
+  const link = paperLinkOf(given);
+  if (link?.kind === "work") return link.openalexId;
+  if (link?.kind === "own") return link.work;
   // A DOI goes into the address as it is, so one that would change the address isn't taken: a "?" or "#", or a ".." that climbs out of the work's path.
   const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s?#]+)$/i)?.[1];
   if (doi && !doi.split("/").some((part) => part === "." || part === "..")) return `https://doi.org/${doi}`;
-  throw createError("VALIDATION_ERROR", "A paper is read by its ID, such as W2741809807, or its DOI; an Evidence Community's record by its `paper` as evidenceLibraries/library:records gives it (library:<libraryId>:<key>), or its page's address on the community.");
+  throw createError("VALIDATION_ERROR", "That isn't an address or ID Openscholar can read a paper from. Give its link, its ID (such as W2741809807) or its DOI.");
 }
 
 export const getAction = defineUserAction({
   path: "research/papers:get",
   description:
-    "Reads one paper whole, by its ID as results give it (such as W2741809807) or its DOI: its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
-    "One request against the person's search allowance.",
+    "Reads one paper whole, by its ID as results give it (such as W2741809807), its DOI, or a link to it (Openscholar's paper pages included): its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
+    "One request against the person's search allowance. An Evidence Community's record is read through evidenceLibraries/library:records instead, by its `paper` (library:<libraryId>:<key>).",
   args: { id: v.string() },
   returns: paperRecordValidator,
   spendsCredits: false,

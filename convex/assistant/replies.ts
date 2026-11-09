@@ -240,12 +240,14 @@ const text = (value: unknown) => (typeof value === "string" ? value : null);
  */
 export const askedPapers = query({
   args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps") },
-  returns: v.union(v.null(), askedPapersValidator),
+  // "answered": it was asked about and has its answer, so there's nothing left to ask; null: not a call this card reads.
+  returns: v.union(v.null(), v.literal("answered"), askedPapersValidator),
   handler: async (ctx, { threadId, stepId }) => {
     const person = await requireAuth(ctx);
     await requireThread(ctx, person._id, threadId, "read");
     const step = await ctx.db.get("assistantSteps", stepId);
-    if (!step || step.threadId !== threadId || step.userId !== person._id || step.path !== ADD_PAPERS || step.status !== "asking") return null;
+    if (!step || step.threadId !== threadId || step.userId !== person._id || step.path !== ADD_PAPERS) return null;
+    if (step.status !== "asking") return "answered";
     // Arguments too long to keep whole were cut, and don't parse: such a call is asked about with the plain card.
     let args: { libraryId?: unknown; publish?: unknown; papers?: unknown };
     try {
