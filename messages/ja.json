@@ -5564,7 +5564,9 @@
     "deletionRestartedFor": "{name}の削除を再開しました。",
     "couldNotRestartDeletion": "削除を再開できませんでした",
     "invitationDeclined": "招待を辞退しました。",
-    "unableToDeclineInvitation": "招待を辞退できません"
+    "unableToDeclineInvitation": "招待を辞退できません",
+    "searchSubmissions": "送った論文を検索",
+    "findASubmission": "送った論文を探す…"
   },
   "authorPages": {
     "profileSettings": "プロフィールの設定",
@@ -5907,7 +5909,7 @@
     "ownerOnly": "オーナーだけが変更できます",
     "from": "{name} から",
     "returned": "却下",
-    "statusWithdrawn": "取り下げ済み",
+    "statusWithdrawn": "あなたが取り下げ",
     "openIn": "{community} で開く",
     "openLabel": "{title} を {community} で開く",
     "remove": "削除",

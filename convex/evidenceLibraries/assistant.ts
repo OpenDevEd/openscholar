@@ -785,7 +785,8 @@ export const removeAddedPaperAction = defineChangingAction({
   run: async (ctx, actor, { libraryId, itemKey }): Promise<"withdrawn" | "removed"> => {
     const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
     const outcome = await ctx.runAction(internal.evidenceLibraries.sourceActions.removePaper, { libraryId, userId: actor.userId, itemKey, ...sender });
-    if (outcome === "withdrawn") await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey });
+    // Withdrawn from the queue or taken off the community, a paper they sent is no longer theirs there: their Your submissions says so.
+    await ctx.runMutation(internal.evidenceLibraries.submissions.forgetSent, { userId: actor.userId, libraryId, itemKey });
     return outcome;
   },
 });
@@ -885,7 +886,7 @@ const SENT_PER_PAGE = 20;
 export const submissionsAction = defineUserQuery({
   path: "evidenceLibraries/assistant:submissions",
   description:
-    `The papers the person sent to Evidence Communities, theirs or public ones, newest first, ${SENT_PER_PAGE} a page from \`cursor\`: each one's title, the community, and where it stands there: queued (waiting in its review queue), published, or returned with the reviewer's \`note\`. ` +
+    `The papers the person sent to Evidence Communities, theirs or public ones, newest first, ${SENT_PER_PAGE} a page from \`cursor\`: each one's title, the community, where it stands there: queued (waiting in its review queue), published, or returned with the reviewer's \`note\`; its \`paperLink\`, the paper's page to link it by, and once published its \`recordLink\` on the community. ` +
     "Give `status` for one kind only (withdrawn lists the ones the person took back, which are left out otherwise), and `search` to find papers by title or community. One still queued can be withdrawn with evidenceLibraries/assistant:removeAddedPaper.",
   args: { status: v.optional(submissionStatusValidator), search: v.optional(v.string()), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: sentPapersPageValidator,

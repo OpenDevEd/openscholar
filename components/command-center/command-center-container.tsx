@@ -38,9 +38,6 @@ export function CommandCenterContainer({
   return (
     <Box
       {...rise}
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={subtleSpring}
       className={cn(
         serverDrawn && "rise-enter",
         "relative rounded-2xl",
