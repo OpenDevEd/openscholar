@@ -1310,7 +1310,8 @@ export const libraryOverviewStatusValidator = v.union(
   v.literal("deleting"),
 );
 
-export const LIBRARIES_LISTED = 50;
+/** Communities a page of the assistant's list holds: few enough that a page of long names and addresses reads whole. */
+export const LIBRARIES_LISTED = 25;
 /** A page of the person's communities, as the assistant reads it (./assistant.ts). */
 export const assistantLibrariesValidator = v.object({
   libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), status: libraryOverviewStatusValidator, role: libraryListRoleValidator, owner: v.string(), address: v.string(), editable: v.boolean() })), LIBRARIES_LISTED),

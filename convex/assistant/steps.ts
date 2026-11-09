@@ -24,7 +24,7 @@ import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
 import { findItem } from "../library/find";
-import { readLibraryRole } from "../evidenceLibraries/access";
+import { readLibraryViewRole } from "../evidenceLibraries/access";
 
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
@@ -255,7 +255,7 @@ export async function aboutOf(ctx: Pick<QueryCtx, "db">, { userId, workspaceId }
     const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
     if (!library) return undefined;
     const person = library.workspaceId === workspaceId ? null : await ctx.db.get("users", userId);
-    return library.workspaceId === workspaceId || (person && (await readLibraryRole(ctx, library, person.clerkId)) !== null) ? cut(library.name, 200) : undefined;
+    return library.workspaceId === workspaceId || (person && (await readLibraryViewRole(ctx, library, person.clerkId)) !== null) ? cut(library.name, 200) : undefined;
   }
   // An author profile, by its name: its page is public.
   if (typeof args.profileId === "string") {

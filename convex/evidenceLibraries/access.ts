@@ -120,6 +120,11 @@ async function viewerOf(ctx: Pick<QueryCtx | MutationCtx, "db">, library: Doc<"e
   return (await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId)) ? "viewer" as const : null;
 }
 
+/** The person's role on a library, or "viewer" for a member of its organization with none, as its pages show it to them: whichever workspace they're in. */
+export async function readLibraryViewRole(ctx: Pick<QueryCtx | MutationCtx, "db">, library: Doc<"evidenceLibraries">, clerkUserId: string) {
+  return (await readLibraryRole(ctx, library, clerkUserId)) ?? (await viewerOf(ctx, library, clerkUserId));
+}
+
 /** Current library access does not depend on the active Clerk organization. */
 export async function readLibraryRole(
   ctx: Pick<QueryCtx | MutationCtx, "db">,
@@ -188,7 +193,7 @@ export async function readEvidenceLibraryAccess(
   // Viewing reaches settings no role reached before (#653): a suspended account views nothing, whatever it was given.
   const account = action === "view" ? await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique() : null;
   if (account && account.state !== "active") return null;
-  const role = (await readLibraryRole(ctx, library, identity.subject)) ?? (action === "view" ? await viewerOf(ctx, library, identity.subject) : null);
+  const role = action === "view" ? await readLibraryViewRole(ctx, library, identity.subject) : await readLibraryRole(ctx, library, identity.subject);
   if (!role || ((action === "manage" || action === "remove") && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;

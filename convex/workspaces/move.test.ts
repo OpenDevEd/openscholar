@@ -266,7 +266,9 @@ it("moves a community between a person's own workspace and an organization, both
   expect(await community()).toMatchObject({ _id: libraryId, workspaceId: labId, slug: "coaching-evidence" });
   expect(await grants()).toEqual(["editor"]);
 
-  await alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "community", id: libraryId, to: aliceOwn });
+  // Back from her own workspace, where her Communities page lists the lab's: owning it, she moves it from wherever she is (OS-28).
+  expect(await alice.query(api.workspaces.move.held, { workspaceId: aliceOwn, kind: "community", id: libraryId })).toBeNull();
+  await alice.mutation(api.workspaces.move.move, { workspaceId: aliceOwn, kind: "community", id: libraryId, to: aliceOwn });
   expect(await community()).toMatchObject({ workspaceId: aliceOwn, slug: "coaching-evidence" });
   expect(await grants()).toEqual(["editor"]);
 });
