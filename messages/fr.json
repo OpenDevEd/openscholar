@@ -309,10 +309,10 @@
     "metadataTitle": "Tarifs",
     "metadataDescription": "Des tarifs simples et transparents pour les équipes de toutes tailles.",
     "everyFeature": "Toutes les fonctionnalités d'Openscholar",
-    "papersRunning": "{running, number} articles traités en même temps",
-    "papersInRequest": "{request, number} articles par demande",
+    "papersRunning": "L'IA trie ou extrait {running, number} articles à la fois",
+    "papersInRequest": "Jusqu'à {request, number} articles par tri ou extraction",
     "unlimitedCollectionsAndGuests": "Collections et invités illimités",
-    "southernDescription": "Pour les chercheurs des pays à revenu faible ou intermédiaire.",
+    "southernDescription": "Pour les équipes du Sud, pour des projets précis.",
     "southernFeature1": "Tout ce qui est inclus dans Free",
     "southernFeature2": "Ajouté à votre compte après nous avoir contactés",
     "onRequest": "Sur demande"

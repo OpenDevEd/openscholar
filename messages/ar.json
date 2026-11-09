@@ -309,10 +309,10 @@
     "metadataTitle": "الأسعار",
     "metadataDescription": "أسعار بسيطة وشفافة للفرق بكل أحجامها.",
     "everyFeature": "كل ميزات Openscholar",
-    "papersRunning": "{running, number} ورقة قيد التشغيل في الوقت نفسه",
-    "papersInRequest": "{request, number} ورقة في الطلب الواحد",
+    "papersRunning": "يفرز الذكاء الاصطناعي أو يستخرج {running, number} ورقة في وقت واحد",
+    "papersInRequest": "حتى {request, number} ورقة في عملية فرز أو استخراج واحدة",
     "unlimitedCollectionsAndGuests": "مجموعات وضيوف بلا حدود",
-    "southernDescription": "للباحثين في البلدان منخفضة ومتوسطة الدخل.",
+    "southernDescription": "لفرق الجنوب، لمشاريع محددة.",
     "southernFeature1": "كل ما في Free",
     "southernFeature2": "تضاف إلى حسابك بعد التواصل معنا",
     "onRequest": "عند الطلب"

@@ -309,10 +309,10 @@
     "metadataTitle": "Pricing",
     "metadataDescription": "Simple, transparent pricing for teams of all sizes.",
     "everyFeature": "Every feature in Openscholar",
-    "papersRunning": "{running, number} papers running at once",
-    "papersInRequest": "{request, number} papers in one request",
+    "papersRunning": "AI screens or extracts {running, number} papers at once",
+    "papersInRequest": "Up to {request, number} papers in one screening or extraction",
     "unlimitedCollectionsAndGuests": "Unlimited collections and guests",
-    "southernDescription": "For researchers in low- and middle-income countries.",
+    "southernDescription": "For Southern teams, for specific projects.",
     "southernFeature1": "Everything in Free",
     "southernFeature2": "Added to your account after you contact us",
     "onRequest": "On request"

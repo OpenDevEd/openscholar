@@ -309,10 +309,10 @@
     "metadataTitle": "定价",
     "metadataDescription": "适合各种规模团队的简单透明定价。",
     "everyFeature": "Openscholar 的所有功能",
-    "papersRunning": "同时处理 {running, number} 篇论文",
-    "papersInRequest": "每次请求 {request, number} 篇论文",
+    "papersRunning": "AI 一次筛查或提取 {running, number} 篇论文",
+    "papersInRequest": "一次筛查或提取最多 {request, number} 篇论文",
     "unlimitedCollectionsAndGuests": "不限合集和访客数量",
-    "southernDescription": "面向低收入和中等收入国家的研究人员。",
+    "southernDescription": "面向全球南方团队，用于特定项目。",
     "southernFeature1": "包含 Free 的全部内容",
     "southernFeature2": "联系我们后添加到你的账户",
     "onRequest": "按需申请"

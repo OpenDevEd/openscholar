@@ -309,10 +309,10 @@
     "metadataTitle": "मूल्य निर्धारण",
     "metadataDescription": "सभी आकार की टीमों के लिए सरल और पारदर्शी मूल्य निर्धारण।",
     "everyFeature": "Openscholar की हर सुविधा",
-    "papersRunning": "एक साथ चल रहे {running, number} शोधपत्र",
-    "papersInRequest": "एक अनुरोध में {request, number} शोधपत्र",
+    "papersRunning": "AI एक साथ {running, number} शोधपत्र स्क्रीन या निकालता है",
+    "papersInRequest": "एक स्क्रीनिंग या निष्कर्षण में {request, number} शोधपत्र तक",
     "unlimitedCollectionsAndGuests": "असीमित संग्रह और अतिथि",
-    "southernDescription": "निम्न और मध्यम आय वाले देशों के शोधकर्ताओं के लिए।",
+    "southernDescription": "दक्षिण की टीमों के लिए, विशिष्ट परियोजनाओं के लिए।",
     "southernFeature1": "Free की हर चीज़",
     "southernFeature2": "हमसे संपर्क करने के बाद आपके खाते में जोड़ा जाता है",
     "onRequest": "अनुरोध पर"

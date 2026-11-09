@@ -309,10 +309,10 @@
     "metadataTitle": "料金",
     "metadataDescription": "どの規模のチームにも使える、わかりやすく透明性の高い料金体系です。",
     "everyFeature": "Openscholar のすべての機能",
-    "papersRunning": "同時に処理する論文 {running, number} 件",
-    "papersInRequest": "1 回のリクエストで論文 {request, number} 件",
+    "papersRunning": "AIが一度に{running, number}件の論文をスクリーニングまたは抽出",
+    "papersInRequest": "1回のスクリーニングまたは抽出で最大{request, number}件の論文",
     "unlimitedCollectionsAndGuests": "コレクションとゲストは無制限",
-    "southernDescription": "低・中所得国の研究者向け。",
+    "southernDescription": "グローバルサウスのチームに、特定のプロジェクト向けに。",
     "southernFeature1": "Free のすべて",
     "southernFeature2": "お問い合わせ後にアカウントへ追加されます",
     "onRequest": "リクエスト制"
