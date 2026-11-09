@@ -1,6 +1,8 @@
 "use node";
 
 const timeout = () => AbortSignal.timeout(15_000);
+// zenodo.org answers 403 with an HTML page to Node fetch's default `node` User-Agent; its sandbox does not.
+const userAgent = "Openscholar (https://openscholar.ai)";
 
 export async function verifyCrossrefCredentials(
   loginId: string,
@@ -24,7 +26,7 @@ export async function verifyCrossrefCredentials(
     url.searchParams.set("role", loginId.slice(separator + 1));
   // Crossref's login servlet authenticates the deposit role, unlike its public metadata API.
   const response = await fetch(url, {
-    headers: { Accept: "application/json" },
+    headers: { Accept: "application/json", "User-Agent": userAgent },
     signal: timeout(),
     redirect: "error",
   });
@@ -54,6 +56,7 @@ export async function verifyZenodoCredentials(token: string, sandbox: boolean) {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
     Accept: "application/json",
+    "User-Agent": userAgent,
   };
   // An empty private draft verifies deposit:write without uploading or publishing anything.
   const created = await fetch(`${base}/api/deposit/depositions`, {
