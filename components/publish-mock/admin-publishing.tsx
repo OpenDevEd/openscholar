@@ -48,7 +48,7 @@ import {
 } from "@/components/icons";
 import { CheckRow } from "@/components/publish-mock/publish-flow";
 import { usePlaceName } from "@/components/publish-mock/report-extras";
-import { removeCheck, retryDeposit, review, saveCheck, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
+import { removeCheck, removeLimit, retryDeposit, review, saveCheck, saveLimit, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
 import { ConvexError } from "convex/values";
@@ -56,7 +56,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
-import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, stageOf, type Check as CheckDef, type Email, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, providersOf, stageOf, type Check as CheckDef, type Email, type LimitOverride, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -73,8 +73,11 @@ const STATUS: Record<Exclude<Stage, "draft">, { label: string; tone: "running" |
   failed: { label: "Failed checks", tone: "danger", icon: CircleX },
   declined: { label: "Declined", tone: "neutral", icon: CircleX },
 };
+/** Whether the author asked for a review that no reviewer has answered yet. */
+const asked = (s: Submission, stage: Stage) => stage === "failed" && !!s.reviewRequest;
 /** A report's status in words. A declined report that had been live was withdrawn. */
 const labelOf = (s: Submission, stage: Stage) => (stage === "declined" && s.withdrawnAt ? "Withdrawn" : stage === "draft" ? "Draft" : STATUS[stage].label);
+const REVIEWED: Record<Review["decision"], string> = { approve: "Approved", decline: "Declined", withdraw: "Withdrawn", reinstate: "Reinstated" };
 const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed", declined: "Declined" };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
@@ -88,7 +91,8 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
   const [submissions, setSubmissions] = useState(initial.submissions.filter((s) => s.status !== "draft"));
   // MOCK: the emails kept in the store when the page loaded, so each report can show what the team's inbox was told.
   const outbox = initial.outbox ?? [];
-  const waiting = submissions.filter((s) => stageOf(s, settings) === "review").length;
+  // What wants a reviewer: reports waiting for review, and failed ones whose author asked for a person.
+  const waiting = submissions.filter((s) => stageOf(s, settings) === "review" || asked(s, stageOf(s, settings))).length;
   const replace = (next: Submission) => setSubmissions((all) => all.map((s) => (s.id === next.id ? next : s)));
 
   return (
@@ -119,7 +123,8 @@ function Submissions({ settings, submissions, outbox, onChange }: { settings: Se
   const [show, setShow] = useState<Show>("all");
   const [sort, setSort] = useState<Sort>("newest");
   const [page, setPage] = useState(1);
-  const [open, setOpen] = useState<string | null>(null);
+  // The report whose dialog is open is in the address, so an email's link opens it.
+  const [open, setOpen] = useQueryState("report");
   const counts = useMemo(() => Object.fromEntries(SHOWS.map((s) => [s, s === "all" ? submissions.length : submissions.filter((x) => stageOf(x, settings) === s).length])) as Record<Show, number>, [submissions, settings]);
   const list = useMemo(() => {
     const words = query.trim().toLowerCase();
@@ -172,7 +177,7 @@ function Submissions({ settings, submissions, outbox, onChange }: { settings: Se
           {shown.length ? (
             <ul className={LIST}>
               {shown.map((s) => (
-                <SubmissionRow key={s.id} submission={s} stage={stageOf(s, settings)} onOpen={() => setOpen(s.id)} onChange={onChange} />
+                <SubmissionRow key={s.id} submission={s} stage={stageOf(s, settings)} onOpen={() => void setOpen(s.id)} onChange={onChange} />
               ))}
             </ul>
           ) : (
@@ -183,7 +188,7 @@ function Submissions({ settings, submissions, outbox, onChange }: { settings: Se
           )}
         </Paged>
       </div>
-      <SubmissionDialog submission={opened} settings={settings} emails={opened ? outbox.filter((e) => e.report === opened.id) : []} onClose={() => setOpen(null)} onChange={onChange} />
+      <SubmissionDialog submission={opened} settings={settings} emails={opened ? outbox.filter((e) => e.report === opened.id) : []} onClose={() => void setOpen(null)} onChange={onChange} />
     </Zone>
   );
 }
@@ -232,8 +237,9 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
           <StatusIcon tone={stepTone(standing)} label={stepWords(standing)} icon={standing.state === "done" ? Hash : undefined} />
         )
       ) : null}
+      {asked(s, stage) ? <StatusIcon tone="running" label="The author asked for a review" icon={ReviewQueueIcon} /> : null}
       {status ? (
-        <StatusChip tone={refused ? "warning" : status.tone} icon={refused ? TriangleAlert : status.icon} className="hidden shrink-0 sm:inline-flex">
+        <StatusChip tone={refused ? "warning" : status.tone} icon={refused ? TriangleAlert : status.icon} className="shrink-0">
           {standing && refused ? `${PROVIDER_NAME[standing.provider]} refused` : labelOf(s, stage)}
         </StatusChip>
       ) : null}
@@ -335,7 +341,10 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
                   )}
                 </Fact>
                 <Fact icon={PenLine} label="Signed">
-                  {s.signedBy?.name} <Tag>v{s.agreementVersion}</Tag>
+                  <a href={`/publish/agreements/${s.id}`} target="_blank" rel="noopener noreferrer" className="truncate underline-offset-4 hover:underline">
+                    {s.signedBy?.name}
+                  </a>{" "}
+                  <Tag>v{s.agreementVersion}</Tag>
                 </Fact>
                 <Fact icon={ShieldCheck} label="Checks">
                   {s.results?.filter((r) => r.pass).length ?? 0} of {s.results?.length ?? 0} passed <Tag>v{s.checksVersion}</Tag>
@@ -346,19 +355,43 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
                   <RegistrationChips report={s} />
                 </div>
               ) : null}
-              {emails.length ? (
-                // MOCK: each opens the email as it would arrive. The real build sends them and has no such links.
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <Mail className="size-3.5" /> Emailed to {CONTACT_EMAIL}
-                  </span>
-                  {emails.map((email) => (
-                    <a key={email.id} href={`/publish/emails/${email.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-medium text-foreground/80 underline-offset-4 hover:underline">
-                      {email.event} <ArrowUpRight className="size-3" />
-                    </a>
+              {s.reviews?.length ? (
+                <ul className="space-y-1 text-xs text-muted-foreground">
+                  {s.reviews.map((r) => (
+                    <li key={r.at} className="flex flex-wrap items-center gap-x-1.5">
+                      <ReviewQueueIcon className="size-3.5 shrink-0" />
+                      <span className="font-medium text-foreground/80">{REVIEWED[r.decision]}</span> by {r.by}
+                      <span className="tabular-nums">{day(r.at)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {s.withdrawnAt ? (
+                // MOCK: what the real build tells the registrars when a report is withdrawn. A DOI can't be removed.
+                <div className="flex flex-wrap items-center gap-2">
+                  {providersOf(s).map((provider) => (
+                    <StatusChip key={provider} tone="neutral">
+                      {provider === "crossref" ? "Marked withdrawn at Crossref" : "Removal asked of Zenodo"}
+                    </StatusChip>
                   ))}
                 </div>
               ) : null}
+              {(["team", "author"] as const).map((audience) => {
+                const sent = emails.filter((email) => email.audience === audience);
+                // MOCK: each opens the email as it would arrive. The real build sends them and has no such links.
+                return sent.length ? (
+                  <div key={audience} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="size-3.5" /> {audience === "team" ? `Emailed to ${CONTACT_EMAIL}` : "Emailed to the author"}
+                    </span>
+                    {sent.map((email) => (
+                      <a key={email.id} href={`/publish/emails/${email.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-medium text-foreground/80 underline-offset-4 hover:underline">
+                        {email.event} <ArrowUpRight className="size-3" />
+                      </a>
+                    ))}
+                  </div>
+                ) : null;
+              })}
               {s.metadata?.abstract ? <p className="line-clamp-5 text-sm/6 text-muted-foreground">{s.metadata.abstract}</p> : null}
               {s.metadata ? <Subjects m={s.metadata} /> : null}
               {s.results?.length ? (
@@ -458,6 +491,74 @@ function Row({ label, hint, children, wide = false }: { label: string; hint?: st
   );
 }
 
+/** How many reports a person may start in a day, and the people and organisations with a limit of their own. */
+function Limits({ settings, onChange, save }: { settings: Settings; onChange: (s: Settings) => void; save: (patch: { perDay: number }) => void }) {
+  const [kind, setKind] = useState<LimitOverride["kind"]>("person");
+  const [who, setWho] = useState("");
+  const [perDay, setPerDay] = useState("5");
+  const [busy, start] = useTransition();
+  const { limits } = settings;
+  const add = () =>
+    start(async () => {
+      try {
+        const result = await saveLimit({ kind, who, perDay: Number(perDay) });
+        if ("refused" in result) return void toast.error(result.refused);
+        onChange(result.settings);
+        setWho("");
+      } catch (error) {
+        failed(error);
+      }
+    });
+  return (
+    <Zone label="Limits">
+      <ul className={LIST}>
+        <Row label="New reports a day" hint="For each person. Each one reserves a DOI and is read by the model.">
+          <SavedInput value={String(limits.perDay)} onSave={(value) => save({ perDay: Number(value) })} className="w-20 text-end tabular-nums" />
+        </Row>
+        {limits.overrides.map((o) => (
+          <li key={o.id} className="flex items-center gap-3 px-4 py-3">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{o.name}</span>
+              <span className="block text-xs text-muted-foreground">{o.kind === "person" ? "Person" : "Organisation"}</span>
+            </span>
+            <span className="shrink-0 text-sm tabular-nums">
+              {o.perDay} <span className="text-xs text-muted-foreground">a day</span>
+            </span>
+            <TooltipHint label="Remove this limit">
+              <Button variant="ghost" size="icon-sm" aria-label={`Remove ${o.name}'s limit`} className="text-muted-foreground hover:text-destructive" onClick={() => removeLimit(o.id).then(onChange, failed)}>
+                <Trash2 />
+              </Button>
+            </TooltipHint>
+          </li>
+        ))}
+        <li className="flex flex-wrap items-end gap-2 px-4 py-3.5">
+          <label className="space-y-1.5">
+            <span className="ps-1 text-xs font-medium text-muted-foreground">A limit of their own for</span>
+            <Select value={kind} onValueChange={(value) => setKind(value as LimitOverride["kind"])}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="person">A person</SelectItem>
+                <SelectItem value="organization">An organisation</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+          <Input aria-label={kind === "person" ? "Their email" : "Its name"} className="min-w-40 flex-1" value={who} onChange={(e) => setWho(e.target.value)} placeholder={kind === "person" ? "name@example.org" : "Organisation name"} onKeyDown={(e) => e.key === "Enter" && add()} />
+          <Input aria-label="Reports a day" className="w-20 text-end tabular-nums" inputMode="numeric" value={perDay} onChange={(e) => setPerDay(e.target.value.replace(/\D/g, "").slice(0, 4))} />
+          <Button variant="outline" className="relative" disabled={busy || !who.trim() || perDay === ""} onClick={add}>
+            <Working busy={busy}>
+              <span className="flex items-center gap-2">
+                <Plus /> Add
+              </span>
+            </Working>
+          </Button>
+        </li>
+      </ul>
+    </Zone>
+  );
+}
+
 function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
   const [editing, setEditing] = useState<CheckDef | "new" | null>(null);
   const [agreementOpen, setAgreementOpen] = useState(false);
@@ -492,6 +593,8 @@ function SettingsView({ settings, onChange }: { settings: Settings; onChange: (s
           </li>
         </ul>
       </Zone>
+
+      <Limits settings={settings} onChange={onChange} save={save} />
 
       <Zone label="Series">
         <ul className={LIST}>
@@ -660,6 +763,8 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckDef; onEdit:
   );
 }
 
+/** The longest "how to fix it" line a check carries. */
+const FIX_MAX = 300;
 const BLANK: CheckDef = { id: "", name: "", question: "", model: JEV, threshold: 0.7, blocking: true, enabled: true };
 
 /** A check: a yes-or-no question, the model that answers it, how sure of yes it must be, and what a fail does. */
@@ -701,6 +806,9 @@ function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | nu
               <span className="block ps-1 text-xs text-muted-foreground">{"{byline}"} and {"{doi}"} are filled in with the report&apos;s own.</span>
             </label>
           )}
+          <Field label="How to fix it" hint="Shown to the author when this check fails. {byline} and {doi} are filled in." counter={`${(form.fix ?? "").length} / ${FIX_MAX}`}>
+            {(id) => <Textarea id={id} value={form.fix ?? ""} onChange={(e) => set("fix", e.target.value)} rows={2} maxLength={FIX_MAX} placeholder="Put the byline on the first page, then upload the PDF again." />}
+          </Field>
           <div className="space-y-1.5">
             <span className="ps-1 text-xs font-medium text-muted-foreground">{builtIn ? "Model that compares matches" : "Model"}</span>
             <ModelPicker

@@ -15,16 +15,16 @@ export const coverPath = (key: string) => path.join(MOCK_DIR, `${key}.cover.jpg`
 export const textPath = (key: string) => path.join(MOCK_DIR, `${key}.txt`);
 
 /**
- * Whether a report's PDF and cover may be read: anyone reads a live report's, and only its author reads one that
- * isn't live yet or didn't pass. `public` says which, for how the file may be cached.
+ * Whether a report's PDF and cover may be read: anyone reads a live report's, and only its author and Openscholar's
+ * admins read one that isn't live yet, didn't pass or was withdrawn. `public` says which, for how the file may be cached.
  */
-export async function fileAccess(key: string, userId: string | null): Promise<{ public: boolean } | null> {
+export async function fileAccess(key: string, userId: string | null, admin: () => Promise<boolean>): Promise<{ public: boolean } | null> {
   if (!/^R\d+$/.test(key)) return null;
   const report = (await readState()).submissions.find((s) => s.id === key);
   if (!report) return null;
   if (report.status === "live") return { public: true };
-  // A sample stands in for the viewer's own report, so it too needs someone signed in.
-  return userId !== null && (report.demo || report.ownerId === userId) ? { public: false } : null;
+  // A sample stands in for the viewer's own report, so it too needs someone signed in. A reviewer reads any report.
+  return userId !== null && (report.demo || report.ownerId === userId || (await admin())) ? { public: false } : null;
 }
 
 const DAY = 86_400_000;
@@ -34,6 +34,7 @@ const CHECKS: Check[] = [
     id: "byline",
     name: "Byline and DOI in the PDF",
     question: "Does the text include this line, allowing for line breaks and spacing: \"{byline}\"?",
+    fix: "Put this line on the cover or the first page, as text and not as a picture, then upload the PDF again: {byline}",
     model: JEV,
     threshold: 0.8,
     blocking: true,
@@ -43,6 +44,7 @@ const CHECKS: Check[] = [
     id: "published",
     name: "Already published",
     question: "Is this report the same work as the record found?",
+    fix: "If this is your own earlier publication, say so when you ask for a review.",
     model: DEFAULT_LLM,
     threshold: 0.5,
     // A match goes to a reviewer: the author may be the one who published it.
@@ -54,6 +56,7 @@ const CHECKS: Check[] = [
     id: "harm",
     name: "No hate speech or harassment",
     question: "Is the text free of hate speech, harassment and threats against people? Research that studies these as its subject is fine.",
+    fix: "Take out the passages that attack people, then upload the PDF again.",
     model: JEV,
     threshold: 0.7,
     blocking: true,
@@ -63,6 +66,7 @@ const CHECKS: Check[] = [
     id: "research",
     name: "Research, not advertising",
     question: "Is this a research output, rather than an advertisement, a sales brochure or a page that mostly links to unrelated sites?",
+    fix: "Openscholar Reports publishes research. If yours is, ask for a review and say what the check missed.",
     model: DEFAULT_LLM,
     threshold: 0.7,
     blocking: false,
@@ -86,6 +90,8 @@ async function seedSettings(): Promise<Settings> {
       crossref: { mode: "sandbox", suffixNamespace: "openscholar-r", ...CROSSREF_SANDBOX },
     },
     publicationSavedAt: Date.now() - 6 * DAY,
+    // One new report a day for each person, until an admin gives someone their own limit.
+    limits: { perDay: 1, overrides: [] },
     metadataModel: DEFAULT_LLM,
     checks: CHECKS,
     checksVersion: 3,

@@ -22,6 +22,8 @@ export type Check = {
   name: string;
   /** Asked about the report's details and its PDF's text. `{byline}` and `{doi}` are this report's. */
   question: string;
+  /** What the author is told to do when the check fails, with `{byline}` and `{doi}` filled in as in the question. */
+  fix?: string;
   model: LlmModel;
   /** How sure of yes the model must be, 0 to 1. */
   threshold: number;
@@ -49,6 +51,8 @@ export type CheckResult = {
   /** What a search found or didn't. */
   detail?: string;
   evidence?: { title: string; url: string; where?: string };
+  /** What the author can do about a check that failed, as its admin wrote it. */
+  fix?: string;
   /** The check couldn't answer at all, so the report was held for a person. */
   errored?: boolean;
 };
@@ -60,11 +64,27 @@ export type Settings = {
   /** The Zenodo and Crossref accounts reports register with: the settings a community has, kept the same way. */
   publication: PublicationSettings;
   publicationSavedAt: number | null;
+  /** How many reports one person may start in a day, and who may start more or fewer. */
+  limits: { perDay: number; overrides: LimitOverride[] };
   metadataModel: LlmModel;
   checks: Check[];
   checksVersion: number;
   agreement: { version: number; updatedAt: number; source: string; text: string };
 };
+
+/** A person's or an organisation's own daily limit, by their Clerk ID, with the name an admin knows them by. */
+export type LimitOverride = { kind: "person" | "organization"; id: string; name: string; perDay: number };
+/** The reports a person may start in a day: their own limit, else their organisation's, else everyone's. */
+export function limitFor(settings: Settings, userId: string, orgId: string | null | undefined) {
+  const { perDay, overrides } = settings.limits;
+  return (overrides.find((o) => o.kind === "person" && o.id === userId) ?? overrides.find((o) => o.kind === "organization" && o.id === orgId))?.perDay ?? perDay;
+}
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** How many more reports this person may start now, counting the ones they started in the last 24 hours. */
+export function startsLeft(state: MockState, userId: string, orgId: string | null | undefined) {
+  const started = (state.started?.[userId] ?? []).filter((at) => Date.now() - at < DAY_MS).length;
+  return Math.max(0, limitFor(state.settings, userId, orgId) - started);
+}
 
 /** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country. */
 export type Affiliation = { id: string | null; name: string; country: string };
@@ -165,6 +185,8 @@ export type Submission = {
   archive: Archive;
   registration?: Registration;
   activatedAt?: number;
+  /** Every reviewer's word on it, oldest first. */
+  reviews?: Review[];
   /** When a reviewer withdrew it after it had gone live. Its address then shows a page saying so, and it can be reinstated. */
   withdrawnAt?: number;
   /** MOCK: the communities it was added to from its live page. The real build keeps these as Openscholar's submissions. */
@@ -177,9 +199,11 @@ export type Submission = {
 /** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
 export const REVIEW_TEXT_MAX = 3000;
 /** An email to the team's inbox. MOCK: kept here to be read; the real build sends it (convex/lib/invitationDelivery.ts). */
-export type Email = { id: string; at: number; to: string; replyTo: string; subject: string; text: string; html: string; report: string; event: string };
+export type Email = { id: string; at: number; audience: "team" | "author"; to: string; replyTo: string; subject: string; text: string; html: string; report: string; event: string };
+/** A reviewer's word on a report: who gave it and when. */
+export type Review = { decision: "approve" | "decline" | "withdraw" | "reinstate"; by: string; at: number; note?: string };
 /** `drafts` is the report each person has open on the Publish page, by their Clerk user: one person's never shows for another. */
-export type MockState = { settings: Settings; submissions: Submission[]; drafts: Record<string, string>; outbox?: Email[]; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
+export type MockState = { settings: Settings; submissions: Submission[]; drafts: Record<string, string>; started?: Record<string, number[]>; outbox?: Email[]; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
 /** Where a report's cover is served from. Its address changes with the picture, so it can be cached for good. */
 export const coverUrlOf = (report: Pick<Submission, "id" | "cover">) => (report.cover ? `/publish/files/${report.id}/cover?v=${report.cover}` : null);
@@ -221,3 +245,12 @@ export function stepsOf(s: Submission): RegistrationStep[] {
 /** The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. */
 export const bylineOf = (settings: Settings, doi: string) =>
   settings.series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", settings.series.issn || "pending").replace("{series}", settings.series.name);
+
+const STRINGS = ["title", "subtitle", "type", "language", "date", "licence", "abstract"] as const;
+const LISTS = ["authors", "topics", "keywords", "sdgs", "studyDesigns", "countries", "funding", "references", "relations"] as const;
+/** The details as the details step sends them: the fields every reader of a report relies on, with their types. */
+export function isMetadata(value: unknown): value is Metadata {
+  if (typeof value !== "object" || value === null) return false;
+  const m = value as Record<string, unknown>;
+  return STRINGS.every((k) => typeof m[k] === "string") && LISTS.every((k) => Array.isArray(m[k])) && (m.title as string).trim() !== "";
+}

@@ -20,8 +20,8 @@ const answerSchema = z.object({ answer: z.enum(["yes", "no", "unclear"]), confid
 const LLM_TEXT = 80_000;
 
 /** The question with this report's byline and DOI in it. */
-const askOf = (check: Check, settings: Settings, draft: Submission) =>
-  check.question.replaceAll("{byline}", bylineOf(settings, draft.doi)).replaceAll("{doi}", `https://doi.org/${draft.doi}`);
+const fill = (text: string, settings: Settings, draft: Submission) => text.replaceAll("{byline}", bylineOf(settings, draft.doi)).replaceAll("{doi}", `https://doi.org/${draft.doi}`);
+const askOf = (check: Check, settings: Settings, draft: Submission) => fill(check.question, settings, draft);
 
 /** How sure the model is of yes: its confidence in yes, or the other side of its confidence in no; unclear is neither. */
 const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? confidence : answer === "no" ? 1 - confidence : 0.5);
@@ -29,10 +29,12 @@ const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? co
 /** One check's answer. A question goes to its model; Already published searches, then has its model compare. */
 export async function runCheck(check: Check, settings: Settings, draft: Submission, text: string, metadata: Metadata): Promise<CheckResult> {
   const base = { checkId: check.id, name: check.name, model: check.model.name, blocking: check.blocking };
+  // What to do about it, for the author, when it fails.
+  const failed = check.fix?.trim() ? { fix: fill(check.fix, settings, draft) } : {};
   if (check.builtIn === "already-published") {
     const found = await alreadyPublished(metadata, check.model);
     return found
-      ? { ...base, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
+      ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
       : { ...base, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };
   }
   const question = askOf(check, settings, draft);
@@ -46,7 +48,8 @@ export async function runCheck(check: Check, settings: Settings, draft: Submissi
     const { answer, confidence } = answers[0]!;
     const said: Answer = answer === true ? "yes" : answer === false ? "no" : "unclear";
     const sure = sureOfYes(said, confidence);
-    return { ...base, answer: said, confidence: sure, threshold: check.threshold, pass: said === "yes" && sure >= check.threshold };
+    const pass = said === "yes" && sure >= check.threshold;
+    return { ...base, ...(pass ? {} : failed), answer: said, confidence: sure, threshold: check.threshold, pass };
   }
   const openrouter = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
   const { output } = await generateText({
@@ -58,7 +61,8 @@ export async function runCheck(check: Check, settings: Settings, draft: Submissi
     providerOptions: { openrouter: { ...(check.model.effort ? { reasoning: { effort: check.model.effort } } : {}) } },
   });
   const sure = sureOfYes(output.answer, output.confidence);
-  return { ...base, answer: output.answer, confidence: sure, threshold: check.threshold, reasoning: output.reasoning, pass: output.answer === "yes" && sure >= check.threshold };
+  const pass = output.answer === "yes" && sure >= check.threshold;
+  return { ...base, ...(pass ? {} : failed), answer: output.answer, confidence: sure, threshold: check.threshold, reasoning: output.reasoning, pass };
 }
 
 /** The report's checks as they are now, with their version, and the text they read. Only its owner's report, and only

@@ -3,7 +3,7 @@
 // MOCK (mock/publish-reports): the report's details as the metadata model read them from the PDF, for the author to
 // correct. Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
@@ -196,8 +196,29 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
   );
 }
 
-export function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: Metadata) => Promise<void> }) {
+/** How long after the last change the details are saved. */
+const SAVE_AFTER_MS = 800;
+
+export function DetailsStep({ initial, onRun, onSave }: { initial: Metadata; onRun: (m: Metadata) => Promise<void>; onSave?: (m: Metadata) => void }) {
   const [m, setM] = useState(initial);
+  // Corrections are saved a moment after the last change, so leaving the step loses nothing. A timer, cleared when
+  // the details change again; a change still waiting when the step closes is saved as it closes.
+  const now = useRef({ m, onSave, saved: initial });
+  useEffect(() => {
+    now.current.m = m;
+    now.current.onSave = onSave;
+  });
+  const send = () => {
+    const { m: latest, onSave: save, saved } = now.current;
+    if (latest === saved) return;
+    now.current.saved = latest;
+    save?.(latest);
+  };
+  useEffect(() => {
+    const timer = setTimeout(send, SAVE_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [m]);
+  useEffect(() => send, []);
   const [topicSearch, setTopicSearch] = useState("");
   const [doi, setDoi] = useState("");
   const [refPage, setRefPage] = useState(1);

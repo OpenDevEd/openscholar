@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import { PublishFlow } from "@/components/publish-mock/publish-flow";
 import { readState } from "@/lib/publish-mock/store";
-import { canPublish } from "@/lib/publish-mock/types";
+import { canPublish, limitFor, startsLeft } from "@/lib/publish-mock/types";
 
 export const metadata: Metadata = { title: "Publish | Openscholar" };
 
@@ -14,5 +14,7 @@ export default async function PublishPage() {
   const draft = (user && state.submissions.find((s) => s.id === state.drafts[user.id])) || null;
   // Yours: the reports you started, and the mock's samples. Newest first.
   const reports = state.submissions.filter((s) => s.demo || (user && s.ownerId === user.id)).sort((a, b) => b.updatedAt - a.updatedAt);
-  return <PublishFlow settings={state.settings} initial={draft} reports={reports} userName={user?.fullName ?? ""} />;
+  const { orgId } = await auth();
+  const starts = user ? { left: startsLeft(state, user.id, orgId), perDay: limitFor(state.settings, user.id, orgId) } : { left: 1, perDay: 1 };
+  return <PublishFlow settings={state.settings} initial={draft} reports={reports} userName={user?.fullName ?? ""} signedIn={!!user} starts={starts} />;
 }

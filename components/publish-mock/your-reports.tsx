@@ -8,10 +8,11 @@ import Link from "@/components/workspace-link";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LIST_FILTER, ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { Paged, pagerOf } from "@/components/settings/parts";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw } from "@/components/icons";
+import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2 } from "@/components/icons";
 import { standingOf, stepWords } from "@/components/publish-mock/registration";
 import { stageOf, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
@@ -55,7 +56,9 @@ export function StatusFilter({ reports, settings, show, onShow }: { reports: Sub
   );
 }
 
-export function YourReports({ reports, settings, show, onOpen, onNew }: { reports: Submission[]; settings: Settings; show: Show; onOpen: (id: string) => void; onNew: () => void }) {
+export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard }: { reports: Submission[]; settings: Settings; show: Show; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void> }) {
+  // The report being discarded, asked about once before it goes.
+  const [discarding, setDiscarding] = useState<Submission | null>(null);
   const [page, setPage] = useState(1);
   // A new filter starts at its first page.
   const [shownFor, setShownFor] = useState(show);
@@ -73,7 +76,7 @@ export function YourReports({ reports, settings, show, onOpen, onNew }: { report
         <Paged pager={pager} rowHeight={ROW} label="reports">
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
             {shown.map((r) => (
-              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} />
+              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={r.status === "draft" && !r.demo ? () => setDiscarding(r) : undefined} />
             ))}
           </ul>
         </Paged>
@@ -92,12 +95,30 @@ export function YourReports({ reports, settings, show, onOpen, onNew }: { report
           {show === "all" ? "No reports yet" : `No reports ${SHOW_LABEL[show].toLowerCase()}`}
         </ListEmpty>
       )}
+      <AlertDialog open={!!discarding} onOpenChange={(open) => !open && setDiscarding(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard this report?</AlertDialogTitle>
+            <AlertDialogDescription>Its PDF and its reserved DOI are given up. It still counts as one of the reports you started today.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (discarding) void onDiscard(discarding.id);
+              }}
+            >
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
 
 /** One report: its title, key and date; the reviewer's note when declined; its status; and the way back into it. */
-function ReportRow({ report: r, stage, onOpen }: { report: Submission; stage: Stage; onOpen: () => void }) {
+function ReportRow({ report: r, stage, onOpen, onDiscard }: { report: Submission; stage: Stage; onOpen: () => void; onDiscard?: () => void }) {
   const status = STATUS[stage];
   const title = r.metadata?.title ?? (r.pdf?.name ? r.pdf.name : "Untitled report");
   const action =
@@ -161,6 +182,13 @@ function ReportRow({ report: r, stage, onOpen }: { report: Submission; stage: St
       <StatusChip tone={status.tone} icon={status.icon} className="hidden shrink-0 @md/reports:inline-flex">
         {stage === "declined" && r.withdrawnAt ? "Withdrawn" : status.label}
       </StatusChip>
+      {onDiscard ? (
+        <TooltipHint label="Discard">
+          <Button variant="ghost" size="icon-sm" aria-label={`Discard: ${title}`} className="text-muted-foreground hover:text-destructive" onClick={onDiscard}>
+            <Trash2 />
+          </Button>
+        </TooltipHint>
+      ) : null}
       <TooltipHint label={action.label}>{open}</TooltipHint>
     </li>
   );

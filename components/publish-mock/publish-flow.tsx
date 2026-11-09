@@ -43,7 +43,9 @@ import {
   Hash,
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
-import { activate, addToCommunity, goTo, openReport, readPdfDetails, readReport, requestReview, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { activate, addToCommunity, discardReport, goTo, openReport, readPdfDetails, readReport, requestReview, saveDetails, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { fillAgreement } from "@/lib/publish-mock/agreement";
+import { useClerk } from "@clerk/nextjs";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { RegistrationChips } from "@/components/publish-mock/registration";
 import { CitationControl } from "@/components/citation-control";
@@ -110,11 +112,28 @@ async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckR
   throw new Error("The checks stopped before they finished");
 }
 
-export function PublishFlow({ settings, initial, reports: initialReports, userName }: { settings: Settings; initial: Submission | null; reports: Submission[]; userName: string }) {
+export function PublishFlow({
+  settings,
+  initial,
+  reports: initialReports,
+  userName,
+  signedIn,
+  starts,
+}: {
+  settings: Settings;
+  initial: Submission | null;
+  reports: Submission[];
+  userName: string;
+  signedIn: boolean;
+  /** How many reports this person may still start today, and their daily limit. */
+  starts: { left: number; perDay: number };
+}) {
   const [view, setView] = useQueryState("view", parseAsStringLiteral(["new", "reports"] as const).withDefault("new"));
   const [draft, setDraftOnly] = useState(initial);
   const [reports, setReports] = useState(initialReports);
   const [running, setRunning] = useState<Running | null>(null);
+  // The day's starts this person has left: one fewer with each report they start here.
+  const [startsLeft, setStartsLeft] = useState(starts.left);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
   const [fresh, setFresh] = useState<{ id: string; step: "doi" | "live" } | null>(null);
@@ -185,6 +204,13 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
           settings={settings}
           show={show}
           reports={reports}
+          onDiscard={(id) =>
+            discardReport(id).then(() => {
+              setReports((all) => all.filter((r) => r.id !== id));
+              setDraftOnly((current) => (current?.id === id ? null : current));
+              toast.success("Report discarded");
+            }, said("The report couldn't be discarded"))
+          }
           onNew={() => {
             another(() => void setView(null));
           }}
@@ -211,7 +237,14 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
               {running ? (
                 <Checks rows={running.checks.map((c) => ({ ...c, result: running.results[c.id] }))} draft={null} />
               ) : step === "agreement" ? (
-                <AgreementStep settings={settings} userName={draft?.signedBy?.name ?? userName} onSigned={(signed) => {
+                <AgreementStep
+                  settings={settings}
+                  userName={draft?.signedBy?.name ?? userName}
+                  signedIn={signedIn}
+                  // A report already under way was counted when it started.
+                  blocked={(!draft || draft.step === "done") && startsLeft < 1 ? starts.perDay : null}
+                  onSigned={(signed) => {
+                    setStartsLeft((left) => left - 1);
                     setFresh({ id: signed.id, step: "doi" });
                     setDraft(signed);
                   }}
@@ -221,7 +254,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
               ) : step === "upload" && draft ? (
                 <UploadStep settings={settings} draft={draft} onStored={setDraft} onRead={setDraft} />
               ) : step === "details" && draft?.metadata ? (
-                <DetailsStep initial={draft.metadata} onRun={run} />
+                <DetailsStep initial={draft.metadata} onRun={run} onSave={(metadata) => void saveDetails(draft.id, metadata).catch(said("Your changes couldn't be saved"))} />
               ) : step === "done" && draft?.status === "live" ? (
                 <LiveReport
                   settings={settings}
@@ -323,7 +356,23 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
-function AgreementStep({ settings, userName, onSigned }: { settings: Settings; userName: string; onSigned: (d: Submission) => void }) {
+function AgreementStep({
+  settings,
+  userName,
+  signedIn,
+  blocked,
+  onSigned,
+}: {
+  settings: Settings;
+  userName: string;
+  signedIn: boolean;
+  /** The person's daily limit when they've used it up, so no new report can start today; null when they may start one. */
+  blocked: number | null;
+  onSigned: (d: Submission) => void;
+}) {
+  const { openSignIn } = useClerk();
+  // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
+  const [today] = useState(() => new Date());
   const [name, setName] = useState(userName);
   const [all, setAll] = useState(false);
   const [agreed, setAgreed] = useState(false);
@@ -341,7 +390,7 @@ function AgreementStep({ settings, userName, onSigned }: { settings: Settings; u
         className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5"
         style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}
       >
-        <MarkdownContent content={agreement.text} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <label className="space-y-1.5">
@@ -357,26 +406,39 @@ function AgreementStep({ settings, userName, onSigned }: { settings: Settings; u
           <span>I agree to this agreement</span>
         </label>
       </div>
-      <div className="mt-6 flex justify-end">
-        <Button
-          className="relative"
-          disabled={!agreed || !name.trim() || busy}
-          onClick={() =>
-            start(async () => {
-              try {
-                onSigned(await signAgreement({ name, onBehalfOfAll: all }));
-              } catch (error) {
-                toast.error(reasonOf(error, "The agreement couldn't be signed"));
-              }
-            })
-          }
-        >
-          <Working busy={busy}>
-            <span className="flex items-center gap-2">
-              <PenLine /> Sign and reserve a DOI
-            </span>
-          </Working>
-        </Button>
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+        {blocked !== null ? (
+          <p className="text-sm text-muted-foreground">
+            {blocked === 0 ? "Publishing isn't open to your account yet." : `You can start ${blocked} ${blocked === 1 ? "report" : "reports"} a day. Come back tomorrow.`}
+          </p>
+        ) : null}
+        {signedIn ? (
+          <Button
+            className="relative"
+            disabled={!agreed || !name.trim() || busy || blocked !== null}
+            onClick={() =>
+              start(async () => {
+                try {
+                  const result = await signAgreement({ name, onBehalfOfAll: all });
+                  if ("refused" in result) toast.error(result.refused);
+                  else onSigned(result.draft);
+                } catch (error) {
+                  toast.error(reasonOf(error, "The agreement couldn't be signed"));
+                }
+              })
+            }
+          >
+            <Working busy={busy}>
+              <span className="flex items-center gap-2">
+                <PenLine /> Sign and reserve a DOI
+              </span>
+            </Working>
+          </Button>
+        ) : (
+          <Button onClick={() => openSignIn()}>
+            <PenLine /> Sign in to publish
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -661,6 +723,12 @@ export function CheckRow({ name, result }: { name: string; result?: CheckResult 
                 </a>
               ) : null}
               {result.reasoning ? <p className="ms-8 mt-2 text-xs/5 text-muted-foreground">{result.reasoning}</p> : null}
+              {!result.pass && result.fix ? (
+                <p className="ms-8 mt-2 flex items-start gap-2 rounded-xl bg-inset px-3 py-2 text-xs/5">
+                  <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                  <span className="min-w-0 break-words">{result.fix}</span>
+                </p>
+              ) : null}
             </motion.div>
           ) : null}
         </AnimatePresence>
@@ -947,9 +1015,9 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings:
 function ReportCover({ settings, draft }: { settings: Settings; draft: Submission | null }) {
   const m = draft?.metadata;
   const live = draft?.step === "done" && draft.status === "live";
-  const facts: Array<{ id: string; icon: typeof Hash; label: string }> = [
+  const facts: Array<{ id: string; icon: typeof Hash; label: string; href?: string }> = [
     ...(draft?.pdf ? [{ id: "pdf", icon: FileText, label: `${draft.pdf.pages} ${draft.pdf.pages === 1 ? "page" : "pages"}` }] : []),
-    ...(draft?.signedAt ? [{ id: "agreement", icon: PenLine, label: `Agreement v${draft.agreementVersion}` }] : []),
+    ...(draft?.signedAt ? [{ id: "agreement", icon: PenLine, label: `Agreement v${draft.agreementVersion}`, href: `/publish/agreements/${draft.id}` }] : []),
     ...(draft?.checksVersion ? [{ id: "checks", icon: ShieldCheck, label: `Checks v${draft.checksVersion}` }] : []),
   ];
   return (
@@ -979,11 +1047,20 @@ function ReportCover({ settings, draft }: { settings: Settings; draft: Submissio
               Live
             </StatusChip>
           ) : null}
-          {facts.map((fact) => (
-            <StatusChip key={fact.id} tone="neutral" icon={fact.icon} className="fade-enter">
-              {fact.label}
-            </StatusChip>
-          ))}
+          {facts.map((fact) =>
+            fact.href ? (
+              // The agreement as signed, in a tab of its own to read, save or print.
+              <a key={fact.id} href={fact.href} target="_blank" rel="noopener noreferrer" className="fade-enter rounded-full outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring">
+                <StatusChip tone="neutral" icon={fact.icon} className="transition-colors hover:text-foreground">
+                  {fact.label}
+                </StatusChip>
+              </a>
+            ) : (
+              <StatusChip key={fact.id} tone="neutral" icon={fact.icon} className="fade-enter">
+                {fact.label}
+              </StatusChip>
+            ),
+          )}
         </div>
       </div>
     </aside>

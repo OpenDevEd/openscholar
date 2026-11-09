@@ -1,16 +1,17 @@
 "use server";
 // MOCK (mock/publish-reports): the Publish flow and its admin page, against the mock's local store. The real build
 // makes these Convex functions with their user-action registry entries.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { cookies, headers } from "next/headers";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
-import { mail } from "@/lib/publish-mock/emails";
+import { requireAdmin } from "@/lib/publish-mock/admin";
+import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
-import { REVIEW_TEXT_MAX, canPublish, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, canPublish, isMetadata, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type LimitOverride, type Metadata, type Review, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -47,16 +48,28 @@ function openDraft(state: MockState, userId: string) {
   return draft;
 }
 
-export async function signAgreement({ name, onBehalfOfAll }: { name: string; onBehalfOfAll: boolean }) {
-  const user = await currentUser();
+/**
+ * Signs the agreement, which starts the person's report and reserves its DOI. A person may start only so many a
+ * day (`limitFor`): past that the signing is refused, in words, since a built server hides what an action throws.
+ */
+export async function signAgreement({ name, onBehalfOfAll }: { name: string; onBehalfOfAll: boolean }): Promise<{ draft: Submission } | { refused: string }> {
+  const [user, { orgId }] = await Promise.all([currentUser(), auth()]);
+  if (!user) return { refused: "Sign in to publish." };
   return change((state) => {
-    if (!canPublish(state.settings)) throw new Error("Publishing is off until Crossref or Zenodo is connected.");
+    if (!canPublish(state.settings)) return { refused: "Publishing is off for now." };
+    const open = state.submissions.find((s) => s.id === state.drafts[user.id]);
+    const starting = !open || open.step === "done";
+    if (starting && startsLeft(state, user.id, orgId) < 1) {
+      const perDay = limitFor(state.settings, user.id, orgId);
+      return { refused: perDay === 0 ? "Publishing isn't open to your account yet." : `You can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.` };
+    }
     const registration = registrationOf(state.settings);
-    if (!user) throw new Error("Sign in to publish.");
     const draft = openDraft(state, user.id);
     // Signed once: a second signing, say from a tab left open, never moves a reserved DOI or its route.
-    if (draft.step !== "agreement") return draft;
-    return touch(draft, {
+    if (draft.step !== "agreement") return { draft };
+    // Counted where it can't be undone: a report discarded later still used one of the day's starts.
+    if (starting) state.started = { ...state.started, [user.id]: [...(state.started?.[user.id] ?? []).filter((at) => Date.now() - at < 24 * 60 * 60 * 1000), Date.now()] };
+    touch(draft, {
       signedBy: { name: name.trim(), email: user.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
       signedAt: Date.now(),
       agreementVersion: state.settings.agreement.version,
@@ -68,6 +81,31 @@ export async function signAgreement({ name, onBehalfOfAll }: { name: string; onB
       archive: registration.zenodo ? "draft" : "none",
       step: "doi",
     });
+    return { draft };
+  });
+}
+
+/** The author's corrections, kept as they make them, so leaving the details step loses nothing. */
+export async function saveDetails(id: string, metadata: unknown) {
+  const userId = await me();
+  if (!isMetadata(metadata)) throw new Error("The report's details are missing.");
+  await change((state) => {
+    const draft = state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId));
+    // Only while the details are being corrected: a save that arrives after the checks started changes nothing.
+    if (draft?.step === "details" && !draft.run) touch(draft, { metadata });
+  });
+}
+
+/** Gives up a report that was never checked: it, its PDF and its reserved DOI are gone. The day's start it used stays used. */
+export async function discardReport(id: string) {
+  const userId = await me();
+  await change(async (state) => {
+    const report = state.submissions.find((s) => s.id === id && s.ownerId === userId);
+    if (!report) throw new Error("No such report of yours.");
+    if (report.status !== "draft") throw new Error("Only a report that hasn't been checked can be discarded.");
+    state.submissions = state.submissions.filter((s) => s !== report);
+    if (state.drafts[userId] === id) delete state.drafts[userId];
+    await Promise.all([pdfPath(id), coverPath(id), textPath(id)].map((file) => rm(file, { force: true })));
   });
 }
 
@@ -176,16 +214,62 @@ export async function startOver() {
 
 // Admin
 
+/** A daily limit as kept: a whole number from 0, which stops someone starting any, to 1,000. */
+const dailyLimit = (n: number) => Math.min(1000, Math.max(0, Math.round(Number.isFinite(n) ? n : 0)));
+
+/**
+ * Gives a person, by their email, or an organisation, by its name, a daily limit of their own. Clerk says who they
+ * are: a name it doesn't know is refused, in words.
+ */
+export async function saveLimit({ kind, who, perDay }: { kind: LimitOverride["kind"]; who: string; perDay: number }): Promise<{ settings: Settings } | { refused: string }> {
+  await requireAdmin();
+  const query = who.trim();
+  if (!query) return { refused: kind === "person" ? "Enter the person's email." : "Enter the organisation's name." };
+  const clerk = await clerkClient();
+  let found: { id: string; name: string } | undefined;
+  try {
+    if (kind === "person") {
+      const [user] = (await clerk.users.getUserList({ emailAddress: [query.toLowerCase()], limit: 1 })).data;
+      if (user) found = { id: user.id, name: [user.firstName, user.lastName].filter(Boolean).join(" ") || query.toLowerCase() };
+    } else {
+      const matches = (await clerk.organizations.getOrganizationList({ query, limit: 10 })).data;
+      const organization = matches.find((o) => o.name.toLowerCase() === query.toLowerCase()) ?? (matches.length === 1 ? matches[0] : undefined);
+      if (organization) found = { id: organization.id, name: organization.name };
+    }
+  } catch (error) {
+    console.error("[publish mock] Clerk lookup failed", { kind, error: String(error).slice(0, 300) });
+    return { refused: "We couldn't look that up just now. Try again." };
+  }
+  if (!found) return { refused: kind === "person" ? "No account has that email." : "No organisation has that name." };
+  const { id, name } = found;
+  return {
+    settings: await change((state) => {
+      state.settings.limits.overrides = [...state.settings.limits.overrides.filter((o) => o.id !== id), { kind, id, name, perDay: dailyLimit(perDay) }];
+      return state.settings;
+    }),
+  };
+}
+
+export async function removeLimit(id: string) {
+  await requireAdmin();
+  return change((state) => {
+    state.settings.limits.overrides = state.settings.limits.overrides.filter((o) => o.id !== id);
+    return state.settings;
+  });
+}
+
 /** MOCK: the rail reads a cookie for whether Publish shows; the real build reads the setting. */
 async function showInRail(settings: Settings) {
   const on = canPublish(settings);
   (await cookies()).set(OFF_COOKIE, on ? "" : "1", { path: "/", maxAge: on ? 0 : 60 * 60 * 24 * 365 });
 }
 
-export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "humanReview" | "metadataModel">> & { series?: Partial<Settings["series"]> }) {
+export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "humanReview" | "metadataModel">> & { series?: Partial<Settings["series"]>; perDay?: number }) {
+  await requireAdmin();
   const settings = await change((state) => {
-    const { series, ...rest } = patch;
+    const { series, perDay, ...rest } = patch;
     Object.assign(state.settings, rest);
+    if (perDay !== undefined) state.settings.limits.perDay = dailyLimit(perDay);
     if (series) Object.assign(state.settings.series, series);
     return state.settings;
   });
@@ -201,6 +285,7 @@ export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "
  * credentials encrypted, as `publicationProviderActions.verifyAndSave` does for a community.
  */
 export async function savePublication(input: { settings: PublicationSettings; credentials: PublicationSecrets; expectedUpdatedAt: number | null }): Promise<{ settings: Settings } | { refused: string }> {
+  await requireAdmin();
   const settings = structuredClone(input.settings);
   if (settings.zenodo.mode === "custom" || settings.crossref.mode === "custom") return { refused: "Shared dev registers on the sandboxes only." };
   if (settings.crossref.mode === "sandbox") Object.assign(settings.crossref, CROSSREF_SANDBOX);
@@ -225,6 +310,7 @@ function bump(state: MockState) {
 }
 
 export async function saveCheck(check: Check) {
+  await requireAdmin();
   return change((state) => {
     const at = state.settings.checks.findIndex((c) => c.id === check.id);
     if (at >= 0) state.settings.checks[at] = check;
@@ -235,6 +321,7 @@ export async function saveCheck(check: Check) {
 }
 
 export async function removeCheck(id: string) {
+  await requireAdmin();
   return change((state) => {
     state.settings.checks = state.settings.checks.filter((c) => c.id !== id);
     bump(state);
@@ -244,6 +331,7 @@ export async function removeCheck(id: string) {
 
 
 export async function updateAgreement(text: string) {
+  await requireAdmin();
   return change((state) => {
     // The text people signed stays with its version.
     state.agreementVersions = { ...state.agreementVersions, [String(state.settings.agreement.version)]: state.settings.agreement.text };
@@ -277,23 +365,36 @@ export async function requestReview(id: string, comment: string) {
  * says it was withdrawn, since its DOI can't be removed. A withdrawn report can be reinstated, which makes it live again.
  */
 export async function review(id: string, decision: "approve" | "decline" | "reinstate", seenPdfAt: number | undefined, note?: string) {
+  await requireAdmin();
+  const user = await currentUser();
+  const origin = (await headers()).get("origin") ?? "";
+  const by = user?.fullName || user?.primaryEmailAddress?.emailAddress || "A reviewer";
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
     if (!submission || submission.step !== "done") throw new Error("No such report to review.");
     // The word is on the PDF the reviewer had open: one uploaded since needs looking at again.
     if (submission.pdf?.at !== seenPdfAt) throw new Error("The author uploaded a new PDF since you opened this. Reload to review it.");
     const stage = stageOf(submission, state.settings);
+    const said = note?.trim().slice(0, REVIEW_TEXT_MAX) || undefined;
+    // Who decided what, and when, stays with the report; its author hears of it by email.
+    const record = (decision: Review["decision"], event: MailEvent, patch: Partial<Submission>) => {
+      touch(submission, { ...patch, reviews: [...(submission.reviews ?? []), { decision, by, at: Date.now(), ...(said && decision !== "approve" && decision !== "reinstate" ? { note: said } : {}) }] });
+      mail(state, event, submission, origin);
+      return submission;
+    };
     if (decision === "reinstate") {
       if (stage !== "declined" || !submission.withdrawnAt) throw new Error("Only a withdrawn report can be reinstated.");
-      return touch(submission, { status: "live", withdrawnAt: undefined, note: undefined });
+      return record("reinstate", "reinstated", { status: "live", withdrawnAt: undefined, note: undefined });
     }
     if (stage === "declined") throw new Error("This report was already declined.");
     if (decision === "approve") {
       if (stage !== "failed" && stage !== "review") throw new Error("This report doesn't need approving.");
       // Approving lets the author activate it; the author decides when it goes live.
-      return touch(submission, { approved: true });
+      return record("approve", "approved", { approved: true });
     }
-    return touch(submission, { status: "declined", ...(stage === "live" ? { withdrawnAt: Date.now() } : {}), ...(note?.trim() ? { note: note.trim().slice(0, REVIEW_TEXT_MAX) } : {}) });
+    return stage === "live"
+      ? record("withdraw", "withdrawn", { status: "declined", withdrawnAt: Date.now(), note: said })
+      : record("decline", "declined", { status: "declined", note: said });
   });
 }
 
@@ -308,6 +409,7 @@ export async function activate(id: string) {
     const registers = providersOf(submission);
     touch(submission, { status: "live", activatedAt: Date.now(), archive: registers.includes("zenodo") ? "queued" : "none", deposit: registers.includes("crossref") ? "queued" : "none" });
     mail(state, "live", submission, origin);
+    mail(state, "live-author", submission, origin);
     return submission;
   });
 }
@@ -338,6 +440,7 @@ export async function addToCommunity(id: string, community: { id: string; name: 
 }
 
 export async function retryDeposit(id: string) {
+  await requireAdmin();
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
     if (!submission) throw new Error("No such report.");

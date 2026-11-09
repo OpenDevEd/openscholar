@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { isAdmin } from "@/lib/publish-mock/admin";
 import { readState } from "@/lib/publish-mock/store";
 
 const escape = (text: string) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -6,9 +6,8 @@ const escape = (text: string) => text.replace(/[&<>"]/g, (c) => ({ "&": "&amp;",
 // MOCK (mock/publish-reports): an email the mock would have sent the team's inbox, shown as it would arrive. The
 // real build sends it, and this page doesn't exist.
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { userId } = await auth();
   const { id } = await params;
-  const email = userId ? (await readState()).outbox?.find((e) => e.id === id) : undefined;
+  const email = (await isAdmin()) ? (await readState()).outbox?.find((e) => e.id === id) : undefined;
   if (!email) return new Response(null, { status: 404 });
   const head = [["To", email.to], ["Reply-To", email.replyTo], ["Subject", email.subject], ["Sent", new Date(email.at).toUTCString()]]
     .map(([label, value]) => `<tr><td style="padding:2px 16px 2px 0;color:#6a6a6a">${label}</td><td>${escape(value ?? "")}</td></tr>`)

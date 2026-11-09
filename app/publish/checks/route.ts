@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { checksFor, finishChecks, runCheck } from "@/lib/publish-mock/checks";
-import type { CheckResult, Metadata } from "@/lib/publish-mock/types";
+import { isMetadata, type CheckResult } from "@/lib/publish-mock/types";
 
 // MOCK (mock/publish-reports): runs the report's checks side by side and sends each answer as a line of JSON the moment
 // it comes, then the report as saved. The checks take from under a second (the byline) to about ten (Already published).
@@ -43,11 +43,3 @@ export async function POST(request: Request) {
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
 }
 
-const STRINGS = ["title", "subtitle", "type", "language", "date", "licence", "abstract"] as const;
-const LISTS = ["authors", "topics", "keywords", "sdgs", "studyDesigns", "countries", "funding", "references", "relations"] as const;
-/** The details as the details step sends them: the fields every reader of a report relies on, with their types. */
-function isMetadata(value: unknown): value is Metadata {
-  if (typeof value !== "object" || value === null) return false;
-  const m = value as Record<string, unknown>;
-  return STRINGS.every((k) => typeof m[k] === "string") && LISTS.every((k) => Array.isArray(m[k])) && (m.title as string).trim() !== "";
-}
