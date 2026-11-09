@@ -84,8 +84,9 @@ async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckR
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
     for (const line of lines.filter(Boolean)) {
-      const message = JSON.parse(line) as { type: "result"; result: CheckResult } | { type: "done"; draft: Submission };
+      const message = JSON.parse(line) as { type: "result"; result: CheckResult } | { type: "done"; draft: Submission } | { type: "error"; error: string };
       if (message.type === "result") onResult(message.result);
+      else if (message.type === "error") throw new Error(message.error);
       else return message.draft;
     }
   }
@@ -548,7 +549,7 @@ function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; n
     <div>
       <AutoHeight>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={draft ? draft.status : "running"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <motion.div key={draft ? draft.status : "running"} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
             {head}
           </motion.div>
         </AnimatePresence>

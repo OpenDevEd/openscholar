@@ -129,7 +129,7 @@ export async function uploadPdf(form: FormData) {
     };
     // MOCK: the text the checks read, kept beside the PDF.
     await writeFile(pdfPath(draft.id).replace(/\.pdf$/, ".txt"), pages.map((p) => p.text).join("\n"));
-    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size }, metadata, step: "details" });
+    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size }, metadata, step: "details", run: undefined });
   });
 }
 

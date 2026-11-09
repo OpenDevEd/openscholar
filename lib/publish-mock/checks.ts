@@ -2,7 +2,7 @@
 // it comes; the last step saves them and decides what happens to the report.
 import { readFile } from "node:fs/promises";
 import { alreadyPublished } from "./published";
-import { changeState, pdfPath, readState } from "./store";
+import { changeState, pdfPath } from "./store";
 import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
@@ -62,25 +62,31 @@ export async function runCheck(check: Check, settings: Settings, draft: Submissi
 
 /** The report's checks as they are now, with their version, and the text they read. Only its owner's report, and only
  * one waiting for its checks: a request names it, so another report opened meanwhile is never the one checked. */
-export async function checksFor(id: string, userId: string) {
-  const state = await readState();
-  const draft = state.submissions.find((s) => s.id === id);
-  if (!draft || (draft.ownerId !== userId && !draft.demo)) throw new Error("No such report of yours.");
-  if (draft.step !== "details") throw new Error("This report isn't waiting for its checks.");
-  const text = await readFile(pdfPath(draft.id).replace(/\.pdf$/, ".txt"), "utf8").catch(() => "");
-  return { settings: state.settings, draft, text, checks: state.settings.checks.filter((c) => c.enabled), version: state.settings.checksVersion };
+export async function checksFor(id: string, userId: string, metadata: Metadata) {
+  const started = await changeState((state) => {
+    const draft = state.submissions.find((s) => s.id === id);
+    if (!draft || (draft.ownerId !== userId && !draft.demo)) throw new Error("No such report of yours.");
+    if (draft.step !== "details") throw new Error("This report isn't waiting for its checks.");
+    // The author's corrections are saved before anything runs, so a run that fails keeps them.
+    Object.assign(draft, { metadata, run: crypto.randomUUID(), updatedAt: Date.now() });
+    return { settings: state.settings, draft: structuredClone(draft), checks: state.settings.checks.filter((c) => c.enabled), version: state.settings.checksVersion };
+  });
+  const text = await readFile(pdfPath(id).replace(/\.pdf$/, ".txt"), "utf8").catch(() => "");
+  return { ...started, text };
 }
 
-/** Saves the checks' answers with the version that ran, and decides what happens to the report. */
-export function finishChecks(id: string, metadata: Metadata, results: CheckResult[], version: number) {
+/** Saves the checks' answers with the version that ran, and decides what happens to the report. Only the latest run on
+ * the PDF they read: a run that a new PDF or a later run replaced saves nothing. */
+export function finishChecks(id: string, run: string, metadata: Metadata, results: CheckResult[], version: number) {
   return changeState((state) => {
     const draft = state.submissions.find((s) => s.id === id);
     if (!draft) throw new Error("The report is gone.");
+    if (draft.run !== run || draft.step !== "details") throw new Error("A newer PDF or run replaced these checks.");
     const blocked = results.some((r) => !r.pass && r.blocking);
     const flagged = results.some((r) => !r.pass && !r.blocking);
     // Passing makes the report: live at once, or once someone approves it when review is on or an advisory check flagged it.
     const status = blocked ? "failed" : state.settings.humanReview || flagged ? "review" : "live";
-    Object.assign(draft, { metadata, results, checksVersion: version, status, step: "done", deposit: status === "live" ? "queued" : "none", updatedAt: Date.now() });
+    Object.assign(draft, { metadata, results, checksVersion: version, status, step: "done", run: undefined, deposit: status === "live" ? "queued" : "none", updatedAt: Date.now() });
     return draft;
   });
 }

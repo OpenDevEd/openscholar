@@ -7,14 +7,16 @@ import type { CheckResult, Metadata } from "@/lib/publish-mock/types";
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "Sign in to publish." }, { status: 401 });
-  const { id, metadata } = (await request.json()) as { id: string; metadata: Metadata };
+  const { id, metadata } = (await request.json().catch(() => ({}))) as { id?: unknown; metadata?: unknown };
+  if (typeof id !== "string" || !isMetadata(metadata)) return Response.json({ error: "The report's details are missing." }, { status: 400 });
   let prepared;
   try {
-    prepared = await checksFor(id, userId);
+    prepared = await checksFor(id, userId, metadata);
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "The checks couldn't start." }, { status: 409 });
   }
   const { settings, draft, text, checks, version } = prepared;
+  const run = draft.run!;
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -30,9 +32,22 @@ export async function POST(request: Request) {
           return result;
         }),
       );
-      send({ type: "done", draft: await finishChecks(id, metadata, results, version) });
+      try {
+        send({ type: "done", draft: await finishChecks(id, run, metadata, results, version) });
+      } catch (error) {
+        send({ type: "error", error: error instanceof Error ? error.message : "The checks couldn't be saved." });
+      }
       controller.close();
     },
   });
   return new Response(stream, { headers: { "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
+}
+
+const STRINGS = ["title", "subtitle", "type", "language", "date", "licence", "abstract"] as const;
+const LISTS = ["authors", "topics", "keywords", "sdgs", "studyDesigns", "countries", "funding", "references", "relations"] as const;
+/** The details as the details step sends them: the fields every reader of a report relies on, with their types. */
+function isMetadata(value: unknown): value is Metadata {
+  if (typeof value !== "object" || value === null) return false;
+  const m = value as Record<string, unknown>;
+  return STRINGS.every((k) => typeof m[k] === "string") && LISTS.every((k) => Array.isArray(m[k])) && (m.title as string).trim() !== "";
 }

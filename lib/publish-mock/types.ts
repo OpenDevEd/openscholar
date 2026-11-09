@@ -122,6 +122,8 @@ export type Submission = {
   signedAt?: number;
   agreementVersion?: number;
   checksVersion?: number;
+  /** The run of the checks under way, so only that run's answers are saved: a new PDF clears it. */
+  run?: string;
   pdf?: { name: string; pages: number; bytes: number };
   metadata?: Metadata;
   results?: CheckResult[];
