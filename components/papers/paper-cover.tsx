@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArrowUpRight, FileText } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { FadeImage } from "@/components/ui/fade-image";
-import type { CoverKind } from "@/lib/papers/cover";
+import { resizable, type CoverKind } from "@/lib/papers/cover";
 
 type CoverProps = { kind: CoverKind; ink: string; title: string; authors: string[]; source: string | null; year: number | null; type: string | null };
 
@@ -100,8 +100,9 @@ function TitlePage({ kind, title, authors, source, year, type }: Omit<CoverProps
 export function PaperCover({ href, pdf, image, className, ink, ...page }: CoverProps & { href: string | null; pdf: boolean; image: string | null; className?: string }) {
   const t = useTranslations("paperPage");
   const sheet = (
-    <span style={{ "--ink": ink } as CSSProperties} className="@container block aspect-[3/4] overflow-hidden rounded-md bg-[#fbf8f2] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_8px_24px_-6px_rgb(0_0_0/0.18)] ring-1 ring-black/[0.06] transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_36px_-8px_rgb(0_0_0/0.24)] motion-reduce:transition-none dark:brightness-[0.94]">
-      {image ? <FadeImage src={image} className="size-full object-cover object-top" /> : <TitlePage {...page} />}
+    <span style={{ "--ink": ink } as CSSProperties} className="@container relative block aspect-[3/4] overflow-hidden rounded-md bg-[#fbf8f2] shadow-[0_1px_2px_rgb(0_0_0/0.06),0_8px_24px_-6px_rgb(0_0_0/0.18)] ring-1 ring-black/[0.06] transition-[translate,box-shadow] duration-200 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_2px_4px_rgb(0_0_0/0.06),0_16px_36px_-8px_rgb(0_0_0/0.24)] motion-reduce:transition-none dark:brightness-[0.94]">
+      {/* At most 200 pixels wide on the page (./paper-page.tsx), so a community's full-size picture is resized to that. */}
+      {image ? <FadeImage src={image} sizes={resizable(image) ? "(min-width: 1024px) 200px, (min-width: 640px) 150px, 112px" : undefined} className="size-full object-cover object-top" /> : <TitlePage {...page} />}
     </span>
   );
   if (!href) return <span aria-hidden className={cn("block", className)}>{sheet}</span>;
