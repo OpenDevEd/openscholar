@@ -59,7 +59,7 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
                 </TooltipHint>
               </div>
               <p className="mt-6 max-w-xl text-sm/6 text-muted-foreground">
-                This report was withdrawn from {report.series} and can no longer be read here. Its DOI stays registered, so a citation of it still leads to this page.
+                This report was withdrawn from {report.series} and can no longer be read here.
               </p>
             </div>
           </div>
