@@ -1,0 +1,23 @@
+---
+// The other pages of this kind, so each one leads on to the rest of the work: each page's real screen, lit in its own colour.
+import Arrow from "./Arrow.astro";
+import { INTENTS } from "../data/site.mjs";
+const here = Astro.url.pathname, others = INTENTS.filter((p) => p.href !== here);
+---
+<section class="related">
+  <h2>The rest of the work</h2>
+  <div class="screens" style={`--n:${others.length === 6 ? 3 : Math.min(others.length, 5)}`}>{others.map((p) => <a href={p.href} style={`--c:${p.color}`}><span class="frame"><img src={`/img/screens/${p.img}.avif`} width="1000" height="625" loading="lazy" decoding="async" alt="" /></span><b>{p.title}<Arrow /></b><span class="t">{p.text}</span></a>)}</div>
+</section>
+<style>
+  .related { display: grid; gap: 28px; padding: clamp(40px, 5vw, 72px) var(--pad) 8px; } .related h2 { font-size: clamp(30px, 3.2vw, 44px); }
+  .screens { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
+  .screens a { display: grid; gap: 6px; color: var(--ink); }
+  .frame { position: relative; display: block; margin-bottom: 10px; padding: 6px; border-radius: 16px; background: linear-gradient(160deg, var(--c), color-mix(in oklch, var(--c) 30%, #070b1a)); box-shadow: 0 24px 40px -26px color-mix(in oklch, var(--c) 70%, #000); transition: transform .45s var(--ease), box-shadow .45s var(--ease); }
+  .frame img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; border-radius: 11px; }
+  .screens a:hover .frame { transform: translateY(-6px) rotate(-.6deg); box-shadow: 0 36px 50px -26px color-mix(in oklch, var(--c) 80%, #000); }
+  /* A long title wraps with its arrow kept beside its last word. */
+  .screens b { display: block; font-weight: 500; font-size: 18px; letter-spacing: -.01em; text-wrap: balance; } .screens b :global(i) { display: inline-grid; vertical-align: -3px; margin-left: 6px; transition: transform .3s var(--ease); } .screens a:hover b :global(i) { transform: translateX(4px); }
+  .t { color: var(--t2); font-size: 15px; line-height: 1.35; }
+  @media (max-width: 1000px) { .screens { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .screens { grid-template-columns: minmax(0, 1fr); } }
+</style>

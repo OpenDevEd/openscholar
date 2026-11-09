@@ -1,0 +1,35 @@
+---
+import Base from "../../layouts/Base.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Compare from "../../components/Compare.astro";
+import Screening from "../../components/Screening.astro";
+import Traced from "../../components/Traced.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+import { COMPARISONS } from "../../data/site.mjs";
+export function getStaticPaths() {
+  return COMPARISONS.map((item) => ({ params: { alternative: item.href.slice(1, -1) }, props: { item } }));
+}
+const { item } = Astro.props;
+const faq = [
+  [`Can I bring my references from ${item.name}?`, `Export them from ${item.name} into Zotero, connect Zotero in Settings, and the assistant can screen that collection for you.`],
+  ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat."],
+  ["Can I check what the AI decided?", "Yes. Every screening answer can be overruled, and every extracted answer comes with its confidence and the passage it was taken from."],
+  ["Can my team work in it together?", "Yes. In an organization, every search, screening and extraction is shared, with a name beside each change, and you can invite a guest to a single item."],
+  ["Can I try it before deciding?", "Yes. Search works without an account. Sign in to save papers and run screenings and extractions."],
+];
+---
+<Base og={`/og-${item.href.slice(1, -1)}.jpg`} top="#091026" title={`A ${item.name} alternative: Openscholar`} description={`Looking for a ${item.name} alternative? Openscholar finds the literature, screens it against your criteria with AI, extracts the data into a table you can check, and can publish your evidence as a public site.`}>
+  <IntentHero
+    title={`Looking for a ${item.name} alternative?`}
+    lead="Openscholar takes a review from the question to the evidence: it finds the papers, screens them against your criteria, extracts the data with its sources, and can publish what you found."
+    bg="#091026" art="sea" screen="screen" theme="dark" alt="A shared screening with its progress and its questions"
+    questions={["Peer tutoring and reading in primary schools", "School feeding and attendance", "Cash transfers and child nutrition"]} />
+  <Compare item={item} />
+  <Screening title="Screening where your rules decide" text="Each answer is worth the points you set. Move the pass mark and every paper is decided again, and you can overrule any answer." />
+  <Traced />
+  <Faq items={faq} title={`Moving from ${item.name}`} />
+  <Related />
+  <Close title="Try it on your next review" />
+</Base>

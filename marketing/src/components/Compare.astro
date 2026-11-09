@@ -1,0 +1,21 @@
+---
+// A page for someone choosing between us and another tool: what the other tool says it does, in its own terms, and how the same work goes here.
+import Icon from "./Icon.astro";
+const { item } = Astro.props;
+---
+<section class="cmp" id="compare">
+  <div class="c-head"><h2>{item.name} and Openscholar, side by side</h2><p class="lead">{item.they}</p></div>
+  <div class="c-rows" role="table" aria-label={`${item.name} and Openscholar compared`}>
+    <div class="c-row c-top" role="row"><span role="columnheader"></span><span role="columnheader">{item.name}</span><span role="columnheader" class="us"><img src="/favicon.svg" width="20" height="20" alt="" />Openscholar</span></div>
+    {item.rows.map(([what, them, us]) => <div class="c-row" role="row"><b role="rowheader">{what}</b><span role="cell" data-label={item.name}>{them}</span><span role="cell" class="us" data-label="Openscholar"><Icon name="check" size={16} />{us}</span></div>)}
+  </div>
+  <p class="c-note">What {item.name} does is taken from its own website on {item.checked}. Products change, so check theirs before you decide.</p>
+</section>
+<style>
+  .cmp { display: grid; gap: 28px; padding: clamp(48px, 6vw, 88px) var(--pad); } .c-head { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px 48px; align-items: end; } .c-head .lead { color: var(--t2); }
+  .c-rows { display: grid; } .c-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 4fr) minmax(0, 5fr); gap: 24px; padding-block: 18px; border-top: 1px solid var(--line); } .c-row:last-child { border-bottom: 1px solid var(--line); }
+  .c-top { border-top: 0; padding-block: 0 12px; font-weight: 500; } .c-top .us { display: flex; align-items: center; gap: 8px; color: var(--brand-ink); }
+  .c-row b { font-weight: 500; } .c-row span { color: var(--t2); line-height: 1.45; } .c-row span.us { color: var(--ink); } .c-row:not(.c-top) .us { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; } .c-row:not(.c-top) .us :global(svg) { margin-top: 3px; color: #059669; }
+  .c-note { font-size: 14px; color: var(--t3); }
+  @media (max-width: 800px) { .c-head { grid-template-columns: minmax(0, 1fr); } .c-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } .c-top { display: none; } .c-row span[data-label]::before { content: attr(data-label); display: block; grid-column: 1 / -1; font-size: 12px; font-weight: 500; color: var(--t3); } }
+</style>

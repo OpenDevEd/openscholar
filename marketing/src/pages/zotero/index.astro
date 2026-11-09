@@ -1,0 +1,35 @@
+---
+import Base from "../../layouts/Base.astro";
+import Feature from "../../components/Feature.astro";
+import Device from "../../components/Device.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Arrow from "../../components/Arrow.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+import { APP } from "../../data/site.mjs";
+const faq = [
+  ["Does it change our Zotero library?", "It keeps the two in step: records come in from the group, and changes your editors make on the site go back to it."],
+  ["Which PDFs are published?", "All of them, or only those with a tag you choose."],
+  ["Can it live at our own address?", "Yes. Use your own domain, with your own name, colours and logo."],
+  ["What can readers do?", "Search and filter the records, read and download the PDFs the licence allows, and ask questions answered from the records with links to each source."],
+  ["Can Openscholar read our Zotero library too?", "Yes. Connect Zotero in Settings and the assistant can read your groups, collections and items, and screen a collection."],
+];
+---
+<Base og="/og-zotero.jpg" top="#530117" title="Publish a Zotero library as a website: Openscholar" description="Turn a Zotero group into a public, searchable evidence site under your own name, kept in step with the group, with PDF covers, filters and AI answers that link to their sources.">
+  <IntentHero
+    title="Publish your Zotero library as a searchable website"
+    lead="Turn a Zotero group into a public site under your own name. It stays in step with the group, and readers can search it, read the PDFs and ask it questions."
+    bg="#530117" art="globe" screen="c-home" theme="dark" alt="A community's home page, its PDFs behind the name">
+    <a slot="action" class="btn" href={`${APP}/evidence-communities`}>Create your community<Arrow /></a>
+  </IntentHero>
+  <Feature id="sync" field="rose" art="globe" title="Your library stays the source" text="Keep working in Zotero. New records arrive on the site as the group changes, and corrections your editors make on the site go back to the group.">
+    <div class="f-shot"><Device kind="laptop" name="c-search" theme="light" alt="Records from the group on the site, with PDF covers and filters" sizes="(max-width: 900px) 94vw, 680px" /></div>
+  </Feature>
+  <Feature id="readers" field="rose" flip title="Everything readers need to use it" text="Filters by topic, year, type and author, PDF covers on the cards, a map of who works where, and answers to their questions that link to the record and the page.">
+    <div class="f-shot"><Device kind="tablet" name="c-map" theme="light" alt="A community's map of who works on what, and where" sizes="(max-width: 900px) 60vw, 420px" /></div>
+  </Feature>
+  <Faq items={faq} title="Questions about publishing from Zotero" />
+  <Related />
+  <Close title="Give your library a public home" art="dark-ribbon" />
+</Base>
