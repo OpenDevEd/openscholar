@@ -6,7 +6,7 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { PaperPage } from "@/components/papers/paper-page";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
 import { paperPageId, paperPath, paperSlug } from "@/lib/papers/page-address";
-import { openalexIdOf, readCommunityCopies, readOpenAlexForPage, readPaperForPage, readReferencesForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
+import { copyKeysOf, openalexIdOf, readCommunityCopies, readOpenAlexForPage, readPaperForPage, readReferencesForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
 import { paperDetail } from "@/lib/papers/paper-detail";
 import { topicHref } from "@/lib/topics/links";
 import type { PaperResult } from "@/lib/types/search.types";
@@ -127,7 +127,7 @@ export default async function Page({ params }: Params) {
     <PageWrapper>
       {/* `<` escaped, so a title can't close the script. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
-      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} />
+      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} />
     </PageWrapper>
   );
 }

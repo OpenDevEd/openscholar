@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAction } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { AddedPapersIcon, ExternalLink, Plus, ReviewQueueIcon, Trash2, Undo2 } from "@/components/icons";
+import { AddedPapersIcon, CircleX, ExternalLink, Plus, ReviewQueueIcon, Trash2, Undo2 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Collapsible } from "@/components/ui/collapsible";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -195,7 +195,7 @@ function AddedLine({ paper, libraryId, community, onChanged }: {
           ) : paper.status === "doi_only" ? (
             <StatusChip tone="warning">{t("doiOnly")}</StatusChip>
           ) : paper.status === "returned" ? (
-            <StatusChip tone="warning" icon={Undo2}>{t("returned")}</StatusChip>
+            <StatusChip tone="warning" icon={CircleX}>{t("returned")}</StatusChip>
           ) : null}
           {live ? (
             <TooltipHint label={t("openIn", { community: community.name })}>

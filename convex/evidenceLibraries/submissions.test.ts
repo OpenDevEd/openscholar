@@ -51,7 +51,7 @@ it("lists the papers someone sent, and takes where each stands from the communit
   // Searched by its title or its community's name, and counted by status for the filter.
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher education" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "astronomy" })).page).toEqual([]);
-  expect(await sender.query(api.evidenceLibraries.submissions.counts, {})).toEqual({ queued: 0, published: 0, returned: 1, all: 1, capped: false });
+  expect(await sender.query(api.evidenceLibraries.submissions.counts, {})).toEqual({ queued: 0, published: 0, returned: 1, withdrawn: 0, all: 1, capped: false });
   // The assistant reads the same list for them, from a chat in any of their workspaces, and only theirs.
   expect((await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId, status: "returned" })).page).toMatchObject([{ itemKey: "PAPER001", status: "returned", note: "Outside this community's focus" }]);
 
@@ -71,9 +71,9 @@ it("lists the papers someone sent, and takes where each stands from the communit
   await t.mutation(internal.evidenceLibraries.submissions.refreshCommunityName, { libraryId, cursor: null });
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher learning" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
 
-  // Withdrawn, it's no longer listed; sent again, a late repeat of that withdrawal leaves the new submission.
+  // Withdrawn, it's listed as withdrawn; sent again, a late repeat of that withdrawal leaves the new submission.
   await tell(4, "withdrawn", null);
-  expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
+  expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ itemKey: "PAPER001", status: "withdrawn" }]);
   // Asked for, the assistant lists it as withdrawn.
   expect((await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId, status: "withdrawn" })).page).toMatchObject([{ itemKey: "PAPER001", status: "withdrawn" }]);
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r4", papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
