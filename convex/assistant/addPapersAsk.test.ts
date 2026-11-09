@@ -43,8 +43,8 @@ it("shows the community and the papers the call adds, and sends them where the p
   const step = await t.run((ctx) => ctx.db.get("assistantSteps", stepId));
   expect(step).toMatchObject({ status: "allowed" });
   expect(JSON.parse(step!.input)).toMatchObject({ libraryId, publish: true, requestId: "r1" });
-  // Answered, it asks nothing more.
-  expect(await who.asAda.query(api.assistant.replies.askedPapers, { threadId, stepId })).toBeNull();
+  // Answered, it asks nothing more, and its card is gone rather than the plain ask in its place.
+  expect(await who.asAda.query(api.assistant.replies.askedPapers, { threadId, stepId })).toBe("answered");
   // A call whose arguments were cut too long to read is asked about with the plain card.
   const cut = await t.run(async (ctx) => {
     const thread = (await ctx.db.get("assistantThreads", threadId))!;

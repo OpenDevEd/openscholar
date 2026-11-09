@@ -33,13 +33,14 @@ const SHOWN = 5;
  */
 export function AddPapersAsk({ threadId, stepId, fallback }: { threadId: Id<"assistantThreads">; stepId: Id<"assistantSteps">; fallback: ReactNode }) {
   const asked = useProtectedQuery(api.assistant.replies.askedPapers, { threadId, stepId }).data;
-  if (asked === undefined) return null;
+  // Answered, here or in another tab, it waits for nothing: the run map says what became of it.
+  if (asked === undefined || asked === "answered") return null;
   if (asked === null) return <>{fallback}</>;
   return <Ask threadId={threadId} stepId={stepId} asked={asked} />;
 }
 
 /** The card, once the call it asks about is read. */
-function Ask({ threadId, stepId, asked }: { threadId: Id<"assistantThreads">; stepId: Id<"assistantSteps">; asked: NonNullable<FunctionReturnType<typeof api.assistant.replies.askedPapers>> }) {
+function Ask({ threadId, stepId, asked }: { threadId: Id<"assistantThreads">; stepId: Id<"assistantSteps">; asked: Exclude<FunctionReturnType<typeof api.assistant.replies.askedPapers>, null | "answered"> }) {
   const t = useTranslations("addedPapers");
   const asks = useTranslations("assistant.asks");
   const toast = useAppToast();
