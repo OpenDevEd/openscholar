@@ -5935,6 +5935,15 @@
     "publishedTo": "Published to {community}",
     "queuedTo": "Sent to {community}'s review queue",
     "alreadyIn": "{community} already has this paper",
-    "moreCommunities": "More communities"
+    "moreCommunities": "More communities",
+    "askTitle": "Add {count, plural, one {# paper} other {# papers}} to a community",
+    "publishNow": "Publish now",
+    "reviewQueue": "Review queue",
+    "askPublishHint": "{count, plural, one {It goes} other {They go}} live on {community} as soon as you allow it.",
+    "askQueueHint": "{count, plural, one {It waits} other {They wait}} in {community}'s review queue until its team approves {count, plural, one {it} other {them}}.",
+    "askPublish": "Publish {count, plural, one {# paper} other {# papers}}",
+    "askQueue": "Send {count, plural, one {# paper} other {# papers}} for review",
+    "alreadyInIt": "Already in it",
+    "inReview": "In review"
   }
 }

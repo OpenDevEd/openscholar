@@ -5936,6 +5936,15 @@
     "publishedTo": "نُشرت في {community}",
     "queuedTo": "أُرسلت إلى قائمة مراجعة {community}",
     "alreadyIn": "لدى {community} هذه الورقة بالفعل",
-    "moreCommunities": "مزيد من المجتمعات"
+    "moreCommunities": "مزيد من المجتمعات",
+    "askTitle": "إضافة {count, plural, one {ورقة واحدة} two {ورقتين} few {# أوراق} many {# ورقة} other {# ورقة}} إلى مجتمع",
+    "publishNow": "انشر الآن",
+    "reviewQueue": "قائمة المراجعة",
+    "askPublishHint": "{count, plural, one {تُنشر} other {تُنشر}} على {community} فور سماحك بذلك.",
+    "askQueueHint": "{count, plural, one {تنتظر} other {تنتظر}} في قائمة مراجعة {community} حتى يوافق عليها فريقه.",
+    "askPublish": "انشر {count, plural, one {ورقة واحدة} two {ورقتين} few {# أوراق} many {# ورقة} other {# ورقة}}",
+    "askQueue": "أرسل {count, plural, one {ورقة واحدة} two {ورقتين} few {# أوراق} many {# ورقة} other {# ورقة}} للمراجعة",
+    "alreadyInIt": "موجودة بالفعل",
+    "inReview": "قيد المراجعة"
   }
 }

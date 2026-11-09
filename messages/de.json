@@ -5936,6 +5936,15 @@
     "publishedTo": "In {community} veröffentlicht",
     "queuedTo": "An die Prüfwarteschlange von {community} gesendet",
     "alreadyIn": "{community} hat diese Arbeit bereits",
-    "moreCommunities": "Weitere Communities"
+    "moreCommunities": "Weitere Communities",
+    "askTitle": "{count, plural, one {# Arbeit} other {# Arbeiten}} zu einer Community hinzufügen",
+    "publishNow": "Jetzt veröffentlichen",
+    "reviewQueue": "Prüfwarteschlange",
+    "askPublishHint": "{count, plural, one {Sie geht} other {Sie gehen}} auf {community} online, sobald du es erlaubst.",
+    "askQueueHint": "{count, plural, one {Sie wartet} other {Sie warten}} in der Prüfwarteschlange von {community}, bis das Team sie freigibt.",
+    "askPublish": "{count, plural, one {# Arbeit} other {# Arbeiten}} veröffentlichen",
+    "askQueue": "{count, plural, one {# Arbeit} other {# Arbeiten}} zur Prüfung senden",
+    "alreadyInIt": "Schon enthalten",
+    "inReview": "In Prüfung"
   }
 }

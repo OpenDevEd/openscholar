@@ -5936,6 +5936,15 @@
     "publishedTo": "Publicado em {community}",
     "queuedTo": "Enviado para a fila de revisão de {community}",
     "alreadyIn": "{community} já tem este artigo",
-    "moreCommunities": "Mais comunidades"
+    "moreCommunities": "Mais comunidades",
+    "askTitle": "Adicionar {count, plural, one {# artigo} other {# artigos}} a uma comunidade",
+    "publishNow": "Publicar agora",
+    "reviewQueue": "Fila de revisão",
+    "askPublishHint": "{count, plural, one {Fica} other {Ficam}} disponíve{count, plural, one {l} other {is}} em {community} assim que você permitir.",
+    "askQueueHint": "{count, plural, one {Aguarda} other {Aguardam}} na fila de revisão de {community} até a equipe {count, plural, one {o aprovar} other {os aprovar}}.",
+    "askPublish": "Publicar {count, plural, one {# artigo} other {# artigos}}",
+    "askQueue": "Enviar {count, plural, one {# artigo} other {# artigos}} para revisão",
+    "alreadyInIt": "Já está lá",
+    "inReview": "Em revisão"
   }
 }

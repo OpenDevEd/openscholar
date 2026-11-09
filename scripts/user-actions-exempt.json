@@ -15,6 +15,7 @@
     "assistant/jobs:card": "A job's live card in the chat that started it. The assistant reads the same job through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/jobs:running": "Which of a chat's jobs are running, for the panel to dock their live cards. The assistant hears when each ends, and reads them through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/replies:answer": "The person's answer to a call the assistant asked about. Only the person asked can give it.",
+    "assistant/replies:askedPapers": "What a call to add papers to a community asks, for its card in the chat. Only the person asked reads it, and their choice goes back with assistant/replies:answer.",
     "assistant/replies:carryOn": "Carries on a reply that paused at a spending limit. Only the person whose credits it spends does that.",
     "assistant/replies:live": "The reply being written now, for the chat page to show as it arrives.",
     "assistant/replies:outcome": "How the chat's last reply ended, for the assistant's mark in the panel while no reply is being written.",

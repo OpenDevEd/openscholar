@@ -5936,6 +5936,15 @@
     "publishedTo": "Gepubliseer in {community}",
     "queuedTo": "Na {community} se hersieningsry gestuur",
     "alreadyIn": "{community} het reeds hierdie artikel",
-    "moreCommunities": "Meer gemeenskappe"
+    "moreCommunities": "Meer gemeenskappe",
+    "askTitle": "Voeg {count, plural, one {# artikel} other {# artikels}} by 'n gemeenskap",
+    "publishNow": "Publiseer nou",
+    "reviewQueue": "Hersieningsry",
+    "askPublishHint": "{count, plural, one {Dit gaan} other {Hulle gaan}} op {community} lewendig sodra jy dit toelaat.",
+    "askQueueHint": "{count, plural, one {Dit wag} other {Hulle wag}} in {community} se hersieningsry totdat sy span {count, plural, one {dit} other {hulle}} goedkeur.",
+    "askPublish": "Publiseer {count, plural, one {# artikel} other {# artikels}}",
+    "askQueue": "Stuur {count, plural, one {# artikel} other {# artikels}} vir hersiening",
+    "alreadyInIt": "Reeds daarin",
+    "inReview": "In hersiening"
   }
 }
