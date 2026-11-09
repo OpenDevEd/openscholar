@@ -5971,5 +5971,93 @@
     "askQueue": "Tuma {count, plural, one {makala #} other {makala #}} kwa ukaguzi",
     "alreadyInIt": "Tayari imo",
     "inReview": "Inakaguliwa"
+  },
+  "communityApplications": {
+    "joinName": "Jiunge na {name}",
+    "runBy": "Inaendeshwa na {name}",
+    "anOpenscholarMember": "mwanachama wa Openscholar",
+    "asACreator": "Kama Mtayarishaji, unaweza",
+    "can": {
+      "add": {
+        "title": "Ongeza makala",
+        "body": "Tuma makala unazopata kwenye foleni yake ya ukaguzi."
+      },
+      "edit": {
+        "title": "Hariri rekodi",
+        "body": "Rekebisha maelezo na upakie PDF."
+      },
+      "review": {
+        "title": "Wasilisha kwa ukaguzi",
+        "body": "Wahariri wake hukagua kazi yako, kisha huichapisha."
+      }
+    },
+    "messageLabel": "Ujumbe kwa timu",
+    "messageHint": "Sema wewe ni nani na kwa nini unataka kujiunga. Wamiliki na wahariri wake huamua.",
+    "messagePlaceholder": "Mimi ni mtafiti katika… Ningependa kuongeza…",
+    "messageMissing": "Andika maneno machache kwa timu.",
+    "whoSees": "Wamiliki na wahariri wake wanaona jina lako, barua pepe yako na ujumbe huu.",
+    "cancel": "Ghairi",
+    "send": "Tuma ombi",
+    "signInToSend": "Ingia ili kutuma",
+    "sentTitle": "Ombi limetumwa",
+    "sentBody": "Liko katika Jumuiya zako, ambapo unaweza kuliondoa.",
+    "steps": {
+      "sent": "Limetumwa",
+      "justNow": "Sasa hivi",
+      "review": "Wamiliki na wahariri wanalisoma",
+      "reviewDetail": "Wanalikubali au kulikataa",
+      "email": "Unapata barua pepe yenye jibu lao",
+      "emailTo": "Kwa {email}",
+      "accepted": "Limekubaliwa",
+      "declined": "Halikukubaliwa"
+    },
+    "done": "Nimemaliza",
+    "theirReason": "Sababu yao",
+    "noReason": "Hawakutoa sababu.",
+    "applyAgainFrom": "Unaweza kuomba tena kuanzia {date}.",
+    "youreIn": "Umeingia. Unaweza kuongeza makala kwenye {name} kama Mtayarishaji.",
+    "yourMessage": "Ujumbe wako",
+    "withdrawSure": "Uliondoe? Unaweza kuomba tena baadaye.",
+    "keep": "Libaki",
+    "withdraw": "Ondoa ombi",
+    "dismiss": "Ficha kwenye utepe wa pembeni",
+    "openCommunity": "Fungua jumuiya",
+    "close": "Funga",
+    "apply": "Omba",
+    "applied": "Umeomba",
+    "member": "Mwanachama",
+    "notAccepted": "Halikukubaliwa",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Linasubiri jibu",
+    "toReview": "{count, plural, one {# la kukagua} other {# ya kukagua}}",
+    "applications": "Maombi",
+    "acceptingMakesCreator": "Kukubali kunamfanya Mtayarishaji. Kila mtu anapata barua pepe yenye jibu lako.",
+    "noMatchingApplications": "Hakuna maombi yanayolingana na utafutaji huu.",
+    "offForOwner": "Maombi yamezimwa. Yawashe kwenye <link>Uorodheshaji</link>.",
+    "offForEditor": "Wamiliki wake wamezima maombi.",
+    "noApplications": "Hakuna anayesubiri. Watu huomba kutoka kwenye kadi yake katika ukurasa wa Jumuiya na kwenye tovuti yake.",
+    "appliedWhen": "Aliomba {when}",
+    "showAll": "Onyesha yote",
+    "showLess": "Onyesha machache",
+    "declinedNotice": "Umemkataa {name}. Tumemtumia sababu yako kwa barua pepe.",
+    "whyDecline": "Kwa nini? Wataona hili kwenye barua pepe.",
+    "reasons": {
+      "topic": "Nje ya mada yetu",
+      "moreAbout": "Tueleze zaidi kuhusu kazi yako",
+      "notNow": "Hatuongezi watu kwa sasa"
+    },
+    "addANote": "Ongeza dokezo (si lazima)",
+    "theyGetAnEmail": "Wanapata barua pepe yenye sababu yako.",
+    "declineAndEmail": "Kataa na tuma barua pepe",
+    "acceptedNotice": "{name} sasa ni Mtayarishaji. Tumemtumia barua pepe.",
+    "acceptAsCreator": "Kubali kama Mtayarishaji",
+    "decline": "Kataa",
+    "letPeopleApply": "Ruhusu watu kuomba kujiunga",
+    "letPeopleApplyHint": "Watu huomba kutoka kwenye kadi yake katika ukurasa wa Jumuiya na kwenye tovuti yake. Wamiliki na wahariri hukubali au kukataa kila ombi.",
+    "onlyPublic": "Jumuiya za umma pekee hupokea maombi.",
+    "closedNow": "Jumuiya hii haipokei maombi kwa sasa.",
+    "couldNotSend": "Ombi lako halikuweza kutumwa. Jaribu tena.",
+    "couldNotChange": "Hilo halikufanikiwa. Jaribu tena.",
+    "showMore": "Onyesha zaidi"
   }
 }

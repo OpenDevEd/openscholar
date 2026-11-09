@@ -5970,5 +5970,93 @@
     "askQueue": "Send {count, plural, one {# paper} other {# papers}} for review",
     "alreadyInIt": "Already in it",
     "inReview": "In review"
+  },
+  "communityApplications": {
+    "joinName": "Join {name}",
+    "runBy": "Run by {name}",
+    "anOpenscholarMember": "an Openscholar member",
+    "asACreator": "As a Creator, you can",
+    "can": {
+      "add": {
+        "title": "Add papers",
+        "body": "Send papers you find to its review queue."
+      },
+      "edit": {
+        "title": "Edit records",
+        "body": "Fix details and upload PDFs."
+      },
+      "review": {
+        "title": "Submit for review",
+        "body": "Its editors check your work, then publish it."
+      }
+    },
+    "messageLabel": "Message to the team",
+    "messageHint": "Say who you are and why you want to join. Its owners and editors decide.",
+    "messagePlaceholder": "I'm a researcher at… I'd like to add…",
+    "messageMissing": "Write a few words for the team.",
+    "whoSees": "Its owners and editors see your name, your email and this message.",
+    "cancel": "Cancel",
+    "send": "Send application",
+    "signInToSend": "Sign in to send",
+    "sentTitle": "Application sent",
+    "sentBody": "It's in Your communities, where you can withdraw it.",
+    "steps": {
+      "sent": "Sent",
+      "justNow": "Just now",
+      "review": "Owners and editors read it",
+      "reviewDetail": "They accept or decline it",
+      "email": "You get an email with their answer",
+      "emailTo": "At {email}",
+      "accepted": "Accepted",
+      "declined": "Not accepted"
+    },
+    "done": "Done",
+    "theirReason": "Their reason",
+    "noReason": "They didn't give a reason.",
+    "applyAgainFrom": "You can apply again from {date}.",
+    "youreIn": "You're in. You can add papers to {name} as a Creator.",
+    "yourMessage": "Your message",
+    "withdrawSure": "Withdraw it? You can apply again later.",
+    "keep": "Keep it",
+    "withdraw": "Withdraw",
+    "dismiss": "Hide from sidebar",
+    "openCommunity": "Open community",
+    "close": "Close",
+    "apply": "Apply",
+    "applied": "Applied",
+    "member": "Member",
+    "notAccepted": "Not accepted",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Waiting for an answer",
+    "toReview": "{count, plural, one {# to review} other {# to review}}",
+    "applications": "Applications",
+    "acceptingMakesCreator": "Accepting makes them a Creator. Each person gets an email with your answer.",
+    "noMatchingApplications": "No applications match this search.",
+    "offForOwner": "Applications are off. Turn them on in <link>Listing</link>.",
+    "offForEditor": "Its owners turned applications off.",
+    "noApplications": "No one is waiting. People apply from its card on the Communities page and from its site.",
+    "appliedWhen": "Applied {when}",
+    "showAll": "Show all",
+    "showLess": "Show less",
+    "declinedNotice": "Declined {name}. We emailed them your reason.",
+    "whyDecline": "Why? They see this in the email.",
+    "reasons": {
+      "topic": "Outside our topic",
+      "moreAbout": "Tell us more about your work",
+      "notNow": "Not adding people right now"
+    },
+    "addANote": "Add a note (optional)",
+    "theyGetAnEmail": "They get an email with your reason.",
+    "declineAndEmail": "Decline and email",
+    "acceptedNotice": "{name} is now a Creator. We emailed them.",
+    "acceptAsCreator": "Accept as Creator",
+    "decline": "Decline",
+    "letPeopleApply": "Let people apply to join",
+    "letPeopleApplyHint": "People apply from its card on the Communities page and from its site. Owners and editors accept or decline each one.",
+    "onlyPublic": "Only public communities take applications.",
+    "closedNow": "This community isn't taking applications right now.",
+    "couldNotSend": "Your application couldn't be sent. Try again.",
+    "couldNotChange": "That didn't go through. Try again.",
+    "showMore": "Show more"
   }
 }

@@ -13,7 +13,7 @@ import { TeamAccess, type AccessMember } from "./team-access";
 import { useWithPage } from "../preloads";
 
 /** The community's team: its owners manage it, and everyone else who opens its settings sees it, read-only (`readOnly`). */
-export function TeamSection({ libraryId, readOnly = false }: { libraryId: Id<"evidenceLibraries">; readOnly?: boolean }) {
+export function TeamSection({ libraryId, readOnly = false, reviews = false, applicationsClosed = false }: { libraryId: Id<"evidenceLibraries">; readOnly?: boolean; reviews?: boolean; applicationsClosed?: boolean }) {
   const tLabels = useTranslations("libraryTeamAccess");
   const t = useTranslations("libraryTeamAccess");
   const { user } = useUser();
@@ -42,7 +42,7 @@ export function TeamSection({ libraryId, readOnly = false }: { libraryId: Id<"ev
   const roleOf = (member: AccessMember) => member.role === "Editor" ? "editor" as const : "creator" as const;
   const resend = async (member: AccessMember) => { await invite({ libraryId, email: member.email, role: roleOf(member), ...(member.toOrganization ? { toOrganization: true } : {}) }); };
   const organizationOf = (member: AccessMember) => member.id as Id<"organizations">;
-  return <TeamAccess scope="library" members={members} readOnly={readOnly}
+  return <TeamAccess scope="library" members={members} readOnly={readOnly} reviews={reviews} applicationsClosed={applicationsClosed}
     libraryId={libraryId}
     // The organization that owns it, as the team read it: a guest opens its page from their own workspace.
     organization={data.owningOrganization ? { kind: "organization", name: data.owningOrganization.name, workspaceId: data.owningOrganization.workspaceId, ...(data.owningOrganization.imageUrl ? { imageUrl: data.owningOrganization.imageUrl } : {}), ...(data.owningOrganization.colour ? { colour: data.owningOrganization.colour } : {}) } : undefined}

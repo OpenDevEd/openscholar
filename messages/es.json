@@ -5971,5 +5971,93 @@
     "askQueue": "Enviar {count, plural, one {# artículo} other {# artículos}} a revisión",
     "alreadyInIt": "Ya está",
     "inReview": "En revisión"
+  },
+  "communityApplications": {
+    "joinName": "Unirse a {name}",
+    "runBy": "Gestionada por {name}",
+    "anOpenscholarMember": "un miembro de Openscholar",
+    "asACreator": "Como creador, puedes",
+    "can": {
+      "add": {
+        "title": "Añadir artículos",
+        "body": "Envía los artículos que encuentres a su cola de revisión."
+      },
+      "edit": {
+        "title": "Editar registros",
+        "body": "Corrige datos y sube PDF."
+      },
+      "review": {
+        "title": "Enviar a revisión",
+        "body": "Sus editores revisan tu trabajo y luego lo publican."
+      }
+    },
+    "messageLabel": "Mensaje al equipo",
+    "messageHint": "Di quién eres y por qué quieres unirte. Deciden sus propietarios y editores.",
+    "messagePlaceholder": "Soy investigador en… Me gustaría añadir…",
+    "messageMissing": "Escribe unas palabras para el equipo.",
+    "whoSees": "Sus propietarios y editores ven tu nombre, tu correo y este mensaje.",
+    "cancel": "Cancelar",
+    "send": "Enviar solicitud",
+    "signInToSend": "Inicia sesión para enviar",
+    "sentTitle": "Solicitud enviada",
+    "sentBody": "Está en Tus comunidades, donde puedes retirarla.",
+    "steps": {
+      "sent": "Enviada",
+      "justNow": "Ahora mismo",
+      "review": "Propietarios y editores la leen",
+      "reviewDetail": "La aceptan o la rechazan",
+      "email": "Recibes un correo con su respuesta",
+      "emailTo": "A {email}",
+      "accepted": "Aceptada",
+      "declined": "No aceptada"
+    },
+    "done": "Listo",
+    "theirReason": "Su motivo",
+    "noReason": "No indicaron un motivo.",
+    "applyAgainFrom": "Puedes volver a solicitar a partir del {date}.",
+    "youreIn": "Ya estás dentro. Puedes añadir artículos a {name} como creador.",
+    "yourMessage": "Tu mensaje",
+    "withdrawSure": "¿Retirarla? Puedes volver a solicitar más adelante.",
+    "keep": "Conservarla",
+    "withdraw": "Retirar",
+    "dismiss": "Ocultar de la barra lateral",
+    "openCommunity": "Abrir comunidad",
+    "close": "Cerrar",
+    "apply": "Solicitar",
+    "applied": "Solicitado",
+    "member": "Miembro",
+    "notAccepted": "No aceptada",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Esperando respuesta",
+    "toReview": "{count, plural, one {# por revisar} other {# por revisar}}",
+    "applications": "Solicitudes",
+    "acceptingMakesCreator": "Al aceptar, la persona pasa a ser creador. Cada persona recibe un correo con tu respuesta.",
+    "noMatchingApplications": "Ninguna solicitud coincide con esta búsqueda.",
+    "offForOwner": "Las solicitudes están desactivadas. Actívalas en <link>Visibilidad</link>.",
+    "offForEditor": "Sus propietarios desactivaron las solicitudes.",
+    "noApplications": "Nadie está esperando. Se solicita desde su tarjeta en la página Comunidades y desde su sitio.",
+    "appliedWhen": "Solicitó {when}",
+    "showAll": "Mostrar todo",
+    "showLess": "Mostrar menos",
+    "declinedNotice": "Rechazaste a {name}. Le enviamos tu motivo por correo.",
+    "whyDecline": "¿Por qué? Lo verán en el correo.",
+    "reasons": {
+      "topic": "Fuera de nuestro tema",
+      "moreAbout": "Cuéntanos más sobre tu trabajo",
+      "notNow": "Ahora no estamos sumando personas"
+    },
+    "addANote": "Añadir una nota (opcional)",
+    "theyGetAnEmail": "Recibirá un correo con tu motivo.",
+    "declineAndEmail": "Rechazar y enviar correo",
+    "acceptedNotice": "{name} ya es creador. Le enviamos un correo.",
+    "acceptAsCreator": "Aceptar como creador",
+    "decline": "Rechazar",
+    "letPeopleApply": "Permitir solicitudes para unirse",
+    "letPeopleApplyHint": "Se solicita desde su tarjeta en la página Comunidades y desde su sitio. Propietarios y editores aceptan o rechazan cada solicitud.",
+    "onlyPublic": "Solo las comunidades públicas aceptan solicitudes.",
+    "closedNow": "Esta comunidad no acepta solicitudes en este momento.",
+    "couldNotSend": "No se pudo enviar tu solicitud. Inténtalo de nuevo.",
+    "couldNotChange": "No se pudo completar. Inténtalo de nuevo.",
+    "showMore": "Mostrar más"
   }
 }

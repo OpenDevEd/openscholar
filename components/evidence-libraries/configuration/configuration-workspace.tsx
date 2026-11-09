@@ -275,6 +275,7 @@ function DraftWorkspace({ libraryId }: { libraryId: string }) {
       libraryState={library.state}
       workspaceId={library.workspaceId}
       unlisted={library.unlisted === true}
+      applicationsClosed={library.applicationsClosed === true}
       liveAddress={liveAddress}
       latest={{ editVersion: draft.editVersion, rows: sections }}
       hasUnpublishedChanges={hasUnpublishedChanges}
@@ -291,6 +292,7 @@ function Workspace({
   libraryState,
   workspaceId,
   unlisted,
+  applicationsClosed,
   liveAddress,
   latest,
   hasUnpublishedChanges,
@@ -306,6 +308,8 @@ function Workspace({
   workspaceId: Id<"workspaces">;
   /** Left out of the public directory by its owners (#1090). */
   unlisted: boolean;
+  /** Its owners turned off applications to join (OS-31). */
+  applicationsClosed: boolean;
   liveAddress: string | null;
   /** The rows the platform holds now, and the edit version they belong to. */
   latest: { editVersion: number; rows: readonly SectionRow[] };
@@ -740,14 +744,14 @@ function Workspace({
                   <>
                     <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
                     <DomainSection libraryId={libraryId} />
-                    <ListingSection libraryId={libraryId} unlisted={unlisted} />
+                    <ListingSection libraryId={libraryId} unlisted={unlisted} applicationsClosed={applicationsClosed} />
                     <VersionsSection
                       libraryId={libraryId}
                       live={libraryState === "active"}
                       operationRunning={operationRunning}
                       refreshKey={runtimeRefreshKey}
                     />
-                    <TeamSection libraryId={libraryId} />
+                    <TeamSection libraryId={libraryId} reviews applicationsClosed={applicationsClosed} />
                     <DangerSection onMove={() => setMoveOpen(true)} onDelete={() => setDeleteOpen(true)} />
                   </>
                 ) : null}
@@ -757,7 +761,7 @@ function Workspace({
               {/* Its people arrive after the page: the card slides to their height instead of jumping. */}
               {/* An editor or creator still adds papers, outside the disabled fieldset like the team. */}
               {editable ? null : <AddedPapersCard libraryId={libraryId} />}
-              {editable ? null : <AutoHeight><div className="pt-4"><TeamSection libraryId={libraryId} readOnly /></div></AutoHeight>}
+              {editable ? null : <AutoHeight><div className="pt-4"><TeamSection libraryId={libraryId} readOnly reviews={role === "editor"} applicationsClosed={applicationsClosed} /></div></AutoHeight>}
               </div>
       </ConfigurationLayout>
     </FileUploadsProvider>

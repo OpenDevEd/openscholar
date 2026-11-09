@@ -5970,5 +5970,93 @@
     "askQueue": "{count, plural, other {# 件の論文}}をレビューに送る",
     "alreadyInIt": "追加済み",
     "inReview": "レビュー中"
+  },
+  "communityApplications": {
+    "joinName": "{name} に参加",
+    "runBy": "運営: {name}",
+    "anOpenscholarMember": "Openscholar のメンバー",
+    "asACreator": "クリエイターとしてできること",
+    "can": {
+      "add": {
+        "title": "論文を追加",
+        "body": "見つけた論文をレビュー待ちに送れます。"
+      },
+      "edit": {
+        "title": "レコードを編集",
+        "body": "詳細を直し、PDF をアップロードできます。"
+      },
+      "review": {
+        "title": "レビューに提出",
+        "body": "編集者が確認してから公開します。"
+      }
+    },
+    "messageLabel": "チームへのメッセージ",
+    "messageHint": "自己紹介と参加したい理由を書いてください。オーナーと編集者が判断します。",
+    "messagePlaceholder": "私は…の研究者です。…を追加したいです。",
+    "messageMissing": "チームへのメッセージを書いてください。",
+    "whoSees": "オーナーと編集者には、あなたの名前、メールアドレス、このメッセージが表示されます。",
+    "cancel": "キャンセル",
+    "send": "申請を送信",
+    "signInToSend": "サインインして送信",
+    "sentTitle": "申請を送信しました",
+    "sentBody": "あなたのコミュニティに表示され、そこで取り下げられます。",
+    "steps": {
+      "sent": "送信済み",
+      "justNow": "たった今",
+      "review": "オーナーと編集者が読みます",
+      "reviewDetail": "承認または却下されます",
+      "email": "結果はメールで届きます",
+      "emailTo": "{email} 宛て",
+      "accepted": "承認済み",
+      "declined": "承認されませんでした"
+    },
+    "done": "完了",
+    "theirReason": "理由",
+    "noReason": "理由は示されていません。",
+    "applyAgainFrom": "{date} から再申請できます。",
+    "youreIn": "参加しました。クリエイターとして {name} に論文を追加できます。",
+    "yourMessage": "あなたのメッセージ",
+    "withdrawSure": "取り下げますか？後で再申請できます。",
+    "keep": "残す",
+    "withdraw": "取り下げる",
+    "dismiss": "サイドバーから隠す",
+    "openCommunity": "コミュニティを開く",
+    "close": "閉じる",
+    "apply": "申請",
+    "applied": "申請済み",
+    "member": "メンバー",
+    "notAccepted": "承認されませんでした",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "返事待ち",
+    "toReview": "{count, plural, other {# 件の確認待ち}}",
+    "applications": "申請",
+    "acceptingMakesCreator": "承認するとクリエイターになります。申請者全員に結果がメールで届きます。",
+    "noMatchingApplications": "この検索に一致する申請はありません。",
+    "offForOwner": "申請は受け付けていません。<link>掲載</link>でオンにできます。",
+    "offForEditor": "オーナーが申請の受け付けを止めています。",
+    "noApplications": "待っている人はいません。コミュニティページのカードとサイトから申請できます。",
+    "appliedWhen": "{when}に申請",
+    "showAll": "すべて表示",
+    "showLess": "表示を減らす",
+    "declinedNotice": "{name} を却下しました。理由をメールで送りました。",
+    "whyDecline": "理由は？メールで本人に届きます。",
+    "reasons": {
+      "topic": "テーマの対象外",
+      "moreAbout": "研究内容をもっと教えてください",
+      "notNow": "現在メンバーを募集していません"
+    },
+    "addANote": "メモを追加（任意）",
+    "theyGetAnEmail": "理由がメールで届きます。",
+    "declineAndEmail": "却下してメール送信",
+    "acceptedNotice": "{name} はクリエイターになりました。メールで知らせました。",
+    "acceptAsCreator": "クリエイターとして承認",
+    "decline": "却下",
+    "letPeopleApply": "参加申請を受け付ける",
+    "letPeopleApplyHint": "コミュニティページのカードとサイトから申請できます。オーナーと編集者が一件ずつ承認または却下します。",
+    "onlyPublic": "申請を受け付けられるのは公開コミュニティだけです。",
+    "closedNow": "このコミュニティは現在、申請を受け付けていません。",
+    "couldNotSend": "申請を送信できませんでした。もう一度お試しください。",
+    "couldNotChange": "完了できませんでした。もう一度お試しください。",
+    "showMore": "さらに表示"
   }
 }

@@ -27,6 +27,9 @@ export const ADMIN_LIST = "admins";
 /** The libraries a workspace has, for the total of the library list. */
 export const workspaceLibrariesOf = (workspaceId: Id<"workspaces">) => `workspaceLibraries:${workspaceId}`;
 export const libraryVersionsOf = (libraryId: Id<"evidenceLibraries">) => `libraryVersions:${libraryId}`;
+/** A community's applications waiting for an answer (OS-31), and a person's: its sidebar row's count, and each one's limit. */
+export const waitingApplicationsOf = (libraryId: Id<"evidenceLibraries">) => `waitingApplications:${libraryId}`;
+export const personWaitingApplicationsOf = (userId: Id<"users">) => `personWaitingApplications:${userId}`;
 /** The versions list an operation shows in, if it is one of a library's versions. */
 export const libraryVersionList = (operation: Doc<"evidenceLibraryConfigOperations">) =>
   isVersionOperation(operation) ? libraryVersionsOf(operation.libraryId) : null;

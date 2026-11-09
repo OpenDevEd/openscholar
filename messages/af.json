@@ -5971,5 +5971,93 @@
     "askQueue": "Stuur {count, plural, one {# artikel} other {# artikels}} vir hersiening",
     "alreadyInIt": "Reeds daarin",
     "inReview": "In hersiening"
+  },
+  "communityApplications": {
+    "joinName": "Sluit aan by {name}",
+    "runBy": "Bestuur deur {name}",
+    "anOpenscholarMember": "'n Openscholar-lid",
+    "asACreator": "As Skepper kan jy",
+    "can": {
+      "add": {
+        "title": "Voeg artikels by",
+        "body": "Stuur artikels wat jy vind na sy hersieningsry."
+      },
+      "edit": {
+        "title": "Wysig rekords",
+        "body": "Maak besonderhede reg en laai PDF's op."
+      },
+      "review": {
+        "title": "Dien in vir hersiening",
+        "body": "Sy redakteurs gaan jou werk na en publiseer dit dan."
+      }
+    },
+    "messageLabel": "Boodskap aan die span",
+    "messageHint": "Sê wie jy is en hoekom jy wil aansluit. Sy eienaars en redakteurs besluit.",
+    "messagePlaceholder": "Ek is 'n navorser by… Ek wil graag byvoeg…",
+    "messageMissing": "Skryf 'n paar woorde vir die span.",
+    "whoSees": "Sy eienaars en redakteurs sien jou naam, jou e-pos en hierdie boodskap.",
+    "cancel": "Kanselleer",
+    "send": "Stuur aansoek",
+    "signInToSend": "Meld aan om te stuur",
+    "sentTitle": "Aansoek gestuur",
+    "sentBody": "Dit is in Jou gemeenskappe, waar jy dit kan terugtrek.",
+    "steps": {
+      "sent": "Gestuur",
+      "justNow": "Pas nou",
+      "review": "Eienaars en redakteurs lees dit",
+      "reviewDetail": "Hulle aanvaar of weier dit",
+      "email": "Jy kry 'n e-pos met hul antwoord",
+      "emailTo": "By {email}",
+      "accepted": "Aanvaar",
+      "declined": "Nie aanvaar nie"
+    },
+    "done": "Klaar",
+    "theirReason": "Hul rede",
+    "noReason": "Hulle het nie 'n rede gegee nie.",
+    "applyAgainFrom": "Jy kan weer aansoek doen vanaf {date}.",
+    "youreIn": "Jy is in. Jy kan as Skepper artikels by {name} voeg.",
+    "yourMessage": "Jou boodskap",
+    "withdrawSure": "Trek dit terug? Jy kan later weer aansoek doen.",
+    "keep": "Hou dit",
+    "withdraw": "Trek terug",
+    "dismiss": "Versteek uit sybalk",
+    "openCommunity": "Maak gemeenskap oop",
+    "close": "Maak toe",
+    "apply": "Doen aansoek",
+    "applied": "Aansoek gedoen",
+    "member": "Lid",
+    "notAccepted": "Nie aanvaar nie",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Wag vir 'n antwoord",
+    "toReview": "{count, plural, one {# om te hersien} other {# om te hersien}}",
+    "applications": "Aansoeke",
+    "acceptingMakesCreator": "As jy aanvaar, word hulle 'n Skepper. Elke persoon kry 'n e-pos met jou antwoord.",
+    "noMatchingApplications": "Geen aansoeke pas by hierdie soektog nie.",
+    "offForOwner": "Aansoeke is af. Skakel dit aan by <link>Lys</link>.",
+    "offForEditor": "Sy eienaars het aansoeke afgeskakel.",
+    "noApplications": "Niemand wag nie. Mense doen aansoek vanaf sy kaart op die Gemeenskappe-blad en vanaf sy webwerf.",
+    "appliedWhen": "Aansoek gedoen {when}",
+    "showAll": "Wys alles",
+    "showLess": "Wys minder",
+    "declinedNotice": "{name} geweier. Ons het jou rede aan hulle ge-e-pos.",
+    "whyDecline": "Hoekom? Hulle sien dit in die e-pos.",
+    "reasons": {
+      "topic": "Buite ons onderwerp",
+      "moreAbout": "Vertel ons meer oor jou werk",
+      "notNow": "Ons voeg nie nou mense by nie"
+    },
+    "addANote": "Voeg 'n nota by (opsioneel)",
+    "theyGetAnEmail": "Hulle kry 'n e-pos met jou rede.",
+    "declineAndEmail": "Weier en stuur e-pos",
+    "acceptedNotice": "{name} is nou 'n Skepper. Ons het hulle ge-e-pos.",
+    "acceptAsCreator": "Aanvaar as Skepper",
+    "decline": "Weier",
+    "letPeopleApply": "Laat mense aansoek doen om aan te sluit",
+    "letPeopleApplyHint": "Mense doen aansoek vanaf sy kaart op die Gemeenskappe-blad en vanaf sy webwerf. Eienaars en redakteurs aanvaar of weier elkeen.",
+    "onlyPublic": "Net openbare gemeenskappe neem aansoeke.",
+    "closedNow": "Hierdie gemeenskap neem nie nou aansoeke nie.",
+    "couldNotSend": "Jou aansoek kon nie gestuur word nie. Probeer weer.",
+    "couldNotChange": "Dit het nie deurgegaan nie. Probeer weer.",
+    "showMore": "Wys meer"
   }
 }

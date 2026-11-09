@@ -24,6 +24,9 @@ export type ConfigurationPreloads = {
   team?: Preloaded<EL["queries"]["listTeam"]>;
   sourceStatus?: Preloaded<EL["sourceStatus"]["listForLibrary"]>;
   lastCheck?: Preloaded<EL["updates"]["lastCheck"]>;
+  /** Its applications to join waiting for an answer (OS-31), and how many, for its owners and editors. */
+  applications?: Preloaded<EL["applications"]["waiting"]>;
+  applicationsWaiting?: Preloaded<EL["applications"]["waitingCounts"]>;
 };
 
 const Preloads = createContext<ConfigurationPreloads>({});
