@@ -128,7 +128,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             <AutoHeight>
             {communities.length ? (
               <div className="flex flex-wrap items-center gap-2 pt-5" aria-label={tAuthors("evidenceLibraries")}>
-                <span className="me-1 text-xs text-muted-foreground">{tAuthors("publishedIn")}</span>
+                <span className="me-1 text-xs text-muted-foreground">{t("inCommunities")}</span>
                 {communities.map((copy) => (
                   <a key={copy.id} href={copy.url} target="_blank" rel="noreferrer" className={cn("group inline-flex h-7 items-center gap-1.5 rounded-full bg-primary/10 ps-2 pe-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-ring", !atOpen.has(copy.id) && "fade-enter")}>
                     <Library aria-hidden className="size-3.5" />
@@ -304,7 +304,6 @@ function AuthorLine({ detail, fallback }: { detail: PaperDetail; fallback?: stri
 function Impact({ detail, citations, references, fwci, year, citingHref }: { detail: PaperDetail; citations: number; references: number | null; fwci: number | null; year: number | null; citingHref: string }) {
   const t = useTranslations("paperPage");
   const tCard = useTranslations("entityCards");
-  const tLabels = useTranslations("labels");
   const format = useFormatter();
   const [pointed, setPointed] = useState<number | null>(null);
   const bars = detail.citationsByYear.slice(-12);
@@ -312,7 +311,8 @@ function Impact({ detail, citations, references, fwci, year, citingHref }: { det
   const shown = pointed == null ? null : bars[pointed];
   const rank = detail.rank?.top1 ? t("top1") : detail.rank?.top10 ? t("top10") : null;
   const stats = [
-    fwci != null ? { value: Number(fwci.toFixed(2)), label: tLabels("fwci") } : null,
+    // Said in words, not as FWCI: how many times its field's average citations it has.
+    fwci != null ? { value: Number(fwci.toFixed(2)), label: t("fieldAverage") } : null,
     detail.influentialCitations != null ? { value: detail.influentialCitations, label: t("influential") } : null,
     references ? { value: references, label: t("references") } : null,
   ].filter((stat) => stat !== null);
