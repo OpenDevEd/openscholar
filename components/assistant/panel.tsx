@@ -60,6 +60,7 @@ import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library
 import type { PaperResult } from "@/lib/types";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { getErrorMessage, payOpenAction, useAppToast } from "@/lib/toast/use-app-toast";
+import { toast as notify } from "sonner";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
@@ -188,7 +189,8 @@ export function AssistantPanel() {
               setTyped(({ [lost]: text, ...rest }) => (text ? { ...rest, [NEW]: text } : rest));
               setPicked(({ [lost]: mine, ...rest }) => (mine?.length ? { ...rest, [NEW]: mine } : rest));
             }
-            toast.error(t("lost"));
+            // Said plainly, not as an error: the person may have deleted it themselves, from another tab or by asking.
+            notify(t("lost"));
           }
           setThreadId(null);
         }}
