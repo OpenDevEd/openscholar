@@ -74,16 +74,19 @@ export type Settings = {
 
 /** A person's or an organisation's own daily limit, by their Clerk ID, with the name an admin knows them by. */
 export type LimitOverride = { kind: "person" | "organization"; id: string; name: string; perDay: number };
-/** The reports a person may start in a day: their own limit, else their organisation's, else everyone's. */
-export function limitFor(settings: Settings, userId: string, orgId: string | null | undefined) {
+/** The reports a person may start in a day: their own limit, else the highest of their organisations', else everyone's. */
+export function limitFor(settings: Settings, userId: string, orgIds: readonly string[]) {
   const { perDay, overrides } = settings.limits;
-  return (overrides.find((o) => o.kind === "person" && o.id === userId) ?? overrides.find((o) => o.kind === "organization" && o.id === orgId))?.perDay ?? perDay;
+  const own = overrides.find((o) => o.kind === "person" && o.id === userId);
+  if (own) return own.perDay;
+  const theirs = overrides.filter((o) => o.kind === "organization" && orgIds.includes(o.id)).map((o) => o.perDay);
+  return theirs.length ? Math.max(...theirs) : perDay;
 }
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** How many more reports this person may start now, counting the ones they started in the last 24 hours. */
-export function startsLeft(state: MockState, userId: string, orgId: string | null | undefined) {
+export function startsLeft(state: MockState, userId: string, orgIds: readonly string[]) {
   const started = (state.started?.[userId] ?? []).filter((at) => Date.now() - at < DAY_MS).length;
-  return Math.max(0, limitFor(state.settings, userId, orgId) - started);
+  return Math.max(0, limitFor(state.settings, userId, orgIds) - started);
 }
 
 /** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country. */

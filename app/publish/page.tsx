@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import { PublishFlow } from "@/components/publish-mock/publish-flow";
+import { organizationsOf } from "@/lib/publish-mock/admin";
 import { readState } from "@/lib/publish-mock/store";
 import { canPublish, limitFor, startsLeft } from "@/lib/publish-mock/types";
 
@@ -14,7 +15,8 @@ export default async function PublishPage() {
   const draft = (user && state.submissions.find((s) => s.id === state.drafts[user.id])) || null;
   // Yours: the reports you started, and the mock's samples. Newest first.
   const reports = state.submissions.filter((s) => s.demo || (user && s.ownerId === user.id)).sort((a, b) => b.updatedAt - a.updatedAt);
-  const { orgId } = await auth();
-  const starts = user ? { left: startsLeft(state, user.id, orgId), perDay: limitFor(state.settings, user.id, orgId) } : { left: 1, perDay: 1 };
+  // Asked of Clerk only when some organisation has a limit of its own.
+  const orgIds = user && state.settings.limits.overrides.some((o) => o.kind === "organization") ? await organizationsOf(user.id) : [];
+  const starts = user ? { left: startsLeft(state, user.id, orgIds), perDay: limitFor(state.settings, user.id, orgIds) } : { left: 1, perDay: 1 };
   return <PublishFlow settings={state.settings} initial={draft} reports={reports} userName={user?.fullName ?? ""} signedIn={!!user} starts={starts} />;
 }

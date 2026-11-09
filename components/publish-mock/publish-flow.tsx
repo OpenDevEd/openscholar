@@ -9,6 +9,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { MarkdownContent } from "@/components/markdown-content";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -195,7 +196,7 @@ export function PublishFlow({
       // Taken: back to the live view with the corrected details. Refused: the answers are shown, and the report is as it was.
       // Only what refused it is shown: a check a reviewer overruled before the report went live refuses nothing now.
       const failedBefore = new Set((draft.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
-      setCorrecting(applied ? null : { id, metadata, refused: answers.filter((r) => !r.pass && r.blocking && !failedBefore.has(r.checkId)) });
+      setCorrecting(applied ? null : { id, metadata, refused: answers.filter((r) => r.errored || (!r.pass && r.blocking && !failedBefore.has(r.checkId))) });
       if (applied) toast.success("Your changes are live");
     } catch (error) {
       toast.error(reasonOf(error, "The checks couldn't run"));
@@ -227,6 +228,15 @@ export function PublishFlow({
       title="Publish"
       tabs={tabs}
       filters={view === "reports" ? <StatusFilter reports={reports} settings={settings} show={show} onShow={setShow} /> : undefined}
+      // Several reports can be under way at once: a new one starts here, and each counts against the day's limit.
+      actions={
+        view === "reports" && signedIn ? (
+          <Button size="sm" className={BAR_ACTION} onClick={() => another(() => void setView(null))}>
+            <Plus aria-hidden />
+            <span className={BAR_LABEL}>New report</span>
+          </Button>
+        ) : undefined
+      }
       intro={view === "new" ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !running} onBack={back} draft={running ? null : draft} settings={settings} /> : undefined}
     >
       {view === "reports" ? (
@@ -284,7 +294,12 @@ export function PublishFlow({
               ) : step === "upload" && draft ? (
                 <UploadStep settings={settings} draft={draft} onStored={setDraft} onRead={setDraft} />
               ) : step === "details" && draft?.metadata ? (
-                <DetailsStep initial={draft.metadata} onRun={run} onSave={(metadata) => void saveDetails(draft.id, metadata).catch(said("Your changes couldn't be saved"))} />
+                <DetailsStep initial={draft.metadata} onRun={run} onSave={(metadata) => {
+                    // Kept here too, so coming back to the step from Your reports shows what was saved.
+                    setDraftOnly((current) => (current?.id === draft.id ? { ...current, metadata } : current));
+                    void saveDetails(draft.id, metadata).catch(said("Your changes couldn't be saved"));
+                  }}
+                />
               ) : draft && correcting?.id === draft.id && draft.status === "live" ? (
                 correcting.refused ? (
                   <CorrectionRefused results={correcting.refused} onBack={() => setCorrecting({ id: draft.id, metadata: correcting.metadata })} onKeep={() => setCorrecting(null)} />

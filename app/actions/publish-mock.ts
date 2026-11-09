@@ -5,7 +5,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { cookies, headers } from "next/headers";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
-import { requireAdmin } from "@/lib/publish-mock/admin";
+import { organizationsOf, requireAdmin } from "@/lib/publish-mock/admin";
 import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
@@ -53,14 +53,15 @@ function openDraft(state: MockState, userId: string) {
  * day (`limitFor`): past that the signing is refused, in words, since a built server hides what an action throws.
  */
 export async function signAgreement({ name, onBehalfOfAll }: { name: string; onBehalfOfAll: boolean }): Promise<{ draft: Submission } | { refused: string }> {
-  const [user, { orgId }] = await Promise.all([currentUser(), auth()]);
+  const user = await currentUser();
   if (!user) return { refused: "Sign in to publish." };
+  const orgIds = await organizationsOf(user.id);
   return change((state) => {
     if (!canPublish(state.settings)) return { refused: "Publishing is off for now." };
     const open = state.submissions.find((s) => s.id === state.drafts[user.id]);
     const starting = !open || open.step === "done";
-    if (starting && startsLeft(state, user.id, orgId) < 1) {
-      const perDay = limitFor(state.settings, user.id, orgId);
+    if (starting && startsLeft(state, user.id, orgIds) < 1) {
+      const perDay = limitFor(state.settings, user.id, orgIds);
       return { refused: perDay === 0 ? "Publishing isn't open to your account yet." : `You can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.` };
     }
     const registration = registrationOf(state.settings);

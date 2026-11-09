@@ -89,6 +89,8 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
   const [view, setView] = useQueryState("view", parseAsStringLiteral(VIEWS).withDefault("submissions"));
   const [settings, setSettings] = useState(initial.settings);
   const [submissions, setSubmissions] = useState(initial.submissions.filter((s) => s.status !== "draft"));
+  // Unchecked reports stay out of the list, but an email about one, such as a PDF that couldn't be read, opens it.
+  const drafts = initial.submissions.filter((s) => s.status === "draft");
   // MOCK: the emails kept in the store when the page loaded, so each report can show what the team's inbox was told.
   const outbox = initial.outbox ?? [];
   // What wants a reviewer: reports waiting for review, and failed ones whose author asked for a person.
@@ -109,7 +111,7 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
           size="md"
         />
         {view === "submissions" ? (
-          <Submissions settings={settings} submissions={submissions} outbox={outbox} onChange={replace} />
+          <Submissions settings={settings} submissions={submissions} drafts={drafts} outbox={outbox} onChange={replace} />
         ) : (
           <SettingsView settings={settings} onChange={setSettings} />
         )}
@@ -118,7 +120,7 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
   );
 }
 
-function Submissions({ settings, submissions, outbox, onChange }: { settings: Settings; submissions: Submission[]; outbox: Email[]; onChange: (s: Submission) => void }) {
+function Submissions({ settings, submissions, drafts, outbox, onChange }: { settings: Settings; submissions: Submission[]; drafts: Submission[]; outbox: Email[]; onChange: (s: Submission) => void }) {
   const [query, setQuery] = useState("");
   const [show, setShow] = useState<Show>("all");
   const [sort, setSort] = useState<Sort>("newest");
@@ -133,7 +135,7 @@ function Submissions({ settings, submissions, outbox, onChange }: { settings: Se
   }, [submissions, settings, query, show, sort]);
   const pager = pagerOf(list.length, PER_PAGE, page, setPage);
   const shown = list.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
-  const opened = submissions.find((s) => s.id === open) ?? null;
+  const opened = submissions.find((s) => s.id === open) ?? drafts.find((s) => s.id === open) ?? null;
 
   return (
     <Zone label={settings.series.name}>

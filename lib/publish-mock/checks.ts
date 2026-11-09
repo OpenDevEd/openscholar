@@ -118,7 +118,8 @@ export function finishCorrection(id: string, run: string, metadata: Metadata, re
     // A check that failed before the report went live was overruled by a reviewer, and stays overruled: a correction
     // is refused only by a blocking check it makes fail.
     const failedBefore = new Set((draft.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
-    if (results.some((r) => !r.pass && r.blocking && !failedBefore.has(r.checkId))) return { draft, applied: false };
+    // A check that couldn't answer at all vouches for nothing: the correction waits to be tried again.
+    if (results.some((r) => r.errored || (!r.pass && r.blocking && !failedBefore.has(r.checkId)))) return { draft, applied: false };
     const registers = providersOf(draft);
     Object.assign(draft, {
       metadata,
