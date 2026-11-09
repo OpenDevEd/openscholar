@@ -31,6 +31,7 @@ import {
   PenLine,
   Plus,
   PublishIcon,
+  Quote,
   ReviewQueueIcon,
   RotateCcw,
   ShieldCheck,
@@ -98,6 +99,8 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
   const [draft, setDraftOnly] = useState(initial);
   const [reports, setReports] = useState(initialReports);
   const [running, setRunning] = useState<Running | null>(null);
+  // The report activated here and now: only it plays the live moment; one opened live is already settled.
+  const [activated, setActivated] = useState<string | null>(null);
   // Every change to the report shows on Your reports too.
   const setDraft = (next: Submission | null) => {
     setDraftOnly(next);
@@ -173,7 +176,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
         <AutoHeight>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={running || step === "done" ? "checks" : step}
+              key={running ? "checks" : step === "done" ? (draft?.status === "live" ? "live" : "checks") : step}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -189,12 +192,26 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                 <UploadStep settings={settings} draft={draft} onRead={setDraft} />
               ) : step === "details" && draft?.metadata ? (
                 <DetailsStep initial={draft.metadata} onRun={run} />
+              ) : step === "done" && draft?.status === "live" ? (
+                <LiveReport
+                  settings={settings}
+                  draft={draft}
+                  fresh={activated === draft.id}
+                  onAnother={() => {
+                    void startOver().then(() => setDraftOnly(null));
+                  }}
+                />
               ) : draft ? (
                 <Checks
                   rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, model: r.model, result: r }))}
                   draft={draft}
                   settings={settings}
-                  onActivate={() => activate(draft.id).then(setDraft)}
+                  onActivate={() =>
+                    activate(draft.id).then((live) => {
+                      setActivated(live.id);
+                      setDraft(live);
+                    })
+                  }
                   onFix={() => back("upload")}
                   onAnother={() => {
                     void startOver().then(() => setDraftOnly(null));
@@ -534,7 +551,6 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
     start(async () => {
       try {
         await onActivate?.();
-        toast.success("Your report is live");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "It couldn't be activated");
       }
@@ -542,10 +558,6 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
   const head = !draft ? (
     <StepHead key="running" title="Running the checks" aside={<StatusChip tone="running" icon="tone">{answered} of {rows.length}</StatusChip>}>
       Looking for earlier copies takes a few seconds.
-    </StepHead>
-  ) : stage === "live" ? (
-    <StepHead key="live" title="Published" aside={<StatusChip tone="success" icon={BadgeCheck}>DOI active</StatusChip>}>
-      Your report is live. Communities can add it now; the DOI resolves once Crossref has registered it.
     </StepHead>
   ) : stage === "ready" ? (
     <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>Passed</StatusChip>}>
@@ -588,14 +600,7 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
                 </Button>
               ) : (
                 <>
-                  {stage === "live" ? (
-                    <Button asChild variant="outline">
-                      <Link href={`/papers/${draft.id}`}>
-                        Open its page <ArrowUpRight />
-                      </Link>
-                    </Button>
-                  ) : null}
-                  <Button variant={stage === "live" || stage === "declined" ? "default" : "outline"} onClick={onAnother}>
+                  <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
                     <Plus /> Publish another
                   </Button>
                   {stage === "ready" ? (
@@ -626,6 +631,120 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
 }
 
 /** The report as it builds up: its cover with the series, title, authors and DOI, and what it stands on. */
+const RAYS = [0, 45, 90, 135, 180, 225, 270, 315];
+
+/** The live seal: a ring and a check that draw themselves, a ripple and one burst of rays. Drawn and still when not fresh. */
+function Seal({ play }: { play: boolean }) {
+  const draw = (delay: number) => (play ? { initial: { pathLength: 0 }, animate: { pathLength: 1 }, transition: { delay, duration: 0.45, ease: EASE } } : {});
+  return (
+    <div className="relative size-20">
+      {play ? (
+        <>
+          <motion.span
+            aria-hidden
+            className="absolute inset-0 rounded-full border-2 border-success"
+            initial={{ opacity: 0.6, scale: 1 }}
+            animate={{ opacity: 0, scale: 1.7 }}
+            transition={{ delay: 0.55, duration: 0.7, ease: "easeOut" }}
+          />
+          {RAYS.map((angle) => (
+            <span key={angle} aria-hidden className="absolute inset-0 flex items-center justify-center" style={{ transform: `rotate(${angle}deg)` }}>
+              <motion.span
+                className="h-[3px] w-2.5 rounded-full bg-success"
+                initial={{ x: 30, opacity: 0 }}
+                animate={{ x: [30, 50], opacity: [0, 1, 0] }}
+                transition={{ delay: 0.55, duration: 0.6, ease: "easeOut" }}
+              />
+            </span>
+          ))}
+        </>
+      ) : null}
+      <motion.svg
+        viewBox="0 0 80 80"
+        aria-hidden
+        className="relative size-20"
+        initial={play ? { scale: 0.6, opacity: 0 } : false}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 18 }}
+      >
+        <circle cx="40" cy="40" r="34" className="fill-success/10" />
+        <motion.circle cx="40" cy="40" r="34" fill="none" strokeWidth="3" strokeLinecap="round" className="stroke-success" style={{ rotate: -90 }} {...draw(0.05)} />
+        <motion.path d="M26 41 L36 51 L55 31" fill="none" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" className="stroke-success" {...draw(0.35)} />
+      </motion.svg>
+    </div>
+  );
+}
+
+/** "Asante, K. (2026). Title. Openscholar Reports. https://doi.org/…", for pasting into a reference list. */
+function citationOf(settings: Settings, draft: Submission) {
+  const m = draft.metadata;
+  const names = (m?.authors ?? []).filter((a) => a.name).map((a) => {
+    const parts = a.name.trim().split(/\s+/);
+    const last = parts.pop() ?? "";
+    return parts.length ? `${last}, ${parts.map((p) => `${p[0]}.`).join(" ")}` : last;
+  });
+  const who = names.length > 1 ? `${names.slice(0, -1).join(", ")} & ${names.at(-1)}` : (names[0] ?? "");
+  return `${who} (${(m?.date ?? "").slice(0, 4)}). ${m?.title ?? ""}. ${settings.series.name}. https://doi.org/${draft.doi}`;
+}
+
+/** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
+function LiveReport({ settings, draft, fresh, onAnother }: { settings: Settings; draft: Submission; fresh: boolean; onAnother: () => void }) {
+  const reduce = useReducedMotion();
+  const play = fresh && !reduce;
+  // Each part rises in after the seal has drawn, in reading order.
+  const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
+  const url = `https://doi.org/${draft.doi}`;
+  const registered = draft.deposit === "deposited";
+  const passed = draft.results?.filter((r) => r.pass).length ?? 0;
+  return (
+    <div>
+      <div className="flex flex-col items-center pb-7 pt-3 text-center">
+        <Seal play={play} />
+        <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.45)}>
+          Your report is live
+        </motion.h2>
+        <motion.p className="mt-1.5 max-w-md text-sm text-muted-foreground" {...rise(0.55)}>
+          Its page is open, and communities can add it by its DOI.
+        </motion.p>
+      </div>
+      <motion.div className="rounded-2xl border border-border-subtle bg-inset/60 p-4" {...rise(0.7)}>
+        <div className="flex min-w-0 items-center gap-3">
+          <Hash className="size-4 shrink-0 text-primary" />
+          <a href={url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
+            doi.org/{draft.doi}
+          </a>
+          <TooltipHint label="Copy the DOI">
+            <Button variant="ghost" size="icon-sm" aria-label="Copy the DOI" className="text-muted-foreground" onClick={() => copy(url, "DOI")}>
+              <Copy />
+            </Button>
+          </TooltipHint>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <StatusChip tone={registered ? "success" : "running"} icon={registered ? BadgeCheck : "tone"}>
+            {registered ? "Registered with Crossref" : "Sending to Crossref"}
+          </StatusChip>
+          <StatusChip tone="success" icon={ShieldCheck}>
+            {passed} of {draft.results?.length ?? 0} checks passed
+          </StatusChip>
+        </div>
+      </motion.div>
+      <motion.div className="mt-6 flex flex-wrap justify-end gap-2" {...rise(0.8)}>
+        <Button variant="outline" onClick={onAnother}>
+          <Plus /> Publish another
+        </Button>
+        <Button variant="outline" onClick={() => copy(citationOf(settings, draft), "Citation")}>
+          <Quote /> Copy citation
+        </Button>
+        <Button asChild>
+          <Link href={`/papers/${draft.id}`}>
+            Open its page <ArrowUpRight />
+          </Link>
+        </Button>
+      </motion.div>
+    </div>
+  );
+}
+
 function ReportCover({ settings, draft }: { settings: Settings; draft: Submission | null }) {
   const m = draft?.metadata;
   const deposit = draft?.deposit;
@@ -634,6 +753,20 @@ function ReportCover({ settings, draft }: { settings: Settings; draft: Submissio
     <aside className="space-y-4 @3xl:sticky @3xl:top-24 @3xl:self-start">
       <div className="relative mx-auto aspect-[3/4] w-full max-w-[17rem] overflow-hidden rounded-xl border border-border-subtle bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_32px_-12px_rgb(0_0_0/0.18)]">
         <div className="absolute inset-x-0 top-0 h-1.5 bg-primary" />
+        {/* Stamped on as the report goes live; a report opened live has it already. */}
+        <AnimatePresence initial={false}>
+          {status === "live" ? (
+            <motion.span
+              key="live"
+              initial={{ opacity: 0, scale: 1.8, rotate: -20 }}
+              animate={{ opacity: 1, scale: 1, rotate: -8 }}
+              transition={{ delay: 0.75, type: "spring", stiffness: 420, damping: 18 }}
+              className="absolute right-3 top-5 flex items-center gap-1 rounded-md border-2 border-success/70 bg-background/80 px-1.5 py-0.5 text-[0.6875rem] font-bold ink-success"
+            >
+              <BadgeCheck className="size-3.5" /> Live
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
         <div className="flex h-full flex-col p-5 pt-6">
           <span className="text-[0.625rem] font-semibold tracking-wide text-primary">{settings.series.name}</span>
           <span className="text-[0.625rem] text-muted-foreground">ISSN {settings.series.issn || "pending"}</span>
