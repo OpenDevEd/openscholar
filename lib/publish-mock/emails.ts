@@ -24,7 +24,7 @@ const EVENTS = {
     heading: "A check couldn't finish",
     rows: (r: Submission): Row[] => [["Checks", (r.results ?? []).filter((c) => c.errored).map((c) => `${c.name}: ${c.detail ?? "failed"}`).join("\n")]],
   },
-  "pdf-unread": { label: "PDF couldn't be read", heading: "A PDF couldn't be read", rows: (r: Submission): Row[] => [["PDF", `${r.pdf?.name ?? "Unknown"}\nIts details were left for the author to fill in.`]] },
+  "pdf-unread": { label: "PDF couldn't be read", heading: "A PDF couldn't be read", rows: (r: Submission): Row[] => [["PDF", r.pdf?.name ?? "Unknown"]] },
   "registration-refused": {
     label: "Registration refused",
     heading: "A DOI registration was refused",

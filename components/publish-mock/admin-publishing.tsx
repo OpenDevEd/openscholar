@@ -246,7 +246,7 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
               </Button>
             </TooltipHint>
             <TooltipHint label="Approve">
-              <Button variant="ghost" size="icon-sm" aria-label={`Approve ${s.id}`} className="relative text-primary" disabled={busy} onClick={() => act(() => review(s.id, "approve"), "Approved: its author can activate it")}>
+              <Button variant="ghost" size="icon-sm" aria-label={`Approve ${s.id}`} className="relative text-primary" disabled={busy} onClick={() => act(() => review(s.id, "approve", s.pdf?.at), "Approved: its author can activate it")}>
                 <Working busy={busy}>
                   <Check />
                 </Working>
@@ -280,7 +280,7 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
     start(async () => {
       if (!s) return;
       try {
-        onChange(await review(s.id, decision, note.trim() || undefined));
+        onChange(await review(s.id, decision, s.pdf?.at, note.trim() || undefined));
         toast.success(decision === "approve" ? "Approved: its author can activate it" : decision === "reinstate" ? "Reinstated: it is live again" : s.status === "live" ? "Withdrawn" : "Declined");
         setNote("");
         onClose();

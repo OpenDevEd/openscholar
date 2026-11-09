@@ -75,7 +75,9 @@ function placeOf(draft: Submission | null) {
 const bytes = (n: number) => (n > 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.round(n / 1000)} kB`);
 
 /** What went wrong, in words for a toast. A request that never arrived, as when the connection drops, says so plainly. */
-const reasonOf = (error: unknown, otherwise: string) => (error instanceof TypeError ? "Openscholar couldn't be reached. Try again." : error instanceof Error ? error.message : otherwise);
+// A built server hides what a server action threw and sends a digest in its place: then the words kept here say it.
+const reasonOf = (error: unknown, otherwise: string) =>
+  error instanceof TypeError ? "Openscholar couldn't be reached. Try again." : error instanceof Error && !("digest" in error) ? error.message : otherwise;
 
 /** A handler for a request that failed: its reason in a toast. */
 const said = (otherwise: string) => (error: unknown) => void toast.error(reasonOf(error, otherwise));
@@ -512,7 +514,7 @@ function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings;
       if (!wasRead) toast.info("The details couldn't be read from this PDF", { description: "Fill them in on the next step." });
       onRead(read);
     } catch (error) {
-      toast.error(reasonOf(error, "The PDF couldn't be read"));
+      toast.error(reasonOf(error, "This PDF couldn't be read. Try saving it again as a PDF."));
       setFile(null);
     } finally {
       setStage(null);

@@ -89,14 +89,22 @@ export async function uploadPdf(form: FormData) {
   const bytes = await file.arrayBuffer();
   // pdfjs takes its buffer over, so each reader gets a copy and the original is kept.
   // The text and the cover are read side by side. A first page that can't be drawn leaves the report its title page.
-  const [{ pages, totalPages }, cover] = await Promise.all([
+  const userId = await me();
+  const origin = (await headers()).get("origin") ?? "";
+  const opened = await Promise.all([
     extractPdfJsTextPages(bytes.slice(0)),
     renderCover(bytes.slice(0)).catch((error: unknown) => {
       console.error("[publish mock] cover not drawn", String(error));
       return null;
     }),
-  ]);
-  const userId = await me();
+  ]).catch(async (error: unknown) => {
+    // A file that isn't a PDF pdf.js can open: the team's inbox hears of it, and the author is told to try another.
+    console.error("[publish mock] the PDF couldn't be opened", { name: file.name, bytes: file.size, error: String(error).slice(0, 300) });
+    await change((state) => mail(state, "pdf-unread", { ...draftOf(state, userId), pdf: { name: file.name, pages: 0, bytes: file.size } }, origin));
+    return null;
+  });
+  if (!opened) throw new Error("This PDF couldn't be opened. Try saving it again as a PDF.");
+  const [{ pages, totalPages }, cover] = opened;
   return change(async (state) => {
     const draft = draftOf(state, userId);
     if (draft.step === "done") throw new Error("This report has been checked. Start another to publish a new PDF.");
@@ -253,7 +261,7 @@ export async function requestReview(id: string, comment: string) {
   const user = await currentUser();
   const origin = (await headers()).get("origin") ?? "";
   return change((state) => {
-    const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
+    const report = user ? state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === user.id)) : undefined;
     if (!report) throw new Error("No such report of yours.");
     if (report.status !== "failed" || report.step !== "done") throw new Error("Only a report its checks failed can be sent for review.");
     if (report.reviewRequest) return report;
@@ -268,10 +276,12 @@ export async function requestReview(id: string, comment: string) {
  * isn't live yet, so its author can activate it, or decline it. Declining a live report withdraws it: its page then
  * says it was withdrawn, since its DOI can't be removed. A withdrawn report can be reinstated, which makes it live again.
  */
-export async function review(id: string, decision: "approve" | "decline" | "reinstate", note?: string) {
+export async function review(id: string, decision: "approve" | "decline" | "reinstate", seenPdfAt: number | undefined, note?: string) {
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
     if (!submission || submission.step !== "done") throw new Error("No such report to review.");
+    // The word is on the PDF the reviewer had open: one uploaded since needs looking at again.
+    if (submission.pdf?.at !== seenPdfAt) throw new Error("The author uploaded a new PDF since you opened this. Reload to review it.");
     const stage = stageOf(submission, state.settings);
     if (decision === "reinstate") {
       if (stage !== "declined" || !submission.withdrawnAt) throw new Error("Only a withdrawn report can be reinstated.");

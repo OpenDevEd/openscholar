@@ -23,7 +23,8 @@ export async function fileAccess(key: string, userId: string | null): Promise<{ 
   const report = (await readState()).submissions.find((s) => s.id === key);
   if (!report) return null;
   if (report.status === "live") return { public: true };
-  return report.demo || (userId !== null && report.ownerId === userId) ? { public: false } : null;
+  // A sample stands in for the viewer's own report, so it too needs someone signed in.
+  return userId !== null && (report.demo || report.ownerId === userId) ? { public: false } : null;
 }
 
 const DAY = 86_400_000;
