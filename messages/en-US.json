@@ -1229,7 +1229,8 @@
     "noMatches": "No matches for current filters",
     "clearFilters": "Clear filters",
     "progressOfPapers": "{processed} of {total, plural, =1 {# paper} other {# papers}}",
-    "loadingExtractionResults": "Loading extraction results..."
+    "loadingExtractionResults": "Loading extraction results...",
+    "skippedNoText": "{count, plural, one {# paper left out: no abstract to read, and full texts were off} other {# papers left out: no abstract to read, and full texts were off}}"
   },
   "reportBuilder": {
     "grounded": "Grounded",

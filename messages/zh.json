@@ -1229,7 +1229,8 @@
     "noMatches": "没有符合当前筛选条件的匹配项",
     "clearFilters": "清除筛选",
     "progressOfPapers": "{processed} / {total} 篇论文",
-    "loadingExtractionResults": "正在加载提取结果..."
+    "loadingExtractionResults": "正在加载提取结果...",
+    "skippedNoText": "{count, plural, other {已略过 # 篇论文：没有可读的摘要，且全文已关闭}}"
   },
   "reportBuilder": {
     "grounded": "有依据",

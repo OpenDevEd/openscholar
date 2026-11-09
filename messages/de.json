@@ -1230,7 +1230,8 @@
     "noMatches": "Keine Treffer für die aktuellen Filter",
     "clearFilters": "Filter löschen",
     "progressOfPapers": "{processed} von {total, plural, =1 {# Artikel} other {# Artikeln}}",
-    "loadingExtractionResults": "Extraktionsergebnisse werden geladen..."
+    "loadingExtractionResults": "Extraktionsergebnisse werden geladen...",
+    "skippedNoText": "{count, plural, one {# Artikel ausgelassen: kein Abstract zum Lesen, und Volltexte waren aus} other {# Artikel ausgelassen: kein Abstract zum Lesen, und Volltexte waren aus}}"
   },
   "reportBuilder": {
     "grounded": "Belegt",

@@ -1229,7 +1229,8 @@
     "noMatches": "Aucune correspondance pour les filtres actuels",
     "clearFilters": "Effacer les filtres",
     "progressOfPapers": "{processed} sur {total, plural, =1 {# article} other {# articles}}",
-    "loadingExtractionResults": "Chargement des résultats de l'extraction..."
+    "loadingExtractionResults": "Chargement des résultats de l'extraction...",
+    "skippedNoText": "{count, plural, one {# article laissé de côté : pas de résumé à lire, et les textes intégraux étaient désactivés} other {# articles laissés de côté : pas de résumé à lire, et les textes intégraux étaient désactivés}}"
   },
   "reportBuilder": {
     "grounded": "Fondé",
