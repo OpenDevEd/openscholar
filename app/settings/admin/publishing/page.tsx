@@ -1,5 +1,5 @@
-import { AdminPublishing } from "@/components/publish-mock/admin-publishing";
 import { notFound } from "next/navigation";
+import { AdminPublishing } from "@/components/publish-mock/admin-publishing";
 import { accountOf, accountsMatching, isAdmin } from "@/lib/publish-mock/admin";
 import { readState } from "@/lib/publish-mock/store";
 
@@ -8,11 +8,10 @@ export default async function AdminPublishingPage() {
   // The admin layout decides in the browser; the data itself goes only to an admin.
   if (!(await isAdmin())) notFound();
   const state = await readState();
-  // Who each limit is for, as Clerk has them now, and the accounts an admin can pick from: both there from the first frame.
-  const [accounts, described] = await Promise.all([
+  // The accounts an admin can pick from, and who each limit is for as Clerk has them now: both there from the first frame.
+  const [accounts, known] = await Promise.all([
     accountsMatching("").catch(() => ({ people: [], organizations: [] })),
-    Promise.all(state.settings.limits.overrides.map(async (o) => ({ ...o, ...((await accountOf(o.kind, o.id)) ?? {}) }))),
+    Promise.all(state.settings.limits.overrides.map((o) => accountOf(o.kind, o.id))),
   ]);
-  state.settings.limits.overrides = described;
-  return <AdminPublishing initial={state} accounts={accounts} />;
+  return <AdminPublishing initial={state} accounts={accounts} known={known.filter((account) => account !== null)} />;
 }

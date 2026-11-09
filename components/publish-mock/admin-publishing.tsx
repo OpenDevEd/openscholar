@@ -4,7 +4,7 @@
 // approve and decline for those waiting. Settings: the Publish button, human review, the series and its DOIs, the
 // model that reads PDFs, the checks, and the agreement. State lives in the mock's local store.
 
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
@@ -51,6 +51,8 @@ import { CheckRow } from "@/components/publish-mock/publish-flow";
 import { usePlaceName } from "@/components/publish-mock/report-extras";
 import { findAccounts, removeCheck, removeLimit, retryDeposit, review, saveCheck, saveLimit, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import useSWR from "swr";
+import { AnimatePresence, motion } from "motion/react";
+import { EASE } from "@/components/ui/opening";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { IdentityRow } from "@/components/ui/identity";
@@ -63,7 +65,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
-import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, providersOf, stageOf, type Account, type Check as CheckDef, type Email, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, providersOf, stageOf, type Account, type Check as CheckDef, type Email, type LimitOverride, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -92,7 +94,7 @@ function failed(error: unknown) {
   toast.error(error instanceof Error ? error.message : "Something went wrong");
 }
 
-export function AdminPublishing({ initial, accounts }: { initial: MockState; accounts: Accounts }) {
+export function AdminPublishing({ initial, accounts, known }: { initial: MockState; accounts: Accounts; known: Account[] }) {
   const [view, setView] = useQueryState("view", parseAsStringLiteral(VIEWS).withDefault("submissions"));
   const [settings, setSettings] = useState(initial.settings);
   const [submissions, setSubmissions] = useState(initial.submissions.filter((s) => s.status !== "draft"));
@@ -120,7 +122,7 @@ export function AdminPublishing({ initial, accounts }: { initial: MockState; acc
         {view === "submissions" ? (
           <Submissions settings={settings} submissions={submissions} drafts={drafts} outbox={outbox} onChange={replace} />
         ) : (
-          <SettingsView settings={settings} accounts={accounts} onChange={setSettings} />
+          <SettingsView settings={settings} accounts={accounts} known={known} onChange={setSettings} />
         )}
       </div>
     </Enter>
@@ -509,40 +511,83 @@ const OWN_LIMIT = 5;
  * How many reports a person may start in a day, and the people and organisations with a limit of their own. They
  * are Openscholar's real accounts, from Clerk, shown as people and organisations are everywhere else in the app.
  */
-function Limits({ settings, accounts, onChange, save }: { settings: Settings; accounts: Accounts; onChange: (s: Settings) => void; save: (patch: { perDay: number }) => void }) {
-  const [busy, start] = useTransition();
+function Limits({
+  settings,
+  accounts,
+  known: knownAtLoad,
+  update,
+  save,
+}: {
+  settings: Settings;
+  accounts: Accounts;
+  /** Who each limit is for, as Clerk had them when the page loaded. */
+  known: Account[];
+  update: Dispatch<SetStateAction<Settings>>;
+  save: (patch: { perDay: number }) => void;
+}) {
+  // Who each limit is for is kept apart from the settings and only ever added to, so nothing the server answers with
+  // can take a photo or a name off a row.
+  const [known, setKnown] = useState(() => new Map(knownAtLoad.map((account) => [account.id, account])));
   const { limits } = settings;
-  const set = (account: Pick<Account, "kind" | "id">, perDay: number) =>
-    start(async () => {
-      try {
-        const result = await saveLimit({ kind: account.kind, id: account.id, perDay });
-        if ("refused" in result) return void toast.error(result.refused);
-        onChange(result.settings);
-      } catch (error) {
-        failed(error);
-      }
+  const setOverrides = (change: (list: LimitOverride[]) => LimitOverride[]) => update((s) => ({ ...s, limits: { ...s.limits, overrides: change(s.limits.overrides) } }));
+  // The list changes at once and the server is told behind it. A refusal puts the row back as it was and says why.
+  const set = (account: Pick<Account, "kind" | "id" | "name">, perDay: number) => {
+    const before = limits.overrides.find((o) => o.id === account.id);
+    const entry: LimitOverride = { kind: account.kind, id: account.id, name: account.name, perDay: Math.min(1000, Math.max(0, Math.round(Number.isFinite(perDay) ? perDay : 0))) };
+    const back = (why: string) => {
+      setOverrides((list) => (before ? list.map((o) => (o.id === entry.id ? before : o)) : list.filter((o) => o.id !== entry.id)));
+      toast.error(why);
+    };
+    setOverrides((list) => (list.some((o) => o.id === entry.id) ? list.map((o) => (o.id === entry.id ? entry : o)) : [...list, entry]));
+    saveLimit({ kind: entry.kind, id: entry.id, perDay: entry.perDay }).then(
+      (result) => {
+        if ("refused" in result) back(result.refused);
+      },
+      () => back("That limit couldn't be saved"),
+    );
+  };
+  const remove = (o: LimitOverride) => {
+    setOverrides((list) => list.filter((x) => x.id !== o.id));
+    removeLimit(o.id).catch(() => {
+      setOverrides((list) => (list.some((x) => x.id === o.id) ? list : [...list, o]));
+      toast.error("That limit couldn't be removed");
     });
+  };
   return (
     <Zone label="Limits">
       <ul className={LIST}>
         <Row label="New reports a day" hint="For each person. Each one reserves a DOI and is read by the model.">
           <SavedInput value={String(limits.perDay)} onSave={(value) => save({ perDay: Number(value) })} className="w-20 text-end tabular-nums" />
         </Row>
-        {limits.overrides.map((o) => (
-          <li key={o.id} className="px-4 py-2.5">
-            <IdentityRow avatar={<IdentityAvatar name={o.name} imageUrl={o.imageUrl} kind={o.kind} className="size-9" />} name={o.name} detail={o.detail ?? (o.kind === "person" ? "Person" : "Organisation")}>
-              <SavedInput value={String(o.perDay)} onSave={(value) => set(o, Number(value))} className="w-20 text-end tabular-nums" ariaLabel={`${o.name}'s reports a day`} />
-              <span className="shrink-0 text-xs text-muted-foreground">a day</span>
-              <TooltipHint label="Back to everyone's limit">
-                <Button variant="ghost" size="icon-sm" aria-label={`Remove ${o.name}'s limit`} className="text-muted-foreground hover:text-destructive" onClick={() => removeLimit(o.id).then(onChange, failed)}>
-                  <Trash2 />
-                </Button>
-              </TooltipHint>
-            </IdentityRow>
-          </li>
-        ))}
+        {/* A row opens and closes its own height, so the ones under it glide and don't jump. */}
+        <AnimatePresence initial={false}>
+          {limits.overrides.map((o) => {
+            // Clerk's word on who this is; the kept name alone when Clerk couldn't be asked.
+            const who = known.get(o.id) ?? { name: o.name, detail: o.kind === "person" ? "Person" : "Organisation", imageUrl: null };
+            return (
+              <motion.li key={o.id} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden">
+                <IdentityRow className="px-4 py-2.5" avatar={<IdentityAvatar name={who.name} imageUrl={who.imageUrl} kind={o.kind} className="size-9" />} name={who.name} detail={who.detail}>
+                  <SavedInput value={String(o.perDay)} onSave={(value) => set(o, Number(value))} className="w-20 text-end tabular-nums" ariaLabel={`${who.name}'s reports a day`} />
+                  <span className="shrink-0 text-xs text-muted-foreground">a day</span>
+                  <TooltipHint label="Back to everyone's limit">
+                    <Button variant="ghost" size="icon-sm" aria-label={`Remove ${who.name}'s limit`} className="text-muted-foreground hover:text-destructive" onClick={() => remove(o)}>
+                      <Trash2 />
+                    </Button>
+                  </TooltipHint>
+                </IdentityRow>
+              </motion.li>
+            );
+          })}
+        </AnimatePresence>
         <li className="px-4 py-3">
-          <AccountPicker accounts={accounts} has={(id) => limits.overrides.some((o) => o.id === id)} busy={busy} onPick={(account) => set(account, OWN_LIMIT)} />
+          <AccountPicker
+            accounts={accounts}
+            has={(id) => limits.overrides.some((o) => o.id === id)}
+            onPick={(account) => {
+              setKnown((was) => new Map(was).set(account.id, account));
+              set(account, OWN_LIMIT);
+            }}
+          />
         </li>
       </ul>
     </Zone>
@@ -550,7 +595,7 @@ function Limits({ settings, accounts, onChange, save }: { settings: Settings; ac
 }
 
 /** Picks a person or an organisation from Openscholar's accounts: the latest ones are there on opening, and typing searches them all. */
-function AccountPicker({ accounts, has, busy, onPick }: { accounts: Accounts; has: (id: string) => boolean; busy: boolean; onPick: (account: Account) => void }) {
+function AccountPicker({ accounts, has, onPick }: { accounts: Accounts; has: (id: string) => boolean; onPick: (account: Account) => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const search = useDebouncedValue(query.trim(), 250);
@@ -570,12 +615,8 @@ function AccountPicker({ accounts, has, busy, onPick }: { accounts: Accounts; ha
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" className="relative" disabled={busy}>
-          <Working busy={busy}>
-            <span className="flex items-center gap-2">
-              <UserPlus /> Give someone a limit of their own
-            </span>
-          </Working>
+        <Button variant="outline">
+          <UserPlus /> Give someone a limit of their own
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
@@ -610,7 +651,8 @@ function AccountPicker({ accounts, has, busy, onPick }: { accounts: Accounts; ha
   );
 }
 
-function SettingsView({ settings, accounts, onChange }: { settings: Settings; accounts: Accounts; onChange: (s: Settings) => void }) {
+function SettingsView({ settings, accounts, known, onChange: update }: { settings: Settings; accounts: Accounts; known: Account[]; onChange: Dispatch<SetStateAction<Settings>> }) {
+  const onChange = (next: Settings) => update(next);
   const [editing, setEditing] = useState<CheckDef | "new" | null>(null);
   const [agreementOpen, setAgreementOpen] = useState(false);
   const save = (patch: Parameters<typeof updateSettings>[0]) => {
@@ -645,7 +687,7 @@ function SettingsView({ settings, accounts, onChange }: { settings: Settings; ac
         </ul>
       </Zone>
 
-      <Limits settings={settings} accounts={accounts} onChange={onChange} save={save} />
+      <Limits settings={settings} accounts={accounts} known={known} update={update} save={save} />
 
       <Zone label="Series">
         <ul className={LIST}>
@@ -727,7 +769,15 @@ function SettingsView({ settings, accounts, onChange }: { settings: Settings; ac
       >
         <ul className={LIST}>
           {settings.checks.map((check) => (
-            <CheckSettingRow key={check.id} check={check} onEdit={() => setEditing(check)} onToggle={(enabled) => saveCheck({ ...check, enabled }).then(onChange, failed)} />
+            <CheckSettingRow key={check.id} check={check} onEdit={() => setEditing(check)} onToggle={(enabled) => {
+                // The switch moves at once; the server's answer follows, and a refusal moves it back.
+                update((was) => ({ ...was, checks: was.checks.map((c) => (c.id === check.id ? { ...c, enabled } : c)) }));
+                saveCheck({ ...check, enabled }).then(onChange, (error) => {
+                  update((was) => ({ ...was, checks: was.checks.map((c) => (c.id === check.id ? { ...c, enabled: !enabled } : c)) }));
+                  failed(error);
+                });
+              }}
+            />
           ))}
         </ul>
         <p className="ps-1 text-xs text-muted-foreground">Each change makes a new version. A report keeps the version it was checked with.</p>

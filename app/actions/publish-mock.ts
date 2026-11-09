@@ -25,11 +25,12 @@ async function me() {
   return userId;
 }
 
-/** The report this person has open on the Publish page. */
-function draftOf(state: MockState, userId: string) {
-  const draft = state.submissions.find((s) => s.id === state.drafts[userId]);
-  if (!draft) throw new Error("No report is being published.");
-  return draft;
+/** One of this person's reports, by its key. Several can be under way at once, so each step says which it means:
+ * the one on the screen it came from, whichever is open elsewhere. */
+function reportOf(state: MockState, id: string, userId: string) {
+  const report = state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId));
+  if (!report) throw new Error("No such report of yours.");
+  return report;
 }
 
 function touch(submission: Submission, patch: Partial<Submission>) {
@@ -111,10 +112,10 @@ export async function discardReport(id: string) {
 }
 
 /** Back to a step already done, or on to the next one the report is ready for. */
-export async function goTo(step: Step) {
+export async function goTo(id: string, step: Step) {
   const userId = await me();
   return change((state) => {
-    const draft = draftOf(state, userId);
+    const draft = reportOf(state, id, userId);
     // A report past its checks goes back only to replace a PDF that failed them: one that passed or is live stays as checked.
     if (draft.step === "done" && draft.status !== "failed") throw new Error("This report has been checked. Start another to publish a new PDF.");
     return touch(draft, { step });
@@ -124,7 +125,8 @@ export async function goTo(step: Step) {
 /** The PDF, kept with the report with its text and a picture of its first page. Its details are read next (`readPdfDetails`). */
 export async function uploadPdf(form: FormData) {
   const file = form.get("pdf");
-  if (!(file instanceof File) || !/\.pdf$/i.test(file.name)) throw new Error("Choose a PDF.");
+  const id = form.get("id");
+  if (typeof id !== "string" || !(file instanceof File) || !/\.pdf$/i.test(file.name)) throw new Error("Choose a PDF.");
   const bytes = await file.arrayBuffer();
   // pdfjs takes its buffer over, so each reader gets a copy and the original is kept.
   // The text and the cover are read side by side. A first page that can't be drawn leaves the report its title page.
@@ -139,13 +141,13 @@ export async function uploadPdf(form: FormData) {
   ]).catch(async (error: unknown) => {
     // A file that isn't a PDF pdf.js can open: the team's inbox hears of it, and the author is told to try another.
     console.error("[publish mock] the PDF couldn't be opened", { name: file.name, bytes: file.size, error: String(error).slice(0, 300) });
-    await change((state) => mail(state, "pdf-unread", { ...draftOf(state, userId), pdf: { name: file.name, pages: 0, bytes: file.size } }, origin));
+    await change((state) => mail(state, "pdf-unread", { ...reportOf(state, id, userId), pdf: { name: file.name, pages: 0, bytes: file.size } }, origin));
     return null;
   });
   if (!opened) throw new Error("This PDF couldn't be opened. Try saving it again as a PDF.");
   const [{ pages, totalPages }, cover] = opened;
   return change(async (state) => {
-    const draft = draftOf(state, userId);
+    const draft = reportOf(state, id, userId);
     if (draft.step === "done") throw new Error("This report has been checked. Start another to publish a new PDF.");
     await mkdir(MOCK_DIR, { recursive: true });
     await writeFile(pdfPath(draft.id), Buffer.from(bytes));
@@ -234,7 +236,8 @@ export async function saveLimit({ kind, id, perDay }: { kind: LimitOverride["kin
       const overrides = state.settings.limits.overrides;
       const at = overrides.findIndex((o) => o.id === id);
       // A changed limit keeps its place in the list; a new one goes last.
-      const entry = { ...account, perDay: dailyLimit(perDay) };
+      // Only who and how many: their email and photo stay with Clerk.
+      const entry = { kind: account.kind, id: account.id, name: account.name, perDay: dailyLimit(perDay) };
       state.settings.limits.overrides = at < 0 ? [...overrides, entry] : overrides.map((o, i) => (i === at ? entry : o));
       return state.settings;
     }),

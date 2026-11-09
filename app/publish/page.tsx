@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { PublishFlow } from "@/components/publish-mock/publish-flow";
 import { organizationsOf } from "@/lib/publish-mock/admin";
 import { readState } from "@/lib/publish-mock/store";
-import { canPublish, limitFor, startsLeft } from "@/lib/publish-mock/types";
+import { authorSettings, canPublish, limitFor, startsLeft } from "@/lib/publish-mock/types";
 
 export const metadata: Metadata = { title: "Publish | Openscholar" };
 
@@ -20,5 +20,5 @@ export default async function PublishPage({ searchParams }: { searchParams: Prom
   // Asked of Clerk only when some organisation has a limit of its own.
   const orgIds = user && state.settings.limits.overrides.some((o) => o.kind === "organization") ? await organizationsOf(user.id) : [];
   const starts = user ? { left: startsLeft(state, user.id, orgIds), perDay: limitFor(state.settings, user.id, orgIds) } : { left: 1, perDay: 1 };
-  return <PublishFlow settings={state.settings} initial={draft} reports={reports} userName={user?.fullName ?? ""} signedIn={!!user} starts={starts} />;
+  return <PublishFlow settings={authorSettings(state.settings)} initial={draft} reports={reports} userName={user?.fullName ?? ""} signedIn={!!user} starts={starts} />;
 }

@@ -5,14 +5,25 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Account } from "./types";
 
+/** How long an answer is kept, so an admin's every click doesn't wait on Convex. MOCK: the real functions check in place. */
+const REMEMBER_MS = 60_000;
+const answers = new Map<string, { admin: boolean; at: number }>();
+
 export async function isAdmin() {
   const session = await auth();
   if (!session.userId) return false;
+  const known = answers.get(session.userId);
+  if (known && Date.now() - known.at < REMEMBER_MS) return known.admin;
   const token = (await session.getToken({ template: "convex" })) ?? undefined;
-  return fetchQuery(api.admins.queries.amI, {}, { token }).catch((error: unknown) => {
+  try {
+    const admin = await fetchQuery(api.admins.queries.amI, {}, { token });
+    answers.set(session.userId, { admin, at: Date.now() });
+    return admin;
+  } catch (error) {
+    // Not remembered: the next click asks again.
     console.error("[publish mock] the admin check couldn't be made", String(error));
     return false;
-  });
+  }
 }
 
 export async function requireAdmin() {

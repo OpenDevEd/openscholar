@@ -74,8 +74,11 @@ export type Settings = {
 
 /** A person or an organisation as Clerk has them: who they are in a list, with their photo or logo. */
 export type Account = { kind: "person" | "organization"; id: string; name: string; detail: string; imageUrl: string | null };
-/** A person's or an organisation's own daily limit, by their Clerk ID, with how they show in the list. */
-export type LimitOverride = Pick<Account, "kind" | "id" | "name"> & Partial<Pick<Account, "detail" | "imageUrl">> & { perDay: number };
+/** A person's or an organisation's own daily limit, by their Clerk ID. Their name is kept for the admin's list when
+ * Clerk can't be asked; their email and photo are never kept here, and are read from Clerk for an admin only. */
+export type LimitOverride = Pick<Account, "kind" | "id" | "name"> & { perDay: number };
+/** The settings as an author's page may have them: without who has a limit of their own. */
+export const authorSettings = (settings: Settings): Settings => ({ ...settings, limits: { perDay: settings.limits.perDay, overrides: [] } });
 /** The reports a person may start in a day: their own limit, else the highest of their organisations', else everyone's. */
 export function limitFor(settings: Settings, userId: string, orgIds: readonly string[]) {
   const { perDay, overrides } = settings.limits;

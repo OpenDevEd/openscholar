@@ -147,12 +147,13 @@ export function PublishFlow({
   const step: Step = draft?.step ?? "agreement";
   const back = (to: Step) => {
     setFresh(null);
-    goTo(to).then(setDraft, said("That step couldn't be opened"));
+    if (draft) goTo(draft.id, to).then(setDraft, said("That step couldn't be opened"));
   };
   // Starts a new report in place of one that's done.
   const another = (then?: () => void) => {
     startOver().then(() => {
       setDraftOnly(null);
+      setCorrecting(null);
       then?.();
     }, said("A new report couldn't be started"));
   };
@@ -274,6 +275,7 @@ export function PublishFlow({
             openReport(id)
               .then((report) => {
                 setDraftOnly(report);
+                setCorrecting(null);
                 void setView(null);
               })
               .catch((error: unknown) => toast.error(reasonOf(error, "That report couldn't be opened")));
@@ -636,6 +638,8 @@ function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings;
     setStage("storing");
     const form = new FormData();
     form.set("pdf", picked);
+    // The report on this screen, whichever is open elsewhere.
+    form.set("id", draft.id);
     try {
       const stored = await uploadPdf(form);
       onStored(stored);
