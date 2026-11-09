@@ -153,6 +153,7 @@ import type * as evidenceLibraries_operationKinds from "../evidenceLibraries/ope
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_organizationGrants from "../evidenceLibraries/organizationGrants.js";
+import type * as evidenceLibraries_paperLinks from "../evidenceLibraries/paperLinks.js";
 import type * as evidenceLibraries_peopleCount from "../evidenceLibraries/peopleCount.js";
 import type * as evidenceLibraries_platformMail from "../evidenceLibraries/platformMail.js";
 import type * as evidenceLibraries_provisioning from "../evidenceLibraries/provisioning.js";
@@ -635,6 +636,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/organizationGrants": typeof evidenceLibraries_organizationGrants;
+  "evidenceLibraries/paperLinks": typeof evidenceLibraries_paperLinks;
   "evidenceLibraries/peopleCount": typeof evidenceLibraries_peopleCount;
   "evidenceLibraries/platformMail": typeof evidenceLibraries_platformMail;
   "evidenceLibraries/provisioning": typeof evidenceLibraries_provisioning;
