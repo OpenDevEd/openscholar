@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useAction, useMutation } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion } from "motion/react";
 import useSWR from "swr";
@@ -31,22 +32,27 @@ const SHOWN = 5;
  * card can't read.
  */
 export function AddPapersAsk({ threadId, stepId, fallback }: { threadId: Id<"assistantThreads">; stepId: Id<"assistantSteps">; fallback: ReactNode }) {
+  const asked = useProtectedQuery(api.assistant.replies.askedPapers, { threadId, stepId }).data;
+  if (asked === undefined) return null;
+  if (asked === null) return <>{fallback}</>;
+  return <Ask threadId={threadId} stepId={stepId} asked={asked} />;
+}
+
+/** The card, once the call it asks about is read. */
+function Ask({ threadId, stepId, asked }: { threadId: Id<"assistantThreads">; stepId: Id<"assistantSteps">; asked: NonNullable<FunctionReturnType<typeof api.assistant.replies.askedPapers>> }) {
   const t = useTranslations("addedPapers");
   const asks = useTranslations("assistant.asks");
   const toast = useAppToast();
   const workspaceId = useWorkspace();
-  const asked = useProtectedQuery(api.assistant.replies.askedPapers, { threadId, stepId }).data;
   const answer = useMutation(api.assistant.replies.answer);
   const preview = useAction(api.evidenceLibraries.assistant.previewPapers);
-  const shown = asked?.papers.slice(0, SHOWN) ?? [];
+  const shown = asked.papers.slice(0, SHOWN);
   // What the community says of the papers the card names: read once, as the Add papers dialog reads them.
-  const found = useSWR(asked && workspaceId ? ["ask-papers", stepId] : null, () => preview({ libraryId: asked!.libraryId, workspaceId: workspaceId!, papers: shown }), { revalidateOnFocus: false }).data;
+  const found = useSWR(workspaceId ? ["ask-papers", stepId] : null, () => preview({ libraryId: asked.libraryId, workspaceId: workspaceId!, papers: shown }), { revalidateOnFocus: false }).data;
   const [choice, setChoice] = useState<boolean | null>(null);
   // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
   const [sent, setSent] = useState(false);
   const reduceMotion = useReducedMotion();
-  if (asked === undefined) return null;
-  if (asked === null) return <>{fallback}</>;
   const publish = asked.canPublish && (choice ?? asked.publish);
   const count = asked.papers.length;
   const say = (allow: boolean) => {
