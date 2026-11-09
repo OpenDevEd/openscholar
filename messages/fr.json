@@ -1165,7 +1165,7 @@
     "translationSettings": "Paramètres de traduction",
     "autoTranslateResults": "Traduire automatiquement les résultats listés",
     "listedItemsOnly": "S'applique uniquement aux éléments actuellement listés.",
-    "useCurrentLocaleTarget": "Utiliser la locale actuelle comme cible",
+    "useCurrentLocaleTarget": "Utiliser la langue du site",
     "runResultsTranslation": "Lancer la traduction",
     "translatingResults": "Traduction des résultats...",
     "undoTranslation": "Annuler la traduction",

@@ -1166,7 +1166,7 @@
     "translationSettings": "Definições de tradução",
     "autoTranslateResults": "Traduzir automaticamente os resultados listados",
     "listedItemsOnly": "Aplica-se apenas aos itens listados neste momento.",
-    "useCurrentLocaleTarget": "Usar o idioma atual como destino",
+    "useCurrentLocaleTarget": "Usar o idioma do site",
     "runResultsTranslation": "Executar tradução",
     "translatingResults": "A traduzir resultados...",
     "undoTranslation": "Desfazer a tradução",

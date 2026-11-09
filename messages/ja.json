@@ -1165,7 +1165,7 @@
     "translationSettings": "翻訳設定",
     "autoTranslateResults": "表示中の結果を自動翻訳",
     "listedItemsOnly": "現在一覧に表示されている項目にのみ適用されます。",
-    "useCurrentLocaleTarget": "現在のロケールを翻訳先にする",
+    "useCurrentLocaleTarget": "サイトの言語を使う",
     "runResultsTranslation": "翻訳を実行",
     "translatingResults": "結果を翻訳中...",
     "undoTranslation": "翻訳を元に戻す",
