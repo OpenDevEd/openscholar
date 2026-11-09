@@ -65,6 +65,8 @@ export function ThemeSection({ draft, saved, patch, reset }: SectionProps) {
   }
 
   function setColour(key: ColourKey | DarkColourKey, value: string) {
+    // A saved dark colour opens the switch without this flag; editing one keeps it open even if the field is cleared.
+    if ((DARK_COLOUR_KEYS as readonly string[]).includes(key)) setDarkOpened(true);
     patch((d) => {
       d.theme.colors[key] = value;
       return d;
