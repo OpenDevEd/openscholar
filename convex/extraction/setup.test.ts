@@ -56,7 +56,8 @@ it("a screening's copy takes another source's place, and one the job can't read 
   const counted = await setupOf();
   await t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: [{ paper: "W1", title: "One, screened", abstract, sourceType: "screening", sourceId: "job", screeningRevision: "r1" }, { paper: "W2", title: "Two", sourceType: "screening", sourceId: "job" }] as never, setup: { expectedEpoch: 0, next: { ...counted, position: 2 } } });
   // Left out, it's counted, so the job can say why it has fewer papers than were picked.
-  expect(await setupOf()).toMatchObject({ papers: 1, processable: 1, skipped: 1 });
+  expect(await setupOf()).toMatchObject({ papers: 1, processable: 1 });
+  expect((await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!.skippedPapers).toBe(1);
   const kept = await t.run(async (ctx) => await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(5));
   expect(kept.map((paper) => [paper.paperKey, paper.sourceType, paper.screeningRevision])).toEqual([["openalex:W1", "screening", "r1"]]);
 });

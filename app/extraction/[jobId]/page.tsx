@@ -654,10 +654,10 @@ export default function JobDetailPage() {
                 {tJob('papersCount', { count: format.number(job.totalPapers ?? 0) })}
               </span>
               {/* Left out with full texts off, since there was nothing of theirs to read: said, so the count above isn't a mystery. */}
-              {job.setup?.skipped ? (
+              {job.skippedPapers ? (
                 <span className="flex items-center gap-1.5 ink-warning">
                   <FileX className="size-3.5" />
-                  {tJob('skippedNoText', { count: job.setup.skipped })}
+                  {tJob('skippedNoText', { count: job.skippedPapers })}
                 </span>
               ) : null}
               <span className="flex items-center gap-1.5">

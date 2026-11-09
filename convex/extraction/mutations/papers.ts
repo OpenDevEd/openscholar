@@ -137,7 +137,8 @@ export const createPaperRecords = internalMutation({
       const processable = next.processable + processableCount;
       // The job's count goes up with its rows, a step at a time: a setup stopped part-way (cancelled between two steps)
       // leaves a job whose header, bar and exports count the papers it has (#822).
-      await ctx.db.patch("extractionJobs", args.jobId, { setup: { ...next, papers: next.papers + papers, processable, ...(skipped || next.skipped ? { skipped: (next.skipped ?? 0) + skipped } : {}) }, totalPapers: processable, updatedAt: Date.now() });
+      // Kept on the job, not its setup, which goes once setup is done.
+      await ctx.db.patch("extractionJobs", args.jobId, { setup: { ...next, papers: next.papers + papers, processable }, totalPapers: processable, ...(skipped ? { skippedPapers: (job.skippedPapers ?? 0) + skipped } : {}), updatedAt: Date.now() });
     }
     return { paperIds, processableCount };
   },
