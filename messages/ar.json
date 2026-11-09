@@ -1211,13 +1211,16 @@
     "keepRunning": "متابعة التشغيل",
     "yesCancel": "إلغاء المهمة",
     "deleteJob": "هل تريد حذف هذه المهمة؟",
-    "deleteJobDescription": "سيؤدي هذا إلى حذف المهمة وكل نتائج الاستخلاص الخاصة بها نهائيًا."
+    "deleteJobDescription": "سيؤدي هذا إلى حذف المهمة وكل نتائج الاستخلاص الخاصة بها نهائيًا.",
+    "rerunJob": "هل تريد تشغيله مجددًا كنسخة؟",
+    "rerunJobDescription": "يبدأ فورًا استخراج جديد بالأوراق والأسئلة نفسها ويستهلك أرصدة، بقدر ما استهلك هذا تقريبًا. ويبقى هذا كما هو.",
+    "rerunJobConfirm": "شغّل مجددًا"
   },
   "emptyStates": {
     "noScreeningQuestions": "لا توجد أسئلة فرز بعد"
   },
   "jobStatus": {
-    "restart": "إعادة التشغيل",
+    "restart": "شغّله مجددًا كنسخة…",
     "papersCount": "{count} ورقة",
     "questionsCount": "{count, plural, zero {لا أسئلة} one {# سؤال} two {سؤالان} few {# أسئلة} many {# سؤالًا} other {# سؤال}}",
     "statusPending": "قيد الانتظار",

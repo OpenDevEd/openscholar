@@ -1210,13 +1210,16 @@
     "keepRunning": "Keep running",
     "yesCancel": "Cancel job",
     "deleteJob": "Delete this job?",
-    "deleteJobDescription": "This will permanently delete this job and all its extraction results."
+    "deleteJobDescription": "This will permanently delete this job and all its extraction results.",
+    "rerunJob": "Run it again as a copy?",
+    "rerunJobDescription": "A new extraction with the same papers and questions starts at once and spends credits, about as many as this one did. This one stays as it is.",
+    "rerunJobConfirm": "Run again"
   },
   "emptyStates": {
     "noScreeningQuestions": "No screening questions yet"
   },
   "jobStatus": {
-    "restart": "Restart",
+    "restart": "Run again as a copy…",
     "papersCount": "{count, plural, =1 {# paper} other {# papers}}",
     "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "Pending",

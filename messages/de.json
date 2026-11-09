@@ -1211,13 +1211,16 @@
     "keepRunning": "Weiterlaufen lassen",
     "yesCancel": "Auftrag abbrechen",
     "deleteJob": "Diesen Auftrag löschen?",
-    "deleteJobDescription": "Dadurch werden dieser Auftrag und alle seine Extraktionsergebnisse dauerhaft gelöscht."
+    "deleteJobDescription": "Dadurch werden dieser Auftrag und alle seine Extraktionsergebnisse dauerhaft gelöscht.",
+    "rerunJob": "Als Kopie erneut ausführen?",
+    "rerunJobDescription": "Eine neue Extraktion mit denselben Artikeln und Fragen startet sofort und verbraucht Credits, etwa so viele wie diese. Diese bleibt, wie sie ist.",
+    "rerunJobConfirm": "Erneut ausführen"
   },
   "emptyStates": {
     "noScreeningQuestions": "Noch keine Screening-Fragen"
   },
   "jobStatus": {
-    "restart": "Neu starten",
+    "restart": "Als Kopie erneut ausführen…",
     "papersCount": "{count} Artikel",
     "questionsCount": "{count, plural, one {# Frage} other {# Fragen}}",
     "statusPending": "Ausstehend",

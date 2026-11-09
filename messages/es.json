@@ -1211,13 +1211,16 @@
     "keepRunning": "Seguir ejecutando",
     "yesCancel": "Cancelar trabajo",
     "deleteJob": "¿Eliminar este trabajo?",
-    "deleteJobDescription": "Esto eliminará de forma permanente este trabajo y todos sus resultados de extracción."
+    "deleteJobDescription": "Esto eliminará de forma permanente este trabajo y todos sus resultados de extracción.",
+    "rerunJob": "¿Volver a ejecutarla como copia?",
+    "rerunJobDescription": "Una nueva extracción con los mismos artículos y preguntas empieza en el acto y gasta créditos, más o menos los mismos que esta. Esta queda como está.",
+    "rerunJobConfirm": "Volver a ejecutar"
   },
   "emptyStates": {
     "noScreeningQuestions": "Todavía no hay preguntas de cribado"
   },
   "jobStatus": {
-    "restart": "Reiniciar",
+    "restart": "Volver a ejecutar como copia…",
     "papersCount": "{count, plural, =1 {# artículo} other {# artículos}}",
     "questionsCount": "{count, plural, one {# pregunta} other {# preguntas}}",
     "statusPending": "Pendiente",

@@ -1210,13 +1210,16 @@
     "keepRunning": "चलते रहो",
     "yesCancel": "हां, जॉब रद्द करें",
     "deleteJob": "यह जॉब हटाएं?",
-    "deleteJobDescription": "यह इस जॉब और इसके सभी एक्सट्रैक्शन परिणामों को स्थायी रूप से हटा देगा।"
+    "deleteJobDescription": "यह इस जॉब और इसके सभी एक्सट्रैक्शन परिणामों को स्थायी रूप से हटा देगा।",
+    "rerunJob": "इसे कॉपी के रूप में फिर चलाएँ?",
+    "rerunJobDescription": "उन्हीं शोधपत्रों और प्रश्नों वाला एक नया निष्कर्षण तुरंत शुरू होता है और क्रेडिट खर्च करता है, लगभग इतने ही जितने इसने किए। यह वैसा ही रहता है।",
+    "rerunJobConfirm": "फिर चलाएँ"
   },
   "emptyStates": {
     "noScreeningQuestions": "अभी तक कोई स्क्रीनिंग प्रश्न नहीं"
   },
   "jobStatus": {
-    "restart": "पुनः आरंभ करें",
+    "restart": "कॉपी के रूप में फिर चलाएँ…",
     "papersCount": "{count} पेपर",
     "questionsCount": "{count, plural, one {# प्रश्न} other {# प्रश्न}}",
     "statusPending": "लंबित",
