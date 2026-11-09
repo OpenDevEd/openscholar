@@ -35,6 +35,7 @@ import type { CommunityCopy } from "@/lib/papers/community-copies";
 import { useLiveCopies } from "@/components/papers/use-live-copies";
 import type { PaperDetail } from "@/lib/papers/paper-detail";
 import type { PaperResult } from "@/lib/types/search.types";
+import { plainAbstract } from "@/lib/papers/abstract-text";
 
 const CHIP = "inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs text-muted-foreground";
 /** How many authors, copies and MeSH terms show before "Show all". */
@@ -155,7 +156,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
       <div className="grid gap-x-12 gap-y-10 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-10">
           <Section id="paper-abstract" title={tc("abstract")}>
-            {detail.abstract ? <Abstract text={detail.abstract} /> : <p className="text-sm text-muted-foreground">{t("noAbstract")}</p>}
+            {detail.abstract ? <Abstract text={plainAbstract(detail.abstract)} /> : <p className="text-sm text-muted-foreground">{t("noAbstract")}</p>}
             {detail.keywords.length ? (
               <div className="mt-5 flex flex-wrap gap-2" aria-label={tTopics("keywords")}>
                 {detail.keywords.map((keyword) => <Link key={keyword} href={buildShareableUrl("", { q: keyword })} className="rounded-md bg-inset px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">{keyword}</Link>)}

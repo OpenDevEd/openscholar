@@ -4,7 +4,7 @@
  * filters and sort, read through ./openalex.ts; the rating filter is the results page's too.
  */
 import { v, type Infer } from "convex/values";
-import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { abstractFromIndex } from "../../lib/papers/abstract-text";
 import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -133,7 +133,7 @@ export function toPaper(work: Work): SearchPaper {
   return {
     paper: toPaperKey(work.id)!,
     title: work.title ?? work.display_name ?? "",
-    ...(work.abstract_inverted_index ? { abstract: convertAbstractArrayToString(work.abstract_inverted_index) } : {}),
+    ...(work.abstract_inverted_index ? { abstract: abstractFromIndex(work.abstract_inverted_index) } : {}),
     ...(authors.length ? { authors } : {}),
     ...(typeof work.publication_year === "number" ? { publicationYear: work.publication_year } : {}),
     ...(work.doi ? { doi: work.doi } : {}),

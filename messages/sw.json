@@ -1518,7 +1518,8 @@
     "planAllowsCollections": "{plan} inaruhusu mikusanyiko {limit, number}",
     "nameTheCollection": "Ipe jina mkusanyiko",
     "newName": "Jina jipya la {name}",
-    "clearSearch": "Futa utafutaji"
+    "clearSearch": "Futa utafutaji",
+    "collectionDeletedPapersStay": "{name}: makala zake zinabaki kwenye maktaba yako"
   },
   "sidebarLayout": {
     "expandFilters": "Panua vichujio (Ctrl+Shift+F)",

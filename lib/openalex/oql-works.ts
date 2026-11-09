@@ -1,4 +1,4 @@
-import { convertAbstractArrayToString } from "@sickrin/openalex-sdk/dist/src/utils/helpers";
+import { abstractFromIndex } from "@/lib/papers/abstract-text";
 import type { Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import { describeQueryError, type QueryErrorDetail } from "@/lib/search/search-error";
 import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
@@ -70,7 +70,7 @@ export async function fetchOqlWorks(
       meta: body.meta,
       results: body.results.map(({ abstract_inverted_index, ...work }: Work) => appWork({
         ...work,
-        ...(abstract_inverted_index ? { abstract: convertAbstractArrayToString(abstract_inverted_index) } : {}),
+        ...(abstract_inverted_index ? { abstract: abstractFromIndex(abstract_inverted_index) } : {}),
       })),
     } as Works,
   };

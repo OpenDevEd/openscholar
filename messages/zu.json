@@ -1517,7 +1517,8 @@
     "planAllowsCollections": "I-{plan} ivumela {limit, number} amaqoqo",
     "nameTheCollection": "Qamba igama leqoqo",
     "newName": "Igama elisha le-{name}",
-    "clearSearch": "Sula ukusesha"
+    "clearSearch": "Sula ukusesha",
+    "collectionDeletedPapersStay": "{name}: amaphepha ayo ahlala emtatsheni wakho"
   },
   "sidebarLayout": {
     "expandFilters": "Nweba izihlungi (Ctrl+Shift+F)",

@@ -1517,7 +1517,8 @@
     "planAllowsCollections": "{plan} में {limit, number} संग्रह तक की अनुमति है",
     "nameTheCollection": "संग्रह को नाम दें",
     "newName": "{name} के लिए नया नाम",
-    "clearSearch": "खोज साफ़ करें"
+    "clearSearch": "खोज साफ़ करें",
+    "collectionDeletedPapersStay": "{name}: इसके शोधपत्र आपकी लाइब्रेरी में रहते हैं"
   },
   "sidebarLayout": {
     "expandFilters": "फ़िल्टर दिखाएं (Ctrl+Shift+F)",

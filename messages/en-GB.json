@@ -1517,7 +1517,8 @@
     "planAllowsCollections": "{plan} allows {limit, number} collections",
     "nameTheCollection": "Name the collection",
     "newName": "New name for {name}",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "collectionDeletedPapersStay": "{name}: its papers stay in your library"
   },
   "sidebarLayout": {
     "expandFilters": "Expand filters (Ctrl+Shift+F)",

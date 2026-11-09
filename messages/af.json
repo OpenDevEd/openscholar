@@ -1518,7 +1518,8 @@
     "planAllowsCollections": "{plan} laat {limit, number} versamelings toe",
     "nameTheCollection": "Gee die versameling ’n naam",
     "newName": "Nuwe naam vir {name}",
-    "clearSearch": "Maak soektog leeg"
+    "clearSearch": "Maak soektog leeg",
+    "collectionDeletedPapersStay": "{name}: sy artikels bly in jou biblioteek"
   },
   "sidebarLayout": {
     "expandFilters": "Vou filters oop (Ctrl+Shift+F)",
