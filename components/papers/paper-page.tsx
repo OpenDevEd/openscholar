@@ -31,7 +31,8 @@ import { paperPath } from "@/lib/papers/page-address";
 import { abstractSections } from "@/lib/papers/abstract-sections";
 import { cn } from "@/lib/utils";
 import type { SimilarPaper } from "@/app/actions/similar";
-import type { CommunityCopy } from "@/lib/papers/paper-page-data";
+import type { CommunityCopy } from "@/lib/papers/community-copies";
+import { useLiveCopies } from "@/components/papers/use-live-copies";
 import type { PaperDetail } from "@/lib/papers/paper-detail";
 import type { PaperResult } from "@/lib/types/search.types";
 
@@ -41,10 +42,20 @@ const AUTHORS_SHOWN = 8;
 const COPIES_SHOWN = 4;
 const MESH_SHOWN = 12;
 
-type Props = { paper: PaperResult; id: string; detail: PaperDetail; similar: SimilarPaper[]; references: SimilarPaper[]; communities: CommunityCopy[] };
+type Props = {
+  paper: PaperResult;
+  id: string;
+  detail: PaperDetail;
+  similar: SimilarPaper[];
+  references: SimilarPaper[];
+  /** The paper's records in communities as the server read them, with their PDFs. */
+  communities: CommunityCopy[];
+  /** The keys they're found by, which the page follows for records published while it's open. */
+  copyKeys: string[];
+};
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
-export function PaperPage({ paper, id, detail, similar, references, communities }: Props) {
+export function PaperPage({ paper, id, detail, similar, references, communities: read, copyKeys }: Props) {
   const t = useTranslations("paperPage");
   const tc = useTranslations("common");
   const tTopics = useTranslations("topics");
@@ -52,6 +63,9 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
   const tSimilar = useTranslations("similarPapers");
   const tp = useTranslations("paperCard");
   const title = paper.title ?? paper.display_name ?? "";
+  const communities = useLiveCopies(read, copyKeys);
+  // A record published while the page is open fades in; the ones the page opened with are just there.
+  const atOpen = new Set(read.map((copy) => copy.id));
   // The ID the app saves, rates and searches by: OpenAlex's where our index pairs one.
   const appId = paper.id.split("/").at(-1)!;
   // A PDF from a source, or else the one a community holds.
@@ -111,11 +125,12 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
               </p>
             ) : null}
             {detail.ids.doi ? <DoiLine doi={detail.ids.doi} /> : null}
+            <AutoHeight>
             {communities.length ? (
-              <div className="mt-5 flex flex-wrap items-center gap-2" aria-label={tAuthors("evidenceLibraries")}>
+              <div className="flex flex-wrap items-center gap-2 pt-5" aria-label={tAuthors("evidenceLibraries")}>
                 <span className="me-1 text-xs text-muted-foreground">{tAuthors("publishedIn")}</span>
                 {communities.map((copy) => (
-                  <a key={copy.id} href={copy.url} target="_blank" rel="noreferrer" className="group inline-flex h-7 items-center gap-1.5 rounded-full bg-primary/10 ps-2 pe-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-ring">
+                  <a key={copy.id} href={copy.url} target="_blank" rel="noreferrer" className={cn("group inline-flex h-7 items-center gap-1.5 rounded-full bg-primary/10 ps-2 pe-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-ring", !atOpen.has(copy.id) && "fade-enter")}>
                     <Library aria-hidden className="size-3.5" />
                     {copy.name}
                     <ArrowUpRight aria-hidden className="size-3 transition-transform group-hover:-translate-y-px group-hover:translate-x-px" />
@@ -123,6 +138,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities 
                 ))}
               </div>
             ) : null}
+            </AutoHeight>
             {topicPath.length ? (
               <nav aria-label={tTopics("classification")} className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground lg:mt-auto lg:pt-6">
                 {topicPath.map((node, index) => <Fragment key={node.id}>
