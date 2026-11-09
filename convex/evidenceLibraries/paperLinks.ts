@@ -18,12 +18,12 @@ export type PaperIds = { openalexId: string | null; doi: string | null };
 
 const idsValidator = v.object({ openalexId: v.union(v.string(), v.null()), doi: v.union(v.string(), v.null()) });
 
-/** The community that answers at an address: by where it runs, or by a domain of its own. */
+/** The community that answers at an address: by where it runs, or by a domain of its own once the proxy serves it there. */
 async function libraryAt(ctx: QueryCtx, origin: string) {
   const binding = await ctx.db.query("evidenceLibraryRuntimeBindings").withIndex("by_targetBaseUrl", (q) => q.eq("targetBaseUrl", origin)).first();
   if (binding) return binding.libraryId;
   const domain = await ctx.db.query("evidenceLibraryDomains").withIndex("by_host", (q) => q.eq("host", new URL(origin).hostname)).unique();
-  return domain?.libraryId ?? null;
+  return domain?.attachedAt !== undefined ? domain.libraryId : null;
 }
 
 /** The paper a community's published record is, as it told Openscholar; null for one it hasn't published, or no community there. */
