@@ -48,7 +48,7 @@ export const INTENTS = [
   { href: "/systematic-review-screening/", title: "Screening for systematic reviews", text: "Your criteria, applied to every abstract", color: "#34d399", img: "screen-laptop-dark-1000" },
   { href: "/data-extraction/", title: "Data extraction", text: "A table of answers, each with its evidence", color: "#fde047", img: "extract-detail-laptop-dark-1000" },
   { href: "/research-assistant/", title: "AI research assistant", text: "Hand off the groundwork, keep the decisions", color: "#7da7e6", img: "assistant-laptop-dark-1000" },
-  { href: "/rapid-evidence-review/", title: "Rapid evidence reviews", text: "A defensible answer in days, sources attached", color: "#ff9d36", img: "search-laptop-light-1000" },
+  { href: "/rapid-evidence-review/", title: "Rapid evidence reviews", text: "A defensible answer, with its sources attached", color: "#ff9d36", img: "search-laptop-light-1000" },
   { href: "/zotero/", title: "Publish a Zotero library", text: "A public, searchable site from a Zotero group", color: "#fb7185", img: "c-home-laptop-light-1000" },
 ];
 

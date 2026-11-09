@@ -162,5 +162,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   @media (prefers-reduced-motion: reduce) { .veil { transform: translateX(-100vw); } }
   @media (max-width: 960px) { .nav, .signin, .mega { display: none; } .menu { display: block; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
+  /* Five footer columns don't fit beside the brand on a tablet, so the links move under it and wrap. */
+  @media (max-width: 1100px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { flex-wrap: wrap; gap: 32px 48px; } }
   @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { gap: 32px; flex-wrap: wrap; } .belt { padding-block: 16px; } .belt img { filter: saturate(1.5); width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a { visibility: hidden; pointer-events: none; } .rail i { visibility: visible; } .rail { transition: opacity .3s var(--ease); } .top:not(.stuck) .rail { opacity: 0; } }
 </style>
