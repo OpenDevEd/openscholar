@@ -76,6 +76,8 @@ describe("public route auth matrix", () => {
       "/authors",
       "/authors/x",
       "/bookmarks",
+      // The short address people guess for the public communities, which sends them there.
+      "/communities",
       "/connect",
       "/cookie-policy",
       "/credits",

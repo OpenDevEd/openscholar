@@ -184,7 +184,7 @@ export function AddPapersDialog({
             rows={4}
             aria-label={t("inputLabel")}
             placeholder={"10.1016/j.tate.2015.06.010\nhttps://openalex.org/W2126314681"}
-            className="font-mono text-xs"
+            className="max-h-48 font-mono text-xs"
           />
           <div className="flex min-h-8 items-center justify-between gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-1.5">

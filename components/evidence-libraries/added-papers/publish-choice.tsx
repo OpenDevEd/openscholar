@@ -10,7 +10,7 @@ export const publishes = (role: string | null | undefined) => role === "owner" |
 
 /**
  * Where papers go: straight onto the community, or into its review queue. Owners and editors get both, Publish
- * first; everyone else gets Send to queue alone. The same choice everywhere papers are added: the Sources tab,
+ * first; everyone else gets Send for review alone. The same choice everywhere papers are added: the Sources tab,
  * Discover and the record editor.
  */
 export function PublishChoice({
