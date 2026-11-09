@@ -215,7 +215,7 @@ function ApplyForm({ community, signedIn, previous, onSent }: { community: Appli
           aria-invalid={missing || undefined}
           aria-describedby={missing ? "apply-message-hint apply-message-missing" : "apply-message-hint"}
           placeholder={t("messagePlaceholder")}
-          className="mt-2 h-32 resize-none [field-sizing:fixed]"
+          className="mt-2 h-32 resize-none field-sizing-fixed [overflow-wrap:anywhere]"
         />
         {/* Its line is always there, so the error doesn't push the footer down. */}
         <p id="apply-message-missing" aria-live="polite" className="mt-1.5 min-h-4 text-xs text-destructive">{missing ? t("messageMissing") : refused || null}</p>
