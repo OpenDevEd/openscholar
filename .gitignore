@@ -54,3 +54,6 @@ next-env.d.ts
 /blob-report
 .claude/scheduled_tasks.lock
 bench-results/local.json
+
+# MOCK (mock/publish-reports): the Publish mock's local store
+/.publish-mock/

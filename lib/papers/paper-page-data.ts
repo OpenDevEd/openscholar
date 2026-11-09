@@ -131,6 +131,8 @@ export const quietly = <T,>(what: string, id: string, fallback: T) => (error: un
  */
 export async function readAskedPaper(asked: string | null): Promise<PaperResult | null> {
   if (!asked) return null;
+  // MOCK (mock/publish-reports): a report published on Openscholar.
+  if (asked.startsWith("R")) return (await import("@/lib/publish-mock/paper")).readReportPaper(asked);
   const openalexId = asked.startsWith("W") ? asked : null;
   const indexed = await readPaperForPage(asked).catch((error: unknown) => { if (!openalexId) throw error; return quietly("our index's record", asked, null)(error); });
   return indexed ?? (openalexId ? await readOpenAlexForPage(openalexId).catch(quietly("OpenAlex record", openalexId, null)) : null);

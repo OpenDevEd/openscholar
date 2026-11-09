@@ -1,8 +1,8 @@
 import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
 import { legacyPaperRef } from "./paper-ref";
 
-/** A paper page's ID: one of our index (OS…) or an OpenAlex work (W…), which redirects to ours. */
-const PAGE_ID = /^(OS|W)(\d+)$/i;
+/** A paper page's ID: one of our index (OS…), an OpenAlex work (W…), which redirects to ours, or a report (R…, MOCK). */
+const PAGE_ID = /^(OS|W|R)(\d+)$/i;
 
 /** The bare ID a paper page takes, upper-cased, or null for anything else. */
 export function paperPageId(raw: string): string | null {

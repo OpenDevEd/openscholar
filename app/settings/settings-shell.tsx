@@ -22,6 +22,7 @@ import {
   ModelsIcon,
   AdminsIcon,
   TeamIcon,
+  PublishIcon,
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -146,6 +147,8 @@ function Shell({ children }: { children: ReactNode }) {
             { href: "/settings/admin/models", title: t("items.modelList"), icon: ModelsIcon },
             { href: "/settings/admin/admins", title: t("items.admins"), icon: AdminsIcon },
             { href: "/settings/admin/evidence-communities", title: t("items.evidenceLibraries"), icon: Library },
+            // MOCK (mock/publish-reports)
+            { href: "/settings/admin/publishing", title: "Publishing", icon: PublishIcon },
             { href: "/settings/admin/community-releases", title: t("items.communityReleases"), icon: UpgradeIcon },
             { href: "https://dashboard.clerk.com", title: t("items.users"), icon: ClerkIcon, external: "Clerk" },
             // Its address is read after the page shows, so it comes last: nothing under it to push down.

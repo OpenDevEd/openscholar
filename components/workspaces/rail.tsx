@@ -5,7 +5,7 @@
 // running screening or extraction fills a ring around its icon and its label becomes the
 // progress, so it's visible from any page. Everything a page already lists stays on that page.
 
-import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { showStyledToast } from "@/components/ui/sonner";
@@ -21,6 +21,7 @@ import {
   ExtractionIcon,
   HistoryIcon,
   LibraryIcon,
+  PublishIcon,
   ListChecks,
   LogIn,
   LogOut,
@@ -72,6 +73,9 @@ const SLIDE = { type: "spring" as const, stiffness: 520, damping: 42, mass: 0.7 
 
 /** The raised surface of the section you're on. */
 const RAISED = "bg-card shadow-[0_1px_2px_rgb(0_0_0/0.06),0_0_0_1px_rgb(0_0_0/0.05)] dark:shadow-[0_0_0_1px_rgb(255_255_255/0.06)]";
+
+// MOCK (mock/publish-reports): the cookie the admin page sets only changes on a page load.
+const noSubscription = () => () => {};
 
 /** A ring around a section's icon for its running job: a faint track and the done share in primary. */
 function ProgressRing({ value }: { value: number }) {
@@ -183,6 +187,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const expandable = [...activeQuery.matchAll(/(\w[\w-]*)\.\.\./g)].filter((m) => keywords[m[1]!]).length;
   const hasBookmarkSyntax = /(\w[\w-]*)\.\.\./g.test(activeQuery);
 
+  const publishOn = useSyncExternalStore(noSubscription, () => !document.cookie.includes("os-publish-off=1"), () => true);
   const is = (p: string) => (p === "/" ? path === "/" || path.startsWith("/results") : path === p || path.startsWith(`${p}/`));
   const { data: screening } = useProtectedQuery(api.screening.queries.getActiveScreeningJobProgress, inWorkspace(here, {}));
   const { data: extraction } = useProtectedQuery(api.extraction.queries.jobs.runningJob, inWorkspace(here, {}));
@@ -231,6 +236,10 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
             <nav aria-label={t("main")} className="flex w-full flex-col items-center gap-0.5 px-2">
               {item({ href: "/", icon: Search, label: tc("search"), active: is("/") })}
               {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
+              {/* MOCK (mock/publish-reports): Publish, which the admin page turns on and off. */}
+              <AnimatePresence initial={false}>
+                {publishOn ? <Opening key="publish">{item({ href: "/publish", icon: PublishIcon, label: "Publish", active: is("/publish") })}</Opening> : null}
+              </AnimatePresence>
               {item({ href: "/history", icon: HistoryIcon, label: tc("history"), active: is("/history") })}
               {item({
                 href: "/bookmarks",

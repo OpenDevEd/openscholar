@@ -14,7 +14,8 @@ const earthScriptVersion = createHash("sha256").update(readFileSync(join(process
 const nextConfig: NextConfig = {
   reactCompiler: true,
   env: { QUESTION_STAGE_EARTH_VERSION: earthScriptVersion },
-  serverExternalPackages: ["citeproc-ts"],
+  // pdfjs-dist: MOCK (mock/publish-reports) reads uploaded PDFs in a server action; bundled, it can't find its worker.
+  serverExternalPackages: ["citeproc-ts", "pdfjs-dist"],
   devIndicators: false,
   poweredByHeader: false,
   typescript: {

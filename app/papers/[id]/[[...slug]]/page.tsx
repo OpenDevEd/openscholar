@@ -78,7 +78,8 @@ export default async function Page({ params }: Params) {
   if (asked !== id || slugOf(slug?.[0]) !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
   const references = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((reference) => reference.split("/").at(-1)!).slice(0, 100);
   const [similar, referenceRows, communities] = await Promise.all([
-    readSimilarForPage(id).catch(quietly("similar papers", id, [])),
+    // MOCK (mock/publish-reports): a report (R…) isn't in our index, so nothing is like it there yet.
+    id.startsWith("R") ? [] : readSimilarForPage(id).catch(quietly("similar papers", id, [])),
     readReferencesForPage(references).catch(quietly("references", id, [])),
     readCommunityCopies(paper.doi ?? null, work).catch(quietly("community copies", id, [])),
   ]);
