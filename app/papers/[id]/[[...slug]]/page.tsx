@@ -31,6 +31,9 @@ function slugOf(given: string | undefined) {
   }
 }
 
+/** When the record last changed, as the index stamps it. */
+const updatedOf = (paper: PaperResult) => (paper as { updated_date?: string | null }).updated_date ?? undefined;
+
 const dateOf = (paper: PaperResult) => paper.publication_date ?? (paper.publication_year ? String(paper.publication_year) : undefined);
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -44,7 +47,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const pdf = detail.copies.find((copy) => copy.pdf)?.url;
   return {
     ...page,
-    openGraph: { ...page.openGraph, type: "article", publishedTime: dateOf(paper), authors: detail.authors.map((author) => author.name) },
+    openGraph: { ...page.openGraph, type: "article", publishedTime: dateOf(paper), modifiedTime: updatedOf(paper), authors: detail.authors.map((author) => author.name), images: [{ url: `${SITE_URL}/papers/${id}/cover.png`, width: 1200, height: 630, alt: title }] },
+    twitter: { ...page.twitter, card: "summary_large_image", images: [`${SITE_URL}/papers/${id}/cover.png`] },
     // Only a page with its abstract is worth a search result; the rest stay out, as OpenAlex keeps them out of its sitemaps.
     robots: { index: live && !!detail.abstract, follow: live },
     // What Google Scholar reads (its inclusion guidelines name these tags).
@@ -96,6 +100,9 @@ export default async function Page({ params }: Params) {
           affiliation: author.institutions.map((institution) => ({ "@type": "Organization", name: institution.name })),
         })),
         datePublished: dateOf(paper),
+        dateModified: updatedOf(paper),
+        // The shapes Google asks an article's images in.
+        image: ["16x9", "4x3", "1x1"].map((ratio) => `${SITE_URL}/papers/${id}/cover.png?ratio=${ratio}`),
         isPartOf: paper.primary_location?.source?.display_name ? { "@type": "Periodical", name: paper.primary_location.source.display_name, issn: detail.ids.issn ?? undefined, publisher: detail.publisher ?? undefined } : undefined,
         abstract: detail.abstract ?? undefined,
         sameAs: paper.doi ?? undefined,

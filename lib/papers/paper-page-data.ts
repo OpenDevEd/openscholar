@@ -8,7 +8,7 @@ import { normalizeDoi } from "@/lib/topics/identity";
 import { fetchPublicationPdf } from "@/lib/evidence-libraries/publication-cards";
 import type { SimilarPaper } from "@/app/actions/similar";
 import type { PaperResult } from "@/lib/types/search.types";
-import { paperPageId } from "@/lib/papers/page-address";
+import { paperPageId, paperPath } from "@/lib/papers/page-address";
 import { paperDetail } from "@/lib/papers/paper-detail";
 import { copyOf, type CommunityCopy } from "./community-copies";
 
@@ -107,6 +107,19 @@ export async function readCommunityCopies(doi: string | null, openalexId: string
     return { ...copyOf(location), pdf: pdf?.url ?? null, cover: pdf?.cover ?? null };
   });
 }
+
+/** The paper our index holds for a DOI, as the address of its page, or null. Kept a day, as the page's own read is. */
+export const readPaperPathByDoi = unstable_cache(
+  async (doi: string): Promise<string | null> => {
+    const read = await readOpenAlexWorks({ filter: { doi } as never, cursor: "*", perPage: 1 }, "openscholar");
+    const paper = read.results[0] as PaperResult | undefined;
+    if (!paper) return null;
+    const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
+    return paperPath(id, paper.title ?? paper.display_name ?? "");
+  },
+  ["paper-page-by-doi"],
+  { revalidate: DAY },
+);
 
 /** Logs a read that failed and gives the page what it can show without it. */
 export const quietly = <T,>(what: string, id: string, fallback: T) => (error: unknown) => (console.error(`[paper page] ${what} unavailable`, { id, error }), fallback);

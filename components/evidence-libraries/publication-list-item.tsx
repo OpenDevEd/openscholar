@@ -6,6 +6,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { AuthorPublication } from "@/components/authors/types";
 import { typeName } from "@/lib/evidence-libraries/reader-sources";
+import Link from "@/components/workspace-link";
+import { LogoMark } from "@/components/logo";
 
 export function PublicationMetadata({year, type, className}: Pick<AuthorPublication, "year" | "type"> & {className: string}) {
   const publicationYear = year.trim();
@@ -19,11 +21,19 @@ export function PublicationMetadata({year, type, className}: Pick<AuthorPublicat
   </span>;
 }
 
+/** A topic record's paper page, from the key it's grouped by: its DOI, or its OpenAlex work. */
+function pageOf(id: string) {
+  if (id.startsWith("doi:")) return `/papers/doi/${id.slice(4).split("/").map(encodeURIComponent).join("/")}`;
+  if (id.startsWith("openalex:W")) return `/papers/${id.slice(9)}`;
+  return null;
+}
+
 export function PublicationListItem({ publication: p, locations }: {
   publication: AuthorPublication;
   locations?: { name: string; url: string }[];
 }) {
   const t = useTranslations("libraryList");
+  const tSite = useTranslations("metadata");
   return (
     <article
       className="fade-enter group grid grid-cols-[64px_minmax(0,1fr)] items-center gap-4 border-b border-border-subtle px-4 py-4 transition-colors hover:bg-muted last:border-b-0 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:gap-6"
@@ -66,6 +76,11 @@ export function PublicationListItem({ publication: p, locations }: {
             <Library className="size-3" />
             {location.name}
           </a>)}
+          {/* The paper's page here, when the record names the paper: a reader can open it, and a crawler reaches it from the topic. */}
+          {pageOf(p.id) && <Link href={pageOf(p.id)!} className="flex items-center gap-1.5 hover:text-foreground">
+            <LogoMark className="size-3" />
+            {tSite("siteName")}
+          </Link>}
           {p.pages !== undefined && <span className="flex items-center gap-1.5">
             <FileText className="size-3" />
             <span>PDF</span>
