@@ -331,6 +331,10 @@ const COLOUR_KEYS = [
 ] as const;
 export type ColourKey = (typeof COLOUR_KEYS)[number];
 
+/** Dark mode's own accent, secondary and link. Empty: dark mode uses the light colour. */
+export const DARK_COLOUR_KEYS = ["accentDark", "tertiaryDark", "linkDark"] as const;
+export type DarkColourKey = (typeof DARK_COLOUR_KEYS)[number];
+
 const colourPattern = schemaNode("/theme/colors/accent").pattern;
 if (typeof colourPattern !== "string") {
   throw new Error("Configuration schema has no colour pattern");
@@ -406,7 +410,7 @@ type IdentityDraft = {
 export type ThemeDraft = {
   layout: ThemeLayout;
   defaultMode: ThemeMode;
-  colors: Record<ColourKey, string>;
+  colors: Record<ColourKey | DarkColourKey, string>;
   fonts: { heading: FontFamily; body: FontFamily };
 };
 
@@ -777,12 +781,13 @@ function readTheme(payload: unknown): ThemeDraft {
       THEME_MODES,
       THEME_DEFAULTS.defaultMode,
     ),
-    colors: Object.fromEntries(
-      COLOUR_KEYS.map((key) => [
+    colors: Object.fromEntries([
+      ...COLOUR_KEYS.map((key) => [
         key,
         text(colors[key], THEME_DEFAULTS.colors[key]),
       ]),
-    ) as Record<ColourKey, string>,
+      ...DARK_COLOUR_KEYS.map((key) => [key, text(colors[key])]),
+    ]) as ThemeDraft["colors"],
     fonts: {
       heading: readFont(fonts.heading, THEME_DEFAULTS.fonts.heading),
       body: readFont(fonts.body, THEME_DEFAULTS.fonts.body),
@@ -1354,7 +1359,10 @@ function themePayload(theme: ThemeDraft) {
   return {
     layout: theme.layout,
     defaultMode: theme.defaultMode,
-    colors: { ...theme.colors },
+    // An empty dark colour is left out, so dark mode keeps following the light one.
+    colors: Object.fromEntries(
+      Object.entries(theme.colors).filter(([, value]) => value),
+    ),
     fonts: {
       heading: { source: "google", family: theme.fonts.heading },
       body: { source: "google", family: theme.fonts.body },
@@ -1881,7 +1889,10 @@ export function sectionProblems(
       break;
     case "theme":
       if (
-        COLOUR_KEYS.some((key) => !HEX_COLOUR.test(draft.theme.colors[key]))
+        COLOUR_KEYS.some((key) => !HEX_COLOUR.test(draft.theme.colors[key])) ||
+        DARK_COLOUR_KEYS.some(
+          (key) => draft.theme.colors[key] && !HEX_COLOUR.test(draft.theme.colors[key]),
+        )
       ) {
         problems.push("badColour");
       }

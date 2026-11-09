@@ -334,6 +334,19 @@ describe("changedSectionRows", () => {
     });
   });
 
+  it("sends a dark-mode colour only once it is set", () => {
+    const draft = savedDraft();
+    expect(changedSectionRows(draft, savedRows)).toEqual([]);
+
+    draft.theme.colors.accentDark = "#60a5fa";
+    const colors = (changedSectionRows(draft, savedRows)[0]?.payload as { colors: Record<string, string> }).colors;
+    expect(colors.accentDark).toBe("#60a5fa");
+    expect(colors).not.toHaveProperty("linkDark");
+
+    draft.theme.colors.linkDark = "blue";
+    expect(sectionProblems(draft, "theme")).toEqual(["badColour"]);
+  });
+
   it("treats a section without a saved row as changed", () => {
     const rows = savedRows.filter((row) => row.sectionKey !== "theme");
     const draft = readDraft(rows);

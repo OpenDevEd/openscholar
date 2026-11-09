@@ -1991,6 +1991,13 @@
       "secondaryHint": "Étiquettes et surlignages.",
       "linkLabel": "Couleur des liens",
       "linkHint": "Liens dans le texte. Vérifiée sur les deux fonds.",
+      "darkColoursLabel": "Couleurs différentes en mode sombre",
+      "darkColoursHint": "Si c’est désactivé, le mode sombre utilise les couleurs ci-dessus.",
+      "accentDarkLabel": "Couleur d’accent (mode sombre)",
+      "secondaryDarkLabel": "Couleur secondaire (mode sombre)",
+      "linkDarkLabel": "Couleur des liens (mode sombre)",
+      "linkLightHint": "Liens dans le texte. Vérifiée sur le fond clair.",
+      "linkDarkHint": "Vérifiée sur le fond sombre.",
       "advanced": "Avancé",
       "advancedColour": {
         "backgroundDark": "Fond (mode sombre)",

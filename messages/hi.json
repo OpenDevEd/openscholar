@@ -1991,6 +1991,13 @@
       "secondaryHint": "टैग और हाइलाइट।",
       "linkLabel": "लिंक का रंग",
       "linkHint": "टेक्स्ट के लिंक। दोनों बैकग्राउंड पर जाँचे जाते हैं।",
+      "darkColoursLabel": "डार्क मोड में अलग रंग",
+      "darkColoursHint": "बंद होने पर डार्क मोड ऊपर वाले रंग इस्तेमाल करता है।",
+      "accentDarkLabel": "एक्सेंट रंग (डार्क मोड)",
+      "secondaryDarkLabel": "दूसरा रंग (डार्क मोड)",
+      "linkDarkLabel": "लिंक का रंग (डार्क मोड)",
+      "linkLightHint": "टेक्स्ट के लिंक। हल्के बैकग्राउंड पर जाँचे जाते हैं।",
+      "linkDarkHint": "गहरे बैकग्राउंड पर जाँचा जाता है।",
       "advanced": "एडवांस्ड",
       "advancedColour": {
         "backgroundDark": "बैकग्राउंड (डार्क मोड)",

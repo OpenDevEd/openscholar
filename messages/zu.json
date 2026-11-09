@@ -1991,6 +1991,13 @@
       "secondaryHint": "Amathegi nokugqamisa.",
       "linkLabel": "Umbala wamaxhumanisi",
       "linkHint": "Amaxhumanisi embhalweni. Ahlolwa ngengemuva kokubili.",
+      "darkColoursLabel": "Imibala ehlukile kumodi emnyama",
+      "darkColoursHint": "Uma kuvaliwe, imodi emnyama isebenzisa imibala engenhla.",
+      "accentDarkLabel": "Umbala wokugqama (imodi emnyama)",
+      "secondaryDarkLabel": "Umbala wesibili (imodi emnyama)",
+      "linkDarkLabel": "Umbala wamaxhumanisi (imodi emnyama)",
+      "linkLightHint": "Amaxhumanisi embhalweni. Ahlolwa ngengemuva elikhanyayo.",
+      "linkDarkHint": "Ihlolwa ngengemuva elimnyama.",
       "advanced": "Okuthuthukile",
       "advancedColour": {
         "backgroundDark": "Ingemuva (imodi emnyama)",
