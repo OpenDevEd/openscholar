@@ -7,7 +7,7 @@ import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
-import { cardFacts, libraryOwner, ownerName, readLibraryRole } from "./access";
+import { cardFacts, libraryOwner, ownerName, readLibraryRole, readLibraryViewRole } from "./access";
 import { PAPER_SENT_TO, RECENT_COMMUNITIES, recentCommunitiesValidator, sentPaperSummaryValidator, sentPapersValidator, sentToValidator, submissionOwnerValidator, submissionStatusValidator } from "./validators";
 
 /** Submissions a page of Your submissions shows at most. */
@@ -317,4 +317,19 @@ export async function purgeSubmissions(ctx: MutationCtx, userId: Id<"users">) {
   const rows = await ctx.db.query("paperSubmissions").withIndex("by_user_and_sentAt", (q) => q.eq("userId", userId)).take(PURGE_SUBMISSIONS);
   for (const row of rows) await ctx.db.delete("paperSubmissions", row._id);
   return rows.length < PURGE_SUBMISSIONS;
+}
+
+/**
+ * The title of a paper sent to a community, by the community's ID and its record's key, as a submission of it knows it:
+ * the person's own, or anyone's when they can see the community, so a stranger learns nothing of what waits in a private one.
+ * For an approval to name the paper it acts on rather than its key.
+ */
+export async function sentTitle(ctx: Pick<QueryCtx, "db">, person: Doc<"users">, workspaceId: Id<"workspaces"> | null, library: string, itemKey: string) {
+  const libraryId = ctx.db.normalizeId("evidenceLibraries", library);
+  if (!libraryId) return null;
+  const sent = await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(10);
+  const own = sent.find((row) => row.userId === person._id);
+  if (own) return own.title;
+  const community = sent.length ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+  return community && (community.workspaceId === workspaceId || (await readLibraryViewRole(ctx, community, person.clerkId)) !== null) ? (sent[0]?.title ?? null) : null;
 }
