@@ -50,6 +50,8 @@ import { AttachButton, DropZone, Reattach, SentFiles, Tray, freePreviews, releas
 import { MAX_FILES_PER_MESSAGE, readsImages, readsPdfs } from "@/lib/assistant/files";
 import { inApp, recordOf } from "@/lib/assistant/view";
 import { recordLinks } from "./record-links";
+import { AddPapersApprovalMock } from "./add-papers-approval";
+import { useSearchParams } from "next/navigation";
 import { defaultRemarkPlugins } from "streamdown";
 import useSWR, { mutate, preload } from "swr";
 import { readWork } from "@/app/actions/topics";
@@ -941,6 +943,8 @@ function Thread({
             </div>,
           ];
         })}
+        {/* MOCK: the ask before adding papers to a community, at the end of any chat with ?mock=add-papers (or add-papers-reader). */}
+        <MockAsk />
         </Cited.Provider>
       </ConversationContent>
     </Conversation>
@@ -1593,4 +1597,10 @@ function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
       ) : null}
     </AnimatePresence>
   );
+}
+
+/** MOCK: the add-papers ask, under the chat, from the address. */
+function MockAsk() {
+  const mock = useSearchParams().get("mock");
+  return mock === "add-papers" || mock === "add-papers-reader" ? <AddPapersApprovalMock canPublish={mock === "add-papers"} /> : null;
 }
