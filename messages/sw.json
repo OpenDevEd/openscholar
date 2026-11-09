@@ -856,8 +856,8 @@
     "titleAndAbstract": "Kichwa na muhtasari",
     "searchScope": "Upeo wa utafutaji",
     "sortResultsBy": "Panga matokeo kwa",
-    "citationFilter": "Kichujio cha nukuu",
-    "citedByFilter": "Kichujio cha zilizonukuu",
+    "citationFilter": "Makala zinazotaja makala",
+    "citedByFilter": "Makala ambazo makala inataja",
     "relatedWorksFilter": "Kichujio cha kazi zinazohusiana",
     "clearAllCount": "Safisha yote ({count})",
     "searchFiltersTitle": "Vichujio vya utafutaji",
@@ -980,7 +980,7 @@
     "domainLabel": "Kikoa:",
     "sdgsLabel": "SDG:",
     "referencesLabel": "Marejeo:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "dhidi ya wastani wa fani:",
     "citedBy": "Imenukuliwa na",
     "cites": "Inanukuu",
     "questionN": "Swali {n}: {question}",
@@ -1263,7 +1263,8 @@
   },
   "rating": {
     "noRating": "Hakuna ukadiriaji",
-    "nStars": "nyota {count}"
+    "nStars": "nyota {count}",
+    "yourRating": "Ukadiriaji wako"
   },
   "pagination": {
     "currentPage": "Ukurasa {page}",

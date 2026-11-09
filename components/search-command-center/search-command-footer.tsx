@@ -121,6 +121,12 @@ export function SearchCommandFooter({
       return;
     }
 
+    // Signed out, AI needs an account first: the sign-in says so, where "configure your AI" would send them nowhere.
+    if (phase === "anonymous") {
+      goToSignIn();
+      return;
+    }
+
     if (!isConfigured) {
       toast.ai.configRequired(tv("aiConfigRequired"));
       return;
@@ -173,6 +179,12 @@ Return a more inclusive version of this query.`;
   const handleNarrowQuery = async () => {
     if (!effectiveQuery.trim()) {
       toast.validation.failed(tv("noQueryToNarrow"));
+      return;
+    }
+
+    // Signed out, AI needs an account first: the sign-in says so, where "configure your AI" would send them nowhere.
+    if (phase === "anonymous") {
+      goToSignIn();
       return;
     }
 

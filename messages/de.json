@@ -856,8 +856,8 @@
     "titleAndAbstract": "Titel und Abstract",
     "searchScope": "Suchbereich",
     "sortResultsBy": "Ergebnisse sortieren nach",
-    "citationFilter": "Zitationsfilter",
-    "citedByFilter": "Filter „Zitiert von“",
+    "citationFilter": "Arbeiten, die eine Arbeit zitieren",
+    "citedByFilter": "Arbeiten, die eine Arbeit zitiert",
     "relatedWorksFilter": "Filter für verwandte Werke",
     "clearAllCount": "Alle löschen ({count})",
     "searchFiltersTitle": "Suchfilter",
@@ -980,7 +980,7 @@
     "domainLabel": "Bereich:",
     "sdgsLabel": "SDGs:",
     "referencesLabel": "Referenzen:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "ggü. Fachdurchschnitt:",
     "citedBy": "Zitiert von",
     "cites": "Zitiert",
     "questionN": "Frage {n}: {question}",
@@ -1263,7 +1263,8 @@
   },
   "rating": {
     "noRating": "Keine Bewertung",
-    "nStars": "{count} Sterne"
+    "nStars": "{count} Sterne",
+    "yourRating": "Deine Bewertung"
   },
   "pagination": {
     "currentPage": "Seite {page}",
@@ -5860,7 +5861,7 @@
     "sdgs": "Ziele für nachhaltige Entwicklung",
     "mesh": "MeSH-Begriffe",
     "details": "Details",
-    "charge": "Publikationsgebühr",
+    "charge": "Veröffentlichungsgebühr",
     "retracted": "Zurückgezogen",
     "openscholarId": "Openscholar-ID",
     "copyDoi": "DOI kopieren",

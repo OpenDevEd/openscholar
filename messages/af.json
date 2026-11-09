@@ -856,8 +856,8 @@
     "titleAndAbstract": "Titel en opsomming",
     "searchScope": "Soekomvang",
     "sortResultsBy": "Sorteer resultate volgens",
-    "citationFilter": "Aanhalingsfilter",
-    "citedByFilter": "Aangehaal deur-filter",
+    "citationFilter": "Artikels wat 'n artikel aanhaal",
+    "citedByFilter": "Artikels wat 'n artikel self aanhaal",
     "relatedWorksFilter": "Verwante werke-filter",
     "clearAllCount": "Maak alles leeg ({count})",
     "searchFiltersTitle": "Soekfilters",
@@ -980,7 +980,7 @@
     "domainLabel": "Domein:",
     "sdgsLabel": "SDG’s:",
     "referencesLabel": "Verwysings:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "teenoor veldgemiddeld:",
     "citedBy": "Aangehaal deur",
     "cites": "Haal aan",
     "questionN": "Vraag {n}: {question}",
@@ -1263,7 +1263,8 @@
   },
   "rating": {
     "noRating": "Geen gradering nie",
-    "nStars": "{count} sterre"
+    "nStars": "{count} sterre",
+    "yourRating": "Jou gradering"
   },
   "pagination": {
     "currentPage": "Bladsy {page}",

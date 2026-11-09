@@ -856,8 +856,8 @@
     "titleAndAbstract": "Título e resumo",
     "searchScope": "Âmbito da pesquisa",
     "sortResultsBy": "Ordenar resultados por",
-    "citationFilter": "Filtro de citações",
-    "citedByFilter": "Filtro de citado por",
+    "citationFilter": "Artigos que citam um artigo",
+    "citedByFilter": "Artigos que um artigo cita",
     "relatedWorksFilter": "Filtro de trabalhos relacionados",
     "clearAllCount": "Limpar tudo ({count})",
     "searchFiltersTitle": "Filtros de pesquisa",
@@ -980,7 +980,7 @@
     "domainLabel": "Domínio:",
     "sdgsLabel": "ODS:",
     "referencesLabel": "Referências:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "vs. média do campo:",
     "citedBy": "Citado por",
     "cites": "Cita",
     "questionN": "Pergunta {n}: {question}",
@@ -1263,7 +1263,8 @@
   },
   "rating": {
     "noRating": "Sem avaliação",
-    "nStars": "{count} estrelas"
+    "nStars": "{count} estrelas",
+    "yourRating": "Sua avaliação"
   },
   "pagination": {
     "currentPage": "Página {page}",

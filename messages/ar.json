@@ -856,8 +856,8 @@
     "titleAndAbstract": "العنوان والملخص",
     "searchScope": "نطاق البحث",
     "sortResultsBy": "ترتيب النتائج حسب",
-    "citationFilter": "مرشّح الاستشهادات",
-    "citedByFilter": "مرشّح المُستشهِدين",
+    "citationFilter": "أوراق تستشهد بورقة",
+    "citedByFilter": "أوراق تستشهد بها ورقة",
     "relatedWorksFilter": "مرشّح الأعمال ذات الصلة",
     "clearAllCount": "مسح الكل ({count})",
     "searchFiltersTitle": "عوامل تصفية البحث",
@@ -980,7 +980,7 @@
     "domainLabel": "النطاق:",
     "sdgsLabel": "أهداف التنمية المستدامة:",
     "referencesLabel": "المراجع:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "مقارنة بمتوسط المجال:",
     "citedBy": "مُستشهَد به من",
     "cites": "يستشهد بـ",
     "questionN": "السؤال {n}: {question}",
@@ -1263,7 +1263,8 @@
   },
   "rating": {
     "noRating": "بلا تقييم",
-    "nStars": "{count, plural, zero {بلا نجوم} one {نجمة واحدة} two {نجمتان} few {# نجوم} many {# نجمة} other {# نجمة}}"
+    "nStars": "{count, plural, zero {بلا نجوم} one {نجمة واحدة} two {نجمتان} few {# نجوم} many {# نجمة} other {# نجمة}}",
+    "yourRating": "تقييمك"
   },
   "pagination": {
     "currentPage": "الصفحة {page}",

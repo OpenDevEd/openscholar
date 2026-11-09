@@ -855,8 +855,8 @@
     "titleAndAbstract": "शीर्षक और सारांश",
     "searchScope": "खोज दायरा",
     "sortResultsBy": "परिणाम क्रमबद्ध करें",
-    "citationFilter": "उद्धरण फ़िल्टर",
-    "citedByFilter": "उद्धृत फ़िल्टर",
+    "citationFilter": "किसी पेपर को उद्धृत करने वाले पेपर",
+    "citedByFilter": "कोई पेपर जिन्हें उद्धृत करता है",
     "relatedWorksFilter": "संबंधित कार्य फ़िल्टर",
     "clearAllCount": "सब साफ़ करें ({count})",
     "searchFiltersTitle": "खोज फ़िल्टर्स",
@@ -979,7 +979,7 @@
     "domainLabel": "डोमेन:",
     "sdgsLabel": "SDG:",
     "referencesLabel": "संदर्भ:",
-    "fwciLabel": "FWCI:",
+    "fwciLabel": "क्षेत्र औसत की तुलना में:",
     "citedBy": "उद्धृत",
     "cites": "उद्धृत करता है",
     "questionN": "प्रश्न {n}: {question}",
@@ -1262,7 +1262,8 @@
   },
   "rating": {
     "noRating": "कोई रेटिंग नहीं",
-    "nStars": "{count} स्टार"
+    "nStars": "{count} स्टार",
+    "yourRating": "आपकी रेटिंग"
   },
   "pagination": {
     "currentPage": "पृष्ठ {page}",

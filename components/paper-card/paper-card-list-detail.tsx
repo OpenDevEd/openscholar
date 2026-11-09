@@ -332,7 +332,7 @@ export function PaperCardListDetail({
                     <BarChart3 className="h-3.5 w-3.5" />
                     <span className="font-medium">{tp("fwciLabel")}</span>
                     <span className="text-foreground">
-                      {result.fwci ? result.fwci.toFixed(2) : tc("notAvailable")}
+                      {result.fwci ? `${result.fwci.toFixed(2)}×` : tc("notAvailable")}
                     </span>
                   </div>
                 </div>

@@ -855,8 +855,8 @@
     "titleAndAbstract": "标题和摘要",
     "searchScope": "搜索范围",
     "sortResultsBy": "结果排序方式",
-    "citationFilter": "引用筛选",
-    "citedByFilter": "被引用筛选",
+    "citationFilter": "引用某篇论文的论文",
+    "citedByFilter": "某篇论文引用的论文",
     "relatedWorksFilter": "相关作品筛选",
     "clearAllCount": "清除全部 ({count})",
     "searchFiltersTitle": "搜索筛选",
@@ -979,7 +979,7 @@
     "domainLabel": "领域：",
     "sdgsLabel": "SDGs：",
     "referencesLabel": "参考文献：",
-    "fwciLabel": "FWCI：",
+    "fwciLabel": "相对领域平均：",
     "citedBy": "被引用",
     "cites": "引用",
     "questionN": "问题 {n}：{question}",
@@ -1262,7 +1262,8 @@
   },
   "rating": {
     "noRating": "无评分",
-    "nStars": "{count} 星"
+    "nStars": "{count} 星",
+    "yourRating": "你的评分"
   },
   "pagination": {
     "currentPage": "第 {page} 页",
@@ -5859,7 +5860,7 @@
     "sdgs": "可持续发展目标",
     "mesh": "MeSH 主题词",
     "details": "详细信息",
-    "charge": "发表费用",
+    "charge": "出版费",
     "retracted": "已撤稿",
     "openscholarId": "Openscholar ID",
     "copyDoi": "复制 DOI",
