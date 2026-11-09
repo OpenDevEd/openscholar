@@ -138,3 +138,33 @@ it("makes a paper sent from the community's own site the person's submission, fr
   const mine = await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId });
   expect(mine.page).toMatchObject([{ itemKey: "SITE0001", ...paper, status: "published", community: { libraryId } }]);
 });
+
+it("keeps a community's word that comes before Openscholar's own send finishes, and makes a first word of published the sender's too", async () => {
+  const t = convexTest(schema, modules);
+  const { libraryId, userId, workspaceId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "racer", email: "racer@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    return { libraryId, userId, workspaceId };
+  });
+  const paper = { title: "Coaching teachers", authors: "Amina Yusuf", year: 2021, openalexId: "W60", doi: "10.1000/w60" };
+  const tell = (itemKey: string, generation: number, status: string, requestId: string) =>
+    t.fetch("/api/v1/evidence-libraries/paper-submissions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ contractVersion: 1, idempotencyKey: `${libraryId}:${itemKey}:${generation}`, libraryId, itemKey, generation, clerkUserId: "racer", status, note: status === "returned" ? "Out of scope" : null, at: "2026-11-08T12:00:00Z", paper: { ...paper, requestId } }),
+    });
+  const mine = async () => (await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId })).page.map(({ itemKey, status }) => ({ itemKey, status }));
+
+  // Returned before Openscholar's request that sent it records it: the return stands.
+  await tell("RACE0001", 1, "queued", "r9");
+  await tell("RACE0001", 2, "returned", "r9");
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r9", papers: [{ itemKey: "RACE0001", ...paper, status: "queued" }] });
+  // Sent again by request r11 and returned before r11 finishes here: the return stands for that send too.
+  await tell("RACE0001", 3, "returned", "r11");
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r11", papers: [{ itemKey: "RACE0001", ...paper, status: "queued" }] });
+  // Approved before the word that it waits was sent: published is the first word, and it's theirs.
+  await tell("RACE0002", 2, "published", "r10");
+  expect((await mine()).sort((a, b) => a.itemKey.localeCompare(b.itemKey))).toEqual([{ itemKey: "RACE0001", status: "returned" }, { itemKey: "RACE0002", status: "published" }]);
+});

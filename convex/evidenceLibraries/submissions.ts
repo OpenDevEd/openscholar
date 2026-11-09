@@ -86,25 +86,31 @@ export const applyStatus = internalMutation({
     note: v.union(v.string(), v.null()),
     at: v.number(),
     /** What the paper is, when the community says so: one its own site sent has no row here until then. */
-    paper: v.optional(sentPaperSummaryValidator),
+    paper: v.optional(v.object({ ...sentPaperSummaryValidator.fields, requestId: v.optional(v.string()) })),
   },
   returns: v.null(),
   handler: async (ctx, { libraryId: library, credentialDigest, itemKey, generation, clerkUserId, status, note, at, paper }) => {
     const libraryId = await authenticate(ctx, library, credentialDigest);
     // Published, it's published for everyone who sent it: a paper two people suggested is one record. Waiting,
     // returned or withdrawn is the submission of whoever sent it this time.
-    const sender = status === "published" ? null : await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
+    const sender = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
     if (status !== "published" && !sender) return null;
-    const rows = sender
+    const rows = status !== "published" && sender
       ? [await byPaper(ctx, sender._id, libraryId, itemKey)].filter((row) => row !== null)
       : // ponytail: the first SENDERS_PER_PAPER who sent the same paper are updated; page the rest if a paper ever has more.
         await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
-    // Sent from the community's own site, it becomes their submission here with the community's first word on it.
-    if (!rows.length && sender && paper) {
+    // Sent from the community's own site, it becomes their submission here with the community's first word on it, which
+    // is published when a reviewer approved it before the word that it waits arrived.
+    // Under the request that sent it, so when that request was Openscholar's and is still finishing, it finds the
+    // community's word already here and leaves it.
+    // Their own row, looked up whatever rows the status read, which for published are the first of many senders.
+    if (sender && paper && !(await byPaper(ctx, sender._id, libraryId, itemKey))) {
+      const { requestId, ...summary } = paper;
       const community = (await communityOf(ctx, libraryId)).name;
-      const id = await ctx.db.insert("paperSubmissions", { ...paper, userId: sender._id, libraryId, itemKey, status, ...(note ? { note } : {}), generation, searchText: searchTextOf(paper.title, community), sentAt: at, updatedAt: at });
+      const id = await ctx.db.insert("paperSubmissions", { ...summary, ...(requestId ? { requestId } : {}), userId: sender._id, libraryId, itemKey, status, ...(note ? { note } : {}), generation, searchText: searchTextOf(paper.title, community), sentAt: at, updatedAt: at });
       await applyHeld(ctx, id, libraryId, itemKey, clerkUserId);
-      return null;
+      // Published, it's published for the others who sent it too.
+      if (status !== "published" || !rows.length) return null;
     }
     // Before Openscholar recorded the paper as sent, as when the community answers first: it's held until it is.
     if (!rows.length) {
@@ -113,8 +119,10 @@ export const applyStatus = internalMutation({
     }
     for (const row of rows) {
       if ((row.generation ?? 0) >= generation) continue;
-      // Taken back by the person who sent it, it's listed as withdrawn, and keeps its generation.
-      await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at });
+      // Taken back by the person who sent it, it's listed as withdrawn, and keeps its generation. Their row takes the
+      // request this word is about, so that request, still finishing here, leaves the word as it is.
+      const sentNow = paper?.requestId && sender && row.userId === sender._id ? { requestId: paper.requestId } : {};
+      await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at, ...sentNow });
     }
     return null;
   },
