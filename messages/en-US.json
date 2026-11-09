@@ -1297,7 +1297,7 @@
     "type": "Type",
     "refs": "Refs",
     "cited": "Cited",
-    "fwci": "FWCI",
+    "fwci": "vs. field average",
     "topic": "Topic",
     "field": "Field",
     "subfield": "Subfield",
