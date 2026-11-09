@@ -15,7 +15,18 @@ const DAY = 86_400_000;
 
 const CHECKS: Check[] = [
   { id: "byline", name: "Byline and DOI in the PDF", engine: "decision", decisionModel: "text-match", instructions: "{byline}", threshold: 1, direction: "atLeast", blocking: true, enabled: true },
-  { id: "similarity", name: "Plagiarism", engine: "decision", decisionModel: "similarity-check", instructions: "Compare the full text with published work. Quotes and references are left out.", threshold: 0.25, direction: "atMost", blocking: true, enabled: true },
+  {
+    id: "published",
+    name: "Already published",
+    engine: "decision",
+    decisionModel: "already-published",
+    instructions: "Search OpenAlex, our index and our communities for the title and two sentences of the abstract. A match counts when an author's surname or the year agrees too.",
+    threshold: 0.8,
+    direction: "atMost",
+    // A match goes to a reviewer: the author may be the one who published it.
+    blocking: false,
+    enabled: true,
+  },
   { id: "moderation", name: "Hate speech and harassment", engine: "decision", decisionModel: "omni-moderation", instructions: "Flag hate, harassment, threats and violence.", threshold: 0.2, direction: "atMost", blocking: true, enabled: true },
   {
     id: "advertising",
@@ -82,9 +93,9 @@ const STATES: Array<Pick<Submission, "status" | "step" | "deposit"> & { note?: s
   { status: "live", step: "done", deposit: "deposited" },
   { status: "declined", step: "done", deposit: "none", note: "A copy of a report already published by the ministry. Ask the ministry to co-publish it instead." },
   { status: "live", step: "done", deposit: "failed" },
-  { status: "review", step: "done", deposit: "none" },
+  { status: "review", step: "done", deposit: "none", failed: "published" },
   { status: "live", step: "done", deposit: "deposited" },
-  { status: "failed", step: "done", deposit: "none", failed: "similarity" },
+  { status: "failed", step: "done", deposit: "none", failed: "byline" },
   { status: "live", step: "done", deposit: "deposited" },
   { status: "live", step: "done", deposit: "deposited" },
   { status: "live", step: "done", deposit: "deposited" },
@@ -135,7 +146,7 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
   const at = Date.now() - (n + 1) * 0.8 * DAY;
   const results = settings.checks.map((check) => {
     const fails = state.failed === check.id;
-    const score = check.direction === "atMost" ? (fails ? 0.41 : 0.04 + (n % 4) * 0.03) : fails ? 0 : check.engine === "llm" ? 0.91 : 1;
+    const score = check.direction === "atMost" ? (fails ? 1 : 0.01 + (n % 4) * 0.02) : fails ? 0 : check.engine === "llm" ? 0.91 : 1;
     return {
       checkId: check.id,
       name: check.name,
@@ -146,6 +157,7 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
       direction: check.direction,
       blocking: check.blocking,
       ...(check.engine === "llm" ? { reasoning: "A study with a method, data and findings. It names no product and links only to the data repository." } : {}),
+      ...(fails && check.id === "published" ? { evidence: { title: TITLES[n]!, url: "https://doi.org/10.4060/cc7845en" } } : {}),
     };
   });
   return {

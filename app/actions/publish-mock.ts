@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { searchOpenAlex } from "@/lib/openalex/lookup";
+import { alreadyPublished } from "@/lib/publish-mock/published";
 import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
 import { suggestTopics } from "@/lib/publish-mock/topics";
 import { MOCK_DIR, nextKey, pdfPath, readState, writeState } from "@/lib/publish-mock/store";
@@ -143,7 +144,7 @@ const squash = (text: string) => text.toLowerCase().replace(/\s+/g, "");
 const passes = (score: number, check: Check) => (check.direction === "atMost" ? score <= check.threshold : score >= check.threshold);
 
 /** MOCK: each check's answer. Text match really reads the PDF's text; the others are made up from the file's name. */
-async function runCheck(check: Check, settings: Settings, draft: Submission, text: string): Promise<CheckResult> {
+async function runCheck(check: Check, settings: Settings, draft: Submission, text: string, metadata: Metadata): Promise<CheckResult> {
   const base = { checkId: check.id, name: check.name, engine: check.engine, threshold: check.threshold, direction: check.direction, blocking: check.blocking };
   const name = draft.pdf?.name.toLowerCase() ?? "";
   if (check.engine === "llm") {
@@ -161,7 +162,10 @@ async function runCheck(check: Check, settings: Settings, draft: Submission, tex
   let score = 0.01;
   // The text to find, with {byline} as this report's. Wrapping and line breaks in the PDF don't count.
   if (check.decisionModel === "text-match") score = squash(text).includes(squash(check.instructions.replaceAll("{byline}", bylineOf(settings, draft.doi)))) ? 1 : 0;
-  else if (check.decisionModel === "similarity-check") score = name.includes("copy") ? 0.46 : 0.07;
+  else if (check.decisionModel === "already-published") {
+    const found = await alreadyPublished(metadata);
+    return { ...base, score: found ? 1 : 0, pass: passes(found ? 1 : 0, check), ...(found ? { evidence: found } : {}) };
+  }
   else if (check.decisionModel === "language-id") score = 0.98;
   return { ...base, score, pass: passes(score, check) };
 }
@@ -172,7 +176,7 @@ export async function runChecks(metadata: Metadata) {
     const draft = draftOf(state);
     const text = await readFile(pdfPath(draft.id).replace(/\.pdf$/, ".txt"), "utf8").catch(() => "");
     const checks = state.settings.checks.filter((c) => c.enabled);
-    const results = await Promise.all(checks.map((check) => runCheck(check, state.settings, draft, text)));
+    const results = await Promise.all(checks.map((check) => runCheck(check, state.settings, draft, text, metadata)));
     const blocked = results.some((r) => !r.pass && r.blocking);
     const flagged = results.some((r) => !r.pass && !r.blocking);
     // Passing makes the report: live at once, or once someone approves it when review is on or an advisory check flagged it.

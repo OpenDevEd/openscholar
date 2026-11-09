@@ -386,6 +386,21 @@ export function CheckRow({ result, delay = 0 }: { result: CheckResult; delay?: n
           {pct}% <span className="text-muted-foreground/70">{result.direction === "atMost" ? "max" : "min"} {need}%</span>
         </span>
       </div>
+      {result.evidence ? (
+        <motion.a
+          href={result.evidence.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          initial={{ opacity: wait ? 0 : 1 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: wait + 0.1, duration: 0.25 }}
+          className="ms-8 mt-2 flex min-w-0 items-center gap-1.5 text-xs/5 text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
+        >
+          <span className="shrink-0">Found as</span>
+          <span className="truncate font-medium text-foreground/80">{result.evidence.title}</span>
+          <ArrowUpRight className="size-3 shrink-0" />
+        </motion.a>
+      ) : null}
       {result.reasoning ? (
         <motion.p initial={{ opacity: wait ? 0 : 1 }} animate={{ opacity: 1 }} transition={{ delay: wait + 0.1, duration: 0.25 }} className="ms-8 mt-2 text-xs/5 text-muted-foreground">
           {result.reasoning}

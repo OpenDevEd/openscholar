@@ -8,7 +8,7 @@ export type Engine = "decision" | "llm";
 /** The decision models a check can run on, which answer without a language model. */
 export const DECISION_MODELS = [
   { id: "text-match", name: "Text match", maker: "Openscholar", hint: "Looks for a required text in the PDF" },
-  { id: "similarity-check", name: "Similarity Check", maker: "Crossref", hint: "Share of the text found in published work" },
+  { id: "already-published", name: "Already published", maker: "OpenAlex, our index, communities", hint: "Whether the work already exists, under its own DOI or none" },
   { id: "omni-moderation", name: "Moderation", maker: "OpenAI", hint: "Hate, harassment, violence and self-harm" },
   { id: "language-id", name: "Language ID", maker: "fastText", hint: "The language the text is written in" },
 ] as const;
@@ -27,7 +27,7 @@ export type Check = {
   llm?: LlmModel;
   /** What the check looks for: the text to find, or the LLM's instructions. */
   instructions: string;
-  /** The score a report needs, 0 to 1; `atMost` for a score that must stay under it, like similarity. */
+  /** The score a report needs, 0 to 1; `atMost` for a score that must stay under it, like a match with existing work. */
   threshold: number;
   direction: "atLeast" | "atMost";
   /** A failed blocking check stops the report; an advisory one only flags it for review. */
@@ -36,7 +36,7 @@ export type Check = {
 };
 
 /** What every check returns, whichever engine runs it. `reasoning` comes from an LLM only. */
-export type CheckResult = { checkId: string; name: string; engine: Engine; pass: boolean; score: number; threshold: number; direction: Check["direction"]; blocking: boolean; reasoning?: string };
+export type CheckResult = { checkId: string; name: string; engine: Engine; pass: boolean; score: number; threshold: number; direction: Check["direction"]; blocking: boolean; reasoning?: string; evidence?: { title: string; url: string } };
 
 export type Settings = {
   enabled: boolean;
