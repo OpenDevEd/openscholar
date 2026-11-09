@@ -14,7 +14,8 @@
     "noStyles": "一致するスタイルはありません。",
     "commonStyles": "よく使うスタイル",
     "otherStyles": "その他のスタイル",
-    "copiedIn": "{style}形式の引用をコピーしました"
+    "copiedIn": "{style}形式の引用をコピーしました",
+    "download": "ダウンロード"
   },
   "common": {
     "search": "検索",

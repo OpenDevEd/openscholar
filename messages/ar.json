@@ -14,7 +14,8 @@
     "noStyles": "لا توجد أنماط مطابقة.",
     "commonStyles": "الأنماط الشائعة",
     "otherStyles": "أنماط أخرى",
-    "copiedIn": "تم نسخ الاستشهاد بنمط {style}"
+    "copiedIn": "تم نسخ الاستشهاد بنمط {style}",
+    "download": "تنزيل"
   },
   "common": {
     "search": "بحث",

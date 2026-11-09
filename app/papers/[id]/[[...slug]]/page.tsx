@@ -5,31 +5,16 @@ import { getTranslations } from "next-intl/server";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PaperPage } from "@/components/papers/paper-page";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
-import { paperPageId, paperPath, paperSlug } from "@/lib/papers/page-address";
-import { copyKeysOf, openalexIdOf, readCommunityCopies, readOpenAlexForPage, readPaperForPage, readReferencesForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
-import { paperDetail } from "@/lib/papers/paper-detail";
+import { citeFilePath, paperPath, paperSlug } from "@/lib/papers/page-address";
+import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
+import { copyKeysOf, quietly, readCommunityCopies, readPaperPage, readReferencesForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
 import { topicHref } from "@/lib/topics/links";
 import type { PaperResult } from "@/lib/types/search.types";
 
 type Params = { params: Promise<{ id: string; slug?: string[] }> };
 
-const quietly = <T,>(what: string, id: string, fallback: T) => (error: unknown) => (console.error(`[paper page] ${what} unavailable`, { id, error }), fallback);
-
 /** The paper the address names, both its records as one, or the page's 404. Read once per request, for the metadata and the page. */
-const paperOf = cache(async (raw: string) => {
-  const asked = paperPageId(raw);
-  // A paper our index doesn't hold yet, by its OpenAlex ID, is read from OpenAlex, so no OpenAlex result's link ends in a 404.
-  // So is one whose index read fails (the index is down, or not set up where search runs on OpenAlex); an OS ID has nowhere else to come from.
-  const openalexId = asked?.startsWith("W") ? asked : null;
-  const indexed = asked ? await readPaperForPage(asked).catch((error: unknown) => { if (!openalexId) throw error; return quietly("our index's record", asked, null)(error); }) : null;
-  const paper = indexed ?? (openalexId ? await readOpenAlexForPage(openalexId).catch(quietly("OpenAlex record", openalexId, null)) : null);
-  if (!paper) notFound();
-  // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
-  const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
-  const work = openalexIdOf(paper);
-  const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : null;
-  return { paper, id, work, detail: paperDetail(paper, openalex, id, new Date().getUTCFullYear()) };
-});
+const paperOf = cache(async (raw: string) => (await readPaperPage(raw)) ?? notFound());
 
 /** The abstract cut at a word, about as long as a search result shows. */
 function snippet(text: string, length = 160) {
@@ -59,12 +44,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const pdf = detail.copies.find((copy) => copy.pdf)?.url;
   return {
     ...page,
+    openGraph: { ...page.openGraph, type: "article", publishedTime: dateOf(paper), authors: detail.authors.map((author) => author.name) },
     // Only a page with its abstract is worth a search result; the rest stay out, as OpenAlex keeps them out of its sitemaps.
     robots: { index: live && !!detail.abstract, follow: live },
     // What Google Scholar reads (its inclusion guidelines name these tags).
     other: Object.fromEntries(Object.entries({
       citation_title: title,
-      citation_author: detail.authors.map((author) => author.name),
       citation_publication_date: dateOf(paper)?.replaceAll("-", "/"),
       citation_journal_title: journal,
       citation_volume: paper.biblio?.volume,
@@ -73,6 +58,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       citation_lastpage: paper.biblio?.last_page,
       citation_doi: paper.doi?.replace(/^https?:\/\/doi\.org\//i, ""),
       citation_pdf_url: pdf,
+      citation_issn: detail.ids.issn,
+      citation_publisher: detail.publisher,
+      citation_language: detail.language,
       citation_abstract_html_url: `${SITE_URL}${paperPath(id, title)}`,
     }).filter(([, value]) => value != null && value !== "" && !(Array.isArray(value) && !value.length))) as Record<string, string | string[]>,
   };
@@ -126,6 +114,19 @@ export default async function Page({ params }: Params) {
   return (
     <PageWrapper>
       {/* `<` escaped, so a title can't close the script. */}
+      {/* Each author, then that author's institutions and ORCID iD, in order: Google Scholar ties them by position, which metadata's grouped tags can't keep. React moves these into the head. */}
+      {detail.authors.flatMap((author, index) => [
+        <meta key={`a${index}`} name="citation_author" content={author.name} />,
+        ...author.institutions.map((institution, at) => <meta key={`a${index}i${at}`} name="citation_author_institution" content={institution.name} />),
+        ...(author.orcid ? [<meta key={`a${index}o`} name="citation_author_orcid" content={author.orcid} />] : []),
+      ])}
+      {/* One tag per keyword, as Zotero reads them into tags. */}
+      {detail.keywords.map((keyword) => <meta key={`k${keyword}`} name="citation_keywords" content={keyword} />)}
+      {/* Signposting (signposting.org): the paper's persistent address, its files and its authors, for tools that follow links. */}
+      {paper.doi && <link rel="cite-as" href={paper.doi} />}
+      {(Object.keys(CITATION_FILES) as CitationFile[]).map((kind) => <link key={kind} rel="describedby" type={CITATION_FILES[kind].type} href={citeFilePath(id, kind)} />)}
+      {detail.copies.find((copy) => copy.pdf) && <link rel="item" type="application/pdf" href={detail.copies.find((copy) => copy.pdf)!.url} />}
+      {detail.authors.flatMap((author) => author.orcid ? [<link key={author.orcid} rel="author" href={author.orcid} />] : [])}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
       <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} />
     </PageWrapper>

@@ -83,6 +83,9 @@ describe("public route auth matrix", () => {
       "/evidence-communities",
       "/history",
       // A paper's page, which search engines read signed out.
+      // A paper's citation files, for reference managers and tools that follow a paper page's links.
+      "/papers/x/cite.bib",
+      "/papers/x/cite.ris",
       "/papers/x/x",
       "/pricing",
       "/privacy",

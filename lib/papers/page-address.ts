@@ -1,3 +1,4 @@
+import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
 import { legacyPaperRef } from "./paper-ref";
 
 /** A paper page's ID: one of our index (OS…) or an OpenAlex work (W…), which redirects to ours. */
@@ -35,3 +36,6 @@ export function ourPaperPage(paper: { id: string; title?: string | null; display
   if (ref?.source !== "openalex" && ref?.source !== "openscholar") return null;
   return paperPath(paper.openscholar_id?.split("/").at(-1) ?? ref.work, paper.title ?? paper.display_name);
 }
+
+/** Where a paper's citation file is served: beside its page, named by its kind. */
+export const citeFilePath = (id: string, kind: CitationFile) => `/papers/${id}/cite.${CITATION_FILES[kind].extension}`;

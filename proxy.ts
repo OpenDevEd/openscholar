@@ -6,6 +6,8 @@ import { shouldProtectPath } from "@/lib/auth/proxy-policy";
 import { bareWorkLink } from "@/lib/search-params/bare-work-link";
 import { slugOf, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { ADDRESS_HEADER } from "@/lib/workspaces/paths";
+import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
+import { citeFilePath } from "@/lib/papers/page-address";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const ONE_YEAR = 60 * 60 * 24 * 365;
@@ -52,6 +54,13 @@ export default async function proxy(
 
   const authResponse = await authMiddleware(request, event);
   const response = authResponse ?? NextResponse.next();
+
+  // A paper page says, in its headers, where its citation files are and what it is (signposting.org), for tools that read headers, not pages.
+  const paperPage = /^\/papers\/((?:OS|W)\d+)(?:\/[^/.]*)?$/i.exec(request.nextUrl.pathname)?.[1];
+  if (paperPage) response.headers.append("Link", [
+    ...(Object.keys(CITATION_FILES) as CitationFile[]).map((kind) => `<${citeFilePath(paperPage.toUpperCase(), kind)}>; rel="describedby"; type="${CITATION_FILES[kind].type}"`),
+    '<https://schema.org/ScholarlyArticle>; rel="type"',
+  ].join(", "));
 
   if (needsLocaleCookie && detectedLocale) {
     const cookieValue = `${COOKIE_NAME}=${encodeURIComponent(detectedLocale)}; Path=/; Max-Age=${ONE_YEAR}; SameSite=Lax`;
