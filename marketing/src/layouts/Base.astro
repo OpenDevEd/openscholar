@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { APP, COMMUNITIES, NAV, SECTIONS } from "../data/site.mjs";
+import { APP, COMMUNITIES, COMPARISONS, INTENTS, NAV, SECTIONS } from "../data/site.mjs";
 import { GUIDES } from "../data/docs.mjs";
 import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
@@ -10,6 +10,11 @@ const { title, description, og = "/og.jpg", top = "#091026" } = Astro.props;
 const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
 // The logo inline, so it can tilt on hover and its colours follow the page.
 const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
+// Who we are, the same on every page, so search engines and answer engines tie the site, the app and the name together.
+const ENTITY = { "@context": "https://schema.org", "@graph": [
+  { "@type": "Organization", "@id": "https://openscholar.ai/#org", name: "Openscholar", url: "https://openscholar.ai/", logo: "https://openscholar.ai/favicon.svg", email: "habari@openscholar.ai" },
+  { "@type": "SoftwareApplication", name: "Openscholar", url: APP, applicationCategory: "ReferenceApplication", operatingSystem: "Web", publisher: { "@id": "https://openscholar.ai/#org" }, description: "The evidence workspace for research teams: find the literature, screen it against your criteria, extract the data and publish what you learn." },
+] };
 const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize", "list"], ["screening", "sieve"], ["extraction", "table"], ["assistant", "spark"]]], ["Teams", [["workspaces", "merge"], ["account", "key"]]], ["Communities", [["community-setup", "globe"], ["community-readers", "cite"], ["community-admin", "pen"]]]];
 ---
 <!doctype html>
@@ -34,6 +39,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   <link rel="preload" href="/fonts/ubuntu-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin />
   <script type="speculationrules" set:html={JSON.stringify({ prerender: [{ where: { href_matches: "/*" }, eagerness: "moderate" }] })} />
   <script is:inline>document.documentElement.classList.add("has-js"); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js")</script>
+  <script type="application/ld+json" set:html={JSON.stringify(ENTITY)} />
   <slot name="head" />
 </head>
 <body style={`background-color:${top}`}>
@@ -73,6 +79,8 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
       <div class="f-brand"><img src="/favicon-dark.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p><a class="f-go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span><Arrow /></a></div>
       <nav aria-label="Footer">
         <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a></div>
+        <div><b>Use it for</b>{INTENTS.map((p) => <a href={p.href}><span class="roll" data-t={p.title}><span>{p.title}</span></span></a>)}</div>
+        <div><b>Compare</b>{COMPARISONS.map((c) => <a href={c.href}><span class="roll" data-t={`${c.name} alternative`}><span>{c.name} alternative</span></span></a>)}</div>
         <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a><a href="/contact/"><span class="roll" data-t="Contact"><span>Contact</span></span></a></div>
         <div><b>Legal</b><a href={`${APP}/privacy`}><span class="roll" data-t="Privacy"><span>Privacy</span></span></a><a href={`${APP}/cookie-policy`}><span class="roll" data-t="Cookies"><span>Cookies</span></span></a><a href={`${APP}/credits`}><span class="roll" data-t="Attributions"><span>Attributions</span></span></a><button type="button" class="prefs" data-consent-open><span class="roll" data-t="Cookie preferences"><span>Cookie preferences</span></span></button></div>
       </nav>

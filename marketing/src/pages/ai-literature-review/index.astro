@@ -1,0 +1,38 @@
+---
+import Base from "../../layouts/Base.astro";
+import IntentHero from "../../components/IntentHero.astro";
+import Feature from "../../components/Feature.astro";
+import Literature from "../../components/Literature.astro";
+import Screening from "../../components/Screening.astro";
+import Traced from "../../components/Traced.astro";
+import AssistantBeside from "../../components/AssistantBeside.astro";
+import Faq from "../../components/Faq.astro";
+import Related from "../../components/Related.astro";
+import Close from "../../components/Close.astro";
+const faq = [
+  ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat, and it tells you when it couldn't read something."],
+  ["Can I check what the AI decided?", "Yes. Every screening answer can be overruled, and every extracted answer comes with its confidence and the passage it was taken from."],
+  ["Which papers can it search?", "A catalogue of scholarly work across every field, with filters for years, places, study designs, open access and more. You can also bring your own collections and Zotero items."],
+  ["Can I take the review with me?", "Yes. Searches, screenings and extractions export as CSV, JSON or Excel, and every paper can be cited in the style you need."],
+  ["Do I need an account to try it?", "No. Search, filters and history work without one. Sign in to save papers and run screenings and extractions."],
+];
+---
+<Base og="/og-ai-literature-review.jpg" top="#091026" title="AI literature review tool: Openscholar" description="Do your literature review with AI: turn a question into a search you can read, screen every abstract against your criteria, and extract the findings into a table you can check.">
+  <IntentHero
+    title="Your literature review, with AI doing the reading"
+    lead="Ask in plain language, see the whole field, screen it against your criteria and pull the findings into a table. Every step is one you can check and change."
+    bg="#091026" art="sea" screen="search" theme="dark" alt="Search results for a research question, with filters and an AI overview"
+    questions={["Does peer tutoring improve reading in primary school?", "What works to keep girls in secondary school?", "How do cash transfers affect child nutrition?"]} />
+  <Feature id="find" class="find" field="ocean" art="sea" title="See the whole field before you read any of it" text="Your question becomes a search you can read and change. Narrow it by year, place, study design or open access, and get an overview of what the field says and where it comes from.">
+    <Literature />
+  </Feature>
+  <Screening title="Screen every paper against the same criteria" text="Write your inclusion questions once. AI answers them for every abstract, your pass mark decides what's in, and you can overrule any answer." />
+  <Traced />
+  <AssistantBeside />
+  <Faq items={faq} title="Questions about AI literature reviews" />
+  <Related />
+  <Close title="Start your review with a question" />
+</Base>
+<style>
+  :global(.find) :global(.view) { display: grid; align-items: center; padding-right: var(--pad); } @media (max-width: 900px) { :global(.find) :global(.view) { padding: 0 0 var(--pad); } }
+</style>
