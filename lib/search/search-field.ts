@@ -14,7 +14,10 @@ export type SearchSubfilter = { search: string } | { search: { exact: string } }
  * stemmed field. See [[hasUnquotedWildcard]].
  */
 export function buildSearchSubfilter(query: string): SearchSubfilter {
-  return hasUnquotedWildcard(query)
-    ? { search: { exact: query } }
-    : { search: query };
+  // The words go in a filter, where a comma starts the next filter: a pasted sentence's commas made it "not a filter".
+  // A comma means nothing among search words, so it's a space.
+  const words = query.replace(/,/g, " ");
+  return hasUnquotedWildcard(words)
+    ? { search: { exact: words } }
+    : { search: words };
 }

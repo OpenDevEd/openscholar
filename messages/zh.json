@@ -1165,7 +1165,7 @@
     "translationSettings": "翻译设置",
     "autoTranslateResults": "自动翻译当前列表结果",
     "listedItemsOnly": "仅适用于当前列表中显示的条目。",
-    "useCurrentLocaleTarget": "使用当前语言环境作为目标语言",
+    "useCurrentLocaleTarget": "使用网站语言",
     "runResultsTranslation": "运行翻译",
     "translatingResults": "正在翻译结果...",
     "undoTranslation": "撤销翻译",

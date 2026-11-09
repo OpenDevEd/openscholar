@@ -1166,7 +1166,7 @@
     "translationSettings": "إعدادات الترجمة",
     "autoTranslateResults": "الترجمة التلقائية للنتائج المعروضة",
     "listedItemsOnly": "ينطبق على العناصر المعروضة حاليًا فقط.",
-    "useCurrentLocaleTarget": "استخدم لغة الواجهة الحالية هدفًا",
+    "useCurrentLocaleTarget": "استخدم لغة الموقع",
     "runResultsTranslation": "تشغيل الترجمة",
     "translatingResults": "جارٍ ترجمة النتائج...",
     "undoTranslation": "إلغاء الترجمة",
