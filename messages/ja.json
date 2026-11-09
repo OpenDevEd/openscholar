@@ -375,8 +375,8 @@
     "retrySync": "同期を再試行"
   },
   "aiSetupGate": {
-    "title": "AIで検索を強化する",
-    "description": "OpenscholarはAIを使用してクエリの改善、論文のスクリーニング、結果の翻訳を行います。",
+    "title": "検索は無料です。AIは追加機能です",
+    "description": "サインインすると、AIが検索を作成し、基準に沿って論文を確認し、結果を翻訳します。毎月の無料クレジットで使えます。",
     "signInForCredits": "サインインして5万無料クレジットを取得",
     "useOwnApiKey": "自分のAPIキーを使用"
   },

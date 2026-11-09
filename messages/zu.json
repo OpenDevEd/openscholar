@@ -375,8 +375,8 @@
     "retrySync": "Zama ukuvumelanisa futhi"
   },
   "aiSetupGate": {
-    "title": "Lungisa i-AI ukuze uthuthukise ukusesha kwakho",
-    "description": "I-Openscholar isebenzisa i-AI ukuze icwengisise imibuzo, ihlole amaphepha, futhi ihumushe imiphumela.",
+    "title": "Ukusesha kumahhala. I-AI iyengeziwe",
+    "description": "Ngena ngemvume futhi i-AI ibhala ukusesha kwakho, ihlole amaphepha ngokwezindlela zakho futhi ihumushe imiphumela, ngamakhredithi amahhala nyanga zonke.",
     "signInForCredits": "Ngena ukuze uthole amakhredithi angu-50k mahhala",
     "useOwnApiKey": "Sebenzisa ukhiye wakho we-API"
   },

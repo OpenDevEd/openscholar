@@ -375,8 +375,8 @@
     "retrySync": "Synchronisierung wiederholen"
   },
   "aiSetupGate": {
-    "title": "KI für Ihre Suche einrichten",
-    "description": "Openscholar nutzt KI, um Abfragen zu verfeinern, Artikel zu prüfen und Ergebnisse zu übersetzen.",
+    "title": "Suchen ist kostenlos. KI ist ein Extra",
+    "description": "Melde dich an, und die KI schreibt deine Suchen, prüft Artikel anhand deiner Kriterien und übersetzt Ergebnisse, mit kostenlosen Credits jeden Monat.",
     "signInForCredits": "Anmelden für 50.000 kostenlose Credits",
     "useOwnApiKey": "Eigenen API-Schlüssel verwenden"
   },

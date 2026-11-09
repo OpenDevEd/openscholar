@@ -375,8 +375,8 @@
     "retrySync": "重试同步"
   },
   "aiSetupGate": {
-    "title": "设置 AI 以增强搜索",
-    "description": "Openscholar 使用 AI 优化查询、筛选论文和翻译结果。",
+    "title": "搜索免费，AI 为额外功能",
+    "description": "登录后，AI 会为你撰写搜索、按你的标准筛查论文并翻译结果，每月有免费额度。",
     "signInForCredits": "登录获取 5 万免费积分",
     "useOwnApiKey": "使用自己的 API 密钥"
   },

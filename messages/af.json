@@ -375,8 +375,8 @@
     "retrySync": "Probeer sinkronisering weer"
   },
   "aiSetupGate": {
-    "title": "Stel KI op om jou soektog te verbeter",
-    "description": "Openscholar gebruik KI om navrae te verfyn, artikels te sif en resultate te vertaal.",
+    "title": "Soek is gratis. KI is ekstra",
+    "description": "Teken aan en KI skryf jou soektogte, toets artikels teen jou kriteria en vertaal resultate, met gratis krediete elke maand.",
     "signInForCredits": "Meld aan vir 50k gratis krediete",
     "useOwnApiKey": "Gebruik jou eie API-sleutel"
   },

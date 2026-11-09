@@ -375,8 +375,8 @@
     "retrySync": "Tentar sincronizar novamente"
   },
   "aiSetupGate": {
-    "title": "Configure a IA para melhorar a sua pesquisa",
-    "description": "O Openscholar usa IA para refinar pesquisas, fazer a triagem de artigos e traduzir resultados.",
+    "title": "Pesquisar é grátis. A IA é um extra",
+    "description": "Entre e a IA escreve as suas pesquisas, verifica artigos segundo os seus critérios e traduz resultados, com créditos grátis todos os meses.",
     "signInForCredits": "Inicie sessão para obter 50k créditos gratuitos",
     "useOwnApiKey": "Use a sua própria chave de API"
   },
