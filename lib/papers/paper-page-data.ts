@@ -144,7 +144,10 @@ export async function readPaperPage(raw: string) {
   const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
   const work = openalexIdOf(paper);
   const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : null;
-  return { paper, id, work, detail: paperDetail(paper, openalex, id, new Date().getUTCFullYear()) };
+  // What kind of work it is and whether it's free to read, as OpenAlex says when it says: our index has called journal
+  // articles book chapters and left open ones closed, which the badges and the citation then repeated.
+  const shown = openalex ? { ...paper, type: openalex.type ?? paper.type, open_access: openalex.open_access ?? paper.open_access } : paper;
+  return { paper: shown, id, work, detail: paperDetail(shown, openalex, id, new Date().getUTCFullYear()) };
 }
 
 /** The OpenAlex work a record of ours is paired with, bare, if any. */
