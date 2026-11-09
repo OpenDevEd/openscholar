@@ -83,10 +83,9 @@ export function finishChecks(id: string, run: string, metadata: Metadata, result
     if (!draft) throw new Error("The report is gone.");
     if (draft.run !== run || draft.step !== "details") throw new Error("A newer PDF or run replaced these checks.");
     const blocked = results.some((r) => !r.pass && r.blocking);
-    const flagged = results.some((r) => !r.pass && !r.blocking);
-    // Passing makes the report: live at once, or once someone approves it when review is on or an advisory check flagged it.
-    const status = blocked ? "failed" : state.settings.humanReview || flagged ? "review" : "live";
-    Object.assign(draft, { metadata, results, checksVersion: version, status, step: "done", run: undefined, deposit: status === "live" ? "queued" : "none", updatedAt: Date.now() });
+    // Passing makes the report; whether it waits for a reviewer is decided when it's looked at (stageOf).
+    const status = blocked ? "failed" : "passed";
+    Object.assign(draft, { metadata, results, checksVersion: version, status, step: "done", run: undefined, deposit: "none", updatedAt: Date.now() });
     return draft;
   });
 }

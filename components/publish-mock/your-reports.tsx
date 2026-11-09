@@ -11,29 +11,30 @@ import { Paged, pagerOf } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { ArrowRight, ArrowUpRight, BadgeCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw } from "@/components/icons";
-import type { Status, Submission } from "@/lib/publish-mock/types";
+import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw } from "@/components/icons";
+import { stageOf, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const PER_PAGE = 8;
 /** A row's height with its divider, which every row keeps so a page holds its height. */
 const ROW = 65;
-const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", live: "Live", failed: "Failed checks", declined: "Declined" };
-const STATUS: Record<Status, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
+const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed checks", declined: "Declined" };
+const STATUS: Record<Stage, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
   draft: { label: "Draft", tone: "neutral", icon: PenLine },
   review: { label: "In review", tone: "running", icon: ReviewQueueIcon },
+  ready: { label: "Ready to activate", tone: "success", icon: CircleCheck },
   live: { label: "Live", tone: "success", icon: BadgeCheck },
   failed: { label: "Failed checks", tone: "danger", icon: CircleX },
   declined: { label: "Declined", tone: "neutral", icon: CircleX },
 };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-export const SHOWS = ["all", "draft", "review", "live", "failed", "declined"] as const;
+export const SHOWS = ["all", "draft", "review", "ready", "live", "failed", "declined"] as const;
 export type Show = (typeof SHOWS)[number];
 
 /** The status filter, which sits in the page's header bar beside the tabs. */
-export function StatusFilter({ reports, show, onShow }: { reports: Submission[]; show: Show; onShow: (show: Show) => void }) {
-  const counts = Object.fromEntries(SHOWS.map((s) => [s, s === "all" ? reports.length : reports.filter((r) => r.status === s).length])) as Record<Show, number>;
+export function StatusFilter({ reports, settings, show, onShow }: { reports: Submission[]; settings: Settings; show: Show; onShow: (show: Show) => void }) {
+  const counts = Object.fromEntries(SHOWS.map((s) => [s, s === "all" ? reports.length : reports.filter((r) => stageOf(r, settings) === s).length])) as Record<Show, number>;
   return (
     <Select value={show} onValueChange={(value) => onShow(value as Show)}>
       <SelectTrigger size="sm" aria-label="Status" className={cn("w-44", LIST_FILTER)}>
@@ -53,7 +54,7 @@ export function StatusFilter({ reports, show, onShow }: { reports: Submission[];
   );
 }
 
-export function YourReports({ reports, show, onOpen, onNew }: { reports: Submission[]; show: Show; onOpen: (id: string) => void; onNew: () => void }) {
+export function YourReports({ reports, settings, show, onOpen, onNew }: { reports: Submission[]; settings: Settings; show: Show; onOpen: (id: string) => void; onNew: () => void }) {
   const [page, setPage] = useState(1);
   // A new filter starts at its first page.
   const [shownFor, setShownFor] = useState(show);
@@ -61,7 +62,7 @@ export function YourReports({ reports, show, onOpen, onNew }: { reports: Submiss
     setShownFor(show);
     setPage(1);
   }
-  const listed = reports.filter((r) => show === "all" || r.status === show);
+  const listed = reports.filter((r) => show === "all" || stageOf(r, settings) === show);
   const pager = pagerOf(listed.length, PER_PAGE, page, setPage);
   const shown = listed.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
 
@@ -71,7 +72,7 @@ export function YourReports({ reports, show, onOpen, onNew }: { reports: Submiss
         <Paged pager={pager} rowHeight={ROW} label="reports">
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
             {shown.map((r) => (
-              <ReportRow key={r.id} report={r} onOpen={() => onOpen(r.id)} />
+              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} />
             ))}
           </ul>
         </Paged>
@@ -95,8 +96,8 @@ export function YourReports({ reports, show, onOpen, onNew }: { reports: Submiss
 }
 
 /** One report: its title, key and date; the reviewer's note when declined; its status; and the way back into it. */
-function ReportRow({ report: r, onOpen }: { report: Submission; onOpen: () => void }) {
-  const status = STATUS[r.status];
+function ReportRow({ report: r, stage, onOpen }: { report: Submission; stage: Stage; onOpen: () => void }) {
+  const status = STATUS[stage];
   const title = r.metadata?.title ?? (r.pdf?.name ? r.pdf.name : "Untitled report");
   const action =
     r.status === "live"
@@ -105,6 +106,8 @@ function ReportRow({ report: r, onOpen }: { report: Submission; onOpen: () => vo
         ? { label: "Upload a new PDF", icon: RotateCcw }
         : r.status === "draft"
           ? { label: "Carry on", icon: ArrowRight }
+          : stage === "ready"
+            ? { label: "Activate it", icon: ArrowRight }
           : { label: "Open", icon: FileText };
   const open =
     r.status === "live" ? (

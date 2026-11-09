@@ -9,7 +9,7 @@ import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
 import { suggestTopics } from "@/lib/publish-mock/topics";
 import { MOCK_DIR, changeState, nextKey, pdfPath } from "@/lib/publish-mock/store";
-import { doiOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { doiOf, stageOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -201,7 +201,20 @@ export async function review(id: string, decision: "approve" | "decline", note?:
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
     if (!submission) throw new Error("No such report.");
-    return touch(submission, decision === "approve" ? { status: "live", deposit: "queued" } : { status: "declined", ...(note ? { note } : {}) });
+    if (submission.status !== "passed") throw new Error("Only a report that passed its checks can be reviewed.");
+    // Approving lets the author activate it; the author decides when it goes live.
+    return touch(submission, decision === "approve" ? { approved: true } : { status: "declined", ...(note ? { note } : {}) });
+  });
+}
+
+/** The author makes a passed report live: its DOI goes to Crossref and its page opens. Only once no review is owed. */
+export async function activate(id: string) {
+  const user = await currentUser();
+  return change((state) => {
+    const submission = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
+    if (!submission) throw new Error("No such report of yours.");
+    if (stageOf(submission, state.settings) !== "ready") throw new Error("A reviewer approves this report before you can activate it.");
+    return touch(submission, { status: "live", deposit: "queued" });
   });
 }
 

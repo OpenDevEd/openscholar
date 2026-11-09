@@ -28,6 +28,7 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Check,
+  CircleCheck,
   CircleX,
   FileText,
   Hash,
@@ -48,23 +49,24 @@ import { usePlaceName } from "@/components/publish-mock/report-extras";
 import { removeCheck, retryDeposit, review, saveCheck, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
-import { JEV, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
+import { JEV, bylineOf, doiOf, stageOf, type Check as CheckDef, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
-const SHOWS = ["all", "review", "live", "failed", "declined"] as const;
+const SHOWS = ["all", "review", "ready", "live", "failed", "declined"] as const;
 type Show = (typeof SHOWS)[number];
 type Sort = "newest" | "oldest" | "title";
 const PER_PAGE = 8;
 const ROW = 65;
 
-const STATUS: Record<Exclude<Status, "draft">, { label: string; tone: "running" | "success" | "danger" | "neutral"; icon: typeof Check }> = {
+const STATUS: Record<Exclude<Stage, "draft">, { label: string; tone: "running" | "success" | "danger" | "neutral"; icon: typeof Check }> = {
   review: { label: "In review", tone: "running", icon: ReviewQueueIcon },
+  ready: { label: "Ready to activate", tone: "success", icon: CircleCheck },
   live: { label: "Live", tone: "success", icon: BadgeCheck },
   failed: { label: "Failed checks", tone: "danger", icon: CircleX },
   declined: { label: "Declined", tone: "neutral", icon: CircleX },
 };
-const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", live: "Live", failed: "Failed", declined: "Declined" };
+const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed", declined: "Declined" };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
 function failed(error: unknown) {
@@ -75,7 +77,7 @@ export function AdminPublishing({ initial }: { initial: MockState }) {
   const [view, setView] = useQueryState("view", parseAsStringLiteral(VIEWS).withDefault("submissions"));
   const [settings, setSettings] = useState(initial.settings);
   const [submissions, setSubmissions] = useState(initial.submissions.filter((s) => s.status !== "draft"));
-  const waiting = submissions.filter((s) => s.status === "review").length;
+  const waiting = submissions.filter((s) => stageOf(s, settings) === "review").length;
   const replace = (next: Submission) => setSubmissions((all) => all.map((s) => (s.id === next.id ? next : s)));
 
   return (
@@ -107,12 +109,12 @@ function Submissions({ settings, submissions, onChange }: { settings: Settings; 
   const [sort, setSort] = useState<Sort>("newest");
   const [page, setPage] = useState(1);
   const [open, setOpen] = useState<string | null>(null);
-  const counts = useMemo(() => Object.fromEntries(SHOWS.map((s) => [s, s === "all" ? submissions.length : submissions.filter((x) => x.status === s).length])) as Record<Show, number>, [submissions]);
+  const counts = useMemo(() => Object.fromEntries(SHOWS.map((s) => [s, s === "all" ? submissions.length : submissions.filter((x) => stageOf(x, settings) === s).length])) as Record<Show, number>, [submissions, settings]);
   const list = useMemo(() => {
     const words = query.trim().toLowerCase();
-    const kept = submissions.filter((s) => (show === "all" || s.status === show) && (!words || [s.metadata?.title, s.id, s.doi, ...(s.metadata?.authors.map((a) => a.name) ?? [])].some((v) => v?.toLowerCase().includes(words))));
+    const kept = submissions.filter((s) => (show === "all" || stageOf(s, settings) === show) && (!words || [s.metadata?.title, s.id, s.doi, ...(s.metadata?.authors.map((a) => a.name) ?? [])].some((v) => v?.toLowerCase().includes(words))));
     return kept.sort((a, b) => (sort === "title" ? (a.metadata?.title ?? "").localeCompare(b.metadata?.title ?? "") : sort === "oldest" ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
-  }, [submissions, query, show, sort]);
+  }, [submissions, settings, query, show, sort]);
   const pager = pagerOf(list.length, PER_PAGE, page, setPage);
   const shown = list.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
   const opened = submissions.find((s) => s.id === open) ?? null;
@@ -159,7 +161,7 @@ function Submissions({ settings, submissions, onChange }: { settings: Settings; 
           {shown.length ? (
             <ul className={LIST}>
               {shown.map((s) => (
-                <SubmissionRow key={s.id} submission={s} onOpen={() => setOpen(s.id)} onChange={onChange} />
+                <SubmissionRow key={s.id} submission={s} stage={stageOf(s, settings)} onOpen={() => setOpen(s.id)} onChange={onChange} />
               ))}
             </ul>
           ) : (
@@ -175,9 +177,9 @@ function Submissions({ settings, submissions, onChange }: { settings: Settings; 
   );
 }
 
-function SubmissionRow({ submission: s, onOpen, onChange }: { submission: Submission; onOpen: () => void; onChange: (s: Submission) => void }) {
+function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission: Submission; stage: Stage; onOpen: () => void; onChange: (s: Submission) => void }) {
   const [busy, start] = useTransition();
-  const status = STATUS[s.status as keyof typeof STATUS];
+  const status = stage === "draft" ? undefined : STATUS[stage];
   const first = s.metadata?.authors[0];
   const act = (run: () => Promise<Submission>, done: string) =>
     start(async () => {
@@ -222,15 +224,15 @@ function SubmissionRow({ submission: s, onOpen, onChange }: { submission: Submis
         </StatusChip>
       ) : null}
       <span className="flex w-[4.5rem] shrink-0 justify-end gap-1">
-        {s.status === "review" ? (
+        {stage === "review" ? (
           <>
             <TooltipHint label="Decline">
               <Button variant="ghost" size="icon-sm" aria-label={`Decline ${s.id}`} className="text-muted-foreground hover:text-destructive" onClick={onOpen}>
                 <CircleX />
               </Button>
             </TooltipHint>
-            <TooltipHint label="Approve and publish">
-              <Button variant="ghost" size="icon-sm" aria-label={`Approve ${s.id}`} className="relative text-primary" disabled={busy} onClick={() => act(() => review(s.id, "approve"), "Published")}>
+            <TooltipHint label="Approve">
+              <Button variant="ghost" size="icon-sm" aria-label={`Approve ${s.id}`} className="relative text-primary" disabled={busy} onClick={() => act(() => review(s.id, "approve"), "Approved: its author can activate it")}>
                 <Working busy={busy}>
                   <Check />
                 </Working>
@@ -265,14 +267,15 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
       if (!s) return;
       try {
         onChange(await review(s.id, decision, note.trim() || undefined));
-        toast.success(decision === "approve" ? "Published" : "Declined");
+        toast.success(decision === "approve" ? "Approved: its author can activate it" : "Declined");
         setNote("");
         onClose();
       } catch (error) {
         failed(error);
       }
     });
-  const status = s ? STATUS[s.status as keyof typeof STATUS] : undefined;
+  const stage = s ? stageOf(s, settings) : undefined;
+  const status = stage && stage !== "draft" ? STATUS[stage] : undefined;
   return (
     <Dialog open={!!s} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -324,14 +327,14 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
                 </ul>
               ) : null}
               {s.status === "declined" && s.note ? <p className="rounded-xl bg-inset p-3 text-sm">{s.note}</p> : null}
-              {s.status === "review" ? (
+              {stage === "review" ? (
                 <label className="block space-y-1.5">
                   <span className="ps-1 text-xs font-medium text-muted-foreground">Note to the author, if you decline</span>
                   <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
                 </label>
               ) : null}
             </div>
-            {s.status === "review" ? (
+            {stage === "review" ? (
               <DialogFooter>
                 <Button variant="outline" className="relative" disabled={busy} onClick={() => decide("decline")}>
                   <CircleX /> Decline
@@ -339,7 +342,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
                 <Button className="relative" disabled={busy} onClick={() => decide("approve")}>
                   <Working busy={busy}>
                     <span className="flex items-center gap-2">
-                      <Check /> Approve and publish
+                      <Check /> Approve
                     </span>
                   </Working>
                 </Button>

@@ -105,7 +105,17 @@ export type Metadata = {
 };
 
 export type Step = "agreement" | "doi" | "upload" | "details" | "checks" | "done";
-export type Status = "draft" | "failed" | "review" | "live" | "declined";
+/** What is saved: a report that passed its checks stays passed until its author activates it. */
+export type Status = "draft" | "failed" | "passed" | "live" | "declined";
+/** Where a report stands now. A passed report waits for a reviewer while review is on or a check flagged it, and
+ * until someone approves it; then it's ready for its author to activate. Worked out from the settings as they are,
+ * so switching review off releases the reports waiting only for it. */
+export type Stage = "draft" | "failed" | "review" | "ready" | "live" | "declined";
+export function stageOf(s: Submission, settings: Settings): Stage {
+  if (s.status !== "passed") return s.status;
+  const needsReview = settings.humanReview || (s.results ?? []).some((r) => !r.pass);
+  return s.approved || !needsReview ? "ready" : "review";
+}
 export type Deposit = "none" | "queued" | "deposited" | "failed";
 
 export type Submission = {
@@ -118,6 +128,8 @@ export type Submission = {
   doi: string;
   step: Step;
   status: Status;
+  /** A reviewer approved it, so its author can activate it whatever the settings say. */
+  approved?: boolean;
   signedBy?: { name: string; email: string; onBehalfOfAll: boolean };
   signedAt?: number;
   agreementVersion?: number;

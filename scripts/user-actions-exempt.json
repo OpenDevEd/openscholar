@@ -98,6 +98,7 @@
     "app/actions/publish-mock:saveCheck": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:removeCheck": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:updateAgreement": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:activate": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:review": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:retryDeposit": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions."
   },

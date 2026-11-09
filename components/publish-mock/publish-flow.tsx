@@ -39,11 +39,11 @@ import {
   Hash,
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
-import { goTo, openReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { activate, goTo, openReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
 import { StatusFilter, YourReports, type Show } from "@/components/publish-mock/your-reports";
 import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { bylineOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { bylineOf, stageOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -145,11 +145,12 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
       icon={PublishIcon}
       title="Publish"
       tabs={tabs}
-      filters={view === "reports" ? <StatusFilter reports={reports} show={show} onShow={setShow} /> : undefined}
-      intro={view === "new" ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !running} onBack={back} draft={running ? null : draft} /> : undefined}
+      filters={view === "reports" ? <StatusFilter reports={reports} settings={settings} show={show} onShow={setShow} /> : undefined}
+      intro={view === "new" ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !running} onBack={back} draft={running ? null : draft} settings={settings} /> : undefined}
     >
       {view === "reports" ? (
         <YourReports
+          settings={settings}
           show={show}
           reports={reports}
           onNew={() => {
@@ -192,6 +193,8 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                 <Checks
                   rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, model: r.model, result: r }))}
                   draft={draft}
+                  settings={settings}
+                  onActivate={() => activate(draft.id).then(setDraft)}
                   onFix={() => back("upload")}
                   onAnother={() => {
                     void startOver().then(() => setDraftOnly(null));
@@ -209,10 +212,11 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
 }
 
 /** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
-function StepTrail({ place, canGoBack, onBack, draft }: { place: number; canGoBack: boolean; onBack: (step: Step) => void; draft: Submission | null }) {
+function StepTrail({ place, canGoBack, onBack, draft, settings }: { place: number; canGoBack: boolean; onBack: (step: Step) => void; draft: Submission | null; settings: Settings }) {
   const reduce = useReducedMotion();
-  const failed = draft?.step === "done" && (draft.status === "failed" || draft.status === "declined");
-  const waiting = draft?.step === "done" && draft.status === "review";
+  const stage = draft?.step === "done" ? stageOf(draft, settings) : null;
+  const failed = stage === "failed" || stage === "declined";
+  const waiting = stage === "review";
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
       <ol className="grid grid-cols-6 gap-1">
@@ -522,21 +526,36 @@ export function CheckRow({ name, model, result }: { name: string; model: string;
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; name: string; model: string; result?: CheckResult }>; draft: Submission | null; onFix?: () => void; onAnother?: () => void }) {
+function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows: Array<{ id: string; name: string; model: string; result?: CheckResult }>; draft: Submission | null; settings?: Settings; onActivate?: () => Promise<void>; onFix?: () => void; onAnother?: () => void }) {
   const answered = rows.filter((r) => r.result).length;
+  const stage = draft && settings ? stageOf(draft, settings) : null;
+  const [activating, start] = useTransition();
+  const activateNow = () =>
+    start(async () => {
+      try {
+        await onActivate?.();
+        toast.success("Your report is live");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "It couldn't be activated");
+      }
+    });
   const head = !draft ? (
     <StepHead key="running" title="Running the checks" aside={<StatusChip tone="running" icon="tone">{answered} of {rows.length}</StatusChip>}>
       Looking for earlier copies takes a few seconds.
     </StepHead>
-  ) : draft.status === "live" ? (
+  ) : stage === "live" ? (
     <StepHead key="live" title="Published" aside={<StatusChip tone="success" icon={BadgeCheck}>DOI active</StatusChip>}>
       Your report is live. Communities can add it now; the DOI resolves once Crossref has registered it.
     </StepHead>
-  ) : draft.status === "review" ? (
-    <StepHead key="review" title="Waiting for review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
-      Your report passed its checks. A reviewer approves it before the DOI goes live.
+  ) : stage === "ready" ? (
+    <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>Passed</StatusChip>}>
+      Your report passed its checks. Activate it to make its DOI live and open its page.
     </StepHead>
-  ) : draft.status === "declined" ? (
+  ) : stage === "review" ? (
+    <StepHead key="review" title="Waiting for review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
+      Your report passed its checks. You can activate it once a reviewer approves it.
+    </StepHead>
+  ) : stage === "declined" ? (
     <StepHead key="declined" title="Not published" aside={<StatusChip tone="danger" icon={CircleX}>Declined</StatusChip>}>
       {draft.note ?? "The reviewer declined this report."}
     </StepHead>
@@ -549,7 +568,7 @@ function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; n
     <div>
       <AutoHeight>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={draft ? draft.status : "running"} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <motion.div key={stage ?? "running"} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
             {head}
           </motion.div>
         </AnimatePresence>
@@ -563,22 +582,39 @@ function Checks({ rows, draft, onFix, onAnother }: { rows: Array<{ id: string; n
         <AnimatePresence initial={false}>
           {draft ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6 flex flex-wrap justify-end gap-2">
-              {draft.status === "failed" ? (
+              {stage === "failed" ? (
                 <Button onClick={onFix}>
                   <RotateCcw /> Upload a new PDF
                 </Button>
               ) : (
                 <>
-                  {draft.status === "live" ? (
+                  {stage === "live" ? (
                     <Button asChild variant="outline">
                       <Link href={`/papers/${draft.id}`}>
                         Open its page <ArrowUpRight />
                       </Link>
                     </Button>
                   ) : null}
-                  <Button variant={draft.status === "live" ? "default" : "outline"} onClick={onAnother}>
+                  <Button variant={stage === "live" || stage === "declined" ? "default" : "outline"} onClick={onAnother}>
                     <Plus /> Publish another
                   </Button>
+                  {stage === "ready" ? (
+                    <Button className="relative" disabled={activating} onClick={activateNow}>
+                      <Working busy={activating}>
+                        <span className="flex items-center gap-2">
+                          <BadgeCheck /> Activate
+                        </span>
+                      </Working>
+                    </Button>
+                  ) : stage === "review" ? (
+                    <TooltipHint label="A reviewer approves it first">
+                      <span tabIndex={0}>
+                        <Button disabled>
+                          <BadgeCheck /> Activate
+                        </Button>
+                      </span>
+                    </TooltipHint>
+                  ) : null}
                 </>
               )}
             </motion.div>

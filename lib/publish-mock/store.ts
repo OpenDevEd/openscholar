@@ -97,16 +97,16 @@ const TITLES = [
   "Water harvesting and girls' time use in semi-arid Kenya",
 ];
 
-const STATES: Array<Pick<Submission, "status" | "step" | "deposit"> & { note?: string; failed?: string }> = [
-  { status: "review", step: "done", deposit: "none" },
-  { status: "review", step: "done", deposit: "none" },
+const STATES: Array<Pick<Submission, "status" | "step" | "deposit" | "approved"> & { note?: string; failed?: string }> = [
+  { status: "passed", step: "done", deposit: "none" },
+  { status: "passed", step: "done", deposit: "none", approved: true },
   { status: "live", step: "done", deposit: "deposited" },
   { status: "failed", step: "done", deposit: "none", failed: "byline" },
   { status: "live", step: "done", deposit: "queued" },
   { status: "live", step: "done", deposit: "deposited" },
   { status: "declined", step: "done", deposit: "none", note: "A copy of a report already published by the ministry. Ask the ministry to co-publish it instead." },
   { status: "live", step: "done", deposit: "failed" },
-  { status: "review", step: "done", deposit: "none", failed: "published" },
+  { status: "passed", step: "done", deposit: "none", failed: "published" },
   { status: "live", step: "done", deposit: "deposited" },
   { status: "failed", step: "done", deposit: "none", failed: "byline" },
   { status: "live", step: "done", deposit: "deposited" },
