@@ -1210,13 +1210,16 @@
     "keepRunning": "继续运行",
     "yesCancel": "是的，取消任务",
     "deleteJob": "删除此任务？",
-    "deleteJobDescription": "这将永久删除此任务及其所有提取结果。"
+    "deleteJobDescription": "这将永久删除此任务及其所有提取结果。",
+    "rerunJob": "复制并重新运行？",
+    "rerunJobDescription": "将立即开始一个使用相同论文和问题的新提取，并消耗大约与本次相同的额度。本次提取保持不变。",
+    "rerunJobConfirm": "重新运行"
   },
   "emptyStates": {
     "noScreeningQuestions": "尚无筛选问题"
   },
   "jobStatus": {
-    "restart": "重新运行",
+    "restart": "复制并重新运行…",
     "papersCount": "{count} 篇论文",
     "questionsCount": "{count, plural, other {# 个问题}}",
     "statusPending": "待处理",

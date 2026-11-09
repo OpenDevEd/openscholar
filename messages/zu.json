@@ -1210,13 +1210,16 @@
     "keepRunning": "Gcina usebenza",
     "yesCancel": "Khansela umsebenzi",
     "deleteJob": "Susa lo msebenzi?",
-    "deleteJobDescription": "Lokhu kuzosusa ngokuphelele lo msebenzi nawo wonke imiphumela yawo yokukhishwa."
+    "deleteJobDescription": "Lokhu kuzosusa ngokuphelele lo msebenzi nawo wonke imiphumela yawo yokukhishwa.",
+    "rerunJob": "Uyayiqalisa futhi njengekhophi?",
+    "rerunJobDescription": "Ukukhipha okusha okunamaphepha nemibuzo efanayo kuqala ngokushesha futhi kusebenzise amakhredithi, cishe angangalawa asetshenziswe yilokhu. Lokhu kuhlala kunjalo.",
+    "rerunJobConfirm": "Qalisa futhi"
   },
   "emptyStates": {
     "noScreeningQuestions": "Azikho imibuzo yokuskrini okwamanje"
   },
   "jobStatus": {
-    "restart": "Qala kabusha",
+    "restart": "Qalisa futhi njengekhophi…",
     "papersCount": "{count, plural, =1 {# iphepha} other {# amaphepha}}",
     "questionsCount": "{count, plural, one {# umbuzo} other {# imibuzo}}",
     "statusPending": "Ilindile",

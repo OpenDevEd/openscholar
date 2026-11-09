@@ -1210,13 +1210,16 @@
     "keepRunning": "Continuer",
     "yesCancel": "Oui, annuler la tâche",
     "deleteJob": "Supprimer cette tâche ?",
-    "deleteJobDescription": "Cela supprimera définitivement cette tâche et tous ses résultats d'extraction."
+    "deleteJobDescription": "Cela supprimera définitivement cette tâche et tous ses résultats d'extraction.",
+    "rerunJob": "La relancer en copie ?",
+    "rerunJobDescription": "Une nouvelle extraction avec les mêmes articles et questions démarre aussitôt et dépense des crédits, à peu près autant que celle-ci. Celle-ci reste telle quelle.",
+    "rerunJobConfirm": "Relancer"
   },
   "emptyStates": {
     "noScreeningQuestions": "Pas encore de questions de sélection"
   },
   "jobStatus": {
-    "restart": "Redémarrer",
+    "restart": "Relancer en copie…",
     "papersCount": "{count, plural, =1 {# article} other {# articles}}",
     "questionsCount": "{count, plural, one {# question} other {# questions}}",
     "statusPending": "En attente",

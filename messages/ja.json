@@ -1210,13 +1210,16 @@
     "keepRunning": "続行",
     "yesCancel": "はい、ジョブをキャンセル",
     "deleteJob": "このジョブを削除しますか？",
-    "deleteJobDescription": "このジョブとすべての抽出結果が完全に削除されます。"
+    "deleteJobDescription": "このジョブとすべての抽出結果が完全に削除されます。",
+    "rerunJob": "コピーとして再実行しますか？",
+    "rerunJobDescription": "同じ論文と質問で新しい抽出がすぐに始まり、今回とほぼ同じだけクレジットを消費します。この抽出はそのまま残ります。",
+    "rerunJobConfirm": "再実行"
   },
   "emptyStates": {
     "noScreeningQuestions": "スクリーニング質問はまだありません"
   },
   "jobStatus": {
-    "restart": "再開",
+    "restart": "コピーとして再実行…",
     "papersCount": "{count} 論文",
     "questionsCount": "{count, plural, other {# 件の質問}}",
     "statusPending": "保留中",

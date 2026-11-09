@@ -145,7 +145,7 @@ export default function JobDetailPage() {
 
   const [resultsSortBy, setResultsSortBy] = useState<ResultsSortBy>('default');
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [confirming, setConfirming] = useState<"cancel" | "delete" | null>(null);
+  const [confirming, setConfirming] = useState<"cancel" | "delete" | "rerun" | null>(null);
   const [openAnswer, setOpenAnswer] = useState<OpenAnswer | null>(null);
   const [mobilePane, setMobilePane] = useState<"results" | "citation">("results");
   // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
@@ -588,7 +588,8 @@ export default function JobDetailPage() {
                     <TooltipContent>{tExtraction("chatHeaderMore")}</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end" className="min-w-44">
-                    <DropdownMenuItem onSelect={handleDuplicate}>
+                    {/* A copy that runs, and spends, at once: it asks first and says so. */}
+                    <DropdownMenuItem onSelect={() => setConfirming("rerun")}>
                       <RefreshCw className="size-4" />
                       {tJob('restart')}
                     </DropdownMenuItem>
@@ -622,6 +623,18 @@ export default function JobDetailPage() {
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
+                </AlertDialog>
+                <AlertDialog open={confirming === "rerun"} onOpenChange={(open) => !open && setConfirming(null)}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{tConfirm('rerunJob')}</AlertDialogTitle>
+                      <AlertDialogDescription>{tConfirm('rerunJobDescription')}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDuplicate}>{tConfirm('rerunJobConfirm')}</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
                 </AlertDialog>
                 <AlertDialog open={confirming === "delete"} onOpenChange={(open) => !open && setConfirming(null)}>
                   <AlertDialogContent>

@@ -1211,13 +1211,16 @@
     "keepRunning": "Endelea kuendesha",
     "yesCancel": "Ghairi kazi",
     "deleteJob": "Futa kazi hii?",
-    "deleteJobDescription": "Hii itafuta kabisa kazi hii pamoja na matokeo yake yote ya uchimbaji."
+    "deleteJobDescription": "Hii itafuta kabisa kazi hii pamoja na matokeo yake yote ya uchimbaji.",
+    "rerunJob": "Iendeshe tena kama nakala?",
+    "rerunJobDescription": "Utoaji mpya wenye makala na maswali yale yale unaanza mara moja na kutumia salio, karibu kiasi ambacho huu ulitumia. Huu unabaki kama ulivyo.",
+    "rerunJobConfirm": "Endesha tena"
   },
   "emptyStates": {
     "noScreeningQuestions": "Bado hakuna maswali ya uchujaji"
   },
   "jobStatus": {
-    "restart": "Anzisha upya",
+    "restart": "Endesha tena kama nakala…",
     "papersCount": "makala {count}",
     "questionsCount": "{count, plural, one {swali #} other {maswali #}}",
     "statusPending": "Inasubiri",

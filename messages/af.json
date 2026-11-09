@@ -1211,13 +1211,16 @@
     "keepRunning": "Hou aan loop",
     "yesCancel": "Kanselleer taak",
     "deleteJob": "Verwyder hierdie taak?",
-    "deleteJobDescription": "Dit sal hierdie taak en al sy ekstraksieresultate permanent verwyder."
+    "deleteJobDescription": "Dit sal hierdie taak en al sy ekstraksieresultate permanent verwyder.",
+    "rerunJob": "Laat dit weer loop as 'n kopie?",
+    "rerunJobDescription": "'n Nuwe onttrekking met dieselfde artikels en vrae begin dadelik en spandeer krediete, omtrent soveel as hierdie een. Hierdie een bly soos dit is.",
+    "rerunJobConfirm": "Laat weer loop"
   },
   "emptyStates": {
     "noScreeningQuestions": "Nog geen siftingsvrae nie"
   },
   "jobStatus": {
-    "restart": "Herbegin",
+    "restart": "Laat weer loop as 'n kopie…",
     "papersCount": "{count, plural, =1 {# artikel} other {# artikels}}",
     "questionsCount": "{count, plural, one {# vraag} other {# vrae}}",
     "statusPending": "Hangende",
