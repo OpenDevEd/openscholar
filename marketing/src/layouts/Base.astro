@@ -12,8 +12,9 @@ const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
 const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
 // Who we are, the same on every page, so search engines and answer engines tie the site, the app and the name together.
 const ENTITY = { "@context": "https://schema.org", "@graph": [
-  { "@type": "Organization", "@id": "https://openscholar.ai/#org", name: "Openscholar", url: "https://openscholar.ai/", logo: "https://openscholar.ai/favicon.svg", email: "habari@openscholar.ai" },
+  { "@type": "Organization", "@id": "https://openscholar.ai/#org", name: "Openscholar", url: "https://openscholar.ai/", logo: "https://openscholar.ai/apple-touch-icon.png", email: "habari@openscholar.ai" },
   { "@type": "SoftwareApplication", name: "Openscholar", url: APP, applicationCategory: "ReferenceApplication", operatingSystem: "Web", publisher: { "@id": "https://openscholar.ai/#org" }, description: "The evidence workspace for research teams: find the literature, screen it against your criteria, extract the data and publish what you learn." },
+  ...(path === "/" ? [{ "@type": "WebSite", "@id": "https://openscholar.ai/#website", name: "Openscholar", url: "https://openscholar.ai/", publisher: { "@id": "https://openscholar.ai/#org" } }] : []),
 ] };
 const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize", "list"], ["screening", "sieve"], ["extraction", "table"], ["assistant", "spark"]]], ["Teams", [["workspaces", "merge"], ["account", "key"]]], ["Communities", [["community-setup", "globe"], ["community-readers", "cite"], ["community-admin", "pen"]]]];
 ---
@@ -28,9 +29,14 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
   <title>{title}</title>
   <meta name="description" content={description} />
   <meta name="theme-color" content={top} />
+  {/* Google Search shows only raster favicons (ICO, PNG and others), so these come first; the SVGs serve browsers that take them. */}
+  <link rel="icon" href="/favicon.ico" sizes="48x48" />
+  <link rel="icon" href="/icon-96.png" type="image/png" sizes="96x96" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" media="(prefers-color-scheme: light)" />
   <link rel="icon" href="/favicon-dark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)" />
   <link rel="canonical" href={new URL(path, Astro.site)} />
+  <meta property="og:site_name" content="Openscholar" />
   <meta property="og:title" content={title} />
   <meta property="og:description" content={description} />
   <meta property="og:image" content={new URL(og, Astro.site)} />
