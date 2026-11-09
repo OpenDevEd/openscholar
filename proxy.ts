@@ -2,6 +2,7 @@ import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { locales } from "@/i18n/config";
 import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
+import { languageFromLink } from "@/i18n/link-language";
 import { shouldProtectPath } from "@/lib/auth/proxy-policy";
 import { bareWorkLink } from "@/lib/search-params/bare-work-link";
 import { slugOf, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
@@ -46,6 +47,15 @@ export default async function proxy(
   // Our index names each record by an address, openscholar.ai/OS…, which reaches here: it's that paper's page.
   const ownRecord = /^\/(OS\d+)$/i.exec(request.nextUrl.pathname)?.[1];
   if (ownRecord) return NextResponse.redirect(new URL(`/papers/${ownRecord.toUpperCase()}`, request.url), 308);
+
+  // A link from a community site names the language its reader chose (`?hl=fr`): someone with no language here yet
+  // starts in that one, and the address drops it. A language they already have here stays theirs.
+  const linked = languageFromLink(request.nextUrl, hasValidLocaleCookie(request));
+  if (linked) {
+    const redirect = NextResponse.redirect(linked.clean);
+    if (linked.locale) redirect.cookies.set(COOKIE_NAME, linked.locale, { maxAge: ONE_YEAR, path: "/", sameSite: "lax" });
+    return redirect;
+  }
 
   const needsLocaleCookie = !hasValidLocaleCookie(request);
   const detectedLocale = needsLocaleCookie
