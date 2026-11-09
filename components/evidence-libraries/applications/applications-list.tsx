@@ -126,7 +126,7 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
                 </div>
               </div>
               <div>
-                <Textarea aria-label={t("addANote")} placeholder={t("addANote")} value={note} onChange={(event) => setNote(event.target.value)} maxLength={REASON_MAX} rows={2} className="h-16 resize-none [field-sizing:fixed]" />
+                <Textarea aria-label={t("addANote")} placeholder={t("addANote")} value={note} onChange={(event) => setNote(event.target.value)} maxLength={REASON_MAX} rows={2} className="h-16 resize-none field-sizing-fixed [overflow-wrap:anywhere]" />
                 {/* How much fits, as the application's own message shows it. */}
                 <p aria-hidden dir="ltr" className={cn("mt-1 text-end text-xs tabular-nums", note.length >= REASON_MAX ? "ink-warning" : "text-subtle-foreground")}>{note.length} / {REASON_MAX}</p>
               </div>
