@@ -4431,6 +4431,66 @@
         "did": "समुदायों को भेजे गए आपके पेपर पढ़े",
         "where": "Evidence Communities",
         "ask": "समुदायों को भेजे गए अपने पेपर पढ़ें"
+      },
+      "applyToCommunity": {
+        "doing": "एक समुदाय से जुड़ने का आवेदन किया जा रहा है",
+        "did": "एक समुदाय से जुड़ने का आवेदन किया",
+        "where": "Evidence Communities",
+        "ask": "एक समुदाय से जुड़ने का आवेदन करें"
+      },
+      "withdrawApplication": {
+        "doing": "एक समुदाय का आवेदन वापस लिया जा रहा है",
+        "did": "एक समुदाय का आवेदन वापस लिया",
+        "where": "Evidence Communities",
+        "ask": "एक समुदाय का आवेदन वापस लें"
+      },
+      "hideApplication": {
+        "doing": "अस्वीकार हुआ आवेदन छिपाया जा रहा है",
+        "did": "अस्वीकार हुआ आवेदन छिपाया",
+        "where": "Evidence Communities",
+        "ask": "अस्वीकार हुआ आवेदन छिपाएँ"
+      },
+      "myApplications": {
+        "doing": "समुदायों में आपके आवेदन पढ़े जा रहे हैं",
+        "did": "समुदायों में आपके आवेदन पढ़े",
+        "where": "Evidence Communities",
+        "ask": "समुदायों में अपने आवेदन पढ़ें"
+      },
+      "applicationStanding": {
+        "doing": "समुदायों में आपकी स्थिति देखी जा रही है",
+        "did": "समुदायों में आपकी स्थिति देखी",
+        "where": "Evidence Communities",
+        "ask": "समुदायों में अपनी स्थिति देखें"
+      },
+      "applicationsWaiting": {
+        "doing": "एक समुदाय के आवेदन पढ़े जा रहे हैं",
+        "did": "एक समुदाय के आवेदन पढ़े",
+        "where": "Evidence Communities",
+        "ask": "एक समुदाय के आवेदन पढ़ें"
+      },
+      "applicationCounts": {
+        "doing": "इंतज़ार कर रहे आवेदन गिने जा रहे हैं",
+        "did": "इंतज़ार कर रहे आवेदन गिने",
+        "where": "Evidence Communities",
+        "ask": "इंतज़ार कर रहे आवेदन गिनें"
+      },
+      "acceptApplication": {
+        "doing": "जुड़ने का आवेदन स्वीकार किया जा रहा है",
+        "did": "जुड़ने का आवेदन स्वीकार किया",
+        "where": "Evidence Communities",
+        "ask": "जुड़ने का आवेदन स्वीकार करें"
+      },
+      "declineApplication": {
+        "doing": "जुड़ने का आवेदन अस्वीकार किया जा रहा है",
+        "did": "जुड़ने का आवेदन अस्वीकार किया",
+        "where": "Evidence Communities",
+        "ask": "जुड़ने का आवेदन अस्वीकार करें"
+      },
+      "applicationsOpen": {
+        "doing": "जुड़ने के आवेदन चालू या बंद किए जा रहे हैं",
+        "did": "जुड़ने के आवेदन चालू या बंद किए",
+        "where": "Evidence Communities",
+        "ask": "जुड़ने के आवेदन चालू या बंद करें"
       }
     },
     "asks": {

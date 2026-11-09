@@ -4431,6 +4431,66 @@
         "did": "已读取你发送给社区的论文",
         "where": "Evidence Community",
         "ask": "读取你发送给社区的论文"
+      },
+      "applyToCommunity": {
+        "doing": "正在申请加入社区",
+        "did": "已申请加入社区",
+        "where": "Evidence Community",
+        "ask": "申请加入社区"
+      },
+      "withdrawApplication": {
+        "doing": "正在撤回对社区的申请",
+        "did": "已撤回对社区的申请",
+        "where": "Evidence Community",
+        "ask": "撤回对社区的申请"
+      },
+      "hideApplication": {
+        "doing": "正在隐藏被拒绝的申请",
+        "did": "已隐藏被拒绝的申请",
+        "where": "Evidence Community",
+        "ask": "隐藏被拒绝的申请"
+      },
+      "myApplications": {
+        "doing": "正在读取你对社区的申请",
+        "did": "已读取你对社区的申请",
+        "where": "Evidence Community",
+        "ask": "读取你对社区的申请"
+      },
+      "applicationStanding": {
+        "doing": "正在查看你在社区中的状态",
+        "did": "已查看你在社区中的状态",
+        "where": "Evidence Community",
+        "ask": "查看你在社区中的状态"
+      },
+      "applicationsWaiting": {
+        "doing": "正在读取加入社区的申请",
+        "did": "已读取加入社区的申请",
+        "where": "Evidence Community",
+        "ask": "读取加入社区的申请"
+      },
+      "applicationCounts": {
+        "doing": "正在统计待处理的申请",
+        "did": "已统计待处理的申请",
+        "where": "Evidence Community",
+        "ask": "统计待处理的申请"
+      },
+      "acceptApplication": {
+        "doing": "正在接受加入申请",
+        "did": "已接受加入申请",
+        "where": "Evidence Community",
+        "ask": "接受加入申请"
+      },
+      "declineApplication": {
+        "doing": "正在拒绝加入申请",
+        "did": "已拒绝加入申请",
+        "where": "Evidence Community",
+        "ask": "拒绝加入申请"
+      },
+      "applicationsOpen": {
+        "doing": "正在开启或关闭加入申请",
+        "did": "已开启或关闭加入申请",
+        "where": "Evidence Community",
+        "ask": "开启或关闭加入申请"
       }
     },
     "asks": {

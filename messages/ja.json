@@ -4431,6 +4431,66 @@
         "did": "コミュニティに送った論文を読み込みました",
         "where": "Evidence Community",
         "ask": "コミュニティに送った論文を読む"
+      },
+      "applyToCommunity": {
+        "doing": "コミュニティへの参加を申請中",
+        "did": "コミュニティへの参加を申請しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティへの参加を申請"
+      },
+      "withdrawApplication": {
+        "doing": "コミュニティへの申請を取り下げ中",
+        "did": "コミュニティへの申請を取り下げました",
+        "where": "Evidence Community",
+        "ask": "コミュニティへの申請を取り下げる"
+      },
+      "hideApplication": {
+        "doing": "却下された申請を非表示にしています",
+        "did": "却下された申請を非表示にしました",
+        "where": "Evidence Community",
+        "ask": "却下された申請を非表示にする"
+      },
+      "myApplications": {
+        "doing": "コミュニティへの申請を読み込み中",
+        "did": "コミュニティへの申請を読み込みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティへの申請を読む"
+      },
+      "applicationStanding": {
+        "doing": "コミュニティでの状況を確認中",
+        "did": "コミュニティでの状況を確認しました",
+        "where": "Evidence Community",
+        "ask": "コミュニティでの状況を確認"
+      },
+      "applicationsWaiting": {
+        "doing": "コミュニティへの参加申請を読み込み中",
+        "did": "コミュニティへの参加申請を読み込みました",
+        "where": "Evidence Community",
+        "ask": "コミュニティへの参加申請を読む"
+      },
+      "applicationCounts": {
+        "doing": "待機中の申請を数えています",
+        "did": "待機中の申請を数えました",
+        "where": "Evidence Community",
+        "ask": "待機中の申請を数える"
+      },
+      "acceptApplication": {
+        "doing": "参加申請を承認中",
+        "did": "参加申請を承認しました",
+        "where": "Evidence Community",
+        "ask": "参加申請を承認"
+      },
+      "declineApplication": {
+        "doing": "参加申請を却下中",
+        "did": "参加申請を却下しました",
+        "where": "Evidence Community",
+        "ask": "参加申請を却下"
+      },
+      "applicationsOpen": {
+        "doing": "参加申請の受付を切り替え中",
+        "did": "参加申請の受付を切り替えました",
+        "where": "Evidence Community",
+        "ask": "参加申請の受付を切り替える"
       }
     },
     "asks": {

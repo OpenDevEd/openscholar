@@ -4432,6 +4432,66 @@
         "did": "Het die artikels gelees wat jy na gemeenskappe gestuur het",
         "where": "Evidence Communities",
         "ask": "Lees die artikels wat jy na gemeenskappe gestuur het"
+      },
+      "applyToCommunity": {
+        "doing": "Doen aansoek om by 'n gemeenskap aan te sluit",
+        "did": "Het aansoek gedoen om by 'n gemeenskap aan te sluit",
+        "where": "Evidence Communities",
+        "ask": "Doen aansoek om by 'n gemeenskap aan te sluit"
+      },
+      "withdrawApplication": {
+        "doing": "Trek 'n aansoek by 'n gemeenskap terug",
+        "did": "Het 'n aansoek by 'n gemeenskap teruggetrek",
+        "where": "Evidence Communities",
+        "ask": "Trek 'n aansoek by 'n gemeenskap terug"
+      },
+      "hideApplication": {
+        "doing": "Versteek 'n geweierde aansoek",
+        "did": "Het 'n geweierde aansoek versteek",
+        "where": "Evidence Communities",
+        "ask": "Versteek 'n geweierde aansoek"
+      },
+      "myApplications": {
+        "doing": "Lees jou aansoeke by gemeenskappe",
+        "did": "Het jou aansoeke by gemeenskappe gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees jou aansoeke by gemeenskappe"
+      },
+      "applicationStanding": {
+        "doing": "Kyk waar jy by gemeenskappe staan",
+        "did": "Het gekyk waar jy by gemeenskappe staan",
+        "where": "Evidence Communities",
+        "ask": "Kyk waar jy by gemeenskappe staan"
+      },
+      "applicationsWaiting": {
+        "doing": "Lees aansoeke om by 'n gemeenskap aan te sluit",
+        "did": "Het aansoeke om aan te sluit gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees aansoeke om by 'n gemeenskap aan te sluit"
+      },
+      "applicationCounts": {
+        "doing": "Tel aansoeke wat wag",
+        "did": "Het aansoeke wat wag getel",
+        "where": "Evidence Communities",
+        "ask": "Tel aansoeke wat wag"
+      },
+      "acceptApplication": {
+        "doing": "Aanvaar 'n aansoek om aan te sluit",
+        "did": "Het 'n aansoek om aan te sluit aanvaar",
+        "where": "Evidence Communities",
+        "ask": "Aanvaar 'n aansoek om aan te sluit"
+      },
+      "declineApplication": {
+        "doing": "Weier 'n aansoek om aan te sluit",
+        "did": "Het 'n aansoek om aan te sluit geweier",
+        "where": "Evidence Communities",
+        "ask": "Weier 'n aansoek om aan te sluit"
+      },
+      "applicationsOpen": {
+        "doing": "Skakel aansoeke om aan te sluit aan of af",
+        "did": "Het aansoeke om aan te sluit aan- of afgeskakel",
+        "where": "Evidence Communities",
+        "ask": "Skakel aansoeke om aan te sluit aan of af"
       }
     },
     "asks": {

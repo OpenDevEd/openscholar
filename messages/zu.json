@@ -4431,6 +4431,66 @@
         "did": "Kufundwe amaphepha owathumele emiphakathini",
         "where": "Evidence Communities",
         "ask": "Funda amaphepha owathumele emiphakathini"
+      },
+      "applyToCommunity": {
+        "doing": "Ifaka isicelo sokujoyina umphakathi",
+        "did": "Ifake isicelo sokujoyina umphakathi",
+        "where": "Evidence Communities",
+        "ask": "Faka isicelo sokujoyina umphakathi"
+      },
+      "withdrawApplication": {
+        "doing": "Ihoxisa isicelo emphakathini",
+        "did": "Ihoxise isicelo emphakathini",
+        "where": "Evidence Communities",
+        "ask": "Hoxisa isicelo emphakathini"
+      },
+      "hideApplication": {
+        "doing": "Ifihla isicelo esenqatshiwe",
+        "did": "Ifihle isicelo esenqatshiwe",
+        "where": "Evidence Communities",
+        "ask": "Fihla isicelo esenqatshiwe"
+      },
+      "myApplications": {
+        "doing": "Ifunda izicelo zakho emiphakathini",
+        "did": "Ifunde izicelo zakho emiphakathini",
+        "where": "Evidence Communities",
+        "ask": "Funda izicelo zakho emiphakathini"
+      },
+      "applicationStanding": {
+        "doing": "Ihlola ukuthi umi kuphi emiphakathini",
+        "did": "Ihlolile ukuthi umi kuphi emiphakathini",
+        "where": "Evidence Communities",
+        "ask": "Hlola ukuthi umi kuphi emiphakathini"
+      },
+      "applicationsWaiting": {
+        "doing": "Ifunda izicelo zokujoyina umphakathi",
+        "did": "Ifunde izicelo zokujoyina umphakathi",
+        "where": "Evidence Communities",
+        "ask": "Funda izicelo zokujoyina umphakathi"
+      },
+      "applicationCounts": {
+        "doing": "Ibala izicelo ezilindile",
+        "did": "Ibale izicelo ezilindile",
+        "where": "Evidence Communities",
+        "ask": "Bala izicelo ezilindile"
+      },
+      "acceptApplication": {
+        "doing": "Yamukela isicelo sokujoyina",
+        "did": "Yamukele isicelo sokujoyina",
+        "where": "Evidence Communities",
+        "ask": "Yamukela isicelo sokujoyina"
+      },
+      "declineApplication": {
+        "doing": "Yenqaba isicelo sokujoyina",
+        "did": "Yenqabe isicelo sokujoyina",
+        "where": "Evidence Communities",
+        "ask": "Yenqaba isicelo sokujoyina"
+      },
+      "applicationsOpen": {
+        "doing": "Ivula noma ivala izicelo zokujoyina",
+        "did": "Ivulile noma ivalile izicelo zokujoyina",
+        "where": "Evidence Communities",
+        "ask": "Vula noma vala izicelo zokujoyina"
       }
     },
     "asks": {

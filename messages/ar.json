@@ -4432,6 +4432,66 @@
         "did": "قرأ الأوراق التي أرسلتها إلى المجتمعات",
         "where": "Evidence Communities",
         "ask": "اقرأ الأوراق التي أرسلتها إلى المجتمعات"
+      },
+      "applyToCommunity": {
+        "doing": "جارٍ تقديم طلب للانضمام إلى مجتمع",
+        "did": "قُدّم طلب للانضمام إلى مجتمع",
+        "where": "Evidence Communities",
+        "ask": "تقديم طلب للانضمام إلى مجتمع"
+      },
+      "withdrawApplication": {
+        "doing": "جارٍ سحب طلب إلى مجتمع",
+        "did": "سُحب طلب إلى مجتمع",
+        "where": "Evidence Communities",
+        "ask": "سحب طلب إلى مجتمع"
+      },
+      "hideApplication": {
+        "doing": "جارٍ إخفاء طلب مرفوض",
+        "did": "أُخفي طلب مرفوض",
+        "where": "Evidence Communities",
+        "ask": "إخفاء طلب مرفوض"
+      },
+      "myApplications": {
+        "doing": "جارٍ قراءة طلباتك إلى المجتمعات",
+        "did": "قُرئت طلباتك إلى المجتمعات",
+        "where": "Evidence Communities",
+        "ask": "قراءة طلباتك إلى المجتمعات"
+      },
+      "applicationStanding": {
+        "doing": "جارٍ التحقق من وضعك في المجتمعات",
+        "did": "تم التحقق من وضعك في المجتمعات",
+        "where": "Evidence Communities",
+        "ask": "التحقق من وضعك في المجتمعات"
+      },
+      "applicationsWaiting": {
+        "doing": "جارٍ قراءة طلبات الانضمام إلى مجتمع",
+        "did": "قُرئت طلبات الانضمام إلى مجتمع",
+        "where": "Evidence Communities",
+        "ask": "قراءة طلبات الانضمام إلى مجتمع"
+      },
+      "applicationCounts": {
+        "doing": "جارٍ عدّ الطلبات المنتظرة",
+        "did": "عُدّت الطلبات المنتظرة",
+        "where": "Evidence Communities",
+        "ask": "عدّ الطلبات المنتظرة"
+      },
+      "acceptApplication": {
+        "doing": "جارٍ قبول طلب انضمام",
+        "did": "قُبل طلب انضمام",
+        "where": "Evidence Communities",
+        "ask": "قبول طلب انضمام"
+      },
+      "declineApplication": {
+        "doing": "جارٍ رفض طلب انضمام",
+        "did": "رُفض طلب انضمام",
+        "where": "Evidence Communities",
+        "ask": "رفض طلب انضمام"
+      },
+      "applicationsOpen": {
+        "doing": "جارٍ تشغيل طلبات الانضمام أو إيقافها",
+        "did": "شُغّلت طلبات الانضمام أو أُوقفت",
+        "where": "Evidence Communities",
+        "ask": "تشغيل طلبات الانضمام أو إيقافها"
       }
     },
     "asks": {

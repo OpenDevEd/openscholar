@@ -4432,6 +4432,66 @@
         "did": "Leyó los artículos que enviaste a comunidades",
         "where": "Evidence Communities",
         "ask": "Leer los artículos que enviaste a comunidades"
+      },
+      "applyToCommunity": {
+        "doing": "Solicitando unirse a una comunidad",
+        "did": "Solicitó unirse a una comunidad",
+        "where": "Evidence Communities",
+        "ask": "Solicitar unirse a una comunidad"
+      },
+      "withdrawApplication": {
+        "doing": "Retirando una solicitud a una comunidad",
+        "did": "Retiró una solicitud a una comunidad",
+        "where": "Evidence Communities",
+        "ask": "Retirar una solicitud a una comunidad"
+      },
+      "hideApplication": {
+        "doing": "Ocultando una solicitud rechazada",
+        "did": "Ocultó una solicitud rechazada",
+        "where": "Evidence Communities",
+        "ask": "Ocultar una solicitud rechazada"
+      },
+      "myApplications": {
+        "doing": "Leyendo tus solicitudes a comunidades",
+        "did": "Leyó tus solicitudes a comunidades",
+        "where": "Evidence Communities",
+        "ask": "Leer tus solicitudes a comunidades"
+      },
+      "applicationStanding": {
+        "doing": "Comprobando tu situación en comunidades",
+        "did": "Comprobó tu situación en comunidades",
+        "where": "Evidence Communities",
+        "ask": "Comprobar tu situación en comunidades"
+      },
+      "applicationsWaiting": {
+        "doing": "Leyendo solicitudes para unirse a una comunidad",
+        "did": "Leyó solicitudes para unirse a una comunidad",
+        "where": "Evidence Communities",
+        "ask": "Leer solicitudes para unirse a una comunidad"
+      },
+      "applicationCounts": {
+        "doing": "Contando solicitudes pendientes",
+        "did": "Contó solicitudes pendientes",
+        "where": "Evidence Communities",
+        "ask": "Contar solicitudes pendientes"
+      },
+      "acceptApplication": {
+        "doing": "Aceptando una solicitud para unirse",
+        "did": "Aceptó una solicitud para unirse",
+        "where": "Evidence Communities",
+        "ask": "Aceptar una solicitud para unirse"
+      },
+      "declineApplication": {
+        "doing": "Rechazando una solicitud para unirse",
+        "did": "Rechazó una solicitud para unirse",
+        "where": "Evidence Communities",
+        "ask": "Rechazar una solicitud para unirse"
+      },
+      "applicationsOpen": {
+        "doing": "Activando o desactivando las solicitudes",
+        "did": "Activó o desactivó las solicitudes",
+        "where": "Evidence Communities",
+        "ask": "Activar o desactivar las solicitudes"
       }
     },
     "asks": {

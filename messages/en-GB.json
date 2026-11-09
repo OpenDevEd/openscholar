@@ -4431,6 +4431,66 @@
         "did": "Read the papers you sent to communities",
         "where": "Evidence Communities",
         "ask": "Read the papers you sent to communities"
+      },
+      "applyToCommunity": {
+        "doing": "Applying to join a community",
+        "did": "Applied to join a community",
+        "where": "Evidence Communities",
+        "ask": "Apply to join a community"
+      },
+      "withdrawApplication": {
+        "doing": "Withdrawing an application to a community",
+        "did": "Withdrew an application to a community",
+        "where": "Evidence Communities",
+        "ask": "Withdraw an application to a community"
+      },
+      "hideApplication": {
+        "doing": "Hiding a declined application",
+        "did": "Hid a declined application",
+        "where": "Evidence Communities",
+        "ask": "Hide a declined application"
+      },
+      "myApplications": {
+        "doing": "Reading your applications to communities",
+        "did": "Read your applications to communities",
+        "where": "Evidence Communities",
+        "ask": "Read your applications to communities"
+      },
+      "applicationStanding": {
+        "doing": "Checking where you stand with communities",
+        "did": "Checked where you stand with communities",
+        "where": "Evidence Communities",
+        "ask": "Check where you stand with communities"
+      },
+      "applicationsWaiting": {
+        "doing": "Reading applications to join a community",
+        "did": "Read applications to join a community",
+        "where": "Evidence Communities",
+        "ask": "Read applications to join a community"
+      },
+      "applicationCounts": {
+        "doing": "Counting applications waiting",
+        "did": "Counted applications waiting",
+        "where": "Evidence Communities",
+        "ask": "Count applications waiting"
+      },
+      "acceptApplication": {
+        "doing": "Accepting an application to join",
+        "did": "Accepted an application to join",
+        "where": "Evidence Communities",
+        "ask": "Accept an application to join"
+      },
+      "declineApplication": {
+        "doing": "Declining an application to join",
+        "did": "Declined an application to join",
+        "where": "Evidence Communities",
+        "ask": "Decline an application to join"
+      },
+      "applicationsOpen": {
+        "doing": "Turning applications to join on or off",
+        "did": "Turned applications to join on or off",
+        "where": "Evidence Communities",
+        "ask": "Turn applications to join on or off"
       }
     },
     "asks": {

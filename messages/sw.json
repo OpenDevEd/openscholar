@@ -4432,6 +4432,66 @@
         "did": "Ilisoma makala ulizotuma kwa jumuiya",
         "where": "Evidence Communities",
         "ask": "Soma makala ulizotuma kwa jumuiya"
+      },
+      "applyToCommunity": {
+        "doing": "Inaomba kujiunga na jumuiya",
+        "did": "Iliomba kujiunga na jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Omba kujiunga na jumuiya"
+      },
+      "withdrawApplication": {
+        "doing": "Inaondoa ombi kwa jumuiya",
+        "did": "Iliondoa ombi kwa jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Ondoa ombi kwa jumuiya"
+      },
+      "hideApplication": {
+        "doing": "Inaficha ombi lililokataliwa",
+        "did": "Ilificha ombi lililokataliwa",
+        "where": "Evidence Communities",
+        "ask": "Ficha ombi lililokataliwa"
+      },
+      "myApplications": {
+        "doing": "Inasoma maombi yako kwa jumuiya",
+        "did": "Ilisoma maombi yako kwa jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Soma maombi yako kwa jumuiya"
+      },
+      "applicationStanding": {
+        "doing": "Inakagua hali yako katika jumuiya",
+        "did": "Ilikagua hali yako katika jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Kagua hali yako katika jumuiya"
+      },
+      "applicationsWaiting": {
+        "doing": "Inasoma maombi ya kujiunga na jumuiya",
+        "did": "Ilisoma maombi ya kujiunga na jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Soma maombi ya kujiunga na jumuiya"
+      },
+      "applicationCounts": {
+        "doing": "Inahesabu maombi yanayosubiri",
+        "did": "Ilihesabu maombi yanayosubiri",
+        "where": "Evidence Communities",
+        "ask": "Hesabu maombi yanayosubiri"
+      },
+      "acceptApplication": {
+        "doing": "Inakubali ombi la kujiunga",
+        "did": "Ilikubali ombi la kujiunga",
+        "where": "Evidence Communities",
+        "ask": "Kubali ombi la kujiunga"
+      },
+      "declineApplication": {
+        "doing": "Inakataa ombi la kujiunga",
+        "did": "Ilikataa ombi la kujiunga",
+        "where": "Evidence Communities",
+        "ask": "Kataa ombi la kujiunga"
+      },
+      "applicationsOpen": {
+        "doing": "Inawasha au kuzima maombi ya kujiunga",
+        "did": "Iliwasha au kuzima maombi ya kujiunga",
+        "where": "Evidence Communities",
+        "ask": "Washa au zima maombi ya kujiunga"
       }
     },
     "asks": {

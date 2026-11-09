@@ -330,8 +330,10 @@ export const acceptAction = defineUserMutation({
     if (!(await libraryGrant(ctx, library._id, application.userId))) {
       const applicant = await ctx.db.get("users", application.userId);
       if (!applicant) throw createError("NOT_FOUND", "This person's account is gone.");
-      // An invitation still waiting for them holds their place already: it's taken, as accepting it would.
-      const invited = await waitingFor(ctx, library._id, applicant);
+      // An invitation still waiting for them holds their place already: it's taken, as accepting it would. One for an
+      // organization of theirs stays, for them to accept for the organization they pick.
+      const waiting = await waitingFor(ctx, library._id, applicant);
+      const invited = waiting && !waiting.toOrganization ? waiting : null;
       if (!invited) await assertLibraryHasRoom(ctx, library._id);
       await assertPersonHasRoom(ctx, application.userId);
       await ctx.db.insert("itemAccess", { kind: "library", item: library._id, name: library.name, userId: application.userId, role: "creator", grantedBy: reviewer._id, grantedAt: Date.now() });
@@ -413,3 +415,13 @@ export const readForEmail = internalQuery({
     };
   },
 });
+
+/** Applications one step of an account's purge deletes; the rest go on the next run. */
+const PURGE_APPLICATIONS = 100;
+
+/** Deletes a deleted account's applications, so the waiting ones stop holding places in their communities' counts. True once none are left. */
+export async function purgeApplications(ctx: MutationCtx, userId: Id<"users">) {
+  const rows = await ctx.db.query("libraryApplications").withIndex("by_userId_and_libraryId", (q) => q.eq("userId", userId)).take(PURGE_APPLICATIONS);
+  for (const row of rows) await ctx.db.delete("libraryApplications", row._id);
+  return rows.length < PURGE_APPLICATIONS;
+}

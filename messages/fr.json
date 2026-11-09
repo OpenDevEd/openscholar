@@ -4431,6 +4431,66 @@
         "did": "A lu les articles que vous avez envoyés aux communautés",
         "where": "Evidence Communities",
         "ask": "Lire les articles que vous avez envoyés aux communautés"
+      },
+      "applyToCommunity": {
+        "doing": "Demande pour rejoindre une communauté",
+        "did": "Demande envoyée pour rejoindre une communauté",
+        "where": "Evidence Communities",
+        "ask": "Demander à rejoindre une communauté"
+      },
+      "withdrawApplication": {
+        "doing": "Retrait d'une demande à une communauté",
+        "did": "Demande à une communauté retirée",
+        "where": "Evidence Communities",
+        "ask": "Retirer une demande à une communauté"
+      },
+      "hideApplication": {
+        "doing": "Masquage d'une demande refusée",
+        "did": "Demande refusée masquée",
+        "where": "Evidence Communities",
+        "ask": "Masquer une demande refusée"
+      },
+      "myApplications": {
+        "doing": "Lecture de vos demandes aux communautés",
+        "did": "Vos demandes aux communautés lues",
+        "where": "Evidence Communities",
+        "ask": "Lire vos demandes aux communautés"
+      },
+      "applicationStanding": {
+        "doing": "Vérification de votre situation dans les communautés",
+        "did": "Situation dans les communautés vérifiée",
+        "where": "Evidence Communities",
+        "ask": "Vérifier votre situation dans les communautés"
+      },
+      "applicationsWaiting": {
+        "doing": "Lecture des demandes pour rejoindre une communauté",
+        "did": "Demandes pour rejoindre une communauté lues",
+        "where": "Evidence Communities",
+        "ask": "Lire les demandes pour rejoindre une communauté"
+      },
+      "applicationCounts": {
+        "doing": "Comptage des demandes en attente",
+        "did": "Demandes en attente comptées",
+        "where": "Evidence Communities",
+        "ask": "Compter les demandes en attente"
+      },
+      "acceptApplication": {
+        "doing": "Acceptation d'une demande",
+        "did": "Demande acceptée",
+        "where": "Evidence Communities",
+        "ask": "Accepter une demande"
+      },
+      "declineApplication": {
+        "doing": "Refus d'une demande",
+        "did": "Demande refusée",
+        "where": "Evidence Communities",
+        "ask": "Refuser une demande"
+      },
+      "applicationsOpen": {
+        "doing": "Activation ou désactivation des demandes",
+        "did": "Demandes activées ou désactivées",
+        "where": "Evidence Communities",
+        "ask": "Activer ou désactiver les demandes"
       }
     },
     "asks": {

@@ -4432,6 +4432,66 @@
         "did": "Leu os artigos que você enviou a comunidades",
         "where": "Evidence Communities",
         "ask": "Ler os artigos que você enviou a comunidades"
+      },
+      "applyToCommunity": {
+        "doing": "Pedindo para entrar em uma comunidade",
+        "did": "Pediu para entrar em uma comunidade",
+        "where": "Evidence Communities",
+        "ask": "Pedir para entrar em uma comunidade"
+      },
+      "withdrawApplication": {
+        "doing": "Retirando um pedido a uma comunidade",
+        "did": "Retirou um pedido a uma comunidade",
+        "where": "Evidence Communities",
+        "ask": "Retirar um pedido a uma comunidade"
+      },
+      "hideApplication": {
+        "doing": "Ocultando um pedido recusado",
+        "did": "Ocultou um pedido recusado",
+        "where": "Evidence Communities",
+        "ask": "Ocultar um pedido recusado"
+      },
+      "myApplications": {
+        "doing": "Lendo seus pedidos a comunidades",
+        "did": "Leu seus pedidos a comunidades",
+        "where": "Evidence Communities",
+        "ask": "Ler seus pedidos a comunidades"
+      },
+      "applicationStanding": {
+        "doing": "Verificando sua situação nas comunidades",
+        "did": "Verificou sua situação nas comunidades",
+        "where": "Evidence Communities",
+        "ask": "Verificar sua situação nas comunidades"
+      },
+      "applicationsWaiting": {
+        "doing": "Lendo pedidos para entrar em uma comunidade",
+        "did": "Leu pedidos para entrar em uma comunidade",
+        "where": "Evidence Communities",
+        "ask": "Ler pedidos para entrar em uma comunidade"
+      },
+      "applicationCounts": {
+        "doing": "Contando pedidos em espera",
+        "did": "Contou pedidos em espera",
+        "where": "Evidence Communities",
+        "ask": "Contar pedidos em espera"
+      },
+      "acceptApplication": {
+        "doing": "Aceitando um pedido para entrar",
+        "did": "Aceitou um pedido para entrar",
+        "where": "Evidence Communities",
+        "ask": "Aceitar um pedido para entrar"
+      },
+      "declineApplication": {
+        "doing": "Recusando um pedido para entrar",
+        "did": "Recusou um pedido para entrar",
+        "where": "Evidence Communities",
+        "ask": "Recusar um pedido para entrar"
+      },
+      "applicationsOpen": {
+        "doing": "Ativando ou desativando pedidos",
+        "did": "Ativou ou desativou pedidos",
+        "where": "Evidence Communities",
+        "ask": "Ativar ou desativar pedidos"
       }
     },
     "asks": {

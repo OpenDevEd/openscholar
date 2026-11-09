@@ -4432,6 +4432,66 @@
         "did": "Artikel gelesen, die du an Communities gesendet hast",
         "where": "Evidence Communities",
         "ask": "Die Artikel lesen, die du an Communities gesendet hast"
+      },
+      "applyToCommunity": {
+        "doing": "Bewerbung bei einer Community",
+        "did": "Bei einer Community beworben",
+        "where": "Evidence Communities",
+        "ask": "Bei einer Community bewerben"
+      },
+      "withdrawApplication": {
+        "doing": "Bewerbung bei einer Community zurückziehen",
+        "did": "Bewerbung bei einer Community zurückgezogen",
+        "where": "Evidence Communities",
+        "ask": "Bewerbung bei einer Community zurückziehen"
+      },
+      "hideApplication": {
+        "doing": "Abgelehnte Bewerbung ausblenden",
+        "did": "Abgelehnte Bewerbung ausgeblendet",
+        "where": "Evidence Communities",
+        "ask": "Abgelehnte Bewerbung ausblenden"
+      },
+      "myApplications": {
+        "doing": "Deine Bewerbungen bei Communities lesen",
+        "did": "Deine Bewerbungen bei Communities gelesen",
+        "where": "Evidence Communities",
+        "ask": "Deine Bewerbungen bei Communities lesen"
+      },
+      "applicationStanding": {
+        "doing": "Prüfen, wo du bei Communities stehst",
+        "did": "Geprüft, wo du bei Communities stehst",
+        "where": "Evidence Communities",
+        "ask": "Prüfen, wo du bei Communities stehst"
+      },
+      "applicationsWaiting": {
+        "doing": "Bewerbungen für eine Community lesen",
+        "did": "Bewerbungen für eine Community gelesen",
+        "where": "Evidence Communities",
+        "ask": "Bewerbungen für eine Community lesen"
+      },
+      "applicationCounts": {
+        "doing": "Wartende Bewerbungen zählen",
+        "did": "Wartende Bewerbungen gezählt",
+        "where": "Evidence Communities",
+        "ask": "Wartende Bewerbungen zählen"
+      },
+      "acceptApplication": {
+        "doing": "Bewerbung annehmen",
+        "did": "Bewerbung angenommen",
+        "where": "Evidence Communities",
+        "ask": "Bewerbung annehmen"
+      },
+      "declineApplication": {
+        "doing": "Bewerbung ablehnen",
+        "did": "Bewerbung abgelehnt",
+        "where": "Evidence Communities",
+        "ask": "Bewerbung ablehnen"
+      },
+      "applicationsOpen": {
+        "doing": "Bewerbungen ein- oder ausschalten",
+        "did": "Bewerbungen ein- oder ausgeschaltet",
+        "where": "Evidence Communities",
+        "ask": "Bewerbungen ein- oder ausschalten"
       }
     },
     "asks": {
