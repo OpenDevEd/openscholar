@@ -95,7 +95,8 @@ export async function uploadPdf(form: FormData) {
     // The text the model falls back to and the checks read, kept beside the PDF.
     await writeFile(textPath(draft.id), pages.map((p) => p.text).join("\n"));
     const at = Date.now();
-    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size, at }, run: undefined, cover: cover ? at : undefined });
+    // A new PDF starts over: the details read from the one before it are gone until this one is read.
+    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size, at }, run: undefined, cover: cover ? at : undefined, step: "upload", metadata: undefined });
   });
 }
 

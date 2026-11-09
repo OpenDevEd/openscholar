@@ -6,6 +6,7 @@
 import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
+import { COUNTRIES } from "@/lib/constants";
 import { openAlexFetch } from "@/lib/openalex/fetch";
 import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { openAlexUrl } from "@/lib/openalex/request-url";
@@ -89,7 +90,7 @@ async function catalogue(pdf: Buffer, text: string, fileName: string, model: Llm
     return await ask("file");
   } catch (error) {
     console.error("[publish] the model couldn't read the PDF as a file; trying its text", { model: model.id, bytes: pdf.length, error: String(error).slice(0, 400) });
-    if (text.trim().length < 200) throw error;
+    if (!text.trim()) throw error;
     return ask("text");
   }
 }
@@ -143,6 +144,15 @@ const funder = async (name: string): Promise<Funding["funder"] | null> => {
 };
 
 const DOI = /10\.\d{4,9}\/\S+/;
+/** An ORCID iD with its check digit right (ISO 7064 11-2), or none: a mistyped one is never kept. */
+function orcidOf(printed: string) {
+  const id = printed.trim().toUpperCase();
+  if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(id)) return "";
+  const digits = id.replace(/-/g, "");
+  const total = [...digits.slice(0, 15)].reduce((sum, digit) => (sum + Number(digit)) * 2, 0);
+  const check = (12 - (total % 11)) % 11;
+  return (check === 10 ? "X" : String(check)) === digits[15] ? id : "";
+}
 /** A date the PDF states in part gets its first month or day, for the author to correct; none is today. */
 const dateOf = (stated: string) => (/^\d{4}-\d{2}-\d{2}$/.test(stated) ? stated : /^\d{4}-\d{2}$/.test(stated) ? `${stated}-01` : /^\d{4}$/.test(stated) ? `${stated}-01-01` : new Date().toISOString().slice(0, 10));
 
@@ -166,7 +176,7 @@ export async function readDetails({ pdf, text, fileName, ownDoi, model }: { pdf:
       .filter((a) => a.name.trim())
       .map((a) => ({
         name: a.name.trim(),
-        orcid: /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(a.orcid.trim()) ? a.orcid.trim() : "",
+        orcid: orcidOf(a.orcid),
         openalexId: null,
         affiliations: [...new Set(a.affiliations.map((n) => n.trim()).filter(Boolean))].map((name) => institutions.get(name)!),
         corresponding: a.corresponding,
@@ -176,9 +186,10 @@ export async function readDetails({ pdf, text, fileName, ownDoi, model }: { pdf:
     topics: classified.topics,
     // The PDF's own keywords; when it lists none, the classifier's.
     keywords: read.keywords.length ? read.keywords.map((k) => k.trim()).filter(Boolean) : classified.keywords,
-    sdgs: [...new Set(read.sdgs.map((goal) => goal.replace(/\D/g, "")).filter((goal) => SDGS.some((g) => g.id === goal)))].slice(0, 3),
+    // A goal's number alone, or after "SDG": anything else, such as 1.2, is no goal.
+    sdgs: [...new Set(read.sdgs.flatMap((goal) => goal.trim().match(/^(?:SDG\s*)?(\d{1,2})$/i)?.[1] ?? []).filter((goal) => SDGS.some((g) => g.id === goal)))].slice(0, 3),
     studyDesigns: read.studyDesigns,
-    countries: [...new Set(read.places.map((code) => code.trim().toUpperCase()).filter((code) => /^[A-Z]{2}$/.test(code)))],
+    countries: [...new Set(read.places.map((code) => code.trim().toUpperCase()).filter((code) => code in COUNTRIES))],
     // A funder OpenAlex doesn't know keeps its name as printed.
     funding: read.funding.filter((f) => f.funder.trim()).map((f) => ({ funder: funders.get(f.name.trim()) ?? { id: null, name: f.funder.trim() }, awards: f.awards.map((a) => a.trim()).filter(Boolean) })),
     references: [...new Set(cited)].filter((doi) => doi !== ownDoi.toLowerCase()),
