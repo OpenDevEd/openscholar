@@ -226,6 +226,14 @@ describe("changedSectionRows", () => {
     expect(readDraft(changedSectionRows(draft, savedRows)).identity.showName).toBe(false);
   });
 
+  it("saves the title in search results and reads it back, and leaves it out when empty", () => {
+    const draft = savedDraft();
+    draft.identity.searchTitle = "Climate adaptation research and evidence";
+    const rows = changedSectionRows(draft, savedRows);
+    expect(rows[0]?.payload).toMatchObject({ searchTitle: "Climate adaptation research and evidence" });
+    expect(readDraft(rows).identity.searchTitle).toBe("Climate adaptation research and evidence");
+  });
+
   it("sends only the section that changed, without empty optional values", () => {
     const draft = savedDraft();
     draft.identity.name = "Renamed";

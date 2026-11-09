@@ -195,6 +195,7 @@ export const SCHEMA_LIMITS = {
     name: schemaNumber("/identity/name", "maxLength"),
     shortName: schemaNumber("/identity/shortName", "maxLength"),
     tagline: schemaNumber("/identity/tagline", "maxLength"),
+    searchTitle: schemaNumber("/identity/searchTitle", "maxLength"),
     description: schemaNumber("/identity/description", "maxLength"),
     fundingPartners: schemaNumber("/identity/fundingPartners", "maxItems"),
     partnerName: schemaNumber("/identity/fundingPartners/*/name", "maxLength"),
@@ -389,6 +390,8 @@ type IdentityDraft = {
   showName: boolean;
   baseUrl: string;
   tagline: string;
+  /** The home page's title in search results; empty keeps the name and tagline. */
+  searchTitle: string;
   description: string;
   fundingPartners: FundingPartner[];
   assets: {
@@ -745,6 +748,7 @@ function readIdentity(payload: unknown): IdentityDraft {
     showName: flag(identity.showName, true),
     baseUrl: text(identity.baseUrl),
     tagline: text(identity.tagline),
+    searchTitle: text(identity.searchTitle),
     description: text(identity.description),
     fundingPartners: partners,
     assets: {
@@ -1327,6 +1331,7 @@ function identityPayload(identity: IdentityDraft) {
     showName: identity.showName ? undefined : false,
     baseUrl: identity.baseUrl,
     tagline: optional(identity.tagline),
+    searchTitle: optional(identity.searchTitle),
     description: optional(identity.description),
     fundingPartners:
       identity.fundingPartners.length > 0
