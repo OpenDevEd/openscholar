@@ -678,7 +678,7 @@
     "uploadFailed": "Upload failed",
     "uploadFailedDescription": "Could not upload {format}. Please try again.",
     "accountChanged": "Your account changed. Try again.",
-    "copyFailedDescription": "Could not copy to clipboard. Please try again.",
+    "copyFailedDescription": "Your browser didn't let us copy it. Select the text and copy it yourself.",
     "validationFailed": "Validation failed",
     "entityCreated": "{entity} created",
     "entityUpdated": "{entity} updated",

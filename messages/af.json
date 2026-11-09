@@ -679,7 +679,7 @@
     "uploadFailed": "Oplaai het misluk",
     "uploadFailedDescription": "Kon nie {format} oplaai nie. Probeer weer.",
     "accountChanged": "Jou rekening het verander. Probeer weer.",
-    "copyFailedDescription": "Kon nie na die klembord kopieer nie. Probeer weer.",
+    "copyFailedDescription": "Jou blaaier het ons nie toegelaat om dit te kopieer nie. Kies die teks en kopieer dit self.",
     "validationFailed": "Validering het misluk",
     "entityCreated": "{entity} geskep",
     "entityUpdated": "{entity} opgedateer",

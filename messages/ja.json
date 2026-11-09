@@ -678,7 +678,7 @@
     "uploadFailed": "アップロードに失敗しました",
     "uploadFailedDescription": "{format} をアップロードできませんでした。もう一度お試しください。",
     "accountChanged": "アカウントが変更されました。もう一度お試しください。",
-    "copyFailedDescription": "クリップボードにコピーできませんでした。もう一度お試しください。",
+    "copyFailedDescription": "ブラウザがコピーを許可しませんでした。テキストを選択して手動でコピーしてください。",
     "validationFailed": "検証に失敗しました",
     "entityCreated": "{entity} を作成しました",
     "entityUpdated": "{entity} を更新しました",
