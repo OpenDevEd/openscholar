@@ -77,7 +77,7 @@ export const toApplicant = internalAction({
         subject: accepted ? `You're in: ${found.libraryName}` : `Your application to ${found.libraryName}`,
         html: renderApplicationAnswer({ identity: { ...found.emailIdentity, baseUrl: found.emailIdentity.baseUrl ?? origin }, accepted, reason, appliesAgainOn, url }),
         text: accepted
-          ? `Your application to join ${found.libraryName} was accepted. You're a Creator: add papers, edit records and submit your work for review.\n\n${url}`
+          ? `Your application to join ${found.libraryName} was accepted. You're a Creator: add papers, edit records, upload files and submit your work for review.\n\n${url}`
           : `Your application to join ${found.libraryName} wasn't accepted.${reason ? `\n\nTheir reason:\n${reason}` : ""}\n\n${appliesAgainOn ? `You can apply again from ${appliesAgainOn}.` : "You can apply again now, with more about your work."}\n\n${url}`,
       });
     } catch (error) {
