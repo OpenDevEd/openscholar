@@ -19,6 +19,8 @@ import { useWithPage } from "../configuration/preloads";
 import { APPLICATIONS_PAGE } from "@/lib/evidence-libraries/applications";
 
 const REASONS = ["topic", "moreAbout", "notNow"] as const;
+/** Longest reason a decline carries (convex/lib/queryBounds.ts). */
+const REASON_MAX = 500;
 type Applicant = FunctionReturnType<typeof api.evidenceLibraries.applications.waiting>["page"][number];
 
 /** The people asking to join, for its owners and editors: each with their message, to accept as a Creator or decline. */
@@ -35,25 +37,27 @@ export function ApplicationsList({ libraryId, search, owner, closed, notify }: {
   const live = useProtectedPaginatedQuery(api.evidenceLibraries.applications.waiting, workspaceId ? { workspaceId, libraryId } : "skip", { initialNumItems: APPLICATIONS_PAGE });
   // Until the live list arrives, the first page the settings page's server read with it.
   const first = useWithPage<typeof api.evidenceLibraries.applications.waiting>("applications", undefined);
-  const rows = live.hasLoadedFirstPage ? live.results : first?.page;
-  const more = live.hasLoadedFirstPage ? live.status === "CanLoadMore" : first?.isDone === false;
+  // A read skipped until the workspace is known says it has loaded, with nothing: the server's page stands until it's live.
+  const loaded = Boolean(workspaceId) && live.hasLoadedFirstPage;
+  const rows = loaded ? live.results : first?.page;
+  const more = loaded ? live.status === "CanLoadMore" : first?.isDone === false;
   const needle = search.toLowerCase();
   const shown = (rows ?? []).filter((row) => `${row.name} ${row.email}`.toLowerCase().includes(needle));
-  if (!shown.length) {
-    return (
-      <EmptyList>
-        {rows === undefined ? null : search ? t("noMatchingApplications") : closed ? (owner ? t.rich("offForOwner", { link: (chunks) => <a href="?section=listing" className="underline underline-offset-2">{chunks}</a> }) : t("offForEditor")) : t("noApplications")}
-      </EmptyList>
-    );
-  }
   return (
     <>
-      <ul className="divide-y divide-border-subtle">
-        {shown.map((applicant) => <ApplicationRow key={applicant.applicationId} applicant={applicant} notify={notify} />)}
-      </ul>
+      {shown.length ? (
+        <ul className="divide-y divide-border-subtle">
+          {shown.map((applicant) => <ApplicationRow key={applicant.applicationId} applicant={applicant} notify={notify} />)}
+        </ul>
+      ) : (
+        <EmptyList>
+          {rows === undefined ? null : search ? t("noMatchingApplications") : closed ? (owner ? t.rich("offForOwner", { link: (chunks) => <a href="?section=listing" className="underline underline-offset-2">{chunks}</a> }) : t("offForEditor")) : t("noApplications")}
+        </EmptyList>
+      )}
+      {/* While searching too: the one searched for may be on a page not read yet. */}
       {more ? (
         <div className="border-t border-border-subtle px-4 py-3">
-          <Button variant="ghost" size="sm" disabled={!live.hasLoadedFirstPage || live.status === "LoadingMore"} onClick={() => live.loadMore(APPLICATIONS_PAGE)}>{t("showMore")}</Button>
+          <Button variant="ghost" size="sm" disabled={!loaded || live.status === "LoadingMore"} onClick={() => live.loadMore(APPLICATIONS_PAGE)}>{t("showMore")}</Button>
         </div>
       ) : null}
     </>
@@ -76,6 +80,7 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
   const [declining, setDeclining] = useState(false);
   const [reason, setReason] = useState<(typeof REASONS)[number] | null>(null);
   const [note, setNote] = useState("");
+  const noteRoom = REASON_MAX - (reason ? t(`reasons.${reason}`).length + 1 : 0);
   // Folded to three lines; Show all only when the fold cuts something off, measured as it's drawn.
   const [long, setLong] = useState(false);
   const measure = (element: HTMLParagraphElement | null) => { if (element && !unfolded) setLong(element.scrollHeight > element.clientHeight + 1); };
@@ -104,7 +109,7 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
               className="mt-3 space-y-3 rounded-lg border border-border-subtle p-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                const why = [reason ? t(`reasons.${reason}`) : "", note.trim()].filter(Boolean).join("\n");
+                const why = [reason ? t(`reasons.${reason}`) : "", note.trim().slice(0, noteRoom)].filter(Boolean).join("\n");
                 void answer(() => decline({ applicationId: applicant.applicationId, ...(why ? { reason: why } : {}) }), t("declinedNotice", { name: applicant.name }));
               }}
             >
@@ -119,7 +124,8 @@ function ApplicationRow({ applicant, notify }: { applicant: Applicant; notify: (
                   ))}
                 </div>
               </div>
-              <Textarea aria-label={t("addANote")} placeholder={t("addANote")} value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} rows={2} className="h-16 resize-none [field-sizing:fixed]" />
+              {/* The reason picked and the note are sent as one, within the 500 characters a reason holds. */}
+              <Textarea aria-label={t("addANote")} placeholder={t("addANote")} value={note} onChange={(event) => setNote(event.target.value.slice(0, noteRoom))} maxLength={noteRoom} rows={2} className="h-16 resize-none [field-sizing:fixed]" />
               <p className="flex items-center gap-2 text-xs text-muted-foreground"><Mail className="size-3.5 shrink-0" />{t("theyGetAnEmail")}</p>
               <div className="flex flex-wrap justify-end gap-2">
                 <Button type="button" size="sm" variant="ghost" onClick={() => setDeclining(false)}>{t("cancel")}</Button>

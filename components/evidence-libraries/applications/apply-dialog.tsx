@@ -75,8 +75,9 @@ export function ApplyDialog({ signedIn, seed }: { signedIn: boolean; seed: Apply
   const workspaceId = useWorkspace();
   const seeded = seed && seed.community.libraryId === libraryId ? seed : null;
   const card = useQuery(api.evidenceLibraries.directory.card, libraryId ? { libraryId } : "skip");
-  // Null: no public community by that ID, from a link to one since unlisted or a mistyped address.
-  const community = card ? fromCard(card) : card === null ? null : seeded?.community;
+  // Null: no public community by that ID, from a link to one since unlisted or a mistyped address. An application the
+  // person opened from their sidebar still shows where it stands, as that row knew it.
+  const community = card ? fromCard(card) : seeded ? seeded.community : card === null ? null : undefined;
   const id = community?.libraryId ?? seeded?.community.libraryId;
   const live = useProtectedQuery(api.evidenceLibraries.applications.standing, signedIn && workspaceId && id ? { workspaceId, libraryIds: [id] } : "skip").data?.page[0];
   const standing = live ?? (seeded ? seeded.standing : undefined);

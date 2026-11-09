@@ -16,6 +16,7 @@ import { internalQuery } from "../lib/functions";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery, type Acting } from "../lib/userActions";
 import { libraryGrant, libraryOwner, ownerActive, ownerName, readLibraryRole } from "./access";
 import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
+import { waitingFor } from "../sharing/access";
 import { libraryEmailSender } from "./invitations";
 import { readLibraryPeople } from "./queries";
 import { applicationStateValidator } from "./validators";
@@ -178,15 +179,18 @@ export const hideForAssistant = assistantMutation(hideAction);
 export const mineAction = defineUserQuery({
   path: "evidenceLibraries/applications:mine",
   description:
-    "Lists the person's applications to join Evidence Communities, a page at a time, newest first: those waiting for an answer, and those declined (with the reason and when they can apply again) until they hide them. " +
+    "Lists the person's applications to join Evidence Communities, a page at a time, newest first: `waiting` ones, waiting for an answer (at most 20), or `declined` ones, with the reason and when they can apply again, until they hide them. " +
     "An accepted one isn't here: the community is among theirs, with the Creator role.",
-  args: { paginationOpts: paginationOptsValidator },
+  args: { state: v.union(v.literal("waiting"), v.literal("declined")), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(myApplicationValidator),
-  run: async (ctx, actor, { paginationOpts }) => {
-    const page = await ctx.db.query("libraryApplications")
-      .withIndex("by_userId_and_listed_and_createdAt", (q) => q.eq("userId", actor.userId).eq("listed", true))
-      .order("desc")
-      .paginate(paginationOpts);
+  run: async (ctx, actor, { state, paginationOpts }) => {
+    const page = state === "waiting"
+      ? await ctx.db.query("libraryApplications").withIndex("by_userId_and_state", (q) => q.eq("userId", actor.userId).eq("state", "waiting")).order("desc").paginate(paginationOpts)
+      : await ctx.db.query("libraryApplications")
+        .withIndex("by_userId_and_listed_and_createdAt", (q) => q.eq("userId", actor.userId).eq("listed", true))
+        .order("desc")
+        .filter((q) => q.eq(q.field("state"), "declined"))
+        .paginate(paginationOpts);
     return { ...page, page: (await Promise.all(page.page.map((row) => asMine(ctx, row)))).flatMap((row) => (row ? [row] : [])) };
   },
 });
@@ -324,9 +328,14 @@ export const acceptAction = defineUserMutation({
     if (application.state !== "waiting") throw createError("CONFLICT", "This application was answered already.");
     // A role given since they applied stays as it is.
     if (!(await libraryGrant(ctx, library._id, application.userId))) {
-      await assertLibraryHasRoom(ctx, library._id);
+      const applicant = await ctx.db.get("users", application.userId);
+      if (!applicant) throw createError("NOT_FOUND", "This person's account is gone.");
+      // An invitation still waiting for them holds their place already: it's taken, as accepting it would.
+      const invited = await waitingFor(ctx, library._id, applicant);
+      if (!invited) await assertLibraryHasRoom(ctx, library._id);
       await assertPersonHasRoom(ctx, application.userId);
       await ctx.db.insert("itemAccess", { kind: "library", item: library._id, name: library.name, userId: application.userId, role: "creator", grantedBy: reviewer._id, grantedAt: Date.now() });
+      if (invited) await ctx.db.patch("itemInvitations", invited._id, { state: "accepted" });
     }
     await ctx.db.patch("libraryApplications", application._id, { state: "accepted", listed: false, decidedAt: Date.now(), decidedBy: reviewer._id });
     await ctx.scheduler.runAfter(0, internal.evidenceLibraries.applicationEmails.toApplicant, { applicationId });
@@ -379,9 +388,6 @@ export const setOpenAction = defineUserMutation({
 export const setOpen = userMutation(setOpenAction);
 export const setOpenForAssistant = assistantMutation(setOpenAction);
 
-/** Most of a community's owners and editors one application emails. */
-const REVIEWERS_EMAILED = 20;
-
 /** What the emails about an application say, and who they go to (./applicationEmails.ts). */
 export const readForEmail = internalQuery({
   args: { applicationId: v.id("libraryApplications") },
@@ -390,9 +396,9 @@ export const readForEmail = internalQuery({
     const library = application ? await ctx.db.get("evidenceLibraries", application.libraryId) : null;
     const applicant = application ? await ctx.db.get("users", application.userId) : null;
     if (!application || !library || !applicant) return null;
-    const reviewers = (await readLibraryPeople(ctx, library))
+    // Its owners and editors, those through an organization it's shared with too: everyone who answers.
+    const reviewers = (await readLibraryPeople(ctx, library, { organizations: true }))
       .filter(({ role, person }) => (role === "owner" || role === "editor") && person.email && person.clerkUserId !== applicant.clerkId)
-      .slice(0, REVIEWERS_EMAILED)
       .map(({ person }) => person.email);
     return {
       libraryId: library._id,

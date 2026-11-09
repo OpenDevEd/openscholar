@@ -39,7 +39,7 @@ describe("applying to join a community", () => {
     expect(await apply()).toBe(applicationId);
     expect((await scheduled()).filter((name) => name === "evidenceLibraries/applicationEmails:toReviewers")).toHaveLength(1);
 
-    const mine = await applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, paginationOpts: page });
+    const mine = await applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, state: "waiting", paginationOpts: page });
     expect(mine.page).toEqual([expect.objectContaining({ libraryId, state: "waiting", message: "I study teacher coaching and would add 30 papers." })]);
     const standing = await applicant.as.query(api.evidenceLibraries.applications.standing, { workspaceId: applicant.workspaceId, libraryIds: [libraryId] });
     expect(standing.page).toEqual([{ libraryId, member: false, application: expect.objectContaining({ state: "waiting", appliesAgainAt: null, hidden: false }) }]);
@@ -81,8 +81,19 @@ describe("applying to join a community", () => {
     expect(grants.map((grant) => grant.role)).toEqual(["creator"]);
     expect(await scheduled()).toContain("evidenceLibraries/applicationEmails:toApplicant");
     // In the community now: not among their applications, and the card knows.
-    expect((await applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, paginationOpts: page })).page).toEqual([]);
+    expect((await applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, state: "waiting", paginationOpts: page })).page).toEqual([]);
     expect((await applicant.as.query(api.evidenceLibraries.applications.standing, { workspaceId: applicant.workspaceId, libraryIds: [libraryId] })).page[0]?.member).toBe(true);
+  });
+
+  it("takes the place an invitation waiting for the applicant holds, so they aren't counted twice", async () => {
+    const { fixture, libraryId, apply, owner } = await community("applications_invited");
+    const applicationId = await apply();
+    const invitationId = await fixture.t.run(async (ctx) => {
+      const inviter = (await ctx.db.query("users").first())!._id;
+      return await ctx.db.insert("itemInvitations", { kind: "library", item: libraryId, email: "user_applicant@example.org", role: "editor", invitedBy: inviter, expiresAt: Date.now() + DAY, state: "pending", delivery: "sent" });
+    });
+    await owner.as.mutation(api.evidenceLibraries.applications.accept, { workspaceId: owner.workspaceId, applicationId });
+    expect((await fixture.t.run((ctx) => ctx.db.get("itemInvitations", invitationId)))?.state).toBe("accepted");
   });
 
   it("gives a decline's reason and a 14-day wait, which hiding it from the sidebar keeps", async () => {
@@ -91,7 +102,7 @@ describe("applying to join a community", () => {
     const { libraryId, applicant, apply, owner } = await community("applications_decline");
     const applicationId = await apply();
     await owner.as.mutation(api.evidenceLibraries.applications.decline, { workspaceId: owner.workspaceId, applicationId, reason: "  Outside our topic.  " });
-    const mine = () => applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, paginationOpts: page }).then((result) => result.page);
+    const mine = (state: "waiting" | "declined" = "declined") => applicant.as.query(api.evidenceLibraries.applications.mine, { workspaceId: applicant.workspaceId, state, paginationOpts: page }).then((result) => result.page);
     expect(await mine()).toEqual([expect.objectContaining({ state: "declined", reason: "Outside our topic.", appliesAgainAt: Date.now() + 14 * DAY })]);
     await expect(apply()).rejects.toThrow(/again from 2026-11-23/);
 
@@ -101,7 +112,7 @@ describe("applying to join a community", () => {
 
     vi.setSystemTime(Date.now() + 14 * DAY + 1);
     expect(await apply()).toBe(applicationId);
-    expect(await mine()).toEqual([expect.objectContaining({ state: "waiting" })]);
+    expect(await mine("waiting")).toEqual([expect.objectContaining({ state: "waiting" })]);
   });
 
   it("takes back a waiting application, after which the person can apply again at once", async () => {

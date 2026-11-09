@@ -40,7 +40,8 @@ export type SidebarFirstPage = {
   list: Preloaded<typeof api.evidenceLibraries.queries.listLibraries>;
   invitations?: Preloaded<typeof api.evidenceLibraries.invitations.listInvitations>;
   /** The person's applications to join communities (OS-31), and how many wait on the ones they answer for. */
-  applications?: Preloaded<typeof api.evidenceLibraries.applications.mine>;
+  applicationsWaiting?: Preloaded<typeof api.evidenceLibraries.applications.mine>;
+  applicationsDeclined?: Preloaded<typeof api.evidenceLibraries.applications.mine>;
   waitingCounts?: Preloaded<typeof api.evidenceLibraries.applications.waitingCounts>;
 };
 type MyApplication = FunctionReturnType<typeof api.evidenceLibraries.applications.mine>["page"][number];
@@ -152,9 +153,14 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
   // The person's applications to join communities (OS-31), beside their invitations, from the page's server until the live ones arrive.
   const workspaceId = useWorkspace();
   const showsApplications = personal && !waiting && (filter === "all" || filter === "shared");
-  const applicationsLive = useProtectedQuery(api.evidenceLibraries.applications.mine, showsApplications && workspaceId ? { workspaceId, paginationOpts: { numItems: APPLICATIONS_SHOWN, cursor: null } } : "skip").data;
-  const applicationRows = applicationsLive ?? (fromServer && preloaded.applications ? preloadedQueryResult(preloaded.applications) : undefined);
-  const applied = read.page === 1 ? (applicationRows?.page ?? []).filter((row) => `${row.name} ${row.owner.name}`.toLowerCase().includes(needle)).map(fromApplication) : [];
+  // Every waiting one (a person has at most APPLICATIONS_SHOWN), then the newest declined, so no decline hides one that waits.
+  const first = { numItems: APPLICATIONS_SHOWN, cursor: null };
+  const waitingLive = useProtectedQuery(api.evidenceLibraries.applications.mine, showsApplications && workspaceId ? { workspaceId, state: "waiting", paginationOpts: first } : "skip").data;
+  const declinedLive = useProtectedQuery(api.evidenceLibraries.applications.mine, showsApplications && workspaceId ? { workspaceId, state: "declined", paginationOpts: first } : "skip").data;
+  const waitingRows = waitingLive ?? (fromServer && preloaded.applicationsWaiting ? preloadedQueryResult(preloaded.applicationsWaiting) : undefined);
+  const declinedRows = declinedLive ?? (fromServer && preloaded.applicationsDeclined ? preloadedQueryResult(preloaded.applicationsDeclined) : undefined);
+  const applicationRows = waitingRows && declinedRows ? [...waitingRows.page, ...declinedRows.page] : undefined;
+  const applied = read.page === 1 ? (applicationRows ?? []).filter((row) => `${row.name} ${row.owner.name}`.toLowerCase().includes(needle)).map(fromApplication) : [];
   // How many wait on the communities the person answers for: their owners' and editors'.
   const answered = items.filter((library) => (library.role === "owner" || library.role === "editor") && library.status === "active").map((library) => library._id);
   const countsLive = useProtectedQuery(api.evidenceLibraries.applications.waitingCounts, workspaceId && answered.length ? { workspaceId, libraryIds: answered } : "skip").data;

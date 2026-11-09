@@ -13,11 +13,14 @@ async function read(ctx: ActionCtx, applicationId: Id<"libraryApplications">) {
   return await ctx.runQuery(internal.evidenceLibraries.applications.readForEmail, { applicationId });
 }
 
+/** Owners and editors one run emails; the next run takes the next ones. */
+const REVIEWERS_PER_RUN = 20;
+
 /** Tells the community's owners and editors someone applied, with their message; replies go to the applicant. */
 export const toReviewers = internalAction({
-  args: { applicationId: v.id("libraryApplications") },
+  args: { applicationId: v.id("libraryApplications"), from: v.optional(v.number()) },
   returns: v.null(),
-  handler: async (ctx, { applicationId }) => {
+  handler: async (ctx, { applicationId, from = 0 }) => {
     const found = await read(ctx, applicationId);
     // Withdrawn or answered before the email went: nothing to tell.
     if (!found || found.state !== "waiting") return null;
@@ -25,7 +28,11 @@ export const toReviewers = internalAction({
     const origin = requireAppUrl();
     const reviewUrl = new URL(`/evidence-communities/${found.libraryId}/configuration?section=team&team=applications`, origin).href;
     const identity = { ...found.emailIdentity, baseUrl: found.emailIdentity.baseUrl ?? origin };
-    for (const to of found.reviewers) {
+    const these = found.reviewers.slice(from, from + REVIEWERS_PER_RUN);
+    if (found.reviewers.length > from + REVIEWERS_PER_RUN) {
+      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.applicationEmails.toReviewers, { applicationId, from: from + REVIEWERS_PER_RUN });
+    }
+    for (const to of these) {
       try {
         await sendInvitationEmail(mail, {
           senderName: found.libraryName,

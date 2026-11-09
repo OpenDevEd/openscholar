@@ -34,9 +34,12 @@ export default async function EvidenceLibrariesPage({ params, searchParams }: { 
   const read = <T,>(promise: Promise<T>) => promise.catch(() => undefined);
   const cardIds = preloadedQueryResult(firstPublic).page.map((card) => card._id);
   const answered = firstSidebar ? preloadedQueryResult(firstSidebar).page.filter((library) => (library.role === "owner" || library.role === "editor") && library.status === "active").map((library) => library._id) : [];
-  const [standing, applications, waitingCounts] = workspaceId ? await Promise.all([
+  const mine = (state: "waiting" | "declined") => (workspaceId && !slug && (filter === "all" || filter === "shared")
+    ? read(preloadQuery(api.evidenceLibraries.applications.mine, { workspaceId, state, paginationOpts: { numItems: APPLICATIONS_SHOWN, cursor: null } }, { token })) : undefined);
+  const [standing, applicationsWaiting, applicationsDeclined, waitingCounts] = workspaceId ? await Promise.all([
     cardIds.length ? read(preloadQuery(api.evidenceLibraries.applications.standing, { workspaceId, libraryIds: cardIds }, { token })) : undefined,
-    !slug && (filter === "all" || filter === "shared") ? read(preloadQuery(api.evidenceLibraries.applications.mine, { workspaceId, paginationOpts: { numItems: APPLICATIONS_SHOWN, cursor: null } }, { token })) : undefined,
+    mine("waiting"),
+    mine("declined"),
     answered.length ? read(preloadQuery(api.evidenceLibraries.applications.waitingCounts, { workspaceId, libraryIds: answered }, { token })) : undefined,
   ]) : [];
   return (
@@ -45,7 +48,7 @@ export default async function EvidenceLibrariesPage({ params, searchParams }: { 
       preloadedOpens={opens}
       preloadedPublic={firstPublic}
       preloadedStanding={standing}
-      preloadedSidebar={filter && firstSidebar ? { filter, list: firstSidebar, ...(invitations ? { invitations } : {}), ...(applications ? { applications } : {}), ...(waitingCounts ? { waitingCounts } : {}) } : undefined}
+      preloadedSidebar={filter && firstSidebar ? { filter, list: firstSidebar, ...(invitations ? { invitations } : {}), ...(applicationsWaiting ? { applicationsWaiting } : {}), ...(applicationsDeclined ? { applicationsDeclined } : {}), ...(waitingCounts ? { waitingCounts } : {}) } : undefined}
     />
   );
 }
