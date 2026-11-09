@@ -148,6 +148,8 @@ export type Submission = {
   /** The run of the checks under way, so only that run's answers are saved: a new PDF clears it. */
   run?: string;
   pdf?: { name: string; pages: number; bytes: number };
+  /** When the picture of the PDF's first page was made; none until it's ready, or when the page couldn't be drawn. */
+  cover?: number;
   metadata?: Metadata;
   results?: CheckResult[];
   deposit: Deposit;
@@ -163,6 +165,8 @@ export type Submission = {
 
 export type MockState = { settings: Settings; submissions: Submission[]; draftId: string | null; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
+/** Where a report's cover is served from. Its address changes with the picture, so it can be cached for good. */
+export const coverUrlOf = (report: Pick<Submission, "id" | "cover">) => (report.cover ? `/publish/files/${report.id}/cover?v=${report.cover}` : null);
 /** A report needs a DOI, so publishing needs Crossref or Zenodo connected. */
 export const canRegister = (settings: Settings) => settings.publication.zenodo.mode !== "off" || settings.publication.crossref.mode !== "off";
 export const canPublish = (settings: Settings) => settings.enabled && canRegister(settings);

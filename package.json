@@ -57,6 +57,7 @@
     "@formatjs/intl-localematcher": "^0.8.1",
     "@hugeicons/core-free-icons": "^4.3.0",
     "@hugeicons/react": "^1.1.10",
+    "@napi-rs/canvas": "^1.1.0",
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "@posthog/nextjs-config": "^1.12.1",
     "@sickrin/openalex-sdk": "^1.1.0",
@@ -156,6 +157,7 @@
     "react-day-picker": {
       "react": "^19.2.5",
       "react-dom": "^19.2.5"
-    }
+    },
+    "@napi-rs/canvas": "$@napi-rs/canvas"
   }
 }

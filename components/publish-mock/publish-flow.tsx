@@ -32,7 +32,6 @@ import {
   PenLine,
   Plus,
   PublishIcon,
-  Quote,
   ReviewQueueIcon,
   RotateCcw,
   ShieldCheck,
@@ -43,11 +42,15 @@ import {
 import { DetailsStep } from "@/components/publish-mock/details-step";
 import { activate, addToCommunity, goTo, openReport, readReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
-import { RegistrationChips, standingOf, stepWords } from "@/components/publish-mock/registration";
+import { RegistrationChips } from "@/components/publish-mock/registration";
+import { CitationControl } from "@/components/citation-control";
+import { PaperCover } from "@/components/papers/paper-cover";
+import { REPORT_COVER } from "@/lib/papers/cover";
+import { reportPaper } from "@/lib/publish-mock/report-paper";
 import { StatusFilter, YourReports, type Show } from "@/components/publish-mock/your-reports";
 import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { bylineOf, stageOf, stepsOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { bylineOf, coverUrlOf, stageOf, stepsOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -67,7 +70,6 @@ function placeOf(draft: Submission | null) {
 }
 
 const bytes = (n: number) => (n > 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.round(n / 1000)} kB`);
-const dateOf = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
@@ -179,7 +181,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
           }}
         />
       ) : (
-      <div className="grid gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_17rem] @3xl:gap-10">
+      <div className="grid grid-cols-1 gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_13rem] @3xl:gap-10">
         <AutoHeight>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -694,18 +696,6 @@ function Seal({ play }: { play: boolean }) {
   );
 }
 
-/** "Asante, K. (2026). Title. Openscholar Reports. https://doi.org/…", for pasting into a reference list. */
-function citationOf(settings: Settings, draft: Submission) {
-  const m = draft.metadata;
-  const names = (m?.authors ?? []).filter((a) => a.name).map((a) => {
-    const parts = a.name.trim().split(/\s+/);
-    const last = parts.pop() ?? "";
-    return parts.length ? `${last}, ${parts.map((p) => `${p[0]}.`).join(" ")}` : last;
-  });
-  const who = names.length > 1 ? `${names.slice(0, -1).join(", ")} & ${names.at(-1)}` : (names[0] ?? "");
-  return `${who} (${(m?.date ?? "").slice(0, 4)}). ${m?.title ?? ""}. ${settings.series.name}. https://doi.org/${draft.doi}`;
-}
-
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
 function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings: Settings; draft: Submission; fresh: boolean; onChange: (report: Submission) => void; onAnother: () => void }) {
   const reduce = useReducedMotion();
@@ -739,11 +729,8 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings:
           <a href={url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
             doi.org/{draft.doi}
           </a>
-          <TooltipHint label="Copy citation">
-            <Button variant="ghost" size="icon-sm" aria-label="Copy citation" className="text-muted-foreground" onClick={() => copy(citationOf(settings, draft), "Citation")}>
-              <Quote />
-            </Button>
-          </TooltipHint>
+          {/* The app's own Cite menu: every style, copy, RIS and BibTeX. */}
+          {draft.metadata ? <CitationControl paper={reportPaper(draft, draft.metadata, settings.series)} /> : null}
           <TooltipHint label="Copy the DOI">
             <Button variant="ghost" size="icon-sm" aria-label="Copy the DOI" className="text-muted-foreground" onClick={() => copy(url, "DOI")}>
               <Copy />
@@ -788,80 +775,52 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings:
   );
 }
 
+/**
+ * The report as it will stand: the cover its page wears, which opens the PDF once there is one, with its DOI and
+ * what's on its record under it.
+ */
 function ReportCover({ settings, draft }: { settings: Settings; draft: Submission | null }) {
-  const reduce = useReducedMotion();
   const m = draft?.metadata;
-  const status = draft?.step === "done" ? draft.status : null;
+  const live = draft?.step === "done" && draft.status === "live";
+  const facts: Array<{ id: string; icon: typeof Hash; label: string }> = [
+    ...(draft?.pdf ? [{ id: "pdf", icon: FileText, label: `${draft.pdf.pages} ${draft.pdf.pages === 1 ? "page" : "pages"}` }] : []),
+    ...(draft?.signedAt ? [{ id: "agreement", icon: PenLine, label: `Agreement v${draft.agreementVersion}` }] : []),
+    ...(draft?.checksVersion ? [{ id: "checks", icon: ShieldCheck, label: `Checks v${draft.checksVersion}` }] : []),
+  ];
   return (
-    <aside className="space-y-4 @3xl:sticky @3xl:top-24 @3xl:self-start">
-      <div className="relative mx-auto aspect-[3/4] w-full max-w-[17rem] overflow-hidden rounded-xl border border-border-subtle bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_32px_-12px_rgb(0_0_0/0.18)]">
-        <div className="absolute inset-x-0 top-0 h-1.5 bg-primary" />
-        {/* Stamped on as the report goes live; a report opened live has it already. */}
-        <AnimatePresence initial={false}>
-          {status === "live" ? (
-            <motion.span
-              key="live"
-              initial={reduce ? false : { opacity: 0, scale: 1.8, rotate: -20 }}
-              animate={{ opacity: 1, scale: 1, rotate: -8 }}
-              transition={{ delay: 0.75, type: "spring", stiffness: 420, damping: 18 }}
-              className="absolute right-3 top-5 flex items-center gap-1 rounded-md border-2 border-success/70 bg-background/80 px-1.5 py-0.5 text-[0.6875rem] font-bold ink-success"
-            >
-              <BadgeCheck className="size-3.5" /> Live
-            </motion.span>
+    // Beside the steps on a wide card; under them on a narrow one, the cover small with its caption next to it.
+    <aside className="flex items-start gap-4 @3xl:sticky @3xl:top-24 @3xl:block @3xl:self-start">
+      <PaperCover
+        className="w-28 shrink-0 @3xl:w-full"
+        {...REPORT_COVER}
+        title={m?.title || "Your title"}
+        authors={m?.authors.map((a) => a.name).filter(Boolean) ?? []}
+        source={settings.series.name}
+        year={m?.date ? Number(m.date.slice(0, 4)) : null}
+        type="report"
+        // The picture of the PDF's first page takes the title page's place once it's made.
+        image={draft ? coverUrlOf(draft) : null}
+        href={draft?.pdf ? `/publish/files/${draft.id}` : null}
+        pdf={!!draft?.pdf}
+      />
+      <div className="min-w-0 flex-1 @3xl:mt-4">
+        <TooltipHint label={draft ? `doi.org/${draft.doi}` : ""} onlyWhenClipped>
+          <p className={cn("truncate font-mono text-xs", draft ? "text-foreground" : "text-muted-foreground")}>{draft ? `doi.org/${draft.doi}` : "No DOI yet"}</p>
+        </TooltipHint>
+        <p className="mt-0.5 text-xs text-muted-foreground">ISSN {settings.series.issn || "pending"}</p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {live ? (
+            <StatusChip tone="success" icon={BadgeCheck} className="fade-enter">
+              Live
+            </StatusChip>
           ) : null}
-        </AnimatePresence>
-        <div className="flex h-full flex-col p-5 pt-6">
-          <span className="text-[0.625rem] font-semibold tracking-wide text-primary">{settings.series.name}</span>
-          <span className="text-[0.625rem] text-muted-foreground">ISSN {settings.series.issn || "pending"}</span>
-          <div className="mt-6 min-h-0 flex-1">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.p
-                key={m?.title ?? "untitled"}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className={cn("line-clamp-5 text-[0.9375rem] font-semibold leading-snug tracking-tight", !m && "text-muted-foreground/50")}
-              >
-                {m?.title || "Your title"}
-              </motion.p>
-            </AnimatePresence>
-            <ul className="mt-2 space-y-0.5 text-[0.6875rem] text-muted-foreground">
-              {m?.authors.some((a) => a.name) ? m.authors.filter((a) => a.name).slice(0, 4).map((a) => <li key={a.name} className="truncate">{a.name}</li>) : <li>Authors</li>}
-            </ul>
-          </div>
-          <div className="space-y-1 border-t border-border-subtle pt-2.5">
-            <span className="block text-[0.5625rem] text-muted-foreground">This publication is an Openscholar Report</span>
-            <span className={cn("block truncate font-mono text-[0.625rem]", draft ? "text-foreground" : "text-muted-foreground/50")}>
-              {draft ? `doi.org/${draft.doi}` : "doi.org/10.5555/…"}
-            </span>
-          </div>
+          {facts.map((fact) => (
+            <StatusChip key={fact.id} tone="neutral" icon={fact.icon} className="fade-enter">
+              {fact.label}
+            </StatusChip>
+          ))}
         </div>
       </div>
-      <ul className="mx-auto max-w-[17rem] space-y-2 text-xs">
-        <Fact icon={PenLine} on={!!draft?.signedAt} chip={draft?.signedAt ? `v${draft.agreementVersion}` : undefined}>
-          {draft?.signedAt ? `Signed ${dateOf(draft.signedAt)}` : "Agreement not signed"}
-        </Fact>
-        <Fact icon={Hash} on={!!draft}>
-          {draft && status === "live" ? stepWords(standingOf(draft)) : draft ? "DOI reserved" : "No DOI yet"}
-        </Fact>
-        <Fact icon={FileText} on={!!draft?.pdf} chip={draft?.pdf ? bytes(draft.pdf.bytes) : undefined}>
-          {draft?.pdf ? `${draft.pdf.pages} ${draft.pdf.pages === 1 ? "page" : "pages"}` : "No PDF yet"}
-        </Fact>
-        <Fact icon={ShieldCheck} on={!!draft?.checksVersion} chip={draft?.checksVersion ? `v${draft.checksVersion}` : undefined}>
-          {draft?.checksVersion ? "Checks run" : `${settings.checks.filter((c) => c.enabled).length} checks to pass`}
-        </Fact>
-      </ul>
     </aside>
-  );
-}
-
-function Fact({ icon: Icon, on, chip, children }: { icon: typeof Hash; on: boolean; chip?: string; children: ReactNode }) {
-  return (
-    <li className={cn("flex h-5 items-center gap-2 transition-colors", on ? "text-foreground" : "text-muted-foreground")}>
-      <Icon className={cn("size-3.5 shrink-0", on ? "text-primary" : "text-muted-foreground/60")} />
-      <span className="truncate">{children}</span>
-      {chip ? <span className="ms-auto shrink-0 rounded bg-inset px-1.5 py-px tabular-nums text-muted-foreground">{chip}</span> : null}
-    </li>
   );
 }

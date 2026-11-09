@@ -10,6 +10,7 @@ import { DEFAULT_LLM, JEV, doiOf, providersOf, registrationOf } from "./types";
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
 export const pdfPath = (key: string) => path.join(MOCK_DIR, `${key}.pdf`);
+export const coverPath = (key: string) => path.join(MOCK_DIR, `${key}.cover.jpg`);
 
 const DAY = 86_400_000;
 

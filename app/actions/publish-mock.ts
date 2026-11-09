@@ -9,7 +9,8 @@ import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
 import { suggestTopics } from "@/lib/publish-mock/topics";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
-import { CROSSREF_SANDBOX, MOCK_DIR, changeState, nextKey, pdfPath, readState } from "@/lib/publish-mock/store";
+import { renderCover } from "@/lib/publish-mock/cover";
+import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState } from "@/lib/publish-mock/store";
 import { canPublish, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
@@ -112,13 +113,21 @@ export async function uploadPdf(form: FormData) {
   if (!(file instanceof File) || !/\.pdf$/i.test(file.name)) throw new Error("Choose a PDF.");
   const bytes = await file.arrayBuffer();
   // pdfjs takes its buffer over, so it reads a copy and the original is kept.
-  const { pages, totalPages } = await extractPdfJsTextPages(bytes.slice(0));
+  // The text and the cover are read side by side. A first page that can't be drawn leaves the report its title page.
+  const [{ pages, totalPages }, cover] = await Promise.all([
+    extractPdfJsTextPages(bytes.slice(0)),
+    renderCover(bytes.slice(0)).catch((error: unknown) => {
+      console.error("[publish mock] cover not drawn", String(error));
+      return null;
+    }),
+  ]);
   const user = await currentUser();
   return change(async (state) => {
     const draft = draftOf(state);
     if (draft.step === "done") throw new Error("This report has been checked. Start another to publish a new PDF.");
     await mkdir(MOCK_DIR, { recursive: true });
     await writeFile(pdfPath(draft.id), Buffer.from(bytes));
+    if (cover) await writeFile(coverPath(draft.id), cover);
     const read = readDetails(pages, file.name, draft.signedBy?.name || user?.fullName || "");
     const full = pages.map((page) => linesOf(page).join("\n")).join("\n");
     const about = `${read.title}\n${read.abstract}`;
@@ -145,7 +154,7 @@ export async function uploadPdf(form: FormData) {
     };
     // MOCK: the text the checks read, kept beside the PDF.
     await writeFile(pdfPath(draft.id).replace(/\.pdf$/, ".txt"), pages.map((p) => p.text).join("\n"));
-    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size }, metadata, step: "details", run: undefined });
+    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size }, metadata, step: "details", run: undefined, cover: cover ? Date.now() : undefined });
   });
 }
 

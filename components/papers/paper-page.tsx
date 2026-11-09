@@ -13,7 +13,7 @@ import { PaperShare } from "@/components/papers/paper-links";
 import { AuthorName, FunderName, InstitutionName, JournalName } from "@/components/papers/paper-entities";
 import { CountryFilterFlag } from "@/components/country-filter-flag";
 import { PaperCover } from "@/components/papers/paper-cover";
-import { coverOf } from "@/lib/papers/cover";
+import { REPORT_COVER, coverOf } from "@/lib/papers/cover";
 import { CitationControl } from "@/components/citation-control";
 import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,7 @@ type Props = {
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
   /** MOCK (mock/publish-reports): what a report published on Openscholar has beyond a paper's record, under the authors and in the sidebar. */
-  extra?: { main?: ReactNode; side?: ReactNode };
+  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
@@ -78,7 +78,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   const topic = paper.primary_topic;
   const topicPath = topic ? [topic.domain, topic.field, topic.subfield, topic].filter((node): node is { id: string; display_name: string } => !!node) : [];
   // The title page and ink this paper always wears; the next paper likely wears another.
-  const look = coverOf(id);
+  const look = /^R\d+$/.test(id) ? REPORT_COVER : coverOf(id);
   const communityCover = communities.find((copy) => copy.cover);
 
   return (
@@ -107,7 +107,8 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             year={paper.publication_year ?? null}
             type={paper.type ?? null}
             // A community's picture of its PDF's first page opens that PDF.
-            image={communityCover?.cover ?? null}
+            // MOCK (mock/publish-reports): an Openscholar Report wears the cover Openscholar made of its own PDF.
+            image={extra?.cover ?? communityCover?.cover ?? null}
             href={communityCover?.pdf ?? pdf ?? doi}
             pdf={!!communityCover?.pdf || !!pdf}
           />

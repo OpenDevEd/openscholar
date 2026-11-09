@@ -18,6 +18,9 @@ export function coverOf(id: string): { kind: CoverKind; ink: string } {
   return { kind: COVER_KINDS[seed % COVER_KINDS.length]!, ink: COVER_INKS[Math.floor(seed / COVER_KINDS.length) % COVER_INKS.length]! };
 }
 
+/** MOCK (mock/publish-reports): an Openscholar Report's title page, the same on its page and while it's being published. */
+export const REPORT_COVER = { kind: "report", ink: COVER_INKS[0] } as const;
+
 /**
  * Where communities keep the pictures of their PDFs' first pages, as new-el's own next.config.mjs allows them: Openscholar's
  * server resizes a cover from there to the size the page shows it at (next.config.ts).
