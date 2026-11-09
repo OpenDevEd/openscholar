@@ -90,7 +90,8 @@ export function paperDetail(own: PaperResult, openalex: PaperResult | null, open
   const ours = own as unknown as Raw;
   const theirs = (openalex ?? {}) as unknown as Raw;
   // OpenAlex's authors carry ORCID iDs, institutions and the corresponding author, none of which ours has.
-  const authorships = some(theirs.authorships) ?? ours.authorships ?? [];
+  // OpenAlex sometimes lists one person twice; each is shown once.
+  const authorships = onceEach(some(theirs.authorships) ?? ours.authorships ?? []);
   // The total and the chart come from one source, so the bars never add up to more than the count above them.
   const yearly = some(theirs.counts_by_year) ? theirs : ours;
   const counts = new Map((yearly.counts_by_year ?? []).map((row) => [row.year, row.cited_by_count]));
@@ -164,4 +165,16 @@ export function paperDetail(own: PaperResult, openalex: PaperResult | null, open
     retracted: !!(ours.is_retracted || theirs.is_retracted),
     thisYear,
   };
+}
+
+/** Authors as listed, each person once: by their ID, or their name where they have none. */
+function onceEach(authorships: Authorship[]) {
+  const seen = new Set<string>();
+  return authorships.filter(({ author }) => {
+    const key = author?.id ?? author?.display_name?.trim().toLowerCase();
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

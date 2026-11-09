@@ -5,6 +5,11 @@ import type { PaperResult } from "@/lib/types/search.types";
 const work = (fields: Record<string, unknown>) => ({ id: "https://openalex.org/W1", title: "A paper", ...fields }) as unknown as PaperResult;
 
 describe("a paper page's view of both records", () => {
+  it("shows each author once when OpenAlex lists one twice", () => {
+    const theirs = work({ authorships: [{ author: { id: "https://openalex.org/A1", display_name: "Daler Bokiev" } }, { author: { id: "https://openalex.org/A2", display_name: "Ann Author" } }, { author: { id: "https://openalex.org/A1", display_name: "Daler Bokiev" } }] });
+    expect(paperDetail(work({}), theirs, "OS1", 2026).authors.map((author) => author.name)).toEqual(["Daler Bokiev", "Ann Author"]);
+  });
+
   it("takes authors' institutions from OpenAlex when our index has none, and keeps our influence counts", () => {
     const ours = work({ authorships: [{ author: { display_name: "A. Author" }, institutions: [] }], influential_citation_count: 7, publication_year: 2021 });
     const theirs = work({ authorships: [{ author: { id: "https://openalex.org/A9", display_name: "Ann Author", orcid: "https://orcid.org/0000-0001" }, institutions: [{ id: "https://openalex.org/I7", display_name: "Uni &amp; College", country_code: "GB" }], is_corresponding: true }] });
