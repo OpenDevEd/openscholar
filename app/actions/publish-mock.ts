@@ -44,7 +44,10 @@ export async function signAgreement({ name, onBehalfOfAll }: { name: string; onB
   return change((state) => {
     if (!canPublish(state.settings)) throw new Error("Publishing is off until Crossref or Zenodo is connected.");
     const registration = registrationOf(state.settings);
-    return touch(openDraft(state), {
+    const draft = openDraft(state);
+    // Signed once: a second signing, say from a tab left open, never moves a reserved DOI or its route.
+    if (draft.step !== "agreement") return draft;
+    return touch(draft, {
       ...(user ? { ownerId: user.id } : {}),
       signedBy: { name: name.trim(), email: user?.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
       signedAt: Date.now(),
@@ -62,7 +65,12 @@ export async function signAgreement({ name, onBehalfOfAll }: { name: string; onB
 
 /** Back to a step already done, or on to the next one the report is ready for. */
 export async function goTo(step: Step) {
-  return change((state) => touch(draftOf(state), { step }));
+  return change((state) => {
+    const draft = draftOf(state);
+    // A report past its checks goes back only to replace a PDF that failed them: one that passed or is live stays as checked.
+    if (draft.step === "done" && draft.status !== "failed") throw new Error("This report has been checked. Start another to publish a new PDF.");
+    return touch(draft, { step });
+  });
 }
 
 /** MOCK: the affiliation as OpenAlex knows it, with its country; as written when OpenAlex has no match or can't be asked. */
@@ -108,6 +116,7 @@ export async function uploadPdf(form: FormData) {
   const user = await currentUser();
   return change(async (state) => {
     const draft = draftOf(state);
+    if (draft.step === "done") throw new Error("This report has been checked. Start another to publish a new PDF.");
     await mkdir(MOCK_DIR, { recursive: true });
     await writeFile(pdfPath(draft.id), Buffer.from(bytes));
     const read = readDetails(pages, file.name, draft.signedBy?.name || user?.fullName || "");
@@ -252,7 +261,7 @@ export async function activate(id: string) {
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
     if (!submission) throw new Error("No such report of yours.");
-    if (stageOf(submission, state.settings) !== "ready") throw new Error("A reviewer approves this report before you can activate it.");
+    if (submission.step !== "done" || stageOf(submission, state.settings) !== "ready") throw new Error("A reviewer approves this report before you can activate it.");
     const registers = providersOf(submission);
     return touch(submission, { status: "live", activatedAt: Date.now(), archive: registers.includes("zenodo") ? "queued" : "none", deposit: registers.includes("crossref") ? "queued" : "none" });
   });

@@ -138,7 +138,11 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
     <ListViewTabs
       label="Publish"
       value={view}
-      onChange={(next) => void setView(next === "reports" ? "reports" : null)}
+      onChange={(next) => {
+        // The live moment plays once: coming back to the report shows it settled.
+        setActivated(null);
+        void setView(next === "reports" ? "reports" : null);
+      }}
       tabs={[
         { value: "new", label: draft ? "Your report" : "New report", icon: <PublishIcon aria-hidden className="size-3.5" /> },
         { value: "reports", label: "Your reports", icon: <FileText aria-hidden className="size-3.5" />, count: reports.length },
@@ -785,6 +789,7 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings:
 }
 
 function ReportCover({ settings, draft }: { settings: Settings; draft: Submission | null }) {
+  const reduce = useReducedMotion();
   const m = draft?.metadata;
   const status = draft?.step === "done" ? draft.status : null;
   return (
@@ -796,7 +801,7 @@ function ReportCover({ settings, draft }: { settings: Settings; draft: Submissio
           {status === "live" ? (
             <motion.span
               key="live"
-              initial={{ opacity: 0, scale: 1.8, rotate: -20 }}
+              initial={reduce ? false : { opacity: 0, scale: 1.8, rotate: -20 }}
               animate={{ opacity: 1, scale: 1, rotate: -8 }}
               transition={{ delay: 0.75, type: "spring", stiffness: 420, damping: 18 }}
               className="absolute right-3 top-5 flex items-center gap-1 rounded-md border-2 border-success/70 bg-background/80 px-1.5 py-0.5 text-[0.6875rem] font-bold ink-success"
