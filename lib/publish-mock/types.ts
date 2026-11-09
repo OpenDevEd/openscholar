@@ -185,6 +185,8 @@ export type Submission = {
   archive: Archive;
   registration?: Registration;
   activatedAt?: number;
+  /** When its author last corrected its details after it went live. */
+  correctedAt?: number;
   /** Every reviewer's word on it, oldest first. */
   reviews?: Review[];
   /** When a reviewer withdrew it after it had gone live. Its address then shows a page saying so, and it can be reinstated. */

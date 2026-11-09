@@ -353,6 +353,7 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
               {s.status === "live" ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <RegistrationChips report={s} />
+                  {s.correctedAt ? <StatusChip tone="neutral" icon={PenLine}>Corrected {day(s.correctedAt)}</StatusChip> : null}
                 </div>
               ) : null}
               {s.reviews?.length ? (

@@ -91,8 +91,8 @@ function copy(text: string, what: string) {
 type Running = { checks: Array<{ id: string; name: string }>; results: Record<string, CheckResult> };
 
 /** Reads the checks' answers as the route sends them, one line each, and the report as saved at the end. */
-async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckResult) => void): Promise<Submission> {
-  const response = await fetch("/publish/checks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, metadata }) });
+async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckResult) => void, correction = false): Promise<{ draft: Submission; applied: boolean }> {
+  const response = await fetch("/publish/checks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, metadata, correction }) });
   if (!response.ok || !response.body) throw new Error(((await response.json().catch(() => null)) as { error?: string } | null)?.error ?? "The checks couldn't start");
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "";
@@ -103,10 +103,10 @@ async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckR
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? "";
     for (const line of lines.filter(Boolean)) {
-      const message = JSON.parse(line) as { type: "result"; result: CheckResult } | { type: "done"; draft: Submission } | { type: "error"; error: string };
+      const message = JSON.parse(line) as { type: "result"; result: CheckResult } | { type: "done"; draft: Submission; applied: boolean } | { type: "error"; error: string };
       if (message.type === "result") onResult(message.result);
       else if (message.type === "error") throw new Error(message.error);
-      else return message.draft;
+      else return { draft: message.draft, applied: message.applied };
     }
   }
   throw new Error("The checks stopped before they finished");
@@ -163,10 +163,40 @@ export function PublishFlow({
     // The rows are there at once, one per check that's on; each settles as its answer comes.
     setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name })), results: {} });
     try {
-      const saved = await streamChecks(id, metadata, (result) => setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)));
+      const { draft: saved } = await streamChecks(id, metadata, (result) => setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)));
       setReports((all) => [saved, ...all.filter((r) => r.id !== saved.id)]);
       // Another report opened while these ran stays the one shown.
       setDraftOnly((current) => (current?.id === saved.id ? saved : current));
+    } catch (error) {
+      toast.error(reasonOf(error, "The checks couldn't run"));
+    } finally {
+      setRunning(null);
+    }
+  };
+  // A live report's details being corrected: what the author changed them to, and the checks' answers when they refused it.
+  const [correcting, setCorrecting] = useState<{ id: string; metadata: Metadata; refused?: CheckResult[] } | null>(null);
+  const correct = async (metadata: Metadata) => {
+    if (!draft) return;
+    const id = draft.id;
+    const answers: CheckResult[] = [];
+    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name })), results: {} });
+    try {
+      const { draft: saved, applied } = await streamChecks(
+        id,
+        metadata,
+        (result) => {
+          answers.push(result);
+          setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r));
+        },
+        true,
+      );
+      setReports((all) => all.map((r) => (r.id === saved.id ? saved : r)));
+      setDraftOnly((current) => (current?.id === saved.id ? saved : current));
+      // Taken: back to the live view with the corrected details. Refused: the answers are shown, and the report is as it was.
+      // Only what refused it is shown: a check a reviewer overruled before the report went live refuses nothing now.
+      const failedBefore = new Set((draft.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
+      setCorrecting(applied ? null : { id, metadata, refused: answers.filter((r) => !r.pass && r.blocking && !failedBefore.has(r.checkId)) });
+      if (applied) toast.success("Your changes are live");
     } catch (error) {
       toast.error(reasonOf(error, "The checks couldn't run"));
     } finally {
@@ -228,7 +258,7 @@ export function PublishFlow({
         <AutoHeight>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={running ? "checks" : step === "done" ? (draft?.status === "live" ? "live" : "checks") : step}
+              key={running ? "checks" : step === "done" ? (draft?.status === "live" ? (correcting?.id === draft.id ? (correcting.refused ? "refused" : "correct") : "live") : "checks") : step}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
@@ -255,8 +285,15 @@ export function PublishFlow({
                 <UploadStep settings={settings} draft={draft} onStored={setDraft} onRead={setDraft} />
               ) : step === "details" && draft?.metadata ? (
                 <DetailsStep initial={draft.metadata} onRun={run} onSave={(metadata) => void saveDetails(draft.id, metadata).catch(said("Your changes couldn't be saved"))} />
+              ) : draft && correcting?.id === draft.id && draft.status === "live" ? (
+                correcting.refused ? (
+                  <CorrectionRefused results={correcting.refused} onBack={() => setCorrecting({ id: draft.id, metadata: correcting.metadata })} onKeep={() => setCorrecting(null)} />
+                ) : (
+                  <DetailsStep initial={correcting.metadata} onRun={correct} onCancel={() => setCorrecting(null)} />
+                )
               ) : step === "done" && draft?.status === "live" ? (
                 <LiveReport
+                  onCorrect={() => draft.metadata && setCorrecting({ id: draft.id, metadata: draft.metadata })}
                   settings={settings}
                   draft={draft}
                   fresh={fresh?.id === draft.id && fresh.step === "live"}
@@ -844,6 +881,30 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
 }
 
 /** The report as it builds up: its cover with the series, title, authors and DOI, and what it stands on. */
+/** A correction to a live report that a check refused: what the checks said, with the way back to the details. */
+function CorrectionRefused({ results, onBack, onKeep }: { results: CheckResult[]; onBack: () => void; onKeep: () => void }) {
+  return (
+    <div>
+      <StepHead title="Changes not published" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
+        Your report stays live as it was. Change the details and try again, or keep it as it is.
+      </StepHead>
+      <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
+        {results.map((r) => (
+          <CheckRow key={r.checkId} name={r.name} result={r} />
+        ))}
+      </ul>
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <Button variant="outline" onClick={onKeep}>
+          Keep it as it is
+        </Button>
+        <Button onClick={onBack}>
+          <PenLine /> Back to the details
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** Asks a person to look at a report its checks failed, with what the author thinks they got wrong. */
 function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void> }) {
   const [comment, setComment] = useState("");
@@ -930,7 +991,7 @@ function Seal({ play }: { play: boolean }) {
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings: Settings; draft: Submission; fresh: boolean; onChange: (report: Submission) => void; onAnother: () => void }) {
+function LiveReport({ settings, draft, fresh, onChange, onAnother, onCorrect }: { settings: Settings; draft: Submission; fresh: boolean; onChange: (report: Submission) => void; onAnother: () => void; onCorrect: () => void }) {
   const reduce = useReducedMotion();
   // MOCK: a timer asks for the report again while Zenodo or Crossref is still working, so each chip settles in view.
   // The real build is told by Convex and needs no timer.
@@ -975,11 +1036,19 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother }: { settings:
           <StatusChip tone="success" icon={ShieldCheck}>
             {passed} of {draft.results?.length ?? 0} checks passed
           </StatusChip>
+          {draft.correctedAt ? (
+            <StatusChip tone="neutral" icon={PenLine}>
+              Corrected {new Date(draft.correctedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            </StatusChip>
+          ) : null}
         </div>
       </motion.div>
       <motion.div className="mt-6 flex flex-wrap justify-end gap-2" {...rise(0.8)}>
         <Button variant="outline" onClick={onAnother}>
           <Plus /> Publish another
+        </Button>
+        <Button variant="outline" onClick={onCorrect}>
+          <PenLine /> Correct the details
         </Button>
         {/* The app's own Add to community list, opened from a named button. */}
         <CommunityControl

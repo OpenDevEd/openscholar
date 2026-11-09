@@ -8,7 +8,7 @@ import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 import { decideYesNo, isDecisionModel, paperState } from "@/lib/ai/decisions";
-import { bylineOf, stageOf, type Answer, type Check, type CheckResult, type Metadata, type Settings, type Submission } from "./types";
+import { bylineOf, providersOf, stageOf, type Answer, type Check, type CheckResult, type Metadata, type Settings, type Submission } from "./types";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -67,13 +67,19 @@ export async function runCheck(check: Check, settings: Settings, draft: Submissi
 
 /** The report's checks as they are now, with their version, and the text they read. Only its owner's report, and only
  * one waiting for its checks: a request names it, so another report opened meanwhile is never the one checked. */
-export async function checksFor(id: string, userId: string, metadata: Metadata) {
+export async function checksFor(id: string, userId: string, metadata: Metadata, correction = false) {
   const started = await changeState((state) => {
     const draft = state.submissions.find((s) => s.id === id);
     if (!draft || (draft.ownerId !== userId && !draft.demo)) throw new Error("No such report of yours.");
-    if (draft.step !== "details") throw new Error("This report isn't waiting for its checks.");
-    // The author's corrections are saved before anything runs, so a run that fails keeps them.
-    Object.assign(draft, { metadata, run: crypto.randomUUID(), updatedAt: Date.now() });
+    if (correction) {
+      // A live report stays as it is while the checks read the corrected details: only the run is marked on it.
+      if (draft.status !== "live" || draft.step !== "done") throw new Error("Only a live report's details can be corrected.");
+      draft.run = crypto.randomUUID();
+    } else {
+      if (draft.step !== "details") throw new Error("This report isn't waiting for its checks.");
+      // The author's corrections are saved before anything runs, so a run that fails keeps them.
+      Object.assign(draft, { metadata, run: crypto.randomUUID(), updatedAt: Date.now() });
+    }
     return { settings: state.settings, draft: structuredClone(draft), checks: state.settings.checks.filter((c) => c.enabled), version: state.settings.checksVersion };
   });
   const text = await readFile(textPath(id), "utf8").catch(() => "");
@@ -95,5 +101,36 @@ export function finishChecks(id: string, run: string, metadata: Metadata, result
     if (results.some((r) => r.errored)) mail(state, "check-unfinished", draft, origin);
     if (stageOf(draft, state.settings) === "review") mail(state, "waiting-for-review", draft, origin);
     return draft;
+  });
+}
+
+/**
+ * What becomes of a live report's correction once the checks have read it. When none that blocks fails, the corrected
+ * details replace the report's and it registers again, so Crossref and Zenodo hold them too. When one does, the
+ * report stays exactly as it was. Either way only the latest run counts.
+ */
+export function finishCorrection(id: string, run: string, metadata: Metadata, results: CheckResult[], version: number, origin: string) {
+  return changeState((state) => {
+    const draft = state.submissions.find((s) => s.id === id);
+    if (!draft || draft.run !== run || draft.status !== "live") throw new Error("These checks were replaced, or the report is no longer live.");
+    draft.run = undefined;
+    if (results.some((r) => r.errored)) mail(state, "check-unfinished", { ...draft, results }, origin);
+    // A check that failed before the report went live was overruled by a reviewer, and stays overruled: a correction
+    // is refused only by a blocking check it makes fail.
+    const failedBefore = new Set((draft.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
+    if (results.some((r) => !r.pass && r.blocking && !failedBefore.has(r.checkId))) return { draft, applied: false };
+    const registers = providersOf(draft);
+    Object.assign(draft, {
+      metadata,
+      results,
+      checksVersion: version,
+      correctedAt: Date.now(),
+      // Registered again from now, in the same order as when it went live.
+      activatedAt: Date.now(),
+      deposit: registers.includes("crossref") ? "queued" : "none",
+      archive: registers.includes("zenodo") ? "queued" : "none",
+      updatedAt: Date.now(),
+    });
+    return { draft, applied: true };
   });
 }

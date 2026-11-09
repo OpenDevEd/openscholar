@@ -199,7 +199,18 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
 /** How long after the last change the details are saved. */
 const SAVE_AFTER_MS = 800;
 
-export function DetailsStep({ initial, onRun, onSave }: { initial: Metadata; onRun: (m: Metadata) => Promise<void>; onSave?: (m: Metadata) => void }) {
+export function DetailsStep({
+  initial,
+  onRun,
+  onSave,
+  onCancel,
+}: {
+  initial: Metadata;
+  onRun: (m: Metadata) => Promise<void>;
+  onSave?: (m: Metadata) => void;
+  /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
+  onCancel?: () => void;
+}) {
   const [m, setM] = useState(initial);
   // Corrections are saved a moment after the last change, so leaving the step loses nothing. A timer, cleared when
   // the details change again; a change still waiting when the step closes is saved as it closes.
@@ -246,10 +257,14 @@ export function DetailsStep({ initial, onRun, onSave }: { initial: Metadata; onR
     <div>
       <div className="mb-6 space-y-1">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">Check the details</h2>
-          <AiIcon className="size-4 text-primary" />
+          <h2 className="text-lg font-semibold tracking-tight">{onCancel ? "Correct the details" : "Check the details"}</h2>
+          {onCancel ? null : <AiIcon className="size-4 text-primary" />}
         </div>
-        <p className="max-w-xl text-sm text-muted-foreground">Filled in from your PDF. Correct anything that&apos;s wrong and add what&apos;s missing: the report&apos;s page shows all of it, and Crossref gets its part.</p>
+        {onCancel ? (
+          <p className="max-w-xl text-sm text-muted-foreground">Your report stays live as it is while the checks read your changes. They show once the checks pass. The PDF stays the same.</p>
+        ) : (
+          <p className="max-w-xl text-sm text-muted-foreground">Filled in from your PDF. Correct anything that&apos;s wrong and add what&apos;s missing: the report&apos;s page shows all of it, and Crossref gets its part.</p>
+        )}
       </div>
       <div className="space-y-8">
         <Section title="The work" crossref>
@@ -504,10 +519,15 @@ export function DetailsStep({ initial, onRun, onSave }: { initial: Metadata; onR
           </Button>
         </Section>
       </div>
-      <div className="mt-8 flex justify-end">
+      <div className="mt-8 flex flex-wrap justify-end gap-2">
+        {onCancel ? (
+          <Button variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim())} onClick={() => void onRun(m)}>
-          <ShieldCheck /> Run the checks
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || (!!onCancel && m === initial)} onClick={() => void onRun(m)}>
+          <ShieldCheck /> {onCancel ? "Check and publish the changes" : "Run the checks"}
         </Button>
       </div>
     </div>
