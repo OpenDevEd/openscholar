@@ -298,6 +298,14 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "services.search.engine",
+				"values": [
+					"elasticsearch",
+					"meilisearch"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "sources[].provider",
 				"values": [
 					"zotero",
@@ -436,7 +444,9 @@
 			"services.publication.crossref.password",
 			"services.publication.zenodo.token",
 			"services.redis.url",
+			"services.search.elasticsearch.key",
 			"services.search.key",
+			"services.search.meilisearch.key",
 			"services.storage.serviceRoleKey",
 			"sources[].apiKey"
 		]

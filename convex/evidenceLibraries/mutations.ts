@@ -761,19 +761,21 @@ export async function activateEvidenceLibraryConfiguration(
   if (access.library.state === "active") {
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
     publishRuntime = await requirePublishRuntime(ctx, access.library);
-    const topicsEnabled = readTopicsEnabled(
-      persisted.migration.snapshot.sections.find(
-        (row) => row.sectionKey === "topics",
-      )?.payload,
-    );
+    const section = (key: string) => persisted.migration.snapshot.sections.find((row) => row.sectionKey === key)?.payload;
+    // Settings older runtimes refuse: the running software has to support this contract before they go live.
+    const needsNewer = readTopicsEnabled(section("topics"))
+      ? "Topics need"
+      : (section("identity") as { searchTitle?: unknown } | undefined)?.searchTitle
+        ? "A title in search results needs"
+        : null;
     if (
-      topicsEnabled &&
+      needsNewer &&
       publishRuntime.kind === "current" &&
       (await readRunningContractSupport(ctx, access.library)) !== true
     ) {
       throw createError(
         "CONFLICT",
-        "Topics need a newer Evidence Community software version. Check for software updates, then activate again.",
+        `${needsNewer} a newer Evidence Community software version. Check for software updates, then activate again.`,
       );
     }
   }
