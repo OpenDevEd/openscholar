@@ -74,7 +74,8 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
         void setView(next === "submissions" ? "submissions" : null);
       }}
     >
-      <TabsList aria-label={tp("viewLabel")}>
+      {/* On the narrowest phones the icons give way, so both names fit inside the card. */}
+      <TabsList aria-label={tp("viewLabel")} className="max-w-full max-[380px]:[&_svg]:hidden">
         <TabsTrigger value="public" ref={view === "public" ? focusPicked : undefined}><Globe />{tp("tabPublic")}</TabsTrigger>
         <TabsTrigger value="submissions" ref={view === "submissions" ? focusPicked : undefined}><ReviewQueueIcon />{tp("tabSubmissions")}</TabsTrigger>
       </TabsList>
