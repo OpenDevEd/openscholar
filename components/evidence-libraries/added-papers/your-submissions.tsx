@@ -137,6 +137,7 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
   ) : (
     <span className="min-w-0 truncate font-medium text-foreground/80">{community.name}</span>
   );
+  const words = { queued: t("inQueue"), published: t("statusPublished"), returned: t("returned"), withdrawn: t("statusWithdrawn"), removed: t("statusRemoved") };
   return (
     <li style={{ height: `${ROW_REM}rem` }} className="flex items-center gap-3 px-3">
       <CommunityIcon fadeIn community={{ faviconUrl: community.faviconUrl, owner: community.owner ?? { name: community.name, imageUrl: null, kind: "organization" } }} />
@@ -155,7 +156,11 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
               </TooltipHint>
             </span>
           ) : (
-            <span className="shrink-0 tabular-nums">{date}</span>
+            <>
+              {/* A narrow row's status shows as its icon alone, so its words take the date's place here. */}
+              <span className="shrink-0 font-medium text-foreground/80 @md/subs:hidden">{words[status]}</span>
+              <span className="hidden shrink-0 tabular-nums @md/subs:inline">{date}</span>
+            </>
           )}
         </div>
       </div>
