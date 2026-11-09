@@ -54,6 +54,8 @@ export function PublicCommunities({ search, preloaded, heading }: {
           </SelectContent>
         </Select>
       </div>
+      {/* What a community is, for someone who has never met one. */}
+      <p className="-mt-2 mb-4 max-w-prose text-sm text-muted-foreground">{t("intro")}</p>
       {/* The cards arrive after the page: the grid slides to their height instead of moving what's below in one frame. */}
       <AutoHeight>
         {/* Until the cards are read, two rows of them and a pager hold their place; more slide the page longer below the window. */}
@@ -144,7 +146,7 @@ export function CommunityCard({ community }: { community: Card }) {
               {/* The owner as the switcher draws a workspace: its logo, or the mark made for it in its colour; a person's photo. */}
               <WorkspaceTile workspace={ownerLook(community.owner)} size="xxs" />
               <span className="min-w-0 truncate">{community.owner.name ?? t("unnamedOwner")}</span>
-              {published !== null ? <span className="ms-auto shrink-0 text-subtle-foreground">{format.relativeTime(published)}</span> : null}
+              {published !== null ? <span className="ms-auto shrink-0 text-subtle-foreground">{t("updated", { when: format.relativeTime(published) })}</span> : null}
             </div>
           </div>
         </div>
