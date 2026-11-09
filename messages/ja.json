@@ -5935,6 +5935,15 @@
     "publishedTo": "{community} に公開しました",
     "queuedTo": "{community} のレビューキューに送りました",
     "alreadyIn": "{community} にはこの論文がすでにあります",
-    "moreCommunities": "他のコミュニティ"
+    "moreCommunities": "他のコミュニティ",
+    "askTitle": "{count, plural, other {# 件の論文}}をコミュニティに追加",
+    "publishNow": "今すぐ公開",
+    "reviewQueue": "レビュー待ち",
+    "askPublishHint": "許可するとすぐに{community}で公開されます。",
+    "askQueueHint": "チームが承認するまで{community}のレビュー待ちに入ります。",
+    "askPublish": "{count, plural, other {# 件の論文}}を公開",
+    "askQueue": "{count, plural, other {# 件の論文}}をレビューに送る",
+    "alreadyInIt": "追加済み",
+    "inReview": "レビュー中"
   }
 }

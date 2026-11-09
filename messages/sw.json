@@ -5936,6 +5936,15 @@
     "publishedTo": "Imechapishwa kwenye {community}",
     "queuedTo": "Imetumwa kwenye foleni ya ukaguzi ya {community}",
     "alreadyIn": "{community} tayari ina makala hii",
-    "moreCommunities": "Jumuiya zaidi"
+    "moreCommunities": "Jumuiya zaidi",
+    "askTitle": "Ongeza {count, plural, one {makala #} other {makala #}} kwenye jumuiya",
+    "publishNow": "Chapisha sasa",
+    "reviewQueue": "Foleni ya ukaguzi",
+    "askPublishHint": "{count, plural, one {Inachapishwa} other {Zinachapishwa}} kwenye {community} mara tu unaporuhusu.",
+    "askQueueHint": "{count, plural, one {Inasubiri} other {Zinasubiri}} kwenye foleni ya ukaguzi ya {community} hadi timu yake {count, plural, one {iidhinishe} other {ziidhinishe}}.",
+    "askPublish": "Chapisha {count, plural, one {makala #} other {makala #}}",
+    "askQueue": "Tuma {count, plural, one {makala #} other {makala #}} kwa ukaguzi",
+    "alreadyInIt": "Tayari imo",
+    "inReview": "Inakaguliwa"
   }
 }

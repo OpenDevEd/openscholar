@@ -5935,6 +5935,15 @@
     "publishedTo": "{community} में प्रकाशित",
     "queuedTo": "{community} की समीक्षा कतार में भेजा गया",
     "alreadyIn": "{community} में यह पेपर पहले से है",
-    "moreCommunities": "और समुदाय"
+    "moreCommunities": "और समुदाय",
+    "askTitle": "किसी समुदाय में {count, plural, one {# पेपर} other {# पेपर}} जोड़ें",
+    "publishNow": "अभी प्रकाशित करें",
+    "reviewQueue": "समीक्षा कतार",
+    "askPublishHint": "आपकी अनुमति मिलते ही {count, plural, one {यह} other {ये}} {community} पर लाइव हो {count, plural, one {जाएगा} other {जाएँगे}}।",
+    "askQueueHint": "{count, plural, one {यह} other {ये}} {community} की समीक्षा कतार में तब तक रहेंगे जब तक उसकी टीम मंज़ूरी न दे।",
+    "askPublish": "{count, plural, one {# पेपर} other {# पेपर}} प्रकाशित करें",
+    "askQueue": "{count, plural, one {# पेपर} other {# पेपर}} समीक्षा के लिए भेजें",
+    "alreadyInIt": "पहले से मौजूद",
+    "inReview": "समीक्षा में"
   }
 }

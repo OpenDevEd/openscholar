@@ -5935,6 +5935,15 @@
     "publishedTo": "已发布到 {community}",
     "queuedTo": "已送入 {community} 的审核队列",
     "alreadyIn": "{community} 已有这篇论文",
-    "moreCommunities": "更多社区"
+    "moreCommunities": "更多社区",
+    "askTitle": "将 {count, plural, other {# 篇论文}} 添加到社区",
+    "publishNow": "立即发布",
+    "reviewQueue": "审核队列",
+    "askPublishHint": "你允许后，它们会立即在 {community} 上发布。",
+    "askQueueHint": "它们会在 {community} 的审核队列中等待，直到团队批准。",
+    "askPublish": "发布 {count, plural, other {# 篇论文}}",
+    "askQueue": "将 {count, plural, other {# 篇论文}} 送审",
+    "alreadyInIt": "已在其中",
+    "inReview": "审核中"
   }
 }

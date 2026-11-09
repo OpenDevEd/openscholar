@@ -5935,6 +5935,15 @@
     "publishedTo": "Publié dans {community}",
     "queuedTo": "Envoyé dans la file de relecture de {community}",
     "alreadyIn": "{community} a déjà cet article",
-    "moreCommunities": "Plus de communautés"
+    "moreCommunities": "Plus de communautés",
+    "askTitle": "Ajouter {count, plural, one {# article} other {# articles}} à une communauté",
+    "publishNow": "Publier maintenant",
+    "reviewQueue": "File de relecture",
+    "askPublishHint": "{count, plural, one {Il est mis} other {Ils sont mis}} en ligne sur {community} dès que vous l'autorisez.",
+    "askQueueHint": "{count, plural, one {Il attend} other {Ils attendent}} dans la file de relecture de {community} jusqu'à ce que son équipe {count, plural, one {l'approuve} other {les approuve}}.",
+    "askPublish": "Publier {count, plural, one {# article} other {# articles}}",
+    "askQueue": "Envoyer {count, plural, one {# article} other {# articles}} en relecture",
+    "alreadyInIt": "Déjà présent",
+    "inReview": "En relecture"
   }
 }

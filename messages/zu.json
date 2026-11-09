@@ -5935,6 +5935,15 @@
     "publishedTo": "Kushicilelwe ku-{community}",
     "queuedTo": "Kuthunyelwe ohlwini lokubuyekeza lwe-{community}",
     "alreadyIn": "I-{community} isivele inaleli phepha",
-    "moreCommunities": "Eminye imiphakathi"
+    "moreCommunities": "Eminye imiphakathi",
+    "askTitle": "Engeza {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}} emphakathini",
+    "publishNow": "Shicilela manje",
+    "reviewQueue": "Uhlu lokubuyekeza",
+    "askPublishHint": "{count, plural, one {Lishicilelwa} other {Ashicilelwa}} ku-{community} ngokushesha uma uvumela.",
+    "askQueueHint": "{count, plural, one {Lilinda} other {Alinda}} ohlwini lokubuyekeza lwe-{community} kuze kube yilapho ithimba layo {count, plural, one {lilivuma} other {liwavuma}}.",
+    "askPublish": "Shicilela {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}}",
+    "askQueue": "Thumela {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}} ukuze libuyekezwe",
+    "alreadyInIt": "Selikhona",
+    "inReview": "Liyabuyekezwa"
   }
 }
