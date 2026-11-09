@@ -1,6 +1,13 @@
 // MOCK (mock/publish-reports): a live report as the paper page reads a paper. The real build reads it from Convex.
 import type { PaperResult } from "@/lib/types/search.types";
+import { SDGS } from "@/lib/openalex/vocabulary";
 import { readState } from "./store";
+
+/** A live report's details, for what the paper page shows beyond a paper's record. */
+export async function readReportMetadata(key: string) {
+  const state = await readState();
+  return state.submissions.find((s) => s.id === key && s.status === "live")?.metadata ?? null;
+}
 
 /** A live report by its key (R…), shaped like a record of our index; null for any other key or a report not live. */
 export async function readReportPaper(key: string): Promise<PaperResult | null> {
@@ -26,16 +33,21 @@ export async function readReportPaper(key: string): Promise<PaperResult | null> 
     doi: `https://doi.org/${report.doi}`,
     publication_date: m.date,
     publication_year: year,
-    type: "report",
-    language: m.language === "English" ? "en" : m.language,
+    type: m.type,
+    language: m.language,
     cited_by_count: 0,
     counts_by_year: [],
     keywords: m.keywords.map((k) => ({ id: k, display_name: k, score: 1 })),
+    topics: m.topics.map((t) => ({ id: t.id, display_name: t.name, score: t.score })),
+    ...(m.topics[0] ? { primary_topic: { id: m.topics[0].id, display_name: m.topics[0].name, score: m.topics[0].score } } : {}),
+    sustainable_development_goals: m.sdgs.map((goal) => ({ id: `https://metadata.un.org/sdg/${goal}`, display_name: SDGS.find((g) => g.id === goal)?.name.replace(/^\d+\. /, "") ?? goal, score: 1 })),
+    funders: m.funding.map((f) => ({ id: f.funder.id, display_name: f.funder.name })),
+    awards: m.funding.flatMap((f) => f.awards.map((award) => ({ funder_id: f.funder.id, funder_display_name: f.funder.name, funder_award_id: award }))),
     authorships: m.authors.map((a, i) => ({
       author_position: i === 0 ? "first" : "middle",
-      author: { id: null, display_name: a.name, orcid: a.orcid ? `https://orcid.org/${a.orcid}` : null },
-      institutions: a.affiliation ? [{ id: null, display_name: a.affiliation, country_code: a.country || null }] : [],
-      is_corresponding: i === 0,
+      author: { id: a.openalexId, display_name: a.name, orcid: a.orcid ? `https://orcid.org/${a.orcid}` : null },
+      institutions: a.affiliations.map((inst) => ({ id: inst.id, display_name: inst.name, country_code: inst.country || null })),
+      is_corresponding: a.corresponding,
     })),
     primary_location: location,
     locations: [location],

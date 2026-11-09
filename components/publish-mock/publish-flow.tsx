@@ -14,9 +14,7 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CountryFlag } from "@/components/ui/country-flag";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { EASE } from "@/components/ui/opening";
@@ -36,13 +34,13 @@ import {
   ReviewQueueIcon,
   RotateCcw,
   ShieldCheck,
-  Trash2,
   TriangleAlert,
   BadgeCheck,
   Hash,
 } from "@/components/icons";
+import { DetailsStep } from "@/components/publish-mock/details-step";
 import { goTo, runChecks, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
-import { bylineOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { bylineOf, type CheckResult, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -342,115 +340,6 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
         </p>
       ) : null}
       <p className="sr-only">{settings.series.name}</p>
-    </div>
-  );
-}
-
-function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
-  return (
-    <label className={cn("block space-y-1.5", className)}>
-      <span className="ps-1 text-xs font-medium text-muted-foreground">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function DetailsStep({ initial, onRun }: { initial: Metadata; onRun: (m: Metadata) => Promise<void> }) {
-  const [m, setM] = useState(initial);
-  const [keyword, setKeyword] = useState("");
-  const [busy, start] = useTransition();
-  const set = <K extends keyof Metadata>(key: K, value: Metadata[K]) => setM((was) => ({ ...was, [key]: value }));
-  const setAuthor = (i: number, patch: Partial<Metadata["authors"][number]>) => set("authors", m.authors.map((a, at) => (at === i ? { ...a, ...patch } : a)));
-  const addKeyword = () => {
-    const word = keyword.trim();
-    if (word && !m.keywords.includes(word)) set("keywords", [...m.keywords, word]);
-    setKeyword("");
-  };
-  return (
-    <div>
-      <StepHead title="Check the details" aside={<AiIcon className="size-4 text-primary" />}>
-        Filled in from your PDF. Correct anything that&apos;s wrong: this is what Crossref and the report&apos;s page show.
-      </StepHead>
-      <div className="grid gap-5">
-        <Field label="Title">
-          <Textarea value={m.title} onChange={(e) => set("title", e.target.value)} rows={2} className="resize-none text-base font-medium" />
-        </Field>
-        <div className="space-y-1.5">
-          <span className="ps-1 text-xs font-medium text-muted-foreground">Authors</span>
-          <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
-            {m.authors.map((a, i) => (
-              <li key={i} className="grid gap-2 p-3 @xl:grid-cols-[1.2fr_1fr_1.3fr_4.5rem_auto] @xl:items-center">
-                <Input aria-label="Name" placeholder="Name" value={a.name} onChange={(e) => setAuthor(i, { name: e.target.value })} />
-                <Input aria-label="ORCID iD" placeholder="ORCID iD" value={a.orcid} onChange={(e) => setAuthor(i, { orcid: e.target.value })} className="font-mono text-xs" />
-                <Input aria-label="Affiliation" placeholder="Affiliation" value={a.affiliation} onChange={(e) => setAuthor(i, { affiliation: e.target.value })} />
-                <div className="relative">
-                  {a.country.length === 2 ? <CountryFlag countryCode={a.country} className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2" /> : null}
-                  <Input aria-label="Country code" placeholder="KE" maxLength={2} value={a.country} onChange={(e) => setAuthor(i, { country: e.target.value.toUpperCase() })} className={cn(a.country.length === 2 && "ps-8")} />
-                </div>
-                <TooltipHint label="Remove author">
-                  <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${a.name || "author"}`} disabled={m.authors.length === 1} className="justify-self-end text-muted-foreground hover:text-destructive" onClick={() => set("authors", m.authors.filter((_, at) => at !== i))}>
-                    <Trash2 />
-                  </Button>
-                </TooltipHint>
-              </li>
-            ))}
-          </ul>
-          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={() => set("authors", [...m.authors, { name: "", orcid: "", affiliation: "", country: "" }])}>
-            <Plus /> Add an author
-          </Button>
-        </div>
-        <Field label="Abstract">
-          <Textarea value={m.abstract} onChange={(e) => set("abstract", e.target.value)} rows={7} className="text-sm/6" />
-        </Field>
-        <div className="space-y-1.5">
-          <span className="ps-1 text-xs font-medium text-muted-foreground">Keywords</span>
-          <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-input bg-field px-2 py-1.5">
-            {m.keywords.map((k) => (
-              <span key={k} className="inline-flex h-6 items-center gap-1 rounded-md bg-inset ps-2 pe-1 text-xs">
-                {k}
-                <button type="button" aria-label={`Remove ${k}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground" onClick={() => set("keywords", m.keywords.filter((x) => x !== k))}>
-                  <CircleX className="size-3" />
-                </button>
-              </span>
-            ))}
-            <input
-              aria-label="Add a keyword"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === ",") {
-                  e.preventDefault();
-                  addKeyword();
-                }
-              }}
-              onBlur={addKeyword}
-              placeholder={m.keywords.length ? "" : "Add keywords"}
-              className="h-6 min-w-24 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Language">
-            <Input value={m.language} onChange={(e) => set("language", e.target.value)} />
-          </Field>
-          <Field label="Date published">
-            <Input type="date" value={m.date} onChange={(e) => set("date", e.target.value)} />
-          </Field>
-          <div className="space-y-1.5">
-            <span className="ps-1 text-xs font-medium text-muted-foreground">Licence</span>
-            <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">{m.licence}</div>
-          </div>
-        </div>
-      </div>
-      <div className="mt-6 flex justify-end">
-        <Button className="relative" disabled={busy || !m.title.trim() || !m.authors.some((a) => a.name.trim())} onClick={() => start(() => onRun(m))}>
-          <Working busy={busy}>
-            <span className="flex items-center gap-2">
-              <ShieldCheck /> Run the checks
-            </span>
-          </Working>
-        </Button>
-      </div>
     </div>
   );
 }

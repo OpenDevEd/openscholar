@@ -45,6 +45,8 @@ import {
 } from "@/components/icons";
 import { CheckRow } from "@/components/publish-mock/publish-flow";
 import { removeCheck, retryDeposit, review, saveCheck, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
+import { SDGS } from "@/lib/openalex/vocabulary";
+import { FunderName } from "@/components/papers/paper-entities";
 import { DECISION_MODELS, bylineOf, doiOf, type Check as CheckDef, type MockState, type Settings, type Status, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
@@ -194,7 +196,7 @@ function SubmissionRow({ submission: s, onOpen, onChange }: { submission: Submis
           </button>
         </TooltipHint>
         <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-          {first?.country ? <CountryFlag countryCode={first.country} /> : null}
+          {first?.affiliations[0]?.country ? <CountryFlag countryCode={first.affiliations[0].country} /> : null}
           <span className="truncate">{first?.name}</span>
           <span className="shrink-0 font-mono">{s.id}</span>
           <span className="hidden shrink-0 tabular-nums sm:inline">{day(s.createdAt)}</span>
@@ -284,7 +286,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
               <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 {s.metadata?.authors.map((a) => (
                   <span key={a.name} className="inline-flex items-center gap-1.5">
-                    {a.country ? <CountryFlag countryCode={a.country} /> : null}
+                    {a.affiliations[0]?.country ? <CountryFlag countryCode={a.affiliations[0].country} /> : null}
                     {a.name}
                   </span>
                 ))}
@@ -312,6 +314,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
                 </Fact>
               </div>
               {s.metadata?.abstract ? <p className="line-clamp-5 text-sm/6 text-muted-foreground">{s.metadata.abstract}</p> : null}
+              {s.metadata ? <Subjects m={s.metadata} /> : null}
               {s.results?.length ? (
                 <ul className={LIST}>
                   {s.results.map((r) => (
@@ -348,6 +351,29 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
     </Dialog>
   );
 }
+
+/** What the report is about and who paid for it, as chips: topics, goals, places and funders. */
+function Subjects({ m }: { m: NonNullable<Submission["metadata"]> }) {
+  const groups: Array<{ label: string; chips: ReactNode[] }> = [
+    { label: "Topics", chips: m.topics.map((t) => <Chip key={t.id}>{t.name}</Chip>) },
+    { label: "Goals", chips: m.sdgs.map((g) => <Chip key={g}>{SDGS.find((x) => x.id === g)?.name ?? g}</Chip>) },
+    { label: "Places", chips: m.countries.map((c) => <Chip key={c}>{c.length === 2 ? <CountryFlag countryCode={c} /> : null}{COUNTRY_NAME.of(c.toUpperCase()) ?? c}</Chip>) },
+    { label: "Funders", chips: m.funding.map((f) => <Chip key={f.funder.name}><FunderName id={f.funder.id} name={f.funder.name} /></Chip>) },
+  ].filter((g) => g.chips.length);
+  return (
+    <div className="space-y-2">
+      {groups.map((g) => (
+        <div key={g.label} className="flex items-start gap-3">
+          <span className="w-16 shrink-0 pt-0.5 text-xs text-muted-foreground">{g.label}</span>
+          <span className="flex min-w-0 flex-wrap gap-1.5">{g.chips}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const COUNTRY_NAME = new Intl.DisplayNames(["en"], { type: "region" });
+const Chip = ({ children }: { children: ReactNode }) => <span className="inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs">{children}</span>;
 
 function Fact({ icon: Icon, label, wide = false, children }: { icon: typeof Hash; label: string; wide?: boolean; children: ReactNode }) {
   return (

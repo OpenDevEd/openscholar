@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PaperPage } from "@/components/papers/paper-page";
+import { ReportMain, ReportSide } from "@/components/publish-mock/report-extras";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
 import { citeFilePath, paperPath, paperSlug } from "@/lib/papers/page-address";
 import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
@@ -77,6 +78,8 @@ export default async function Page({ params }: Params) {
   // One address per paper: an OpenAlex ID, our bare ID or an old title all lead to it.
   if (asked !== id || slugOf(slug?.[0]) !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
   const references = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((reference) => reference.split("/").at(-1)!).slice(0, 100);
+  // MOCK (mock/publish-reports): a report's own details beyond a paper's record.
+  const report = id.startsWith("R") ? await (await import("@/lib/publish-mock/paper")).readReportMetadata(id) : null;
   const [similar, referenceRows, communities] = await Promise.all([
     // MOCK (mock/publish-reports): a report (R…) isn't in our index, so nothing is like it there yet.
     id.startsWith("R") ? [] : readSimilarForPage(id).catch(quietly("similar papers", id, [])),
@@ -136,7 +139,7 @@ export default async function Page({ params }: Params) {
       {detail.copies.find((copy) => copy.pdf) && <link rel="item" type="application/pdf" href={detail.copies.find((copy) => copy.pdf)!.url} />}
       {detail.authors.flatMap((author) => author.orcid ? [<link key={author.orcid} rel="author" href={author.orcid} />] : [])}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
-      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} />
+      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={report ? { main: <ReportMain m={report} />, side: <ReportSide m={report} /> } : undefined} />
     </PageWrapper>
   );
 }

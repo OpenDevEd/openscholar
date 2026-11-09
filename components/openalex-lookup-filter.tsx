@@ -21,6 +21,8 @@ export function OpenAlexLookupFilter({
   onChange,
   lookup,
   labels,
+  icons,
+  onPicked,
 }: {
   selected: string[];
   onChange: (ids: string[]) => void;
@@ -32,6 +34,10 @@ export function OpenAlexLookupFilter({
     typed?: (query: string) => Option | null;
   };
   labels: { label: string; placeholder: string; searchPlaceholder: string; typeToSearch: string; unavailable: string };
+  /** What each chip shows before its name, such as a country's flag. */
+  icons?: Record<string, React.ReactNode>;
+  /** The record just picked, with its detail line, for a caller that keeps more than its ID. */
+  onPicked?: (option: Option) => void;
 }) {
   const tf = useTranslations("searchFilters");
   const tToast = useTranslations("toast");
@@ -71,10 +77,13 @@ export function OpenAlexLookupFilter({
       options={options}
       selected={selected}
       names={names}
+      icons={icons}
       onSearch={setSearch}
       onToggle={(id) => {
         if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));
         onChange([...selected, id]);
+        const picked = options.find((option) => option.id === id);
+        if (picked) onPicked?.(picked);
         // Saved as it is picked, so chips for this search never have to look the name up.
         lookup.remember({ [id]: names[id] });
       }}

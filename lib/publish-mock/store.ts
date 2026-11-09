@@ -2,7 +2,9 @@
 // actions. The real build keeps all of this in Convex.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Check, MockState, Settings, Submission } from "./types";
+import type { Check, Metadata, MockState, Settings, Submission } from "./types";
+import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
+import { suggestTopics } from "./topics";
 import { doiOf } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
@@ -91,7 +93,41 @@ const STATES: Array<Pick<Submission, "status" | "step" | "deposit"> & { note?: s
 /** A report's key: R and six digits, counted up from the seed's. */
 export const keyOf = (n: number) => `R${String(100_000 + n).padStart(6, "0")}`;
 
-function seedSubmission(settings: Settings, n: number): Submission {
+const ABSTRACT =
+  "This report studies a programme run across 42 schools and their communities over two years. We combine records from the schools with interviews of teachers, parents and district officers. The findings point to low-cost changes that districts can make within existing budgets, and to where the evidence is still thin.";
+const FUNDERS = ["Jacobs Foundation", "Foreign, Commonwealth & Development Office", "Wellcome Trust"];
+
+async function seedMetadata(n: number, at: number, people: Array<{ name: string; affiliation: string; country: string }>): Promise<Metadata> {
+  const text = `${TITLES[n]} ${ABSTRACT}`;
+  const named = countriesIn(TITLES[n]!);
+  return {
+    title: TITLES[n]!,
+    subtitle: "",
+    type: "report",
+    language: "en",
+    date: new Date(at).toISOString().slice(0, 10),
+    licence: "CC BY 4.0",
+    authors: people.map((p, i) => ({
+      name: p.name,
+      orcid: i === 0 ? `0000-0002-${String(1000 + n * 37).slice(0, 4)}-${String(2000 + n * 91).slice(0, 4)}` : "",
+      openalexId: null,
+      affiliations: [{ id: null, name: p.affiliation, country: p.country }],
+      corresponding: i === 0,
+      roles: i === 0 ? ["Conceptualization", "Investigation", "Writing, original draft"] : ["Formal analysis", "Writing, review and editing"],
+    })),
+    abstract: ABSTRACT,
+    topics: await suggestTopics(TITLES[n]!),
+    keywords: keywordsFrom(TITLES[n]!, 3),
+    sdgs: suggestSdgs(text),
+    studyDesigns: n % 3 === 0 ? ["observational-study"] : n % 3 === 1 ? ["randomized-controlled-trial"] : [],
+    countries: named.length ? named : [people[0]!.country],
+    funding: n % 2 === 0 ? [{ funder: { id: null, name: FUNDERS[n % 3]! }, awards: [`${2023 + (n % 3)}-${1100 + n * 7}`] }] : [],
+    references: ["10.1016/j.ijedudev.2021.102438", "10.1093/wber/lhz027", "10.1257/app.20180207"].slice(0, 1 + (n % 3)),
+    relations: n % 4 === 0 ? [{ kind: "data", target: `https://zenodo.org/records/${8_100_000 + n}` }] : [],
+  };
+}
+
+async function seedSubmission(settings: Settings, n: number): Promise<Submission> {
   const [name, affiliation, country] = PEOPLE[n % PEOPLE.length]!;
   const [second, secondAffiliation, secondCountry] = PEOPLE[(n + 3) % PEOPLE.length]!;
   const state = STATES[n]!;
@@ -121,19 +157,10 @@ function seedSubmission(settings: Settings, n: number): Submission {
     agreementVersion: n < 9 ? 2 : 1,
     checksVersion: n < 6 ? 3 : 2,
     pdf: { name: `${TITLES[n]!.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40)}.pdf`, pages: 18 + ((n * 7) % 40), bytes: 1_200_000 + n * 310_000 },
-    metadata: {
-      title: TITLES[n]!,
-      authors: [
-        { name, orcid: `0000-0002-${String(1000 + n * 37).slice(0, 4)}-${String(2000 + n * 91).slice(0, 4)}`, affiliation, country },
-        { name: second, orcid: "", affiliation: secondAffiliation, country: secondCountry },
-      ],
-      abstract:
-        "This report studies a programme run across 42 schools and their communities over two years. We combine records from the schools with interviews of teachers, parents and district officers. The findings point to low-cost changes that districts can make within existing budgets, and to where the evidence is still thin.",
-      keywords: ["education", "low-income countries", "evaluation"],
-      language: "English",
-      date: new Date(at).toISOString().slice(0, 10),
-      licence: "CC BY 4.0",
-    },
+    metadata: await seedMetadata(n, at, [
+      { name, affiliation, country },
+      { name: second, affiliation: secondAffiliation, country: secondCountry },
+    ]),
     results,
     ...(state.note ? { note: state.note } : {}),
     createdAt: at,
@@ -143,7 +170,7 @@ function seedSubmission(settings: Settings, n: number): Submission {
 
 async function seed(): Promise<MockState> {
   const settings = await seedSettings();
-  return { settings, submissions: TITLES.map((_, n) => seedSubmission(settings, n)), draftId: null, checkVersions: { "3": settings.checks } };
+  return { settings, submissions: await Promise.all(TITLES.map((_, n) => seedSubmission(settings, n))), draftId: null, checkVersions: { "3": settings.checks } };
 }
 
 /** MOCK: Crossref takes a little while; a report sent over 15 seconds ago is registered. */

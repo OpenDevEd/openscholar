@@ -53,10 +53,12 @@ type Props = {
   communities: CommunityCopy[];
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
+  /** MOCK (mock/publish-reports): what a report published on Openscholar has beyond a paper's record, under the authors and in the sidebar. */
+  extra?: { main?: ReactNode; side?: ReactNode };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
-export function PaperPage({ paper, id, detail, similar, references, communities: read, copyKeys }: Props) {
+export function PaperPage({ paper, id, detail, similar, references, communities: read, copyKeys, extra }: Props) {
   const t = useTranslations("paperPage");
   const tc = useTranslations("common");
   const tTopics = useTranslations("topics");
@@ -164,6 +166,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             ) : null}
           </Section>
           <Authors detail={detail} />
+          {extra?.main}
           {similar.length ? (
             <Section id="paper-similar" title={tSimilar("title")} action={<SeeAll href={similarSearchHref([paper.id]) ?? "/results"} />}>
               <PaperRows papers={similar} link={(row) => ({ href: paperPath(row.id, row.title) })} />
@@ -194,6 +197,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             </Section>
           ) : null}
           <Subjects detail={detail} />
+          {extra?.side}
           <Details detail={detail} />
         </aside>
       </div>
@@ -233,7 +237,7 @@ function Abstract({ text }: { text: string }) {
 }
 
 /** A part of the page: a quiet heading with its count and its one action, then what it holds. */
-function Section({ id, title, count, action, children }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode }) {
+export function Section({ id, title, count, action, children }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode }) {
   const format = useFormatter();
   return (
     <section aria-labelledby={id} className="min-w-0">
