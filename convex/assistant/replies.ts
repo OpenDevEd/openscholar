@@ -571,7 +571,7 @@ export const release = internalMutation({
       const now = Date.now();
       for (const call of asking.calls) {
         // Named as a step that runs is named: by the record its arguments give by ID, such as the extraction it would stop.
-        const subject = call.subject ?? (await aboutOf(ctx, current.workspaceId, call.input));
+        const subject = call.subject ?? (await aboutOf(ctx, { userId: current.senderId, workspaceId: current.workspaceId }, call.input));
         await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, workspaceId: current.workspaceId, ...call, ...(subject ? { subject } : {}), prompt: asking.promptMessageId, status: "asking", startedAt: now });
       }
       const waiting = {

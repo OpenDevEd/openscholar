@@ -26,16 +26,16 @@ async function setup() {
 }
 
 describe("an Evidence Library's draft, for the assistant", () => {
-  it("lists the workspace's libraries and reads one's draft as its owner, and none from a chat in another workspace", async () => {
+  it("lists the person's libraries and reads one's draft as its owner, from a chat in any workspace they're in", async () => {
     const { t, as, libraryId } = await setup();
     expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, as)).toEqual({ libraries: [expect.objectContaining({ libraryId, editable: true })] });
     const draft = await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["identity"] });
     expect(draft).toMatchObject({ libraryId, editable: true, sections: [{ sectionKey: "identity" }] });
-    // From their own workspace's chat, the organization's library isn't there: its people don't read that chat.
+    // From their own workspace's chat too, as their Communities page there lists it: their role decides, not the workspace (OS-28).
     const own = { userId: as.userId, workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, as.userId)) };
-    expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, own)).toEqual({ libraries: [] });
-    await expect(t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...own, libraryId })).rejects.toThrow(/not found/);
-    await expect(t.query(internal.evidenceLibraries.assistant.teamForAssistant, { ...own, libraryId })).rejects.toThrow(/not found/);
+    expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, own)).toEqual({ libraries: [expect.objectContaining({ libraryId, role: "owner", editable: true })] });
+    expect(await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...own, libraryId, sections: ["identity"] })).toMatchObject({ libraryId, editable: true });
+    expect(await t.query(internal.evidenceLibraries.assistant.teamForAssistant, { ...own, libraryId })).toBeTruthy();
   });
 
   it("changes values unasked with an undo that puts them back, two undone in turn, and keeps uploads and prototypes out of reach", async () => {
@@ -195,8 +195,8 @@ describe("a library's invitations, its start and the running library, for the as
     const assistant = internal.evidenceLibraries.assistant;
     await t.action(assistant.inviteForAssistant, { ...owner, libraryId, email: "Outside@example.org", role: "creator", approved: true });
     expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ to: "outside@example.org" });
-    // Not from a chat in a workspace the library isn't in.
-    await expect(t.action(assistant.inviteForAssistant, { ...ownerAlone, libraryId, email: "other@example.org", role: "editor", approved: true })).rejects.toThrow(/not found/);
+    // From a chat in their own workspace too: they own it wherever they are.
+    await t.action(assistant.inviteForAssistant, { ...ownerAlone, libraryId, email: "other@example.org", role: "editor", approved: true });
 
     const [invitation] = await t.query(assistant.invitationsForAssistant, outside);
     expect(invitation).toMatchObject({ libraryId, role: "creator" });
@@ -230,7 +230,7 @@ describe("a library's invitations, its start and the running library, for the as
     expect(await refusal(colleague, "setAddedPapersSettings", { libraryId, downloadPdfs: false })).toMatch(/Only the community's owner/);
   });
 
-  it("starts a community only where the person may create one, and reads the running library only from its workspace", async () => {
+  it("starts a community only where the person may create one, and acts on the running library from any workspace its owner is in", async () => {
     const { t, owner, ownerAlone, libraryId } = await activated();
     const assistant = internal.evidenceLibraries.assistant;
     // Their own workspace, with Evidence Communities off for it.
@@ -238,14 +238,13 @@ describe("a library's invitations, its start and the running library, for the as
     // What would refuse a change is found before the person is asked about it.
     const refusal = (where: typeof owner, path: string, input: object) => t.query(internal.assistant.asking.check, { ...where, path: `evidenceLibraries/assistant:${path}`, input: JSON.stringify(input) });
     expect(await refusal(ownerAlone, "startLibrary", { name: "Tutoring evidence" })).toMatch(/once Evidence Communities are on for it/);
-    expect(await refusal(ownerAlone, "invite", { libraryId, email: "other@example.org", role: "editor" })).toMatch(/not found/);
+    expect(await refusal(ownerAlone, "invite", { libraryId, email: "other@example.org", role: "editor" })).toBeNull();
     expect(await refusal(owner, "answerInvitation", { invitationId: "x", accept: true })).toMatch(/own workspace/);
     expect(await refusal(owner, "syncSource", { libraryId, sourceKey: "openalex" })).toBeNull();
     // One that isn't running yet has nothing to list, and says so.
     expect(await t.action(assistant.runningCollectionsForAssistant, { ...owner, libraryId })).toMatchObject({ reason: "not-set-up", page: [] });
     expect(await t.query(assistant.sourcesForAssistant, { ...owner, libraryId })).toBeNull();
-    await expect(t.action(assistant.syncSourceForAssistant, { ...ownerAlone, libraryId, sourceKey: "openalex", approved: true })).rejects.toThrow(/not found/);
-    // A retry the library can't run fails, never reads as done.
-    await expect(t.action(assistant.syncSourceForAssistant, { ...owner, libraryId, sourceKey: "openalex", approved: true })).rejects.toThrow(/isn't running yet/);
+    // A retry the library can't run fails, never reads as done, from either workspace.
+    for (const where of [owner, ownerAlone]) await expect(t.action(assistant.syncSourceForAssistant, { ...where, libraryId, sourceKey: "openalex", approved: true })).rejects.toThrow(/isn't running yet/);
   });
 });

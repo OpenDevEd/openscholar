@@ -98,8 +98,7 @@ it("holds the community's word on a paper that comes before Openscholar recorded
   expect(response.status).toBe(200);
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "e1", papers: [{ itemKey: "EARLY001", title: "Phonics", authors: "", year: 2020, openalexId: "W70", doi: null, status: "queued" }] });
   const [row] = (await t.withIdentity({ subject: "early" }).query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page;
-  // Withdrawn from the community's own workspace, which is theirs.
-  expect(row).toMatchObject({ itemKey: "EARLY001", status: "published", workspaceId });
+  expect(row).toMatchObject({ itemKey: "EARLY001", status: "published" });
   expect(await t.run((ctx) => ctx.db.query("pendingSubmissionStatus").collect())).toEqual([]);
 });
 

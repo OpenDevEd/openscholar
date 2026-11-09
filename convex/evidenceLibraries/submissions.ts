@@ -7,7 +7,7 @@ import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
-import { cardFacts, libraryOwner, ownerName, readActiveOrganizationMembership, readLibraryRole } from "./access";
+import { cardFacts, libraryOwner, ownerName, readLibraryRole } from "./access";
 import { PAPER_SENT_TO, RECENT_COMMUNITIES, recentCommunitiesValidator, sentPaperSummaryValidator, sentPapersValidator, sentToValidator, submissionOwnerValidator, submissionStatusValidator } from "./validators";
 
 /** Submissions a page of Your submissions shows at most. */
@@ -139,8 +139,6 @@ const submissionValidator = v.object({
   status: submissionStatusValidator,
   note: v.union(v.string(), v.null()),
   sentAt: v.number(),
-  /** A workspace the person acts for the community from, as Withdraw does: its own, if they're in it, or theirs. */
-  workspaceId: v.union(v.id("workspaces"), v.null()),
   community: v.object({
     libraryId: v.id("evidenceLibraries"),
     name: v.string(),
@@ -176,19 +174,6 @@ async function ownerOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     : { name: person, kind: "person" as const, imageUrl: shown.imageUrl ?? null, workspaceId: owner.workspace._id, colour: null };
 }
 
-/**
- * Where the person acts for a community: the workspace it's in, when it's their own or their organization's;
- * otherwise their own, where a community shared with them, or a public one, is reached.
- */
-async function actingWorkspaceOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, person: Doc<"users">) {
-  const library = await ctx.db.get("evidenceLibraries", libraryId);
-  const workspace = library ? await ctx.db.get("workspaces", library.workspaceId) : null;
-  const inIt = workspace?.kind === "personal" ? workspace.userId === person._id : workspace ? (await readActiveOrganizationMembership(ctx, workspace.organizationId, person.clerkId)) !== null : false;
-  if (workspace && inIt) return workspace._id;
-  const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", person._id)).unique();
-  return own?._id ?? null;
-}
-
 const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">, person: Doc<"users">) => ({
   submissionId: row._id,
   itemKey: row.itemKey,
@@ -200,7 +185,6 @@ const rowOf = async (ctx: QueryCtx, row: Doc<"paperSubmissions">, person: Doc<"u
   status: row.status,
   note: row.note ?? null,
   sentAt: row.sentAt,
-  workspaceId: await actingWorkspaceOf(ctx, row.libraryId, person),
   community: await communityOf(ctx, row.libraryId),
 });
 

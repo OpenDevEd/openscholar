@@ -118,7 +118,7 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
   const remove = useAction(api.evidenceLibraries.assistant.removeAddedPaper);
   // Withdrawn from a workspace that reaches the community, whichever one the page is in.
   const here = useWorkspace();
-  const workspaceId = submission.workspaceId ?? here;
+  const workspaceId = here;
   const [withdrawing, setWithdrawing] = useState(false);
   const withdraw = async () => {
     if (!workspaceId) return;

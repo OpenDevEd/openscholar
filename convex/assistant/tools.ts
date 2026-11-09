@@ -504,7 +504,7 @@ export function toolsFor(
         found = { entry, items: change.items, kept, about: change.shared, shown: JSON.stringify({ shared: change.shared, each: papers.slice(0, ASKED_EACH_MAX).map((paper) => cut(paper.title, 200)) }) };
       }
       const about = JSON.stringify(found.about);
-      const subject = await ctx.runQuery(internal.assistant.steps.about, { workspaceId, input: about });
+      const subject = await ctx.runQuery(internal.assistant.steps.about, { userId, workspaceId, input: about });
       const variant = variantIn(found.entry.path, found.items[0]);
       return { tool: toolName, entry: found.entry, items: found.items, kept: found.kept, about, ...(found.shown ? { shown: found.shown } : {}), ...(variant ? { variant } : {}), ...(subject ? { subject } : {}) };
     } catch (error) {

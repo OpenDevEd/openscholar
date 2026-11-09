@@ -13,7 +13,7 @@ import { findSearch } from "../research/records";
 
 import { currentSearch } from "../../lib/research/records";
 import { roleIn } from "./access";
-import { libraryOf } from "../evidenceLibraries/access";
+import { libraryOf, readLibraryRole } from "../evidenceLibraries/access";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { personName } from "../lib/people";
 import { toPaperKey } from "../../lib/papers/paper-ref";
@@ -99,13 +99,13 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     if (invitationId) {
       const invitation = await ctx.db.get("itemInvitations", invitationId);
       const library = invitation ? await libraryOf(ctx, invitation) : null;
-      return invitation && library && (addressesOf(reader).includes(invitation.email) || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
+      return invitation && library && (addressesOf(reader).includes(invitation.email) || (await readLibraryRole(ctx, library, reader.clerkId)) !== null) ? `${invitation.email}, ${library.name}` : null;
     }
-    // An Evidence Library, by its name: the workspace's own, or one that is running, whose site is public.
+    // An Evidence Library, by its name: one the reader has a role on, whichever workspace, or one that is running, whose site is public.
     const evidenceLibraryId = ctx.db.normalizeId("evidenceLibraries", id);
     if (evidenceLibraryId) {
       const library = await ctx.db.get("evidenceLibraries", evidenceLibraryId);
-      return library && (library.workspaceId === workspaceId || (await readEvidenceLibraryAdminLaunchTarget(ctx, library)) !== null) ? library.name : null;
+      return library && ((await readLibraryRole(ctx, library, reader.clerkId)) !== null || (await readEvidenceLibraryAdminLaunchTarget(ctx, library)) !== null) ? library.name : null;
     }
     // An author profile, by its name: its page is public.
     const profileId = ctx.db.normalizeId("authorProfiles", id);

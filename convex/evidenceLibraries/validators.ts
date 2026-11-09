@@ -1301,10 +1301,20 @@ export const pendingInvitationValidator = v.object({
 export const pendingInvitationsValidator = capped(v.array(pendingInvitationValidator), MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
 
 /** Libraries one list of the assistant's gives (./assistant.ts). */
+/** Where a library stands, as its list shows it. */
+export const libraryOverviewStatusValidator = v.union(
+  v.literal("draft"),
+  v.literal("setting_up"),
+  v.literal("setup_failed"),
+  v.literal("active"),
+  v.literal("deleting"),
+);
+
 export const LIBRARIES_LISTED = 50;
+/** A page of the person's communities, as the assistant reads it (./assistant.ts). */
 export const assistantLibrariesValidator = v.object({
-  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })), LIBRARIES_LISTED),
-  next: v.optional(v.number()),
+  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), status: libraryOverviewStatusValidator, role: libraryListRoleValidator, owner: v.string(), address: v.string(), editable: v.boolean() })), LIBRARIES_LISTED),
+  cursor: v.optional(v.string()),
 });
 /** What the configuration page flags on a draft's cards, by card and the page's name for each problem: a few to a card at most. */
 export const DRAFT_PROBLEMS_MAX = 300;
@@ -1598,7 +1608,7 @@ export const recentCommunitiesValidator = capped(v.array(v.object({
   owner: submissionOwnerValidator,
   /** The person's role there; `viewer` for a public community they're not on. */
   role: v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"), v.literal("viewer")),
-  /** The workspace it's in, which a paper sent to it as its team goes from. */
+  /** The workspace it's in. */
   workspaceId: v.id("workspaces"),
   card: cardFactsValidator,
 })), RECENT_COMMUNITIES);
