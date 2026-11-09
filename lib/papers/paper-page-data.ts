@@ -8,6 +8,8 @@ import { normalizeDoi } from "@/lib/topics/identity";
 import { fetchPublicationPdf } from "@/lib/evidence-libraries/publication-cards";
 import type { SimilarPaper } from "@/app/actions/similar";
 import type { PaperResult } from "@/lib/types/search.types";
+import { paperPageId } from "@/lib/papers/page-address";
+import { paperDetail } from "@/lib/papers/paper-detail";
 import { copyOf, type CommunityCopy } from "./community-copies";
 
 /** How long a paper page reuses what it read: a paper's record barely changes, and crawlers read many pages once each. */
@@ -104,6 +106,32 @@ export async function readCommunityCopies(doi: string | null, openalexId: string
     const pdf = read.status === "fulfilled" ? read.value : null;
     return { ...copyOf(location), pdf: pdf?.url ?? null, cover: pdf?.cover ?? null };
   });
+}
+
+/** Logs a read that failed and gives the page what it can show without it. */
+export const quietly = <T,>(what: string, id: string, fallback: T) => (error: unknown) => (console.error(`[paper page] ${what} unavailable`, { id, error }), fallback);
+
+/**
+ * The paper an address asks for, or null. A paper our index doesn't hold yet, by its OpenAlex ID, is read from OpenAlex, so
+ * no OpenAlex result's link ends in a 404. So is one whose index read fails (the index is down, or not set up where search
+ * runs on OpenAlex); an OS ID has nowhere else to come from.
+ */
+export async function readAskedPaper(asked: string | null): Promise<PaperResult | null> {
+  if (!asked) return null;
+  const openalexId = asked.startsWith("W") ? asked : null;
+  const indexed = await readPaperForPage(asked).catch((error: unknown) => { if (!openalexId) throw error; return quietly("our index's record", asked, null)(error); });
+  return indexed ?? (openalexId ? await readOpenAlexForPage(openalexId).catch(quietly("OpenAlex record", openalexId, null)) : null);
+}
+
+/** Everything a paper's page shows about it: our record, its OpenAlex record, and the two as one. Null when no paper has that address. */
+export async function readPaperPage(raw: string) {
+  const paper = await readAskedPaper(paperPageId(raw));
+  if (!paper) return null;
+  // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
+  const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
+  const work = openalexIdOf(paper);
+  const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : null;
+  return { paper, id, work, detail: paperDetail(paper, openalex, id, new Date().getUTCFullYear()) };
 }
 
 /** The OpenAlex work a record of ours is paired with, bare, if any. */

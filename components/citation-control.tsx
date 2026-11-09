@@ -21,8 +21,7 @@ import {
   loadAdditionalCitation,
 } from "@/lib/citations/client";
 import { paperToCitationData } from "@/lib/citations/paper-data";
-import { type CitationData } from "@/lib/citations/formats";
-import type { CitationFile } from "@/lib/citations/formatter";
+import { type CitationData, type CitationFile } from "@/lib/citations/formats";
 import { useCitationStyle } from "@/lib/citations/use-citation-style";
 import { useAppToast } from "@/lib/toast/use-app-toast";
 import { toast as sonner } from "sonner";

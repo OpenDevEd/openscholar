@@ -4,7 +4,7 @@ import { withoutCitationNumbers } from "./citation-numbering";
 import { Cite } from "@citation-js/core";
 import "@citation-js/plugin-bibtex";
 import "@citation-js/plugin-ris";
-import { CITATION_FORMATS, type CitationData, type CitationFormat, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
+import { CITATION_FILES, CITATION_FORMATS, type CitationData, type CitationFile, type CitationFormat, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
 
 import { loadCitationStyleAssets } from "./styles";
 
@@ -45,13 +45,6 @@ export async function formatAdditionalCitation(data: CitationData, language: str
   return renderCitation(data, locales[language] ?? language, style, { ...localeAssets, ...extra.locales });
 }
 
-/** The file reference managers import: RIS for EndNote, Mendeley and Zotero, BibTeX for LaTeX. */
-export const CITATION_FILES = {
-	ris: { extension: "ris", type: "application/x-research-info-systems", format: "ris" },
-	bibtex: { extension: "bib", type: "application/x-bibtex", format: "bibtex" },
-} as const;
-
-export type CitationFile = keyof typeof CITATION_FILES;
 
 export function citationFile(data: CitationData, kind: CitationFile) {
 	const file = CITATION_FILES[kind];
