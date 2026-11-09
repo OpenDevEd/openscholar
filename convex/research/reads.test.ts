@@ -20,6 +20,11 @@ const openAlex = vi.fn(async (input: string | URL) => {
     });
   }
   if (url.pathname.endsWith("/authors/A404")) return new Response("{}", { status: 404 });
+  // Our index's record of a paper with no abstract, paired with an OpenAlex work that has one.
+  if (url.hostname === "index.example.test" && url.pathname.endsWith("/works/OS5")) {
+    return Response.json({ id: "https://openscholar.ai/OS5", title: "Peer tutoring in reading", publication_year: 1994, abstract_inverted_index: null, ids: { openalex: "https://openalex.org/W5" } });
+  }
+  if (url.pathname.endsWith("/works/W5")) return Response.json({ id: "https://openalex.org/W5", abstract_inverted_index: { Tutoring: [0], improved: [1], reading: [2] } });
   if (url.pathname.endsWith("/works/W7")) {
     return Response.json({ id: "https://openalex.org/W7", title: "Tutoring at scale", type: "article", type_crossref: "journal-article", publication_year: 2020, authorships: [{ author: { display_name: "Ada Okafor" } }], primary_location: { source: { display_name: "Journal of Learning" } } });
   }
@@ -61,6 +66,12 @@ describe("the assistant's reads of OpenAlex", () => {
     requests = [];
     await expect(alice.action(api.research.authors.get, { id: "../works/W1" })).rejects.toThrow(/ID, such as A5023888391/);
     expect(requests).toEqual([]);
+  });
+
+  it("read a paper of our index with the abstract of the OpenAlex work it's paired with, as its page shows", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://index.example.test");
+    const { alice } = await setup();
+    expect(await alice.action(api.research.papers.get, { id: "OS5" })).toMatchObject({ title: "Peer tutoring in reading", abstract: "Tutoring improved reading" });
   });
 
   it("read a research area from the kept copy, with where it sits", async () => {
