@@ -39,17 +39,19 @@ export const recordPaper = internalQuery({
  * by its OpenAlex work or DOI there, and a community's record by the paper it holds. Null when Openscholar finds none.
  * `spend` counts a read of our index against whoever asked.
  */
-export async function paperOfLink(ctx: Pick<ActionCtx, "runQuery">, raw: string, spend: (pages: number) => Promise<boolean>): Promise<PaperIds | null> {
+export async function paperOfLink(ctx: Pick<ActionCtx, "runQuery">, raw: string, spend: (pages: number) => Promise<boolean>, { withDoi = false } = {}): Promise<PaperIds | null> {
   const link = paperLinkOf(raw);
   if (!link) return null;
-  if (link.kind === "work") return { openalexId: link.openalexId, doi: null };
   if (link.kind === "doi") return { openalexId: null, doi: link.doi };
   if (link.kind === "record") return await ctx.runQuery(internal.evidenceLibraries.paperLinks.recordPaper, { origin: link.origin, itemKey: link.itemKey });
-  const work = await readWork<{ id?: string; doi?: string | null }>(link.work, "id,doi", spend, "openscholar").catch((error: unknown) => {
-    console.error("[paper links] our index didn't answer", { work: link.work, error: String(error) });
+  // An OpenAlex work is taken as it is, unless its DOI is wanted too, which our index gives as it does an own work's.
+  if (link.kind === "work" && !withDoi) return { openalexId: link.openalexId, doi: null };
+  const id = link.kind === "work" ? link.openalexId : link.work;
+  const work = await readWork<{ id?: string; doi?: string | null }>(id, "id,doi", spend, "openscholar").catch((error: unknown) => {
+    console.error("[paper links] our index didn't answer", { work: id, error: String(error) });
     return null;
   });
-  const ids = { openalexId: openalexWork(work?.id ?? ""), doi: normalDoi(work?.doi) };
+  const ids = { openalexId: openalexWork(work?.id ?? "") ?? (link.kind === "work" ? link.openalexId : null), doi: normalDoi(work?.doi) };
   return ids.openalexId || ids.doi ? ids : null;
 }
 
@@ -62,9 +64,9 @@ const resolveSchema = z
   .strict();
 
 /**
- * `POST /api/v1/evidence-libraries/papers/resolve`, for a community: the paper each link names that only Openscholar can
- * follow (its paper pages, a paper only our index has, another community's record), by its OpenAlex work and DOI, or
- * null. With the community's machine credential.
+ * `POST /api/v1/evidence-libraries/papers/resolve`, for a community: the paper each link names (Openscholar's paper
+ * pages, a paper only our index has, a community's record, an OpenAlex work), by its OpenAlex work and its DOI where
+ * one is known, for a community that imports by DOI; null where none is found. With the community's machine credential.
  */
 export const resolvePapers: ReturnType<typeof httpAction> = httpAction(async (ctx, request) => {
   const credential = readBearerCredential(request);
@@ -78,6 +80,6 @@ export const resolvePapers: ReturnType<typeof httpAction> = httpAction(async (ct
     return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   }
   // ponytail: a community's reads of our index aren't counted against anyone; at most ADDED_PAPERS_MAX a request, from a signed community.
-  const papers = await Promise.all(links.map((link) => paperOfLink(ctx, link, async () => true)));
+  const papers = await Promise.all(links.map((link) => paperOfLink(ctx, link, async () => true, { withDoi: true })));
   return jsonResponse(200, { papers });
 });
