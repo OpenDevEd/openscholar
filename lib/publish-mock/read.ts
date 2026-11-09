@@ -1,9 +1,7 @@
-// MOCK (mock/publish-reports): what the metadata model would read from a report's text, done with plain rules so the
-// mock shows real catalog topics, goals, designs, places, funders, references and links. The real build asks the model
-// set on the admin page, with these fields as its structured answer.
+// MOCK (mock/publish-reports): plain rules that give the mock's sample reports their goals, places and keywords, and the
+// country an OpenAlex institution's place names. A report someone uploads is read by the model (./reader.ts).
 import { COUNTRIES } from "@/lib/constants";
-import { SDGS, STUDY_DESIGNS } from "@/lib/openalex/vocabulary";
-import type { Funding, Relation } from "./types";
+import { SDGS } from "@/lib/openalex/vocabulary";
 
 const STOP = new Set(
   "about above after again against among and are because been before being between both but can could does doing down during each from further have having here into itself just more most other over own same should such than that their them then there these they this those through under until very were what when where which while will with within without would your across also among using used use two one per the for our its has had was not all any how who why may".split(" "),
@@ -24,15 +22,6 @@ const SDG_WORDS: Record<string, RegExp> = {
 /** The goals the text is plainly about. */
 export const suggestSdgs = (text: string) => SDGS.filter((goal) => SDG_WORDS[goal.id]?.test(text)).map((goal) => goal.id);
 
-const DESIGN_WORDS: Record<string, RegExp> = {
-  "systematic-review": /systematic review/i,
-  "meta-analysis": /meta-?analys/i,
-  "randomized-controlled-trial": /randomi[sz]ed (controlled )?trial|randomly assigned|\bRCT\b/i,
-  "observational-study": /observational|cohort|we follow|panel data|cross-sectional/i,
-  "study-protocol": /study protocol/i,
-};
-export const suggestDesigns = (text: string) => STUDY_DESIGNS.filter((design) => DESIGN_WORDS[design.id]?.test(text)).map((design) => design.id);
-
 const SHORT = new Intl.DisplayNames(["en"], { type: "region" });
 /** Each country's names as text says them: its short English name and the catalog's formal one. */
 const COUNTRY_NAMES = Object.entries(COUNTRIES).map(([code, formal]) => ({ code, names: [...new Set([SHORT.of(code) ?? formal, formal.split(",")[0]!])].filter((n) => n.length > 3) }));
@@ -48,30 +37,6 @@ export function countryOfPlace(place: string | undefined): string {
   const last = place?.split(",").at(-1)?.trim();
   if (!last) return "";
   return COUNTRY_NAMES.find(({ names }) => names.some((n) => n.toLowerCase() === last.toLowerCase()))?.code ?? "";
-}
-
-/** Funders the text thanks, with their grant numbers. */
-export function fundingIn(text: string): Funding[] {
-  const out: Funding[] = [];
-  for (const match of text.matchAll(/(?:funded|supported|financed) by (?:the )?([A-Z][\w&' -]{3,80}?)(?:\s*\((?:grant|award)?\s*(?:no\.?|number)?\s*([A-Z0-9][\w/.-]{2,30})\))?(?=[.,;]|\s+(?:and|under)\b)/g)) {
-    const name = match[1]!.trim();
-    if (!out.some((f) => f.funder.name === name)) out.push({ funder: { id: null, name }, awards: match[2] ? [match[2]] : [] });
-  }
-  return out;
-}
-
-/** The DOIs the text cites, apart from its own. */
-export function doisIn(text: string, own: string): string[] {
-  const found = (text.match(/\b10\.\d{4,9}\/[^\s"<>,;)]+/g) ?? []).map((doi) => doi.replace(/[.]+$/, "").toLowerCase());
-  return [...new Set(found)].filter((doi) => doi !== own.toLowerCase());
-}
-
-/** Links to the work's data and code. */
-export function linksIn(text: string): Relation[] {
-  const found = text.match(/https?:\/\/[^\s)"<>]+/g) ?? [];
-  return [...new Set(found)].flatMap((url): Relation[] =>
-    /github\.com|gitlab\.com/.test(url) ? [{ kind: "code", target: url }] : /zenodo\.org|osf\.io|dataverse|figshare|datadryad/.test(url) ? [{ kind: "data", target: url }] : [],
-  );
 }
 
 /** The few words the text leans on most, as keywords. */

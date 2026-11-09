@@ -1,6 +1,6 @@
 import "server-only";
-// MOCK (mock/publish-reports): topics for a report, as the topics most common among the OpenAlex works that best match
-// its title. The real build asks the metadata model for them.
+// MOCK (mock/publish-reports): topics for the mock's sample reports, as the topics most common among the OpenAlex works
+// that best match a title. A report someone uploads gets its topics from OpenAlex's classifier (./reader.ts).
 import { openAlexFetch } from "@/lib/openalex/fetch";
 import { openAlexUrl } from "@/lib/openalex/request-url";
 import type { Topic } from "./types";

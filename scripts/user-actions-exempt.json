@@ -99,6 +99,7 @@
     "app/actions/publish-mock:removeCheck": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:updateAgreement": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:activate": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:readPdfDetails": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:savePublication": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:readReport": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:addToCommunity": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",

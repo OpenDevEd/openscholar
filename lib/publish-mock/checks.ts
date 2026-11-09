@@ -2,7 +2,7 @@
 // it comes; the last step saves them and decides what happens to the report.
 import { readFile } from "node:fs/promises";
 import { alreadyPublished } from "./published";
-import { changeState, pdfPath } from "./store";
+import { changeState, textPath } from "./store";
 import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
@@ -71,7 +71,7 @@ export async function checksFor(id: string, userId: string, metadata: Metadata) 
     Object.assign(draft, { metadata, run: crypto.randomUUID(), updatedAt: Date.now() });
     return { settings: state.settings, draft: structuredClone(draft), checks: state.settings.checks.filter((c) => c.enabled), version: state.settings.checksVersion };
   });
-  const text = await readFile(pdfPath(id).replace(/\.pdf$/, ".txt"), "utf8").catch(() => "");
+  const text = await readFile(textPath(id), "utf8").catch(() => "");
   return { ...started, text };
 }
 

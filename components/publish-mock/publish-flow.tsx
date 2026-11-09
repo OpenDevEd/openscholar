@@ -40,7 +40,7 @@ import {
   Hash,
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
-import { activate, addToCommunity, goTo, openReport, readReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { activate, addToCommunity, goTo, openReport, readPdfDetails, readReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { RegistrationChips } from "@/components/publish-mock/registration";
 import { CitationControl } from "@/components/citation-control";
@@ -204,7 +204,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
               ) : step === "doi" && draft ? (
                 <DoiStep draft={draft} fresh={fresh?.id === draft.id && fresh.step === "doi"} onNext={() => back("upload")} />
               ) : step === "upload" && draft ? (
-                <UploadStep settings={settings} draft={draft} onRead={setDraft} />
+                <UploadStep settings={settings} draft={draft} onStored={setDraft} onRead={setDraft} />
               ) : step === "details" && draft?.metadata ? (
                 <DetailsStep initial={draft.metadata} onRun={run} />
               ) : step === "done" && draft?.status === "live" ? (
@@ -460,13 +460,16 @@ function DoiStep({ draft, fresh, onNext }: { draft: Submission; fresh: boolean; 
   );
 }
 
-function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Submission; onRead: (d: Submission) => void }) {
+function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings; draft: Submission; onStored: (d: Submission) => void; onRead: (d: Submission) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [busy, start] = useTransition();
-  const send = (picked: File | undefined) => {
-    if (!picked) return;
+  // Two stretches: the PDF is stored and its cover drawn, then the model reads it. Plain state, not a transition:
+  // the cover shows on the side as soon as the first is done.
+  const [stage, setStage] = useState<"storing" | "reading" | null>(null);
+  const busy = stage !== null;
+  const send = async (picked: File | undefined) => {
+    if (!picked || busy) return;
     if (!/\.pdf$/i.test(picked.name)) {
       toast.error("Choose a PDF");
       return;
@@ -476,16 +479,22 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
       return;
     }
     setFile(picked);
+    setStage("storing");
     const form = new FormData();
     form.set("pdf", picked);
-    start(async () => {
-      try {
-        onRead(await uploadPdf(form));
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "The PDF couldn't be read");
-        setFile(null);
-      }
-    });
+    try {
+      const stored = await uploadPdf(form);
+      onStored(stored);
+      setStage("reading");
+      const { draft: read, read: wasRead } = await readPdfDetails(stored.id);
+      if (!wasRead) toast.info("The details couldn't be read from this PDF", { description: "Fill them in on the next step." });
+      onRead(read);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The PDF couldn't be read");
+      setFile(null);
+    } finally {
+      setStage(null);
+    }
   };
   return (
     <div>
@@ -505,7 +514,7 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
         onDrop={(e) => {
           e.preventDefault();
           setOver(false);
-          send(e.dataTransfer.files[0]);
+          void send(e.dataTransfer.files[0]);
         }}
         disabled={busy}
         className={cn(
@@ -513,11 +522,17 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
           over ? "border-primary bg-primary/5" : "border-border hover:border-primary/60 hover:bg-muted/50",
         )}
       >
-        {busy && file ? (
+        {stage === "storing" && file ? (
+          <>
+            <Spinner className="size-6 text-primary" />
+            <span className="max-w-full truncate px-6 text-sm font-medium">Uploading {file.name}</span>
+            <span className="text-xs text-muted-foreground">{bytes(file.size)}</span>
+          </>
+        ) : stage === "reading" ? (
           <>
             <AiIcon working className="size-6 text-primary" />
-            <span className="text-sm font-medium">Reading {file.name}</span>
-            <span className="text-xs text-muted-foreground">{bytes(file.size)}</span>
+            <span className="text-sm font-medium">{settings.metadataModel.name} is reading your report</span>
+            <span className="text-xs text-muted-foreground">About half a minute</span>
           </>
         ) : (
           <>
@@ -527,7 +542,7 @@ function UploadStep({ settings, draft, onRead }: { settings: Settings; draft: Su
           </>
         )}
       </button>
-      <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => send(e.target.files?.[0])} />
+      <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" onChange={(e) => void send(e.target.files?.[0])} />
       {draft.pdf && !busy ? (
         <p className="mt-3 flex items-center gap-2 ps-1 text-xs text-muted-foreground">
           <FileText className="size-3.5" />

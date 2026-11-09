@@ -147,7 +147,8 @@ export type Submission = {
   checksVersion?: number;
   /** The run of the checks under way, so only that run's answers are saved: a new PDF clears it. */
   run?: string;
-  pdf?: { name: string; pages: number; bytes: number };
+  /** `at` is when it was uploaded, which tells one upload's reading from the next one's. */
+  pdf?: { name: string; pages: number; bytes: number; at?: number };
   /** When the picture of the PDF's first page was made; none until it's ready, or when the page couldn't be drawn. */
   cover?: number;
   metadata?: Metadata;

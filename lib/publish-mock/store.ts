@@ -11,6 +11,7 @@ export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
 export const pdfPath = (key: string) => path.join(MOCK_DIR, `${key}.pdf`);
 export const coverPath = (key: string) => path.join(MOCK_DIR, `${key}.cover.jpg`);
+export const textPath = (key: string) => path.join(MOCK_DIR, `${key}.txt`);
 
 /**
  * Whether a report's PDF and cover may be read: anyone reads a live report's, and only its author reads one that

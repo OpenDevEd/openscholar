@@ -1,17 +1,15 @@
 "use server";
 // MOCK (mock/publish-reports): the Publish flow and its admin page, against the mock's local store. The real build
 // makes these Convex functions with their user-action registry entries.
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { cookies } from "next/headers";
 import { currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
-import { searchOpenAlex } from "@/lib/openalex/lookup";
-import { countriesIn, countryOfPlace, doisIn, fundingIn, keywordsFrom, linksIn, suggestDesigns, suggestSdgs } from "@/lib/publish-mock/read";
-import { suggestTopics } from "@/lib/publish-mock/topics";
+import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { renderCover } from "@/lib/publish-mock/cover";
-import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState } from "@/lib/publish-mock/store";
-import { canPublish, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Affiliation, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
+import { canPublish, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -74,45 +72,12 @@ export async function goTo(step: Step) {
   });
 }
 
-/** MOCK: the affiliation as OpenAlex knows it, with its country; as written when OpenAlex has no match or can't be asked. */
-async function matchInstitution(name: string): Promise<Affiliation> {
-  try {
-    const [best] = await searchOpenAlex("institutions", name);
-    if (best) return { id: best.id, name: best.name, country: countryOfPlace(best.detail) };
-  } catch (error) {
-    console.error("[publish mock] institution lookup failed", error);
-  }
-  return { id: null, name, country: "" };
-}
-
-type Page = { items: Array<{ str: string; hasEOL?: boolean }> };
-/** A page's text with its line breaks, which the extractor's joined text drops. */
-const linesOf = (page: Page | undefined) =>
-  (page?.items ?? []).map((item) => item.str + (item.hasEOL ? "\n" : "")).join("").split("\n").map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean);
-
-/** MOCK: what the metadata model would read. The title is the first line that reads like one; under it, "Name, Affiliation". */
-function readDetails(pages: Page[], file: string, signer: string) {
-  const lines = linesOf(pages[0]);
-  const at = lines.findIndex((l) => l.length > 12 && l.length < 200 && !/^(this publication|doi|https?:)/i.test(l));
-  const title = at >= 0 ? lines[at]! : file.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ");
-  const byline = at >= 0 ? lines[at + 1]?.match(/^([^,]{3,60}),\s*(.{3,120})$/) : null;
-  const all = pages.slice(0, 3).flatMap((page) => linesOf(page));
-  const start = all.findIndex((l) => /^abstract\b/i.test(l));
-  const body = start >= 0 ? all.slice(start + 1) : all.slice(at + 1);
-  // It ends where the first numbered section starts.
-  const end = body.findIndex((l) => /^\d+\.?\s+\p{Lu}/u.test(l));
-  const abstract = (end >= 0 ? body.slice(0, end) : body).join(" ").replace(/^abstract\s*/i, "");
-  // A long one is cut at a word, near 900 characters.
-  const cut = abstract.length > 900 ? abstract.slice(0, 900).replace(/\s\S*$/, "") : abstract;
-  return { title, abstract: cut, author: byline ? { name: byline[1]!.trim(), affiliation: byline[2]!.trim() } : { name: signer, affiliation: "" } };
-}
-
-/** The PDF, kept with the report, and its details as the metadata model reads them. */
+/** The PDF, kept with the report with its text and a picture of its first page. Its details are read next (`readPdfDetails`). */
 export async function uploadPdf(form: FormData) {
   const file = form.get("pdf");
   if (!(file instanceof File) || !/\.pdf$/i.test(file.name)) throw new Error("Choose a PDF.");
   const bytes = await file.arrayBuffer();
-  // pdfjs takes its buffer over, so it reads a copy and the original is kept.
+  // pdfjs takes its buffer over, so each reader gets a copy and the original is kept.
   // The text and the cover are read side by side. A first page that can't be drawn leaves the report its title page.
   const [{ pages, totalPages }, cover] = await Promise.all([
     extractPdfJsTextPages(bytes.slice(0)),
@@ -121,40 +86,49 @@ export async function uploadPdf(form: FormData) {
       return null;
     }),
   ]);
-  const user = await currentUser();
   return change(async (state) => {
     const draft = draftOf(state);
     if (draft.step === "done") throw new Error("This report has been checked. Start another to publish a new PDF.");
     await mkdir(MOCK_DIR, { recursive: true });
     await writeFile(pdfPath(draft.id), Buffer.from(bytes));
     if (cover) await writeFile(coverPath(draft.id), cover);
-    const read = readDetails(pages, file.name, draft.signedBy?.name || user?.fullName || "");
-    const full = pages.map((page) => linesOf(page).join("\n")).join("\n");
-    const about = `${read.title}\n${read.abstract}`;
-    const affiliation = read.author.affiliation ? await matchInstitution(read.author.affiliation) : null;
-    const named = countriesIn(about);
-    const metadata: Metadata = {
-      title: read.title,
-      subtitle: "",
-      type: "report",
-      language: "en",
-      date: new Date().toISOString().slice(0, 10),
-      licence: "CC BY 4.0",
-      authors: [{ name: read.author.name, orcid: "", openalexId: null, affiliations: affiliation ? [affiliation] : [], corresponding: true, roles: [] }],
-      abstract: read.abstract,
-      // OpenAlex matches every word searched, so the title alone finds the works most like it.
-      topics: await suggestTopics(read.title),
-      keywords: keywordsFrom(about),
-      sdgs: suggestSdgs(about),
-      studyDesigns: suggestDesigns(full),
-      countries: named.length ? named : countriesIn(full).slice(0, 3),
-      funding: fundingIn(full),
-      references: doisIn(full, draft.doi),
-      relations: linksIn(full),
-    };
-    // MOCK: the text the checks read, kept beside the PDF.
-    await writeFile(pdfPath(draft.id).replace(/\.pdf$/, ".txt"), pages.map((p) => p.text).join("\n"));
-    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size }, metadata, step: "details", run: undefined, cover: cover ? Date.now() : undefined });
+    // The text the model falls back to and the checks read, kept beside the PDF.
+    await writeFile(textPath(draft.id), pages.map((p) => p.text).join("\n"));
+    const at = Date.now();
+    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size, at }, run: undefined, cover: cover ? at : undefined });
+  });
+}
+
+/**
+ * The stored PDF's details, read by the model set on the admin page, with topics from OpenAlex's classifier and
+ * affiliations and funders matched to OpenAlex (lib/publish-mock/reader.ts). The report then waits at its details for
+ * its author to correct them. `read` is false when the model couldn't read the PDF: the details are then left for
+ * the author to fill in.
+ */
+export async function readPdfDetails(id: string): Promise<{ draft: Submission; read: boolean }> {
+  const user = await currentUser();
+  const state = await readState();
+  const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
+  if (!report?.pdf || report.step === "done") throw new Error("This report has no PDF waiting to be read.");
+  const { at, name } = report.pdf;
+  const [pdf, text] = await Promise.all([readFile(pdfPath(id)), readFile(textPath(id), "utf8").catch(() => "")]);
+  // The model reads outside the store's queue: half a minute of reading holds no one else's change up.
+  const metadata = await readDetails({ pdf, text, fileName: name, ownDoi: report.doi, model: state.settings.metadataModel }).catch((error: unknown) => {
+    console.error("[publish] the PDF's details couldn't be read", { id, model: state.settings.metadataModel.id, error: String(error).slice(0, 600) });
+    return null;
+  });
+  const signer = { name: report.signedBy?.name || user?.fullName || "", orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] };
+  const details: Metadata = metadata ?? {
+    title: name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: new Date().toISOString().slice(0, 10), licence: "CC BY 4.0",
+    authors: [], abstract: "", topics: [], keywords: [], sdgs: [], studyDesigns: [], countries: [], funding: [], references: [], relations: [],
+  };
+  // A PDF that names no author is its signer's until they say otherwise.
+  if (!details.authors.length) details.authors = [signer];
+  return change((state) => {
+    const draft = state.submissions.find((s) => s.id === id);
+    // A PDF uploaded while this one was being read is the report's now: its own reading fills the details.
+    if (!draft?.pdf || draft.pdf.at !== at || draft.step === "done") throw new Error("A newer PDF replaced the one being read.");
+    return { draft: touch(draft, { metadata: details, step: "details" }), read: metadata !== null };
   });
 }
 
