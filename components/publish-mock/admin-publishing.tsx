@@ -50,9 +50,11 @@ import { removeCheck, retryDeposit, review, saveCheck, savePublication, updateAg
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { FunderName } from "@/components/papers/paper-entities";
 import { ConvexError } from "convex/values";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
+import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
-import { JEV, bylineOf, canRegister, doiOf, stageOf, type Check as CheckDef, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, doiOf, stageOf, type Check as CheckDef, type MockState, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -226,7 +228,7 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
       ) : null}
       {status ? (
         <StatusChip tone={refused ? "warning" : status.tone} icon={refused ? TriangleAlert : status.icon} className="hidden shrink-0 sm:inline-flex">
-          {standing && refused ? `${PROVIDER_NAME[standing.provider]} refused` : status.label}
+          {standing && refused ? `${PROVIDER_NAME[standing.provider]} refused` : stage === "review" && s.reviewRequest ? "Review requested" : status.label}
         </StatusChip>
       ) : null}
       <span className="flex w-[4.5rem] shrink-0 justify-end gap-1">
@@ -290,7 +292,7 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
             <DialogHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-xs text-muted-foreground">{s.id}</span>
-                {status ? <StatusChip tone={status.tone} icon={status.icon}>{status.label}</StatusChip> : null}
+                {status ? <StatusChip tone={status.tone} icon={status.icon}>{stage === "review" && s.reviewRequest ? "Review requested" : status.label}</StatusChip> : null}
               </div>
               <DialogTitle className="text-lg leading-snug">{s.metadata?.title}</DialogTitle>
               <DialogDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -303,6 +305,23 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-5">
+              {s.reviewRequest ? (
+                <div className="space-y-2 rounded-xl bg-inset p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                      <ReviewQueueIcon className="size-3.5 text-primary" /> The author asked for a review
+                      <span className="tabular-nums">{day(s.reviewRequest.at)}</span>
+                    </span>
+                    {s.reviewRequest.email ? (
+                      // MOCK: opens the email as it would arrive. The real build sends it and has no such link.
+                      <a href={`/publish/emails/${s.reviewRequest.email}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:underline">
+                        Emailed to {CONTACT_EMAIL} <ArrowUpRight className="size-3" />
+                      </a>
+                    ) : null}
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-sm">{s.reviewRequest.comment || "No comment"}</p>
+                </div>
+              ) : null}
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <Fact icon={Hash} label="DOI" wide>
                   <span className="font-mono text-xs">{s.doi}</span>
@@ -339,10 +358,9 @@ function SubmissionDialog({ submission: s, settings, onClose, onChange }: { subm
               ) : null}
               {s.status === "declined" && s.note ? <p className="rounded-xl bg-inset p-3 text-sm">{s.note}</p> : null}
               {stage === "review" ? (
-                <label className="block space-y-1.5">
-                  <span className="ps-1 text-xs font-medium text-muted-foreground">Note to the author, if you decline</span>
-                  <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
-                </label>
+                <Field label="Note to the author, if you decline" counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
+                  {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={REVIEW_TEXT_MAX} />}
+                </Field>
               ) : null}
             </div>
             {stage === "review" ? (

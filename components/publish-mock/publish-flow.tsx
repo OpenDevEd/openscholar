@@ -14,6 +14,9 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Field } from "@/components/evidence-libraries/configuration/section-card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EDGE_FADE } from "@/components/ui/scroll-area";
@@ -40,7 +43,7 @@ import {
   Hash,
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
-import { activate, addToCommunity, goTo, openReport, readPdfDetails, readReport, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { activate, addToCommunity, goTo, openReport, readPdfDetails, readReport, requestReview, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { RegistrationChips } from "@/components/publish-mock/registration";
 import { CitationControl } from "@/components/citation-control";
@@ -50,7 +53,7 @@ import { reportPaper } from "@/lib/publish-mock/report-paper";
 import { StatusFilter, YourReports, type Show } from "@/components/publish-mock/your-reports";
 import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { bylineOf, coverUrlOf, stageOf, stepsOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, bylineOf, coverUrlOf, stageOf, stepsOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -242,6 +245,7 @@ export function PublishFlow({ settings, initial, reports: initialReports, userNa
                     })
                   }
                   onFix={() => back("upload")}
+                  onRequestReview={(comment) => requestReview(draft.id, comment).then(setDraft)}
                   onAnother={() => {
                     another();
                   }}
@@ -664,7 +668,8 @@ export function CheckRow({ name, result }: { name: string; result?: CheckResult 
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; draft: Submission | null; settings?: Settings; onActivate?: () => Promise<void>; onFix?: () => void; onAnother?: () => void }) {
+function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; draft: Submission | null; settings?: Settings; onActivate?: () => Promise<void>; onFix?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+  const [asking, setAsking] = useState(false);
   const answered = rows.filter((r) => r.result).length;
   const stage = draft && settings ? stageOf(draft, settings) : null;
   const [activating, start] = useTransition();
@@ -686,7 +691,7 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
     </StepHead>
   ) : stage === "review" ? (
     <StepHead key="review" title="Waiting for review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
-      Your report passed its checks. You can activate it once a reviewer approves it.
+      {draft.reviewRequest ? "You asked for a human review. You can activate your report once a reviewer approves it." : "Your report passed its checks. You can activate it once a reviewer approves it."}
     </StepHead>
   ) : stage === "declined" ? (
     <StepHead key="declined" title="Not published" aside={<StatusChip tone="danger" icon={CircleX}>Declined</StatusChip>}>
@@ -706,6 +711,15 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
           </motion.div>
         </AnimatePresence>
       </AutoHeight>
+      {draft?.reviewRequest?.comment && stage === "review" ? (
+        <div className="mb-4 flex items-start gap-3 rounded-2xl bg-inset px-4 py-3">
+          <ReviewQueueIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">Your request</p>
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{draft.reviewRequest.comment}</p>
+          </div>
+        </div>
+      ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {rows.map((r) => (
           <CheckRow key={r.id} name={r.name} result={r.result} />
@@ -716,9 +730,14 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
           {draft ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6 flex flex-wrap justify-end gap-2">
               {stage === "failed" ? (
-                <Button onClick={onFix}>
-                  <RotateCcw /> Upload a new PDF
-                </Button>
+                <>
+                  <Button variant="outline" onClick={() => setAsking(true)}>
+                    <ReviewQueueIcon /> Request a human review
+                  </Button>
+                  <Button onClick={onFix}>
+                    <RotateCcw /> Upload a new PDF
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
@@ -747,11 +766,53 @@ function Checks({ rows, draft, settings, onActivate, onFix, onAnother }: { rows:
           ) : null}
         </AnimatePresence>
       </AutoHeight>
+      {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
     </div>
   );
 }
 
 /** The report as it builds up: its cover with the series, title, authors and DOI, and what it stands on. */
+/** Asks a person to look at a report its checks failed, with what the author thinks they got wrong. */
+function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void> }) {
+  const [comment, setComment] = useState("");
+  const [sending, start] = useTransition();
+  const send = () =>
+    start(async () => {
+      try {
+        await onSend(comment);
+        toast.success("Sent for review");
+        onClose();
+      } catch (error) {
+        toast.error(reasonOf(error, "The request couldn't be sent"));
+      }
+    });
+  return (
+    <Dialog open={open} onOpenChange={(next) => !next && !sending && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Request a human review</DialogTitle>
+          <DialogDescription>A reviewer reads your report and what the checks said. Ask when a check got your report wrong.</DialogDescription>
+        </DialogHeader>
+        <Field label="What did the checks get wrong?" counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
+          {(id) => <Textarea id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} autoFocus />}
+        </Field>
+        <DialogFooter>
+          <Button variant="outline" disabled={sending} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button className="relative" disabled={sending} onClick={send}>
+            <Working busy={sending}>
+              <span className="flex items-center gap-2">
+                <ReviewQueueIcon /> Send for review
+              </span>
+            </Working>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 const RAYS = [0, 45, 90, 135, 180, 225, 270, 315];
 
 /** The live seal: a ring and a check that draw themselves, a ripple and one burst of rays. Drawn and still when not fresh. */

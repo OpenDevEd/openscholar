@@ -115,6 +115,8 @@ export type Status = "draft" | "failed" | "passed" | "live" | "declined";
  * so switching review off releases the reports waiting only for it. */
 export type Stage = "draft" | "failed" | "review" | "ready" | "live" | "declined";
 export function stageOf(s: Submission, settings: Settings): Stage {
+  // A report its checks failed waits for a reviewer once its author asks for one. Approved, it is the author's to activate.
+  if (s.status === "failed" && s.reviewRequest) return s.approved ? "ready" : "review";
   if (s.status !== "passed") return s.status;
   const needsReview = settings.humanReview || (s.results ?? []).some((r) => !r.pass);
   return s.approved || !needsReview ? "ready" : "review";
@@ -141,6 +143,8 @@ export type Submission = {
   status: Status;
   /** A reviewer approved it, so its author can activate it whatever the settings say. */
   approved?: boolean;
+  /** The author asked a person to look at a report its checks failed, with what they think the checks got wrong. */
+  reviewRequest?: { comment: string; at: number; email?: string };
   signedBy?: { name: string; email: string; onBehalfOfAll: boolean };
   signedAt?: number;
   agreementVersion?: number;
@@ -164,8 +168,12 @@ export type Submission = {
   updatedAt: number;
 };
 
+/** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
+export const REVIEW_TEXT_MAX = 3000;
+/** An email to the team's inbox. MOCK: kept here to be read; the real build sends it (convex/lib/invitationDelivery.ts). */
+export type Email = { id: string; at: number; to: string; replyTo: string; subject: string; text: string; html: string; report: string };
 /** `drafts` is the report each person has open on the Publish page, by their Clerk user: one person's never shows for another. */
-export type MockState = { settings: Settings; submissions: Submission[]; drafts: Record<string, string>; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
+export type MockState = { settings: Settings; submissions: Submission[]; drafts: Record<string, string>; outbox?: Email[]; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
 /** Where a report's cover is served from. Its address changes with the picture, so it can be cached for good. */
 export const coverUrlOf = (report: Pick<Submission, "id" | "cover">) => (report.cover ? `/publish/files/${report.id}/cover?v=${report.cover}` : null);

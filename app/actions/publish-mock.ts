@@ -2,14 +2,15 @@
 // MOCK (mock/publish-reports): the Publish flow and its admin page, against the mock's local store. The real build
 // makes these Convex functions with their user-action registry entries.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
+import { reviewRequestedEmail } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
-import { canPublish, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, canPublish, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Metadata, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -106,7 +107,7 @@ export async function uploadPdf(form: FormData) {
     await writeFile(textPath(draft.id), pages.map((p) => p.text).join("\n"));
     const at = Date.now();
     // A new PDF starts over: the details read from the one before it are gone until this one is read.
-    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size, at }, run: undefined, cover: cover ? at : undefined, step: "upload", metadata: undefined });
+    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size, at }, run: undefined, cover: cover ? at : undefined, step: "upload", metadata: undefined, reviewRequest: undefined, approved: undefined });
   });
 }
 
@@ -240,13 +241,34 @@ export async function updateAgreement(text: string) {
   });
 }
 
+/**
+ * The author of a report its checks failed asks a person to look, with what they think the checks got wrong. The
+ * report then waits in the review queue, and the team's inbox is told. MOCK: the email is kept in the store, not sent.
+ */
+export async function requestReview(id: string, comment: string) {
+  const user = await currentUser();
+  const origin = (await headers()).get("origin") ?? "";
+  return change((state) => {
+    const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
+    if (!report) throw new Error("No such report of yours.");
+    if (report.status !== "failed" || report.step !== "done") throw new Error("Only a report its checks failed can be sent for review.");
+    if (report.reviewRequest) return report;
+    report.reviewRequest = { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() };
+    const email = reviewRequestedEmail(report, origin);
+    report.reviewRequest.email = email.id;
+    // The newest 200: the mock's store is one file.
+    state.outbox = [email, ...(state.outbox ?? [])].slice(0, 200);
+    return touch(report, {});
+  });
+}
+
 export async function review(id: string, decision: "approve" | "decline", note?: string) {
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
     if (!submission) throw new Error("No such report.");
-    if (submission.status !== "passed") throw new Error("Only a report that passed its checks can be reviewed.");
+    if (stageOf(submission, state.settings) !== "review") throw new Error("This report isn't waiting for review.");
     // Approving lets the author activate it; the author decides when it goes live.
-    return touch(submission, decision === "approve" ? { approved: true } : { status: "declined", ...(note ? { note } : {}) });
+    return touch(submission, decision === "approve" ? { approved: true } : { status: "declined", ...(note?.trim() ? { note: note.trim().slice(0, REVIEW_TEXT_MAX) } : {}) });
   });
 }
 
