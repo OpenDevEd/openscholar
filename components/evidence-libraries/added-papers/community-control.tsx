@@ -26,7 +26,6 @@ import { SHEET_SPRING } from "@/lib/motion";
 import { normalDoi, openalexWork } from "@/lib/papers/paper-ref";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspaces/url";
-import { useWorkspaces } from "@/components/workspaces/parts";
 import { CommunityCard } from "../public-communities";
 import { StatusChip } from "../configuration/status-chip";
 import { CommunityIcon, ROLE_KINDS } from "../your-communities";
@@ -38,7 +37,7 @@ type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibr
 type Recent = FunctionReturnType<typeof api.evidenceLibraries.submissions.recentCommunities>[number];
 type Status = FunctionReturnType<typeof api.evidenceLibraries.submissions.sentTo>[number]["status"];
 
-/** A community a row offers: what it shows, the person's role there, the workspace a paper goes from, and its card. */
+/** A community a row offers: what it shows, the person's role there, and its card. A paper goes from the workspace the page is in: what the person may do is their role's, wherever they are. */
 type Row = {
   id: Id<"evidenceLibraries">;
   name: string;
@@ -46,8 +45,6 @@ type Row = {
   owner: { name: string; imageUrl: string | null; kind: "person" | "organization"; workspaceId?: string };
   address: string;
   role: "owner" | "editor" | "creator" | "viewer";
-  /** Where the person sends from: the workspace they're on its team in; for a public one, wherever they are. */
-  workspaceId?: Id<"workspaces">;
   card: Card;
 };
 
@@ -56,18 +53,14 @@ const STEP = 20;
 /** How close to the bottom of the list, in pixels, the next ones start loading. */
 const LOAD_AHEAD_PX = 80;
 
-/**
- * A community of yours, as a row and with the card the directory draws for it. One shared with the person is reached
- * from their own workspace, `own`; the rest from the workspace they're on its team in.
- */
-const fromOverview = (library: Overview, own: Id<"workspaces"> | undefined): Row => ({
+/** A community of yours, as a row and with the card the directory draws for it. */
+const fromOverview = (library: Overview): Row => ({
   id: library._id,
   name: library.name,
   faviconUrl: library.faviconUrl ?? null,
   owner: { ...library.organization, imageUrl: library.organization.imageUrl ?? null, workspaceId: library.workspaceId },
   address: library.publicAddress,
   role: library.role,
-  workspaceId: library.from === "shared" ? own : library.workspaceId,
   card: {
     ...library.card,
     _id: library._id,
@@ -97,7 +90,6 @@ const fromRecent = (recent: Recent, yours: Row | undefined): Row => ({
   owner: recent.owner ?? { name: recent.name, imageUrl: null, kind: "organization" },
   address: recent.address ?? "",
   role: recent.role,
-  workspaceId: yours?.workspaceId ?? (recent.role === "viewer" ? undefined : recent.workspaceId),
   card: yours?.card ?? {
     ...recent.card,
     _id: recent.libraryId,
@@ -149,8 +141,7 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
     </Button>
   );
   if (!isSignedIn || !(openalexId || doi)) return <TooltipHint label={t("addToCommunity")}>{button}</TooltipHint>;
-  const own = useWorkspaces().list?.find((row) => row.kind === "personal")?.workspaceId as Id<"workspaces"> | undefined;
-  const mine = yours.items.filter((library) => library.status === "active").map((library) => fromOverview(library, own));
+  const mine = yours.items.filter((library) => library.status === "active").map(fromOverview);
   const mineById = new Map(mine.map((row) => [row.id as string, row]));
   const latest = (recentRead ?? []).map((recent) => fromRecent(recent, mineById.get(recent.libraryId)));
   // Kept as they were when the popover opened: a paper sent from it doesn't move its rows.
@@ -222,11 +213,10 @@ function CommunitiesPanel({ paper, query, onQuery, searching, recent, mine, othe
   const publicOnes = others.filter((row) => !recentIds.has(row.id));
 
   const send = async (publish: boolean) => {
-    const workspaceId = picked?.workspaceId ?? here;
-    if (!picked || !workspaceId) return;
+    if (!picked || !here) return;
     setSending(publish ? "publish" : "queue");
     try {
-      const [result] = await add({ libraryId: picked.id, workspaceId, publish, requestId: crypto.randomUUID(), papers: [{ openalexId: paper.openalexId, doi: paper.doi }] });
+      const [result] = await add({ libraryId: picked.id, workspaceId: here, publish, requestId: crypto.randomUUID(), papers: [{ openalexId: paper.openalexId, doi: paper.doi }] });
       if (result?.outcome === "added" || result?.outcome === "queued") toast.success(result.outcome === "added" ? t("publishedTo", { community: picked.name }) : t("queuedTo", { community: picked.name }), { description: paper.title });
       else if (result?.outcome === "existing") toast.info(t("alreadyIn", { community: picked.name }));
       else toast.error(t("addFailed"));

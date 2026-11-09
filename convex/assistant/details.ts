@@ -13,7 +13,7 @@ import { findSearch } from "../research/records";
 
 import { currentSearch } from "../../lib/research/records";
 import { roleIn } from "./access";
-import { libraryOf } from "../evidenceLibraries/access";
+import { libraryOf, readLibraryRole, readLibraryViewRole } from "../evidenceLibraries/access";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { personName } from "../lib/people";
 import { toPaperKey } from "../../lib/papers/paper-ref";
@@ -94,18 +94,19 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
       const file = await ctx.db.get("assistantFiles", fileId);
       return file?.threadId && (await opens(file.threadId)) ? file.name : null;
     }
-    // An invitation to a library, by who it's for and the library: to the person it's for, or to someone in the library's workspace.
+    // An invitation to a library, by who it's for and the library.
     const invitationId = ctx.db.normalizeId("itemInvitations", id);
     if (invitationId) {
       const invitation = await ctx.db.get("itemInvitations", invitationId);
       const library = invitation ? await libraryOf(ctx, invitation) : null;
-      return invitation && library && (addressesOf(reader).includes(invitation.email) || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
+      // Its email is the recipient's own, or its owners', who read the team's invitations.
+      return invitation && library && (addressesOf(reader).includes(invitation.email) || (await readLibraryRole(ctx, library, reader.clerkId)) === "owner") ? `${invitation.email}, ${library.name}` : null;
     }
-    // An Evidence Library, by its name: the workspace's own, or one that is running, whose site is public.
+    // An Evidence Library, by its name: one the reader has a role on, whichever workspace, or one that is running, whose site is public.
     const evidenceLibraryId = ctx.db.normalizeId("evidenceLibraries", id);
     if (evidenceLibraryId) {
       const library = await ctx.db.get("evidenceLibraries", evidenceLibraryId);
-      return library && (library.workspaceId === workspaceId || (await readEvidenceLibraryAdminLaunchTarget(ctx, library)) !== null) ? library.name : null;
+      return library && ((await readLibraryViewRole(ctx, library, reader.clerkId)) !== null || (await readEvidenceLibraryAdminLaunchTarget(ctx, library)) !== null) ? library.name : null;
     }
     // An author profile, by its name: its page is public.
     const profileId = ctx.db.normalizeId("authorProfiles", id);
