@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({ listCollections: vi.fn(), resolveCollections: 
 // the shared facts are cached by that callback.
 let actions: Record<string, (args: unknown) => unknown>;
 
+vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ canRunProtectedQueries: true }) }));
 vi.mock("convex/react", () => ({ useAction: (ref: string) => actions[ref] }));
 vi.mock("next-intl", () => ({
   useLocale: () => "en-US",

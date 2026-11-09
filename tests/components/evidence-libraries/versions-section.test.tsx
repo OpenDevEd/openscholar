@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn() }),
 }));
 
+vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ canRunProtectedQueries: true }) }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     evidenceLibraries: {
@@ -65,7 +66,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
     isReady: true,
   }),
   // The history's rows arrive as one loaded page.
-  useProtectedStreamPaginatedQuery: () => ({ results: mocks.listVersions(), status: mocks.versions.status, isInitialLoading: false, loadMore: mocks.versions.loadMore }),
+  useProtectedStreamPaginatedQuery: () => ({ results: mocks.listVersions(), status: mocks.versions.status, isInitialLoading: false, hasLoadedFirstPage: true, loadMore: mocks.versions.loadMore }),
 }));
 
 vi.mock("next-intl", () => ({

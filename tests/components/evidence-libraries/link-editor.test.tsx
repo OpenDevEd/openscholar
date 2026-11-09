@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({ resolveCollections: vi.fn() }));
 
 let actions: Record<string, (args: unknown) => unknown>;
 
+vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ canRunProtectedQueries: true }) }));
 vi.mock("convex/react", () => ({ useAction: (ref: string) => actions[ref] }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
