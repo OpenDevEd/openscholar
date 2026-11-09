@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { APP, COMMUNITIES, INTENTS, NAV, SECTIONS } from "../data/site.mjs";
+import { APP, COMMUNITIES, COMPARISONS, INTENTS, NAV, SECTIONS } from "../data/site.mjs";
 import { GUIDES } from "../data/docs.mjs";
 import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
@@ -80,6 +80,7 @@ const DOCS = [["Research", [["start", "flag"], ["search", "search"], ["organize"
       <nav aria-label="Footer">
         <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a></div>
         <div><b>Use it for</b>{INTENTS.map((p) => <a href={p.href}><span class="roll" data-t={p.title}><span>{p.title}</span></span></a>)}</div>
+        <div><b>Compare</b>{COMPARISONS.map((c) => <a href={c.href}><span class="roll" data-t={`${c.name} alternative`}><span>{c.name} alternative</span></span></a>)}</div>
         <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a><a href="/contact/"><span class="roll" data-t="Contact"><span>Contact</span></span></a></div>
         <div><b>Legal</b><a href={`${APP}/privacy`}><span class="roll" data-t="Privacy"><span>Privacy</span></span></a><a href={`${APP}/cookie-policy`}><span class="roll" data-t="Cookies"><span>Cookies</span></span></a><a href={`${APP}/credits`}><span class="roll" data-t="Attributions"><span>Attributions</span></span></a><button type="button" class="prefs" data-consent-open><span class="roll" data-t="Cookie preferences"><span>Cookie preferences</span></span></button></div>
       </nav>
