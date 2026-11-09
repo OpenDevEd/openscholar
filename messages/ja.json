@@ -368,7 +368,7 @@
     "signInRequiredTitle": "サインインが必要です",
     "signInRequiredDescription": "このページにアクセスするにはサインインしてください。",
     "noAccessTitle": "アクセス制限",
-    "noAccessDescription": "このリソースを表示する権限がありません。",
+    "noAccessDescription": "このページにアクセスできません。誰かが共有していた場合は、共有をやめた可能性があります。もう一度共有してもらってください。",
     "syncErrorTitle": "セッション同期の問題",
     "syncErrorDescription": "アカウントの初期化を完了できませんでした。続行するには再試行してください。",
     "syncErrorAccess": "セッションは有効ですが、アカウント同期が完了していません。続行するには再試行してください。",
@@ -1762,7 +1762,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "無題のコミュニティ",
     "unsaved": "未保存の変更",
-    "viewOnly": "閲覧のみ",
+    "viewOnly": "設定は閲覧のみ",
     "save": "保存",
     "saving": "保存しています…",
     "saveError": "変更を保存できませんでした。もう一度試してください。",
@@ -3435,7 +3435,7 @@
       "times": "回",
       "unfold": "それぞれを表示",
       "fold": "まとめて表示",
-      "declined": "許可されませんでした",
+      "declined": "許可しませんでした",
       "waiting": "回答を待っています",
       "allowed": "許可済み",
       "searches": {

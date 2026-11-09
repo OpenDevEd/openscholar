@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Spinner } from "@/components/ui/spinner";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipHint, TooltipTrigger } from "@/components/ui/tooltip";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageStepper } from "@/components/shared/page-stepper";
@@ -261,7 +261,10 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
         </span>
         <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           {/* Cut off at the row's edge, before the invitation's buttons, as the name above it is. */}
-          <RoleLabel role={ROLE_KINDS[community.role]} className="min-w-0 shrink"><span className="truncate">{community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role}</span></RoleLabel>
+          {/* Cut off beside an invitation's buttons, the role it offers shows whole on hover. */}
+          <TooltipHint label={community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role} onlyWhenClipped>
+            <RoleLabel role={ROLE_KINDS[community.role]} className="min-w-0 shrink"><span className="truncate">{community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role}</span></RoleLabel>
+          </TooltipHint>
         </span>
       </div>
       {community.pending ? (

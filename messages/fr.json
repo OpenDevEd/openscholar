@@ -368,7 +368,7 @@
     "signInRequiredTitle": "Connexion requise",
     "signInRequiredDescription": "Connectez-vous pour accéder à cette page.",
     "noAccessTitle": "Accès restreint",
-    "noAccessDescription": "Vous n'avez pas l'autorisation de voir cette ressource.",
+    "noAccessDescription": "Vous n'avez pas accès à cette page. Si quelqu'un l'a partagée avec vous, il a peut-être arrêté : demandez-lui de la partager à nouveau.",
     "syncErrorTitle": "Problème de synchronisation de session",
     "syncErrorDescription": "Nous n'avons pas pu terminer l'initialisation de votre compte. Réessayez pour continuer.",
     "syncErrorAccess": "Votre session est valide, mais la synchronisation du compte est incomplète. Réessayez pour continuer.",
@@ -1762,7 +1762,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Communauté sans titre",
     "unsaved": "Modifications non enregistrées",
-    "viewOnly": "Lecture seule",
+    "viewOnly": "Paramètres en lecture seule",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "saveError": "Les modifications n’ont pas pu être enregistrées. Réessayez.",
@@ -3435,7 +3435,7 @@
       "times": "fois",
       "unfold": "Afficher chacune",
       "fold": "Regrouper",
-      "declined": "Non autorisé",
+      "declined": "Vous avez refusé",
       "waiting": "En attente d'une réponse",
       "allowed": "Autorisé",
       "searches": {

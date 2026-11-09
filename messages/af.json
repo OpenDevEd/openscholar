@@ -368,7 +368,7 @@
     "signInRequiredTitle": "Aanmelding benodig",
     "signInRequiredDescription": "Meld aan om hierdie bladsy te open.",
     "noAccessTitle": "Toegang beperk",
-    "noAccessDescription": "Jy het nie toestemming om hierdie hulpbron te sien nie.",
+    "noAccessDescription": "Jy het nie toegang tot hierdie bladsy nie. As iemand dit met jou gedeel het, het hulle dalk opgehou: vra hulle om dit weer te deel.",
     "syncErrorTitle": "Probleem met sessiesinkronisering",
     "syncErrorDescription": "Ons kon nie jou rekening klaar opstel nie. Probeer weer om voort te gaan.",
     "syncErrorAccess": "Jou sessie is geldig, maar rekeningsinkronisering is onvolledig. Probeer weer om voort te gaan.",
@@ -1763,7 +1763,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Gemeenskap sonder titel",
     "unsaved": "Ongestoorde veranderinge",
-    "viewOnly": "Net kyk",
+    "viewOnly": "Instellings slegs om te bekyk",
     "save": "Stoor",
     "saving": "Stoor…",
     "saveError": "Die veranderinge kon nie gestoor word nie. Probeer weer.",
@@ -3436,7 +3436,7 @@
       "times": "{count, plural, one {keer} other {keer}}",
       "unfold": "Wys elkeen",
       "fold": "Wys as een",
-      "declined": "Nie toegelaat nie",
+      "declined": "Jy het nee gesê",
       "waiting": "Wag vir ’n antwoord",
       "allowed": "Toegelaat",
       "searches": {

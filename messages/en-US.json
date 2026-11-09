@@ -368,7 +368,7 @@
     "signInRequiredTitle": "Sign in required",
     "signInRequiredDescription": "Sign in to access this page.",
     "noAccessTitle": "Access restricted",
-    "noAccessDescription": "You do not have permission to view this resource.",
+    "noAccessDescription": "You don't have access to this page. If someone shared it with you, they may have stopped: ask them to share it again.",
     "syncErrorTitle": "Session sync issue",
     "syncErrorDescription": "We could not finish initializing your account. Retry to continue.",
     "syncErrorAccess": "Your session is valid, but account sync is incomplete. Retry to continue.",
@@ -1762,7 +1762,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Untitled community",
     "unsaved": "Unsaved changes",
-    "viewOnly": "View only",
+    "viewOnly": "Settings view only",
     "save": "Save",
     "saving": "Saving…",
     "saveError": "The changes could not be saved. Try again.",
@@ -3435,7 +3435,7 @@
       "times": "{count, plural, one {time} other {times}}",
       "unfold": "Show each one",
       "fold": "Show as one",
-      "declined": "Not allowed",
+      "declined": "You said no",
       "waiting": "Waiting for an answer",
       "allowed": "Allowed",
       "searches": {
