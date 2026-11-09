@@ -151,7 +151,7 @@ const submissionValidator = v.object({
 });
 
 /** A community as a submission names it: its directory card's name and icon, where it answers, and who it belongs to. */
-async function communityOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
+export async function communityOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   const binding = library?.runtimeBindingId ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId) : null;
   return {

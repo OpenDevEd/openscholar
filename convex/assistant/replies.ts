@@ -21,6 +21,9 @@ import { effortValidator } from "../aiModelConfig/validators";
 import { capReached, spendingRoom } from "../billing/memberCaps";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
+import { readLibraryRole } from "../evidenceLibraries/access";
+import { communityOf } from "../evidenceLibraries/submissions";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { createError } from "../lib/errors";
 import { internalMutation, internalQuery, mutation, query } from "../lib/functions";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -46,7 +49,7 @@ import { chatModel, previewOf, requireAssistantModel, writing } from "./threads"
 import { filesOf, partsFor, sent } from "./files";
 import { readsImages, readsPdfs } from "../../lib/assistant/files";
 import { stripProviderPrefix } from "../../lib/ai/model-display";
-import { askedDetailsValidator, askedEachValidator, assistantPausedValidator, attachedFilesValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE, sentFileIdsValidator, webSourcesValidator } from "./validators";
+import { askedDetailsValidator, askedEachValidator, askedPapersValidator, assistantPausedValidator, attachedFilesValidator, jobsEndedValidator, JOBS_TOLD_AT_ONCE, sentFileIdsValidator, webSourcesValidator } from "./validators";
 import { searchHref } from "../research/searches";
 import { searchSettings } from "../research/searchValidators";
 
@@ -224,12 +227,45 @@ const waitingPrefix = (order: number) => `waiting:${order}:`;
 const waitingAttempt = (waiting: { order: number; askedAt: number }) => `${waitingPrefix(waiting.order)}${waiting.askedAt}`;
 
 /** The person's answer to a call the assistant asked about (./steps.ts): run it, or don't. */
+/** Adding papers to a community, whose ask lets the person choose where they go (components/assistant/add-papers-ask.tsx). */
+const ADD_PAPERS = "evidenceLibraries/assistant:addPapers";
+
+/**
+ * What a paused call to add papers to a community asks, for its card: the community as Add to community shows it,
+ * the papers as the call names them, where the assistant meant them to go, and whether the person may publish there.
+ * Only for the person it waits on.
+ */
+export const askedPapers = query({
+  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps") },
+  returns: v.union(v.null(), askedPapersValidator),
+  handler: async (ctx, { threadId, stepId }) => {
+    const person = await requireAuth(ctx);
+    await requireThread(ctx, person._id, threadId, "read");
+    const step = await ctx.db.get("assistantSteps", stepId);
+    if (!step || step.threadId !== threadId || step.userId !== person._id || step.path !== ADD_PAPERS || step.status !== "asking") return null;
+    const args = JSON.parse(step.input) as { libraryId?: string; publish?: boolean; papers?: Array<{ openalexId?: string | null; doi?: string | null; link?: string | null }> };
+    const libraryId = args.libraryId ? ctx.db.normalizeId("evidenceLibraries", args.libraryId) : null;
+    const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+    if (!library) return null;
+    const role = await readLibraryRole(ctx, library, person.clerkId);
+    const { name, faviconUrl, owner } = await communityOf(ctx, library._id);
+    return {
+      libraryId: library._id,
+      publish: args.publish === true,
+      canPublish: role === "owner" || role === "editor",
+      papers: (args.papers ?? []).slice(0, ADDED_PAPERS_MAX).map(({ openalexId, doi, link }) => ({ openalexId: openalexId ?? null, doi: doi ?? null, link: link ?? null })),
+      community: { name, faviconUrl, owner },
+    };
+  },
+});
+
 export const answer = mutation({
   // `stepIds`: the calls of one action the reply asked about together, answered as one (lib/assistant/step-cards.ts `askedGroups`).
   // `always`, with a yes to calls that spend credits: jobs that hold no more run in this chat without asking from now on (./spending.ts).
-  args: { threadId: v.id("assistantThreads"), stepIds: v.array(v.id("assistantSteps")), allow: v.boolean(), always: v.optional(v.boolean()) },
+  // `publish`, with a yes to adding papers to a community: where the person chose they go, live or to its review queue, whatever the assistant asked.
+  args: { threadId: v.id("assistantThreads"), stepIds: v.array(v.id("assistantSteps")), allow: v.boolean(), always: v.optional(v.boolean()), publish: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { threadId, stepIds, allow, always }) => {
+  handler: async (ctx, { threadId, stepIds, allow, always, publish }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "write");
@@ -277,7 +313,7 @@ export const answer = mutation({
     // It carries on in the workspace it asked from; its actions are refused there if the sender has left it since.
     const workspaceId = waiting.workspaceId;
     if (!left.length && !paused) await admit(ctx, workspaceId);
-    if (allow) for (const step of steps) await ctx.db.patch("assistantSteps", step._id, { status: "allowed" });
+    if (allow) for (const step of steps) await ctx.db.patch("assistantSteps", step._id, { status: "allowed", ...(publish !== undefined && step.path === ADD_PAPERS ? { input: JSON.stringify({ ...(JSON.parse(step.input) as object), publish }) } : {}) });
     else await declineSteps(ctx, steps);
     // Calls it asked about together are answered card by card. The reply carries on after the last.
     if (left.length) return null;

@@ -8,6 +8,8 @@ import { capped } from "../lib/listCaps";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { MAX_FILES_PER_MESSAGE, MAX_PDF_CHUNKS } from "../../lib/assistant/files";
 import { MENTION_KINDS } from "../../lib/assistant/mentions";
+import { submissionOwnerValidator } from "../evidenceLibraries/validators";
+import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
 export const assistantRoleValidator = v.union(v.literal("owner"), v.literal("write"), v.literal("read"));
@@ -401,3 +403,12 @@ export const chatModelsValidator = capped(
   ),
   MODELS_LISTED,
 );
+
+/** A paused call to add papers to a community, as its card reads it (./replies.ts askedPapers). */
+export const askedPapersValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  publish: v.boolean(),
+  canPublish: v.boolean(),
+  papers: capped(v.array(v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())), link: v.optional(v.union(v.string(), v.null())) })), ADDED_PAPERS_MAX),
+  community: v.object({ name: v.string(), faviconUrl: v.union(v.string(), v.null()), owner: submissionOwnerValidator }),
+});
