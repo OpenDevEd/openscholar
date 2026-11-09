@@ -678,7 +678,7 @@
     "uploadFailed": "Échec du téléversement",
     "uploadFailedDescription": "Impossible de téléverser {format}. Veuillez réessayer.",
     "accountChanged": "Votre compte a changé. Réessayez.",
-    "copyFailedDescription": "Impossible de copier dans le presse-papiers. Veuillez réessayer.",
+    "copyFailedDescription": "Votre navigateur ne nous a pas laissé le copier. Sélectionnez le texte et copiez-le vous-même.",
     "validationFailed": "Échec de la validation",
     "entityCreated": "{entity} créé",
     "entityUpdated": "{entity} mis à jour",

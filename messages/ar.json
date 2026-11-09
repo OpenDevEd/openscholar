@@ -679,7 +679,7 @@
     "uploadFailed": "فشل الرفع",
     "uploadFailedDescription": "تعذّر رفع {format}. حاول مرة أخرى.",
     "accountChanged": "تغيّر حسابك. حاول مرة أخرى.",
-    "copyFailedDescription": "تعذّر النسخ إلى الحافظة. حاول مرة أخرى.",
+    "copyFailedDescription": "لم يسمح لنا متصفحك بنسخه. حدّد النص وانسخه بنفسك.",
     "validationFailed": "فشل التحقق",
     "entityCreated": "تم إنشاء {entity}",
     "entityUpdated": "تم تحديث {entity}",

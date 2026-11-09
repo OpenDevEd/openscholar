@@ -679,7 +679,7 @@
     "uploadFailed": "La subida falló",
     "uploadFailedDescription": "No se pudo subir {format}. Inténtelo de nuevo.",
     "accountChanged": "Su cuenta cambió. Inténtelo de nuevo.",
-    "copyFailedDescription": "No se pudo copiar al portapapeles. Inténtelo de nuevo.",
+    "copyFailedDescription": "Tu navegador no nos dejó copiarlo. Selecciona el texto y cópialo tú.",
     "validationFailed": "La validación falló",
     "entityCreated": "Creado: {entity}",
     "entityUpdated": "Actualizado: {entity}",
