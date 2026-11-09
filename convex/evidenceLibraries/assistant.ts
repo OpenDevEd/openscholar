@@ -8,11 +8,14 @@
  */
 import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { ActionCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { refuseApps } from "../lib/auth";
+import { paperOfLink, type PaperIds } from "./paperLinks";
+import { spender } from "../paperSets/search";
+import { openalexWork } from "../../lib/papers/paper-ref";
 import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineChangingAction, defineUserAction, defineUserMutation, defineUserQuery, userAction, userMutation, userQuery } from "../lib/userActions";
 import { requireCommunityWorkspace } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
@@ -636,7 +639,35 @@ export const trySourceSubjectForAssistant = assistantAction(trySourceSubjectActi
 // Papers added to a community by DOI, OpenAlex ID or link (OS-29, #1122): looked up, added, and listed on its Sources
 // tab. Its owners and editors publish them or send them to its review queue; its creators send them to the queue.
 
-const paperReferences = v.array(v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())) }));
+/** A paper by its OpenAlex work, its DOI, or a `link`: any address that names one, Openscholar's paper pages and a community's record pages included. */
+const paperReferences = v.array(v.object({ openalexId: v.optional(v.union(v.string(), v.null())), doi: v.optional(v.union(v.string(), v.null())), link: v.optional(v.union(v.string(), v.null())) }));
+type PaperReference = Infer<typeof paperReferences>[number];
+
+/**
+ * The papers a call names, as a community takes them: a link, or an ID given as a link, is followed to its OpenAlex
+ * work or DOI (./paperLinks.ts); one Openscholar finds nothing at is answered as not found in its place, unsent.
+ * `ask` sends the rest and answers each by its place among them.
+ */
+async function withLinksFollowed<Answer extends { at: number }>(ctx: ActionCtx, actor: InWorkspace, papers: PaperReference[], ask: (papers: PaperIds[]) => Promise<Answer[]>): Promise<Array<Answer | { at: number; outcome: "not_found"; message: string }>> {
+  let spend: ((pages: number) => Promise<boolean>) | null = null;
+  const reads = async (pages: number) => {
+    if (!spend) {
+      const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId: actor.userId });
+      if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
+      spend = spender(ctx, person.clerkId);
+    }
+    return await spend(pages);
+  };
+  const ids = await Promise.all(papers.map(async (paper): Promise<PaperIds | null> => {
+    const work = paper.openalexId ? openalexWork(paper.openalexId) : null;
+    if (!paper.link && (work || !paper.openalexId)) return { openalexId: work, doi: paper.doi ?? null };
+    return await paperOfLink(ctx, (paper.link ?? paper.openalexId)!, reads);
+  }));
+  const sent = ids.flatMap((paper, at) => (paper ? [{ at, paper }] : []));
+  const answers = sent.length ? await ask(sent.map(({ paper }) => paper)) : [];
+  const missing = ids.flatMap((paper, at) => (paper ? [] : [{ at, outcome: "not_found" as const, message: "Openscholar finds no paper at this address." }]));
+  return [...answers.map((answer) => ({ ...answer, at: sent[answer.at]!.at })), ...missing].sort((a, b) => a.at - b.at);
+}
 const teamRole = v.union(v.literal("owner"), v.literal("editor"), v.literal("creator"));
 
 /** The person's role on a community, whichever workspace the reply runs in, and their name for its review queue; refused without one. */
@@ -678,7 +709,7 @@ export const paperTeam = internalQuery({
 export const previewPapersAction = defineUserAction({
   path: "evidenceLibraries/assistant:previewPapers",
   description:
-    "Looks papers up for a community by DOI, OpenAlex ID or a link to either, up to 100, without adding them: each one's title, authors and year, how it was found (OpenAlex, or its DOI alone), and whether it's new to the community, already in it, waiting in its review queue or not found. " +
+    "Looks papers up for a community by DOI, OpenAlex ID or `link` (any address that names a paper: OpenAlex, doi.org, Openscholar's paper pages, a community's record page), up to 100, without adding them: each one's title, authors and year, how it was found (OpenAlex, or its DOI alone), and whether it's new to the community, already in it, waiting in its review queue or not found. " +
     "Add them with evidenceLibraries/assistant:addPapers.",
   args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences },
   returns: paperPreviewsValidator,
@@ -686,7 +717,7 @@ export const previewPapersAction = defineUserAction({
   check: async (ctx, actor, { libraryId }) => void (await paperSenderOf(ctx, actor, libraryId)),
   run: async (ctx, actor, { libraryId, papers }): Promise<Infer<typeof paperPreviewsValidator>> => {
     await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId });
-    return await ctx.runAction(internal.evidenceLibraries.sourceActions.previewPapers, { libraryId, papers });
+    return await withLinksFollowed(ctx, actor, papers, (sent) => ctx.runAction(internal.evidenceLibraries.sourceActions.previewPapers, { libraryId, papers: sent }));
   },
 });
 export const previewPapers = userAction(previewPapersAction);
@@ -695,7 +726,7 @@ export const previewPapersForAssistant = assistantAction(previewPapersAction);
 export const addPapersAction = defineChangingAction({
   path: "evidenceLibraries/assistant:addPapers",
   description:
-    "Adds papers to a community by DOI, OpenAlex ID or a link to either, up to 100, kept up to date from OpenAlex afterwards. With `publish`, an owner or editor puts them live at once; otherwise, and always for a creator or anyone outside the team (who may suggest papers to a public community, up to 50 a day), they wait in the community's review queue. " +
+    "Adds papers to a community by DOI, OpenAlex ID or `link` (any address that names a paper: OpenAlex, doi.org, Openscholar's paper pages, a community's record page), up to 100, kept up to date from OpenAlex afterwards. With `publish`, an owner or editor puts them live at once; otherwise, and always for a creator or anyone outside the team (who may suggest papers to a public community, up to 50 a day), they wait in the community's review queue. " +
     "`requestId` is any ID for this request: sent again, it adds nothing twice. Each paper's answer: added, queued, returned (its review was returned or withdrawn), already in the community, not found, or failed. Asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), papers: paperReferences, publish: v.boolean(), requestId: v.string() },
   returns: papersAddedValidator,
@@ -709,7 +740,7 @@ export const addPapersAction = defineChangingAction({
   run: async (ctx, actor, args): Promise<Infer<typeof papersAddedValidator>> => {
     const sender: { role: "owner" | "editor" | "creator" | "reader"; name: string | null } = await ctx.runQuery(internal.evidenceLibraries.assistant.paperSender, { ...where(actor), libraryId: args.libraryId });
     if (args.publish && (sender.role === "creator" || sender.role === "reader")) throw createError("FORBIDDEN", "Only an owner or editor publishes papers: send them to the review queue instead.");
-    const results = await ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, userId: actor.userId, ...sender });
+    const results = await withLinksFollowed(ctx, actor, args.papers, (papers) => ctx.runAction(internal.evidenceLibraries.sourceActions.addPapers, { ...args, papers, userId: actor.userId, ...sender }));
     // What went on, the person's Your submissions lists: published, or waiting in the review queue.
     const papers = results.flatMap((result) =>
       (result.outcome === "added" || result.outcome === "queued") && result.itemKey && result.paper

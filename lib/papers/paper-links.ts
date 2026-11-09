@@ -1,0 +1,66 @@
+import { normalDoi, openalexWork, ownWork } from "./paper-ref";
+
+/**
+ * A paper as someone names it by pasting where they found it: an OpenAlex work, a DOI, a paper only our index has
+ * (`own`, an OS ID), or a record on an Evidence Community's site. Openscholar's own paper pages, on any of its
+ * addresses, name the work in their path; a community's record page is `/lib/<record key>` on its address.
+ */
+export type PaperLink =
+  | { kind: "work"; openalexId: string }
+  | { kind: "doi"; doi: string }
+  | { kind: "own"; work: string }
+  | { kind: "record"; origin: string; itemKey: string };
+
+/** Openscholar's addresses: openscholar.ai and every name under it (dev., discover.). */
+const OURS = /(^|\.)openscholar\.ai$/i;
+/** A paper page's path, in a workspace's address or not: /papers/W123/its-title or /o/team/papers/OS456. */
+const PAPER_PATH = /^(?:\/o\/[^/]+)?\/papers\/((?:W|OS)\d+)(?:\/|$)/i;
+/** A community's record page: /lib/ABCD2345, as new-el keys its records. */
+const RECORD_PATH = /^\/lib\/([A-Z0-9]{8})(?:\/|$)/;
+
+/** A DOI without what a sentence or list put after it: a comma, a full stop, an unopened bracket. */
+function trimDoi(doi: string): string {
+  let trimmed = doi.replace(/[,;.]+$/, "");
+  while (trimmed.endsWith(")") && (trimmed.match(/\(/g)?.length ?? 0) < (trimmed.match(/\)/g)?.length ?? 0)) trimmed = trimmed.slice(0, -1);
+  return trimmed;
+}
+
+function urlOf(given: string) {
+  try {
+    return new URL(given);
+  } catch {
+    return null;
+  }
+}
+
+/** The paper one pasted word names, or null for anything else. */
+export function paperLinkOf(raw: string): PaperLink | null {
+  const given = raw.trim().replace(/[,;]$/, "").replace(/^<(.*)>$/, "$1");
+  const work = openalexWork(given);
+  if (work) return { kind: "work", openalexId: work };
+  const own = ownWork(given.replace(/^openscholar:/i, ""));
+  if (own) return { kind: "own", work: own };
+  const url = urlOf(given);
+  if (url && (url.protocol === "https:" || url.protocol === "http:")) {
+    const page = OURS.test(url.hostname) ? url.pathname.match(PAPER_PATH)?.[1]?.toUpperCase() : undefined;
+    if (page) return page.startsWith("W") ? { kind: "work", openalexId: page } : { kind: "own", work: page };
+    const record = url.pathname.match(RECORD_PATH)?.[1];
+    if (record) return { kind: "record", origin: url.origin, itemKey: record };
+  }
+  const doi = given.match(/10\.\d{4,9}\/\S+/i)?.[0];
+  return doi ? { kind: "doi", doi: normalDoi(trimDoi(doi))! } : null;
+}
+
+/** One key per paper a link names, so the same one pasted twice is looked up once. */
+export function paperLinkKey(link: PaperLink): string {
+  switch (link.kind) {
+    case "work":
+      return link.openalexId;
+    case "doi":
+      return `doi:${link.doi}`;
+    case "own":
+      return `own:${link.work}`;
+    case "record":
+      return `record:${link.origin}/${link.itemKey}`;
+  }
+}

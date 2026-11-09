@@ -128,7 +128,7 @@ export function AddPapersDialog({
     setFound(papers);
     setRequestId(crypto.randomUUID());
     try {
-      const answers = await preview({ libraryId, workspaceId, papers: papers.map(({ openalexId, doi }) => ({ openalexId, doi })) });
+      const answers = await preview({ libraryId, workspaceId, papers: papers.map(({ openalexId, doi, link }) => ({ openalexId, doi, link })) });
       if (asked === lookup.current) setFound(papers.map((paper, at) => ({ ...paper, answer: answers[at] })));
     } catch (error) {
       if (asked !== lookup.current) return;
@@ -142,7 +142,7 @@ export function AddPapersDialog({
     const opened = session.current;
     setSending(publish ? "publish" : "queue");
     try {
-      const results = await add({ libraryId, workspaceId, publish, requestId, papers: ready.map(({ openalexId, doi }) => ({ openalexId, doi })) });
+      const results = await add({ libraryId, workspaceId, publish, requestId, papers: ready.map(({ openalexId, doi, link }) => ({ openalexId, doi, link })) });
       const sent = results.filter((result) => result.outcome === "added" || result.outcome === "queued").length;
       const failed = results.filter((result) => result.outcome === "failed").length;
       if (sent) toast.success(publish ? t("published", { count: sent, community: communityName }) : t("queued", { count: sent }));
