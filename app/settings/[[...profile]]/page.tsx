@@ -179,8 +179,9 @@ function Identity() {
             <Pencil className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
           </button>
         )}
-        <p className="inline-flex items-center gap-1.5 text-sm">
-          {user.primaryEmailAddress?.emailAddress}
+        {/* A long address is cut to the phone's width instead of widening the page; its full text is in the email card below. */}
+        <p className="inline-flex max-w-full items-center gap-1.5 text-sm">
+          <span dir="ltr" className="min-w-0 truncate">{user.primaryEmailAddress?.emailAddress}</span>
           {user.primaryEmailAddress?.verification?.status === "verified" ? (
             <BadgeCheck className="size-4 text-success" aria-label={t("verified")} />
           ) : null}

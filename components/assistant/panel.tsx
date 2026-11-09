@@ -120,6 +120,16 @@ type Drafts = {
 };
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
+/** Whether the person just opened the panel, whose message box then takes the keyboard once. */
+let openFocus = false;
+const openedByKeyboard = () => {
+  openFocus = true;
+};
+const takeOpenFocus = () => {
+  const take = openFocus;
+  openFocus = false;
+  return take;
+};
 
 export function AssistantPanel() {
   const t = useTranslations("assistant");
@@ -286,6 +296,7 @@ function Overlay({
     },
   };
   const pop = () => setSheets((all) => all.slice(0, -1));
+  const sheetCount = sheets.length;
   // A keyboard shortcut is an outside system: ⌘J or Ctrl+J opens and closes the panel, and Escape closes the top sheet.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -294,14 +305,25 @@ function Overlay({
         // The message box goes with the panel, and a box that is taken away doesn't say it lost the keyboard.
         setFocused(false);
         setSheets([]);
-        setOpen((o) => !o);
+        setOpen((o) => {
+          if (!o) openedByKeyboard();
+          return !o;
+        });
       }
-      // A dialog over the sheet takes its own Escape, and marks it.
-      if (e.key === "Escape" && !e.defaultPrevented) setSheets((all) => all.slice(0, -1));
+      // A dialog over the sheet takes its own Escape, and marks it. With no sheet open, Escape in the message box folds
+      // the panel away, as its button does.
+      // Escape while composing with an input method cancels the composition, not the panel.
+      if (e.key === "Escape" && !e.defaultPrevented && !e.isComposing) {
+        if (sheetCount) setSheets((all) => all.slice(0, -1));
+        else if (e.target instanceof HTMLElement && e.target.closest("[data-assistant-composer]")) {
+          setFocused(false);
+          setOpen(() => false);
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setOpen]);
+  }, [setOpen, sheetCount]);
   const fold = () => {
     setFocused(false);
     setSheets([]);
@@ -415,7 +437,10 @@ function Overlay({
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>{!open ? <Launcher key="launcher" orbit={orbit} clock={clock} onComplete={completed} onOpen={() => setOpen(() => true)} /> : null}</AnimatePresence>
+      <AnimatePresence>{!open ? <Launcher key="launcher" orbit={orbit} clock={clock} onComplete={completed} onOpen={() => {
+        openedByKeyboard();
+        setOpen(() => true);
+      }} /> : null}</AnimatePresence>
     </MotionConfig>
   );
 }
@@ -532,6 +557,12 @@ function Chat({
     box.focus();
     box.setSelectionRange(box.value.length, box.value.length);
   }, [seed]);
+  // Outside system: focus. Opened by the person, from its button or ⌘J, the panel takes the keyboard at its message box,
+  // so Tab doesn't wander the page behind it. A panel open when the page loads leaves the keyboard where it is.
+  useEffect(() => {
+    // Not on a touch screen, where it would put the keyboard over the panel each time it opens.
+    if (takeOpenFocus() && matchMedia("(pointer: fine)").matches) composer.current?.focus({ preventScroll: true });
+  }, []);
   // The thread's scroller: sending a message takes the person to the end of the chat, where its reply comes.
   const scroller = useRef<StickToBottomContext>(null);
   const convex = useConvex();

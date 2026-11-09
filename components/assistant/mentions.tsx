@@ -222,6 +222,8 @@ export function MentionComposer({
         </div>
         <textarea
           ref={composer}
+          // The panel's keyboard handling finds its message box by this: Escape there folds the panel away.
+          data-assistant-composer
           value={draft}
           disabled={disabled}
           onChange={(e) => {

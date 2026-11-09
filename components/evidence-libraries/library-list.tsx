@@ -58,6 +58,7 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
   // The card's two views, kept in the address: public communities, and the papers the person sent to communities.
   const [view, setView] = useQueryState("view", parseAsStringLiteral(["public", "submissions"] as const).withDefault("public"));
   const tp = useTranslations("addedPapers");
+  const tw = useTranslations("workspaces");
   const submissions = useSubmissions(text, signedIn);
   // Each view draws the tabs in its own header, so switching mounts them anew: a switch made from the tabs puts the focus back on the tab picked.
   const refocus = useRef(false);
@@ -124,7 +125,7 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
         <PageWrapper>
           {/* No header bar: the page's search and New community head its card, level with the sidebar's. */}
           <div className="@container w-full pb-16">
-          <h1 className="sr-only">{t("evidenceLibraries")}</h1>
+          <h1 className="sr-only">{tw("communities")}</h1>
           <div className="container mx-auto max-w-6xl p-4 sm:p-6">
           {signedIn ? <div className="mb-4 overflow-hidden rounded-2xl border border-border-subtle bg-card shadow-surface lg:hidden">{yours}</div> : null}
           <CommandCenterContainer serverDrawn>
