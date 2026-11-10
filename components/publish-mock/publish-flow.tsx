@@ -164,12 +164,13 @@ export function PublishFlow({
 }) {
   const [{ view, report: asked, correct, show, page }, setPlace] = useQueryStates(PLACE);
   // Moving to another report, view or page of the list, or opening a report's details to correct, is a step forward
-  // in the browser's history, so Back returns to where the person was. Leaving the details with their own Cancel is
+  // in the browser's history, so Back returns to where the person was. It is another screen, so it opens at its
+  // top, as History's and the library's pages do; the browser puts the place back on the way back. Leaving the details with their own Cancel is
   // the step back, so Back afterwards never reopens them; what a link or a reload opened closes in place.
   const steps = useRef(0);
   const go = (next: Parameters<typeof setPlace>[0]) => {
     steps.current += 1;
-    void setPlace(next, { history: "push" });
+    void setPlace(next, { history: "push", scroll: true });
   };
   const up = (next: Parameters<typeof setPlace>[0]) => {
     if (steps.current < 1) return void setPlace(next);

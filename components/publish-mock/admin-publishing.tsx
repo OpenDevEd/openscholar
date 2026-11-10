@@ -132,9 +132,10 @@ export function AdminPublishing({ initial, accounts, known }: { initial: MockSta
   // back, so Back never reopens what was just closed and Forward does. What a link or a reload opened has no step
   // behind it on this page, so it closes in place.
   const steps = useRef(0);
-  const go = (next: Parameters<typeof setNav>[0]) => {
+  // Another screen opens at its top; a dialog opens over the page where it is.
+  const go = (next: Parameters<typeof setNav>[0], scroll = true) => {
     steps.current += 1;
-    void setNav(next, { history: "push" });
+    void setNav(next, { history: "push", scroll });
   };
   const up = (next: Parameters<typeof setNav>[0]) => {
     if (steps.current < 1) return void setNav(next);
@@ -206,9 +207,9 @@ export function AdminPublishing({ initial, accounts, known }: { initial: MockSta
           size="md"
         />
         {nav.view === "submissions" ? (
-          <Submissions settings={settings} submissions={submissions} outbox={outbox} onChange={replace} open={nav.report} opened={opened} onOpen={(report) => (report ? go({ report, edit: null }) : up({ report: null, edit: null }))} onEdit={() => go({ edit: true })} />
+          <Submissions settings={settings} submissions={submissions} outbox={outbox} onChange={replace} open={nav.report} opened={opened} onOpen={(report) => (report ? go({ report, edit: null }, false) : up({ report: null, edit: null }))} onEdit={() => go({ edit: true })} />
         ) : (
-          <SettingsView settings={settings} accounts={accounts} known={known} onChange={setSettings} check={nav.check} onCheck={(check) => (check ? go({ check }) : up({ check: null }))} agreement={nav.agreement} onAgreement={(open) => (open ? go({ agreement: true }) : up({ agreement: null }))} />
+          <SettingsView settings={settings} accounts={accounts} known={known} onChange={setSettings} check={nav.check} onCheck={(check) => (check ? go({ check }, false) : up({ check: null }))} agreement={nav.agreement} onAgreement={(open) => (open ? go({ agreement: true }, false) : up({ agreement: null }))} />
         )}
       </div>
     </Enter>
@@ -250,7 +251,7 @@ function Submissions({
     const kept = submissions.filter((s) => shows(s, settings, show) && (!words || [s.metadata?.title, s.id, s.doi, ...(s.metadata?.authors.map((a) => a.name) ?? [])].some((v) => v?.toLowerCase().includes(words))));
     return kept.sort((a, b) => (sort === "title" ? (a.metadata?.title ?? "").localeCompare(b.metadata?.title ?? "") : sort === "oldest" ? a.createdAt - b.createdAt : b.createdAt - a.createdAt));
   }, [submissions, settings, query, show, sort]);
-  const pager = pagerOf(list.length, PER_PAGE, page, (next) => void setList({ page: next }, { history: "push" }));
+  const pager = pagerOf(list.length, PER_PAGE, page, (next) => void setList({ page: next }, { history: "push", scroll: true }));
   const shown = list.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
 
   return (
