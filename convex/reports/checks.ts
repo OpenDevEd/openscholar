@@ -31,6 +31,9 @@ const LLM_TEXT = 80_000;
  * one request, so a ceiling; a search across every community's records in one place lifts it. */
 const COMMUNITIES_SEARCHED = 20;
 
+/** Text with every space and line break taken out, and in lower case, for finding a line however the PDF wrapped it. */
+const squeezed = (words: string) => words.replace(/\s+/g, "").toLowerCase();
+
 /** How sure the model is of yes: its confidence in yes, or the other side of its confidence in no; unclear is neither. */
 const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? confidence : answer === "no" ? 1 - confidence : 0.5);
 
@@ -50,6 +53,11 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
     return found
       ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
       : { ...base, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };
+  }
+  // The byline is text the PDF has or hasn't: found word for word (line breaks and spacing aside), it passes without a
+  // model, whose confidence in a line that's plainly there can sit either side of the threshold.
+  if (check.id === "byline" && squeezed(text).includes(squeezed(report.byline))) {
+    return { ...base, answer: "yes", confidence: 1, threshold: check.threshold, reasoning: "The PDF's text has the line word for word.", pass: true };
   }
   const question = fill(check.question);
   if (isDecisionModel(on.slug)) {
