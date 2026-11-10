@@ -9,6 +9,7 @@ import { CheckCircle2, CircleX, ExternalLink, ReviewQueueIcon, SearchX, Trash2, 
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
@@ -172,6 +173,16 @@ function SubmissionRow({ submission, date }: { submission: Submission; date: str
       </div>
       {status === "queued" ? (
         <StatusChip className="shrink-0" tone="running" icon={ReviewQueueIcon}><Said>{t("inQueue")}</Said></StatusChip>
+      ) : status === "returned" && submission.note ? (
+        // The reason is cut off in the row and a hover tooltip never opens on touch, so a tap on the chip opens it whole.
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <StatusChip className="cursor-pointer transition-colors hover:bg-warning/20" tone="warning" icon={CircleX}><Said>{t("returned")}</Said></StatusChip>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" aria-label={t("returned")} className="p-3 text-sm whitespace-pre-wrap break-words">{submission.note}</PopoverContent>
+        </Popover>
       ) : status === "returned" ? (
         <StatusChip className="shrink-0" tone="warning" icon={CircleX}><Said>{t("returned")}</Said></StatusChip>
       ) : status === "withdrawn" ? (
