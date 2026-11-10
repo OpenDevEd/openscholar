@@ -15,6 +15,8 @@ const PRIVATE_PATHS = [
   "/from-library/:path*",
   // A report's signed agreement is its workspace's to read. Publish itself is open, and asks for sign-in at the first step.
   "/publish/agreements/:path*",
+  // What the proxy shows in place of a page while a new account's profile setup is due: only ever for someone signed in.
+  "/profile-setup",
   "/o/:path*",
   "/api/:path*",
   "/trpc/:path*",
