@@ -16,6 +16,8 @@ export type ProfileSetup = {
   emails: Record<EmailKind, boolean>;
   finishedAt?: number;
   skippedAt?: number;
+  /** MOCK: shown once more to an account that has been through it, so the setup can be looked at; Continue or Skip ends it. */
+  preview?: boolean;
 };
 
 /** What the person answers, without when they did. */

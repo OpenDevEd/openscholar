@@ -28,7 +28,8 @@ export async function saveProfileSetup(answers: ProfileAnswers): Promise<Profile
   if (answers.orcid !== "" && !ORCID.test(answers.orcid)) throw new Error("That isn't an ORCID iD.");
   const emails = Object.fromEntries(EMAILS.map(({ id }) => [id, answers.emails?.[id] === true])) as ProfileSetup["emails"];
   const state = await readSetupState();
-  const setup: ProfileSetup = { ...state[userId], affiliations: answers.affiliations, orcid: answers.orcid, emails, finishedAt: state[userId]?.finishedAt ?? Date.now() };
+  const { preview: _, ...kept } = state[userId] ?? blankSetup();
+  const setup: ProfileSetup = { ...kept, affiliations: answers.affiliations, orcid: answers.orcid, emails, finishedAt: kept.finishedAt ?? Date.now() };
   state[userId] = setup;
   await writeSetupState(state);
   return setup;
@@ -39,7 +40,8 @@ export async function skipProfileSetup(): Promise<ProfileSetup> {
   const { userId } = await auth();
   if (!userId) throw new Error("Sign in to skip the setup.");
   const state = await readSetupState();
-  const setup: ProfileSetup = { ...(state[userId] ?? blankSetup()), skippedAt: Date.now() };
+  const { preview: _, ...kept } = state[userId] ?? blankSetup();
+  const setup: ProfileSetup = { ...kept, skippedAt: Date.now() };
   state[userId] = setup;
   await writeSetupState(state);
   return setup;

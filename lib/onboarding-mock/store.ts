@@ -33,6 +33,7 @@ async function beganAt(userId: string) {
 /** Whether the account is new and has neither finished nor skipped the setup. */
 export async function setupDue(userId: string, kept?: ProfileSetup) {
   const answers = kept ?? (await readSetupState())[userId];
+  if (answers?.preview) return true;
   if (answers?.finishedAt || answers?.skippedAt) return false;
   return (await beganAt(userId)) >= RELEASED_AT;
 }
