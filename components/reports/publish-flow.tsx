@@ -15,7 +15,8 @@ import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import Link from "@/components/workspace-link";
-import { LibraryPageShell, PageFrameLoading } from "@/components/evidence-libraries/library-page-shell";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
@@ -138,7 +139,14 @@ export function PublishFlow() {
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
   const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined)));
-  if (!ready || !basics) return <PageFrameLoading label="Publish" />;
+  // The frame with the page's own name while it loads, so its header is there from the first frame.
+  if (!ready || !basics) {
+    return (
+      <LibraryPageShell icon={PublishIcon} title="Publish">
+        <ListLoading label="Publish" />
+      </LibraryPageShell>
+    );
+  }
 
   const report = found && "report" in found ? found.report : null;
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
@@ -237,6 +245,13 @@ export function PublishFlow() {
         </ListEmpty>
       ) : (
         <div className="grid grid-cols-1 gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_13rem] @3xl:gap-10">
+          {/* Switched off, publishing takes no new report. One already started says why its sidebar item is gone. */}
+          {report?.mine && !basics.open && report.status !== "live" ? (
+            <p role="status" className="col-span-full flex items-start gap-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
+              Publishing is off for new reports for now. You can keep working on this one.
+            </p>
+          ) : null}
           <Screens
             key={report?.key ?? "new"}
             basics={basics}
@@ -310,8 +325,9 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
             <UploadStep report={report} workspaceId={workspaceId!} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
-              <PdfNotice trouble={report.pdf.trouble} />
+              <PdfNotice trouble={report.pdf.trouble} onUpload={() => back("upload")} />
               <DetailsStep
+                unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
                 initial={report.metadata}
@@ -466,14 +482,19 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
   // The name they are known by, until they type another.
   const [typed, setTyped] = useState<string | null>(null);
   const name = typed ?? user?.fullName ?? "";
-  const [all, setAll] = useState(false);
-  const [agreed, setAgreed] = useState(false);
   const [busy, start] = useTransition();
   const { agreement } = basics;
-  // The workspace has used up its day, or has none: no new report can start, and the page says which.
-  const blocked = starts && starts.left < 1 ? limitWords(starts.perDay, starts.kind) : null;
+  // Each tick is for the agreement as it read when it was made. One changed since, while the page was open, is
+  // read and ticked again before it can be signed.
+  const [ticks, setTicks] = useState({ version: agreement.version, all: false, agreed: false });
+  const changed = ticks.version !== agreement.version && (ticks.all || ticks.agreed);
+  const { all, agreed } = ticks.version === agreement.version ? ticks : { all: false, agreed: false };
+  const tick = (next: { all?: boolean; agreed?: boolean }) => setTicks({ version: agreement.version, all, agreed, ...next });
+  // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
+  // person reserved and did nothing with is theirs again by signing, whatever the day has left.
+  const blocked = starts && starts.left < 1 && !starts.untouched ? limitWords(starts.perDay, starts.kind) : null;
   // An organisation's workspace is opened by Openscholar, on request: the page says who to ask.
-  const unopened = starts?.kind === "organization" && starts.perDay === 0;
+  const unopened = !!blocked && starts?.kind === "organization" && starts.perDay === 0;
   return (
     <div>
       <StepHead title={`Publishing agreement with ${basics.series.name}`} aside={<StatusChip tone="neutral">Version {agreement.version}</StatusChip>}>
@@ -488,13 +509,19 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
           <Input value={name} maxLength={SIGNER_NAME_MAX} onChange={(e) => setTyped(e.target.value)} autoComplete="name" />
         </label>
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <Checkbox checked={all} onCheckedChange={(v) => setAll(v === true)} className="mt-0.5" />
+          <Checkbox checked={all} onCheckedChange={(v) => tick({ all: v === true })} className="mt-0.5" />
           <span>I sign for all the authors, who have agreed</span>
         </label>
         <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-          <Checkbox checked={agreed} onCheckedChange={(v) => setAgreed(v === true)} className="mt-0.5" />
+          <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
           <span>I agree to this agreement</span>
         </label>
+        {changed ? (
+          <p role="status" className="flex items-start gap-2 text-sm text-muted-foreground">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
+            The agreement changed while this page was open. Read it again, then tick the boxes.
+          </p>
+        ) : null}
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         {unopened ? (
@@ -540,10 +567,11 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
 
 function CopyField({ label, value, mono = false, what }: { label: string; value: string; mono?: boolean; what: string }) {
   return (
-    <div className="space-y-1.5">
+    // A DOI is one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy button stays in reach.
+    <div className="min-w-0 space-y-1.5">
       <span className="ps-1 text-xs font-medium text-muted-foreground">{label}</span>
       <div className="flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
-        <span className={cn("min-w-0 flex-1 break-words text-sm", mono && "font-mono text-[0.9375rem] font-medium tracking-tight")}>{value}</span>
+        <span className={cn("min-w-0 flex-1 text-sm [overflow-wrap:anywhere]", mono && "font-mono text-[0.9375rem] font-medium tracking-tight")}>{value}</span>
         <TooltipHint label={`Copy ${what.toLowerCase()}`}>
           <Button type="button" variant="ghost" size="icon-xs" aria-label={`Copy ${what.toLowerCase()}`} className="-me-1 text-muted-foreground" onClick={() => copy(value, what)}>
             <Copy />
@@ -627,17 +655,24 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
 }
 
 /** What a PDF's reading fell short of, said where the author fills in what it left. */
-function PdfNotice({ trouble }: { trouble: NonNullable<Report["pdf"]>["trouble"] }) {
+function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>["trouble"]; onUpload: () => void }) {
   if (trouble !== "textless" && trouble !== "unread") return null;
   return (
-    <p role="status" className="mb-5 flex items-start gap-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
-      <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
-      <span className="min-w-0">
-        {trouble === "textless"
-          ? "This PDF holds no text, as a scan doesn't. The checks can't find the byline in it. Export the report as a PDF with its text and upload that, or fill in the details by hand."
-          : "Openscholar couldn't read the details from this PDF. Fill them in by hand."}
-      </span>
-    </p>
+    <div role="status" className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
+      <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
+        <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
+        <span className="min-w-0">
+          {trouble === "textless"
+            ? "This PDF holds no text, as a scan doesn't. The checks can't find the byline in it. Export the report as a PDF with its text and upload that, or fill in the details by hand."
+            : "Openscholar couldn't read the details from this PDF. Fill them in by hand."}
+        </span>
+      </p>
+      {trouble === "textless" ? (
+        <Button size="sm" variant="outline" className="ms-auto" onClick={onUpload}>
+          <FileUp /> Upload another PDF
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -985,6 +1020,7 @@ function Said({ label, children }: { label: string; children: ReactNode }) {
 /** Asks a person to look at a report its checks failed, with what the author thinks they got wrong. */
 function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void> }) {
   const [comment, setComment] = useState("");
+  const box = useRef<HTMLTextAreaElement>(null);
   const [sending, start] = useTransition();
   const send = () =>
     start(async () => {
@@ -998,13 +1034,21 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
     });
   return (
     <Dialog open={open} onOpenChange={(next) => !next && !sending && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="sm:max-w-lg"
+        // Typing starts in the box. The dialog puts the focus there itself, so closing it gives the focus back to the
+        // button that opened it: a box that took the focus by itself would be what the dialog remembered instead.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          box.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Request a human review</DialogTitle>
           <DialogDescription>A reviewer reads your report and what the checks said. Ask when you think a check got it wrong.</DialogDescription>
         </DialogHeader>
         <Field label="What did the checks get wrong?" counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
-          {(id) => <Textarea id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} autoFocus />}
+          {(id) => <Textarea ref={box} id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} />}
         </Field>
         <DialogFooter>
           <Button variant="outline" disabled={sending} onClick={onClose}>

@@ -36,7 +36,7 @@ import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, bylineOf, canRegister, crossrefDoiOf, dailyLimit } from "@/lib/reports/settings";
+import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, MAX_DAILY_LIMIT, bylineOf, canRegister, crossrefDoiOf, dailyLimit } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -400,7 +400,10 @@ function SavedInput({ value, onSave, className, placeholder, ariaLabel, numeric 
   }
   const commit = () => {
     const typed = draft.trim();
-    const next = numeric ? (/^\d+$/.test(typed) ? String(dailyLimit(Number(typed))) : value) : typed;
+    const whole = /^\d+$/.test(typed);
+    const next = numeric ? (whole ? String(dailyLimit(Number(typed))) : value) : typed;
+    // What was typed isn't what is kept: the box says why it changed back, or to what.
+    if (numeric && typed !== next) toast.info(whole ? `A limit goes up to ${MAX_DAILY_LIMIT.toLocaleString("en")} a day` : `A limit is a whole number from 0 to ${MAX_DAILY_LIMIT.toLocaleString("en")}`);
     setDraft(next);
     if (next !== value) void onSave(next).then((kept) => kept || setDraft(value));
   };
@@ -485,7 +488,8 @@ function CheckDialog({ check, onClose }: { check: CheckRow | "new" | null; onClo
               : "A yes-or-no question about the report, which the model answers from its details and its PDF. Yes passes."}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-5">
+        {/* min-w-0: the sample answer's long lines scroll in their own box and never widen the dialog past a phone's screen. */}
+        <div className="min-w-0 space-y-5">
           <Field label="Name" counter={`${form.name.length} / ${CHECK_NAME_MAX}`}>
             {(id) => <Input id={id} value={form.name} maxLength={CHECK_NAME_MAX} onChange={(e) => set("name", e.target.value)} placeholder="No hate speech or harassment" />}
           </Field>
@@ -591,7 +595,10 @@ function AgreementDialog({ open, agreement, onClose }: { open: boolean; agreemen
             <Textarea value={text} maxLength={AGREEMENT_MAX} aria-label="The agreement, as Markdown" onChange={(e) => setText(e.target.value)} className="h-full resize-none font-mono text-xs/5" />
           )}
         </div>
-        <DialogFooter>
+        <DialogFooter className="sm:items-center">
+          <span className="me-auto text-xs tabular-nums text-muted-foreground">
+            {text.length.toLocaleString("en")} / {AGREEMENT_MAX.toLocaleString("en")}
+          </span>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

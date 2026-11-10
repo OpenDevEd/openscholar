@@ -3,6 +3,7 @@ import { api, internal } from "../_generated/api";
 import { stageOf } from "../../lib/reports/report";
 import { SAME_PDF_ADVICE } from "./corrections";
 import { checked, details, live, passed, read, refused, row, setReview, setup, type World } from "./reports.test-support";
+import { purgeWorkspace } from "../workspaces/purge";
 
 const seen = async (world: World, key: string) => (await row(world.t, key)).pdf!.at;
 const decide = async (world: World, key: string, decision: "approve" | "decline" | "withdraw" | "reinstate", note?: string) =>
@@ -29,6 +30,15 @@ describe("reviewing", () => {
     await expect(world.author.mutation(api.reports.review.editDetails, { key, seenAt: 1, metadata: details("Mine") })).rejects.toMatchObject(no);
     await expect(world.author.mutation(api.reports.review.decideChanges, { key, decision: "approve", seenAt: 1 })).rejects.toMatchObject(no);
     expect(await read(world.author, world.own, key)).toMatchObject({ status: "failed" });
+  });
+
+  it("is deleted with a declined report when its workspace is", async () => {
+    const world = await setup();
+    const { key, reportId } = await checked(world, [passed("byline", false)]);
+    await decide(world, key, "decline", "Not research");
+    expect(await world.t.run((ctx) => purgeWorkspace(ctx, world.own))).toBe(true);
+    expect(await row(world.t, key)).toBeNull();
+    expect(await world.t.run((ctx) => ctx.db.query("reportReviews").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).take(5))).toEqual([]);
   });
 
   it("approves a report whatever its checks said, so its author can activate it", async () => {
