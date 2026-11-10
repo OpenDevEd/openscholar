@@ -3048,7 +3048,8 @@
       "users": "Users",
       "aiModels": "AI models",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "Community releases"
+      "communityReleases": "Community releases",
+      "publishing": "Publishing"
     },
     "sharedDev": "Shared dev",
     "production": "Production",

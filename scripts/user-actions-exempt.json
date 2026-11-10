@@ -258,7 +258,18 @@
     "assistant/spending:setTool": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
     "evidenceLibraries/organizationGrants:grant": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
     "evidenceLibraries/organizationGrants:changeRole": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
-    "evidenceLibraries/organizationGrants:remove": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches."
+    "evidenceLibraries/organizationGrants:remove": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
+    "reports/limits:list": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/limits:remove": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/limits:set": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/publicationActions:save": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:admin": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:removeCheck": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:saveCheck": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:setAgreement": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:setMetadataModel": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:update": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:switchCheck": "Site administration, for Openscholar's own admins on the admin pages."
   },
   "pending": {
     "evidenceLibraries/collectionSources:listCollectionSources": "#329"

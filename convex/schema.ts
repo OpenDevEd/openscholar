@@ -73,6 +73,7 @@ import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./t
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantLimitFields, assistantSpenderFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
+import { checksValidator, reportSettingsFields } from "./reports/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 
@@ -593,6 +594,17 @@ export default defineSchema({
     sortOrder: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  // Openscholar Reports (plans/publish-reports), the series Openscholar publishes itself. Its settings are one row,
+  // once an admin changes something.
+  reportSettings: defineTable(reportSettingsFields),
+  // Each version of the checks and of the agreement, kept because a report records which it was checked and signed under.
+  reportCheckVersions: defineTable({ version: v.number(), checks: checksValidator }).index("by_version", ["version"]),
+  reportAgreementVersions: defineTable({ version: v.number(), text: v.string() }).index("by_version", ["version"]),
+  // A workspace's own daily limit, where an admin gave it one.
+  reportLimits: defineTable({ workspaceId: v.id("workspaces"), perDay: v.number(), updatedAt: v.number(), updatedBy: v.id("users") }).index("by_workspaceId", ["workspaceId"]),
+  // One row per report started, which is what a workspace's day is counted from: a discarded report keeps its row.
+  reportStarts: defineTable({ workspaceId: v.id("workspaces"), at: v.number() }).index("by_workspaceId_and_at", ["workspaceId", "at"]),
 
   // What the free writing of queries from questions runs on and may spend (lib/ai/free-queries.ts). One row, once an admin changes something.
   freeQuerySettings: defineTable({

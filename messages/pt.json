@@ -3049,7 +3049,8 @@
       "users": "Utilizadores",
       "aiModels": "Modelos de IA",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "Versões das comunidades"
+      "communityReleases": "Versões das comunidades",
+      "publishing": "Publicação"
     },
     "sharedDev": "Desenvolvimento partilhado",
     "production": "Produção",

@@ -3049,7 +3049,8 @@
       "users": "المستخدمون",
       "aiModels": "نماذج الذكاء الاصطناعي",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "إصدارات المجتمعات"
+      "communityReleases": "إصدارات المجتمعات",
+      "publishing": "النشر"
     },
     "sharedDev": "التطوير المشترك",
     "production": "الإنتاج",
