@@ -610,7 +610,9 @@ export default defineSchema({
   reports: defineTable(reportFields)
     .index("by_key", ["key"])
     .index("by_doi", ["doi"])
-    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"]),
+    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
+    // A workspace's reports that never went live, which go with it when it is deleted (workspaces/purge.ts).
+    .index("by_workspaceId_and_activatedAt", ["workspaceId", "activatedAt"]),
   reportDetails: defineTable(reportDetailFields).index("by_reportId", ["reportId"]),
   reportFiles: defineTable(reportFileFields).index("by_file", ["file"]),
   // The number the next report's key is made from: one row.

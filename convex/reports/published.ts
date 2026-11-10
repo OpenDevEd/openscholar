@@ -43,7 +43,10 @@ const INDEX_CANDIDATES = 5;
 const COMMUNITY_CANDIDATES = 2;
 const USER_AGENT = { "User-Agent": "Openscholar (https://openscholar.ai)" };
 
-const plain = (text: string) => text.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+/** Text as its letters and digits alone, of any script, without accents or case: what two spellings of one title share. */
+const plain = (text: string) => text.toLowerCase().normalize("NFKD").replace(/\p{M}/gu, "").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** Whether two titles are the same words. A title with no letters or digits in it is the same as nothing. */
+export const sameTitle = (a: string, b: string) => plain(a) !== "" && plain(a) === plain(b);
 const surname = (name: string) => plain(name).split(" ").at(-1) ?? "";
 // Letters, digits, spaces, apostrophes and hyphens: OpenAlex refuses a quoted phrase with Markdown or other symbols in it.
 const quoted = (s: string) => `"${s.replace(/[^\p{L}\p{N}\s'-]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 200)}"`;
@@ -71,7 +74,7 @@ async function onOpenAlex(m: Report, missed: Missed): Promise<Found | null> {
       const match = results.find((w) => {
         const sameAuthor = w.authorships.some((a) => mine.has(surname(a.author.display_name)));
         const sameYear = String(w.publication_year) === year;
-        return sameAuthor || (sameYear && (!byTitle || plain(w.title ?? "") === plain(m.title)));
+        return sameAuthor || (sameYear && (!byTitle || sameTitle(w.title ?? "", m.title)));
       });
       if (match) return { title: match.title, url: match.doi ?? match.id, where: "OpenAlex" };
     } catch (error) {
@@ -172,7 +175,7 @@ export async function alreadyPublished(m: Report, judge: CheckModel, communities
   // The very same title from the same year is the work: no model needed. Both years must be known. The judge decides the
   // near matches, where on 2026-11-09 it once took a sibling report from the same assessment for the report itself.
   const year = m.date.slice(0, 4);
-  const identical = candidates.find((c) => plain(c.title) === plain(m.title) && year !== "" && c.year === year);
+  const identical = candidates.find((c) => sameTitle(c.title, m.title) && year !== "" && c.year === year);
   if (identical) return { title: identical.title, url: identical.url, where: identical.where, reason: "The same title, from the same year." };
   const judged = isDecisionModel(judge.slug)
     ? await sameWorks(m, candidates, judge.slug).then(

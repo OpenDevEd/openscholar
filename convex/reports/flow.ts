@@ -63,6 +63,13 @@ export async function forget(ctx: MutationCtx, ...files: Array<Id<"_storage"> | 
   }
 }
 
+/** Deletes a report with everything kept for it: its PDF, the PDF's text, its cover and its details. */
+export async function removeReport(ctx: MutationCtx, report: Doc<"reports">) {
+  await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
+  await ctx.db.delete("reportDetails", (await detailsOf(ctx, report._id))._id);
+  await ctx.db.delete("reports", report._id);
+}
+
 /** How long after it was uploaded a file can still become a report's. */
 const UPLOAD_FRESH_MS = 15 * 60 * 1000;
 
@@ -162,9 +169,7 @@ export const discard = workspaceMutation({
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     if (!canDiscard(report)) throw createError("CONFLICT", "Only a report that isn't approved or live can be discarded.");
-    await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
-    await ctx.db.delete("reportDetails", (await detailsOf(ctx, report._id))._id);
-    await ctx.db.delete("reports", report._id);
+    await removeReport(ctx, report);
     return null;
   },
 });

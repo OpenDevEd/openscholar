@@ -8,6 +8,7 @@ import { collectionCountRow } from "../library/counter";
 import { libraryCountRow } from "../library/counter";
 import { internalMutation } from "../lib/functions";
 import { countRow } from "../research/recordCounts";
+import { removeReport } from "../reports/flow";
 
 /** How many rows one step deletes at most. */
 const STEP = 100;
@@ -29,7 +30,7 @@ const sizeOf = (row: object) => 2 * JSON.stringify(row).length;
  * Deletes a step's worth of what's in a purged workspace (#650, #651): its screening jobs,
  * searches with their revisions, history, answers, suggested searches and AI overviews with their lenses, bookmarks, collections with their
  * ratings, saved papers with their places, its screening slots, its people's assistant
- * spending there and its items' activity. An author profile stays in the directory, owned by nobody, as one whose owner
+ * spending there, its items' activity and its unpublished reports. An author profile stays in the directory, owned by nobody, as one whose owner
  * was purged before workspaces is. Chats, extraction jobs and counts have their own purges.
  * A step reads a few rows at a time and stops at `STEP` rows or `READ_BYTES` read, whichever
  * comes first. Returns whether the workspace is empty of them.
@@ -71,6 +72,17 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
   if (!(await drain(ctx, step, (n) => ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", workspaceId)).take(n), "activity"))) return false;
   // Its counts, each member's of each kind of record included (../research/recordCounts.ts).
   if (!(await drain(ctx, step, (n) => ctx.db.query("recordCounts").withIndex("by_workspace_and_table_and_createdBy", (q) => q.eq("workspaceId", workspaceId)).take(n), "recordCounts"))) return false;
+
+  // Its reports that never went live, each with its files. A published one stays, withdrawn or not: its DOI is
+  // registered and keeps leading to its page, which Openscholar publishes under the agreement its author signed.
+  if (!(await each(step, (n) => ctx.db.query("reports").withIndex("by_workspaceId_and_activatedAt", (q) => q.eq("workspaceId", workspaceId).eq("activatedAt", undefined)).take(n), async (report) => {
+    if (step.left === 0) return false;
+    await removeReport(ctx, report);
+    step.left--;
+    return true;
+  }))) return false;
+  if (!(await drain(ctx, step, (n) => ctx.db.query("reportStarts").withIndex("by_workspaceId_and_at", (q) => q.eq("workspaceId", workspaceId)).take(n), "reportStarts"))) return false;
+  if (!(await drain(ctx, step, (n) => ctx.db.query("reportLimits").withIndex("by_workspaceId", (q) => q.eq("workspaceId", workspaceId)).take(n), "reportLimits"))) return false;
 
   return await each(step, (n) => ctx.db.query("authorProfiles").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), async (profile) => {
     if (step.left === 0) return false;

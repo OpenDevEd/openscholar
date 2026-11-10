@@ -7,6 +7,8 @@ import { REPORT_DEFAULTS } from "../../lib/reports/settings";
 import { blankDetails, stageOf, type Metadata } from "../../lib/reports/report";
 import { ensureWorkspace } from "../workspaces/create";
 import { startsLeft } from "./limits";
+import { sameTitle } from "./published";
+import { purgeWorkspace } from "../workspaces/purge";
 
 const refused = (code: string) => ({ data: expect.objectContaining({ code }) });
 const details = (title = "Shade trees and maize yields"): Metadata => ({ ...blankDetails("report.pdf", "2026-11-10"), title, abstract: "We measure maize yields on 640 plots." });
@@ -281,6 +283,32 @@ describe("a report's checks", () => {
     await expect(world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "" })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+});
+
+describe("a deleted workspace's reports", () => {
+  it("go with it when they never went live, files included, and stay published when they did", async () => {
+    const world = await setup();
+    const draft = await atDetails(world, world.author, world.lab);
+    const draftFile = (await row(world.t, draft.key)).pdf!.file;
+    const published = await checked(world, [passed("byline")], world.author, world.lab);
+    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.lab, key: published.key });
+
+    expect(await world.t.run((ctx) => purgeWorkspace(ctx, world.lab))).toBe(true);
+    expect(await row(world.t, draft.key)).toBeNull();
+    expect(await world.t.run((ctx) => ctx.db.system.get(draftFile))).toBeNull();
+    expect(await world.t.run((ctx) => ctx.db.query("reportStarts").withIndex("by_workspaceId_and_at", (q) => q.eq("workspaceId", world.lab)).collect())).toEqual([]);
+    expect(await row(world.t, published.key)).toMatchObject({ status: "live" });
+  });
+});
+
+describe("the already-published check's titles", () => {
+  it("match across case, accents and punctuation, in any script, and never on nothing", () => {
+    expect(sameTitle("Shade Trees & Maize Yields.", "shade trees maize yields")).toBe(true);
+    expect(sameTitle("Éducation à l'école", "Education a l ecole")).toBe(true);
+    expect(sameTitle("学校教育研究", "学校教育政策研究")).toBe(false);
+    expect(sameTitle("学校教育研究", "学校教育研究")).toBe(true);
+    expect(sameTitle("…", "!!!")).toBe(false);
   });
 });
 

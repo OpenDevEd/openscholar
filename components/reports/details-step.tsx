@@ -3,7 +3,7 @@
 // A report's details as the model read them from its PDF, for the author to correct (plans/publish-reports).
 // Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
@@ -226,29 +226,22 @@ export function DetailsStep({
   words?: { title: string; intro: string; action: string };
 }) {
   const [m, setM] = useState(initial);
-  // Corrections are saved a moment after the last change, so leaving the step loses nothing. A timer, cleared when
-  // the details change again; a change still waiting when the step closes is saved as it closes.
-  const now = useRef({ m, onSave, saved: initial });
-  useEffect(() => {
-    now.current.m = m;
-    now.current.onSave = onSave;
-  });
-  const send = () => {
-    const { m: latest, onSave: save, saved } = now.current;
+  // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
+  // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
+  // report has moved on changes nothing (saveDetails).
+  const held = useRef({ m: initial, timer: undefined as ReturnType<typeof setTimeout> | undefined });
+  const change = (update: (was: Metadata) => Metadata) => {
+    const next = update(held.current.m);
+    held.current.m = next;
+    setM(next);
+    clearTimeout(held.current.timer);
     // An ORCID iD half typed is no iD yet: the details are saved once it is one, or the box is empty.
-    if (latest === saved || latest.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid))) return;
-    now.current.saved = latest;
-    save?.(latest);
+    if (onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid))) held.current.timer = setTimeout(() => onSave(next), SAVE_AFTER_MS);
   };
-  useEffect(() => {
-    const timer = setTimeout(send, SAVE_AFTER_MS);
-    return () => clearTimeout(timer);
-  }, [m]);
-  useEffect(() => send, []);
   const [topicSearch, setTopicSearch] = useState("");
   const [doi, setDoi] = useState("");
   const [refPage, setRefPage] = useState(1);
-  const set = <K extends keyof Metadata>(key: K, value: Metadata[K]) => setM((was) => ({ ...was, [key]: value }));
+  const set = <K extends keyof Metadata>(key: K, value: Metadata[K]) => change((was) => ({ ...was, [key]: value }));
   const setAuthor = (i: number, patch: Partial<Author>) => set("authors", m.authors.map((a, at) => (at === i ? { ...a, ...patch } : a)));
   const moveAuthor = (i: number, by: -1 | 1) => {
     const next = [...m.authors];
@@ -552,7 +545,11 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || (!!onCancel && !resend && m === initial)} onClick={() => void onRun(m)}>
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || (!!onCancel && !resend && m === initial)} onClick={() => {
+          // The run carries the details as they are, so a save still waiting has nothing left to send.
+          clearTimeout(held.current.timer);
+          void onRun(m);
+        }}>
           <ShieldCheck /> {words ? words.action : onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
         </Button>
       </div>
