@@ -565,8 +565,10 @@ function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report
           const done = i < place || (i === place && place === 5);
           const current = i === place && place !== 5;
           const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
-          // The DOI, the PDF and the details, once done; the agreement is signed for good.
-          const clickable = canGoBack && done && i < 4 && i > 0;
+          // The PDF and the details once done, and the DOI until there is a PDF (it shows beside the trail after, and
+          // going back to it would ask for the PDF again); the agreement is signed for good. Back at the upload, the
+          // details already read are still a step away.
+          const clickable = canGoBack && i > 0 && i < 4 && (done ? !(s.id === "doi" && report.pdf) : s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata);
           const body = (
             <>
               <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
@@ -1276,49 +1278,52 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
     });
   const off = applied && applied.price > 0 ? Math.round((applied.discount / applied.price) * 100) : 0;
   return (
-    <AutoHeight>
-      {applied ? (
-        <div className="flex items-center gap-2 text-sm">
-          <Tag className="size-4 text-muted-foreground" />
-          <span className="font-mono font-medium">{applied.code}</span>
-          <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
-          <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={t("remove", { code: applied.code })} onClick={() => onApply(null)}>
-            <X />
-          </Button>
-        </div>
-      ) : open ? (
-        <form
-          className="space-y-1.5 p-px"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (typed.trim()) apply();
-          }}
-        >
-          <div className="flex gap-2">
-            <Input
-              autoFocus
-              value={typed}
-              maxLength={100}
-              onChange={(e) => {
-                setTyped(e.target.value);
-                setWrong(null);
-              }}
-              placeholder={t("label")}
-              aria-label={t("label")}
-              aria-invalid={!!wrong}
-              className="font-mono placeholder:font-sans"
-            />
-            <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
-              {t("apply")}
+    // Room around it for the buttons' focus rings, which its height animation would clip (WebKit has no clip margin).
+    <AutoHeight className="-mx-3 -my-1">
+      <div className="px-3 py-1">
+        {applied ? (
+          <div className="flex items-center gap-2 text-sm">
+            <Tag className="size-4 text-muted-foreground" />
+            <span className="font-mono font-medium">{applied.code}</span>
+            <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
+            <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={t("remove", { code: applied.code })} onClick={() => onApply(null)}>
+              <X />
             </Button>
           </div>
-          {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
-        </form>
-      ) : (
-        <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
-          <Tag /> {t("add")}
-        </Button>
-      )}
+        ) : open ? (
+          <form
+            className="space-y-1.5 p-px"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (typed.trim()) apply();
+            }}
+          >
+            <div className="flex gap-2">
+              <Input
+                autoFocus
+                value={typed}
+                maxLength={100}
+                onChange={(e) => {
+                  setTyped(e.target.value);
+                  setWrong(null);
+                }}
+                placeholder={t("label")}
+                aria-label={t("label")}
+                aria-invalid={!!wrong}
+                className="font-mono placeholder:font-sans"
+              />
+              <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
+                {t("apply")}
+              </Button>
+            </div>
+            {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
+          </form>
+        ) : (
+          <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
+            <Tag /> {t("add")}
+          </Button>
+        )}
+      </div>
     </AutoHeight>
   );
 }
