@@ -55,7 +55,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const description = detail.abstract ? snippet(detail.abstract) : [title, journal, paper.publication_year].filter(Boolean).join(", ");
   const page = await indexedPage({ path: paperPath(id, title), title: `${title || id} | ${t("siteName")}`, description });
   const live = await isLiveSite();
-  const pdf = detail.copies.find((copy) => copy.pdf)?.url;
+  // A report's PDF is at an address of ours, which the tags name in full.
+  const copy = detail.copies.find((found) => found.pdf)?.url;
+  const pdf = copy?.startsWith("/") ? `${SITE_URL}${copy}` : copy;
   return {
     ...page,
     openGraph: { ...page.openGraph, type: "article", publishedTime: dateOf(paper), modifiedTime: updatedOf(paper), authors: detail.authors.map((author) => author.name), images: [{ url: `${SITE_URL}/papers/${id}/cover.png`, width: 1200, height: 630, alt: title }] },

@@ -1,7 +1,7 @@
 "use client";
 
 // A report's details that a paper's record has no place for, in the paper page's own sections (plans/publish-reports).
-import { useState } from "react";
+import { parseAsInteger, useQueryState } from "nuqs";
 import { useLocale, useTranslations } from "next-intl";
 import { Section } from "@/components/papers/paper-page";
 import { Paged, pagerOf } from "@/components/settings/parts";
@@ -31,8 +31,9 @@ export function ReportMain({ m }: { m: Metadata }) {
     const href = linkHref(r.target);
     return href ? [{ ...r, href }] : [];
   });
-  const [page, setPage] = useState(1);
-  const refs = pagerOf(m.references.length, REFS_PER_PAGE, page, setPage);
+  // The page of references is in the address, and turning it is a step in the browser's history.
+  const [page, setPage] = useQueryState("refs", parseAsInteger.withDefault(1).withOptions({ history: "push", scroll: false }));
+  const refs = pagerOf(m.references.length, REFS_PER_PAGE, page, (next) => void setPage(next));
   const shownRefs = m.references.slice((refs.page - 1) * REFS_PER_PAGE, refs.page * REFS_PER_PAGE);
   return (
     <>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { checked, live, passed, row, setup, type World } from "./reports.test-support";
 
@@ -30,6 +30,26 @@ describe("a report's page", () => {
     expect(await world.t.query(internal.reports.paper.doiOf, { key })).toBeNull();
     await decide(world, key, "reinstate");
     expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ state: "live" });
+  });
+
+  it("moves a withdrawn report's files, so the addresses its readers were given stop working", async () => {
+    vi.useFakeTimers();
+    try {
+      const world = await setup();
+      const { key } = await live(world);
+      const before = (await row(world.t, key)).pdf!.file;
+      await decide(world, key, "withdraw");
+      await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+      const after = await row(world.t, key);
+      expect(after.pdf!.file).not.toBe(before);
+      expect(await world.t.run((ctx) => ctx.db.system.get(before))).toBeNull();
+      // The file is the report's still: reinstated, its page gives the PDF again, and discarding rules still find it.
+      expect(await world.t.run((ctx) => ctx.db.query("reportFiles").withIndex("by_file", (q) => q.eq("file", after.pdf!.file)).unique())).not.toBeNull();
+      await decide(world, key, "reinstate");
+      expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ state: "live", pdfUrl: expect.any(String) });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("offers its corrections to its owner and its workspace's admins alone", async () => {

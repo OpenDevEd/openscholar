@@ -389,6 +389,7 @@ import type * as ratings from "../ratings.js";
 import type * as reports_checkRuns from "../reports/checkRuns.js";
 import type * as reports_checks from "../reports/checks.js";
 import type * as reports_corrections from "../reports/corrections.js";
+import type * as reports_files from "../reports/files.js";
 import type * as reports_flow from "../reports/flow.js";
 import type * as reports_limits from "../reports/limits.js";
 import type * as reports_mail from "../reports/mail.js";
@@ -894,6 +895,7 @@ declare const fullApi: ApiFromModules<{
   "reports/checkRuns": typeof reports_checkRuns;
   "reports/checks": typeof reports_checks;
   "reports/corrections": typeof reports_corrections;
+  "reports/files": typeof reports_files;
   "reports/flow": typeof reports_flow;
   "reports/limits": typeof reports_limits;
   "reports/mail": typeof reports_mail;

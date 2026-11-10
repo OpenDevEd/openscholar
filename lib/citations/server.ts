@@ -18,7 +18,8 @@ const inputSchema = metadataSchema.extend({ id: z.string().regex(/^(?:W|OS|R)\d+
 
 export async function getPaperCitationMetadata(input: unknown) {
   const data: CitationData = inputSchema.parse(input);
-  const doi = typeof data.DOI === "string" && /^10\.\d{4,9}\/\S+$/i.test(data.DOI) ? data.DOI : null;
+  // A report published here is its own record: what its registrars hold is a copy of it, and can be a correction behind.
+  const doi = !data.id.startsWith("R") && typeof data.DOI === "string" && /^10\.\d{4,9}\/\S+$/i.test(data.DOI) ? data.DOI : null;
   let record = data;
   if (doi) {
     try {

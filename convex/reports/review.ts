@@ -184,6 +184,8 @@ export const decide = mutation({
       await touch(ctx, report, { status: "declined", withdrawnAt: Date.now(), note: words, run: undefined });
       // A registered DOI can't be removed: its registrars get the record again, marked withdrawn.
       await register(ctx, report);
+      // Its PDF and cover were public: they move to new addresses, so the ones already out stop working.
+      await ctx.scheduler.runAfter(0, internal.reports.files.rotate, { reportId: report._id });
       await record(ctx, report._id, reviewer._id, "withdraw", words);
       await notify(ctx, report._id, "withdrawn");
       return null;

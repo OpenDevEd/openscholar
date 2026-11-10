@@ -20,7 +20,8 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
   const location = {
     is_oa: true,
     landing_page_url: `https://doi.org/${report.doi}`,
-    pdf_url: report.pdfUrl,
+    // Its own lasting address, which leads to the file while the report is live (app/papers/[id]/report.pdf).
+    pdf_url: report.pdfUrl ? `/papers/${report.key}/report.pdf` : null,
     license: "cc-by",
     source: { id: null, display_name: series.name, type: "repository", issn_l: series.issn || null, host_organization_name: "Openscholar" },
   };
