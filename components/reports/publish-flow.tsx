@@ -347,15 +347,17 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
           ) : live && correcting && report.metadata ? (
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
-              initial={attempt ?? report.correction?.metadata ?? report.metadata}
-              resend={!!attempt || !!report.correction}
+              // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
+              initial={attempt ?? report.trying ?? report.correction?.metadata ?? report.metadata}
+              resend={!!attempt || !!report.trying || !!report.correction}
+              version={report.correctedAt ?? report.activatedAt}
               // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
               waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
-              onRun={async (metadata: Metadata) => {
+              onRun={async (metadata: Metadata, since) => {
                 setAttempt(metadata);
                 setStarting(true);
                 try {
-                  const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: report.correctedAt ?? report.activatedAt! } });
+                  const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
                   // Live or kept for a reviewer, the changes are with the report now: the form closes on where they stand.
                   setAttempt(null);
                   onCorrected();
