@@ -52,8 +52,18 @@ describe("Openscholar Reports settings", () => {
   it("change one part of the series without touching the others", async () => {
     const { admin } = await setup();
     await admin.mutation(api.reports.settings.update, { series: { name: "Working Reports" } });
-    await admin.mutation(api.reports.settings.update, { series: { issn: "2959-1234" } });
-    expect((await admin.query(api.reports.settings.admin, {})).series).toMatchObject({ name: "Working Reports", issn: "2959-1234" });
+    await admin.mutation(api.reports.settings.update, { series: { issn: "2049-3630" } });
+    expect((await admin.query(api.reports.settings.admin, {})).series).toMatchObject({ name: "Working Reports", issn: "2049-3630" });
+  });
+
+  it("take an ISSN only when it is one, since it is printed on every report", async () => {
+    const { admin } = await setup();
+    for (const typed of ["garbage", "1234-5678", "20493630"]) await expect(admin.mutation(api.reports.settings.update, { series: { issn: typed } })).rejects.toMatchObject({ data: expect.objectContaining({ code: "VALIDATION_ERROR" }) });
+    await admin.mutation(api.reports.settings.update, { series: { issn: " 2049-3630 " } });
+    expect((await admin.query(api.reports.settings.admin, {})).series.issn).toBe("2049-3630");
+    // Cleared again, the byline says pending.
+    await admin.mutation(api.reports.settings.update, { series: { issn: "" } });
+    expect((await admin.query(api.reports.settings.admin, {})).series.issn).toBe("");
   });
 
   it("keep each version of the checks, so a report can be read against the ones it ran", async () => {

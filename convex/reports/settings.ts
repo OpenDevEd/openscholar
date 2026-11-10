@@ -11,7 +11,7 @@ import { requireAvailableModel, requireEffort, requireTaskModel } from "../model
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import type { Effort } from "../../lib/ai/core/call-options";
-import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, dailyLimit, type Check } from "../../lib/reports/settings";
+import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, dailyLimit, isIssn, type Check } from "../../lib/reports/settings";
 import { checkNamesValidator, checkSummariesValidator, seriesValidator } from "./validators";
 
 /** What a check runs as: a decision model answers it, or an LLM that returns a structured answer. */
@@ -48,6 +48,13 @@ function text(value: string, what: string, max: number, { empty = false } = {}) 
   if (!trimmed && !empty) throw createError("VALIDATION_ERROR", `Enter ${what}.`);
   if (trimmed.length > max) throw createError("VALIDATION_ERROR", `Keep ${what} to ${max.toLocaleString("en")} characters.`);
   return trimmed;
+}
+
+/** An ISSN as typed, upper case, or none: anything else would be printed on every report's byline. */
+function issn(value: string) {
+  const typed = value.trim().toUpperCase();
+  if (typed && !isIssn(typed)) throw createError("VALIDATION_ERROR", "That isn't an ISSN. One looks like 2049-3630, and its last digit is a check on the rest.");
+  return typed;
 }
 
 /** Everything the admin's Settings shows. A check's or the reader's `model` is null when its model has left the catalog. */
@@ -145,7 +152,7 @@ export const update = mutation({
           ...row.series,
           ...(series.name !== undefined && { name: text(series.name, "the series' name", SERIES_TEXT_MAX) }),
           // None until the ISSN centre assigns one: the byline then reads "pending".
-          ...(series.issn !== undefined && { issn: text(series.issn, "the ISSN", SERIES_TEXT_MAX, { empty: true }) }),
+          ...(series.issn !== undefined && { issn: issn(series.issn) }),
           ...(series.byline !== undefined && { byline: text(series.byline, "the byline", SERIES_TEXT_MAX) }),
         },
       }),

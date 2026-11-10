@@ -136,3 +136,12 @@ export const canRegister = (publication: PublicationSettings) => publication.zen
 export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "pending").replace("{series}", series.name);
 /** The DOI a report gets under the Crossref prefix and namespace. With Crossref off its DOI is the one Zenodo reserves, which only Zenodo knows. */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);
+
+/** Whether text is an ISSN: eight digits as 1234-5678, the last of them the check digit (X for ten), as ISO 3297 has it. */
+export function isIssn(text: string) {
+  if (!/^\d{4}-\d{3}[\dX]$/.test(text)) return false;
+  const digits = text.replace("-", "");
+  const sum = [...digits.slice(0, 7)].reduce((total, digit, i) => total + Number(digit) * (8 - i), 0);
+  const check = (11 - (sum % 11)) % 11;
+  return (check === 10 ? "X" : String(check)) === digits[7];
+}
