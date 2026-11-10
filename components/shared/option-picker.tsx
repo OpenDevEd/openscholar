@@ -137,8 +137,13 @@ function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch,
   // the list settle on the first row of each new search.
   const complete = useDeferredValue(true, false);
   const list = useRef<HTMLDivElement>(null);
+  // A list the caller searches can change under the highlighted row, as when a record named exactly as typed takes
+  // the typed row's place: the first row is then highlighted, so Enter always picks something.
+  const [chosen, setChosen] = useState("");
+  const values = options.map(rowValue);
+  const highlighted = values.some((value) => value.toLowerCase() === chosen.toLowerCase()) ? chosen : (values[0] ?? "");
   return (
-    <Command shouldFilter={!onSearch}>
+    <Command shouldFilter={!onSearch} {...(onSearch && { value: highlighted, onValueChange: setChosen })}>
       <CommandInput
         placeholder={searchPlaceholder}
         onValueChange={(text) => {

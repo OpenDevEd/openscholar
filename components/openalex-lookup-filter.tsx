@@ -63,8 +63,12 @@ export function OpenAlexLookupFilter({
   const found = query ? (results.data ?? []) : [];
   const known = new Set(found.flatMap((option) => [option.name.toLowerCase(), ...(option.ror ? [option.ror] : [])]));
   const more = query && also ? (elsewhere.data ?? []).filter((option) => !known.has(option.name.toLowerCase()) && !(option.ror && known.has(option.ror))) : [];
+  // A record named exactly as typed takes the typed row's place at the top: the words typed are then no record of their own.
+  const listed = [...found, ...more];
+  const exact = typed && listed.find((option) => option.name.trim().toLowerCase() === typed.name.trim().toLowerCase());
+  const first = exact || typed;
   // Each institution with a ROR ID says so in its row, as its chip does once picked, whichever register found it.
-  const options = [...(typed ? [typed] : []), ...found, ...more].map((option) => (option.ror ? { ...option, mark: <RorIcon className="ms-1 opacity-80" /> } : option));
+  const options = [...(first ? [first] : []), ...listed.filter((option) => option !== exact)].map((option) => (option.ror ? { ...option, mark: <RorIcon className="ms-1 opacity-80" /> } : option));
   const names = {
     ...savedNames,
     ...Object.fromEntries(options.map((option) => [option.id, option.name])),
