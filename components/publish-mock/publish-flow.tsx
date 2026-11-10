@@ -55,7 +55,7 @@ import { PaperCover } from "@/components/papers/paper-cover";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { reportPaper } from "@/lib/publish-mock/report-paper";
 import { SHOWS, StatusFilter, YourReports } from "@/components/publish-mock/your-reports";
-import { ListEmpty, ListViewTabs } from "@/components/evidence-libraries/list-controls";
+import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { REVIEW_TEXT_MAX, bylineOf, changesOf, correctionStageOf, coverUrlOf, reportsUnderWay, stageOf, type Refused, type CheckResult, type Correction, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
@@ -258,33 +258,24 @@ export function PublishFlow({
       clearInterval(timer);
     };
   }, [watched, settings]);
-  // In the header bar, as on Explore: the page's two views, and on Your reports its status filter.
-  const tabs = (
-    <ListViewTabs
-      label="Publish"
-      value={view}
-      onChange={(next) => {
-        // The live moment plays once: coming back to the report shows it settled.
-        setFresh(null);
-        // The list is left with nothing half-open behind it; the report shown comes back as it stands.
-        go(next === "reports" ? { view: "reports", correct: null } : { view: null });
-      }}
-      tabs={[
-        { value: "new", label: draft ? "This report" : "New report", icon: <PublishIcon aria-hidden className="size-3.5" /> },
-        { value: "reports", label: "Your reports", icon: <FileText aria-hidden className="size-3.5" />, count: reports.length },
-      ]}
-    />
-  );
+  // The page is a list and the one report opened from it, as Communities is with a community being set up. The list's
+  // bar holds its filter and the one way to start a report; a report's bar names it and leads back to the list.
+  const listed = view === "reports";
+  // The live moment plays once: coming back to the report from the list shows it settled.
+  if (listed && fresh) setFresh(null);
 
   return (
     <LibraryPageShell
       icon={PublishIcon}
-      title="Publish"
-      tabs={tabs}
-      filters={view === "reports" ? <StatusFilter reports={reports} settings={settings} show={show} onShow={(next) => void setPlace({ show: next, page: null })} /> : undefined}
+      title={listed || missing ? "Publish" : draft?.metadata?.title || "New report"}
+      titleAside={!listed && draft ? <span className="font-mono text-xs text-muted-foreground">{draft.id}</span> : undefined}
+      // Back to the list, once there is one to go back to.
+      backHref={!listed && reports.length ? "/publish?view=reports" : undefined}
+      backLabel="Your reports"
+      filters={listed ? <StatusFilter reports={reports} settings={settings} show={show} onShow={(next) => void setPlace({ show: next, page: null })} /> : undefined}
       // Several reports can be under way at once: a new one starts here, and each counts against the day's limit.
       actions={
-        view === "reports" && signedIn ? (
+        listed && signedIn ? (
           <Button size="sm" className={BAR_ACTION} onClick={another}>
             <Plus aria-hidden />
             <span className={BAR_LABEL}>New report</span>
