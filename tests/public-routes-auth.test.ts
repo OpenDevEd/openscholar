@@ -92,6 +92,8 @@ describe("public route auth matrix", () => {
       "/papers/x/cite.ris",
       // The paper's picture, for link previews and search engines.
       "/papers/x/cover.png",
+      // A live report's PDF, for anyone who reads its page: it leads nowhere once the report is withdrawn.
+      "/papers/x/report.pdf",
       "/papers/x/x",
       "/pricing",
       "/privacy",

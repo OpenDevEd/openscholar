@@ -178,6 +178,8 @@ export const decide = mutation({
       // A run reading changes to it ends with it: its answer would be about a report that is no longer live.
       if (report.run) await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { running: undefined });
       await touch(ctx, report, { status: "declined", withdrawnAt: Date.now(), note: words, run: undefined });
+      // Its PDF and cover were public: they move to new addresses, so the ones already out stop working.
+      await ctx.scheduler.runAfter(0, internal.reports.files.rotate, { reportId: report._id });
       await record(ctx, report._id, reviewer._id, "withdraw", words);
       await notify(ctx, report._id, "withdrawn");
       return null;
