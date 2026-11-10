@@ -1,25 +1,27 @@
 "use client";
 
-// MOCK (mock/publish-reports): every report you started, where it got to, and a way back into it. The rows follow Your
-// submissions on the Communities page (components/evidence-libraries/added-papers/your-submissions.tsx).
+// MOCK (mock/publish-reports): a workspace's reports, where each got to, and a way back into it, listed as History
+// and Bookmarks list their entries (components/command-center).
 
 import { useState } from "react";
-import Link from "@/components/workspace-link";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LIST_FILTER, ListEmpty } from "@/components/evidence-libraries/list-controls";
-import { Paged, pagerOf } from "@/components/settings/parts";
+import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
+import { ENTRY_OPEN, Entry, EntryAction, EntryAside } from "@/components/command-center/entry";
+import { PaperCover } from "@/components/papers/paper-cover";
+import { GRID_CLASSES } from "@/lib/constants/view-modes";
+import { REPORT_COVER } from "@/lib/papers/cover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TooltipHint } from "@/components/ui/tooltip";
-import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2 } from "@/components/icons";
+import { BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, Trash2 } from "@/components/icons";
 import { standingOf, stepWords } from "@/components/publish-mock/registration";
-import { canDiscard, correctionStageOf, stageOf, type CorrectionStage, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { canDiscard, correctionStageOf, coverUrlOf, stageOf, type CorrectionStage, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
-const PER_PAGE = 8;
-/** A row's height with its divider, which every row keeps so a page holds its height. */
-const ROW = 65;
+const PER_PAGE = 10;
+/** A row's height with its divider: its cover and the entry's padding. */
+const ROW = 81;
 const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed checks", declined: "Declined" };
 const STATUS: Record<Stage, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
   draft: { label: "Draft", tone: "neutral", icon: PenLine },
@@ -62,19 +64,21 @@ export function YourReports({ reports, settings, shared, show, page, onPage, onO
   // The report being discarded, asked about once before it goes.
   const [discarding, setDiscarding] = useState<Submission | null>(null);
   const listed = reports.filter((r) => show === "all" || stageOf(r, settings) === show);
-  const pager = pagerOf(listed.length, PER_PAGE, page, onPage);
-  const shown = listed.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
+  const pages = Math.max(1, Math.ceil(listed.length / PER_PAGE));
+  const at = Math.min(page, pages);
+  const shown = listed.slice((at - 1) * PER_PAGE, at * PER_PAGE);
 
   return (
-    <section aria-label="Your reports" className="@container/reports p-4 sm:p-6">
+    // The rows run edge to edge in the page's card with a line between them, and the pager closes the card: the
+    // layout History, Bookmarks and Extract list with.
+    <section aria-label="Your reports">
       {shown.length ? (
-        <Paged pager={pager} rowHeight={ROW} label="reports">
-          <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
-            {shown.map((r) => (
-              <ReportRow key={r.id} report={r} shared={shared} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={canDiscard(r) ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
-            ))}
-          </ul>
-        </Paged>
+        // A list of several pages keeps a full page's height, so its last page doesn't pull the pager up.
+        <div className={GRID_CLASSES["list-detail"]} style={pages > 1 ? { minHeight: PER_PAGE * ROW } : undefined}>
+          {shown.map((r) => (
+            <ReportRow key={r.id} report={r} series={settings.series.name} shared={shared} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={canDiscard(r) ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
+          ))}
+        </div>
       ) : (
         <ListEmpty
           icon={FileText}
@@ -90,6 +94,7 @@ export function YourReports({ reports, settings, shared, show, page, onPage, onO
           {EMPTY[show]}
         </ListEmpty>
       )}
+      {pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4" currentPage={at} totalPages={pages} onPageChange={onPage} totalItems={listed.length} itemsPerPage={PER_PAGE} itemLabel="reports" /> : null}
       <AlertDialog open={!!discarding} onOpenChange={(open) => !open && setDiscarding(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -112,95 +117,55 @@ export function YourReports({ reports, settings, shared, show, page, onPage, onO
   );
 }
 
-/** One report: its title, key and date; the reviewer's note when declined; its status; and the way back into it. */
-function ReportRow({ report: r, shared, stage, onOpen, onDiscard, onCorrect }: { report: Submission; shared: boolean; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
+/**
+ * One report, as an entry of the app's lists (components/command-center/entry.tsx): its cover, its title, which
+ * opens it, its key and where it stands, its status, and its date, which gives way to its actions when the row is
+ * pointed at.
+ */
+function ReportRow({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }: { report: Submission; series: string; shared: boolean; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
   const status = STATUS[stage];
   const title = r.metadata?.title ?? (r.pdf?.name ? r.pdf.name : "Untitled report");
-  const action =
-    r.status === "live"
-      ? { label: "Open its page", icon: ArrowUpRight }
-      : stage === "ready"
-        ? { label: "Activate it", icon: ArrowRight }
-        : stage === "draft"
-          ? { label: "Carry on", icon: ArrowRight }
-          : stage === "failed"
-            ? { label: "See what failed", icon: RotateCcw }
-            : { label: "Open", icon: FileText };
-  const open =
-    r.status === "live" ? (
-      <Button asChild variant="ghost" size="icon-sm" className="text-muted-foreground">
-        <Link href={`/papers/${r.id}`} aria-label={`${action.label}: ${title}`}>
-          <action.icon />
-        </Link>
-      </Button>
-    ) : (
-      <Button variant="ghost" size="icon-sm" aria-label={`${action.label}: ${title}`} className="text-muted-foreground" onClick={onOpen}>
-        <action.icon />
-      </Button>
-    );
   return (
-    <li style={{ height: ROW - 1 }} className="flex items-center gap-3 px-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-inset text-muted-foreground">
-        <FileText className="size-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <TooltipHint label={title} onlyWhenClipped>
-          {r.status === "live" ? (
-            <Link href={`/papers/${r.id}`} className="block truncate text-sm font-medium underline-offset-4 hover:underline">
-              {title}
-            </Link>
-          ) : (
-            <button type="button" onClick={onOpen} className="block max-w-full truncate text-start text-sm font-medium underline-offset-4 hover:underline">
-              {title}
-            </button>
-          )}
-        </TooltipHint>
-        <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+    <Entry viewMode="list-detail" className="items-center">
+      {/* The cover its page wears: the PDF's first page once there is one, the series' title page until then. */}
+      <PaperCover className="w-9 shrink-0" {...REPORT_COVER} title={title} authors={[]} source={series} year={null} type="report" image={coverUrlOf(r)} href={null} pdf={false} />
+      <div className="min-w-0 flex-1 space-y-1">
+        <button type="button" onClick={onOpen} className={cn(ENTRY_OPEN, "block w-full")}>
+          <span className="block truncate">{title}</span>
+        </button>
+        <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="shrink-0 font-mono">{r.id}</span>
-          {shared && r.signedBy?.name ? <span className="hidden shrink-0 @md/reports:inline">{r.signedBy.name}</span> : null}
+          {shared && r.signedBy?.name ? <span className="shrink-0">{r.signedBy.name}</span> : null}
           {r.status === "declined" && r.note ? (
-            <TooltipHint label={r.note} onlyWhenClipped>
-              <span className="truncate">{r.note}</span>
-            </TooltipHint>
-          ) : (
-            <>
-              {/* Where there's no room for the status chip, the row says it here in place of the date. */}
-              <span className="shrink-0 @md/reports:hidden">{stage === "declined" && r.withdrawnAt ? "Withdrawn" : status.label}</span>
-              <span className="hidden shrink-0 tabular-nums @md/reports:inline">{day(r.updatedAt)}</span>
-              {r.status === "live" && r.correction ? (
-                // Changes that haven't gone live say where they stand, in place of the registrations.
-                <span className="flex min-w-0 items-center gap-1">
-                  <PenLine className="size-3 shrink-0" />
-                  <span className="truncate">{CHANGES[correctionStageOf(r, r.correction)]}</span>
-                </span>
-              ) : r.status === "live" ? (
-                <span className="flex min-w-0 items-center gap-1">
-                  <Hash className="size-3 shrink-0" />
-                  <span className="truncate">{stepWords(standingOf(r))}</span>
-                </span>
-              ) : null}
-            </>
-          )}
+            <span className="truncate">{r.note}</span>
+          ) : r.status === "live" && r.correction ? (
+            // Changes that haven't gone live say where they stand, in place of the registrations.
+            <span className="flex min-w-0 items-center gap-1">
+              <PenLine className="size-3 shrink-0" />
+              <span className="truncate">{CHANGES[correctionStageOf(r, r.correction)]}</span>
+            </span>
+          ) : r.status === "live" ? (
+            <span className="flex min-w-0 items-center gap-1">
+              <Hash className="size-3 shrink-0" />
+              <span className="truncate">{stepWords(standingOf(r))}</span>
+            </span>
+          ) : null}
         </div>
       </div>
-      <StatusChip tone={status.tone} icon={status.icon} className="hidden shrink-0 @md/reports:inline-flex">
-        {stage === "declined" && r.withdrawnAt ? "Withdrawn" : status.label}
-      </StatusChip>
-      {onDiscard ? (
-        <TooltipHint label="Discard">
-          <Button variant="ghost" size="icon-sm" aria-label={`Discard: ${title}`} className="text-muted-foreground hover:text-destructive" onClick={onDiscard}>
-            <Trash2 />
-          </Button>
-        </TooltipHint>
-      ) : null}
-      {onCorrect ? (
-        <TooltipHint label={r.correction ? "See your changes" : "Correct the details"}>
-          <Button variant="ghost" size="icon-sm" aria-label={`${r.correction ? "See your changes" : "Correct the details"}: ${title}`} className={r.correction ? "text-primary" : "text-muted-foreground"} onClick={onCorrect}>
-            <PenLine />
-          </Button>
-        </TooltipHint>
-      ) : null}
-      <TooltipHint label={action.label}>{open}</TooltipHint>
-    </li>
+      {/* Beside the title; on a narrow screen, a line of their own under the text. */}
+      <div className="flex shrink-0 items-center gap-3 max-sm:basis-full max-sm:justify-between max-sm:ps-12">
+        <StatusChip tone={status.tone} icon={status.icon} className="shrink-0">
+          {stage === "declined" && r.withdrawnAt ? "Withdrawn" : status.label}
+        </StatusChip>
+        <EntryAside meta={day(r.updatedAt)} className="h-7">
+          {onCorrect || onDiscard ? (
+            <>
+              {onCorrect ? <EntryAction label={r.correction ? "See your changes" : "Correct the details"} icon={PenLine} onClick={onCorrect} /> : null}
+              {onDiscard ? <EntryAction label="Discard" icon={Trash2} danger onClick={onDiscard} /> : null}
+            </>
+          ) : null}
+        </EntryAside>
+      </div>
+    </Entry>
   );
 }
