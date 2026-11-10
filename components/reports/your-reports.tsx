@@ -79,8 +79,9 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
     // layout History, Bookmarks and Extract list with.
     <section aria-label="Your reports">
       {shown.length ? (
-        // A list of several pages keeps a full page's height, so its last page doesn't pull the pager up.
-        <div className={GRID_CLASSES["list-detail"]} style={pages > 1 ? { minHeight: REPORTS_PER_PAGE * ROW } : undefined}>
+        // A list of several pages keeps a full page's height, so its last page doesn't pull the pager up. A short one
+        // keeps the height of the loading frame it replaces (list-controls' LIST_STATE), so the card doesn't shrink under it.
+        <div className={cn(GRID_CLASSES["list-detail"], "min-h-52")} style={pages > 1 ? { minHeight: REPORTS_PER_PAGE * ROW } : undefined}>
           {shown.map((r) => (
             <Row key={r.key} report={r} series={series} shared={shared} stage={stageOf(r, humanReview)} onOpen={() => onOpen(r.key)} onDiscard={
                 canDiscard(r) && r.mine
