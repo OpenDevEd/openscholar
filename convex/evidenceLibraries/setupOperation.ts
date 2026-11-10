@@ -8,7 +8,7 @@ import {
   type ConfigurationIssue,
   sanitizeConfigurationIssues,
   sanitizeOperationError,
-} from "./operations";
+} from "./operationState";
 import { requireNonBlankProvisioningValue } from "./provisioning";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
 import { isSetupLeaseHeld } from "./operationLeases";

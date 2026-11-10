@@ -17,7 +17,7 @@ import { organizationWorkspaceOf } from "../workspaces/personal";
 import { normalizeEvidenceLibraryName } from "../../lib/evidence-libraries/setup/naming";
 import {
   CURRENT_OWNER_CONFIGURATION_VERSION,
-} from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+} from "../../lib/evidence-libraries/configuration/owner-configuration-version";
 import { createError } from "../lib/errors";
 import { getCurrentUser, getIdentity } from "../lib/auth";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
@@ -74,7 +74,7 @@ import {
   loadDraftConfigurationSnapshot,
   loadRevisionConfigurationSnapshot,
 } from "./configurationSnapshot";
-import { isRetryableConfigurationDeployment } from "./operations";
+import { isRetryableConfigurationDeployment } from "./operationState";
 import { validateSectionPayload } from "./sectionPayload";
 
 type SnapshotSection = {

@@ -9,10 +9,8 @@ import {
   featuresAiEnabled,
   selectedAiModelIds,
 } from "../../lib/evidence-libraries/configuration/ai";
-import {
-  ConfigurationAssemblyError,
-  type AssembledEvidenceLibraryConfiguration,
-} from "../../lib/evidence-libraries/configuration/assembly";
+import type { AssembledEvidenceLibraryConfiguration } from "../../lib/evidence-libraries/configuration/assembly";
+import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly-error";
 import { decrypt, encrypt } from "../lib/crypto";
 import {
   CoolifyClientError,

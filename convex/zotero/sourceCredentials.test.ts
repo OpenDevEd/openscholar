@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly-error";
 import { zoteroSourceEntry, zoteroSourceKey } from "./sourceEntry";
 import { createSourceCredentials } from "../evidenceLibraries/sourceCredentials";
 

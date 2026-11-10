@@ -10,7 +10,7 @@ import {
   AI_PROVIDER_CREDENTIAL_KEY,
   type ApplyAiProviderKey,
 } from "../../lib/evidence-libraries/configuration/ai";
-import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly-error";
 import { writeAuditLogRecord } from "../lib/audit";
 import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
@@ -18,7 +18,7 @@ import {
   isDeploymentLeaseHeld,
   isSetupLeaseHeld,
 } from "./operationLeases";
-import { readActiveOperations } from "./operations";
+import { readActiveOperations } from "./operationState";
 import { requireEvidenceLibraryAccess } from "./access";
 import type { LibraryCredentialSource } from "./validators";
 import { refuseApps } from "../lib/auth";
