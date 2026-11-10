@@ -182,6 +182,9 @@ export function changesOf(before: Metadata, after: Metadata) {
   return FIELD_TEXT.flatMap(([label, text]) => (text(before) === text(after) ? [] : [{ label, from: text(before), to: text(after) }]));
 }
 
+/** How long a run of the checks may go on before it is given up on, so the checks can be run again. */
+export const RUN_STUCK_MS = 4 * 60 * 1000;
+
 /** How many reports a page of a workspace's list holds. */
 export const REPORTS_PER_PAGE = 10;
 
