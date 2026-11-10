@@ -57,7 +57,8 @@ export const DEFAULT_CHECKS: Check[] = [
   },
   {
     id: "published",
-    name: "Already published",
+    // Named for what passing means: "Already published: Passed" read as if it had been.
+    name: "Not published before",
     question: "Is this report the same work as the record found?",
     fix: "If this is your own earlier publication, say so when you ask for a review.",
     modelId: DEFAULT_TEXT_MODEL,

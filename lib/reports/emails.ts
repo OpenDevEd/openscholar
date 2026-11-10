@@ -33,12 +33,16 @@ export type MailFacts = {
 type Row = readonly [string, string];
 type Event = { to: "team" | "author"; label: string; heading: string; rows: (report: MailFacts, origin: string) => Row[] };
 
-/** Each check that didn't pass, with how far it fell short and why, or `none` when every check passed. */
-const failedIn = (results: CheckResult[] | undefined, none: string) =>
+/**
+ * Each check that didn't pass, with how far it fell short and why, or `none` when every check passed. `told` says
+ * the author read what to do about it: only one left with a failed check does. A report or changes that went
+ * straight to a reviewer showed its author no such advice, so the email doesn't say they were told.
+ */
+const failedIn = (results: CheckResult[] | undefined, none: string, told: boolean) =>
   (results ?? [])
     .filter((r) => !r.pass)
     // A decision model gives a score and no reason: what the author was told to do about it says what the check wanted.
-    .map((r) => `${r.name}: ${[r.confidence === undefined || r.threshold === undefined ? "" : `${Math.round(r.confidence * 100)}% sure of yes, needs ${Math.round(r.threshold * 100)}%.`, r.reasoning ?? r.detail ?? "", r.fix ? `The author was told: ${r.fix}` : ""].filter(Boolean).join(" ") || "failed"}`)
+    .map((r) => `${r.name}: ${[r.confidence === undefined || r.threshold === undefined ? "" : `${Math.round(r.confidence * 100)}% sure of yes, needs ${Math.round(r.threshold * 100)}%.`, r.reasoning ?? r.detail ?? "", told && r.fix ? `The author was told: ${r.fix}` : ""].filter(Boolean).join(" ") || "failed"}`)
     .join("\n") || none;
 // Every link opens the thing its email is about: the report's dialog for a reviewer, and for its author the report
 // on Publish where its next step is, or its own page once it's live.
@@ -48,9 +52,9 @@ const pageLink = (r: MailFacts, origin: string): Row => ["Its page", `${origin}/
 const noteOf = (note: string | undefined): Row[] => (note ? [["The reviewer's note", note]] : []);
 /** Replies to an author's email reach the team's inbox. */
 const QUESTIONS: Row = ["Questions", "Reply to this email."];
-const changesRows = (r: MailFacts, origin: string): Row[] => [
+const changesRows = (told: boolean) => (r: MailFacts, origin: string): Row[] => [
   ["What changed", r.correction?.changed.join(", ") || "Nothing"],
-  ["Checks that didn't pass", failedIn(r.correction?.results, "None. Human review is on, so changes wait for a reviewer.")],
+  ["Checks that didn't pass", failedIn(r.correction?.results, "None. Human review is on, so changes wait for a reviewer.", told)],
   ...(r.correction?.request !== undefined ? ([["What the author says", r.correction.request || "No comment"]] as Row[]) : []),
   reviewLink(r, origin),
 ];
@@ -62,16 +66,16 @@ const EVENTS = {
     to: "team",
     label: "Review requested",
     heading: "An author asked for a human review",
-    rows: (r, origin) => [["Checks that failed", failedIn(r.results, "None")], ["What the author says", r.request || "No comment"], reviewLink(r, origin)],
+    rows: (r, origin) => [["Checks that failed", failedIn(r.results, "None", true)], ["What the author says", r.request || "No comment"], reviewLink(r, origin)],
   },
   "waiting-for-review": {
     to: "team",
     label: "Waiting for review",
     heading: "A report is waiting for review",
-    rows: (r, origin) => [["Checks that didn't pass", failedIn(r.results, "None. Human review is on, so every report waits for a reviewer.")], reviewLink(r, origin)],
+    rows: (r, origin) => [["Checks that didn't pass", failedIn(r.results, "None. Human review is on, so every report waits for a reviewer.", false)], reviewLink(r, origin)],
   },
-  "changes-waiting": { to: "team", label: "Changes waiting for review", heading: "Changes to a live report are waiting for review", rows: changesRows },
-  "changes-review-requested": { to: "team", label: "Review of changes requested", heading: "An author asked for a review of changes to a live report", rows: changesRows },
+  "changes-waiting": { to: "team", label: "Changes waiting for review", heading: "Changes to a live report are waiting for review", rows: changesRows(false) },
+  "changes-review-requested": { to: "team", label: "Review of changes requested", heading: "An author asked for a review of changes to a live report", rows: changesRows(true) },
   live: { to: "team", label: "Went live", heading: "A report went live", rows: (r, origin) => [pageLink(r, origin), reviewLink(r, origin)] },
   "check-unfinished": {
     to: "team",

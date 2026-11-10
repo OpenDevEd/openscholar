@@ -339,17 +339,14 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
     </div>
   ) : null;
   // A reviewer's own edit of the details, at the start of the dialog's buttons and apart from the decisions. Not
-  // while the author's changes are with the report, waiting or declined: neither set is written over the other, and
-  // the button says why it is off.
+  // while the author's changes are with the report, waiting or declined: neither set is written over the other. The
+  // button then shows switched off, and the line above the changes says why: a hint on it would take the dialog's
+  // first Escape.
   const edits =
     s?.metadata && s.step === "done" && s.correction ? (
-      <TooltipHint label={changes?.stage === "declined" ? "The changes you declined are still with the author. The details can be edited once they are discarded or approved." : "Approve or decline the author's changes first"}>
-        <span tabIndex={0} className="rounded-md sm:me-auto">
-          <Button variant="outline" disabled>
-            <PenLine /> Edit the details
-          </Button>
-        </span>
-      </TooltipHint>
+      <Button variant="outline" className="sm:me-auto" disabled>
+        <PenLine /> Edit the details
+      </Button>
     ) : s?.metadata && s.step === "done" ? (
       <Button variant="outline" className="sm:me-auto" disabled={busy} onClick={onEdit}>
         <PenLine /> Edit the details
@@ -395,7 +392,7 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                     </span>
                     <StatusChip tone={CHANGES[changes.stage].tone}>{CHANGES[changes.stage].label}</StatusChip>
                   </div>
-                  <p className="text-sm text-muted-foreground">{why}</p>
+                  <p className="text-sm text-muted-foreground">{why} While these changes are with the report, its details can&apos;t be edited here.</p>
                   {[
                     { label: "The author says", words: changes.correction.request ? changes.correction.request.comment || "No comment" : "" },
                     { label: "The reviewer's note", words: changes.correction.declined?.note ?? "" },
@@ -412,8 +409,9 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                       <div key={c.label} className="space-y-1">
                         <dt className="text-xs font-medium text-muted-foreground">{c.label}</dt>
                         <dd className="grid gap-1 text-sm sm:grid-cols-2 sm:gap-3">
-                          <span className="line-clamp-6 whitespace-pre-wrap break-words text-muted-foreground line-through decoration-muted-foreground/40">{c.from || "Empty"}</span>
-                          <span className="line-clamp-6 whitespace-pre-wrap break-words">{c.to || "Empty"}</span>
+                          {/* Struck through is what doesn't stand: the live words while changes wait to replace them, the changes once declined. */}
+                          <span className={cn("line-clamp-6 whitespace-pre-wrap break-words", changes.stage === "declined" || "text-muted-foreground line-through decoration-muted-foreground/40")}>{c.from || "Empty"}</span>
+                          <span className={cn("line-clamp-6 whitespace-pre-wrap break-words", changes.stage === "declined" && "text-muted-foreground line-through decoration-muted-foreground/40")}>{c.to || "Empty"}</span>
                         </dd>
                       </div>
                     ))}

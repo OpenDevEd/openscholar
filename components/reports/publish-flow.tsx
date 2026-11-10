@@ -769,7 +769,10 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
       if (refused) return void toast.error(refused);
       onAttached();
     } catch (error) {
-      said("The PDF couldn't be uploaded. Try again.")(error);
+      // A browser's own words for a request that never left ("Load failed") tell an author nothing: the file wasn't
+      // kept, and the connection is what to look at.
+      if (error instanceof TypeError) toast.error("The PDF couldn't be uploaded. Check your connection, then choose it again.");
+      else said("The PDF couldn't be uploaded. Try again.")(error);
     } finally {
       setSending(null);
       if (input.current) input.current.value = "";
