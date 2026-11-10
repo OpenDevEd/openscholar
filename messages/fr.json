@@ -6599,8 +6599,6 @@
       "byline": "Mention",
       "copyByline": "Copier la mention",
       "bylineCopied": "Mention copiée",
-      "doi": "DOI",
-      "copyDoiField": "Copier le DOI",
       "uploading": "Téléversement de {name}",
       "reading": "Openscholar lit votre rapport",
       "readingHint": "Environ une demi-minute. Vous pouvez quitter cette page : la lecture continue.",

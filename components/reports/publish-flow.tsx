@@ -705,13 +705,14 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   );
 }
 
-function CopyField({ label, value, mono = false, copyLabel, copied }: { label: string; value: string; mono?: boolean; copyLabel: string; copied: string }) {
+function CopyField({ label, value, copyLabel, copied }: { label: string; value: string; copyLabel: string; copied: string }) {
   return (
-    // A DOI is one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy button stays in reach.
+    // The byline ends in its DOI, one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy
+    // button stays in reach.
     <div className="min-w-0 space-y-1.5">
       <span className="ps-1 text-xs font-medium text-muted-foreground">{label}</span>
       <div className="flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
-        <span className={cn("min-w-0 flex-1 text-sm [overflow-wrap:anywhere]", mono && "font-mono text-[0.9375rem] font-medium tracking-tight")}>{value}</span>
+        <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{value}</span>
         <TooltipHint label={copyLabel}>
           <Button type="button" variant="ghost" size="icon-xs" aria-label={copyLabel} className="-me-1 text-muted-foreground" onClick={() => copy(value, copied)}>
             <Copy />
@@ -868,9 +869,8 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   return (
     <div>
       <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      <div className="mb-5 grid gap-4">
+      <div className="mb-5">
         <CopyField label={t("byline")} value={report.byline} copyLabel={t("copyByline")} copied={t("bylineCopied")} />
-        <CopyField label={t("doi")} value={`https://doi.org/${report.doi}`} mono copyLabel={t("copyDoiField")} copied={t("doiCopied")} />
       </div>
       <button
         type="button"

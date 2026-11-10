@@ -6599,8 +6599,6 @@
       "byline": "署名",
       "copyByline": "复制署名",
       "bylineCopied": "署名已复制",
-      "doi": "DOI",
-      "copyDoiField": "复制 DOI",
       "uploading": "正在上传 {name}",
       "reading": "Openscholar 正在读取您的报告",
       "readingHint": "大约半分钟。您可以离开此页面，读取会继续进行。",
