@@ -172,12 +172,13 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
         </span>
       </div>
       {wrongOrcid ? <p role="alert" className="text-xs text-destructive @xl:ps-9">That isn&apos;t an ORCID iD. One looks like 0000-0002-1825-0097. Leave the box empty if they have none.</p> : null}
+      {/* min-w-0: a long institution's name is cut inside its column, and never widens the form past a phone's screen. */}
       <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Affiliations</span>
           <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Contributor roles</span>
           <OptionPicker
           label="Contributor roles"

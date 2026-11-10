@@ -860,7 +860,8 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
         <AnimatePresence initial={false}>
           {result ? (
             <motion.div key="body" {...fade}>
-              {/* A question's answer: how sure the model is of yes, against the line it has to clear, the side short of it tinted. */}
+              {/* A question's answer: how sure the model is of yes, which passes, against the line it has to clear, the side
+                  short of it tinted. An author never reads the question, so the words say "passes", not "yes". */}
               {asked ? (
                 <div className="ms-8 mt-2.5 flex items-center gap-3">
                   <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-inset">
@@ -869,7 +870,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
                     <span aria-hidden className="absolute inset-y-0 w-0.5 bg-foreground/50" style={{ insetInlineStart: `${need}%` }} />
                   </div>
                   <span className="w-40 shrink-0 text-end text-xs tabular-nums">
-                    <span className="font-medium text-foreground/80">{result.answer === "unclear" ? "Unclear" : `${sure}% sure of yes`}</span>
+                    <span className="font-medium text-foreground/80">{result.answer === "unclear" ? "Unclear" : `${sure}% sure it passes`}</span>
                   </span>
                 </div>
               ) : result.evidence ? null : (
