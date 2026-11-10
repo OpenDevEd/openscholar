@@ -497,10 +497,10 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
               terms={terms}
-              onActivate={(pay, code) => {
+              onActivate={(pay, code, expect) => {
                 onNamed(report.key);
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key, pay, ...(code && { code }) }).then(
+                return activate({ ...here, key: report.key, pay, ...(code && { code }), ...(expect !== undefined && { expect }) }).then(
                   (done) => {
                     // The bank asks to confirm the charge on Stripe's page, which comes back here.
                     if ("url" in done) {
@@ -1016,7 +1016,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: free, or paid for once confirmed (`pay`), with a promotion code. */ onActivate?: (pay: boolean, code?: string) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: () => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: free, or paid for once confirmed (`pay`), with a promotion code, and what was shown as due in US dollars. */ onActivate?: (pay: boolean, code?: string, expect?: number) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: () => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
   const dollars = useDollars();
@@ -1040,10 +1040,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   const subtotal = code ? Math.round(code.total * 100) : (price ?? 0);
   const fromCredit = Math.min(credit, subtotal);
   const due = subtotal - fromCredit;
-  const activateNow = (pay: boolean, withCode?: string) =>
+  const activateNow = (pay: boolean, withCode?: string, expect?: number) =>
     start(async () => {
       try {
-        await onActivate?.(pay, withCode);
+        await onActivate?.(pay, withCode, expect);
       } catch (error) {
         said(t("activateFailed"))(error);
       }
@@ -1184,7 +1184,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
           onConfirm={() => {
             setPaying(false);
             setCode(null);
-            activateNow(true, code?.code);
+            activateNow(true, code?.code, due / 100);
           }}
           cardBrand={card?.brand}
           cardLast4={card?.last4}
