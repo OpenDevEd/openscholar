@@ -3048,7 +3048,8 @@
       "users": "ユーザー",
       "aiModels": "AI モデル",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "コミュニティのリリース"
+      "communityReleases": "コミュニティのリリース",
+      "publishing": "公開"
     },
     "sharedDev": "共有開発",
     "production": "本番",
