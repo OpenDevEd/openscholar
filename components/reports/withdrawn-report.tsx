@@ -3,6 +3,7 @@
 // What a withdrawn report's address shows (plans/publish-reports). A registered DOI can't be removed, so the DOI
 // keeps leading here, to a page that says the report was withdrawn and how it was cited.
 
+import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { IntroGlow } from "@/components/entity-cards";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
@@ -15,9 +16,9 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 
 export type Withdrawn = { key: string; doi: string; title: string; authors: string[]; year: number | null; series: string; withdrawnAt: number };
 
-const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-
 export function WithdrawnReport({ report }: { report: Withdrawn }) {
+  const t = useTranslations("publishReports.withdrawn");
+  const format = useFormatter();
   const url = `https://doi.org/${report.doi}`;
   return (
     <LibraryPageShell
@@ -32,9 +33,9 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
             <div className="flex min-w-0 flex-col">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusChip tone="danger" icon={CircleX}>
-                  Withdrawn
+                  {t("status")}
                 </StatusChip>
-                <StatusChip tone="neutral">{day(report.withdrawnAt)}</StatusChip>
+                <StatusChip tone="neutral">{format.dateTime(report.withdrawnAt, { day: "numeric", month: "long", year: "numeric" })}</StatusChip>
               </div>
               <p dir="auto" className="mt-4 text-pretty text-2xl font-semibold leading-tight tracking-tight sm:text-[2rem]">
                 {report.title}
@@ -52,14 +53,14 @@ export function WithdrawnReport({ report }: { report: Withdrawn }) {
               <div className="mt-2 flex min-w-0 items-center gap-2 text-sm">
                 <Hash aria-hidden className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 truncate font-mono">{report.doi}</span>
-                <TooltipHint label="Copy the DOI">
-                  <Button variant="ghost" size="icon-xs" aria-label="Copy the DOI" className="text-muted-foreground" onClick={() => void navigator.clipboard.writeText(url).then(() => toast.success("DOI copied"))}>
+                <TooltipHint label={t("copyDoi")}>
+                  <Button variant="ghost" size="icon-xs" aria-label={t("copyDoi")} className="text-muted-foreground" onClick={() => void navigator.clipboard.writeText(url).then(() => toast.success(t("doiCopied")))}>
                     <Copy />
                   </Button>
                 </TooltipHint>
               </div>
               <p className="mt-6 max-w-xl text-sm/6 text-muted-foreground">
-                This report was withdrawn from {report.series} and can no longer be read here.
+                {t("body", { series: report.series })}
               </p>
             </div>
           </div>

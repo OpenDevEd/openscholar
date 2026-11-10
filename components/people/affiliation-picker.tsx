@@ -3,6 +3,7 @@
 // The institutions a person was at, picked from OpenAlex's and ROR's records or typed, each with its country's flag and
 // ROR's mark. A report's details form and the profile setup share it.
 
+import { useTranslations } from "next-intl";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { RorLink } from "@/components/papers/paper-entities";
 import { CountryFlag } from "@/components/ui/country-flag";
@@ -17,6 +18,7 @@ export const chipOf = (a: Affiliation) => a.id ?? (a.ror ? `ror:${a.ror}` : type
 
 /** An author's places, from OpenAlex's institutions, from ROR's for one OpenAlex doesn't know, or as typed, each with its country's flag. */
 export function AffiliationPicker({ value, onChange }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void }) {
+  const t = useTranslations("people");
   const ids = value.map(chipOf);
   const names = Object.fromEntries(value.map((a) => [chipOf(a), a.name]));
   return (
@@ -33,20 +35,20 @@ export function AffiliationPicker({ value, onChange }: { value: Affiliation[]; o
       after={Object.fromEntries(
         value.filter((a) => a.ror).map((a) => [
           chipOf(a),
-          <RorLink key="ror" ror={a.ror!} label={`${a.name} on ROR`} />,
+          <RorLink key="ror" ror={a.ror!} label={t("onRor", { name: a.name })} />,
         ]),
       )}
       lookup={{
         entity: "institutions",
         useNames: () => names,
         remember: () => {},
-        typed: (query) => ({ id: typedId(query), name: query, detail: "As typed" }),
+        typed: (query) => ({ id: typedId(query), name: query, detail: t("asTyped") }),
       }}
       also={{
         key: "ror",
         search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place, ror: o.ror })),
       }}
-      labels={{ label: "Affiliations", placeholder: "Add an institution", searchPlaceholder: "Find an institution", typeToSearch: "Type an institution's name", unavailable: "Institutions can't be looked up now" }}
+      labels={{ label: t("affiliations"), placeholder: t("addInstitution"), searchPlaceholder: t("findInstitution"), typeToSearch: t("typeInstitution"), unavailable: t("institutionsDown") }}
     />
   );
 }

@@ -11,7 +11,8 @@ import { ExternalLink, PenLine } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { STUDY_DESIGNS } from "@/lib/openalex/vocabulary";
-import { RELATION_KINDS, linkHref, type Metadata } from "@/lib/reports/report";
+import { useRelationName, useRoleName } from "@/components/reports/words";
+import { linkHref, type Metadata } from "@/lib/reports/report";
 
 const CHIP = "inline-flex h-6 items-center gap-1.5 rounded-md bg-inset px-2 text-xs text-muted-foreground";
 const REFS_PER_PAGE = 8;
@@ -26,6 +27,9 @@ export function usePlaceName() {
 
 /** Under the authors: who did what, what the report cites, and where its data and code are. */
 export function ReportMain({ m }: { m: Metadata }) {
+  const t = useTranslations("publishReports.page");
+  const roleName = useRoleName();
+  const relationName = useRelationName();
   const credited = m.authors.filter((a) => a.roles.length);
   const links = m.relations.flatMap((r) => {
     const href = linkHref(r.target);
@@ -38,7 +42,7 @@ export function ReportMain({ m }: { m: Metadata }) {
   return (
     <>
       {credited.length ? (
-        <Section id="report-contributions" title="Contributions">
+        <Section id="report-contributions" title={t("contributions")}>
           <ul className="space-y-3">
             {credited.map((a) => (
               <li key={a.name} className="text-sm">
@@ -46,7 +50,7 @@ export function ReportMain({ m }: { m: Metadata }) {
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {a.roles.map((role) => (
                     <span key={role} className={CHIP}>
-                      {role}
+                      {roleName(role)}
                     </span>
                   ))}
                 </div>
@@ -56,12 +60,12 @@ export function ReportMain({ m }: { m: Metadata }) {
         </Section>
       ) : null}
       {links.length ? (
-        <Section id="report-links" title="Data, code and other versions">
+        <Section id="report-links" title={t("links")}>
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
             {links.map((r) => (
               <li key={r.href}>
                 <a href={r.href} target="_blank" rel="noopener noreferrer" className="flex h-11 items-center gap-3 px-3 text-sm transition-colors hover:bg-muted">
-                  <span className={CHIP}>{RELATION_KINDS.find((k) => k.id === r.kind)?.name}</span>
+                  <span className={CHIP}>{relationName(r.kind)}</span>
                   <span className="min-w-0 flex-1 truncate font-mono text-xs">{r.target}</span>
                   <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
                 </a>
@@ -71,8 +75,8 @@ export function ReportMain({ m }: { m: Metadata }) {
         </Section>
       ) : null}
       {m.references.length ? (
-        <Section id="report-references" title="References" count={m.references.length}>
-          <Paged pager={refs} rowHeight={REF_ROW} label="references">
+        <Section id="report-references" title={t("references")} count={m.references.length}>
+          <Paged pager={refs} rowHeight={REF_ROW} label={t("referencesPager")}>
           <ul>
             {shownRefs.map((doi) => (
               <li key={doi} style={{ height: REF_ROW }} className="flex items-center">
@@ -91,12 +95,13 @@ export function ReportMain({ m }: { m: Metadata }) {
 
 /** In the sidebar: the places the report is about and how it was studied. */
 export function ReportSide({ m }: { m: Metadata }) {
+  const t = useTranslations("publishReports.page");
   const placeName = usePlaceName();
   const designs = STUDY_DESIGNS.filter((d) => m.studyDesigns.includes(d.id));
   return (
     <>
       {m.countries.length ? (
-        <Section id="report-places" title="Places studied">
+        <Section id="report-places" title={t("places")}>
           <div className="flex flex-wrap gap-1.5">
             {m.countries.map((code) => (
               <span key={code} className={CHIP}>
@@ -108,7 +113,7 @@ export function ReportSide({ m }: { m: Metadata }) {
         </Section>
       ) : null}
       {designs.length ? (
-        <Section id="report-design" title="Study design">
+        <Section id="report-design" title={t("studyDesign")}>
           <div className="flex flex-wrap gap-1.5">
             {designs.map((d) => (
               <span key={d.id} className={CHIP}>
@@ -126,12 +131,13 @@ export function ReportSide({ m }: { m: Metadata }) {
  * With changes already waiting, it opens where they stand. */
 export function CorrectReport({ id, waiting, slug }: { id: string; waiting: boolean; /** Its workspace's address: an organisation's slug, or null for its owner's own. */ slug: string | null }) {
   // The report's own workspace, whichever the page was opened in: a plain address, not one this workspace's links make.
+  const t = useTranslations("publishReports.page");
   const publish = `${slug ? `/o/${slug}` : ""}/publish?report=${id}`;
   return (
     <Button size="sm" variant="outline" asChild>
       <Link href={waiting ? publish : `${publish}&correct=true`}>
         <PenLine aria-hidden />
-        {waiting ? "See your changes" : "Correct the details"}
+        {t(waiting ? "seeChanges" : "correct")}
       </Link>
     </Button>
   );
