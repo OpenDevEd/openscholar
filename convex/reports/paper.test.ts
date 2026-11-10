@@ -54,8 +54,12 @@ describe("a report's page", () => {
     const [withdrawn] = await ask(doi);
     expect(withdrawn).toMatchObject({ state: "withdrawn", key, doi });
     expect(withdrawn).not.toHaveProperty("title");
+    expect(withdrawn!.version > corrected!.version).toBe(true);
+    // Reinstated, it is told as a change again: a community that withdrew it takes it back.
     await decide(world, key, "reinstate");
-    expect((await ask(doi))[0]).toMatchObject({ state: "live", version: corrected!.version });
+    const [back] = await ask(doi);
+    expect(back).toMatchObject({ state: "live", title: "Shade trees, corrected" });
+    expect(back!.version > withdrawn!.version).toBe(true);
   });
 
   it("moves a withdrawn report's files, so the addresses its readers were given stop working", async () => {

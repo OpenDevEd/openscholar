@@ -14,7 +14,7 @@ import { normalDoi, openalexWork } from "../../lib/papers/paper-ref";
 import { paperLinkOf } from "../../lib/papers/paper-links";
 import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
-import { REPORTS_ASKED_MAX } from "../../lib/reports/report";
+import { REPORTS_ASKED_MAX, REPORTS_PER_READ } from "../../lib/reports/report";
 
 /** A paper as a community takes it: its OpenAlex work, its DOI, or both. */
 export type PaperIds = { openalexId: string | null; doi: string | null };
@@ -133,7 +133,10 @@ export const reportRecords: ReturnType<typeof httpAction> = httpAction(async (ct
   if (!(await isCommunity(ctx, libraryId, credential))) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   try {
     const site = requireAppUrl().replace(/\/+$/, "");
-    const reports = await ctx.runQuery(internal.reports.paper.forCommunity, { dois: dois.map((doi) => normalDoi(doi) ?? doi) });
+    const asked = dois.map((doi) => normalDoi(doi) ?? doi);
+    // A few reports a read, so the largest details still fit one (REPORTS_PER_READ).
+    const parts = Array.from({ length: Math.ceil(asked.length / REPORTS_PER_READ) }, (_, at) => asked.slice(at * REPORTS_PER_READ, (at + 1) * REPORTS_PER_READ));
+    const reports = (await Promise.all(parts.map((part) => ctx.runQuery(internal.reports.paper.forCommunity, { dois: part })))).flat();
     return jsonResponse(200, {
       reports: reports.map((report) => {
         if (report?.state !== "live") return report;

@@ -85,6 +85,11 @@ export function isOrcid(id: string) {
 export const doiIn = (text: string) => text.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "").replace(/^doi:\s*/, "").match(/^10\.\d{4,9}\/\S+$/)?.[0] ?? null;
 /** DOIs one request from a community asks about (`reports/records`). */
 export const REPORTS_ASKED_MAX = 100;
+/**
+ * Reports one query reads for it. A report's details, with changes that wait and ones being typed, are up to three
+ * times `DETAILS_MAX_BYTES`, and a query reads at most 16 MiB.
+ */
+export const REPORTS_PER_READ = 10;
 /** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
 export const REVIEW_TEXT_MAX = 3000;
 export const SIGNER_NAME_MAX = 200;
