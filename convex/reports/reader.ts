@@ -69,6 +69,13 @@ const INSTRUCTIONS = [
 
 /** About 100,000 tokens of text, for a PDF the model couldn't take as a file. */
 const TEXT_LIMIT = 400_000;
+/**
+ * The largest PDF sent to the model as a file. A larger one is read from its text: as a file it would go out as one
+ * request of a third more bytes again, which providers refuse and a Convex action has no memory to build.
+ */
+const FILE_LIMIT = 20 * 1024 * 1024;
+/** How long one reading may take. Two of them, as a file and then as text, end before the page gives up on the PDF (STUCK_MS). */
+const READ_MS = 100_000;
 
 /** The model's reading of the PDF. It is sent the file; when that fails, such as for a file the provider won't take, its text. */
 async function catalogue(pdf: Uint8Array, text: string, fileName: string, { model, slug, effort }: Reader): Promise<Reading> {
@@ -89,11 +96,13 @@ async function catalogue(pdf: Uint8Array, text: string, fileName: string, { mode
         },
       ],
       providerOptions: callOptions(model, { effort }),
+      abortSignal: AbortSignal.timeout(READ_MS),
     });
     const usage = result.providerMetadata?.openrouter?.usage as { cost?: number } | undefined;
     console.info(JSON.stringify({ event: "report-pdf-read", model: slug, effort: effort ?? null, as, seconds: Math.round((Date.now() - started) / 1000), costUsd: usage?.cost ?? null, tokens: result.usage }));
     return result.output;
   };
+  if (pdf.length > FILE_LIMIT && text.trim()) return ask("text");
   try {
     return await ask("file");
   } catch (error) {

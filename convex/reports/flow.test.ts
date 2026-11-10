@@ -3,6 +3,8 @@ import { api, internal } from "../_generated/api";
 import { stageOf, type Metadata } from "../../lib/reports/report";
 import { startsLeft } from "./limits";
 import { atDetails, checked, details, passed, read, refused, row, setup, sign } from "./reports.test-support";
+import { sameTitle } from "./published";
+import { purgeWorkspace } from "../workspaces/purge";
 
 describe("starting a report", () => {
   it("reserves a key and a DOI, and counts against the workspace's day", async () => {
@@ -10,7 +12,11 @@ describe("starting a report", () => {
     const key = await sign(world.author, world.own);
     expect(key).toBe("R100001");
     expect(await read(world.author, world.own, key)).toMatchObject({ doi: "10.53832/openscholar-r.r100001", step: "doi", status: "draft", mine: true, signer: "Ada Author" });
-    // A person's own workspace starts one a day; the organisation's count is its own.
+    // Signing again before doing anything with it, as after a reload that lost the answer, gives the same report.
+    expect(await sign(world.author, world.own)).toBe("R100001");
+    expect(await world.author.query(api.reports.flow.starts, { workspaceId: world.own, now: Date.now() })).toMatchObject({ left: 0, untouched: "R100001" });
+    // Once it has moved on, a person's own workspace starts no other that day; the organisation's count is its own.
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
     await expect(sign(world.author, world.own)).rejects.toMatchObject(refused("FORBIDDEN"));
     expect(await sign(world.author, world.lab)).toBe("R100002");
   });
@@ -220,6 +226,32 @@ describe("a report's checks", () => {
     await expect(world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "" })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+});
+
+describe("a deleted workspace's reports", () => {
+  it("go with it when they never went live, files included, and stay published when they did", async () => {
+    const world = await setup();
+    const draft = await atDetails(world, world.author, world.lab);
+    const draftFile = (await row(world.t, draft.key)).pdf!.file;
+    const published = await checked(world, [passed("byline")], world.author, world.lab);
+    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.lab, key: published.key });
+
+    expect(await world.t.run((ctx) => purgeWorkspace(ctx, world.lab))).toBe(true);
+    expect(await row(world.t, draft.key)).toBeNull();
+    expect(await world.t.run((ctx) => ctx.db.system.get(draftFile))).toBeNull();
+    expect(await world.t.run((ctx) => ctx.db.query("reportStarts").withIndex("by_workspaceId_and_at", (q) => q.eq("workspaceId", world.lab)).collect())).toEqual([]);
+    expect(await row(world.t, published.key)).toMatchObject({ status: "live" });
+  });
+});
+
+describe("the already-published check's titles", () => {
+  it("match across case, accents and punctuation, in any script, and never on nothing", () => {
+    expect(sameTitle("Shade Trees & Maize Yields.", "shade trees maize yields")).toBe(true);
+    expect(sameTitle("Éducation à l'école", "Education a l ecole")).toBe(true);
+    expect(sameTitle("学校教育研究", "学校教育政策研究")).toBe(false);
+    expect(sameTitle("学校教育研究", "学校教育研究")).toBe(true);
+    expect(sameTitle("…", "!!!")).toBe(false);
   });
 });
 

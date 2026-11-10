@@ -613,7 +613,9 @@ export default defineSchema({
     .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
     // The reviewers' list reads each status's newest, and the reports whose changes wait.
     .index("by_status_and_updatedAt", ["status", "updatedAt"])
-    .index("by_changes", ["changes"]),
+    .index("by_changes", ["changes"])
+    // A workspace's reports that never went live, which go with it when it is deleted (workspaces/purge.ts).
+    .index("by_workspaceId_and_activatedAt", ["workspaceId", "activatedAt"]),
   reportDetails: defineTable(reportDetailFields).index("by_reportId", ["reportId"]),
   reportReviews: defineTable(reportReviewFields).index("by_reportId", ["reportId"]),
   reportFiles: defineTable(reportFileFields).index("by_file", ["file"]),

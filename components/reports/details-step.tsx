@@ -202,7 +202,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
 }
 
 /** How long after the last change the details are saved. */
-const SAVE_AFTER_MS = 800;
+const SAVE_AFTER_MS = 400;
 
 export function DetailsStep({
   initial,
@@ -212,6 +212,7 @@ export function DetailsStep({
   resend = false,
   waits = false,
   words,
+  unread = false,
 }: {
   initial: Metadata;
   onRun: (m: Metadata) => Promise<void>;
@@ -224,31 +225,38 @@ export function DetailsStep({
   waits?: boolean;
   /** The form's heading, what it says under it and its button, where someone other than the author fills it in: a reviewer editing a report's details. */
   words?: { title: string; intro: string; action: string };
+  /** The details couldn't be read from the PDF, so the form starts nearly empty and says so instead of "Filled in". */
+  unread?: boolean;
 }) {
   const [m, setM] = useState(initial);
-  // Corrections are saved a moment after the last change, so leaving the step loses nothing. A timer, cleared when
-  // the details change again; a change still waiting when the step closes is saved as it closes.
-  const now = useRef({ m, onSave, saved: initial });
-  useEffect(() => {
-    now.current.m = m;
-    now.current.onSave = onSave;
-  });
-  const send = () => {
-    const { m: latest, onSave: save, saved } = now.current;
-    // An ORCID iD half typed is no iD yet: the details are saved once it is one, or the box is empty.
-    if (latest === saved || latest.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid))) return;
-    now.current.saved = latest;
-    save?.(latest);
+  // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
+  // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
+  // report has moved on changes nothing (saveDetails).
+  const held = useRef({ m: initial, timer: undefined as ReturnType<typeof setTimeout> | undefined, send: undefined as (() => void) | undefined });
+  const sendNow = () => {
+    clearTimeout(held.current.timer);
+    held.current.send?.();
+    held.current.send = undefined;
   };
+  const change = (update: (was: Metadata) => Metadata) => {
+    const next = update(held.current.m);
+    held.current.m = next;
+    setM(next);
+    clearTimeout(held.current.timer);
+    // An ORCID iD half typed is no iD yet: the details are saved once it is one, or the box is empty.
+    held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next) : undefined;
+    held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
+  };
+  // The browser's page lifecycle is the outside system here: a reload or a closed tab inside the wait sends what the
+  // wait was holding, so a change typed a moment before leaving is kept.
   useEffect(() => {
-    const timer = setTimeout(send, SAVE_AFTER_MS);
-    return () => clearTimeout(timer);
-  }, [m]);
-  useEffect(() => send, []);
+    window.addEventListener("pagehide", sendNow);
+    return () => window.removeEventListener("pagehide", sendNow);
+  }, []);
   const [topicSearch, setTopicSearch] = useState("");
   const [doi, setDoi] = useState("");
   const [refPage, setRefPage] = useState(1);
-  const set = <K extends keyof Metadata>(key: K, value: Metadata[K]) => setM((was) => ({ ...was, [key]: value }));
+  const set = <K extends keyof Metadata>(key: K, value: Metadata[K]) => change((was) => ({ ...was, [key]: value }));
   const setAuthor = (i: number, patch: Partial<Author>) => set("authors", m.authors.map((a, at) => (at === i ? { ...a, ...patch } : a)));
   const moveAuthor = (i: number, by: -1 | 1) => {
     const next = [...m.authors];
@@ -288,7 +296,9 @@ export function DetailsStep({
               ? "Your changes are checked, then a reviewer approves them before they go live. Your report stays live as it is until then. The PDF stays the same."
               : "Your report stays live as it is while your changes are checked. They go live when every check passes. The PDF stays the same."}</p>
         ) : (
-          <p className="max-w-xl text-sm text-muted-foreground">Filled in from your PDF. Correct anything that&apos;s wrong and add what&apos;s missing: the report&apos;s page shows all of it, and Crossref gets its part.</p>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            {unread ? "Fill in the details" : "Filled in from your PDF. Correct anything that's wrong and add what's missing"}: the report&apos;s page shows all of it, and Crossref gets its part.
+          </p>
         )}
       </div>
       <div className="space-y-8">
@@ -329,7 +339,8 @@ export function DetailsStep({
               </Select>
             </Field>
             <Field label="Date published">
-              <Input type="date" value={m.date} onChange={(e) => set("date", e.target.value)} />
+              {/* A report is published by today, wherever that is: a day ahead of UTC is let through, as the server does. */}
+              <Input type="date" value={m.date} max={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)} onChange={(e) => set("date", e.target.value)} />
             </Field>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Licence</span>
@@ -552,7 +563,12 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || (!!onCancel && !resend && m === initial)} onClick={() => void onRun(m)}>
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || (!!onCancel && !resend && m === initial)} onClick={() => {
+          // The run carries the details as they are, so a save still waiting has nothing left to send.
+          clearTimeout(held.current.timer);
+          held.current.send = undefined;
+          void onRun(m);
+        }}>
           <ShieldCheck /> {words ? words.action : onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
         </Button>
       </div>
