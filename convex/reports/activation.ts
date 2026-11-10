@@ -170,6 +170,8 @@ async function putLive(ctx: MutationCtx, report: Doc<"reports">) {
   await notify(ctx, report._id, "live-author");
 }
 
+/** A free activation the page offered that isn't there any more: used since, or no longer given. */
+const NO_FREE_LEFT = "There's no free activation left for today. Activate it again to pay for it.";
 const STILL_PAYING = "Its payment is still going through. It goes live once it's paid.";
 
 /** Makes the report live as one of the workspace's free activations for the day, refused once they are used. */
@@ -179,7 +181,7 @@ export const goLiveFree = internalMutation({
   handler: async (ctx, { actor, key }) => {
     const report = await activatable(ctx, actor, key);
     if (await pendingOf(ctx, report._id, true)) throw createError("CONFLICT", STILL_PAYING);
-    if ((await freeLeft(ctx, actor.workspaceId, Date.now())).left === 0) throw createError("CONFLICT", "Today's free activations were just used. Activate it again to pay for it.");
+    if ((await freeLeft(ctx, actor.workspaceId, Date.now())).left === 0) throw createError("CONFLICT", NO_FREE_LEFT, { reason: "noFreeLeft" });
     await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, free: true, state: "live" });
     await putLive(ctx, report);
     return null;
@@ -324,7 +326,7 @@ export const activate = action({
       await ctx.runMutation(internal.reports.activation.goLiveFree, { actor, key });
       return { live: true };
     }
-    if (!pay) throw createError("CONFLICT", "Today's free activations were just used. Activate it again to pay for it.");
+    if (!pay) throw createError("CONFLICT", NO_FREE_LEFT, { reason: "noFreeLeft" });
     // Its open invoice would hold this charge back anyway (`unlessPaymentOpen`); this says which report to go to.
     if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);
     // Under the workspace's purchase lock from the record to the answer, so another tab's activation waits for this one.

@@ -315,7 +315,9 @@
     "southernDescription": "Para equipos del Sur, para proyectos concretos.",
     "southernFeature1": "Todo lo de Free",
     "southernFeature2": "Se añade a tu cuenta después de que nos contactes",
-    "onRequest": "A petición"
+    "onRequest": "A petición",
+    "reportsPerDay": "{count, plural, one {# informe nuevo} other {# informes nuevos}} al día en Openscholar Reports",
+    "reportsNone": "Sin Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Credenciales de {provider}",
@@ -6744,7 +6746,8 @@
         "creditLine": "Saldo a favor de la cuenta",
         "refunded": "Se reembolsaron los {amount} pagados para activarlo.",
         "refunding": "Se están reembolsando los {amount} pagados para activarlo.",
-        "declined": "Tu tarjeta fue rechazada. No se cobró nada. Cambia la tarjeta e inténtalo de nuevo."
+        "declined": "Tu tarjeta fue rechazada. No se cobró nada. Cambia la tarjeta e inténtalo de nuevo.",
+        "noFreeLeft": "Hoy ya no queda ninguna activación gratuita. Actívalo de nuevo para pagarla."
       }
     },
     "meta": {

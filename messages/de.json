@@ -315,7 +315,9 @@
     "southernDescription": "Für Teams aus dem Globalen Süden, für bestimmte Projekte.",
     "southernFeature1": "Alles aus Free",
     "southernFeature2": "Wird Ihrem Konto hinzugefügt, nachdem Sie uns kontaktiert haben",
-    "onRequest": "Auf Anfrage"
+    "onRequest": "Auf Anfrage",
+    "reportsPerDay": "{count, plural, one {# neuer Bericht} other {# neue Berichte}} pro Tag in Openscholar Reports",
+    "reportsNone": "Keine Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "{provider}-Zugangsdaten",
@@ -6744,7 +6746,8 @@
         "creditLine": "Guthaben des Kontos",
         "refunded": "Die {amount}, die für die Aktivierung bezahlt wurden, wurden erstattet.",
         "refunding": "Die {amount}, die für die Aktivierung bezahlt wurden, werden erstattet.",
-        "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut."
+        "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
+        "noFreeLeft": "Für heute ist keine kostenlose Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um dafür zu bezahlen."
       }
     },
     "meta": {

@@ -315,7 +315,9 @@
     "southernDescription": "グローバルサウスのチームに、特定のプロジェクト向けに。",
     "southernFeature1": "Free のすべて",
     "southernFeature2": "お問い合わせ後にアカウントへ追加されます",
-    "onRequest": "リクエスト制"
+    "onRequest": "リクエスト制",
+    "reportsPerDay": "Openscholar Reports で1日 {count, number} 件の新規レポート",
+    "reportsNone": "Openscholar Reports なし"
   },
   "publicationSettings": {
     "credentials": "{provider} 認証情報",
@@ -6743,7 +6745,8 @@
         "creditLine": "アカウントのクレジット",
         "refunded": "有効化のために支払われた {amount} は返金されました。",
         "refunding": "有効化のために支払われた {amount} を返金しています。",
-        "declined": "カードが拒否されました。請求は行われていません。カードを変更してもう一度お試しください。"
+        "declined": "カードが拒否されました。請求は行われていません。カードを変更してもう一度お試しください。",
+        "noFreeLeft": "本日の無料有効化はもう残っていません。もう一度有効化すると有料で行えます。"
       }
     },
     "meta": {

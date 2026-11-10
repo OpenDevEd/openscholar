@@ -315,7 +315,9 @@
     "southernDescription": "لفرق الجنوب، لمشاريع محددة.",
     "southernFeature1": "كل ما في Free",
     "southernFeature2": "تضاف إلى حسابك بعد التواصل معنا",
-    "onRequest": "عند الطلب"
+    "onRequest": "عند الطلب",
+    "reportsPerDay": "{count, plural, one {تقرير جديد واحد} other {# تقارير جديدة}} يوميًا في Openscholar Reports",
+    "reportsNone": "بدون Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "بيانات اعتماد {provider}",
@@ -6744,7 +6746,8 @@
         "creditLine": "رصيد الحساب",
         "refunded": "تم استرداد مبلغ {amount} المدفوع لتفعيله.",
         "refunding": "يجري استرداد مبلغ {amount} المدفوع لتفعيله.",
-        "declined": "رُفضت بطاقتك ولم يُخصم أي مبلغ. غيّر البطاقة وحاول مرة أخرى."
+        "declined": "رُفضت بطاقتك ولم يُخصم أي مبلغ. غيّر البطاقة وحاول مرة أخرى.",
+        "noFreeLeft": "لم يتبقَّ تفعيل مجاني لهذا اليوم. فعّله مرة أخرى للدفع مقابله."
       }
     },
     "meta": {

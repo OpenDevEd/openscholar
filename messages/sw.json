@@ -315,7 +315,9 @@
     "southernDescription": "Kwa timu za Kusini, kwa miradi mahususi.",
     "southernFeature1": "Kila kitu katika Free",
     "southernFeature2": "Huongezwa kwenye akaunti yako baada ya kuwasiliana nasi",
-    "onRequest": "Kwa ombi"
+    "onRequest": "Kwa ombi",
+    "reportsPerDay": "{count, plural, one {Ripoti # mpya} other {Ripoti # mpya}} kwa siku katika Openscholar Reports",
+    "reportsNone": "Hakuna Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Vitambulisho vya {provider}",
@@ -6744,7 +6746,8 @@
         "creditLine": "Salio la akaunti",
         "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",
         "refunding": "{amount} zilizolipwa kuiwasha zinarejeshwa.",
-        "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena."
+        "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena.",
+        "noFreeLeft": "Hakuna uwashaji wa bure uliobaki leo. Iwashe tena ili uilipie."
       }
     },
     "meta": {

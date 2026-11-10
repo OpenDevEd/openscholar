@@ -315,7 +315,9 @@
     "southernDescription": "For Southern teams, for specific projects.",
     "southernFeature1": "Everything in Free",
     "southernFeature2": "Added to your account after you contact us",
-    "onRequest": "On request"
+    "onRequest": "On request",
+    "reportsPerDay": "{count, plural, one {# new report} other {# new reports}} a day in Openscholar Reports",
+    "reportsNone": "No Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "{provider} credentials",
@@ -6743,7 +6745,8 @@
         "creditLine": "Account credit",
         "refunded": "The {amount} paid to activate it was refunded.",
         "refunding": "The {amount} paid to activate it is being refunded.",
-        "declined": "Your card was declined. Nothing was charged. Change the card and try again."
+        "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
+        "noFreeLeft": "There's no free activation left for today. Activate it again to pay for it."
       }
     },
     "meta": {

@@ -315,7 +315,9 @@
     "southernDescription": "Para equipas do Sul, para projetos específicos.",
     "southernFeature1": "Tudo o que está no Free",
     "southernFeature2": "Adicionado à sua conta depois de nos contactar",
-    "onRequest": "A pedido"
+    "onRequest": "A pedido",
+    "reportsPerDay": "{count, plural, one {# novo relatório} other {# novos relatórios}} por dia no Openscholar Reports",
+    "reportsNone": "Sem Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Credenciais do {provider}",
@@ -6744,7 +6746,8 @@
         "creditLine": "Crédito da conta",
         "refunded": "Os {amount} pagos para o ativar foram reembolsados.",
         "refunding": "Os {amount} pagos para o ativar estão a ser reembolsados.",
-        "declined": "O seu cartão foi recusado. Nada foi cobrado. Mude de cartão e tente novamente."
+        "declined": "O seu cartão foi recusado. Nada foi cobrado. Mude de cartão e tente novamente.",
+        "noFreeLeft": "Já não resta nenhuma ativação gratuita hoje. Ative-o novamente para a pagar."
       }
     },
     "meta": {

@@ -315,7 +315,9 @@
     "southernDescription": "Pour les équipes du Sud, pour des projets précis.",
     "southernFeature1": "Tout ce qui est inclus dans Free",
     "southernFeature2": "Ajouté à votre compte après nous avoir contactés",
-    "onRequest": "Sur demande"
+    "onRequest": "Sur demande",
+    "reportsPerDay": "{count, plural, one {# nouveau rapport} other {# nouveaux rapports}} par jour dans Openscholar Reports",
+    "reportsNone": "Pas d’Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Identifiants {provider}",
@@ -6743,7 +6745,8 @@
         "creditLine": "Crédit du compte",
         "refunded": "Les {amount} payés pour l’activer ont été remboursés.",
         "refunding": "Les {amount} payés pour l’activer sont en cours de remboursement.",
-        "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez."
+        "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez.",
+        "noFreeLeft": "Il ne reste plus d’activation gratuite aujourd’hui. Activez-le à nouveau pour la payer."
       }
     },
     "meta": {

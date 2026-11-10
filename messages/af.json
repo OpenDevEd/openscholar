@@ -315,7 +315,9 @@
     "southernDescription": "Vir Suidelike spanne, vir spesifieke projekte.",
     "southernFeature1": "Alles in Free",
     "southernFeature2": "By jou rekening gevoeg nadat jy ons gekontak het",
-    "onRequest": "Op versoek"
+    "onRequest": "Op versoek",
+    "reportsPerDay": "{count, plural, one {# nuwe verslag} other {# nuwe verslae}} per dag in Openscholar Reports",
+    "reportsNone": "Geen Openscholar Reports nie"
   },
   "publicationSettings": {
     "credentials": "{provider}-geloofsbriewe",
@@ -6744,7 +6746,8 @@
         "creditLine": "Rekeningkrediet",
         "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
         "refunding": "Die {amount} wat betaal is om dit te aktiveer, word terugbetaal.",
-        "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer."
+        "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
+        "noFreeLeft": "Daar is vandag geen gratis aktivering oor nie. Aktiveer dit weer om daarvoor te betaal."
       }
     },
     "meta": {

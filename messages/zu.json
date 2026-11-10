@@ -315,7 +315,9 @@
     "southernDescription": "Kumaqembu aseNingizimu, kumaphrojekthi athile.",
     "southernFeature1": "Konke okukuFree",
     "southernFeature2": "Kwengezwa ku-akhawunti yakho ngemva kokuxhumana nathi",
-    "onRequest": "Ngesicelo"
+    "onRequest": "Ngesicelo",
+    "reportsPerDay": "{count, plural, one {Umbiko omusha #} other {Imibiko emisha #}} ngosuku ku-Openscholar Reports",
+    "reportsNone": "Ayikho i-Openscholar Reports"
   },
   "publicationSettings": {
     "credentials": "Izimvume ze-{provider}",
@@ -6743,7 +6745,8 @@
         "creditLine": "Isikweletu se-akhawunti",
         "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
         "refunding": "I-{amount} ekhokhelwe ukuyenza isebenze iyabuyiselwa.",
-        "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi."
+        "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
+        "noFreeLeft": "Akusekho ukwenza kusebenze kwamahhala okusele namuhla. Yenze isebenze futhi ukuze uyikhokhele."
       }
     },
     "meta": {

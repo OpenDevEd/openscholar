@@ -1056,6 +1056,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       } catch (error) {
         const reason = promoReason(error);
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") toast.error(t("activation.declined"));
+        else if (refusalOf(error)?.reason === "noFreeLeft") toast.error(t("activation.noFreeLeft"));
         else if (reason) toast.error(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
         else said(t("activateFailed"))(error);
       }
