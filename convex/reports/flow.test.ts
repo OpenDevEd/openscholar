@@ -114,7 +114,7 @@ describe("who works on a workspace's report", () => {
     const key = await sign(world.author, world.lab);
     await expect(world.stranger.query(api.reports.flow.get, { workspaceId: world.lab, key })).rejects.toMatchObject(refused("NOT_FOUND"));
     // Asked from the author's own workspace, the organisation's report is named, not shown.
-    expect(await world.author.query(api.reports.flow.get, { workspaceId: world.own, key })).toEqual({ elsewhere: world.lab });
+    expect(await world.author.query(api.reports.flow.get, { workspaceId: world.own, key })).toEqual({ elsewhere: { name: "Learning Lab", slug: "lab" } });
     // A change sent to the wrong workspace is refused.
     await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("NOT_FOUND"));
   });
@@ -147,6 +147,20 @@ describe("a report's PDF", () => {
     expect((await read(world.author, world.own, first.key)).step).toBe("upload");
   });
 
+  it("wears the picture drawn of it, and never one drawn of a PDF since replaced", async () => {
+    const world = await setup();
+    const { key } = await atDetails(world);
+    const pdf = (await row(world.t, key)).pdf!.file;
+    const picture = () => world.t.run((ctx) => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
+    const stale = await picture();
+    const other = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF other"])));
+    await world.author.mutation(api.reports.flow.attachCover, { workspaceId: world.own, key, file: stale, pdf: other });
+    expect((await read(world.author, world.own, key)).coverUrl).toBeNull();
+    expect(await world.t.run((ctx) => ctx.db.system.get(stale))).toBeNull();
+    await world.author.mutation(api.reports.flow.attachCover, { workspaceId: world.own, key, file: await picture(), pdf });
+    expect((await read(world.author, world.own, key)).coverUrl).toEqual(expect.any(String));
+  });
+
   it("says when it couldn't be opened, and when its details couldn't be read", async () => {
     const world = await setup();
     const { key, reportId, pdfAt } = await atDetails(world);
@@ -170,6 +184,18 @@ describe("a report's checks", () => {
     // Nothing about review is kept on the report: switched off, the same report is ready.
     expect(stageOf(report, false)).toBe("ready");
     expect(await world.author.query(api.reports.flow.counts, { workspaceId: world.own })).toMatchObject({ review: 1, ready: 0, underWay: 1, only: key });
+  });
+
+  it("go live when its author activates it, and only once no review is owed", async () => {
+    const world = await setup({ humanReview: true });
+    const { key } = await checked(world, [passed("byline")]);
+    await expect(world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await world.t.run(async (ctx) => ctx.db.patch("reportSettings", (await ctx.db.query("reportSettings").first())!._id, { humanReview: false }));
+    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    // Its route was Crossref alone, so only Crossref's registration is queued.
+    expect(await read(world.author, world.own, key)).toMatchObject({ status: "live", deposit: "queued", archive: "none" });
+    await expect(world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
   });
 
   it("stop it when a blocking check fails, and flag it for a reviewer when another does", async () => {

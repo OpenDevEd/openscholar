@@ -90,7 +90,9 @@
     "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`.",
     "evidenceLibraries/organizationGrants:grantable": "The Team section's list of organizations its owner can share the community with straight away. The assistant reads a community's team through evidenceLibraries/assistant:team.",
     "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces.",
-    "reports/settings:forAuthors": "What the Publish page and the sidebar read of the series before a report exists: whether publishing is open, its agreement and its checks' names. The assistant doesn't publish reports."
+    "reports/settings:forAuthors": "What the Publish page reads of the series before a report exists: whether publishing is open, its agreement and its checks' names. The assistant doesn't publish reports.",
+    "reports/flow:agreement": "The signed agreement's own page, which a report's workspace opens from the report to read, save or print.",
+    "reports/settings:open": "Whether the sidebar shows Publish. The assistant doesn't publish reports."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -279,7 +281,8 @@
     "reports/flow:attachPdf": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
     "reports/flow:attachCover": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
     "reports/flow:requestReview": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
-    "reports/checks:run": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public."
+    "reports/checks:run": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:activate": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public."
   },
   "pending": {
     "evidenceLibraries/collectionSources:listCollectionSources": "#329",

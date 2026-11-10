@@ -103,8 +103,18 @@ export const admin = query({
   },
 });
 
+/** Whether publishing is open: the sidebar's Publish item, on every page. */
+export const open = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    const settings = await reportSettings(ctx);
+    return settings.enabled && canRegister(settings.publication);
+  },
+});
+
 /**
- * What the Publish page and the sidebar read, signed in or not: whether publishing is open, the series, the
+ * What the Publish page reads, signed in or not: whether publishing is open, the series, the
  * agreement to sign, and the checks a report runs, by name. Nothing here is an admin's alone: no account, no model,
  * no question, no limit of anyone's.
  */

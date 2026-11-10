@@ -203,3 +203,5 @@ export const reportRowValidator = v.object({
   mine: v.boolean(),
 });
 export const reportRowsValidator = capped(v.array(reportRowValidator), REPORTS_PER_PAGE);
+/** A report's authors by name, as its signed agreement lists them. */
+export const signerNamesValidator = capped(v.array(v.string()), DETAIL_CAPS.authors);

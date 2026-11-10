@@ -11,10 +11,10 @@ import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { reportSettings, settingsRow } from "./settings";
-import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator } from "./validators";
+import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signerNamesValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -207,14 +207,14 @@ export const attachPdf = workspaceMutation({
 
 /** The picture of the PDF's first page, drawn by the browser that uploaded it. One for a PDF since replaced is dropped. */
 export const attachCover = workspaceMutation({
-  args: { key: v.string(), file: v.id("_storage"), at: v.number() },
+  args: { key: v.string(), file: v.id("_storage"), pdf: v.id("_storage") },
   returns: v.null(),
-  handler: async (ctx, actor, { key, file, at }) => {
+  handler: async (ctx, actor, { key, file, pdf }) => {
     await refuseApps(ctx);
     const stored = await ctx.db.system.get(file);
     if (!stored) return null;
     const report = await changing(ctx, actor, key);
-    if (report.pdf?.at !== at || stored.size > COVER_MAX_BYTES || !stored.contentType?.startsWith("image/")) {
+    if (report.pdf?.file !== pdf || stored.size > COVER_MAX_BYTES || (stored.contentType !== undefined && !stored.contentType.startsWith("image/"))) {
       await forget(ctx, file);
       return null;
     }
@@ -240,6 +240,29 @@ export const requestReview = workspaceMutation({
     if (report.asked) return null;
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } });
     await touch(ctx, report, { asked: true });
+    return null;
+  },
+});
+
+/**
+ * The author makes a report live once no review is owed. Its registrations are queued in the order its route fixed
+ * when its DOI was reserved (lib/reports/report.ts `providersOf`).
+ */
+export const activate = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    const settings = await reportSettings(ctx);
+    const stage = stageOf(report, settings.humanReview);
+    if (stage === "live") throw createError("CONFLICT", "This report is already live.");
+    if (stage === "review") throw createError("CONFLICT", "A reviewer has to approve this report before you can activate it.");
+    if (stage !== "ready") throw createError("CONFLICT", MOVED_ON);
+    // A DOI needs somewhere to register: with both registrars switched off, nothing goes live.
+    if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
+    const registers = providersOf(report.registration);
+    await touch(ctx, report, { status: "live", activatedAt: Date.now(), deposit: registers.includes("crossref") ? "queued" : "none", archive: registers.includes("zenodo") ? "queued" : "none" });
     return null;
   },
 });
@@ -310,6 +333,7 @@ const reportValidator = v.object({
   signedAt: v.number(),
   onBehalfOfAll: v.boolean(),
   agreementVersion: v.number(),
+  checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
   pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
@@ -330,11 +354,17 @@ const plain = (results: Doc<"reportDetails">["results"]) => results?.map(({ mode
  */
 export const get = workspaceQuery({
   args: { key: v.string() },
-  returns: v.union(v.object({ report: reportValidator }), v.object({ elsewhere: v.id("workspaces") }), v.null()),
+  returns: v.union(v.object({ report: reportValidator }), v.object({ elsewhere: v.object({ name: v.string(), slug: v.union(v.string(), v.null()) }) }), v.null()),
   handler: async (ctx, actor, { key }) => {
     const report = await byKey(ctx, key);
     if (!report) return null;
-    if (report.workspaceId !== actor.workspaceId) return (await workspacesOf(ctx, actor.userId)).some((workspace) => workspace._id === report.workspaceId) ? { elsewhere: report.workspaceId } : null;
+    if (report.workspaceId !== actor.workspaceId) {
+      const its = (await workspacesOf(ctx, actor.userId)).find((workspace) => workspace._id === report.workspaceId);
+      if (!its) return null;
+      const organization = its.kind === "organization" ? await ctx.db.get("organizations", its.organizationId) : null;
+      // An organisation's pages are under its slug; the person's own have none.
+      return { elsewhere: { name: organization?.name ?? "your own workspace", slug: organization?.slug ?? null } };
+    }
     const [details, settings] = await Promise.all([detailsOf(ctx, report._id), reportSettings(ctx)]);
     const { correction } = details;
     return {
@@ -346,6 +376,7 @@ export const get = workspaceQuery({
         signedAt: report.signedAt,
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
         agreementVersion: report.agreementVersion,
+        ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
         ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), url: await ctx.storage.getUrl(report.pdf.file) } }),
         ...(details.metadata && { metadata: details.metadata }),
@@ -355,6 +386,37 @@ export const get = workspaceQuery({
         ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
         ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       },
+    };
+  },
+});
+
+/**
+ * The agreement a report's author signed, in the wording of the version they signed, with who signed and when and
+ * what the report has become since. Its workspace reads it; it can be saved or printed from its page.
+ */
+export const agreement = workspaceQuery({
+  args: { key: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) }),
+  ),
+  handler: async (ctx, actor, { key }) => {
+    const report = await byKey(ctx, key);
+    if (!report || report.workspaceId !== actor.workspaceId) return null;
+    const version = report.agreementVersion;
+    const kept = await ctx.db.query("reportAgreementVersions").withIndex("by_version", (q) => q.eq("version", version)).unique();
+    const { metadata } = await detailsOf(ctx, report._id);
+    return {
+      // Every version's wording is kept from the first change on; before one, it is the series' own.
+      text: kept?.text ?? (await reportSettings(ctx)).agreement.text,
+      version,
+      signer: report.signedBy.name,
+      onBehalfOfAll: report.signedBy.onBehalfOfAll,
+      signedAt: report.signedAt,
+      doi: report.doi,
+      ...(metadata?.title && { title: metadata.title }),
+      authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),
+      ...(report.pdf?.pages !== undefined && { pages: report.pdf.pages }),
     };
   },
 });

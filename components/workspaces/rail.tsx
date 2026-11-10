@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useClerk, useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
 import { showStyledToast } from "@/components/ui/sonner";
 import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
@@ -21,6 +22,7 @@ import {
   ExtractionIcon,
   HistoryIcon,
   LibraryIcon,
+  PublishIcon,
   ListChecks,
   LogIn,
   LogOut,
@@ -160,6 +162,9 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const [held, setHeld] = useState(false);
   if (liveExtracts !== undefined && liveExtracts !== held) setHeld(liveExtracts);
   const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : held);
+  // Publish, which Openscholar's admins switch on for everyone signed in. Until that is read, it shows as it did last time.
+  const livePublishes = useQuery(api.reports.settings.open, {});
+  const publishes = livePublishes ?? cached.look?.publish === true;
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
@@ -169,11 +174,12 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
     const was = cache.looks[lookKey(slug)];
     const extract = liveExtracts ?? was?.extract === true;
     const author = liveAuthors ?? was?.author === true;
-    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}), ...(author ? { author: true as const } : {}) } : undefined;
+    const publish = livePublishes ?? was?.publish === true;
+    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}), ...(publish ? { publish: true as const } : {}), ...(author ? { author: true as const } : {}) } : undefined;
     if (!look && !live) return;
     const next = writeCache(cache, userId, lookKey(slug), look, live);
     if (next && next !== raw) document.cookie = `${LOOK_COOKIE}=${next}; Path=/; Max-Age=${LOOK_KEPT_S}; SameSite=Lax`;
-  }, [userId, slug, loaded, live?.name, live?.imageUrl, liveExtracts, liveAuthors]);
+  }, [userId, slug, loaded, live?.name, live?.imageUrl, liveExtracts, liveAuthors, livePublishes]);
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 
@@ -231,6 +237,10 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
             <nav aria-label={t("main")} className="flex w-full flex-col items-center gap-0.5 px-2">
               {item({ href: "/", icon: Search, label: tc("search"), active: is("/") })}
               {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
+              {/* Publish (plans/publish-reports), drawn from the first frame when it showed last time; switched on since, it opens its place. */}
+              <AnimatePresence initial={false}>
+                {publishes && signedIn ? <Opening key="publish">{item({ href: "/publish", icon: PublishIcon, label: t("publish"), active: is("/publish") })}</Opening> : null}
+              </AnimatePresence>
               {item({ href: "/history", icon: HistoryIcon, label: tc("history"), active: is("/history") })}
               {item({
                 href: "/bookmarks",
