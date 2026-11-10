@@ -30,17 +30,49 @@ export async function requireAdmin() {
   if (!(await isAdmin())) throw new Error("Only an admin can do this.");
 }
 
+const memberships = new Map<string, { orgIds: string[]; at: number }>();
 /**
- * The organisations a person belongs to, by Clerk ID. Asked of Clerk, not read from the session: the session names
- * only the workspace that's open, and Publish opens outside any, so an organisation's limit would never apply.
+ * The organisations a person belongs to, by Clerk ID: a report started in an organisation's workspace is its
+ * members' to work on. Asked of Clerk and remembered for a minute, since every step of a report asks. MOCK: the real
+ * build's functions take the workspace and check the person may act there, as the app's other sections do.
  */
 export async function organizationsOf(userId: string): Promise<string[]> {
+  const known = memberships.get(userId);
+  if (known && Date.now() - known.at < REMEMBER_MS) return known.orgIds;
   try {
-    const memberships = await (await clerkClient()).users.getOrganizationMembershipList({ userId, limit: 100 });
-    return memberships.data.map((membership) => membership.organization.id);
+    const list = await (await clerkClient()).users.getOrganizationMembershipList({ userId, limit: 100 });
+    const orgIds = list.data.map((membership) => membership.organization.id);
+    memberships.set(userId, { orgIds, at: Date.now() });
+    return orgIds;
   } catch (error) {
     console.error("[publish mock] organisations couldn't be read", String(error).slice(0, 300));
     return [];
+  }
+}
+
+/** Who is acting on a report: the person, and the organisations whose workspaces they are a member of. */
+export type Actor = { userId: string; orgIds: string[] };
+export async function actor(): Promise<Actor | null> {
+  const { userId } = await auth();
+  return userId ? { userId, orgIds: await organizationsOf(userId) } : null;
+}
+
+/** The organisation a workspace's address names (/o/<slug>), or null when Clerk has none such. */
+export async function organizationAt(slug: string): Promise<{ id: string; name: string } | null> {
+  try {
+    const { id, name } = await (await clerkClient()).organizations.getOrganization({ slug });
+    return { id, name };
+  } catch {
+    return null;
+  }
+}
+
+/** An organisation's place in addresses now, by its Clerk ID; undefined when it's gone. */
+export async function slugOf(organizationId: string): Promise<string | undefined> {
+  try {
+    return (await (await clerkClient()).organizations.getOrganization({ organizationId })).slug ?? undefined;
+  } catch {
+    return undefined;
   }
 }
 

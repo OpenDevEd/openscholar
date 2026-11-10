@@ -46,7 +46,7 @@ import {
   ShieldCheck,
   TriangleAlert,
   Trash2,
-  UserPlus,
+  UserPlus, Building2,
 } from "@/components/icons";
 import { CheckRow } from "@/components/publish-mock/publish-flow";
 import { usePlaceName } from "@/components/publish-mock/report-extras";
@@ -443,6 +443,11 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
                     "None"
                   )}
                 </Fact>
+                {s.orgName ? (
+                  <Fact icon={Building2} label="Owner" wide>
+                    {s.orgName}
+                  </Fact>
+                ) : null}
                 <Fact icon={PenLine} label="Signed">
                   <a href={`/publish/agreements/${s.id}`} target="_blank" rel="noopener noreferrer" className="truncate underline-offset-4 hover:underline">
                     {s.signedBy?.name}

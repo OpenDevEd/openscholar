@@ -58,7 +58,7 @@ export function StatusFilter({ reports, settings, show, onShow }: { reports: Sub
   );
 }
 
-export function YourReports({ reports, settings, show, page, onPage, onOpen, onNew, onDiscard, onCorrect }: { reports: Submission[]; settings: Settings; show: Show; /** The list's page, kept in the address with its filter. */ page: number; onPage: (page: number) => void; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void>; onCorrect: (id: string) => void }) {
+export function YourReports({ reports, settings, shared, show, page, onPage, onOpen, onNew, onDiscard, onCorrect }: { reports: Submission[]; settings: Settings; /** An organisation's list: each row says who signed. */ shared: boolean; show: Show; /** The list's page, kept in the address with its filter. */ page: number; onPage: (page: number) => void; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void>; onCorrect: (id: string) => void }) {
   // The report being discarded, asked about once before it goes.
   const [discarding, setDiscarding] = useState<Submission | null>(null);
   const listed = reports.filter((r) => show === "all" || stageOf(r, settings) === show);
@@ -71,7 +71,7 @@ export function YourReports({ reports, settings, show, page, onPage, onOpen, onN
         <Paged pager={pager} rowHeight={ROW} label="reports">
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
             {shown.map((r) => (
-              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={canDiscard(r) ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
+              <ReportRow key={r.id} report={r} shared={shared} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={canDiscard(r) ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
             ))}
           </ul>
         </Paged>
@@ -113,7 +113,7 @@ export function YourReports({ reports, settings, show, page, onPage, onOpen, onN
 }
 
 /** One report: its title, key and date; the reviewer's note when declined; its status; and the way back into it. */
-function ReportRow({ report: r, stage, onOpen, onDiscard, onCorrect }: { report: Submission; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
+function ReportRow({ report: r, shared, stage, onOpen, onDiscard, onCorrect }: { report: Submission; shared: boolean; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
   const status = STATUS[stage];
   const title = r.metadata?.title ?? (r.pdf?.name ? r.pdf.name : "Untitled report");
   const action =
@@ -157,6 +157,7 @@ function ReportRow({ report: r, stage, onOpen, onDiscard, onCorrect }: { report:
         </TooltipHint>
         <div className="mt-0.5 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="shrink-0 font-mono">{r.id}</span>
+          {shared && r.signedBy?.name ? <span className="hidden shrink-0 @md/reports:inline">{r.signedBy.name}</span> : null}
           {r.status === "declined" && r.note ? (
             <TooltipHint label={r.note} onlyWhenClipped>
               <span className="truncate">{r.note}</span>

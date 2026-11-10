@@ -174,10 +174,12 @@ export type RegistrationStep = { provider: Provider; state: "waiting" | "working
 export type Submission = {
   /** The report's key, which its paper page is named by. */
   id: string;
-  /** Who is publishing it, by their Clerk user. */
+  /** Who started it, by their Clerk user. */
   ownerId?: string;
-  /** MOCK: a sample report every viewer sees as their own, so Your reports has something in it. */
-  demo?: boolean;
+  /** The organisation whose workspace it was started in, by its Clerk ID, with its name then: the report is that
+   * workspace's, and every member's to work on. None for one started in a person's own workspace, which is theirs alone. */
+  orgId?: string;
+  orgName?: string;
   doi: string;
   step: Step;
   status: Status;
@@ -267,10 +269,14 @@ export function correctionStageOf(s: Pick<Submission, "results">, c: Correction)
   const overruled = new Set((s.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
   return !c.request && c.results.some((r) => !r.pass && r.blocking && !overruled.has(r.checkId)) ? "failed" : "review";
 }
-/** The reports a person is in the middle of: neither live nor declined. The mock's samples are everyone's, so never these. */
-export const reportsUnderWay = (reports: Submission[]) => reports.filter((r) => !r.demo && r.status !== "live" && r.status !== "declined");
+/** The reports a workspace is in the middle of: neither live nor declined. */
+export const reportsUnderWay = (reports: Submission[]) => reports.filter((r) => r.status !== "live" && r.status !== "declined");
+/** Whether a report is this workspace's: an organisation's, or with none the person's own. */
+export const inWorkspace = (r: Submission, userId: string, orgId: string | undefined) => (orgId ? r.orgId === orgId : !r.orgId && r.ownerId === userId);
+/** Whether a person may work on a report: it is their own, or an organisation's they are a member of. */
+export const mayWorkOn = (r: Submission, userId: string, orgIds: readonly string[]) => (r.orgId ? orgIds.includes(r.orgId) : r.ownerId === userId);
 /** A report its author may give up: one never checked, or one its checks failed that no reviewer approved. Its DOI was never live. */
-export const canDiscard = (r: Submission) => !r.demo && (r.status === "draft" || (r.status === "failed" && !r.approved));
+export const canDiscard = (r: Submission) => r.status === "draft" || (r.status === "failed" && !r.approved);
 /** Whether a report wants a reviewer now: waiting for review, failed with its author asking, or live with changes waiting. */
 export function wantsReviewer(s: Submission, settings: Settings) {
   const stage = stageOf(s, settings);

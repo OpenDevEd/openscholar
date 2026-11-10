@@ -2,17 +2,20 @@
 import { auth } from "@clerk/nextjs/server";
 import type { PaperResult } from "@/lib/types/search.types";
 import { reportPaper } from "./report-paper";
-import { coverUrlOf } from "./types";
+import { organizationsOf } from "./admin";
+import { coverUrlOf, mayWorkOn } from "./types";
 import { readState } from "./store";
 
 /** A live report's details and its cover, for what the paper page shows beyond a paper's record, and whether the
- * person looking is its author, who can correct it. */
+ * person looking may correct it. */
 export async function readReportMetadata(key: string) {
   const state = await readState();
   const report = state.submissions.find((s) => s.id === key && s.status === "live");
   if (!report?.metadata) return null;
   const { userId } = await auth();
-  return { m: report.metadata, cover: coverUrlOf(report), mine: userId !== null && (report.demo === true || report.ownerId === userId), waiting: !!report.correction };
+  // Its workspace's to correct: its author's own, or every member's of the organisation it was started in.
+  const mine = userId !== null && mayWorkOn(report, userId, report.orgId ? await organizationsOf(userId) : []);
+  return { m: report.metadata, cover: coverUrlOf(report), mine, waiting: !!report.correction };
 }
 
 /** A withdrawn report by its key, for the page its address and DOI keep leading to; null for any other. */

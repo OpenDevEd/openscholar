@@ -1,17 +1,17 @@
-import { auth } from "@clerk/nextjs/server";
+import { actor } from "@/lib/publish-mock/admin";
 import { checksFor, finishChecks, finishCorrection, runCheck } from "@/lib/publish-mock/checks";
 import { forAuthor, isMetadata, type CheckResult } from "@/lib/publish-mock/types";
 
 // MOCK (mock/publish-reports): runs the report's checks side by side and sends each answer as a line of JSON the moment
 // it comes, then the report as saved. The checks take from under a second (the byline) to about ten (Already published).
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) return Response.json({ error: "Sign in to publish." }, { status: 401 });
+  const who = await actor();
+  if (!who) return Response.json({ error: "Sign in to publish." }, { status: 401 });
   const { id, metadata, correction } = (await request.json().catch(() => ({}))) as { id?: unknown; metadata?: unknown; correction?: unknown };
   if (typeof id !== "string" || !isMetadata(metadata)) return Response.json({ error: "The report's details are missing." }, { status: 400 });
   let prepared;
   try {
-    prepared = await checksFor(id, userId, metadata, correction === true);
+    prepared = await checksFor(id, who, metadata, correction === true);
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "The checks couldn't start." }, { status: 409 });
   }

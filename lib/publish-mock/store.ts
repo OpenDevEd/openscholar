@@ -6,7 +6,7 @@ import type { Check, CheckResult, Metadata, MockState, Settings, Submission } fr
 import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
 import { suggestTopics } from "./topics";
 import { mail } from "./emails";
-import { DEFAULT_LLM, JEV, doiOf, providersOf, registrationOf } from "./types";
+import { DEFAULT_LLM, JEV, doiOf, mayWorkOn, providersOf, registrationOf } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
@@ -18,13 +18,13 @@ export const textPath = (key: string) => path.join(MOCK_DIR, `${key}.txt`);
  * Whether a report's PDF and cover may be read: anyone reads a live report's, and only its author and Openscholar's
  * admins read one that isn't live yet, didn't pass or was withdrawn. `public` says which, for how the file may be cached.
  */
-export async function fileAccess(key: string, userId: string | null, admin: () => Promise<boolean>): Promise<{ public: boolean } | null> {
+export async function fileAccess(key: string, userId: string | null, admin: () => Promise<boolean>, orgs: (userId: string) => Promise<string[]>): Promise<{ public: boolean } | null> {
   if (!/^R\d+$/.test(key)) return null;
   const report = (await readState()).submissions.find((s) => s.id === key);
   if (!report) return null;
   if (report.status === "live") return { public: true };
-  // A sample stands in for the viewer's own report, so it too needs someone signed in. A reviewer reads any report.
-  return userId !== null && (report.demo || report.ownerId === userId || (await admin())) ? { public: false } : null;
+  // Until it's live, a report's files are its workspace's and a reviewer's.
+  return userId !== null && (mayWorkOn(report, userId, report.orgId ? await orgs(userId) : []) || (await admin())) ? { public: false } : null;
 }
 
 const DAY = 86_400_000;
@@ -212,7 +212,6 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
     archive: state.status !== "live" ? "draft" : state.deposit === "deposited" ? "archived" : "queued",
     activatedAt: at,
     // A few with each status show as the viewer's own on Your reports.
-    ...([0, 3, 5, 6, 8].includes(n) ? { demo: true } : {}),
     signedBy: { name, email: `${name.split(" ")[0]!.toLowerCase()}@example.org`, onBehalfOfAll: true },
     signedAt: at,
     agreementVersion: n < 9 ? 2 : 1,

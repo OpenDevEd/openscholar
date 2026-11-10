@@ -48,6 +48,7 @@ import { DetailsStep } from "@/components/publish-mock/details-step";
 import { activate, addToCommunity, discardCorrection, discardReport, goTo, readPdfDetails, readReport, requestCorrectionReview, requestReview, saveDetails, signAgreement, uploadPdf } from "@/app/actions/publish-mock";
 import { fillAgreement } from "@/lib/publish-mock/agreement";
 import { useClerk } from "@clerk/nextjs";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { RegistrationChips } from "@/components/publish-mock/registration";
 import { CitationControl } from "@/components/citation-control";
@@ -150,7 +151,10 @@ export function PublishFlow({
   userName,
   signedIn,
   starts,
+  shared,
 }: {
+  /** The page is in an organisation's workspace: its reports are every member's, so each row says who signed. */
+  shared: boolean;
   settings: Settings;
   reports: Submission[];
   userName: string;
@@ -287,6 +291,7 @@ export function PublishFlow({
       {view === "reports" ? (
         <YourReports
           settings={settings}
+          shared={shared}
           show={show}
           page={page}
           onPage={(next) => void setPlace({ page: next })}
@@ -307,7 +312,7 @@ export function PublishFlow({
       ) : missing ? (
         <ListEmpty
           icon={FileText}
-          description="It isn't one of this account's reports, or it was discarded. If an email sent you here, sign in with the account you published it from."
+          description="It isn't one of this workspace's reports, or it was discarded. If an email sent you here, sign in with the account it was published from."
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button size="sm" variant="outline" onClick={() => go({ view: "reports", report: null, correct: null })}>
@@ -338,6 +343,7 @@ export function PublishFlow({
               ) : !draft ? (
                 <AgreementStep
                   settings={settings}
+                  shared={shared}
                   userName={userName}
                   signedIn={signedIn}
                   blocked={startsLeft < 1 ? starts.perDay : null}
@@ -491,12 +497,14 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
 
 function AgreementStep({
   settings,
+  shared,
   userName,
   signedIn,
   blocked,
   onSigned,
 }: {
   settings: Settings;
+  shared: boolean;
   userName: string;
   signedIn: boolean;
   /** The person's daily limit when they've used it up, so no new report can start today; null when they may start one. */
@@ -504,6 +512,8 @@ function AgreementStep({
   onSigned: (d: Submission) => void;
 }) {
   const { openSignIn } = useClerk();
+  // The organisation whose workspace the page is in: the report started here is that workspace's.
+  const workspace = useWorkspaceSlug();
   // Today, kept for as long as the step is open, so the text doesn't change under the reader at midnight.
   const [today] = useState(() => new Date());
   const [name, setName] = useState(userName);
@@ -517,7 +527,7 @@ function AgreementStep({
         title={`Publishing agreement with ${settings.series.name}`}
         aside={<StatusChip tone="neutral">Version {agreement.version}</StatusChip>}
       >
-        You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI.
+        You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI.{shared ? " The report is this workspace's: its members can see it and work on it." : ""}
       </StepHead>
       <div
         className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5"
@@ -552,7 +562,7 @@ function AgreementStep({
             onClick={() =>
               start(async () => {
                 try {
-                  const result = await signAgreement({ name, onBehalfOfAll: all, version: agreement.version });
+                  const result = await signAgreement({ name, onBehalfOfAll: all, version: agreement.version, workspace });
                   if ("refused" in result) toast.error(result.refused);
                   else onSigned(result.draft);
                 } catch (error) {

@@ -3,9 +3,9 @@
 // makes these Convex functions with their user-action registry entries.
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { cookies, headers } from "next/headers";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
-import { accountOf, accountsMatching, isAdmin, organizationsOf, requireAdmin } from "@/lib/publish-mock/admin";
+import { accountOf, accountsMatching, actor, isAdmin, organizationAt, organizationsOf, requireAdmin, type Actor } from "@/lib/publish-mock/admin";
 import { applyCorrection } from "@/lib/publish-mock/checks";
 import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
@@ -13,7 +13,7 @@ import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceL
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
 import { SITE_URL } from "@/lib/seo/page-metadata";
-import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, correctionStageOf, forAuthor, isMetadata, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, correctionStageOf, forAuthor, isMetadata, mayWorkOn, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -53,14 +53,14 @@ const NOT_ADMIN: Refused = { refused: "You're signed out, or no longer an admin.
 const here = async () => (await headers()).get("origin") ?? SITE_URL;
 
 /** Who is acting. Several reports can be under way at once, so every step also says which report it means. */
-async function me() {
-  const { userId } = await auth();
-  return userId ?? refuse("Sign in to publish.");
+async function me(): Promise<Actor> {
+  return (await actor()) ?? refuse("Sign in to publish.");
 }
 
-/** One of this person's reports, by its key: the one on the screen the step came from, whichever is open elsewhere. */
-function reportOf(state: MockState, id: string, userId: string) {
-  return state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId)) ?? refuse("This report isn't one of yours, or it was discarded.");
+/** A report this person may work on, by its key: their own, or one of an organisation's they are a member of. The
+ * one on the screen the step came from, whichever is open elsewhere. */
+function reportOf(state: MockState, id: string, who: Actor | null) {
+  return (who && state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds))) || refuse("This report isn't one of this workspace's, or it was discarded.");
 }
 
 function touch(submission: Submission, patch: Partial<Submission>) {
@@ -73,10 +73,14 @@ function touch(submission: Submission, patch: Partial<Submission>) {
  * person may start only so many a day (`limitFor`). `version` is the agreement the person read: one changed since
  * is read again before it's signed.
  */
-export async function signAgreement({ name, onBehalfOfAll, version }: { name: string; onBehalfOfAll: boolean; version: number }): Promise<{ draft: Submission } | Refused> {
+export async function signAgreement({ name, onBehalfOfAll, version, workspace }: { name: string; onBehalfOfAll: boolean; version: number; /** The organisation whose workspace the page is in (/o/<slug>); none in the person's own. */ workspace?: string }): Promise<{ draft: Submission } | Refused> {
   const user = await currentUser();
   if (!user) return { refused: "Sign in to publish." };
-  const orgIds = await organizationsOf(user.id);
+  // The report is the workspace's it's started in: an organisation's for its members, or the person's own.
+  const organization = workspace ? await organizationAt(workspace) : null;
+  if (workspace && !(organization && (await organizationsOf(user.id)).includes(organization.id))) return { refused: "You're not a member of this workspace any more." };
+  // The workspace's limit: the person's own where they have one, else the organisation's, else everyone's.
+  const orgIds = organization ? [organization.id] : [];
   return change((state) => {
     if (!canPublish(state.settings)) return { refused: "Publishing is off for now." };
     if (version !== state.settings.agreement.version) return { refused: "The agreement changed while you were reading it. Reload to read the new one." };
@@ -91,6 +95,7 @@ export async function signAgreement({ name, onBehalfOfAll, version }: { name: st
     const draft: Submission = {
       id,
       ownerId: user.id,
+      ...(organization ? { orgId: organization.id, orgName: organization.name } : {}),
       signedBy: { name: name.trim(), email: user.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
       signedAt: Date.now(),
       agreementVersion: version,
@@ -114,10 +119,10 @@ export async function signAgreement({ name, onBehalfOfAll, version }: { name: st
 /** The author's corrections, kept as they make them, so leaving the details step loses nothing. A title being
  * retyped is kept empty; the checks are what need one. */
 export async function saveDetails(id: string, metadata: unknown) {
-  const { userId } = await auth();
-  if (!userId || !isMetadata(metadata, { titled: false })) return;
+  const who = await actor();
+  if (!who || !isMetadata(metadata, { titled: false })) return;
   await change((state) => {
-    const draft = state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId));
+    const draft = state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds));
     // Only while the details are being corrected: a save that arrives after the checks started changes nothing.
     if (draft?.step === "details" && !draft.run) touch(draft, { metadata });
   });
@@ -127,9 +132,9 @@ export async function saveDetails(id: string, metadata: unknown) {
  * day's start it used stays used. */
 export async function discardReport(id: string): Promise<null | Refused> {
   return answered(async () => {
-    const userId = await me();
+    const who = await me();
     return change(async (state) => {
-      const report = reportOf(state, id, userId);
+      const report = reportOf(state, id, who);
       if (!canDiscard(report)) refuse("Only a report that isn't approved or live can be discarded.");
       state.submissions = state.submissions.filter((s) => s !== report);
       await Promise.all([pdfPath(id), coverPath(id), textPath(id)].map((file) => rm(file, { force: true })));
@@ -142,9 +147,9 @@ export async function discardReport(id: string): Promise<null | Refused> {
  * replace a PDF that failed them; its details open again once that PDF has been read. */
 export async function goTo(id: string, step: Step): Promise<Submission | Refused> {
   return answered(async () => {
-    const userId = await me();
+    const who = await me();
     return change((state) => {
-      const draft = reportOf(state, id, userId);
+      const draft = reportOf(state, id, who);
       const checked = draft.step === "done";
       if (checked && stageOf(draft, state.settings) !== "failed") refuse(MOVED_ON);
       if (!(step === "doi" || step === "upload" || (step === "details" && !checked && !!draft.metadata))) refuse("That step isn't open for this report yet.");
@@ -162,7 +167,7 @@ export async function uploadPdf(form: FormData): Promise<Submission | Refused> {
     const bytes = await file.arrayBuffer();
     // pdfjs takes its buffer over, so each reader gets a copy and the original is kept.
     // The text and the cover are read side by side. A first page that can't be drawn leaves the report its title page.
-    const userId = await me();
+    const who = await me();
     const origin = await here();
     const opened = await Promise.all([
       extractPdfJsTextPages(bytes.slice(0)),
@@ -173,13 +178,13 @@ export async function uploadPdf(form: FormData): Promise<Submission | Refused> {
     ]).catch(async (error: unknown) => {
       // A file that isn't a PDF pdf.js can open: the team's inbox hears of it, and the author is told to try another.
       console.error("[publish mock] the PDF couldn't be opened", { name: file.name, bytes: file.size, error: String(error).slice(0, 300) });
-      await change((state) => mail(state, "pdf-unopened", { ...reportOf(state, id, userId), pdf: { name: file.name, pages: 0, bytes: file.size } }, origin));
+      await change((state) => mail(state, "pdf-unopened", { ...reportOf(state, id, who), pdf: { name: file.name, pages: 0, bytes: file.size } }, origin));
       return null;
     });
     if (!opened) return refuse("This PDF couldn't be opened. Try saving it again as a PDF.");
     const [{ pages, totalPages }, cover] = opened;
     return change(async (state) => {
-      const draft = reportOf(state, id, userId);
+      const draft = reportOf(state, id, who);
       if (draft.step === "done") refuse(MOVED_ON);
       await mkdir(MOCK_DIR, { recursive: true });
       await writeFile(pdfPath(draft.id), Buffer.from(bytes));
@@ -201,11 +206,11 @@ export async function uploadPdf(form: FormData): Promise<Submission | Refused> {
  */
 export async function readPdfDetails(id: string): Promise<{ draft: Submission; read: boolean } | Refused> {
   return answered(async () => {
-    const user = await currentUser();
+    const [who, user] = await Promise.all([me(), currentUser()]);
     const origin = await here();
     const state = await readState();
-    const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
-    if (!report?.pdf || report.step === "done") return refuse(MOVED_ON);
+    const report = reportOf(state, id, who);
+    if (!report.pdf || report.step === "done") return refuse(MOVED_ON);
     const { at, name } = report.pdf;
     const [pdf, text] = await Promise.all([readFile(pdfPath(id)), readFile(textPath(id), "utf8").catch(() => "")]);
     // The model reads outside the store's queue: half a minute of reading holds no one else's change up.
@@ -232,8 +237,8 @@ export async function readPdfDetails(id: string): Promise<{ draft: Submission; r
 }
 
 /** A live report of this person's with changes waiting, or a refusal in words. */
-function waitingChanges(state: MockState, id: string, userId: string | null, seenAt: number): { report: Submission; correction: Correction } | Refused {
-  const report = userId ? state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId)) : undefined;
+function waitingChanges(state: MockState, id: string, who: Actor | null, seenAt: number): { report: Submission; correction: Correction } | Refused {
+  const report = who ? state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds)) : undefined;
   if (report?.status !== "live" || !report.correction) return { refused: "This report has no changes waiting any more. Reload to see where it stands." };
   // The changes on the screen the action came from, by when they were checked: ones sent since, say from another
   // tab, are never the ones discarded or asked about.
@@ -246,10 +251,10 @@ function waitingChanges(state: MockState, id: string, userId: string | null, see
  * changes then wait for a reviewer, and the team's inbox hears of them.
  */
 export async function requestCorrectionReview(id: string, seenAt: number, comment: string): Promise<Submission | Refused> {
-  const { userId } = await auth();
+  const who = await actor();
   const origin = await here();
   return change((state) => {
-    const found = waitingChanges(state, id, userId, seenAt);
+    const found = waitingChanges(state, id, who, seenAt);
     if ("refused" in found) return found;
     const { report, correction } = found;
     const stage = correctionStageOf(report, correction);
@@ -264,9 +269,9 @@ export async function requestCorrectionReview(id: string, seenAt: number, commen
 
 /** The author gives up changes that haven't gone live. The report stays as it is. */
 export async function discardCorrection(id: string, seenAt: number): Promise<Submission | Refused> {
-  const { userId } = await auth();
+  const who = await actor();
   return change((state) => {
-    const found = waitingChanges(state, id, userId, seenAt);
+    const found = waitingChanges(state, id, who, seenAt);
     // A run still reading changes is given up with them: its answers must not put anything live afterwards.
     return "refused" in found ? found : forAuthor(touch(found.report, { correction: undefined, run: undefined }));
   });
@@ -411,10 +416,10 @@ export async function updateAgreement(text: string) {
  */
 export async function requestReview(id: string, comment: string): Promise<Submission | Refused> {
   return answered(async () => {
-    const userId = await me();
+    const who = await me();
     const origin = await here();
     return change((state) => {
-      const report = reportOf(state, id, userId);
+      const report = reportOf(state, id, who);
       // Asked of a report its checks failed and no one has approved since: anything else has moved on.
       if (stageOf(report, state.settings) !== "failed") refuse(MOVED_ON);
       if (report.reviewRequest) return report;
@@ -503,10 +508,10 @@ export async function reviewCorrection(id: string, decision: "approve" | "declin
 /** The author makes a report live once no review is owed: its DOI is registered and its page opens. */
 export async function activate(id: string): Promise<Submission | Refused> {
   return answered(async () => {
-    const userId = await me();
+    const who = await me();
     const origin = await here();
     return change((state) => {
-      const submission = reportOf(state, id, userId);
+      const submission = reportOf(state, id, who);
       const stage: Stage = stageOf(submission, state.settings);
       if (stage === "live") refuse("This report is already live.");
       if (stage === "review") refuse("A reviewer has to approve this report before you can activate it.");
@@ -528,9 +533,9 @@ export async function activate(id: string): Promise<Submission | Refused> {
  * the real build is told by Convex.
  */
 export async function readReport(id: string) {
-  const { userId } = await auth();
+  const who = await actor();
   const state = await readState();
-  const report = state.submissions.find((s) => s.id === id && (s.demo || (userId && s.ownerId === userId)));
+  const report = who ? state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds)) : undefined;
   return report ? { report: forAuthor(report), humanReview: state.settings.humanReview } : null;
 }
 
@@ -541,9 +546,9 @@ export async function readReport(id: string) {
  */
 export async function addToCommunity(id: string, community: { id: string; name: string }, publish: boolean): Promise<{ outcome: "added" | "queued" | "existing"; report: Submission } | Refused> {
   return answered(async () => {
-    const userId = await me();
+    const who = await me();
     return change((state) => {
-      const report = reportOf(state, id, userId);
+      const report = reportOf(state, id, who);
       if (report.status !== "live") return refuse("This report isn't live any more, so it can't be added to a community.");
       report.communities ??= [];
       if (report.communities.some((c) => c.id === community.id)) return { outcome: "existing" as const, report };

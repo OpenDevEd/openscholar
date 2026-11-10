@@ -3,7 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import { MarkdownContent } from "@/components/markdown-content";
 import { PageWrapper } from "@/components/PageWrapper";
-import { isAdmin } from "@/lib/publish-mock/admin";
+import { isAdmin, organizationsOf } from "@/lib/publish-mock/admin";
+import { mayWorkOn } from "@/lib/publish-mock/types";
 import { fillAgreement } from "@/lib/publish-mock/agreement";
 import { readState } from "@/lib/publish-mock/store";
 
@@ -12,11 +13,11 @@ export const metadata: Metadata = { title: "Publishing agreement", robots: { ind
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
 // MOCK (mock/publish-reports): the agreement a report's author signed, in the wording of the version they signed,
-// with who signed and when. Its author and Openscholar's admins read it; it can be saved or printed from here.
+// with who signed and when. Its workspace and Openscholar's admins read it; it can be saved or printed from here.
 export default async function SignedAgreementPage({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, { userId }, state] = await Promise.all([params, auth(), readState()]);
   const report = state.submissions.find((s) => s.id === id && s.signedAt && s.signedBy);
-  if (!report || !userId || !(report.demo || report.ownerId === userId || (await isAdmin()))) notFound();
+  if (!report || !userId || !(mayWorkOn(report, userId, report.orgId ? await organizationsOf(userId) : []) || (await isAdmin()))) notFound();
   const version = report.agreementVersion ?? state.settings.agreement.version;
   // An older version's wording is kept when the text changes; the current one is the settings' own.
   const text = state.agreementVersions?.[String(version)] ?? state.settings.agreement.text;
