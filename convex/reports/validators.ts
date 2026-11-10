@@ -234,7 +234,7 @@ export const adminReportValidator = v.object({
   run: v.optional(v.object({ at: v.number(), changes: v.boolean() })),
   pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
-  results: v.optional(checkResultsValidator),
+  results: capped(v.optional(v.array(checkResultValidator)), MAX_CHECKS),
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
   correction: v.optional(changesValidator),
   activatedAt: v.optional(v.number()),

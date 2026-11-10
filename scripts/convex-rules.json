@@ -98,7 +98,9 @@
       "SUBMISSIONS_COUNTED": "the papers of one status a person sent, counted for Your submissions' status filter; past it the filter says so",
       "SENDERS_PER_PAPER": "the people who sent the same paper to a community, whose rows a change from it updates; past it the first hundred are updated",
       "RECENT_SUBMISSIONS_READ": "a person's latest submissions, looked through for the communities Add to community lists as recent",
-      "PAPER_SENT_TO": "the communities one paper is listed as sent to, for Add to community's row states"
+      "PAPER_SENT_TO": "the communities one paper is listed as sent to, for Add to community's row states",
+      "STATUS_READ": "the newest reports of each status the reviewers' list reads and searches; past it, older reports of that status are found by their key, not listed",
+      "REVIEWS_SHOWN": "a report's latest reviewer decisions, shown on its record; earlier ones stay in the table"
     },
     "batches": {
       "REMOVED_AT_ONCE": "submissions of one paper marked removed in one write; past it the mutation schedules itself for the rest",
@@ -133,7 +135,8 @@
       "REBUILD_BATCH": "One step of a rebuild that schedules the next; the rows are small and the whole table is meant to be read.",
       "GRANT_BATCH": "a deleted developer app's rows on people's lists of sites, a batch at a time; it reschedules itself until none are left",
       "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left",
-      "PURGE_APPLICATIONS": "a deleted account's applications to join communities, a batch per cleanup run; the run defers the account until none are left"
+      "PURGE_APPLICATIONS": "a deleted account's applications to join communities, a batch per cleanup run; the run defers the account until none are left",
+      "RELEASED_PER_STEP": "live reports whose waiting changes go live when review is switched off; a full step with any released reschedules itself"
     }
   }
 }
