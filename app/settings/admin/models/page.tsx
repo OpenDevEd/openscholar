@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -40,7 +40,7 @@ export default function ModelListPage() {
   const [show, setShow] = useState<Show>("all");
   // The list is filtered and read a page at a time on the server; the summary totals the view and names the chips.
   const view = { ...(provider ? { provider } : {}), search: useDebouncedValue(search.trim(), 300), show };
-  const models = useCursorPage(api.models.admin.listModels, inWorkspace(workspaceId, view), PER_PAGE);
+  const models = useCursorPageAt("page", api.models.admin.listModels, inWorkspace(workspaceId, view), PER_PAGE);
   const { data: counted } = useProtectedQuery(api.models.admin.summary, inWorkspace(workspaceId, view));
   // The last summary stays up while another view is counted.
   const [summary, setSummary] = useState(counted);

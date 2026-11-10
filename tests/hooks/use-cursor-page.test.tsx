@@ -1,7 +1,9 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FunctionReference } from "convex/server";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
+import type { ReactNode } from "react";
+import { useCursorPage, useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 
 type Page = { page: string[]; isDone: boolean; continueCursor: string };
 type Args = { search?: string; paginationOpts: { cursor: string | null; numItems: number; id?: number } };
@@ -199,5 +201,98 @@ describe("useCursorPage", () => {
     server.pages.set("|c2", new Error("[CONVEX Q(collections:list)] InvalidCursor: Tried to run a query starting from a cursor, but it looks like this cursor is from a different query."));
     rerender();
     expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canNext: true });
+  });
+});
+
+describe("useCursorPageAt", () => {
+  const updates: UrlUpdateEvent[] = [];
+  const at = (search = "") => ({ children }: { children: ReactNode }) => (
+    <NuqsTestingAdapter searchParams={search} onUrlUpdate={(update) => updates.push(update)} hasMemory>{children}</NuqsTestingAdapter>
+  );
+  beforeEach(() => { updates.length = 0; });
+  // nuqs writes the address a moment after the state; the full suite runs many workers, so allow it longer than a second.
+  const written = async (count: number) => { await waitFor(() => expect(updates).toHaveLength(count), { timeout: 5000 }); return updates.at(-1)!; };
+  /** The address after one step forward from the first page. */
+  const second = async () => {
+    const first = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper: at() });
+    act(() => first.result.current.next());
+    const { queryString } = await written(1);
+    first.unmount();
+    return queryString;
+  };
+
+  it("writes each step to the address as a step in the browser's history, and the first page as no parameter", async () => {
+    const { result } = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper: at() });
+    act(() => result.current.next());
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2 });
+    const forward = await written(1);
+    expect(forward).toMatchObject({ options: { history: "push", scroll: true } });
+    // The page's number and the list's name, and nothing of where the page starts: a cursor may hold a person's email.
+    expect(forward.searchParams.get("page")).toMatch(/^2\.[a-z0-9]+$/);
+    act(() => result.current.previous());
+    expect(result.current).toMatchObject({ items: ["a", "b"], page: 1 });
+    expect((await written(2)).searchParams.has("page")).toBe(false);
+  });
+
+  it("opens the page an address names, reading the pages before it to find where it starts", async () => {
+    server.pages.set("|c1", page(["c", "d"], "c2"));
+    server.pages.set("|c2", page(["e"], "c3", true));
+    const address = (await second()).replace("page=2", "page=3");
+    server.reads = [];
+    const { result } = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper: at(address) });
+    expect(result.current).toMatchObject({ items: ["e"], page: 3, offset: 4, canPrevious: true, canNext: false, isStale: false });
+    act(() => result.current.previous());
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, offset: 2 });
+  });
+
+  it("shows nothing of the pages it reads on the way", async () => {
+    const address = await second();
+    server.pages.delete("|c1");
+    const { result } = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper: at(address) });
+    expect(result.current).toMatchObject({ items: [], isLoading: true, page: 2 });
+  });
+
+  it("opens the last page when the address names one past the list's end", async () => {
+    const address = (await second()).replace("page=2", "page=9");
+    const { result } = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper: at(address) });
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: false });
+  });
+
+  it("opens the first page when the address names a place in another search", async () => {
+    const address = await second();
+    const { result } = renderHook(() => useCursorPageAt("page", query, { search: "x" }, 2), { wrapper: at(address) });
+    expect(result.current).toMatchObject({ items: ["x"], page: 1, canPrevious: false });
+  });
+
+  it("opens the first page for a second list that shares the parameter and takes the same arguments", async () => {
+    const address = await second();
+    const other = { name: "collections:others" } as unknown as typeof query;
+    const { result } = renderHook(() => useCursorPageAt("page", other, {}, 2), { wrapper: at(address) });
+    expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canPrevious: false });
+  });
+
+  it("goes back to a page it passed without reading the pages before it again", async () => {
+    server.pages.set("|c1", page(["c", "d"], "c2"));
+    server.pages.set("|c2", page(["e"], "c3", true));
+    // The address the browser is at, which its Back button moves.
+    const browser = { search: "" };
+    const wrapper = ({ children }: { children: ReactNode }) => <NuqsTestingAdapter searchParams={browser.search} onUrlUpdate={(update) => updates.push(update)} hasMemory>{children}</NuqsTestingAdapter>;
+    const { result, rerender } = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper });
+    act(() => result.current.next());
+    const second = (await written(1)).queryString;
+    act(() => result.current.next());
+    await written(2);
+    expect(result.current).toMatchObject({ items: ["e"], page: 3 });
+    server.reads = [];
+    browser.search = second;
+    rerender();
+    await waitFor(() => expect(result.current).toMatchObject({ items: ["c", "d"], page: 2 }), { timeout: 5000 });
+    expect(server.reads.map((read) => read.paginationOpts.cursor)).not.toContain(null);
+  });
+
+  it("leaves the page where it is for a list that is one part of a long page", async () => {
+    const { result } = renderHook(() => useCursorPageAt("limits", query, {}, 2, { scroll: false }), { wrapper: at() });
+    act(() => result.current.next());
+    expect(await written(1)).toMatchObject({ options: { history: "push", scroll: false } });
   });
 });

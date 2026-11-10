@@ -21,7 +21,7 @@ import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { downloadExport } from "@/lib/export";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { useWatchedSearch } from "@/lib/research/reads";
 import { exportScreeningToXLSX } from "@/lib/screening/export";
@@ -322,7 +322,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   const missing = job.libraryDestination ? (job.libraryMissing ?? 0) : 0;
   const [notInLibrary, setNotInLibrary] = useState(false);
   const onlyMissing = notInLibrary && tab === "included" && missing > 0;
-  const list = useCursorPage(api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}), ...(onlyMissing ? { notInLibrary: true } : {}) }), PAGE_SIZE);
+  const list = useCursorPageAt("page", api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}), ...(onlyMissing ? { notInLibrary: true } : {}) }), PAGE_SIZE);
   // The held paper as it stands now, read on its own: its outcome's list no longer holds it.
   const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.paper } : "skip"));
   const answer = useWorkspaceMutation(api.screening.papers.answer);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createParser, useQueryState } from "nuqs";
 import { useQueries } from "convex/react";
 import { getFunctionName, type FunctionReference, type PaginationResult, type paginationOptsValidator } from "convex/server";
 import { ConvexError, type Infer } from "convex/values";
@@ -16,6 +17,8 @@ type Result<Query extends PageQuery> = { page: PageItem<Query>[]; isDone: boolea
 type Shown<Query extends PageQuery> = Result<Query> & { key: string; number: number; offset: number; from: Result<Query>[] };
 /** Where a page after the first starts, and how many rows the pages before it held. */
 type Start = { cursor: string; offset: number };
+/** The first page's place: one array, so a list at its first page is the same place on every draw. */
+const NO_STARTS: Start[] = [];
 
 /**
  * Reads one page may take to fill. A filtered query stops after a set number of rows, so
@@ -41,18 +44,81 @@ const invalidCursor = (error: Error) =>
  * stops offering next there until a row is added after it.
  */
 /** `open`: a query anyone may read, signed in or not, which doesn't wait for sign-in. */
-export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number, { open = false }: { open?: boolean } = {}) {
+type Options = { open?: boolean };
+/** `scroll: false` for a list that is one part of a long page: its next page opens where the list is, not at the page's top. */
+type PlacedOptions = Options & { scroll?: boolean };
+
+/**
+ * Where a list is: the number of the page shown, for the list those arguments and that page size make.
+ * `of` names that list, so a place kept from another search, another size or another list is no place in this one.
+ */
+type Placed = { of: string; page: number };
+type Place = { placed: Placed | null; setPlaced: (next: Placed | null) => void };
+
+/** A short name for a list's query, arguments and page size, to tell one list's place from another's. */
+function nameOf(text: string) {
+  let hash = 5381;
+  for (let at = 0; at < text.length; at++) hash = ((hash << 5) + hash + text.charCodeAt(at)) | 0;
+  return (hash >>> 0).toString(36);
+}
+
+/**
+ * A place in the address: the page's number, then the list's name. Never a cursor: a list read in a person's order
+ * starts its pages at a name or an email address, which has no business in an address, a history or a page-view record.
+ */
+const parseAsPlaced = createParser<Placed>({
+  parse: (value) => {
+    const [number, of, ...rest] = value.split(".");
+    const page = Number(number);
+    return of && !rest.length && Number.isInteger(page) && page > 1 ? { of, page } : null;
+  },
+  serialize: ({ of, page }) => `${page}.${of}`,
+  eq: (a, b) => a.of === b.of && a.page === b.page,
+});
+
+/** The list with its page kept in the component: for a picker, a dialog or a rail, whose paging is no place to come back to. */
+export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number, options: Options = {}) {
+  const [placed, setPlaced] = useState<Placed | null>(null);
+  return usePages({ placed, setPlaced }, query, args, pageSize, options);
+}
+
+/**
+ * The same list with its page in the address, under `name` (OpenDevEd/openalex-count#1212): stepping forward or back
+ * is a step in the browser's history, opened at its top as a numbered page is, so Back returns to the page before, and
+ * a reload or a link lands on the same page, and on the list's last page when it has since grown shorter.
+ */
+export function useCursorPageAt<Query extends PageQuery>(name: string, query: Query, args: PageArgs<Query> | "skip", pageSize: number, { scroll = true, ...options }: PlacedOptions = {}) {
+  const [placed, setPlaced] = useQueryState(name, parseAsPlaced.withOptions({ history: "push", scroll }));
+  return usePages({ placed, setPlaced: (next) => void setPlaced(next) }, query, args, pageSize, options);
+}
+
+function usePages<Query extends PageQuery>(place: Place, query: Query, args: PageArgs<Query> | "skip", pageSize: number, { open = false }: Options) {
   const { canRunProtectedQueries } = useAuthReadiness();
   // A page of another size starts somewhere else, so the size is part of what the pages are of.
   const key = JSON.stringify([args, pageSize]);
+  // Two lists on one page may share a parameter and take the same arguments: the query is part of which list it is.
+  const of = nameOf(`${getFunctionName(query)} ${key}`);
+  // How many pages the place is past the first: the starts it takes to read the page it names.
+  const placed = place.placed?.of === of ? place.placed.page - 1 : 0;
   // `starts` holds where every page after the first starts; `reads`, the current page's reads.
   // `end` is where the list was found to end, by stepping to an empty page: the page before
   // it, and the cursor the empty page started at.
-  const fresh = { key, starts: [] as Start[], reads: [{ cursor: null, numItems: pageSize }] as Read[], id: 0, end: undefined as { page: number; cursor: string } | undefined };
-  const [state, setState] = useState(fresh);
-  const current = state.key === key ? state : fresh;
-  if (state.key !== key) setState(fresh);
-  const { starts, reads, id } = current;
+  // `want` is how many starts the page to show takes. It is the place's own, unless the list itself moved off it: a
+  // cursor the server refused, or a last page emptied by deletions, shows another page than the place names until
+  // the next step names it. While `starts` is short of it, the pages between are read one after another to find
+  // where the page starts. ponytail: a page far down a list, opened from a link or a reload, costs a read for
+  // every page before it; a server that kept each page's start under the address's name would open it in one.
+  // `known` keeps every start found for this list, so Back to a page already passed reads it at once.
+  const from = (starts: Start[], known: Start[], want = placed) => ({
+    key, placed, want, starts, known: starts.length > known.length || starts.some((start, i) => start.cursor !== known[i]!.cursor) ? starts : known,
+    reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }] as Read[], id: 0, end: undefined as { page: number; cursor: string } | undefined,
+  });
+  const [state, setState] = useState(() => from(NO_STARTS, NO_STARTS));
+  // When the list or its place changes, the reads start over from that place, with the starts this list already gave.
+  const moved = state.key !== key || state.placed !== placed;
+  const current = moved ? from(state.key === key ? state.known.slice(0, placed) : NO_STARTS, state.key === key ? state.known : NO_STARTS) : state;
+  if (moved) setState(current);
+  const { starts, reads, id, known, want } = current;
   const ended = current.end?.page === starts.length ? current.end.cursor : undefined;
 
   const run = args !== "skip" && (open || canRunProtectedQueries);
@@ -75,7 +141,7 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
   // A deploy that reads the list through another index refuses every cursor from before it,
   // the end a first page's subscription keeps included, so the list starts over from its first
   // page under a new query id, as Convex's usePaginatedQuery does. Any other error is thrown.
-  if ([...read, results.after].some((result) => result instanceof Error && invalidCursor(result))) setState({ ...fresh, id: id + 1 });
+  if ([...read, results.after].some((result) => result instanceof Error && invalidCursor(result))) setState({ ...from(NO_STARTS, NO_STARTS, 0), id: id + 1 });
   else if (error) throw error;
 
   const [shown, setShown] = useState<Shown<Query> | undefined>(undefined);
@@ -100,19 +166,27 @@ export function useCursorPage<Query extends PageQuery>(query: Query, args: PageA
     }
   }
 
-  const step = (nextStarts: Start[], end?: { page: number; cursor: string }) => setState({ ...current, starts: nextStarts, reads: [{ cursor: nextStarts.at(-1)?.cursor ?? null, numItems: pageSize }], end });
+  // A step the person takes names the page it goes to, wherever the place is kept; the reads follow it at once.
+  const step = (nextStarts: Start[]) => {
+    setState({ ...from(nextStarts, known, nextStarts.length), placed: nextStarts.length, id });
+    place.setPlaced(nextStarts.length ? { of, page: nextStarts.length + 1 } : null);
+  };
   // An empty last page, after a list that ended on a full page or one emptied by deletions, steps
-  // back to the page before it, the list's end.
+  // back to the page before it, the list's end. The list moved, not the person: the place keeps its name.
   const emptied = data !== undefined && data.page.length === 0 && data.isDone && starts.length > 0;
-  if (emptied) step(starts.slice(0, -1), { page: starts.length - 1, cursor: starts[starts.length - 1].cursor });
+  // A page on the way to the one the place names: read on from where it stops, and show nothing of it.
+  const passing = data !== undefined && !emptied && starts.length < want && !data.isDone;
+  if (emptied) setState({ ...current, want: starts.length - 1, starts: starts.slice(0, -1), reads: [{ cursor: starts.at(-2)?.cursor ?? null, numItems: pageSize }], end: { page: starts.length - 1, cursor: starts[starts.length - 1].cursor } });
+  else if (passing) setState({ ...from([...starts, { cursor: data!.continueCursor, offset: data!.offset + data!.page.length }], known, want), id });
   else if (data !== undefined && data !== shown) setShown(data);
+  if (passing) data = undefined;
 
   // Past the page the list ended on there is more once the read after it finds a row, or stops short of the end.
   const after = results.after;
   const more = ended === undefined || (after !== undefined && !(after instanceof Error) && (after.page.length > 0 || !after.isDone));
 
   const visible = args === "skip" ? undefined : emptied ? shown : (data ?? shown);
-  const page = visible?.number ?? starts.length + 1;
+  const page = visible?.number ?? want + 1;
   // The same array until the page shown changes, so what's derived from it isn't rebuilt each render.
   const items = useMemo(() => (visible?.page ?? []).slice(0, pageSize), [visible, pageSize]);
   return {

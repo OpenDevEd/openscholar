@@ -12,7 +12,7 @@ import { CountryFlag } from "@/components/ui/country-flag";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { PUBLIC_PER_PAGE } from "@/lib/evidence-libraries/directory";
 import type { Preloaded } from "convex/react";
 import { preloadedQueryResult } from "convex/nextjs";
@@ -44,9 +44,9 @@ export function PublicCommunities({ search, preloaded, heading, signedIn = false
 }) {
   const t = useTranslations("libraryList.directory");
   const [sort, setSort] = useState<Sort>("newest");
-  const live = useCursorPage(api.evidenceLibraries.directory.directory, { sort, ...(search ? { search } : {}) }, PER_PAGE, { open: true });
+  const live = useCursorPageAt("page", api.evidenceLibraries.directory.directory, { sort, ...(search ? { search } : {}) }, PER_PAGE, { open: true });
   // The server's first page, newest first, until the live one arrives: the cards are there from the first frame.
-  const first = preloaded && live.isLoading && sort === "newest" && !search ? preloadedQueryResult(preloaded) : undefined;
+  const first = preloaded && live.isLoading && live.page === 1 && sort === "newest" && !search ? preloadedQueryResult(preloaded) : undefined;
   const read = first ? { ...live, items: first.page, isLoading: false, hasPages: !first.isDone } : live;
   // Where the person stands with each card shown, read for the page of cards; the first page's comes with the page.
   const workspaceId = useWorkspace();
