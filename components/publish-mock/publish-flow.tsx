@@ -163,8 +163,19 @@ export function PublishFlow({
   starts: { left: number; perDay: number };
 }) {
   const [{ view, report: asked, correct, show, page }, setPlace] = useQueryStates(PLACE);
-  /** Moves to another report or view, so the back button returns to this one. */
-  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push" });
+  // Moving to another report, view or page of the list, or opening a report's details to correct, is a step forward
+  // in the browser's history, so Back returns to where the person was. Leaving the details with their own Cancel is
+  // the step back, so Back afterwards never reopens them; what a link or a reload opened closes in place.
+  const steps = useRef(0);
+  const go = (next: Parameters<typeof setPlace>[0]) => {
+    steps.current += 1;
+    void setPlace(next, { history: "push" });
+  };
+  const up = (next: Parameters<typeof setPlace>[0]) => {
+    if (steps.current < 1) return void setPlace(next);
+    steps.current -= 1;
+    window.history.back();
+  };
   const [reports, setReports] = useState(initialReports);
   // Whether review is on decides where a report stands, and an admin can switch it while this page is open: the
   // re-read below brings it along with the report.
@@ -294,7 +305,7 @@ export function PublishFlow({
           shared={shared}
           show={show}
           page={page}
-          onPage={(next) => void setPlace({ page: next })}
+          onPage={(next) => go({ page: next })}
           reports={reports}
           onOpen={(id) => go({ view: null, report: id, correct: null })}
           // Changes already waiting open where they stand; otherwise the details open to be corrected.
@@ -379,7 +390,7 @@ export function PublishFlow({
                   onRun={(metadata) => check(draft, metadata, true)}
                   onCancel={() => {
                     setAttempt(null);
-                    void setPlace({ correct: null });
+                    up({ correct: null });
                   }}
                 />
               ) : live && draft.correction ? (
