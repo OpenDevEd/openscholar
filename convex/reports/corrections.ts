@@ -2,7 +2,7 @@
 // reviewer may edit them directly. Either way the report stays live as it was until the changes are its details.
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../lib/functions";
-import { providersOf, type CheckResult, type Metadata } from "../../lib/reports/report";
+import { changesOf, providersOf, type CheckResult, type Metadata } from "../../lib/reports/report";
 
 type Kept = CheckResult & { model: string };
 
@@ -11,6 +11,8 @@ type Kept = CheckResult & { model: string };
  * registered in, so Crossref and Zenodo come to hold them too.
  */
 export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, details: Doc<"reportDetails">, changes: { metadata: Metadata; results: Kept[]; checksVersion: number }) {
+  // What the change is, for the email that tells its author it is live.
+  const changed = details.metadata ? changesOf(details.metadata, changes.metadata).map((change) => change.label).join(", ") : "";
   const registers = providersOf(report.registration);
   // Later than the report's last change and the last time its details were set, so a form opened before this is told from one opened after.
   const now = Math.max(Date.now(), report.updatedAt + 1, (liveSince(report) ?? 0) + 1);
@@ -27,6 +29,7 @@ export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, det
     archive: registers.includes("zenodo") ? "queued" : "none",
     updatedAt: now,
   });
+  return changed;
 }
 
 /** When a live report's details were last set: what a form of changes started from. */
