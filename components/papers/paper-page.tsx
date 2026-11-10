@@ -187,9 +187,13 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
         </div>
         {/* On a phone the citations come before the abstract; beside it they head the sidebar. */}
         <aside className="contents lg:block lg:min-w-0 lg:space-y-10">
-          <div className="-order-1 lg:order-none">
-            <Impact detail={detail} citations={detail.citations} references={paper.referenced_works_count ?? null} fwci={paper.fwci ?? null} year={paper.publication_year ?? null} citingHref={buildShareableUrl("", { cites: appId })} />
-          </div>
+          {/* MOCK (mock/publish-reports): a report nothing has cited yet has no count to show, and none to follow to.
+              The real build shows the card once OpenAlex or Crossref counts a citation of its DOI. */}
+          {extra && !detail.citations ? null : (
+            <div className="-order-1 lg:order-none">
+              <Impact detail={detail} citations={detail.citations} references={paper.referenced_works_count ?? null} fwci={paper.fwci ?? null} year={paper.publication_year ?? null} citingHref={buildShareableUrl("", { cites: appId })} />
+            </div>
+          )}
           <Copies copies={detail.copies} />
           {detail.funding.length ? (
             <Section id="paper-funding" title={t("funding")}>
