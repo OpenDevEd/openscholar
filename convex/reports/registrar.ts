@@ -14,28 +14,44 @@ import { decrypt } from "../lib/crypto";
 import { requireAppUrl } from "../lib/env";
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
-import type { Funding } from "../../lib/reports/report";
-import { funderKey, registrationRecord } from "../../lib/reports/registration-record";
+import type { Metadata } from "../../lib/reports/report";
+import { openAlexKey, registrationRecord, type RegistryIds } from "../../lib/reports/registration-record";
 
-/** OpenAlex couldn't say who a report's funders are in the Funder Registry: worth trying again, like a registrar that couldn't be reached. */
-class FundersUnread extends Error {}
+/** OpenAlex couldn't say who a report's funders and institutions are in the Funder Registry and ROR: worth trying again, like a registrar that couldn't be reached. */
+class IdsUnread extends Error {}
 
 /** A registrar that couldn't be reached, or answered that it is busy: worth trying again. Anything else is a refusal. */
 const unreached = (error: unknown) =>
-  error instanceof FundersUnread || (error instanceof ProviderHttpError ? error.retryable : error instanceof TypeError || (error instanceof Error && error.name === "TimeoutError"));
+  error instanceof IdsUnread || (error instanceof ProviderHttpError ? error.retryable : error instanceof TypeError || (error instanceof Error && error.name === "TimeoutError"));
 
 /** Crossref's own words for a refused deposit, or its counts when it gave none. */
 const said = (diagnostic: CrossrefDiagnosticResult) =>
   diagnostic.failures?.join(" ") || `${diagnostic.failureCount} of ${diagnostic.recordCount} records failed (${diagnostic.batchStatus ?? diagnostic.status}).`;
 
-/** Each funder's Funder Registry DOI, which Crossref matches funders by, by OpenAlex ID: one request, as a report holds at most 50 funders. */
-async function funderDois(funding: Funding[]) {
-  const ids = [...new Set(funding.flatMap((f) => (f.funder.id ? [funderKey(f.funder.id)] : [])))];
-  if (ids.length === 0) return {};
-  const response = await openAlexFetch(openAlexUrl("funders", { filter: `openalex:${ids.join("|")}`, select: "id,ids", "per-page": "50" }), { timeoutMs: 12_000 });
-  if (!response.ok) throw new FundersUnread(`OpenAlex answered ${response.status} when asked for the report's funders.`);
-  const { results } = (await response.json()) as { results: Array<{ id: string; ids?: { doi?: string | null } }> };
-  return Object.fromEntries(results.flatMap((funder) => (funder.ids?.doi ? [[funderKey(funder.id), funder.ids.doi]] : [])));
+/**
+ * What OpenAlex knows of a report's funders and institutions: each funder's Funder Registry DOI and ROR, and each
+ * institution's ROR. One request each, as a report holds at most 50 funders and its authors' institutions are few.
+ */
+async function registryIds(m: Metadata): Promise<RegistryIds> {
+  const ask = async (entity: "funders" | "institutions", ids: string[]) => {
+    if (!ids.length) return [];
+    const results: Array<{ id: string; ids?: { doi?: string | null; ror?: string | null } }> = [];
+    for (let at = 0; at < ids.length; at += 50) {
+      const response = await openAlexFetch(openAlexUrl(entity, { filter: `openalex:${ids.slice(at, at + 50).join("|")}`, select: "id,ids", "per-page": "50" }), { timeoutMs: 12_000 });
+      if (!response.ok) throw new IdsUnread(`OpenAlex answered ${response.status} when asked for the report's ${entity}.`);
+      results.push(...((await response.json()) as { results: typeof results }).results);
+    }
+    return results;
+  };
+  const unique = (ids: Array<string | null>) => [...new Set(ids.flatMap((id) => (id ? [openAlexKey(id)] : [])))];
+  const [funders, institutions] = await Promise.all([
+    ask("funders", unique(m.funding.map((f) => f.funder.id))),
+    ask("institutions", unique(m.authors.flatMap((author) => author.affiliations.map((affiliation) => affiliation.id)))),
+  ]);
+  return {
+    funders: Object.fromEntries(funders.map((funder) => [openAlexKey(funder.id), { ...(funder.ids?.doi && { doi: funder.ids.doi }), ...(funder.ids?.ror && { ror: funder.ids.ror }) }])),
+    institutions: Object.fromEntries(institutions.flatMap((institution) => (institution.ids?.ror ? [[openAlexKey(institution.id), institution.ids.ror]] : []))),
+  };
 }
 
 export const register = internalAction({
@@ -60,7 +76,7 @@ export const register = internalAction({
           const key = process.env.ENCRYPTION_KEY;
           secrets = job.encryptedCredentials && key ? JSON.parse(decrypt(job.encryptedCredentials, key)) : {};
           const { crossref, zenodo } = job.publication;
-          const record = registrationRecord(job, job.metadata, job.series, requireAppUrl(), provider === "crossref" ? await funderDois(job.metadata.funding) : {});
+          const record = registrationRecord({ ...job, pages: job.pdf?.pages, hasPdf: job.pdf !== null }, job.metadata, job.series, requireAppUrl(), await registryIds(job.metadata));
           if (provider === "crossref") {
             if (crossref.mode === "off" || !secrets.crossrefLoginId || !secrets.crossrefPassword) throw new Error("Crossref isn't connected in the publishing settings.");
             const mapped = mapCrossrefRecord(record, job.doi);
@@ -130,7 +146,7 @@ export const register = internalAction({
             });
             // Reusing the Crossref DOI, Zenodo archives the file under it; otherwise it gives the copy a DOI of its own.
             const doiPolicy = job.registration.crossref && job.registration.policy === "reuse-crossref" ? ("external-crossref" as const) : ("dual" as const);
-            const { fields: _fields, landingUrl, doi, ...metadata } = record;
+            const { landingUrl, doi, ...metadata } = record;
             const shared = { token, doiPolicy, metadata: { ...metadata, ...(doiPolicy === "external-crossref" && { doi }) }, resourceUrl: landingUrl };
             // A record published by a try whose answer never arrived is found under the report's DOI, not made again.
             const found = job.zenodoRecordId ?? (doiPolicy === "external-crossref" ? await client.findRecordByDoi({ token, doi }).then((looked) => (looked.status === "found" ? looked.record.identifiers.latestRecordId : undefined)) : undefined);
