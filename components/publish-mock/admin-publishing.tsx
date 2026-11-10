@@ -895,7 +895,7 @@ function AccountPicker({ accounts, has, onPick }: { accounts: Accounts; has: (id
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="Search people and organisations" value={query} onValueChange={setQuery} />
+          <CommandInput placeholder="Search people and organisations" value={query} onValueChange={setQuery} busy={query.trim() !== search || (!!search && found.isValidating)} />
           <CommandList className={cn("transition-opacity", search && found.isLoading && "opacity-60")}>
             <CommandEmpty>No account or organisation has that name</CommandEmpty>
             {groups.map((group) => (

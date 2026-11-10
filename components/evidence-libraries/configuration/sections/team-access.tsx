@@ -113,7 +113,7 @@ function OrganizationPeople({ libraryId, members, selected, onSelect }: { librar
     .filter((person) => !members.some((member) => member.email.toLowerCase() === person.email.toLowerCase()));
   return (
     <Command shouldFilter={false}>
-      <CommandInput placeholder={t("searchNameOrEmail")} value={query} onValueChange={setQuery} />
+      <CommandInput placeholder={t("searchNameOrEmail")} value={query} onValueChange={setQuery} busy={stale || people.isLoading} />
       <CommandList>
         {!people.isLoading && !stale && !people.canNext && <CommandEmpty>{t("noPeopleAvailable")}</CommandEmpty>}
         <CommandGroup className={cn(stale && "opacity-60")}>

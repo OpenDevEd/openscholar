@@ -33,6 +33,7 @@ export function OptionPicker({
   icons,
   after,
   onSearch,
+  busy,
   onToggle,
 }: {
   label: string;
@@ -50,6 +51,8 @@ export function OptionPicker({
   after?: Record<string, React.ReactNode>;
   /** Given when the caller searches; otherwise the list filters itself. */
   onSearch?: (value: string) => void;
+  /** The caller's search is under way: its search box says so. */
+  busy?: boolean;
   onToggle: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -87,6 +90,7 @@ export function OptionPicker({
             searchPlaceholder={searchPlaceholder}
             emptyText={emptyText}
             onSearch={onSearch}
+            busy={busy}
             onToggle={onToggle}
           />
         </PopoverContent>
@@ -124,12 +128,13 @@ const FIRST_ROWS = 40;
 const rowValue = (option: PickerOption) => `${option.name} ${option.id}`;
 
 /** The search box and the rows. It lives inside the popover, so it starts afresh each time that opens. */
-function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch, onToggle }: {
+function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch, busy, onToggle }: {
   options: readonly PickerOption[];
   selected: readonly string[];
   searchPlaceholder: string;
   emptyText: string;
   onSearch?: (value: string) => void;
+  busy?: boolean;
   onToggle: (id: string) => void;
 }) {
   // A long list (every country) opens with its first rows, and React adds the rest when it is free.
@@ -145,6 +150,7 @@ function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch,
   return (
     <Command shouldFilter={!onSearch} {...(onSearch && { value: highlighted, onValueChange: setChosen })}>
       <CommandInput
+        busy={busy}
         placeholder={searchPlaceholder}
         onValueChange={(text) => {
           onSearch?.(text);

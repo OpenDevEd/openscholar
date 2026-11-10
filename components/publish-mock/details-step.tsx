@@ -192,7 +192,7 @@ function OrcidSearch({ author, onPick, onRemove }: { author: Author; onPick: (or
   ].filter((group) => group.people.length);
   return (
     <Command shouldFilter={false}>
-      <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" />
+      <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" busy={!typed && !!search.trim() && (search.trim() !== query || people.isValidating)} />
       <CommandList>
         <CommandEmpty>{!search.trim() ? "Type a name, or paste an iD" : people.error ? "ORCID can't be searched now" : people.isLoading ? "Searching ORCID" : "Nobody on ORCID by that name"}</CommandEmpty>
         {typed ? (

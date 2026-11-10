@@ -96,6 +96,8 @@ export function OpenAlexLookupFilter({
       icons={icons}
       after={after}
       onSearch={setSearch}
+      // From the first key until both registers have answered the words in the box.
+      busy={!!text && (text !== query || results.isValidating || elsewhere.isValidating)}
       onToggle={(id) => {
         if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));
         onChange([...selected, id]);

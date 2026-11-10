@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
 import { SearchIcon } from "@/components/icons"
+import { Spinner } from "@/components/ui/spinner"
 
 import { cn } from "@/lib/utils"
 
@@ -22,16 +23,21 @@ function Command({
   )
 }
 
+/**
+ * The search box of a list. `busy` says a search is under way, from the first key until its answer is in: the
+ * magnifier turns into a spinner in its place, so nothing moves.
+ */
 function CommandInput({
   className,
+  busy = false,
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Input>) {
+}: React.ComponentProps<typeof CommandPrimitive.Input> & { busy?: boolean }) {
   return (
     <div
       data-slot="command-input-wrapper"
       className="flex h-9 items-center gap-2 border-b px-3"
     >
-      <SearchIcon className="size-4 shrink-0 opacity-50" />
+      {busy ? <Spinner className="size-4 shrink-0 opacity-50" /> : <SearchIcon className="size-4 shrink-0 opacity-50" />}
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
