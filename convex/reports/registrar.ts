@@ -12,10 +12,27 @@ import type { PublicationSecrets } from "../evidenceLibraries/publicationValidat
 import { userAgent } from "../evidenceLibraries/publicationCredentialVerification";
 import { decrypt } from "../lib/crypto";
 import { requireAppUrl } from "../lib/env";
-import { registrationRecord } from "../../lib/reports/registration-record";
+import { openAlexFetch } from "../../lib/openalex/fetch";
+import { openAlexUrl } from "../../lib/openalex/request-url";
+import type { Funding } from "../../lib/reports/report";
+import { funderKey, registrationRecord } from "../../lib/reports/registration-record";
+
+/** OpenAlex couldn't say who a report's funders are in the Funder Registry: worth trying again, like a registrar that couldn't be reached. */
+class FundersUnread extends Error {}
 
 /** A registrar that couldn't be reached, or answered that it is busy: worth trying again. Anything else is a refusal. */
-const unreached = (error: unknown) => (error instanceof ProviderHttpError ? error.retryable : error instanceof TypeError || (error instanceof Error && error.name === "TimeoutError"));
+const unreached = (error: unknown) =>
+  error instanceof FundersUnread || (error instanceof ProviderHttpError ? error.retryable : error instanceof TypeError || (error instanceof Error && error.name === "TimeoutError"));
+
+/** Each funder's Funder Registry DOI, which Crossref matches funders by, by OpenAlex ID: one request, as a report holds at most 50 funders. */
+async function funderDois(funding: Funding[]) {
+  const ids = [...new Set(funding.flatMap((f) => (f.funder.id ? [funderKey(f.funder.id)] : [])))];
+  if (ids.length === 0) return {};
+  const response = await openAlexFetch(openAlexUrl("funders", { filter: `openalex:${ids.join("|")}`, select: "id,ids", "per-page": "50" }), { timeoutMs: 12_000 });
+  if (!response.ok) throw new FundersUnread(`OpenAlex answered ${response.status} when asked for the report's funders.`);
+  const { results } = (await response.json()) as { results: Array<{ id: string; ids?: { doi?: string | null } }> };
+  return Object.fromEntries(results.flatMap((funder) => (funder.ids?.doi ? [[funderKey(funder.id), funder.ids.doi]] : [])));
+}
 
 export const register = internalAction({
   args: { reportId: v.id("reports"), rev: v.number() },
@@ -39,31 +56,54 @@ export const register = internalAction({
           const key = process.env.ENCRYPTION_KEY;
           secrets = job.encryptedCredentials && key ? JSON.parse(decrypt(job.encryptedCredentials, key)) : {};
           const { crossref, zenodo } = job.publication;
-          const record = registrationRecord(job, job.metadata, job.series, requireAppUrl());
+          const record = registrationRecord(job, job.metadata, job.series, requireAppUrl(), provider === "crossref" ? await funderDois(job.metadata.funding) : {});
           if (provider === "crossref") {
             if (crossref.mode === "off" || !secrets.crossrefLoginId || !secrets.crossrefPassword) throw new Error("Crossref isn't connected in the publishing settings.");
             const mapped = mapCrossrefRecord(record, job.doi);
             if (!mapped.ok) throw new Error(`Crossref can't take this record: ${mapped.issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`);
-            const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 17);
             const environment = crossref.mode === "sandbox" ? ("test" as const) : ("production" as const);
+            const [loginId, password] = [secrets.crossrefLoginId, secrets.crossrefPassword];
             const client = new CrossrefApiClient();
             // A deposit Crossref already took is only looked for, never sent twice.
             const seen = async () => (await client.verifyPublication({ environment, emailAddress: crossref.email, record: mapped.record })).status === "matched";
-            let registered = false;
-            let taken = job.depositSent;
-            if (!taken) {
-              const outcome = await client.submitPublication({
+            const deposit = (relation?: "delete-all") => {
+              const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 17);
+              const name = `openscholar-reports-${job.key}-${stamp}${relation ? "-clear" : ""}`;
+              return {
                 environment,
-                loginId: secrets.crossrefLoginId,
-                password: secrets.crossrefPassword,
+                loginId,
+                password,
                 depositorName: crossref.depositorName,
                 emailAddress: crossref.email,
                 registrant: crossref.registrant,
-                batchId: `openscholar-reports-${job.key}-${stamp}`,
+                batchId: name,
                 // Crossref keeps the deposit with the latest timestamp, so a correction replaces what it held.
                 timestamp: stamp,
-                filename: `openscholar-reports-${job.key}-${stamp}.xml`,
+                filename: `${name}.xml`,
                 record: mapped.record,
+                ...(relation && { relation }),
+              };
+            };
+            let registered = false;
+            let taken = job.depositSent;
+            if (!taken && mapped.record.relations?.length) {
+              // Crossref can't replace a record's links by a redeposit: the ones it holds go first, in a deposit of their own.
+              // Asked once, since a corrected record never matches the one Crossref holds until it is sent.
+              const held = await new CrossrefApiClient({ poll: { maxAttempts: 1, delayMs: 0 } }).verifyPublication({ environment, emailAddress: crossref.email, record: mapped.record });
+              if (held.record?.relations?.length) {
+                const cleared = await client.submitPublication(deposit("delete-all"));
+                console.info(JSON.stringify({ event: "report-crossref-clear", reportId, key: job.key, held: held.record.relations.length, status: cleared.status }));
+                if (cleared.status === "failed") throw new Error(`Crossref refused clearing the report's earlier links: ${cleared.diagnostic.failureCount} of ${cleared.diagnostic.recordCount} records failed (${cleared.diagnostic.batchStatus ?? cleared.diagnostic.status}).`);
+                // Until Crossref shows them gone, the links to send wait: the next try looks again.
+                if (cleared.status !== "succeeded") {
+                  if (!(await settle(provider, { outcome: "unreached", error: "Crossref is clearing the report's earlier links before the new ones go in." }))) return null;
+                  continue;
+                }
+              }
+            }
+            if (!taken) {
+              const outcome = await client.submitPublication({
+                ...deposit(),
                 // Kept the moment Crossref has the file, so nothing that fails after this sends it again.
                 onSubmitted: async () => void (await ctx.runMutation(internal.reports.registration.noted, { reportId, rev, depositSent: true })),
               });

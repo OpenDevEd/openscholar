@@ -41,6 +41,28 @@ describe("a report's record for its registrars", () => {
     expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { kind: "report", metadata: { doi: report.doi } } });
   });
 
+  it("carries its funders by their Funder Registry DOI, the DOIs it cites, and its links as Crossref names them, in its series", () => {
+    const funded = {
+      ...m,
+      funding: [{ funder: { id: "https://openalex.org/F4320306076", name: "National Science Foundation" }, awards: ["CHE-1152342"] }, { funder: { id: null, name: "A local trust" }, awards: [] }],
+      references: ["10.1000/cited.1"],
+      relations: [
+        { kind: "data" as const, target: "https://doi.org/10.5281/zenodo.42" },
+        { kind: "version" as const, target: "https://example.org/preprint" },
+      ],
+    };
+    const record = registrationRecord(report, funded, { ...series, issn: "2049-3630" }, "https://openscholar.ai", { F4320306076: "10.13039/100000001" });
+    expect(record).toMatchObject({
+      funding: [{ funderName: "National Science Foundation", funderIdentifier: "https://doi.org/10.13039/100000001", awards: ["CHE-1152342"] }, { funderName: "A local trust", awards: [] }],
+      references: ["10.1000/cited.1"],
+      relations: [
+        { type: "isSupplementedBy", identifierType: "doi", identifier: "10.5281/zenodo.42", description: "Data" },
+        { type: "hasVersion", identifierType: "uri", identifier: "https://example.org/preprint", description: "Other version" },
+      ],
+    });
+    expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { series: { title: "Openscholar Reports", issns: ["2049-3630"] } } });
+  });
+
   it("says so in its title once the report is withdrawn, under the same DOI", () => {
     expect(registrationRecord({ ...report, withdrawn: true }, m, series, "https://openscholar.ai")).toMatchObject({ title: "WITHDRAWN: Shade trees: Evidence from Malawi", doi: report.doi });
   });
