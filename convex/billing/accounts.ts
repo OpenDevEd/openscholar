@@ -24,7 +24,7 @@ import {
 } from "./validators";
 import { EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
-import { stripeCredit, defaultToNewestCard } from "./stripeRest";
+import { defaultToSavedCard, stripeCredit } from "./stripeRest";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
 export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
@@ -248,14 +248,14 @@ async function captureBillingChanges(
 export async function refreshAccount(
   ctx: ActionCtx,
   workspaceId: Id<"workspaces">,
-  options: { email?: string; name?: string; card?: boolean; newestCard?: boolean } = {},
+  options: { email?: string; name?: string; card?: boolean; savedIn?: string } = {},
 ): Promise<BillingAccountSnapshot> {
   const fetchedAt = Date.now();
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
   let customer = await autumn.customer(customerId, options);
-  // Back from saving a card on Stripe's page: that card is the one charged from now on.
-  if (options.newestCard && customer.stripe_id) {
-    await defaultToNewestCard(customer.stripe_id);
+  // Back from saving a card on Stripe's page (its Checkout session, `savedIn`): that card is the one charged from now on.
+  if (options.savedIn && customer.stripe_id) {
+    await defaultToSavedCard(customer.stripe_id, options.savedIn);
     customer = await autumn.customer(customerId, options);
   }
   // A failed payment's invoice is read only while one is due, which is rare.

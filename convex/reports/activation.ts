@@ -401,7 +401,8 @@ export const addCard = action({
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const { prefix, customerId }: { prefix: string; customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
-    return (await autumn.setupPayment(customerId, backTo(prefix, key))).url;
+    // Stripe writes the session's id into the way back, which names the card saved in it.
+    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}`)).url;
   },
 });
 
@@ -487,12 +488,17 @@ export async function settlePending(ctx: ActionCtx, workspaceId: Id<"workspaces"
  * from the bank, the workspace's card is read again first. Nothing waiting costs one read.
  */
 export const settle = action({
-  args: { workspaceId: v.id("workspaces"), card: v.boolean() },
+  args: {
+    workspaceId: v.id("workspaces"),
+    card: v.boolean(),
+    /** The Checkout session Stripe saved a card in, when it sent the person back from that: the card charged from now on. */
+    session: v.optional(v.string()),
+  },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, card }): Promise<null> => {
+  handler: async (ctx, { workspaceId, card, session }): Promise<null> => {
     await refuseApps(ctx);
     await actorIn(ctx, workspaceId);
-    if (card) await refreshAccount(ctx, workspaceId, { card: true, newestCard: true });
+    if (card) await refreshAccount(ctx, workspaceId, { card: true, ...(session?.startsWith("cs_") && { savedIn: session }) });
     await settlePending(ctx, workspaceId);
     return null;
   },

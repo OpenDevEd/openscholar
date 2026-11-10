@@ -49,18 +49,18 @@ export async function stripeCredit(customer: string): Promise<number | undefined
 }
 
 /**
- * Makes the card saved last the one the customer is charged. Autumn makes a card saved on Stripe's page the default
- * only when there was none, so a second card saved to replace the first would never be charged. A failure is logged
- * and leaves the cards as they were.
+ * Makes the card saved on Stripe's page for saving a card (Checkout `session`) the one the customer is charged. Autumn
+ * makes such a card the default only when there was none, so a card saved to replace another would never be charged.
+ * Only a session of this customer's counts. A failure is logged and leaves the cards as they were.
  */
-export async function defaultToNewestCard(customer: string) {
+export async function defaultToSavedCard(customer: string, session: string) {
   try {
-    const [read, cards] = await Promise.all([stripe(`customers/${encodeURIComponent(customer)}`), stripe(`customers/${encodeURIComponent(customer)}/payment_methods?type=card&limit=1`)]);
-    const newest = (cards.data as Array<{ id: string }> | undefined)?.[0]?.id;
-    const current = (read.invoice_settings as { default_payment_method?: string | null } | undefined)?.default_payment_method;
-    if (newest && newest !== current) await stripe(`customers/${encodeURIComponent(customer)}`, { form: { "invoice_settings[default_payment_method]": newest } });
+    const read = await stripe(`checkout/sessions/${encodeURIComponent(session)}?expand[]=setup_intent`);
+    const intent = read.setup_intent as { status?: string; payment_method?: string | null } | null;
+    if (read.customer !== customer || read.mode !== "setup" || intent?.status !== "succeeded" || !intent.payment_method) return;
+    await stripe(`customers/${encodeURIComponent(customer)}`, { form: { "invoice_settings[default_payment_method]": intent.payment_method } });
   } catch (error) {
-    console.error(JSON.stringify({ event: "newest-card-not-default", customer, error: String(error).slice(0, 400) }));
+    console.error(JSON.stringify({ event: "saved-card-not-default", customer, session, error: String(error).slice(0, 400) }));
   }
 }
 
