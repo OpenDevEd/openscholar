@@ -86,6 +86,20 @@ it("saves a batch at full weight, and again as a re-send, within one transaction
     expect(((await response.json()) as {receipts: {status?: string}[]}).receipts.every(receipt => receipt.status === "applied")).toBe(true);
   }
 });
+it("leaves a record's counts alone when a re-send keeps its topics, work and DOI, and moves them when its topics change", async () => {
+  const {t, a, request, send} = await fixture();
+  const counts = () => t.run(async ctx => ({groups: await ctx.db.query("topicPublicationGroups").collect(), links: await ctx.db.query("topicOpenAlexDois").collect()}));
+  await send(request());
+  const before = await counts();
+  expect(before.groups.map(row => row.count)).toEqual([1]);
+  expect(before.links.map(row => row.count)).toEqual([1]);
+  await send(request(a.libraryId, {generation: 2, idempotencyKey: "again", metadata: {...request().metadata!, title: "Retitled"}}));
+  // The same rows, never taken to zero and made again.
+  expect(await counts()).toEqual(before);
+  await t.run(ctx => ctx.db.insert("topicCatalog", {id: "T30001", name: "Other", parent: "subfields/3304", level: "topic", path: ["Social Sciences", "Education", "Education", "Other"], ancestors: ["domains/2", "fields/33", "subfields/3304"], childCount: 0, revision: CATALOG_REVISION, searchText: "Other", domainId: "domains/2", fieldId: "fields/33", subfieldId: "subfields/3304"}));
+  await send(request(a.libraryId, {generation: 3, idempotencyKey: "moved", topicIds: ["T30001"]}));
+  expect((await counts()).groups.map(row => [row.topicId, row.count])).toEqual([["T30001", 1]]);
+});
 it("groups DOI variants, returns the locations in live listed communities, and retains unlisted ones' assignments", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());

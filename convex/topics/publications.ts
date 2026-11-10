@@ -115,15 +115,20 @@ async function applyDelivery(ctx: MutationCtx, libraryId: Location["libraryId"],
     }
     const doi = normalizeDoi(input.doi);
     if (input.doi?.trim() && !doi) throw createError("VALIDATION_ERROR", "Invalid bibliographic DOI");
-    if (previous) { await changeGroups(ctx, previous, -1); await changeDoiLink(ctx, previous, -1); }
-    await changeDoiLink(ctx, {...input, doi}, 1);
+    // A re-send that keeps the record's work, DOI and state leaves its DOI link, and so every copy's group, as it was:
+    // nothing to take down, put back or regroup. Without it, a community re-sending 290,000 records rewrote each count twice.
+    const sameLink = previous !== null && previous.openalexId === input.openalexId && previous.doi === doi && previous.state === input.state;
+    if (previous && !sameLink) await changeDoiLink(ctx, previous, -1);
+    if (!sameLink) await changeDoiLink(ctx, {...input, doi}, 1);
     const groupKey = publicationGroupKey(libraryId, input.itemKey, doi, input.openalexId, await linkedDois(ctx, input.openalexId));
     const row = {libraryId, itemKey: input.itemKey, generation: input.generation, publishedRevision: input.publishedRevision,
       state: input.state, topicIds, doi, openalexId: input.openalexId, metadata: input.metadata, groupKey};
+    const sameGroups = previous !== null && previous.state === row.state && previous.groupKey === row.groupKey && previous.topicIds.join() === topicIds.join();
+    if (previous && !sameGroups) await changeGroups(ctx, previous, -1);
     if (previous) await ctx.db.replace("topicLocations", previous._id, row);
     else await ctx.db.insert("topicLocations", row);
-    await changeGroups(ctx, row, 1);
-    for (const id of new Set([previous?.openalexId, input.openalexId])) if (id) await reconcilePage(ctx, id, null);
+    if (!sameGroups) await changeGroups(ctx, row, 1);
+    if (!sameLink) for (const id of new Set([previous?.openalexId, input.openalexId])) if (id) await reconcilePage(ctx, id, null);
   }
   await ctx.db.insert("topicDeliveryReceipts", {libraryId, idempotencyKey: input.idempotencyKey, digest, generation: input.generation, status});
   return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: input.generation, status};
