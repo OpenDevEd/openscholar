@@ -139,7 +139,9 @@ export function CommunityControl({
   const recentRead = useProtectedQuery(api.evidenceLibraries.submissions.recentCommunities, reads ? {} : "skip").data;
   const sent = useProtectedQuery(api.evidenceLibraries.submissions.sentTo, reads && openalexId ? { openalexId } : "skip").data;
   const statusIn = new Map((sent ?? []).map((row) => [row.libraryId as string, row.status]));
-  const icon = <EvidenceLibrariesIcon className={statusIn.size ? "text-primary" : "text-muted-foreground"} />;
+  // Orange while the paper is in a community, waiting for review or published, as the list's rows count it; not once declined, withdrawn or removed.
+  const inCommunity = [...statusIn.values()].some((status) => status === "queued" || status === "published");
+  const icon = <EvidenceLibrariesIcon className={inCommunity ? "text-primary" : "text-muted-foreground"} />;
   const button = trigger ? (
     cloneElement(trigger(icon), isSignedIn ? {} : { onClick: () => openSignIn() })
   ) : (
