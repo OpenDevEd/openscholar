@@ -4,6 +4,7 @@
 // 3. Our communities' records, which hold grey literature neither of the others has.
 // What 2 and 3 find goes to the check's model, which says whether it's the same work.
 // Tested 2026-11-09 on 30 of our communities' reports and 20 reworded abstracts from the index.
+import { normalDoi } from "../../lib/papers/paper-ref";
 import { generateText, Output, type LanguageModel } from "ai";
 import { z } from "zod";
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
@@ -60,7 +61,10 @@ const abstractOf = (inverted: Record<string, number[]> | null | undefined) =>
 /** Where a search couldn't be made: a check that missed one can't say the report is new. */
 type Missed = string[];
 
-async function onOpenAlex(m: Report, missed: Missed): Promise<Found | null> {
+/** Whether a record found is the report itself: one corrected after going live is in the indexes it is searched for in. */
+const isReport = (doi: string | null | undefined, ownDoi: string) => normalDoi(doi) === normalDoi(ownDoi);
+
+async function onOpenAlex(m: Report, ownDoi: string, missed: Missed): Promise<Found | null> {
   const sentence = m.abstract.split(/(?<=[.!?])\s+/).find((s) => s.length > 80 && s.length < 260);
   // A title can be shared by unrelated works of the same year; a sentence of the abstract rarely is.
   const searches = [{ filter: `title.search:${quoted(m.title)}`, byTitle: true }, ...(sentence ? [{ filter: `title_and_abstract.search:${quoted(sentence)}`, byTitle: false }] : [])];
@@ -72,6 +76,7 @@ async function onOpenAlex(m: Report, missed: Missed): Promise<Found | null> {
       if (!response.ok) throw new Error(`OpenAlex works ${response.status}`);
       const { results } = (await response.json()) as { results: Array<{ title: string; doi: string | null; id: string; publication_year: number; authorships: Array<{ author: { display_name: string } }> }> };
       const match = results.find((w) => {
+        if (isReport(w.doi, ownDoi)) return false;
         const sameAuthor = w.authorships.some((a) => mine.has(surname(a.author.display_name)));
         const sameYear = String(w.publication_year) === year;
         return sameAuthor || (sameYear && (!byTitle || sameTitle(w.title ?? "", m.title)));
@@ -86,14 +91,14 @@ async function onOpenAlex(m: Report, missed: Missed): Promise<Found | null> {
 }
 
 /** The works our index finds closest in meaning to the report's abstract. */
-async function inOurIndex(m: Report, missed: Missed): Promise<Candidate[]> {
+async function inOurIndex(m: Report, ownDoi: string, missed: Missed): Promise<Candidate[]> {
   try {
     const response = await openAlexFetch(searchUrl("openscholar", "works", { "search.semantic": (m.abstract || m.title).slice(0, 1500), per_page: String(INDEX_CANDIDATES) }), { headers: USER_AGENT, timeoutMs: 20_000 });
     if (!response.ok) throw new Error(`our index ${response.status}: ${(await response.text()).slice(0, 200)}`);
     const { results } = (await response.json()) as { results: Array<{ id: string; title: string; doi: string | null; publication_year?: number; abstract_inverted_index?: Record<string, number[]> | null }> };
     return results.flatMap((w) => {
       const text = abstractOf(w.abstract_inverted_index);
-      return text ? [{ title: w.title, abstract: text, url: w.doi ?? `/papers/${w.id.split("/").at(-1)}`, where: "Openscholar's index", year: String(w.publication_year ?? "") }] : [];
+      return text && !isReport(w.doi, ownDoi) ? [{ title: w.title, abstract: text, url: w.doi ?? `/papers/${w.id.split("/").at(-1)}`, where: "Openscholar's index", year: String(w.publication_year ?? "") }] : [];
     });
   } catch (error) {
     console.error(JSON.stringify({ event: "report-index-search-failed", error: String(error).slice(0, 300) }));
@@ -103,15 +108,16 @@ async function inOurIndex(m: Report, missed: Missed): Promise<Candidate[]> {
 }
 
 /** Each community's records that its own search finds for the report's title. */
-async function inOurCommunities(m: Report, communities: Community[], missed: Missed): Promise<Candidate[]> {
+async function inOurCommunities(m: Report, ownDoi: string, communities: Community[], missed: Missed): Promise<Candidate[]> {
   const found = await Promise.all(
     communities.map(async ({ name, address }) => {
       try {
         const query = new URLSearchParams({ search: m.title.slice(0, 200), perPage: String(COMMUNITY_CANDIDATES) });
         const response = await fetch(`${address.replace(/\/$/, "")}/api/items?${query}`, { headers: USER_AGENT, signal: AbortSignal.timeout(15000) });
         if (!response.ok) throw new Error(`${address} ${response.status}`);
-        const { items } = (await response.json()) as { items: Array<{ key: string; title: string; abstractNote?: string | null; year?: string | null }> };
-        return items.map((item) => ({ title: item.title, abstract: item.abstractNote ?? "", url: `${address.replace(/\/$/, "")}/lib/${item.key}`, where: name, year: item.year ?? "" }));
+        const { items } = (await response.json()) as { items: Array<{ key: string; title: string; abstractNote?: string | null; year?: string | null; DOI?: string | null }> };
+        // A community that added the report holds it under its DOI.
+        return items.filter((item) => !isReport(item.DOI, ownDoi)).map((item) => ({ title: item.title, abstract: item.abstractNote ?? "", url: `${address.replace(/\/$/, "")}/lib/${item.key}`, where: name, year: item.year ?? "" }));
       } catch (error) {
         console.error(JSON.stringify({ event: "report-community-search-failed", address, error: String(error).slice(0, 300) }));
         missed.push(name);
@@ -167,11 +173,11 @@ async function sameWork(m: Report, c: Candidate, { model, effort }: CheckModel):
  * couldn't be searched, or a candidate couldn't be judged, and nothing was found, it throws: the report is held for a
  * reviewer rather than called new.
  */
-export async function alreadyPublished(m: Report, judge: CheckModel, communities: Community[]): Promise<Found | null> {
+export async function alreadyPublished(m: Report, ownDoi: string, judge: CheckModel, communities: Community[]): Promise<Found | null> {
   const missed: Missed = [];
-  const exact = await onOpenAlex(m, missed);
+  const exact = await onOpenAlex(m, ownDoi, missed);
   if (exact) return exact;
-  const candidates = [...(await inOurIndex(m, missed)), ...(await inOurCommunities(m, communities, missed))].filter((c) => c.abstract || c.title);
+  const candidates = [...(await inOurIndex(m, ownDoi, missed)), ...(await inOurCommunities(m, ownDoi, communities, missed))].filter((c) => c.abstract || c.title);
   // The very same title from the same year is the work: no model needed. Both years must be known. The judge decides the
   // near matches, where on 2026-11-09 it once took a sibling report from the same assessment for the report itself.
   const year = m.date.slice(0, 4);

@@ -56,8 +56,8 @@ export function keptDetails(metadata: Metadata) {
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
   const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
-  // A day ahead of UTC is today somewhere, so that much is let through.
-  if (metadata.date > new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)) throw createError("VALIDATION_ERROR", "A report can't be dated in the future.");
+  // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.
+  if (metadata.date > new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10)) throw createError("VALIDATION_ERROR", "A report can't be dated in the future.");
   if (JSON.stringify(metadata).length > DETAILS_MAX_BYTES) throw createError("VALIDATION_ERROR", "These details are too long to save. Shorten the abstract or the lists.");
   return metadata;
 }

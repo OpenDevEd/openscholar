@@ -42,7 +42,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   // What to do about it, for the author, when it fails.
   const failed = check.fix?.trim() ? { fix: fill(check.fix) } : {};
   if (check.builtIn === "already-published") {
-    const found = await alreadyPublished(metadata, on, communities);
+    const found = await alreadyPublished(metadata, report.doi, on, communities);
     return found
       ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
       : { ...base, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };

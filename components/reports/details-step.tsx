@@ -202,7 +202,12 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
 }
 
 /** How long after the last change the details are saved. */
-const SAVE_AFTER_MS = 400;
+/** Today as the person's own calendar has it, as a date input takes it. */
+const localToday = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+};
+const SAVE_AFTER_MS = 250;
 
 export function DetailsStep({
   initial,
@@ -253,11 +258,17 @@ export function DetailsStep({
     held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
-  // The browser's page lifecycle is the outside system here: a reload or a closed tab inside the wait sends what the
-  // wait was holding, so a change typed a moment before leaving is kept.
+  // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
+  // what the wait is holding, and nothing sent while a page unloads is sure to arrive: the browser asks first, as it
+  // does for any unsaved form, and the change is sent meanwhile.
   useEffect(() => {
-    window.addEventListener("pagehide", sendNow);
-    return () => window.removeEventListener("pagehide", sendNow);
+    const ask = (event: BeforeUnloadEvent) => {
+      if (!held.current.send) return;
+      sendNow();
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", ask);
+    return () => window.removeEventListener("beforeunload", ask);
   }, []);
   const [topicSearch, setTopicSearch] = useState("");
   const [doi, setDoi] = useState("");
@@ -345,8 +356,8 @@ export function DetailsStep({
               </Select>
             </Field>
             <Field label="Date published">
-              {/* A report is published by today, wherever that is: a day ahead of UTC is let through, as the server does. */}
-              <Input type="date" value={m.date} max={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)} onChange={(e) => set("date", e.target.value)} />
+              {/* A report is published by today, as the author's own calendar has it. */}
+              <Input type="date" value={m.date} max={localToday()} onChange={(e) => set("date", e.target.value)} />
             </Field>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Licence</span>
