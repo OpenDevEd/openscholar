@@ -412,8 +412,9 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                       <div key={c.label} className="space-y-1">
                         <dt className="text-xs font-medium text-muted-foreground">{c.label}</dt>
                         <dd className="grid gap-1 text-sm sm:grid-cols-2 sm:gap-3">
-                          <span className="line-clamp-6 whitespace-pre-wrap break-words text-muted-foreground line-through decoration-muted-foreground/40">{c.from || "Empty"}</span>
-                          <span className="line-clamp-6 whitespace-pre-wrap break-words">{c.to || "Empty"}</span>
+                          {/* Struck through is what doesn't stand: the live words while changes wait to replace them, the changes once declined. */}
+                          <span className={cn("line-clamp-6 whitespace-pre-wrap break-words", changes.stage === "declined" || "text-muted-foreground line-through decoration-muted-foreground/40")}>{c.from || "Empty"}</span>
+                          <span className={cn("line-clamp-6 whitespace-pre-wrap break-words", changes.stage === "declined" && "text-muted-foreground line-through decoration-muted-foreground/40")}>{c.to || "Empty"}</span>
                         </dd>
                       </div>
                     ))}
