@@ -13,7 +13,7 @@ import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 import { workspaceQuery } from "../lib/userActions";
 import { actorValidator, type Actor } from "../workspaces/actor";
-import { customerOf, readAccount } from "../billing/accounts";
+import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
 import { purchasing, unlessDeclined } from "../billing/purchases";
@@ -83,6 +83,7 @@ export const terms = workspaceQuery({
     v.null(),
   ),
   handler: async (ctx, actor, { key, now }) => {
+    await refuseApps(ctx);
     const report = await byKey(ctx, key);
     if (!report || report.workspaceId !== actor.workspaceId) return null;
     const plan = (await readCatalog(ctx))?.plans.find((candidate) => candidate.id === ACTIVATION_PLAN);
@@ -194,10 +195,7 @@ function refusedCode<T>(code: string | undefined) {
 /** Where Stripe's pages come back to: the report on Publish. A new address each time, so Autumn never reuses an old Checkout. */
 const backTo = (prefix: string, key: string) => `${requireAppUrl()}${prefix}/publish?report=${encodeURIComponent(key)}&back=${crypto.randomUUID()}`;
 
-async function actorIn(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<Actor> {
-  await refuseApps(ctx);
-  return await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
-}
+const actorIn = (ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<Actor> => ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
 
 /**
  * Activates the report. Free while the workspace has free activations left today; otherwise the activation plan is
@@ -208,6 +206,7 @@ export const activate = action({
   args: { workspaceId: v.id("workspaces"), key: v.string(), code: v.optional(v.string()) },
   returns: v.union(v.object({ live: v.literal(true) }), v.object({ url: v.string() })),
   handler: async (ctx, { workspaceId, key, code: typed }): Promise<{ live: true } | { url: string }> => {
+    await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
     const first: Prepared = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
@@ -251,6 +250,7 @@ export const quote = action({
   args: { workspaceId: v.id("workspaces"), key: v.string(), code: v.string() },
   returns: v.object({ price: v.number(), discount: v.number(), total: v.number() }),
   handler: async (ctx, { workspaceId, key, code: typed }): Promise<{ price: number; discount: number; total: number }> => {
+    await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
     if (!code) throw createError("VALIDATION_ERROR", "Type a code first.");
@@ -266,6 +266,7 @@ export const addCard = action({
   args: { workspaceId: v.id("workspaces"), key: v.string() },
   returns: v.string(),
   handler: async (ctx, { workspaceId, key }): Promise<string> => {
+    await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const { prefix, customerId }: { prefix: string; customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
     return (await autumn.setupPayment(customerId, backTo(prefix, key))).url;
@@ -316,11 +317,17 @@ export async function settlePending(ctx: ActionCtx, workspaceId: Id<"workspaces"
   }
 }
 
+/**
+ * What the report's page does when Stripe sends the person back: the workspace's card is read again, whether a card was
+ * just saved or a charge confirmed, and an activation the bank confirmed goes live.
+ */
 export const settle = action({
   args: { workspaceId: v.id("workspaces") },
   returns: v.null(),
   handler: async (ctx, { workspaceId }): Promise<null> => {
+    await refuseApps(ctx);
     await actorIn(ctx, workspaceId);
+    await refreshAccount(ctx, workspaceId, { card: true });
     await settlePending(ctx, workspaceId);
     return null;
   },

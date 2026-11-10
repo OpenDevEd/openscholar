@@ -39,15 +39,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
-import { Segmented } from "@/components/settings/parts";
-import { useCurrentWorkspace } from "@/components/workspaces/parts";
-import { ACTIVATION_PRICE, MOCK_CARD, MOCK_CODES, mockWait, useActivationMock } from "@/lib/reports/activation-mock";
 import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { startWords } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
@@ -58,6 +56,9 @@ type Basics = FunctionReturnType<typeof api.reports.settings.forAuthors>;
 type Found = NonNullable<FunctionReturnType<typeof api.reports.flow.get>>;
 type Report = Extract<Found, { report: unknown }>["report"];
 type Starts = FunctionReturnType<typeof api.reports.flow.starts>;
+type Terms = NonNullable<FunctionReturnType<typeof api.reports.activation.terms>>;
+/** What an activation costs with a promotion code, in US dollars, as Autumn quotes it. */
+type Quote = { code: string; price: number; discount: number; total: number };
 
 /** The largest PDF a report takes, as its upload says (convex/reports/flow.ts `REPORT_PDF_MAX_MB`). */
 const PDF_MAX_MB = 50;
@@ -84,10 +85,6 @@ function placeOf(report: Report | null) {
 const bytes = (n: number) => (n > 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.round(n / 1000)} kB`);
 /** A handler for a change that was refused or never arrived: its reason in a toast. */
 const said = (otherwise: string) => (error: unknown) => void toast.error(getErrorMessage(error, otherwise));
-
-/** MOCK: what a workspace whose plan's new reports for today are used up is told (in place of `limitWords`). */
-const planStartWords = (perDay: number, kind: "personal" | "organization") =>
-  `${kind === "personal" ? "Your plan" : "This workspace's plan"} starts ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow, or move to a plan with more.`;
 
 function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
@@ -143,6 +140,8 @@ export function PublishFlow() {
   if (movedOn ? held !== null : held === null && only !== null) setHeld(movedOn ? null : only);
   const shownKey = listed ? null : (asked ?? held ?? only ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
+  // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
+  const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey, now }) : "skip");
   const { data: list } = useProtectedQuery(api.reports.flow.page, listed ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
   // A list page keeps showing while the next one is read, so paging never empties the card.
   const [lastList, setLastList] = useState(list);
@@ -168,7 +167,7 @@ export function PublishFlow() {
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
-  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined || arriving || opening)));
+  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
   // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
@@ -297,6 +296,7 @@ export function PublishFlow() {
             basics={basics}
             report={report}
             starts={starts ?? null}
+            terms={terms ?? null}
             shared={shared}
             workspaceId={workspaceId}
             fresh={fresh}
@@ -326,7 +326,6 @@ export function PublishFlow() {
             onCorrected={() => up("correct")}
           />
           <ReportCover basics={basics} report={report} />
-          <ActivationMockPanel organization={shared} />
         </div>
       )}
     </LibraryPageShell>
@@ -334,11 +333,13 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
-  const activate = useMutation(api.reports.flow.activate);
+  const activate = useAction(api.reports.activation.activate);
+  const addCard = useAction(api.reports.activation.addCard);
+  const quote = useAction(api.reports.activation.quote);
   const runChecks = useAction(api.reports.checks.run);
   const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
   const discardChanges = useMutation(api.reports.flow.discardChanges);
@@ -493,17 +494,26 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               humanReview={basics.humanReview}
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
-              onActivate={() => {
+              terms={terms}
+              onActivate={(code) => {
                 onNamed(report.key);
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key }).then(
-                  () => undefined,
+                return activate({ ...here, key: report.key, ...(code && { code }) }).then(
+                  (done) => {
+                    // The bank asks to confirm the charge on Stripe's page, which comes back here.
+                    if ("url" in done) {
+                      setFresh(null);
+                      window.location.assign(done.url);
+                    }
+                  },
                   (error: unknown) => {
                     setFresh(null);
                     throw error;
                   },
                 );
               }}
+              onAddCard={() => addCard({ ...here, key: report.key }).then((url) => window.location.assign(url))}
+              onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
               onFix={() => back("upload")}
               onDetails={() => back("details")}
               onRequestReview={(comment) => requestReview({ ...here, key: report.key, comment }).then(() => undefined)}
@@ -607,10 +617,10 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   const tick = (next: { all?: boolean; agreed?: boolean }) => setTicks({ version: agreement.version, all, agreed, ...next });
   // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
   // person reserved and did nothing with is theirs again by signing, whatever the day has left.
-  // MOCK (mock/activation-payment): new reports a day are the plan's (Autumn's `reports_per_day`), so no workspace is
-  // closed to publishing and the words point at the plans. The mock's "Used up" stands in for a day that's used up.
-  const startsUsed = useActivationMock((s) => s.startsUsed);
-  const blocked = starts && !starts.untouched && (startsUsed || starts.left < 1) ? planStartWords(starts.perDay || 3, starts.kind) : null;
+  // The workspace's plan has used up its new reports for the day, or has none: no new report can start, and the page
+  // says which and where the plans are. A DOI the person reserved and did nothing with is theirs again by signing,
+  // whatever the day has left.
+  const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? startWords(starts.perDay, starts.kind) : null;
   return (
     <div>
       <StepHead title={`Publishing agreement with ${basics.series.name}`} aside={<StatusChip tone="neutral">Version {agreement.version}</StatusChip>}>
@@ -996,38 +1006,34 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; onActivate?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it, with a promotion code for a paid activation. */ onActivate?: (code?: string) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: () => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
   const [activating, start] = useTransition();
-  // MOCK (mock/activation-payment): only the workspace's admins activate, a saved card is needed first, and past the
-  // day's free activations each one is paid for (lib/reports/activation-mock.ts).
-  const workspace = useCurrentWorkspace();
-  const mock = useActivationMock();
-  // From a person's own workspace, the mock's organisation roles look at the report as if an organisation had it.
-  const organization = workspace?.kind === "organization" ? workspace.name : mock.role ? "Open Development and Education" : null;
-  const admin = !organization || (mock.role ?? workspace?.role) === "admin";
-  const free = mock.freeLeft > 0;
+  // Only the workspace's admins activate (#1261). A free activation and a paid one both need a saved card; a paid one
+  // is confirmed in a dialog first, where a promotion code can lower it.
+  const organization = terms?.organization ?? null;
+  const admin = terms?.admin ?? true;
+  const free = (terms?.free.left ?? 0) > 0;
+  const card = terms?.card ?? null;
+  const pending = terms?.pending ?? null;
+  const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
   const [paying, setPaying] = useState(false);
-  // MOCK: a promo code applied in the charge's dialog, and what's left to pay in cents.
-  const [code, setCode] = useState<{ code: string; off: number } | null>(null);
-  const price = ACTIVATION_PRICE * 100;
-  const due = price - (code ? Math.round((price * code.off) / 100) : 0);
-  /** `charge` is what's paid now, in cents: none for a free activation or one a code covers. */
-  const activateNow = (charge: number) =>
+  const [code, setCode] = useState<Quote | null>(null);
+  const due = code ? Math.round(code.total * 100) : (price ?? 0);
+  const activateNow = (withCode?: string) =>
     start(async () => {
       try {
-        // MOCK: the charge. The real one attaches the activation plan through Autumn, keyed to the report, with the
-        // promo code as a discount.
-        if (charge > 0) await mockWait();
-        if (charge > 0 && mock.card === "declines") throw new Error("Your card was declined. Nothing was charged, and the report is still ready.");
-        await onActivate?.();
-        mock.activated(free);
+        await onActivate?.(withCode);
       } catch (error) {
         said("It couldn't be activated")(error);
       }
     });
+  /** Activate's words: the same whether it can be pressed yet or not, so the button keeps its width. */
+  const activateLabel = free || price === null ? "Activate" : `Activate for ${dollars(price)}`;
+  /** Why Activate can't be pressed yet, for an admin. */
+  const waitingFor = pending ? "Its payment is waiting for your bank" : !card ? "Add a payment method first" : !free && price === null ? "Activating can't be paid for right now" : null;
   const head = !report ? (
     <StepHead key="running" title="Running the checks" aside={<StatusChip tone="running" icon="tone">{answered} of {rows.length}</StatusChip>}>
       Looking for earlier copies takes a few seconds. You can leave this page: the checks carry on.
@@ -1077,7 +1083,7 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
-              {stage === "ready" && admin ? <PaymentLine organization={organization} free={mock.freeLeft} /> : null}
+              {stage === "ready" && admin && terms ? <PaymentLine organization={organization} free={terms.free.left} card={card} price={price} pending={pending} onAddCard={onAddCard} /> : null}
               <div className="flex flex-wrap justify-end gap-2">
                 {stage === "failed" ? (
                   <>
@@ -1108,24 +1114,23 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
                           </Button>
                         </span>
                       </TooltipHint>
-                    ) : stage === "ready" && mock.card === "none" ? (
-                      <TooltipHint label="Add a payment method first">
+                    ) : stage === "ready" && waitingFor ? (
+                      <TooltipHint label={waitingFor}>
                         <span tabIndex={0}>
-                          {/* The same words as once a card is saved, so the button keeps its width. */}
                           <Button className="relative" disabled>
                             <Working busy={false}>
                               <span className="flex items-center gap-2">
-                                <BadgeCheck /> {free ? "Activate" : `Activate for $${ACTIVATION_PRICE}`}
+                                <BadgeCheck /> {activateLabel}
                               </span>
                             </Working>
                           </Button>
                         </span>
                       </TooltipHint>
                     ) : stage === "ready" ? (
-                      <Button className="relative" disabled={activating} onClick={free ? () => activateNow(0) : () => setPaying(true)}>
+                      <Button className="relative" disabled={activating} onClick={free ? () => activateNow() : () => setPaying(true)}>
                         <Working busy={activating}>
                           <span className="flex items-center gap-2">
-                            <BadgeCheck /> {free ? "Activate" : `Activate for $${ACTIVATION_PRICE}`}
+                            <BadgeCheck /> {activateLabel}
                           </span>
                         </Working>
                       </Button>
@@ -1146,7 +1151,7 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
         </AnimatePresence>
       </AutoHeight>
       {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
-      {report ? (
+      {report && price !== null ? (
         // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
         <UpgradeConfirmationDialog
           open={paying}
@@ -1163,10 +1168,10 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
           onConfirm={() => {
             setPaying(false);
             setCode(null);
-            activateNow(due);
+            activateNow(code?.code);
           }}
-          cardBrand={MOCK_CARD.brand}
-          cardLast4={MOCK_CARD.last4}
+          cardBrand={card?.brand}
+          cardLast4={card?.last4}
           preview={{
             currency: "USD",
             immediateChargeCents: due,
@@ -1175,12 +1180,12 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
             targetPlanCreditsPerMonth: 0,
             lineItems: code
               ? [
-                  { description: "Activation", amountCents: price, currency: "USD" },
-                  { description: `Code ${code.code}`, amountCents: due - price, currency: "USD" },
+                  { description: "Activation", amountCents: Math.round(code.price * 100), currency: "USD" },
+                  { description: `Code ${code.code}`, amountCents: -Math.round(code.discount * 100), currency: "USD" },
                 ]
               : [],
           }}
-          extra={<PromoCode applied={code} onApply={setCode} />}
+          extra={onQuote ? <PromoCode applied={code} onApply={setCode} onQuote={onQuote} /> : null}
         />
       ) : null}
     </div>
@@ -1191,35 +1196,32 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
 const dollars = (cents: number) => `$${cents % 100 ? (cents / 100).toFixed(2) : cents / 100}`;
 
 /**
- * MOCK: a promo code for an activation that's paid for, in the charge's dialog: a link until it's wanted, then a field.
- * The real build asks Autumn for the total with the code (`billing.preview_attach`), which also says when a code is
- * unknown, used up or expired.
+ * A promotion code for an activation that's paid for, in the charge's dialog: a link until it's wanted, then a field.
+ * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply }: { applied: { code: string; off: number } | null; onApply: (code: { code: string; off: number } | null) => void }) {
+function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote> }) {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
   const apply = () =>
     check(async () => {
-      await mockWait(500);
-      const entered = typed.trim().toUpperCase();
-      const off = MOCK_CODES[entered];
-      if (off === undefined) {
-        setWrong(`${entered} isn't a code we know.`);
-        return;
+      try {
+        onApply(await onQuote(typed));
+        setWrong(null);
+        setTyped("");
+      } catch (error) {
+        setWrong(getErrorMessage(error, "That code couldn't be checked. Try again."));
       }
-      setWrong(null);
-      setTyped("");
-      onApply({ code: entered, off });
     });
+  const off = applied && applied.price > 0 ? Math.round((applied.discount / applied.price) * 100) : 0;
   return (
     <AutoHeight>
       {applied ? (
         <div className="flex items-center gap-2 text-sm">
           <Tag className="size-4 text-muted-foreground" />
           <span className="font-mono font-medium">{applied.code}</span>
-          <StatusChip tone="success">{applied.off}% off</StatusChip>
+          <StatusChip tone="success">{off}% off</StatusChip>
           <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={`Remove ${applied.code}`} onClick={() => onApply(null)}>
             <X />
           </Button>
@@ -1236,6 +1238,7 @@ function PromoCode({ applied, onApply }: { applied: { code: string; off: number 
             <Input
               autoFocus
               value={typed}
+              maxLength={100}
               onChange={(e) => {
                 setTyped(e.target.value);
                 setWrong(null);
@@ -1261,25 +1264,26 @@ function PromoCode({ applied, onApply }: { applied: { code: string; off: number 
 }
 
 /**
- * MOCK: what activating is paid with, beside the Activate button: the saved card, and whether this one is free. With no
- * card, the way to add one, which in the real build opens Stripe's page for saving a card (Autumn's `setup_payment`) and
- * comes back here.
+ * What activating is paid with, above the Activate button: the workspace's saved card, and whether this activation is
+ * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
+ * asked to confirm says so, with the way back to its page.
  */
-function PaymentLine({ organization, free }: { organization: string | null; free: number }) {
-  const mock = useActivationMock();
+function PaymentLine({ organization, free, card, price, pending, onAddCard }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void> }) {
   const [saving, save] = useTransition();
-  const card = mock.card !== "none";
+  const costs = price === null ? null : `Each activation costs ${dollars(price)}${organization ? `, charged to ${organization}` : ""}.`;
   return (
     <div className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
         <CreditCard className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        {card ? (
+        {pending ? (
+          <p className="text-sm font-medium">Your bank asked to confirm the payment</p>
+        ) : card ? (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
-            <span className="capitalize">{MOCK_CARD.brand}</span>
+            <span className="capitalize">{card.brand}</span>
             {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
-            <span className="tabular-nums">&bull;&bull;&bull;&bull; {MOCK_CARD.last4}</span>
+            <span className="tabular-nums">&bull;&bull;&bull;&bull; {card.last4}</span>
             {free > 0 ? (
               <StatusChip tone="success" icon={CircleCheck}>
                 Free
@@ -1290,36 +1294,42 @@ function PaymentLine({ organization, free }: { organization: string | null; free
           <p className="text-sm font-medium">Add a payment method to activate</p>
         )}
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {!card && free > 0
-            ? `${free} free ${free === 1 ? "activation" : "activations"} left today. A saved card is still needed.`
-            : !card
-            ? organization
-              ? `Each activation costs $${ACTIVATION_PRICE}, charged to ${organization}.`
-              : `Each activation costs $${ACTIVATION_PRICE}.`
+          {pending
+            ? "It goes live as soon as the payment is confirmed."
             : free > 0
-              ? `${free} free ${free === 1 ? "activation" : "activations"} left today`
-              : organization
-                ? `${organization}'s card`
-                : "Your card"}
+              ? `${free} free ${free === 1 ? "activation" : "activations"} left today${card ? "" : ". A saved card is still needed."}`
+              : !card
+                ? (costs ?? "A saved card is needed to activate.")
+                : organization
+                  ? `${organization}'s card`
+                  : "Your card"}
         </p>
       </div>
-      {card ? (
+      {pending?.url ? (
+        <Button variant="outline" asChild className="shrink-0">
+          <a href={pending.url}>
+            Confirm payment <ArrowUpRight />
+          </a>
+        </Button>
+      ) : pending ? null : card ? (
         // The cards are the billing page's, where Stripe's own page changes them.
         <Button variant="ghost" asChild className="shrink-0 text-muted-foreground">
           <Link href="/settings/billing">
             Change <ArrowUpRight />
           </Link>
         </Button>
-      ) : (
+      ) : onAddCard ? (
         <Button
           variant="outline"
           className="relative shrink-0"
           disabled={saving}
           onClick={() =>
             save(async () => {
-              await mockWait(1200);
-              mock.set({ card: "saved" });
-              toast.success("Card saved");
+              try {
+                await onAddCard();
+              } catch (error) {
+                said("Stripe's page couldn't be opened")(error);
+              }
             })
           }
         >
@@ -1329,42 +1339,8 @@ function PaymentLine({ organization, free }: { organization: string | null; free
             </span>
           </Working>
         </Button>
-      )}
+      ) : null}
     </div>
-  );
-}
-
-/** MOCK: the states the mock can be looked at in. Not part of the design. */
-function ActivationMockPanel({ organization }: { organization: boolean }) {
-  const mock = useActivationMock();
-  return (
-    <section aria-label="Mock states" className="col-span-full flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
-      <span className="font-medium text-foreground">Mock</span>
-      <div className="flex items-center gap-2">
-        View as
-        <Segmented label="View as" value={mock.role ?? "real"} onChange={(v) => mock.set({ role: v === "real" ? null : v })} options={[{ id: "real", label: organization ? "My role" : "Me" }, { id: "admin", label: "Org admin" }, { id: "member", label: "Org member" }]} />
-      </div>
-      <div className="flex items-center gap-2">
-        Card
-        <Segmented label="Card" value={mock.card} onChange={(v) => mock.set({ card: v })} options={[{ id: "none", label: "None" }, { id: "saved", label: "Saved" }, { id: "declines", label: "Declines" }]} />
-      </div>
-      <div className="flex items-center gap-2">
-        Free left today
-        <Segmented label="Free left today" value={String(Math.min(mock.freeLeft, 2))} onChange={(v) => mock.set({ freeLeft: Number(v) })} options={[{ id: "0", label: "0" }, { id: "1", label: "1" }, { id: "2", label: "2" }]} />
-      </div>
-      <div className="flex items-center gap-2">
-        New reports today
-        <Segmented label="New reports today" value={mock.startsUsed ? "used" : "left"} onChange={(v) => mock.set({ startsUsed: v === "used" })} options={[{ id: "left", label: "Real count" }, { id: "used", label: "Used up" }]} />
-      </div>
-      <span>
-        Codes{" "}
-        {Object.entries(MOCK_CODES).map(([name, off]) => (
-          <span key={name} className="me-2 font-mono text-foreground">
-            {name} <span className="font-sans text-muted-foreground">{off}%</span>
-          </span>
-        ))}
-      </span>
-    </section>
   );
 }
 

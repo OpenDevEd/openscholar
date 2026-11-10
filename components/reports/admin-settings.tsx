@@ -4,7 +4,7 @@
 // limit, the series and its DOIs, the model that reads PDFs, the checks, and the agreement.
 
 import { useState, useTransition } from "react";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { toast } from "sonner";
@@ -31,7 +31,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2, UserPlus } from "@/components/icons";
-import { ACTIVATION_PRICE, useActivationMock } from "@/lib/reports/activation-mock";
+import { ACTIVATION_PLAN } from "@/lib/billing/plans";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -85,15 +85,19 @@ export function AdminPublishingSettings() {
   const { data: settings } = useProtectedQuery(api.reports.settings.admin, {});
   // Its page is in the address, and the next one opens where the list is: it sits far down a long page.
   const limits = useCursorPageAt("limits", api.reports.limits.list, {}, LIMITS_PER_PAGE, { scroll: false });
-  if (!settings || limits.isLoading) return <Enter ready={false}>{null}</Enter>;
+  // What an activation costs is the activation plan's price in Autumn, as the synced catalog has it.
+  const catalog = useQuery(api.billing.catalog.get, {});
+  const links = useQuery(api.admins.queries.links, {});
+  if (!settings || limits.isLoading || catalog === undefined || links === undefined) return <Enter ready={false}>{null}</Enter>;
+  const price = catalog?.plans.find((plan) => plan.id === ACTIVATION_PLAN)?.price?.amount ?? null;
   return (
     <Enter ready>
-      <SettingsView settings={settings} limits={limits} />
+      <SettingsView settings={settings} limits={limits} price={price} autumn={links.autumn ?? null} />
     </Enter>
   );
 }
 
-function SettingsView({ settings, limits }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>> }) {
+function SettingsView({ settings, limits, price, autumn }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; /** An activation's price in US dollars; null while Autumn sells none. */ price: number | null; /** Autumn's dashboard. */ autumn: string | null }) {
   const [nav, setNav] = useQueryStates(NAV);
   // A dialog opens over the page where it is, and closing it with its own button takes the step back when that step
   // is there (lib/url-state/step-back.ts), so Back never reopens what was just closed.
@@ -152,7 +156,7 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
         </ul>
       </Zone>
 
-      <Limits limits={limits} />
+      <Limits settings={settings} limits={limits} save={save} price={price} autumn={autumn} />
 
       <Zone label="Series">
         <ul className={LIST}>
@@ -268,35 +272,30 @@ const OWN_LIMIT = 5;
  * What an activation costs, how many a workspace activates free each day, and the people and organisations with a
  * number of their own, shown as people and organisations are everywhere else in the app.
  */
-function Limits({ limits }: { limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>> }) {
+function Limits({ settings, limits, save, price, autumn }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; save: (patch: { perDay: number } | { orgPerDay: number }, saved: string) => Promise<boolean>; price: number | null; autumn: string | null }) {
   const set = useMutation(api.reports.limits.set);
   const remove = useMutation(api.reports.limits.remove);
-  // MOCK (mock/activation-payment): the daily numbers count free activations, not new reports, and the two for every
-  // workspace are the mock's (lib/reports/activation-mock.ts), so trying them doesn't change the real limit on starts.
-  // New reports a day are the plan's, set in Autumn. The workspaces listed below are still the real ones.
-  const mock = useActivationMock();
-  const saveFree = (kind: "personal" | "organization", value: string) => {
-    mock.set({ freePerDay: { ...mock.freePerDay, [kind]: dailyLimit(Number(value)) } });
-    toast.success("Free activations saved");
-    return Promise.resolve(true);
-  };
   return (
     <Zone label="Free activations">
       <Paged pager={{ list: limits, size: LIMITS_PER_PAGE }} rowHeight={LIMIT_ROW} label="limits">
         <ul className={LIST}>
-          <Row label="Price" hint="What an activation costs past the free ones. It's the Report activation plan's price in Autumn.">
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://autumn.opendev.space" target="_blank" rel="noopener noreferrer">
-                ${ACTIVATION_PRICE} <ArrowUpRight />
-              </a>
-            </Button>
+          <Row label="Price" hint={price === null ? "Autumn has no Report activation plan, so only free activations go through." : "What an activation costs past the free ones: the Report activation plan's price in Autumn."}>
+            {autumn ? (
+              <Button variant="outline" size="sm" asChild>
+                <a href={autumn} target="_blank" rel="noopener noreferrer">
+                  {price === null ? "Not on sale" : `$${price}`} <ArrowUpRight />
+                </a>
+              </Button>
+            ) : (
+              <span className="text-sm font-medium tabular-nums">{price === null ? "Not on sale" : `$${price}`}</span>
+            )}
           </Row>
           {/* Each workspace has its own number of free activations a day, and every activation in it counts against it. */}
           <Row label="A person's own workspace" hint="Activations a day that cost nothing. A saved card is still needed.">
-            <SavedInput value={String(mock.freePerDay.personal)} numeric onSave={(value) => saveFree("personal", value)} className="w-20 text-end tabular-nums" ariaLabel="Free activations a day in a person's own workspace" />
+            <SavedInput value={String(settings.perDay)} numeric onSave={(value) => save({ perDay: Number(value) }, "Free activations saved")} className="w-20 text-end tabular-nums" ariaLabel="Free activations a day in a person's own workspace" />
           </Row>
           <Row label="An organisation's workspace" hint="Activations a day that cost nothing, shared by its members.">
-            <SavedInput value={String(mock.freePerDay.organization)} numeric onSave={(value) => saveFree("organization", value)} className="w-20 text-end tabular-nums" ariaLabel="Free activations a day in an organisation's workspace" />
+            <SavedInput value={String(settings.orgPerDay)} numeric onSave={(value) => save({ orgPerDay: Number(value) }, "Free activations saved")} className="w-20 text-end tabular-nums" ariaLabel="Free activations a day in an organisation's workspace" />
           </Row>
           {/* A row opens and closes its own height, so the ones under it glide and don't jump. */}
           <AnimatePresence initial={false}>

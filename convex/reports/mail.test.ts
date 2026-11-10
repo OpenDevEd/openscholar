@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { checked, details, live, passed, row, setReview, setup, type World } from "./reports.test-support";
+import { activate, checked, details, live, passed, row, setReview, setup, type World } from "./reports.test-support";
 
 // The emails are sent by scheduled actions: the tests run them, with no mail service set up, and read what each
 // report's record says was written.
@@ -35,7 +35,7 @@ describe("the emails about a report", () => {
     const world = await setup();
     const report = await checked(world, [passed("byline"), passed("harm")]);
     expect(await emailed(world, report.key)).toEqual([]);
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key: report.key });
+    await activate(world, report.key);
     expect(await emailed(world, report.key)).toEqual(["author: Live", "team: Went live"]);
   });
 
@@ -71,7 +71,7 @@ describe("the emails about a report", () => {
     const world = await setup({ humanReview: true });
     const { key, reportId } = await checked(world, [passed("byline")]);
     await decide(world, key, "approve");
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    await activate(world, key);
     const change = async (title: string) => {
       const report = await row(world.t, key);
       await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details(title), runId: `run-${title}`, from: { changesSince: await openedOn(world, key) } });
@@ -92,7 +92,7 @@ describe("the emails about a report", () => {
     const world = await setup({ humanReview: true });
     const { key, reportId } = await checked(world, [passed("byline")]);
     await decide(world, key, "approve");
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    await activate(world, key);
     const report = await row(world.t, key);
     await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Another title"), runId: "run-note", from: { changesSince: report.activatedAt! } });
     await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-note", results: [passed("byline")], version: 1, metadata: details("Another title") });

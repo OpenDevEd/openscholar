@@ -2,7 +2,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { stageOf, type Metadata } from "../../lib/reports/report";
 import { startsLeft } from "./limits";
-import { atDetails, checked, details, passed, read, refused, row, setup, sign } from "./reports.test-support";
+import { activate, atDetails, checked, details, passed, read, refused, row, setup, sign } from "./reports.test-support";
 import { sameTitle } from "./published";
 import { purgeWorkspace } from "../workspaces/purge";
 
@@ -170,12 +170,12 @@ describe("a report's checks", () => {
   it("go live when its author activates it, and only once no review is owed", async () => {
     const world = await setup({ humanReview: true });
     const { key } = await checked(world, [passed("byline")]);
-    await expect(world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(activate(world, key)).rejects.toMatchObject(refused("CONFLICT"));
     await world.t.run(async (ctx) => ctx.db.patch("reportSettings", (await ctx.db.query("reportSettings").first())!._id, { humanReview: false }));
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    await activate(world, key);
     // Its route was Crossref alone, so only Crossref's registration is queued.
     expect(await read(world.author, world.own, key)).toMatchObject({ status: "live", deposit: "queued", archive: "none" });
-    await expect(world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(activate(world, key)).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
   });
 
@@ -235,7 +235,7 @@ describe("a deleted workspace's reports", () => {
     const draft = await atDetails(world, world.author, world.lab);
     const draftFile = (await row(world.t, draft.key)).pdf!.file;
     const published = await checked(world, [passed("byline")], world.author, world.lab);
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.lab, key: published.key });
+    await activate(world, published.key, { as: "orgadmin", workspaceId: world.lab });
 
     expect(await world.t.run((ctx) => purgeWorkspace(ctx, world.lab))).toBe(true);
     expect(await row(world.t, draft.key)).toBeNull();

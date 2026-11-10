@@ -269,7 +269,7 @@ export const adminReportValidator = v.object({
   /** What a registrar said when it refused the report, or couldn't be reached. */
   registrationError: v.optional(v.string()),
   /** The emails about it, oldest first: what each was and who it went to. `failed` when it couldn't be sent. */
-  emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
+  emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author"), v.literal("admins")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),
 });
 export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });

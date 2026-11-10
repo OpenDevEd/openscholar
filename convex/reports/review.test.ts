@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import { stageOf } from "../../lib/reports/report";
 import { SAME_PDF_ADVICE } from "./corrections";
-import { atDetails, checked, details, live, passed, read, refused, row, setReview, setup, type World } from "./reports.test-support";
+import { activate, atDetails, checked, details, live, passed, read, refused, row, setReview, setup, type World } from "./reports.test-support";
 import { purgeWorkspace } from "../workspaces/purge";
 
 const seen = async (world: World, key: string) => (await row(world.t, key)).pdf!.at;
@@ -73,7 +73,7 @@ describe("reviewing", () => {
     expect(report).not.toHaveProperty("reviews");
     expect((await reviewed(world, key)).reviews).toMatchObject([{ decision: "approve", by: "reviewer" }]);
     await expect(decide(world, key, "approve")).rejects.toMatchObject(refused("CONFLICT"));
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    await activate(world, key);
     expect(await read(world.author, world.own, key)).toMatchObject({ status: "live" });
   });
 
@@ -84,7 +84,7 @@ describe("reviewing", () => {
     expect(await read(world.author, world.own, key)).toMatchObject({ status: "declined", withdrawn: false, note: "A copy of the ministry's report." });
     await expect(decide(world, key, "decline")).rejects.toMatchObject(refused("CONFLICT"));
     await expect(decide(world, key, "approve")).rejects.toMatchObject(refused("CONFLICT"));
-    await expect(world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(activate(world, key)).rejects.toMatchObject(refused("CONFLICT"));
   });
 
   it("never takes a late decline for a withdrawal: withdrawing a live report is its own word", async () => {
@@ -224,7 +224,7 @@ describe("changes to a live report", () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline", false)]);
     await decide(world, key, "approve");
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    await activate(world, key);
     // The same check fails the changes: it was a reviewer's to overrule, and is again.
     await change(world, key, "Changed after an approval", [passed("byline", false)]);
     expect(await read(world.author, world.own, key)).toMatchObject({ changes: "review", title: "Shade trees and maize yields" });

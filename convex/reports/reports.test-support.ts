@@ -8,6 +8,7 @@ import schema from "../schema";
 import { REPORT_DEFAULTS } from "../../lib/reports/settings";
 import { blankDetails, type Metadata } from "../../lib/reports/report";
 import { ensureWorkspace } from "../workspaces/create";
+import { actorFor } from "../workspaces/actor";
 
 export const refused = (code: string) => ({ data: expect.objectContaining({ code }) });
 export const details = (title = "Shade trees and maize yields"): Metadata => ({ ...blankDetails("report.pdf", "2026-11-10"), title, abstract: "We measure maize yields on 640 plots." });
@@ -35,7 +36,15 @@ export async function setup({ humanReview = false } = {}) {
       publication: { zenodo: { mode: "off", license: "cc-by-4.0", defaultIdentifierPolicy: "mint-zenodo" }, crossref: { mode: "sandbox", prefix: "10.53832", suffixNamespace: "openscholar-r", depositorName: "d", email: "d@test.local", registrant: "r" } },
       updatedAt: 1,
     });
-    await ctx.db.insert("reportLimits", { workspaceId: lab, perDay: 5, updatedAt: 1, updatedBy: adminId! });
+    // Autumn's catalog as synced: a person's own workspace starts a report a day on Free, an organisation's five.
+    await ctx.db.insert("billingCatalog", {
+      plans: [
+        { id: "free", name: "Free", addOn: false, autoEnable: true, features: [], popular: false, limits: { reports_per_day: 1 } },
+        { id: "free_organization", name: "Free", addOn: false, autoEnable: false, features: [], popular: false, limits: { reports_per_day: 5 } },
+      ],
+      features: [],
+      syncedAt: 1,
+    });
     return { authorId: authorId!, own, lab, strangerId: strangerId! };
   });
   // An Openscholar admin, who reviews.
@@ -71,10 +80,21 @@ export async function checked(world: World, results: ReturnType<typeof passed>[]
   return report;
 }
 
-/** A report live in the author's own workspace, every check passed. */
+/**
+ * Activates a report as the person signed in as `as`, the way Activate does once its charge went through (or, with
+ * `free`, as one of the day's free activations): it goes live, or is refused with why.
+ */
+export async function activate(world: World, key: string, { as = "author", workspaceId = world.own, free = false }: { as?: string; workspaceId?: Id<"workspaces">; free?: boolean } = {}) {
+  const actor = await world.t.run(async (ctx) => actorFor(ctx, (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", as)).unique())!, workspaceId));
+  // As the action does: what's in the way refuses before anything is charged.
+  await world.t.query(internal.reports.activation.prepare, { actor, key, now: Date.now() });
+  return world.t.mutation(internal.reports.activation.goLive, { actor, key, free, ...(!free && { charge: { invoice: `in_${key}`, total: 5, currency: "usd" } }) });
+}
+
+/** A report live in the author's own workspace, every check passed. In the organisation, its admin activates it. */
 export async function live(world: World, who = world.author, workspaceId = world.own) {
   const report = await checked(world, [passed("byline"), passed("harm")], who, workspaceId);
-  await who.mutation(api.reports.flow.activate, { workspaceId, key: report.key });
+  await activate(world, report.key, { as: workspaceId === world.own ? "author" : "orgadmin", workspaceId });
   return report;
 }
 
