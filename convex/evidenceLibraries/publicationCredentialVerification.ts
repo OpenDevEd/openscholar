@@ -5,7 +5,7 @@ import type { PublicationSecrets, PublicationSettings } from "./publicationValid
 
 const timeout = () => AbortSignal.timeout(15_000);
 // zenodo.org answers 403 with an HTML page to Node fetch's default `node` User-Agent; its sandbox does not.
-const userAgent = "Openscholar (https://openscholar.ai)";
+export const userAgent = "Openscholar (https://openscholar.ai)";
 
 export async function verifyCrossrefCredentials(
   loginId: string,

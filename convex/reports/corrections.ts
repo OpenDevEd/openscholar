@@ -1,5 +1,6 @@
 // Changes to a live report's details (plans/publish-reports). Its author corrects them and the checks run again; a
 // reviewer may edit them directly. Either way the report stays live as it was until the changes are its details.
+import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../lib/functions";
 import { providersOf, type CheckResult, type Metadata } from "../../lib/reports/report";
@@ -21,10 +22,14 @@ export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, det
     flagged: changes.results.some((result) => !result.pass) || undefined,
     changes: undefined,
     correctedAt: now,
+    // Its registrars take the record again: Crossref the corrected deposit under the same DOI, Zenodo an edit of its record.
     deposit: registers.includes("crossref") ? "queued" : "none",
     archive: registers.includes("zenodo") ? "queued" : "none",
+    registrationError: undefined,
+    registrationTries: undefined,
     updatedAt: now,
   });
+  await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id });
 }
 
 /** When a live report's details were last set: what a form of changes started from. */

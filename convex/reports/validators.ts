@@ -148,6 +148,12 @@ export const reportFields = {
   registration: registrationValidator,
   deposit: depositValidator,
   archive: archiveValidator,
+  /** Its record on Zenodo once there is one, which a correction edits, and the DOI Zenodo gave it when it mints its own. */
+  zenodoRecordId: v.optional(v.string()),
+  zenodoDoi: v.optional(v.string()),
+  /** Why its last registration was refused or couldn't be made, for a reviewer, and how often it has been tried again. */
+  registrationError: v.optional(v.string()),
+  registrationTries: v.optional(v.number()),
   activatedAt: v.optional(v.number()),
   correctedAt: v.optional(v.number()),
   /** When a reviewer withdrew it after it had gone live. Its address then shows a page saying so. */
@@ -243,6 +249,8 @@ export const adminReportValidator = v.object({
   correctedAt: v.optional(v.number()),
   /** Reviewers' words on it, oldest first, each by name. */
   reviews: capped(v.array(v.object({ decision: reviewDecisionValidator, by: v.string(), at: v.number(), note: v.optional(v.string()) })), 50),
+  /** What a registrar said when it refused the report, or couldn't be reached. */
+  registrationError: v.optional(v.string()),
   /** The emails about it, oldest first: what each was and who it went to. `failed` when it couldn't be sent. */
   emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),

@@ -15,6 +15,7 @@ import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
 import { detailsOf, keptDetails, signedAgreement, touch } from "./flow";
 import { notify } from "./mail";
+import { register } from "./registration";
 import { reportSettings } from "./settings";
 import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
 
@@ -133,6 +134,7 @@ export const get = query({
       ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
       ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       reviews: reviews.reverse().map(({ decision, by, at, note }) => ({ decision, by: reviewers.get(by)!, at, ...(note && { note }) })),
+      ...(report.registrationError && { registrationError: report.registrationError }),
       emails: emails.reverse().map(({ event, audience, at, error }) => ({ event, audience, at, ...(error && { failed: true }) })),
       humanReview: settings.humanReview,
     };
@@ -162,6 +164,8 @@ export const decide = mutation({
     if (decision === "reinstate") {
       if (stage !== "declined" || !report.withdrawnAt) throw createError("CONFLICT", "Only a withdrawn report can be reinstated.");
       await touch(ctx, report, { status: "live", withdrawnAt: undefined, note: undefined });
+      // Its registrars get the record as it was before it was withdrawn.
+      await register(ctx, report);
       await record(ctx, report._id, reviewer._id, "reinstate");
       await notify(ctx, report._id, "reinstated");
       return null;
@@ -172,6 +176,8 @@ export const decide = mutation({
     if (decision === "withdraw") {
       if (stage !== "live") throw createError("CONFLICT", "This report isn't live, so there is nothing to withdraw.");
       await touch(ctx, report, { status: "declined", withdrawnAt: Date.now(), note: words });
+      // A registered DOI can't be removed: its registrars get the record again, marked withdrawn.
+      await register(ctx, report);
       await record(ctx, report._id, reviewer._id, "withdraw", words);
       await notify(ctx, report._id, "withdrawn");
       return null;

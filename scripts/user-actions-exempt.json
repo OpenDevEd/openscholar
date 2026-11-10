@@ -290,7 +290,8 @@
     "reports/review:editDetails": "Site administration, for Openscholar's own admins on the admin pages.",
     "reports/flow:requestChangesReview": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
     "reports/flow:discardChanges": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
-    "reports/review:agreement": "Site administration, for Openscholar's own admins on the admin pages."
+    "reports/review:agreement": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/registration:retry": "Site administration, for Openscholar's own admins on the admin pages."
   },
   "pending": {
     "evidenceLibraries/collectionSources:listCollectionSources": "#329",

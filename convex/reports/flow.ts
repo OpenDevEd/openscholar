@@ -312,6 +312,7 @@ export const activate = workspaceMutation({
     if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
     const registers = providersOf(report.registration);
     await touch(ctx, report, { status: "live", activatedAt: Date.now(), deposit: registers.includes("crossref") ? "queued" : "none", archive: registers.includes("zenodo") ? "queued" : "none" });
+    await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id });
     await notify(ctx, report._id, "live");
     await notify(ctx, report._id, "live-author");
     return null;

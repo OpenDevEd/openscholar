@@ -17,7 +17,8 @@ afterEach(() => {
 const emailed = async (world: World, key: string) => {
   await world.t.finishAllScheduledFunctions(vi.runAllTimers);
   const { _id } = await row(world.t, key);
-  return world.t.run(async (ctx) => (await ctx.db.query("reportEmails").withIndex("by_reportId", (q) => q.eq("reportId", _id)).take(50)).map((email) => `${email.audience}: ${email.event}`).sort());
+  // Without registrars' accounts in these tests every registration is refused, which ./registration.test.ts covers.
+  return world.t.run(async (ctx) => (await ctx.db.query("reportEmails").withIndex("by_reportId", (q) => q.eq("reportId", _id)).take(50)).filter((email) => email.event !== "Registration refused").map((email) => `${email.audience}: ${email.event}`).sort());
 };
 const decide = async (world: World, key: string, decision: "approve" | "decline" | "withdraw" | "reinstate", note?: string) =>
   world.reviewer.mutation(api.reports.review.decide, { key, decision, seenPdfAt: (await row(world.t, key)).pdf!.at, ...(note && { note }) });
