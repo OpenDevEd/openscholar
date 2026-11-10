@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { create } from "zustand";
-import { BookCheck, BookPlus, Building2, Folder, FolderCheck, Plus, Search, UserRound } from "@/components/icons";
+import { BookCheck, BookPlus, Building2, EvidenceLibrariesIcon, Folder, FolderCheck, Plus, Search, UserRound } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
@@ -198,17 +198,28 @@ export function useSavePaper(paper: WorkInput | undefined) {
   return { ready, isSignedIn, openSignIn, saved, isSaved, toggle };
 }
 
-/** Save to library and collections, beside the rating. Icon-only when `compact`. */
+/** A named button of the group and its name: on a phone the three keep their icons, and their names stay for screen readers. */
+const NAMED = "max-sm:px-2 max-sm:has-[>svg]:px-2";
+const NAME = "max-sm:sr-only";
+
+/**
+ * Save to library, add to a collection and add to a community, beside the rating. Icon-only when `compact`. On a
+ * page of the paper's own (`named`) each of the three says what it does, down to a phone's width, where they keep
+ * their icons.
+ */
 export function SaveControl({
   paper,
   compact = false,
+  named = false,
   className,
 }: {
   paper: WorkInput;
   compact?: boolean;
+  named?: boolean;
   className?: string;
 }) {
   const t = useTranslations("saveToLibrary");
+  const tAdded = useTranslations("addedPapers");
   const { ready, isSignedIn, openSignIn, saved, isSaved, toggle } = useSavePaper(paper);
   const setIn = useSetInCollection(paper);
   const [picking, setPicking] = useState(false);
@@ -226,13 +237,14 @@ export function SaveControl({
       variant="outline"
       size="sm"
       aria-label={t("addToCollection")}
-      className="bg-transparent px-2 has-[>svg]:px-2"
+      className={cn("bg-transparent", named ? NAMED : "px-2 has-[>svg]:px-2")}
     >
       {inCollection ? (
         <FolderCheck className="text-primary" />
       ) : (
         <Folder className="text-muted-foreground" />
       )}
+      {named ? <span className={NAME}>{t("addToCollection")}</span> : null}
     </Button>
   );
 
@@ -252,6 +264,7 @@ export function SaveControl({
           className={cn(
             "bg-transparent",
             compact && "px-2 has-[>svg]:px-2",
+            named && NAMED,
             isSaved &&
               "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary dark:bg-primary/15 dark:hover:bg-primary/20",
           )}
@@ -262,7 +275,7 @@ export function SaveControl({
             <BookPlus className="text-muted-foreground" />
           )}
           {!compact && (
-            <span className="inline-grid [&>*]:col-start-1 [&>*]:row-start-1">
+            <span className={cn("inline-grid [&>*]:col-start-1 [&>*]:row-start-1", named && NAME)}>
               <span className={cn(isSaved && "invisible")}>{t("save")}</span>
               <span className={cn(!isSaved && "invisible")} aria-hidden>
                 {t("saved")}
@@ -273,7 +286,8 @@ export function SaveControl({
       </TooltipHint>
       {ready ? (
         <Popover open={picking} onOpenChange={setPicking}>
-          <TooltipHint label={t("addToCollection")}>
+          {/* A named button needs no hint. */}
+          <TooltipHint label={named ? undefined : t("addToCollection")}>
             <PopoverTrigger asChild>{folderButton}</PopoverTrigger>
           </TooltipHint>
           {/* Focus goes to the new collection's name, not back to the folder, when the list makes way for it. */}
@@ -291,12 +305,22 @@ export function SaveControl({
         </Popover>
       ) : (
         // Signed out, the folder asks the person to sign in instead of opening.
-        <TooltipHint label={t("addToCollection")}>
+        <TooltipHint label={named ? undefined : t("addToCollection")}>
           {cloneElement(folderButton, { onClick: isSignedIn ? undefined : () => openSignIn() })}
         </TooltipHint>
       )}
       {/* The paper onto a community (#1123): published, or to its review queue. */}
-      <CommunityControl paper={paper} />
+      <CommunityControl
+        paper={paper}
+        trigger={
+          named ? (
+            <Button variant="outline" size="sm" className={cn("bg-transparent", NAMED)}>
+              <EvidenceLibrariesIcon className="text-muted-foreground" />
+              <span className={NAME}>{tAdded("addToCommunity")}</span>
+            </Button>
+          ) : undefined
+        }
+      />
       {/* In the group, whose handlers keep the dialog's clicks and keys from reaching the card. */}
       <NewCollectionDialog open={making} onOpenChange={setMaking} paper={{ title: paper.title || paper.display_name || "", add: (id) => setIn(id, true) }} returnFocus={() => folderRef.current} />
     </ButtonGroup>
