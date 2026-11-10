@@ -985,7 +985,7 @@ function SettingsView({
           <Row label="Series">
             <SavedInput value={settings.series.name} onSave={(name) => save({ series: { name } }, "Series name saved")} className="w-64" />
           </Row>
-          <Row label="ISSN" hint="Pending until the ISSN centre assigns it">
+          <Row label="ISSN" hint="Leave empty until the series has one. Bylines say ISSN pending until then.">
             <SavedInput value={settings.series.issn} placeholder="Pending" onSave={(issn) => save({ series: { issn } }, "ISSN saved")} className="w-40 font-mono" />
           </Row>
           <Row label="Byline" hint="{series}, {issn} and {doi} are filled in for each report" wide>
