@@ -104,7 +104,9 @@ export function PublishFlow() {
   const workspaceId = useWorkspace();
   // In an organisation's workspace every member sees its reports, so each row says who signed.
   const shared = useWorkspaceSlug() !== undefined;
-  const [{ view, report: asked, correct, step: at, show, page }, setPlace] = useQueryStates(PLACE);
+  const [{ view, report: named, correct, step: at, show, page }, setPlace] = useQueryStates(PLACE);
+  // An address cut off after "report=" names none: it is the page with no report named.
+  const asked = named || null;
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.

@@ -255,6 +255,23 @@ describe("the already-published check's titles", () => {
   });
 });
 
+describe("a report's links and words", () => {
+  it("are saved while typed, hold the checks while a link leads nowhere, and drop a link left empty", async () => {
+    const world = await setup();
+    const { key, pdfAt } = await atDetails(world);
+    const withLinks = (...targets: string[]) => ({ ...details(), relations: targets.map((target) => ({ kind: "data" as const, target })) });
+    const run = (metadata: ReturnType<typeof details>, runId: string) => world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata, runId, from: { pdfAt } });
+    // Half typed, it is kept as it is: the form saves on every pause.
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, metadata: withLinks("javascript:alert(1)"), pdfAt });
+    await expect(run(withLinks("javascript:alert(1)"), "bad-link")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await run(withLinks("https://example.org/data", "  ", "10.5281/zenodo.1234567"), "good-links");
+    expect((await read(world.author, world.own, key)).metadata!.relations.map((relation) => relation.target)).toEqual(["https://example.org/data", "10.5281/zenodo.1234567"]);
+    // A keyword longer than a keyword is refused, wherever it is saved from.
+    const other = await atDetails(world, world.author, world.lab);
+    await expect(world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.lab, key: other.key, metadata: { ...details(), keywords: ["k".repeat(101)] }, pdfAt: other.pdfAt })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+  });
+});
+
 describe("a report's details", () => {
   it("are refused with an ORCID iD that isn't one, or a title past its limit, and kept otherwise", async () => {
     const world = await setup();

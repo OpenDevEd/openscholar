@@ -7,7 +7,7 @@ import { createError } from "../lib/errors";
 import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { bylineOf } from "../../lib/reports/settings";
-import { OWNERS_ONLY, detailsOf, keptDetails, mayChange, touch } from "./flow";
+import { OWNERS_ONLY, checkedDetails, detailsOf, mayChange, touch } from "./flow";
 import { RUN_STUCK_MS, changeStageOf, stageOf } from "../../lib/reports/report";
 import { notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, formVersion } from "./corrections";
@@ -59,15 +59,15 @@ export const start = internalMutation({
       // Details put back to exactly what the report already says are no changes, and nothing is done about them:
       // changes that are waiting are given up with Discard, never by this. Compared whole, so a change a reader of
       // the page can't see, such as an institution's catalogue ID, still counts as one.
-      if (JSON.stringify(details.metadata) === JSON.stringify(keptDetails(metadata))) return { unchanged: true as const, waiting: details.correction !== undefined };
+      if (JSON.stringify(details.metadata) === JSON.stringify(checkedDetails(metadata))) return { unchanged: true as const, waiting: details.correction !== undefined };
       // The changes are kept while they are checked, so a run that never ends loses none of them.
-      await ctx.db.patch("reportDetails", details._id, { running: [], trying: keptDetails(metadata) });
+      await ctx.db.patch("reportDetails", details._id, { running: [], trying: checkedDetails(metadata) });
       await touch(ctx, report, { run: { id: runId, at: Date.now(), changes: true } });
     } else {
       if (report.step !== "details") throw createError("CONFLICT", "This report isn't waiting for its checks any more.");
       // Details typed over another PDF's, as a tab left open across a new upload would send, are never checked.
       if (report.pdf?.at !== from.pdfAt) throw createError("CONFLICT", "A new PDF replaced the one these details were read from. Check the details it was read into.");
-      await ctx.db.patch("reportDetails", details._id, { metadata: keptDetails(metadata), running: [] });
+      await ctx.db.patch("reportDetails", details._id, { metadata: checkedDetails(metadata), running: [] });
       await touch(ctx, report, { run: { id: runId, at: Date.now() }, title: metadata.title.trim() });
     }
     const on = settings.checks.filter((check) => check.enabled);

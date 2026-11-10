@@ -64,7 +64,7 @@ function Field({ label, children, className, counter }: { label: string; childre
 const used = (text: string, max: number) => `${text.length.toLocaleString("en")} / ${max.toLocaleString("en")}`;
 
 /** Words typed into a box that become chips: Enter or a comma adds one. */
-function ChipInput({ values, onChange, placeholder, label, mono = false }: { values: string[]; onChange: (v: string[]) => void; placeholder: string; label: string; mono?: boolean }) {
+function ChipInput({ values, onChange, placeholder, label, mono = false, max = DETAIL_TEXT.keyword }: { values: string[]; onChange: (v: string[]) => void; placeholder: string; label: string; mono?: boolean; /** The longest a chip's words may be. */ max?: number }) {
   const [text, setText] = useState("");
   const add = () => {
     const word = text.trim();
@@ -74,9 +74,10 @@ function ChipInput({ values, onChange, placeholder, label, mono = false }: { val
   return (
     <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-field px-2 py-1.5">
       {values.map((v) => (
-        <span key={v} className={cn("inline-flex h-6 items-center gap-1 rounded-md bg-inset ps-2 pe-1 text-xs", mono && "font-mono")}>
-          {v}
-          <button type="button" aria-label={`Remove ${v}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground" onClick={() => onChange(values.filter((x) => x !== v))}>
+        // A long one is cut inside its chip, so its remove button stays in the box and in reach.
+        <span key={v} className={cn("inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-md bg-inset ps-2 pe-1 text-xs", mono && "font-mono")}>
+          <span className="truncate">{v}</span>
+          <button type="button" aria-label={`Remove ${v}`} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground" onClick={() => onChange(values.filter((x) => x !== v))}>
             <CircleX className="size-3" />
           </button>
         </span>
@@ -84,6 +85,7 @@ function ChipInput({ values, onChange, placeholder, label, mono = false }: { val
       <input
         aria-label={label}
         value={text}
+        maxLength={max}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === ",") {
@@ -310,6 +312,8 @@ export function DetailsStep({
   };
   const wrongOrcids = m.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid));
   const future = m.date > localToday();
+  // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
+  const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
 
   return (
     <div>
@@ -538,6 +542,7 @@ export function DetailsStep({
         </Section>
 
         <Section title="Data, code and other versions" crossref={false}>
+          {wrongLinks ? <p role="alert" className="ps-1 text-xs text-destructive">A link is a web address (https://…) or a DOI. Put the marked one right, or remove it.</p> : null}
           {m.relations.length ? (
             <Paged pager={links.pager} rowHeight={ROW} label="links">
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
@@ -558,7 +563,7 @@ export function DetailsStep({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="h-8 min-w-0 flex-1 font-mono text-xs" />
+                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="h-8 min-w-0 flex-1 font-mono text-xs" />
                   {href ? (
                     <TooltipHint label="Open link">
                       <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
@@ -594,7 +599,7 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || (!!onCancel && !resend && !touched)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;

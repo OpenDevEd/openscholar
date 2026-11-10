@@ -11,7 +11,7 @@ import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { notify } from "./mail";
 import { register } from "./registering";
@@ -50,11 +50,24 @@ const RECENT = 20;
 const untouchedOf = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) =>
   (await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(RECENT)).find((report) => report.ownerId === userId && report.step === "doi" && !report.pdf && report.status === "draft");
 
+/**
+ * A report's details as they may be checked and published: kept, with every link a web address or a DOI. A link
+ * still being typed is saved as it is; one that leads nowhere holds the checks, and one left empty is dropped.
+ */
+export function checkedDetails(metadata: Metadata) {
+  const relations = metadata.relations.filter((relation) => relation.target.trim() !== "");
+  const dead = relations.find((relation) => !linkHref(relation.target));
+  if (dead) throw createError("VALIDATION_ERROR", `"${dead.target.slice(0, 80)}" isn't a web address or a DOI. Put the link right, or remove it.`);
+  return keptDetails({ ...metadata, relations });
+}
+
 /** A report's details as they may be kept: each list within its cap, said in words, and the whole within its size. */
 export function keptDetails(metadata: Metadata) {
   const over = (Object.keys(DETAIL_CAPS) as Array<keyof typeof DETAIL_CAPS>).find((list) => list in metadata && (metadata[list as keyof Metadata] as unknown[]).length > DETAIL_CAPS[list]);
   if (over) throw createError("VALIDATION_ERROR", `A report holds at most ${DETAIL_CAPS[over].toLocaleString("en")} ${over === "studyDesigns" ? "study designs" : over === "sdgs" ? "goals" : over === "relations" ? "links" : over}.`);
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
+  const long = [...metadata.keywords, ...metadata.funding.flatMap((funding) => funding.awards)].find((word) => word.length > DETAIL_TEXT.keyword);
+  if (long) throw createError("VALIDATION_ERROR", `Keep each keyword and grant number to ${DETAIL_TEXT.keyword} characters.`);
   const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
   // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.
