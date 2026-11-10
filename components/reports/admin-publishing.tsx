@@ -86,7 +86,7 @@ export function AdminPublishing() {
   return (
     <div className="space-y-6">
       <Segmented
-        label={t("publishing")}
+        label={t("publications")}
         value={nav.view}
         // The other view opens with nothing left open from this one.
         onChange={(view) => go({ view, report: null, edit: null, check: null, agreement: null })}

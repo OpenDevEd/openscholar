@@ -10,21 +10,21 @@ import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Paged, pagerOf } from "@/components/settings/parts";
 import { FunderName } from "@/components/papers/paper-entities";
-import { OrcidIcon } from "@/components/icons/author-service-icons";
+import { AffiliationPicker } from "@/components/people/affiliation-picker";
+import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { CountryFlag } from "@/components/ui/country-flag";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowDown, ArrowUp, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
-import { countryOfPlace } from "@/lib/reports/places";
 import { useRelationName, useRoleName } from "@/components/reports/words";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, RELATION_KINDS, doiIn, isOrcid, linkHref, type Affiliation, type Author, type Metadata } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, LICENCE_URL, RELATION_KINDS, doiIn, linkHref, type Author, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 const REFS_PER_PAGE = 5;
@@ -127,45 +127,24 @@ function usePage<T>(list: T[], size: number) {
   return { pager, offset, shown: list.slice(offset, offset + size), last: (length: number) => setPage(Math.max(1, Math.ceil(length / size))) };
 }
 
-/** An author's places, from OpenAlex's institutions or as typed, each with its country's flag. */
-function Affiliations({ value, onChange }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void }) {
-  const t = useTranslations("publishReports.details");
-  const ids = value.map((a) => a.id ?? typedId(a.name));
-  const names = Object.fromEntries(value.map((a) => [a.id ?? typedId(a.name), a.name]));
-  return (
-    <OpenAlexLookupFilter
-      selected={ids}
-      onChange={(next) => onChange(value.filter((a) => next.includes(a.id ?? typedId(a.name))))}
-      onPicked={(option) =>
-        onChange([...value, option.id.startsWith("typed:") ? { id: null, name: option.name, country: "" } : { id: option.id, name: option.name, country: countryOfPlace(option.detail) }])
-      }
-      icons={Object.fromEntries(value.filter((a) => a.country).map((a) => [a.id ?? typedId(a.name), <CountryFlag key={a.name} countryCode={a.country} />]))}
-      lookup={{
-        entity: "institutions",
-        useNames: () => names,
-        remember: () => {},
-        typed: (query) => ({ id: typedId(query), name: query, detail: t("asTyped") }),
-      }}
-      labels={{ label: t("affiliations"), placeholder: t("addInstitution"), searchPlaceholder: t("findInstitution"), typeToSearch: t("typeInstitution"), unavailable: t("institutionsDown") }}
-    />
-  );
-}
-
 function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void }) {
   const t = useTranslations("publishReports.details");
   const roleName = useRoleName();
-  const wrongOrcid = author.orcid !== "" && !isOrcid(author.orcid);
+  const [finding, setFinding] = useState(false);
   const who = author.name || t("author");
   return (
     <li className="space-y-3 p-4">
-      {/* On a narrow screen the ORCID iD takes a line of its own under the name. */}
+      {/* The people found on ORCID open under the whole line: a name, its institutions and an iD don't fit under the
+          iD's box. On a narrow screen the iD's box takes a line of its own under the name. */}
+      <Popover modal open={finding} onOpenChange={setFinding}>
+      <PopoverAnchor asChild>
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
         <Input aria-label={t("name")} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="w-auto min-w-0 flex-1 font-medium" />
-        <div className="relative order-last w-full shrink-0 @xl:order-none @xl:w-52">
-          <OrcidIcon className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2" />
-          <Input aria-label={t("orcid")} aria-invalid={wrongOrcid} placeholder="0000-0000-0000-0000" value={author.orcid} onChange={(e) => onChange({ orcid: e.target.value.trim().toUpperCase() })} className="ps-8 font-mono text-xs" />
-        </div>
+        {/* The list's trigger, so focus comes back to it when the list closes; it opens under the whole line. */}
+        <PopoverTrigger asChild>
+          <OrcidButton orcid={author.orcid} open={finding} className="order-last w-full shrink-0 @xl:order-none @xl:w-56" />
+        </PopoverTrigger>
         <span className="flex shrink-0">
           <TooltipHint label={t("moveUp")}>
             <Button type="button" variant="ghost" size="icon-sm" aria-label={t("moveUpLabel", { name: who })} disabled={index === 0} className="text-muted-foreground" onClick={() => onMove(-1)}>
@@ -184,12 +163,35 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
           </TooltipHint>
         </span>
       </div>
-      {wrongOrcid ? <p role="alert" className="text-xs text-destructive @xl:ps-9">{t("wrongOrcid")}</p> : null}
+      </PopoverAnchor>
+      <PopoverContent align="end" className="w-[min(var(--radix-popover-trigger-width),28rem)] p-0">
+        <OrcidSearch
+          name={author.name}
+          institutions={author.affiliations.map((a) => a.name)}
+          current={author.orcid}
+          onPick={(orcid, name) => {
+            // The name stays as the report prints it; an empty one takes ORCID's.
+            onChange({ orcid, orcidFound: undefined, ...(!author.name.trim() && name && { name }) });
+            setFinding(false);
+          }}
+          onRemove={() => {
+            onChange({ orcid: "", orcidFound: undefined });
+            setFinding(false);
+          }}
+        />
+      </PopoverContent>
+      </Popover>
+      {author.orcidFound && author.orcid ? (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground @xl:ps-9">
+          <BadgeCheck className="size-3.5 shrink-0 text-primary" />
+          <span className="min-w-0">{t("orcidFound", { institution: author.orcidFound })}</span>
+        </p>
+      ) : null}
       {/* min-w-0: a long institution's name is cut inside its column, and never widens the form past a phone's screen. */}
       <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
         <div className="min-w-0 space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">{t("affiliations")}</span>
-          <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
+          <AffiliationPicker value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
         <div className="min-w-0 space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">{t("roles")}</span>
@@ -286,8 +288,7 @@ export function DetailsStep({
     held.current.m = next;
     setM(next);
     clearTimeout(held.current.timer);
-    // An ORCID iD half typed is no iD yet: the details are saved once it is one, or the box is empty.
-    held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next, opened) : undefined;
+    held.current.send = onSave ? () => onSave(next, opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
   // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
@@ -329,7 +330,6 @@ export function DetailsStep({
     set("references", [...m.references, bare]);
     setDoi("");
   };
-  const wrongOrcids = m.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid));
   const future = m.date > localToday();
   // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
   const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
@@ -395,7 +395,12 @@ export function DetailsStep({
             </Field>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">{t("licence")}</span>
-              <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">{m.licence}</div>
+              <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">
+                <a href={LICENCE_URL[m.licence]} target="_blank" rel="noreferrer license" className="inline-flex items-center gap-1.5 underline-offset-2 hover:underline">
+                  {m.licence}
+                  <ExternalLink className="size-3.5 text-muted-foreground" />
+                </a>
+              </div>
             </div>
           </div>
         </Section>
@@ -623,7 +628,7 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || future || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;

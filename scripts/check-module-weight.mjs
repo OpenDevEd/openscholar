@@ -6,10 +6,14 @@
 // 42 ms from one that reaches the assistant's agent (the AI SDK, zod and the OpenRouter
 // provider, about 2 MB of code). Forty such calls at once took 269 ms against 14 ms.
 //
-// So only the modules that run the assistant may load the agent. Everything else reaches
-// the assistant through `internal.assistant.*` references, which load nothing, and reads
-// shared constants from `lib/assistant/`. This fails on any other module the agent comes
-// into, and prints the imports that bring it there.
+// So a module may load a heavy package only when its own work needs it:
+// - the assistant's agent (the AI SDK, zod and the OpenRouter provider, about 2 MB) only in the modules that run the assistant.
+//   Everything else reaches it through `internal.assistant.*` references, which load nothing, and reads shared constants
+//   from `lib/assistant/`.
+// - the generated validator for a community's configuration (about 4 MB) only in the modules that validate or migrate a
+//   configuration. On 2026-11-10 it was in 85 of 435 modules, `http.ts` among them, through a constant or an error class
+//   that lived beside it: each community record Openscholar received spent about 85 ms of its 125 ms loading it.
+// This fails on any other module either one comes into, and prints the imports that bring it there.
 //
 // Node actions ("use node") are left out: their runtime keeps modules loaded between calls.
 
@@ -22,19 +26,38 @@ const require = createRequire(import.meta.url);
 // The bundler Convex deploys with, so this measures what the backend loads.
 const { build } = require(require.resolve("esbuild", { paths: [path.dirname(require.resolve("convex/package.json"))] }));
 
-/** What a module loads only to run the assistant. It brings the AI SDK and zod with it. */
-const HEAVY = ["@convex-dev/agent"];
-/** Modules that run the assistant, or hold everything by design. */
-const MAY_LOAD = [
-  /^convex\/assistant\//,
-  // Mounts every HTTP route, the assistant's among them.
-  /^convex\/http\.ts$/,
-  // Lists every action the assistant can run, with the replies that run them.
-  /^convex\/lib\/userActionRegistry\.ts$/,
-  // Clears a deleted account's chats and their files.
-  /^convex\/maintenance\/mutations\.ts$/,
-  // Reads a paper's PDF into a chat.
-  /^convex\/research\/papers\.ts$/,
+/** Heavy packages, with the modules that may load each and what to do instead. */
+const HEAVY = [
+  {
+    name: "@convex-dev/agent",
+    loads: (file) => file.includes("node_modules/@convex-dev/agent/"),
+    mayLoad: [
+      /^convex\/assistant\//,
+      // Mounts every HTTP route, the assistant's among them.
+      /^convex\/http\.ts$/,
+      // Lists every action the assistant can run, with the replies that run them.
+      /^convex\/lib\/userActionRegistry\.ts$/,
+      // Clears a deleted account's chats and their files.
+      /^convex\/maintenance\/mutations\.ts$/,
+      // Reads a paper's PDF into a chat.
+      /^convex\/research\/papers\.ts$/,
+    ],
+    instead: "Call the assistant through an `internal.assistant.*` reference (ctx.runMutation, ctx.runQuery or the scheduler), and move a shared constant or type to lib/assistant/.",
+  },
+  {
+    name: "the community configuration validator",
+    loads: (file) => file.endsWith("configuration/generated/library-config.validator.cjs"),
+    mayLoad: [
+      // The assistant edits a community's configuration, and every module it runs from loads its actions.
+      /^convex\/assistant\//,
+      /^convex\/lib\/userActionRegistry\.ts$/,
+      /^convex\/maintenance\/mutations\.ts$/,
+      // Validate, migrate or publish a configuration, or read one migrated to the current version.
+      /^convex\/evidenceLibraries\/(addressRecovery|applicationSetup|applications|assistant|configurationDeployment|configurationMigration|configurationSnapshot|databaseSetup|deploymentSetup|directory|mutations|operations|queries|readinessSetup|releases|revisionConfiguration|setupNaming|setupOperation|storageSetup|versions)\.ts$/,
+      /^convex\/migrations\/(communityDirectory|versionChangedSections)\.ts$/,
+    ],
+    instead: "Import a constant, type or error class from a module that doesn't load the validator (such as owner-configuration-version.ts, assembly-error.ts, publication-settings.ts or convex/evidenceLibraries/operationState.ts), or move it to one.",
+  },
 ];
 
 const modules = readdirSync(path.join(root, "convex"), { recursive: true })
@@ -61,15 +84,13 @@ const { metafile } = await build({
   logLevel: "silent",
 });
 
-const heavy = (file) => HEAVY.find((name) => file.includes(`node_modules/${name}/`));
-
-/** The shortest chain of imports from a module to a heavy package, or undefined when it reaches none. */
-function chainTo(entry) {
+/** The shortest chain of imports from a module to a file `loads` matches, or undefined when it reaches none. */
+function chainTo(entry, loads) {
   const from = new Map([[entry, undefined]]);
   const queue = [entry];
   while (queue.length) {
     const file = queue.shift();
-    if (heavy(file)) {
+    if (loads(file)) {
       const chain = [];
       for (let at = file; at; at = from.get(at)) chain.unshift(at);
       return chain;
@@ -83,16 +104,18 @@ function chainTo(entry) {
   }
 }
 
-const problems = modules
-  .filter((file) => !MAY_LOAD.some((allowed) => allowed.test(file)))
-  .flatMap((file) => {
-    const chain = chainTo(file);
-    return chain ? [`${file} loads ${heavy(chain.at(-1))}:\n    ${chain.map((step) => step.replace(/^node_modules\//, "")).join("\n    -> ")}`] : [];
-  });
+const problems = HEAVY.flatMap(({ name, loads, mayLoad, instead }) => {
+  const found = modules
+    .filter((file) => !mayLoad.some((allowed) => allowed.test(file)))
+    .flatMap((file) => {
+      const chain = chainTo(file, loads);
+      return chain ? [`${file} loads ${name}:\n    ${chain.map((step) => step.replace(/^node_modules\//, "")).join("\n    -> ")}`] : [];
+    });
+  return found.length ? [`${found.join("\n\n")}\n\n${found.length} module${found.length === 1 ? "" : "s"} load ${name}, which slows every call to them. ${instead}`] : [];
+});
 
 if (problems.length) {
   console.error(problems.join("\n\n"));
-  console.error(`\n${problems.length} module${problems.length === 1 ? "" : "s"} outside the assistant load its agent, which slows every call to them. Call the assistant through an \`internal.assistant.*\` reference (ctx.runMutation, ctx.runQuery or the scheduler), and move a shared constant or type to lib/assistant/.`);
   process.exit(1);
 }
-console.log(`Module weight: ${modules.length} modules checked; only the assistant's load its agent.`);
+console.log(`Module weight: ${modules.length} modules checked; heavy packages load only where they're used.`);

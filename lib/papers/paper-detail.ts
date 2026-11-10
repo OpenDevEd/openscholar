@@ -34,8 +34,9 @@ export type PaperDetail = {
   thisYear: number;
 };
 
-export type PaperInstitution = { id: string | null; name: string; country: string | null };
-type Institution = { id?: string | null; display_name?: string | null; country_code?: string | null };
+/** An institution, with its ROR ID (https://ror.org/…) where the source gives one. */
+export type PaperInstitution = { id: string | null; name: string; country: string | null; ror: string | null };
+type Institution = { id?: string | null; display_name?: string | null; country_code?: string | null; ror?: string | null };
 type Authorship = { author?: { id?: string | null; display_name?: string | null; orcid?: string | null }; institutions?: Institution[] | null; is_corresponding?: boolean | null };
 type Location = { landing_page_url?: string | null; pdf_url?: string | null; license?: string | null; raw_source_name?: string | null; source?: { id?: string | null; display_name?: string | null; type?: string | null; host_organization_name?: string | null; issn_l?: string | null } | null };
 /** The fields of a work this page reads, as either source gives them. */
@@ -65,7 +66,9 @@ type Raw = {
 const bare = (id: string | null | undefined) => id?.split("/").at(-1) ?? null;
 /** Names some sources send escaped for a web page, such as "Poverty &amp; Public Policy". */
 const plain = (name: string) => name.replace(/&(amp|lt|gt|quot|#39);/g, (_, entity: string) => ({ amp: "&", lt: "<", gt: ">", quot: "\"", "#39": "'" } as Record<string, string>)[entity]!);
-const institutionOf = (institution: Institution): PaperInstitution => ({ id: bare(institution.id), name: plain(institution.display_name ?? ""), country: institution.country_code ?? null });
+/** OpenAlex, our index and a report all give a ROR ID as its address; anything else is no ROR ID. */
+const rorOf = (ror: string | null | undefined) => (ror && /^https:\/\/ror\.org\/0[a-z0-9]{8}$/.test(ror) ? ror : null);
+const institutionOf = (institution: Institution): PaperInstitution => ({ id: bare(institution.id), name: plain(institution.display_name ?? ""), country: institution.country_code ?? null, ror: rorOf(institution.ror) });
 const some = <T>(list: T[] | null | undefined) => (list?.length ? list : null);
 /** A copy's site, for one whose source has no name. */
 const hostOf = (url: string) => {

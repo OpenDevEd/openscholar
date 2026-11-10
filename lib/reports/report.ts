@@ -24,13 +24,23 @@ export type CheckResult = {
 };
 
 /** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country. */
-export type Affiliation = { id: string | null; name: string; country: string };
+/** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country, and its ROR ID (https://ror.org/…) where OpenAlex or ROR know it. */
+export type Affiliation = { id: string | null; name: string; country: string; ror?: string };
 /** CRediT's 14 contributor roles (credit.niso.org). */
 export const CREDIT_ROLES = [
   "Conceptualization", "Data curation", "Formal analysis", "Funding acquisition", "Investigation", "Methodology", "Project administration",
   "Resources", "Software", "Supervision", "Validation", "Visualization", "Writing, original draft", "Writing, review and editing",
 ] as const;
-export type Author = { name: string; orcid: string; openalexId: string | null; affiliations: Affiliation[]; corresponding: boolean; roles: string[] };
+export type Author = {
+  name: string;
+  orcid: string;
+  /** The institution ORCID's search matched the author by when the iD wasn't in the PDF; gone once the author changes the iD. */
+  orcidFound?: string;
+  openalexId: string | null;
+  affiliations: Affiliation[];
+  corresponding: boolean;
+  roles: string[];
+};
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
 export type Funding = { funder: { id: string | null; name: string }; awards: string[] };
@@ -72,6 +82,9 @@ export const DETAIL_CAPS = { authors: 200, affiliations: 10, roles: CREDIT_ROLES
 export const DETAILS_MAX_BYTES = 300_000;
 /** The longest each of a report's texts is, which its box shows as it's typed. */
 export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500 } as const;
+
+/** Where each licence a report can carry is written out. */
+export const LICENCE_URL: Record<Metadata["licence"], string> = { "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/" };
 
 /** An ORCID iD with its check digit right (ISO 7064 11-2), as 0000-0002-1825-0097. */
 export function isOrcid(id: string) {

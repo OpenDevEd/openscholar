@@ -1,6 +1,6 @@
 import type {MutationCtx} from "../../convex/_generated/server";
 import {EVIDENCE_LIBRARY_CONFIG_PROVENANCE as provenance} from "../../lib/evidence-libraries/configuration/contract";
-import {CURRENT_OWNER_CONFIGURATION_VERSION} from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import {CURRENT_OWNER_CONFIGURATION_VERSION} from "../../lib/evidence-libraries/configuration/owner-configuration-version";
 import { organizationWorkspaceOf } from "../../convex/workspaces/personal";
 import { grantPlanFeaturesForTest } from "../../convex/billing/billing.test-support";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";

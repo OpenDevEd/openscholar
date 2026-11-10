@@ -1,7 +1,7 @@
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { configurationOperationRequiresDeployment } from "./operations";
+import { configurationOperationRequiresDeployment } from "./operationState";
 
 type SetupReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 

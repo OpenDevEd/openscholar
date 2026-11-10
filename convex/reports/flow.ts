@@ -178,7 +178,7 @@ export const sign = workspaceMutation({
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi) });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -191,13 +191,15 @@ export const sign = workspaceMutation({
     else await ctx.db.insert("reportKeys", { next: next + 1 });
     const key = keyOf(next);
     const now = Date.now();
+    const doi = `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`;
     const reportId = await ctx.db.insert("reports", {
       key,
       workspaceId,
       ownerId: userId,
       // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
-      // the report registers is fixed with it.
-      doi: `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`,
+      // the report registers is fixed with it, and so is the line its PDF carries.
+      doi,
+      byline: bylineOf(settings.series, doi),
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
       step: "doi",
       status: "draft",
@@ -535,13 +537,13 @@ export const getAction = defineUserQuery({
       // An organisation's pages are under its slug; the person's own have none.
       return { elsewhere: { name: organization?.name ?? "your own workspace", slug: organization?.slug ?? null } };
     }
-    const [details, settings] = await Promise.all([detailsOf(ctx, report._id), reportSettings(ctx)]);
+    const details = await detailsOf(ctx, report._id);
     const { correction } = details;
     return {
       report: {
         ...(await row(ctx, actor, report)),
         doi: report.doi,
-        byline: bylineOf(settings.series, report.doi),
+        byline: report.byline,
         asked: report.asked === true,
         signedAt: report.signedAt,
         onBehalfOfAll: report.signedBy.onBehalfOfAll,

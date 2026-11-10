@@ -30,3 +30,19 @@ export const topicAssociationRequestSchema = z.object({
   }).strict().nullable(),
 }).strict().refine(value => value.state === "published" ? value.metadata !== null : value.topicIds.length === 0, "Invalid publication state");
 export type TopicAssociationRequest = z.infer<typeof topicAssociationRequestSchema>;
+/** Most records one batch carries: Openscholar saves a batch in one transaction. */
+export const TOPIC_ASSOCIATION_BATCH_MAX = 50;
+/** Longest batch body, in characters: a record's abstract alone may be 100,000. */
+export const TOPIC_ASSOCIATION_BATCH_BODY_MAX = 4_000_000;
+/**
+ * Most weight one batch carries, a record weighing one plus its topics: each topic costs a few index reads, and a
+ * transaction may make 4,096. 50 records with up to five topics each fit; a record with more goes in a smaller batch.
+ */
+export const TOPIC_ASSOCIATION_BATCH_WEIGHT_MAX = 300;
+export const topicAssociationWeight = (delivery: {topicIds: readonly string[]}) => 1 + delivery.topicIds.length;
+export const topicAssociationBatchRequestSchema = z.object({
+  ...envelope, deliveries: z.array(topicAssociationRequestSchema).min(1).max(TOPIC_ASSOCIATION_BATCH_MAX),
+}).strict()
+  .refine(value => value.deliveries.every(delivery => delivery.libraryId === value.libraryId), "Every delivery belongs to the batch's community")
+  .refine(value => new Set(value.deliveries.map(delivery => delivery.itemKey)).size === value.deliveries.length, "One delivery per record")
+  .refine(value => value.deliveries.reduce((weight, delivery) => weight + topicAssociationWeight(delivery), 0) <= TOPIC_ASSOCIATION_BATCH_WEIGHT_MAX, "Too many topics for one batch");

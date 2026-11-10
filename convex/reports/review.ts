@@ -11,7 +11,6 @@ import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
 import { REVIEW_TEXT_MAX, STAGES, changesOf, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
-import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
 import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { notify } from "./mail";
@@ -122,7 +121,7 @@ export const get = query({
     for (const review of reviews) if (!reviewers.has(review.by)) reviewers.set(review.by, await ctx.db.get("users", review.by).then((user) => (user && personName(user)) || "A reviewer"));
     return {
       ...(await row(ctx, report)),
-      byline: bylineOf(settings.series, report.doi),
+      byline: report.byline,
       owner: { name: (owner && personName(owner)) || "", email: owner?.email ?? "" },
       workspace: workspace.organization ? workspace.name : null,
       signedAt: report.signedAt,

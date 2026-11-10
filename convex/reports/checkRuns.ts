@@ -6,7 +6,6 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
-import { bylineOf } from "../../lib/reports/settings";
 import { OWNERS_ONLY, checkedDetails, detailsOf, mayChange, touch } from "./flow";
 import { RUN_STUCK_MS, changeStageOf, stageOf } from "../../lib/reports/report";
 import { notify } from "./mail";
@@ -70,13 +69,19 @@ export const start = internalMutation({
       await ctx.db.patch("reportDetails", details._id, { metadata: checkedDetails(metadata), running: [] });
       await touch(ctx, report, { run: { id: runId, at: Date.now() }, title: metadata.title.trim() });
     }
-    const on = settings.checks.filter((check) => check.enabled);
+    // Changes to a live report are checked as it was published: by the checks of that version and against the line
+    // its PDF carries, so new checks or a new byline never fail a report published before them.
+    const version = changes ? report.checksVersion : settings.checksVersion;
+    if (version === undefined) throw createError("CONFLICT", "This report was never checked, so its changes can't be.");
+    const checks = changes ? (await ctx.db.query("reportCheckVersions").withIndex("by_version", (q) => q.eq("version", version)).unique())?.checks : settings.checks;
+    if (!checks) throw createError("NOT_FOUND", `The checks this report was published under (version ${version}) are missing.`);
+    const on = checks.filter((check) => check.enabled);
     return {
       reportId: report._id,
       doi: report.doi,
-      byline: bylineOf(settings.series, report.doi),
+      byline: report.byline,
       text: report.pdf?.text ?? null,
-      version: settings.checksVersion,
+      version,
       checks: await Promise.all(on.map(async (check) => ({ ...check, model: (await slugPick(ctx, check.modelId, check.effort, "screening"))?.modelId ?? null }))),
       changes,
     };

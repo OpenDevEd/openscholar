@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TEST_AI_MODELS } from "./test-models";
 import {
-  CURRENT_OWNER_CONFIGURATION_VERSION,
   completeOwnerConfigurationSnapshot,
   OwnerConfigurationMigrationError,
   migrateOwnerConfiguration,
@@ -11,6 +10,7 @@ import {
   type OwnerConfigurationMigrationSnapshot,
   type OwnerConfigurationSnapshot,
 } from "./owner-configuration-migrations";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "./owner-configuration-version";
 
 const legacySnapshot: OwnerConfigurationSnapshot = {
   ownerConfigurationVersion: 1,

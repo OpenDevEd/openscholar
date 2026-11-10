@@ -178,7 +178,7 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
           <Row label={t("series")}>
             <SavedInput value={settings.series.name} onSave={(name) => series({ name }, t("seriesSaved"))} className="w-64" ariaLabel={t("seriesName")} />
           </Row>
-          <Row label={t("issn")} hint={t("issnHint")}>
+          <Row label={t("issn")} hint={t("issnHint", { pending: "{pending}" })}>
             <SavedInput value={settings.series.issn} placeholder={t("issnPending")} onSave={(issn) => series({ issn }, t("issnSaved"))} className="w-40 font-mono" ariaLabel={t("issn")} />
           </Row>
           <Row label={t("byline")} hint={t("bylineHint", { series: "{series}", issn: "{issn}", doi: "{doi}" })} wide>
@@ -211,7 +211,7 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
               zenodoHint: t("zenodoHint"),
               crossrefHint: t("crossrefHint"),
               namespaceHint: t("namespaceHint"),
-              namespacePlaceholder: "openscholar-r",
+              namespacePlaceholder: "openscholar-reports",
               savedHint: t("savedHint"),
             }}
             onSave={savePublication}
@@ -385,7 +385,7 @@ function AccountPicker({ onPick }: { onPick: (account: Account, name: string) =>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
         <Command shouldFilter={false}>
-          <CommandInput placeholder={t("pickerPlaceholder")} value={query} onValueChange={setQuery} />
+          <CommandInput placeholder={t("pickerPlaceholder")} value={query} onValueChange={setQuery} busy={stale} />
           <CommandList className={cn("transition-opacity", stale && "opacity-60")}>
             {shown ? <CommandEmpty>{t("pickerEmpty")}</CommandEmpty> : null}
             {groups.map((group) => (

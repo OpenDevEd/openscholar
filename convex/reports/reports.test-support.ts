@@ -26,6 +26,8 @@ export async function setup({ humanReview = false } = {}) {
     for (const [clerkUserId, role] of [["author", "org:member"], ["orgadmin", "org:admin"], ["member", "org:member"]] as const) {
       await ctx.db.insert("organizationMemberships", { clerkMembershipId: `mem_${clerkUserId}`, organizationId, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     }
+    // As settingsRow makes it: the settings with the version of the checks a report records when it runs them.
+    await ctx.db.insert("reportCheckVersions", { version: REPORT_DEFAULTS.checksVersion, checks: REPORT_DEFAULTS.checks });
     await ctx.db.insert("reportSettings", {
       ...REPORT_DEFAULTS,
       enabled: true,

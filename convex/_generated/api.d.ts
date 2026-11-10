@@ -466,6 +466,7 @@ import type * as userAiConfig_mutations from "../userAiConfig/mutations.js";
 import type * as userAiConfig_queries from "../userAiConfig/queries.js";
 import type * as users_internal from "../users/internal.js";
 import type * as users_mutations from "../users/mutations.js";
+import type * as users_profileSetup from "../users/profileSetup.js";
 import type * as users_queries from "../users/queries.js";
 import type * as users_verifiedEmails from "../users/verifiedEmails.js";
 import type * as wallet_actions from "../wallet/actions.js";
@@ -974,6 +975,7 @@ declare const fullApi: ApiFromModules<{
   "userAiConfig/queries": typeof userAiConfig_queries;
   "users/internal": typeof users_internal;
   "users/mutations": typeof users_mutations;
+  "users/profileSetup": typeof users_profileSetup;
   "users/queries": typeof users_queries;
   "users/verifiedEmails": typeof users_verifiedEmails;
   "wallet/actions": typeof wallet_actions;

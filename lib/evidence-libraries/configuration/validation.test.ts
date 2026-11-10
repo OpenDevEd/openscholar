@@ -2,10 +2,8 @@ import { describe, expect, test, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import {
-  ConfigurationAssemblyError,
-  assembleEvidenceLibraryConfiguration,
-} from "./assembly";
+import { assembleEvidenceLibraryConfiguration } from "./assembly";
+import { ConfigurationAssemblyError } from "./assembly-error";
 import { TEST_AI_MODELS } from "./test-models";
 import {
   AI_PROVIDER,

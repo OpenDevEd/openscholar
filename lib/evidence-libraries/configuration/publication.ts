@@ -4,23 +4,6 @@ import type {
 } from "@/convex/evidenceLibraries/publicationValidators";
 import { validateSectionStructure } from "./generated-validation";
 
-export const PUBLICATION_CREDENTIAL_KEY = "publication-providers";
-export const EMPTY_PUBLICATION_SETTINGS: PublicationSettings = {
-  zenodo: {
-    mode: "off",
-    license: "cc-by-4.0",
-    defaultIdentifierPolicy: "mint-zenodo",
-  },
-  crossref: {
-    mode: "off",
-    prefix: "",
-    suffixNamespace: "",
-    depositorName: "",
-    email: "",
-    registrant: "",
-  },
-};
-
 export function buildPublicationConfiguration(
   settings: PublicationSettings,
   secrets: PublicationSecrets,
