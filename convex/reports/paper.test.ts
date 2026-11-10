@@ -52,12 +52,21 @@ describe("a report's page", () => {
     }
   });
 
+  it("is read by the assistant as a paper, only while it is live", async () => {
+    const world = await setup();
+    const waiting = await checked(world, [passed("byline", false)]);
+    expect(await world.t.query(internal.reports.paper.record, { key: waiting.key })).toBeNull();
+    const { key } = await live(world, world.author, world.lab);
+    expect(await world.t.query(internal.reports.paper.record, { key })).toMatchObject({ id: `https://openscholar.ai/${key}`, title: "Shade trees and maize yields", venue: "Openscholar Reports", doi: "10.53832/openscholar-r.r100002", year: 2026, openAccess: true });
+  });
+
   it("offers its corrections to its owner and its workspace's admins alone", async () => {
     const world = await setup();
     const { key } = await live(world, world.author, world.lab);
     const mine = (who: Pick<World["t"], "query">) => who.query(api.reports.paper.mine, { key });
-    expect(await mine(world.author)).toEqual({ waiting: false });
-    expect(await mine(world.orgAdmin)).toEqual({ waiting: false });
+    // With its workspace's address, where the correction opens whichever workspace the page is read in.
+    expect(await mine(world.author)).toEqual({ waiting: false, slug: "lab" });
+    expect(await mine(world.orgAdmin)).toEqual({ waiting: false, slug: "lab" });
     expect(await mine(world.member)).toBeNull();
     expect(await mine(world.stranger)).toBeNull();
     expect(await mine(world.t)).toBeNull();
