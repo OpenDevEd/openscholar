@@ -25,7 +25,11 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
 import { cookies, headers } from "next/headers";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { ProfileSetupGate } from "@/components/profile/profile-setup";
+import { PostHogIdentify } from "@/components/posthog-identify";
+import { ResearchStateProvider } from "@/lib/research/provider";
+import { SETUP_HEADER } from "@/lib/profile/setup";
 import { LOOK_COOKIE, lookKey, readCache, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { AssistantPanel } from "@/components/assistant/panel";
 import { ItemHome, WorkspaceGone } from "@/components/workspaces/item-home";
@@ -79,6 +83,10 @@ export default async function RootLayout({
   const slug = requestHeaders.get(WORKSPACE_HEADER) || null;
   const { me, looks } = readCache(requestCookies.get(LOOK_COOKIE)?.value, userId);
   const look = looks[lookKey(slug)];
+  // Whether this page is a new account's profile setup instead, as the proxy decided before anything was rendered.
+  const setupFirst = !!userId && requestHeaders.get(SETUP_HEADER) === "due";
+  const setupUser = setupFirst ? await currentUser() : null;
+  const setupPerson = setupUser ? { name: setupUser.fullName ?? "", imageUrl: setupUser.imageUrl } : null;
 
   const clerkLocalization = await clerkLocalizationFor(locale);
   const direction = isRightToLeft(locale) ? "rtl" : "ltr";
@@ -97,8 +105,13 @@ export default async function RootLayout({
             <ConvexClientProvider preloadedFlags={preloadedFlags} preloadedCatalog={preloadedCatalog} clerkLocalization={clerkLocalization}>
               <ConfigProvider>
                 <NuqsAdapter>
+                  <TooltipProvider>
+                  {/* While a new account's profile setup is due, it is the whole page: nothing below it runs, not even the
+                      app's own providers, analytics or research state. */}
+                  <ProfileSetupGate due={setupFirst} person={setupPerson}>
+                  <PostHogIdentify />
+                  <ResearchStateProvider>
                   <QuerySyncProvider>
-                    <TooltipProvider>
                       <WorkspacesProvider>
                         <QueryHighlightProvider initial={requestCookies.get(QUERY_HIGHLIGHT_COOKIE)?.value !== "off"}>
                           <div className="flex min-h-screen">
@@ -126,8 +139,10 @@ export default async function RootLayout({
                           <ConsentAwareGoogleAnalytics />
                         </QueryHighlightProvider>
                       </WorkspacesProvider>
-                    </TooltipProvider>
                   </QuerySyncProvider>
+                  </ResearchStateProvider>
+                  </ProfileSetupGate>
+                  </TooltipProvider>
                 </NuqsAdapter>
               </ConfigProvider>
             </ConvexClientProvider>

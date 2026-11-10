@@ -1,5 +1,8 @@
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, type ClerkMiddlewareAuth } from "@clerk/nextjs/server";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
+import { inFlow, isPage, SETUP_DONE_COOKIE, SETUP_HEADER, SETUP_PATH } from "@/lib/profile/setup";
 import { locales } from "@/i18n/config";
 import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
 import { languageFromLink } from "@/i18n/link-language";
@@ -24,7 +27,17 @@ const authMiddleware = clerkMiddleware(
     headers.set(WORKSPACE_HEADER, slugOf(request.nextUrl.pathname) ?? "");
     // And the address itself, for an organization's layout to send someone outside it to the same page in their own workspace.
     headers.set(ADDRESS_HEADER, request.nextUrl.pathname + request.nextUrl.search);
-    return NextResponse.next({ request: { headers } });
+    // Only this proxy says a page is the profile setup.
+    headers.delete(SETUP_HEADER);
+    const setup = await profileSetup(auth, request);
+    if (setup.due) {
+      // The page asked for is never rendered, so none of its code runs; the address stays as it is.
+      headers.set(SETUP_HEADER, "due");
+      return NextResponse.rewrite(new URL(SETUP_PATH, request.url), { request: { headers } });
+    }
+    const response = NextResponse.next({ request: { headers } });
+    if (setup.doneFor) response.cookies.set(SETUP_DONE_COOKIE, setup.doneFor, { maxAge: ONE_YEAR, path: "/", sameSite: "lax", httpOnly: true });
+    return response;
   },
   {
     // The session's active organization follows the address (#651): an organization's pages sit
@@ -32,6 +45,28 @@ const authMiddleware = clerkMiddleware(
     organizationSyncOptions: { organizationPatterns: ["/o/:slug", "/o/:slug/(.*)"], personalAccountPatterns: ["/(.*)"] },
   },
 );
+
+/**
+ * Whether a page request is a new account's profile setup instead (convex/users/profileSetup.ts). Asked of Convex once
+ * per account and browser: an account found done is kept in a cookie, `doneFor`. Never for a request inside a flow
+ * (signing in, an app's request, an invitation, a hand-off), a server action, a file or route that isn't a page
+ * (`isPage`) or a request that isn't a GET: the setup comes on the next page.
+ * An answer that can't be had lets the page through: the setup must never stand in the way of the site.
+ */
+async function profileSetup(auth: ClerkMiddlewareAuth, request: NextRequest): Promise<{ due: boolean; doneFor?: string }> {
+  const path = request.nextUrl.pathname;
+  if (request.method !== "GET" || request.headers.has("next-action") || !isPage(path) || path === SETUP_PATH || inFlow(path)) return { due: false };
+  const { userId, getToken } = await auth();
+  if (!userId || request.cookies.get(SETUP_DONE_COOKIE)?.value === userId) return { due: false };
+  try {
+    const token = await getToken({ template: "convex" });
+    if (!token) return { due: false };
+    return (await fetchQuery(api.users.profileSetup.due, {}, { token })) ? { due: true } : { due: false, doneFor: userId };
+  } catch (error) {
+    console.error(JSON.stringify({ event: "profile-setup-due-failed", error: String(error).slice(0, 300) }));
+    return { due: false };
+  }
+}
 
 function hasValidLocaleCookie(request: NextRequest): boolean {
   const raw = request.cookies.get(COOKIE_NAME)?.value;

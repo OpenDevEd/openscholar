@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import { capped } from "../lib/listCaps";
+import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
 import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STATUSES, STEPS } from "../../lib/reports/report";
 
@@ -78,7 +79,6 @@ export const plainResults = capped(v.array(v.object(checkResultValidator.omit("m
 /** The same list where a report may have none yet: the cap is told through the optional, as `optionalResults` is. */
 export const optionalPlainResults = capped(v.optional(v.array(v.object(checkResultValidator.omit("model").fields))), MAX_CHECKS);
 
-const affiliationValidator = v.object({ id: v.union(v.string(), v.null()), name: v.string(), country: v.string(), ror: v.optional(v.string()) });
 export const metadataValidator = v.object({
   title: v.string(),
   subtitle: v.string(),
