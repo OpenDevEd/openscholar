@@ -126,13 +126,16 @@ export function PublishFlow() {
   const { data: starts } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
   // The report shown is the one the address names; with none named, the only one under way.
   const listed = view === "reports" || (asked === null && (counts?.underWay ?? 0) > 1);
-  // Opened with no report named, the page stays on the one it opened when that one stops being under way: activated
-  // here, or declined by a reviewer meanwhile, it shows where it stands now and never gives way to a new report's
-  // agreement. The list, or a report that is gone, lets go of it.
+  // Opened with no report named, the page stays on the one it opened: when that one stops being under way (activated
+  // here, or declined by a reviewer meanwhile) it shows where it stands now and never gives way to a new report's
+  // agreement, and a report started in another tab doesn't take its place. A report that is gone lets go of it.
   const only = counts?.only ?? null;
   const [held, setHeld] = useState<string | null>(null);
-  if (listed ? held !== null : asked === null && only !== null && held !== only) setHeld(listed ? null : only);
-  const shownKey = listed ? null : (asked ?? only ?? held ?? "new");
+  // The list, and an address that names a report, are the person's own move on: the next time the page names none, it
+  // opens the one under way then.
+  const movedOn = listed || asked !== null;
+  if (movedOn ? held !== null : held === null && only !== null) setHeld(movedOn ? null : only);
+  const shownKey = listed ? null : (asked ?? held ?? only ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   const { data: list } = useProtectedQuery(api.reports.flow.page, listed ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
   // A list page keeps showing while the next one is read, so paging never empties the card.

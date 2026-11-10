@@ -503,7 +503,13 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
               })}
               {s.metadata?.abstract ? <p className="line-clamp-5 text-sm/6 text-muted-foreground">{s.metadata.abstract}</p> : null}
               {s.metadata ? <Subjects m={s.metadata} /> : null}
-              {s.status === "declined" && s.note ? <p className="whitespace-pre-wrap break-words rounded-xl bg-inset p-3 text-sm">{s.note}</p> : null}
+              {s.status === "declined" && s.note ? (
+                // Labelled as the note on declined changes is: unlabelled, it read as an instruction to the reviewer.
+                <div className="space-y-1 rounded-xl bg-inset p-3">
+                  <p className="text-xs font-medium text-muted-foreground">The reviewer&apos;s note</p>
+                  <p className="whitespace-pre-wrap break-words text-sm">{s.note}</p>
+                </div>
+              ) : null}
             </div>
             {/* A reviewer acts on any report, whatever its checks said: approve one not yet cleared, decline it, withdraw a live one, or reinstate a withdrawn one. */}
             {stage === "declined" && s.withdrawn ? (
