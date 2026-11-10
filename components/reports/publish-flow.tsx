@@ -1087,6 +1087,12 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       </AutoHeight>
       {report?.reviewRequest && stage === "failed" ? <Said label={t("yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
       {report?.note && stage === "declined" ? <Said label={t("reviewerNote")}>{report.note}</Said> : null}
+      {terms?.refund && stage !== "ready" && stage !== "live" ? (
+        <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <CreditCard className="size-4 shrink-0" />
+          {t(terms.refund.done ? "activation.refunded" : "activation.refunding", { amount: dollars(Math.round(terms.refund.amount * 100)) })}
+        </p>
+      ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {rows.map((r) => (
           // What to do about a failed check shows only while it can still be done. Once a reviewer has approved the
@@ -1317,6 +1323,15 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
   const costs = price === null ? null : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
+  // Off to Stripe's page for saving a card, which comes back here: the card saved there is the one charged from then on.
+  const saveCard = () =>
+    save(async () => {
+      try {
+        await onAddCard?.();
+      } catch (error) {
+        said(t("stripeFailed"))(error);
+      }
+    });
   return (
     <div className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
@@ -1364,27 +1379,13 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
         </Button>
       ) : pending ? null : card ? (
         <div className="ms-auto flex shrink-0 items-center gap-2">
-          {/* The cards are the billing page's, where Stripe's own page changes them. */}
-          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
-            <Link href="/settings/billing">{t("change")}</Link>
+          <Button variant="ghost" size="sm" className="relative text-muted-foreground" disabled={saving} onClick={saveCard}>
+            <Working busy={saving}>{t("change")}</Working>
           </Button>
           {action}
         </div>
       ) : onAddCard ? (
-        <Button
-          variant="outline"
-          className="relative ms-auto shrink-0"
-          disabled={saving}
-          onClick={() =>
-            save(async () => {
-              try {
-                await onAddCard();
-              } catch (error) {
-                said(t("stripeFailed"))(error);
-              }
-            })
-          }
-        >
+        <Button variant="outline" className="relative ms-auto shrink-0" disabled={saving} onClick={saveCard}>
           <Working busy={saving}>
             <span className="flex items-center gap-2">
               <CreditCard /> {t("addButton")}

@@ -6738,7 +6738,9 @@
           "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden",
           "credit": "{amount} Guthaben"
         },
-        "creditLine": "Guthaben des Kontos"
+        "creditLine": "Guthaben des Kontos",
+        "refunded": "Die {amount}, die für die Aktivierung bezahlt wurden, wurden erstattet.",
+        "refunding": "Die {amount}, die für die Aktivierung bezahlt wurden, werden erstattet."
       }
     },
     "meta": {

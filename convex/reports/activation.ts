@@ -92,6 +92,8 @@ export const terms = workspaceQuery({
       pending: v.union(v.object({ url: v.union(v.string(), v.null()) }), v.null()),
       /** The report's last charge waited on the bank, which didn't confirm it: nothing was charged. */
       refused: v.boolean(),
+      /** A charge paid after the report moved on, in US dollars, and whether it has gone back yet. */
+      refund: v.union(v.object({ amount: v.number(), done: v.boolean() }), v.null()),
     }),
     v.null(),
   ),
@@ -113,6 +115,7 @@ export const terms = workspaceQuery({
       // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
       pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null } : null,
       refused: last?.state === "refused",
+      refund: last?.state === "unused" && last.charge && last.charge.total > 0 ? { amount: last.charge.total, done: last.refund !== undefined } : null,
     };
   },
 });

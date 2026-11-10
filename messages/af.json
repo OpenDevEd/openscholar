@@ -6738,7 +6738,9 @@
           "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
           "credit": "{amount} krediet"
         },
-        "creditLine": "Rekeningkrediet"
+        "creditLine": "Rekeningkrediet",
+        "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
+        "refunding": "Die {amount} wat betaal is om dit te aktiveer, word terugbetaal."
       }
     },
     "meta": {

@@ -6738,7 +6738,9 @@
           "stripeFailed": "No se pudo abrir la página de Stripe",
           "credit": "{amount} a favor"
         },
-        "creditLine": "Saldo a favor de la cuenta"
+        "creditLine": "Saldo a favor de la cuenta",
+        "refunded": "Se reembolsaron los {amount} pagados para activarlo.",
+        "refunding": "Se están reembolsando los {amount} pagados para activarlo."
       }
     },
     "meta": {

@@ -6737,7 +6737,9 @@
           "stripeFailed": "Ikhasi le-Stripe alikwazanga ukuvuleka",
           "credit": "Isikweletu esingu-{amount}"
         },
-        "creditLine": "Isikweletu se-akhawunti"
+        "creditLine": "Isikweletu se-akhawunti",
+        "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
+        "refunding": "I-{amount} ekhokhelwe ukuyenza isebenze iyabuyiselwa."
       }
     },
     "meta": {

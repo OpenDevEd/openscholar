@@ -6738,7 +6738,9 @@
           "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka",
           "credit": "Salio {amount}"
         },
-        "creditLine": "Salio la akaunti"
+        "creditLine": "Salio la akaunti",
+        "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",
+        "refunding": "{amount} zilizolipwa kuiwasha zinarejeshwa."
       }
     },
     "meta": {

@@ -6737,7 +6737,9 @@
           "stripeFailed": "La page de Stripe n'a pas pu s'ouvrir",
           "credit": "{amount} de crédit"
         },
-        "creditLine": "Crédit du compte"
+        "creditLine": "Crédit du compte",
+        "refunded": "Les {amount} payés pour l’activer ont été remboursés.",
+        "refunding": "Les {amount} payés pour l’activer sont en cours de remboursement."
       }
     },
     "meta": {

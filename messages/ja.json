@@ -6737,7 +6737,9 @@
           "stripeFailed": "Stripeのページを開けませんでした",
           "credit": "クレジット {amount}"
         },
-        "creditLine": "アカウントのクレジット"
+        "creditLine": "アカウントのクレジット",
+        "refunded": "有効化のために支払われた {amount} は返金されました。",
+        "refunding": "有効化のために支払われた {amount} を返金しています。"
       }
     },
     "meta": {

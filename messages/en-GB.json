@@ -6737,7 +6737,9 @@
           "stripeFailed": "Stripe's page couldn't be opened",
           "credit": "{amount} credit"
         },
-        "creditLine": "Account credit"
+        "creditLine": "Account credit",
+        "refunded": "The {amount} paid to activate it was refunded.",
+        "refunding": "The {amount} paid to activate it is being refunded."
       }
     },
     "meta": {

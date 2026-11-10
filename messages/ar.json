@@ -6738,7 +6738,9 @@
           "stripeFailed": "تعذّر فتح صفحة Stripe",
           "credit": "رصيد {amount}"
         },
-        "creditLine": "رصيد الحساب"
+        "creditLine": "رصيد الحساب",
+        "refunded": "تم استرداد مبلغ {amount} المدفوع لتفعيله.",
+        "refunding": "يجري استرداد مبلغ {amount} المدفوع لتفعيله."
       }
     },
     "meta": {

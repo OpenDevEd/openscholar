@@ -6737,7 +6737,9 @@
           "stripeFailed": "无法打开 Stripe 页面",
           "credit": "余额 {amount}"
         },
-        "creditLine": "账户余额抵扣"
+        "creditLine": "账户余额抵扣",
+        "refunded": "为激活它支付的 {amount} 已退款。",
+        "refunding": "为激活它支付的 {amount} 正在退款。"
       }
     },
     "meta": {
