@@ -22,6 +22,7 @@ export function OpenAlexLookupFilter({
   lookup,
   labels,
   icons,
+  after,
   onPicked,
 }: {
   selected: string[];
@@ -36,6 +37,8 @@ export function OpenAlexLookupFilter({
   labels: { label: string; placeholder: string; searchPlaceholder: string; typeToSearch: string; unavailable: string };
   /** What each chip shows before its name, such as a country's flag. */
   icons?: Record<string, React.ReactNode>;
+  /** What each chip shows after its name, such as a link to the record elsewhere. */
+  after?: Record<string, React.ReactNode>;
   /** The record just picked, with its detail line, for a caller that keeps more than its ID. */
   onPicked?: (option: Option) => void;
 }) {
@@ -78,6 +81,7 @@ export function OpenAlexLookupFilter({
       selected={selected}
       names={names}
       icons={icons}
+      after={after}
       onSearch={setSearch}
       onToggle={(id) => {
         if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));

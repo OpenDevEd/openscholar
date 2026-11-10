@@ -9,6 +9,7 @@ import { accountOf, accountsMatching, actor, isAdmin, organizationAt, organizati
 import { applyCorrection } from "@/lib/publish-mock/checks";
 import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
+import { findOrcidPeople, rorOf, type OrcidPerson } from "@/lib/publish-mock/identifiers";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
@@ -283,6 +284,19 @@ export async function discardCorrection(id: string, seenAt: number): Promise<Sub
 
 /** A daily limit as kept: a whole number from 0, which stops someone starting any, to 1,000. */
 const dailyLimit = (n: number) => Math.min(1000, Math.max(0, Math.round(Number.isFinite(n) ? n : 0)));
+
+/** People on ORCID for an author's name or the words typed, those at the author's institutions first, for the author's ORCID iD box. */
+export async function findOrcid(words: string, institutions: string[]): Promise<Array<OrcidPerson & { near: boolean }>> {
+  const text = words.trim().slice(0, 200);
+  if (!text || !(await actor())) return [];
+  return findOrcidPeople(text, institutions.slice(0, 5).map((i) => i.slice(0, 200)));
+}
+
+/** The ROR ID of an institution just picked for an author, when OpenAlex knows it. */
+export async function institutionRor(id: string): Promise<string | null> {
+  if (!(await actor())) return null;
+  return rorOf(id).catch(() => null);
+}
 
 /** Openscholar's accounts and organisations for an admin to pick from, narrowed by what's typed. */
 export async function findAccounts(query: string) {

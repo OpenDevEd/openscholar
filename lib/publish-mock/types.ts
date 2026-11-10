@@ -112,14 +112,23 @@ export function startsLeft(state: MockState, workspace: Workspace) {
   return Math.max(0, limitFor(state.settings, workspace) - started);
 }
 
-/** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country. */
-export type Affiliation = { id: string | null; name: string; country: string };
+/** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country and, where OpenAlex knows it, its ROR ID (https://ror.org/…). */
+export type Affiliation = { id: string | null; name: string; country: string; ror?: string };
 /** CRediT's 14 contributor roles (credit.niso.org). */
 export const CREDIT_ROLES = [
   "Conceptualization", "Data curation", "Formal analysis", "Funding acquisition", "Investigation", "Methodology", "Project administration",
   "Resources", "Software", "Supervision", "Validation", "Visualization", "Writing, original draft", "Writing, review and editing",
 ] as const;
-export type Author = { name: string; orcid: string; openalexId: string | null; affiliations: Affiliation[]; corresponding: boolean; roles: string[] };
+export type Author = {
+  name: string;
+  orcid: string;
+  /** The institution ORCID's search matched the author by when the iD wasn't in the PDF; gone once the author changes the iD. */
+  orcidFound?: string;
+  openalexId: string | null;
+  affiliations: Affiliation[];
+  corresponding: boolean;
+  roles: string[];
+};
 /** An OpenAlex topic from our catalog (T…, or a subfield or field), with how sure the reader was. */
 export type Topic = { id: string; name: string; score: number };
 export type Funding = { funder: { id: string | null; name: string }; awards: string[] };

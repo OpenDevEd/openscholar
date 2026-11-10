@@ -31,6 +31,7 @@ export function OptionPicker({
   selected,
   names,
   icons,
+  after,
   onSearch,
   onToggle,
 }: {
@@ -45,6 +46,8 @@ export function OptionPicker({
   names: Record<string, string>;
   /** What each chip shows before its name, as its row does, such as a country's flag. */
   icons?: Record<string, React.ReactNode>;
+  /** What each chip shows after its name, such as a link to the record elsewhere. */
+  after?: Record<string, React.ReactNode>;
   /** Given when the caller searches; otherwise the list filters itself. */
   onSearch?: (value: string) => void;
   onToggle: (id: string) => void;
@@ -98,6 +101,7 @@ export function OptionPicker({
                   {names[id] ?? id}
                 </span>
               </TooltipHint>
+              {after?.[id]}
               <button
                 type="button"
                 aria-label={removeLabel(names[id] ?? id)}

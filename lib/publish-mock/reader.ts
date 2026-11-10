@@ -12,6 +12,7 @@ import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { openAlexUrl } from "@/lib/openalex/request-url";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
 import { countryOfPlace } from "./read";
+import { matchOrcid, rorOf } from "./identifiers";
 import { CREDIT_ROLES, RELATION_KINDS, type Affiliation, type Funding, type LlmModel, type Metadata, type Topic } from "./types";
 
 const ids = <T extends { id: string }>(list: readonly T[]) => list.map((item) => item.id) as [string, ...string[]];
@@ -125,7 +126,10 @@ async function matched<T>(names: string[], find: (name: string) => Promise<T>): 
 const institution = async (name: string): Promise<Affiliation> => {
   try {
     const [best] = await searchOpenAlex("institutions", name);
-    if (best) return { id: best.id, name: best.name, country: countryOfPlace(best.detail) };
+    if (best) {
+      const ror = await rorOf(best.id).catch(() => null);
+      return { id: best.id, name: best.name, country: countryOfPlace(best.detail), ...(ror && { ror }) };
+    }
   } catch (error) {
     console.error("[publish] institution lookup failed", { name, error: String(error) });
   }
@@ -164,6 +168,25 @@ export async function readDetails({ pdf, text, fileName, ownDoi, model }: { pdf:
     matched(read.authors.flatMap((a) => a.affiliations), institution),
     matched(read.funding.map((f) => f.name), funder),
   ]);
+  const authors = await Promise.all(
+    read.authors
+      .filter((a) => a.name.trim())
+      .map(async (a) => {
+        const affiliations = [...new Set(a.affiliations.map((n) => n.trim()).filter(Boolean))].map((name) => institutions.get(name)!);
+        const printed = orcidOf(a.orcid);
+        // An iD the PDF doesn't print is looked for on ORCID: one person with this name at one of these institutions.
+        const found = printed ? null : await matchOrcid(a.name.trim(), affiliations.map((x) => x.name)).catch((error) => (console.error("[publish] ORCID match failed", String(error)), null));
+        return {
+          name: a.name.trim(),
+          orcid: printed || found?.orcid || "",
+          ...(found && { orcidFound: found.institution }),
+          openalexId: null,
+          affiliations,
+          corresponding: a.corresponding,
+          roles: a.roles,
+        };
+      }),
+  );
   const cited = read.citedDois.flatMap((doi) => doi.toLowerCase().match(DOI)?.[0].replace(/[.,;)\]]+$/, "") ?? []);
   return {
     title: read.title.trim(),
@@ -172,16 +195,7 @@ export async function readDetails({ pdf, text, fileName, ownDoi, model }: { pdf:
     language: WORK_LANGUAGES.includes(read.language.toLowerCase()) ? read.language.toLowerCase() : "en",
     date: dateOf(read.date.trim()),
     licence: "CC BY 4.0",
-    authors: read.authors
-      .filter((a) => a.name.trim())
-      .map((a) => ({
-        name: a.name.trim(),
-        orcid: orcidOf(a.orcid),
-        openalexId: null,
-        affiliations: [...new Set(a.affiliations.map((n) => n.trim()).filter(Boolean))].map((name) => institutions.get(name)!),
-        corresponding: a.corresponding,
-        roles: a.roles,
-      })),
+    authors,
     // A PDF breaks a paragraph into lines; a paragraph here is one line, as the report's page shows it.
     abstract: read.abstract.trim().replace(/[ \t]*\n[ \t]*/g, "\n").replace(/(?<!\n)\n(?!\n)/g, " ").replace(/\n{2,}/g, "\n\n"),
     topics: classified.topics,
