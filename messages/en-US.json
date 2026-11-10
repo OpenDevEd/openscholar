@@ -5247,10 +5247,6 @@
     "peopleFromTheLibrarySTeam": "People from the community’s team, or added by hand, pass by in the order set here.",
     "aboutTheTeam": "About the team",
     "usedInsteadWhenThereIsNo": "Used instead when there is no team sentence.",
-    "suggestAPublication": "Suggest a publication",
-    "opensAnEmailTo": "Opens an email to {email}",
-    "needsAContactEmail": "Needs a contact email",
-    "joinAsAnEditor": "Join as an editor",
     "askTheLibrary": "Ask the community",
     "typedIntoTheQuestionBoxOne": "Typed into the question box one after another. An empty box keeps the question made from the community’s topics.",
     "shownWhenAiAnswersAreOn": "Shown when AI answers are on in Features. An empty box keeps the question made from the community’s topics.",
@@ -5378,7 +5374,12 @@
     "noPublicationHasAPdfYet": "No publication has a PDF yet.",
     "noPublicationMatches": "No publication matches.",
     "theLibraryIsNotSetUp": "The community is not set up yet.",
-    "linked": "Linked"
+    "linked": "Linked",
+    "suggestPapers": "Suggest papers",
+    "suggestPapersHint": "Opens the site’s Suggest papers dialog. The team reviews each paper.",
+    "needsReaderAccounts": "Needs reader accounts",
+    "joinThisTeam": "Join this team",
+    "joinThisTeamHint": "Opens applying on Openscholar. Hidden while applications are off."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Search name or email",
@@ -6057,7 +6058,6 @@
     "whoSees": "Its owners and editors see your name, your email and this message.",
     "cancel": "Cancel",
     "send": "Send application",
-    "signInToSend": "Sign in to send",
     "sentTitle": "Application sent",
     "sentBody": "It's in Your communities, where you can withdraw it.",
     "steps": {

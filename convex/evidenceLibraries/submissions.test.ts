@@ -191,3 +191,34 @@ it("calls a published paper removed for whoever sent it once the team removes it
   await t.mutation(internal.evidenceLibraries.submissions.forgetSent, { userId: sender, libraryId, itemKey: "PAPER002", outcome: "withdrawn" });
   expect((await list()).find((row) => row.itemKey === "PAPER002")?.status).toBe("withdrawn");
 });
+
+it("emails the sender when the team answers a paper that waited for review, and not for one published as it was sent", async () => {
+  const t = convexTest(schema, modules);
+  const { libraryId, userId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "sender", email: "sender@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    return { libraryId, userId };
+  });
+  const paper = { title: "Coaching teachers", authors: "Amina Yusuf", year: 2021, openalexId: "W60", doi: "10.1000/w60" };
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r1", papers: [{ itemKey: "WAITED01", ...paper, status: "queued" }, { itemKey: "DIRECT01", ...paper, openalexId: "W61", status: "published" }] });
+  const tell = (itemKey: string, generation: number, status: string, note: string | null) =>
+    t.mutation(internal.evidenceLibraries.submissions.applyStatus, { libraryId, credentialDigest: createHash("sha256").update(token).digest("hex"), itemKey, generation, clerkUserId: "sender", status: status as "published", note, at: 5 });
+  const emails = () => t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((job) => job.name === "evidenceLibraries/submissionEmails:toSender").length);
+  const submission = (itemKey: string) => t.run(async (ctx) => (await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).unique())!._id);
+
+  // The community repeats that a paper someone on the team published is published: nobody waited to hear it.
+  await tell("DIRECT01", 2, "published", null);
+  expect(await emails()).toBe(0);
+  // The team declines the one that waited: its sender is told once, with the reason.
+  await tell("WAITED01", 2, "returned", "Outside this community's focus");
+  expect(await emails()).toBe(1);
+  const submissionId = await submission("WAITED01");
+  expect(await t.query(internal.evidenceLibraries.submissions.readForEmail, { submissionId, generation: 2 })).toMatchObject({ to: "sender@example.org", status: "returned", note: "Outside this community's focus", paper: { title: "Coaching teachers" }, libraryName: "Teacher Education" });
+  // The team publishes it after all, before that email goes: the decline's email no longer speaks, and the sender is told it's live.
+  await tell("WAITED01", 3, "published", null);
+  expect(await emails()).toBe(2);
+  expect(await t.query(internal.evidenceLibraries.submissions.readForEmail, { submissionId, generation: 2 })).toBeNull();
+  expect(await t.query(internal.evidenceLibraries.submissions.readForEmail, { submissionId, generation: 3 })).toMatchObject({ status: "published", note: null });
+});

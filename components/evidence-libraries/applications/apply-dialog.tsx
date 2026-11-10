@@ -18,13 +18,13 @@ import { FadeImage } from "@/components/ui/fade-image";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { APPLY_PARAM } from "@/lib/evidence-libraries/applications";
 import { cn } from "@/lib/utils";
 
 /** Longest message an application carries (convex/lib/queryBounds.ts). */
 const MESSAGE_MAX = 500;
 
 /** Every dialog about joining a community is this one, open while the address names it: `?apply=<community>`. */
-export const APPLY_PARAM = "apply";
 export const useApplyParam = () => useQueryState(APPLY_PARAM, parseAsString);
 
 type Card = NonNullable<FunctionReturnType<typeof api.evidenceLibraries.directory.card>>;
@@ -60,7 +60,7 @@ export function useOpenApply() {
   };
 }
 
-/** A message being written, kept in the tab through a sign-in. */
+/** A message being written, kept in the tab: closing the dialog by mistake doesn't lose it. */
 const draftKey = (libraryId: string) => `apply-draft:${libraryId}`;
 function readDraft(libraryId: string) {
   try { return sessionStorage.getItem(draftKey(libraryId)) ?? ""; } catch { return ""; }
@@ -71,9 +71,10 @@ function keepDraft(libraryId: string, text: string) {
 
 /**
  * Applying to join a community, and where an application stands. Opened from a card's Apply, a sidebar row, or a
- * community's own site, which links here; signed out, the message is kept through the sign-in and the dialog opens again.
+ * community's own site, which links here. For someone signed in: signed out, Apply and that link go to sign-in first,
+ * which comes back with this open (`applySignInPath`).
  */
-export function ApplyDialog({ signedIn, seed }: { signedIn: boolean; seed: ApplySeed | null }) {
+export function ApplyDialog({ seed }: { seed: ApplySeed | null }) {
   const t = useTranslations("communityApplications");
   const [libraryId, setLibraryId] = useApplyParam();
   const workspaceId = useWorkspace();
@@ -83,10 +84,10 @@ export function ApplyDialog({ signedIn, seed }: { signedIn: boolean; seed: Apply
   // person opened from their sidebar still shows where it stands, as that row knew it.
   const community = card ? fromCard(card) : seeded ? seeded.community : card === null ? null : undefined;
   const id = community?.libraryId ?? seeded?.community.libraryId;
-  const live = useProtectedQuery(api.evidenceLibraries.applications.standing, signedIn && workspaceId && id ? { workspaceId, libraryIds: [id] } : "skip").data?.page[0];
+  const live = useProtectedQuery(api.evidenceLibraries.applications.standing, workspaceId && id ? { workspaceId, libraryIds: [id] } : "skip").data?.page[0];
   const standing = live ?? (seeded ? seeded.standing : undefined);
-  // It opens once it knows what to show: the community, and signed in, where the person stands with it.
-  const ready = community === null || (community !== undefined && (!signedIn || standing !== undefined));
+  // It opens once it knows what to show: the community, and where the person stands with it.
+  const ready = community === null || (community !== undefined && standing !== undefined);
   // The success screen stays up after sending, until the dialog closes.
   const [sentTo, setSentTo] = useState<string | null>(null);
   const close = () => { setSentTo(null); void setLibraryId(null); };
@@ -112,7 +113,7 @@ export function ApplyDialog({ signedIn, seed }: { signedIn: boolean; seed: Apply
                 : standing?.member ? <Member community={community} onClose={close} />
                 : application?.state === "waiting" || waits ? <Status community={community} application={application!} onClose={close} />
                 : !community.applicationsOpen ? <p className="p-5 text-sm text-muted-foreground">{t("closedNow")}</p>
-                : <ApplyForm community={community} signedIn={signedIn} previous={application?.state === "declined" ? application : null} onSent={() => setSentTo(community.libraryId)} />}
+                : <ApplyForm community={community} previous={application?.state === "declined" ? application : null} onSent={() => setSentTo(community.libraryId)} />}
             </AutoHeight>
           </>
         ) : (
@@ -145,7 +146,7 @@ function CommunityHeader({ community }: { community: AppliedCommunity }) {
 }
 
 /** `previous`: a declined application they may follow up, as when the team asked to hear more about their work. */
-function ApplyForm({ community, signedIn, previous, onSent }: { community: AppliedCommunity; signedIn: boolean; previous: Application | null; onSent: () => void }) {
+function ApplyForm({ community, previous, onSent }: { community: AppliedCommunity; previous: Application | null; onSent: () => void }) {
   const t = useTranslations("communityApplications");
   const apply = useWorkspaceMutation(api.evidenceLibraries.applications.apply);
   // Drawn once the dialog opens, in the browser: the tab's kept message is there from its first frame.
@@ -163,11 +164,6 @@ function ApplyForm({ community, signedIn, previous, onSent }: { community: Appli
   };
   const send = async () => {
     if (!draft.trim()) { setMissing(true); field.current?.focus(); return; }
-    if (!signedIn) {
-      // The message is kept in the tab; the sign-in comes back to this dialog.
-      window.location.assign(`/sign-in?redirect_url=${encodeURIComponent(`/evidence-communities?${APPLY_PARAM}=${community.libraryId}`)}`);
-      return;
-    }
     setSending(true);
     try {
       await apply({ libraryId: community.libraryId, message: draft });
@@ -226,7 +222,7 @@ function ApplyForm({ community, signedIn, previous, onSent }: { community: Appli
       </p>
       <DialogFooter className="-mx-5 -mb-5 border-t border-border-subtle bg-inset px-5 py-4">
         <DialogClose asChild><Button type="button" variant="outline">{t("cancel")}</Button></DialogClose>
-        <Button type="submit" disabled={sending} aria-busy={sending}><Send />{signedIn ? t("send") : t("signInToSend")}</Button>
+        <Button type="submit" disabled={sending} aria-busy={sending}><Send />{t("send")}</Button>
       </DialogFooter>
     </form>
   );

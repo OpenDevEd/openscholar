@@ -15,6 +15,7 @@ import { rateLimit } from "../lib/rateLimit";
 import { internalQuery } from "../lib/functions";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery, type Acting } from "../lib/userActions";
 import { libraryGrant, libraryOwner, ownerActive, ownerName, readLibraryRole } from "./access";
+import { findMatchingLibraryServiceCredential } from "./credentials";
 import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
 import { waitingFor } from "../sharing/access";
 import { libraryEmailSender } from "./invitations";
@@ -397,6 +398,26 @@ export const setOpenAction = defineUserMutation({
 });
 export const setOpen = userMutation(setOpenAction);
 export const setOpenForAssistant = assistantMutation(setOpenAction);
+
+/**
+ * For a community's own site, with its machine credential: whether it takes applications, and whether this person's
+ * waits for an answer. `closed` whenever applying would be refused for everyone (`apply` above), so the site offers
+ * Join only where it leads somewhere. Without a person, it answers for anyone.
+ */
+export const joinStanding = internalQuery({
+  args: { libraryId: v.string(), credentialDigest: v.string(), clerkUserId: v.optional(v.string()) },
+  returns: v.union(v.literal("open"), v.literal("waiting"), v.literal("closed")),
+  handler: async (ctx, { libraryId: given, credentialDigest, clerkUserId }) => {
+    // The credential alone is checked here: a community that is switched off is answered `closed`, not refused.
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", given);
+    if (!libraryId || !(await findMatchingLibraryServiceCredential(ctx, { libraryId, credentialDigest }))) throw createError("UNAUTHENTICATED", "Invalid community credential");
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (!library || library.state !== "active" || library.unlisted || library.applicationsClosed || !ownerActive(await libraryOwner(ctx, library))) return "closed";
+    const person = clerkUserId ? await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique() : null;
+    const application = person ? await applicationOf(ctx, person._id, libraryId) : null;
+    return application?.state === "waiting" ? "waiting" : "open";
+  },
+});
 
 /** What the emails about an application say, and who they go to (./applicationEmails.ts). */
 export const readForEmail = internalQuery({

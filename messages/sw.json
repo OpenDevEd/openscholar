@@ -5248,10 +5248,6 @@
     "peopleFromTheLibrarySTeam": "Watu kutoka timu ya jumuiya, au walioongezwa kwa mkono, wanapita kwa mpangilio uliowekwa hapa.",
     "aboutTheTeam": "Kuhusu timu",
     "usedInsteadWhenThereIsNo": "Hutumika badala yake pale ambapo hakuna sentensi ya timu.",
-    "suggestAPublication": "Pendekeza chapisho",
-    "opensAnEmailTo": "Inafungua barua pepe kwenda {email}",
-    "needsAContactEmail": "Inahitaji barua pepe ya mawasiliano",
-    "joinAsAnEditor": "Jiunge kama mhariri",
     "askTheLibrary": "Uliza jumuiya",
     "typedIntoTheQuestionBoxOne": "Huandikwa kwenye kisanduku cha maswali moja baada ya jingine. Kisanduku tupu huweka swali lililotengenezwa kutoka mada za jumuiya.",
     "shownWhenAiAnswersAreOn": "Huonyeshwa majibu ya AI yanapowashwa kwenye Vipengele. Kisanduku tupu huweka swali lililotengenezwa kutoka mada za jumuiya.",
@@ -5379,7 +5375,12 @@
     "noPublicationHasAPdfYet": "Hakuna chapisho lenye PDF bado.",
     "noPublicationMatches": "Hakuna chapisho linalolingana.",
     "theLibraryIsNotSetUp": "Jumuiya bado haijasanidiwa.",
-    "linked": "Imeunganishwa"
+    "linked": "Imeunganishwa",
+    "suggestPapers": "Pendekeza makala",
+    "suggestPapersHint": "Hufungua kisanduku cha Pendekeza makala cha tovuti. Timu hukagua kila makala.",
+    "needsReaderAccounts": "Inahitaji akaunti za wasomaji",
+    "joinThisTeam": "Jiunge na timu hii",
+    "joinThisTeamHint": "Hufungua kuomba kwenye Openscholar. Hufichwa maombi yakiwa yamezimwa."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Tafuta kwa jina au barua pepe",
@@ -6058,7 +6059,6 @@
     "whoSees": "Wamiliki na wahariri wake wanaona jina lako, barua pepe yako na ujumbe huu.",
     "cancel": "Ghairi",
     "send": "Tuma ombi",
-    "signInToSend": "Ingia ili kutuma",
     "sentTitle": "Ombi limetumwa",
     "sentBody": "Liko katika Jumuiya zako, ambapo unaweza kuliondoa.",
     "steps": {

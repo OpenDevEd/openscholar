@@ -5248,10 +5248,6 @@
     "peopleFromTheLibrarySTeam": "Mense uit die gemeenskap se span, of met die hand bygevoeg, gaan verby in die volgorde wat hier gestel is.",
     "aboutTheTeam": "Oor die span",
     "usedInsteadWhenThereIsNo": "Word eerder gebruik wanneer daar geen span-sin is nie.",
-    "suggestAPublication": "Stel ’n publikasie voor",
-    "opensAnEmailTo": "Maak ’n e-pos oop aan {email}",
-    "needsAContactEmail": "Het ’n kontak-e-posadres nodig",
-    "joinAsAnEditor": "Sluit aan as redigeerder",
     "askTheLibrary": "Vra die gemeenskap",
     "typedIntoTheQuestionBoxOne": "In die vraagkassie een na die ander ingetik. ’n Leë kassie hou die vraag wat uit die gemeenskap se onderwerpe gemaak is.",
     "shownWhenAiAnswersAreOn": "Gewys wanneer KI-antwoorde by Kenmerke aan is. ’n Leë kassie hou die vraag wat uit die gemeenskap se onderwerpe gemaak is.",
@@ -5379,7 +5375,12 @@
     "noPublicationHasAPdfYet": "Geen publikasie het nog ’n PDF nie.",
     "noPublicationMatches": "Geen publikasie pas nie.",
     "theLibraryIsNotSetUp": "Die gemeenskap is nog nie opgestel nie.",
-    "linked": "Gekoppel"
+    "linked": "Gekoppel",
+    "suggestPapers": "Stel artikels voor",
+    "suggestPapersHint": "Maak die werf se Stel artikels voor-dialoog oop. Die span beoordeel elke artikel.",
+    "needsReaderAccounts": "Benodig leserrekeninge",
+    "joinThisTeam": "Sluit by hierdie span aan",
+    "joinThisTeamHint": "Maak aansoek doen op Openscholar oop. Versteek terwyl aansoeke af is."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Soek naam of e-pos",
@@ -6058,7 +6059,6 @@
     "whoSees": "Sy eienaars en redakteurs sien jou naam, jou e-pos en hierdie boodskap.",
     "cancel": "Kanselleer",
     "send": "Stuur aansoek",
-    "signInToSend": "Meld aan om te stuur",
     "sentTitle": "Aansoek gestuur",
     "sentBody": "Dit is in Jou gemeenskappe, waar jy dit kan terugtrek.",
     "steps": {

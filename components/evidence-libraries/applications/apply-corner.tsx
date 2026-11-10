@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Clock3, UserPlus, XCircle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { applySignInPath } from "@/lib/evidence-libraries/applications";
 import { useOpenApply, type AppliedCommunity, type Standing } from "./apply-dialog";
 
 /**
@@ -29,7 +30,8 @@ export function ApplyCorner({ community, standing, signedIn }: { community: Appl
       // Above the card's link, on its accent: a solid face reads on any colour.
       className="fade-enter absolute end-3 top-3 z-10 h-7 rounded-full border-transparent bg-background/95 px-2.5 text-xs shadow-sm backdrop-blur hover:bg-background"
       aria-label={t("applyFor", { label, name: community.name })}
-      onClick={() => open({ community, standing: standing ?? null })}
+      // Signed out, sign-in comes first and comes back with the dialog open, so the message is written once and sent once.
+      onClick={() => (signedIn ? open({ community, standing: standing ?? null }) : window.location.assign(applySignInPath(community.libraryId)))}
     >
       <Icon className="size-3.5" />
       {label}

@@ -4,7 +4,8 @@ import { internal } from "../_generated/api";
 import { SUBMISSIONS_COUNTED, paperHref, recordHref } from "../../lib/evidence-libraries/added-papers";
 import type { Doc, Id } from "../_generated/dataModel";
 import { query, type MutationCtx, type QueryCtx } from "../_generated/server";
-import { internalMutation } from "../lib/functions";
+import { internalMutation, internalQuery } from "../lib/functions";
+import { libraryEmailSender } from "./invitations";
 import { getIdentity } from "../lib/auth";
 import { authenticate } from "../topics/auth";
 import { cardFacts, libraryOwner, ownerName, readLibraryRole, readLibraryViewRole } from "./access";
@@ -55,8 +56,45 @@ async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId
     const row = await ctx.db.get("paperSubmissions", id);
     if (!row || (row.generation ?? 0) >= event.generation) continue;
     await ctx.db.patch("paperSubmissions", id, { status: event.status, note: event.note, generation: event.generation, updatedAt: event.at });
+    await tellSender(ctx, row, event.status, event.generation);
   }
 }
+
+/**
+ * The person who sent a paper hears the team's answer by email: it's live, or it wasn't added. Only for a paper that
+ * waited for review, or one the team declined and then published after all: one published as it was sent, by someone
+ * on the team, needs no telling.
+ */
+async function tellSender(ctx: MutationCtx, before: Doc<"paperSubmissions">, status: Doc<"paperSubmissions">["status"], generation: number) {
+  const answered = (before.status === "queued" && (status === "published" || status === "returned")) || (before.status === "returned" && status === "published");
+  if (!answered) return;
+  await ctx.scheduler.runAfter(0, internal.evidenceLibraries.submissionEmails.toSender, { submissionId: before._id, generation });
+}
+
+/**
+ * What the email about a submission's answer says, and who it goes to (./submissionEmails.ts). Null once the
+ * community has said something newer than the answer this email is for (`generation`): that word has its own email,
+ * or needs none.
+ */
+export const readForEmail = internalQuery({
+  args: { submissionId: v.id("paperSubmissions"), generation: v.number() },
+  handler: async (ctx, { submissionId, generation }) => {
+    const row = await ctx.db.get("paperSubmissions", submissionId);
+    const library = row ? await ctx.db.get("evidenceLibraries", row.libraryId) : null;
+    const sender = row ? await ctx.db.get("users", row.userId) : null;
+    if (!row || !library || !sender?.email || row.generation !== generation || (row.status !== "published" && row.status !== "returned")) return null;
+    const { name, address } = await communityOf(ctx, library._id);
+    return {
+      to: sender.email,
+      status: row.status,
+      note: row.note ?? null,
+      paper: { title: row.title, authors: row.authors, year: row.year },
+      libraryName: name,
+      recordLink: address ? recordHref(address, row.itemKey) : null,
+      ...(await libraryEmailSender(ctx, library)),
+    };
+  },
+});
 
 /**
  * Records a paper taken off a community through Openscholar. Withdrawn from the review queue, it's the person's own
@@ -134,6 +172,7 @@ export const applyStatus = internalMutation({
       // request this word is about, so that request, still finishing here, leaves the word as it is.
       const sentNow = paper?.requestId && sender && row.userId === sender._id ? { requestId: paper.requestId } : {};
       await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at, ...sentNow });
+      await tellSender(ctx, row, status, generation);
     }
     return null;
   },
