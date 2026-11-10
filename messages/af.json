@@ -6698,9 +6698,6 @@
         "waitingAdminPassed": "Jou verslag het sy kontroles geslaag. 'n Admin van {organization} aktiveer dit.",
         "waitingAdminApproved": "'n Beoordelaar het jou verslag goedgekeur. 'n Admin van {organization} aktiveer dit.",
         "onlyAdmin": "Net 'n admin kan dit aktiveer",
-        "activateFor": "Aktiveer vir {price}",
-        "waitingBank": "Die betaling wag vir jou bank",
-        "addCardFirst": "Voeg eers 'n betaalmetode by",
         "notForSale": "Aktivering kan nie nou betaal word nie",
         "payTitle": "Betaal {price} om {key} te aktiveer",
         "freeTitle": "Aktiveer {key}",
@@ -6725,6 +6722,7 @@
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",
           "goesLive": "Dit gaan lewendig sodra die betaling bevestig is.",
+          "refused": "Jou bank het nie die laaste betaling bevestig nie, so niks is gehef nie.",
           "free": "Gratis",
           "freeLeft": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag",
           "freeLeftNoCard": "{count, plural, one {# gratis aktivering} other {# gratis aktiverings}} oor vandag. 'n Gestoorde kaart is steeds nodig.",

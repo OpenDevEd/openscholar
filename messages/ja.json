@@ -6697,9 +6697,6 @@
         "waitingAdminPassed": "レポートはチェックに合格しました。{organization}の管理者が有効化します。",
         "waitingAdminApproved": "レビュアーがレポートを承認しました。{organization}の管理者が有効化します。",
         "onlyAdmin": "有効化できるのは管理者だけです",
-        "activateFor": "{price}で有効化",
-        "waitingBank": "支払いは銀行の確認待ちです",
-        "addCardFirst": "先に支払い方法を追加してください",
         "notForSale": "現在、有効化の支払いはできません",
         "payTitle": "{price}を支払って{key}を有効化",
         "freeTitle": "{key}を有効化",
@@ -6724,6 +6721,7 @@
         "card": {
           "bankAsked": "銀行が支払いの確認を求めています",
           "goesLive": "支払いが確認されるとすぐに公開されます。",
+          "refused": "銀行が前回の支払いを確認しなかったため、請求は行われていません。",
           "free": "無料",
           "freeLeft": "本日の無料有効化は残り{count}回",
           "freeLeftNoCard": "本日の無料有効化は残り{count}回。保存済みのカードは引き続き必要です。",

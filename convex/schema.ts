@@ -615,13 +615,17 @@ export default defineSchema({
     by: v.id("users"),
     free: v.boolean(),
     // `charging`: written before Autumn is asked to charge, so a retry after a lost answer reuses its idempotency key.
-    // `unused`: paid for, but the report had moved on (declined, say) when the charge came back: kept for a refund.
-    state: v.union(v.literal("charging"), v.literal("pending"), v.literal("live"), v.literal("unused")),
+    // `unused`: paid for, but the report had moved on (declined, say) when the charge came back: refunded.
+    // `refused`: the bank didn't confirm the payment, or the card refused it, after it waited on the bank: nothing was
+    // charged, and the report says so until it's activated again.
+    state: v.union(v.literal("charging"), v.literal("pending"), v.literal("live"), v.literal("unused"), v.literal("refused")),
     /** The promotion code the charge was asked with. */
     code: v.optional(v.string()),
     charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string() })),
     /** Stripe's page for confirming a pending charge. */
     payUrl: v.optional(v.string()),
+    /** An `unused` charge's refund, in US dollars: what went back to the card, and to the account's credit. */
+    refund: v.optional(v.object({ card: v.number(), credit: v.number(), at: v.number() })),
   })
     .index("by_workspaceId_and_free_and_at", ["workspaceId", "free", "at"])
     .index("by_workspaceId_and_state", ["workspaceId", "state"])

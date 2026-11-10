@@ -6698,9 +6698,6 @@
         "waitingAdminPassed": "O seu relatório passou nas verificações. Um administrador de {organization} ativa-o.",
         "waitingAdminApproved": "Um revisor aprovou o seu relatório. Um administrador de {organization} ativa-o.",
         "onlyAdmin": "Só um administrador o pode ativar",
-        "activateFor": "Ativar por {price}",
-        "waitingBank": "O pagamento está à espera do seu banco",
-        "addCardFirst": "Adicione primeiro um método de pagamento",
         "notForSale": "A ativação não pode ser paga neste momento",
         "payTitle": "Pagar {price} para ativar {key}",
         "freeTitle": "Ativar {key}",
@@ -6725,6 +6722,7 @@
         "card": {
           "bankAsked": "O seu banco pediu para confirmar o pagamento",
           "goesLive": "Fica publicado assim que o pagamento for confirmado.",
+          "refused": "O seu banco não confirmou o último pagamento, por isso nada foi cobrado.",
           "free": "Grátis",
           "freeLeft": "{count, plural, one {Resta # ativação gratuita} other {Restam # ativações gratuitas}} hoje",
           "freeLeftNoCard": "{count, plural, one {Resta # ativação gratuita} other {Restam # ativações gratuitas}} hoje. Mesmo assim, é preciso um cartão guardado.",

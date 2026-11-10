@@ -6697,9 +6697,6 @@
         "waitingAdminPassed": "Umbiko wakho uphumelele ekuhlolweni kwawo. Umphathi we-{organization} uyawuvula.",
         "waitingAdminApproved": "Umbuyekezi uwamukele umbiko wakho. Umphathi we-{organization} uyawuvula.",
         "onlyAdmin": "Umphathi kuphela ongawuvula",
-        "activateFor": "Vula nge-{price}",
-        "waitingBank": "Inkokhelo yawo ilinde ibhange lakho",
-        "addCardFirst": "Engeza indlela yokukhokha kuqala",
         "notForSale": "Ukuvula akukwazi ukukhokhelwa njengamanje",
         "payTitle": "Khokha {price} ukuze uvule u-{key}",
         "freeTitle": "Vula u-{key}",
@@ -6724,6 +6721,7 @@
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",
           "goesLive": "Uzosebenza ngokushesha uma inkokhelo isiqinisekisiwe.",
+          "refused": "Ibhange lakho alizange liqinisekise inkokhelo yokugcina, ngakho akukho okukhokhisiwe.",
           "free": "Mahhala",
           "freeLeft": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla",
           "freeLeftNoCard": "{count, plural, one {Kusele ukuvula okungu-# kwamahhala} other {Kusele ukuvula okungu-# kwamahhala}} namuhla. Isadingeka ikhadi eligciniwe.",

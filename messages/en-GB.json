@@ -6697,9 +6697,6 @@
         "waitingAdminPassed": "Your report passed its checks. An admin of {organization} activates it.",
         "waitingAdminApproved": "A reviewer approved your report. An admin of {organization} activates it.",
         "onlyAdmin": "Only an admin can activate it",
-        "activateFor": "Activate for {price}",
-        "waitingBank": "Its payment is waiting for your bank",
-        "addCardFirst": "Add a payment method first",
         "notForSale": "Activating can't be paid for right now",
         "payTitle": "Pay {price} to activate {key}",
         "freeTitle": "Activate {key}",
@@ -6724,6 +6721,7 @@
         "card": {
           "bankAsked": "Your bank asked to confirm the payment",
           "goesLive": "It goes live as soon as the payment is confirmed.",
+          "refused": "Your bank didn't confirm the last payment, so nothing was charged.",
           "free": "Free",
           "freeLeft": "{count, plural, one {# free activation} other {# free activations}} left today",
           "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. A saved card is still needed.",

@@ -1048,10 +1048,8 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         said(t("activateFailed"))(error);
       }
     });
-  /** Activate's words: the same whether it can be pressed yet or not, so the button keeps its width. */
-  const activateLabel = free || price === null || price <= credit ? t("activate") : t("activation.activateFor", { price: dollars(price - credit) });
-  /** Why Activate can't be pressed yet, for an admin. */
-  const waitingFor = pending ? t("activation.waitingBank") : !card ? t("activation.addCardFirst") : !free && price === null ? t("activation.notForSale") : null;
+  /** What Activate takes from the card, beside the word; null when it's free or credit covers it. */
+  const amount = free || price === null || price <= credit ? null : dollars(price - credit);
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
       {t("runningHint")}
@@ -1099,7 +1097,31 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
-              {stage === "ready" && admin && terms ? <PaymentLine organization={organization} free={terms.free.left} card={card} credit={credit} price={price} pending={pending} onAddCard={onAddCard} /> : null}
+              {stage === "ready" && admin && terms ? (
+                // An admin's Activate sits in the payment bar, beside the card it's paid with: until there is a card, or
+                // while the bank confirms a charge, the bar offers that instead.
+                <PaymentLine
+                  organization={organization}
+                  free={terms.free.left}
+                  card={card}
+                  credit={credit}
+                  price={price}
+                  pending={pending}
+                  refused={terms.refused}
+                  onAddCard={onAddCard}
+                  action={
+                    !free && price === null ? (
+                      <TooltipHint label={t("activation.notForSale")}>
+                        <span tabIndex={0}>
+                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                        </span>
+                      </TooltipHint>
+                    ) : (
+                      <ActivateButton label={t("activate")} amount={amount} busy={activating} disabled={false} onClick={free ? () => activateNow(false) : () => setPaying(true)} />
+                    )
+                  }
+                />
+              ) : null}
               <div className="flex flex-wrap justify-end gap-2">
                 {stage === "failed" ? (
                   <>
@@ -1118,7 +1140,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                 ) : (
                   <>
                     {onAnother ? (
-                      <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
+                      <Button variant={stage === "declined" ? "default" : stage === "ready" && admin ? "ghost" : "outline"} onClick={onAnother}>
                         <Plus /> {t("publishAnother")}
                       </Button>
                     ) : null}
@@ -1130,26 +1152,6 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                           </Button>
                         </span>
                       </TooltipHint>
-                    ) : stage === "ready" && waitingFor ? (
-                      <TooltipHint label={waitingFor}>
-                        <span tabIndex={0}>
-                          <Button className="relative" disabled>
-                            <Working busy={false}>
-                              <span className="flex items-center gap-2">
-                                <BadgeCheck /> {activateLabel}
-                              </span>
-                            </Working>
-                          </Button>
-                        </span>
-                      </TooltipHint>
-                    ) : stage === "ready" ? (
-                      <Button className="relative" disabled={activating} onClick={free ? () => activateNow(false) : () => setPaying(true)}>
-                        <Working busy={activating}>
-                          <span className="flex items-center gap-2">
-                            <BadgeCheck /> {activateLabel}
-                          </span>
-                        </Working>
-                      </Button>
                     ) : stage === "review" ? (
                       <TooltipHint label={t("needsApproval")}>
                         <span tabIndex={0}>
@@ -1207,6 +1209,25 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         />
       ) : null}
     </div>
+  );
+}
+
+/** Activate, in the payment bar: taller than the buttons around it, its badge in a ring, and what it takes from the card in a segment of its own. */
+function ActivateButton({ label, amount, busy, disabled, onClick }: { label: string; amount: string | null; busy: boolean; disabled: boolean; onClick: () => void }) {
+  return (
+    <Button size="lg" disabled={disabled || busy} onClick={onClick} className="relative h-11 shrink-0 gap-0 overflow-hidden rounded-xl p-0 text-[15px] font-semibold shadow-sm has-[>svg]:px-0">
+      <Working busy={busy}>
+        <span className="flex h-11 items-center">
+          <span className="flex items-center gap-2.5 ps-2 pe-4">
+            <span className="flex size-7 items-center justify-center rounded-full bg-white/25">
+              <BadgeCheck className="size-4" />
+            </span>
+            {label}
+          </span>
+          {amount === null ? null : <span className="flex h-full items-center border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">{amount}</span>}
+        </span>
+      </Working>
+    </Button>
   );
 }
 
@@ -1290,7 +1311,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
  * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
  * asked to confirm says so, with the way back to its page.
  */
-function PaymentLine({ organization, free, card, credit, price, pending, onAddCard }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void> }) {
+function PaymentLine({ organization, free, card, credit, price, pending, refused, onAddCard, action }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; /** The bank didn't confirm the last payment. */ refused: boolean; onAddCard?: () => Promise<void>; /** Activate, beside the card it's paid with. */ action: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1322,13 +1343,15 @@ function PaymentLine({ organization, free, card, credit, price, pending, onAddCa
         <p className="mt-0.5 text-xs text-muted-foreground">
           {pending
             ? t("goesLive")
-            : free > 0
-              ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
-              : !card
-                ? (costs ?? t("needed"))
-                : organization
-                  ? t("orgCard", { organization })
-                  : t("yourCard")}
+            : refused
+              ? t("refused")
+              : free > 0
+                ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
+                : !card
+                  ? (costs ?? t("needed"))
+                  : organization
+                    ? t("orgCard", { organization })
+                    : t("yourCard")}
         </p>
       </div>
       {pending?.url ? (
@@ -1338,12 +1361,13 @@ function PaymentLine({ organization, free, card, credit, price, pending, onAddCa
           </a>
         </Button>
       ) : pending ? null : card ? (
-        // The cards are the billing page's, where Stripe's own page changes them.
-        <Button variant="ghost" asChild className="shrink-0 text-muted-foreground">
-          <Link href="/settings/billing">
-            {t("change")} <ArrowUpRight />
-          </Link>
-        </Button>
+        <>
+          {/* The cards are the billing page's, where Stripe's own page changes them. */}
+          <Button variant="ghost" size="sm" asChild className="shrink-0 text-muted-foreground">
+            <Link href="/settings/billing">{t("change")}</Link>
+          </Button>
+          {action}
+        </>
       ) : onAddCard ? (
         <Button
           variant="outline"

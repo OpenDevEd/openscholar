@@ -6697,9 +6697,6 @@
         "waitingAdminPassed": "你的报告已通过检查。由 {organization} 的管理员激活。",
         "waitingAdminApproved": "审核员已批准你的报告。由 {organization} 的管理员激活。",
         "onlyAdmin": "只有管理员可以激活",
-        "activateFor": "以 {price} 激活",
-        "waitingBank": "付款正在等待你的银行",
-        "addCardFirst": "请先添加付款方式",
         "notForSale": "目前无法付费激活",
         "payTitle": "支付 {price} 激活 {key}",
         "freeTitle": "激活 {key}",
@@ -6724,6 +6721,7 @@
         "card": {
           "bankAsked": "你的银行要求确认这笔付款",
           "goesLive": "付款确认后即会上线。",
+          "refused": "你的银行没有确认上一笔付款，因此没有扣款。",
           "free": "免费",
           "freeLeft": "今天还剩 {count} 次免费激活",
           "freeLeftNoCard": "今天还剩 {count} 次免费激活。仍需保存一张卡。",

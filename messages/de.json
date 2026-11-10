@@ -6698,9 +6698,6 @@
         "waitingAdminPassed": "Ihr Bericht hat seine Prüfungen bestanden. Ein Admin von {organization} aktiviert ihn.",
         "waitingAdminApproved": "Eine Gutachterin oder ein Gutachter hat Ihren Bericht freigegeben. Ein Admin von {organization} aktiviert ihn.",
         "onlyAdmin": "Nur ein Admin kann ihn aktivieren",
-        "activateFor": "Für {price} aktivieren",
-        "waitingBank": "Die Zahlung wartet auf Ihre Bank",
-        "addCardFirst": "Fügen Sie zuerst eine Zahlungsmethode hinzu",
         "notForSale": "Die Aktivierung kann gerade nicht bezahlt werden",
         "payTitle": "{price} zahlen, um {key} zu aktivieren",
         "freeTitle": "{key} aktivieren",
@@ -6725,6 +6722,7 @@
         "card": {
           "bankAsked": "Ihre Bank möchte die Zahlung bestätigen lassen",
           "goesLive": "Er geht live, sobald die Zahlung bestätigt ist.",
+          "refused": "Ihre Bank hat die letzte Zahlung nicht bestätigt, daher wurde nichts abgebucht.",
           "free": "Kostenlos",
           "freeLeft": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}",
           "freeLeftNoCard": "Heute {count, plural, one {noch # kostenlose Aktivierung} other {noch # kostenlose Aktivierungen}}. Eine gespeicherte Karte ist trotzdem nötig.",

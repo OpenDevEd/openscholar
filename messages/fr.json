@@ -6697,9 +6697,6 @@
         "waitingAdminPassed": "Votre rapport a réussi ses vérifications. Un administrateur de {organization} l'active.",
         "waitingAdminApproved": "Un relecteur a approuvé votre rapport. Un administrateur de {organization} l'active.",
         "onlyAdmin": "Seul un administrateur peut l'activer",
-        "activateFor": "Activer pour {price}",
-        "waitingBank": "Son paiement attend votre banque",
-        "addCardFirst": "Ajoutez d'abord un moyen de paiement",
         "notForSale": "L'activation ne peut pas être payée pour le moment",
         "payTitle": "Payer {price} pour activer {key}",
         "freeTitle": "Activer {key}",
@@ -6724,6 +6721,7 @@
         "card": {
           "bankAsked": "Votre banque demande de confirmer le paiement",
           "goesLive": "Il sera en ligne dès que le paiement sera confirmé.",
+          "refused": "Votre banque n’a pas confirmé le dernier paiement : rien n’a été débité.",
           "free": "Gratuit",
           "freeLeft": "{count, plural, one {# activation gratuite restante} other {# activations gratuites restantes}} aujourd'hui",
           "freeLeftNoCard": "{count, plural, one {# activation gratuite restante} other {# activations gratuites restantes}} aujourd'hui. Une carte enregistrée reste nécessaire.",

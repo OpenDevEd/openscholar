@@ -127,7 +127,7 @@ export const finish = internalMutation({
       await ctx.db.patch("reports", reportId, { run: undefined });
       const settings = await reportSettings(ctx);
       if (!settings.humanReview && results.every((result) => result.pass)) {
-        await notify(ctx, reportId, "changes-live", await applyChanges(ctx, (await ctx.db.get("reports", reportId))!, details, { metadata, results, checksVersion: version }));
+        await notify(ctx, reportId, "changes-live", { edited: await applyChanges(ctx, (await ctx.db.get("reports", reportId))!, details, { metadata, results, checksVersion: version }) });
         return "live" as const;
       }
       // A check the report passed reads the same PDF now: what it says to do about a new PDF can't be done here.

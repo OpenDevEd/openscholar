@@ -6698,9 +6698,6 @@
         "waitingAdminPassed": "Ripoti yako imepita ukaguzi wake. Msimamizi wa {organization} ndiye anayeiwasha.",
         "waitingAdminApproved": "Mkaguzi ameidhinisha ripoti yako. Msimamizi wa {organization} ndiye anayeiwasha.",
         "onlyAdmin": "Msimamizi pekee ndiye anayeweza kuiwasha",
-        "activateFor": "Washa kwa {price}",
-        "waitingBank": "Malipo yake yanasubiri benki yako",
-        "addCardFirst": "Ongeza njia ya kulipa kwanza",
         "notForSale": "Kuwasha hakuwezi kulipiwa kwa sasa",
         "payTitle": "Lipa {price} kuwasha {key}",
         "freeTitle": "Washa {key}",
@@ -6725,6 +6722,7 @@
         "card": {
           "bankAsked": "Benki yako imeomba kuthibitisha malipo",
           "goesLive": "Itaenda hewani mara malipo yakithibitishwa.",
+          "refused": "Benki yako haikuthibitisha malipo ya mwisho, kwa hivyo hakuna kilichotozwa.",
           "free": "Bure",
           "freeLeft": "{count, plural, one {Imebaki uwashaji # wa bure} other {Imebaki miwasho # ya bure}} leo",
           "freeLeftNoCard": "{count, plural, one {Imebaki uwashaji # wa bure} other {Imebaki miwasho # ya bure}} leo. Bado kadi iliyohifadhiwa inahitajika.",

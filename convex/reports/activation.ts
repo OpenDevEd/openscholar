@@ -1,8 +1,9 @@
 // Activating a report (#1261): what makes its DOI live. Only an admin of the report's workspace activates, and only
 // with a card saved on the workspace's billing account. The workspace's free activations for the day cost nothing;
 // past them each one buys the "Report activation" plan in Autumn (lib/billing/plans.ts ACTIVATION_PLAN), at the
-// plan's price, less what a promotion code takes off. A charge the bank asks to confirm waits as `pending` and goes
-// live once Autumn reports its invoice paid (`settle`), so a report is never charged for twice.
+// plan's price, less what a promotion code takes off. A charge the bank asks to confirm waits as `pending`: the bank's
+// page comes back to the report, which goes live once Stripe has the invoice paid (`settle`), so a report is never
+// charged for twice. A charge paid after its report moved on is refunded.
 import { ConvexError, v, type Infer } from "convex/values";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -14,10 +15,10 @@ import { createError } from "../lib/errors";
 import { workspaceQuery } from "../lib/userActions";
 import { actorValidator, type Actor } from "../workspaces/actor";
 import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
-import { AutumnError, autumn, type AutumnCharge, type AutumnCustomer, type AutumnPreview } from "../billing/autumn";
+import { AutumnError, autumn, type AutumnCharge, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
 import { purchasing, unlessDeclined } from "../billing/purchases";
-import { voidDeclined } from "../billing/stripeRest";
+import { bankPage, chargeOf, refundInvoice, voidDeclined } from "../billing/stripeRest";
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
@@ -89,6 +90,8 @@ export const terms = workspaceQuery({
       price: v.union(v.number(), v.null()),
       /** A charge the bank asked to confirm, and its page. */
       pending: v.union(v.object({ url: v.union(v.string(), v.null()) }), v.null()),
+      /** The report's last charge waited on the bank, which didn't confirm it: nothing was charged. */
+      refused: v.boolean(),
     }),
     v.null(),
   ),
@@ -98,6 +101,7 @@ export const terms = workspaceQuery({
     if (!report || report.workspaceId !== actor.workspaceId) return null;
     const plan = (await readCatalog(ctx))?.plans.find((candidate) => candidate.id === ACTIVATION_PLAN);
     const pending = await pendingOf(ctx, report._id);
+    const last = await ctx.db.query("reportActivations").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).order("desc").first();
     const account = await readAccount(ctx, actor.workspaceId);
     return {
       admin: actor.role === "admin",
@@ -108,6 +112,7 @@ export const terms = workspaceQuery({
       price: plan?.price?.amount ?? null,
       // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
       pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null } : null,
+      refused: last?.state === "refused",
     };
   },
 });
@@ -190,12 +195,14 @@ const outcomeValidator = v.union(
   v.object({ kind: v.literal("paid"), charge: chargeValidator }),
   v.object({ kind: v.literal("pending"), invoice: v.string(), url: v.union(v.string(), v.null()) }),
   v.object({ kind: v.literal("none") }),
+  v.object({ kind: v.literal("refused") }),
 );
 
 /**
  * Records what an activation's charge came to. Paid: the report goes live, as its admin asked when it was charged,
  * or the record is kept `unused` and logged for a refund when the report moved on meanwhile. Waiting on the bank:
- * `pending`, with the bank's page. Nothing charged (declined, a refused code, a voided invoice): the record goes.
+ * `pending`, with the bank's page. Nothing charged (declined, a refused code, a voided invoice): the record goes, or
+ * after waiting on the bank, stays `refused`, so the report can say why it isn't live.
  * A record already settled is left as it is, so the webhooks and the page settling the same charge change nothing.
  */
 export const settleCharge = internalMutation({
@@ -208,9 +215,14 @@ export const settleCharge = internalMutation({
       await ctx.db.delete("reportActivations", activationId);
       return null;
     }
+    if (outcome.kind === "refused") {
+      await ctx.db.patch("reportActivations", activationId, { state: "refused", payUrl: undefined });
+      return null;
+    }
     if (outcome.kind === "pending") {
       await ctx.db.patch("reportActivations", activationId, { state: "pending", charge: { invoice: outcome.invoice, total: 0, currency: "usd" }, payUrl: outcome.url ?? undefined });
-      // The bank's page has no way back here and the webhooks can be late: the charge is looked at until it's settled.
+      // The person may leave the bank's page unanswered, or pay it elsewhere, and the webhooks can be late: the charge
+      // is looked at until it's settled.
       await ctx.scheduler.runAfter(WATCH_FIRST_MS, internal.reports.activation.watch, { activationId, attempt: 0 });
       return null;
     }
@@ -219,6 +231,7 @@ export const settleCharge = internalMutation({
     if (!report || refused) {
       console.error(JSON.stringify({ event: "report-activation-unused", activationId, invoice: outcome.charge.invoice, total: outcome.charge.total, error: refused?.slice(0, 300) }));
       await ctx.db.patch("reportActivations", activationId, { state: "unused", charge: outcome.charge, payUrl: undefined });
+      await ctx.scheduler.runAfter(0, internal.reports.activation.refund, { activationId, attempt: 0 });
       return null;
     }
     await ctx.db.patch("reportActivations", activationId, { state: "live", charge: outcome.charge, payUrl: undefined });
@@ -324,8 +337,13 @@ export const activate = action({
         if (chargedNothing(error)) await ctx.runMutation(internal.reports.activation.settleCharge, { activationId: started.activationId, outcome: { kind: "none" } });
         throw error;
       }
-      const done = outcomeOf(charged);
-      if (done.kind === "pending") console.log(JSON.stringify({ event: "report-activation-pending", key, invoice: done.invoice, action: charged.required_action?.code }));
+      let done = outcomeOf(charged);
+      if (done.kind === "pending") {
+        // Autumn's page for it is Stripe's invoice, which has no way back here: the bank's own page comes back to the report.
+        const bank = done.invoice ? await bankPage(done.invoice, backTo(first.prefix, key, started.activationId)) : null;
+        if (bank) done = { ...done, url: bank };
+        console.log(JSON.stringify({ event: "report-activation-pending", key, invoice: done.invoice, action: charged.required_action?.code, back: bank !== null }));
+      }
       await ctx.runMutation(internal.reports.activation.settleCharge, { activationId: started.activationId, outcome: done });
       return done;
     });
@@ -386,18 +404,18 @@ export const waitingCharge = internalQuery({
   },
 });
 
-/** Settles one waiting charge from Autumn's invoices: live once paid, dropped once voided. Answers whether it's settled. */
-async function settleOne(ctx: ActionCtx, activationId: Id<"reportActivations">, invoice: string, invoices: AutumnCustomer["invoices"] = []) {
-  const found = invoices.find((candidate) => candidate.stripe_id === invoice);
-  if (found?.status === "paid") {
-    await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice, total: found.total, currency: found.currency } } });
-    return true;
-  }
-  if (found?.status === "void" || found?.status === "uncollectible") {
-    await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "none" } });
-    return true;
-  }
-  return false;
+/**
+ * Settles one waiting charge from its invoice at Stripe, which knows first: live once paid, dropped once voided. A
+ * payment the bank or the card refused is voided and dropped too, so Activate starts a new one. Answers how it
+ * stands: still `open`, or `settled`.
+ */
+async function settleOne(ctx: ActionCtx, activationId: Id<"reportActivations">, invoice: string) {
+  const charge = await chargeOf(invoice);
+  if (charge.status === "open" && !charge.refused) return "open";
+  if (charge.status === "open") await voidDeclined(invoice);
+  const outcome = charge.status === "paid" ? { kind: "paid" as const, charge: { invoice, total: charge.total, currency: charge.currency } } : charge.status === "open" ? { kind: "refused" as const } : { kind: "none" as const };
+  await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome });
+  return "settled";
 }
 
 /** Looks at a charge waiting on the bank, and again later, further apart each time, until it's settled or about two days have gone. */
@@ -408,10 +426,9 @@ export const watch = internalAction({
     const waiting: { workspaceId: Id<"workspaces">; invoice: string } | null = await ctx.runQuery(internal.reports.activation.waitingCharge, { activationId });
     if (!waiting) return null;
     try {
-      const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: waiting.workspaceId });
-      if (await settleOne(ctx, activationId, waiting.invoice, (await autumn.customer(customerId, { invoices: true })).invoices)) return null;
+      if ((await settleOne(ctx, activationId, waiting.invoice)) === "settled") return null;
     } catch (error) {
-      // A look that failed (Autumn slow or down) is the next look's to make.
+      // A look that failed (Stripe slow or down) is the next look's to make.
       console.error(JSON.stringify({ event: "report-activation-watch-failed", activationId, attempt, error: String(error).slice(0, 300) }));
     }
     if (attempt + 1 < WATCH_LOOKS) await ctx.scheduler.runAfter(Math.min(WATCH_FIRST_MS * 2 ** (attempt + 1), WATCH_MOST_MS), internal.reports.activation.watch, { activationId, attempt: attempt + 1 });
@@ -432,22 +449,18 @@ export const waiting = internalQuery({
 });
 
 /**
- * Settles each charge of the workspace that waited on the bank: live once Autumn reports its invoice paid, dropped
- * once it's voided. Autumn's and Stripe's webhooks call it, and so does the report's page when Stripe sends the person
- * back; settling one twice changes nothing.
+ * Settles each charge of the workspace that waited on the bank (`settleOne`). Autumn's and Stripe's webhooks call it,
+ * and so does the report's page when the bank sends the person back; settling one twice changes nothing.
  */
 export async function settlePending(ctx: ActionCtx, workspaceId: Id<"workspaces">) {
   const waits: Array<{ activationId: Id<"reportActivations">; invoice: string }> = await ctx.runQuery(internal.reports.activation.waiting, { workspaceId });
-  if (waits.length === 0) return;
-  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
-  const invoices = (await autumn.customer(customerId, { invoices: true })).invoices ?? [];
-  for (const wait of waits) await settleOne(ctx, wait.activationId, wait.invoice, invoices);
+  for (const wait of waits) await settleOne(ctx, wait.activationId, wait.invoice);
 }
 
 /**
- * What a report's page does as it opens: a charge of the workspace's that waited on the bank and has been paid since
- * goes live, wherever the person paid it (Stripe's invoice page has no way back here). With `card`, when Stripe sent the
- * person back after saving one, the workspace's card is read again first. Nothing waiting costs one read.
+ * What a report's page does as it opens: a charge of the workspace's that waited on the bank and has been answered
+ * since is settled, wherever the person answered it. With `card`, when Stripe sent the person back after saving one or
+ * from the bank, the workspace's card is read again first. Nothing waiting costs one read.
  */
 export const settle = action({
   args: { workspaceId: v.id("workspaces"), card: v.boolean() },
@@ -467,6 +480,57 @@ export const settleFor = internalAction({
   returns: v.null(),
   handler: async (ctx, { workspaceId }): Promise<null> => {
     await settlePending(ctx, workspaceId);
+    return null;
+  },
+});
+
+/** A charge paid after its report moved on, still to be refunded: its workspace and invoice, or null. */
+export const refundable = internalQuery({
+  args: { activationId: v.id("reportActivations") },
+  returns: v.union(v.object({ invoice: v.string() }), v.null()),
+  handler: async (ctx, { activationId }) => {
+    const activation = await ctx.db.get("reportActivations", activationId);
+    return activation?.state === "unused" && !activation.refund && activation.charge ? { invoice: activation.charge.invoice } : null;
+  },
+});
+
+/** Records a charge's refund, and tells whoever pays for the workspace's activations what came back. */
+export const refunded = internalMutation({
+  args: { activationId: v.id("reportActivations"), card: v.number(), credit: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { activationId, card, credit }) => {
+    const activation = await ctx.db.get("reportActivations", activationId);
+    if (!activation || activation.refund) return null;
+    await ctx.db.patch("reportActivations", activationId, { refund: { card, credit, at: Date.now() } });
+    if (card + credit === 0) return null;
+    const workspace = await ctx.db.get("workspaces", activation.workspaceId);
+    await notify(ctx, activation.reportId, workspace?.kind === "organization" ? "refunded-admins" : "refunded", { refund: { card, credit } });
+    return null;
+  },
+});
+
+/** How many times a refund is asked for before it's left to a person, about a day of tries in all. */
+const REFUND_TRIES = 30;
+
+/**
+ * Refunds a charge that was paid after its report moved on (`settleCharge`): a reviewer declined it, say, while the
+ * bank confirmed the payment. Nothing charged (a 100% code) has nothing to refund. A refund Stripe refused is asked
+ * again later, further apart each time.
+ */
+export const refund = internalAction({
+  args: { activationId: v.id("reportActivations"), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { activationId, attempt }): Promise<null> => {
+    const due: { invoice: string } | null = await ctx.runQuery(internal.reports.activation.refundable, { activationId });
+    if (!due) return null;
+    try {
+      const back = due.invoice === "none" ? { card: 0, credit: 0 } : await refundInvoice(due.invoice, `report-activation-refund-${activationId}`);
+      await ctx.runMutation(internal.reports.activation.refunded, { activationId, ...back });
+      console.log(JSON.stringify({ event: "report-activation-refunded", activationId, invoice: due.invoice, ...back }));
+    } catch (error) {
+      console.error(JSON.stringify({ event: "report-activation-refund-failed", activationId, invoice: due.invoice, attempt, error: String(error).slice(0, 300) }));
+      if (attempt + 1 < REFUND_TRIES) await ctx.scheduler.runAfter(Math.min(WATCH_FIRST_MS * 2 ** (attempt + 1), WATCH_MOST_MS), internal.reports.activation.refund, { activationId, attempt: attempt + 1 });
+    }
     return null;
   },
 });
