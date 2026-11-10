@@ -37,7 +37,8 @@ type Event = { to: "team" | "author"; label: string; heading: string; rows: (rep
 const failedIn = (results: CheckResult[] | undefined, none: string) =>
   (results ?? [])
     .filter((r) => !r.pass)
-    .map((r) => `${r.name}: ${[r.confidence === undefined || r.threshold === undefined ? "" : `${Math.round(r.confidence * 100)}% sure of yes, needs ${Math.round(r.threshold * 100)}%.`, r.reasoning ?? r.detail ?? ""].filter(Boolean).join(" ") || "failed"}`)
+    // A decision model gives a score and no reason: what the author was told to do about it says what the check wanted.
+    .map((r) => `${r.name}: ${[r.confidence === undefined || r.threshold === undefined ? "" : `${Math.round(r.confidence * 100)}% sure of yes, needs ${Math.round(r.threshold * 100)}%.`, r.reasoning ?? r.detail ?? "", r.fix ? `The author was told: ${r.fix}` : ""].filter(Boolean).join(" ") || "failed"}`)
     .join("\n") || none;
 // Every link opens the thing its email is about: the report's dialog for a reviewer, and for its author the report
 // on Publish where its next step is, or its own page once it's live.
