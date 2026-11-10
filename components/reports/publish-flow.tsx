@@ -38,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, TriangleAlert } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
@@ -378,6 +379,8 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
   const { agreement } = basics;
   // The workspace has used up its day, or has none: no new report can start, and the page says which.
   const blocked = starts && starts.left < 1 ? limitWords(starts.perDay, starts.kind) : null;
+  // An organisation's workspace is opened by Openscholar, on request: the page says who to ask.
+  const unopened = starts?.kind === "organization" && starts.perDay === 0;
   return (
     <div>
       <StepHead title={`Publishing agreement with ${basics.series.name}`} aside={<StatusChip tone="neutral">Version {agreement.version}</StatusChip>}>
@@ -401,7 +404,17 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
         </label>
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {blocked ? <p className="text-sm text-muted-foreground">{blocked}</p> : null}
+        {unopened ? (
+          <p className="max-w-md text-sm text-muted-foreground">
+            Publishing isn&apos;t open to this workspace yet. Openscholar opens it for an organisation on request: write to{" "}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-foreground underline-offset-4 hover:underline">
+              {CONTACT_EMAIL}
+            </a>
+            . You can publish from your own workspace meanwhile.
+          </p>
+        ) : blocked ? (
+          <p className="text-sm text-muted-foreground">{blocked}</p>
+        ) : null}
         {starts ? (
           <Button
             className="relative"

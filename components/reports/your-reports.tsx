@@ -3,7 +3,7 @@
 // A workspace's reports, where each got to, and a way back into it, listed as History and Bookmarks list their
 // entries (components/command-center). The list is read a page at a time (convex/reports/flow.ts `page`).
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LIST_FILTER, ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
@@ -28,7 +28,7 @@ export type ReportRow = Listed["rows"][number];
 export type Counts = FunctionReturnType<typeof api.reports.flow.counts>;
 /** A row's height with its divider: its cover and the entry's padding. */
 const ROW = 81;
-const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed checks", declined: "Declined" };
+const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed checks", declined: "Declined or withdrawn" };
 export const STATUS: Record<Stage, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
   draft: { label: "Draft", tone: "neutral", icon: PenLine },
   review: { label: "In review", tone: "running", icon: ReviewQueueIcon },
@@ -70,6 +70,8 @@ export function StatusFilter({ counts, show, onShow }: { counts: Counts; show: S
 export function YourReports({ list, humanReview, series, shared, show, onPage, onOpen, onNew, onDiscard, onCorrect }: { list: Listed; humanReview: boolean; /** The series' name, which a report without a cover wears on its title page. */ series: string; /** An organisation's list: each row says who signed. */ shared: boolean; show: Show; onPage: (page: number) => void; onOpen: (key: string) => void; onNew: () => void; onDiscard: (key: string) => Promise<void>; onCorrect: (key: string) => void }) {
   // The report being discarded, asked about once before it goes.
   const [discarding, setDiscarding] = useState<ReportRow | null>(null);
+  // The button that asked, so the keyboard is back on it when the question closes: the dialog has no trigger of its own.
+  const asker = useRef<HTMLElement | null>(null);
   const { rows: shown, page: at, pages, total } = list;
 
   return (
@@ -80,7 +82,14 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
         // A list of several pages keeps a full page's height, so its last page doesn't pull the pager up.
         <div className={GRID_CLASSES["list-detail"]} style={pages > 1 ? { minHeight: REPORTS_PER_PAGE * ROW } : undefined}>
           {shown.map((r) => (
-            <Row key={r.key} report={r} series={series} shared={shared} stage={stageOf(r, humanReview)} onOpen={() => onOpen(r.key)} onDiscard={canDiscard(r) && r.mine ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" && r.mine ? () => onCorrect(r.key) : undefined} />
+            <Row key={r.key} report={r} series={series} shared={shared} stage={stageOf(r, humanReview)} onOpen={() => onOpen(r.key)} onDiscard={
+                canDiscard(r) && r.mine
+                  ? () => {
+                      asker.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                      setDiscarding(r);
+                    }
+                  : undefined
+              } onCorrect={r.status === "live" && r.mine ? () => onCorrect(r.key) : undefined} />
           ))}
         </div>
       ) : (
@@ -100,7 +109,14 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
       )}
       {pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4" currentPage={at} totalPages={pages} onPageChange={onPage} totalItems={total} itemsPerPage={REPORTS_PER_PAGE} itemLabel="reports" /> : null}
       <AlertDialog open={!!discarding} onOpenChange={(open) => !open && setDiscarding(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent
+          onCloseAutoFocus={(event) => {
+            // Kept, the row is still there to go back to; discarded, it isn't, and focus goes where the browser puts it.
+            if (!asker.current?.isConnected) return;
+            event.preventDefault();
+            asker.current.focus();
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Discard this report?</AlertDialogTitle>
             <AlertDialogDescription>Its PDF and its reserved DOI are given up for good. It still counts as one of the reports you started today.</AlertDialogDescription>
