@@ -11,8 +11,8 @@ import { requireAvailableModel, requireEffort, requireTaskModel } from "../model
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import type { Effort } from "../../lib/ai/core/call-options";
-import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, dailyLimit, type Check } from "../../lib/reports/settings";
-import { checkSummariesValidator, seriesValidator } from "./validators";
+import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, dailyLimit, type Check } from "../../lib/reports/settings";
+import { checkNamesValidator, checkSummariesValidator, seriesValidator } from "./validators";
 
 /** What a check runs as: a decision model answers it, or an LLM that returns a structured answer. */
 const CHECK_TASK = "screening";
@@ -92,6 +92,32 @@ export const admin = query({
       ),
       checksVersion: settings.checksVersion,
       agreement: { version: settings.agreement.version, text: settings.agreement.text, updatedAt: settings.row?.agreement.updatedAt ?? null },
+    };
+  },
+});
+
+/**
+ * What the Publish page and the sidebar read, signed in or not: whether publishing is open, the series, the
+ * agreement to sign, and the checks a report runs, by name. Nothing here is an admin's alone: no account, no model,
+ * no question, no limit of anyone's.
+ */
+export const forAuthors = query({
+  args: {},
+  returns: v.object({
+    open: v.boolean(),
+    humanReview: v.boolean(),
+    series: seriesValidator,
+    agreement: v.object({ version: v.number(), text: v.string() }),
+    checks: checkNamesValidator,
+  }),
+  handler: async (ctx) => {
+    const settings = await reportSettings(ctx);
+    return {
+      open: settings.enabled && canRegister(settings.publication),
+      humanReview: settings.humanReview,
+      series: settings.series,
+      agreement: { version: settings.agreement.version, text: settings.agreement.text },
+      checks: settings.checks.filter((check) => check.enabled).map(({ id, name, blocking }) => ({ id, name, blocking })),
     };
   },
 });

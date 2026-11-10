@@ -89,7 +89,8 @@
     "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library.",
     "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`.",
     "evidenceLibraries/organizationGrants:grantable": "The Team section's list of organizations its owner can share the community with straight away. The assistant reads a community's team through evidenceLibraries/assistant:team.",
-    "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces."
+    "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces.",
+    "reports/settings:forAuthors": "What the Publish page and the sidebar read of the series before a report exists: whether publishing is open, its agreement and its checks' names. The assistant doesn't publish reports."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -269,10 +270,23 @@
     "reports/settings:setAgreement": "Site administration, for Openscholar's own admins on the admin pages.",
     "reports/settings:setMetadataModel": "Site administration, for Openscholar's own admins on the admin pages.",
     "reports/settings:update": "Site administration, for Openscholar's own admins on the admin pages.",
-    "reports/settings:switchCheck": "Site administration, for Openscholar's own admins on the admin pages."
+    "reports/settings:switchCheck": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/flow:sign": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:saveDetails": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:discard": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:goTo": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:startUpload": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:attachPdf": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:attachCover": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:requestReview": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/checks:run": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public."
   },
   "pending": {
-    "evidenceLibraries/collectionSources:listCollectionSources": "#329"
+    "evidenceLibraries/collectionSources:listCollectionSources": "#329",
+    "reports/flow:list": "#1213",
+    "reports/flow:get": "#1213",
+    "reports/flow:counts": "#1213",
+    "reports/flow:starts": "#1213"
   },
   "inWorkspace": [
     "research/records",
@@ -281,6 +295,7 @@
     "library/collections",
     "library/mutations",
     "library/papers",
-    "extraction/sources/library"
+    "extraction/sources/library",
+    "reports/flow"
   ]
 }

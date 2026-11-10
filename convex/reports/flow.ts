@@ -1,0 +1,388 @@
+// A report from its agreement to ready to activate (plans/publish-reports): what the Publish page reads and the
+// changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
+// reports; the report's owner, who started it, and the workspace's admins change them.
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { v, type Infer } from "convex/values";
+import { stream } from "convex-helpers/server/stream";
+import { internal } from "../_generated/api";
+import type { Doc, Id } from "../_generated/dataModel";
+import { type MutationCtx, type QueryCtx } from "../lib/functions";
+import { refuseApps } from "../lib/auth";
+import { createError } from "../lib/errors";
+import { workspaceMutation, workspaceQuery } from "../lib/userActions";
+import schema from "../schema";
+import type { Actor } from "../workspaces/actor";
+import { workspacesOf } from "../workspaces/personal";
+import { bylineOf, canRegister } from "../../lib/reports/settings";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, FILE_NAME_MAX, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, keyOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
+import { countStart, startsLeft } from "./limits";
+import { reportSettings, settingsRow } from "./settings";
+import { archiveValidator, changeStageValidator, depositValidator, metadataValidator, plainResults, registrationValidator, statusValidator, stepValidator } from "./validators";
+
+/** What someone who sees a workspace's report but may not change it is told. */
+export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
+/** What a change is told when the report moved on in another tab or under a reviewer's hand. The page follows by itself. */
+export const MOVED_ON = "This report has moved on, so that can't be done any more.";
+/** The largest PDF a report takes, and the largest picture of its first page. */
+export const REPORT_PDF_MAX_MB = 50;
+const COVER_MAX_BYTES = 2 * 1024 * 1024;
+/** Rows one page of a list holds at most, the rows a filtered page reads to fill itself, and the reports a count reads. */
+const PAGE_MAX = 50;
+const ROWS_READ = 500;
+const COUNT_READ = 1_000;
+
+const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
+export const detailsOf = async (ctx: QueryCtx, reportId: Id<"reports">) => (await ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).unique())!;
+export const mayChange = (actor: Pick<Actor, "userId" | "role">, report: Pick<Doc<"reports">, "ownerId">) => actor.role === "admin" || report.ownerId === actor.userId;
+
+/** A report of the workspace the person acts in, by its key, that they may change. */
+async function changing(ctx: QueryCtx, actor: Actor, key: string) {
+  const report = await byKey(ctx, key);
+  if (!report || report.workspaceId !== actor.workspaceId) throw createError("NOT_FOUND", "This report isn't one of this workspace's, or it was discarded.");
+  if (!mayChange(actor, report)) throw createError("FORBIDDEN", OWNERS_ONLY);
+  return report;
+}
+
+export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<Doc<"reports">>) => ctx.db.patch("reports", report._id, { ...patch, updatedAt: Date.now() });
+
+/** A report's details as they may be kept: each list within its cap, said in words, and the whole within its size. */
+export function keptDetails(metadata: Metadata) {
+  const over = (Object.keys(DETAIL_CAPS) as Array<keyof typeof DETAIL_CAPS>).find((list) => list in metadata && (metadata[list as keyof Metadata] as unknown[]).length > DETAIL_CAPS[list]);
+  if (over) throw createError("VALIDATION_ERROR", `A report holds at most ${DETAIL_CAPS[over].toLocaleString("en")} ${over === "studyDesigns" ? "study designs" : over === "sdgs" ? "goals" : over === "relations" ? "links" : over}.`);
+  if (JSON.stringify(metadata).length > DETAILS_MAX_BYTES) throw createError("VALIDATION_ERROR", "These details are too long to save. Shorten the abstract or the lists.");
+  return metadata;
+}
+
+async function forget(ctx: MutationCtx, ...files: Array<Id<"_storage"> | undefined>) {
+  for (const file of files) if (file && (await ctx.db.system.get(file))) await ctx.storage.delete(file);
+}
+
+/** How many more reports the workspace may start at `now`, which the page gives so this query doesn't read the clock. */
+export const starts = workspaceQuery({
+  args: { now: v.number() },
+  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.number(), left: v.number() }),
+  handler: (ctx, { workspaceId }, { now }) => startsLeft(ctx, workspaceId, now),
+});
+
+/**
+ * Signs the agreement, which starts a report of the workspace's and reserves its DOI. Each signing starts one, and a
+ * workspace may start only so many a day. `version` is the agreement the person read: one changed since is read
+ * again before it's signed. Answers the new report's key.
+ */
+export const sign = workspaceMutation({
+  args: { name: v.string(), onBehalfOfAll: v.boolean(), version: v.number() },
+  returns: v.string(),
+  handler: async (ctx, { userId, workspaceId }, { name, onBehalfOfAll, version }) => {
+    await refuseApps(ctx);
+    const settings = await settingsRow(ctx);
+    if (!settings.enabled || !canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is off for now.");
+    if (version !== settings.agreement.version) throw createError("CONFLICT", "The agreement changed while you were reading it. Read the new one, then sign.");
+    const signer = name.trim();
+    if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
+    if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
+    const { crossref, zenodo } = settings.publication;
+    // ponytail: a report registered with Zenodo alone takes the DOI Zenodo reserves, which the registration slice
+    // (#1205) asks Zenodo for. Until then a report needs Crossref on, whose DOI is known as soon as it has a key.
+    if (crossref.mode === "off") throw createError("FEATURE_DISABLED", "Publishing with a DOI from Zenodo alone isn't open yet.");
+    // Counted where it can't be undone: a report discarded later still used one of the day's starts.
+    await countStart(ctx, workspaceId);
+    const counter = await ctx.db.query("reportKeys").first();
+    const next = counter?.next ?? 1;
+    if (counter) await ctx.db.patch("reportKeys", counter._id, { next: next + 1 });
+    else await ctx.db.insert("reportKeys", { next: next + 1 });
+    const key = keyOf(next);
+    const now = Date.now();
+    const reportId = await ctx.db.insert("reports", {
+      key,
+      workspaceId,
+      ownerId: userId,
+      // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
+      // the report registers is fixed with it.
+      doi: `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`,
+      registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
+      step: "doi",
+      status: "draft",
+      signedBy: { name: signer, onBehalfOfAll },
+      signedAt: now,
+      agreementVersion: version,
+      deposit: "none",
+      archive: "none",
+      updatedAt: now,
+    });
+    await ctx.db.insert("reportDetails", { reportId });
+    return key;
+  },
+});
+
+/** The author's corrections, kept as they make them, so leaving the details step loses nothing. A title being
+ * retyped is kept empty; the checks are what need one. */
+export const saveDetails = workspaceMutation({
+  args: { key: v.string(), metadata: metadataValidator },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, metadata }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    // Only while the details are being corrected: a save that arrives after the checks started changes nothing.
+    if (report.step !== "details" || report.run) return null;
+    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: keptDetails(metadata) });
+    await touch(ctx, report, { title: metadata.title.trim() || undefined });
+    return null;
+  },
+});
+
+/** Gives up a report that never went live and no reviewer approved: it, its PDF and its reserved DOI are gone. The
+ * day's start it used stays used. */
+export const discard = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    if (!canDiscard(report)) throw createError("CONFLICT", "Only a report that isn't approved or live can be discarded.");
+    await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
+    await ctx.db.delete("reportDetails", (await detailsOf(ctx, report._id))._id);
+    await ctx.db.delete("reports", report._id);
+    return null;
+  },
+});
+
+/** Back to a step already done, or on from the DOI to the upload. A report past its checks goes back only to
+ * replace a PDF that failed them; its details open again once that PDF has been read. */
+export const goTo = workspaceMutation({
+  args: { key: v.string(), step: v.union(v.literal("doi"), v.literal("upload"), v.literal("details")) },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, step }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    const checked = report.step === "done";
+    if (checked && stageOf(report, (await reportSettings(ctx)).humanReview) !== "failed") throw createError("CONFLICT", MOVED_ON);
+    const details = step === "details" ? await detailsOf(ctx, report._id) : null;
+    if (step === "details" && (checked || !details?.metadata)) throw createError("CONFLICT", "That step isn't open for this report yet.");
+    await touch(ctx, report, { step });
+    return null;
+  },
+});
+
+/** Where the browser sends a report's PDF, or the picture of its first page, before attaching it. */
+export const startUpload = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.string(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    if (report.step === "done") throw createError("CONFLICT", MOVED_ON);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * The PDF the browser just uploaded becomes the report's, and its text and details are read next (./reading.ts).
+ * A new PDF starts over: the details read from the one before it are gone until this one is read. A file that
+ * can't be a report's is deleted, and why is the answer: a throw would keep the file.
+ */
+export const attachPdf = workspaceMutation({
+  args: { key: v.string(), file: v.id("_storage"), name: v.string() },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx, actor, { key, file, name }) => {
+    await refuseApps(ctx);
+    const stored = await ctx.db.system.get(file);
+    if (!stored) throw createError("NOT_FOUND", "The upload didn't arrive. Try again.");
+    const report = await changing(ctx, actor, key);
+    const refused =
+      report.step === "done" ? MOVED_ON
+      : !/\.pdf$/i.test(name.trim()) ? "Choose a PDF."
+      : stored.size === 0 ? "That file is empty. Choose the PDF again."
+      : stored.size > REPORT_PDF_MAX_MB * 1024 * 1024 ? `A report's PDF is at most ${REPORT_PDF_MAX_MB} MB.`
+      : null;
+    if (refused) {
+      await forget(ctx, file);
+      return refused;
+    }
+    await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
+    const at = Date.now();
+    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: undefined, reviewRequest: undefined, running: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: undefined, run: undefined, step: "upload", title: undefined, approved: undefined, asked: undefined });
+    await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
+    return null;
+  },
+});
+
+/** The picture of the PDF's first page, drawn by the browser that uploaded it. One for a PDF since replaced is dropped. */
+export const attachCover = workspaceMutation({
+  args: { key: v.string(), file: v.id("_storage"), at: v.number() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, file, at }) => {
+    await refuseApps(ctx);
+    const stored = await ctx.db.system.get(file);
+    if (!stored) return null;
+    const report = await changing(ctx, actor, key);
+    if (report.pdf?.at !== at || stored.size > COVER_MAX_BYTES || !stored.contentType?.startsWith("image/")) {
+      await forget(ctx, file);
+      return null;
+    }
+    await forget(ctx, report.cover?.file);
+    // Its own time, so its address changes with the picture and a new PDF's cover is never an old one's.
+    await ctx.db.patch("reports", report._id, { cover: { file, at: Date.now() } });
+    return null;
+  },
+});
+
+/**
+ * The author of a report its checks failed asks a person to look, with what they think the checks got wrong. That
+ * shows the words to a reviewer and nothing else: a reviewer can approve or decline any report, asked or not.
+ */
+export const requestReview = workspaceMutation({
+  args: { key: v.string(), comment: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, comment }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    // Asked of a report its checks failed and no one has approved since: anything else has moved on.
+    if (stageOf(report, (await reportSettings(ctx)).humanReview) !== "failed") throw createError("CONFLICT", MOVED_ON);
+    if (report.asked) return null;
+    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } });
+    await touch(ctx, report, { asked: true });
+    return null;
+  },
+});
+
+const stageValidator = v.union(...STAGES.map((stage) => v.literal(stage)));
+const rowValidator = v.object({
+  key: v.string(),
+  /** Its title, or its PDF's name until it has one. */
+  title: v.optional(v.string()),
+  step: stepValidator,
+  status: statusValidator,
+  approved: v.optional(v.boolean()),
+  flagged: v.optional(v.boolean()),
+  changes: v.optional(changeStageValidator),
+  withdrawn: v.boolean(),
+  note: v.optional(v.string()),
+  registration: registrationValidator,
+  deposit: depositValidator,
+  archive: archiveValidator,
+  updatedAt: v.number(),
+  /** Who signed it. */
+  signer: v.string(),
+  coverUrl: v.union(v.string(), v.null()),
+  /** Whether the person may change it, or only see it. */
+  mine: v.boolean(),
+});
+
+async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise<Infer<typeof rowValidator>> {
+  const { key, step, status, approved, flagged, changes, note, registration, deposit, archive, updatedAt } = report;
+  return {
+    key, step, status, registration, deposit, archive, updatedAt,
+    ...(approved && { approved }),
+    ...(flagged && { flagged }),
+    ...(changes && { changes }),
+    ...(note && { note }),
+    ...((report.title ?? report.pdf?.name) && { title: report.title ?? report.pdf?.name }),
+    withdrawn: report.withdrawnAt !== undefined,
+    signer: report.signedBy.name,
+    coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
+    mine: mayChange(actor, report),
+  };
+}
+
+/** The workspace's reports, the one changed last first, a page at a time. `show` keeps those at one stage. */
+export const list = workspaceQuery({
+  args: { paginationOpts: paginationOptsValidator, show: v.optional(stageValidator) },
+  returns: paginationResultValidator(rowValidator),
+  handler: async (ctx, actor, { paginationOpts, show }) => {
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
+    if (!show) {
+      const read = await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", actor.workspaceId)).order("desc").paginate(opts);
+      return { ...read, page: await Promise.all(read.page.map((report) => row(ctx, actor, report))) };
+    }
+    // A stage is worked out from the settings as they are, so no index holds it: the reports are read in order and
+    // those at another stage passed over.
+    const { humanReview } = await reportSettings(ctx);
+    return await stream(ctx.db, schema)
+      .query("reports")
+      .withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", actor.workspaceId))
+      .order("desc")
+      .filterWith(async (report) => stageOf(report, humanReview) === show)
+      .map((report) => row(ctx, actor, report))
+      .paginate({ ...opts, maximumRowsRead: ROWS_READ });
+  },
+});
+
+const countFields = Object.fromEntries(STAGES.map((stage) => [stage, v.number()])) as Record<Stage, ReturnType<typeof v.number>>;
+
+/**
+ * How many of the workspace's reports are at each stage, and how many are under way: with one, Publish carries on
+ * with it (`only`), with several it opens the list, with none a new report.
+ */
+export const counts = workspaceQuery({
+  args: {},
+  returns: v.object({ ...countFields, all: v.number(), underWay: v.number(), only: v.union(v.string(), v.null()) }),
+  handler: async (ctx, { workspaceId }) => {
+    const { humanReview } = await reportSettings(ctx);
+    // ponytail: counted by reading the workspace's reports, up to COUNT_READ of the newest; a kept count per stage
+    // (lib/listCounts) once a workspace passes it. A workspace starts a report or a few a day.
+    const reports = await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(COUNT_READ);
+    const tally = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<Stage, number>;
+    for (const report of reports) tally[stageOf(report, humanReview)] += 1;
+    const going = reports.filter(underWay);
+    return { ...tally, all: reports.length, underWay: going.length, only: going.length === 1 ? going[0]!.key : null };
+  },
+});
+
+const reportValidator = v.object({
+  ...rowValidator.fields,
+  doi: v.string(),
+  /** The line its PDF must carry, with its DOI and the series' ISSN as they are now. */
+  byline: v.string(),
+  asked: v.boolean(),
+  signedAt: v.number(),
+  onBehalfOfAll: v.boolean(),
+  agreementVersion: v.number(),
+  /** The checks under way since then, with the answers that have arrived. */
+  run: v.optional(v.object({ at: v.number(), results: plainResults })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(v.union(v.literal("unopened"), v.literal("unread"))), url: v.union(v.string(), v.null()) })),
+  metadata: v.optional(metadataValidator),
+  results: v.optional(plainResults),
+  reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
+  correction: v.optional(v.object({ metadata: metadataValidator, results: plainResults, at: v.number(), request: v.optional(v.object({ comment: v.string(), at: v.number() })), declined: v.optional(v.object({ at: v.number(), note: v.optional(v.string()) })) })),
+  activatedAt: v.optional(v.number()),
+  correctedAt: v.optional(v.number()),
+});
+
+const plain = (results: Doc<"reportDetails">["results"]) => results?.map(({ model: _model, ...result }) => result);
+
+/**
+ * One of the workspace's reports as its pages show it. What an author's page never gets is left out: the model
+ * behind each check's answer, and who reviewed it. A report of another workspace the person is in is named by
+ * `elsewhere`, so a link from an email opens it where it lives; anything else is null.
+ */
+export const get = workspaceQuery({
+  args: { key: v.string() },
+  returns: v.union(v.object({ report: reportValidator }), v.object({ elsewhere: v.id("workspaces") }), v.null()),
+  handler: async (ctx, actor, { key }) => {
+    const report = await byKey(ctx, key);
+    if (!report) return null;
+    if (report.workspaceId !== actor.workspaceId) return (await workspacesOf(ctx, actor.userId)).some((workspace) => workspace._id === report.workspaceId) ? { elsewhere: report.workspaceId } : null;
+    const [details, settings] = await Promise.all([detailsOf(ctx, report._id), reportSettings(ctx)]);
+    const { correction } = details;
+    return {
+      report: {
+        ...(await row(ctx, actor, report)),
+        doi: report.doi,
+        byline: bylineOf(settings.series, report.doi),
+        asked: report.asked === true,
+        signedAt: report.signedAt,
+        onBehalfOfAll: report.signedBy.onBehalfOfAll,
+        agreementVersion: report.agreementVersion,
+        ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+        ...(details.metadata && { metadata: details.metadata }),
+        ...(details.results && { results: plain(details.results) }),
+        ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),
+        ...(correction && { correction: { metadata: correction.metadata, results: plain(correction.results)!, at: correction.at, ...(correction.request && { request: correction.request }), ...(correction.declined && { declined: correction.declined }) } }),
+        ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
+        ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
+      },
+    };
+  },
+});
