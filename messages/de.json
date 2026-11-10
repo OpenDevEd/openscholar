@@ -6737,8 +6737,10 @@
           "confirm": "Zahlung bestätigen",
           "change": "Ändern",
           "addButton": "Zahlungsmethode hinzufügen",
-          "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden"
-        }
+          "stripeFailed": "Die Seite von Stripe konnte nicht geöffnet werden",
+          "credit": "{amount} Guthaben"
+        },
+        "creditLine": "Guthaben des Kontos"
       }
     },
     "meta": {

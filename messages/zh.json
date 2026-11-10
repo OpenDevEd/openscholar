@@ -6736,8 +6736,10 @@
           "confirm": "确认付款",
           "change": "更换",
           "addButton": "添加付款方式",
-          "stripeFailed": "无法打开 Stripe 页面"
-        }
+          "stripeFailed": "无法打开 Stripe 页面",
+          "credit": "余额 {amount}"
+        },
+        "creditLine": "账户余额抵扣"
       }
     },
     "meta": {

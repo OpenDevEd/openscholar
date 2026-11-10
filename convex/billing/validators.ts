@@ -29,6 +29,8 @@ export const billingAccountSnapshotValidator = v.object({
   /** Top-up credits, which never expire; included in `balance`. */
   purchased: v.number(),
   card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
+  /** Credit on the customer's Stripe balance, in US dollars, which Stripe takes a charge from before the card: read with `card`. */
+  credit: v.optional(v.number()),
   signupGranted: v.boolean(),
   /** Has paid for a plan or credits, so Stripe holds invoices for them. */
   hasPaid: v.boolean(),

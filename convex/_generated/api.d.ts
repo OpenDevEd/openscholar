@@ -83,6 +83,7 @@ import type * as billing_purchases from "../billing/purchases.js";
 import type * as billing_seatSyncs from "../billing/seatSyncs.js";
 import type * as billing_seats from "../billing/seats.js";
 import type * as billing_spend from "../billing/spend.js";
+import type * as billing_stripeRest from "../billing/stripeRest.js";
 import type * as billing_stripeWebhook from "../billing/stripeWebhook.js";
 import type * as billing_usage from "../billing/usage.js";
 import type * as billing_usageLog from "../billing/usageLog.js";
@@ -594,6 +595,7 @@ declare const fullApi: ApiFromModules<{
   "billing/seatSyncs": typeof billing_seatSyncs;
   "billing/seats": typeof billing_seats;
   "billing/spend": typeof billing_spend;
+  "billing/stripeRest": typeof billing_stripeRest;
   "billing/stripeWebhook": typeof billing_stripeWebhook;
   "billing/usage": typeof billing_usage;
   "billing/usageLog": typeof billing_usageLog;

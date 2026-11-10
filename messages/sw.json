@@ -6737,8 +6737,10 @@
           "confirm": "Thibitisha malipo",
           "change": "Badilisha",
           "addButton": "Ongeza njia ya kulipa",
-          "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka"
-        }
+          "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka",
+          "credit": "Salio {amount}"
+        },
+        "creditLine": "Salio la akaunti"
       }
     },
     "meta": {

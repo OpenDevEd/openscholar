@@ -24,6 +24,7 @@ import {
 } from "./validators";
 import { EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
+import { stripeCredit } from "./stripeRest";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
 export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
@@ -177,13 +178,13 @@ export const writeSnapshot = internalMutation({
     if (!workspace) return null;
     // A snapshot read before the one cached would bring back an older plan and its limits. Its card can still be the newest read.
     if (existing?.fetchedAt !== undefined && existing.fetchedAt > fetchedAt) {
-      if (withCard && (existing.cardFetchedAt ?? 0) < fetchedAt) await ctx.db.patch("billingAccounts", existing._id, { card: snapshot.card, cardFetchedAt: fetchedAt });
+      if (withCard && (existing.cardFetchedAt ?? 0) < fetchedAt) await ctx.db.patch("billingAccounts", existing._id, { card: snapshot.card, credit: snapshot.credit, cardFetchedAt: fetchedAt });
       return null;
     }
     const newer = existing !== null && existing.refreshedAt > fetchedAt;
     const row = {
       ...snapshot,
-      ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
+      ...(withCard ? { card: snapshot.card, credit: snapshot.credit, cardFetchedAt: fetchedAt } : { card: existing?.card, credit: existing?.credit, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
       workspaceId,
       firstPaidAt: existing?.firstPaidAt ?? (snapshot.paying ? fetchedAt : undefined),
@@ -254,7 +255,9 @@ export async function refreshAccount(
   let customer = await autumn.customer(customerId, options);
   // A failed payment's invoice is read only while one is due, which is rare.
   if (customer.subscriptions.some((subscription) => subscription.past_due)) customer = await autumn.customer(customerId, { ...options, invoices: true });
-  const snapshot = snapshotFromCustomer(customer);
+  // The card's read also reads the credit on the Stripe balance, which a purchase is paid from first.
+  const credit = options.card && customer.stripe_id ? await stripeCredit(customer.stripe_id) : undefined;
+  const snapshot = { ...snapshotFromCustomer(customer), ...(credit !== undefined && { credit }) };
   await ctx.runMutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot, withCard: options.card ?? false, fetchedAt });
   return snapshot;
 }

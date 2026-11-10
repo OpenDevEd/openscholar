@@ -6736,8 +6736,10 @@
           "confirm": "भुगतान की पुष्टि करें",
           "change": "बदलें",
           "addButton": "भुगतान का तरीका जोड़ें",
-          "stripeFailed": "Stripe का पेज नहीं खुल सका"
-        }
+          "stripeFailed": "Stripe का पेज नहीं खुल सका",
+          "credit": "{amount} क्रेडिट"
+        },
+        "creditLine": "खाते का क्रेडिट"
       }
     },
     "meta": {

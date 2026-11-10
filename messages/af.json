@@ -6737,8 +6737,10 @@
           "confirm": "Bevestig betaling",
           "change": "Verander",
           "addButton": "Voeg betaalmetode by",
-          "stripeFailed": "Stripe se bladsy kon nie oopmaak nie"
-        }
+          "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
+          "credit": "{amount} krediet"
+        },
+        "creditLine": "Rekeningkrediet"
       }
     },
     "meta": {

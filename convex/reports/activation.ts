@@ -16,7 +16,8 @@ import { actorValidator, type Actor } from "../workspaces/actor";
 import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnCustomer, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
-import { purchasing, unlessDeclined, voidDeclined } from "../billing/purchases";
+import { purchasing, unlessDeclined } from "../billing/purchases";
+import { voidDeclined } from "../billing/stripeRest";
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
@@ -81,6 +82,8 @@ export const terms = workspaceQuery({
       /** The organisation the report is in; null for a person's own workspace. */
       organization: v.union(v.string(), v.null()),
       card: v.union(cardValidator, v.null()),
+      /** Credit on the workspace's Stripe balance, in US dollars, which a charge is paid from first. */
+      credit: v.number(),
       free: v.object({ perDay: v.number(), left: v.number() }),
       /** The activation plan's price in US dollars; null while Autumn's catalog has no such plan. */
       price: v.union(v.number(), v.null()),
@@ -95,10 +98,12 @@ export const terms = workspaceQuery({
     if (!report || report.workspaceId !== actor.workspaceId) return null;
     const plan = (await readCatalog(ctx))?.plans.find((candidate) => candidate.id === ACTIVATION_PLAN);
     const pending = await pendingOf(ctx, report._id);
+    const account = await readAccount(ctx, actor.workspaceId);
     return {
       admin: actor.role === "admin",
       organization: (await placeOf(ctx, actor.workspaceId)).organization,
-      card: (await readAccount(ctx, actor.workspaceId))?.card ?? null,
+      card: account?.card ?? null,
+      credit: account?.credit ?? 0,
       free: await freeLeft(ctx, actor.workspaceId, now),
       price: plan?.price?.amount ?? null,
       // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
@@ -218,6 +223,8 @@ export const settleCharge = internalMutation({
     }
     await ctx.db.patch("reportActivations", activationId, { state: "live", charge: outcome.charge, payUrl: undefined });
     await putLive(ctx, report);
+    // The charge may have taken the account's credit: the next activation is shown what's left of it.
+    await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId: activation.workspaceId, card: true });
     return null;
   },
 });
@@ -266,9 +273,16 @@ const actorIn = (ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<Actor> 
  * bank's page when it asks to confirm the charge, after which the report goes live by itself.
  */
 export const activate = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), pay: v.boolean(), code: v.optional(v.string()) },
+  args: {
+    workspaceId: v.id("workspaces"),
+    key: v.string(),
+    pay: v.boolean(),
+    code: v.optional(v.string()),
+    /** What the person was shown as due, in US dollars: a charge that would take more from the card is refused. */
+    expect: v.optional(v.number()),
+  },
   returns: v.union(v.object({ live: v.literal(true) }), v.object({ url: v.string() })),
-  handler: async (ctx, { workspaceId, key, pay, code: typed }): Promise<{ live: true } | { url: string }> => {
+  handler: async (ctx, { workspaceId, key, pay, code: typed, expect }): Promise<{ live: true } | { url: string }> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
@@ -287,6 +301,14 @@ export const activate = action({
     if (!pay) throw createError("CONFLICT", "Today's free activations were just used. Activate it again to pay for it.");
     // Under the workspace's purchase lock from the record to the answer, so another tab's activation waits for this one.
     const outcome = await purchasing(ctx, workspaceId, first.customerId, first.charging ? { resuming: true } : {}, async () => {
+      // What's due now, after the account's credit, which the page may have read before another purchase spent it.
+      if (expect !== undefined && !first.charging) {
+        const due = (await autumn.previewAttach(first.customerId, ACTIVATION_PLAN, false, undefined, code).catch(refusedCode<AutumnPreview>(code))).total;
+        if (due > expect + 0.005) {
+          await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
+          throw createError("CONFLICT", `Activating it now takes ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(due)} from your card, not ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(expect)}. Check it and activate again.`);
+        }
+      }
       const started: { activationId: Id<"reportActivations">; code?: string } = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
       const asked = started.code;
       let charged: AutumnCharge;

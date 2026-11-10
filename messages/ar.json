@@ -6737,8 +6737,10 @@
           "confirm": "تأكيد الدفع",
           "change": "تغيير",
           "addButton": "إضافة وسيلة دفع",
-          "stripeFailed": "تعذّر فتح صفحة Stripe"
-        }
+          "stripeFailed": "تعذّر فتح صفحة Stripe",
+          "credit": "رصيد {amount}"
+        },
+        "creditLine": "رصيد الحساب"
       }
     },
     "meta": {
