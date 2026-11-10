@@ -103,7 +103,7 @@ const communityReportValidator = v.union(
     state: v.literal("live"),
     key: v.string(),
     doi: v.string(),
-    /** Changes when the report's details do: a community that holds another version takes this one. */
+    /** When the report's details were last set, as an ISO time: a community that holds an earlier one takes this one. */
     version: v.string(),
     title: v.string(),
     subtitle: v.string(),
@@ -134,14 +134,14 @@ export const forCommunity = internalQuery({
         // A DOI is stored as it was reserved, in lower case.
         const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
         if (!report) return null;
-        if (report.status !== "live") return report.withdrawnAt === undefined ? null : { state: "withdrawn" as const, key: report.key, doi: report.doi, version: `withdrawn:${report.withdrawnAt}` };
+        if (report.status !== "live") return report.withdrawnAt === undefined ? null : { state: "withdrawn" as const, key: report.key, doi: report.doi, version: new Date(report.withdrawnAt).toISOString() };
         const { metadata } = await detailsOf(ctx, report._id);
         if (!metadata) return null;
         return {
           state: "live" as const,
           key: report.key,
           doi: report.doi,
-          version: String(report.correctedAt ?? report.activatedAt ?? report.updatedAt),
+          version: new Date(report.correctedAt ?? report.activatedAt ?? report.updatedAt).toISOString(),
           title: metadata.title,
           subtitle: metadata.subtitle,
           type: metadata.type,
