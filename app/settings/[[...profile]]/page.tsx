@@ -13,6 +13,7 @@ import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Enter, Paged, pagerOf } from "@/components/settings/parts";
+import { ProfileSetupSummary } from "@/components/onboarding/profile-setup";
 import { cn } from "@/lib/utils";
 import { useWorkspaceHref } from "@/lib/workspaces/href";
 
@@ -63,6 +64,8 @@ function ProfilePage({ security }: { security: boolean }) {
           ) : (
             <Identity />
           )}
+          {/* MOCK (mock/onboarding): what the profile setup holds, and the button that opens it again. */}
+          {security ? null : <ProfileSetupSummary />}
           <UserProfile
             routing="path"
             path={settingsPath}

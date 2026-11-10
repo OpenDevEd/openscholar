@@ -19,6 +19,7 @@ import ConfigProvider from "@/components/config-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ProfileSetupHost } from "@/components/onboarding/profile-setup";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
@@ -123,6 +124,10 @@ export default async function RootLayout({
                           </Suspense>
                           <AssistantPanel />
                           <CookieConsentBanner />
+                          {/* MOCK (mock/onboarding): a new account's profile setup, over the page it lands on. */}
+                          <Suspense fallback={null}>
+                            <ProfileSetupHost />
+                          </Suspense>
                           <ConsentAwareGoogleAnalytics />
                         </QueryHighlightProvider>
                       </WorkspacesProvider>

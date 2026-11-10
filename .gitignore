@@ -57,3 +57,6 @@ bench-results/local.json
 
 # MOCK (mock/publish-reports): the Publish mock's local store
 /.publish-mock/
+
+# MOCK (mock/onboarding): profile setup answers
+.onboarding-mock/

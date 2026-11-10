@@ -4,31 +4,26 @@
 // correct. Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import useSWR from "swr";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Paged, pagerOf } from "@/components/settings/parts";
-import { OrcidIcon } from "@/components/icons/author-service-icons";
-import { FunderName, RorLink } from "@/components/papers/paper-entities";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { FunderName } from "@/components/papers/paper-entities";
+import { AffiliationPicker } from "@/components/people/affiliation-picker";
+import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { findOrcid, findRor } from "@/app/actions/publish-mock";
-import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
-import { CountryFlag } from "@/components/ui/country-flag";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowDown, ArrowUp, BadgeCheck, Check, ChevronDown, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
+import { AiIcon, ArrowDown, ArrowUp, BadgeCheck, Check, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
-import { countryOfPlace } from "@/lib/publish-mock/read";
 import { linkHref } from "@/components/publish-mock/report-extras";
-import { CREDIT_ROLES, RELATION_KINDS, type Affiliation, type Author, type Metadata } from "@/lib/publish-mock/types";
+import { CREDIT_ROLES, RELATION_KINDS, type Author, type Metadata } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const LANGUAGE = new Intl.DisplayNames(["en"], { type: "language" });
@@ -120,129 +115,6 @@ function usePage<T>(list: T[], size: number) {
   return { pager, offset, shown: list.slice(offset, offset + size), last: (length: number) => setPage(Math.max(1, Math.ceil(length / size))) };
 }
 
-/** An affiliation's chip: OpenAlex's institution by its ID, one only ROR knows by its ROR ID, or the name as typed. */
-const chipOf = (a: Affiliation) => a.id ?? (a.ror ? `ror:${a.ror}` : typedId(a.name));
-
-/** An author's places, from OpenAlex's institutions, from ROR's for one OpenAlex doesn't know, or as typed, each with its country's flag. */
-function Affiliations({ value, onChange }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void }) {
-  const ids = value.map(chipOf);
-  const names = Object.fromEntries(value.map((a) => [chipOf(a), a.name]));
-  return (
-    <OpenAlexLookupFilter
-      selected={ids}
-      onChange={(next) => onChange(value.filter((a) => next.includes(chipOf(a))))}
-      onPicked={(option) => {
-        if (option.id.startsWith("typed:")) return onChange([...value, { id: null, name: option.name, country: "" }]);
-        // One only ROR found is kept by its ROR ID; OpenAlex's by its own ID, with the ROR ID it has.
-        const ror = option.ror ?? (option.id.startsWith("ror:") ? option.id.slice(4) : undefined);
-        onChange([...value, { id: option.id.startsWith("ror:") ? null : option.id, name: option.name, country: countryOfPlace(option.detail), ...(ror && { ror }) }]);
-      }}
-      icons={Object.fromEntries(value.filter((a) => a.country).map((a) => [chipOf(a), <CountryFlag key={a.name} countryCode={a.country} />]))}
-      after={Object.fromEntries(
-        value.filter((a) => a.ror).map((a) => [
-          chipOf(a),
-          <RorLink key="ror" ror={a.ror!} label={`${a.name} on ROR`} />,
-        ]),
-      )}
-      lookup={{
-        entity: "institutions",
-        useNames: () => names,
-        remember: () => {},
-        typed: (query) => ({ id: typedId(query), name: query, detail: "As typed" }),
-      }}
-      also={{
-        key: "ror",
-        search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place, ror: o.ror })),
-      }}
-      labels={{ label: "Affiliations", placeholder: "Add an institution", searchPlaceholder: "Find an institution", typeToSearch: "Type an institution's name", unavailable: "Institutions can't be looked up now" }}
-    />
-  );
-}
-
-/** An ORCID iD with its check digit right (ISO 7064 11-2), from the iD or its orcid.org address as typed or pasted. */
-function orcidIn(text: string) {
-  const id = text.trim().replace(/^https?:\/\/(www\.)?orcid\.org\//i, "").toUpperCase();
-  if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(id)) return null;
-  const digits = id.replace(/-/g, "");
-  const total = [...digits.slice(0, 15)].reduce((sum, digit) => (sum + Number(digit)) * 2, 0);
-  const check = (12 - (total % 11)) % 11;
-  return (check === 10 ? "X" : String(check)) === digits[15] ? id : null;
-}
-
-/** A person's institutions as one short line: the first two, and how many more. */
-const placesOf = (institutions: string[]) =>
-  institutions.length > 2 ? `${institutions.slice(0, 2).join(" and ")}, and ${institutions.length - 2} more` : institutions.join(" and ");
-
-/**
- * The people on ORCID for the words typed, which start as the author's name, with an iD typed or pasted as the
- * first choice. It lives inside the popover, so it starts afresh each time that opens.
- */
-function OrcidSearch({ author, onPick, onRemove }: { author: Author; onPick: (orcid: string, name: string) => void; onRemove: () => void }) {
-  const [search, setSearch] = useState(author.name.trim());
-  const query = useDebouncedValue(search.trim(), 300);
-  const typed = orcidIn(search);
-  const at = author.affiliations.map((a) => a.name);
-  const people = useSWR(query && !typed ? ["orcid", query, ...at] : null, () => findOrcid(query, at), { keepPreviousData: true, revalidateOnFocus: false });
-  // Someone at one of the author's institutions shows that institution first.
-  const theirs = new Set(at.map((name) => name.toLowerCase()));
-  const shown = (query && !typed ? (people.data ?? []) : []).map((person) => ({ ...person, institutions: [...person.institutions].sort((a, b) => Number(theirs.has(b.toLowerCase())) - Number(theirs.has(a.toLowerCase()))) }));
-  const groups = [
-    { heading: at.length === 1 ? `At ${at[0]}` : "At their institutions", people: shown.filter((person) => person.near) },
-    { heading: shown.some((person) => person.near) ? "Elsewhere on ORCID" : "On ORCID", people: shown.filter((person) => !person.near) },
-  ].filter((group) => group.people.length);
-  return (
-    <Command shouldFilter={false}>
-      <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" busy={!typed && !!search.trim() && (search.trim() !== query || people.isValidating)} />
-      <CommandList>
-        <CommandEmpty>{!search.trim() ? "Type a name, or paste an iD" : people.error ? "ORCID can't be searched now" : people.isLoading ? "Searching ORCID" : "Nobody on ORCID by that name"}</CommandEmpty>
-        {typed ? (
-          <CommandGroup>
-            <CommandItem value={`typed ${typed}`} onSelect={() => onPick(typed, "")}>
-              <OrcidIcon />
-              <span className="font-mono text-xs">{typed}</span>
-              <span className="ms-auto text-xs text-muted-foreground">As typed</span>
-            </CommandItem>
-          </CommandGroup>
-        ) : null}
-        {groups.map((group) => (
-          <CommandGroup key={group.heading} heading={group.heading} className={cn(people.isLoading && "opacity-60 transition-opacity")}>
-            {group.people.map((person) => (
-              <CommandItem key={person.orcid} value={person.orcid} onSelect={() => onPick(person.orcid, person.name)} className="items-start">
-                <Check className={cn("mt-0.5 size-4", person.orcid === author.orcid ? "opacity-100" : "opacity-0")} />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-baseline justify-between gap-3">
-                    <span className="truncate font-medium">{person.name || "No name given"}</span>
-                    <span className="shrink-0 font-mono text-2xs text-muted-foreground">{person.orcid}</span>
-                  </span>
-                  {person.institutions.length ? (
-                    <TooltipHint label={placesOf(person.institutions)} onlyWhenClipped>
-                      <span className="block truncate text-xs text-muted-foreground">{placesOf(person.institutions)}</span>
-                    </TooltipHint>
-                  ) : (
-                    <span className="block text-xs text-subtle-foreground">No institution on ORCID</span>
-                  )}
-                </span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        ))}
-        {author.orcid ? (
-          <CommandGroup>
-            <CommandItem value="open" onSelect={() => window.open(`https://orcid.org/${author.orcid}`, "_blank", "noopener")}>
-              <ExternalLink />
-              Open {author.orcid} on ORCID
-            </CommandItem>
-            <CommandItem value="remove" onSelect={onRemove} className="text-destructive data-[selected=true]:text-destructive">
-              <CircleX className="text-destructive" />
-              Remove the iD
-            </CommandItem>
-          </CommandGroup>
-        ) : null}
-      </CommandList>
-    </Command>
-  );
-}
-
 function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void }) {
   const [finding, setFinding] = useState(false);
   return (
@@ -254,19 +126,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
         <Input aria-label="Name" placeholder="Name" value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="w-auto min-w-0 flex-1 font-medium" />
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-expanded={finding}
-          aria-label={author.orcid ? `ORCID iD ${author.orcid}` : "Find on ORCID"}
-          onClick={() => setFinding(true)}
-          className="order-last h-9 w-full shrink-0 justify-start gap-2 px-2.5 font-normal @xl:order-none @xl:w-56"
-        >
-          <OrcidIcon />
-          {author.orcid ? <span className="truncate font-mono text-xs">{author.orcid}</span> : <span className="truncate text-subtle-foreground">Find on ORCID</span>}
-          <ChevronDown className="ms-auto size-4 shrink-0 opacity-50" />
-        </Button>
+        <OrcidButton orcid={author.orcid} open={finding} onClick={() => setFinding(true)} className="order-last w-full shrink-0 @xl:order-none @xl:w-56" />
         <span className="flex shrink-0">
           <TooltipHint label="Move up">
             <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move ${author.name || "author"} up`} disabled={index === 0} className="text-muted-foreground" onClick={() => onMove(-1)}>
@@ -288,7 +148,9 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
       </PopoverAnchor>
       <PopoverContent align="end" className="w-[min(var(--radix-popover-trigger-width),28rem)] p-0">
         <OrcidSearch
-          author={author}
+          name={author.name}
+          institutions={author.affiliations.map((a) => a.name)}
+          current={author.orcid}
           onPick={(orcid, name) => {
             // The name stays as the report prints it; an empty one takes ORCID's.
             onChange({ orcid, orcidFound: undefined, ...(!author.name.trim() && name && { name }) });
@@ -310,7 +172,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
       <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
         <div className="space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Affiliations</span>
-          <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
+          <AffiliationPicker value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
         <div className="space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Contributor roles</span>
