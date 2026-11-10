@@ -14,9 +14,9 @@ import { createError } from "../lib/errors";
 import { workspaceQuery } from "../lib/userActions";
 import { actorValidator, type Actor } from "../workspaces/actor";
 import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
-import { AutumnError, autumn, type AutumnCharge } from "../billing/autumn";
+import { AutumnError, autumn, type AutumnCharge, type AutumnCustomer } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
-import { purchasing, unlessDeclined } from "../billing/purchases";
+import { purchasing, unlessDeclined, voidDeclined } from "../billing/purchases";
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
@@ -201,6 +201,8 @@ export const settleCharge = internalMutation({
     }
     if (outcome.kind === "pending") {
       await ctx.db.patch("reportActivations", activationId, { state: "pending", charge: { invoice: outcome.invoice, total: 0, currency: "usd" }, payUrl: outcome.url ?? undefined });
+      // The bank's page has no way back here and the webhooks can be late: the charge is looked at until it's settled.
+      await ctx.scheduler.runAfter(WATCH_FIRST_MS, internal.reports.activation.watch, { activationId, attempt: 0 });
       return null;
     }
     const report = await ctx.db.get("reports", activation.reportId);
@@ -285,7 +287,11 @@ export const activate = action({
       const asked = started.code;
       let charged: AutumnCharge;
       try {
-        charged = unlessDeclined(await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code: asked, idempotencyKey: `report-activation-${started.activationId}`, successUrl: backTo(first.prefix, key, started.activationId) }).catch(refusedCode<AutumnCharge>(asked)));
+        charged = await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code: asked, idempotencyKey: `report-activation-${started.activationId}`, successUrl: backTo(first.prefix, key, started.activationId) }).catch(refusedCode<AutumnCharge>(asked));
+        // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code, isn't
+        // held up by a $5 invoice left open.
+        if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);
+        unlessDeclined(charged);
       } catch (error) {
         // Charged nothing: the record goes, and the next try starts afresh. Otherwise it stays `charging`, and the next
         // try asks Autumn the same request again, which answers what this one did.
@@ -333,6 +339,50 @@ export const addCard = action({
   },
 });
 
+/** How soon a charge waiting on the bank is first looked at, how far apart the looks grow, and how many there are: about two days. */
+const WATCH_FIRST_MS = 20_000;
+const WATCH_MOST_MS = 60 * 60_000;
+const WATCH_LOOKS = 60;
+
+/** A charge waiting on the bank, by its record: its workspace and invoice, or null once it's settled. */
+export const waitingCharge = internalQuery({
+  args: { activationId: v.id("reportActivations") },
+  returns: v.union(v.object({ workspaceId: v.id("workspaces"), invoice: v.string() }), v.null()),
+  handler: async (ctx, { activationId }) => {
+    const activation = await ctx.db.get("reportActivations", activationId);
+    return activation?.state === "pending" ? { workspaceId: activation.workspaceId, invoice: activation.charge?.invoice ?? "" } : null;
+  },
+});
+
+/** Settles one waiting charge from Autumn's invoices: live once paid, dropped once voided. Answers whether it's settled. */
+async function settleOne(ctx: ActionCtx, activationId: Id<"reportActivations">, invoice: string, invoices: AutumnCustomer["invoices"] = []) {
+  const found = invoices.find((candidate) => candidate.stripe_id === invoice);
+  if (found?.status === "paid") {
+    await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice, total: found.total, currency: found.currency } } });
+    return true;
+  }
+  if (found?.status === "void" || found?.status === "uncollectible") {
+    await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "none" } });
+    return true;
+  }
+  return false;
+}
+
+/** Looks at a charge waiting on the bank, and again later, further apart each time, until it's settled or about two days have gone. */
+export const watch = internalAction({
+  args: { activationId: v.id("reportActivations"), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { activationId, attempt }): Promise<null> => {
+    const waiting: { workspaceId: Id<"workspaces">; invoice: string } | null = await ctx.runQuery(internal.reports.activation.waitingCharge, { activationId });
+    if (!waiting) return null;
+    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: waiting.workspaceId });
+    if (await settleOne(ctx, activationId, waiting.invoice, (await autumn.customer(customerId, { invoices: true })).invoices)) return null;
+    if (attempt + 1 < WATCH_LOOKS) await ctx.scheduler.runAfter(Math.min(WATCH_FIRST_MS * 2 ** (attempt + 1), WATCH_MOST_MS), internal.reports.activation.watch, { activationId, attempt: attempt + 1 });
+    else console.error(JSON.stringify({ event: "report-activation-unsettled", activationId, invoice: waiting.invoice }));
+    return null;
+  },
+});
+
 /** The workspace's charges waiting on the bank, by their invoice. */
 export const waiting = internalQuery({
   args: { workspaceId: v.id("workspaces") },
@@ -354,14 +404,7 @@ export async function settlePending(ctx: ActionCtx, workspaceId: Id<"workspaces"
   if (waits.length === 0) return;
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
   const invoices = (await autumn.customer(customerId, { invoices: true })).invoices ?? [];
-  for (const wait of waits) {
-    const invoice = invoices.find((candidate) => candidate.stripe_id === wait.invoice);
-    if (invoice?.status === "paid") {
-      await ctx.runMutation(internal.reports.activation.settleCharge, { activationId: wait.activationId, outcome: { kind: "paid", charge: { invoice: wait.invoice, total: invoice.total, currency: invoice.currency } } });
-    } else if (invoice?.status === "void" || invoice?.status === "uncollectible") {
-      await ctx.runMutation(internal.reports.activation.settleCharge, { activationId: wait.activationId, outcome: { kind: "none" } });
-    }
-  }
+  for (const wait of waits) await settleOne(ctx, wait.activationId, wait.invoice, invoices);
 }
 
 /**

@@ -10,6 +10,22 @@ import { autumn, type AutumnCustomer } from "./autumn";
 /** How long a purchase holds its workspace's lock: as long as an action can run, so a live one is never taken over. */
 const PURCHASE_LEASE_MS = 10 * 60_000;
 
+/**
+ * Voids a declined charge's invoice, which Autumn otherwise leaves open, holding the purchase it was for, until its due
+ * date: meanwhile every purchase of the workspace waits for it to be paid (`unlessPaymentOpen`). Voided, the decline
+ * changed nothing. A failure is logged and leaves it to Autumn.
+ */
+export async function voidDeclined(invoice: string) {
+  const key = process.env.STRIPE_SECRET_KEY;
+  try {
+    if (!key) throw new Error("STRIPE_SECRET_KEY isn't set");
+    const response = await fetch(`https://api.stripe.com/v1/invoices/${encodeURIComponent(invoice)}/void`, { method: "POST", headers: { Authorization: `Bearer ${key}` } });
+    if (!response.ok) throw new Error(`Stripe answered ${response.status}: ${(await response.text()).slice(0, 300)}`);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "declined-invoice-not-voided", invoice, error: String(error).slice(0, 400) }));
+  }
+}
+
 /** Refuses a charge Autumn reports declined: it changed nothing, and the person is told why. */
 export function unlessDeclined<T extends { required_action?: { code: string; reason?: string } | null }>(result: T): T {
   if (result.required_action?.code === "payment_failed") throw createError("BILLING_PAYMENT_DECLINED", `${result.required_action.reason ?? "The card was declined."} Nothing was charged.`);
