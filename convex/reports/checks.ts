@@ -14,7 +14,7 @@ import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
-import { linkHref } from "../../lib/reports/report";
+import { doiIn, linkHref } from "../../lib/reports/report";
 import type { Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
@@ -44,7 +44,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   const failed = check.fix?.trim() ? { fix: fill(check.fix) } : {};
   if (check.builtIn === "already-published") {
     // A report that names another version of itself says where it was published before: no search is needed to find it.
-    const named = metadata.relations.map((relation) => ({ relation, href: linkHref(relation.target) })).find(({ relation, href }) => relation.kind === "version" && href && !href.toLowerCase().endsWith(report.doi.toLowerCase()));
+    const named = metadata.relations.map((relation) => ({ relation, href: linkHref(relation.target) })).find(({ relation, href }) => relation.kind === "version" && href && doiIn(href) !== report.doi.toLowerCase());
     if (named) return { ...base, ...failed, pass: false, evidence: { title: named.relation.target, url: named.href!, where: "the report's own links" }, reasoning: "The report names another version of itself among its links." };
     const found = await alreadyPublished(metadata, report.doi, on, communities);
     return found

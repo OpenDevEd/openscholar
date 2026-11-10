@@ -11,7 +11,7 @@ import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, linkHref } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { formVersion } from "./corrections";
 import { notify } from "./mail";
@@ -56,8 +56,9 @@ const untouchedOf = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId:
  * still being typed is saved as it is; one that leads nowhere holds the checks, and one left empty is dropped.
  */
 export function checkedDetails(metadata: Metadata) {
-  // One of each: the same link given twice is the same link.
-  const relations = metadata.relations.filter((relation, i, all) => relation.target.trim() !== "" && all.findIndex((other) => other.kind === relation.kind && other.target.trim() === relation.target.trim()) === i);
+  // One of each: the same link given twice is the same link, as a DOI and as its doi.org address too.
+  const address = (target: string) => doiIn(target) ?? target.trim();
+  const relations = metadata.relations.filter((relation, i, all) => relation.target.trim() !== "" && all.findIndex((other) => other.kind === relation.kind && address(other.target) === address(relation.target)) === i);
   const dead = relations.find((relation) => !linkHref(relation.target));
   if (dead) throw createError("VALIDATION_ERROR", `"${dead.target.slice(0, 80)}" isn't a web address or a DOI. Put the link right, or remove it.`);
   return keptDetails({ ...metadata, relations });

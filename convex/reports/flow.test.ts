@@ -264,7 +264,9 @@ describe("a report's links and words", () => {
     // Half typed, it is kept as it is: the form saves on every pause.
     await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, metadata: withLinks("javascript:alert(1)"), pdfAt });
     await expect(run(withLinks("javascript:alert(1)"), "bad-link")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
-    await run(withLinks("https://example.org/data", "  ", "10.5281/zenodo.1234567"), "good-links");
+    await expect(run(withLinks("https://?"), "no-host")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    // A DOI and its doi.org address are the same link: the first is kept.
+    await run(withLinks("https://example.org/data", "  ", "10.5281/zenodo.1234567", "https://doi.org/10.5281/ZENODO.1234567"), "good-links");
     expect((await read(world.author, world.own, key)).metadata!.relations.map((relation) => relation.target)).toEqual(["https://example.org/data", "10.5281/zenodo.1234567"]);
     // A keyword longer than a keyword is refused, wherever it is saved from.
     const other = await atDetails(world, world.author, world.lab);

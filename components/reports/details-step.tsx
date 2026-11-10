@@ -72,7 +72,7 @@ function ChipInput({ values, onChange, placeholder, label, mono = false, max = D
     setText("");
   };
   return (
-    <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-field px-2 py-1.5">
+    <div className="flex min-h-9 min-w-0 flex-wrap items-center gap-1.5 rounded-md border border-input bg-field px-2 py-1.5">
       {values.map((v) => (
         // A long one is cut inside its chip, so its remove button stays in the box and in reach.
         <span key={v} className={cn("inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-md bg-inset ps-2 pe-1 text-xs", mono && "font-mono")}>
@@ -234,8 +234,9 @@ export function DetailsStep({
   onSave?: (m: Metadata, version: number | undefined) => void;
   /** Called at the first change made to the form: from then on it holds something that isn't saved anywhere. */
   onTouched?: () => void;
-  /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
-  onCancel?: () => void;
+  /** Given when a live report's details are being corrected: the form says so, and can be left without changing
+   * anything. Given the `version` the form opened on. */
+  onCancel?: (version: number | undefined) => void;
   /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
   resend?: boolean;
   /** A reviewer approves this report's changes before they go live, whatever the checks say. */
@@ -497,7 +498,7 @@ export function DetailsStep({
               {funders.shown.map((f, at) => {
                 const i = funders.offset + at;
                 return (
-                <li key={f.funder.id ?? f.funder.name} className="grid items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_1fr]">
+                <li key={f.funder.id ?? f.funder.name} className="grid grid-cols-[minmax(0,1fr)] items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
                   <FunderName id={f.funder.id} name={f.funder.name} className="truncate text-sm font-medium" />
                   <ChipInput
                     values={f.awards}
@@ -551,7 +552,8 @@ export function DetailsStep({
                 const i = links.offset + at;
                 const href = linkHref(r.target);
                 return (
-                <li key={i} className="flex items-center gap-2 px-3 py-2">
+                // On a narrow screen the address takes a line of its own, under its kind and its buttons: beside them it had no room to be read.
+                <li key={i} className="flex flex-wrap items-center gap-2 px-3 py-2">
                   <Select value={r.kind} onValueChange={(kind) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, kind: kind as typeof r.kind } : x)))}>
                     <SelectTrigger size="sm" className="w-36 shrink-0" aria-label="Kind of link">
                       <SelectValue />
@@ -564,7 +566,8 @@ export function DetailsStep({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="h-8 min-w-0 flex-1 font-mono text-xs" />
+                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
+                  <span className="ms-auto flex items-center gap-2 @xl:ms-0">
                   {href ? (
                     <TooltipHint label="Open link">
                       <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
@@ -579,6 +582,7 @@ export function DetailsStep({
                       <Trash2 />
                     </Button>
                   </TooltipHint>
+                  </span>
                 </li>
                 );
               })}
@@ -599,7 +603,7 @@ export function DetailsStep({
             // What was typed is given up, so a save still waiting must never arrive after it.
             clearTimeout(held.current.timer);
             held.current.send = undefined;
-            onCancel();
+            onCancel(opened);
           }}>
             Cancel
           </Button>

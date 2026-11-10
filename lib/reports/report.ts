@@ -200,7 +200,16 @@ export const blankDetails = (fileName: string, today: string): Metadata => ({
 /** A link's address: a bare DOI goes to doi.org; anything that isn't a web address or a DOI has none. */
 export function linkHref(target: string) {
   const text = target.trim();
-  if (/^https?:\/\/\S+$/i.test(text)) return text;
+  // `https://?` starts like a web address and is none: one has a host. (`new URL`, since not every runtime this
+  // runs in has `URL.canParse`.)
+  const web = () => {
+    try {
+      return new URL(text).host !== "";
+    } catch {
+      return false;
+    }
+  };
+  if (/^https?:\/\/\S+$/i.test(text) && web()) return text;
   const doi = doiIn(text);
   return doi ? `https://doi.org/${doi}` : null;
 }

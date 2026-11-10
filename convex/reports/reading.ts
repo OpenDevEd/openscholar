@@ -7,7 +7,7 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
-import { blankDetails, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
+import { blankDetails, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
 /** What the model read, held to what a report keeps: a PDF with more references than that keeps the first of them,
@@ -61,6 +61,8 @@ export const read = internalAction({
       const read = capped(await readDetails({ pdf: new Uint8Array(bytes), text, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
       // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
       if (!read.title.trim() && !read.abstract.trim()) throw new Error("The reading found no title and no abstract.");
+      // Each list within its cap can still add up to more than a report holds: such a reading is filled in by hand too.
+      if (JSON.stringify(read).length > DETAILS_MAX_BYTES) throw new Error("The reading is longer than a report holds.");
       metadata = read;
     } catch (error) {
       console.error(JSON.stringify({ event: "report-details-unread", reportId, error: String(error).slice(0, 600) }));
