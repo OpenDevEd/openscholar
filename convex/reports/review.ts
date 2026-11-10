@@ -13,7 +13,7 @@ import { workspaceFrom } from "../workspaces/personal";
 import { REVIEW_TEXT_MAX, STAGES, changesOf, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { applyChanges } from "./corrections";
 import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
-import { notify } from "./mail";
+import { becameReady, notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
 import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
@@ -199,6 +199,7 @@ export const decide = mutation({
       await touch(ctx, report, { approved: true });
       await record(ctx, report._id, reviewer._id, "approve");
       await notify(ctx, report._id, "approved");
+      await becameReady(ctx, report._id);
       return null;
     }
     // Declined, it is no longer approved, whoever approved it before.
@@ -313,7 +314,11 @@ export const tellReleased = internalMutation({
     if ((await reportSettings(ctx)).humanReview) return null;
     const passed = await ctx.db.query("reports").withIndex("by_status_and_updatedAt", (q) => q.eq("status", "passed")).paginate({ cursor, numItems: RELEASED_PER_STEP });
     // One a reviewer approved was already its author's to activate, and one a check flagged still waits for a person.
-    for (const report of passed.page) if (!report.approved && !report.flagged) await notify(ctx, report._id, "released");
+    for (const report of passed.page) {
+      if (report.approved || report.flagged) continue;
+      await notify(ctx, report._id, "released");
+      await becameReady(ctx, report._id);
+    }
     if (!passed.isDone) await ctx.scheduler.runAfter(0, internal.reports.review.tellReleased, { cursor: passed.continueCursor });
     return null;
   },

@@ -4,7 +4,7 @@
 // limit, the series and its DOIs, the model that reads PDFs, the checks, and the agreement.
 
 import { useState, useTransition, type ComponentProps } from "react";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
@@ -31,7 +31,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { FileText, Hash, PenLine, Pencil, Plus, Trash2, UserPlus } from "@/components/icons";
+import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2, UserPlus } from "@/components/icons";
+import { ACTIVATION_PLAN } from "@/lib/billing/plans";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -91,15 +92,19 @@ export function AdminPublishingSettings() {
   const { data: settings } = useProtectedQuery(api.reports.settings.admin, {});
   // Its page is in the address, and the next one opens where the list is: it sits far down a long page.
   const limits = useCursorPageAt("limits", api.reports.limits.list, {}, LIMITS_PER_PAGE, { scroll: false });
-  if (!settings || limits.isLoading) return <Enter ready={false}>{null}</Enter>;
+  // What an activation costs is the activation plan's price in Autumn, as the synced catalog has it.
+  const catalog = useQuery(api.billing.catalog.get, {});
+  const links = useQuery(api.admins.queries.links, {});
+  if (!settings || limits.isLoading || catalog === undefined || links === undefined) return <Enter ready={false}>{null}</Enter>;
+  const price = catalog?.plans.find((plan) => plan.id === ACTIVATION_PLAN)?.price?.amount ?? null;
   return (
     <Enter ready>
-      <SettingsView settings={settings} limits={limits} />
+      <SettingsView settings={settings} limits={limits} price={price} autumn={links.autumn ?? null} />
     </Enter>
   );
 }
 
-function SettingsView({ settings, limits }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>> }) {
+function SettingsView({ settings, limits, price, autumn }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; /** An activation's price in US dollars; null while Autumn sells none. */ price: number | null; /** Autumn's dashboard. */ autumn: string | null }) {
   const [nav, setNav] = useQueryStates(NAV);
   const t = useTranslations("publishReports.settings");
   const format = useFormatter();
@@ -171,7 +176,7 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
         </ul>
       </Zone>
 
-      <Limits settings={settings} limits={limits} save={save} />
+      <Limits settings={settings} limits={limits} save={save} price={price} autumn={autumn} />
 
       <Zone label={t("series")}>
         <ul className={LIST}>
@@ -280,23 +285,35 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
 
 const LIMITS_PER_PAGE = 8;
 const LIMIT_ROW = 57;
-/** What a workspace newly given a limit of its own starts with; the admin changes it in its row. */
+/** What a workspace newly given its own number of free activations starts with; the admin changes it in its row. */
 const OWN_LIMIT = 5;
 
 /**
- * How many reports a workspace may start in a day, and the people and organisations with a limit of their own,
- * shown as people and organisations are everywhere else in the app.
+ * What an activation costs, how many a workspace activates free each day, and the people and organisations with a
+ * number of their own, shown as people and organisations are everywhere else in the app.
  */
-function Limits({ settings, limits, save }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; save: (patch: { perDay: number } | { orgPerDay: number }, saved: string) => Promise<boolean> }) {
+function Limits({ settings, limits, save, price, autumn }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; save: (patch: { perDay: number } | { orgPerDay: number }, saved: string) => Promise<boolean>; price: number | null; autumn: string | null }) {
   const set = useMutation(api.reports.limits.set);
   const remove = useMutation(api.reports.limits.remove);
   const t = useTranslations("publishReports.settings");
+  const format = useFormatter();
   const failed = useFailed();
   return (
     <Zone label={t("limits")}>
       <Paged pager={{ list: limits, size: LIMITS_PER_PAGE }} rowHeight={LIMIT_ROW} label={t("limitsPager")}>
         <ul className={LIST}>
-          {/* Each workspace has its own number of new reports a day, and every report started in it counts against it. */}
+          <Row label={t("price")} hint={t(price === null ? "priceHintNone" : "priceHint")}>
+            {autumn ? (
+              <Button variant="outline" size="sm" asChild>
+                <a href={autumn} target="_blank" rel="noopener noreferrer">
+                  {price === null ? t("notOnSale") : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 })} <ArrowUpRight />
+                </a>
+              </Button>
+            ) : (
+              <span className="text-sm font-medium tabular-nums">{price === null ? t("notOnSale") : format.number(price, { style: "currency", currency: "USD", minimumFractionDigits: price % 1 ? 2 : 0 })}</span>
+            )}
+          </Row>
+          {/* Each workspace has its own number of free activations a day, and every free activation in it counts against it. */}
           <Row label={t("personal")} hint={t("personalHint")}>
             <SavedInput value={String(settings.perDay)} numeric onSave={(value) => save({ perDay: Number(value) }, t("limitSaved"))} className="w-20 text-end tabular-nums" ariaLabel={t("personalLabel")} />
           </Row>

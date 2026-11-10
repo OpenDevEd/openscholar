@@ -153,6 +153,7 @@ import type * as evidenceLibraries_oauthClients from "../evidenceLibraries/oauth
 import type * as evidenceLibraries_openAlexSourceKey from "../evidenceLibraries/openAlexSourceKey.js";
 import type * as evidenceLibraries_operationKinds from "../evidenceLibraries/operationKinds.js";
 import type * as evidenceLibraries_operationLeases from "../evidenceLibraries/operationLeases.js";
+import type * as evidenceLibraries_operationState from "../evidenceLibraries/operationState.js";
 import type * as evidenceLibraries_operations from "../evidenceLibraries/operations.js";
 import type * as evidenceLibraries_organizationGrants from "../evidenceLibraries/organizationGrants.js";
 import type * as evidenceLibraries_paperLinks from "../evidenceLibraries/paperLinks.js";
@@ -386,6 +387,7 @@ import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
 import type * as presence from "../presence.js";
 import type * as ratings from "../ratings.js";
+import type * as reports_activation from "../reports/activation.js";
 import type * as reports_checkRuns from "../reports/checkRuns.js";
 import type * as reports_checks from "../reports/checks.js";
 import type * as reports_corrections from "../reports/corrections.js";
@@ -662,6 +664,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/openAlexSourceKey": typeof evidenceLibraries_openAlexSourceKey;
   "evidenceLibraries/operationKinds": typeof evidenceLibraries_operationKinds;
   "evidenceLibraries/operationLeases": typeof evidenceLibraries_operationLeases;
+  "evidenceLibraries/operationState": typeof evidenceLibraries_operationState;
   "evidenceLibraries/operations": typeof evidenceLibraries_operations;
   "evidenceLibraries/organizationGrants": typeof evidenceLibraries_organizationGrants;
   "evidenceLibraries/paperLinks": typeof evidenceLibraries_paperLinks;
@@ -895,6 +898,7 @@ declare const fullApi: ApiFromModules<{
   "paperSets/search": typeof paperSets_search;
   presence: typeof presence;
   ratings: typeof ratings;
+  "reports/activation": typeof reports_activation;
   "reports/checkRuns": typeof reports_checkRuns;
   "reports/checks": typeof reports_checks;
   "reports/corrections": typeof reports_corrections;

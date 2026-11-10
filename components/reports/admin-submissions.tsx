@@ -487,13 +487,13 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   ))}
                 </ul>
               ) : null}
-              {/* What the team's inbox and the author were emailed about it, in order. */}
-              {(["team", "author"] as const).map((audience) => {
+              {/* What the team's inbox, the author and the organisation's admins were emailed about it, in order. */}
+              {(["team", "author", "admins"] as const).map((audience) => {
                 const told = s.emails.filter((email) => email.audience === audience);
                 return told.length ? (
                   <div key={audience} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1.5">
-                      <Mail className="size-3.5" /> {audience === "team" ? t("emailedTeam", { email: CONTACT_EMAIL }) : t("emailedAuthor")}
+                      <Mail className="size-3.5" /> {audience === "team" ? t("emailedTeam", { email: CONTACT_EMAIL }) : t(audience === "author" ? "emailedAuthor" : "emailedAdmins")}
                     </span>
                     {told.map((email) => (
                       <span key={`${email.at}:${email.event}`} className={cn("font-medium text-foreground/80", email.failed && "text-destructive line-through")}>

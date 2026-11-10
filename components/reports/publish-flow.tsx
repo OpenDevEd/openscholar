@@ -40,9 +40,9 @@ import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Trash2, TriangleAlert } from "@/components/icons";
+import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
+import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
@@ -57,6 +57,9 @@ type Basics = FunctionReturnType<typeof api.reports.settings.forAuthors>;
 type Found = NonNullable<FunctionReturnType<typeof api.reports.flow.get>>;
 type Report = Extract<Found, { report: unknown }>["report"];
 type Starts = FunctionReturnType<typeof api.reports.flow.starts>;
+type Terms = NonNullable<FunctionReturnType<typeof api.reports.activation.terms>>;
+/** What an activation costs with a promotion code, in US dollars, as Autumn quotes it. */
+type Quote = { code: string; price: number; discount: number; total: number };
 
 /** The largest PDF a report takes, as its upload says (convex/reports/flow.ts `REPORT_PDF_MAX_MB`). */
 const PDF_MAX_MB = 50;
@@ -138,6 +141,8 @@ export function PublishFlow() {
   if (movedOn ? held !== null : held === null && only !== null) setHeld(movedOn ? null : only);
   const shownKey = listed ? null : (asked ?? held ?? only ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
+  // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
+  const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey, now }) : "skip");
   const { data: list } = useProtectedQuery(api.reports.flow.page, listed ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
   // A list page keeps showing while the next one is read, so paging never empties the card.
   const [lastList, setLastList] = useState(list);
@@ -163,7 +168,7 @@ export function PublishFlow() {
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
-  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined || arriving || opening)));
+  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
   // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
@@ -292,6 +297,7 @@ export function PublishFlow() {
             basics={basics}
             report={report}
             starts={starts ?? null}
+            terms={terms ?? null}
             shared={shared}
             workspaceId={workspaceId}
             fresh={fresh}
@@ -328,12 +334,14 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
-  const activate = useMutation(api.reports.flow.activate);
+  const activate = useAction(api.reports.activation.activate);
+  const addCard = useAction(api.reports.activation.addCard);
+  const quote = useAction(api.reports.activation.quote);
   const runChecks = useAction(api.reports.checks.run);
   const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
   const discardChanges = useMutation(api.reports.flow.discardChanges);
@@ -488,17 +496,26 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               humanReview={basics.humanReview}
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
-              onActivate={() => {
+              terms={terms}
+              onActivate={(pay, code) => {
                 onNamed(report.key);
                 setFresh({ key: report.key, step: "live" });
-                return activate({ ...here, key: report.key }).then(
-                  () => undefined,
+                return activate({ ...here, key: report.key, pay, ...(code && { code }) }).then(
+                  (done) => {
+                    // The bank asks to confirm the charge on Stripe's page, which comes back here.
+                    if ("url" in done) {
+                      setFresh(null);
+                      window.location.assign(done.url);
+                    }
+                  },
                   (error: unknown) => {
                     setFresh(null);
                     throw error;
                   },
                 );
               }}
+              onAddCard={() => addCard({ ...here, key: report.key }).then((url) => window.location.assign(url))}
+              onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
               onFix={() => back("upload")}
               onDetails={() => back("details")}
               onRequestReview={(comment) => requestReview({ ...here, key: report.key, comment }).then(() => undefined)}
@@ -604,9 +621,10 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   const tick = (next: { all?: boolean; agreed?: boolean }) => setTicks({ version: agreement.version, all, agreed, ...next });
   // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
   // person reserved and did nothing with is theirs again by signing, whatever the day has left.
-  const blocked = starts && starts.left < 1 && !starts.untouched ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
-  // An organisation's workspace is opened by Openscholar, on request: the page says who to ask.
-  const unopened = !!blocked && starts?.kind === "organization" && starts.perDay === 0;
+  // The workspace's plan has used up its new reports for the day, or has none: no new report can start, and the page
+  // says which and where the plans are. A DOI the person reserved and did nothing with is theirs again by signing,
+  // whatever the day has left.
+  const blocked = starts && !starts.untouched && starts.perDay !== null && starts.left === 0 ? t(`limit.${starts.kind === "personal" ? "personal" : "workspace"}${starts.perDay === 0 ? "Closed" : ""}`, { count: starts.perDay }) : null;
   return (
     <div>
       <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
@@ -647,19 +665,15 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
         ) : null}
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {unopened ? (
-          <p className="max-w-md text-sm text-muted-foreground">
-            {t.rich("unopened", {
-              email: CONTACT_EMAIL,
-              mail: (chunks) => (
-                <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-foreground underline-offset-4 hover:underline">
-                  {chunks}
-                </a>
-              ),
-            })}
-          </p>
-        ) : blocked ? (
-          <p className="text-sm text-muted-foreground">{blocked}</p>
+        {blocked ? (
+          <>
+            <p className="text-sm text-muted-foreground">{blocked}</p>
+            <Button variant="outline" asChild>
+              <Link href="/pricing">
+                {t("seePlans")} <ArrowUpRight />
+              </Link>
+            </Button>
+          </>
         ) : null}
         {starts ? (
           <Button
@@ -1002,23 +1016,45 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 }
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
-function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; onActivate?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
+function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuote, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; /** What activating takes; null where there is nothing to activate. */ terms?: Terms | null; /** Activates it: free, or paid for once confirmed (`pay`), with a promotion code. */ onActivate?: (pay: boolean, code?: string) => Promise<void>; /** Off to Stripe's page for saving a card. */ onAddCard?: () => Promise<void>; onQuote?: (code: string) => Promise<Quote>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
   const [asking, setAsking] = useAsking();
   const t = useTranslations("publishReports.flow");
+  const dollars = useDollars();
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
   const [activating, start] = useTransition();
-  const activateNow = () =>
+  // Only the workspace's admins activate (#1261). A free activation and a paid one both need a saved card; a paid one
+  // is confirmed in a dialog first, where a promotion code can lower it.
+  const organization = terms?.organization ?? null;
+  const admin = terms?.admin ?? true;
+  const free = (terms?.free.left ?? 0) > 0;
+  const card = terms?.card ?? null;
+  const pending = terms?.pending ?? null;
+  const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
+  const [paying, setPaying] = useState(false);
+  // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
+  if (paying && !admin) setPaying(false);
+  const [code, setCode] = useState<Quote | null>(null);
+  const due = code ? Math.round(code.total * 100) : (price ?? 0);
+  const activateNow = (pay: boolean, withCode?: string) =>
     start(async () => {
       try {
-        await onActivate?.();
+        await onActivate?.(pay, withCode);
       } catch (error) {
         said(t("activateFailed"))(error);
       }
     });
+  /** Activate's words: the same whether it can be pressed yet or not, so the button keeps its width. */
+  const activateLabel = free || price === null ? t("activate") : t("activation.activateFor", { price: dollars(price) });
+  /** Why Activate can't be pressed yet, for an admin. */
+  const waitingFor = pending ? t("activation.waitingBank") : !card ? t("activation.addCardFirst") : !free && price === null ? t("activation.notForSale") : null;
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
       {t("runningHint")}
+    </StepHead>
+  ) : stage === "ready" && !admin ? (
+    <StepHead key="admin" title={t("activation.waitingAdmin")} aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
+      {t(report.approved ? "activation.waitingAdminApproved" : "activation.waitingAdminPassed", { organization: organization ?? "" })}
     </StepHead>
   ) : stage === "ready" ? (
     <StepHead key="ready" title={t("ready")} aside={<StatusChip tone="success" icon={CircleCheck}>{t(report.approved ? "approved" : "passed")}</StatusChip>}>
@@ -1041,7 +1077,7 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
     <div>
       <AutoHeight>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={stage ?? "running"} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <motion.div key={stage === "ready" && !admin ? "admin" : (stage ?? "running")} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
             {head}
           </motion.div>
         </AnimatePresence>
@@ -1058,52 +1094,270 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
       <AutoHeight>
         <AnimatePresence initial={false}>
           {report ? (
-            <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6 flex flex-wrap justify-end gap-2">
-              {stage === "failed" ? (
-                <>
-                  {report.asked ? null : (
-                    <Button variant="outline" onClick={() => setAsking(true)}>
-                      <ReviewQueueIcon /> {t("requestReview")}
+            <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
+              {stage === "ready" && admin && terms ? <PaymentLine organization={organization} free={terms.free.left} card={card} price={price} pending={pending} onAddCard={onAddCard} /> : null}
+              <div className="flex flex-wrap justify-end gap-2">
+                {stage === "failed" ? (
+                  <>
+                    {report.asked ? null : (
+                      <Button variant="outline" onClick={() => setAsking(true)}>
+                        <ReviewQueueIcon /> {t("requestReview")}
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={onDetails}>
+                      <PenLine /> {t("changeDetails")}
                     </Button>
-                  )}
-                  <Button variant="outline" onClick={onDetails}>
-                    <PenLine /> {t("changeDetails")}
-                  </Button>
-                  <Button onClick={onFix}>
-                    <RotateCcw /> {t("uploadNew")}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {onAnother ? (
-                    <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
-                      <Plus /> {t("publishAnother")}
+                    <Button onClick={onFix}>
+                      <RotateCcw /> {t("uploadNew")}
                     </Button>
-                  ) : null}
-                  {stage === "ready" ? (
-                    <Button className="relative" disabled={activating} onClick={activateNow}>
-                      <Working busy={activating}>
-                        <span className="flex items-center gap-2">
-                          <BadgeCheck /> {t("activate")}
+                  </>
+                ) : (
+                  <>
+                    {onAnother ? (
+                      <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
+                        <Plus /> {t("publishAnother")}
+                      </Button>
+                    ) : null}
+                    {stage === "ready" && !admin ? (
+                      <TooltipHint label={t("activation.onlyAdmin")}>
+                        <span tabIndex={0}>
+                          <Button disabled>
+                            <BadgeCheck /> {t("activate")}
+                          </Button>
                         </span>
-                      </Working>
-                    </Button>
-                  ) : stage === "review" ? (
-                    <TooltipHint label={t("needsApproval")}>
-                      <span tabIndex={0}>
-                        <Button disabled>
-                          <BadgeCheck /> {t("activate")}
-                        </Button>
-                      </span>
-                    </TooltipHint>
-                  ) : null}
-                </>
-              )}
+                      </TooltipHint>
+                    ) : stage === "ready" && waitingFor ? (
+                      <TooltipHint label={waitingFor}>
+                        <span tabIndex={0}>
+                          <Button className="relative" disabled>
+                            <Working busy={false}>
+                              <span className="flex items-center gap-2">
+                                <BadgeCheck /> {activateLabel}
+                              </span>
+                            </Working>
+                          </Button>
+                        </span>
+                      </TooltipHint>
+                    ) : stage === "ready" ? (
+                      <Button className="relative" disabled={activating} onClick={free ? () => activateNow(false) : () => setPaying(true)}>
+                        <Working busy={activating}>
+                          <span className="flex items-center gap-2">
+                            <BadgeCheck /> {activateLabel}
+                          </span>
+                        </Working>
+                      </Button>
+                    ) : stage === "review" ? (
+                      <TooltipHint label={t("needsApproval")}>
+                        <span tabIndex={0}>
+                          <Button disabled>
+                            <BadgeCheck /> {t("activate")}
+                          </Button>
+                        </span>
+                      </TooltipHint>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </motion.div>
           ) : null}
         </AnimatePresence>
       </AutoHeight>
       {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
+      {report && price !== null ? (
+        // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
+        <UpgradeConfirmationDialog
+          open={paying}
+          onOpenChange={(open) => {
+            setPaying(open);
+            if (!open) setCode(null);
+          }}
+          title={due === 0 ? t("activation.freeTitle", { key: report.key }) : t("activation.payTitle", { price: dollars(due), key: report.key })}
+          description={organization ? t(due === 0 ? "activation.orgCardNothing" : "activation.orgCardCharged", { organization }) : undefined}
+          confirmLabel={due === 0 ? t("activate") : t("activation.payConfirm")}
+          totalLabel={t("activation.dueNow")}
+          labels={{ from: t("activation.doiNow"), to: t("activation.after") }}
+          isConfirming={false}
+          onConfirm={() => {
+            setPaying(false);
+            setCode(null);
+            activateNow(true, code?.code);
+          }}
+          cardBrand={card?.brand}
+          cardLast4={card?.last4}
+          preview={{
+            currency: "USD",
+            immediateChargeCents: due,
+            currentPlan: t("activation.reserved"),
+            targetPlan: t("activation.live"),
+            targetPlanCreditsPerMonth: 0,
+            lineItems: code
+              ? [
+                  { description: t("activation.activationLine"), amountCents: Math.round(code.price * 100), currency: "USD" },
+                  { description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" },
+                ]
+              : [],
+          }}
+          extra={onQuote ? <PromoCode applied={code} onApply={setCode} onQuote={onQuote} /> : null}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** Cents as US dollars in the reader's own format, without cents when there are none: $5, $2.50. */
+function useDollars() {
+  const format = useFormatter();
+  return (cents: number) => format.number(cents / 100, { style: "currency", currency: "USD", minimumFractionDigits: cents % 100 ? 2 : 0 });
+}
+
+/**
+ * A promotion code for an activation that's paid for, in the charge's dialog: a link until it's wanted, then a field.
+ * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
+ */
+function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote> }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [wrong, setWrong] = useState<string | null>(null);
+  const [checking, check] = useTransition();
+  const t = useTranslations("publishReports.flow.activation.promo");
+  const apply = () =>
+    check(async () => {
+      try {
+        onApply(await onQuote(typed));
+        setWrong(null);
+        setTyped("");
+      } catch (error) {
+        setWrong(getErrorMessage(error, t("failed")));
+      }
+    });
+  const off = applied && applied.price > 0 ? Math.round((applied.discount / applied.price) * 100) : 0;
+  return (
+    <AutoHeight>
+      {applied ? (
+        <div className="flex items-center gap-2 text-sm">
+          <Tag className="size-4 text-muted-foreground" />
+          <span className="font-mono font-medium">{applied.code}</span>
+          <StatusChip tone="success">{t("off", { percent: off })}</StatusChip>
+          <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={t("remove", { code: applied.code })} onClick={() => onApply(null)}>
+            <X />
+          </Button>
+        </div>
+      ) : open ? (
+        <form
+          className="space-y-1.5 p-px"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (typed.trim()) apply();
+          }}
+        >
+          <div className="flex gap-2">
+            <Input
+              autoFocus
+              value={typed}
+              maxLength={100}
+              onChange={(e) => {
+                setTyped(e.target.value);
+                setWrong(null);
+              }}
+              placeholder={t("label")}
+              aria-label={t("label")}
+              aria-invalid={!!wrong}
+              className="font-mono placeholder:font-sans"
+            />
+            <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
+              {t("apply")}
+            </Button>
+          </div>
+          {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
+        </form>
+      ) : (
+        <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
+          <Tag /> {t("add")}
+        </Button>
+      )}
+    </AutoHeight>
+  );
+}
+
+/**
+ * What activating is paid with, above the Activate button: the workspace's saved card, and whether this activation is
+ * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
+ * asked to confirm says so, with the way back to its page.
+ */
+function PaymentLine({ organization, free, card, price, pending, onAddCard }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void> }) {
+  const [saving, save] = useTransition();
+  const t = useTranslations("publishReports.flow.activation.card");
+  const dollars = useDollars();
+  const costs = price === null ? null : organization ? t("costsOrg", { price: dollars(price), organization }) : t("costs", { price: dollars(price) });
+  return (
+    <div className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
+        <CreditCard className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        {pending ? (
+          <p className="text-sm font-medium">{t("bankAsked")}</p>
+        ) : card ? (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+            <span className="capitalize">{card.brand}</span>
+            {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
+            <span className="tabular-nums">&bull;&bull;&bull;&bull; {card.last4}</span>
+            {free > 0 ? (
+              <StatusChip tone="success" icon={CircleCheck}>
+                {t("free")}
+              </StatusChip>
+            ) : null}
+          </p>
+        ) : (
+          <p className="text-sm font-medium">{t("add")}</p>
+        )}
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {pending
+            ? t("goesLive")
+            : free > 0
+              ? t(card ? "freeLeft" : "freeLeftNoCard", { count: free })
+              : !card
+                ? (costs ?? t("needed"))
+                : organization
+                  ? t("orgCard", { organization })
+                  : t("yourCard")}
+        </p>
+      </div>
+      {pending?.url ? (
+        <Button variant="outline" asChild className="shrink-0">
+          <a href={pending.url}>
+            {t("confirm")} <ArrowUpRight />
+          </a>
+        </Button>
+      ) : pending ? null : card ? (
+        // The cards are the billing page's, where Stripe's own page changes them.
+        <Button variant="ghost" asChild className="shrink-0 text-muted-foreground">
+          <Link href="/settings/billing">
+            {t("change")} <ArrowUpRight />
+          </Link>
+        </Button>
+      ) : onAddCard ? (
+        <Button
+          variant="outline"
+          className="relative shrink-0"
+          disabled={saving}
+          onClick={() =>
+            save(async () => {
+              try {
+                await onAddCard();
+              } catch (error) {
+                said(t("stripeFailed"))(error);
+              }
+            })
+          }
+        >
+          <Working busy={saving}>
+            <span className="flex items-center gap-2">
+              <CreditCard /> {t("addButton")}
+            </span>
+          </Working>
+        </Button>
+      ) : null}
     </div>
   );
 }

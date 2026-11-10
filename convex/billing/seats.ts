@@ -39,7 +39,7 @@ import { readAccount, refreshAccount, seatBillingOn, snapshotFromCustomer } from
 import { seatSyncRow } from "./seatSyncs";
 import { capRow, spentThisPeriod } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
-import { purchasing } from "./purchases";
+import { purchasing, unlessDeclined } from "./purchases";
 
 /** A member as a seat is given to them: the cap an admin set on them goes on their entity. */
 export type SeatMember = { clerkUserId: string; name: string; cap?: number };
@@ -429,11 +429,6 @@ export const endTeam = internalAction({
 /** Seats of the Team seat plan, as Autumn's Licenses count them. */
 export const teamSeats = (quantity: number) => ({ licensePlanId: SEAT_PLAN, quantity });
 
-/** Refuses a charge Autumn reports declined: it changed nothing, and the person is told why. */
-export function unlessDeclined<T extends { required_action?: { code: string; reason?: string } | null }>(result: T): T {
-  if (result.required_action?.code === "payment_failed") throw createError("BILLING_PAYMENT_DECLINED", `${result.required_action.reason ?? "The card was declined."} Nothing was charged.`);
-  return result;
-}
 
 /** Keeps the seats an organization bought, as a change of them is made. */
 export const noteSeats = internalMutation({
