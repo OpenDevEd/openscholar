@@ -52,6 +52,7 @@ export function PaperPageLink({ paper, compact = true, className, labelClassName
 export function usePaperShare(paper: Paper | undefined, href?: string): (() => Promise<void>) | null {
   const t = useTranslations("paperPage");
   const tTopics = useTranslations("topics");
+  const tToast = useTranslations("toast");
   const path = href ?? (paper ? ourPaperPage(paper) : null);
   if (!paper || !path) return null;
   return async () => {
@@ -70,7 +71,7 @@ export function usePaperShare(paper: Paper | undefined, href?: string): (() => P
       await navigator.clipboard.writeText(url);
       toast.success(t("linkCopied"));
     } catch {
-      toast.error(tTopics("copyFailed"));
+      toast.error(tTopics("copyFailed"), { description: tToast("copyFailedDescription") });
     }
   };
 }

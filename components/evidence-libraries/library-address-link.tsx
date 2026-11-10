@@ -21,6 +21,7 @@ export function LibraryAddressLink({
   className?: string;
 }) {
   const t = useTranslations("evidenceLibraries.setup.live");
+  const tToast = useTranslations("toast");
   const host = address.replace(/^https?:\/\//, "");
 
   async function copyAddress() {
@@ -29,7 +30,7 @@ export function LibraryAddressLink({
       await navigator.clipboard.writeText(address);
       toast.success(t("copied"), { description: address });
     } catch {
-      toast.error(t("copyFailed"));
+      toast.error(t("copyFailed"), { description: tToast("copyFailedDescription") });
     }
   }
 
