@@ -249,6 +249,32 @@ describe("changes to a live report", () => {
     expect(await read(world.author, world.own, key)).toMatchObject({ correction: { metadata: { title: "Edited while waiting" } } });
   });
 
+  it("are kept as they are typed, for their author to come back to, and given up on Cancel", async () => {
+    const world = await setup();
+    const { key } = await live(world, world.author, world.lab);
+    const since = await openedOn(world, key);
+    const type = (who: World["author"], metadata: ReturnType<typeof details> | null, at = since) => who.mutation(api.reports.flow.typeChanges, { workspaceId: world.lab, key, since: at, metadata });
+    await type(world.author, details("Half typed"));
+    expect(await read(world.author, world.lab, key)).toMatchObject({ trying: { title: "Half typed" }, metadata: { title: "Shade trees and maize yields" } });
+    // A member who may only read it gets none of what its owner typed, and types nothing into it.
+    expect((await read(world.member, world.lab, key)).trying).toBeUndefined();
+    await expect(type(world.member, details("Not mine"))).rejects.toMatchObject(refused("FORBIDDEN"));
+    // Typed over a report that changed since the form opened, nothing is kept.
+    await type(world.author, details("From a stale form"), since - 1);
+    expect(await read(world.author, world.lab, key)).toMatchObject({ trying: { title: "Half typed" } });
+    await type(world.author, null);
+    expect((await read(world.author, world.lab, key)).trying).toBeUndefined();
+  });
+
+  it("go live as the run kept them: a link row left empty is never published", async () => {
+    const world = await setup();
+    const { key, reportId } = await live(world);
+    const metadata = { ...details("With an empty link row"), relations: [{ kind: "data" as const, target: " " }] };
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata, runId: "run-link", from: { changesSince: await openedOn(world, key) } });
+    expect(await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-link", results: [passed("byline")], version: 1, metadata })).toBe("live");
+    expect((await read(world.author, world.own, key)).metadata).toMatchObject({ title: "With an empty link row", relations: [] });
+  });
+
   it("are checked one set at a time: a second sent while the first runs is refused, not put in its place", async () => {
     const world = await setup();
     const { key } = await live(world);

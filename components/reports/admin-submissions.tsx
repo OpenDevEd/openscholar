@@ -69,6 +69,8 @@ const ASKS = {
 const FOOT = "sticky -bottom-6 z-10 -mx-6 -mb-6 border-t border-border-subtle bg-background px-6 py-4";
 
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+/** A decision's day and time: several are often made on a report in one day. */
+const moment = (at: number) => new Date(at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const failed = (error: unknown) => void toast.error(getErrorMessage(error, "Something went wrong"));
 /** A report's status in words. A declined report that had been live was withdrawn. */
 const labelOf = (report: { withdrawn: boolean }, stage: Exclude<Stage, "draft">) => (stage === "declined" && report.withdrawn ? "Withdrawn" : STATUS[stage].label);
@@ -310,10 +312,45 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
               : "Human review is on, so changes wait for a reviewer.";
   const stage = s ? stageOf(s, s.humanReview) : undefined;
   const status = stage && stage !== "draft" ? STATUS[stage] : undefined;
+  // Why the report itself stands where it does, and what approving it does: a reviewer who arrives from an email reads
+  // it before the buttons. Changes waiting say their own, above.
+  const flagged = (s?.results ?? []).some((r) => !r.pass);
+  const APPROVING = "Approving lets its author activate it, and it goes live when they do.";
+  const standing =
+    !s || changes
+      ? ""
+      : stage === "failed"
+        ? `${s.reviewRequest ? "A check failed." : "A check failed, so the report is with its author to fix. You can still decide."} ${APPROVING}`
+        : stage === "review"
+          ? `${flagged ? "A check flagged this report" : "Human review is on"}, so it waits for a reviewer. ${APPROVING}`
+          : stage === "ready"
+            ? `${s.approved ? "A reviewer approved this report." : "Every check passed."} It goes live when its author activates it.`
+            : "";
+  // What the author wrote when asking for a person leads the dialog while it is what the reviewer decides on. Once
+  // the report is decided it is part of what happened, and sits with the decisions.
+  const deciding = stage === "failed" || stage === "review";
+  const request = s?.reviewRequest ? (
+    <div className="space-y-2 rounded-xl bg-inset p-3">
+      <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <ReviewQueueIcon className="size-3.5 text-primary" /> The author asked for a review
+        <span className="tabular-nums">{day(s.reviewRequest.at)}</span>
+      </span>
+      <p className="whitespace-pre-wrap break-words text-sm">{s.reviewRequest.comment || "No comment"}</p>
+    </div>
+  ) : null;
   // A reviewer's own edit of the details, at the start of the dialog's buttons and apart from the decisions. Not
-  // while the author's changes are waiting: those are decided first.
+  // while the author's changes are with the report, waiting or declined: neither set is written over the other, and
+  // the button says why it is off.
   const edits =
-    s?.metadata && s.step === "done" && !s.correction ? (
+    s?.metadata && s.step === "done" && s.correction ? (
+      <TooltipHint label={changes?.stage === "declined" ? "The changes you declined are still with the author. The details can be edited once they are discarded or approved." : "Approve or decline the author's changes first"}>
+        <span tabIndex={0} className="rounded-md sm:me-auto">
+          <Button variant="outline" disabled>
+            <PenLine /> Edit the details
+          </Button>
+        </span>
+      </TooltipHint>
+    ) : s?.metadata && s.step === "done" ? (
       <Button variant="outline" className="sm:me-auto" disabled={busy} onClick={onEdit}>
         <PenLine /> Edit the details
       </Button>
@@ -347,6 +384,7 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-5">
+              {standing ? <p className="text-sm text-muted-foreground">{standing}</p> : null}
               {changes ? (
                 // Changes to a live report that haven't gone live: what they are, what the checks said, and the author's words.
                 <div className="space-y-3 rounded-xl bg-inset p-3">
@@ -388,15 +426,7 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   </ul>
                 </div>
               ) : null}
-              {s.reviewRequest ? (
-                <div className="space-y-2 rounded-xl bg-inset p-3">
-                  <span className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                    <ReviewQueueIcon className="size-3.5 text-primary" /> The author asked for a review
-                    <span className="tabular-nums">{day(s.reviewRequest.at)}</span>
-                  </span>
-                  <p className="whitespace-pre-wrap break-words text-sm">{s.reviewRequest.comment || "No comment"}</p>
-                </div>
-              ) : null}
+              {deciding ? request : null}
               <div className="grid gap-2 text-sm sm:grid-cols-2">
                 <Fact icon={Hash} label="DOI" wide>
                   <span className="font-mono text-xs">{s.doi}</span>
@@ -430,7 +460,9 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
               {s.results?.length && !changes ? (
                 <ul className={LIST}>
                   {s.results.map((r) => (
-                    <CheckRow key={r.checkId} name={r.name} result={r} />
+                    // A check a reviewer approved the report over says so, as it does to its author. What the author is
+                    // told to do about a check is theirs to read: here it would speak to the wrong person.
+                    <CheckRow key={r.checkId} name={r.name} result={r} advice={false} overruled={!!s.approved && stage !== "declined" && !r.pass} />
                   ))}
                 </ul>
               ) : null}
@@ -441,13 +473,14 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   {s.correctedAt ? <StatusChip tone="neutral" icon={PenLine}>Corrected {day(s.correctedAt)}</StatusChip> : null}
                 </div>
               ) : null}
+              {deciding ? null : request}
               {s.reviews.length ? (
                 <ul className="space-y-1 text-xs text-muted-foreground">
                   {s.reviews.map((r) => (
                     <li key={`${r.at}:${r.decision}`} className="flex flex-wrap items-center gap-x-1.5">
                       <ReviewQueueIcon className="size-3.5 shrink-0" />
                       <span className="font-medium text-foreground/80">{REVIEWED[r.decision]}</span> by {r.by}
-                      <span className="tabular-nums">{day(r.at)}</span>
+                      <span className="tabular-nums">{moment(r.at)}</span>
                       {r.decision === "edit" && r.note ? <span className="truncate">{r.note}</span> : null}
                     </li>
                   ))}

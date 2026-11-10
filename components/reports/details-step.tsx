@@ -64,7 +64,7 @@ function Field({ label, children, className, counter }: { label: string; childre
 const used = (text: string, max: number) => `${text.length.toLocaleString("en")} / ${max.toLocaleString("en")}`;
 
 /** Words typed into a box that become chips: Enter or a comma adds one. */
-function ChipInput({ values, onChange, placeholder, label, mono = false }: { values: string[]; onChange: (v: string[]) => void; placeholder: string; label: string; mono?: boolean }) {
+function ChipInput({ values, onChange, placeholder, label, mono = false, max = DETAIL_TEXT.keyword }: { values: string[]; onChange: (v: string[]) => void; placeholder: string; label: string; mono?: boolean; /** The longest a chip's words may be. */ max?: number }) {
   const [text, setText] = useState("");
   const add = () => {
     const word = text.trim();
@@ -72,11 +72,12 @@ function ChipInput({ values, onChange, placeholder, label, mono = false }: { val
     setText("");
   };
   return (
-    <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-input bg-field px-2 py-1.5">
+    <div className="flex min-h-9 min-w-0 flex-wrap items-center gap-1.5 rounded-md border border-input bg-field px-2 py-1.5">
       {values.map((v) => (
-        <span key={v} className={cn("inline-flex h-6 items-center gap-1 rounded-md bg-inset ps-2 pe-1 text-xs", mono && "font-mono")}>
-          {v}
-          <button type="button" aria-label={`Remove ${v}`} className="rounded p-0.5 text-muted-foreground hover:text-foreground" onClick={() => onChange(values.filter((x) => x !== v))}>
+        // A long one is cut inside its chip, so its remove button stays in the box and in reach.
+        <span key={v} className={cn("inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-md bg-inset ps-2 pe-1 text-xs", mono && "font-mono")}>
+          <span className="truncate">{v}</span>
+          <button type="button" aria-label={`Remove ${v}`} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground" onClick={() => onChange(values.filter((x) => x !== v))}>
             <CircleX className="size-3" />
           </button>
         </span>
@@ -84,6 +85,7 @@ function ChipInput({ values, onChange, placeholder, label, mono = false }: { val
       <input
         aria-label={label}
         value={text}
+        maxLength={max}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === ",") {
@@ -228,11 +230,13 @@ export function DetailsStep({
   /** What the details were when the form opened, by the number that tells one state of the report from the next. It
    * is kept as it was then, so details saved since by someone else are never written over by this form. */
   version?: number;
-  onSave?: (m: Metadata) => void;
+  /** Given the details and the `version` the form opened on, a moment after each change. */
+  onSave?: (m: Metadata, version: number | undefined) => void;
   /** Called at the first change made to the form: from then on it holds something that isn't saved anywhere. */
   onTouched?: () => void;
-  /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
-  onCancel?: () => void;
+  /** Given when a live report's details are being corrected: the form says so, and can be left without changing
+   * anything. Given the `version` the form opened on. */
+  onCancel?: (version: number | undefined) => void;
   /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
   resend?: boolean;
   /** A reviewer approves this report's changes before they go live, whatever the checks say. */
@@ -266,7 +270,7 @@ export function DetailsStep({
     setM(next);
     clearTimeout(held.current.timer);
     // An ORCID iD half typed is no iD yet: the details are saved once it is one, or the box is empty.
-    held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next) : undefined;
+    held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next, opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
   // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
@@ -310,6 +314,8 @@ export function DetailsStep({
   };
   const wrongOrcids = m.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid));
   const future = m.date > localToday();
+  // A link that is neither a web address nor a DOI leads nowhere: it holds the checks until it is one, or removed.
+  const wrongLinks = m.relations.some((r) => r.target.trim() !== "" && !linkHref(r.target));
 
   return (
     <div>
@@ -418,7 +424,7 @@ export function DetailsStep({
 
         <Section title="Subjects" crossref={false}>
           <div className="grid gap-4 @3xl:grid-cols-2">
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Topics</span>
               <OptionPicker
                 label="Topics"
@@ -440,7 +446,7 @@ export function DetailsStep({
             <Field label="Keywords">
               <ChipInput values={m.keywords} onChange={(keywords) => set("keywords", keywords)} placeholder="Add keywords" label="Add a keyword" />
             </Field>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Sustainable Development Goals</span>
               <OptionPicker
                 label="Sustainable Development Goals"
@@ -455,7 +461,7 @@ export function DetailsStep({
                 onToggle={(id) => set("sdgs", m.sdgs.includes(id) ? m.sdgs.filter((g) => g !== id) : [...m.sdgs, id])}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Study design</span>
               <OptionPicker
                 label="Study design"
@@ -492,7 +498,7 @@ export function DetailsStep({
               {funders.shown.map((f, at) => {
                 const i = funders.offset + at;
                 return (
-                <li key={f.funder.id ?? f.funder.name} className="grid items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_1fr]">
+                <li key={f.funder.id ?? f.funder.name} className="grid grid-cols-[minmax(0,1fr)] items-center gap-2 px-3 py-2.5 @2xl:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
                   <FunderName id={f.funder.id} name={f.funder.name} className="truncate text-sm font-medium" />
                   <ChipInput
                     values={f.awards}
@@ -538,6 +544,7 @@ export function DetailsStep({
         </Section>
 
         <Section title="Data, code and other versions" crossref={false}>
+          {wrongLinks ? <p role="alert" className="ps-1 text-xs text-destructive">A link is a web address (https://…) or a DOI. Put the marked one right, or remove it.</p> : null}
           {m.relations.length ? (
             <Paged pager={links.pager} rowHeight={ROW} label="links">
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
@@ -545,7 +552,8 @@ export function DetailsStep({
                 const i = links.offset + at;
                 const href = linkHref(r.target);
                 return (
-                <li key={i} className="flex items-center gap-2 px-3 py-2">
+                // On a narrow screen the address takes a line of its own, under its kind and its buttons: beside them it had no room to be read.
+                <li key={i} className="flex flex-wrap items-center gap-2 px-3 py-2">
                   <Select value={r.kind} onValueChange={(kind) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, kind: kind as typeof r.kind } : x)))}>
                     <SelectTrigger size="sm" className="w-36 shrink-0" aria-label="Kind of link">
                       <SelectValue />
@@ -558,7 +566,8 @@ export function DetailsStep({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="h-8 min-w-0 flex-1 font-mono text-xs" />
+                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
+                  <span className="ms-auto flex items-center gap-2 @xl:ms-0">
                   {href ? (
                     <TooltipHint label="Open link">
                       <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
@@ -573,6 +582,7 @@ export function DetailsStep({
                       <Trash2 />
                     </Button>
                   </TooltipHint>
+                  </span>
                 </li>
                 );
               })}
@@ -589,12 +599,17 @@ export function DetailsStep({
       </div>
       <div className="mt-8 flex flex-wrap justify-end gap-2">
         {onCancel ? (
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={() => {
+            // What was typed is given up, so a save still waiting must never arrive after it.
+            clearTimeout(held.current.timer);
+            held.current.send = undefined;
+            onCancel(opened);
+          }}>
             Cancel
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || (!!onCancel && !resend && !touched)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || wrongLinks || (!!onCancel && !resend && !touched)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;

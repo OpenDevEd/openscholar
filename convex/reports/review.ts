@@ -13,7 +13,7 @@ import { workspaceFrom } from "../workspaces/personal";
 import { REVIEW_TEXT_MAX, STAGES, changesOf, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
-import { detailsOf, keptDetails, signedAgreement, touch } from "./flow";
+import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
@@ -262,7 +262,7 @@ export const editDetails = mutation({
     // is never overwritten by it.
     if (report.run) throw createError("CONFLICT", "This report's checks are running on a change right now. Try again in a moment.");
     if (report.updatedAt !== seenAt) throw createError("CONFLICT", "This report changed since you opened it. Open it again to edit it as it stands.");
-    const kept = keptDetails(metadata);
+    const kept = checkedDetails(metadata);
     if (JSON.stringify(details.metadata) === JSON.stringify(kept)) throw createError("VALIDATION_ERROR", "Nothing was changed.");
     const changed = changesOf(details.metadata, kept).map((change) => change.label).join(", ");
     if (report.status === "live") await applyChanges(ctx, report, details, { metadata: kept, results: details.results ?? [], checksVersion: report.checksVersion ?? (await reportSettings(ctx)).checksVersion });

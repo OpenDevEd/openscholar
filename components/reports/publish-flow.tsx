@@ -105,7 +105,9 @@ export function PublishFlow() {
   const workspaceId = useWorkspace();
   // In an organisation's workspace every member sees its reports, so each row says who signed.
   const shared = useWorkspaceSlug() !== undefined;
-  const [{ view, report: asked, correct, step: at, show, page }, setPlace] = useQueryStates(PLACE);
+  const [{ view, report: named, correct, step: at, show, page }, setPlace] = useQueryStates(PLACE);
+  // An address cut off after "report=" names none: it is the page with no report named.
+  const asked = named || null;
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
@@ -299,8 +301,19 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const runChecks = useAction(api.reports.checks.run);
   const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
   const discardChanges = useMutation(api.reports.flow.discardChanges);
-  // Changes to a live report as last sent to the checks, kept while they run so a run that breaks loses none of them.
-  const [attempt, setAttempt] = useState<Metadata | null>(null);
+  const typeChanges = useMutation(api.reports.flow.typeChanges).withOptimisticUpdate((store, { key, metadata }) => {
+    // Given up, what was typed is gone from this page at once: a form opened again before the answer is back starts
+    // from the report, never from what was just cancelled.
+    if (metadata) return;
+    for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
+      if (!value || !("report" in value) || value.report.key !== key) continue;
+      const { trying, ...report } = value.report;
+      if (trying) store.setQuery(api.reports.flow.get, args, { ...value, report });
+    }
+  });
+  // Changes to a live report as last sent to the checks, kept while they run so a run that breaks loses none of them:
+  // with the version their form opened on, so sent again they are still held to it.
+  const [attempt, setAttempt] = useState<{ metadata: Metadata; since: number } | null>(null);
   // The form of changes holds something typed here and not sent yet. It then stays open whatever else happens to
   // the report, such as its checks running on changes sent from another tab: what was typed is never thrown away.
   const [typing, setTyping] = useState(false);
@@ -368,15 +381,18 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
             // Changes already waiting are carried on from; so are ones a broken run never finished checking.
             <DetailsStep
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
-              initial={attempt ?? report.trying ?? report.correction?.metadata ?? report.metadata}
+              initial={attempt?.metadata ?? report.trying ?? report.correction?.metadata ?? report.metadata}
               resend={!!attempt || !!report.trying || !!report.correction}
               // What the form shows: the changes that wait, else the report's details as they were last set.
-              version={report.correction?.at ?? report.correctedAt ?? report.activatedAt}
+              version={attempt?.since ?? report.correction?.at ?? report.correctedAt ?? report.activatedAt}
               // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
               waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
               onTouched={() => setTyping(true)}
+              // Kept as they are typed, so Back, Forward or a reload brings them back. Typed over a report that has
+              // changed since, they are not kept, and sending them is refused in words.
+              onSave={(metadata, since) => void typeChanges({ ...here, key: report.key, since: since!, metadata }).catch(said("Your changes couldn't be saved"))}
               onRun={async (metadata: Metadata, since) => {
-                setAttempt(metadata);
+                setAttempt({ metadata, since: since! });
                 setTyping(false);
                 setStarting(true);
                 try {
@@ -392,9 +408,13 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
                   setStarting(false);
                 }
               }}
-              onCancel={() => {
+              onCancel={(since) => {
                 setAttempt(null);
                 setTyping(false);
+                // Cancelling gives up what was typed, here and wherever it was kept: a save sent a moment ago may not
+                // have come back yet, and this one runs after it. It names the version this form opened on, so what
+                // another tab typed over a later one is never the one given up.
+                if (typing || report.trying) void typeChanges({ ...here, key: report.key, since: since!, metadata: null }).catch(() => undefined);
                 onCorrected();
               }}
             />
