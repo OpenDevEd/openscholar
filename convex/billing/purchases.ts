@@ -47,14 +47,17 @@ export function unlessPaymentOpen(customer: AutumnCustomer) {
 /**
  * Runs `buy` as the workspace's only purchase under way, once no payment of its customer's is open:
  * two at once could both find none open, and Autumn gives the second for nothing when the first was
- * declined. `buy` gets the customer, read with `plans` when asked.
+ * declined. `buy` gets the customer, read with `plans` when asked. `resuming` is a purchase asked again under its own
+ * idempotency key, whose open payment, if any, is its own.
  */
-export async function purchasing<T>(ctx: ActionCtx, workspaceId: Id<"workspaces">, customerId: string, read: { plans?: true }, buy: (customer: AutumnCustomer) => Promise<T>): Promise<T> {
+export async function purchasing<T>(ctx: ActionCtx, workspaceId: Id<"workspaces">, customerId: string, read: { plans?: true; resuming?: true }, buy: (customer: AutumnCustomer) => Promise<T>): Promise<T> {
   const since: number | null = await ctx.runMutation(internal.billing.purchases.claim, { workspaceId });
   if (since === null) throw createError("BILLING_PLAN_CHANGE_CONFLICT", "Another billing change is under way. Try again in a moment.");
   try {
-    const customer = await autumn.customer(customerId, { ...read, invoices: true });
-    unlessPaymentOpen(customer);
+    const { resuming, ...reading } = read;
+    const customer = await autumn.customer(customerId, { ...reading, invoices: true });
+    // A purchase asked again with its own idempotency key, after its answer was lost, may be the open payment itself.
+    if (!resuming) unlessPaymentOpen(customer);
     return await buy(customer);
   } finally {
     await ctx.runMutation(internal.billing.purchases.release, { workspaceId, since });

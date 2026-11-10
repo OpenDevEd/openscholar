@@ -77,7 +77,9 @@ describe("activating a report", () => {
     const { key } = await checked(world, [passed("byline")], world.author, world.lab);
     const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "orgadmin", world.lab), key, code: "HALFOFF" });
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: "in_3ds", url: "https://bank.example/confirm" } });
-    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key, now: Date.now() })).toMatchObject({ pending: { url: "https://bank.example/confirm" } });
+    // The bank's page is the payer's: the organisation's admins get it, its members only that the payment waits.
+    expect(await world.orgAdmin.query(api.reports.activation.terms, { workspaceId: world.lab, key, now: Date.now() })).toMatchObject({ pending: { url: "https://bank.example/confirm" } });
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key, now: Date.now() })).toMatchObject({ pending: { url: null } });
     // The admin who paid leaves before the bank answers; the webhook and the page then both settle it.
     await world.t.run(async (ctx) => ctx.db.patch("organizationMemberships", (await ctx.db.query("organizationMemberships").withIndex("by_clerkMembershipId", (q) => q.eq("clerkMembershipId", "mem_orgadmin")).unique())!._id, { state: "revoked" }));
     const paid = { kind: "paid" as const, charge: { invoice: "in_3ds", total: 2.5, currency: "usd" } };

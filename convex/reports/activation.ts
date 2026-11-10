@@ -101,7 +101,8 @@ export const terms = workspaceQuery({
       card: (await readAccount(ctx, actor.workspaceId))?.card ?? null,
       free: await freeLeft(ctx, actor.workspaceId, now),
       price: plan?.price?.amount ?? null,
-      pending: pending ? { url: pending.payUrl ?? null } : null,
+      // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
+      pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null } : null,
     };
   },
 });
@@ -113,6 +114,8 @@ const preparedValidator = v.object({
   freeLeft: v.number(),
   prefix: v.string(),
   pending: v.union(v.object({ url: v.union(v.string(), v.null()) }), v.null()),
+  /** A charge was asked for and its answer lost: asking again replays the same request. */
+  charging: v.boolean(),
 });
 type Prepared = Infer<typeof preparedValidator>;
 
@@ -129,6 +132,7 @@ export const prepare = internalQuery({
       freeLeft: (await freeLeft(ctx, actor.workspaceId, now)).left,
       prefix: (await placeOf(ctx, actor.workspaceId)).prefix,
       pending: pending ? { url: pending.payUrl ?? null } : null,
+      charging: (await pendingOf(ctx, report._id, true))?.state === "charging",
     };
   },
 });
@@ -276,13 +280,13 @@ export const activate = action({
     // The card is read from Autumn, not the cached account: it may have been removed since.
     const customer = await autumn.customer(first.customerId, { card: true });
     if (!customer.payment_method?.card) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
-    if (first.freeLeft > 0) {
+    if (first.freeLeft > 0 && !first.charging) {
       await ctx.runMutation(internal.reports.activation.goLiveFree, { actor, key });
       return { live: true };
     }
     if (!pay) throw createError("CONFLICT", "Today's free activations were just used. Activate it again to pay for it.");
     // Under the workspace's purchase lock from the record to the answer, so another tab's activation waits for this one.
-    const outcome = await purchasing(ctx, workspaceId, first.customerId, {}, async () => {
+    const outcome = await purchasing(ctx, workspaceId, first.customerId, first.charging ? { resuming: true } : {}, async () => {
       const started: { activationId: Id<"reportActivations">; code?: string } = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
       const asked = started.code;
       let charged: AutumnCharge;
@@ -375,8 +379,13 @@ export const watch = internalAction({
   handler: async (ctx, { activationId, attempt }): Promise<null> => {
     const waiting: { workspaceId: Id<"workspaces">; invoice: string } | null = await ctx.runQuery(internal.reports.activation.waitingCharge, { activationId });
     if (!waiting) return null;
-    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: waiting.workspaceId });
-    if (await settleOne(ctx, activationId, waiting.invoice, (await autumn.customer(customerId, { invoices: true })).invoices)) return null;
+    try {
+      const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: waiting.workspaceId });
+      if (await settleOne(ctx, activationId, waiting.invoice, (await autumn.customer(customerId, { invoices: true })).invoices)) return null;
+    } catch (error) {
+      // A look that failed (Autumn slow or down) is the next look's to make.
+      console.error(JSON.stringify({ event: "report-activation-watch-failed", activationId, attempt, error: String(error).slice(0, 300) }));
+    }
     if (attempt + 1 < WATCH_LOOKS) await ctx.scheduler.runAfter(Math.min(WATCH_FIRST_MS * 2 ** (attempt + 1), WATCH_MOST_MS), internal.reports.activation.watch, { activationId, attempt: attempt + 1 });
     else console.error(JSON.stringify({ event: "report-activation-unsettled", activationId, invoice: waiting.invoice }));
     return null;
