@@ -4493,6 +4493,11 @@
         "did": "Het aansoeke om aan te sluit aan- of afgeskakel",
         "where": "Evidence Communities",
         "ask": "Skakel aansoeke om aan te sluit aan of af"
+      },
+      "readReports": {
+        "doing": "Lees tans jou verslae",
+        "did": "Het jou verslae gelees",
+        "where": "Publiseer"
       }
     },
     "asks": {

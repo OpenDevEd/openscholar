@@ -4493,6 +4493,11 @@
         "did": "Bewerbungen ein- oder ausgeschaltet",
         "where": "Evidence Communities",
         "ask": "Bewerbungen ein- oder ausschalten"
+      },
+      "readReports": {
+        "doing": "Ihre Berichte werden gelesen",
+        "did": "Ihre Berichte gelesen",
+        "where": "Veröffentlichen"
       }
     },
     "asks": {

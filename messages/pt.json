@@ -4493,6 +4493,11 @@
         "did": "Ativou ou desativou pedidos",
         "where": "Evidence Communities",
         "ask": "Ativar ou desativar pedidos"
+      },
+      "readReports": {
+        "doing": "A ler os seus relatórios",
+        "did": "Relatórios lidos",
+        "where": "Publicar"
       }
     },
     "asks": {

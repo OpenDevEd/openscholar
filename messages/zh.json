@@ -4492,6 +4492,11 @@
         "did": "已开启或关闭加入申请",
         "where": "Evidence Community",
         "ask": "开启或关闭加入申请"
+      },
+      "readReports": {
+        "doing": "正在读取您的报告",
+        "did": "已读取您的报告",
+        "where": "发布"
       }
     },
     "asks": {
