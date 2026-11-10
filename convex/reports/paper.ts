@@ -9,6 +9,7 @@ import { detailsOf, mayChange } from "./flow";
 import { reportSettings } from "./settings";
 import { AUTHORS_LISTED, INSTITUTIONS_LISTED, paperRecordValidator } from "../research/searchValidators";
 import { liveReportValidator, withdrawnReportValidator } from "./validators";
+import { REPORTS_PER_READ } from "../../lib/reports/report";
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 
@@ -91,6 +92,74 @@ export const record = internalQuery({
       openAccess: true,
       ...(metadata.abstract.trim() && { abstract: metadata.abstract.length > 6_000 ? `${metadata.abstract.slice(0, 6_000)}…` : metadata.abstract }),
     };
+  },
+});
+
+const communityReportValidator = v.union(
+  v.null(),
+  // Withdrawn after going live: a community that holds it withdraws it too, and is told nothing more of it.
+  v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), version: v.string() }),
+  v.object({
+    state: v.literal("live"),
+    key: v.string(),
+    doi: v.string(),
+    /** When anything this answer says of the report last changed, as an ISO time: a community that holds an earlier one takes this one. */
+    version: v.string(),
+    title: v.string(),
+    subtitle: v.string(),
+    type: v.string(),
+    language: v.string(),
+    date: v.string(),
+    licence: v.string(),
+    abstract: v.string(),
+    authors: v.array(v.object({ name: v.string(), orcid: v.union(v.string(), v.null()) })),
+    keywords: v.array(v.string()),
+    series: v.string(),
+    hasPdf: v.boolean(),
+  }),
+);
+
+/**
+ * The reports these DOIs name, for a community that adds papers by DOI (OpenDevEd/new-el#814): each live report's
+ * details as its page shows them, a withdrawn one as withdrawn, and null for a DOI that is no report of ours or one
+ * that never went live. In the order asked.
+ */
+export const forCommunity = internalQuery({
+  args: { dois: v.array(v.string()) },
+  returns: v.array(communityReportValidator),
+  handler: async (ctx, { dois }) => {
+    const { series, row: settings } = await reportSettings(ctx);
+    // The series' name is part of the answer, and it is the settings' to change.
+    const version = (at: number) => new Date(Math.max(at, settings?.updatedAt ?? 0)).toISOString();
+    return await Promise.all(
+      // A report's details can be large, and a query reads at most 16 MiB: the caller asks a few at a time.
+      dois.slice(0, REPORTS_PER_READ).map(async (doi) => {
+        // A DOI is stored as it was reserved, in lower case.
+        const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
+        if (!report) return null;
+        if (report.status !== "live") return report.withdrawnAt === undefined ? null : { state: "withdrawn" as const, key: report.key, doi: report.doi, version: version(report.updatedAt) };
+        const { metadata } = await detailsOf(ctx, report._id);
+        if (!metadata) return null;
+        return {
+          state: "live" as const,
+          key: report.key,
+          doi: report.doi,
+          // Every change to a report moves its `updatedAt`: an edit made while it was withdrawn, and its reinstatement, too.
+          version: version(report.updatedAt),
+          title: metadata.title,
+          subtitle: metadata.subtitle,
+          type: metadata.type,
+          language: metadata.language,
+          date: metadata.date,
+          licence: metadata.licence,
+          abstract: metadata.abstract,
+          authors: metadata.authors.filter((author) => author.name.trim()).map((author) => ({ name: author.name, orcid: author.orcid || null })),
+          keywords: metadata.keywords,
+          series: series.name,
+          hasPdf: report.pdf !== undefined,
+        };
+      }),
+    );
   },
 });
 

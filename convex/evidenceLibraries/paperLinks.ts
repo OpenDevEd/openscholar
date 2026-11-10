@@ -3,6 +3,7 @@ import { z } from "zod";
 import { internal } from "../_generated/api";
 import { httpAction, type ActionCtx, type QueryCtx } from "../_generated/server";
 import { internalQuery } from "../lib/functions";
+import { requireAppUrl } from "../lib/env";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { readConvexErrorData } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
@@ -13,6 +14,7 @@ import { normalDoi, openalexWork } from "../../lib/papers/paper-ref";
 import { paperLinkOf } from "../../lib/papers/paper-links";
 import { ADDED_PAPERS_MAX } from "../../lib/evidence-libraries/added-papers";
 import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
+import { REPORTS_ASKED_MAX, REPORTS_PER_READ } from "../../lib/reports/report";
 
 /** A paper as a community takes it: its OpenAlex work, its DOI, or both. */
 export type PaperIds = { openalexId: string | null; doi: string | null };
@@ -104,6 +106,49 @@ export const resolvePapers: ReturnType<typeof httpAction> = httpAction(async (ct
   // A reader's lookups count against their own allowance. The team's, from the admin, aren't counted: at most ADDED_PAPERS_MAX a request, from a signed community.
   const spend = clerkUserId ? spender(ctx, clerkUserId) : async () => true;
   return answerPapers(libraryId, async () => await Promise.all(links.map((link) => paperOfLink(ctx, link, spend, { withDoi: true }))));
+});
+
+const reportsSchema = z
+  .object({
+    contractVersion: z.literal(1),
+    libraryId: z.string().min(1).max(128),
+    dois: z.array(z.string().min(1).max(512)).min(1).max(REPORTS_ASKED_MAX),
+  })
+  .strict();
+
+/**
+ * `POST /api/v1/evidence-libraries/reports/records`, for a community that adds papers by DOI: the Openscholar Report
+ * each DOI names, or null for one that names none (OpenDevEd/new-el#814). A community asks here before OpenAlex and
+ * the DOI lookup: a report is in neither until its deposit is indexed, and its record stays Openscholar's. A live
+ * report comes with its details, its page and its PDF's lasting address; a withdrawn one says only that it was
+ * withdrawn. Asked again on each sync, `version` tells a community when a report was corrected. With the community's
+ * machine credential.
+ */
+export const reportRecords: ReturnType<typeof httpAction> = httpAction(async (ctx, request) => {
+  const credential = readBearerCredential(request);
+  if (!credential) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
+  const parsed = reportsSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return jsonResponse(400, { error: { code: "invalid_request", retryable: false } });
+  const { libraryId, dois } = parsed.data;
+  if (!(await isCommunity(ctx, libraryId, credential))) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
+  try {
+    const site = requireAppUrl().replace(/\/+$/, "");
+    const asked = dois.map((doi) => normalDoi(doi) ?? doi);
+    // A few reports a read, so the largest details still fit one (REPORTS_PER_READ).
+    const parts = Array.from({ length: Math.ceil(asked.length / REPORTS_PER_READ) }, (_, at) => asked.slice(at * REPORTS_PER_READ, (at + 1) * REPORTS_PER_READ));
+    const reports = (await Promise.all(parts.map((part) => ctx.runQuery(internal.reports.paper.forCommunity, { dois: part })))).flat();
+    return jsonResponse(200, {
+      reports: reports.map((report) => {
+        if (report?.state !== "live") return report;
+        const { hasPdf, ...details } = report;
+        // Both addresses stay the same for as long as the report is live (app/papers/[id]/report.pdf).
+        return { ...details, pageUrl: `${site}/papers/${report.key}`, pdfUrl: hasPdf ? `${site}/papers/${report.key}/report.pdf` : null };
+      }),
+    });
+  } catch (error) {
+    console.error("[paper links] couldn't read a community's reports", { libraryId, error: String(error) });
+    return jsonResponse(503, { error: { code: "temporarily_unavailable", retryable: true } });
+  }
 });
 
 /** Whether the credential is this community's own. */

@@ -136,7 +136,9 @@ test("a search delete confirmation refuses an account change without losing the 
     await expect.poll(() => client.query(api.research.records.getSearch, { accountId, workspaceId, id })).toMatchObject({ id });
     await expect(page.getByRole("button", { name: marker, exact: true })).toBeVisible();
     await page.getByRole("textbox", { name: "Search your history...", exact: true }).fill(marker);
-    await page.getByRole("button", { name: "Delete", exact: true }).click();
+    // The search matches on words, and a run stopped part way leaves a search whose marker shares this one's: the
+    // Delete pressed is this search's own.
+    await page.locator("[data-entry]").filter({ has: page.getByRole("button", { name: marker, exact: true }) }).getByRole("button", { name: "Delete", exact: true }).click();
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toBeVisible();
     await page.evaluate(() => window.Clerk.setActive({ session: null }));
