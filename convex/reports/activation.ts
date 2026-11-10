@@ -14,7 +14,7 @@ import { createError } from "../lib/errors";
 import { workspaceQuery } from "../lib/userActions";
 import { actorValidator, type Actor } from "../workspaces/actor";
 import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
-import { AutumnError, autumn, type AutumnCharge, type AutumnCustomer } from "../billing/autumn";
+import { AutumnError, autumn, type AutumnCharge, type AutumnCustomer, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
 import { purchasing, unlessDeclined, voidDeclined } from "../billing/purchases";
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
@@ -315,6 +315,9 @@ export const activate = action({
   },
 });
 
+/** What a quote's lines come to, in US dollars, before any credit on the account. */
+const linesOf = (preview: AutumnPreview) => preview.line_items.reduce((sum, line) => sum + line.total, 0);
+
 /** What activating the report costs with `code`, as Autumn quotes it, in US dollars: the price, the discount and the total. */
 export const quote = action({
   args: { workspaceId: v.id("workspaces"), key: v.string(), code: v.string() },
@@ -326,8 +329,11 @@ export const quote = action({
     if (!code) throw createError("VALIDATION_ERROR", "Type a code first.");
     const { customerId }: { customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
     const [plain, discounted] = await Promise.all([autumn.previewAttach(customerId, ACTIVATION_PLAN, false), autumn.previewAttach(customerId, ACTIVATION_PLAN, false, undefined, code).catch(refusedCode<never>(code))]);
-    if (discounted.total >= plain.total) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off an activation.`);
-    return { price: plain.total, discount: plain.total - discounted.total, total: discounted.total };
+    // Read from the quote's lines: its total is what's due after any credit on the account, which a code doesn't change.
+    const price = linesOf(plain);
+    const total = linesOf(discounted);
+    if (total >= price) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off an activation.`);
+    return { price, discount: price - total, total };
   },
 });
 
