@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ReactNode, type UIEvent } from "react";
+import { cloneElement, useRef, useState, type ReactElement, type ReactNode, type UIEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useAction } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -110,7 +110,14 @@ const fromRecent = (recent: Recent, yours: Row | undefined): Row => ({
  * then theirs, then every public one. Owners and editors publish the paper or send it to the review queue; on any
  * other community it goes to the queue. The popover stays open after a send, for the next community.
  */
-export function CommunityControl({ paper }: { paper: WorkInput }) {
+export function CommunityControl({
+  paper,
+  trigger,
+}: {
+  paper: WorkInput;
+  /** A button of the page's own to open the list from, such as a named one: it needs no tooltip. */
+  trigger?: ReactElement<React.ComponentProps<"button">>;
+}) {
   const t = useTranslations("addedPapers");
   const { isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
@@ -124,14 +131,17 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
   // Read once the pointer reaches the button or it takes focus, so the list is there by the click. Only that card
   // reads: each paginated read is a subscription of its own, and every card reading would ask the server for the
   // same lists once per paper on the page. Scrolling near the end reads the next page onto it.
-  const [prepared, setPrepared] = useState(false);
+  // A page's own button is the only one on its page, so it reads at once and the list is there whenever it's clicked.
+  const [prepared, setPrepared] = useState(Boolean(trigger));
   const reads = Boolean(isSignedIn) && prepared;
   const yours = useHeld(useProtectedPaginatedQuery(api.evidenceLibraries.queries.listLibraries, reads ? (search ? { search } : {}) : "skip", { initialNumItems: STEP }));
   const listed = useHeld(useProtectedPaginatedQuery(api.evidenceLibraries.directory.directory, reads ? { sort: "name", ...(search ? { search } : {}) } : "skip", { initialNumItems: STEP }));
   const recentRead = useProtectedQuery(api.evidenceLibraries.submissions.recentCommunities, reads ? {} : "skip").data;
   const sent = useProtectedQuery(api.evidenceLibraries.submissions.sentTo, reads && openalexId ? { openalexId } : "skip").data;
   const statusIn = new Map((sent ?? []).map((row) => [row.libraryId as string, row.status]));
-  const button = (
+  const button = trigger ? (
+    cloneElement(trigger, isSignedIn ? {} : { onClick: () => openSignIn() })
+  ) : (
     <Button
       variant="outline"
       size="sm"
@@ -144,7 +154,9 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
       <EvidenceLibrariesIcon className={statusIn.size ? "text-primary" : "text-muted-foreground"} />
     </Button>
   );
-  if (!isSignedIn || !(openalexId || doi)) return <TooltipHint label={t("addToCommunity")}>{button}</TooltipHint>;
+  // A named button says what it does; only the icon needs the hint.
+  const hinted = (child: ReactElement) => (trigger ? child : <TooltipHint label={t("addToCommunity")}>{child}</TooltipHint>);
+  if (!isSignedIn || !(openalexId || doi)) return hinted(button);
   const mine = yours.items.filter((library) => library.status === "active").map(fromOverview);
   const mineById = new Map(mine.map((row) => [row.id as string, row]));
   const latest = (recentRead ?? []).map((recent) => fromRecent(recent, mineById.get(recent.libraryId)));
@@ -159,9 +171,7 @@ export function CommunityControl({ paper }: { paper: WorkInput }) {
         if (!next) setQuery("");
       }}
     >
-      <TooltipHint label={t("addToCommunity")}>
-        <PopoverTrigger asChild>{button}</PopoverTrigger>
-      </TooltipHint>
+      {hinted(<PopoverTrigger asChild>{button}</PopoverTrigger>)}
       <PopoverContent align="start" className="relative flex max-h-[min(30rem,var(--radix-popover-content-available-height))] w-80 flex-col overflow-visible p-2">
         <CommunitiesPanel
           paper={{ openalexId, doi, title: paper.title || paper.display_name || "" }}
