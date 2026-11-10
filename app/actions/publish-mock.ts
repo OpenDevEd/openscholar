@@ -13,7 +13,7 @@ import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceL
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
 import { SITE_URL } from "@/lib/seo/page-metadata";
-import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, changesOf, correctionStageOf, forAuthor, isMetadata, mayChange, mayWorkOn, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, changesOf, correctionStageOf, forAuthor, isMetadata, mayChange, mayWorkOn, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, limitWords, type MockState, type Refused, type Settings, type Stage, type Step, type Submission, type Workspace } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -83,17 +83,14 @@ export async function signAgreement({ name, onBehalfOfAll, version, workspace }:
   // The report is the workspace's it's started in: an organisation's for its members, or the person's own.
   const organization = workspace ? await organizationAt(workspace) : null;
   if (workspace && !(organization && (await organizationsOf(user.id)).includes(organization.id))) return { refused: "You're not a member of this workspace any more." };
-  // The workspace's limit: the person's own where they have one, else the organisation's, else everyone's.
-  const orgIds = organization ? [organization.id] : [];
+  // Each workspace has its own limit, and every report started in it counts against it.
+  const within: Workspace = organization ? { kind: "organization", id: organization.id } : { kind: "person", id: user.id };
   return change((state) => {
     if (!canPublish(state.settings)) return { refused: "Publishing is off for now." };
     if (version !== state.settings.agreement.version) return { refused: "The agreement changed while you were reading it. Reload to read the new one." };
-    if (startsLeft(state, user.id, orgIds) < 1) {
-      const perDay = limitFor(state.settings, user.id, orgIds);
-      return { refused: perDay === 0 ? "Publishing isn't open to your account yet." : `You can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.` };
-    }
+    if (startsLeft(state, within) < 1) return { refused: limitWords(limitFor(state.settings, within), within.kind) };
     // Counted where it can't be undone: a report discarded later still used one of the day's starts.
-    state.started = { ...state.started, [user.id]: [...(state.started?.[user.id] ?? []).filter((at) => Date.now() - at < 24 * 60 * 60 * 1000), Date.now()] };
+    state.started = { ...state.started, [within.id]: [...(state.started?.[within.id] ?? []).filter((at) => Date.now() - at < 24 * 60 * 60 * 1000), Date.now()] };
     const id = nextKey(state);
     const registration = registrationOf(state.settings);
     const draft: Submission = {
@@ -325,14 +322,15 @@ async function showInRail(settings: Settings) {
   (await cookies()).set(OFF_COOKIE, on ? "" : "1", { path: "/", maxAge: on ? 0 : 60 * 60 * 24 * 365 });
 }
 
-export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "humanReview" | "metadataModel">> & { series?: Partial<Settings["series"]>; perDay?: number }) {
+export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "humanReview" | "metadataModel">> & { series?: Partial<Settings["series"]>; perDay?: number; orgPerDay?: number }) {
   await requireAdmin();
   const origin = await here();
   const settings = await change((state) => {
-    const { series, perDay, ...rest } = patch;
+    const { series, perDay, orgPerDay, ...rest } = patch;
     const waited = state.submissions.filter((s) => stageOf(s, state.settings) === "review");
     Object.assign(state.settings, rest);
     if (perDay !== undefined) state.settings.limits.perDay = dailyLimit(perDay);
+    if (orgPerDay !== undefined) state.settings.limits.orgPerDay = dailyLimit(orgPerDay);
     if (series) Object.assign(state.settings.series, series);
     // Review switched off releases what waited only for it. A report becomes its author's to activate (`stageOf`);
     // changes to a live report, which their author already sent, go live.

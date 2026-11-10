@@ -3,14 +3,17 @@
 
 import type { Effort } from "@/lib/ai/core/call-options";
 import type { PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
-import { JEV_MODEL } from "@/lib/ai/decisions";
 
 /** A model a check or the metadata reader runs on, as the model picker gives it, with the effort it runs at. */
 export type LlmModel = { id: string; name: string; inputPricePerMillion: number; outputPricePerMillion: number; effort?: Effort; reasoningEfforts?: Effort[] };
 /** GPT-6 Luna at medium: read 30 of our communities' reports as well as Opus 5.5 and GPT-6.1 Sol, at a fiftieth of Opus's cost (2026-11-09). */
 export const DEFAULT_LLM: LlmModel = { id: "openai/gpt-6-luna", name: "GPT-6 Luna", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, effort: "medium", reasoningEfforts: ["low", "medium", "high"] };
-/** TypeSafe's Jev: a decision model, answering yes or no with how sure it is, as screening uses it. */
-export const JEV: LlmModel = { id: JEV_MODEL, name: "Jev 1.13", inputPricePerMillion: 0.042, outputPricePerMillion: 0 };
+/**
+ * Nace's Drex Max: a decision model, answering yes or no with how sure it is. A report's checks run on it. On
+ * 2026-11-10 it gave Jev 1.13's answer to all twelve check questions asked of four reports, in about a second a
+ * report, at $0.06 a million tokens read against Jev's $0.042.
+ */
+export const DREX: LlmModel = { id: "nace-ai/drex-max", name: "Drex Max", inputPricePerMillion: 0.06, outputPricePerMillion: 0 };
 
 /**
  * A check is a yes-or-no question about the report, answered by a model: a decision model like Jev, or an LLM, which
@@ -64,8 +67,9 @@ export type Settings = {
   /** The Zenodo and Crossref accounts reports register with: the settings a community has, kept the same way. */
   publication: PublicationSettings;
   publicationSavedAt: number | null;
-  /** How many reports one person may start in a day, and who may start more or fewer. */
-  limits: { perDay: number; overrides: LimitOverride[] };
+  /** How many reports a workspace may start in a day: a person's own by default, an organisation's by default
+   * (none until it's opened, since anyone can make an organisation), and the ones given a number of their own. */
+  limits: { perDay: number; orgPerDay?: number; overrides: LimitOverride[] };
   metadataModel: LlmModel;
   checks: Check[];
   checksVersion: number;
@@ -81,24 +85,34 @@ export type LimitOverride = Pick<Account, "kind" | "id" | "name"> & { perDay: nu
  * own, the registrars' accounts, or what each check asks and how sure it must be. */
 export const authorSettings = (settings: Settings): Settings => ({
   ...settings,
-  limits: { perDay: settings.limits.perDay, overrides: [] },
+  limits: { perDay: settings.limits.perDay, orgPerDay: settings.limits.orgPerDay, overrides: [] },
   publication: { zenodo: settings.publication.zenodo, crossref: { ...settings.publication.crossref, depositorName: "", email: "", registrant: "" } },
   metadataModel: { ...settings.metadataModel, id: "", name: "" },
   checks: settings.checks.map((c) => ({ ...c, question: "", fix: undefined, threshold: 0, model: { ...c.model, id: "", name: "" } })),
 });
-/** The reports a person may start in a day: their own limit, else the highest of their organisations', else everyone's. */
-export function limitFor(settings: Settings, userId: string, orgIds: readonly string[]) {
-  const { perDay, overrides } = settings.limits;
-  const own = overrides.find((o) => o.kind === "person" && o.id === userId);
-  if (own) return own.perDay;
-  const theirs = overrides.filter((o) => o.kind === "organization" && orgIds.includes(o.id)).map((o) => o.perDay);
-  return theirs.length ? Math.max(...theirs) : perDay;
+/** The workspace a report starts in: a person's own, by their Clerk user, or an organisation's, by its Clerk ID. */
+export type Workspace = { kind: LimitOverride["kind"]; id: string };
+/** The reports a workspace may start in a day: the number it was given, else the one for its kind. A person's
+ * number is their own workspace's and nothing to do with the organisations they are in. */
+export function limitFor(settings: Settings, workspace: Workspace) {
+  const { perDay, orgPerDay = 0, overrides } = settings.limits;
+  return overrides.find((o) => o.kind === workspace.kind && o.id === workspace.id)?.perDay ?? (workspace.kind === "person" ? perDay : orgPerDay);
 }
+/** What a workspace that has used up its day's reports, or has none, is told. */
+export const limitWords = (perDay: number, kind: Workspace["kind"]) =>
+  kind === "person"
+    ? perDay === 0
+      ? "Publishing isn't open to your account yet."
+      : `You can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.`
+    : perDay === 0
+      ? "Publishing isn't open to this workspace yet. You can publish from your own."
+      : `This workspace can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.`;
 const DAY_MS = 24 * 60 * 60 * 1000;
-/** How many more reports this person may start now, counting the ones they started in the last 24 hours. */
-export function startsLeft(state: MockState, userId: string, orgIds: readonly string[]) {
-  const started = (state.started?.[userId] ?? []).filter((at) => Date.now() - at < DAY_MS).length;
-  return Math.max(0, limitFor(state.settings, userId, orgIds) - started);
+/** How many more reports a workspace may start now: its limit as it is now, less the ones started in it in the last
+ * 24 hours. So a limit raised today opens that many more today. */
+export function startsLeft(state: MockState, workspace: Workspace) {
+  const started = (state.started?.[workspace.id] ?? []).filter((at) => Date.now() - at < DAY_MS).length;
+  return Math.max(0, limitFor(state.settings, workspace) - started);
 }
 
 /** An institution an author was at for this work: OpenAlex's where it has it (I…), with its country. */

@@ -42,9 +42,9 @@ export default async function PublishPage({ params, searchParams }: { params: Pr
   const underWay = !report && view !== "reports" ? reportsUnderWay(reports) : [];
   if (underWay.length === 1) redirect(here(`/publish?report=${underWay[0]!.id}`));
   if (underWay.length > 1) redirect(here("/publish?view=reports"));
-  // The workspace's limit: the person's own where they have one, else the organisation's, else everyone's.
-  const orgIds = organization ? [organization.id] : [];
-  const starts = user ? { left: startsLeft(state, user.id, orgIds), perDay: limitFor(state.settings, user.id, orgIds) } : { left: 1, perDay: 1 };
+  // Each workspace has its own limit, and every report started in it counts against it.
+  const workspace = user ? ({ kind: organization ? "organization" : "person", id: organization?.id ?? user.id } as const) : null;
+  const starts = workspace ? { left: startsLeft(state, workspace), perDay: limitFor(state.settings, workspace) } : { left: 1, perDay: 1 };
   // In an organisation's workspace every member sees its reports; its admins and a report's owner change them.
   const admin = !!organization && !!user && (await actorFor(user.id)).adminOf.includes(organization.id);
   return <PublishFlow settings={authorSettings(state.settings)} reports={reports.map(forAuthor)} userName={user?.fullName ?? ""} signedIn={!!user} starts={starts} shared={!!organization} me={user?.id ?? null} admin={admin} />;

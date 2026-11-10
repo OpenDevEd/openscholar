@@ -59,7 +59,7 @@ import { SHOWS, STATUS, StatusFilter, YourReports } from "@/components/publish-m
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
-import { REVIEW_TEXT_MAX, bylineOf, changesOf, correctionStageOf, coverUrlOf, reportsUnderWay, stageOf, type Refused, type CheckResult, type Correction, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, bylineOf, changesOf, correctionStageOf, coverUrlOf, limitWords, reportsUnderWay, stageOf, type Refused, type CheckResult, type Correction, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -575,7 +575,7 @@ function AgreementStep({
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         {blocked !== null ? (
           <p className="text-sm text-muted-foreground">
-            {blocked === 0 ? "Publishing isn't open to your account yet." : `You can start ${blocked} ${blocked === 1 ? "report" : "reports"} a day. Come back tomorrow.`}
+            {limitWords(blocked, shared ? "organization" : "person")}
           </p>
         ) : null}
         {signedIn ? (

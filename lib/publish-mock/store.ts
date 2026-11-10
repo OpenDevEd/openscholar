@@ -6,7 +6,8 @@ import type { Check, CheckResult, Metadata, MockState, Settings, Submission } fr
 import { countriesIn, keywordsFrom, suggestSdgs } from "./read";
 import { suggestTopics } from "./topics";
 import { mail } from "./emails";
-import { DEFAULT_LLM, JEV, doiOf, mayWorkOn, providersOf, registrationOf } from "./types";
+import { isDecisionModel } from "@/lib/ai/decisions";
+import { DEFAULT_LLM, DREX, doiOf, mayWorkOn, providersOf, registrationOf } from "./types";
 
 export const MOCK_DIR = path.join(process.cwd(), ".publish-mock");
 const FILE = path.join(MOCK_DIR, "state.json");
@@ -35,7 +36,7 @@ const CHECKS: Check[] = [
     name: "Byline and DOI in the PDF",
     question: "Does the text include this line, allowing for line breaks and spacing: \"{byline}\"?",
     fix: "Put this line on the cover or the first page, as text and not as a picture, then upload the PDF again: {byline}",
-    model: JEV,
+    model: DREX,
     threshold: 0.8,
     blocking: true,
     enabled: true,
@@ -45,7 +46,7 @@ const CHECKS: Check[] = [
     name: "Already published",
     question: "Is this report the same work as the record found?",
     fix: "If this is your own earlier publication, say so when you ask for a review.",
-    model: DEFAULT_LLM,
+    model: DREX,
     threshold: 0.5,
     // A match goes to a reviewer: the author may be the one who published it.
     blocking: false,
@@ -57,7 +58,7 @@ const CHECKS: Check[] = [
     name: "No hate speech or harassment",
     question: "Is the text free of hate speech, harassment and threats against people? Research that studies these as its subject is fine.",
     fix: "Take out the passages that attack people, then upload the PDF again.",
-    model: JEV,
+    model: DREX,
     threshold: 0.7,
     blocking: true,
     enabled: true,
@@ -67,7 +68,7 @@ const CHECKS: Check[] = [
     name: "Research, not advertising",
     question: "Is this a research output, rather than an advertisement, a sales brochure or a page that mostly links to unrelated sites?",
     fix: "Openscholar Reports publishes research. If yours is, ask for a review and say what the check missed.",
-    model: DEFAULT_LLM,
+    model: DREX,
     threshold: 0.7,
     blocking: false,
     enabled: true,
@@ -91,7 +92,7 @@ async function seedSettings(): Promise<Settings> {
     },
     publicationSavedAt: Date.now() - 6 * DAY,
     // One new report a day for each person, until an admin gives someone their own limit.
-    limits: { perDay: 1, overrides: [] },
+    limits: { perDay: 1, orgPerDay: 0, overrides: [] },
     metadataModel: DEFAULT_LLM,
     checks: CHECKS,
     checksVersion: 3,
@@ -201,7 +202,7 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
       answer: fails ? "no" : "yes",
       confidence,
       threshold: check.threshold,
-      ...(check.model.id === JEV.id ? {} : { reasoning: "A study with a method, data and findings. It names no product and links only to the data repository." }),
+      ...(isDecisionModel(check.model.id) ? {} : { reasoning: "A study with a method, data and findings. It names no product and links only to the data repository." }),
     };
   });
   return {

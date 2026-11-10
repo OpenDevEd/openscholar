@@ -68,7 +68,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
-import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, changesOf, correctionStageOf, doiOf, providersOf, stageOf, wantsReviewer, type Account, type Check as CheckDef, type Email, type LimitOverride, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { DREX, REVIEW_TEXT_MAX, bylineOf, canRegister, changesOf, correctionStageOf, doiOf, providersOf, stageOf, wantsReviewer, type Account, type Check as CheckDef, type Email, type LimitOverride, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -791,7 +791,7 @@ function Limits({
   /** Who each limit is for, as Clerk had them when the page loaded. */
   known: Account[];
   update: Dispatch<SetStateAction<Settings>>;
-  save: (patch: { perDay: number }) => void;
+  save: (patch: { perDay: number } | { orgPerDay: number }, saved?: string) => void;
 }) {
   // Who each limit is for is kept apart from the settings and only ever added to, so nothing the server answers with
   // can take a photo or a name off a row.
@@ -824,8 +824,12 @@ function Limits({
   return (
     <Zone label="Limits">
       <ul className={LIST}>
-        <Row label="New reports a day" hint="For each person. Each one reserves a DOI and is read by the model.">
-          <SavedInput value={String(limits.perDay)} onSave={(value) => save({ perDay: Number(value) })} className="w-20 text-end tabular-nums" />
+        {/* Each workspace has its own number of new reports a day, and every report started in it counts against it. */}
+        <Row label="A person's own workspace" hint="New reports a day. Each one reserves a DOI and is read by the model.">
+          <SavedInput value={String(limits.perDay)} onSave={(value) => save({ perDay: Number(value) }, "Limit saved")} className="w-20 text-end tabular-nums" ariaLabel="New reports a day in a person's own workspace" />
+        </Row>
+        <Row label="An organisation's workspace" hint="New reports a day, shared by its members. Anyone can make an organisation, so it stays at 0 until you open one below.">
+          <SavedInput value={String(limits.orgPerDay ?? 0)} onSave={(value) => save({ orgPerDay: Number(value) }, "Limit saved")} className="w-20 text-end tabular-nums" ariaLabel="New reports a day in an organisation's workspace" />
         </Row>
         {/* A row opens and closes its own height, so the ones under it glide and don't jump. */}
         <AnimatePresence initial={false}>
@@ -837,7 +841,7 @@ function Limits({
                 <IdentityRow className="px-4 py-2.5" avatar={<IdentityAvatar name={who.name} imageUrl={who.imageUrl} kind={o.kind} className="size-9" />} name={who.name} detail={who.detail}>
                   <SavedInput value={String(o.perDay)} onSave={(value) => set(o, Number(value))} className="w-20 text-end tabular-nums" ariaLabel={`${who.name}'s reports a day`} />
                   <span className="shrink-0 text-xs text-muted-foreground">a day</span>
-                  <TooltipHint label="Back to everyone's limit">
+                  <TooltipHint label={o.kind === "person" ? "Back to the limit for people" : "Back to the limit for organisations"}>
                     <Button variant="ghost" size="icon-sm" aria-label={`Remove ${who.name}'s limit`} className="text-muted-foreground hover:text-destructive" onClick={() => remove(o)}>
                       <Trash2 />
                     </Button>
@@ -884,7 +888,7 @@ function AccountPicker({ accounts, has, onPick }: { accounts: Accounts; has: (id
     >
       <PopoverTrigger asChild>
         <Button variant="outline">
-          <UserPlus /> Give someone a limit of their own
+          <UserPlus /> Give a person or an organisation its own limit
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
@@ -1158,7 +1162,7 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckDef; onEdit:
 
 /** The longest "how to fix it" line a check carries. */
 const FIX_MAX = 300;
-const BLANK: CheckDef = { id: "", name: "", question: "", model: JEV, threshold: 0.7, blocking: true, enabled: true };
+const BLANK: CheckDef = { id: "", name: "", question: "", model: DREX, threshold: 0.7, blocking: true, enabled: true };
 
 /** A check: a yes-or-no question, the model that answers it, how sure of yes it must be, and what a fail does. */
 function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | null; onClose: () => void; onSaved: (s: Settings) => void }) {

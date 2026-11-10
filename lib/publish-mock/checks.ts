@@ -7,7 +7,8 @@ import { changeState, textPath } from "./store";
 import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
-import { decideYesNo, isDecisionModel, paperState } from "@/lib/ai/decisions";
+import { isDecisionModel, paperState } from "@/lib/ai/decisions";
+import { decide } from "./decide";
 import { bylineOf, correctionStageOf, mayChange, providersOf, stageOf, type Answer, type Check, type CheckResult, type Correction, type Metadata, type Settings, type Submission } from "./types";
 
 const QUESTION_RULES = [
@@ -39,7 +40,7 @@ export async function runCheck(check: Check, settings: Settings, draft: Submissi
   }
   const question = askOf(check, settings, draft);
   if (isDecisionModel(check.model.id)) {
-    const { answers } = await decideYesNo({
+    const { answers } = await decide({
       apiKey: process.env.OPENROUTER_API_KEY ?? "",
       model: check.model.id,
       state: paperState({ title: metadata.title, abstract: metadata.abstract, fullText: text }, [question]),
