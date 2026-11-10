@@ -147,18 +147,22 @@ export function PublishFlow() {
   // any other way is already settled.
   const [fresh, setFresh] = useState<{ key: string; step: "doi" | "live" } | null>(null);
   if (listed && fresh) setFresh(null);
-  // The report signed on this page keeps the screens it was signed on, so its agreement gives way to its DOI in one
-  // movement. Any other report gets screens of its own.
-  const [signedHere, setSignedHere] = useState<string | null>(null);
   // Just signed, its report is still on its way: the agreement stays up until it is here, and the page never falls
   // back to its loading frame in between (that would start the screens anew, and the DOI's moment with them).
   const arriving = !listed && found === undefined && fresh?.step === "doi" && fresh.key === shownKey;
   if (held !== null && shownKey === held && found !== undefined && !(found && "report" in found)) setHeld(null);
+  // A report opened from the list: the list stays up, dimmed and inert, until the report is here. The loading frame
+  // in between was a blank flash.
+  const [fromList, setFromList] = useState(false);
+  if (listed !== fromList && (listed || found !== undefined || shownKey === "new")) setFromList(listed);
+  const opening = fromList && !listed && shownKey !== "new" && found === undefined && lastList !== undefined;
+  /** The list is what shows: asked for, or still up while a report opens from it. */
+  const listing = listed || opening;
 
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
-  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined || arriving)));
+  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined || arriving || opening)));
   // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
@@ -178,42 +182,42 @@ export function PublishFlow() {
   // A step the report is sent to is its own from then on, whatever the address said before.
   const ownStep = () => void (at && setPlace({ step: null }));
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
-  const missing = !listed && shownKey !== "new" && !report && !arriving;
+  const missing = !listing && shownKey !== "new" && !report && !arriving;
   const another = () => {
     setFresh(null);
     go({ view: null, report: "new", correct: null });
   };
   const hasReports = (counts?.all ?? 0) > 0;
   // Publishing switched off stops new reports. One already started keeps its address, and the list stays.
-  const closed = !basics.open && !listed && !report && !missing;
+  const closed = !basics.open && !listing && !report && !missing;
 
   return (
     <LibraryPageShell
       icon={PublishIcon}
-      title={listed || missing || closed ? "Publish" : report?.metadata?.title || report?.title || "New report"}
+      title={listing || missing || closed ? "Publish" : report?.metadata?.title || report?.title || "New report"}
       titleAside={report ? <span className="font-mono text-xs text-muted-foreground">{report.key}</span> : undefined}
       // Back to the list, once there is one to go back to.
-      backHref={!listed && hasReports ? "/publish?view=reports" : undefined}
+      backHref={!listing && hasReports ? "/publish?view=reports" : undefined}
       backLabel="Your reports"
       // Back to the list it was opened from is the browser's own step back, so Back afterwards doesn't reopen the report.
       onBackClick={(event) => {
         if (stepBack((behind) => behind.pathname === new URL(event.currentTarget.href).pathname && behind.searchParams.get("view") === "reports")) event.preventDefault();
       }}
       // Another filter is another list: a step in history, opened at its first page.
-      filters={listed && counts ? <StatusFilter counts={counts} show={show} onShow={(next) => go({ view: "reports", show: next, page: null })} /> : undefined}
+      filters={listing && counts ? <StatusFilter counts={counts} show={show} onShow={(next) => go({ view: "reports", show: next, page: null })} /> : undefined}
       // Several reports can be under way at once: a new one starts here, and each counts against the day's limit.
       actions={
-        listed && basics.open ? (
+        listing && basics.open ? (
           <Button size="sm" className={BAR_ACTION} onClick={another}>
             <Plus aria-hidden />
             <span className={BAR_LABEL}>New report</span>
           </Button>
         ) : undefined
       }
-      intro={!listed && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
+      intro={!listing && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
     >
-      {listed ? (
-        <div className={cn("transition-opacity", !list && "opacity-60")} aria-busy={!list || undefined}>
+      {listing ? (
+        <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
           <YourReports
             list={(list ?? lastList)!}
             humanReview={basics.humanReview}
@@ -280,8 +284,9 @@ export function PublishFlow() {
               Publishing is off for new reports for now. You can keep working on this one.
             </p>
           ) : null}
+          {/* One set of screens for every report: going from one to another, or to a new report's agreement, is a
+              change of screen like any other, and what belongs to one report is put away inside (Screens). */}
           <Screens
-            key={report && report.key !== signedHere ? report.key : "here"}
             signed={arriving ? fresh.key : null}
             basics={basics}
             report={report}
@@ -290,9 +295,11 @@ export function PublishFlow() {
             workspaceId={workspaceId}
             fresh={fresh}
             setFresh={setFresh}
-            onSigned={(key) => {
-              setSignedHere(key);
-              void setPlace({ report: key });
+            onSigned={(key) => void setPlace({ report: key })}
+            // A report that is about to stop being under way is named in the address first, in place of the plain
+            // one: a reload, or Back and Forward, then opens it and not a new report's agreement.
+            onNamed={(key) => {
+              if (asked === null) void setPlace({ report: key });
             }}
             onAnother={another}
             correcting={correct}
@@ -320,7 +327,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -346,7 +353,18 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const [typing, setTyping] = useState(false);
   // The checks were asked for here and the report hasn't said so yet: the page shows them running at once.
   const [starting, setStarting] = useState(false);
+  // Another report is another form: what was typed, sent or started for one is never the next one's.
+  const [of, setOf] = useState(report?.key);
+  if (of !== report?.key) {
+    setOf(report?.key);
+    setAttempt(null);
+    setTyping(false);
+    setStarting(false);
+  }
   const here = { workspaceId: workspaceId! };
+  // A change of screen made from the foot of a long form opens the next screen at its top, at once, as a step to
+  // another page does. Left to itself the page slid up over a quarter of a second while the tall form closed.
+  const toTop = () => window.scrollTo({ top: 0 });
   const back = (step: BackStep) => {
     setFresh(null);
     onStep();
@@ -361,8 +379,9 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={screen} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
+      {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
+      <AnimatePresence mode="wait">
+        <motion.div key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           {!report ? (
             <AgreementStep
               basics={basics}
@@ -393,6 +412,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
                 key={report.pdf.at}
                 initial={report.metadata}
                 onRun={async (metadata: Metadata) => {
+                  toTop();
                   setStarting(true);
                   try {
                     await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at } });
@@ -420,6 +440,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               // changed since, they are not kept, and sending them is refused in words.
               onSave={(metadata, since) => void typeChanges({ ...here, key: report.key, since: since!, metadata }).catch(said("Your changes couldn't be saved"))}
               onRun={async (metadata: Metadata, since) => {
+                toTop();
                 setAttempt({ metadata, since: since! });
                 setTyping(false);
                 setStarting(true);
@@ -437,6 +458,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
                 }
               }}
               onCancel={(since) => {
+                toTop();
                 setAttempt(null);
                 setTyping(false);
                 // Cancelling gives up what was typed, here and wherever it was kept: a save sent a moment ago may not
@@ -465,6 +487,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
               // plays its moment only if it opens knowing the report was activated here.
               onActivate={() => {
+                onNamed(report.key);
                 setFresh({ key: report.key, step: "live" });
                 return activate({ ...here, key: report.key }).then(
                   () => undefined,
