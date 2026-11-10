@@ -354,7 +354,10 @@ export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "
  * lifted: Crossref may be on without Zenodo, because Openscholar decides whether its reports are archived there.
  * A refusal comes back as words, not a throw, so it reaches the form.
  * MOCK: sandboxes only, and nothing is checked with Zenodo or Crossref. The real build verifies both and keeps the
- * credentials encrypted, as `publicationProviderActions.verifyAndSave` does for a community.
+ * credentials encrypted, as `publicationProviderActions.verifyAndSave` does for a community. That check already
+ * sends Openscholar's User-Agent (#1186): zenodo.org answers 403 to Node's default `node`, and its sandbox doesn't,
+ * so sandbox passing proves nothing about it. A community's deposits are new-el's worker's, which Zenodo accepts;
+ * a report's will be Openscholar's own calls, and every one of them must send that User-Agent too.
  */
 export async function savePublication(input: { settings: PublicationSettings; credentials: PublicationSecrets; expectedUpdatedAt: number | null }): Promise<{ settings: Settings } | Refused> {
   await requireAdmin();
