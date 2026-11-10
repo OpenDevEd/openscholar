@@ -159,7 +159,7 @@ function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch,
           requestAnimationFrame(() => list.current?.scrollTo({ top: 0 }));
         }}
       />
-      <CommandList ref={list}>
+      <CommandList ref={list} grows={!!onSearch}>
         <CommandEmpty>{emptyText}</CommandEmpty>
         <OptionRows options={complete ? options : options.slice(0, FIRST_ROWS)} selected={selected} onToggle={onToggle} />
       </CommandList>

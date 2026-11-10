@@ -51,7 +51,7 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
   return (
     <Command shouldFilter={false}>
       <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" busy={searching} />
-      <CommandList>
+      <CommandList grows>
         <CommandEmpty>{!search.trim() ? "Type a name, or paste an iD" : people.error ? "ORCID can't be searched now" : people.isLoading ? "Searching ORCID" : "Nobody on ORCID by that name"}</CommandEmpty>
         {typed ? (
           <CommandGroup>
