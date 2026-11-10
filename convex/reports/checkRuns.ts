@@ -8,7 +8,8 @@ import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { bylineOf } from "../../lib/reports/settings";
 import { OWNERS_ONLY, detailsOf, keptDetails, mayChange, touch } from "./flow";
-import { changeStageOf } from "../../lib/reports/report";
+import { changeStageOf, stageOf } from "../../lib/reports/report";
+import { notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, liveSince } from "./corrections";
 import { reportSettings, settingsRow } from "./settings";
 import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, metadataValidator, runFromValidator } from "./validators";
@@ -119,6 +120,7 @@ export const finish = internalMutation({
       const settings = await reportSettings(ctx);
       if (!settings.humanReview && results.every((result) => result.pass)) {
         await applyChanges(ctx, (await ctx.db.get("reports", reportId))!, details, { metadata, results, checksVersion: version });
+        await notify(ctx, reportId, "changes-live");
         return "live" as const;
       }
       // A check the report passed reads the same PDF now: what it says to do about a new PDF can't be done here.
@@ -128,6 +130,9 @@ export const finish = internalMutation({
       await ctx.db.patch("reportDetails", details._id, { correction: { metadata, results: said, checksVersion: version, at: Date.now() } });
       const stage = changeStageOf(details.results, { results: said });
       await touch(ctx, (await ctx.db.get("reports", reportId))!, { changes: stage });
+      // The team hears of changes that wait for a reviewer, and of a check that couldn't answer when nothing waits.
+      if (stage === "review") await notify(ctx, reportId, "changes-waiting");
+      else if (results.some((result) => result.errored)) await notify(ctx, reportId, "check-unfinished");
       return stage;
     }
     if (report.step !== "details") return null;
@@ -141,6 +146,10 @@ export const finish = internalMutation({
       approved: undefined,
       asked: undefined,
     });
+    // The team hears of a report that waits for a reviewer, and of a check that couldn't answer when nothing waits.
+    const checked = (await ctx.db.get("reports", reportId))!;
+    if (stageOf(checked, (await reportSettings(ctx)).humanReview) === "review") await notify(ctx, reportId, "waiting-for-review");
+    else if (results.some((result) => result.errored)) await notify(ctx, reportId, "check-unfinished");
     return null;
   },
 });

@@ -73,7 +73,7 @@ import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./t
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantLimitFields, assistantSpenderFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { checksValidator, reportDetailFields, reportFields, reportFileFields, reportReviewFields, reportSettingsFields } from "./reports/validators";
+import { checksValidator, reportDetailFields, reportFields, reportFileFields, reportReviewFields, reportSettingsFields, reportEmailFields } from "./reports/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 
@@ -618,6 +618,7 @@ export default defineSchema({
     .index("by_workspaceId_and_activatedAt", ["workspaceId", "activatedAt"]),
   reportDetails: defineTable(reportDetailFields).index("by_reportId", ["reportId"]),
   reportReviews: defineTable(reportReviewFields).index("by_reportId", ["reportId"]),
+  reportEmails: defineTable(reportEmailFields).index("by_reportId", ["reportId"]),
   reportFiles: defineTable(reportFileFields).index("by_file", ["file"]),
   // The number the next report's key is made from: one row.
   reportKeys: defineTable({ next: v.number() }),

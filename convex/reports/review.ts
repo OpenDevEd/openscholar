@@ -14,6 +14,7 @@ import { REVIEW_TEXT_MAX, STAGES, changesOf, stageOf, wantsReviewer, type Stage 
 import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
 import { detailsOf, keptDetails, signedAgreement, touch } from "./flow";
+import { notify } from "./mail";
 import { reportSettings } from "./settings";
 import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
 
@@ -104,12 +105,13 @@ export const get = query({
     await requireAdmin(ctx);
     const report = await byKey(ctx, key);
     if (!report) return null;
-    const [details, settings, owner, workspace, reviews] = await Promise.all([
+    const [details, settings, owner, workspace, reviews, emails] = await Promise.all([
       detailsOf(ctx, report._id),
       reportSettings(ctx),
       ctx.db.get("users", report.ownerId),
       workspaceFrom(ctx, report.workspaceId),
       ctx.db.query("reportReviews").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).order("desc").take(REVIEWS_SHOWN),
+      ctx.db.query("reportEmails").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).order("desc").take(REVIEWS_SHOWN),
     ]);
     const reviewers = new Map<Id<"users">, string>();
     for (const review of reviews) if (!reviewers.has(review.by)) reviewers.set(review.by, await ctx.db.get("users", review.by).then((user) => (user && personName(user)) || "A reviewer"));
@@ -131,6 +133,7 @@ export const get = query({
       ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
       ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       reviews: reviews.reverse().map(({ decision, by, at, note }) => ({ decision, by: reviewers.get(by)!, at, ...(note && { note }) })),
+      emails: emails.reverse().map(({ event, audience, at, error }) => ({ event, audience, at, ...(error && { failed: true }) })),
       humanReview: settings.humanReview,
     };
   },
@@ -160,6 +163,7 @@ export const decide = mutation({
       if (stage !== "declined" || !report.withdrawnAt) throw createError("CONFLICT", "Only a withdrawn report can be reinstated.");
       await touch(ctx, report, { status: "live", withdrawnAt: undefined, note: undefined });
       await record(ctx, report._id, reviewer._id, "reinstate");
+      await notify(ctx, report._id, "reinstated");
       return null;
     }
     if (stage === "declined") throw createError("CONFLICT", report.withdrawnAt ? "This report was already withdrawn." : "This report was already declined.");
@@ -169,6 +173,7 @@ export const decide = mutation({
       if (stage !== "live") throw createError("CONFLICT", "This report isn't live, so there is nothing to withdraw.");
       await touch(ctx, report, { status: "declined", withdrawnAt: Date.now(), note: words });
       await record(ctx, report._id, reviewer._id, "withdraw", words);
+      await notify(ctx, report._id, "withdrawn");
       return null;
     }
     if (stage === "live") throw createError("CONFLICT", "This report went live since you opened it. Withdraw it if it shouldn't be.");
@@ -177,10 +182,12 @@ export const decide = mutation({
       // Approving lets the author activate it; the author decides when it goes live.
       await touch(ctx, report, { approved: true });
       await record(ctx, report._id, reviewer._id, "approve");
+      await notify(ctx, report._id, "approved");
       return null;
     }
     await touch(ctx, report, { status: "declined", note: words });
     await record(ctx, report._id, reviewer._id, "decline", words);
+    await notify(ctx, report._id, "declined");
     return null;
   },
 });
@@ -204,12 +211,14 @@ export const decideChanges = mutation({
     if (decision === "approve") {
       await applyChanges(ctx, report, details, waiting);
       await record(ctx, report._id, reviewer._id, "approve-changes");
+      await notify(ctx, report._id, "changes-live");
       return null;
     }
     const words = said(note);
     await ctx.db.patch("reportDetails", details._id, { correction: { ...waiting, declined: { at: Date.now(), ...(words && { note: words }) } } });
     await touch(ctx, report, { changes: "declined" });
     await record(ctx, report._id, reviewer._id, "decline-changes", words);
+    await notify(ctx, report._id, "changes-declined");
     return null;
   },
 });
@@ -244,6 +253,7 @@ export const editDetails = mutation({
       await touch(ctx, report, { title: kept.title.trim() });
     }
     await record(ctx, report._id, reviewer._id, "edit", changed.slice(0, REVIEW_TEXT_MAX));
+    await notify(ctx, report._id, "details-edited", changed.slice(0, REVIEW_TEXT_MAX));
     return changed;
   },
 });
@@ -269,10 +279,28 @@ export const release = internalMutation({
       // Changes a check failed wait on a person whatever the setting says.
       if (report.status !== "live" || !changes || changes.declined || changes.results.some((result) => !result.pass)) continue;
       await applyChanges(ctx, report, details, changes);
+      await notify(ctx, report._id, "changes-live");
       released += 1;
     }
     // Those released left the index's range; the rest of this step stay, so a full step with any released has more behind it.
     if (waiting.length === RELEASED_PER_STEP && released > 0) await ctx.scheduler.runAfter(0, internal.reports.review.release, {});
+    return null;
+  },
+});
+
+/**
+ * Tells the authors whose reports waited only for a reviewer that they can activate them now, once review is
+ * switched off. ponytail: the newest RELEASED_PER_STEP passed reports are told; with more than that waiting, the
+ * older ones find out on Publish. Page through them if that ever happens.
+ */
+export const tellReleased = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    if ((await reportSettings(ctx)).humanReview) return null;
+    const passed = await ctx.db.query("reports").withIndex("by_status_and_updatedAt", (q) => q.eq("status", "passed")).order("desc").take(RELEASED_PER_STEP);
+    // One a reviewer approved was already its author's to activate, and one a check flagged still waits for a person.
+    for (const report of passed) if (!report.approved && !report.flagged) await notify(ctx, report._id, "released");
     return null;
   },
 });

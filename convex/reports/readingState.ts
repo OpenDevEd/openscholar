@@ -4,6 +4,7 @@ import { internalMutation, internalQuery } from "../lib/functions";
 import { slugPick } from "../ai/serverModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { detailsOf, keptDetails, touch } from "./flow";
+import { notify } from "./mail";
 import { reportSettings } from "./settings";
 import { metadataValidator } from "./validators";
 
@@ -36,11 +37,13 @@ export const finish = internalMutation({
     }
     if (!metadata) {
       await touch(ctx, report, { pdf: { ...report.pdf, trouble: "unopened" } });
+      await notify(ctx, reportId, "pdf-unopened");
       return null;
     }
     if (text) await ctx.db.insert("reportFiles", { file: text, reportId });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { metadata: keptDetails(metadata) });
     await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: metadata.title.trim() || undefined });
+    if (trouble === "unread") await notify(ctx, reportId, "pdf-unread");
     return null;
   },
 });

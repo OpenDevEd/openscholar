@@ -27,7 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
-import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, PenLine, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
+import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, Mail, PenLine, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { REVIEW_TEXT_MAX, changesOf, stageOf, type Metadata, type Stage } from "@/lib/reports/report";
@@ -412,6 +413,23 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   ))}
                 </ul>
               ) : null}
+              {/* What the team's inbox and the author were emailed about it, in order. */}
+              {(["team", "author"] as const).map((audience) => {
+                const told = s.emails.filter((email) => email.audience === audience);
+                return told.length ? (
+                  <div key={audience} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="size-3.5" /> {audience === "team" ? `Emailed to ${CONTACT_EMAIL}` : "Emailed to the author"}
+                    </span>
+                    {told.map((email) => (
+                      <span key={`${email.at}:${email.event}`} className={cn("font-medium text-foreground/80", email.failed && "text-destructive line-through")}>
+                        {email.event}
+                        {email.failed ? <span className="sr-only"> (couldn&apos;t be sent)</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : null;
+              })}
               {s.metadata?.abstract ? <p className="line-clamp-5 text-sm/6 text-muted-foreground">{s.metadata.abstract}</p> : null}
               {s.metadata ? <Subjects m={s.metadata} /> : null}
               {s.status === "declined" && s.note ? <p className="whitespace-pre-wrap break-words rounded-xl bg-inset p-3 text-sm">{s.note}</p> : null}

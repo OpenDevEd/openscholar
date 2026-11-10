@@ -243,6 +243,8 @@ export const adminReportValidator = v.object({
   correctedAt: v.optional(v.number()),
   /** Reviewers' words on it, oldest first, each by name. */
   reviews: capped(v.array(v.object({ decision: reviewDecisionValidator, by: v.string(), at: v.number(), note: v.optional(v.string()) })), 50),
+  /** The emails about it, oldest first: what each was and who it went to. `failed` when it couldn't be sent. */
+  emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),
 });
 export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
@@ -250,3 +252,7 @@ export const signedAgreementValidator = v.object({ text: v.string(), version: v.
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
 export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), updatedAt: v.number() });
 export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
+
+/** An email about a report, kept on its record: who it went to, what it said, and why it didn't go if it didn't. */
+export const mailAudienceValidator = v.union(v.literal("team"), v.literal("author"));
+export const reportEmailFields = { reportId: v.id("reports"), event: v.string(), audience: mailAudienceValidator, subject: v.string(), text: v.string(), at: v.number(), error: v.optional(v.string()) };

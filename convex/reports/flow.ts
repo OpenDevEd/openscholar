@@ -13,6 +13,7 @@ import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
+import { notify } from "./mail";
 import { reportSettings, settingsRow } from "./settings";
 import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
 
@@ -73,14 +74,15 @@ export async function forget(ctx: MutationCtx, ...files: Array<Id<"_storage"> | 
   }
 }
 
-/** A removed report's reviewer decisions deleted with it: far more than one that never went live collects. */
+/** A removed report's reviewer decisions, and the emails about it, deleted with it: far more than one that never went live collects. */
 const REVIEWS_REMOVED = 100;
 
-/** Deletes a report with everything kept for it: its PDF, the PDF's text, its cover, its details and what reviewers said of it. */
+/** Deletes a report with everything kept for it: its PDF, the PDF's text, its cover, its details, what reviewers said of it and the emails about it. */
 export async function removeReport(ctx: MutationCtx, report: Doc<"reports">) {
   await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
   // Only a deleted workspace's report has any: one its author can discard was never declined or approved.
   for (const review of await ctx.db.query("reportReviews").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).take(REVIEWS_REMOVED)) await ctx.db.delete("reportReviews", review._id);
+  for (const email of await ctx.db.query("reportEmails").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).take(REVIEWS_REMOVED)) await ctx.db.delete("reportEmails", email._id);
   await ctx.db.delete("reportDetails", (await detailsOf(ctx, report._id))._id);
   await ctx.db.delete("reports", report._id);
 }
@@ -286,6 +288,7 @@ export const requestReview = workspaceMutation({
     if (report.asked) return null;
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } });
     await touch(ctx, report, { asked: true });
+    await notify(ctx, report._id, "review-requested");
     return null;
   },
 });
@@ -309,6 +312,8 @@ export const activate = workspaceMutation({
     if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
     const registers = providersOf(report.registration);
     await touch(ctx, report, { status: "live", activatedAt: Date.now(), deposit: registers.includes("crossref") ? "queued" : "none", archive: registers.includes("zenodo") ? "queued" : "none" });
+    await notify(ctx, report._id, "live");
+    await notify(ctx, report._id, "live-author");
     return null;
   },
 });
@@ -337,6 +342,7 @@ export const requestChangesReview = workspaceMutation({
     if (report.changes === "review") return null;
     await ctx.db.patch("reportDetails", details._id, { correction: { ...correction, request: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } } });
     await touch(ctx, report, { changes: "review" });
+    await notify(ctx, report._id, "changes-review-requested");
     return null;
   },
 });
