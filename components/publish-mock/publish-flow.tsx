@@ -4,7 +4,7 @@
 // upload the PDF with the byline on it; correct the details read from it; the checks run; it goes live, or waits for
 // review. Its state lives in the mock's local store (app/actions/publish-mock.ts).
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
@@ -122,8 +122,8 @@ function taken<T extends object>(result: T | Refused): T {
 }
 
 /** What to tell an author whose report moved on while they watched it: a reviewer's word, or changes gone live. */
-function newsOf(was: Submission, now: Submission, settings: Settings): { good: boolean; words: string } | null {
-  const before = stageOf(was, settings);
+function newsOf(was: Submission, now: Submission, settingsWere: Settings, settings: Settings): { good: boolean; words: string } | null {
+  const before = stageOf(was, settingsWere);
   const after = stageOf(now, settings);
   if (before !== after && after === "ready") return { good: true, words: now.approved ? "A reviewer approved your report" : "Your report can be activated now" };
   if (before !== after && after === "declined") return { good: false, words: now.withdrawnAt ? "A reviewer withdrew your report" : "A reviewer declined your report" };
@@ -145,7 +145,7 @@ const PLACE = {
 };
 
 export function PublishFlow({
-  settings,
+  settings: initialSettings,
   reports: initialReports,
   userName,
   signedIn,
@@ -162,6 +162,10 @@ export function PublishFlow({
   /** Moves to another report or view, so the back button returns to this one. */
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push" });
   const [reports, setReports] = useState(initialReports);
+  // Whether review is on decides where a report stands, and an admin can switch it while this page is open: the
+  // re-read below brings it along with the report.
+  const [humanReview, setHumanReview] = useState(initialSettings.humanReview);
+  const settings = useMemo(() => ({ ...initialSettings, humanReview }), [initialSettings, humanReview]);
   /** A report as an action left it, newest first as the list came. */
   const keep = (next: Submission) => setReports((all) => [next, ...all.filter((r) => r.id !== next.id)].sort((a, b) => b.updatedAt - a.updatedAt));
   // The report shown is the one the address names; with none named, the only one under way, as the server opens it.
@@ -182,7 +186,7 @@ export function PublishFlow({
   // A live report stays live while the checks read changes to it.
   const place = busy && !live ? 4 : placeOf(draft);
   /** The report as the server has it now, after something here turned out to be behind it. */
-  const reread = (id: string) => void readReport(id).then((next) => next && keep(next), () => undefined);
+  const reread = (id: string) => void readReport(id).then((now) => now && keep(now.report), () => undefined);
   const back = (to: Step) => {
     setFresh(null);
     if (!draft) return;
@@ -235,11 +239,14 @@ export function PublishFlow({
     const timer = setInterval(
       () =>
         void readReport(watched.id).then(
-          (next) => {
+          (now) => {
+            if (!on || !now) return;
+            const { report: next, humanReview: review } = now;
             // Kept only when something changed, so nothing redraws on a quiet answer.
-            if (!on || !next || JSON.stringify(next) === JSON.stringify(watched)) return;
-            const news = newsOf(watched, next, settings);
+            if (review === settings.humanReview && JSON.stringify(next) === JSON.stringify(watched)) return;
+            const news = newsOf(watched, next, settings, { ...settings, humanReview: review });
             if (news) (news.good ? toast.success : toast.info)(news.words);
+            setHumanReview(review);
             setReports((all) => all.map((r) => (r.id === next.id ? next : r)));
           },
           () => undefined,
@@ -383,8 +390,9 @@ export function PublishFlow({
                   draft={draft}
                   correction={draft.correction}
                   onEdit={() => go({ correct: true })}
-                  onDiscard={() => discardCorrection(draft.id).then(taken).then(keep)}
-                  onRequestReview={(comment) => requestCorrectionReview(draft.id, comment).then(taken).then(keep)}
+                  // Each names the changes on this screen, so ones sent since from another tab are never the ones touched.
+                  onDiscard={() => discardCorrection(draft.id, draft.correction!.at).then(taken).then(keep, (error: unknown) => (reread(draft.id), Promise.reject(error)))}
+                  onRequestReview={(comment) => requestCorrectionReview(draft.id, draft.correction!.at, comment).then(taken).then(keep, (error: unknown) => (reread(draft.id), Promise.reject(error)))}
                 />
               ) : live ? (
                 <LiveReport onCorrect={() => go({ correct: true })} settings={settings} draft={draft} fresh={fresh?.id === draft.id && fresh.step === "live"} onChange={keep} onAnother={another} />

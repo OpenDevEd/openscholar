@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { PublishFlow } from "@/components/publish-mock/publish-flow";
 import { organizationsOf } from "@/lib/publish-mock/admin";
 import { readState } from "@/lib/publish-mock/store";
-import { authorSettings, canPublish, limitFor, reportsUnderWay, startsLeft } from "@/lib/publish-mock/types";
+import { authorSettings, canPublish, forAuthor, limitFor, reportsUnderWay, startsLeft } from "@/lib/publish-mock/types";
 
 export const metadata: Metadata = { title: "Publish | Openscholar" };
 
@@ -19,7 +19,7 @@ export default async function PublishPage({ searchParams }: { searchParams: Prom
   // A link to a report is its author's to open: signing in comes back to it.
   if (!user && report && report !== "new") return (await auth()).redirectToSignIn({ returnBackUrl: `/publish?report=${encodeURIComponent(report)}` });
   // Yours: the reports you started, and the mock's samples. Newest first.
-  const reports = state.submissions.filter((s) => s.demo || (user && s.ownerId === user.id)).sort((a, b) => b.updatedAt - a.updatedAt);
+  const reports = state.submissions.filter((s) => s.demo || (user && s.ownerId === user.id)).sort((a, b) => b.updatedAt - a.updatedAt).map(forAuthor);
   // Publish with no report named carries on with the one under way, at its own address. With several under way it
   // opens the list to pick from; with none, a new report.
   const underWay = !report && view !== "reports" ? reportsUnderWay(reports) : [];

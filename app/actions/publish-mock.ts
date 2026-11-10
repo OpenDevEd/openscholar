@@ -5,7 +5,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { cookies, headers } from "next/headers";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
-import { accountOf, accountsMatching, organizationsOf, requireAdmin } from "@/lib/publish-mock/admin";
+import { accountOf, accountsMatching, isAdmin, organizationsOf, requireAdmin } from "@/lib/publish-mock/admin";
 import { applyCorrection } from "@/lib/publish-mock/checks";
 import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
@@ -13,7 +13,7 @@ import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceL
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
 import { SITE_URL } from "@/lib/seo/page-metadata";
-import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, correctionStageOf, isMetadata, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, correctionStageOf, forAuthor, isMetadata, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -30,14 +30,24 @@ const refuse = (words: string): never => {
 };
 async function answered<T>(run: () => Promise<T>): Promise<T | Refused> {
   try {
-    return await run();
+    return shown(await run());
   } catch (error) {
     if (error instanceof Refusal) return { refused: error.message };
     throw error;
   }
 }
+/** An author action's answer with every report in it as an author's page may have it (`forAuthor`). */
+function shown<T>(answer: T): T {
+  if (typeof answer !== "object" || answer === null) return answer;
+  const a = answer as Record<string, unknown>;
+  const report = (value: unknown) => (typeof value === "object" && value !== null && "doi" in value && "step" in value ? forAuthor(value as Submission) : value);
+  return ("doi" in a && "step" in a ? forAuthor(answer as unknown as Submission) : { ...a, ...("draft" in a ? { draft: report(a.draft) } : {}), ...("report" in a ? { report: report(a.report) } : {}) }) as T;
+}
 /** What a refusal says when the report moved on in another tab or under a reviewer's hand. */
 const MOVED_ON = "This report has moved on since this page loaded. Reload to see where it stands.";
+
+/** What a reviewer is told when their word can't be taken because they are signed out or no longer an admin. */
+const NOT_ADMIN: Refused = { refused: "You're signed out, or no longer an admin. Sign in again to review." };
 
 /** Where an email's links start: the address this request came to, or the site's own when it names none. */
 const here = async () => (await headers()).get("origin") ?? SITE_URL;
@@ -97,7 +107,7 @@ export async function signAgreement({ name, onBehalfOfAll, version }: { name: st
       updatedAt: Date.now(),
     };
     state.submissions.unshift(draft);
-    return { draft };
+    return { draft: forAuthor(draft) };
   });
 }
 
@@ -222,38 +232,43 @@ export async function readPdfDetails(id: string): Promise<{ draft: Submission; r
 }
 
 /** A live report of this person's with changes waiting, or a refusal in words. */
-function waitingChanges(state: MockState, id: string, userId: string | null): { report: Submission; correction: Correction } | Refused {
+function waitingChanges(state: MockState, id: string, userId: string | null, seenAt: number): { report: Submission; correction: Correction } | Refused {
   const report = userId ? state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId)) : undefined;
-  return report?.status === "live" && report.correction ? { report, correction: report.correction } : { refused: "This report has no changes waiting any more. Reload to see where it stands." };
+  if (report?.status !== "live" || !report.correction) return { refused: "This report has no changes waiting any more. Reload to see where it stands." };
+  // The changes on the screen the action came from, by when they were checked: ones sent since, say from another
+  // tab, are never the ones discarded or asked about.
+  if (report.correction.at !== seenAt) return { refused: "You changed the details again since this page loaded. Reload to see those changes." };
+  return { report, correction: report.correction };
 }
 
 /**
  * The author of changes a check refused asks a person to look, with what they think the check got wrong. The
  * changes then wait for a reviewer, and the team's inbox hears of them.
  */
-export async function requestCorrectionReview(id: string, comment: string): Promise<Submission | Refused> {
+export async function requestCorrectionReview(id: string, seenAt: number, comment: string): Promise<Submission | Refused> {
   const { userId } = await auth();
   const origin = await here();
   return change((state) => {
-    const found = waitingChanges(state, id, userId);
+    const found = waitingChanges(state, id, userId, seenAt);
     if ("refused" in found) return found;
     const { report, correction } = found;
     const stage = correctionStageOf(report, correction);
     if (stage === "declined") return { refused: "A reviewer declined these changes since this page loaded. Reload to see their note." };
     // Already with a reviewer: asking again tells no one anything new.
-    if (stage === "review") return report;
+    if (stage === "review") return forAuthor(report);
     correction.request = { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() };
     mail(state, "changes-review-requested", report, origin);
-    return touch(report, {});
+    return forAuthor(touch(report, {}));
   });
 }
 
 /** The author gives up changes that haven't gone live. The report stays as it is. */
-export async function discardCorrection(id: string): Promise<Submission | Refused> {
+export async function discardCorrection(id: string, seenAt: number): Promise<Submission | Refused> {
   const { userId } = await auth();
   return change((state) => {
-    const found = waitingChanges(state, id, userId);
-    return "refused" in found ? found : touch(found.report, { correction: undefined });
+    const found = waitingChanges(state, id, userId, seenAt);
+    // A run still reading changes is given up with them: its answers must not put anything live afterwards.
+    return "refused" in found ? found : forAuthor(touch(found.report, { correction: undefined, run: undefined }));
   });
 }
 
@@ -416,7 +431,7 @@ export async function requestReview(id: string, comment: string): Promise<Submis
  * says it was withdrawn, since its DOI can't be removed. A withdrawn report can be reinstated, which makes it live again.
  */
 export async function review(id: string, decision: "approve" | "decline" | "withdraw" | "reinstate", seenPdfAt: number | undefined, note?: string): Promise<Submission | Refused> {
-  await requireAdmin();
+  if (!(await isAdmin())) return NOT_ADMIN;
   const user = await currentUser();
   const origin = await here();
   // By name only: a reviewer's address never goes on a report its author reads.
@@ -462,7 +477,7 @@ export async function review(id: string, decision: "approve" | "decline" | "with
  * changes the reviewer read, so changes the author has since replaced are never the ones decided.
  */
 export async function reviewCorrection(id: string, decision: "approve" | "decline", seenAt: number, note?: string): Promise<Submission | Refused> {
-  await requireAdmin();
+  if (!(await isAdmin())) return NOT_ADMIN;
   const user = await currentUser();
   const origin = await here();
   const by = user?.fullName || "A reviewer";
@@ -507,12 +522,16 @@ export async function activate(id: string): Promise<Submission | Refused> {
   });
 }
 
-/** One of your reports as it stands now. MOCK: the live page asks again while a registration is under way; the
- * real build is told by Convex. */
+/**
+ * One of your reports as it stands now, with the one setting its stage is worked out from, so a page left open
+ * follows both a reviewer's word and review being switched on or off. MOCK: the page asks again every few seconds;
+ * the real build is told by Convex.
+ */
 export async function readReport(id: string) {
-  const user = await currentUser();
+  const { userId } = await auth();
   const state = await readState();
-  return state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id))) ?? null;
+  const report = state.submissions.find((s) => s.id === id && (s.demo || (userId && s.ownerId === userId)));
+  return report ? { report: forAuthor(report), humanReview: state.settings.humanReview } : null;
 }
 
 /**

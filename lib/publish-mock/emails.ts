@@ -4,6 +4,7 @@
 // sends each from a Convex action through the platform's mail service, as convex/contactMail.ts does.
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { labelledEmail } from "@/lib/contact";
+import { SITE_URL } from "@/lib/seo/page-metadata";
 import { changesOf, type Email, type MockState, type Submission } from "./types";
 
 type Row = readonly [string, string];
@@ -104,8 +105,10 @@ const EVENTS = {
 export type MailEvent = keyof typeof EVENTS;
 
 /** Sends one email about a report: to the team's inbox with replies going to the author, or to the author with replies going to the team. */
-export function mail(state: MockState, event: MailEvent, report: Submission, origin: string) {
+export function mail(state: MockState, event: MailEvent, report: Submission, from: string) {
   const { to, label, heading, rows }: Event = EVENTS[event];
+  // A link in an email is never relative: with no address to start from, it starts from the site's own.
+  const origin = from || SITE_URL;
   const author = report.signedBy?.email ?? "";
   // An author with no address on their signature can't be written to.
   if (to === "author" && !author) return;

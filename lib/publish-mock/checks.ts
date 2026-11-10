@@ -8,7 +8,7 @@ import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 import { decideYesNo, isDecisionModel, paperState } from "@/lib/ai/decisions";
-import { bylineOf, changesOf, correctionStageOf, providersOf, stageOf, type Answer, type Check, type CheckResult, type Correction, type Metadata, type Settings, type Submission } from "./types";
+import { bylineOf, correctionStageOf, providersOf, stageOf, type Answer, type Check, type CheckResult, type Correction, type Metadata, type Settings, type Submission } from "./types";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -74,9 +74,11 @@ export async function checksFor(id: string, userId: string, metadata: Metadata, 
     if (correction) {
       // A live report stays as it is while the checks read the corrected details: only the run is marked on it.
       if (draft.status !== "live" || draft.step !== "done") throw new Error("This report isn't live any more, so its details can't be changed. Reload to see where it stands.");
-      // Changes put back to what the report already says are no changes: any that were waiting are given up.
-      if (draft.metadata && !changesOf(draft.metadata, metadata).length) {
-        draft.correction = undefined;
+      // Details put back to exactly what the report already says are no changes: any that were waiting are given
+      // up, and so is a run still reading them, which must not put them live afterwards. Compared whole, so a
+      // change a reader of the page can't see, such as an institution's catalogue ID, still counts as one.
+      if (JSON.stringify(draft.metadata) === JSON.stringify(metadata)) {
+        Object.assign(draft, { correction: undefined, run: undefined });
         return { unchanged: true as const };
       }
       draft.run = crypto.randomUUID();

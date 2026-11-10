@@ -217,6 +217,21 @@ export type Submission = {
   updatedAt: number;
 };
 
+/**
+ * A report as its author's page is sent it: what its screens show. Left out are the address on its signature, the
+ * model behind each check's answer, who reviewed it, and the run under way.
+ */
+export function forAuthor(s: Submission): Submission {
+  const plain = (results: CheckResult[] | undefined) => results?.map((r) => ({ ...r, model: "" }));
+  return {
+    ...s,
+    run: undefined,
+    reviews: undefined,
+    signedBy: s.signedBy && { ...s.signedBy, email: "" },
+    results: plain(s.results),
+    correction: s.correction && { ...s.correction, results: plain(s.correction.results) ?? [] },
+  };
+}
 /** What an action answers when it can't do what was asked: the reason, in words for the person. */
 export type Refused = { refused: string };
 /** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
