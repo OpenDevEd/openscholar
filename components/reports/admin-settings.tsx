@@ -30,7 +30,8 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { FileText, Hash, PenLine, Pencil, Plus, Trash2, UserPlus } from "@/components/icons";
+import { ArrowUpRight, FileText, Hash, PenLine, Pencil, Plus, Trash2, UserPlus } from "@/components/icons";
+import { ACTIVATION_PRICE, useActivationMock } from "@/lib/reports/activation-mock";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -151,7 +152,7 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
         </ul>
       </Zone>
 
-      <Limits settings={settings} limits={limits} save={save} />
+      <Limits limits={limits} />
 
       <Zone label="Series">
         <ul className={LIST}>
@@ -260,26 +261,42 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
 
 const LIMITS_PER_PAGE = 8;
 const LIMIT_ROW = 57;
-/** What a workspace newly given a limit of its own starts with; the admin changes it in its row. */
+/** What a workspace newly given its own number of free activations starts with; the admin changes it in its row. */
 const OWN_LIMIT = 5;
 
 /**
- * How many reports a workspace may start in a day, and the people and organisations with a limit of their own,
- * shown as people and organisations are everywhere else in the app.
+ * What an activation costs, how many a workspace activates free each day, and the people and organisations with a
+ * number of their own, shown as people and organisations are everywhere else in the app.
  */
-function Limits({ settings, limits, save }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; save: (patch: { perDay: number } | { orgPerDay: number }, saved: string) => Promise<boolean> }) {
+function Limits({ limits }: { limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>> }) {
   const set = useMutation(api.reports.limits.set);
   const remove = useMutation(api.reports.limits.remove);
+  // MOCK (mock/activation-payment): the daily numbers count free activations, not new reports, and the two for every
+  // workspace are the mock's (lib/reports/activation-mock.ts), so trying them doesn't change the real limit on starts.
+  // New reports a day are the plan's, set in Autumn. The workspaces listed below are still the real ones.
+  const mock = useActivationMock();
+  const saveFree = (kind: "personal" | "organization", value: string) => {
+    mock.set({ freePerDay: { ...mock.freePerDay, [kind]: dailyLimit(Number(value)) } });
+    toast.success("Free activations saved");
+    return Promise.resolve(true);
+  };
   return (
-    <Zone label="Limits">
+    <Zone label="Free activations">
       <Paged pager={{ list: limits, size: LIMITS_PER_PAGE }} rowHeight={LIMIT_ROW} label="limits">
         <ul className={LIST}>
-          {/* Each workspace has its own number of new reports a day, and every report started in it counts against it. */}
-          <Row label="A person's own workspace" hint="New reports a day. Each one reserves a DOI and is read by the model.">
-            <SavedInput value={String(settings.perDay)} numeric onSave={(value) => save({ perDay: Number(value) }, "Limit saved")} className="w-20 text-end tabular-nums" ariaLabel="New reports a day in a person's own workspace" />
+          <Row label="Price" hint="What an activation costs past the free ones. It's the Report activation plan's price in Autumn.">
+            <Button variant="outline" size="sm" asChild>
+              <a href="https://autumn.opendev.space" target="_blank" rel="noopener noreferrer">
+                ${ACTIVATION_PRICE} <ArrowUpRight />
+              </a>
+            </Button>
           </Row>
-          <Row label="An organisation's workspace" hint="New reports a day, shared by its members. Anyone can make an organisation, so it stays at 0 until you open one below.">
-            <SavedInput value={String(settings.orgPerDay)} numeric onSave={(value) => save({ orgPerDay: Number(value) }, "Limit saved")} className="w-20 text-end tabular-nums" ariaLabel="New reports a day in an organisation's workspace" />
+          {/* Each workspace has its own number of free activations a day, and every activation in it counts against it. */}
+          <Row label="A person's own workspace" hint="Activations a day that cost nothing. A saved card is still needed.">
+            <SavedInput value={String(mock.freePerDay.personal)} numeric onSave={(value) => saveFree("personal", value)} className="w-20 text-end tabular-nums" ariaLabel="Free activations a day in a person's own workspace" />
+          </Row>
+          <Row label="An organisation's workspace" hint="Activations a day that cost nothing, shared by its members.">
+            <SavedInput value={String(mock.freePerDay.organization)} numeric onSave={(value) => saveFree("organization", value)} className="w-20 text-end tabular-nums" ariaLabel="Free activations a day in an organisation's workspace" />
           </Row>
           {/* A row opens and closes its own height, so the ones under it glide and don't jump. */}
           <AnimatePresence initial={false}>
@@ -292,16 +309,16 @@ function Limits({ settings, limits, save }: { settings: Settings; limits: Return
                     disabled={!row.account}
                     onSave={(value) =>
                       set({ account: row.account!, perDay: Number(value) }).then(
-                        () => (toast.success("Limit saved"), true),
+                        () => (toast.success("Free activations saved"), true),
                         (error) => (failed(error), false),
                       )
                     }
                     className="w-20 text-end tabular-nums"
-                    ariaLabel={`${row.name}'s reports a day`}
+                    ariaLabel={`${row.name}'s free activations a day`}
                   />
-                  <span className="shrink-0 text-xs text-muted-foreground">a day</span>
-                  <TooltipHint label={row.kind === "personal" ? "Back to the limit for people" : "Back to the limit for organisations"}>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Remove ${row.name}'s limit`} className="text-muted-foreground hover:text-destructive" onClick={() => void remove({ limitId: row._id }).catch(failed)}>
+                  <span className="shrink-0 text-xs text-muted-foreground">free a day</span>
+                  <TooltipHint label={row.kind === "personal" ? "Back to the number for people" : "Back to the number for organisations"}>
+                    <Button variant="ghost" size="icon-sm" aria-label={`Remove ${row.name}'s free activations`} className="text-muted-foreground hover:text-destructive" onClick={() => void remove({ limitId: row._id }).catch(failed)}>
                       <Trash2 />
                     </Button>
                   </TooltipHint>
@@ -313,7 +330,7 @@ function Limits({ settings, limits, save }: { settings: Settings; limits: Return
             <AccountPicker
               onPick={(account, name) =>
                 void set({ account, perDay: OWN_LIMIT, keep: true }).then((now) => {
-                  if (now !== OWN_LIMIT) toast.info(`${name} already has a limit of its own: ${now} a day.`);
+                  if (now !== OWN_LIMIT) toast.info(`${name} already has its own number: ${now} free a day.`);
                 }, failed)
               }
             />
@@ -357,7 +374,7 @@ function AccountPicker({ onPick }: { onPick: (account: Account, name: string) =>
       <PopoverTrigger asChild>
         {/* On a phone its words take two lines, and it never runs out of the card. */}
         <Button variant="outline" className="h-auto min-h-9 max-w-full py-2 text-start whitespace-normal">
-          <UserPlus /> Give a person or an organisation its own limit
+          <UserPlus /> Give a person or an organisation free activations of its own
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">

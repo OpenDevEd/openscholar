@@ -38,14 +38,16 @@ import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Trash2, TriangleAlert } from "@/components/icons";
+import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
+import { Segmented } from "@/components/settings/parts";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { ACTIVATION_PRICE, MOCK_CARD, mockWait, useActivationMock } from "@/lib/reports/activation-mock";
+import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Trash2, TriangleAlert } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
-import { limitWords } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
@@ -82,6 +84,10 @@ function placeOf(report: Report | null) {
 const bytes = (n: number) => (n > 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.round(n / 1000)} kB`);
 /** A handler for a change that was refused or never arrived: its reason in a toast. */
 const said = (otherwise: string) => (error: unknown) => void toast.error(getErrorMessage(error, otherwise));
+
+/** MOCK: what a workspace whose plan's new reports for today are used up is told (in place of `limitWords`). */
+const planStartWords = (perDay: number, kind: "personal" | "organization") =>
+  `${kind === "personal" ? "Your plan" : "This workspace's plan"} starts ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow, or move to a plan with more.`;
 
 function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
@@ -320,6 +326,7 @@ export function PublishFlow() {
             onCorrected={() => up("correct")}
           />
           <ReportCover basics={basics} report={report} />
+          <ActivationMockPanel organization={shared} />
         </div>
       )}
     </LibraryPageShell>
@@ -600,9 +607,10 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   const tick = (next: { all?: boolean; agreed?: boolean }) => setTicks({ version: agreement.version, all, agreed, ...next });
   // The workspace has used up its day, or has none: no new report can start, and the page says which. A DOI the
   // person reserved and did nothing with is theirs again by signing, whatever the day has left.
-  const blocked = starts && starts.left < 1 && !starts.untouched ? limitWords(starts.perDay, starts.kind) : null;
-  // An organisation's workspace is opened by Openscholar, on request: the page says who to ask.
-  const unopened = !!blocked && starts?.kind === "organization" && starts.perDay === 0;
+  // MOCK (mock/activation-payment): new reports a day are the plan's (Autumn's `reports_per_day`), so no workspace is
+  // closed to publishing and the words point at the plans. The mock's "Used up" stands in for a day that's used up.
+  const startsUsed = useActivationMock((s) => s.startsUsed);
+  const blocked = starts && !starts.untouched && (startsUsed || starts.left < 1) ? planStartWords(starts.perDay || 3, starts.kind) : null;
   return (
     <div>
       <StepHead title={`Publishing agreement with ${basics.series.name}`} aside={<StatusChip tone="neutral">Version {agreement.version}</StatusChip>}>
@@ -643,16 +651,15 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
         ) : null}
       </div>
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-        {unopened ? (
-          <p className="max-w-md text-sm text-muted-foreground">
-            Publishing isn&apos;t open to this workspace yet. Openscholar opens it for an organisation on request: write to{" "}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-foreground underline-offset-4 hover:underline">
-              {CONTACT_EMAIL}
-            </a>
-            . You can publish from your own workspace meanwhile.
-          </p>
-        ) : blocked ? (
-          <p className="text-sm text-muted-foreground">{blocked}</p>
+        {blocked ? (
+          <>
+            <p className="text-sm text-muted-foreground">{blocked}</p>
+            <Button variant="outline" asChild>
+              <Link href="/pricing">
+                See plans <ArrowUpRight />
+              </Link>
+            </Button>
+          </>
         ) : null}
         {starts ? (
           <Button
@@ -994,10 +1001,23 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
   const [activating, start] = useTransition();
+  // MOCK (mock/activation-payment): only the workspace's admins activate, a saved card is needed first, and past the
+  // day's free activations each one is paid for (lib/reports/activation-mock.ts).
+  const workspace = useCurrentWorkspace();
+  const mock = useActivationMock();
+  // From a person's own workspace, the mock's organisation roles look at the report as if an organisation had it.
+  const organization = workspace?.kind === "organization" ? workspace.name : mock.role ? "Open Development and Education" : null;
+  const admin = !organization || (mock.role ?? workspace?.role) === "admin";
+  const free = mock.freeLeft > 0;
+  const [paying, setPaying] = useState(false);
   const activateNow = () =>
     start(async () => {
       try {
+        // MOCK: the charge. The real one attaches the activation plan through Autumn, keyed to the report.
+        if (!free) await mockWait();
+        if (!free && mock.card === "declines") throw new Error("Your card was declined. Nothing was charged, and the report is still ready.");
         await onActivate?.();
+        mock.activated(free);
       } catch (error) {
         said("It couldn't be activated")(error);
       }
@@ -1005,6 +1025,10 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
   const head = !report ? (
     <StepHead key="running" title="Running the checks" aside={<StatusChip tone="running" icon="tone">{answered} of {rows.length}</StatusChip>}>
       Looking for earlier copies takes a few seconds. You can leave this page: the checks carry on.
+    </StepHead>
+  ) : stage === "ready" && !admin ? (
+    <StepHead key="admin" title="Waiting for an admin" aside={<StatusChip tone="success" icon={CircleCheck}>{report.approved ? "Approved" : "Passed"}</StatusChip>}>
+      {report.approved ? "A reviewer approved your report." : "Your report passed its checks."} An admin of {organization} activates it. They&apos;ve had an email saying it&apos;s ready.
     </StepHead>
   ) : stage === "ready" ? (
     <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>{report.approved ? "Approved" : "Passed"}</StatusChip>}>
@@ -1029,7 +1053,7 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
     <div>
       <AutoHeight>
         <AnimatePresence mode="wait" initial={false}>
-          <motion.div key={stage ?? "running"} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
+          <motion.div key={stage === "ready" && !admin ? "admin" : (stage ?? "running")} className="flow-root" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
             {head}
           </motion.div>
         </AnimatePresence>
@@ -1046,53 +1070,190 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
       <AutoHeight>
         <AnimatePresence initial={false}>
           {report ? (
-            <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6 flex flex-wrap justify-end gap-2">
-              {stage === "failed" ? (
-                <>
-                  {report.asked ? null : (
-                    <Button variant="outline" onClick={() => setAsking(true)}>
-                      <ReviewQueueIcon /> Request a human review
+            <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
+              {stage === "ready" && admin ? <PaymentLine organization={organization} free={mock.freeLeft} /> : null}
+              <div className="flex flex-wrap justify-end gap-2">
+                {stage === "failed" ? (
+                  <>
+                    {report.asked ? null : (
+                      <Button variant="outline" onClick={() => setAsking(true)}>
+                        <ReviewQueueIcon /> Request a human review
+                      </Button>
+                    )}
+                    <Button variant="outline" onClick={onDetails}>
+                      <PenLine /> Change the details
                     </Button>
-                  )}
-                  <Button variant="outline" onClick={onDetails}>
-                    <PenLine /> Change the details
-                  </Button>
-                  <Button onClick={onFix}>
-                    <RotateCcw /> Upload a new PDF
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {onAnother ? (
-                    <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
-                      <Plus /> Publish another
+                    <Button onClick={onFix}>
+                      <RotateCcw /> Upload a new PDF
                     </Button>
-                  ) : null}
-                  {stage === "ready" ? (
-                    <Button className="relative" disabled={activating} onClick={activateNow}>
-                      <Working busy={activating}>
-                        <span className="flex items-center gap-2">
-                          <BadgeCheck /> Activate
+                  </>
+                ) : (
+                  <>
+                    {onAnother ? (
+                      <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
+                        <Plus /> Publish another
+                      </Button>
+                    ) : null}
+                    {stage === "ready" && !admin ? (
+                      <TooltipHint label="Only an admin can activate it">
+                        <span tabIndex={0}>
+                          <Button disabled>
+                            <BadgeCheck /> Activate
+                          </Button>
                         </span>
-                      </Working>
-                    </Button>
-                  ) : stage === "review" ? (
-                    <TooltipHint label="A reviewer has to approve it first">
-                      <span tabIndex={0}>
-                        <Button disabled>
-                          <BadgeCheck /> Activate
-                        </Button>
-                      </span>
-                    </TooltipHint>
-                  ) : null}
-                </>
-              )}
+                      </TooltipHint>
+                    ) : stage === "ready" && mock.card === "none" ? (
+                      <TooltipHint label="Add a payment method first">
+                        <span tabIndex={0}>
+                          <Button disabled>
+                            <BadgeCheck /> Activate
+                          </Button>
+                        </span>
+                      </TooltipHint>
+                    ) : stage === "ready" ? (
+                      <Button className="relative" disabled={activating} onClick={free ? activateNow : () => setPaying(true)}>
+                        <Working busy={activating}>
+                          <span className="flex items-center gap-2">
+                            <BadgeCheck /> {free ? "Activate" : `Activate for $${ACTIVATION_PRICE}`}
+                          </span>
+                        </Working>
+                      </Button>
+                    ) : stage === "review" ? (
+                      <TooltipHint label="A reviewer has to approve it first">
+                        <span tabIndex={0}>
+                          <Button disabled>
+                            <BadgeCheck /> Activate
+                          </Button>
+                        </span>
+                      </TooltipHint>
+                    ) : null}
+                  </>
+                )}
+              </div>
             </motion.div>
           ) : null}
         </AnimatePresence>
       </AutoHeight>
       {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
+      {report ? (
+        // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
+        <UpgradeConfirmationDialog
+          open={paying}
+          onOpenChange={setPaying}
+          title={`Pay $${ACTIVATION_PRICE} to activate ${report.key}`}
+          description={organization ? `${organization}'s card is charged.` : undefined}
+          confirmLabel="Pay and activate"
+          totalLabel="Due now"
+          labels={{ from: "Its DOI now", to: "After" }}
+          isConfirming={false}
+          onConfirm={() => {
+            setPaying(false);
+            activateNow();
+          }}
+          cardBrand={MOCK_CARD.brand}
+          cardLast4={MOCK_CARD.last4}
+          preview={{ currency: "USD", immediateChargeCents: ACTIVATION_PRICE * 100, currentPlan: "Reserved", targetPlan: "Live", targetPlanCreditsPerMonth: 0, lineItems: [] }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * MOCK: what activating is paid with, beside the Activate button: the saved card, and whether this one is free. With no
+ * card, the way to add one, which in the real build opens Stripe's page for saving a card (Autumn's `setup_payment`) and
+ * comes back here.
+ */
+function PaymentLine({ organization, free }: { organization: string | null; free: number }) {
+  const mock = useActivationMock();
+  const [saving, save] = useTransition();
+  const card = mock.card !== "none";
+  return (
+    <div className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
+        <CreditCard className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        {card ? (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+            <span className="capitalize">{MOCK_CARD.brand}</span>
+            {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
+            <span className="tabular-nums">&bull;&bull;&bull;&bull; {MOCK_CARD.last4}</span>
+            {free > 0 ? (
+              <StatusChip tone="success" icon={CircleCheck}>
+                Free
+              </StatusChip>
+            ) : null}
+          </p>
+        ) : (
+          <p className="text-sm font-medium">Add a payment method to activate</p>
+        )}
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {!card
+            ? organization
+              ? `Each activation costs $${ACTIVATION_PRICE}, charged to ${organization}.`
+              : `Each activation costs $${ACTIVATION_PRICE}.`
+            : free > 0
+              ? `${free} free ${free === 1 ? "activation" : "activations"} left today`
+              : organization
+                ? `${organization}'s card`
+                : "Your card"}
+        </p>
+      </div>
+      {card ? (
+        // The cards are the billing page's, where Stripe's own page changes them.
+        <Button variant="ghost" asChild className="shrink-0 text-muted-foreground">
+          <Link href="/settings/billing">
+            Change <ArrowUpRight />
+          </Link>
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          className="relative shrink-0"
+          disabled={saving}
+          onClick={() =>
+            save(async () => {
+              await mockWait(1200);
+              mock.set({ card: "saved" });
+              toast.success("Card saved");
+            })
+          }
+        >
+          <Working busy={saving}>
+            <span className="flex items-center gap-2">
+              <CreditCard /> Add payment method
+            </span>
+          </Working>
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** MOCK: the states the mock can be looked at in. Not part of the design. */
+function ActivationMockPanel({ organization }: { organization: boolean }) {
+  const mock = useActivationMock();
+  return (
+    <section aria-label="Mock states" className="col-span-full flex flex-wrap items-center gap-x-5 gap-y-3 rounded-2xl border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
+      <span className="font-medium text-foreground">Mock</span>
+      <div className="flex items-center gap-2">
+        View as
+        <Segmented label="View as" value={mock.role ?? "real"} onChange={(v) => mock.set({ role: v === "real" ? null : v })} options={[{ id: "real", label: organization ? "My role" : "Me" }, { id: "admin", label: "Org admin" }, { id: "member", label: "Org member" }]} />
+      </div>
+      <div className="flex items-center gap-2">
+        Card
+        <Segmented label="Card" value={mock.card} onChange={(v) => mock.set({ card: v })} options={[{ id: "none", label: "None" }, { id: "saved", label: "Saved" }, { id: "declines", label: "Declines" }]} />
+      </div>
+      <div className="flex items-center gap-2">
+        Free left today
+        <Segmented label="Free left today" value={String(Math.min(mock.freeLeft, 2))} onChange={(v) => mock.set({ freeLeft: Number(v) })} options={[{ id: "0", label: "0" }, { id: "1", label: "1" }, { id: "2", label: "2" }]} />
+      </div>
+      <div className="flex items-center gap-2">
+        New reports today
+        <Segmented label="New reports today" value={mock.startsUsed ? "used" : "left"} onChange={(v) => mock.set({ startsUsed: v === "used" })} options={[{ id: "left", label: "Some left" }, { id: "used", label: "Used up" }]} />
+      </div>
+    </section>
   );
 }
 
