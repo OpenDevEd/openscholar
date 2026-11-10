@@ -4,7 +4,7 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
-import { type MutationCtx, type QueryCtx } from "../lib/functions";
+import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { workspaceMutation, workspaceQuery } from "../lib/userActions";
@@ -75,21 +75,35 @@ export async function forget(ctx: MutationCtx, ...files: Array<Id<"_storage"> | 
   }
 }
 
-/** A removed report's reviewer decisions, and the emails about it, deleted with it a step at a time. */
+/** A removed report's reviewer decisions, and the emails about it, deleted a step. */
 const REVIEWS_REMOVED = 100;
+
+/** Deletes one step of a removed report's decisions and emails. Whether a full step went, so more may be left. */
+async function sweepStep(ctx: MutationCtx, reportId: Id<"reports">) {
+  const reviews = await ctx.db.query("reportReviews").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).take(REVIEWS_REMOVED);
+  const emails = await ctx.db.query("reportEmails").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).take(REVIEWS_REMOVED);
+  for (const review of reviews) await ctx.db.delete("reportReviews", review._id);
+  for (const email of emails) await ctx.db.delete("reportEmails", email._id);
+  return reviews.length === REVIEWS_REMOVED || emails.length === REVIEWS_REMOVED;
+}
+
+/** The rest of a removed report's decisions and emails, a step at a time until none is left. */
+export const sweep = internalMutation({
+  args: { reportId: v.id("reports") },
+  returns: v.null(),
+  handler: async (ctx, { reportId }) => {
+    if (await sweepStep(ctx, reportId)) await ctx.scheduler.runAfter(0, internal.reports.flow.sweep, { reportId });
+    return null;
+  },
+});
 
 /** Deletes a report with everything kept for it: its PDF, the PDF's text, its cover, its details, what reviewers said of it and the emails about it. */
 export async function removeReport(ctx: MutationCtx, report: Doc<"reports">) {
   await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
   // Only a deleted workspace's report has any: one its author can discard was never declined or approved.
-  // A step at a time until none is left: a report its author kept sending for review can have many emails.
-  for (;;) {
-    const reviews = await ctx.db.query("reportReviews").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).take(REVIEWS_REMOVED);
-    const emails = await ctx.db.query("reportEmails").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).take(REVIEWS_REMOVED);
-    if (!reviews.length && !emails.length) break;
-    for (const review of reviews) await ctx.db.delete("reportReviews", review._id);
-    for (const email of emails) await ctx.db.delete("reportEmails", email._id);
-  }
+  // The first step of its reviewers' decisions and its emails goes with it; a report its author kept sending for
+  // review can have more than one step's worth, and the rest follow in steps of their own.
+  if (await sweepStep(ctx, report._id)) await ctx.scheduler.runAfter(0, internal.reports.flow.sweep, { reportId: report._id });
   await ctx.db.delete("reportDetails", (await detailsOf(ctx, report._id))._id);
   await ctx.db.delete("reports", report._id);
 }
