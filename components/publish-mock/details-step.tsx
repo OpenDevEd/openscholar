@@ -13,7 +13,7 @@ import { OrcidIcon } from "@/components/icons/author-service-icons";
 import { FunderName, RorLink } from "@/components/papers/paper-entities";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { findOrcid, findRor, institutionRor } from "@/app/actions/publish-mock";
+import { findOrcid, findRor } from "@/app/actions/publish-mock";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/ui/country-flag";
@@ -124,7 +124,7 @@ function usePage<T>(list: T[], size: number) {
 const chipOf = (a: Affiliation) => a.id ?? (a.ror ? `ror:${a.ror}` : typedId(a.name));
 
 /** An author's places, from OpenAlex's institutions, from ROR's for one OpenAlex doesn't know, or as typed, each with its country's flag. */
-function Affiliations({ value, onChange, onRor }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void; /** Its ROR ID, for an institution just picked, once OpenAlex has given it. */ onRor: (id: string, ror: string) => void }) {
+function Affiliations({ value, onChange }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void }) {
   const ids = value.map(chipOf);
   const names = Object.fromEntries(value.map((a) => [chipOf(a), a.name]));
   return (
@@ -133,16 +133,15 @@ function Affiliations({ value, onChange, onRor }: { value: Affiliation[]; onChan
       onChange={(next) => onChange(value.filter((a) => next.includes(chipOf(a))))}
       onPicked={(option) => {
         if (option.id.startsWith("typed:")) return onChange([...value, { id: null, name: option.name, country: "" }]);
-        if (option.id.startsWith("ror:")) return onChange([...value, { id: null, name: option.name, country: countryOfPlace(option.detail), ror: option.id.slice(4) }]);
-        onChange([...value, { id: option.id, name: option.name, country: countryOfPlace(option.detail) }]);
-        // OpenAlex's institution record holds its ROR ID; the lookup's list doesn't, so it is asked for the one picked.
-        void institutionRor(option.id).then((ror) => ror && onRor(option.id, ror));
+        // One only ROR found is kept by its ROR ID; OpenAlex's by its own ID, with the ROR ID it has.
+        const ror = option.ror ?? (option.id.startsWith("ror:") ? option.id.slice(4) : undefined);
+        onChange([...value, { id: option.id.startsWith("ror:") ? null : option.id, name: option.name, country: countryOfPlace(option.detail), ...(ror && { ror }) }]);
       }}
       icons={Object.fromEntries(value.filter((a) => a.country).map((a) => [chipOf(a), <CountryFlag key={a.name} countryCode={a.country} />]))}
       after={Object.fromEntries(
         value.filter((a) => a.ror).map((a) => [
           chipOf(a),
-          <RorLink key="ror" ror={a.ror!} label={`${a.name} on ROR`} className="animate-in fade-in duration-300" />,
+          <RorLink key="ror" ror={a.ror!} label={`${a.name} on ROR`} />,
         ]),
       )}
       lookup={{
@@ -153,8 +152,7 @@ function Affiliations({ value, onChange, onRor }: { value: Affiliation[]; onChan
       }}
       also={{
         key: "ror",
-        heading: "On ROR",
-        search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place })),
+        search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place, ror: o.ror })),
       }}
       labels={{ label: "Affiliations", placeholder: "Add an institution", searchPlaceholder: "Find an institution", typeToSearch: "Type an institution's name", unavailable: "Institutions can't be looked up now" }}
     />
@@ -245,7 +243,7 @@ function OrcidSearch({ author, onPick, onRemove }: { author: Author; onPick: (or
   );
 }
 
-function AuthorRow({ author, index, count, onChange, onMove, onRemove, onRor }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void; onRor: (id: string, ror: string) => void }) {
+function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void }) {
   const [finding, setFinding] = useState(false);
   return (
     <li className="space-y-3 p-4">
@@ -312,7 +310,7 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove, onRor }: 
       <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
         <div className="space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Affiliations</span>
-          <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} onRor={onRor} />
+          <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
         <div className="space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Contributor roles</span>
@@ -482,7 +480,6 @@ export function DetailsStep({
                 onChange={(patch) => setAuthor(i, patch)}
                 onMove={(by) => moveAuthor(i, by)}
                 onRemove={() => set("authors", m.authors.filter((_, other) => other !== i))}
-                onRor={(id, ror) => setM((was) => ({ ...was, authors: was.authors.map((x, at) => (at === i ? { ...x, affiliations: x.affiliations.map((y) => (y.id === id ? { ...y, ror } : y)) } : x)) }))}
               />
               );
             })}

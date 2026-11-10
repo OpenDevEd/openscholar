@@ -1,10 +1,8 @@
-// MOCK (mock/author-lookup): people found on ORCID and institutions' ROR IDs, for a report's authors. ORCID's public
-// API answers a search without a token; the real build sends the same requests from Convex.
-import { openAlexFetch } from "@/lib/openalex/fetch";
-import { openAlexUrl } from "@/lib/openalex/request-url";
+// MOCK (mock/author-lookup): people found on ORCID and institutions found on ROR, for a report's authors. Both public
+// APIs answer a search without a token; the real build sends the same requests from Convex.
 
 const ORCID_SEARCH = "https://pub.orcid.org/v3.0/expanded-search/";
-/** ORCID and OpenAlex both ask a client to name itself. */
+/** ORCID and ROR both ask a client to name itself. */
 const USER_AGENT = "Openscholar/1.0 (+https://openscholar.ai)";
 
 export type OrcidPerson = { orcid: string; name: string; institutions: string[] };
@@ -51,16 +49,6 @@ export async function matchOrcid(name: string, institutions: string[]): Promise<
   const person = same[0]!;
   const institution = institutions.find((i) => person.institutions.some((at) => folded(at) === folded(i))) ?? institutions[0]!;
   return { orcid: person.orcid, institution };
-}
-
-/** An OpenAlex institution's ROR ID, as https://ror.org/…, or none when OpenAlex has none for it. */
-export async function rorOf(institutionId: string): Promise<string | null> {
-  const id = institutionId.split("/").at(-1)!;
-  if (!/^I\d+$/.test(id)) return null;
-  const response = await openAlexFetch(openAlexUrl(`institutions/${id}`, { select: "ror" }), { headers: { "User-Agent": USER_AGENT }, timeoutMs: 10_000 });
-  if (!response.ok) throw new Error(`OpenAlex institution ${id} ${response.status}`);
-  const { ror } = (await response.json()) as { ror?: string | null };
-  return ror || null;
 }
 
 const ROR_API = "https://api.ror.org/v2/organizations";

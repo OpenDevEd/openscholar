@@ -16,8 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-/** `group` sorts options under a heading; `detail` is a second, quieter line; `icon` is a sign before the name, such as a flag. */
-export type PickerOption = { id: string; name: string; group?: string; detail?: string; icon?: React.ReactNode };
+/** `group` sorts options under a heading; `detail` is a second, quieter line; `icon` is a sign before the name, such as a flag; `mark` one after it, such as ROR's. */
+export type PickerOption = { id: string; name: string; group?: string; detail?: string; icon?: React.ReactNode; mark?: React.ReactNode };
 
 /** A searchable multi-select in a popover, with the choices as removable chips below. */
 export function OptionPicker({
@@ -187,6 +187,7 @@ function OptionRows({ options: shown, selected, onToggle }: {
               </TooltipHint>
             ) : null}
           </span>
+          {option.mark}
         </CommandItem>
       ))}
     </CommandGroup>

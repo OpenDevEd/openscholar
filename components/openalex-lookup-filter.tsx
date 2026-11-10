@@ -3,6 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
+import { RorIcon } from "@/components/icons/author-service-icons";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { searchOpenAlexRecords } from "@/app/actions/openalex-lookup";
@@ -10,7 +11,7 @@ import type { LookupEntity } from "@/lib/openalex/autocomplete";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
-type Option = { id: string; name: string; detail?: string; group?: string };
+type Option = { id: string; name: string; detail?: string; ror?: string };
 
 /**
  * A filter picked from OpenAlex's autocomplete, for things there are too many
@@ -42,8 +43,8 @@ export function OpenAlexLookupFilter({
   after?: Record<string, React.ReactNode>;
   /** The record just picked, with its detail line, for a caller that keeps more than its ID. */
   onPicked?: (option: Option) => void;
-  /** Records from another register, listed under OpenAlex's under their own heading; one OpenAlex lists by the same name is left out. */
-  also?: { key: string; heading: string; search: (query: string) => Promise<Option[]> };
+  /** Records from another register, listed after OpenAlex's; one OpenAlex already lists, by its ROR ID or its name, is left out. */
+  also?: { key: string; search: (query: string) => Promise<Option[]> };
 }) {
   const tf = useTranslations("searchFilters");
   const tToast = useTranslations("toast");
@@ -60,9 +61,10 @@ export function OpenAlexLookupFilter({
   const text = search.trim();
   const typed = text ? lookup.typed?.(text) : null;
   const found = query ? (results.data ?? []) : [];
-  const known = new Set(found.map((option) => option.name.toLowerCase()));
-  const more = query && also ? (elsewhere.data ?? []).filter((option) => !known.has(option.name.toLowerCase())).map((option) => ({ ...option, group: also.heading })) : [];
-  const options = [...(typed ? [typed] : []), ...found, ...more];
+  const known = new Set(found.flatMap((option) => [option.name.toLowerCase(), ...(option.ror ? [option.ror] : [])]));
+  const more = query && also ? (elsewhere.data ?? []).filter((option) => !known.has(option.name.toLowerCase()) && !(option.ror && known.has(option.ror))) : [];
+  // Each institution with a ROR ID says so in its row, as its chip does once picked, whichever register found it.
+  const options = [...(typed ? [typed] : []), ...found, ...more].map((option) => (option.ror ? { ...option, mark: <RorIcon className="ms-1 opacity-80" /> } : option));
   const names = {
     ...savedNames,
     ...Object.fromEntries(options.map((option) => [option.id, option.name])),

@@ -9,7 +9,7 @@ import { accountOf, accountsMatching, actor, isAdmin, organizationAt, organizati
 import { applyCorrection } from "@/lib/publish-mock/checks";
 import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
-import { findOrcidPeople, findRorOrganisations, rorOf, type OrcidPerson, type RorOrganisation } from "@/lib/publish-mock/identifiers";
+import { findOrcidPeople, findRorOrganisations, type OrcidPerson, type RorOrganisation } from "@/lib/publish-mock/identifiers";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
@@ -297,12 +297,6 @@ export async function findRor(words: string): Promise<RorOrganisation[]> {
   const text = words.trim().slice(0, 200);
   if (!text || !(await actor())) return [];
   return findRorOrganisations(text).catch(() => []);
-}
-
-/** The ROR ID of an institution just picked for an author, when OpenAlex knows it. */
-export async function institutionRor(id: string): Promise<string | null> {
-  if (!(await actor())) return null;
-  return rorOf(id).catch(() => null);
 }
 
 /** Openscholar's accounts and organisations for an admin to pick from, narrowed by what's typed. */

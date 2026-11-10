@@ -12,7 +12,7 @@ import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { openAlexUrl } from "@/lib/openalex/request-url";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
 import { countryOfPlace } from "./read";
-import { matchOrcid, matchRor, rorOf } from "./identifiers";
+import { matchOrcid, matchRor } from "./identifiers";
 import { CREDIT_ROLES, RELATION_KINDS, type Affiliation, type Funding, type LlmModel, type Metadata, type Topic } from "./types";
 
 const ids = <T extends { id: string }>(list: readonly T[]) => list.map((item) => item.id) as [string, ...string[]];
@@ -126,10 +126,7 @@ async function matched<T>(names: string[], find: (name: string) => Promise<T>): 
 const institution = async (name: string): Promise<Affiliation> => {
   try {
     const [best] = await searchOpenAlex("institutions", name);
-    if (best) {
-      const ror = await rorOf(best.id).catch(() => null);
-      return { id: best.id, name: best.name, country: countryOfPlace(best.detail), ...(ror && { ror }) };
-    }
+    if (best) return { id: best.id, name: best.name, country: countryOfPlace(best.detail), ...(best.ror && { ror: best.ror }) };
     // One OpenAlex doesn't know may still be on ROR, when ROR's matcher is sure of it.
     const onRor = await matchRor(name);
     if (onRor) return { id: null, name: onRor.name, country: countryOfPlace(onRor.place), ror: onRor.ror };
