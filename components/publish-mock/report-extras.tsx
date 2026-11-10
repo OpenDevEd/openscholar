@@ -129,11 +129,11 @@ export function ReportSide({ m }: { m: Metadata }) {
   );
 }
 
-/** On a report's own page, for its workspace, beside the facts it corrects: the way to correct its details, which opens them on the Publish page.
+/** On a report's own page, for its workspace, on the line with Cite and Share: the way to correct its details, which opens them on the Publish page.
  * With changes already waiting, it opens where they stand. */
 export function CorrectReport({ id, waiting }: { id: string; waiting: boolean }) {
   return (
-    <Button size="sm" variant="outline" className="shrink-0 bg-transparent" asChild>
+    <Button size="sm" variant="outline" asChild>
       <Link href={waiting ? `/publish?report=${id}` : `/publish?report=${id}&correct=true`}>
         <PenLine aria-hidden />
         {waiting ? "See your changes" : "Correct the details"}

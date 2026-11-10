@@ -21,8 +21,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { OrcidIcon } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
-import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, EvidenceLibrariesIcon, FileText, Globe, Library, LockOpen, MessageSquare, Target, TriangleAlert, Users } from "@/components/icons";
-import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
+import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, FileText, Globe, Library, LockOpen, MessageSquare, Target, TriangleAlert, Users } from "@/components/icons";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { chatAbout } from "@/lib/assistant/place";
 import { topicHref } from "@/lib/topics/links";
@@ -66,7 +65,6 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   const tAuthors = useTranslations("authorPages");
   const tSimilar = useTranslations("similarPapers");
   const tp = useTranslations("paperCard");
-  const tAdded = useTranslations("addedPapers");
   const title = paper.title ?? paper.display_name ?? "";
   const communities = useLiveCopies(read, copyKeys);
   // A record published while the page is open fades in; the ones the page opened with are just there.
@@ -84,12 +82,11 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   const communityCover = communities.find((copy) => copy.cover);
 
   return (
-    // The bar holds what a reader does with the paper wherever they have scrolled to, each named while there is
-    // room: ask about it, keep it, read it. What belongs to a part of the page sits in that part: citing, sharing and
-    // adding to a community with the DOI it's pointed to by, and its author's corrections with its facts.
+    // The bar holds the two things a reader does with the paper wherever they have scrolled to: ask about it and
+    // read it. Keeping it (saving, a collection, a community) heads the card, and citing, sharing and its
+    // workspace's corrections sit with the DOI it's pointed to by.
     <LibraryPageShell icon={FileText} title={title} actions={<>
       <AskAbout id={appId} title={title} />
-      <SaveControl paper={paper} bar />
       {(pdf ?? doi) && <Button size="sm" className={BAR_ACTION} asChild>
         <a href={(pdf ?? doi)!} target="_blank" rel="noopener noreferrer">
           {pdf ? <FileText aria-hidden /> : <ArrowUpRight aria-hidden />}
@@ -118,7 +115,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
           <div className="flex min-w-0 flex-col">
             <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
               <HeaderChips paper={paper} detail={detail} />
-              {extra?.actions}
+              <SaveControl paper={paper} named className="shrink-0" />
             </div>
             {/* The bar's heading is the title; this is the title at reading size. */}
             <p dir="auto" className="mt-4 text-pretty text-2xl font-semibold leading-tight tracking-tight sm:text-[2rem]">{title}</p>
@@ -138,16 +135,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             <DoiLine doi={detail.ids.doi}>
               <CitationControl paper={paper} compact={false} named />
               <PaperShare paper={paper} href={paperPath(id, title)} compact={false} labelClassName="" />
-              {/* The paper onto a community, with the other things done with it: the row below shows the ones it's in. */}
-              <CommunityControl
-                paper={paper}
-                trigger={
-                  <Button variant="outline" size="sm">
-                    <EvidenceLibrariesIcon aria-hidden />
-                    {tAdded("addToCommunity")}
-                  </Button>
-                }
-              />
+              {extra?.actions}
             </DoiLine>
             <AutoHeight>
             {communities.length ? (
