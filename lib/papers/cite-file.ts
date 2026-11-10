@@ -22,8 +22,9 @@ export async function citeFileResponse(params: Promise<{ id: string }>, kind: Ci
       "Content-Type": `${file.type}; charset=utf-8`,
       // An ASCII name for every browser, and the real one, UTF-8 encoded, for those that read it (RFC 6266).
       "Content-Disposition": `attachment; filename="${file.name.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "")}"; filename*=UTF-8''${encodeURIComponent(file.name)}`,
-      // A record barely changes: browsers and Cloudflare keep it a day.
-      "Cache-Control": "public, max-age=86400",
+      // A record barely changes: browsers and Cloudflare keep it a day. A report's can be corrected or withdrawn at
+      // any time, so its file is asked for each time.
+      "Cache-Control": read.id.startsWith("R") ? "no-store" : "public, max-age=86400",
     },
   });
 }

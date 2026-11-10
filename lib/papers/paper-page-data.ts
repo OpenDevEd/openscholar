@@ -10,6 +10,8 @@ import type { SimilarPaper } from "@/app/actions/similar";
 import type { PaperResult } from "@/lib/types/search.types";
 import { paperPageId, paperPath } from "@/lib/papers/page-address";
 import { paperDetail } from "@/lib/papers/paper-detail";
+import { readReport } from "@/lib/reports/paper-data";
+import { reportPaper } from "@/lib/reports/report-paper";
 import { copyOf, type CommunityCopy } from "./community-copies";
 
 /** How long a paper page reuses what it read: a paper's record barely changes, and crawlers read many pages once each. */
@@ -131,6 +133,11 @@ export const quietly = <T,>(what: string, id: string, fallback: T) => (error: un
  */
 export async function readAskedPaper(asked: string | null): Promise<PaperResult | null> {
   if (!asked) return null;
+  // A report published on Openscholar (R…) is Convex's to give, and only while it is live.
+  if (asked.startsWith("R")) {
+    const report = await readReport(asked);
+    return report?.state === "live" ? reportPaper(report, report.metadata, report.series) : null;
+  }
   const openalexId = asked.startsWith("W") ? asked : null;
   const indexed = await readPaperForPage(asked).catch((error: unknown) => { if (!openalexId) throw error; return quietly("our index's record", asked, null)(error); });
   return indexed ?? (openalexId ? await readOpenAlexForPage(openalexId).catch(quietly("OpenAlex record", openalexId, null)) : null);
@@ -143,7 +150,8 @@ export async function readPaperPage(raw: string) {
   // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
   const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
   const work = openalexIdOf(paper);
-  const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : null;
+  // A report is its own fullest record, so its goals and grant numbers show as OpenAlex's would.
+  const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : id.startsWith("R") ? paper : null;
   // What kind of work it is and whether it's free to read, as OpenAlex says when it says: our index has called journal
   // articles book chapters and left open ones closed, which the badges and the citation then repeated.
   const shown = openalex ? { ...paper, type: openalex.type ?? paper.type, open_access: openalex.open_access ?? paper.open_access } : paper;

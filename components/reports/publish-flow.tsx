@@ -44,7 +44,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
 import { limitWords } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -60,7 +60,7 @@ type Starts = FunctionReturnType<typeof api.reports.flow.starts>;
 /** The largest PDF a report takes, as its upload says (convex/reports/flow.ts `REPORT_PDF_MAX_MB`). */
 const PDF_MAX_MB = 50;
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
-const STUCK_MS = 4 * 60 * 1000;
+const STUCK_MS = RUN_STUCK_MS;
 
 const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" | "live"; label: string; icon: typeof PenLine }> = [
   { id: "agreement", label: "Agreement", icon: PenLine },
@@ -230,7 +230,7 @@ export function PublishFlow() {
               {elsewhere ? (
                 <Button size="sm" asChild>
                   {/* A plain address: the report's own workspace, whichever this page is in. */}
-                  <a href={`${elsewhere.slug ? `/o/${elsewhere.slug}` : ""}/publish?report=${shownKey}`}>
+                  <a href={`${elsewhere.slug ? `/o/${elsewhere.slug}` : ""}/publish?report=${shownKey}${correct ? "&correct=true" : ""}`}>
                     Open it in {elsewhere.name} <ArrowUpRight />
                   </a>
                 </Button>
@@ -272,6 +272,10 @@ export function PublishFlow() {
             onAnother={another}
             correcting={correct}
             onUpload={() => go({ step: "upload" })}
+            // With its PDF the report moves on by itself, to its reading and then its details, so the upload's step
+            // in the history is taken back: Back from the details then leaves the report, and never lands on a
+            // step that shows the same screen again.
+            onAttached={() => at && up("step")}
             onStep={ownStep}
             onCorrect={() => go({ correct: true })}
             onCorrected={() => up("correct")}
@@ -284,7 +288,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onUpload, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -294,6 +298,9 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const discardChanges = useMutation(api.reports.flow.discardChanges);
   // Changes to a live report as last sent to the checks, kept while they run so a run that breaks loses none of them.
   const [attempt, setAttempt] = useState<Metadata | null>(null);
+  // The form of changes holds something typed here and not sent yet. It then stays open whatever else happens to
+  // the report, such as its checks running on changes sent from another tab: what was typed is never thrown away.
+  const [typing, setTyping] = useState(false);
   // The checks were asked for here and the report hasn't said so yet: the page shows them running at once.
   const [starting, setStarting] = useState(false);
   const here = { workspaceId: workspaceId! };
@@ -307,7 +314,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const running = !!report?.run && !runStuck;
   const live = report?.step === "done" && report.status === "live";
   // A first run reads a report at its details; a run on changes reads a live one, which stays live meanwhile.
-  const busy = (report?.step === "details" || live) && (running || starting);
+  const busy = (report?.step === "details" || live) && (starting || (running && !(live && correcting && typing)));
   const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
@@ -332,7 +339,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
           ) : report.step === "doi" ? (
             <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
           ) : report.step === "upload" ? (
-            <UploadStep report={report} workspaceId={workspaceId!} />
+            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
               <PdfNotice trouble={report.pdf.trouble} onUpload={() => back("upload")} />
@@ -363,8 +370,10 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               version={report.correctedAt ?? report.activatedAt}
               // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
               waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
+              onTouched={() => setTyping(true)}
               onRun={async (metadata: Metadata, since) => {
                 setAttempt(metadata);
+                setTyping(false);
                 setStarting(true);
                 try {
                   const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
@@ -381,6 +390,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               }}
               onCancel={() => {
                 setAttempt(null);
+                setTyping(false);
                 onCorrected();
               }}
             />
@@ -699,7 +709,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
   );
 }
 
-function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"workspaces"> }) {
+function UploadStep({ report, workspaceId, onAttached }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void }) {
   const startUpload = useMutation(api.reports.flow.startUpload);
   const attachPdf = useMutation(api.reports.flow.attachPdf);
   const input = useRef<HTMLInputElement>(null);
@@ -733,6 +743,7 @@ function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"
       ]);
       const refused = await attachPdf({ ...here, file, name: picked.name, ...(cover && { cover }) });
       if (refused) return void toast.error(refused);
+      onAttached();
     } catch (error) {
       said("The PDF couldn't be uploaded. Try again.")(error);
     } finally {

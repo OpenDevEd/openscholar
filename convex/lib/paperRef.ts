@@ -10,6 +10,7 @@ export const paperRefValidator = v.union(
   v.object({ source: v.literal("library"), libraryId: v.string(), key: v.string() }),
   v.object({ source: v.literal("zotero"), library: v.union(v.literal("user"), v.literal("group")), owner: v.string(), key: v.string() }),
   v.object({ source: v.literal("upload"), file: v.string() }),
+  v.object({ source: v.literal("report"), key: v.string() }),
 );
 
 export const crossRefsValidator = v.object({ openalexId: v.optional(v.string()), doi: v.optional(v.string()) });

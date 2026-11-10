@@ -7,7 +7,6 @@
 import { useState, useTransition, type ReactNode, useRef } from "react";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useLocale, useTranslations } from "next-intl";
 import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -20,6 +19,7 @@ import { RegistrationChips, standingOf, stepTone, stepWords } from "@/components
 import { Enter, LIST, Paged, Segmented, Working, Zone, pagerOf } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { usePlaceName } from "@/components/reports/report-extras";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,6 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
 import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, PenLine, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { REVIEW_TEXT_MAX, changesOf, stageOf, type Metadata, type Stage } from "@/lib/reports/report";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -530,10 +529,7 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
 
 /** What the report is about and who paid for it, as chips: topics, goals, places and funders. */
 function Subjects({ m }: { m: Metadata }) {
-  const locale = useLocale();
-  const tf = useTranslations("searchFilters");
-  // A place's name: a country's, or a region's as the country filter names it ("africa", "eastern_africa").
-  const placeName = (id: string) => getRegionDisplayName(id, locale, (key) => (tf as (key: string) => string)(key));
+  const placeName = usePlaceName();
   const groups: Array<{ label: string; chips: ReactNode[] }> = [
     { label: "Topics", chips: m.topics.map((t) => <Chip key={t.id}>{t.name}</Chip>) },
     { label: "Goals", chips: m.sdgs.map((g) => <Chip key={g}>{SDGS.find((x) => x.id === g)?.name ?? g}</Chip>) },

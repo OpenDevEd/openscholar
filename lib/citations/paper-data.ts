@@ -15,7 +15,8 @@ export function normalizeCitationType(type: string) {
 
 export function paperToCitationData(paper: PaperResult): CitationData | null {
   const title = (paper.title || paper.display_name)?.trim();
-  const id = paper.id.match(/(?:^|\/)(?:W|OS)\d+$/)?.[0].replace(/^\//, "");
+  // An Openscholar Report (R…) is cited like any paper of ours.
+  const id = paper.id.match(/(?:^|\/)(?:W|OS|R)\d+$/)?.[0].replace(/^\//, "");
   if (!title || !id) return null;
   const source = paper.primary_location?.source;
   const data: CitationData = {

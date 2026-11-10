@@ -1,5 +1,5 @@
 // A paper named by where it comes from (plans/evidence-library-sources): an OpenAlex work, a record
-// of an Evidence Library, an item in Zotero, or a PDF someone uploaded. OpenAlex is one source among
+// of an Evidence Library, an item in Zotero, a PDF someone uploaded, or a report published on Openscholar. OpenAlex is one source among
 // them; its ID and a DOI are cross-references that find the same paper across sources, never keys.
 // `paperKey` is the one string form every index stores; nothing else builds or splits one.
 
@@ -8,7 +8,8 @@ export type PaperRef =
   | { source: "openscholar"; work: string }
   | { source: "library"; libraryId: string; key: string }
   | { source: "zotero"; library: "user" | "group"; owner: string; key: string }
-  | { source: "upload"; file: string };
+  | { source: "upload"; file: string }
+  | { source: "report"; key: string };
 
 export type PaperSource = PaperRef["source"];
 
@@ -26,11 +27,14 @@ export function paperKey(ref: PaperRef): string {
       return `zotero:${ref.library}:${ref.owner}:${ref.key}`;
     case "upload":
       return `upload:${ref.file}`;
+    case "report":
+      return `report:${ref.key}`;
   }
 }
 
 const WORK = /^W\d+$/;
 const OWN_WORK = /^OS\d+$/;
+const REPORT = /^R\d{6,}$/;
 // Library IDs and record keys, Zotero owners and keys, and storage IDs hold no colon.
 const PART = /^[^:\s]+$/;
 
@@ -43,6 +47,7 @@ export function parsePaperKey(key: string): PaperRef | null {
     return { source, library: parts[0], owner: parts[1]!, key: parts[2]! };
   }
   if (source === "upload" && parts.length === 1 && PART.test(parts[0]!)) return { source, file: parts[0]! };
+  if (source === "report" && parts.length === 1 && REPORT.test(parts[0]!)) return { source, key: parts[0]! };
   return null;
 }
 
@@ -54,6 +59,11 @@ export function openalexWork(id: string): string | null {
 /** The bare work on our index (OS79563844) in its address, or the ID itself; null for anything else. A paper only our index has goes by this. */
 export function ownWork(id: string): string | null {
   return id.trim().match(/^(?:https?:\/\/openscholar\.ai\/)?(OS\d+)$/i)?.[1]?.toUpperCase() ?? null;
+}
+
+/** The bare key of a report published on Openscholar (R100001) in its address, or the key itself; null for anything else. */
+export function reportKey(id: string): string | null {
+  return id.trim().match(/^(?:https?:\/\/openscholar\.ai\/)?(R\d{6,})$/i)?.[1]?.toUpperCase() ?? null;
 }
 
 /** A DOI in one form, lower case and without its address; null when there is none. */
@@ -83,6 +93,8 @@ export function legacyPaperRef(id: string, hints: { pdfUrl?: string } = {}): Pap
   if (work) return { source: "openalex", work };
   const own = ownWork(id);
   if (own) return { source: "openscholar", work: own };
+  const report = reportKey(id);
+  if (report) return { source: "report", key: report };
   const zotero = id.match(/^zotero:(?:(user|group):)?([^:\s]+)$/);
   if (zotero) {
     const library = zotero[1] as "user" | "group" | undefined;
@@ -105,6 +117,7 @@ export function toPaperKey(id: string, hints: { pdfUrl?: string } = {}): string 
 export function paperIdOf(key: string): string {
   const ref = parsePaperKey(key);
   if (ref?.source === "openalex") return `https://openalex.org/${ref.work}`;
+  if (ref?.source === "report") return `https://openscholar.ai/${ref.key}`;
   return ref?.source === "openscholar" ? `https://openscholar.ai/${ref.work}` : key;
 }
 
