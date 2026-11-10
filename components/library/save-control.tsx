@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { create } from "zustand";
-import { BookCheck, BookPlus, Building2, EvidenceLibrariesIcon, Folder, FolderCheck, Plus, Search, UserRound } from "@/components/icons";
+import { BookCheck, BookPlus, Building2, Folder, FolderCheck, Plus, Search, UserRound } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
@@ -313,12 +313,14 @@ export function SaveControl({
       <CommunityControl
         paper={paper}
         trigger={
-          named ? (
-            <Button variant="outline" size="sm" className={cn("bg-transparent", NAMED)}>
-              <EvidenceLibrariesIcon className="text-muted-foreground" />
-              <span className={NAME}>{tAdded("addToCommunity")}</span>
-            </Button>
-          ) : undefined
+          named
+            ? (icon) => (
+                <Button variant="outline" size="sm" className={cn("bg-transparent", NAMED)}>
+                  {icon}
+                  <span className={NAME}>{tAdded("addToCommunity")}</span>
+                </Button>
+              )
+            : undefined
         }
       />
       {/* In the group, whose handlers keep the dialog's clicks and keys from reaching the card. */}
