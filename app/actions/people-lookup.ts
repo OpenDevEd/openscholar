@@ -8,12 +8,22 @@ import { findOrcidPeople, findRorOrganisations, type OrcidPerson, type RorOrgani
 export async function findOrcid(words: string, institutions: string[]): Promise<Array<OrcidPerson & { near: boolean }>> {
   const text = words.trim().slice(0, 200);
   if (!text || !(await auth()).userId) return [];
-  return findOrcidPeople(text, institutions.slice(0, 5).map((i) => i.slice(0, 200)));
+  try {
+    return await findOrcidPeople(text, institutions.slice(0, 5).map((i) => i.slice(0, 200)));
+  } catch (error) {
+    // The picker says ORCID can't be searched now; why is kept here.
+    console.error(JSON.stringify({ event: "orcid-search-failed", error: String(error).slice(0, 300) }));
+    throw error;
+  }
 }
 
 /** Organisations on ROR for an institution's name as it is typed, for the ones OpenAlex doesn't know. */
 export async function findRor(words: string): Promise<RorOrganisation[]> {
   const text = words.trim().slice(0, 200);
   if (!text || !(await auth()).userId) return [];
-  return findRorOrganisations(text).catch(() => []);
+  // OpenAlex's results still list without ROR's: a failed search adds none, and why is kept here.
+  return findRorOrganisations(text).catch((error: unknown) => {
+    console.error(JSON.stringify({ event: "ror-search-failed", error: String(error).slice(0, 300) }));
+    return [];
+  });
 }

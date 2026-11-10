@@ -56,8 +56,10 @@ export async function matchOrcid(name: string, institutions: string[]): Promise<
   const same = people.filter((person) => folded(person.name) === folded(name));
   if (same.length !== 1) return null;
   const person = same[0]!;
-  const institution = institutions.find((i) => person.institutions.some((at) => folded(at) === folded(i))) ?? institutions[0]!;
-  return { orcid: person.orcid, institution };
+  // Only someone whose own record names one of the author's institutions: the search's match on an affiliation alone
+  // can be a name the record lists differently, or none of its own.
+  const institution = institutions.find((i) => person.institutions.some((at) => folded(at) === folded(i)));
+  return institution ? { orcid: person.orcid, institution } : null;
 }
 
 const ROR_API = "https://api.ror.org/v2/organizations";

@@ -38,7 +38,9 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
   const at = institutions;
   const people = useSWR(query && !typed ? ["orcid", query, ...at] : null, () => findOrcid(query, at), { keepPreviousData: true, revalidateOnFocus: false });
   // The results on screen are for other words, or are being asked again: they wait for the answer to what's typed.
-  const stale = !typed && !!search.trim() && (search.trim() !== query || people.isValidating);
+  const searching = !typed && !!search.trim() && (search.trim() !== query || people.isValidating);
+  // A failed search keeps the last one's people on screen, which are for other words too.
+  const stale = searching || (!typed && !!people.error);
   // Someone at one of the person's institutions shows that institution first.
   const theirs = new Set(at.map((name) => name.toLowerCase()));
   const shown = (query && !typed ? (people.data ?? []) : []).map((person) => ({ ...person, institutions: [...person.institutions].sort((a, b) => Number(theirs.has(b.toLowerCase())) - Number(theirs.has(a.toLowerCase()))) }));
@@ -48,7 +50,7 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
   ].filter((group) => group.people.length);
   return (
     <Command shouldFilter={false}>
-      <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" busy={stale} />
+      <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" busy={searching} />
       <CommandList>
         <CommandEmpty>{!search.trim() ? "Type a name, or paste an iD" : people.error ? "ORCID can't be searched now" : people.isLoading ? "Searching ORCID" : "Nobody on ORCID by that name"}</CommandEmpty>
         {typed ? (

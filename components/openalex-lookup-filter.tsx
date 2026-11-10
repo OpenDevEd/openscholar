@@ -70,7 +70,9 @@ export function OpenAlexLookupFilter({
   // Each institution with a ROR ID says so in its row, as its chip does once picked, whichever register found it.
   // Records found for words since changed can't be picked until the answer to what's typed is in: Enter never takes
   // one from the last search. The row of words as typed always can.
-  const stale = !!text && (text !== query || results.isValidating || elsewhere.isValidating);
+  const searching = !!text && (text !== query || results.isValidating || elsewhere.isValidating);
+  // A failed search keeps the last one's records on screen, which are for other words too.
+  const stale = searching || (!!text && !!results.error);
   const options = [...(first ? [first] : []), ...listed.filter((option) => option !== exact)].map((option) => ({
     ...option,
     ...(option.ror && { mark: <RorIcon className="ms-1 opacity-80" /> }),
@@ -104,7 +106,7 @@ export function OpenAlexLookupFilter({
       after={after}
       onSearch={setSearch}
       // From the first key until both registers have answered the words in the box.
-      busy={stale}
+      busy={searching}
       onToggle={(id) => {
         if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));
         onChange([...selected, id]);
