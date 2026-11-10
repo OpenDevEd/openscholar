@@ -6,3 +6,5 @@ export const APPLICATIONS_SHOWN = 20;
 export const APPLY_PARAM = "apply";
 /** Where someone signed out goes to apply: sign-in, which comes back to the Communities page with the dialog open. */
 export const applySignInPath = (libraryId: string) => `/sign-in?redirect_url=${encodeURIComponent(`/evidence-communities?${APPLY_PARAM}=${libraryId}`)}`;
+/** Where someone signed out goes to see the papers they sent: sign-in, which comes back to their submissions. */
+export const SUBMISSIONS_SIGN_IN_PATH = `/sign-in?redirect_url=${encodeURIComponent("/evidence-communities?view=submissions")}`;
