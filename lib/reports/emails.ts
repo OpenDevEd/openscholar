@@ -26,7 +26,7 @@ export type MailFacts = {
   correction?: { changed: string[]; results: CheckResult[]; request?: string; declinedNote?: string };
   deposit: string;
   archive: string;
-  /** What a reviewer changed, for the email that says they edited the details. */
+  /** What changed, for the email that says a reviewer edited the details or that the author's changes are live. */
   edited?: string;
 };
 
@@ -122,7 +122,7 @@ const EVENTS = {
     heading: "Your report is live",
     rows: (r, origin) => [pageLink(r, origin), ["Its DOI", `https://doi.org/${r.doi}\nIt starts working once it's registered, which can take a few minutes.`]],
   },
-  "changes-live": { to: "author", label: "Changes live", heading: "Your changes are live", rows: (r, origin) => [pageLink(r, origin)] },
+  "changes-live": { to: "author", label: "Changes live", heading: "Your changes are live", rows: (r, origin) => [...(r.edited ? ([["What changed", r.edited]] as Row[]) : []), pageLink(r, origin)] },
   "details-edited": {
     to: "author",
     label: "Details edited",

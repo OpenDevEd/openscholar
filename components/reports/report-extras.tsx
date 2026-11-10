@@ -9,7 +9,7 @@ import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { ExternalLink, PenLine } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import Link from "@/components/workspace-link";
+import Link from "next/link";
 import { STUDY_DESIGNS } from "@/lib/openalex/vocabulary";
 import { RELATION_KINDS, linkHref, type Metadata } from "@/lib/reports/report";
 
@@ -124,10 +124,12 @@ export function ReportSide({ m }: { m: Metadata }) {
 
 /** On a report's own page, for its workspace, at the end of the row of actions: the way to correct its details, which opens them on the Publish page.
  * With changes already waiting, it opens where they stand. */
-export function CorrectReport({ id, waiting }: { id: string; waiting: boolean }) {
+export function CorrectReport({ id, waiting, slug }: { id: string; waiting: boolean; /** Its workspace's address: an organisation's slug, or null for its owner's own. */ slug: string | null }) {
+  // The report's own workspace, whichever the page was opened in: a plain address, not one this workspace's links make.
+  const publish = `${slug ? `/o/${slug}` : ""}/publish?report=${id}`;
   return (
     <Button size="sm" variant="outline" asChild>
-      <Link href={waiting ? `/publish?report=${id}` : `/publish?report=${id}&correct=true`}>
+      <Link href={waiting ? publish : `${publish}&correct=true`}>
         <PenLine aria-hidden />
         {waiting ? "See your changes" : "Correct the details"}
       </Link>
