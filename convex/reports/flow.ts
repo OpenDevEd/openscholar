@@ -23,8 +23,8 @@ export const MOVED_ON = "This report has moved on, so that can't be done any mor
 /** The largest PDF a report takes, and the largest picture of its first page. */
 export const REPORT_PDF_MAX_MB = 50;
 const COVER_MAX_BYTES = 2 * 1024 * 1024;
-/** The reports of a workspace its list and its counts read. */
-const COUNT_READ = 1_000;
+/** The most reports a workspace holds, which `sign` enforces: its list and its counts read them all. */
+const MAX_WORKSPACE_REPORTS = 1_000;
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 export const detailsOf = async (ctx: QueryCtx, reportId: Id<"reports">) => (await ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).unique())!;
@@ -104,8 +104,8 @@ export const sign = workspaceMutation({
     // ponytail: a report registered with Zenodo alone takes the DOI Zenodo reserves, which the registration slice
     // (#1205) asks Zenodo for. Until then a report needs Crossref on, whose DOI is known as soon as it has a key.
     if (crossref.mode === "off") throw createError("FEATURE_DISABLED", "Publishing with a DOI from Zenodo alone isn't open yet.");
-    // The list and its counts read a workspace's reports up to COUNT_READ, so a workspace holds no more than that.
-    if ((await newest(ctx, workspaceId)).length >= COUNT_READ) throw createError("VALIDATION_ERROR", `A workspace holds at most ${COUNT_READ.toLocaleString("en")} reports. Discard a draft, or write to us to raise it.`);
+    // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
+    if ((await newest(ctx, workspaceId)).length >= MAX_WORKSPACE_REPORTS) throw createError("VALIDATION_ERROR", `A workspace holds at most ${MAX_WORKSPACE_REPORTS.toLocaleString("en")} reports. Discard a draft, or write to us to raise it.`);
     // Counted where it can't be undone: a report discarded later still used one of the day's starts.
     await countStart(ctx, workspaceId);
     const counter = await ctx.db.query("reportKeys").first();
@@ -303,9 +303,9 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise
 }
 
 // ponytail: a workspace's list and its counts read all its reports, which is what lets the list page by number and
-// keep its page in the address. `sign` holds a workspace to COUNT_READ of them; a workspace starts a report or a
+// keep its page in the address. `sign` holds a workspace to MAX_WORKSPACE_REPORTS of them; a workspace starts a report or a
 // few a day. Past that, the list pages by cursor and keeps its counts (lib/listCounts).
-const newest = (ctx: QueryCtx, workspaceId: Id<"workspaces">) => ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(COUNT_READ);
+const newest = (ctx: QueryCtx, workspaceId: Id<"workspaces">) => ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(MAX_WORKSPACE_REPORTS);
 
 /** One page of the workspace's reports, the one changed last first. `show` keeps those at one stage. A page past the last answers the last. */
 export const page = workspaceQuery({
