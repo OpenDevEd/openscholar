@@ -3,7 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { PublishFlow } from "@/components/publish-mock/publish-flow";
-import { organizationAt, organizationsOf, slugOf } from "@/lib/publish-mock/admin";
+import { actorFor, organizationAt, organizationsOf, slugOf } from "@/lib/publish-mock/admin";
 import { readState } from "@/lib/publish-mock/store";
 import { authorSettings, canPublish, forAuthor, inWorkspace, limitFor, mayWorkOn, reportsUnderWay, startsLeft } from "@/lib/publish-mock/types";
 import { ADDRESS_HEADER, workspaceHref } from "@/lib/workspaces/paths";
@@ -45,5 +45,7 @@ export default async function PublishPage({ params, searchParams }: { params: Pr
   // The workspace's limit: the person's own where they have one, else the organisation's, else everyone's.
   const orgIds = organization ? [organization.id] : [];
   const starts = user ? { left: startsLeft(state, user.id, orgIds), perDay: limitFor(state.settings, user.id, orgIds) } : { left: 1, perDay: 1 };
-  return <PublishFlow settings={authorSettings(state.settings)} reports={reports.map(forAuthor)} userName={user?.fullName ?? ""} signedIn={!!user} starts={starts} shared={!!organization} />;
+  // In an organisation's workspace every member sees its reports; its admins and a report's owner change them.
+  const admin = !!organization && !!user && (await actorFor(user.id)).adminOf.includes(organization.id);
+  return <PublishFlow settings={authorSettings(state.settings)} reports={reports.map(forAuthor)} userName={user?.fullName ?? ""} signedIn={!!user} starts={starts} shared={!!organization} me={user?.id ?? null} admin={admin} />;
 }

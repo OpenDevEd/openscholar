@@ -30,31 +30,34 @@ export async function requireAdmin() {
   if (!(await isAdmin())) throw new Error("Only an admin can do this.");
 }
 
-const memberships = new Map<string, { orgIds: string[]; at: number }>();
+const memberships = new Map<string, { orgIds: string[]; adminOf: string[]; at: number }>();
 /**
  * The organisations a person belongs to, by Clerk ID: a report started in an organisation's workspace is its
  * members' to work on. Asked of Clerk and remembered for a minute, since every step of a report asks. MOCK: the real
  * build's functions take the workspace and check the person may act there, as the app's other sections do.
  */
-export async function organizationsOf(userId: string): Promise<string[]> {
+async function membershipsOf(userId: string): Promise<{ orgIds: string[]; adminOf: string[] }> {
   const known = memberships.get(userId);
-  if (known && Date.now() - known.at < REMEMBER_MS) return known.orgIds;
+  if (known && Date.now() - known.at < REMEMBER_MS) return known;
   try {
     const list = await (await clerkClient()).users.getOrganizationMembershipList({ userId, limit: 100 });
-    const orgIds = list.data.map((membership) => membership.organization.id);
-    memberships.set(userId, { orgIds, at: Date.now() });
-    return orgIds;
+    // A workspace's admins are its organisation's, as everywhere in the app (convex/workspaces/actor.ts).
+    const answer = { orgIds: list.data.map((m) => m.organization.id), adminOf: list.data.filter((m) => m.role === "org:admin").map((m) => m.organization.id), at: Date.now() };
+    memberships.set(userId, answer);
+    return answer;
   } catch (error) {
     console.error("[publish mock] organisations couldn't be read", String(error).slice(0, 300));
-    return [];
+    return { orgIds: [], adminOf: [] };
   }
 }
+export const organizationsOf = async (userId: string): Promise<string[]> => (await membershipsOf(userId)).orgIds;
 
-/** Who is acting on a report: the person, and the organisations whose workspaces they are a member of. */
-export type Actor = { userId: string; orgIds: string[] };
+/** Who is acting on a report: the person, the organisations whose workspaces they are a member of, and the ones they are an admin of. */
+export type Actor = { userId: string; orgIds: string[]; adminOf: string[] };
+export const actorFor = async (userId: string): Promise<Actor> => ({ userId, ...(await membershipsOf(userId)) });
 export async function actor(): Promise<Actor | null> {
   const { userId } = await auth();
-  return userId ? { userId, orgIds: await organizationsOf(userId) } : null;
+  return userId ? actorFor(userId) : null;
 }
 
 /** The organisation a workspace's address names (/o/<slug>), or null when Clerk has none such. */

@@ -2,8 +2,8 @@
 import { auth } from "@clerk/nextjs/server";
 import type { PaperResult } from "@/lib/types/search.types";
 import { reportPaper } from "./report-paper";
-import { organizationsOf } from "./admin";
-import { coverUrlOf, mayWorkOn } from "./types";
+import { actorFor } from "./admin";
+import { coverUrlOf, mayChange } from "./types";
 import { readState } from "./store";
 
 /** A live report's details and its cover, for what the paper page shows beyond a paper's record, and whether the
@@ -13,8 +13,8 @@ export async function readReportMetadata(key: string) {
   const report = state.submissions.find((s) => s.id === key && s.status === "live");
   if (!report?.metadata) return null;
   const { userId } = await auth();
-  // Its workspace's to correct: its author's own, or every member's of the organisation it was started in.
-  const mine = userId !== null && mayWorkOn(report, userId, report.orgId ? await organizationsOf(userId) : []);
+  // Its owner's to correct, and in an organisation's workspace that workspace's admins'.
+  const mine = userId !== null && mayChange(report, userId, report.orgId ? (await actorFor(userId)).adminOf : []);
   return { m: report.metadata, cover: coverUrlOf(report), mine, waiting: !!report.correction };
 }
 

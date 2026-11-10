@@ -8,7 +8,7 @@ import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 import { decideYesNo, isDecisionModel, paperState } from "@/lib/ai/decisions";
-import { bylineOf, correctionStageOf, mayWorkOn, providersOf, stageOf, type Answer, type Check, type CheckResult, type Correction, type Metadata, type Settings, type Submission } from "./types";
+import { bylineOf, correctionStageOf, mayChange, providersOf, stageOf, type Answer, type Check, type CheckResult, type Correction, type Metadata, type Settings, type Submission } from "./types";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -67,10 +67,10 @@ export async function runCheck(check: Check, settings: Settings, draft: Submissi
 
 /** The report's checks as they are now, with their version, and the text they read. Only for someone who may work on it, and only
  * one waiting for its checks: a request names it, so another report opened meanwhile is never the one checked. */
-export async function checksFor(id: string, who: { userId: string; orgIds: string[] }, metadata: Metadata, correction = false) {
+export async function checksFor(id: string, who: { userId: string; adminOf: string[] }, metadata: Metadata, correction = false) {
   const started = await changeState((state) => {
     const draft = state.submissions.find((s) => s.id === id);
-    if (!draft || !mayWorkOn(draft, who.userId, who.orgIds)) throw new Error("This report isn't one of this workspace's, or it was discarded.");
+    if (!draft || !mayChange(draft, who.userId, who.adminOf)) throw new Error("Only this report's owner and the workspace's admins can change it.");
     if (correction) {
       // A live report stays as it is while the checks read the corrected details: only the run is marked on it.
       if (draft.status !== "live" || draft.step !== "done") throw new Error("This report isn't live any more, so its details can't be changed. Reload to see where it stands.");

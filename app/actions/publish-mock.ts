@@ -13,7 +13,7 @@ import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceL
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
 import { SITE_URL } from "@/lib/seo/page-metadata";
-import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, changesOf, correctionStageOf, forAuthor, isMetadata, mayWorkOn, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, changesOf, correctionStageOf, forAuthor, isMetadata, mayChange, mayWorkOn, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -43,6 +43,8 @@ function shown<T>(answer: T): T {
   const report = (value: unknown) => (typeof value === "object" && value !== null && "doi" in value && "step" in value ? forAuthor(value as Submission) : value);
   return ("doi" in a && "step" in a ? forAuthor(answer as unknown as Submission) : { ...a, ...("draft" in a ? { draft: report(a.draft) } : {}), ...("report" in a ? { report: report(a.report) } : {}) }) as T;
 }
+/** What someone who sees a workspace's report but may not change it is told. */
+const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
 /** What a refusal says when the report moved on in another tab or under a reviewer's hand. */
 const MOVED_ON = "This report has moved on since this page loaded. Reload to see where it stands.";
 
@@ -60,7 +62,9 @@ async function me(): Promise<Actor> {
 /** A report this person may work on, by its key: their own, or one of an organisation's they are a member of. The
  * one on the screen the step came from, whichever is open elsewhere. */
 function reportOf(state: MockState, id: string, who: Actor | null) {
-  return (who && state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds))) || refuse("This report isn't one of this workspace's, or it was discarded.");
+  const report = who && state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds));
+  if (!report) return refuse("This report isn't one of this workspace's, or it was discarded.");
+  return mayChange(report, who.userId, who.adminOf) ? report : refuse(OWNERS_ONLY);
 }
 
 function touch(submission: Submission, patch: Partial<Submission>) {
@@ -122,7 +126,7 @@ export async function saveDetails(id: string, metadata: unknown) {
   const who = await actor();
   if (!who || !isMetadata(metadata, { titled: false })) return;
   await change((state) => {
-    const draft = state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds));
+    const draft = state.submissions.find((s) => s.id === id && mayChange(s, who.userId, who.adminOf));
     // Only while the details are being corrected: a save that arrives after the checks started changes nothing.
     if (draft?.step === "details" && !draft.run) touch(draft, { metadata });
   });
@@ -239,6 +243,7 @@ export async function readPdfDetails(id: string): Promise<{ draft: Submission; r
 /** A live report of this person's with changes waiting, or a refusal in words. */
 function waitingChanges(state: MockState, id: string, who: Actor | null, seenAt: number): { report: Submission; correction: Correction } | Refused {
   const report = who ? state.submissions.find((s) => s.id === id && mayWorkOn(s, who.userId, who.orgIds)) : undefined;
+  if (report && who && !mayChange(report, who.userId, who.adminOf)) return { refused: OWNERS_ONLY };
   if (report?.status !== "live" || !report.correction) return { refused: "This report has no changes waiting any more. Reload to see where it stands." };
   // The changes on the screen the action came from, by when they were checked: ones sent since, say from another
   // tab, are never the ones discarded or asked about.

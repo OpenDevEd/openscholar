@@ -55,7 +55,7 @@ import { CitationControl } from "@/components/citation-control";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { reportPaper } from "@/lib/publish-mock/report-paper";
-import { SHOWS, StatusFilter, YourReports } from "@/components/publish-mock/your-reports";
+import { SHOWS, STATUS, StatusFilter, YourReports } from "@/components/publish-mock/your-reports";
 import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
@@ -152,9 +152,14 @@ export function PublishFlow({
   signedIn,
   starts,
   shared,
+  me,
+  admin,
 }: {
-  /** The page is in an organisation's workspace: its reports are every member's, so each row says who signed. */
+  /** The page is in an organisation's workspace: every member sees its reports, so each row says who signed. */
   shared: boolean;
+  /** The person looking, by their Clerk user, and whether they are the workspace's admin: a report's owner and its workspace's admins change it, its other members only see it. */
+  me: string | null;
+  admin: boolean;
   settings: Settings;
   reports: Submission[];
   userName: string;
@@ -189,6 +194,9 @@ export function PublishFlow({
   const shownId = asked ?? (underWay.length === 1 ? underWay[0]!.id : "new");
   const draft = reports.find((r) => r.id === shownId) ?? null;
   const missing = shownId !== "new" && !draft;
+  const mayChange = (report: Submission) => !shared || admin || report.ownerId === me;
+  /** The person sees the report shown and can't change it. */
+  const watching = !!draft && !mayChange(draft);
   const [running, setRunning] = useState<Running | null>(null);
   const busy = running && running.id === draft?.id ? running : null;
   // The day's starts this person has left: one fewer with each report they start here.
@@ -244,7 +252,7 @@ export function PublishFlow({
       setRunning((r) => (r?.id === id ? null : r));
     }
   };
-  const screen = busy ? "checks" : missing ? "missing" : !draft ? "agreement" : draft.step !== "done" ? draft.step : !live ? "checks" : correct ? "correct" : draft.correction ? "changes" : "live";
+  const screen = busy ? "checks" : missing ? "missing" : watching ? "watching" : !draft ? "agreement" : draft.step !== "done" ? draft.step : !live ? "checks" : correct ? "correct" : draft.correction ? "changes" : "live";
   // MOCK: a timer asks for the report again once it's past its checks, when a reviewer or a registrar can move it on,
   // so the page follows without a reload and says what happened. The real build is told by Convex and needs no timer.
   // Not while its details are open in the form: what's being typed is never redrawn.
@@ -298,12 +306,13 @@ export function PublishFlow({
           </Button>
         ) : undefined
       }
-      intro={view === "new" && !missing ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !busy} onBack={back} draft={busy && !live ? null : draft} settings={settings} /> : undefined}
+      intro={view === "new" && !missing ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !busy && !watching} onBack={back} draft={busy && !live ? null : draft} settings={settings} /> : undefined}
     >
       {view === "reports" ? (
         <YourReports
           settings={settings}
           shared={shared}
+          mayChange={mayChange}
           show={show}
           page={page}
           onPage={(next) => go({ page: next })}
@@ -352,6 +361,8 @@ export function PublishFlow({
             >
               {busy ? (
                 <Checks rows={busy.checks.map((c) => ({ ...c, result: busy.results[c.id] }))} draft={null} />
+              ) : draft && watching ? (
+                <ReportSeen draft={draft} settings={settings} />
               ) : !draft ? (
                 <AgreementStep
                   settings={settings}
@@ -1005,6 +1016,45 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
         </AnimatePresence>
       </AutoHeight>
       {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
+    </div>
+  );
+}
+
+/**
+ * A workspace's report as a member who can't change it sees it: where it stands, what the checks said of it, and
+ * who can change it. Nothing here acts on the report.
+ */
+function ReportSeen({ draft, settings }: { draft: Submission; settings: Settings }) {
+  const stage = stageOf(draft, settings);
+  const status = STATUS[stage];
+  return (
+    <div>
+      <StepHead
+        title={draft.metadata?.title || "Untitled report"}
+        aside={
+          <StatusChip tone={status.tone} icon={status.icon}>
+            {stage === "declined" && draft.withdrawnAt ? "Withdrawn" : status.label}
+          </StatusChip>
+        }
+      >
+        {draft.signedBy?.name ? `${draft.signedBy.name} started this report.` : "Someone in this workspace started this report."} Only they and the workspace&apos;s admins can change it.
+      </StepHead>
+      {draft.results?.length ? (
+        <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
+          {draft.results.map((r) => (
+            <CheckRow key={r.checkId} name={r.name} result={r} advice={false} overruled={!!draft.approved && stage !== "declined" && !r.pass} />
+          ))}
+        </ul>
+      ) : null}
+      {draft.status === "live" ? (
+        <div className="mt-6 flex justify-end">
+          <Button asChild>
+            <Link href={`/papers/${draft.id}`}>
+              Open its page <ArrowUpRight />
+            </Link>
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

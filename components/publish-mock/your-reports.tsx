@@ -25,7 +25,7 @@ const PER_PAGE = 10;
 /** A row's height with its divider: its cover and the entry's padding. */
 const ROW = 81;
 const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed checks", declined: "Declined" };
-const STATUS: Record<Stage, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
+export const STATUS: Record<Stage, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
   draft: { label: "Draft", tone: "neutral", icon: PenLine },
   review: { label: "In review", tone: "running", icon: ReviewQueueIcon },
   ready: { label: "Ready to activate", tone: "success", icon: CircleCheck },
@@ -62,7 +62,7 @@ export function StatusFilter({ reports, settings, show, onShow }: { reports: Sub
   );
 }
 
-export function YourReports({ reports, settings, shared, show, page, onPage, onOpen, onNew, onDiscard, onCorrect }: { reports: Submission[]; settings: Settings; /** An organisation's list: each row says who signed. */ shared: boolean; show: Show; /** The list's page, kept in the address with its filter. */ page: number; onPage: (page: number) => void; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void>; onCorrect: (id: string) => void }) {
+export function YourReports({ reports, settings, shared, mayChange, show, page, onPage, onOpen, onNew, onDiscard, onCorrect }: { reports: Submission[]; settings: Settings; /** An organisation's list: each row says who signed. */ shared: boolean; /** Whether the person may change a report, or only see it. */ mayChange: (report: Submission) => boolean; show: Show; /** The list's page, kept in the address with its filter. */ page: number; onPage: (page: number) => void; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void>; onCorrect: (id: string) => void }) {
   // The report being discarded, asked about once before it goes.
   const [discarding, setDiscarding] = useState<Submission | null>(null);
   const listed = reports.filter((r) => show === "all" || stageOf(r, settings) === show);
@@ -78,7 +78,7 @@ export function YourReports({ reports, settings, shared, show, page, onPage, onO
         // A list of several pages keeps a full page's height, so its last page doesn't pull the pager up.
         <div className={GRID_CLASSES["list-detail"]} style={pages > 1 ? { minHeight: PER_PAGE * ROW } : undefined}>
           {shown.map((r) => (
-            <ReportRow key={r.id} report={r} series={settings.series.name} shared={shared} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={canDiscard(r) ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
+            <ReportRow key={r.id} report={r} series={settings.series.name} shared={shared} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} watching={!mayChange(r)} onDiscard={canDiscard(r) && mayChange(r) ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" && mayChange(r) ? () => onCorrect(r.id) : undefined} />
           ))}
         </div>
       ) : (
@@ -123,13 +123,15 @@ export function YourReports({ reports, settings, shared, show, page, onPage, onO
  * One report, as an entry of the app's lists (components/command-center/entry.tsx): its cover, its title, which
  * opens it, its key, date and where it stands, its status, and its actions: discard, correct, and the way in.
  */
-function ReportRow({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }: { report: Submission; series: string; shared: boolean; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
+function ReportRow({ report: r, series, shared, watching, stage, onOpen, onDiscard, onCorrect }: { report: Submission; series: string; shared: boolean; /** The person sees this report and can't change it: its way in only opens it. */ watching: boolean; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
   const status = STATUS[stage];
   const title = r.metadata?.title ?? (r.pdf?.name ? r.pdf.name : "Untitled report");
   // The row's way in, named for what the report needs next.
   const action =
     r.status === "live"
       ? { label: "Open its page", icon: ArrowUpRight }
+      : watching
+        ? { label: "Open", icon: FileText }
       : stage === "ready"
         ? { label: "Activate it", icon: ArrowRight }
         : stage === "draft"

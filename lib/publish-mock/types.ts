@@ -273,8 +273,14 @@ export function correctionStageOf(s: Pick<Submission, "results">, c: Correction)
 export const reportsUnderWay = (reports: Submission[]) => reports.filter((r) => r.status !== "live" && r.status !== "declined");
 /** Whether a report is this workspace's: an organisation's, or with none the person's own. */
 export const inWorkspace = (r: Submission, userId: string, orgId: string | undefined) => (orgId ? r.orgId === orgId : !r.orgId && r.ownerId === userId);
-/** Whether a person may work on a report: it is their own, or an organisation's they are a member of. */
+/** Whether a person sees a report: it is their own, or an organisation's they are a member of. */
 export const mayWorkOn = (r: Submission, userId: string, orgIds: readonly string[]) => (r.orgId ? orgIds.includes(r.orgId) : r.ownerId === userId);
+/**
+ * Whether a person may change a report: upload, correct, activate, discard. Its owner, who started it, and in an
+ * organisation's workspace that workspace's admins. Its other members see it and no more. The real build adds
+ * anyone the report is shared with as an editor, through the sharing every other item in a workspace has.
+ */
+export const mayChange = (r: Submission, userId: string, adminOf: readonly string[]) => r.ownerId === userId || (!!r.orgId && adminOf.includes(r.orgId));
 /** A report its author may give up: one never checked, or one its checks failed that no reviewer approved. Its DOI was never live. */
 export const canDiscard = (r: Submission) => r.status === "draft" || (r.status === "failed" && !r.approved);
 /** Whether a report wants a reviewer now: waiting for review, failed with its author asking, or live with changes waiting. */
