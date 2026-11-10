@@ -126,8 +126,17 @@ const preparedValidator = v.object({
   pending: v.union(v.object({ url: v.union(v.string(), v.null()) }), v.null()),
   /** A charge was asked for and its answer lost: asking again replays the same request. */
   charging: v.boolean(),
+  /** Another report of the workspace whose charge waits on the bank, by its key: no new charge until it's answered. */
+  waitingOn: v.union(v.string(), v.null()),
 });
 type Prepared = Infer<typeof preparedValidator>;
+
+/** The key of another report of the workspace whose charge waits on the bank, or null. */
+async function waitingOther(ctx: QueryCtx, workspaceId: Id<"workspaces">, reportId: Id<"reports">) {
+  const waits = await ctx.db.query("reportActivations").withIndex("by_workspaceId_and_state", (q) => q.eq("workspaceId", workspaceId).eq("state", "pending")).take(5);
+  const other = waits.find((wait) => wait.reportId !== reportId);
+  return other ? ((await ctx.db.get("reports", other.reportId))?.key ?? null) : null;
+}
 
 /** Everything an activation needs to know before it charges, checked as the actor. */
 export const prepare = internalQuery({
@@ -143,6 +152,7 @@ export const prepare = internalQuery({
       prefix: (await placeOf(ctx, actor.workspaceId)).prefix,
       pending: pending ? { url: pending.payUrl ?? null } : null,
       charging: (await pendingOf(ctx, report._id, true))?.state === "charging",
+      waitingOn: await waitingOther(ctx, actor.workspaceId, report._id),
     };
   },
 });
@@ -312,6 +322,8 @@ export const activate = action({
       return { live: true };
     }
     if (!pay) throw createError("CONFLICT", "Today's free activations were just used. Activate it again to pay for it.");
+    // Its open invoice would hold this charge back anyway (`unlessPaymentOpen`); this says which report to go to.
+    if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);
     // Under the workspace's purchase lock from the record to the answer, so another tab's activation waits for this one.
     const outcome = await purchasing(ctx, workspaceId, first.customerId, first.charging ? { resuming: true } : {}, async () => {
       // What's due now, after the account's credit, which the page may have read before another purchase spent it.
