@@ -9,7 +9,7 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
 import { toast } from "sonner";
 import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -902,7 +902,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
 
 /** The checks, running or answered, under a head that says where the report stands, and what to do next. */
 function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onRequestReview, onAnother }: { rows: Array<{ id: string; name: string; result?: CheckResult }>; /** None while the checks run. */ report: Report | null; humanReview: boolean; onActivate?: () => Promise<void>; onFix?: () => void; onDetails?: () => void; onRequestReview?: (comment: string) => Promise<void>; onAnother?: () => void }) {
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useAsking();
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
   const [activating, start] = useTransition();
@@ -1054,6 +1054,19 @@ function Said({ label, children }: { label: string; children: ReactNode }) {
 }
 
 /** Asks a person to look at a report its checks failed, with what the author thinks they got wrong. */
+/**
+ * Whether the request for a human review is open. It is in the address, so opening it is a step Back closes, Forward
+ * reopens, and a reload keeps; closing it with its own buttons is that step taken back.
+ */
+function useAsking() {
+  const [ask, setAsk] = useQueryState("ask", parseAsStringLiteral(["review"] as const));
+  const set = (open: boolean) => {
+    if (open) void setAsk("review", { history: "push", scroll: false });
+    else if (!stepBack(withoutKeys(["ask"]))) void setAsk(null);
+  };
+  return [ask === "review", set] as const;
+}
+
 function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose: () => void; onSend: (comment: string) => Promise<void> }) {
   const [comment, setComment] = useState("");
   const box = useRef<HTMLTextAreaElement>(null);
@@ -1197,7 +1210,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
  */
 function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview }: { report: Report; correction: NonNullable<Report["correction"]>; onEdit: () => void; onDiscard: () => Promise<void>; onRequestReview: (comment: string) => Promise<void> }) {
   const stage = report.changes ?? "review";
-  const [asking, setAsking] = useState(false);
+  const [asking, setAsking] = useAsking();
   const [discarding, setDiscarding] = useState(false);
   const changed = report.metadata ? changesOf(report.metadata, correction.metadata) : [];
   const note = stage === "declined" ? correction.declined?.note : stage === "review" ? correction.request?.comment : undefined;
@@ -1260,7 +1273,8 @@ function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview
           <PenLine /> Edit the changes
         </Button>
       </div>
-      <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} />
+      {/* Only where a review can be asked for: an address that still names the dialog opens nothing anywhere else. */}
+      <ReviewRequestDialog open={asking && stage === "failed"} onClose={() => setAsking(false)} onSend={onRequestReview} />
       <AlertDialog open={discarding} onOpenChange={setDiscarding}>
         <AlertDialogContent>
           <AlertDialogHeader>
