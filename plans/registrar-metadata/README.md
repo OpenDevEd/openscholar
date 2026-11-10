@@ -76,10 +76,10 @@ one batched request per deposit, the way funders' Registry DOIs are today.
 | Topics | OpenAlex topics | library topics | none | new: `subjects` |
 | Goals (SDGs) | yes | none | none | new: `subjects` "SDG n: name" |
 | Study design | yes | `studyType` | none | new: `additional_descriptions` methods |
-| Places studied | country codes | `countryFocus` | none | new: `locations`, place name and GeoNames country ID |
+| Places studied | country codes | `countryFocus` | none | new: `locations`, by place name |
 | Pages | from the PDF | `numPages`, `pages` | now where the family has pages | new: `sizes` "N pages" |
 | Format | PDF | the file's type | none | new: `formats` |
-| Version | registration revision | `versionNumber` | new: `version_info` where the family allows it | new: `version` |
+| Version | none | `versionNumber` | now (datasets) | new: `version` |
 | Publisher | Openscholar | yes | now | now, new: `publisher` |
 | Series and ISSN | yes | `series`, `ISSN` | now (reports) | new: `additional_descriptions` series-information, related `isPartOf` ISSN, `imprint:imprint` title |
 | Journal | none | `publicationTitle`, `ISSN`, `volume`, `issue`, `pages` | now | new: `journal:journal` |
@@ -108,6 +108,8 @@ one batched request per deposit, the way funders' Registry DOIs are today.
 - A community record's creators have no ORCID iD, and its funders aren't
   stored: new-el reads neither from Zotero or OpenAlex today. Out of scope here;
   a follow-up can read them from OpenAlex when a record has an OpenAlex work.
+- Places go by name: neither a report nor a record holds GeoNames IDs, which Zenodo's `locations` could also take.
+- A report's registration revision isn't a version of the work, so neither registrar gets it as one.
 - Crossref's `archive_locations` lists named archives (CLOCKSS, Portico and
   others). Zenodo isn't one, so it stays empty.
 
