@@ -51,6 +51,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { cn } from "@/lib/utils";
 
 type Basics = FunctionReturnType<typeof api.reports.settings.forAuthors>;
@@ -61,8 +62,6 @@ type Terms = NonNullable<FunctionReturnType<typeof api.reports.activation.terms>
 /** What an activation costs with a promotion code, in US dollars, as Autumn quotes it. */
 type Quote = { code: string; price: number; discount: number; total: number };
 
-/** The largest PDF a report takes, as its upload says (convex/reports/flow.ts `REPORT_PDF_MAX_MB`). */
-const PDF_MAX_MB = 50;
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
 const STUCK_MS = RUN_STUCK_MS;
 
@@ -827,7 +826,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
     if (!picked || busy) return;
     if (!/\.pdf$/i.test(picked.name)) return void toast.error(t("choosePdf"));
     if (picked.size === 0) return void toast.error(t("emptyFile"));
-    if (picked.size > PDF_MAX_MB * 1024 * 1024) return void toast.error(t("tooBig", { max: PDF_MAX_MB }));
+    if (picked.size > MAX_PDF_BYTES) return void toast.error(t("tooBig", { max: MAX_PDF_MB }));
     setSending(picked);
     try {
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
@@ -893,7 +892,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
           <>
             <FileUp className="size-6 text-primary" />
             <span className="text-sm font-medium">{t("drop")}</span>
-            <span className="text-xs text-muted-foreground">{t("dropHint", { max: PDF_MAX_MB })}</span>
+            <span className="text-xs text-muted-foreground">{t("dropHint", { max: MAX_PDF_MB })}</span>
           </>
         )}
       </button>

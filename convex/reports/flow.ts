@@ -13,6 +13,7 @@ import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
@@ -23,8 +24,7 @@ import { metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResu
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
 /** What a change is told when the report moved on in another tab or under a reviewer's hand. The page follows by itself. */
 export const MOVED_ON = "This report has moved on, so that can't be done any more.";
-/** The largest PDF a report takes, and the largest picture of its first page. */
-export const REPORT_PDF_MAX_MB = 50;
+/** The largest picture of a report PDF's first page. A report's PDF takes the app's PDF limit (lib/files/limits.ts). */
 const COVER_MAX_BYTES = 2 * 1024 * 1024;
 /** The most reports a workspace holds, which `sign` enforces: its list and its counts read them all. */
 const MAX_WORKSPACE_REPORTS = 1_000;
@@ -297,7 +297,7 @@ export const attachPdf = workspaceMutation({
       : report.step === "done" ? MOVED_ON
       : !/\.pdf$/i.test(name.trim()) ? "Choose a PDF."
       : stored.size === 0 ? "That file is empty. Choose the PDF again."
-      : stored.size > REPORT_PDF_MAX_MB * 1024 * 1024 ? `A report's PDF is at most ${REPORT_PDF_MAX_MB} MB.`
+      : stored.size > MAX_PDF_BYTES ? `A report's PDF is at most ${MAX_PDF_MB} MB.`
       : null;
     if (refused || !report) {
       await forget(ctx, file, picture ? cover : undefined);
