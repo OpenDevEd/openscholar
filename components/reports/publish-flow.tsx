@@ -1105,8 +1105,13 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
                     ) : stage === "ready" && mock.card === "none" ? (
                       <TooltipHint label="Add a payment method first">
                         <span tabIndex={0}>
-                          <Button disabled>
-                            <BadgeCheck /> Activate
+                          {/* The same words as once a card is saved, so the button keeps its width. */}
+                          <Button className="relative" disabled>
+                            <Working busy={false}>
+                              <span className="flex items-center gap-2">
+                                <BadgeCheck /> {free ? "Activate" : `Activate for $${ACTIVATION_PRICE}`}
+                              </span>
+                            </Working>
                           </Button>
                         </span>
                       </TooltipHint>
