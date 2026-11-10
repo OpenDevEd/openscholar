@@ -272,6 +272,10 @@ export function PublishFlow() {
             onAnother={another}
             correcting={correct}
             onUpload={() => go({ step: "upload" })}
+            // With its PDF the report moves on by itself, to its reading and then its details, so the upload's step
+            // in the history is taken back: Back from the details then leaves the report, and never lands on a
+            // step that shows the same screen again.
+            onAttached={() => at && up("step")}
             onStep={ownStep}
             onCorrect={() => go({ correct: true })}
             onCorrected={() => up("correct")}
@@ -284,7 +288,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onUpload, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -335,7 +339,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
           ) : report.step === "doi" ? (
             <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
           ) : report.step === "upload" ? (
-            <UploadStep report={report} workspaceId={workspaceId!} />
+            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
               <PdfNotice trouble={report.pdf.trouble} onUpload={() => back("upload")} />
@@ -705,7 +709,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
   );
 }
 
-function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"workspaces"> }) {
+function UploadStep({ report, workspaceId, onAttached }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void }) {
   const startUpload = useMutation(api.reports.flow.startUpload);
   const attachPdf = useMutation(api.reports.flow.attachPdf);
   const input = useRef<HTMLInputElement>(null);
@@ -739,6 +743,7 @@ function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"
       ]);
       const refused = await attachPdf({ ...here, file, name: picked.name, ...(cover && { cover }) });
       if (refused) return void toast.error(refused);
+      onAttached();
     } catch (error) {
       said("The PDF couldn't be uploaded. Try again.")(error);
     } finally {
