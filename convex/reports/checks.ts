@@ -70,12 +70,12 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
 
 /** Runs the checks on a report waiting at its details, with the details as its author last corrected them. */
 export const run = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator },
+  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, pdfAt: v.number() },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, key, metadata }) => {
+  handler: async (ctx, { workspaceId, key, metadata, pdfAt }) => {
     await refuseApps(ctx);
     const runId = crypto.randomUUID();
-    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId });
+    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, pdfAt });
     const { reportId } = started;
     const text = started.text ? await (await ctx.storage.get(started.text))?.text() ?? "" : "";
     const communities: Community[] = started.checks.some((check) => check.builtIn)

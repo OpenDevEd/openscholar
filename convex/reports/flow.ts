@@ -51,8 +51,30 @@ export function keptDetails(metadata: Metadata) {
   return metadata;
 }
 
-async function forget(ctx: MutationCtx, ...files: Array<Id<"_storage"> | undefined>) {
-  for (const file of files) if (file && (await ctx.db.system.get(file))) await ctx.storage.delete(file);
+const claimOf = (ctx: QueryCtx, file: Id<"_storage">) => ctx.db.query("reportFiles").withIndex("by_file", (q) => q.eq("file", file)).unique();
+
+/** Deletes files that are a report's, with the rows that say so. */
+export async function forget(ctx: MutationCtx, ...files: Array<Id<"_storage"> | undefined>) {
+  for (const file of files) {
+    if (!file) continue;
+    const claim = await claimOf(ctx, file);
+    if (claim) await ctx.db.delete("reportFiles", claim._id);
+    if (await ctx.db.system.get(file)) await ctx.storage.delete(file);
+  }
+}
+
+/** How long after it was uploaded a file can still become a report's. */
+const UPLOAD_FRESH_MS = 15 * 60 * 1000;
+
+/**
+ * A file the browser says it just uploaded for a report, if it can be: it exists, it is no report's yet, and it was
+ * uploaded moments ago. A storage ID is only ever known to the browser that uploaded it, so a fresh one that nothing
+ * claims is that upload. An older one, or one a report holds, is refused and left alone: it may be someone's file.
+ */
+async function uploaded(ctx: MutationCtx, file: Id<"_storage">) {
+  const stored = await ctx.db.system.get(file);
+  if (!stored || (await claimOf(ctx, file)) || Date.now() - stored._creationTime > UPLOAD_FRESH_MS) return null;
+  return stored;
 }
 
 /** How many more reports the workspace may start at `now`, which the page gives so this query doesn't read the clock. */
@@ -82,6 +104,8 @@ export const sign = workspaceMutation({
     // ponytail: a report registered with Zenodo alone takes the DOI Zenodo reserves, which the registration slice
     // (#1205) asks Zenodo for. Until then a report needs Crossref on, whose DOI is known as soon as it has a key.
     if (crossref.mode === "off") throw createError("FEATURE_DISABLED", "Publishing with a DOI from Zenodo alone isn't open yet.");
+    // The list and its counts read a workspace's reports up to COUNT_READ, so a workspace holds no more than that.
+    if ((await newest(ctx, workspaceId)).length >= COUNT_READ) throw createError("VALIDATION_ERROR", `A workspace holds at most ${COUNT_READ.toLocaleString("en")} reports. Discard a draft, or write to us to raise it.`);
     // Counted where it can't be undone: a report discarded later still used one of the day's starts.
     await countStart(ctx, workspaceId);
     const counter = await ctx.db.query("reportKeys").first();
@@ -115,13 +139,14 @@ export const sign = workspaceMutation({
 /** The author's corrections, kept as they make them, so leaving the details step loses nothing. A title being
  * retyped is kept empty; the checks are what need one. */
 export const saveDetails = workspaceMutation({
-  args: { key: v.string(), metadata: metadataValidator },
+  args: { key: v.string(), metadata: metadataValidator, /** The PDF the details were read from, by when it was uploaded. */ pdfAt: v.number() },
   returns: v.null(),
-  handler: async (ctx, actor, { key, metadata }) => {
+  handler: async (ctx, actor, { key, metadata, pdfAt }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
-    // Only while the details are being corrected: a save that arrives after the checks started changes nothing.
-    if (report.step !== "details" || report.run) return null;
+    // Only while the details are being corrected: a save that arrives after the checks started changes nothing. Nor
+    // does one typed over another PDF's details, as a tab left open across a new upload would send.
+    if (report.step !== "details" || report.run || report.pdf?.at !== pdfAt) return null;
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: keptDetails(metadata) });
     await touch(ctx, report, { title: metadata.title.trim() || undefined });
     return null;
@@ -177,33 +202,38 @@ export const startUpload = workspaceMutation({
  * The PDF the browser just uploaded becomes the report's, with the picture it drew of its first page, and its text
  * and details are read next (./reading.ts).
  * A new PDF starts over: the details read from the one before it are gone until this one is read. A file that
- * can't be a report's is deleted, and why is the answer: a throw would keep the file.
+ * can't be this report's is deleted, and why is the answer: a throw would keep the file.
  */
 export const attachPdf = workspaceMutation({
   args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")) },
   returns: v.union(v.null(), v.string()),
   handler: async (ctx, actor, { key, file, name, cover }) => {
     await refuseApps(ctx);
-    const stored = await ctx.db.system.get(file);
-    if (!stored) throw createError("NOT_FOUND", "The upload didn't arrive. Try again.");
-    const report = await changing(ctx, actor, key);
+    const stored = await uploaded(ctx, file);
+    const picture = cover ? await uploaded(ctx, cover) : null;
+    if (!stored) return "The upload didn't arrive. Upload the PDF again.";
+    // From here both files are this upload's, so whatever isn't kept is deleted.
+    const report = await byKey(ctx, key);
     const refused =
-      report.step === "done" ? MOVED_ON
+      !report || report.workspaceId !== actor.workspaceId ? "This report isn't one of this workspace's, or it was discarded."
+      : !mayChange(actor, report) ? OWNERS_ONLY
+      : report.step === "done" ? MOVED_ON
       : !/\.pdf$/i.test(name.trim()) ? "Choose a PDF."
       : stored.size === 0 ? "That file is empty. Choose the PDF again."
       : stored.size > REPORT_PDF_MAX_MB * 1024 * 1024 ? `A report's PDF is at most ${REPORT_PDF_MAX_MB} MB.`
       : null;
-    if (refused) {
-      await forget(ctx, file, cover);
+    if (refused || !report) {
+      await forget(ctx, file, picture ? cover : undefined);
       return refused;
     }
     await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
     const at = Date.now();
     // The picture of its first page, drawn by the browser that uploaded it. One that is too big or no picture is
     // dropped, and the report keeps its title page.
-    const picture = cover ? await ctx.db.system.get(cover) : null;
     const pictured = !!picture && picture.size <= COVER_MAX_BYTES && (picture.contentType === undefined || picture.contentType.startsWith("image/"));
-    if (cover && !pictured) await forget(ctx, cover);
+    if (picture && !pictured) await forget(ctx, cover);
+    await ctx.db.insert("reportFiles", { file, reportId: report._id });
+    if (pictured) await ctx.db.insert("reportFiles", { file: cover!, reportId: report._id });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: undefined, reviewRequest: undefined, running: undefined });
     await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", title: undefined, approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
@@ -272,9 +302,9 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise
   };
 }
 
-// ponytail: a workspace's list and its counts read its reports, up to COUNT_READ of the newest, which is what lets
-// the list page by number and keep its page in the address. A workspace starts a report or a few a day; one past
-// COUNT_READ pages by cursor and keeps its counts (lib/listCounts).
+// ponytail: a workspace's list and its counts read all its reports, which is what lets the list page by number and
+// keep its page in the address. `sign` holds a workspace to COUNT_READ of them; a workspace starts a report or a
+// few a day. Past that, the list pages by cursor and keeps its counts (lib/listCounts).
 const newest = (ctx: QueryCtx, workspaceId: Id<"workspaces">) => ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(COUNT_READ);
 
 /** One page of the workspace's reports, the one changed last first. `show` keeps those at one stage. A page past the last answers the last. */

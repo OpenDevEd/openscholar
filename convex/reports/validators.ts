@@ -205,3 +205,6 @@ export const reportRowValidator = v.object({
 export const reportRowsValidator = capped(v.array(reportRowValidator), REPORTS_PER_PAGE);
 /** A report's authors by name, as its signed agreement lists them. */
 export const signerNamesValidator = capped(v.array(v.string()), DETAIL_CAPS.authors);
+
+/** Which report a stored file is: its PDF, the picture of its first page, or its text. A file with a row here is never another report's. */
+export const reportFileFields = { file: v.id("_storage"), reportId: v.id("reports") };

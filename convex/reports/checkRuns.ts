@@ -17,7 +17,7 @@ import { checkResultValidator, checkResultsValidator, checkValidator, metadataVa
  * that is on with the model it runs on (null when its model has left the catalog).
  */
 export const start = internalMutation({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, runId: v.string() },
+  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, runId: v.string(), /** The PDF the details were read from, by when it was uploaded. */ pdfAt: v.number() },
   returns: v.object({
     reportId: v.id("reports"),
     doi: v.string(),
@@ -26,12 +26,14 @@ export const start = internalMutation({
     version: v.number(),
     checks: v.array(v.object({ ...checkValidator.fields, model: v.union(v.id("models"), v.null()) })),
   }),
-  handler: async (ctx, { workspaceId, key, metadata, runId }) => {
+  handler: async (ctx, { workspaceId, key, metadata, runId, pdfAt }) => {
     const actor = await actorFor(ctx, await requireAuth(ctx), workspaceId);
     const report = await ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
     if (!report || report.workspaceId !== workspaceId) throw createError("NOT_FOUND", "This report isn't one of this workspace's, or it was discarded.");
     if (!mayChange(actor, report)) throw createError("FORBIDDEN", OWNERS_ONLY);
     if (report.step !== "details") throw createError("CONFLICT", "This report isn't waiting for its checks any more.");
+    // Details typed over another PDF's, as a tab left open across a new upload would send, are never checked.
+    if (report.pdf?.at !== pdfAt) throw createError("CONFLICT", "A new PDF replaced the one these details were read from. Check the details it was read into.");
     if (!metadata.title.trim()) throw createError("VALIDATION_ERROR", "Give the report a title before its checks run.");
     const settings = await settingsRow(ctx);
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: keptDetails(metadata), running: [] });

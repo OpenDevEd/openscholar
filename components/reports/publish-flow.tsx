@@ -5,13 +5,13 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
-import { useAuth, useClerk, useUser } from "@clerk/nextjs";
+import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import Link from "@/components/workspace-link";
@@ -129,6 +129,8 @@ export function PublishFlow() {
   if (listed && fresh) setFresh(null);
 
   const signedOut = isLoaded && !isSignedIn;
+  // A link to a report or to the list is its workspace's to open: signing in comes back to it.
+  if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
   const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined)));
   if (!ready || !basics) return <PageFrameLoading label="Publish" />;
 
@@ -166,7 +168,7 @@ export function PublishFlow() {
           </Button>
         ) : undefined
       }
-      intro={!listed && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} /> : undefined}
+      intro={!listed && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} /> : undefined}
     >
       {listed ? (
         <div className={cn("transition-opacity", !list && "opacity-60")} aria-busy={!list || undefined}>
@@ -251,7 +253,8 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
     if (report) void goTo({ ...here, key: report.key, step }).catch(said("That step couldn't be opened"));
   };
   // A run that has gone on too long is given up on here, so its author can run the checks again.
-  const running = !!report?.run && Date.now() - report.run.at < STUCK_MS;
+  const runStuck = usePassed(report?.run ? report.run.at + STUCK_MS : undefined);
+  const running = !!report?.run && !runStuck;
   const busy = report?.step === "details" && (running || starting);
   const live = report?.step === "done" && report.status === "live";
   const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : live ? "live" : "checks";
@@ -279,24 +282,24 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
             <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={() => back("upload")} />
           ) : report.step === "upload" ? (
             <UploadStep report={report} workspaceId={workspaceId!} />
-          ) : report.step === "details" && report.metadata ? (
+          ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
-              <PdfNotice trouble={report.pdf?.trouble} />
+              <PdfNotice trouble={report.pdf.trouble} />
               <DetailsStep
                 // The details of another PDF are another form.
-                key={report.pdf?.at}
+                key={report.pdf.at}
                 initial={report.metadata}
                 onRun={async (metadata: Metadata) => {
                   setStarting(true);
                   try {
-                    await runChecks({ ...here, key: report.key, metadata });
+                    await runChecks({ ...here, key: report.key, metadata, pdfAt: report.pdf!.at });
                   } catch (error) {
                     said("The checks couldn't run")(error);
                   } finally {
                     setStarting(false);
                   }
                 }}
-                onSave={(metadata) => void saveDetails({ ...here, key: report.key, metadata }).catch(said("Your changes couldn't be saved"))}
+                onSave={(metadata) => void saveDetails({ ...here, key: report.key, metadata, pdfAt: report.pdf!.at }).catch(said("Your changes couldn't be saved"))}
               />
             </>
           ) : live ? (
@@ -319,14 +322,28 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   );
 }
 
-/** The six steps as one track that fills as the report moves on. */
-function StepTrail({ report, humanReview }: { report: Report | null; humanReview: boolean }) {
+/** True once `at` has passed. A timer wakes the page then, so what waits on a deadline doesn't wait for another change to be drawn again. */
+function usePassed(at: number | undefined) {
+  const [, wake] = useState(0);
+  // The clock is the outside system: one timer per deadline, cleared when the deadline changes or the screen goes.
+  useEffect(() => {
+    if (at === undefined || at <= Date.now()) return;
+    const timer = setTimeout(() => wake((n) => n + 1), at - Date.now() + 50);
+    return () => clearTimeout(timer);
+  }, [at]);
+  return at !== undefined && Date.now() >= at;
+}
+
+/** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
+function StepTrail({ report, humanReview, workspaceId }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined }) {
   const reduce = useReducedMotion();
+  const goTo = useMutation(api.reports.flow.goTo);
   const running = report?.step === "details" && !!report.run;
   const place = running ? 4 : placeOf(report);
   const stage = report?.step === "done" ? stageOf(report, humanReview) : null;
   const failed = stage === "failed" || stage === "declined";
   const waiting = stage === "review";
+  const canGoBack = !!report && !!workspaceId && report.mine && report.step !== "done" && !running;
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
       <ol className="grid grid-cols-6 gap-1">
@@ -334,13 +351,26 @@ function StepTrail({ report, humanReview }: { report: Report | null; humanReview
           const done = i < place || (i === place && place === 5);
           const current = i === place && place !== 5;
           const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
+          // The DOI, the PDF and the details, once done; the agreement is signed for good.
+          const clickable = canGoBack && done && i < 4 && i > 0;
+          const body = (
+            <>
+              <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
+              {/* On a phone only the current step keeps its name; the others are their icons. */}
+              <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground", !current && "max-sm:sr-only")}>{s.label}</span>
+            </>
+          );
           return (
             <li key={s.id} className="min-w-0">
-              <div aria-current={current ? "step" : undefined} className="flex min-w-0 items-center gap-1.5 py-1">
-                <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
-                {/* On a phone only the current step keeps its name; the others are their icons. */}
-                <span className={cn("truncate text-xs font-medium", done || current ? "text-foreground" : "text-muted-foreground", !current && "max-sm:sr-only")}>{s.label}</span>
-              </div>
+              {clickable ? (
+                <button type="button" onClick={() => void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said("That step couldn't be opened"))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
+                  {body}
+                </button>
+              ) : (
+                <div aria-current={current ? "step" : undefined} className="flex min-w-0 items-center gap-1.5 py-1">
+                  {body}
+                </div>
+              )}
             </li>
           );
         })}
@@ -565,8 +595,8 @@ function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"
   // long is given up on here, so the PDF can be sent again. One already read, as when the author comes back to
   // replace it, is neither.
   const unread = !sending && !!report.pdf && !report.pdf.trouble && report.pdf.pages === undefined;
-  const reading = unread && Date.now() - report.pdf!.at < STUCK_MS;
-  const stuck = unread && !reading;
+  const stuck = usePassed(unread ? report.pdf!.at + STUCK_MS : undefined);
+  const reading = unread && !stuck;
   const busy = !!sending || reading;
   const send = async (picked: File | undefined) => {
     if (!picked || busy) return;
