@@ -188,6 +188,9 @@ can add it by DOI, and `lib/publish-mock/`, `components/publish-mock/`,
   which `@opendeved/doi-sync-core` doesn't make yet. A report is deposited as a
   report-paper with the series as its institution.
 - A saved copy of a report following its corrections (#1219).
+- Funders, references and related links in the Crossref deposit (#1221): the
+  package deposits none of them yet, so the details form marks those sections
+  as Openscholar's alone.
 
 ## Known risks
 

@@ -66,6 +66,9 @@ export const begin = internalMutation({
     const waiting = providersOf(report.registration).filter((provider) => (provider === "crossref" ? report.deposit : report.archive) === "queued");
     if (!metadata || !waiting.length) return null;
     await ctx.db.patch("reports", reportId, { registrationLease: now + LEASE_MS });
+    // An action that dies holding the report leaves nothing behind to try again: one more is asked for when its hold
+    // runs out, which finds nothing to do if this one finished.
+    await ctx.scheduler.runAfter(LEASE_MS + HELD_RETRY_MS, internal.reports.registrar.register, { reportId, rev });
     const settings = await reportSettings(ctx);
     return {
       key: report.key,

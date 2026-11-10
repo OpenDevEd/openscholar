@@ -28,21 +28,21 @@ describe("a report's record for its registrars", () => {
   const series = { name: "Openscholar Reports", issn: "" };
 
   it("is one Crossref takes as a report, with each person's family name found", () => {
-    const record = registrationRecord(report, m, series, "cc-by-4.0", "https://openscholar.ai/");
-    expect(record).toMatchObject({ itemType: "Report", title: "Shade trees: Evidence from Malawi", landingUrl: "https://openscholar.ai/papers/R100001", publisher: "Openscholar", institution: "Openscholar Reports" });
+    const record = registrationRecord(report, m, series, "https://openscholar.ai/");
+    expect(record).toMatchObject({ itemType: "Report", license: "cc-by-4.0", title: "Shade trees: Evidence from Malawi", landingUrl: "https://openscholar.ai/papers/R100001", publisher: "Openscholar", institution: "Openscholar Reports" });
     expect(record.creators).toEqual([
       { type: "personal", name: "Banda, Chikondi", creatorType: "author", givenName: "Chikondi", familyName: "Banda", affiliation: "LUANAR", orcid: "0000-0002-1825-0097" },
       { type: "personal", name: "Plato", creatorType: "author", familyName: "Plato" },
     ]);
     // A body that wrote the report keeps its name whole.
-    const body = registrationRecord(report, { ...m, authors: [{ ...m.authors[1]!, name: "World Health Organization" }] }, series, "cc-by-4.0", "https://openscholar.ai");
+    const body = registrationRecord(report, { ...m, authors: [{ ...m.authors[1]!, name: "World Health Organization" }] }, series, "https://openscholar.ai");
     expect(body.creators).toEqual([{ type: "organizational", name: "World Health Organization", creatorType: "author" }]);
     expect(mapCrossrefRecord(body, report.doi)).toMatchObject({ ok: true });
     expect(mapCrossrefRecord(record, report.doi)).toMatchObject({ ok: true, record: { kind: "report", metadata: { doi: report.doi } } });
   });
 
   it("says so in its title once the report is withdrawn, under the same DOI", () => {
-    expect(registrationRecord({ ...report, withdrawn: true }, m, series, "cc-by-4.0", "https://openscholar.ai")).toMatchObject({ title: "WITHDRAWN: Shade trees: Evidence from Malawi", doi: report.doi });
+    expect(registrationRecord({ ...report, withdrawn: true }, m, series, "https://openscholar.ai")).toMatchObject({ title: "WITHDRAWN: Shade trees: Evidence from Malawi", doi: report.doi });
   });
 });
 

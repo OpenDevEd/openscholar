@@ -477,7 +477,8 @@ export function DetailsStep({
           <CountrySelector label="Places studied" placeholder="Add a country or region" selectedRegions={m.countries} onSelectionChange={(countries) => set("countries", countries)} bypassLimit />
         </Section>
 
-        <Section title="Funding" crossref>
+        {/* Funders, references and links are the report's page's for now: the deposit to Crossref doesn't carry them yet (#1221). */}
+        <Section title="Funding" crossref={false}>
           <OpenAlexLookupFilter
             selected={funderIds}
             onChange={(next) => set("funding", m.funding.filter((f) => next.includes(f.funder.id ?? typedId(f.funder.name))))}
@@ -508,7 +509,7 @@ export function DetailsStep({
           ) : null}
         </Section>
 
-        <Section title="References" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
+        <Section title="References" crossref={false} aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
           {m.references.length ? (
             <Paged pager={refs} rowHeight={REF_ROW} label="references">
               <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
@@ -536,7 +537,7 @@ export function DetailsStep({
           {doiTrouble ? <p role="alert" className="ps-1 text-xs text-destructive">{doiTrouble}</p> : null}
         </Section>
 
-        <Section title="Data, code and other versions" crossref>
+        <Section title="Data, code and other versions" crossref={false}>
           {m.relations.length ? (
             <Paged pager={links.pager} rowHeight={ROW} label="links">
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">

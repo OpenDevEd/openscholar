@@ -11,6 +11,9 @@ import type { Series } from "./settings";
 const BODY = /\b(organi[sz]ation|universit[yé]|institut[eo]?|minist(ry|ère|erio)|foundation|bank|agency|council|committee|commission|department|cent(er|re)|network|association|society|programme|consortium|collaboration|authority|ltd|inc|gmbh|llc)\b/i;
 const ACRONYM = /\b(WHO|UNICEF|UNESCO|OECD|FAO|UNDP|IMF)\b/;
 
+/** A report's licence as Zenodo's vocabulary names it. */
+const LICENSE_ID: Record<Metadata["licence"], string> = { "CC BY 4.0": "cc-by-4.0" };
+
 /** A person's name as the registrars keep one: family name, then given names. A single word is a family name. A body keeps its name as it is. */
 function creator(author: Metadata["authors"][number]) {
   if (!author.orcid && (BODY.test(author.name) || ACRONYM.test(author.name))) return { type: "organizational" as const, name: author.name.trim(), creatorType: "author" };
@@ -32,7 +35,7 @@ function creator(author: Metadata["authors"][number]) {
  * The record of a report as it stands. A withdrawn one keeps its DOI, which can't be removed, and is registered
  * again with its title saying so, as Crossref asks of withdrawn work.
  */
-export function registrationRecord(report: { key: string; doi: string; withdrawn: boolean }, m: Metadata, series: Pick<Series, "name" | "issn">, license: string, origin: string) {
+export function registrationRecord(report: { key: string; doi: string; withdrawn: boolean }, m: Metadata, series: Pick<Series, "name" | "issn">, origin: string) {
   const title = m.subtitle.trim() ? `${m.title.trim()}: ${m.subtitle.trim()}` : m.title.trim();
   return {
     itemType: "Report",
@@ -43,7 +46,8 @@ export function registrationRecord(report: { key: string; doi: string; withdrawn
     publisher: "Openscholar",
     institution: series.name,
     rights: m.licence,
-    license,
+    // The licence its author agreed to publish under, as Zenodo names it: the same wherever the report is registered.
+    license: LICENSE_ID[m.licence],
     creators: m.authors.filter((author) => author.name.trim()).map(creator),
     tags: m.keywords,
     doi: report.doi,

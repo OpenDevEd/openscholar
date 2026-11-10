@@ -39,7 +39,7 @@ export const register = internalAction({
           const key = process.env.ENCRYPTION_KEY;
           secrets = job.encryptedCredentials && key ? JSON.parse(decrypt(job.encryptedCredentials, key)) : {};
           const { crossref, zenodo } = job.publication;
-          const record = registrationRecord(job, job.metadata, job.series, zenodo.license, requireAppUrl());
+          const record = registrationRecord(job, job.metadata, job.series, requireAppUrl());
           if (provider === "crossref") {
             if (crossref.mode === "off" || !secrets.crossrefLoginId || !secrets.crossrefPassword) throw new Error("Crossref isn't connected in the publishing settings.");
             const mapped = mapCrossrefRecord(record, job.doi);
