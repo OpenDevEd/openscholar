@@ -14,7 +14,7 @@ const statusSchema = z
     itemKey: z.string().min(1).max(64),
     generation: z.number().int().positive(),
     clerkUserId: z.string().min(1).max(128),
-    status: z.enum(["queued", "published", "returned", "withdrawn"]),
+    status: z.enum(["queued", "published", "returned", "withdrawn", "removed"]),
     note: z.string().max(4000).nullable(),
     at: z.string().datetime({ offset: true }),
     /** What the paper is, so one sent from the community's own site becomes the person's submission here. */

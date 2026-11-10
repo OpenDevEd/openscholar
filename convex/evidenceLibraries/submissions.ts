@@ -13,7 +13,7 @@ import { PAPER_SENT_TO, RECENT_COMMUNITIES, recentCommunitiesValidator, sentPape
 
 /** Submissions a page of Your submissions shows at most. */
 const SUBMISSIONS_PAGE_MAX = 50;
-/** Everyone who sent the same paper to a community, whose rows a change from it updates. */
+/** Everyone who sent the same paper to a community, a page of whose rows a change from it updates at a time. */
 const SENDERS_PER_PAPER = 100;
 /** The latest submissions Add to community looks through for its recent communities. */
 const RECENT_SUBMISSIONS_READ = 50;
@@ -51,7 +51,7 @@ const searchTextOf = (title: string, community: string) => `${title} ${community
 async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId: Id<"evidenceLibraries">, itemKey: string, clerkUserId: string) {
   const held = await ctx.db.query("pendingSubmissionStatus").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
   for (const event of held) {
-    if (event.status !== "published" && event.clerkUserId !== clerkUserId) continue;
+    if (!forEveryone(event.status) && event.clerkUserId !== clerkUserId) continue;
     await ctx.db.delete("pendingSubmissionStatus", event._id);
     const row = await ctx.db.get("paperSubmissions", id);
     if (!row || (row.generation ?? 0) >= event.generation) continue;
@@ -120,9 +120,13 @@ export const forgetSent = internalMutation({
   },
 });
 
+/** Published, or later taken off the community's site, a paper is one record: the word is for everyone who sent it. */
+const forEveryone = (status: Doc<"paperSubmissions">["status"]) => status === "published" || status === "removed";
+
 /**
- * What a community says of a paper sent to it: approved, returned with the reviewer's note, or withdrawn. It's the
- * community's machine credential that says so, and a change older than the last one applied changes nothing.
+ * What a community says of a paper sent to it: approved, returned with the reviewer's note, withdrawn, or removed once
+ * its team unpublished or deleted the record. It's the community's machine credential that says so, and a change older
+ * than the last one applied changes nothing.
  */
 export const applyStatus = internalMutation({
   args: {
@@ -141,14 +145,13 @@ export const applyStatus = internalMutation({
   returns: v.null(),
   handler: async (ctx, { libraryId: library, credentialDigest, itemKey, generation, clerkUserId, status, note, at, paper }) => {
     const libraryId = await authenticate(ctx, library, credentialDigest);
-    // Published, it's published for everyone who sent it: a paper two people suggested is one record. Waiting,
+    // Published or removed, it is for everyone who sent it: a paper two people suggested is one record. Waiting,
     // returned or withdrawn is the submission of whoever sent it this time.
     const sender = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
-    if (status !== "published" && !sender) return null;
-    const rows = status !== "published" && sender
-      ? [await byPaper(ctx, sender._id, libraryId, itemKey)].filter((row) => row !== null)
-      : // ponytail: the first SENDERS_PER_PAPER who sent the same paper are updated; page the rest if a paper ever has more.
-        await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
+    if (!forEveryone(status) && !sender) return null;
+    // Everyone's word reads a page of those who sent the paper; the rest are paged after (applyToSenders).
+    const everyone = forEveryone(status) ? await sendersPage(ctx, libraryId, itemKey, null) : null;
+    const rows = everyone ? everyone.page : [await byPaper(ctx, sender!._id, libraryId, itemKey)].filter((row) => row !== null);
     // Sent from the community's own site, it becomes their submission here with the community's first word on it, which
     // is published when a reviewer approved it before the word that it waits arrived.
     // Under the request that sent it, so when that request was Openscholar's and is still finishing, it finds the
@@ -159,22 +162,48 @@ export const applyStatus = internalMutation({
       const community = (await communityOf(ctx, libraryId)).name;
       const id = await ctx.db.insert("paperSubmissions", { ...summary, ...(requestId ? { requestId } : {}), userId: sender._id, libraryId, itemKey, status, ...(note ? { note } : {}), generation, searchText: searchTextOf(paper.title, community), sentAt: at, updatedAt: at });
       await applyHeld(ctx, id, libraryId, itemKey, clerkUserId);
-      // Published, it's published for the others who sent it too.
-      if (status !== "published" || !rows.length) return null;
+      // Published or removed, it is for the others who sent it too.
+      if (!forEveryone(status) || !rows.length) return null;
     }
     // Before Openscholar recorded the paper as sent, as when the community answers first: it's held until it is.
     if (!rows.length) {
       await ctx.db.insert("pendingSubmissionStatus", { libraryId, itemKey, clerkUserId, generation, status, note: note ?? undefined, at });
       return null;
     }
-    for (const row of rows) {
-      if ((row.generation ?? 0) >= generation) continue;
-      // Taken back by the person who sent it, it's listed as withdrawn, and keeps its generation. Their row takes the
-      // request this word is about, so that request, still finishing here, leaves the word as it is.
-      const sentNow = paper?.requestId && sender && row.userId === sender._id ? { requestId: paper.requestId } : {};
-      await ctx.db.patch("paperSubmissions", row._id, { status, note: note ?? undefined, generation, updatedAt: at, ...sentNow });
-      await tellSender(ctx, row, status, generation);
-    }
+    const word = { status, note: note ?? undefined, generation, at, ...(paper?.requestId && sender ? { senderId: sender._id, requestId: paper.requestId } : {}) };
+    await applyTo(ctx, rows, word);
+    if (everyone && !everyone.isDone) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.submissions.applyToSenders, { libraryId, itemKey, cursor: everyone.continueCursor, word });
+    return null;
+  },
+});
+
+/** One page of everyone who sent a paper to a community. */
+const sendersPage = (ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, itemKey: string, cursor: string | null) =>
+  ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).paginate({ cursor, numItems: SENDERS_PER_PAPER });
+
+const wordValidator = v.object({ status: submissionStatusValidator, note: v.optional(v.string()), generation: v.number(), at: v.number(), senderId: v.optional(v.id("users")), requestId: v.optional(v.string()) });
+type Word = Infer<typeof wordValidator>;
+
+/** Applies the community's word to these submissions, leaving any that already have a newer one. */
+async function applyTo(ctx: MutationCtx, rows: Doc<"paperSubmissions">[], { status, note, generation, at, senderId, requestId }: Word) {
+  for (const row of rows) {
+    if ((row.generation ?? 0) >= generation) continue;
+    // Taken back by the person who sent it, it's listed as withdrawn, and keeps its generation. Their row takes the
+    // request this word is about, so that request, still finishing here, leaves the word as it is.
+    const sentNow = requestId && row.userId === senderId ? { requestId } : {};
+    await ctx.db.patch("paperSubmissions", row._id, { status, note, generation, updatedAt: at, ...sentNow });
+    await tellSender(ctx, row, status, generation);
+  }
+}
+
+/** The community's word for everyone who sent a paper, applied a page at a time past the first. */
+export const applyToSenders = internalMutation({
+  args: { libraryId: v.id("evidenceLibraries"), itemKey: v.string(), cursor: v.string(), word: wordValidator },
+  returns: v.null(),
+  handler: async (ctx, { libraryId, itemKey, cursor, word }) => {
+    const page = await sendersPage(ctx, libraryId, itemKey, cursor);
+    await applyTo(ctx, page.page, word);
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.submissions.applyToSenders, { libraryId, itemKey, cursor: page.continueCursor, word });
     return null;
   },
 });
