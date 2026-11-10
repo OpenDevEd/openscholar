@@ -68,6 +68,24 @@ it("saves a batch in one call, answering a refused record alone while the others
   ]);
   expect((await t.run(ctx => ctx.db.query("topicLocations").collect())).map(row => row.itemKey).sort()).toEqual(["ABCD1234", "EFGH5678"]);
 });
+it("saves a batch at full weight, and again as a re-send, within one transaction's limits", async () => {
+  const {t, a, request} = await fixture();
+  const topics = ["T20001", "T20002", "T20003", "T20004", "T20005"];
+  await t.run(async ctx => {
+    for (const id of topics) await ctx.db.insert("topicCatalog", {id, name: id, parent: "subfields/3304", level: "topic", path: ["Social Sciences", "Education", "Education", id], ancestors: ["domains/2", "fields/33", "subfields/3304"], childCount: 0, revision: CATALOG_REVISION, searchText: id, domainId: "domains/2", fieldId: "fields/33", subfieldId: "subfields/3304"});
+  });
+  // 50 records with five topics each: the most a batch may weigh. Each has its own work and DOI, so each regroups.
+  const batch = (generation: number) => ({contractVersion: 1, libraryId: a.libraryId, deliveries: Array.from({length: 50}, (_, index) => request(a.libraryId, {
+    itemKey: `FULL${String(index).padStart(4, "0")}`, idempotencyKey: `full-${index}-${generation}`, generation,
+    topicIds: topics, openalexId: `W${9000 + index}`, doi: `https://doi.org/10.1234/full-${index}`,
+  }))});
+  const http = (body: unknown) => t.fetch("/api/v1/evidence-libraries/topic-associations/batch", {method: "POST", headers: {Authorization: `Bearer ${credential}`}, body: JSON.stringify(body)});
+  for (const generation of [1, 2]) {
+    const response = await http(batch(generation));
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as {receipts: {status?: string}[]}).receipts.every(receipt => receipt.status === "applied")).toBe(true);
+  }
+});
 it("groups DOI variants, returns the locations in live listed communities, and retains unlisted ones' assignments", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());
