@@ -51,7 +51,7 @@ const searchTextOf = (title: string, community: string) => `${title} ${community
 async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId: Id<"evidenceLibraries">, itemKey: string, clerkUserId: string) {
   const held = await ctx.db.query("pendingSubmissionStatus").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
   for (const event of held) {
-    if (event.status !== "published" && event.clerkUserId !== clerkUserId) continue;
+    if (!forEveryone(event.status) && event.clerkUserId !== clerkUserId) continue;
     await ctx.db.delete("pendingSubmissionStatus", event._id);
     const row = await ctx.db.get("paperSubmissions", id);
     if (!row || (row.generation ?? 0) >= event.generation) continue;
@@ -120,9 +120,13 @@ export const forgetSent = internalMutation({
   },
 });
 
+/** Published, or later taken off the community's site, a paper is one record: the word is for everyone who sent it. */
+const forEveryone = (status: Doc<"paperSubmissions">["status"]) => status === "published" || status === "removed";
+
 /**
- * What a community says of a paper sent to it: approved, returned with the reviewer's note, or withdrawn. It's the
- * community's machine credential that says so, and a change older than the last one applied changes nothing.
+ * What a community says of a paper sent to it: approved, returned with the reviewer's note, withdrawn, or removed once
+ * its team unpublished or deleted the record. It's the community's machine credential that says so, and a change older
+ * than the last one applied changes nothing.
  */
 export const applyStatus = internalMutation({
   args: {
@@ -141,11 +145,11 @@ export const applyStatus = internalMutation({
   returns: v.null(),
   handler: async (ctx, { libraryId: library, credentialDigest, itemKey, generation, clerkUserId, status, note, at, paper }) => {
     const libraryId = await authenticate(ctx, library, credentialDigest);
-    // Published, it's published for everyone who sent it: a paper two people suggested is one record. Waiting,
+    // Published or removed, it is for everyone who sent it: a paper two people suggested is one record. Waiting,
     // returned or withdrawn is the submission of whoever sent it this time.
     const sender = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
-    if (status !== "published" && !sender) return null;
-    const rows = status !== "published" && sender
+    if (!forEveryone(status) && !sender) return null;
+    const rows = !forEveryone(status) && sender
       ? [await byPaper(ctx, sender._id, libraryId, itemKey)].filter((row) => row !== null)
       : // ponytail: the first SENDERS_PER_PAPER who sent the same paper are updated; page the rest if a paper ever has more.
         await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", itemKey)).take(SENDERS_PER_PAPER);
@@ -159,8 +163,8 @@ export const applyStatus = internalMutation({
       const community = (await communityOf(ctx, libraryId)).name;
       const id = await ctx.db.insert("paperSubmissions", { ...summary, ...(requestId ? { requestId } : {}), userId: sender._id, libraryId, itemKey, status, ...(note ? { note } : {}), generation, searchText: searchTextOf(paper.title, community), sentAt: at, updatedAt: at });
       await applyHeld(ctx, id, libraryId, itemKey, clerkUserId);
-      // Published, it's published for the others who sent it too.
-      if (status !== "published" || !rows.length) return null;
+      // Published or removed, it is for the others who sent it too.
+      if (!forEveryone(status) || !rows.length) return null;
     }
     // Before Openscholar recorded the paper as sent, as when the community answers first: it's held until it is.
     if (!rows.length) {
