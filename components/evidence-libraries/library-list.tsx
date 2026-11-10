@@ -164,7 +164,8 @@ export function LibraryList({ signedIn, preloadedOpens, preloadedPublic, preload
             ) : (
               <PublicCommunities search={text} preloaded={preloadedPublic} heading={signedIn ? tabs : undefined} signedIn={signedIn} preloadedStanding={preloadedStanding} />
             )}
-            <ApplyDialog signedIn={signedIn} seed={applySeed} />
+            {/* Signed out, Apply goes to sign-in, which comes back here with the dialog open. */}
+            {signedIn ? <ApplyDialog seed={applySeed} /> : null}
             <Dialog open={Boolean(declining)} onOpenChange={(open) => { if (!open) setDeclining(null); }}>
               <DialogContent showCloseButton={false}>
                 <DialogHeader>

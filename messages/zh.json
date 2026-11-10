@@ -5247,10 +5247,6 @@
     "peopleFromTheLibrarySTeam": "文献社区团队成员或手动添加的人员将按此处设置的顺序依次显示。",
     "aboutTheTeam": "关于团队",
     "usedInsteadWhenThereIsNo": "没有团队介绍时使用此文字。",
-    "suggestAPublication": "推荐出版物",
-    "opensAnEmailTo": "打开发往 {email} 的邮件",
-    "needsAContactEmail": "需要联系邮箱",
-    "joinAsAnEditor": "以编辑者身份加入",
     "askTheLibrary": "向文献社区提问",
     "typedIntoTheQuestionBoxOne": "依次显示在提问框中。留空则保留由文献社区主题生成的问题。",
     "shownWhenAiAnswersAreOn": "在“功能”中开启 AI 回答时显示。留空则保留由文献社区主题生成的问题。",
@@ -5378,7 +5374,12 @@
     "noPublicationHasAPdfYet": "暂无出版物包含 PDF。",
     "noPublicationMatches": "没有符合条件的出版物。",
     "theLibraryIsNotSetUp": "文献社区尚未设置。",
-    "linked": "已关联"
+    "linked": "已关联",
+    "suggestPapers": "推荐论文",
+    "suggestPapersHint": "打开网站的“推荐论文”对话框。团队会审核每篇论文。",
+    "needsReaderAccounts": "需要读者账户",
+    "joinThisTeam": "加入这个团队",
+    "joinThisTeamHint": "打开 Openscholar 上的申请。申请关闭期间隐藏。"
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "搜索姓名或邮箱",
@@ -6057,7 +6058,6 @@
     "whoSees": "所有者和编辑会看到你的姓名、邮箱和这条留言。",
     "cancel": "取消",
     "send": "发送申请",
-    "signInToSend": "登录后发送",
     "sentTitle": "申请已发送",
     "sentBody": "它在“你的社区”中，你可以在那里撤回。",
     "steps": {

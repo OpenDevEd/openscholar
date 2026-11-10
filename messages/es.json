@@ -5248,10 +5248,6 @@
     "peopleFromTheLibrarySTeam": "Las personas del equipo de la comunidad, o añadidas a mano, aparecen en el orden indicado aquí.",
     "aboutTheTeam": "Sobre el equipo",
     "usedInsteadWhenThereIsNo": "Se usa en su lugar cuando no hay frase del equipo.",
-    "suggestAPublication": "Sugerir una publicación",
-    "opensAnEmailTo": "Abre un correo para {email}",
-    "needsAContactEmail": "Necesita un correo de contacto",
-    "joinAsAnEditor": "Unirse como editor",
     "askTheLibrary": "Preguntar a la comunidad",
     "typedIntoTheQuestionBoxOne": "Se escriben en el cuadro de preguntas una tras otra. Un cuadro vacío mantiene la pregunta creada a partir de los temas de la comunidad.",
     "shownWhenAiAnswersAreOn": "Se muestra cuando las respuestas de IA están activadas en Funciones. Un cuadro vacío mantiene la pregunta creada a partir de los temas de la comunidad.",
@@ -5379,7 +5375,12 @@
     "noPublicationHasAPdfYet": "Ninguna publicación tiene PDF todavía.",
     "noPublicationMatches": "Ninguna publicación coincide.",
     "theLibraryIsNotSetUp": "La comunidad todavía no está configurada.",
-    "linked": "Enlazado"
+    "linked": "Enlazado",
+    "suggestPapers": "Sugerir artículos",
+    "suggestPapersHint": "Abre el cuadro Sugerir artículos del sitio. El equipo revisa cada artículo.",
+    "needsReaderAccounts": "Requiere cuentas de lector",
+    "joinThisTeam": "Unirse a este equipo",
+    "joinThisTeamHint": "Abre la solicitud en Openscholar. Se oculta mientras las solicitudes estén desactivadas."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Buscar por nombre o correo",
@@ -6058,7 +6059,6 @@
     "whoSees": "Sus propietarios y editores ven tu nombre, tu correo y este mensaje.",
     "cancel": "Cancelar",
     "send": "Enviar solicitud",
-    "signInToSend": "Inicia sesión para enviar",
     "sentTitle": "Solicitud enviada",
     "sentBody": "Está en Tus comunidades, donde puedes retirarla.",
     "steps": {

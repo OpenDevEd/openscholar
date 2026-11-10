@@ -300,18 +300,19 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
               onChange={(value) => setHeading("involvement", value)}
             />
             <div className="grid gap-2 sm:grid-cols-2">
+              {/* The site's own buttons: Suggest papers opens its dialog, which needs reader accounts to sign in with. */}
               <ToggleRow
-                label={t("suggestAPublication")}
-                hint={draft.contact.email ? t("opensAnEmailTo", { email: draft.contact.email }) : t("needsAContactEmail")}
-                checked={home.involvement.suggestions && Boolean(draft.contact.email)}
-                disabled={!draft.contact.email}
+                label={t("suggestPapers")}
+                hint={draft.features.readerAccounts ? t("suggestPapersHint") : t("needsReaderAccounts")}
+                checked={home.involvement.suggestions && draft.features.readerAccounts}
+                disabled={!draft.features.readerAccounts}
                 onChange={(suggestions) => setHome((h) => ({ involvement: { ...h.involvement, suggestions } }))}
               />
+              {/* Join this team opens applying on Openscholar; the site hides it while the community takes no applications. */}
               <ToggleRow
-                label={t("joinAsAnEditor")}
-                hint={draft.contact.email ? t("opensAnEmailTo", { email: draft.contact.email }) : t("needsAContactEmail")}
-                checked={home.involvement.editors && Boolean(draft.contact.email)}
-                disabled={!draft.contact.email}
+                label={t("joinThisTeam")}
+                hint={t("joinThisTeamHint")}
+                checked={home.involvement.editors}
                 onChange={(editors) => setHome((h) => ({ involvement: { ...h.involvement, editors } }))}
               />
             </div>

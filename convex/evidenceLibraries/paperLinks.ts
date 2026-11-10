@@ -6,7 +6,7 @@ import { internalQuery } from "../lib/functions";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { readConvexErrorData } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { readWork } from "../paperSets/openalex";
+import { PAGE_ORDERED_SORT, readSearchPage, readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { normalDoi, openalexWork } from "../../lib/papers/paper-ref";
@@ -95,19 +95,59 @@ export const resolvePapers: ReturnType<typeof httpAction> = httpAction(async (ct
   const parsed = resolveSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return jsonResponse(400, { error: { code: "invalid_request", retryable: false } });
   const { libraryId, links, clerkUserId } = parsed.data;
-  try {
-    await ctx.runQuery(internal.topics.serviceHttp.authenticate, { libraryId, credentialDigest: await digestOpaqueToken(credential) });
-  } catch {
-    return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
-  }
+  if (!(await isCommunity(ctx, libraryId, credential))) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
   // A reader's lookups count against their own allowance. The team's, from the admin, aren't counted: at most ADDED_PAPERS_MAX a request, from a signed community.
   const spend = clerkUserId ? spender(ctx, clerkUserId) : async () => true;
+  return answerPapers(libraryId, async () => await Promise.all(links.map((link) => paperOfLink(ctx, link, spend, { withDoi: true }))));
+});
+
+/** Whether the credential is this community's own. */
+async function isCommunity(ctx: Pick<ActionCtx, "runQuery">, libraryId: string, credential: string) {
+  const credentialDigest = await digestOpaqueToken(credential);
+  return await ctx.runQuery(internal.topics.serviceHttp.authenticate, { libraryId, credentialDigest }).then(() => true, () => false);
+}
+
+/** The papers found, or why they couldn't be read: an allowance spent is said as one, anything else as a failure to try again. */
+async function answerPapers(libraryId: string, find: () => Promise<Array<PaperIds | null>>) {
   try {
-    const papers = await Promise.all(links.map((link) => paperOfLink(ctx, link, spend, { withDoi: true })));
-    return jsonResponse(200, { papers });
+    return jsonResponse(200, { papers: await find() });
   } catch (error) {
     if (readConvexErrorData(error)?.message === new OpenAlexLimitedError().message) return jsonResponse(429, { error: { code: "rate_limited", retryable: true } });
-    console.error("[paper links] couldn't follow a community's links", { libraryId, error: String(error) });
+    console.error("[paper links] couldn't find a community's papers", { libraryId, error: String(error) });
     return jsonResponse(503, { error: { code: "temporarily_unavailable", retryable: true } });
   }
+}
+
+/** Papers a title search answers with: a reader picks from a short list. */
+const TITLE_MATCHES = 5;
+
+const searchSchema = z
+  .object({
+    contractVersion: z.literal(1),
+    libraryId: z.string().min(1).max(128),
+    /** What the reader typed for a title. */
+    query: z.string().trim().min(3).max(300),
+    /** The signed-in reader who searches, whose allowance the search counts against, as their own searches do. */
+    clerkUserId: z.string().min(1).max(128),
+  })
+  .strict();
+
+/**
+ * `POST /api/v1/evidence-libraries/papers/search`, for a community whose reader suggests a paper by its title: the
+ * first papers the site's active index finds for the words, each by its OpenAlex work and its DOI where one is known,
+ * as `papers/resolve` gives them. With the community's machine credential.
+ */
+export const searchPapersByTitle: ReturnType<typeof httpAction> = httpAction(async (ctx, request) => {
+  const credential = readBearerCredential(request);
+  if (!credential) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
+  const parsed = searchSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return jsonResponse(400, { error: { code: "invalid_request", retryable: false } });
+  const { libraryId, query, clerkUserId } = parsed.data;
+  if (!(await isCommunity(ctx, libraryId, credential))) return jsonResponse(401, { error: { code: "invalid_service_credential", retryable: false } });
+  return answerPapers(libraryId, async () => {
+    const source = await ctx.runQuery(internal.featureFlags.internal.searchSource, {});
+    const { works } = await readSearchPage<{ id?: string; doi?: string | null }>({ search: query, sort: PAGE_ORDERED_SORT, source }, { page: 1, size: TITLE_MATCHES, select: "id,doi" }, spender(ctx, clerkUserId));
+    // A paper neither OpenAlex nor a DOI names can't be added to a community, so it isn't offered.
+    return works.map((work) => ({ openalexId: openalexWork(work.id ?? ""), doi: normalDoi(work.doi) })).filter((ids) => ids.openalexId || ids.doi);
+  });
 });

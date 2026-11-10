@@ -5247,10 +5247,6 @@
     "peopleFromTheLibrarySTeam": "コミュニティのチームの人や、手動で追加した人が、ここで設定した順番で表示されます。",
     "aboutTheTeam": "チームについて",
     "usedInsteadWhenThereIsNo": "チームの説明文がないときに、代わりに使われます。",
-    "suggestAPublication": "出版物を提案",
-    "opensAnEmailTo": "{email} へのメールを開きます",
-    "needsAContactEmail": "連絡先のメールアドレスが必要です",
-    "joinAsAnEditor": "編集者として参加",
     "askTheLibrary": "コミュニティに質問",
     "typedIntoTheQuestionBoxOne": "質問ボックスに順番に入力されます。空欄のままにすると、コミュニティのトピックから作られた質問が使われます。",
     "shownWhenAiAnswersAreOn": "機能の AI の回答がオンのときに表示されます。空欄のままにすると、コミュニティのトピックから作られた質問が使われます。",
@@ -5378,7 +5374,12 @@
     "noPublicationHasAPdfYet": "PDFが添付された出版物はまだありません。",
     "noPublicationMatches": "一致する出版物はありません。",
     "theLibraryIsNotSetUp": "コミュニティはまだ設定されていません。",
-    "linked": "リンク済み"
+    "linked": "リンク済み",
+    "suggestPapers": "論文を提案",
+    "suggestPapersHint": "サイトの「論文を提案」ダイアログを開きます。チームが各論文を確認します。",
+    "needsReaderAccounts": "読者アカウントが必要です",
+    "joinThisTeam": "このチームに参加",
+    "joinThisTeamHint": "Openscholar での申請を開きます。申請を受け付けていない間は表示されません。"
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "名前またはメールで検索",
@@ -6057,7 +6058,6 @@
     "whoSees": "オーナーと編集者には、あなたの名前、メールアドレス、このメッセージが表示されます。",
     "cancel": "キャンセル",
     "send": "申請を送信",
-    "signInToSend": "サインインして送信",
     "sentTitle": "申請を送信しました",
     "sentBody": "あなたのコミュニティに表示され、そこで取り下げられます。",
     "steps": {

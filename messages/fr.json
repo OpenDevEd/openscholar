@@ -5247,10 +5247,6 @@
     "peopleFromTheLibrarySTeam": "Les personnes de l’équipe de la communauté, ou ajoutées à la main, défilent dans l’ordre défini ici.",
     "aboutTheTeam": "À propos de l’équipe",
     "usedInsteadWhenThereIsNo": "Utilisé à la place lorsqu’il n’y a pas de phrase sur l’équipe.",
-    "suggestAPublication": "Proposer une publication",
-    "opensAnEmailTo": "Ouvre un e-mail adressé à {email}",
-    "needsAContactEmail": "Nécessite une adresse e-mail de contact",
-    "joinAsAnEditor": "Rejoindre comme éditeur",
     "askTheLibrary": "Poser une question à la communauté",
     "typedIntoTheQuestionBoxOne": "Saisies dans la zone de question l’une après l’autre. Une zone vide conserve la question issue des thèmes de la communauté.",
     "shownWhenAiAnswersAreOn": "Affiché lorsque les réponses de l’IA sont activées dans Fonctionnalités. Une zone vide conserve la question issue des thèmes de la communauté.",
@@ -5378,7 +5374,12 @@
     "noPublicationHasAPdfYet": "Aucune publication n’a encore de PDF.",
     "noPublicationMatches": "Aucune publication ne correspond.",
     "theLibraryIsNotSetUp": "La communauté n’est pas encore configurée.",
-    "linked": "Lié"
+    "linked": "Lié",
+    "suggestPapers": "Suggérer des articles",
+    "suggestPapersHint": "Ouvre la fenêtre Suggérer des articles du site. L’équipe examine chaque article.",
+    "needsReaderAccounts": "Nécessite les comptes lecteur",
+    "joinThisTeam": "Rejoindre cette équipe",
+    "joinThisTeamHint": "Ouvre la candidature sur Openscholar. Masqué tant que les candidatures sont désactivées."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Rechercher par nom ou e-mail",
@@ -6057,7 +6058,6 @@
     "whoSees": "Ses propriétaires et éditeurs voient votre nom, votre adresse e-mail et ce message.",
     "cancel": "Annuler",
     "send": "Envoyer la demande",
-    "signInToSend": "Se connecter pour envoyer",
     "sentTitle": "Demande envoyée",
     "sentBody": "Elle figure dans Vos communautés, où vous pouvez la retirer.",
     "steps": {

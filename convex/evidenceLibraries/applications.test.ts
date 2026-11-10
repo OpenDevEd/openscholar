@@ -1,5 +1,6 @@
 // Applying to join a community (OS-31): who can apply, the owners and editors who answer, what accepting gives, and
 // the wait a decline leaves.
+import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -139,5 +140,35 @@ describe("applying to join a community", () => {
     expect(await fixture.t.query(api.evidenceLibraries.directory.card, { libraryId: "not-an-id" })).toBeNull();
     await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { unlisted: true }));
     expect(await fixture.t.query(api.evidenceLibraries.directory.card, { libraryId })).toBeNull();
+  });
+
+  it("tells the community's own site whether Join leads somewhere: open, the reader's application waiting, or closed", async () => {
+    const { fixture, libraryId, apply } = await community("applications_join_standing");
+    const token = "els_" + "j".repeat(43);
+    await fixture.t.run(async (ctx) => {
+      const credential = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId_and_credentialKey", (q) => q.eq("libraryId", libraryId).eq("credentialKey", "library-service")).unique();
+      const credentialDigest = createHash("sha256").update(token).digest("hex");
+      if (credential) await ctx.db.patch("evidenceLibraryCredentials", credential._id, { credentialDigest });
+      else await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest, validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    });
+    const ask = async (clerkUserId?: string, credential = token) => {
+      const response = await fixture.t.fetch("/api/v1/evidence-libraries/join-standing", { method: "POST", headers: { Authorization: `Bearer ${credential}`, "Content-Type": "application/json", "OpenScholar-Contract": "1" }, body: JSON.stringify({ libraryId, ...(clerkUserId ? { clerkUserId } : {}) }) });
+      return response.status === 200 ? ((await response.json()) as { join: string }).join : response.status;
+    };
+    // Anyone, signed in or not, may apply; once this reader has, theirs waits, and it's still open to everyone else.
+    expect(await ask()).toBe("open");
+    expect(await ask("user_applicant")).toBe("open");
+    await apply();
+    expect(await ask("user_applicant")).toBe("waiting");
+    expect(await ask()).toBe("open");
+    // With applications off, or no longer public, Join leads nowhere for anyone.
+    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { applicationsClosed: true }));
+    expect(await ask("user_applicant")).toBe("closed");
+    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { applicationsClosed: undefined, unlisted: true }));
+    expect(await ask()).toBe("closed");
+    // Switched off, its site is still answered, and told the same.
+    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { unlisted: undefined, state: "disabled" }));
+    expect(await ask()).toBe("closed");
+    expect(await ask(undefined, "els_" + "k".repeat(43))).toBe(401);
   });
 });

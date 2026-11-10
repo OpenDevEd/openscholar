@@ -86,6 +86,29 @@ export const noteReaderSeen = httpAction(async (ctx, request) =>
       return new Response(null, { status: 204 });
     })));
 
+const joinStandingSchema = z.strictObject({ libraryId: z.string().min(1).max(128), clerkUserId: z.string().min(1).max(512).optional() });
+
+/**
+ * `POST /api/v1/evidence-libraries/join-standing`: whether a community takes applications to join, and whether this
+ * reader's waits for an answer, for the Join button on its own site (./applications.ts). Without a reader, it answers
+ * for anyone.
+ */
+export const checkJoinStanding = httpAction(async (ctx, request) =>
+  inContract(request, async () => {
+    const credential = readBearerCredential(request);
+    if (!credential) return jsonResponse(401, { error: "invalid_service_credential" });
+    const parsed = joinStandingSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) return jsonResponse(400, { error: "invalid_request" });
+    try {
+      const join = await ctx.runQuery(internal.evidenceLibraries.applications.joinStanding, { ...parsed.data, credentialDigest: await digestOpaqueToken(credential) });
+      return jsonResponse(200, { join });
+    } catch (error) {
+      if (readConvexErrorData(error)?.code === "UNAUTHENTICATED") return jsonResponse(401, { error: "invalid_service_credential" });
+      console.error("Community join standing failed", { libraryId: parsed.data.libraryId, error });
+      return jsonResponse(503, { error: "join_standing_unavailable" });
+    }
+  }));
+
 const id = z.string().trim().min(1).max(200);
 const handoffSchema = z.object({
   libraryId: z.string().max(128),

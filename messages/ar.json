@@ -5248,10 +5248,6 @@
     "peopleFromTheLibrarySTeam": "يظهر الأشخاص من فريق المجتمع، أو الذين أُضيفوا يدويًا، بالترتيب المحدد هنا.",
     "aboutTheTeam": "عن الفريق",
     "usedInsteadWhenThereIsNo": "يُستخدم بدلًا من ذلك عند عدم وجود جملة للفريق.",
-    "suggestAPublication": "اقتراح منشور",
-    "opensAnEmailTo": "يفتح رسالة بريد إلكتروني إلى {email}",
-    "needsAContactEmail": "يحتاج إلى بريد إلكتروني للتواصل",
-    "joinAsAnEditor": "الانضمام كمحرر",
     "askTheLibrary": "اسأل المجتمع",
     "typedIntoTheQuestionBoxOne": "تُكتب في مربع السؤال واحدًا تلو الآخر. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المجتمع.",
     "shownWhenAiAnswersAreOn": "يظهر عند تفعيل إجابات الذكاء الاصطناعي في الميزات. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المجتمع.",
@@ -5379,7 +5375,12 @@
     "noPublicationHasAPdfYet": "لا يوجد منشور يحتوي على ملف PDF بعد.",
     "noPublicationMatches": "لا توجد منشورات مطابقة.",
     "theLibraryIsNotSetUp": "لم يُهيّأ المجتمع بعد.",
-    "linked": "مرتبط"
+    "linked": "مرتبط",
+    "suggestPapers": "اقترح أوراقًا",
+    "suggestPapersHint": "يفتح نافذة اقتراح الأوراق في الموقع. يراجع الفريق كل ورقة.",
+    "needsReaderAccounts": "يتطلب حسابات القرّاء",
+    "joinThisTeam": "انضم إلى هذا الفريق",
+    "joinThisTeamHint": "يفتح التقديم على Openscholar. يُخفى ما دامت الطلبات متوقفة."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "ابحث بالاسم أو البريد الإلكتروني",
@@ -6058,7 +6059,6 @@
     "whoSees": "يرى مالكوه ومحرروه اسمك وبريدك الإلكتروني وهذه الرسالة.",
     "cancel": "إلغاء",
     "send": "إرسال الطلب",
-    "signInToSend": "سجّل الدخول للإرسال",
     "sentTitle": "تم إرسال الطلب",
     "sentBody": "تجده في مجتمعاتك، حيث يمكنك سحبه.",
     "steps": {

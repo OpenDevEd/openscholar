@@ -5,15 +5,19 @@ import { PUBLIC_PER_PAGE, SIDEBAR_PER_PAGE } from "@/lib/evidence-libraries/dire
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { CommunityFilter } from "@/components/evidence-libraries/your-communities";
-import { APPLICATIONS_SHOWN } from "@/lib/evidence-libraries/applications";
+import { redirect } from "next/navigation";
+import { APPLICATIONS_SHOWN, APPLY_PARAM, applySignInPath } from "@/lib/evidence-libraries/applications";
 
 /**
  * Communities open in every workspace, and to anyone signed out, who sees the public ones (#1090). Whether the person may
  * create one here arrives with the page, so New community is there from the first frame.
  */
-export default async function EvidenceLibrariesPage({ params, searchParams }: { params: Promise<{ slug?: string }>; searchParams: Promise<{ from?: string }> }) {
+export default async function EvidenceLibrariesPage({ params, searchParams }: { params: Promise<{ slug?: string }>; searchParams: Promise<{ from?: string; [APPLY_PARAM]?: string }> }) {
   const token = (await (await auth()).getToken({ template: "convex" })) ?? undefined;
-  const [{ slug }, { from }] = await Promise.all([params, searchParams]);
+  const [{ slug }, { from, [APPLY_PARAM]: applyTo }] = await Promise.all([params, searchParams]);
+  // A link to apply, as a community's own site gives: signed out, sign-in comes first and returns here with the dialog
+  // open. From the server, so the page isn't drawn and then left.
+  if (!token && applyTo) redirect(applySignInPath(applyTo));
   const workspaceId = token ? (slug ? await fetchQuery(api.workspaces.queries.bySlug, { slug }, { token }) : await fetchQuery(api.workspaces.queries.personal, {}, { token })) : null;
   const organization = slug && workspaceId ? (await fetchQuery(api.organizations.queries.workspace, { workspaceId }, { token })).organizationId : undefined;
   // The sidebar's filter as its address names it: "all", an organization's own ("here"), "own", "shared", or a workspace.

@@ -5247,10 +5247,6 @@
     "peopleFromTheLibrarySTeam": "कम्युनिटी की टीम के लोग, या हाथ से जोड़े गए लोग, यहाँ सेट किए गए क्रम में दिखते हैं।",
     "aboutTheTeam": "टीम के बारे में",
     "usedInsteadWhenThereIsNo": "टीम का वाक्य न होने पर इसकी जगह इस्तेमाल होता है।",
-    "suggestAPublication": "कोई प्रकाशन सुझाएं",
-    "opensAnEmailTo": "{email} को ईमेल खोलता है",
-    "needsAContactEmail": "संपर्क ईमेल ज़रूरी है",
-    "joinAsAnEditor": "एडिटर के रूप में जुड़ें",
     "askTheLibrary": "कम्युनिटी से पूछें",
     "typedIntoTheQuestionBoxOne": "सवाल वाले बॉक्स में एक के बाद एक टाइप होते हैं। खाली बॉक्स में कम्युनिटी के विषयों से बना सवाल रहता है।",
     "shownWhenAiAnswersAreOn": "सुविधाओं में AI जवाब चालू होने पर दिखता है। खाली बॉक्स में कम्युनिटी के विषयों से बना सवाल रहता है।",
@@ -5378,7 +5374,12 @@
     "noPublicationHasAPdfYet": "अभी किसी प्रकाशन में PDF नहीं है।",
     "noPublicationMatches": "कोई प्रकाशन मेल नहीं खाता।",
     "theLibraryIsNotSetUp": "कम्युनिटी अभी सेट अप नहीं हुई है।",
-    "linked": "जुड़ा हुआ"
+    "linked": "जुड़ा हुआ",
+    "suggestPapers": "पेपर सुझाएँ",
+    "suggestPapersHint": "साइट का पेपर सुझाएँ संवाद खोलता है। टीम हर पेपर की समीक्षा करती है।",
+    "needsReaderAccounts": "पाठक खातों की ज़रूरत है",
+    "joinThisTeam": "इस टीम से जुड़ें",
+    "joinThisTeamHint": "Openscholar पर आवेदन खोलता है। आवेदन बंद रहने पर छिपा रहता है।"
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "नाम या ईमेल खोजें",
@@ -6057,7 +6058,6 @@
     "whoSees": "इसके मालिक और संपादक आपका नाम, ईमेल और यह संदेश देखते हैं।",
     "cancel": "रद्द करें",
     "send": "आवेदन भेजें",
-    "signInToSend": "भेजने के लिए साइन इन करें",
     "sentTitle": "आवेदन भेजा गया",
     "sentBody": "यह आपके समुदाय में है, जहाँ आप इसे वापस ले सकते हैं।",
     "steps": {

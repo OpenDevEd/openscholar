@@ -5247,10 +5247,6 @@
     "peopleFromTheLibrarySTeam": "Abantu abavela ethimbeni lomphakathi, noma abangezwe ngesandla, badlula ngohlelo olusethwe lapha.",
     "aboutTheTeam": "Mayelana nethimba",
     "usedInsteadWhenThereIsNo": "Isetshenziswa esikhundleni salokho uma kungekho sigwebo sethimba.",
-    "suggestAPublication": "Phakamisa ushicilelo",
-    "opensAnEmailTo": "Ivula imeyili ku-{email}",
-    "needsAContactEmail": "Idinga imeyili yokuxhumana",
-    "joinAsAnEditor": "Joyina njengomhleli",
     "askTheLibrary": "Buza umphakathi",
     "typedIntoTheQuestionBoxOne": "Ibhalwa ebhokisini lombuzo ngalinye ngemva kwelinye. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomphakathi.",
     "shownWhenAiAnswersAreOn": "Iboniswa uma izimpendulo ze-AI zivuliwe kuZici. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomphakathi.",
@@ -5378,7 +5374,12 @@
     "noPublicationHasAPdfYet": "Akukho ushicilelo oluneyi-PDF okwamanje.",
     "noPublicationMatches": "Akukho ushicilelo ohambisanayo.",
     "theLibraryIsNotSetUp": "Umphakathi awusalungiswa okwamanje.",
-    "linked": "Kuxhunyiwe"
+    "linked": "Kuxhunyiwe",
+    "suggestPapers": "Phakamisa amaphepha",
+    "suggestPapersHint": "Kuvula ibhokisi lesayithi elithi Phakamisa amaphepha. Iqembu libuyekeza iphepha ngalinye.",
+    "needsReaderAccounts": "Kudinga ama-akhawunti abafundi",
+    "joinThisTeam": "Joyina leli qembu",
+    "joinThisTeamHint": "Kuvula ukufaka isicelo ku-Openscholar. Kuyafihlwa uma izicelo zivaliwe."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Sesha igama noma imeyili",
@@ -6057,7 +6058,6 @@
     "whoSees": "Abanikazi nabahleli bayo babona igama lakho, i-imeyili yakho nalo mlayezo.",
     "cancel": "Khansela",
     "send": "Thumela isicelo",
-    "signInToSend": "Ngena ukuze uthumele",
     "sentTitle": "Isicelo sithunyelwe",
     "sentBody": "Sikuma-Communities akho, lapho ungasihoxisa khona.",
     "steps": {

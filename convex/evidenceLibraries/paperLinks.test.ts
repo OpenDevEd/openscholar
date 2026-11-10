@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 it("finds the paper a community's record page shows, at its own address or its domain, once it's published", async () => {
   const { t, created, clerkUserId } = await createReadySetupFixture("paper_links");
@@ -54,4 +54,32 @@ it("answers a community that asks with its credential, link by link in order, an
   // With the shield's check, which a shielded community needs to answer a read at all.
   expect(site.mock.calls[0]![1]?.headers).toMatchObject({ cookie: expect.stringContaining("ode_browser_check") });
   expect((await ask(["W1"], "els_" + "d".repeat(43))).status).toBe(401);
+});
+
+it("finds papers by a title on the index the site searches, for a community's signed-in reader, as that reader's search", async () => {
+  const { t, created, clerkUserId } = await createReadySetupFixture("paper_links_search");
+  const libraryId = created.libraryId;
+  const token = "els_" + "e".repeat(43);
+  await t.run(async (ctx) => {
+    const credential = await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId_and_credentialKey", (q) => q.eq("libraryId", libraryId).eq("credentialKey", "library-service")).unique();
+    const digest = createHash("sha256").update(token).digest("hex");
+    if (credential) await ctx.db.patch("evidenceLibraryCredentials", credential._id, { credentialDigest: digest });
+    else await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: digest, validationState: "valid", createdByClerkUserId: clerkUserId, updatedByClerkUserId: clerkUserId, createdAt: 1, updatedAt: 1 });
+  });
+  vi.stubEnv("OPENALEX_API_KEY", "platform-key");
+  vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
+  // The index answers with a work OpenAlex has, one known only by its DOI, and one neither names.
+  const index = vi.fn(async (_url: string | URL) => Response.json({ meta: { count: 3 }, results: [{ id: "https://openalex.org/W5", doi: "https://doi.org/10.1000/Five" }, { id: "OS77", doi: "https://doi.org/10.1000/seven" }, { id: "OS78", doi: null }] }));
+  vi.stubGlobal("fetch", index);
+  const ask = (query: string, credential = token) =>
+    t.fetch("/api/v1/evidence-libraries/papers/search", { method: "POST", headers: { Authorization: `Bearer ${credential}`, "Content-Type": "application/json" }, body: JSON.stringify({ contractVersion: 1, libraryId, query, clerkUserId }) });
+  const answered = await ask("The power of feedback");
+  expect(answered.status).toBe(200);
+  // What a community can add: by its work, or by its DOI where OpenAlex has no work for it.
+  expect(await answered.json()).toEqual({ papers: [{ openalexId: "W5", doi: "10.1000/five" }, { openalexId: null, doi: "10.1000/seven" }] });
+  const asked = new URL(String(index.mock.calls[0]![0]));
+  expect(asked.searchParams.get("search")).toBe("The power of feedback");
+  expect((await ask("The power of feedback", "els_" + "f".repeat(43))).status).toBe(401);
+  // Too short to be a title.
+  expect((await ask("ab")).status).toBe(400);
 });
