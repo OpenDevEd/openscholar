@@ -213,6 +213,16 @@ describe("changes to a live report", () => {
     expect(after.trying).toBeUndefined();
   });
 
+  it("are checked one set at a time: a second sent while the first runs is refused, not put in its place", async () => {
+    const world = await setup();
+    const { key } = await live(world);
+    const report = await row(world.t, key);
+    const start = (title: string) => world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details(title), runId: `run-${title}`, from: { changesSince: report.activatedAt! } });
+    await start("From the first tab");
+    await expect(start("From the second tab")).rejects.toMatchObject(refused("CONFLICT"));
+    expect((await row(world.t, key)).run).toMatchObject({ id: "run-From the first tab" });
+  });
+
   it("stop being checked when the report is withdrawn, which leaves nothing running on it", async () => {
     const world = await setup();
     const { key } = await live(world);

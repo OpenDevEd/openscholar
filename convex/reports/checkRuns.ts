@@ -8,7 +8,7 @@ import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { bylineOf } from "../../lib/reports/settings";
 import { OWNERS_ONLY, detailsOf, keptDetails, mayChange, touch } from "./flow";
-import { changeStageOf, stageOf } from "../../lib/reports/report";
+import { RUN_STUCK_MS, changeStageOf, stageOf } from "../../lib/reports/report";
 import { notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, liveSince } from "./corrections";
 import { reportSettings, settingsRow } from "./settings";
@@ -52,6 +52,9 @@ export const start = internalMutation({
       // The changes were made from the details as they stood when the form opened. Ones made live since, from another
       // tab or by a reviewer, would be undone by sending the whole form over them.
       if (liveSince(report) !== from.changesSince) throw createError("CONFLICT", "This report's details changed since you opened this form. Open it again to start from them.");
+      // One set of changes is checked at a time: a second sent meanwhile, as from another tab, would replace the
+      // first without a word to whoever sent it. A run that has gone on too long is given up on, as the page does.
+      if (report.run?.changes && Date.now() - report.run.at < RUN_STUCK_MS) throw createError("CONFLICT", "Changes to this report are being checked right now. Send yours once they are done.");
       // Details put back to exactly what the report already says are no changes, and nothing is done about them:
       // changes that are waiting are given up with Discard, never by this. Compared whole, so a change a reader of
       // the page can't see, such as an institution's catalogue ID, still counts as one.
