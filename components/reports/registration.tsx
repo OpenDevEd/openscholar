@@ -15,6 +15,7 @@ const WORDS: Record<RegistrationStep["provider"], Record<RegistrationStep["state
 const TONE: Record<RegistrationStep["state"], StatusTone> = { waiting: "neutral", working: "running", done: "success", failed: "warning" };
 
 export const stepWords = (step: RegistrationStep) => WORDS[step.provider][step.state];
+export const stepTone = (step: RegistrationStep) => TONE[step.state];
 
 /** The one registration a row has room for: the one refused, else the one under way, else the last one done. */
 export function standingOf(report: Registered): RegistrationStep {
@@ -27,7 +28,7 @@ export function RegistrationChips({ report }: { report: Registered }) {
   return (
     <>
       {stepsOf(report).map((step) => (
-        <StatusChip key={step.provider} tone={TONE[step.state]} icon="tone">
+        <StatusChip key={step.provider} tone={stepTone(step)} icon="tone">
           {stepWords(step)}
         </StatusChip>
       ))}

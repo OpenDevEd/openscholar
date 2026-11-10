@@ -27,6 +27,7 @@ import { DetailsStep } from "@/components/reports/details-step";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown } from "@/components/reports/your-reports";
 import { Working } from "@/components/settings/parts";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,16 +38,16 @@ import { EDGE_FADE } from "@/components/ui/scroll-area";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, TriangleAlert } from "@/components/icons";
+import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Trash2, TriangleAlert } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { REVIEW_TEXT_MAX, SIGNER_NAME_MAX, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
 import { limitWords } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
-import { stepBack } from "@/lib/url-state/step-back";
+import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,8 @@ const PLACE = {
   report: parseAsString,
   /** A live report's details open to be corrected. */
   correct: parseAsBoolean.withDefault(false),
+  /** A report still without its PDF, opened at its upload: before that it shows its DOI. */
+  step: parseAsStringLiteral(["upload"] as const),
   show: parseAsStringLiteral(SHOWS).withDefault("all"),
   page: parseAsInteger.withDefault(1),
 };
@@ -102,11 +105,16 @@ export function PublishFlow() {
   const workspaceId = useWorkspace();
   // In an organisation's workspace every member sees its reports, so each row says who signed.
   const shared = useWorkspaceSlug() !== undefined;
-  const [{ view, report: asked, show, page }, setPlace] = useQueryStates(PLACE);
+  const [{ view, report: asked, correct, step: at, show, page }, setPlace] = useQueryStates(PLACE);
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
   const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push", scroll: true });
+  // Leaving a screen with its own button is the step back when that step is there (lib/url-state/step-back.ts), so
+  // Back afterwards never reopens it; what a link or a reload opened closes in place.
+  const up = (...closed: Array<keyof typeof PLACE>) => {
+    if (!stepBack(withoutKeys(closed))) void setPlace(Object.fromEntries(closed.map((key) => [key, null])));
+  };
 
   // Asked once for the minute the page opened in, so the count isn't read again on every draw; a report started
   // here changes the count by itself.
@@ -142,7 +150,12 @@ export function PublishFlow() {
     );
   }
 
-  const report = found && "report" in found ? found.report : null;
+  const saved = found && "report" in found ? found.report : null;
+  // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
+  // address's: opening the upload is a step forward, and Back from it returns to the DOI.
+  const report = saved?.step === "doi" && (at === "upload" || saved.pdf) ? { ...saved, step: "upload" as const } : saved;
+  // A step the report is sent to is its own from then on, whatever the address said before.
+  const ownStep = () => void (at && setPlace({ step: null }));
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
   const missing = !listed && shownKey !== "new" && !report;
   const another = () => {
@@ -176,7 +189,7 @@ export function PublishFlow() {
           </Button>
         ) : undefined
       }
-      intro={!listed && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} /> : undefined}
+      intro={!listed && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
     >
       {listed ? (
         <div className={cn("transition-opacity", !list && "opacity-60")} aria-busy={!list || undefined}>
@@ -188,7 +201,8 @@ export function PublishFlow() {
             show={show}
             onPage={(next) => go({ view: "reports", page: next })}
             onOpen={(key) => go({ view: null, report: key, correct: null })}
-            onCorrect={(key) => go({ view: null, report: key, correct: null })}
+            // Changes already waiting open where they stand; otherwise the details open to be corrected.
+            onCorrect={(key) => go({ view: null, report: key, correct: (list ?? lastList)?.rows.find((row) => row.key === key)?.changes ? null : true })}
             onDiscard={(key) => discard({ workspaceId: workspaceId!, key }).then(() => void toast.success("Report discarded"), said("The report couldn't be discarded"))}
             onNew={another}
           />
@@ -245,7 +259,23 @@ export function PublishFlow() {
               Publishing is off for new reports for now. You can keep working on this one.
             </p>
           ) : null}
-          <Screens key={report?.key ?? "new"} basics={basics} report={report} starts={starts ?? null} shared={shared} workspaceId={workspaceId} fresh={fresh} setFresh={setFresh} onSigned={(key) => void setPlace({ report: key })} onAnother={another} />
+          <Screens
+            key={report?.key ?? "new"}
+            basics={basics}
+            report={report}
+            starts={starts ?? null}
+            shared={shared}
+            workspaceId={workspaceId}
+            fresh={fresh}
+            setFresh={setFresh}
+            onSigned={(key) => void setPlace({ report: key })}
+            onAnother={another}
+            correcting={correct}
+            onUpload={() => go({ step: "upload" })}
+            onStep={ownStep}
+            onCorrect={() => go({ correct: true })}
+            onCorrected={() => up("correct")}
+          />
           <ReportCover basics={basics} report={report} />
         </div>
       )}
@@ -254,25 +284,31 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void }) {
+function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onUpload, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
   const activate = useMutation(api.reports.flow.activate);
   const runChecks = useAction(api.reports.checks.run);
+  const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
+  const discardChanges = useMutation(api.reports.flow.discardChanges);
+  // Changes to a live report as last sent to the checks, kept while they run so a run that breaks loses none of them.
+  const [attempt, setAttempt] = useState<Metadata | null>(null);
   // The checks were asked for here and the report hasn't said so yet: the page shows them running at once.
   const [starting, setStarting] = useState(false);
   const here = { workspaceId: workspaceId! };
   const back = (step: BackStep) => {
     setFresh(null);
+    onStep();
     if (report) void goTo({ ...here, key: report.key, step }).catch(said("That step couldn't be opened"));
   };
   // A run that has gone on too long is given up on here, so its author can run the checks again.
   const runStuck = usePassed(report?.run ? report.run.at + STUCK_MS : undefined);
   const running = !!report?.run && !runStuck;
-  const busy = report?.step === "details" && (running || starting);
   const live = report?.step === "done" && report.status === "live";
-  const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : live ? "live" : "checks";
+  // A first run reads a report at its details; a run on changes reads a live one, which stays live meanwhile.
+  const busy = (report?.step === "details" || live) && (running || starting);
+  const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
       <AnimatePresence mode="wait" initial={false}>
@@ -294,7 +330,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
           ) : busy ? (
             <Checks rows={basics.checks.map((check) => ({ id: check.id, name: check.name, result: report.run?.results.find((result) => result.checkId === check.id) }))} report={null} humanReview={basics.humanReview} />
           ) : report.step === "doi" ? (
-            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={() => back("upload")} />
+            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
           ) : report.step === "upload" ? (
             <UploadStep report={report} workspaceId={workspaceId!} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
@@ -308,7 +344,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
                 onRun={async (metadata: Metadata) => {
                   setStarting(true);
                   try {
-                    await runChecks({ ...here, key: report.key, metadata, pdfAt: report.pdf!.at });
+                    await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at } });
                   } catch (error) {
                     said("The checks couldn't run")(error);
                   } finally {
@@ -318,8 +354,47 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
                 onSave={(metadata) => void saveDetails({ ...here, key: report.key, metadata, pdfAt: report.pdf!.at }).catch(said("Your changes couldn't be saved"))}
               />
             </>
+          ) : live && correcting && report.metadata ? (
+            // Changes already waiting are carried on from; so are ones a broken run never finished checking.
+            <DetailsStep
+              // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
+              initial={attempt ?? report.trying ?? report.correction?.metadata ?? report.metadata}
+              resend={!!attempt || !!report.trying || !!report.correction}
+              version={report.correctedAt ?? report.activatedAt}
+              // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
+              waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
+              onRun={async (metadata: Metadata, since) => {
+                setAttempt(metadata);
+                setStarting(true);
+                try {
+                  const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
+                  // Live or kept for a reviewer, the changes are with the report now: the form closes on where they stand.
+                  setAttempt(null);
+                  onCorrected();
+                  if (stands === "live") toast.success("Your changes are live");
+                  else if (stands === "review") toast.success("Your changes are with a reviewer");
+                } catch (error) {
+                  said("The checks couldn't run")(error);
+                } finally {
+                  setStarting(false);
+                }
+              }}
+              onCancel={() => {
+                setAttempt(null);
+                onCorrected();
+              }}
+            />
+          ) : live && report.correction ? (
+            <ChangesWaiting
+              report={report}
+              correction={report.correction}
+              onEdit={onCorrect}
+              // Each names the changes on this screen, so ones sent since from another tab are never the ones touched.
+              onDiscard={() => discardChanges({ ...here, key: report.key, seenAt: report.correction!.at }).then(() => undefined)}
+              onRequestReview={(comment) => requestChangesReview({ ...here, key: report.key, seenAt: report.correction!.at, comment }).then(() => undefined)}
+            />
           ) : live ? (
-            <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={onAnother} />
+            <LiveReport report={report} fresh={fresh?.key === report.key && fresh.step === "live"} onAnother={onAnother} onCorrect={onCorrect} />
           ) : (
             <Checks
               rows={(report.results ?? []).map((result) => ({ id: result.checkId, name: result.name, result }))}
@@ -351,7 +426,7 @@ function usePassed(at: number | undefined) {
 }
 
 /** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
-function StepTrail({ report, humanReview, workspaceId }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined }) {
+function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
   const reduce = useReducedMotion();
   const goTo = useMutation(api.reports.flow.goTo);
   const running = report?.step === "details" && !!report.run;
@@ -379,7 +454,7 @@ function StepTrail({ report, humanReview, workspaceId }: { report: Report | null
           return (
             <li key={s.id} className="min-w-0">
               {clickable ? (
-                <button type="button" onClick={() => void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said("That step couldn't be opened"))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
+                <button type="button" onClick={() => (s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said("That step couldn't be opened"))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
               ) : (
@@ -453,6 +528,17 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
           <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
           <span>I agree to this agreement</span>
         </label>
+        {starts?.untouched ? (
+          // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
+          <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+            <span className="min-w-0 flex-1 basis-56">
+              You already reserved a DOI for <span className="font-mono">{starts.untouched}</span> and haven&apos;t uploaded its PDF.
+            </span>
+            <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
+              Continue with it <ArrowUpRight />
+            </Button>
+          </p>
+        ) : null}
         {changed ? (
           <p role="status" className="flex items-start gap-2 text-sm text-muted-foreground">
             <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
@@ -1031,7 +1117,7 @@ function Seal({ play }: { play: boolean }) {
 }
 
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
-function LiveReport({ report, fresh, onAnother }: { report: Report; fresh: boolean; onAnother: () => void }) {
+function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; fresh: boolean; onAnother: () => void; onCorrect: () => void }) {
   const reduce = useReducedMotion();
   const play = fresh && !reduce;
   // Each part rises in after the seal has drawn, in reading order.
@@ -1079,12 +1165,101 @@ function LiveReport({ report, fresh, onAnother }: { report: Report; fresh: boole
         <Button variant="outline" onClick={onAnother}>
           <Plus /> Publish another
         </Button>
+        <Button variant="outline" onClick={onCorrect}>
+          <PenLine /> Correct the details
+        </Button>
         <Button asChild>
           <Link href={`/papers/${report.key}`}>
             Open its page <ArrowUpRight />
           </Link>
         </Button>
       </motion.div>
+    </div>
+  );
+}
+
+/**
+ * Changes to a live report's details that haven't gone live: where they stand, what they change, what the checks said
+ * of them, and what their author can do. The report itself stays live as it was all the while.
+ */
+function ChangesWaiting({ report, correction, onEdit, onDiscard, onRequestReview }: { report: Report; correction: NonNullable<Report["correction"]>; onEdit: () => void; onDiscard: () => Promise<void>; onRequestReview: (comment: string) => Promise<void> }) {
+  const stage = report.changes ?? "review";
+  const [asking, setAsking] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const changed = report.metadata ? changesOf(report.metadata, correction.metadata) : [];
+  const note = stage === "declined" ? correction.declined?.note : stage === "review" ? correction.request?.comment : undefined;
+  // Checks the report itself failed, which a reviewer approved it over: only a reviewer answers those, and a live
+  // report takes no new PDF, so what to do about them is never shown.
+  const overruled = new Set((report.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
+  const again = correction.results.some((r) => !r.pass && overruled.has(r.checkId));
+  return (
+    <div>
+      {stage === "review" ? (
+        <StepHead title="Changes in review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
+          {correction.request
+            ? "You asked a reviewer to look. Your report stays live as it was until they decide, and you'll hear by email."
+            : again
+              ? "A reviewer approved your report over a check, so a reviewer approves its changes too. Your report stays live as it was until then, and you'll hear by email."
+              : "Your report stays live as it was. Your changes go live once a reviewer approves them, and you'll hear by email."}
+        </StepHead>
+      ) : stage === "declined" ? (
+        <StepHead title="Changes declined" aside={<StatusChip tone="danger" icon={CircleX}>Declined</StatusChip>}>
+          Your report stays live as it was. Change the details and send them again, or discard the changes.
+        </StepHead>
+      ) : (
+        <StepHead title="Changes not published" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
+          Your report stays live as it was. Change the details and try again, or request a human review.
+        </StepHead>
+      )}
+      {note ? <Said label={stage === "declined" ? "The reviewer's note" : "Your request"}>{note}</Said> : null}
+      {changed.length ? (
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <span className="me-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <PenLine className="size-3.5" /> You changed
+          </span>
+          {changed.map((c) => (
+            <StatusChip key={c.label} tone="neutral">
+              {c.label}
+            </StatusChip>
+          ))}
+        </div>
+      ) : null}
+      <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
+        {correction.results.map((r) => (
+          <CheckRow key={r.checkId} name={r.name} result={r} advice={stage === "failed" && !overruled.has(r.checkId)} />
+        ))}
+      </ul>
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <Button variant="outline" asChild>
+          <Link href={`/papers/${report.key}`}>
+            Open its page <ArrowUpRight />
+          </Link>
+        </Button>
+        <Button variant="outline" onClick={() => setDiscarding(true)}>
+          <Trash2 /> Discard the changes
+        </Button>
+        {stage === "failed" ? (
+          <Button variant="outline" onClick={() => setAsking(true)}>
+            <ReviewQueueIcon /> Request a human review
+          </Button>
+        ) : null}
+        <Button variant={stage === "review" ? "outline" : "default"} onClick={onEdit}>
+          <PenLine /> Edit the changes
+        </Button>
+      </div>
+      <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} />
+      <AlertDialog open={discarding} onOpenChange={setDiscarding}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard your changes?</AlertDialogTitle>
+            <AlertDialogDescription>Your report stays live as it is now. The changes you made are given up.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep them</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void onDiscard().then(() => toast.success("Changes discarded"), said("The changes couldn't be discarded"))}>Discard</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

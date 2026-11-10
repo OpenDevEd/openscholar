@@ -202,7 +202,12 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
 }
 
 /** How long after the last change the details are saved. */
-const SAVE_AFTER_MS = 400;
+/** Today as the person's own calendar has it, as a date input takes it. */
+const localToday = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+};
+const SAVE_AFTER_MS = 250;
 
 export function DetailsStep({
   initial,
@@ -213,9 +218,14 @@ export function DetailsStep({
   waits = false,
   words,
   unread = false,
+  version,
 }: {
   initial: Metadata;
-  onRun: (m: Metadata) => Promise<void>;
+  /** Given the details, and the `version` the form opened on. */
+  onRun: (m: Metadata, version: number | undefined) => Promise<void>;
+  /** What the details were when the form opened, by the number that tells one state of the report from the next. It
+   * is kept as it was then, so details saved since by someone else are never written over by this form. */
+  version?: number;
   onSave?: (m: Metadata) => void;
   /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
   onCancel?: () => void;
@@ -229,6 +239,7 @@ export function DetailsStep({
   unread?: boolean;
 }) {
   const [m, setM] = useState(initial);
+  const [opened] = useState(version);
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
   // report has moved on changes nothing (saveDetails).
@@ -247,11 +258,17 @@ export function DetailsStep({
     held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
-  // The browser's page lifecycle is the outside system here: a reload or a closed tab inside the wait sends what the
-  // wait was holding, so a change typed a moment before leaving is kept.
+  // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
+  // what the wait is holding, and nothing sent while a page unloads is sure to arrive: the browser asks first, as it
+  // does for any unsaved form, and the change is sent meanwhile.
   useEffect(() => {
-    window.addEventListener("pagehide", sendNow);
-    return () => window.removeEventListener("pagehide", sendNow);
+    const ask = (event: BeforeUnloadEvent) => {
+      if (!held.current.send) return;
+      sendNow();
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", ask);
+    return () => window.removeEventListener("beforeunload", ask);
   }, []);
   const [topicSearch, setTopicSearch] = useState("");
   const [doi, setDoi] = useState("");
@@ -339,8 +356,8 @@ export function DetailsStep({
               </Select>
             </Field>
             <Field label="Date published">
-              {/* A report is published by today, wherever that is: a day ahead of UTC is let through, as the server does. */}
-              <Input type="date" value={m.date} max={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)} onChange={(e) => set("date", e.target.value)} />
+              {/* A report is published by today, as the author's own calendar has it. */}
+              <Input type="date" value={m.date} max={localToday()} onChange={(e) => set("date", e.target.value)} />
             </Field>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Licence</span>
@@ -567,7 +584,7 @@ export function DetailsStep({
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;
-          void onRun(m);
+          void onRun(m, opened);
         }}>
           <ShieldCheck /> {words ? words.action : onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
         </Button>

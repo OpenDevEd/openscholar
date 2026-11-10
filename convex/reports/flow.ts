@@ -14,7 +14,7 @@ import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { reportSettings, settingsRow } from "./settings";
-import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signerNamesValidator } from "./validators";
+import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -38,7 +38,9 @@ async function changing(ctx: QueryCtx, actor: Actor, key: string) {
   return report;
 }
 
-export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<Doc<"reports">>) => ctx.db.patch("reports", report._id, { ...patch, updatedAt: Date.now() });
+/** When a report changes now: always later than its last change, since a form is told from the report it was opened on by this. */
+export const changedAt = (report: Pick<Doc<"reports">, "updatedAt">) => Math.max(Date.now(), report.updatedAt + 1);
+export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<Doc<"reports">>) => ctx.db.patch("reports", report._id, { ...patch, updatedAt: changedAt(report) });
 
 /** The workspace's reports looked through for a reservation its signer left untouched: it is among the last few changed. */
 const RECENT = 20;
@@ -53,8 +55,8 @@ export function keptDetails(metadata: Metadata) {
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
   const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
-  // A day ahead of UTC is today somewhere, so that much is let through.
-  if (metadata.date > new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)) throw createError("VALIDATION_ERROR", "A report can't be dated in the future.");
+  // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.
+  if (metadata.date > new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10)) throw createError("VALIDATION_ERROR", "A report can't be dated in the future.");
   if (JSON.stringify(metadata).length > DETAILS_MAX_BYTES) throw createError("VALIDATION_ERROR", "These details are too long to save. Shorten the abstract or the lists.");
   return metadata;
 }
@@ -71,9 +73,14 @@ export async function forget(ctx: MutationCtx, ...files: Array<Id<"_storage"> | 
   }
 }
 
-/** Deletes a report with everything kept for it: its PDF, the PDF's text, its cover and its details. */
+/** A removed report's reviewer decisions deleted with it: far more than one that never went live collects. */
+const REVIEWS_REMOVED = 100;
+
+/** Deletes a report with everything kept for it: its PDF, the PDF's text, its cover, its details and what reviewers said of it. */
 export async function removeReport(ctx: MutationCtx, report: Doc<"reports">) {
   await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
+  // Only a deleted workspace's report has any: one its author can discard was never declined or approved.
+  for (const review of await ctx.db.query("reportReviews").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).take(REVIEWS_REMOVED)) await ctx.db.delete("reportReviews", review._id);
   await ctx.db.delete("reportDetails", (await detailsOf(ctx, report._id))._id);
   await ctx.db.delete("reports", report._id);
 }
@@ -306,6 +313,47 @@ export const activate = workspaceMutation({
   },
 });
 
+/** A live report of the workspace's with changes waiting, as the screen the change came from saw them: ones sent since, say from another tab, are never the ones discarded or asked about. */
+async function waitingChanges(ctx: QueryCtx, actor: Actor, key: string, seenAt: number) {
+  const report = await changing(ctx, actor, key);
+  const details = await detailsOf(ctx, report._id);
+  if (report.status !== "live" || !details.correction) throw createError("CONFLICT", "This report has no changes waiting any more.");
+  if (details.correction.at !== seenAt) throw createError("CONFLICT", "You changed the details again since this page opened. It shows those changes now.");
+  return { report, details, correction: details.correction };
+}
+
+/**
+ * The author of changes a check refused asks a person to look, with what they think the check got wrong. The
+ * changes then wait for a reviewer.
+ */
+export const requestChangesReview = workspaceMutation({
+  args: { key: v.string(), seenAt: v.number(), comment: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, seenAt, comment }) => {
+    await refuseApps(ctx);
+    const { report, details, correction } = await waitingChanges(ctx, actor, key, seenAt);
+    if (report.changes === "declined") throw createError("CONFLICT", "A reviewer declined these changes. Their note is on the page now.");
+    // Already with a reviewer: asking again tells no one anything new.
+    if (report.changes === "review") return null;
+    await ctx.db.patch("reportDetails", details._id, { correction: { ...correction, request: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } } });
+    await touch(ctx, report, { changes: "review" });
+    return null;
+  },
+});
+
+/** The author gives up changes that haven't gone live. The report stays as it is. A run still reading them is given up with them. */
+export const discardChanges = workspaceMutation({
+  args: { key: v.string(), seenAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, seenAt }) => {
+    await refuseApps(ctx);
+    const { report, details } = await waitingChanges(ctx, actor, key, seenAt);
+    await ctx.db.patch("reportDetails", details._id, { correction: undefined, running: undefined, trying: undefined });
+    await touch(ctx, report, { changes: undefined, ...(report.run?.changes && { run: undefined }) });
+    return null;
+  },
+});
+
 const stageValidator = v.union(...STAGES.map((stage) => v.literal(stage)));
 const rowValidator = reportRowValidator;
 
@@ -379,6 +427,7 @@ const reportValidator = v.object({
   metadata: v.optional(metadataValidator),
   results: v.optional(plainResults),
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
+  trying: v.optional(metadataValidator),
   correction: v.optional(v.object({ metadata: metadataValidator, results: plainResults, at: v.number(), request: v.optional(v.object({ comment: v.string(), at: v.number() })), declined: v.optional(v.object({ at: v.number(), note: v.optional(v.string()) })) })),
   activatedAt: v.optional(v.number()),
   correctedAt: v.optional(v.number()),
@@ -422,6 +471,8 @@ export const get = workspaceQuery({
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),
         ...(correction && { correction: { metadata: correction.metadata, results: plain(correction.results)!, at: correction.at, ...(correction.request && { request: correction.request }), ...(correction.declined && { declined: correction.declined }) } }),
+        // Changes a run was given and never finished checking, for the one who sent them to carry on from.
+        ...(details.trying && mayChange(actor, report) && { trying: details.trying }),
         ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
         ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       },
@@ -429,33 +480,31 @@ export const get = workspaceQuery({
   },
 });
 
-/**
- * The agreement a report's author signed, in the wording of the version they signed, with who signed and when and
- * what the report has become since. Its workspace reads it; it can be saved or printed from its page.
- */
+/** The agreement a report's author signed, in the wording of the version they signed, with who signed and when and what the report has become since. */
+export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
+  const version = report.agreementVersion;
+  const kept = await ctx.db.query("reportAgreementVersions").withIndex("by_version", (q) => q.eq("version", version)).unique();
+  const { metadata } = await detailsOf(ctx, report._id);
+  return {
+    // Every version's wording is kept from the first change on; before one, it is the series' own.
+    text: kept?.text ?? (await reportSettings(ctx)).agreement.text,
+    version,
+    signer: report.signedBy.name,
+    onBehalfOfAll: report.signedBy.onBehalfOfAll,
+    signedAt: report.signedAt,
+    doi: report.doi,
+    ...(metadata?.title && { title: metadata.title }),
+    authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),
+    ...(report.pdf?.pages !== undefined && { pages: report.pdf.pages }),
+  };
+}
+
+/** A report's signed agreement, for its workspace to read, save or print from its own page. */
 export const agreement = workspaceQuery({
   args: { key: v.string() },
-  returns: v.union(
-    v.null(),
-    v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) }),
-  ),
+  returns: v.union(v.null(), signedAgreementValidator),
   handler: async (ctx, actor, { key }) => {
     const report = await byKey(ctx, key);
-    if (!report || report.workspaceId !== actor.workspaceId) return null;
-    const version = report.agreementVersion;
-    const kept = await ctx.db.query("reportAgreementVersions").withIndex("by_version", (q) => q.eq("version", version)).unique();
-    const { metadata } = await detailsOf(ctx, report._id);
-    return {
-      // Every version's wording is kept from the first change on; before one, it is the series' own.
-      text: kept?.text ?? (await reportSettings(ctx)).agreement.text,
-      version,
-      signer: report.signedBy.name,
-      onBehalfOfAll: report.signedBy.onBehalfOfAll,
-      signedAt: report.signedAt,
-      doi: report.doi,
-      ...(metadata?.title && { title: metadata.title }),
-      authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),
-      ...(report.pdf?.pages !== undefined && { pages: report.pdf.pages }),
-    };
+    return report && report.workspaceId === actor.workspaceId ? await signedAgreement(ctx, report) : null;
   },
 });

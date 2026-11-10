@@ -10,12 +10,13 @@ import { api, internal } from "../_generated/api";
 import { action } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { refuseApps } from "../lib/auth";
+import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
-import type { Answer, CheckResult, Metadata } from "../../lib/reports/report";
+import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
 import type { Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
-import { metadataValidator } from "./validators";
+import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -41,7 +42,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   // What to do about it, for the author, when it fails.
   const failed = check.fix?.trim() ? { fix: fill(check.fix) } : {};
   if (check.builtIn === "already-published") {
-    const found = await alreadyPublished(metadata, on, communities);
+    const found = await alreadyPublished(metadata, report.doi, on, communities);
     return found
       ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
       : { ...base, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };
@@ -68,14 +69,20 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   return { ...base, ...(pass ? {} : failed), answer: output.answer, confidence: sure, threshold: check.threshold, reasoning: output.reasoning, pass };
 }
 
-/** Runs the checks on a report waiting at its details, with the details as its author last corrected them. */
+/**
+ * Runs the checks on a report waiting at its details, with the details as its author last corrected them; or, from
+ * `changesSince`, on changes to a live report, which stays live as it is while they are read.
+ */
 export const run = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, pdfAt: v.number() },
-  returns: v.null(),
-  handler: async (ctx, { workspaceId, key, metadata, pdfAt }) => {
+  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, from: runFromValidator },
+  // Where changes to a live report stand after the run; null for a report's first checks.
+  returns: v.union(v.null(), v.literal("live"), changeStageValidator),
+  // The return is typed because a handler that returns what its own module's functions return has no type to infer.
+  handler: async (ctx, { workspaceId, key, metadata, from }): Promise<"live" | ChangeStage | null> => {
     await refuseApps(ctx);
     const runId = crypto.randomUUID();
-    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, pdfAt });
+    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, from });
+    if ("unchanged" in started) throw createError("VALIDATION_ERROR", `These are the details your report already has, so there is nothing to change.${started.waiting ? " To give up the changes that are waiting, discard them." : ""}`);
     const { reportId } = started;
     const text = started.text ? await (await ctx.storage.get(started.text))?.text() ?? "" : "";
     const communities: Community[] = started.checks.some((check) => check.builtIn)
@@ -97,7 +104,6 @@ export const run = action({
         return result;
       }),
     );
-    await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version });
-    return null;
+    return await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version, ...(started.changes && { metadata }) });
   },
 });

@@ -16,8 +16,12 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
 export function SignedAgreement({ reportKey }: { reportKey: string }) {
-  const { data: signed, isAnonymous } = useProtectedQuery(api.reports.flow.agreement, inWorkspace(useWorkspace(), { key: reportKey }));
-  if (signed === undefined && !isAnonymous) return <PageFrameLoading label="Publishing agreement" />;
+  const { data: mine, isAnonymous } = useProtectedQuery(api.reports.flow.agreement, inWorkspace(useWorkspace(), { key: reportKey }));
+  // A reviewer reads any report's agreement; everyone else, their workspace's.
+  const { data: admin } = useProtectedQuery(api.admins.queries.amI, {});
+  const { data: reviewed } = useProtectedQuery(api.reports.review.agreement, admin ? { key: reportKey } : "skip");
+  const signed = mine ?? reviewed;
+  if (!isAnonymous && (mine === undefined || admin === undefined || (admin && reviewed === undefined))) return <PageFrameLoading label="Publishing agreement" />;
   if (!signed) {
     return (
       <PageWrapper>

@@ -141,7 +141,7 @@ export const reportFields = {
   agreementVersion: v.number(),
   checksVersion: v.optional(v.number()),
   /** The run of the checks under way and when it began, so only that run's answers are saved: a new PDF clears it. */
-  run: v.optional(v.object({ id: v.string(), at: v.number() })),
+  run: v.optional(v.object({ id: v.string(), at: v.number(), /** It reads changes to a live report, which stays as it is meanwhile. */ changes: v.optional(v.boolean()) })),
   pdf: v.optional(pdfValidator),
   /** A picture of the PDF's first page, and when it was made. */
   cover: v.optional(v.object({ file: v.id("_storage"), at: v.number() })),
@@ -174,6 +174,8 @@ export const reportDetailFields = {
   metadata: v.optional(metadataValidator),
   /** The last finished run's answers. */
   results: optionalResults,
+  /** Changes to a live report as a run was given them, kept until the run ends so one that breaks loses none. */
+  trying: v.optional(metadataValidator),
   /** The answers of the run under way, as each arrives. */
   running: optionalResults,
   /** What the author thinks the checks got wrong, sent with a request for a person. */
@@ -208,5 +210,41 @@ export const reportRowsValidator = capped(v.array(reportRowValidator), REPORTS_P
 /** A report's authors by name, as its signed agreement lists them. */
 export const signerNamesValidator = capped(v.array(v.string()), DETAIL_CAPS.authors);
 
+export const reviewDecisionValidator = v.union(v.literal("approve"), v.literal("decline"), v.literal("withdraw"), v.literal("reinstate"), v.literal("approve-changes"), v.literal("decline-changes"), v.literal("edit"));
+/** A reviewer's word on a report, or on changes to a live one: who gave it and when. One row each, oldest first by creation. */
+export const reportReviewFields = { reportId: v.id("reports"), decision: reviewDecisionValidator, by: v.id("users"), at: v.number(), note: v.optional(v.string()) };
 /** Which report a stored file is: its PDF, the picture of its first page, or its text. A file with a row here is never another report's. */
 export const reportFileFields = { file: v.id("_storage"), reportId: v.id("reports") };
+
+/** What a run's details were made from: a PDF's reading, or a live report's details as they stood. */
+export const runFromValidator = v.union(v.object({ pdfAt: v.number() }), v.object({ changesSince: v.number() }));
+
+/** A report as the reviewers' list shows it: a list row without whether it is the reader's, with its DOI and whether its author asked for a person. */
+export const adminRowValidator = v.object({ ...reportRowValidator.omit("mine").fields, doi: v.string(), asked: v.optional(v.boolean()), /** Its first author as typed on the report, with the country they work in. */ first: v.optional(v.object({ name: v.string(), country: v.optional(v.string()) })), /** Its PDF, by when it was uploaded: what a reviewer's word is given on. */ pdfAt: v.optional(v.number()) });
+/** The reviewers' list holds 8 to a page (convex/reports/review.ts `REVIEW_PER_PAGE`). */
+export const adminRowsValidator = capped(v.array(adminRowValidator), 8);
+/** One report as a reviewer reads it. */
+export const adminReportValidator = v.object({
+  ...adminRowValidator.fields,
+  byline: v.string(),
+  /** Who started it, with the address only a reviewer sees. */
+  owner: v.object({ name: v.string(), email: v.string() }),
+  /** The organisation whose workspace it is; null for its owner's own. */
+  workspace: v.union(v.string(), v.null()),
+  signedAt: v.number(),
+  onBehalfOfAll: v.boolean(),
+  agreementVersion: v.number(),
+  checksVersion: v.optional(v.number()),
+  run: v.optional(v.object({ at: v.number(), changes: v.boolean() })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
+  metadata: v.optional(metadataValidator),
+  results: capped(v.optional(v.array(checkResultValidator)), MAX_CHECKS),
+  reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
+  correction: v.optional(changesValidator),
+  activatedAt: v.optional(v.number()),
+  correctedAt: v.optional(v.number()),
+  /** Reviewers' words on it, oldest first, each by name. */
+  reviews: capped(v.array(v.object({ decision: reviewDecisionValidator, by: v.string(), at: v.number(), note: v.optional(v.string()) })), 50),
+  humanReview: v.boolean(),
+});
+export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });

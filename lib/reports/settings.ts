@@ -81,7 +81,7 @@ export const DEFAULT_CHECKS: Check[] = [
   {
     id: "research",
     name: "Research, not advertising",
-    question: "Is this a research output, rather than an advertisement, a sales brochure or a page that mostly links to unrelated sites?",
+    question: "Is this a research output, rather than an advertisement, a sales brochure or a page that mostly links to unrelated sites? Judge its title and abstract as well as its text: a title or abstract that advertises or sells something is not a research output's.",
     fix: "Openscholar Reports publishes research. If yours is, ask for a review and say what the check missed.",
     modelId: DEFAULT_TEXT_MODEL,
     effort: DEFAULT_TEXT_EFFORT,

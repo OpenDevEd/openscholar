@@ -4,6 +4,7 @@ import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { useReturnFocus } from "@/components/ui/dialog"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 import { Button } from "@/components/ui/button"
 
@@ -49,11 +50,14 @@ function AlertDialogContent({
   className,
   size = "default",
   children,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm"
 }) {
   const closing = useClosing()
+  const focus = useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus })
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -66,6 +70,7 @@ function AlertDialogContent({
           className
         )}
         {...props}
+        {...focus}
       >
         {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
       </AlertDialogPrimitive.Content>

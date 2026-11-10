@@ -2,6 +2,7 @@
 // report, the series, the model that reads a PDF's details, the checks and the agreement. Admins change them at
 // Settings > Admin > Publishing. Registrar accounts are saved by ./publicationActions.ts, limits by ./limits.ts.
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import { mutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { requireAdmin } from "../admins/access";
 import { refuseApps } from "../lib/auth";
@@ -161,6 +162,8 @@ export const update = mutation({
     await refuseApps(ctx);
     await requireAdmin(ctx);
     const row = await settingsRow(ctx);
+    // Review switched off releases what waited only for it (./review.ts `release`).
+    if (humanReview === false && row.humanReview) await ctx.scheduler.runAfter(0, internal.reports.review.release, {});
     await save(ctx, row._id, {
       ...(enabled !== undefined && { enabled }),
       ...(humanReview !== undefined && { humanReview }),
