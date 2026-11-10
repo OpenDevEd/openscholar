@@ -4,6 +4,7 @@
 // Openscholar keeps all of it and shows it on the report's page; the sections marked for Crossref go there too.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
@@ -22,10 +23,10 @@ import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { countryOfPlace } from "@/lib/reports/places";
+import { useRelationName, useRoleName } from "@/components/reports/words";
 import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, RELATION_KINDS, doiIn, isOrcid, linkHref, type Affiliation, type Author, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
-const LANGUAGE = new Intl.DisplayNames(["en"], { type: "language" });
 const REFS_PER_PAGE = 5;
 const REF_ROW = 41;
 const AUTHORS_PER_PAGE = 5;
@@ -36,13 +37,14 @@ const BLANK_AUTHOR: Author = { name: "", orcid: "", openalexId: null, affiliatio
 
 /** A part of the details, and where it goes: Crossref as well as Openscholar, or Openscholar alone. */
 function Section({ title, crossref, aside, children }: { title: string; crossref: boolean; aside?: ReactNode; children: ReactNode }) {
+  const t = useTranslations("publishReports.details");
   return (
     <section className="space-y-3">
       <div className="flex min-h-7 flex-wrap items-center gap-2 border-b border-border-subtle pb-2">
         <h3 className="text-sm font-semibold">{title}</h3>
         {aside}
         <span className={cn("ms-auto rounded-full px-2 py-0.5 text-2xs font-medium", crossref ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
-          {crossref ? "Crossref and Openscholar" : "Openscholar"}
+          {t(crossref ? "crossrefAndOpenscholar" : "openscholar")}
         </span>
       </div>
       {children}
@@ -61,11 +63,16 @@ function Field({ label, children, className, counter }: { label: string; childre
     </label>
   );
 }
-const used = (text: string, max: number) => `${text.length.toLocaleString("en")} / ${max.toLocaleString("en")}`;
+/** How much of a box with a limit is used, in the reader's numerals. */
+function useUsed() {
+  const format = useFormatter();
+  return (text: string, max: number) => `${format.number(text.length)} / ${format.number(max)}`;
+}
 
 /** Words typed into a box that become chips: Enter or a comma adds one. */
 function ChipInput({ values, onChange, placeholder, label, mono = false, max = DETAIL_TEXT.keyword }: { values: string[]; onChange: (v: string[]) => void; placeholder: string; label: string; mono?: boolean; /** The longest a chip's words may be. */ max?: number }) {
   const [text, setText] = useState("");
+  const t = useTranslations("publishReports.details");
   const add = () => {
     const word = text.trim();
     if (word && !values.includes(word)) onChange([...values, word]);
@@ -77,7 +84,7 @@ function ChipInput({ values, onChange, placeholder, label, mono = false, max = D
         // A long one is cut inside its chip, so its remove button stays in the box and in reach.
         <span key={v} className={cn("inline-flex h-6 min-w-0 max-w-full items-center gap-1 rounded-md bg-inset ps-2 pe-1 text-xs", mono && "font-mono")}>
           <span className="truncate">{v}</span>
-          <button type="button" aria-label={`Remove ${v}`} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground" onClick={() => onChange(values.filter((x) => x !== v))}>
+          <button type="button" aria-label={t("remove", { name: v })} className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground" onClick={() => onChange(values.filter((x) => x !== v))}>
             <CircleX className="size-3" />
           </button>
         </span>
@@ -122,6 +129,7 @@ function usePage<T>(list: T[], size: number) {
 
 /** An author's places, from OpenAlex's institutions or as typed, each with its country's flag. */
 function Affiliations({ value, onChange }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void }) {
+  const t = useTranslations("publishReports.details");
   const ids = value.map((a) => a.id ?? typedId(a.name));
   const names = Object.fromEntries(value.map((a) => [a.id ?? typedId(a.name), a.name]));
   return (
@@ -136,69 +144,72 @@ function Affiliations({ value, onChange }: { value: Affiliation[]; onChange: (a:
         entity: "institutions",
         useNames: () => names,
         remember: () => {},
-        typed: (query) => ({ id: typedId(query), name: query, detail: "As typed" }),
+        typed: (query) => ({ id: typedId(query), name: query, detail: t("asTyped") }),
       }}
-      labels={{ label: "Affiliations", placeholder: "Add an institution", searchPlaceholder: "Find an institution", typeToSearch: "Type an institution's name", unavailable: "Institutions can't be looked up now" }}
+      labels={{ label: t("affiliations"), placeholder: t("addInstitution"), searchPlaceholder: t("findInstitution"), typeToSearch: t("typeInstitution"), unavailable: t("institutionsDown") }}
     />
   );
 }
 
 function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { author: Author; index: number; count: number; onChange: (patch: Partial<Author>) => void; onMove: (by: -1 | 1) => void; onRemove: () => void }) {
+  const t = useTranslations("publishReports.details");
+  const roleName = useRoleName();
   const wrongOrcid = author.orcid !== "" && !isOrcid(author.orcid);
+  const who = author.name || t("author");
   return (
     <li className="space-y-3 p-4">
       {/* On a narrow screen the ORCID iD takes a line of its own under the name. */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
-        <Input aria-label="Name" placeholder="Name" maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="w-auto min-w-0 flex-1 font-medium" />
+        <Input aria-label={t("name")} placeholder={t("name")} maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="w-auto min-w-0 flex-1 font-medium" />
         <div className="relative order-last w-full shrink-0 @xl:order-none @xl:w-52">
           <OrcidIcon className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2" />
-          <Input aria-label="ORCID iD" aria-invalid={wrongOrcid} placeholder="0000-0000-0000-0000" value={author.orcid} onChange={(e) => onChange({ orcid: e.target.value.trim().toUpperCase() })} className="ps-8 font-mono text-xs" />
+          <Input aria-label={t("orcid")} aria-invalid={wrongOrcid} placeholder="0000-0000-0000-0000" value={author.orcid} onChange={(e) => onChange({ orcid: e.target.value.trim().toUpperCase() })} className="ps-8 font-mono text-xs" />
         </div>
         <span className="flex shrink-0">
-          <TooltipHint label="Move up">
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move ${author.name || "author"} up`} disabled={index === 0} className="text-muted-foreground" onClick={() => onMove(-1)}>
+          <TooltipHint label={t("moveUp")}>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("moveUpLabel", { name: who })} disabled={index === 0} className="text-muted-foreground" onClick={() => onMove(-1)}>
               <ArrowUp />
             </Button>
           </TooltipHint>
-          <TooltipHint label="Move down">
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move ${author.name || "author"} down`} disabled={index === count - 1} className="text-muted-foreground" onClick={() => onMove(1)}>
+          <TooltipHint label={t("moveDown")}>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("moveDownLabel", { name: who })} disabled={index === count - 1} className="text-muted-foreground" onClick={() => onMove(1)}>
               <ArrowDown />
             </Button>
           </TooltipHint>
-          <TooltipHint label="Remove author">
-            <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove ${author.name || "author"}`} disabled={count === 1} className="text-muted-foreground hover:text-destructive" onClick={onRemove}>
+          <TooltipHint label={t("removeAuthor")}>
+            <Button type="button" variant="ghost" size="icon-sm" aria-label={t("remove", { name: who })} disabled={count === 1} className="text-muted-foreground hover:text-destructive" onClick={onRemove}>
               <Trash2 />
             </Button>
           </TooltipHint>
         </span>
       </div>
-      {wrongOrcid ? <p role="alert" className="text-xs text-destructive @xl:ps-9">That isn&apos;t an ORCID iD. One looks like 0000-0002-1825-0097. Leave the box empty if they have none.</p> : null}
+      {wrongOrcid ? <p role="alert" className="text-xs text-destructive @xl:ps-9">{t("wrongOrcid")}</p> : null}
       {/* min-w-0: a long institution's name is cut inside its column, and never widens the form past a phone's screen. */}
       <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
         <div className="min-w-0 space-y-1.5">
-          <span className="ps-1 text-xs font-medium text-muted-foreground">Affiliations</span>
+          <span className="ps-1 text-xs font-medium text-muted-foreground">{t("affiliations")}</span>
           <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
         <div className="min-w-0 space-y-1.5">
-          <span className="ps-1 text-xs font-medium text-muted-foreground">Contributor roles</span>
+          <span className="ps-1 text-xs font-medium text-muted-foreground">{t("roles")}</span>
           <OptionPicker
-          label="Contributor roles"
-          placeholder="Contributor roles"
-          selectedText={author.roles.length === 1 ? "1 role" : `${author.roles.length} roles`}
-          searchPlaceholder="Find a role"
-          emptyText="No such role"
-          removeLabel={(name) => `Remove ${name}`}
-          options={CREDIT_ROLES.map((role) => ({ id: role, name: role }))}
+          label={t("roles")}
+          placeholder={t("roles")}
+          selectedText={t("roleCount", { count: author.roles.length })}
+          searchPlaceholder={t("findRole")}
+          emptyText={t("noRole")}
+          removeLabel={(name) => t("remove", { name })}
+          options={CREDIT_ROLES.map((role) => ({ id: role, name: roleName(role) }))}
           selected={author.roles}
-          names={Object.fromEntries(CREDIT_ROLES.map((role) => [role, role]))}
+          names={Object.fromEntries(CREDIT_ROLES.map((role) => [role, roleName(role)]))}
           onToggle={(role) => onChange({ roles: author.roles.includes(role) ? author.roles.filter((r) => r !== role) : [...author.roles, role] })}
           />
         </div>
       </div>
       <label className="flex w-fit cursor-pointer items-center gap-2 text-xs text-muted-foreground @xl:ps-9">
         <Switch checked={author.corresponding} onCheckedChange={(corresponding) => onChange({ corresponding })} />
-        Corresponding author
+        {t("corresponding")}
       </label>
     </li>
   );
@@ -247,6 +258,12 @@ export function DetailsStep({
   unread?: boolean;
 }) {
   const [m, setM] = useState(initial);
+  const t = useTranslations("publishReports.details");
+  const format = useFormatter();
+  const locale = useLocale();
+  const used = useUsed();
+  const relationName = useRelationName();
+  const languageName = new Intl.DisplayNames([locale], { type: "language" });
   const [opened] = useState(version);
   const [touched, setTouched] = useState(false);
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
@@ -306,9 +323,9 @@ export function DetailsStep({
   const [doiTrouble, setDoiTrouble] = useState<string | null>(null);
   const addDoi = () => {
     const bare = doiIn(doi);
-    if (!bare) return setDoiTrouble("That isn't a DOI. One looks like 10.1234/abcd.5678.");
-    if (m.references.includes(bare)) return setDoiTrouble("That DOI is already in the list.");
-    if (m.references.length >= DETAIL_CAPS.references) return setDoiTrouble(`A report lists at most ${DETAIL_CAPS.references.toLocaleString("en")} references.`);
+    if (!bare) return setDoiTrouble(t("notDoi"));
+    if (m.references.includes(bare)) return setDoiTrouble(t("doiListed"));
+    if (m.references.length >= DETAIL_CAPS.references) return setDoiTrouble(t("tooManyRefs", { max: format.number(DETAIL_CAPS.references) }));
     set("references", [...m.references, bare]);
     setDoi("");
   };
@@ -321,72 +338,70 @@ export function DetailsStep({
     <div>
       <div className="mb-6 space-y-1">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">{words?.title ?? (onCancel ? "Correct the details" : "Check the details")}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{words?.title ?? t(onCancel ? "correctTitle" : "checkTitle")}</h2>
           {onCancel ? null : <AiIcon className="size-4 text-primary" />}
         </div>
         {words ? (
           <p className="max-w-xl text-sm text-muted-foreground">{words.intro}</p>
         ) : onCancel ? (
-          <p className="max-w-xl text-sm text-muted-foreground">{waits
-              ? "Your changes are checked, then a reviewer approves them before they go live. Your report stays live as it is until then. The PDF stays the same."
-              : "Your report stays live as it is while your changes are checked. They go live when every check passes. The PDF stays the same."}</p>
+          <p className="max-w-xl text-sm text-muted-foreground">{t(waits ? "correctWaits" : "correctLive")}</p>
         ) : (
           <p className="max-w-xl text-sm text-muted-foreground">
-            {unread ? "Fill in the details" : "Filled in from your PDF. Correct anything that's wrong and add what's missing"}: the report&apos;s page shows all of it, and Crossref gets its part.
+            {t(unread ? "introUnread" : "introRead")}
           </p>
         )}
       </div>
       <div className="space-y-8">
-        <Section title="The work" crossref>
-          <Field label="Title" counter={used(m.title, DETAIL_TEXT.title)}>
+        <Section title={t("work")} crossref>
+          <Field label={t("title")} counter={used(m.title, DETAIL_TEXT.title)}>
             <Textarea value={m.title} maxLength={DETAIL_TEXT.title} onChange={(e) => set("title", e.target.value)} rows={2} className="resize-none text-base font-medium" />
           </Field>
-          <Field label="Subtitle" counter={m.subtitle ? used(m.subtitle, DETAIL_TEXT.subtitle) : undefined}>
-            <Input value={m.subtitle} maxLength={DETAIL_TEXT.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder="None" />
+          <Field label={t("subtitle")} counter={m.subtitle ? used(m.subtitle, DETAIL_TEXT.subtitle) : undefined}>
+            <Input value={m.subtitle} maxLength={DETAIL_TEXT.subtitle} onChange={(e) => set("subtitle", e.target.value)} placeholder={t("none")} />
           </Field>
           <div className="grid gap-3 sm:grid-cols-2 @3xl:grid-cols-4">
-            <Field label="Type">
+            <Field label={t("type")}>
               <Select value={m.type} onValueChange={(type) => set("type", type)}>
-                <SelectTrigger className="w-full" aria-label="Type">
+                <SelectTrigger className="w-full" aria-label={t("type")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {WORK_TYPES.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
+                  {WORK_TYPES.map((type) => (
+                    <SelectItem key={type.id} value={type.id}>
+                      {type.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Language">
+            <Field label={t("language")}>
               <Select value={m.language} onValueChange={(language) => set("language", language)}>
-                <SelectTrigger className="w-full" aria-label="Language">
+                <SelectTrigger className="w-full" aria-label={t("language")}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {WORK_LANGUAGES.map((code) => (
                     <SelectItem key={code} value={code}>
-                      {LANGUAGE.of(code)}
+                      {languageName.of(code)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Date published">
+            <Field label={t("date")}>
               {/* A report is published by today, as the author's own calendar has it. A date typed past it says so here, before the checks are asked for. */}
               <Input type="date" value={m.date} max={localToday()} aria-invalid={future || undefined} onChange={(e) => set("date", e.target.value)} />
-              {future ? <span className="block ps-1 text-xs text-destructive">A report can&apos;t be dated in the future.</span> : null}
+              {future ? <span className="block ps-1 text-xs text-destructive">{t("future")}</span> : null}
             </Field>
             <div className="space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">Licence</span>
+              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("licence")}</span>
               <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">{m.licence}</div>
             </div>
           </div>
         </Section>
 
-        <Section title="Authors" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.authors.length}</span>}>
-          <Paged pager={authors.pager} rowHeight={AUTHOR_ROW} label="authors">
+        <Section title={t("authors")} crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.authors.length}</span>}>
+          <Paged pager={authors.pager} rowHeight={AUTHOR_ROW} label={t("authorsPager")}>
           <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
             {authors.shown.map((a, at) => {
               const i = authors.offset + at;
@@ -414,47 +429,47 @@ export function DetailsStep({
               authors.last(m.authors.length + 1);
             }}
           >
-            <Plus /> Add an author
+            <Plus /> {t("addAuthor")}
           </Button>
         </Section>
 
-        <Section title="Abstract" crossref aside={<span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>}>
-          <Textarea aria-label="Abstract" value={m.abstract} maxLength={DETAIL_TEXT.abstract} onChange={(e) => set("abstract", e.target.value)} rows={7} className="text-sm/6" />
+        <Section title={t("abstract")} crossref aside={<span className="font-mono text-xs tabular-nums text-muted-foreground">{used(m.abstract, DETAIL_TEXT.abstract)}</span>}>
+          <Textarea aria-label={t("abstract")} value={m.abstract} maxLength={DETAIL_TEXT.abstract} onChange={(e) => set("abstract", e.target.value)} rows={7} className="text-sm/6" />
         </Section>
 
-        <Section title="Subjects" crossref={false}>
+        <Section title={t("subjects")} crossref={false}>
           <div className="grid gap-4 @3xl:grid-cols-2">
             <div className="min-w-0 space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">Topics</span>
+              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("topics")}</span>
               <OptionPicker
-                label="Topics"
-                placeholder="Add a topic"
-                selectedText={m.topics.length === 1 ? "1 topic" : `${m.topics.length} topics`}
-                searchPlaceholder="Find a topic"
-                emptyText="No topic found"
-                removeLabel={(name) => `Remove ${name}`}
+                label={t("topics")}
+                placeholder={t("addTopic")}
+                selectedText={t("topicCount", { count: m.topics.length })}
+                searchPlaceholder={t("findTopic")}
+                emptyText={t("noTopic")}
+                removeLabel={(name) => t("remove", { name })}
                 options={searchTopicCatalog(topicSearch, 40).map((o) => ({ id: o.id, name: o.name, detail: o.path.join(" / ") }))}
-                selected={m.topics.map((t) => t.id)}
-                names={Object.fromEntries(m.topics.map((t) => [t.id, t.name]))}
-                icons={Object.fromEntries(m.topics.filter((t) => t.score < 1).map((t) => [t.id, <Sureness key={t.id} score={t.score} />]))}
+                selected={m.topics.map((topic) => topic.id)}
+                names={Object.fromEntries(m.topics.map((topic) => [topic.id, topic.name]))}
+                icons={Object.fromEntries(m.topics.filter((topic) => topic.score < 1).map((topic) => [topic.id, <Sureness key={topic.id} score={topic.score} />]))}
                 onSearch={setTopicSearch}
                 onToggle={(id) =>
-                  set("topics", m.topics.some((t) => t.id === id) ? m.topics.filter((t) => t.id !== id) : [...m.topics, { id, name: topicName(id) ?? id, score: 1 }])
+                  set("topics", m.topics.some((topic) => topic.id === id) ? m.topics.filter((topic) => topic.id !== id) : [...m.topics, { id, name: topicName(id) ?? id, score: 1 }])
                 }
               />
             </div>
-            <Field label="Keywords">
-              <ChipInput values={m.keywords} onChange={(keywords) => set("keywords", keywords)} placeholder="Add keywords" label="Add a keyword" />
+            <Field label={t("keywords")}>
+              <ChipInput values={m.keywords} onChange={(keywords) => set("keywords", keywords)} placeholder={t("addKeywords")} label={t("addKeyword")} />
             </Field>
             <div className="min-w-0 space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">Sustainable Development Goals</span>
+              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("sdgs")}</span>
               <OptionPicker
-                label="Sustainable Development Goals"
-                placeholder="Add a goal"
-                selectedText={m.sdgs.length === 1 ? "1 goal" : `${m.sdgs.length} goals`}
-                searchPlaceholder="Find a goal"
-                emptyText="No goal found"
-                removeLabel={(name) => `Remove ${name}`}
+                label={t("sdgs")}
+                placeholder={t("addGoal")}
+                selectedText={t("goalCount", { count: m.sdgs.length })}
+                searchPlaceholder={t("findGoal")}
+                emptyText={t("noGoal")}
+                removeLabel={(name) => t("remove", { name })}
                 options={SDGS}
                 selected={m.sdgs}
                 names={Object.fromEntries(SDGS.map((g) => [g.id, g.name]))}
@@ -462,14 +477,14 @@ export function DetailsStep({
               />
             </div>
             <div className="min-w-0 space-y-1.5">
-              <span className="ps-1 text-xs font-medium text-muted-foreground">Study design</span>
+              <span className="ps-1 text-xs font-medium text-muted-foreground">{t("design")}</span>
               <OptionPicker
-                label="Study design"
-                placeholder="Add a design"
-                selectedText={m.studyDesigns.length === 1 ? "1 design" : `${m.studyDesigns.length} designs`}
-                searchPlaceholder="Find a design"
-                emptyText="No design found"
-                removeLabel={(name) => `Remove ${name}`}
+                label={t("design")}
+                placeholder={t("addDesign")}
+                selectedText={t("designCount", { count: m.studyDesigns.length })}
+                searchPlaceholder={t("findDesign")}
+                emptyText={t("noDesign")}
+                removeLabel={(name) => t("remove", { name })}
                 options={STUDY_DESIGNS}
                 selected={m.studyDesigns}
                 names={Object.fromEntries(STUDY_DESIGNS.map((d) => [d.id, d.name]))}
@@ -479,20 +494,20 @@ export function DetailsStep({
           </div>
         </Section>
 
-        <Section title="Places studied" crossref={false}>
-          <CountrySelector label="Places studied" placeholder="Add a country or region" selectedRegions={m.countries} onSelectionChange={(countries) => set("countries", countries)} bypassLimit />
+        <Section title={t("places")} crossref={false}>
+          <CountrySelector label={t("places")} placeholder={t("addPlace")} selectedRegions={m.countries} onSelectionChange={(countries) => set("countries", countries)} bypassLimit />
         </Section>
 
-        <Section title="Funding" crossref>
+        <Section title={t("funding")} crossref>
           <OpenAlexLookupFilter
             selected={funderIds}
             onChange={(next) => set("funding", m.funding.filter((f) => next.includes(f.funder.id ?? typedId(f.funder.name))))}
             onPicked={(option) => set("funding", [...m.funding, { funder: option.id.startsWith("typed:") ? { id: null, name: option.name } : { id: option.id, name: option.name }, awards: [] }])}
-            lookup={{ entity: "funders", useNames: () => funderNames, remember: rememberFunderNames, typed: (query) => ({ id: typedId(query), name: query, detail: "As typed" }) }}
-            labels={{ label: "Funders", placeholder: "Add a funder", searchPlaceholder: "Find a funder", typeToSearch: "Type a funder's name", unavailable: "Funders can't be looked up now" }}
+            lookup={{ entity: "funders", useNames: () => funderNames, remember: rememberFunderNames, typed: (query) => ({ id: typedId(query), name: query, detail: t("asTyped") }) }}
+            labels={{ label: t("funders"), placeholder: t("addFunder"), searchPlaceholder: t("findFunder"), typeToSearch: t("typeFunder"), unavailable: t("fundersDown") }}
           />
           {m.funding.length ? (
-            <Paged pager={funders.pager} rowHeight={ROW} label="funders">
+            <Paged pager={funders.pager} rowHeight={ROW} label={t("fundersPager")}>
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
               {funders.shown.map((f, at) => {
                 const i = funders.offset + at;
@@ -502,8 +517,8 @@ export function DetailsStep({
                   <ChipInput
                     values={f.awards}
                     onChange={(awards) => set("funding", m.funding.map((x, n) => (n === i ? { ...x, awards } : x)))}
-                    placeholder="Grant numbers"
-                    label={`Add a grant number for ${f.funder.name}`}
+                    placeholder={t("grants")}
+                    label={t("addGrant", { name: f.funder.name })}
                     mono
                   />
                 </li>
@@ -514,17 +529,17 @@ export function DetailsStep({
           ) : null}
         </Section>
 
-        <Section title="References" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
+        <Section title={t("references")} crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
           {m.references.length ? (
-            <Paged pager={refs} rowHeight={REF_ROW} label="references">
+            <Paged pager={refs} rowHeight={REF_ROW} label={t("referencesPager")}>
               <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
                 {shownRefs.map((ref) => (
                   <li key={ref} style={{ height: REF_ROW - 1 }} className="flex items-center gap-2 px-3">
                     <a href={`https://doi.org/${ref}`} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-xs underline-offset-4 hover:underline">
                       {ref}
                     </a>
-                    <TooltipHint label="Remove reference">
-                      <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${ref}`} className="text-muted-foreground hover:text-destructive" onClick={() => set("references", m.references.filter((r) => r !== ref))}>
+                    <TooltipHint label={t("removeReference")}>
+                      <Button type="button" variant="ghost" size="icon-xs" aria-label={t("remove", { name: ref })} className="text-muted-foreground hover:text-destructive" onClick={() => set("references", m.references.filter((r) => r !== ref))}>
                         <Trash2 />
                       </Button>
                     </TooltipHint>
@@ -534,18 +549,18 @@ export function DetailsStep({
             </Paged>
           ) : null}
           <div className="flex gap-2">
-            <Input aria-label="Add a reference by DOI" aria-invalid={!!doiTrouble} placeholder="Add a DOI it cites" value={doi} onChange={(e) => (setDoi(e.target.value), setDoiTrouble(null))} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addDoi())} className="font-mono text-xs" />
+            <Input aria-label={t("addReference")} aria-invalid={!!doiTrouble} placeholder={t("doiPlaceholder")} value={doi} onChange={(e) => (setDoi(e.target.value), setDoiTrouble(null))} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addDoi())} className="font-mono text-xs" />
             <Button type="button" variant="outline" disabled={!doi.trim()} onClick={addDoi}>
-              <Plus /> Add
+              <Plus /> {t("add")}
             </Button>
           </div>
           {doiTrouble ? <p role="alert" className="ps-1 text-xs text-destructive">{doiTrouble}</p> : null}
         </Section>
 
-        <Section title="Data, code and other versions" crossref>
-          {wrongLinks ? <p role="alert" className="ps-1 text-xs text-destructive">A link is a web address (https://…) or a DOI. Put the marked one right, or remove it.</p> : null}
+        <Section title={t("links")} crossref>
+          {wrongLinks ? <p role="alert" className="ps-1 text-xs text-destructive">{t("wrongLink")}</p> : null}
           {m.relations.length ? (
-            <Paged pager={links.pager} rowHeight={ROW} label="links">
+            <Paged pager={links.pager} rowHeight={ROW} label={t("linksPager")}>
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
               {links.shown.map((r, at) => {
                 const i = links.offset + at;
@@ -554,30 +569,30 @@ export function DetailsStep({
                 // On a narrow screen the address takes a line of its own, under its kind and its buttons: beside them it had no room to be read.
                 <li key={i} className="flex flex-wrap items-center gap-2 px-3 py-2">
                   <Select value={r.kind} onValueChange={(kind) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, kind: kind as typeof r.kind } : x)))}>
-                    <SelectTrigger size="sm" className="w-36 shrink-0" aria-label="Kind of link">
+                    <SelectTrigger size="sm" className="w-36 shrink-0" aria-label={t("linkKind")}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {RELATION_KINDS.map((k) => (
                         <SelectItem key={k.id} value={k.id}>
-                          {k.name}
+                          {relationName(k.id)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input aria-label="Link or DOI" aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder="https://… or a DOI" value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
+                  <Input aria-label={t("linkLabel")} aria-invalid={r.target.trim() !== "" && !href} maxLength={DETAIL_TEXT.link} placeholder={t("linkPlaceholder")} value={r.target} onChange={(e) => set("relations", m.relations.map((x, n) => (n === i ? { ...x, target: e.target.value } : x)))} className="order-last h-8 min-w-0 basis-full font-mono text-xs @xl:order-none @xl:flex-1 @xl:basis-0" />
                   <span className="ms-auto flex items-center gap-2 @xl:ms-0">
                   {href ? (
-                    <TooltipHint label="Open link">
+                    <TooltipHint label={t("openLink")}>
                       <Button asChild variant="ghost" size="icon-xs" className="text-muted-foreground">
-                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Open ${r.target}`}>
+                        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={t("openLabel", { target: r.target })}>
                           <ExternalLink />
                         </a>
                       </Button>
                     </TooltipHint>
                   ) : null}
-                  <TooltipHint label="Remove link">
-                    <Button type="button" variant="ghost" size="icon-xs" aria-label={`Remove ${r.target || "link"}`} className="text-muted-foreground hover:text-destructive" onClick={() => set("relations", m.relations.filter((_, other) => other !== i))}>
+                  <TooltipHint label={t("removeLink")}>
+                    <Button type="button" variant="ghost" size="icon-xs" aria-label={t("remove", { name: r.target || t("link") })} className="text-muted-foreground hover:text-destructive" onClick={() => set("relations", m.relations.filter((_, other) => other !== i))}>
                       <Trash2 />
                     </Button>
                   </TooltipHint>
@@ -592,7 +607,7 @@ export function DetailsStep({
               set("relations", [...m.relations, { kind: "data", target: "" }]);
               links.last(m.relations.length + 1);
             }}>
-            <Plus /> Add a link
+            <Plus /> {t("addLink")}
           </Button>
         </Section>
       </div>
@@ -604,7 +619,7 @@ export function DetailsStep({
             held.current.send = undefined;
             onCancel(opened);
           }}>
-            Cancel
+            {t("cancel")}
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
@@ -614,7 +629,7 @@ export function DetailsStep({
           held.current.send = undefined;
           void onRun(m, opened);
         }}>
-          <ShieldCheck /> {words ? words.action : onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
+          <ShieldCheck /> {words ? words.action : t(onCancel ? (waits ? "sendForReview" : "checkAndPublish") : "runChecks")}
         </Button>
       </div>
     </div>

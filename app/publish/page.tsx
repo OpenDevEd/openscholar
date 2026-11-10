@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { PublishFlow } from "@/components/reports/publish-flow";
 
-export const metadata: Metadata = { title: "Publish | Openscholar" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("publishReports.meta");
+  return { title: t("publish") };
+}
 
 /**
  * Publish to Openscholar Reports (plans/publish-reports). It is a workspace's section, like the library: under
