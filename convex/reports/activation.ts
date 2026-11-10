@@ -365,16 +365,17 @@ export async function settlePending(ctx: ActionCtx, workspaceId: Id<"workspaces"
 }
 
 /**
- * What the report's page does when Stripe sends the person back: the workspace's card is read again, whether a card was
- * just saved or a charge confirmed, and an activation the bank confirmed goes live.
+ * What a report's page does as it opens: a charge of the workspace's that waited on the bank and has been paid since
+ * goes live, wherever the person paid it (Stripe's invoice page has no way back here). With `card`, when Stripe sent the
+ * person back after saving one, the workspace's card is read again first. Nothing waiting costs one read.
  */
 export const settle = action({
-  args: { workspaceId: v.id("workspaces") },
+  args: { workspaceId: v.id("workspaces"), card: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, { workspaceId }): Promise<null> => {
+  handler: async (ctx, { workspaceId, card }): Promise<null> => {
     await refuseApps(ctx);
     await actorIn(ctx, workspaceId);
-    await refreshAccount(ctx, workspaceId, { card: true });
+    if (card) await refreshAccount(ctx, workspaceId, { card: true });
     await settlePending(ctx, workspaceId);
     return null;
   },

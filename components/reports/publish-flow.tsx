@@ -1020,6 +1020,8 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   const pending = terms?.pending ?? null;
   const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
   const [paying, setPaying] = useState(false);
+  // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
+  if (paying && !admin) setPaying(false);
   const [code, setCode] = useState<Quote | null>(null);
   const due = code ? Math.round(code.total * 100) : (price ?? 0);
   const activateNow = (pay: boolean, withCode?: string) =>
@@ -1040,7 +1042,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
     </StepHead>
   ) : stage === "ready" && !admin ? (
     <StepHead key="admin" title="Waiting for an admin" aside={<StatusChip tone="success" icon={CircleCheck}>{report.approved ? "Approved" : "Passed"}</StatusChip>}>
-      {report.approved ? "A reviewer approved your report." : "Your report passed its checks."} An admin of {organization} activates it. They&apos;ve had an email saying it&apos;s ready.
+      {report.approved ? "A reviewer approved your report." : "Your report passed its checks."} An admin of {organization} activates it.
     </StepHead>
   ) : stage === "ready" ? (
     <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>{report.approved ? "Approved" : "Passed"}</StatusChip>}>
