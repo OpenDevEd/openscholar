@@ -59,7 +59,7 @@ export const read = internalAction({
     if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
     // A scan holds no text for the checks to read, which matters more to its author than a reading that fell short.
     const trouble = !text.trim() ? ("textless" as const) : metadata ? undefined : ("unread" as const);
-    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, metadata: details, ...(trouble && { trouble }) });
+    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, metadata: details, ...(trouble && { trouble }), ...(!metadata && { unread: true }) });
     return null;
   },
 });

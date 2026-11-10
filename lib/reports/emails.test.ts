@@ -40,6 +40,11 @@ describe("a report's emails", () => {
     expect(reportEmail("live-author", { ...report, activated: true, live: true }, origin)!.text).toContain("https://doi.org/10.53832/openscholar-r.r100007");
   });
 
+  it("link an address a note quotes without taking the quote or the full stop into it", () => {
+    const email = reportEmail("declined", { ...report, note: 'See "https://example.org/path?a=1&b=2". Thanks' }, origin)!;
+    expect(email.html).toContain('<a href="https://example.org/path?a=1&amp;b=2" style="color:#c2410c">https://example.org/path?a=1&amp;b=2</a>&quot;. Thanks');
+  });
+
   it("escape what an author typed, in the HTML", () => {
     const email = reportEmail("declined", { ...report, title: "<script>x</script>", note: "See <b>this</b>" }, origin)!;
     expect(email.html).not.toContain("<script>");

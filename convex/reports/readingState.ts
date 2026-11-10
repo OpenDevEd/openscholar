@@ -27,9 +27,9 @@ export const begin = internalQuery({
  * opens them to be filled in and says so. A reading of a PDF replaced meanwhile saves nothing, and its text is given up.
  */
 export const finish = internalMutation({
-  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))) },
+  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))), /** The details couldn't be read from it, whatever else is wrong with it. */ unread: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { reportId, at, pages, text, metadata, trouble }) => {
+  handler: async (ctx, { reportId, at, pages, text, metadata, trouble, unread }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report?.pdf || report.pdf.at !== at || report.step === "done") {
       if (text) await ctx.storage.delete(text);
@@ -43,7 +43,8 @@ export const finish = internalMutation({
     if (text) await ctx.db.insert("reportFiles", { file: text, reportId });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { metadata: keptDetails(metadata) });
     await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: metadata.title.trim() || undefined });
-    if (trouble === "unread") await notify(ctx, reportId, "pdf-unread");
+    // The team hears of a reading that failed, of a scan's too: what its author is told first is that it has no text.
+    if (unread) await notify(ctx, reportId, "pdf-unread");
     return null;
   },
 });

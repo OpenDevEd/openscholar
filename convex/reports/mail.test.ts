@@ -81,6 +81,23 @@ describe("the emails about a report", () => {
     ]);
   });
 
+  it("quote the reviewer's note as it was when they decided, whatever the author did a moment later", async () => {
+    const world = await setup({ humanReview: true });
+    const { key, reportId } = await checked(world, [passed("byline")]);
+    await decide(world, key, "approve");
+    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    const report = await row(world.t, key);
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Another title"), runId: "run-note", from: { changesSince: report.activatedAt! } });
+    await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-note", results: [passed("byline")], version: 1, metadata: details("Another title") });
+    const at = (await world.t.run((ctx) => ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).unique()))!.correction!.at;
+    await world.reviewer.mutation(api.reports.review.decideChanges, { key, decision: "decline", seenAt: at, note: "The title overclaims" });
+    // Discarded before the email is written: the email still says why.
+    await world.author.mutation(api.reports.flow.discardChanges, { workspaceId: world.own, key, seenAt: at });
+    await emailed(world, key);
+    const text = await world.t.run(async (ctx) => (await ctx.db.query("reportEmails").take(50)).find((email) => email.event === "Changes declined")!.text);
+    expect(text).toContain("The title overclaims");
+  });
+
   it("tell authors whose reports waited only for a reviewer once review is switched off", async () => {
     const world = await setup({ humanReview: true });
     const waiting = await checked(world, [passed("byline")]);

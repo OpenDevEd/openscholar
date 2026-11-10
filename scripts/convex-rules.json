@@ -137,8 +137,7 @@
       "GRANT_BATCH": "a deleted developer app's rows on people's lists of sites, a batch at a time; it reschedules itself until none are left",
       "PURGE_SUBMISSIONS": "a deleted account's submissions, a batch per cleanup run; the run defers the account until none are left",
       "PURGE_APPLICATIONS": "a deleted account's applications to join communities, a batch per cleanup run; the run defers the account until none are left",
-      "REVIEWS_REMOVED": "a removed report's reviewer decisions, deleted with it; one that can be removed never went live, so it has a decline or two",
-      "RELEASED_PER_STEP": "reports read in one step once review is switched off: a page of waiting changes to put live, and the newest passed reports whose authors are told they can activate"
+      "REVIEWS_REMOVED": "a removed report's reviewer decisions, deleted with it; one that can be removed never went live, so it has a decline or two"
     }
   }
 }
