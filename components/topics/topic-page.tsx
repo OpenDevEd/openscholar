@@ -57,7 +57,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail, publica
     <TooltipHint label={tc("searchPapers")}><Button variant="outline" size="sm" className="w-8 px-0" aria-label={tc("searchPapers")} asChild><Link href={buildShareableUrl("", { area: [topic.id], sort: "cited_by_count:desc" })}><Search aria-hidden /></Link></Button></TooltipHint>
     <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
-      catch { toast.error(t("copyFailed")); }
+      catch { toast.error(t("copyFailed"), { description: tToast("copyFailedDescription") }); }
     }}><Copy aria-hidden /><span className={BAR_LABEL}>{t("copyLink")}</span></Button>
     {source === "openalex" && <Button variant="outline" size="sm" className={BAR_ACTION} asChild><a href={`https://openalex.org/${topic.id}`} target="_blank" rel="noreferrer"><OpenAlexIcon className="size-4 shrink-0" /><span className={BAR_LABEL}>OpenAlex</span><ArrowUpRight aria-hidden className="@max-3xl:hidden" /></a></Button>}
   </>} tabs={<ListViewTabs label={t("publicationsView")} value={tab} onChange={setTab} tabs={[
