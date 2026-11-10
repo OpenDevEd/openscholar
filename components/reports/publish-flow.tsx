@@ -842,7 +842,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   };
   return (
     <div>
-      <StepHead title="Upload the PDF">Put the byline on the cover or the first page before you upload. The checks look for it and for the DOI in it.</StepHead>
+      <StepHead title="Upload the PDF">Put the following text, verbatim, on the cover or the inside cover before you upload. Our check looks for this line.</StepHead>
       <div className="mb-5 grid gap-4">
         <CopyField label="Byline" value={report.byline} what="Byline" />
         <CopyField label="DOI" value={`https://doi.org/${report.doi}`} mono what="DOI" />

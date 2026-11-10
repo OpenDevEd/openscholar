@@ -49,7 +49,7 @@ export const DEFAULT_CHECKS: Check[] = [
     id: "byline",
     name: "Byline and DOI in the PDF",
     question: 'Does the text include this line, allowing for line breaks and spacing: "{byline}"?',
-    fix: "Put this line on the cover or the first page, as text and not as a picture, then upload the PDF again: {byline}",
+    fix: "Put this line on the cover or the inside cover, as text and not as a picture, then upload the PDF again: {byline}",
     modelId: JEV_MODEL,
     threshold: 0.8,
     blocking: true,
@@ -102,7 +102,7 @@ export const NO_PUBLICATION: PublicationSettings = {
 export const REPORT_DEFAULTS = {
   enabled: false,
   humanReview: true,
-  series: { name: "Openscholar Reports", issn: "", byline: "This publication is an Openscholar Report, ISSN {issn}, {doi}" } satisfies Series,
+  series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}" } satisfies Series,
   publication: NO_PUBLICATION,
   // One new report a day for a person's own workspace. An organisation's has none until an admin opens it, since
   // anyone can make an organisation.
@@ -133,8 +133,11 @@ export const limitWords = (perDay: number, kind: WorkspaceKind) =>
 
 /** A report needs a DOI, so publishing needs Crossref or Zenodo connected. */
 export const canRegister = (publication: PublicationSettings) => publication.zenodo.mode !== "off" || publication.crossref.mode !== "off";
-/** The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. */
-export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "pending").replace("{series}", series.name);
+/**
+ * The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. Until the series has an ISSN the
+ * byline says so in braces, "{pending}", as it is printed.
+ */
+export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name);
 /** The DOI a report gets under the Crossref prefix and namespace. With Crossref off its DOI is the one Zenodo reserves, which only Zenodo knows. */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);
 
