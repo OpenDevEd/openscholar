@@ -6717,7 +6717,10 @@
           "apply": "Aplicar",
           "remove": "Remover {code}",
           "off": "{percent}% de desconto",
-          "failed": "Não foi possível verificar esse código. Tente novamente."
+          "failed": "Não foi possível verificar esse código. Tente novamente.",
+          "unknownCode": "{code} não é um código que conheçamos, ou já foi esgotado.",
+          "nothingOff": "{code} não desconta nada numa ativação.",
+          "codeTooLong": "Esse código é demasiado longo para ser um dos nossos."
         },
         "card": {
           "bankAsked": "O seu banco pediu para confirmar o pagamento",
@@ -6740,7 +6743,8 @@
         },
         "creditLine": "Crédito da conta",
         "refunded": "Os {amount} pagos para o ativar foram reembolsados.",
-        "refunding": "Os {amount} pagos para o ativar estão a ser reembolsados."
+        "refunding": "Os {amount} pagos para o ativar estão a ser reembolsados.",
+        "declined": "O seu cartão foi recusado. Nada foi cobrado. Mude de cartão e tente novamente."
       }
     },
     "meta": {

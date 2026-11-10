@@ -12,6 +12,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates, useQueryState } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { ConvexError } from "convex/values";
 import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -86,6 +87,11 @@ function placeOf(report: Report | null) {
 
 /** A handler for a change that was refused or never arrived: its reason in a toast. */
 const said = (otherwise: string) => (error: unknown) => void toast.error(getErrorMessage(error, otherwise));
+
+/** Why a promotion code or a payment was refused, as the server names it, so the page says it in its own language. */
+const refusalOf = (error: unknown) => (error instanceof ConvexError ? (error.data as { code?: string; reason?: string } | undefined) : undefined);
+const PROMO_REASONS = ["unknownCode", "nothingOff", "codeTooLong"] as const;
+const promoReason = (error: unknown) => PROMO_REASONS.find((reason) => reason === refusalOf(error)?.reason);
 
 function copy(text: string, copied: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(copied));
@@ -631,7 +637,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
       <StepHead title={t("agreementTitle", { series: basics.series.name })} aside={<StatusChip tone="neutral">{t("version", { version: agreement.version })}</StatusChip>}>
         {t(shared ? "agreementShared" : "agreementIntro")}
       </StepHead>
-      <div className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
+      <div lang="en" dir="ltr" className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
         <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
@@ -758,7 +764,7 @@ function DoiStep({ report, fresh, onNext }: { report: Report; fresh: boolean; on
       </motion.p>
       <motion.div className="relative mt-7 w-full max-w-xl overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.06] px-5 py-6" {...rise(0.45)}>
         <p className="sr-only">{report.doi}</p>
-        <p aria-hidden className="flex flex-wrap justify-center font-mono text-xl font-semibold tracking-tight sm:text-[1.625rem]">
+        <p aria-hidden dir="ltr" className="flex flex-wrap justify-center font-mono text-xl font-semibold tracking-tight sm:text-[1.625rem]">
           {parts.map((part, group) => (
             <span key={group} className="whitespace-nowrap">
               {[...part].map((letter, i) => (
@@ -1046,7 +1052,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       try {
         await onActivate?.(pay, withCode, expect);
       } catch (error) {
-        said(t("activateFailed"))(error);
+        const reason = promoReason(error);
+        if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") toast.error(t("activation.declined"));
+        else if (reason) toast.error(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
+        else said(t("activateFailed"))(error);
       }
     });
   /** What Activate takes from the card, beside the word; null when it's free or credit covers it. */
@@ -1261,7 +1270,8 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
         setWrong(null);
         setTyped("");
       } catch (error) {
-        setWrong(getErrorMessage(error, t("failed")));
+        const reason = promoReason(error);
+        setWrong(reason ? t(reason, { code: typed.trim() }) : getErrorMessage(error, t("failed")));
       }
     });
   const off = applied && applied.price > 0 ? Math.round((applied.discount / applied.price) * 100) : 0;
@@ -1559,7 +1569,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
       <motion.div className="rounded-2xl border border-border-subtle bg-inset/60 p-4" {...rise(0.7)}>
         <div className="flex min-w-0 items-center gap-3">
           <Hash className="size-4 shrink-0 text-primary" />
-          <a href={url} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
+          <a href={url} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 flex-1 truncate font-mono text-[0.9375rem] font-medium underline-offset-4 hover:underline">
             doi.org/{report.doi}
           </a>
           <TooltipHint label={t("copyDoi")}>
@@ -1714,7 +1724,7 @@ function ReportCover({ basics, report }: { basics: Basics; report: Report | null
       />
       <div className="min-w-0 flex-1 @3xl:mt-4">
         <TooltipHint label={report ? `doi.org/${report.doi}` : ""} onlyWhenClipped>
-          <p className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
+          <p dir="ltr" className={cn("truncate font-mono text-xs", report ? "text-foreground" : "text-muted-foreground")}>{report ? `doi.org/${report.doi}` : t("noDoi")}</p>
         </TooltipHint>
         <p className="mt-0.5 text-xs text-muted-foreground">{basics.series.issn ? t("issn", { issn: basics.series.issn }) : t("issnPending")}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">

@@ -6716,7 +6716,10 @@
           "apply": "使用",
           "remove": "移除 {code}",
           "off": "减 {percent}%",
-          "failed": "无法验证该优惠码，请重试。"
+          "failed": "无法验证该优惠码，请重试。",
+          "unknownCode": "{code} 不是我们认识的代码，或已用完。",
+          "nothingOff": "{code} 不能减免激活费用。",
+          "codeTooLong": "这个代码太长，不可能是我们的代码。"
         },
         "card": {
           "bankAsked": "你的银行要求确认这笔付款",
@@ -6739,7 +6742,8 @@
         },
         "creditLine": "账户余额抵扣",
         "refunded": "为激活它支付的 {amount} 已退款。",
-        "refunding": "为激活它支付的 {amount} 正在退款。"
+        "refunding": "为激活它支付的 {amount} 正在退款。",
+        "declined": "你的卡被拒绝了，没有扣款。请更换卡片后重试。"
       }
     },
     "meta": {

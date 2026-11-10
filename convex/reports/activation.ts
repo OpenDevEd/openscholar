@@ -270,7 +270,7 @@ const chargedNothing = (error: unknown) => error instanceof ConvexError || (erro
 function codeOf(code: string | undefined) {
   const typed = code?.trim();
   if (!typed) return undefined;
-  if (typed.length > CODE_MAX) throw createError("VALIDATION_ERROR", "That code is too long to be one of ours.");
+  if (typed.length > CODE_MAX) throw createError("VALIDATION_ERROR", "That code is too long to be one of ours.", { reason: "codeTooLong" });
   return typed;
 }
 
@@ -278,7 +278,7 @@ function codeOf(code: string | undefined) {
 function refusedCode<T>(code: string | undefined) {
   return (error: unknown): T => {
     if (code && error instanceof AutumnError && error.status === 400 && /promotion code/i.test(JSON.stringify(error.body))) {
-      throw createError("VALIDATION_ERROR", `${code} isn't a code we know, or it has been used up.`);
+      throw createError("VALIDATION_ERROR", `${code} isn't a code we know, or it has been used up.`, { reason: "unknownCode", code });
     }
     throw error;
   };
@@ -387,7 +387,7 @@ export const quote = action({
     // Read from the quote's lines: its total is what's due after any credit on the account, which a code doesn't change.
     const price = linesOf(plain);
     const total = linesOf(discounted);
-    if (total >= price) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off an activation.`);
+    if (total >= price) throw createError("VALIDATION_ERROR", `${code} doesn't take anything off an activation.`, { reason: "nothingOff", code });
     return { price, discount: price - total, total };
   },
 });

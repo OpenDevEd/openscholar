@@ -6596,7 +6596,7 @@
       "tooBig": "Das PDF ist größer als {max} MB",
       "offline": "Das PDF konnte nicht hochgeladen werden. Prüfen Sie Ihre Verbindung und wählen Sie es dann erneut.",
       "uploadFailed": "Das PDF konnte nicht hochgeladen werden. Versuchen Sie es erneut.",
-      "uploadIntro": "Setze den folgenden Text wörtlich auf den Umschlag oder die Umschlaginnenseite, bevor du hochlädst. Unsere Prüfung sucht nach dieser Zeile.",
+      "uploadIntro": "Setzen Sie den folgenden Text wörtlich auf den Umschlag oder die Umschlaginnenseite, bevor Sie hochladen. Unsere Prüfung sucht nach dieser Zeile.",
       "byline": "Vermerk",
       "copyByline": "Vermerk kopieren",
       "bylineCopied": "Vermerk kopiert",
@@ -6717,7 +6717,10 @@
           "apply": "Anwenden",
           "remove": "{code} entfernen",
           "off": "{percent} % Rabatt",
-          "failed": "Dieser Code konnte nicht geprüft werden. Versuchen Sie es noch einmal."
+          "failed": "Dieser Code konnte nicht geprüft werden. Versuchen Sie es noch einmal.",
+          "unknownCode": "{code} ist kein Code, den wir kennen, oder er ist aufgebraucht.",
+          "nothingOff": "{code} macht eine Aktivierung nicht günstiger.",
+          "codeTooLong": "Dieser Code ist zu lang, um einer von unseren zu sein."
         },
         "card": {
           "bankAsked": "Ihre Bank möchte die Zahlung bestätigen lassen",
@@ -6740,7 +6743,8 @@
         },
         "creditLine": "Guthaben des Kontos",
         "refunded": "Die {amount}, die für die Aktivierung bezahlt wurden, wurden erstattet.",
-        "refunding": "Die {amount}, die für die Aktivierung bezahlt wurden, werden erstattet."
+        "refunding": "Die {amount}, die für die Aktivierung bezahlt wurden, werden erstattet.",
+        "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut."
       }
     },
     "meta": {

@@ -6716,7 +6716,10 @@
           "apply": "Appliquer",
           "remove": "Retirer {code}",
           "off": "-{percent} %",
-          "failed": "Ce code n'a pas pu être vérifié. Réessayez."
+          "failed": "Ce code n'a pas pu être vérifié. Réessayez.",
+          "unknownCode": "{code} n’est pas un code que nous connaissons, ou il a déjà été utilisé.",
+          "nothingOff": "{code} ne réduit pas le prix d’une activation.",
+          "codeTooLong": "Ce code est trop long pour être l’un des nôtres."
         },
         "card": {
           "bankAsked": "Votre banque demande de confirmer le paiement",
@@ -6739,7 +6742,8 @@
         },
         "creditLine": "Crédit du compte",
         "refunded": "Les {amount} payés pour l’activer ont été remboursés.",
-        "refunding": "Les {amount} payés pour l’activer sont en cours de remboursement."
+        "refunding": "Les {amount} payés pour l’activer sont en cours de remboursement.",
+        "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez."
       }
     },
     "meta": {

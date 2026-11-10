@@ -6717,7 +6717,10 @@
           "apply": "Tumia",
           "remove": "Ondoa {code}",
           "off": "Punguzo la {percent}%",
-          "failed": "Msimbo huo haukuweza kukaguliwa. Jaribu tena."
+          "failed": "Msimbo huo haukuweza kukaguliwa. Jaribu tena.",
+          "unknownCode": "{code} si msimbo tunaoujua, au umeshatumika wote.",
+          "nothingOff": "{code} haipunguzi chochote kwenye uwashaji.",
+          "codeTooLong": "Msimbo huo ni mrefu mno kuwa wetu."
         },
         "card": {
           "bankAsked": "Benki yako imeomba kuthibitisha malipo",
@@ -6740,7 +6743,8 @@
         },
         "creditLine": "Salio la akaunti",
         "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",
-        "refunding": "{amount} zilizolipwa kuiwasha zinarejeshwa."
+        "refunding": "{amount} zilizolipwa kuiwasha zinarejeshwa.",
+        "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena."
       }
     },
     "meta": {

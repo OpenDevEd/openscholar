@@ -6717,7 +6717,10 @@
           "apply": "Aplicar",
           "remove": "Quitar {code}",
           "off": "{percent} % de descuento",
-          "failed": "No se pudo comprobar ese código. Inténtalo de nuevo."
+          "failed": "No se pudo comprobar ese código. Inténtalo de nuevo.",
+          "unknownCode": "{code} no es un código que conozcamos, o ya se ha agotado.",
+          "nothingOff": "{code} no descuenta nada de una activación.",
+          "codeTooLong": "Ese código es demasiado largo para ser uno de los nuestros."
         },
         "card": {
           "bankAsked": "Tu banco pidió confirmar el pago",
@@ -6740,7 +6743,8 @@
         },
         "creditLine": "Saldo a favor de la cuenta",
         "refunded": "Se reembolsaron los {amount} pagados para activarlo.",
-        "refunding": "Se están reembolsando los {amount} pagados para activarlo."
+        "refunding": "Se están reembolsando los {amount} pagados para activarlo.",
+        "declined": "Tu tarjeta fue rechazada. No se cobró nada. Cambia la tarjeta e inténtalo de nuevo."
       }
     },
     "meta": {

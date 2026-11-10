@@ -35,7 +35,9 @@ export function SignedAgreement({ reportKey }: { reportKey: string }) {
   return (
     <PageWrapper>
       <article className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <MarkdownContent content={fillAgreement(signed.text, { name: signed.signer, date: new Date(signed.signedAt), byline: signed.byline, doi: signed.doi, title: signed.title, authors: signed.authors, pages: signed.pages })} className="text-sm [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:leading-snug [&_h2]:text-base" />
+        <div lang="en" dir="ltr">
+          <MarkdownContent content={fillAgreement(signed.text, { name: signed.signer, date: new Date(signed.signedAt), byline: signed.byline, doi: signed.doi, title: signed.title, authors: signed.authors, pages: signed.pages })} className="text-sm [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:leading-snug [&_h2]:text-base" />
+        </div>
         <dl className="mt-10 grid gap-x-8 gap-y-3 rounded-2xl border border-border-subtle bg-inset/60 p-5 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-xs text-muted-foreground">{t("signedBy")}</dt>

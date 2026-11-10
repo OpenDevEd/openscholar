@@ -6716,7 +6716,10 @@
           "apply": "Sebenzisa",
           "remove": "Susa u-{code}",
           "off": "{percent}% isaphulelo",
-          "failed": "Leyo khodi ayikwazanga ukuhlolwa. Zama futhi."
+          "failed": "Leyo khodi ayikwazanga ukuhlolwa. Zama futhi.",
+          "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
+          "nothingOff": "{code} ayehlisi lutho entengweni yokwenza isebenze.",
+          "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu."
         },
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",
@@ -6739,7 +6742,8 @@
         },
         "creditLine": "Isikweletu se-akhawunti",
         "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
-        "refunding": "I-{amount} ekhokhelwe ukuyenza isebenze iyabuyiselwa."
+        "refunding": "I-{amount} ekhokhelwe ukuyenza isebenze iyabuyiselwa.",
+        "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi."
       }
     },
     "meta": {

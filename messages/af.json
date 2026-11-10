@@ -6717,7 +6717,10 @@
           "apply": "Pas toe",
           "remove": "Verwyder {code}",
           "off": "{percent}% af",
-          "failed": "Daardie kode kon nie nagegaan word nie. Probeer weer."
+          "failed": "Daardie kode kon nie nagegaan word nie. Probeer weer.",
+          "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
+          "nothingOff": "{code} haal niks van ’n aktivering af nie.",
+          "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees."
         },
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",
@@ -6740,7 +6743,8 @@
         },
         "creditLine": "Rekeningkrediet",
         "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
-        "refunding": "Die {amount} wat betaal is om dit te aktiveer, word terugbetaal."
+        "refunding": "Die {amount} wat betaal is om dit te aktiveer, word terugbetaal.",
+        "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer."
       }
     },
     "meta": {

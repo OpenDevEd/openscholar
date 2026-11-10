@@ -6716,7 +6716,10 @@
           "apply": "Apply",
           "remove": "Remove {code}",
           "off": "{percent}% off",
-          "failed": "That code couldn't be checked. Try again."
+          "failed": "That code couldn't be checked. Try again.",
+          "unknownCode": "{code} isn't a code we know, or it has been used up.",
+          "nothingOff": "{code} doesn't take anything off an activation.",
+          "codeTooLong": "That code is too long to be one of ours."
         },
         "card": {
           "bankAsked": "Your bank asked to confirm the payment",
@@ -6739,7 +6742,8 @@
         },
         "creditLine": "Account credit",
         "refunded": "The {amount} paid to activate it was refunded.",
-        "refunding": "The {amount} paid to activate it is being refunded."
+        "refunding": "The {amount} paid to activate it is being refunded.",
+        "declined": "Your card was declined. Nothing was charged. Change the card and try again."
       }
     },
     "meta": {
