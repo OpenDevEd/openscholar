@@ -11,8 +11,8 @@ import { requireAvailableModel, requireEffort, requireTaskModel } from "../model
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import type { Effort } from "../../lib/ai/core/call-options";
-import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, dailyLimit, isIssn, type Check } from "../../lib/reports/settings";
-import { checkSummariesValidator, seriesValidator } from "./validators";
+import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, dailyLimit, isIssn, type Check } from "../../lib/reports/settings";
+import { checkNamesValidator, checkSummariesValidator, seriesValidator } from "./validators";
 
 /** What a check runs as: a decision model answers it, or an LLM that returns a structured answer. */
 const CHECK_TASK = "screening";
@@ -48,6 +48,13 @@ function text(value: string, what: string, max: number, { empty = false } = {}) 
   if (!trimmed && !empty) throw createError("VALIDATION_ERROR", `Enter ${what}.`);
   if (trimmed.length > max) throw createError("VALIDATION_ERROR", `Keep ${what} to ${max.toLocaleString("en")} characters.`);
   return trimmed;
+}
+
+/** The byline with `{doi}` in it: the line each PDF must carry is how a reader of the PDF finds the report, and what the byline check looks for. */
+function byline(typed: string) {
+  const kept = text(typed, "the byline", SERIES_TEXT_MAX);
+  if (!kept.includes("{doi}")) throw createError("VALIDATION_ERROR", "The byline needs {doi} in it, which becomes each report's DOI.");
+  return kept;
 }
 
 /** An ISSN as typed, upper case, or none: anything else would be printed on every report's byline. */
@@ -103,6 +110,42 @@ export const admin = query({
   },
 });
 
+/** Whether publishing is open: the sidebar's Publish item, on every page. */
+export const open = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    const settings = await reportSettings(ctx);
+    return settings.enabled && canRegister(settings.publication);
+  },
+});
+
+/**
+ * What the Publish page reads, signed in or not: whether publishing is open, the series, the
+ * agreement to sign, and the checks a report runs, by name. Nothing here is an admin's alone: no account, no model,
+ * no question, no limit of anyone's.
+ */
+export const forAuthors = query({
+  args: {},
+  returns: v.object({
+    open: v.boolean(),
+    humanReview: v.boolean(),
+    series: seriesValidator,
+    agreement: v.object({ version: v.number(), text: v.string() }),
+    checks: checkNamesValidator,
+  }),
+  handler: async (ctx) => {
+    const settings = await reportSettings(ctx);
+    return {
+      open: settings.enabled && canRegister(settings.publication),
+      humanReview: settings.humanReview,
+      series: settings.series,
+      agreement: { version: settings.agreement.version, text: settings.agreement.text },
+      checks: settings.checks.filter((check) => check.enabled).map(({ id, name, blocking }) => ({ id, name, blocking })),
+    };
+  },
+});
+
 /** The switches, the series and the two default limits. Only what is given changes. */
 export const update = mutation({
   args: {
@@ -127,7 +170,7 @@ export const update = mutation({
           ...(series.name !== undefined && { name: text(series.name, "the series' name", SERIES_TEXT_MAX) }),
           // None until the ISSN centre assigns one: the byline then reads "pending".
           ...(series.issn !== undefined && { issn: issn(series.issn) }),
-          ...(series.byline !== undefined && { byline: text(series.byline, "the byline", SERIES_TEXT_MAX) }),
+          ...(series.byline !== undefined && { byline: byline(series.byline) }),
         },
       }),
       ...(perDay !== undefined && { perDay: dailyLimit(perDay) }),

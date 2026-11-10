@@ -26,6 +26,13 @@ export type PdfPageText = {
 export async function extractPdfJsTextPages(
   pdfBuffer: ArrayBuffer
 ): Promise<{ pages: PdfPageText[]; totalPages: number }> {
+  // pdf.js builds a DOMMatrix as it loads, for drawing pages, and takes the class from a canvas package a Convex
+  // action doesn't have. Reading text draws nothing, so an empty stand-in is enough to let it load.
+  (globalThis as { DOMMatrix?: unknown }).DOMMatrix ??= class DOMMatrix {};
+  // Bundled into a Convex action, pdf.js can't find its worker's file beside it, so the worker is loaded here and
+  // handed over the way pdf.js looks for it first.
+  // @ts-expect-error pdf.js ships no types for its worker's file.
+  (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker ??= await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
   const pdfjs = (await import("pdfjs-dist/legacy/build/pdf.mjs")) as PdfJsModule;
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(pdfBuffer),

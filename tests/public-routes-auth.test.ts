@@ -95,6 +95,8 @@ describe("public route auth matrix", () => {
       "/papers/x/x",
       "/pricing",
       "/privacy",
+      // Publish shows what publishing a report takes to someone signed out, and asks for sign-in to start one.
+      "/publish",
       // The question stage's planet script and its first-paint hold, loaded by a visitor arriving signed out from the home page.
       "/question-stage/earth.js",
       "/question-stage/hold",
