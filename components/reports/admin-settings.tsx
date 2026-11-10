@@ -3,7 +3,7 @@
 // Settings > Admin > Publishing (plans/publish-reports): the Publish button, human review, each workspace's daily
 // limit, the series and its DOIs, the model that reads PDFs, the checks, and the agreement.
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ComponentProps } from "react";
 import { useAction, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs";
@@ -55,10 +55,11 @@ const usePct = () => {
 };
 /** A check's or the reader's model as its card shows it, or none when the model has left the catalog. */
 const cardOf = (model: Settings["metadataModel"], effort: Effort | undefined) => (model ? toMapModel(model, effort ?? null) : undefined);
-function PickButton() {
+/** The picker's trigger: it takes the popover's handlers and ref through `asChild`, so it passes them to its button. */
+function PickButton(props: ComponentProps<typeof Button>) {
   const t = useTranslations("publishReports.settings");
   return (
-    <Button type="button" variant="outline" size="sm">
+    <Button type="button" variant="outline" size="sm" {...props}>
       {t("pickModel")}
     </Button>
   );
