@@ -51,7 +51,7 @@ describe("a report's record for its registrars", () => {
         { kind: "version" as const, target: "https://example.org/preprint" },
       ],
     };
-    const record = registrationRecord(report, funded, { ...series, issn: "2049-3630" }, "https://openscholar.ai", { F4320306076: "10.13039/100000001" });
+    const record = registrationRecord(report, funded, { ...series, issn: "2049-3630" }, "https://openscholar.ai", { F4320306076: "https://doi.org/10.13039/100000001" });
     expect(record).toMatchObject({
       funding: [{ funderName: "National Science Foundation", funderIdentifier: "https://doi.org/10.13039/100000001", awards: ["CHE-1152342"] }, { funderName: "A local trust", awards: [] }],
       references: ["10.1000/cited.1"],

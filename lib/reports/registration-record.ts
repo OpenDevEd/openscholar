@@ -64,7 +64,8 @@ export function registrationRecord(report: { key: string; doi: string; withdrawn
     creators: m.authors.filter((author) => author.name.trim()).map(creator),
     tags: m.keywords,
     funding: m.funding.map((f) => {
-      const registryDoi = f.funder.id && funderDois[funderKey(f.funder.id)];
+      // OpenAlex has given the DOI bare and documents it as an address: either way it goes in once, behind one resolver.
+      const registryDoi = f.funder.id && doiIn(funderDois[funderKey(f.funder.id)] ?? "");
       return { funderName: f.funder.name, ...(registryDoi && { funderIdentifier: `https://doi.org/${registryDoi}` }), awards: f.awards };
     }),
     references: m.references,
