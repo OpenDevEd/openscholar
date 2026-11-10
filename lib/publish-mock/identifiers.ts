@@ -62,3 +62,40 @@ export async function rorOf(institutionId: string): Promise<string | null> {
   const { ror } = (await response.json()) as { ror?: string | null };
   return ror || null;
 }
+
+const ROR_API = "https://api.ror.org/v2/organizations";
+type RorRecord = { id: string; status: string; names: Array<{ value: string; types: string[] }>; locations: Array<{ geonames_details?: { name?: string; country_name?: string } }> };
+/** An organisation on ROR: its ROR ID, its name as ROR shows it, and its city and country as "Cambridge, United Kingdom". */
+export type RorOrganisation = { ror: string; name: string; place: string };
+
+const rorName = (record: RorRecord) => record.names.find((n) => n.types.includes("ror_display"))?.value ?? record.names[0]?.value ?? "";
+const placeOf = (record: RorRecord) => [record.locations[0]?.geonames_details?.name, record.locations[0]?.geonames_details?.country_name].filter(Boolean).join(", ");
+const organisationOf = (record: RorRecord): RorOrganisation => ({ ror: record.id, name: rorName(record), place: placeOf(record) });
+
+/** ROR's API asks no key; it allows 2,000 requests in five minutes from one address. */
+async function rorGet<T>(parameters: Record<string, string>): Promise<T> {
+  const url = new URL(ROR_API);
+  for (const [key, value] of Object.entries(parameters)) url.searchParams.set(key, value);
+  const response = await fetch(url, { headers: { Accept: "application/json", "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) throw new Error(`ROR ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  return (await response.json()) as T;
+}
+
+/**
+ * Active organisations on ROR whose names hold every word typed, the last one as the start of a word, so a name half
+ * typed finds them: ROR's plain search matches whole words only.
+ */
+export async function findRorOrganisations(words: string): Promise<RorOrganisation[]> {
+  const terms = words.replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(Boolean).slice(0, 8);
+  if (!terms.length) return [];
+  const query = terms.map((term, i) => (i === terms.length - 1 ? `${term}*` : term)).join(" AND ");
+  const { items } = await rorGet<{ items: RorRecord[] }>({ "query.advanced": `names.value:(${query})` });
+  return items.filter((record) => record.status === "active").slice(0, 6).map(organisationOf);
+}
+
+/** The organisation ROR's affiliation matcher is sure a printed affiliation names, or none when it isn't sure. */
+export async function matchRor(affiliation: string): Promise<RorOrganisation | null> {
+  const { items } = await rorGet<{ items: Array<{ chosen: boolean; organization: RorRecord }> }>({ affiliation });
+  const chosen = items.find((item) => item.chosen)?.organization;
+  return chosen ? organisationOf(chosen) : null;
+}

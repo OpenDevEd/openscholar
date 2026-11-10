@@ -10,7 +10,7 @@ import type { LookupEntity } from "@/lib/openalex/autocomplete";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
-type Option = { id: string; name: string; detail?: string };
+type Option = { id: string; name: string; detail?: string; group?: string };
 
 /**
  * A filter picked from OpenAlex's autocomplete, for things there are too many
@@ -24,6 +24,7 @@ export function OpenAlexLookupFilter({
   icons,
   after,
   onPicked,
+  also,
 }: {
   selected: string[];
   onChange: (ids: string[]) => void;
@@ -41,6 +42,8 @@ export function OpenAlexLookupFilter({
   after?: Record<string, React.ReactNode>;
   /** The record just picked, with its detail line, for a caller that keeps more than its ID. */
   onPicked?: (option: Option) => void;
+  /** Records from another register, listed under OpenAlex's under their own heading; one OpenAlex lists by the same name is left out. */
+  also?: { key: string; heading: string; search: (query: string) => Promise<Option[]> };
 }) {
   const tf = useTranslations("searchFilters");
   const tToast = useTranslations("toast");
@@ -51,11 +54,15 @@ export function OpenAlexLookupFilter({
     revalidateOnFocus: false,
     keepPreviousData: true,
   });
+  const elsewhere = useSWR(also && query ? [`${also.key}-search`, query] : null, () => also!.search(query), { revalidateOnFocus: false, keepPreviousData: true });
   const savedNames = lookup.useNames(selected);
   // The typed option follows the keys, not the debounce, so Enter picks what the box says.
   const text = search.trim();
   const typed = text ? lookup.typed?.(text) : null;
-  const options = [...(typed ? [typed] : []), ...(query ? (results.data ?? []) : [])];
+  const found = query ? (results.data ?? []) : [];
+  const known = new Set(found.map((option) => option.name.toLowerCase()));
+  const more = query && also ? (elsewhere.data ?? []).filter((option) => !known.has(option.name.toLowerCase())).map((option) => ({ ...option, group: also.heading })) : [];
+  const options = [...(typed ? [typed] : []), ...found, ...more];
   const names = {
     ...savedNames,
     ...Object.fromEntries(options.map((option) => [option.id, option.name])),

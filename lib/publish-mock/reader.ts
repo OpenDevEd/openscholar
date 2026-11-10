@@ -12,7 +12,7 @@ import { searchOpenAlex } from "@/lib/openalex/lookup";
 import { openAlexUrl } from "@/lib/openalex/request-url";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
 import { countryOfPlace } from "./read";
-import { matchOrcid, rorOf } from "./identifiers";
+import { matchOrcid, matchRor, rorOf } from "./identifiers";
 import { CREDIT_ROLES, RELATION_KINDS, type Affiliation, type Funding, type LlmModel, type Metadata, type Topic } from "./types";
 
 const ids = <T extends { id: string }>(list: readonly T[]) => list.map((item) => item.id) as [string, ...string[]];
@@ -130,6 +130,9 @@ const institution = async (name: string): Promise<Affiliation> => {
       const ror = await rorOf(best.id).catch(() => null);
       return { id: best.id, name: best.name, country: countryOfPlace(best.detail), ...(ror && { ror }) };
     }
+    // One OpenAlex doesn't know may still be on ROR, when ROR's matcher is sure of it.
+    const onRor = await matchRor(name);
+    if (onRor) return { id: null, name: onRor.name, country: countryOfPlace(onRor.place), ror: onRor.ror };
   } catch (error) {
     console.error("[publish] institution lookup failed", { name, error: String(error) });
   }

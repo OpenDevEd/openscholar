@@ -13,7 +13,7 @@ import { OrcidIcon } from "@/components/icons/author-service-icons";
 import { FunderName, RorLink } from "@/components/papers/paper-entities";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
-import { findOrcid, institutionRor } from "@/app/actions/publish-mock";
+import { findOrcid, findRor, institutionRor } from "@/app/actions/publish-mock";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { CountryFlag } from "@/components/ui/country-flag";
@@ -120,24 +120,28 @@ function usePage<T>(list: T[], size: number) {
   return { pager, offset, shown: list.slice(offset, offset + size), last: (length: number) => setPage(Math.max(1, Math.ceil(length / size))) };
 }
 
-/** An author's places, from OpenAlex's institutions or as typed, each with its country's flag. */
+/** An affiliation's chip: OpenAlex's institution by its ID, one only ROR knows by its ROR ID, or the name as typed. */
+const chipOf = (a: Affiliation) => a.id ?? (a.ror ? `ror:${a.ror}` : typedId(a.name));
+
+/** An author's places, from OpenAlex's institutions, from ROR's for one OpenAlex doesn't know, or as typed, each with its country's flag. */
 function Affiliations({ value, onChange, onRor }: { value: Affiliation[]; onChange: (a: Affiliation[]) => void; /** Its ROR ID, for an institution just picked, once OpenAlex has given it. */ onRor: (id: string, ror: string) => void }) {
-  const ids = value.map((a) => a.id ?? typedId(a.name));
-  const names = Object.fromEntries(value.map((a) => [a.id ?? typedId(a.name), a.name]));
+  const ids = value.map(chipOf);
+  const names = Object.fromEntries(value.map((a) => [chipOf(a), a.name]));
   return (
     <OpenAlexLookupFilter
       selected={ids}
-      onChange={(next) => onChange(value.filter((a) => next.includes(a.id ?? typedId(a.name))))}
+      onChange={(next) => onChange(value.filter((a) => next.includes(chipOf(a))))}
       onPicked={(option) => {
         if (option.id.startsWith("typed:")) return onChange([...value, { id: null, name: option.name, country: "" }]);
+        if (option.id.startsWith("ror:")) return onChange([...value, { id: null, name: option.name, country: countryOfPlace(option.detail), ror: option.id.slice(4) }]);
         onChange([...value, { id: option.id, name: option.name, country: countryOfPlace(option.detail) }]);
         // OpenAlex's institution record holds its ROR ID; the lookup's list doesn't, so it is asked for the one picked.
         void institutionRor(option.id).then((ror) => ror && onRor(option.id, ror));
       }}
-      icons={Object.fromEntries(value.filter((a) => a.country).map((a) => [a.id ?? typedId(a.name), <CountryFlag key={a.name} countryCode={a.country} />]))}
+      icons={Object.fromEntries(value.filter((a) => a.country).map((a) => [chipOf(a), <CountryFlag key={a.name} countryCode={a.country} />]))}
       after={Object.fromEntries(
         value.filter((a) => a.ror).map((a) => [
-          a.id ?? typedId(a.name),
+          chipOf(a),
           <RorLink key="ror" ror={a.ror!} label={`${a.name} on ROR`} className="animate-in fade-in duration-300" />,
         ]),
       )}
@@ -146,6 +150,11 @@ function Affiliations({ value, onChange, onRor }: { value: Affiliation[]; onChan
         useNames: () => names,
         remember: () => {},
         typed: (query) => ({ id: typedId(query), name: query, detail: "As typed" }),
+      }}
+      also={{
+        key: "ror",
+        heading: "On ROR",
+        search: async (query) => (await findRor(query)).map((o) => ({ id: `ror:${o.ror}`, name: o.name, detail: o.place })),
       }}
       labels={{ label: "Affiliations", placeholder: "Add an institution", searchPlaceholder: "Find an institution", typeToSearch: "Type an institution's name", unavailable: "Institutions can't be looked up now" }}
     />
