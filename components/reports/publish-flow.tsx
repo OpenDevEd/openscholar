@@ -1194,7 +1194,9 @@ function PaymentLine({ organization, free }: { organization: string | null; free
           <p className="text-sm font-medium">Add a payment method to activate</p>
         )}
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {!card
+          {!card && free > 0
+            ? `${free} free ${free === 1 ? "activation" : "activations"} left today. A saved card is still needed.`
+            : !card
             ? organization
               ? `Each activation costs $${ACTIVATION_PRICE}, charged to ${organization}.`
               : `Each activation costs $${ACTIVATION_PRICE}.`
