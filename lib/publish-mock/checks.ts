@@ -113,7 +113,12 @@ export function finishChecks(id: string, run: string, metadata: Metadata, result
   });
 }
 
-/** Makes a live report's checked changes its details, and registers it again so Crossref and Zenodo hold them too. */
+/**
+ * Makes a live report's checked changes its details, and registers it again so Crossref and Zenodo hold them too.
+ * MOCK: the registrations only move on a timer. The real build deposits the record again at Crossref under the same
+ * DOI, edits the published record on Zenodo, and sends the new details to every community that added the report:
+ * each keeps its own copy of the title, authors and abstract, and would otherwise go on showing the old ones.
+ */
 export function applyCorrection(report: Submission, { metadata, results, checksVersion }: Pick<Correction, "metadata" | "results" | "checksVersion">) {
   const registers = providersOf(report);
   Object.assign(report, {
