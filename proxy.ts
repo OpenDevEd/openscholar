@@ -2,7 +2,7 @@ import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 import { clerkMiddleware, type ClerkMiddlewareAuth } from "@clerk/nextjs/server";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { inFlow, SETUP_DONE_COOKIE, SETUP_HEADER, SETUP_PATH } from "@/lib/profile/setup";
+import { inFlow, isPage, SETUP_DONE_COOKIE, SETUP_HEADER, SETUP_PATH } from "@/lib/profile/setup";
 import { locales } from "@/i18n/config";
 import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
 import { languageFromLink } from "@/i18n/link-language";
@@ -49,12 +49,13 @@ const authMiddleware = clerkMiddleware(
 /**
  * Whether a page request is a new account's profile setup instead (convex/users/profileSetup.ts). Asked of Convex once
  * per account and browser: an account found done is kept in a cookie, `doneFor`. Never for a request inside a flow
- * (signing in, an app's request, an invitation, a hand-off), a server action, an API route or a page that isn't a GET.
+ * (signing in, an app's request, an invitation, a hand-off), a server action, a file or route that isn't a page
+ * (`isPage`) or a request that isn't a GET: the setup comes on the next page.
  * An answer that can't be had lets the page through: the setup must never stand in the way of the site.
  */
 async function profileSetup(auth: ClerkMiddlewareAuth, request: NextRequest): Promise<{ due: boolean; doneFor?: string }> {
   const path = request.nextUrl.pathname;
-  if (request.method !== "GET" || request.headers.has("next-action") || path.startsWith("/api/") || path === SETUP_PATH || inFlow(path)) return { due: false };
+  if (request.method !== "GET" || request.headers.has("next-action") || !isPage(path) || path === SETUP_PATH || inFlow(path)) return { due: false };
   const { userId, getToken } = await auth();
   if (!userId || request.cookies.get(SETUP_DONE_COOKIE)?.value === userId) return { due: false };
   try {

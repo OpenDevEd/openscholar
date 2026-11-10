@@ -23,6 +23,13 @@ export const NO_EMAILS: Record<EmailKind, boolean> = { updates: false, news: fal
  * sign in, an invitation, a community's hand-off. It comes on the next page.
  */
 const FLOW_PATHS = ["/sign-in", "/sign-up", "/connect", "/join", "/from-library"];
+/**
+ * Whether a request is for a page the setup can stand in for: not a file a route serves (a report's PDF, a citation
+ * file, an image), nor a route that only redirects or answers for the page (a DOI's paper, the question stage's parts).
+ */
+export const isPage = (pathname: string) =>
+  !/\.[a-z0-9]+$/i.test(pathname.split("/").at(-1) ?? "") && !pathname.startsWith("/api/") && !pathname.startsWith("/papers/doi/") && !pathname.startsWith("/question-stage/");
+
 export const inFlow = (pathname: string) => {
   // An organisation's pages sit under /o/<slug>, its hand-off among them.
   const bare = bareWorkspacePath(pathname);
