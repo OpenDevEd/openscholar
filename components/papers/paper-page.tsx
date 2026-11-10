@@ -21,7 +21,7 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { OrcidIcon } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
-import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, FileText, Globe, Library, LockOpen, MessageSquare, Plus, Target, TriangleAlert, Users } from "@/components/icons";
+import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, EvidenceLibrariesIcon, FileText, Globe, Library, LockOpen, MessageSquare, Target, TriangleAlert, Users } from "@/components/icons";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { chatAbout } from "@/lib/assistant/place";
@@ -85,8 +85,8 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
 
   return (
     // The bar holds what a reader does with the paper wherever they have scrolled to, each named while there is
-    // room: ask about it, keep it, read it. What belongs to a part of the page sits in that part: Cite and Share with
-    // the DOI, adding to a community with the communities it's in, and its author's corrections with its facts.
+    // room: ask about it, keep it, read it. What belongs to a part of the page sits in that part: citing, sharing and
+    // adding to a community with the DOI it's pointed to by, and its author's corrections with its facts.
     <LibraryPageShell icon={FileText} title={title} actions={<>
       <AskAbout id={appId} title={title} />
       <SaveControl paper={paper} bar />
@@ -138,10 +138,21 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             <DoiLine doi={detail.ids.doi}>
               <CitationControl paper={paper} compact={false} named />
               <PaperShare paper={paper} href={paperPath(id, title)} compact={false} labelClassName="" />
+              {/* The paper onto a community, with the other things done with it: the row below shows the ones it's in. */}
+              <CommunityControl
+                paper={paper}
+                trigger={
+                  <Button variant="outline" size="sm">
+                    <EvidenceLibrariesIcon aria-hidden />
+                    {tAdded("addToCommunity")}
+                  </Button>
+                }
+              />
             </DoiLine>
             <AutoHeight>
+            {communities.length ? (
               <div className="flex flex-wrap items-center gap-2 pt-5" aria-label={tAuthors("evidenceLibraries")}>
-                {communities.length ? <span className="me-1 text-xs text-muted-foreground">{t("inCommunities")}</span> : null}
+                <span className="me-1 text-xs text-muted-foreground">{t("inCommunities")}</span>
                 {communities.map((copy) => (
                   <a key={copy.id} href={copy.url} target="_blank" rel="noreferrer" className={cn("group inline-flex h-7 items-center gap-1.5 rounded-full bg-primary/10 ps-2 pe-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-ring", !atOpen.has(copy.id) && "fade-enter")}>
                     <Library aria-hidden className="size-3.5" />
@@ -149,17 +160,8 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
                     <ArrowUpRight aria-hidden className="size-3 transition-transform group-hover:-translate-y-px group-hover:translate-x-px" />
                   </a>
                 ))}
-                {/* The paper onto a community, beside the ones it's already in. */}
-                <CommunityControl
-                  paper={paper}
-                  trigger={
-                    <Button variant="outline" size="sm" className="h-7 rounded-full bg-transparent px-2.5">
-                      <Plus aria-hidden className="size-3.5" />
-                      {tAdded("addToCommunity")}
-                    </Button>
-                  }
-                />
               </div>
+            ) : null}
             </AutoHeight>
             {topicPath.length ? (
               <nav aria-label={tTopics("classification")} className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground lg:mt-auto lg:pt-6">
@@ -244,7 +246,7 @@ function DoiLine({ doi, children }: { doi?: string | null; children: ReactNode }
           </TooltipHint>
         </p>
       ) : null}
-      <div className="flex items-center gap-2">{children}</div>
+      <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>
   );
 }
