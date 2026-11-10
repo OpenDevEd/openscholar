@@ -13,6 +13,7 @@ import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
+import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
@@ -377,6 +378,25 @@ export const requestChangesReview = workspaceMutation({
     await ctx.db.patch("reportDetails", details._id, { correction: { ...correction, request: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } } });
     await touch(ctx, report, { changes: "review" });
     await notify(ctx, report._id, "changes-review-requested");
+    return null;
+  },
+});
+
+/**
+ * Changes to a live report as their author types them, kept so that Back, a reload or another device loses none.
+ * `since` is what the form was opened on: ones typed over a report that has changed since are not kept. Null
+ * gives up what was typed, as Cancel does.
+ */
+export const typeChanges = workspaceMutation({
+  args: { key: v.string(), since: v.number(), metadata: v.union(metadataValidator, v.null()) },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, since, metadata }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    const details = await detailsOf(ctx, report._id);
+    // Nothing is kept for a report that isn't live, whose checks are reading other changes, or that changed since the form opened.
+    if (report.status !== "live" || report.run || formVersion(report, details) !== since) return null;
+    await ctx.db.patch("reportDetails", details._id, { trying: metadata ? keptDetails(metadata) : undefined });
     return null;
   },
 });

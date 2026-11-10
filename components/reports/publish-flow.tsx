@@ -292,6 +292,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const runChecks = useAction(api.reports.checks.run);
   const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
   const discardChanges = useMutation(api.reports.flow.discardChanges);
+  const typeChanges = useMutation(api.reports.flow.typeChanges);
   // Changes to a live report as last sent to the checks, kept while they run so a run that breaks loses none of them.
   const [attempt, setAttempt] = useState<Metadata | null>(null);
   // The form of changes holds something typed here and not sent yet. It then stays open whatever else happens to
@@ -368,6 +369,9 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
               waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
               onTouched={() => setTyping(true)}
+              // Kept as they are typed, so Back, Forward or a reload brings them back. Typed over a report that has
+              // changed since, they are not kept, and sending them is refused in words.
+              onSave={(metadata) => void typeChanges({ ...here, key: report.key, since: report.correction?.at ?? report.correctedAt ?? report.activatedAt!, metadata }).catch(said("Your changes couldn't be saved"))}
               onRun={async (metadata: Metadata, since) => {
                 setAttempt(metadata);
                 setTyping(false);
@@ -388,6 +392,8 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               onCancel={() => {
                 setAttempt(null);
                 setTyping(false);
+                // Cancelling gives up what was typed, here and wherever it was kept.
+                if (report.trying) void typeChanges({ ...here, key: report.key, since: report.correction?.at ?? report.correctedAt ?? report.activatedAt!, metadata: null }).catch(() => undefined);
                 onCorrected();
               }}
             />

@@ -422,7 +422,7 @@ export function DetailsStep({
 
         <Section title="Subjects" crossref={false}>
           <div className="grid gap-4 @3xl:grid-cols-2">
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Topics</span>
               <OptionPicker
                 label="Topics"
@@ -444,7 +444,7 @@ export function DetailsStep({
             <Field label="Keywords">
               <ChipInput values={m.keywords} onChange={(keywords) => set("keywords", keywords)} placeholder="Add keywords" label="Add a keyword" />
             </Field>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Sustainable Development Goals</span>
               <OptionPicker
                 label="Sustainable Development Goals"
@@ -459,7 +459,7 @@ export function DetailsStep({
                 onToggle={(id) => set("sdgs", m.sdgs.includes(id) ? m.sdgs.filter((g) => g !== id) : [...m.sdgs, id])}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Study design</span>
               <OptionPicker
                 label="Study design"
