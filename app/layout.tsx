@@ -19,14 +19,17 @@ import ConfigProvider from "@/components/config-provider";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { AuthRouteGate } from "@/components/auth/auth-route-gate";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ProfileSetupHost } from "@/components/onboarding/profile-setup";
+import { ProfileSetupGate } from "@/components/onboarding/profile-setup";
+import { setupDue } from "@/lib/onboarding-mock/store";
+import { inFlow } from "@/lib/onboarding-mock/types";
+import { ADDRESS_HEADER } from "@/lib/workspaces/paths";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
 import { cookies, headers } from "next/headers";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { LOOK_COOKIE, lookKey, readCache, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { AssistantPanel } from "@/components/assistant/panel";
 import { ItemHome, WorkspaceGone } from "@/components/workspaces/item-home";
@@ -80,6 +83,11 @@ export default async function RootLayout({
   const slug = requestHeaders.get(WORKSPACE_HEADER) || null;
   const { me, looks } = readCache(requestCookies.get(LOOK_COOKIE)?.value, userId);
   const look = looks[lookKey(slug)];
+  // MOCK (mock/onboarding): whether this page is the profile setup, decided before anything is drawn.
+  const address = (requestHeaders.get(ADDRESS_HEADER) ?? "/").split("?")[0]!;
+  const setupFirst = userId && !inFlow(address) ? await setupDue(userId) : false;
+  const setupUser = setupFirst ? await currentUser() : null;
+  const setupPerson = setupUser ? { name: setupUser.fullName ?? "", imageUrl: setupUser.imageUrl } : null;
 
   const clerkLocalization = await clerkLocalizationFor(locale);
   const direction = isRightToLeft(locale) ? "rtl" : "ltr";
@@ -102,6 +110,8 @@ export default async function RootLayout({
                     <TooltipProvider>
                       <WorkspacesProvider>
                         <QueryHighlightProvider initial={requestCookies.get(QUERY_HIGHLIGHT_COOKIE)?.value !== "off"}>
+                          {/* MOCK (mock/onboarding): while a new account's profile setup is due, it is the whole page. */}
+                          <ProfileSetupGate due={setupFirst} person={setupPerson}>
                           <div className="flex min-h-screen">
                             {/* Sidebar */}
                             <AppSidebar firstWorkspace={{ slug, ...(userId ? { user: userId } : {}), ...(me ? { me } : {}), ...(look ? { look } : {}) }} />
@@ -112,7 +122,8 @@ export default async function RootLayout({
                               {/* Mobile Navbar */}
                               <MobileNavbar />
 
-                              <AuthRouteGate>{children}</AuthRouteGate>
+                              {/* MOCK (mock/onboarding): the page isn't rendered at all while the setup stands in front of it. */}
+                              <AuthRouteGate>{setupFirst ? null : children}</AuthRouteGate>
                             </div>
                           </div>
                           <Toaster />
@@ -124,11 +135,8 @@ export default async function RootLayout({
                           </Suspense>
                           <AssistantPanel />
                           <CookieConsentBanner />
-                          {/* MOCK (mock/onboarding): a new account's profile setup, over the page it lands on. */}
-                          <Suspense fallback={null}>
-                            <ProfileSetupHost />
-                          </Suspense>
                           <ConsentAwareGoogleAnalytics />
+                          </ProfileSetupGate>
                         </QueryHighlightProvider>
                       </WorkspacesProvider>
                     </TooltipProvider>

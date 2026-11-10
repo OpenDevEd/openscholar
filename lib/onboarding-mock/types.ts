@@ -18,4 +18,14 @@ export type ProfileSetup = {
   skippedAt?: number;
 };
 
+/** What the person answers, without when they did. */
+export type ProfileAnswers = Pick<ProfileSetup, "affiliations" | "orcid" | "emails">;
+
 export const blankSetup = (): ProfileSetup => ({ affiliations: [], orcid: "", emails: { updates: false, news: false, research: false } });
+
+/**
+ * Pages in the middle of a flow, which the setup never stands in front of: signing in or up, an app asking to sign
+ * in, an invitation, a community's hand-off. It comes on the next page.
+ */
+const FLOW_PATHS = ["/sign-in", "/sign-up", "/connect", "/join", "/from-library"];
+export const inFlow = (pathname: string) => FLOW_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
