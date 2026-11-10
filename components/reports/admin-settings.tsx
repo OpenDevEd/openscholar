@@ -158,7 +158,7 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
           <Row label="Series">
             <SavedInput value={settings.series.name} onSave={(name) => series({ name }, "Series name saved")} className="w-64" ariaLabel="Series name" />
           </Row>
-          <Row label="ISSN" hint="Leave empty until the series has one. Bylines say ISSN pending until then.">
+          <Row label="ISSN" hint="Leave empty until the series has one. Bylines say ISSN {pending} until then.">
             <SavedInput value={settings.series.issn} placeholder="Pending" onSave={(issn) => series({ issn }, "ISSN saved")} className="w-40 font-mono" ariaLabel="ISSN" />
           </Row>
           <Row label="Byline" hint="{series}, {issn} and {doi} are filled in for each report" wide>
@@ -191,7 +191,7 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
               zenodoHint: "Archives each report's PDF. Off, reports register with Crossref alone.",
               crossrefHint: "Each report gets a DOI under your prefix. Off, it gets the DOI Zenodo reserves.",
               namespaceHint: "Comes before each report's key in its DOI.",
-              namespacePlaceholder: "openscholar-r",
+              namespacePlaceholder: "openscholar-reports",
               savedHint: "New reports register this way. Reports with a DOI keep theirs.",
             }}
             onSave={savePublication}
@@ -500,7 +500,7 @@ function CheckDialog({ check, onClose }: { check: CheckRow | "new" | null; onClo
             </Field>
           )}
           <Field label="How to fix it" hint="Shown to the author when this check fails. {byline} and {doi} are filled in." counter={`${form.fix.length} / ${CHECK_TEXT_MAX}`}>
-            {(id) => <Textarea id={id} value={form.fix} onChange={(e) => set("fix", e.target.value)} rows={2} maxLength={CHECK_TEXT_MAX} placeholder="Put the byline on the first page, then upload the PDF again." />}
+            {(id) => <Textarea id={id} value={form.fix} onChange={(e) => set("fix", e.target.value)} rows={2} maxLength={CHECK_TEXT_MAX} placeholder="Put the byline on the cover or the inside cover, then upload the PDF again." />}
           </Field>
           <Field label={form.builtIn ? "Model that compares matches" : "Model"} hint={form.builtIn || !form.model ? undefined : decides ? "A decision model answers yes or no with how sure it is." : "An LLM answers yes or no, how sure it is, and why."}>
             {() => <ModelPicker align="start" current={form.model} efforts tasks={["screening"]} onChange={(picked, effort) => set("model", { ...picked, effort })} trigger={form.model ? <NodeCard model={form.model} paidBy="credits" interactive /> : pickButton} />}

@@ -13,8 +13,8 @@ import { publicationRefusal, verifiedPublication } from "../evidenceLibraries/pu
 import { publicationSecretsValidator, publicationSettingsValidator, type PublicationSecrets } from "../evidenceLibraries/publicationValidators";
 import { CHANGED } from "./publication";
 
-/** The DOI namespace reports get when an admin types none: 10.xxxx/openscholar-r.r100045. */
-const NAMESPACE = "openscholar-r";
+/** The DOI namespace reports get when an admin types none: 10.xxxx/openscholar-reports.r100045. */
+const NAMESPACE = "openscholar-reports";
 
 export const save = action({
   args: { settings: publicationSettingsValidator, credentials: publicationSecretsValidator, expectedUpdatedAt: v.union(v.null(), v.number()) },

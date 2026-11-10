@@ -359,6 +359,7 @@ import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryLis
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
 import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
+import type * as migrations_reportBylines from "../migrations/reportBylines.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
@@ -867,6 +868,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
   "migrations/placeRatings": typeof migrations_placeRatings;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
+  "migrations/reportBylines": typeof migrations_reportBylines;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;

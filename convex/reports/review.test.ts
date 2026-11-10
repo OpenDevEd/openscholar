@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import { stageOf } from "../../lib/reports/report";
 import { SAME_PDF_ADVICE } from "./corrections";
-import { checked, details, live, passed, read, refused, row, setReview, setup, type World } from "./reports.test-support";
+import { atDetails, checked, details, live, passed, read, refused, row, setReview, setup, type World } from "./reports.test-support";
 import { purgeWorkspace } from "../workspaces/purge";
 
 const seen = async (world: World, key: string) => (await row(world.t, key)).pdf!.at;
@@ -130,6 +130,28 @@ describe("reviewing", () => {
 });
 
 describe("changes to a live report", () => {
+  it("are checked as the report was published: by its version of the checks and the byline it was signed with", async () => {
+    const world = await setup();
+    const report = await live(world);
+    const signed = (await row(world.t, report.key)).byline;
+    expect(signed).toBe(`Published in Openscholar Reports (ISSN {pending}), https://doi.org/${(await row(world.t, report.key)).doi}`);
+    // Since then the series got its ISSN and a new wording, and a check was dropped.
+    await world.reviewer.mutation(api.reports.settings.update, { series: { issn: "2049-3630", byline: "An Openscholar Report, ISSN {issn}: {doi}" } });
+    await world.reviewer.mutation(api.reports.settings.removeCheck, { id: "harm" });
+    const started = await change(world, report.key, "A corrected title");
+    if ("unchanged" in started) throw new Error("the changes were taken for none");
+    expect(started.byline).toBe(signed);
+    expect(started.version).toBe(1);
+    expect(started.checks.map((check) => check.id)).toEqual(["byline", "published", "harm", "research"]);
+    // A report signed now carries the new line, and its first checks are today's.
+    // In the organisation's workspace: the author's own has started its one report today.
+    const next = await atDetails(world, world.author, world.lab);
+    expect((await row(world.t, next.key)).byline).toBe(`An Openscholar Report, ISSN 2049-3630: https://doi.org/${(await row(world.t, next.key)).doi}`);
+    const first = await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.lab, key: next.key, metadata: details(), runId: "run-next", from: { pdfAt: next.pdfAt } });
+    if ("unchanged" in first) throw new Error("a first run is never unchanged");
+    expect(first.checks.map((check) => check.id)).not.toContain("harm");
+  });
+
   it("go live at once when every check passes and review is off, and its registrations are queued again", async () => {
     const world = await setup();
     const { key } = await live(world);

@@ -126,6 +126,12 @@ export const reportFields = {
   /** Who started it. */
   ownerId: v.id("users"),
   doi: v.string(),
+  /**
+   * The line its PDF must carry, as it was when the agreement was signed: its checks look for this line for good, so
+   * a later ISSN or a new wording never fails a report published before it. Every report has one once
+   * migrations/reportBylines has run.
+   */
+  byline: v.optional(v.string()),
   step: stepValidator,
   status: statusValidator,
   /** A reviewer approved it, so its author can activate it whatever the settings say. */
