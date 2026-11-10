@@ -10,6 +10,7 @@ import { api, internal } from "../_generated/api";
 import { action } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { refuseApps } from "../lib/auth";
+import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, CheckResult, Metadata } from "../../lib/reports/report";
@@ -68,14 +69,18 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   return { ...base, ...(pass ? {} : failed), answer: output.answer, confidence: sure, threshold: check.threshold, reasoning: output.reasoning, pass };
 }
 
-/** Runs the checks on a report waiting at its details, with the details as its author last corrected them. */
+/**
+ * Runs the checks on a report waiting at its details, with the details as its author last corrected them. With
+ * `changesSince`, on changes to a live report, which stays live as it is while they are read.
+ */
 export const run = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator },
+  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, changesSince: v.optional(v.number()) },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, key, metadata }) => {
+  handler: async (ctx, { workspaceId, key, metadata, changesSince }) => {
     await refuseApps(ctx);
     const runId = crypto.randomUUID();
-    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId });
+    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, ...(changesSince !== undefined && { changesSince }) });
+    if ("unchanged" in started) throw createError("VALIDATION_ERROR", "These are the details your report already has, so there is nothing to change.");
     const { reportId } = started;
     const text = started.text ? await (await ctx.storage.get(started.text))?.text() ?? "" : "";
     const communities: Community[] = started.checks.some((check) => check.builtIn)
@@ -97,7 +102,7 @@ export const run = action({
         return result;
       }),
     );
-    await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version });
+    await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version, ...(started.changes && { metadata }) });
     return null;
   },
 });

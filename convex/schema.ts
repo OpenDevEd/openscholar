@@ -73,7 +73,7 @@ import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./t
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantLimitFields, assistantSpenderFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
-import { checksValidator, reportDetailFields, reportFields, reportSettingsFields } from "./reports/validators";
+import { checksValidator, reportDetailFields, reportFields, reportReviewFields, reportSettingsFields } from "./reports/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 
@@ -610,8 +610,12 @@ export default defineSchema({
   reports: defineTable(reportFields)
     .index("by_key", ["key"])
     .index("by_doi", ["doi"])
-    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"]),
+    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
+    // The reviewers' list reads each status's newest, and the reports whose changes wait.
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    .index("by_changes", ["changes"]),
   reportDetails: defineTable(reportDetailFields).index("by_reportId", ["reportId"]),
+  reportReviews: defineTable(reportReviewFields).index("by_reportId", ["reportId"]),
   // The number the next report's key is made from: one row.
   reportKeys: defineTable({ next: v.number() }),
 

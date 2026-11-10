@@ -8,7 +8,9 @@ import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { bylineOf } from "../../lib/reports/settings";
 import { OWNERS_ONLY, detailsOf, keptDetails, mayChange, touch } from "./flow";
-import { settingsRow } from "./settings";
+import { changeStageOf } from "../../lib/reports/report";
+import { SAME_PDF_ADVICE, applyChanges, liveSince } from "./corrections";
+import { reportSettings, settingsRow } from "./settings";
 import { checkResultValidator, checkResultsValidator, checkValidator, metadataValidator } from "./validators";
 
 /**
@@ -17,25 +19,53 @@ import { checkResultValidator, checkResultsValidator, checkValidator, metadataVa
  * that is on with the model it runs on (null when its model has left the catalog).
  */
 export const start = internalMutation({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, runId: v.string() },
-  returns: v.object({
+  args: {
+    workspaceId: v.id("workspaces"),
+    key: v.string(),
+    metadata: metadataValidator,
+    runId: v.string(),
+    /** For changes to a live report: when its details were last set, as the form that made them saw it. */
+    changesSince: v.optional(v.number()),
+  },
+  returns: v.union(v.object({ unchanged: v.literal(true) }), v.object({
     reportId: v.id("reports"),
     doi: v.string(),
     byline: v.string(),
     text: v.union(v.id("_storage"), v.null()),
     version: v.number(),
     checks: v.array(v.object({ ...checkValidator.fields, model: v.union(v.id("models"), v.null()) })),
-  }),
-  handler: async (ctx, { workspaceId, key, metadata, runId }) => {
+    changes: v.boolean(),
+  })),
+  handler: async (ctx, { workspaceId, key, metadata, runId, changesSince }) => {
     const actor = await actorFor(ctx, await requireAuth(ctx), workspaceId);
     const report = await ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
     if (!report || report.workspaceId !== workspaceId) throw createError("NOT_FOUND", "This report isn't one of this workspace's, or it was discarded.");
     if (!mayChange(actor, report)) throw createError("FORBIDDEN", OWNERS_ONLY);
-    if (report.step !== "details") throw createError("CONFLICT", "This report isn't waiting for its checks any more.");
     if (!metadata.title.trim()) throw createError("VALIDATION_ERROR", "Give the report a title before its checks run.");
     const settings = await settingsRow(ctx);
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: keptDetails(metadata), running: [] });
-    await touch(ctx, report, { run: { id: runId, at: Date.now() }, title: metadata.title.trim() });
+    const details = await detailsOf(ctx, report._id);
+    const changes = changesSince !== undefined;
+    if (changes) {
+      // A live report stays as it is while the checks read the corrected details: only the run is marked on it.
+      if (report.status !== "live" || report.step !== "done") throw createError("CONFLICT", "This report isn't live any more, so its details can't be changed.");
+      // The changes were made from the details as they stood when the form opened. Ones made live since, from another
+      // tab or by a reviewer, would be undone by sending the whole form over them.
+      if (liveSince(report) !== changesSince) throw createError("CONFLICT", "This report's details changed since you opened this form. Open it again to start from them.");
+      // Details put back to exactly what the report already says are no changes: any that were waiting are given
+      // up, and so is a run still reading them, which must not put them live afterwards. Compared whole, so a
+      // change a reader of the page can't see, such as an institution's catalogue ID, still counts as one.
+      if (JSON.stringify(details.metadata) === JSON.stringify(keptDetails(metadata))) {
+        await ctx.db.patch("reportDetails", details._id, { correction: undefined, running: undefined });
+        await touch(ctx, report, { run: undefined, changes: undefined });
+        return { unchanged: true as const };
+      }
+      await ctx.db.patch("reportDetails", details._id, { running: [] });
+      await touch(ctx, report, { run: { id: runId, at: Date.now(), changes: true } });
+    } else {
+      if (report.step !== "details") throw createError("CONFLICT", "This report isn't waiting for its checks any more.");
+      await ctx.db.patch("reportDetails", details._id, { metadata: keptDetails(metadata), running: [] });
+      await touch(ctx, report, { run: { id: runId, at: Date.now() }, title: metadata.title.trim() });
+    }
     const on = settings.checks.filter((check) => check.enabled);
     return {
       reportId: report._id,
@@ -44,6 +74,7 @@ export const start = internalMutation({
       text: report.pdf?.text ?? null,
       version: settings.checksVersion,
       checks: await Promise.all(on.map(async (check) => ({ ...check, model: (await slugPick(ctx, check.modelId, check.effort, "screening"))?.modelId ?? null }))),
+      changes,
     };
   },
 });
@@ -65,14 +96,38 @@ export const answer = internalMutation({
  * Saves a run's answers with the version that ran, and decides what happens to the report. Passing makes the report;
  * whether it waits for a reviewer is decided when it's looked at (`stageOf`). A reviewer's approval and the author's
  * request were about the details and answers before these.
+ *
+ * A run on changes to a live report follows the rule a new report does. Every check passing with review off puts
+ * them live at once. Anything else keeps them beside the report, which stays exactly as it was: a check they newly
+ * fail is the author's to fix or to ask a person about, and the rest waits for a reviewer, so a report approved over
+ * a check's answer is approved by a person again.
  */
 export const finish = internalMutation({
-  args: { reportId: v.id("reports"), runId: v.string(), results: checkResultsValidator, version: v.number() },
+  args: { reportId: v.id("reports"), runId: v.string(), results: checkResultsValidator, version: v.number(), /** The changes a run on a live report read. */ metadata: v.optional(metadataValidator) },
   returns: v.null(),
-  handler: async (ctx, { reportId, runId, results, version }) => {
+  handler: async (ctx, { reportId, runId, results, version, metadata }) => {
     const report = await ctx.db.get("reports", reportId);
-    if (!report || report.run?.id !== runId || report.step !== "details") return null;
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { results, running: undefined, reviewRequest: undefined });
+    if (!report || report.run?.id !== runId) return null;
+    const details = await detailsOf(ctx, reportId);
+    if (report.run.changes) {
+      if (report.status !== "live" || !metadata) return null;
+      await ctx.db.patch("reportDetails", details._id, { running: undefined });
+      await ctx.db.patch("reports", reportId, { run: undefined });
+      const settings = await reportSettings(ctx);
+      if (!settings.humanReview && results.every((result) => result.pass)) {
+        await applyChanges(ctx, (await ctx.db.get("reports", reportId))!, details, { metadata, results, checksVersion: version });
+        return null;
+      }
+      // A check the report passed reads the same PDF now: what it says to do about a new PDF can't be done here.
+      const passedBefore = new Set((details.results ?? []).filter((result) => result.pass).map((result) => result.checkId));
+      const said = results.map((result) => (!result.pass && result.fix && passedBefore.has(result.checkId) ? { ...result, fix: SAME_PDF_ADVICE } : result));
+      // These replace any changes that were waiting: a reviewer sees only the latest.
+      await ctx.db.patch("reportDetails", details._id, { correction: { metadata, results: said, checksVersion: version, at: Date.now() } });
+      await touch(ctx, (await ctx.db.get("reports", reportId))!, { changes: changeStageOf(details.results, { results: said }) });
+      return null;
+    }
+    if (report.step !== "details") return null;
+    await ctx.db.patch("reportDetails", details._id, { results, running: undefined, reviewRequest: undefined });
     await touch(ctx, report, {
       status: results.some((result) => !result.pass && result.blocking) ? "failed" : "passed",
       flagged: results.some((result) => !result.pass) || undefined,

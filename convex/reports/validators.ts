@@ -139,7 +139,7 @@ export const reportFields = {
   agreementVersion: v.number(),
   checksVersion: v.optional(v.number()),
   /** The run of the checks under way and when it began, so only that run's answers are saved: a new PDF clears it. */
-  run: v.optional(v.object({ id: v.string(), at: v.number() })),
+  run: v.optional(v.object({ id: v.string(), at: v.number(), /** It reads changes to a live report, which stays as it is meanwhile. */ changes: v.optional(v.boolean()) })),
   pdf: v.optional(pdfValidator),
   /** A picture of the PDF's first page, and when it was made. */
   cover: v.optional(v.object({ file: v.id("_storage"), at: v.number() })),
@@ -205,3 +205,7 @@ export const reportRowValidator = v.object({
 export const reportRowsValidator = capped(v.array(reportRowValidator), REPORTS_PER_PAGE);
 /** A report's authors by name, as its signed agreement lists them. */
 export const signerNamesValidator = capped(v.array(v.string()), DETAIL_CAPS.authors);
+
+export const reviewDecisionValidator = v.union(v.literal("approve"), v.literal("decline"), v.literal("withdraw"), v.literal("reinstate"), v.literal("approve-changes"), v.literal("decline-changes"), v.literal("edit"));
+/** A reviewer's word on a report, or on changes to a live one: who gave it and when. One row each, oldest first by creation. */
+export const reportReviewFields = { reportId: v.id("reports"), decision: reviewDecisionValidator, by: v.id("users"), at: v.number(), note: v.optional(v.string()) };
