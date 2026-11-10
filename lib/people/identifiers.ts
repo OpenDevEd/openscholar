@@ -7,19 +7,25 @@ const USER_AGENT = "Openscholar (https://openscholar.ai)";
 
 export type OrcidPerson = { orcid: string; name: string; institutions: string[] };
 
-async function searchOrcid(q: string, rows: number): Promise<OrcidPerson[]> {
+/** The people on one page of an ORCID search, and how many it found in all. */
+async function searchOrcidPage(q: string, rows: number): Promise<{ people: OrcidPerson[]; found: number }> {
   const url = new URL(ORCID_SEARCH);
   url.searchParams.set("q", q);
   url.searchParams.set("rows", String(rows));
   const response = await fetch(url, { headers: { Accept: "application/json", "User-Agent": USER_AGENT }, signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`ORCID search ${response.status}: ${(await response.text()).slice(0, 200)}`);
-  const body = (await response.json()) as { "expanded-result": Array<{ "orcid-id": string; "given-names"?: string | null; "family-names"?: string | null; "institution-name"?: string[] }> | null };
-  return (body["expanded-result"] ?? []).map((r) => ({
+  const body = (await response.json()) as { "expanded-result": Array<{ "orcid-id": string; "given-names"?: string | null; "family-names"?: string | null; "institution-name"?: string[] }> | null; "num-found"?: number };
+  const people = (body["expanded-result"] ?? []).map((r) => ({
     orcid: r["orcid-id"],
     name: [r["given-names"], r["family-names"]].filter(Boolean).join(" "),
     institutions: [...new Set(r["institution-name"] ?? [])],
   }));
+  return { people, found: body["num-found"] ?? people.length };
 }
+const searchOrcid = async (q: string, rows: number) => (await searchOrcidPage(q, rows)).people;
+
+/** How many people the match reads: more than that found means it can't tell one person from the rest. */
+const MATCH_ROWS = 20;
 
 /** A phrase for ORCID's search, with nothing in it that its query language reads. */
 const phrase = (words: string) => `"${words.replace(/["\\]/g, " ").trim()}"`;
@@ -44,7 +50,10 @@ export async function findOrcidPeople(words: string, institutions: string[] = []
 export async function matchOrcid(name: string, institutions: string[]): Promise<{ orcid: string; institution: string } | null> {
   if (!name.trim() || !institutions.length) return null;
   const q = `given-and-family-names:${phrase(name)} AND (${institutions.map((i) => `affiliation-org-name:${phrase(i)}`).join(" OR ")})`;
-  const same = (await searchOrcid(q, 5)).filter((person) => folded(person.name) === folded(name));
+  const { people, found } = await searchOrcidPage(q, MATCH_ROWS);
+  // Every person the search found is read, or none is taken: one more past the page could share the name.
+  if (found > people.length) return null;
+  const same = people.filter((person) => folded(person.name) === folded(name));
   if (same.length !== 1) return null;
   const person = same[0]!;
   const institution = institutions.find((i) => person.institutions.some((at) => folded(at) === folded(i))) ?? institutions[0]!;

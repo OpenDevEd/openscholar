@@ -37,6 +37,8 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
   const typed = orcidIn(search);
   const at = institutions;
   const people = useSWR(query && !typed ? ["orcid", query, ...at] : null, () => findOrcid(query, at), { keepPreviousData: true, revalidateOnFocus: false });
+  // The results on screen are for other words, or are being asked again: they wait for the answer to what's typed.
+  const stale = !typed && !!search.trim() && (search.trim() !== query || people.isValidating);
   // Someone at one of the person's institutions shows that institution first.
   const theirs = new Set(at.map((name) => name.toLowerCase()));
   const shown = (query && !typed ? (people.data ?? []) : []).map((person) => ({ ...person, institutions: [...person.institutions].sort((a, b) => Number(theirs.has(b.toLowerCase())) - Number(theirs.has(a.toLowerCase()))) }));
@@ -46,7 +48,7 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
   ].filter((group) => group.people.length);
   return (
     <Command shouldFilter={false}>
-      <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" busy={!typed && !!search.trim() && (search.trim() !== query || people.isValidating)} />
+      <CommandInput value={search} onValueChange={setSearch} placeholder="A name, or an iD to paste" busy={stale} />
       <CommandList>
         <CommandEmpty>{!search.trim() ? "Type a name, or paste an iD" : people.error ? "ORCID can't be searched now" : people.isLoading ? "Searching ORCID" : "Nobody on ORCID by that name"}</CommandEmpty>
         {typed ? (
@@ -59,9 +61,10 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
           </CommandGroup>
         ) : null}
         {groups.map((group) => (
-          <CommandGroup key={group.heading} heading={group.heading} className={cn(people.isLoading && "opacity-60 transition-opacity")}>
+          <CommandGroup key={group.heading} heading={group.heading} className={cn("transition-opacity", stale && "opacity-60")}>
             {group.people.map((person) => (
-              <CommandItem key={person.orcid} value={person.orcid} onSelect={() => onPick(person.orcid, person.name)} className="items-start">
+              // People found for words since changed can't be picked: Enter never takes someone from the last search.
+              <CommandItem key={person.orcid} value={person.orcid} disabled={stale} onSelect={() => onPick(person.orcid, person.name)} className="items-start">
                 <Check className={cn("mt-0.5 size-4", person.orcid === current ? "opacity-100" : "opacity-0")} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline justify-between gap-3">
@@ -98,7 +101,7 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
 }
 
 /** The box an ORCID iD is chosen in: the iD once there is one, and opening the search either way. */
-export function OrcidButton({ orcid, open, onClick, className }: { orcid: string; open: boolean; onClick: () => void; className?: string }) {
+export function OrcidButton({ orcid, open, className, ...props }: { orcid: string; open: boolean } & React.ComponentProps<typeof Button>) {
   return (
     <Button
       type="button"
@@ -106,7 +109,7 @@ export function OrcidButton({ orcid, open, onClick, className }: { orcid: string
       role="combobox"
       aria-expanded={open}
       aria-label={orcid ? `ORCID iD ${orcid}` : "Find on ORCID"}
-      onClick={onClick}
+      {...props}
       className={cn("h-9 justify-start gap-2 px-2.5 font-normal", className)}
     >
       <OrcidIcon />

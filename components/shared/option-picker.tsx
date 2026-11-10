@@ -17,7 +17,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /** `group` sorts options under a heading; `detail` is a second, quieter line; `icon` is a sign before the name, such as a flag; `mark` one after it, such as ROR's. */
-export type PickerOption = { id: string; name: string; group?: string; detail?: string; icon?: React.ReactNode; mark?: React.ReactNode };
+export type PickerOption = { id: string; name: string; group?: string; detail?: string; icon?: React.ReactNode; mark?: React.ReactNode; /** Shown but not to be picked, such as a result for words since changed. */ disabled?: boolean };
 
 /** A searchable multi-select in a popover, with the choices as removable chips below. */
 export function OptionPicker({
@@ -178,6 +178,7 @@ function OptionRows({ options: shown, selected, onToggle }: {
         <CommandItem
           key={option.id}
           value={rowValue(option)}
+          disabled={option.disabled}
           // The search box keeps the focus, so typing goes on after a click.
           onMouseDown={(event) => event.preventDefault()}
           onSelect={() => onToggle(option.id)}

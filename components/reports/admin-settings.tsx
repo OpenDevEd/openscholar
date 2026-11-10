@@ -362,7 +362,7 @@ function AccountPicker({ onPick }: { onPick: (account: Account, name: string) =>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] p-0">
         <Command shouldFilter={false}>
-          <CommandInput placeholder="An organisation's name, or a person's email" value={query} onValueChange={setQuery} />
+          <CommandInput placeholder="An organisation's name, or a person's email" value={query} onValueChange={setQuery} busy={stale} />
           <CommandList className={cn("transition-opacity", stale && "opacity-60")}>
             {shown ? <CommandEmpty>No account or organisation matches</CommandEmpty> : null}
             {groups.map((group) => (

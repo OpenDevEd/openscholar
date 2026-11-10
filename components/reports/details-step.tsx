@@ -11,7 +11,7 @@ import { Paged, pagerOf } from "@/components/settings/parts";
 import { FunderName } from "@/components/papers/paper-entities";
 import { AffiliationPicker } from "@/components/people/affiliation-picker";
 import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
-import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -131,7 +131,10 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
       <div className="flex flex-wrap items-center gap-2">
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-inset text-xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
         <Input aria-label="Name" placeholder="Name" maxLength={DETAIL_TEXT.name} value={author.name} onChange={(e) => onChange({ name: e.target.value })} className="w-auto min-w-0 flex-1 font-medium" />
-        <OrcidButton orcid={author.orcid} open={finding} onClick={() => setFinding(true)} className="order-last w-full shrink-0 @xl:order-none @xl:w-56" />
+        {/* The list's trigger, so focus comes back to it when the list closes; it opens under the whole line. */}
+        <PopoverTrigger asChild>
+          <OrcidButton orcid={author.orcid} open={finding} className="order-last w-full shrink-0 @xl:order-none @xl:w-56" />
+        </PopoverTrigger>
         <span className="flex shrink-0">
           <TooltipHint label="Move up">
             <Button type="button" variant="ghost" size="icon-sm" aria-label={`Move ${author.name || "author"} up`} disabled={index === 0} className="text-muted-foreground" onClick={() => onMove(-1)}>

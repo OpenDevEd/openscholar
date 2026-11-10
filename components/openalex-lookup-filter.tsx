@@ -68,7 +68,14 @@ export function OpenAlexLookupFilter({
   const exact = typed && listed.find((option) => option.name.trim().toLowerCase() === typed.name.trim().toLowerCase());
   const first = exact || typed;
   // Each institution with a ROR ID says so in its row, as its chip does once picked, whichever register found it.
-  const options = [...(first ? [first] : []), ...listed.filter((option) => option !== exact)].map((option) => (option.ror ? { ...option, mark: <RorIcon className="ms-1 opacity-80" /> } : option));
+  // Records found for words since changed can't be picked until the answer to what's typed is in: Enter never takes
+  // one from the last search. The row of words as typed always can.
+  const stale = !!text && (text !== query || results.isValidating || elsewhere.isValidating);
+  const options = [...(first ? [first] : []), ...listed.filter((option) => option !== exact)].map((option) => ({
+    ...option,
+    ...(option.ror && { mark: <RorIcon className="ms-1 opacity-80" /> }),
+    ...(stale && option !== typed && { disabled: true }),
+  }));
   const names = {
     ...savedNames,
     ...Object.fromEntries(options.map((option) => [option.id, option.name])),
@@ -97,7 +104,7 @@ export function OpenAlexLookupFilter({
       after={after}
       onSearch={setSearch}
       // From the first key until both registers have answered the words in the box.
-      busy={!!text && (text !== query || results.isValidating || elsewhere.isValidating)}
+      busy={stale}
       onToggle={(id) => {
         if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));
         onChange([...selected, id]);
