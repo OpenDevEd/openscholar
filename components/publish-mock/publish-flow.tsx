@@ -168,7 +168,10 @@ export function PublishFlow({
   /** How many reports this person may still start today, and their daily limit. */
   starts: { left: number; perDay: number };
 }) {
-  const [{ view, report: asked, correct, show, page }, setPlace] = useQueryStates(PLACE);
+  // Not shallow: every change of the address goes through the router. The mock saves with server actions, and Next
+  // answers one by navigating to the address its router knows; a shallow change left that behind the real one, so
+  // the first save after it counted as a move to another page and scrolled to the top.
+  const [{ view, report: asked, correct, show, page }, setPlace] = useQueryStates(PLACE, { shallow: false });
   // Moving to another report, view or page of the list, or opening a report's details to correct, is a step forward
   // in the browser's history, so Back returns to where the person was. It is another screen, so it opens at its
   // top, as History's and the library's pages do; the browser puts the place back on the way back. Leaving with the

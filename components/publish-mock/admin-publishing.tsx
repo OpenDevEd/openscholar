@@ -128,7 +128,10 @@ const NAV = {
 };
 
 export function AdminPublishing({ initial, accounts, known }: { initial: MockState; accounts: Accounts; known: Account[] }) {
-  const [nav, setNav] = useQueryStates(NAV);
+  // Not shallow: every change of the address goes through the router. The mock saves with server actions, and Next
+  // answers one by navigating to the address its router knows; a shallow change left that behind the real one, so
+  // the first save after it counted as a move to another page and scrolled to the top.
+  const [nav, setNav] = useQueryStates(NAV, { shallow: false });
   // Opening something is a step forward in the browser's history, and closing it with its own button is the step
   // back when that step is there (lib/url-state/step-back.ts), so Back never reopens what was just closed and
   // Forward does. What a link or a reload opened has no step behind it, so it closes in place.
@@ -238,7 +241,8 @@ function Submissions({
     show: parseAsStringLiteral(SHOWS).withDefault("all"),
     sort: parseAsStringLiteral(SORTS).withDefault("newest"),
     page: parseAsInteger.withDefault(1),
-  });
+    // Not shallow, as the page's own place isn't (above): a decision made after a search or a sort is a server action too.
+  }, { shallow: false });
   const setOpen = onOpen;
   const counts = useMemo(() => Object.fromEntries(SHOWS.map((show) => [show, submissions.filter((s) => shows(s, settings, show)).length])) as Record<Show, number>, [submissions, settings]);
   const list = useMemo(() => {
