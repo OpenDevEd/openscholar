@@ -56,7 +56,8 @@ const untouchedOf = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId:
  * still being typed is saved as it is; one that leads nowhere holds the checks, and one left empty is dropped.
  */
 export function checkedDetails(metadata: Metadata) {
-  const relations = metadata.relations.filter((relation) => relation.target.trim() !== "");
+  // One of each: the same link given twice is the same link.
+  const relations = metadata.relations.filter((relation, i, all) => relation.target.trim() !== "" && all.findIndex((other) => other.kind === relation.kind && other.target.trim() === relation.target.trim()) === i);
   const dead = relations.find((relation) => !linkHref(relation.target));
   if (dead) throw createError("VALIDATION_ERROR", `"${dead.target.slice(0, 80)}" isn't a web address or a DOI. Put the link right, or remove it.`);
   return keptDetails({ ...metadata, relations });
