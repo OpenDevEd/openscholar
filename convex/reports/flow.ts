@@ -40,6 +40,12 @@ async function changing(ctx: QueryCtx, actor: Actor, key: string) {
 
 export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<Doc<"reports">>) => ctx.db.patch("reports", report._id, { ...patch, updatedAt: Date.now() });
 
+/** The workspace's reports looked through for a reservation its signer left untouched: it is among the last few changed. */
+const RECENT = 20;
+/** A report the person started here and did nothing more with: signed, its DOI reserved, no PDF. */
+const untouchedOf = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) =>
+  (await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(RECENT)).find((report) => report.ownerId === userId && report.step === "doi" && !report.pdf && report.status === "draft");
+
 /** A report's details as they may be kept: each list within its cap, said in words, and the whole within its size. */
 export function keptDetails(metadata: Metadata) {
   const over = (Object.keys(DETAIL_CAPS) as Array<keyof typeof DETAIL_CAPS>).find((list) => list in metadata && (metadata[list as keyof Metadata] as unknown[]).length > DETAIL_CAPS[list]);
@@ -47,6 +53,8 @@ export function keptDetails(metadata: Metadata) {
   for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
   const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
+  // A day ahead of UTC is today somewhere, so that much is let through.
+  if (metadata.date > new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)) throw createError("VALIDATION_ERROR", "A report can't be dated in the future.");
   if (JSON.stringify(metadata).length > DETAILS_MAX_BYTES) throw createError("VALIDATION_ERROR", "These details are too long to save. Shorten the abstract or the lists.");
   return metadata;
 }
@@ -87,8 +95,11 @@ async function uploaded(ctx: MutationCtx, file: Id<"_storage">) {
 /** How many more reports the workspace may start at `now`, which the page gives so this query doesn't read the clock. */
 export const starts = workspaceQuery({
   args: { now: v.number() },
-  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.number(), left: v.number() }),
-  handler: (ctx, { workspaceId }, { now }) => startsLeft(ctx, workspaceId, now),
+  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.number(), left: v.number(), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()) }),
+  handler: async (ctx, { userId, workspaceId }, { now }) => {
+    const untouched = await untouchedOf(ctx, workspaceId, userId);
+    return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }) };
+  },
 });
 
 /**
@@ -111,6 +122,13 @@ export const sign = workspaceMutation({
     // ponytail: a report registered with Zenodo alone takes the DOI Zenodo reserves, which the registration slice
     // (#1205) asks Zenodo for. Until then a report needs Crossref on, whose DOI is known as soon as it has a key.
     if (crossref.mode === "off") throw createError("FEATURE_DISABLED", "Publishing with a DOI from Zenodo alone isn't open yet.");
+    // A DOI this person reserved here and did nothing with is the one they get again: signing twice, as after a
+    // reload that lost the first answer, starts one report and uses one of the day's starts.
+    const untouched = await untouchedOf(ctx, workspaceId, userId);
+    if (untouched) {
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version });
+      return untouched.key;
+    }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
     if ((await newest(ctx, workspaceId)).length >= MAX_WORKSPACE_REPORTS) throw createError("VALIDATION_ERROR", `A workspace holds at most ${MAX_WORKSPACE_REPORTS.toLocaleString("en")} reports. Discard a draft, or write to us to raise it.`);
     // Counted where it can't be undone: a report discarded later still used one of the day's starts.

@@ -50,6 +50,13 @@ function text(value: string, what: string, max: number, { empty = false } = {}) 
   return trimmed;
 }
 
+/** The byline with `{doi}` in it: the line each PDF must carry is how a reader of the PDF finds the report, and what the byline check looks for. */
+function byline(typed: string) {
+  const kept = text(typed, "the byline", SERIES_TEXT_MAX);
+  if (!kept.includes("{doi}")) throw createError("VALIDATION_ERROR", "The byline needs {doi} in it, which becomes each report's DOI.");
+  return kept;
+}
+
 /** An ISSN as typed, upper case, or none: anything else would be printed on every report's byline. */
 function issn(value: string) {
   const typed = value.trim().toUpperCase();
@@ -163,7 +170,7 @@ export const update = mutation({
           ...(series.name !== undefined && { name: text(series.name, "the series' name", SERIES_TEXT_MAX) }),
           // None until the ISSN centre assigns one: the byline then reads "pending".
           ...(series.issn !== undefined && { issn: issn(series.issn) }),
-          ...(series.byline !== undefined && { byline: text(series.byline, "the byline", SERIES_TEXT_MAX) }),
+          ...(series.byline !== undefined && { byline: byline(series.byline) }),
         },
       }),
       ...(perDay !== undefined && { perDay: dailyLimit(perDay) }),

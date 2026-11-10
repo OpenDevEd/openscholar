@@ -73,7 +73,11 @@ describe("starting a report", () => {
     const key = await sign(world.author, world.own);
     expect(key).toBe("R100001");
     expect(await read(world.author, world.own, key)).toMatchObject({ doi: "10.53832/openscholar-r.r100001", step: "doi", status: "draft", mine: true, signer: "Ada Author" });
-    // A person's own workspace starts one a day; the organisation's count is its own.
+    // Signing again before doing anything with it, as after a reload that lost the answer, gives the same report.
+    expect(await sign(world.author, world.own)).toBe("R100001");
+    expect(await world.author.query(api.reports.flow.starts, { workspaceId: world.own, now: Date.now() })).toMatchObject({ left: 0, untouched: "R100001" });
+    // Once it has moved on, a person's own workspace starts no other that day; the organisation's count is its own.
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
     await expect(sign(world.author, world.own)).rejects.toMatchObject(refused("FORBIDDEN"));
     expect(await sign(world.author, world.lab)).toBe("R100002");
   });
