@@ -124,7 +124,11 @@ export default function ConnectPage() {
                 {t.rich("wantsToConnect", { appName, strong: (chunks) => <strong>{chunks}</strong> })}
               </p>
             </div>
+            {/* The form isn't at the sign-in page's catch-all route, so its steps live in the address's hash. Its Sign up
+                link leaves for the sign-up page, and takes the way back to this request with it. */}
             <SignIn
+              routing="hash"
+              signUpUrl={`/sign-up?redirect_url=${encodeURIComponent(`/connect?${searchParams.toString()}`)}`}
               fallbackRedirectUrl={`/connect?${searchParams.toString()}`}
               signUpFallbackRedirectUrl={`/connect?${searchParams.toString()}`}
             />
