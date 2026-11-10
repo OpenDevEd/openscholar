@@ -54,6 +54,15 @@ it("answers a community that asks with its credential, link by link in order, an
   // With the shield's check, which a shielded community needs to answer a read at all.
   expect(site.mock.calls[0]![1]?.headers).toMatchObject({ cookie: expect.stringContaining("ode_browser_check") });
   expect((await ask(["W1"], "els_" + "d".repeat(43))).status).toBe(401);
+  // The same credential asks which of its DOIs are Openscholar Reports: one that names none is null, in the order asked.
+  vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://openscholar.test");
+  const reports = (dois: string[], credential = token) =>
+    t.fetch("/api/v1/evidence-libraries/reports/records", { method: "POST", headers: { Authorization: `Bearer ${credential}`, "Content-Type": "application/json" }, body: JSON.stringify({ contractVersion: 1, libraryId, dois }) });
+  const none = await reports(["https://doi.org/10.1000/Two"]);
+  expect(none.status).toBe(200);
+  expect(await none.json()).toEqual({ reports: [null] });
+  expect((await reports(["10.1000/two"], "els_" + "d".repeat(43))).status).toBe(401);
+  expect((await reports([])).status).toBe(400);
 });
 
 it("finds papers by a title on the index the site searches, for a community's signed-in reader, as that reader's search", async () => {

@@ -83,6 +83,8 @@ export function isOrcid(id: string) {
 }
 /** A DOI as a reference keeps it, lower case and without its address; null for text that isn't one. */
 export const doiIn = (text: string) => text.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "").replace(/^doi:\s*/, "").match(/^10\.\d{4,9}\/\S+$/)?.[0] ?? null;
+/** DOIs one request from a community asks about (`reports/records`). */
+export const REPORTS_ASKED_MAX = 100;
 /** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
 export const REVIEW_TEXT_MAX = 3000;
 export const SIGNER_NAME_MAX = 200;

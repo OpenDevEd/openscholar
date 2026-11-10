@@ -32,6 +32,32 @@ describe("a report's page", () => {
     expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ state: "live" });
   });
 
+  it("is given to a community by its DOI: live with its details, corrected with a new version, withdrawn as withdrawn", async () => {
+    const world = await setup();
+    const waiting = await checked(world, [passed("byline", false)]);
+    const { key } = await live(world, world.author, world.lab);
+    const doi = (await row(world.t, key)).doi;
+    const ask = (...dois: string[]) => world.t.query(internal.reports.paper.forCommunity, { dois });
+    // In the order asked; a DOI that is no report of ours, and a report that never went live, name nothing.
+    const [first, other, unpublished] = await ask(doi.toUpperCase(), "10.1000/elsewhere", (await row(world.t, waiting.key)).doi);
+    expect(first).toMatchObject({ state: "live", key, doi, title: "Shade trees and maize yields", series: "Openscholar Reports", hasPdf: true });
+    expect([other, unpublished]).toEqual([null, null]);
+    // A reviewer's edit is the report's at once: the community is told by the version.
+    const seenAt = (await row(world.t, key)).updatedAt;
+    const page = await world.t.query(api.reports.paper.get, { key });
+    if (page?.state !== "live") throw new Error("The report isn't live");
+    await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt, metadata: { ...page.metadata, title: "Shade trees, corrected" } });
+    const [corrected] = await ask(doi);
+    expect(corrected).toMatchObject({ state: "live", title: "Shade trees, corrected" });
+    expect(corrected!.version).not.toBe(first!.version);
+    await decide(world, key, "withdraw");
+    const [withdrawn] = await ask(doi);
+    expect(withdrawn).toMatchObject({ state: "withdrawn", key, doi });
+    expect(withdrawn).not.toHaveProperty("title");
+    await decide(world, key, "reinstate");
+    expect((await ask(doi))[0]).toMatchObject({ state: "live", version: corrected!.version });
+  });
+
   it("moves a withdrawn report's files, so the addresses its readers were given stop working", async () => {
     vi.useFakeTimers();
     try {

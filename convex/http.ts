@@ -1,5 +1,5 @@
 import { paperSubmissionStatus } from "./evidenceLibraries/submissionsHttp";
-import { resolvePapers, searchPapersByTitle } from "./evidenceLibraries/paperLinks";
+import { reportRecords, resolvePapers, searchPapersByTitle } from "./evidenceLibraries/paperLinks";
 import { catalog as topicCatalog, detail as topicDetail, associations as topicAssociations } from "./topics/serviceHttp";
 import { generate as generateLibraryDigest } from "./evidenceLibraries/digests/service";
 import { replacePublicationAssociations, authorProfileCatalog } from "./authors/serviceHttp";
@@ -46,6 +46,7 @@ http.route({path: "/api/v1/evidence-libraries/author-associations", method: "POS
 // A community says where a paper someone sent it stands: approved, returned or withdrawn (new-el #778).
 http.route({path: "/api/v1/evidence-libraries/paper-submissions", method: "POST", handler: paperSubmissionStatus});
 http.route({path: "/api/v1/evidence-libraries/papers/resolve", method: "POST", handler: resolvePapers});
+http.route({path: "/api/v1/evidence-libraries/reports/records", method: "POST", handler: reportRecords});
 // A community's reader looks for a paper to suggest by its title, on the index the site searches.
 http.route({path: "/api/v1/evidence-libraries/papers/search", method: "POST", handler: searchPapersByTitle});
 // A community's site asks whether it takes applications to join, and whether a reader's waits for an answer.
