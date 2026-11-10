@@ -95,6 +95,13 @@ const EVENTS = {
     rows: (r, origin) => [pageLink(r, origin), ["Its DOI", `https://doi.org/${r.doi}\nIt starts working once it's registered, which can take a few minutes.`]],
   },
   "changes-live": { to: "author", label: "Changes live", heading: "Your changes are live", rows: (r, origin) => [pageLink(r, origin)] },
+  "details-edited": {
+    to: "author",
+    label: "Details edited",
+    heading: "A reviewer edited your report's details",
+    // The report as it is after the edit: `note` carries what changed, set by the action that sends this.
+    rows: (r, origin) => [["What changed", r.note || "Its details"], r.status === "live" ? pageLink(r, origin) : publishLink("Your report", r, origin), QUESTIONS],
+  },
   "changes-declined": {
     to: "author",
     label: "Changes declined",

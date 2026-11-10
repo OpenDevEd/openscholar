@@ -241,7 +241,7 @@ export const REVIEW_TEXT_MAX = 3000;
 /** An email to the team's inbox. MOCK: kept here to be read; the real build sends it (convex/lib/invitationDelivery.ts). */
 export type Email = { id: string; at: number; audience: "team" | "author"; to: string; replyTo: string; subject: string; text: string; html: string; report: string; event: string };
 /** A reviewer's word on a report, or on changes to a live one: who gave it and when. */
-export type Review = { decision: "approve" | "decline" | "withdraw" | "reinstate" | "approve-changes" | "decline-changes"; by: string; at: number; note?: string };
+export type Review = { decision: "approve" | "decline" | "withdraw" | "reinstate" | "approve-changes" | "decline-changes" | "edit"; by: string; at: number; note?: string };
 export type MockState = { settings: Settings; submissions: Submission[]; started?: Record<string, number[]>; outbox?: Email[]; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
 /**

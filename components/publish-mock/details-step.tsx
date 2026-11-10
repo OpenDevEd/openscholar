@@ -206,6 +206,7 @@ export function DetailsStep({
   onCancel,
   resend = false,
   waits = false,
+  words,
 }: {
   initial: Metadata;
   onRun: (m: Metadata) => Promise<void>;
@@ -216,6 +217,8 @@ export function DetailsStep({
   resend?: boolean;
   /** A reviewer approves this report's changes before they go live, whatever the checks say. */
   waits?: boolean;
+  /** The form's heading, what it says under it and its button, where someone other than the author fills it in: a reviewer editing a report's details. */
+  words?: { title: string; intro: string; action: string };
 }) {
   const [m, setM] = useState(initial);
   // Corrections are saved a moment after the last change, so leaving the step loses nothing. A timer, cleared when
@@ -263,10 +266,12 @@ export function DetailsStep({
     <div>
       <div className="mb-6 space-y-1">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold tracking-tight">{onCancel ? "Correct the details" : "Check the details"}</h2>
+          <h2 className="text-lg font-semibold tracking-tight">{words?.title ?? (onCancel ? "Correct the details" : "Check the details")}</h2>
           {onCancel ? null : <AiIcon className="size-4 text-primary" />}
         </div>
-        {onCancel ? (
+        {words ? (
+          <p className="max-w-xl text-sm text-muted-foreground">{words.intro}</p>
+        ) : onCancel ? (
           <p className="max-w-xl text-sm text-muted-foreground">{waits
               ? "Your changes are checked, then a reviewer approves them before they go live. Your report stays live as it is until then. The PDF stays the same."
               : "Your report stays live as it is while your changes are checked. They go live when every check passes. The PDF stays the same."}</p>
@@ -535,7 +540,7 @@ export function DetailsStep({
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
         <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || (!!onCancel && !resend && m === initial)} onClick={() => void onRun(m)}>
-          <ShieldCheck /> {onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
+          <ShieldCheck /> {words ? words.action : onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
         </Button>
       </div>
     </div>

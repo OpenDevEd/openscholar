@@ -13,7 +13,7 @@ import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceL
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
 import { SITE_URL } from "@/lib/seo/page-metadata";
-import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, correctionStageOf, forAuthor, isMetadata, mayWorkOn, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
+import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, changesOf, correctionStageOf, forAuthor, isMetadata, mayWorkOn, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
@@ -555,6 +555,33 @@ export async function addToCommunity(id: string, community: { id: string; name: 
       report.communities.push({ ...community, status: publish ? "published" : "queued" });
       return { outcome: publish ? ("added" as const) : ("queued" as const), report };
     });
+  });
+}
+
+/**
+ * A reviewer edits a checked report's details themselves, to fix what isn't worth sending back to its author. The
+ * edit is the report's at once: a live report registers again, so Crossref and Zenodo hold it too. Who edited, and
+ * when, stays on the report, and its author is told what changed. Not while the author's own changes are waiting:
+ * those are approved or declined first, so neither set overwrites the other.
+ */
+export async function editDetails(id: string, metadata: unknown): Promise<Submission | Refused> {
+  if (!(await isAdmin())) return NOT_ADMIN;
+  if (!isMetadata(metadata)) return { refused: "The report needs a title." };
+  const user = await currentUser();
+  const origin = await here();
+  const by = user?.fullName || "A reviewer";
+  return change((state) => {
+    const report = state.submissions.find((s) => s.id === id);
+    if (!report?.metadata || report.step !== "done") return { refused: "This report's details aren't a reviewer's to edit yet: its author is still working on it." };
+    if (report.correction) return { refused: "The author's changes to this report are waiting. Approve or decline them first." };
+    const changed = changesOf(report.metadata, metadata).map((c) => c.label);
+    if (JSON.stringify(report.metadata) === JSON.stringify(metadata)) return { refused: "Nothing was changed." };
+    // A run of the checks still reading the old details is given up with them.
+    if (report.status === "live") applyCorrection(report, { metadata, results: report.results ?? [], checksVersion: report.checksVersion ?? state.settings.checksVersion });
+    else touch(report, { metadata });
+    Object.assign(report, { run: undefined, reviews: [...(report.reviews ?? []), { decision: "edit", by, at: Date.now() }] });
+    mail(state, "details-edited", { ...report, note: changed.join(", ") }, origin);
+    return report;
   });
 }
 

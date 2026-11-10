@@ -95,6 +95,7 @@
     "app/actions/publish-mock:requestCorrectionReview": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:discardCorrection": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:reviewCorrection": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
+    "app/actions/publish-mock:editDetails": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:updateSettings": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:saveCheck": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",
     "app/actions/publish-mock:removeCheck": "MOCK (mock/publish-reports): the Publish mock's local store. The real build registers these as user actions.",

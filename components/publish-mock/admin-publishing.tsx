@@ -5,7 +5,7 @@
 // model that reads PDFs, the checks, and the agreement. State lives in the mock's local store.
 
 import { useMemo, useState, useTransition, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
+import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryState, useQueryStates } from "nuqs";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
 import { Enter, LIST, Paged, Segmented, Tile, Working, Zone, pagerOf } from "@/components/settings/parts";
@@ -49,8 +49,9 @@ import {
   UserPlus, Building2,
 } from "@/components/icons";
 import { CheckRow } from "@/components/publish-mock/publish-flow";
+import { DetailsStep } from "@/components/publish-mock/details-step";
 import { usePlaceName } from "@/components/publish-mock/report-extras";
-import { findAccounts, removeCheck, removeLimit, retryDeposit, review, reviewCorrection, saveCheck, saveLimit, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
+import { editDetails, findAccounts, removeCheck, removeLimit, retryDeposit, review, reviewCorrection, saveCheck, saveLimit, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import useSWR from "swr";
 import { AnimatePresence, motion } from "motion/react";
 import { EASE } from "@/components/ui/opening";
@@ -95,7 +96,7 @@ const CHANGES = { review: { label: "Changes to review", tone: "running" }, faile
 const shows = (s: Submission, settings: Settings, show: Show) => show === "all" || (show === "review" ? wantsReviewer(s, settings) : stageOf(s, settings) === show);
 /** A report's status in words. A declined report that had been live was withdrawn. */
 const labelOf = (s: Submission, stage: Stage) => (stage === "declined" && s.withdrawnAt ? "Withdrawn" : stage === "draft" ? "Draft" : STATUS[stage].label);
-const REVIEWED: Record<Review["decision"], string> = { approve: "Approved", decline: "Declined", withdraw: "Withdrawn", reinstate: "Reinstated", "approve-changes": "Changes approved", "decline-changes": "Changes declined" };
+const REVIEWED: Record<Review["decision"], string> = { approve: "Approved", decline: "Declined", withdraw: "Withdrawn", reinstate: "Reinstated", "approve-changes": "Changes approved", "decline-changes": "Changes declined", edit: "Details edited" };
 const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed", declined: "Declined" };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 
@@ -141,14 +142,16 @@ export function AdminPublishing({ initial, accounts, known }: { initial: MockSta
 function Submissions({ settings, submissions, drafts, outbox, onChange }: { settings: Settings; submissions: Submission[]; drafts: Submission[]; outbox: Email[]; onChange: (s: Submission) => void }) {
   // The list as it's searched, filtered, sorted and paged is in the address, and so is the report whose dialog is
   // open, so an email's link opens it and a reload comes back to the same place.
-  const [{ q: query, show, sort, page, report: open }, setList] = useQueryStates({
+  const [{ q: query, show, sort, page, report: open, edit }, setList] = useQueryStates({
     q: parseAsString.withDefault(""),
     show: parseAsStringLiteral(SHOWS).withDefault("all"),
     sort: parseAsStringLiteral(SORTS).withDefault("newest"),
     page: parseAsInteger.withDefault(1),
     report: parseAsString,
+    // The open report's details in the form, for a reviewer to edit them.
+    edit: parseAsBoolean.withDefault(false),
   });
-  const setOpen = (report: string | null) => void setList({ report });
+  const setOpen = (report: string | null) => void setList({ report, edit: null });
   const counts = useMemo(() => Object.fromEntries(SHOWS.map((show) => [show, submissions.filter((s) => shows(s, settings, show)).length])) as Record<Show, number>, [submissions, settings]);
   const list = useMemo(() => {
     const words = query.trim().toLowerCase();
@@ -158,6 +161,39 @@ function Submissions({ settings, submissions, drafts, outbox, onChange }: { sett
   const pager = pagerOf(list.length, PER_PAGE, page, (next) => void setList({ page: next }));
   const shown = list.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
   const opened = submissions.find((s) => s.id === open) ?? drafts.find((s) => s.id === open) ?? null;
+
+  // A reviewer edits a checked report's details in the form its author fills in, in the list's place.
+  if (edit && opened?.metadata && opened.step === "done" && !opened.correction) {
+    const live = opened.status === "live";
+    return (
+      <Zone label={settings.series.name}>
+        <DetailsStep
+          key={opened.id}
+          initial={opened.metadata}
+          words={{
+            title: "Edit the details",
+            intro: live
+              ? `${opened.id} is live. Your edit goes live at once, the report registers again, and its author is emailed what changed.`
+              : `${opened.id} isn't live yet. Your edit is saved at once, and its author is emailed what changed.`,
+            action: "Save the details",
+          }}
+          onRun={async (metadata) => {
+            try {
+              const result = await editDetails(opened.id, metadata);
+              if ("refused" in result) return void toast.error(result.refused);
+              onChange(result);
+              toast.success(live ? "Details saved. They're live." : "Details saved.");
+              // Back to the report's dialog, which now shows the edit.
+              void setList({ edit: null });
+            } catch (error) {
+              failed(error);
+            }
+          }}
+          onCancel={() => void setList({ edit: null })}
+        />
+      </Zone>
+    );
+  }
 
   return (
     <Zone label={settings.series.name}>
@@ -206,7 +242,7 @@ function Submissions({ settings, submissions, drafts, outbox, onChange }: { sett
           )}
         </Paged>
       </div>
-      <SubmissionDialog submission={opened} settings={settings} emails={opened ? outbox.filter((e) => e.report === opened.id) : []} onClose={() => setOpen(null)} onChange={onChange} />
+      <SubmissionDialog submission={opened} settings={settings} emails={opened ? outbox.filter((e) => e.report === opened.id) : []} onClose={() => setOpen(null)} onChange={onChange} onEdit={() => void setList({ edit: true })} />
       {/* A link to a report that is no longer there says so, in place of a page that shows nothing. */}
       <Dialog open={!!open && !opened} onOpenChange={(next) => !next && setOpen(null)}>
         <DialogContent className="sm:max-w-sm">
@@ -313,7 +349,7 @@ function SubmissionRow({ submission: s, stage, onOpen, onChange }: { submission:
   );
 }
 
-function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }: { submission: Submission | null; settings: Settings; emails: Email[]; onClose: () => void; onChange: (s: Submission) => void }) {
+function SubmissionDialog({ submission: s, settings, emails, onClose, onChange, onEdit }: { submission: Submission | null; settings: Settings; emails: Email[]; onClose: () => void; onChange: (s: Submission) => void; /** Opens the report's details in the form. */ onEdit: () => void }) {
   const [note, setNote] = useState("");
   const [busy, start] = useTransition();
   /** Sends a reviewer's word. A refusal, when the report moved on since it was opened, is said and the dialog stays. */
@@ -358,6 +394,16 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
               : "Human review is on, so changes wait for a reviewer.";
   const stage = s ? stageOf(s, settings) : undefined;
   const status = stage && stage !== "draft" ? STATUS[stage] : undefined;
+  // A reviewer's own edit of the details, at the start of the dialog's buttons and apart from the decisions. Not
+  // while the author's changes are waiting: those are decided first.
+  const edits =
+    s?.metadata && s.step === "done" && !s.correction ? (
+      <Button variant="outline" className="sm:me-auto" disabled={busy} onClick={onEdit}>
+        <PenLine /> Edit the details
+      </Button>
+    ) : (
+      <span className="sm:me-auto" />
+    );
   return (
     <Dialog open={!!s} onOpenChange={(open) => !open && onClose()}>
       {/* One column no wider than the dialog: a long title or link wraps or is cut, and never widens it. */}
@@ -521,6 +567,7 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
             {/* A reviewer acts on any report, whatever its checks said: approve one not yet cleared, decline it, withdraw a live one, or reinstate a withdrawn one. */}
             {stage === "declined" && s.withdrawnAt ? (
               <DialogFooter className={FOOT}>
+                {edits}
                 <Button className="relative" disabled={busy} onClick={() => decide("reinstate")}>
                   <Working busy={busy}>
                     <span className="flex items-center gap-2">
@@ -532,14 +579,21 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange }
             ) : stage && stage !== "declined" && stage !== "draft" ? (
               <DialogFooter className={FOOT}>
                 {stage === "live" ? (
-                  // Apart from the buttons about changes, and asked about before it happens.
-                  <Button variant="outline" className="text-destructive hover:text-destructive sm:me-auto" disabled={busy} onClick={() => setWithdrawing(true)}>
-                    <CircleX /> Withdraw the report
-                  </Button>
+                  // What a reviewer does to the report itself sits at the start, apart from the buttons about
+                  // changes; withdrawing asks before it happens.
+                  <>
+                    <Button variant="outline" className="text-destructive hover:text-destructive" disabled={busy} onClick={() => setWithdrawing(true)}>
+                      <CircleX /> Withdraw the report
+                    </Button>
+                    {edits}
+                  </>
                 ) : (
-                  <Button variant="outline" disabled={busy} onClick={() => decide("decline")}>
-                    <CircleX /> Decline
-                  </Button>
+                  <>
+                    {edits}
+                    <Button variant="outline" disabled={busy} onClick={() => decide("decline")}>
+                      <CircleX /> Decline
+                    </Button>
+                  </>
                 )}
                 {/* Changes waiting have their own word: the report stays live either way. */}
                 {changes && changes.stage !== "declined" ? (
