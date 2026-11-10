@@ -1,10 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { api } from "../_generated/api";
 import { createDraftSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
-import {
-  EMPTY_PUBLICATION_SETTINGS,
-  buildPublicationConfiguration,
-} from "../../lib/evidence-libraries/configuration/publication";
+import { buildPublicationConfiguration } from "../../lib/evidence-libraries/configuration/publication";
+import { EMPTY_PUBLICATION_SETTINGS } from "../../lib/evidence-libraries/configuration/publication-settings";
 import { decrypt } from "../lib/crypto";
 import {
   readPublicationProviderRecord,

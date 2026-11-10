@@ -26,7 +26,7 @@ import {
   type OwnerSectionRow,
   validateOwnerSections,
 } from "../../lib/evidence-libraries/configuration/owner-rules";
-import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-version";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";

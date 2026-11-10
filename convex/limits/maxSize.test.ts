@@ -15,7 +15,7 @@ import { MAX_CATALOG_MODELS } from "../models/catalog";
 import { MAX_SIZE, insertMany, seedAccount, seedExtractionJob, seedLibrary, text } from "../lib/maxSize.test-support";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { assertApprovedQueriesUnchanged } from "../evidenceLibraries/approvedQueries";
-import { isAcceptableSavedConfigurationTarget } from "../evidenceLibraries/operations";
+import { isAcceptableSavedConfigurationTarget } from "../evidenceLibraries/operationState";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
 import { createJob, insertJob } from "../screening/createJob.test-support";

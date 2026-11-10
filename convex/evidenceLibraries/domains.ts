@@ -24,7 +24,7 @@ import { rateLimit } from "../lib/rateLimit";
 import { internal } from "../_generated/api";
 import { customDomainDnsRecords } from "./domainConfig";
 import { readDomainActivationPlan } from "./domainPlan";
-import { isConfigurationDeploymentOperation, readActiveOperations } from "./operations";
+import { isConfigurationDeploymentOperation, readActiveOperations } from "./operationState";
 import {
   evidenceLibraryDomainFailureValidator,
   evidenceLibraryDomainStateValidator,

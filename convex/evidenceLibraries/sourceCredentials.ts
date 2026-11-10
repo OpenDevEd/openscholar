@@ -1,8 +1,5 @@
-import {
-  type ApplySourceCredentials,
-  ConfigurationAssemblyError,
-  type SourceEntry,
-} from "../../lib/evidence-libraries/configuration/assembly";
+import type { ApplySourceCredentials, SourceEntry } from "../../lib/evidence-libraries/configuration/assembly";
+import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly-error";
 import type { ZoteroGroupScopes } from "../zotero/groupAccess";
 
 export type ConnectedZoteroGroup = {

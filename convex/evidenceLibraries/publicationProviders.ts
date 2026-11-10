@@ -16,7 +16,7 @@ import { writeAuditLogRecord } from "../lib/audit";
 import {
   EMPTY_PUBLICATION_SETTINGS,
   PUBLICATION_CREDENTIAL_KEY,
-} from "../../lib/evidence-libraries/configuration/publication";
+} from "../../lib/evidence-libraries/configuration/publication-settings";
 import { publicationSettingsValidator } from "./publicationValidators";
 import {
   evidenceLibraryCredentialFields,
