@@ -16,7 +16,7 @@ import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, CheckResult, Metadata } from "../../lib/reports/report";
 import type { Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
-import { metadataValidator } from "./validators";
+import { metadataValidator, runFromValidator } from "./validators";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -70,16 +70,16 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
 }
 
 /**
- * Runs the checks on a report waiting at its details, with the details as its author last corrected them. With
+ * Runs the checks on a report waiting at its details, with the details as its author last corrected them; or, from
  * `changesSince`, on changes to a live report, which stays live as it is while they are read.
  */
 export const run = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, changesSince: v.optional(v.number()) },
+  args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, from: runFromValidator },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, key, metadata, changesSince }) => {
+  handler: async (ctx, { workspaceId, key, metadata, from }) => {
     await refuseApps(ctx);
     const runId = crypto.randomUUID();
-    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, ...(changesSince !== undefined && { changesSince }) });
+    const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, from });
     if ("unchanged" in started) throw createError("VALIDATION_ERROR", "These are the details your report already has, so there is nothing to change.");
     const { reportId } = started;
     const text = started.text ? await (await ctx.storage.get(started.text))?.text() ?? "" : "";

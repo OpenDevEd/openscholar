@@ -38,6 +38,7 @@ export const finish = internalMutation({
       await touch(ctx, report, { pdf: { ...report.pdf, trouble: "unopened" } });
       return null;
     }
+    if (text) await ctx.db.insert("reportFiles", { file: text, reportId });
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { metadata: keptDetails(metadata) });
     await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: metadata.title.trim() || undefined });
     return null;

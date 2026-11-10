@@ -209,3 +209,8 @@ export const signerNamesValidator = capped(v.array(v.string()), DETAIL_CAPS.auth
 export const reviewDecisionValidator = v.union(v.literal("approve"), v.literal("decline"), v.literal("withdraw"), v.literal("reinstate"), v.literal("approve-changes"), v.literal("decline-changes"), v.literal("edit"));
 /** A reviewer's word on a report, or on changes to a live one: who gave it and when. One row each, oldest first by creation. */
 export const reportReviewFields = { reportId: v.id("reports"), decision: reviewDecisionValidator, by: v.id("users"), at: v.number(), note: v.optional(v.string()) };
+/** Which report a stored file is: its PDF, the picture of its first page, or its text. A file with a row here is never another report's. */
+export const reportFileFields = { file: v.id("_storage"), reportId: v.id("reports") };
+
+/** What a run's details were made from: a PDF's reading, or a live report's details as they stood. */
+export const runFromValidator = v.union(v.object({ pdfAt: v.number() }), v.object({ changesSince: v.number() }));
