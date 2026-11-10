@@ -537,13 +537,13 @@ export const getAction = defineUserQuery({
       // An organisation's pages are under its slug; the person's own have none.
       return { elsewhere: { name: organization?.name ?? "your own workspace", slug: organization?.slug ?? null } };
     }
-    const [details, settings] = await Promise.all([detailsOf(ctx, report._id), reportSettings(ctx)]);
+    const details = await detailsOf(ctx, report._id);
     const { correction } = details;
     return {
       report: {
         ...(await row(ctx, actor, report)),
         doi: report.doi,
-        byline: report.byline ?? bylineOf(settings.series, report.doi),
+        byline: report.byline,
         asked: report.asked === true,
         signedAt: report.signedAt,
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
