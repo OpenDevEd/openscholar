@@ -31,7 +31,7 @@ async function libraryAt(ctx: QueryCtx, origin: string) {
 
 /**
  * What Openscholar knows of a record at an address: whether a community answers there, and the paper its published
- * record is when the community told Openscholar (records with topics do), so its own site needn't be asked.
+ * record is when the community told Openscholar (every community tells it of its published records), so its own site needn't be asked.
  */
 export const recordPaper = internalQuery({
   args: { origin: v.string(), itemKey: v.string() },
