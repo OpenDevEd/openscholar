@@ -47,6 +47,7 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
@@ -631,7 +632,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
         {t(shared ? "agreementShared" : "agreementIntro")}
       </StepHead>
       <div className="max-h-[22rem] overflow-y-auto rounded-2xl border border-border-subtle bg-inset/40 px-5" style={{ maskImage: `linear-gradient(to bottom, transparent, black ${EDGE_FADE}px, black calc(100% - ${EDGE_FADE}px), transparent)`, paddingBlock: EDGE_FADE }}>
-        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
+        <MarkdownContent content={fillAgreement(agreement.text, { name, date: today, byline: bylineOf(basics.series, "…") })} className="text-sm sm:text-sm [&_h1]:mb-3 [&_h1]:text-lg [&_h1]:leading-snug [&_h2]:text-base" />
       </div>
       <div className="mt-5 grid gap-4 sm:max-w-md">
         <label className="space-y-1.5">
@@ -1321,7 +1322,8 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
       <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
         <CreditCard className="size-4" />
       </span>
-      <div className="min-w-0 flex-1">
+      {/* On a phone the words keep a readable width and the buttons go under them. */}
+      <div className="min-w-0 flex-1 basis-48">
         {pending ? (
           <p className="text-sm font-medium">{t("bankAsked")}</p>
         ) : card ? (
@@ -1355,23 +1357,23 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
         </p>
       </div>
       {pending?.url ? (
-        <Button variant="outline" asChild className="shrink-0">
+        <Button variant="outline" asChild className="ms-auto shrink-0">
           <a href={pending.url}>
             {t("confirm")} <ArrowUpRight />
           </a>
         </Button>
       ) : pending ? null : card ? (
-        <>
+        <div className="ms-auto flex shrink-0 items-center gap-2">
           {/* The cards are the billing page's, where Stripe's own page changes them. */}
-          <Button variant="ghost" size="sm" asChild className="shrink-0 text-muted-foreground">
+          <Button variant="ghost" size="sm" asChild className="text-muted-foreground">
             <Link href="/settings/billing">{t("change")}</Link>
           </Button>
           {action}
-        </>
+        </div>
       ) : onAddCard ? (
         <Button
           variant="outline"
-          className="relative shrink-0"
+          className="relative ms-auto shrink-0"
           disabled={saving}
           onClick={() =>
             save(async () => {

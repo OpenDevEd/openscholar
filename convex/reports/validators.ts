@@ -272,7 +272,7 @@ export const adminReportValidator = v.object({
   emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author"), v.literal("admins")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),
 });
-export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
+export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
 
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
 export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), updatedAt: v.number() });

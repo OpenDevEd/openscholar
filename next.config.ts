@@ -77,6 +77,9 @@ const nextConfig: NextConfig = {
       { source: "/o/:slug/evidence-libraries", destination: "/o/:slug/evidence-communities", permanent: true },
       { source: "/o/:slug/evidence-libraries/:path*", destination: "/o/:slug/evidence-communities/:path*", permanent: true },
       { source: "/settings/admin/evidence-libraries", destination: "/settings/admin/evidence-communities", permanent: true },
+      // Profile is Settings itself; Clerk's profile draws nothing under a path of its own, which people guess.
+      { source: "/settings/profile", destination: "/settings", permanent: false },
+      { source: "/o/:slug/settings/profile", destination: "/o/:slug/settings", permanent: false },
     ];
   },
   async rewrites() {
