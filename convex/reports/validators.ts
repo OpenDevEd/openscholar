@@ -78,7 +78,7 @@ export const plainResults = capped(v.array(v.object(checkResultValidator.omit("m
 /** The same list where a report may have none yet: the cap is told through the optional, as `optionalResults` is. */
 export const optionalPlainResults = capped(v.optional(v.array(v.object(checkResultValidator.omit("model").fields))), MAX_CHECKS);
 
-const affiliationValidator = v.object({ id: v.union(v.string(), v.null()), name: v.string(), country: v.string() });
+const affiliationValidator = v.object({ id: v.union(v.string(), v.null()), name: v.string(), country: v.string(), ror: v.optional(v.string()) });
 export const metadataValidator = v.object({
   title: v.string(),
   subtitle: v.string(),
@@ -86,7 +86,7 @@ export const metadataValidator = v.object({
   language: v.string(),
   date: v.string(),
   licence: v.literal("CC BY 4.0"),
-  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles) })), DETAIL_CAPS.authors),
+  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), orcidFound: v.optional(v.string()), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles) })), DETAIL_CAPS.authors),
   abstract: v.string(),
   topics: capped(v.array(v.object({ id: v.string(), name: v.string(), score: v.number() })), DETAIL_CAPS.topics),
   keywords: capped(v.array(v.string()), DETAIL_CAPS.keywords),

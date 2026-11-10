@@ -5936,6 +5936,7 @@
     "showFewer": "表示を減らす",
     "corresponding": "責任著者",
     "orcidOf": "{name}のORCID iD",
+    "rorOf": "ROR の {name}",
     "institutions": "所属機関",
     "whereToRead": "読める場所",
     "kindPublisher": "出版社",

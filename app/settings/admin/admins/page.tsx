@@ -238,7 +238,7 @@ function AddAdmin() {
               <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
                 {/* The server searches by email, so the list isn't filtered again here. */}
                 <Command shouldFilter={false}>
-                  <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} />
+                  <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} busy={candidates.status === "LoadingFirstPage"} />
                   <CommandList onScroll={loadOnScroll}>
                     <CommandEmpty>{candidates.isInitialLoading ? <Spinner className="mx-auto my-0.5" aria-label={tc("loading")} /> : t("noUsers")}</CommandEmpty>
                     <CommandGroup>

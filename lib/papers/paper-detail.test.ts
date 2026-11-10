@@ -10,11 +10,11 @@ describe("a paper page's view of both records", () => {
     expect(paperDetail(work({}), theirs, "OS1", 2026).authors.map((author) => author.name)).toEqual(["Daler Bokiev", "Ann Author"]);
   });
 
-  it("takes authors' institutions from OpenAlex when our index has none, and keeps our influence counts", () => {
+  it("takes authors' institutions from OpenAlex when our index has none, with their ROR IDs, and keeps our influence counts", () => {
     const ours = work({ authorships: [{ author: { display_name: "A. Author" }, institutions: [] }], influential_citation_count: 7, publication_year: 2021 });
-    const theirs = work({ authorships: [{ author: { id: "https://openalex.org/A9", display_name: "Ann Author", orcid: "https://orcid.org/0000-0001" }, institutions: [{ id: "https://openalex.org/I7", display_name: "Uni &amp; College", country_code: "GB" }], is_corresponding: true }] });
+    const theirs = work({ authorships: [{ author: { id: "https://openalex.org/A9", display_name: "Ann Author", orcid: "https://orcid.org/0000-0001" }, institutions: [{ id: "https://openalex.org/I7", display_name: "Uni &amp; College", country_code: "GB", ror: "https://ror.org/013meh722" }, { id: "https://openalex.org/I8", display_name: "Lab", ror: "ror.org/013meh722" }], is_corresponding: true }] });
     const detail = paperDetail(ours, theirs, "OS1", 2026);
-    expect(detail.authors).toEqual([{ id: "A9", name: "Ann Author", orcid: "https://orcid.org/0000-0001", corresponding: true, institutions: [{ id: "I7", name: "Uni & College", country: "GB" }] }]);
+    expect(detail.authors).toEqual([{ id: "A9", name: "Ann Author", orcid: "https://orcid.org/0000-0001", corresponding: true, institutions: [{ id: "I7", name: "Uni & College", country: "GB", ror: "https://ror.org/013meh722" }, { id: "I8", name: "Lab", country: null, ror: null }] }]);
     expect(detail.influentialCitations).toBe(7);
   });
 

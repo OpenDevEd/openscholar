@@ -3,6 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { useTranslations } from "next-intl";
+import { RorIcon } from "@/components/icons/author-service-icons";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { searchOpenAlexRecords } from "@/app/actions/openalex-lookup";
@@ -10,7 +11,7 @@ import type { LookupEntity } from "@/lib/openalex/autocomplete";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 import { useSearchSource } from "@/lib/search/use-search-source";
 
-type Option = { id: string; name: string; detail?: string };
+type Option = { id: string; name: string; detail?: string; ror?: string };
 
 /**
  * A filter picked from OpenAlex's autocomplete, for things there are too many
@@ -22,7 +23,9 @@ export function OpenAlexLookupFilter({
   lookup,
   labels,
   icons,
+  after,
   onPicked,
+  also,
 }: {
   selected: string[];
   onChange: (ids: string[]) => void;
@@ -36,8 +39,12 @@ export function OpenAlexLookupFilter({
   labels: { label: string; placeholder: string; searchPlaceholder: string; typeToSearch: string; unavailable: string };
   /** What each chip shows before its name, such as a country's flag. */
   icons?: Record<string, React.ReactNode>;
+  /** What each chip shows after its name, such as a link to the record elsewhere. */
+  after?: Record<string, React.ReactNode>;
   /** The record just picked, with its detail line, for a caller that keeps more than its ID. */
   onPicked?: (option: Option) => void;
+  /** Records from another register, listed after OpenAlex's; one OpenAlex already lists, by its ROR ID or its name, is left out. */
+  also?: { key: string; search: (query: string) => Promise<Option[]> };
 }) {
   const tf = useTranslations("searchFilters");
   const tToast = useTranslations("toast");
@@ -48,11 +55,20 @@ export function OpenAlexLookupFilter({
     revalidateOnFocus: false,
     keepPreviousData: true,
   });
+  const elsewhere = useSWR(also && query ? [`${also.key}-search`, query] : null, () => also!.search(query), { revalidateOnFocus: false, keepPreviousData: true });
   const savedNames = lookup.useNames(selected);
   // The typed option follows the keys, not the debounce, so Enter picks what the box says.
   const text = search.trim();
   const typed = text ? lookup.typed?.(text) : null;
-  const options = [...(typed ? [typed] : []), ...(query ? (results.data ?? []) : [])];
+  const found = query ? (results.data ?? []) : [];
+  const known = new Set(found.flatMap((option) => [option.name.toLowerCase(), ...(option.ror ? [option.ror] : [])]));
+  const more = query && also ? (elsewhere.data ?? []).filter((option) => !known.has(option.name.toLowerCase()) && !(option.ror && known.has(option.ror))) : [];
+  // A record named exactly as typed takes the typed row's place at the top: the words typed are then no record of their own.
+  const listed = [...found, ...more];
+  const exact = typed && listed.find((option) => option.name.trim().toLowerCase() === typed.name.trim().toLowerCase());
+  const first = exact || typed;
+  // Each institution with a ROR ID says so in its row, as its chip does once picked, whichever register found it.
+  const options = [...(first ? [first] : []), ...listed.filter((option) => option !== exact)].map((option) => (option.ror ? { ...option, mark: <RorIcon className="ms-1 opacity-80" /> } : option));
   const names = {
     ...savedNames,
     ...Object.fromEntries(options.map((option) => [option.id, option.name])),
@@ -78,7 +94,10 @@ export function OpenAlexLookupFilter({
       selected={selected}
       names={names}
       icons={icons}
+      after={after}
       onSearch={setSearch}
+      // From the first key until both registers have answered the words in the box.
+      busy={!!text && (text !== query || results.isValidating || elsewhere.isValidating)}
       onToggle={(id) => {
         if (selected.includes(id)) return onChange(selected.filter((one) => one !== id));
         onChange([...selected, id]);
