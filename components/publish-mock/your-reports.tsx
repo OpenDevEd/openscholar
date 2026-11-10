@@ -7,14 +7,16 @@ import { useState } from "react";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LIST_FILTER, ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
-import { ENTRY_OPEN, Entry, EntryAction, EntryAside } from "@/components/command-center/entry";
+import { ENTRY_OPEN, Entry, EntryAction } from "@/components/command-center/entry";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { GRID_CLASSES } from "@/lib/constants/view-modes";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
+import Link from "@/components/workspace-link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, Trash2 } from "@/components/icons";
+import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2 } from "@/components/icons";
 import { standingOf, stepWords } from "@/components/publish-mock/registration";
 import { canDiscard, correctionStageOf, coverUrlOf, stageOf, type CorrectionStage, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
@@ -119,12 +121,22 @@ export function YourReports({ reports, settings, shared, show, page, onPage, onO
 
 /**
  * One report, as an entry of the app's lists (components/command-center/entry.tsx): its cover, its title, which
- * opens it, its key and where it stands, its status, and its date, which gives way to its actions when the row is
- * pointed at.
+ * opens it, its key, date and where it stands, its status, and its actions: discard, correct, and the way in.
  */
 function ReportRow({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }: { report: Submission; series: string; shared: boolean; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
   const status = STATUS[stage];
   const title = r.metadata?.title ?? (r.pdf?.name ? r.pdf.name : "Untitled report");
+  // The row's way in, named for what the report needs next.
+  const action =
+    r.status === "live"
+      ? { label: "Open its page", icon: ArrowUpRight }
+      : stage === "ready"
+        ? { label: "Activate it", icon: ArrowRight }
+        : stage === "draft"
+          ? { label: "Carry on", icon: ArrowRight }
+          : stage === "failed"
+            ? { label: "See what failed", icon: RotateCcw }
+            : { label: "Open", icon: FileText };
   return (
     <Entry viewMode="list-detail" className="items-center">
       {/* The cover its page wears: the PDF's first page once there is one, the series' title page until then. */}
@@ -136,6 +148,7 @@ function ReportRow({ report: r, series, shared, stage, onOpen, onDiscard, onCorr
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="shrink-0 font-mono">{r.id}</span>
           {shared && r.signedBy?.name ? <span className="shrink-0">{r.signedBy.name}</span> : null}
+          <span className="shrink-0 tabular-nums">{day(r.updatedAt)}</span>
           {r.status === "declined" && r.note ? (
             <span className="truncate">{r.note}</span>
           ) : r.status === "live" && r.correction ? (
@@ -152,19 +165,28 @@ function ReportRow({ report: r, series, shared, stage, onOpen, onDiscard, onCorr
           ) : null}
         </div>
       </div>
-      {/* Beside the title; on a narrow screen, a line of their own under the text. */}
+      {/* Beside the title; on a narrow screen, a line of their own under the text. Every row's actions are there to
+          press, each above the row's own hit area: none waits for a pointer. */}
       <div className="flex shrink-0 items-center gap-3 max-sm:basis-full max-sm:justify-between max-sm:ps-12">
         <StatusChip tone={status.tone} icon={status.icon} className="shrink-0">
           {stage === "declined" && r.withdrawnAt ? "Withdrawn" : status.label}
         </StatusChip>
-        <EntryAside meta={day(r.updatedAt)} className="h-7">
-          {onCorrect || onDiscard ? (
-            <>
-              {onCorrect ? <EntryAction label={r.correction ? "See your changes" : "Correct the details"} icon={PenLine} onClick={onCorrect} /> : null}
-              {onDiscard ? <EntryAction label="Discard" icon={Trash2} danger onClick={onDiscard} /> : null}
-            </>
-          ) : null}
-        </EntryAside>
+        {/* Room for the two buttons a row can have, so every row's status ends on the same line. */}
+        <div className="relative z-10 flex min-w-[4.25rem] items-center justify-end gap-1">
+          {onDiscard ? <EntryAction label="Discard" icon={Trash2} danger className="size-8" onClick={onDiscard} /> : null}
+          {onCorrect ? <EntryAction label={r.correction ? "See your changes" : "Correct the details"} icon={PenLine} className={cn("size-8", r.correction && "text-primary")} onClick={onCorrect} /> : null}
+          {r.status === "live" ? (
+            <TooltipHint label={action.label}>
+              <Button asChild variant="ghost" size="icon" className="size-8 text-muted-foreground">
+                <Link href={`/papers/${r.id}`} aria-label={`${action.label}: ${title}`}>
+                  <action.icon className="size-3.5" />
+                </Link>
+              </Button>
+            </TooltipHint>
+          ) : (
+            <EntryAction label={action.label} icon={action.icon} className="size-8" onClick={onOpen} />
+          )}
+        </div>
       </div>
     </Entry>
   );
