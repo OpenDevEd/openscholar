@@ -6736,8 +6736,10 @@
           "confirm": "支払いを確認",
           "change": "変更",
           "addButton": "支払い方法を追加",
-          "stripeFailed": "Stripeのページを開けませんでした"
-        }
+          "stripeFailed": "Stripeのページを開けませんでした",
+          "credit": "クレジット {amount}"
+        },
+        "creditLine": "アカウントのクレジット"
       }
     },
     "meta": {

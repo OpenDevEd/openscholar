@@ -1031,11 +1031,15 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   const card = terms?.card ?? null;
   const pending = terms?.pending ?? null;
   const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
+  // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
+  const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
   // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
   if (paying && !admin) setPaying(false);
   const [code, setCode] = useState<Quote | null>(null);
-  const due = code ? Math.round(code.total * 100) : (price ?? 0);
+  const subtotal = code ? Math.round(code.total * 100) : (price ?? 0);
+  const fromCredit = Math.min(credit, subtotal);
+  const due = subtotal - fromCredit;
   const activateNow = (pay: boolean, withCode?: string) =>
     start(async () => {
       try {
@@ -1045,7 +1049,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       }
     });
   /** Activate's words: the same whether it can be pressed yet or not, so the button keeps its width. */
-  const activateLabel = free || price === null ? t("activate") : t("activation.activateFor", { price: dollars(price) });
+  const activateLabel = free || price === null || price <= credit ? t("activate") : t("activation.activateFor", { price: dollars(price - credit) });
   /** Why Activate can't be pressed yet, for an admin. */
   const waitingFor = pending ? t("activation.waitingBank") : !card ? t("activation.addCardFirst") : !free && price === null ? t("activation.notForSale") : null;
   const head = !report ? (
@@ -1095,7 +1099,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
-              {stage === "ready" && admin && terms ? <PaymentLine organization={organization} free={terms.free.left} card={card} price={price} pending={pending} onAddCard={onAddCard} /> : null}
+              {stage === "ready" && admin && terms ? <PaymentLine organization={organization} free={terms.free.left} card={card} credit={credit} price={price} pending={pending} onAddCard={onAddCard} /> : null}
               <div className="flex flex-wrap justify-end gap-2">
                 {stage === "failed" ? (
                   <>
@@ -1190,12 +1194,14 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
             currentPlan: t("activation.reserved"),
             targetPlan: t("activation.live"),
             targetPlanCreditsPerMonth: 0,
-            lineItems: code
-              ? [
-                  { description: t("activation.activationLine"), amountCents: Math.round(code.price * 100), currency: "USD" },
-                  { description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" },
-                ]
-              : [],
+            lineItems:
+              code || fromCredit > 0
+                ? [
+                    { description: t("activation.activationLine"), amountCents: code ? Math.round(code.price * 100) : (price ?? 0), currency: "USD" },
+                    ...(code ? [{ description: t("activation.codeLine", { code: code.code }), amountCents: -Math.round(code.discount * 100), currency: "USD" }] : []),
+                    ...(fromCredit > 0 ? [{ description: t("activation.creditLine"), amountCents: -fromCredit, currency: "USD" }] : []),
+                  ]
+                : [],
           }}
           extra={onQuote ? <PromoCode applied={code} onApply={setCode} onQuote={onQuote} /> : null}
         />
@@ -1284,7 +1290,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
  * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
  * asked to confirm says so, with the way back to its page.
  */
-function PaymentLine({ organization, free, card, price, pending, onAddCard }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void> }) {
+function PaymentLine({ organization, free, card, credit, price, pending, onAddCard }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void> }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1306,6 +1312,8 @@ function PaymentLine({ organization, free, card, price, pending, onAddCard }: { 
               <StatusChip tone="success" icon={CircleCheck}>
                 {t("free")}
               </StatusChip>
+            ) : credit > 0 ? (
+              <StatusChip tone="neutral">{t("credit", { amount: dollars(credit) })}</StatusChip>
             ) : null}
           </p>
         ) : (

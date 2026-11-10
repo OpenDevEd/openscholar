@@ -6736,8 +6736,10 @@
           "confirm": "Confirm payment",
           "change": "Change",
           "addButton": "Add payment method",
-          "stripeFailed": "Stripe's page couldn't be opened"
-        }
+          "stripeFailed": "Stripe's page couldn't be opened",
+          "credit": "{amount} credit"
+        },
+        "creditLine": "Account credit"
       }
     },
     "meta": {

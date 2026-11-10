@@ -6737,8 +6737,10 @@
           "confirm": "Confirmar pagamento",
           "change": "Alterar",
           "addButton": "Adicionar método de pagamento",
-          "stripeFailed": "Não foi possível abrir a página do Stripe"
-        }
+          "stripeFailed": "Não foi possível abrir a página do Stripe",
+          "credit": "{amount} de crédito"
+        },
+        "creditLine": "Crédito da conta"
       }
     },
     "meta": {

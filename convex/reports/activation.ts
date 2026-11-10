@@ -16,7 +16,8 @@ import { actorValidator, type Actor } from "../workspaces/actor";
 import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnCustomer, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
-import { purchasing, unlessDeclined, voidDeclined } from "../billing/purchases";
+import { purchasing, unlessDeclined } from "../billing/purchases";
+import { voidDeclined } from "../billing/stripeRest";
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
@@ -81,6 +82,8 @@ export const terms = workspaceQuery({
       /** The organisation the report is in; null for a person's own workspace. */
       organization: v.union(v.string(), v.null()),
       card: v.union(cardValidator, v.null()),
+      /** Credit on the workspace's Stripe balance, in US dollars, which a charge is paid from first. */
+      credit: v.number(),
       free: v.object({ perDay: v.number(), left: v.number() }),
       /** The activation plan's price in US dollars; null while Autumn's catalog has no such plan. */
       price: v.union(v.number(), v.null()),
@@ -95,10 +98,12 @@ export const terms = workspaceQuery({
     if (!report || report.workspaceId !== actor.workspaceId) return null;
     const plan = (await readCatalog(ctx))?.plans.find((candidate) => candidate.id === ACTIVATION_PLAN);
     const pending = await pendingOf(ctx, report._id);
+    const account = await readAccount(ctx, actor.workspaceId);
     return {
       admin: actor.role === "admin",
       organization: (await placeOf(ctx, actor.workspaceId)).organization,
-      card: (await readAccount(ctx, actor.workspaceId))?.card ?? null,
+      card: account?.card ?? null,
+      credit: account?.credit ?? 0,
       free: await freeLeft(ctx, actor.workspaceId, now),
       price: plan?.price?.amount ?? null,
       // The bank's page is the payer's: an organisation's members see that it waits, not where to pay (billing/accounts.ts `mine`).
