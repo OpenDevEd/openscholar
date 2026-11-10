@@ -1354,7 +1354,7 @@ function ActivationMockPanel({ organization }: { organization: boolean }) {
       </div>
       <div className="flex items-center gap-2">
         New reports today
-        <Segmented label="New reports today" value={mock.startsUsed ? "used" : "left"} onChange={(v) => mock.set({ startsUsed: v === "used" })} options={[{ id: "left", label: "Some left" }, { id: "used", label: "Used up" }]} />
+        <Segmented label="New reports today" value={mock.startsUsed ? "used" : "left"} onChange={(v) => mock.set({ startsUsed: v === "used" })} options={[{ id: "left", label: "Real count" }, { id: "used", label: "Used up" }]} />
       </div>
       <span>
         Codes{" "}
