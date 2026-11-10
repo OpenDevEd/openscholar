@@ -1,5 +1,6 @@
 "use client";
 
+import { creativeCommons } from "@/lib/papers/licence";
 import { Fragment, useState, type ReactNode } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
@@ -277,7 +278,7 @@ function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetai
   const format = useFormatter();
   const locale = useLocale();
   const date = paper.publication_date ? new Date(`${paper.publication_date}T00:00:00Z`) : null;
-  const license = detail.copies.find((copy) => licenseName(copy.license))?.license;
+  const license = detail.copies.map((copy) => creativeCommons(copy.license)).find(Boolean);
   const language = detail.language && detail.language !== locale.split("-")[0] ? new Intl.DisplayNames([locale], { type: "language" }).of(detail.language) : null;
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -285,15 +286,16 @@ function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetai
       {date || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{date ? format.dateTime(date, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }) : paper.publication_year}</span> : null}
       {paper.type ? <span className={`${CHIP} capitalize`}><FileText aria-hidden className="size-3.5" />{paper.type.replace(/-/g, " ")}</span> : null}
       {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t("openAccess")}</span> : null}
-      {licenseName(license) ? <span className={CHIP}>{licenseName(license)}</span> : null}
+      {license?.url ? (
+        <a href={license.url} target="_blank" rel="noreferrer license" className={`${CHIP} hover:text-foreground`}>{license.name}</a>
+      ) : license ? (
+        <span className={CHIP}>{license.name}</span>
+      ) : null}
       {language ? <span className={CHIP}><Globe aria-hidden className="size-3.5" />{language}</span> : null}
     </div>
   );
 }
 
-/** cc-by-nc-nd as people write it: CC BY-NC-ND. */
-/** A Creative Commons licence as people write it (cc-by-nc-nd: CC BY-NC-ND); null for OpenAlex's other codes (other-oa, implied-oa), which the open access chip already says. */
-const licenseName = (license: string | null | undefined) => (license?.startsWith("cc-") ? `CC ${license.slice(3).toUpperCase()}` : null);
 
 /** The first few authors under the title; the rest are in the Authors part below. */
 function AuthorLine({ detail, fallback }: { detail: PaperDetail; fallback?: string }) {
@@ -453,7 +455,7 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium group-hover:text-primary">{copy.name}</span>
-                  <span className="block text-xs text-muted-foreground">{kind[copy.kind]}{copy.pdf ? <span className="ms-1.5 ink-success">{t("pdf")}</span> : null}{licenseName(copy.license) ? <span className="ms-1.5">{licenseName(copy.license)}</span> : null}</span>
+                  <span className="block text-xs text-muted-foreground">{kind[copy.kind]}{copy.pdf ? <span className="ms-1.5 ink-success">{t("pdf")}</span> : null}{creativeCommons(copy.license) ? <span className="ms-1.5">{creativeCommons(copy.license)!.name}</span> : null}</span>
                 </span>
                 <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
               </a>

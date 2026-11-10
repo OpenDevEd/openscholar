@@ -22,7 +22,7 @@ import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { countryOfPlace } from "@/lib/reports/places";
-import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, RELATION_KINDS, doiIn, isOrcid, linkHref, type Affiliation, type Author, type Metadata } from "@/lib/reports/report";
+import { CREDIT_ROLES, DETAIL_CAPS, DETAIL_TEXT, LICENCE_URL, RELATION_KINDS, doiIn, isOrcid, linkHref, type Affiliation, type Author, type Metadata } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 const LANGUAGE = new Intl.DisplayNames(["en"], { type: "language" });
@@ -380,7 +380,12 @@ export function DetailsStep({
             </Field>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Licence</span>
-              <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">{m.licence}</div>
+              <div className="flex h-9 items-center rounded-md border border-border-subtle bg-inset px-3 text-sm">
+                <a href={LICENCE_URL[m.licence]} target="_blank" rel="noreferrer license" className="inline-flex items-center gap-1.5 underline-offset-2 hover:underline">
+                  {m.licence}
+                  <ExternalLink className="size-3.5 text-muted-foreground" />
+                </a>
+              </div>
             </div>
           </div>
         </Section>
