@@ -16,9 +16,9 @@ import { isVersionOperation } from "./operationKinds";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
 import {
-  CURRENT_OWNER_CONFIGURATION_VERSION,
   type OwnerConfigurationSnapshot,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-version";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import { requireEvidenceLibraryAccess } from "./access";
@@ -45,8 +45,8 @@ import {
   queueDomainChangeOperation,
   queueInternalRuntimeRollbackOperation,
   queueRuntimeUpdateOperation,
-  reissueConfigurationDeploymentOperation,
 } from "./operations";
+import { reissueConfigurationDeploymentOperation } from "./operationState";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
 import { requirePublishRuntime } from "./updates";

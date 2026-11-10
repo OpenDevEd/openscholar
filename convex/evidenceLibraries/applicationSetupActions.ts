@@ -4,7 +4,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
-import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly";
+import { ConfigurationAssemblyError } from "../../lib/evidence-libraries/configuration/assembly-error";
 import { selectedAiModelIds } from "../../lib/evidence-libraries/configuration/ai";
 import { encrypt, getKeyPrefix } from "../lib/crypto";
 import { createError } from "../lib/errors";

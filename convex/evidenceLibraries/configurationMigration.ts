@@ -3,11 +3,11 @@ import { internalQuery, type QueryCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import {
-  CURRENT_OWNER_CONFIGURATION_VERSION,
   LEGACY_FEATURE_KEYS,
   migrateOwnerConfiguration,
   type OwnerConfigurationIssue,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-version";
 import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 import { loadConfigurationSections } from "./configurationSnapshot";
 

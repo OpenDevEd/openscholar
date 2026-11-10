@@ -1,12 +1,12 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import {
-  CURRENT_OWNER_CONFIGURATION_VERSION,
   migrateOwnerConfiguration,
   type OwnerConfigurationMigrationResult,
   type OwnerConfigurationSnapshot,
   type OwnerConfigurationValidationOptions,
 } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-version";
 import { SECTION_REGISTRY } from "../../lib/evidence-libraries/configuration/section-registry";
 import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 import { validateSectionPayload } from "./sectionPayload";

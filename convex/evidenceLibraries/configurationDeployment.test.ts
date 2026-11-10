@@ -12,7 +12,7 @@ import {
   PLATFORM_EMBEDDING_KEY_MISSING_MESSAGE,
 } from "../../lib/evidence-libraries/configuration/ai";
 import { createCoolifyLibraryTag } from "./coolifyClient";
-import { configurationOperationRequiresDeployment } from "./operations";
+import { configurationOperationRequiresDeployment } from "./operationState";
 import {
   createDeployedSetupFixture,
   essentialSetupSections,

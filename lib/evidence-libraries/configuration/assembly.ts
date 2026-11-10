@@ -12,6 +12,7 @@ import {
   validateLibraryConfigStructure,
 } from "./generated-validation";
 import { type SectionKey, isPlatformSection } from "./section-registry";
+import { ConfigurationAssemblyError } from "./assembly-error";
 
 export type ManagedEvidenceLibraryConfiguration = {
   publication?: Record<string, unknown>;
@@ -247,16 +248,6 @@ export type AssembledEvidenceLibraryConfiguration = Record<string, unknown> & {
     secret: string;
   };
 };
-
-export class ConfigurationAssemblyError extends Error {
-  readonly issues: ValidationIssue[];
-
-  constructor(issues: ValidationIssue[]) {
-    super("Evidence Community configuration is invalid");
-    this.name = "ConfigurationAssemblyError";
-    this.issues = issues;
-  }
-}
 
 type JsonSchemaNode = {
   default?: unknown;

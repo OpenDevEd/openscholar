@@ -15,7 +15,7 @@ import {
 } from "../lib/functions";
 import { v } from "convex/values";
 import { validateOwnerSections } from "../../lib/evidence-libraries/configuration/owner-rules";
-import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "../../lib/evidence-libraries/configuration/owner-configuration-version";
 import { isPlatformMailConfigured } from "./platformMail";
 import { createError } from "../lib/errors";
 import {
@@ -46,7 +46,7 @@ import {
   sanitizeOperationError,
   validateOperationReceipt,
   configurationOperationRequiresDeployment,
-} from "./operations";
+} from "./operationState";
 import { readRevisionDefaultLocale } from "./revisionConfiguration";
 import {
   AUTHENTICATION_SECRET_PATH,
@@ -73,10 +73,10 @@ import {
   isCurrentConfigurationDeploymentTarget,
   isRetryableConfigurationDeployment,
   readActiveOperations,
-} from "./operations";
+} from "./operationState";
 import { refuseApps } from "../lib/auth";
 
-export { isConfigurationDeploymentOperation } from "./operations";
+export { isConfigurationDeploymentOperation } from "./operationState";
 
 export const CONFIGURATION_DEPLOYMENT_LEASE_MS = 20 * 60 * 1_000;
 const CONFIGURATION_DEPLOYMENT_POLL_DELAY_MS = 5_000;

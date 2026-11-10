@@ -14,7 +14,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 14 as const;
+import { CURRENT_OWNER_CONFIGURATION_VERSION } from "./owner-configuration-version";
 const MAX_CHANGED_POINTERS = 100;
 
 type OwnerConfigurationSnapshotRow = {
