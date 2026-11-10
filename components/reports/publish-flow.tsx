@@ -126,7 +126,13 @@ export function PublishFlow() {
   const { data: starts } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
   // The report shown is the one the address names; with none named, the only one under way.
   const listed = view === "reports" || (asked === null && (counts?.underWay ?? 0) > 1);
-  const shownKey = listed ? null : (asked ?? counts?.only ?? "new");
+  // Opened with no report named, the page stays on the one it opened when that one stops being under way: activated
+  // here, or declined by a reviewer meanwhile, it shows where it stands now and never gives way to a new report's
+  // agreement. The list, or a report that is gone, lets go of it.
+  const only = counts?.only ?? null;
+  const [held, setHeld] = useState<string | null>(null);
+  if (listed ? held !== null : asked === null && only !== null && held !== only) setHeld(listed ? null : only);
+  const shownKey = listed ? null : (asked ?? only ?? held ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   const { data: list } = useProtectedQuery(api.reports.flow.page, listed ? inWorkspace(workspaceId, { page, ...(stageShown(show) && { show: stageShown(show) }) }) : "skip");
   // A list page keeps showing while the next one is read, so paging never empties the card.
@@ -138,11 +144,18 @@ export function PublishFlow() {
   // any other way is already settled.
   const [fresh, setFresh] = useState<{ key: string; step: "doi" | "live" } | null>(null);
   if (listed && fresh) setFresh(null);
+  // The report signed on this page keeps the screens it was signed on, so its agreement gives way to its DOI in one
+  // movement. Any other report gets screens of its own.
+  const [signedHere, setSignedHere] = useState<string | null>(null);
+  // Just signed, its report is still on its way: the agreement stays up until it is here, and the page never falls
+  // back to its loading frame in between (that would start the screens anew, and the DOI's moment with them).
+  const arriving = !listed && found === undefined && fresh?.step === "doi" && fresh.key === shownKey;
+  if (held !== null && shownKey === held && found !== undefined && !(found && "report" in found)) setHeld(null);
 
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
-  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined)));
+  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined || arriving)));
   // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
@@ -162,7 +175,7 @@ export function PublishFlow() {
   // A step the report is sent to is its own from then on, whatever the address said before.
   const ownStep = () => void (at && setPlace({ step: null }));
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
-  const missing = !listed && shownKey !== "new" && !report;
+  const missing = !listed && shownKey !== "new" && !report && !arriving;
   const another = () => {
     setFresh(null);
     go({ view: null, report: "new", correct: null });
@@ -265,7 +278,8 @@ export function PublishFlow() {
             </p>
           ) : null}
           <Screens
-            key={report?.key ?? "new"}
+            key={report && report.key !== signedHere ? report.key : "here"}
+            signed={arriving ? fresh.key : null}
             basics={basics}
             report={report}
             starts={starts ?? null}
@@ -273,16 +287,26 @@ export function PublishFlow() {
             workspaceId={workspaceId}
             fresh={fresh}
             setFresh={setFresh}
-            onSigned={(key) => void setPlace({ report: key })}
+            onSigned={(key) => {
+              setSignedHere(key);
+              void setPlace({ report: key });
+            }}
             onAnother={another}
             correcting={correct}
-            onUpload={() => go({ step: "upload" })}
+            onUpload={() => {
+              // The DOI's moment has played: coming back to it finds it settled.
+              setFresh(null);
+              go({ step: "upload" });
+            }}
             // With its PDF the report moves on by itself, to its reading and then its details, so the upload's step
             // in the history is taken back: Back from the details then leaves the report, and never lands on a
             // step that shows the same screen again.
             onAttached={() => at && up("step")}
             onStep={ownStep}
-            onCorrect={() => go({ correct: true })}
+            onCorrect={() => {
+              setFresh(null);
+              go({ correct: true });
+            }}
             onCorrected={() => up("correct")}
           />
           <ReportCover basics={basics} report={report} />
@@ -293,7 +317,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -342,6 +366,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               shared={shared}
               starts={starts}
               workspaceId={workspaceId}
+              signed={signed}
               onSigned={(key) => {
                 setFresh({ key, step: "doi" });
                 // In place of the unsigned page, so going back never lands on an agreement that starts a second report.
@@ -434,7 +459,18 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               rows={(report.results ?? []).map((result) => ({ id: result.checkId, name: result.name, result }))}
               report={report}
               humanReview={basics.humanReview}
-              onActivate={() => activate({ ...here, key: report.key }).then(() => setFresh({ key: report.key, step: "live" }))}
+              // Said before the report answers: it turns live ahead of this call's own answer, and the live screen
+              // plays its moment only if it opens knowing the report was activated here.
+              onActivate={() => {
+                setFresh({ key: report.key, step: "live" });
+                return activate({ ...here, key: report.key }).then(
+                  () => undefined,
+                  (error: unknown) => {
+                    setFresh(null);
+                    throw error;
+                  },
+                );
+              }}
               onFix={() => back("upload")}
               onDetails={() => back("details")}
               onRequestReview={(comment) => requestReview({ ...here, key: report.key, comment }).then(() => undefined)}
@@ -519,7 +555,7 @@ function StepHead({ title, aside, children }: { title: string; aside?: ReactNode
   );
 }
 
-function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; onSigned: (key: string) => void }) {
+function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }: { basics: Basics; shared: boolean; /** The workspace's day; null signed out. */ starts: Starts | null; workspaceId: Id<"workspaces"> | undefined; /** The report this signing just made, until its screen opens: the step waits for it as it waited for the signing. */ signed: string | null; onSigned: (key: string) => void }) {
   const { openSignIn } = useClerk();
   const { user } = useUser();
   const sign = useMutation(api.reports.flow.sign);
@@ -562,7 +598,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
           <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
           <span>I agree to this agreement</span>
         </label>
-        {starts?.untouched ? (
+        {starts?.untouched && starts.untouched !== signed ? (
           // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
           <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
             <span className="min-w-0 flex-1 basis-56">
@@ -595,7 +631,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
         {starts ? (
           <Button
             className="relative"
-            disabled={!agreed || !name.trim() || busy || !!blocked || !workspaceId}
+            disabled={!agreed || !name.trim() || busy || !!signed || !!blocked || !workspaceId}
             onClick={() =>
               start(async () => {
                 try {
@@ -606,7 +642,7 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
               })
             }
           >
-            <Working busy={busy}>
+            <Working busy={busy || !!signed}>
               <span className="flex items-center gap-2">
                 <PenLine /> Sign and reserve a DOI
               </span>
