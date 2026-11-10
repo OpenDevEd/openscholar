@@ -367,7 +367,8 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               // Changes a broken run never finished checking come first: the ones typed here, or after a reload the ones the run was given.
               initial={attempt ?? report.trying ?? report.correction?.metadata ?? report.metadata}
               resend={!!attempt || !!report.trying || !!report.correction}
-              version={report.correctedAt ?? report.activatedAt}
+              // What the form shows: the changes that wait, else the report's details as they were last set.
+              version={report.correction?.at ?? report.correctedAt ?? report.activatedAt}
               // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
               waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
               onTouched={() => setTyping(true)}

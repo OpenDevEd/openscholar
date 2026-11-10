@@ -10,7 +10,7 @@ import { bylineOf } from "../../lib/reports/settings";
 import { OWNERS_ONLY, detailsOf, keptDetails, mayChange, touch } from "./flow";
 import { RUN_STUCK_MS, changeStageOf, stageOf } from "../../lib/reports/report";
 import { notify } from "./mail";
-import { SAME_PDF_ADVICE, applyChanges, liveSince } from "./corrections";
+import { SAME_PDF_ADVICE, applyChanges, formVersion } from "./corrections";
 import { reportSettings, settingsRow } from "./settings";
 import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, metadataValidator, runFromValidator } from "./validators";
 
@@ -49,9 +49,10 @@ export const start = internalMutation({
     if (changes) {
       // A live report stays as it is while the checks read the corrected details: only the run is marked on it.
       if (report.status !== "live" || report.step !== "done") throw createError("CONFLICT", "This report isn't live any more, so its details can't be changed.");
-      // The changes were made from the details as they stood when the form opened. Ones made live since, from another
-      // tab or by a reviewer, would be undone by sending the whole form over them.
-      if (liveSince(report) !== from.changesSince) throw createError("CONFLICT", "This report's details changed since you opened this form. Open it again to start from them.");
+      // The changes were made from what the form showed when it opened: the report's details, or changes already
+      // waiting. Ones made live since, or sent to wait since, from another tab or by a reviewer, would be undone by
+      // sending the whole form over them.
+      if (formVersion(report, details) !== from.changesSince) throw createError("CONFLICT", "This report's details changed since you opened this form. Open it again to start from them.");
       // One set of changes is checked at a time: a second sent meanwhile, as from another tab, would replace the
       // first without a word to whoever sent it. A run that has gone on too long is given up on, as the page does.
       if (report.run?.changes && Date.now() - report.run.at < RUN_STUCK_MS) throw createError("CONFLICT", "Changes to this report are being checked right now. Send yours once they are done.");

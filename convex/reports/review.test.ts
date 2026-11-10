@@ -13,11 +13,18 @@ const reviewed = async (world: World, key: string) => (await world.reviewer.quer
 /** Changes to a live report run through the checks, each answering as given. */
 async function change(world: World, key: string, title: string, results: Array<ReturnType<typeof passed> & { fix?: string }> = [passed("byline"), passed("harm")], who = world.author, workspaceId = world.own) {
   const report = await row(world.t, key);
-  const started = await who.mutation(internal.reports.checkRuns.start, { workspaceId, key, metadata: details(title), runId: `run-${title}`, from: { changesSince: report.correctedAt ?? report.activatedAt! } });
+  const started = await who.mutation(internal.reports.checkRuns.start, { workspaceId, key, metadata: details(title), runId: `run-${title}`, from: { changesSince: await openedOn(world, key) } });
   if ("unchanged" in started) return started;
   await world.t.mutation(internal.reports.checkRuns.finish, { reportId: report._id, runId: `run-${title}`, results, version: 1, metadata: details(title) });
   return started;
 }
+
+/** What a form of changes opened now would be opened on: the changes that wait, else the live details. */
+const openedOn = async (world: World, key: string) => {
+  const report = await row(world.t, key);
+  const details = await world.t.run((ctx) => ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).unique());
+  return details!.correction?.at ?? report.correctedAt ?? report.activatedAt!;
+};
 
 describe("reviewing", () => {
   it("is Openscholar's admins' alone", async () => {
@@ -218,7 +225,7 @@ describe("changes to a live report", () => {
     const first = (await read(world.author, world.own, key)).correction!.at;
     // A second set is being checked when a reviewer approves the first: the run ends there, and its late answer changes nothing.
     const report = await row(world.t, key);
-    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Second"), runId: "run-second", from: { changesSince: report.correctedAt ?? report.activatedAt! } });
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Second"), runId: "run-second", from: { changesSince: await openedOn(world, key) } });
     expect(await read(world.author, world.own, key)).toMatchObject({ trying: { title: "Second" } });
     await world.reviewer.mutation(api.reports.review.decideChanges, { key, decision: "approve", seenAt: first });
     expect(await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-second", results: [passed("byline")], version: 1, metadata: details("Second") })).toBeNull();
@@ -226,6 +233,20 @@ describe("changes to a live report", () => {
     expect(after).toMatchObject({ metadata: { title: "First" } });
     expect(after.run).toBeUndefined();
     expect(after.trying).toBeUndefined();
+  });
+
+  it("sent from a form opened before other changes were sent to wait are refused, and those stay as they were", async () => {
+    const world = await setup();
+    const { key } = await live(world);
+    await setReview(world, true);
+    // The second tab's form was opened on the live details, before the first tab's changes went to wait.
+    const opened = await openedOn(world, key);
+    await change(world, key, "From the first tab");
+    await expect(world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("From the second tab"), runId: "second-tab", from: { changesSince: opened } })).rejects.toMatchObject(refused("CONFLICT"));
+    expect(await read(world.author, world.own, key)).toMatchObject({ changes: "review", correction: { metadata: { title: "From the first tab" } } });
+    // Opened on the waiting changes, a form may replace them: that is editing them.
+    await change(world, key, "Edited while waiting");
+    expect(await read(world.author, world.own, key)).toMatchObject({ correction: { metadata: { title: "Edited while waiting" } } });
   });
 
   it("are checked one set at a time: a second sent while the first runs is refused, not put in its place", async () => {
