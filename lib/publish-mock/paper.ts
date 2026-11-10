@@ -12,7 +12,7 @@ export async function readReportMetadata(key: string) {
   const report = state.submissions.find((s) => s.id === key && s.status === "live");
   if (!report?.metadata) return null;
   const { userId } = await auth();
-  return { m: report.metadata, cover: coverUrlOf(report), mine: userId !== null && (report.demo === true || report.ownerId === userId) };
+  return { m: report.metadata, cover: coverUrlOf(report), mine: userId !== null && (report.demo === true || report.ownerId === userId), waiting: !!report.correction };
 }
 
 /** A withdrawn report by its key, for the page its address and DOI keep leading to; null for any other. */

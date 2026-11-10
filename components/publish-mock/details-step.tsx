@@ -204,12 +204,18 @@ export function DetailsStep({
   onRun,
   onSave,
   onCancel,
+  resend = false,
+  waits = false,
 }: {
   initial: Metadata;
   onRun: (m: Metadata) => Promise<void>;
   onSave?: (m: Metadata) => void;
   /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
   onCancel?: () => void;
+  /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
+  resend?: boolean;
+  /** A reviewer approves this report's changes before they go live, whatever the checks say. */
+  waits?: boolean;
 }) {
   const [m, setM] = useState(initial);
   // Corrections are saved a moment after the last change, so leaving the step loses nothing. A timer, cleared when
@@ -261,7 +267,9 @@ export function DetailsStep({
           {onCancel ? null : <AiIcon className="size-4 text-primary" />}
         </div>
         {onCancel ? (
-          <p className="max-w-xl text-sm text-muted-foreground">Your report stays live as it is while the checks read your changes. They show once the checks pass. The PDF stays the same.</p>
+          <p className="max-w-xl text-sm text-muted-foreground">{waits
+              ? "Your changes are checked, then a reviewer approves them before they go live. Your report stays live as it is until then. The PDF stays the same."
+              : "Your report stays live as it is while your changes are checked. They go live when every check passes. The PDF stays the same."}</p>
         ) : (
           <p className="max-w-xl text-sm text-muted-foreground">Filled in from your PDF. Correct anything that&apos;s wrong and add what&apos;s missing: the report&apos;s page shows all of it, and Crossref gets its part.</p>
         )}
@@ -526,8 +534,8 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || (!!onCancel && m === initial)} onClick={() => void onRun(m)}>
-          <ShieldCheck /> {onCancel ? "Check and publish the changes" : "Run the checks"}
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || (!!onCancel && !resend && m === initial)} onClick={() => void onRun(m)}>
+          <ShieldCheck /> {onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
         </Button>
       </div>
     </div>

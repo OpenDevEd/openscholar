@@ -130,13 +130,14 @@ export function ReportSide({ m }: { m: Metadata }) {
   );
 }
 
-/** On a report's own page, for its author: the way to correct its details, which opens them on the Publish page. */
-export function CorrectReport({ id }: { id: string }) {
+/** On a report's own page, for its author: the way to correct its details, which opens them on the Publish page.
+ * With changes already waiting, it opens where they stand. */
+export function CorrectReport({ id, waiting }: { id: string; waiting: boolean }) {
   return (
     <Button size="sm" variant="outline" className={BAR_ACTION} asChild>
-      <Link href={`/publish?correct=${id}`}>
+      <Link href={waiting ? `/publish?report=${id}` : `/publish?report=${id}&correct=true`}>
         <PenLine aria-hidden />
-        <span className={BAR_LABEL}>Correct the details</span>
+        <span className={BAR_LABEL}>{waiting ? "See your changes" : "Correct the details"}</span>
       </Link>
     </Button>
   );

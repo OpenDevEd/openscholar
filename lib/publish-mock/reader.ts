@@ -182,7 +182,8 @@ export async function readDetails({ pdf, text, fileName, ownDoi, model }: { pdf:
         corresponding: a.corresponding,
         roles: a.roles,
       })),
-    abstract: read.abstract.trim(),
+    // A PDF breaks a paragraph into lines; a paragraph here is one line, as the report's page shows it.
+    abstract: read.abstract.trim().replace(/[ \t]*\n[ \t]*/g, "\n").replace(/(?<!\n)\n(?!\n)/g, " ").replace(/\n{2,}/g, "\n\n"),
     topics: classified.topics,
     // The PDF's own keywords; when it lists none, the classifier's.
     keywords: read.keywords.length ? read.keywords.map((k) => k.trim()).filter(Boolean) : classified.keywords,

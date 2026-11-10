@@ -231,7 +231,7 @@ async function seedSubmission(settings: Settings, n: number): Promise<Submission
 
 async function seed(): Promise<MockState> {
   const settings = await seedSettings();
-  const state: MockState = { settings, submissions: await Promise.all(TITLES.map((_, n) => seedSubmission(settings, n))), drafts: {}, checkVersions: { "3": settings.checks } };
+  const state: MockState = { settings, submissions: await Promise.all(TITLES.map((_, n) => seedSubmission(settings, n))), checkVersions: { "3": settings.checks } };
   // The sample whose registration was refused told the team's inbox, as a real refusal would.
   for (const report of state.submissions) if (report.deposit === "failed" || report.archive === "failed") mail(state, "registration-refused", report, "");
   return state;

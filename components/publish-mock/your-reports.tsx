@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2 } from "@/components/icons";
 import { standingOf, stepWords } from "@/components/publish-mock/registration";
-import { stageOf, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { canDiscard, correctionStageOf, stageOf, type CorrectionStage, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const PER_PAGE = 8;
@@ -29,6 +29,8 @@ const STATUS: Record<Stage, { label: string; tone: "neutral" | "running" | "succ
   failed: { label: "Failed checks", tone: "danger", icon: CircleX },
   declined: { label: "Declined", tone: "neutral", icon: CircleX },
 };
+const EMPTY: Record<Show, string> = { all: "No reports yet", draft: "No drafts", review: "No reports in review", ready: "No reports ready to activate", live: "No live reports", failed: "No reports that failed their checks", declined: "No declined reports" };
+const CHANGES: Record<CorrectionStage, string> = { review: "Changes in review", failed: "Changes not published", declined: "Changes declined" };
 const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 export const SHOWS = ["all", "draft", "review", "ready", "live", "failed", "declined"] as const;
@@ -56,18 +58,11 @@ export function StatusFilter({ reports, settings, show, onShow }: { reports: Sub
   );
 }
 
-export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard, onCorrect }: { reports: Submission[]; settings: Settings; show: Show; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void>; onCorrect: (id: string) => void }) {
+export function YourReports({ reports, settings, show, page, onPage, onOpen, onNew, onDiscard, onCorrect }: { reports: Submission[]; settings: Settings; show: Show; /** The list's page, kept in the address with its filter. */ page: number; onPage: (page: number) => void; onOpen: (id: string) => void; onNew: () => void; onDiscard: (id: string) => Promise<void>; onCorrect: (id: string) => void }) {
   // The report being discarded, asked about once before it goes.
   const [discarding, setDiscarding] = useState<Submission | null>(null);
-  const [page, setPage] = useState(1);
-  // A new filter starts at its first page.
-  const [shownFor, setShownFor] = useState(show);
-  if (shownFor !== show) {
-    setShownFor(show);
-    setPage(1);
-  }
   const listed = reports.filter((r) => show === "all" || stageOf(r, settings) === show);
-  const pager = pagerOf(listed.length, PER_PAGE, page, setPage);
+  const pager = pagerOf(listed.length, PER_PAGE, page, onPage);
   const shown = listed.slice((pager.page - 1) * PER_PAGE, pager.page * PER_PAGE);
 
   return (
@@ -76,7 +71,7 @@ export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard,
         <Paged pager={pager} rowHeight={ROW} label="reports">
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-xl border border-border-subtle">
             {shown.map((r) => (
-              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={r.status === "draft" && !r.demo ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
+              <ReportRow key={r.id} report={r} stage={stageOf(r, settings)} onOpen={() => onOpen(r.id)} onDiscard={canDiscard(r) ? () => setDiscarding(r) : undefined} onCorrect={r.status === "live" ? () => onCorrect(r.id) : undefined} />
             ))}
           </ul>
         </Paged>
@@ -92,14 +87,14 @@ export function YourReports({ reports, settings, show, onOpen, onNew, onDiscard,
             ) : undefined
           }
         >
-          {show === "all" ? "No reports yet" : `No reports ${SHOW_LABEL[show].toLowerCase()}`}
+          {EMPTY[show]}
         </ListEmpty>
       )}
       <AlertDialog open={!!discarding} onOpenChange={(open) => !open && setDiscarding(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Discard this report?</AlertDialogTitle>
-            <AlertDialogDescription>Its PDF and its reserved DOI are given up. It still counts as one of the reports you started today.</AlertDialogDescription>
+            <AlertDialogDescription>Its PDF and its reserved DOI are given up for good. It still counts as one of the reports you started today.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep it</AlertDialogCancel>
@@ -124,13 +119,13 @@ function ReportRow({ report: r, stage, onOpen, onDiscard, onCorrect }: { report:
   const action =
     r.status === "live"
       ? { label: "Open its page", icon: ArrowUpRight }
-      : r.status === "failed"
-        ? { label: "Upload a new PDF", icon: RotateCcw }
-        : r.status === "draft"
+      : stage === "ready"
+        ? { label: "Activate it", icon: ArrowRight }
+        : stage === "draft"
           ? { label: "Carry on", icon: ArrowRight }
-          : stage === "ready"
-            ? { label: "Activate it", icon: ArrowRight }
-          : { label: "Open", icon: FileText };
+          : stage === "failed"
+            ? { label: "See what failed", icon: RotateCcw }
+            : { label: "Open", icon: FileText };
   const open =
     r.status === "live" ? (
       <Button asChild variant="ghost" size="icon-sm" className="text-muted-foreground">
@@ -168,8 +163,16 @@ function ReportRow({ report: r, stage, onOpen, onDiscard, onCorrect }: { report:
             </TooltipHint>
           ) : (
             <>
-              <span className="shrink-0 tabular-nums">{day(r.updatedAt)}</span>
-              {r.status === "live" ? (
+              {/* Where there's no room for the status chip, the row says it here in place of the date. */}
+              <span className="shrink-0 @md/reports:hidden">{stage === "declined" && r.withdrawnAt ? "Withdrawn" : status.label}</span>
+              <span className="hidden shrink-0 tabular-nums @md/reports:inline">{day(r.updatedAt)}</span>
+              {r.status === "live" && r.correction ? (
+                // Changes that haven't gone live say where they stand, in place of the registrations.
+                <span className="flex min-w-0 items-center gap-1">
+                  <PenLine className="size-3 shrink-0" />
+                  <span className="truncate">{CHANGES[correctionStageOf(r, r.correction)]}</span>
+                </span>
+              ) : r.status === "live" ? (
                 <span className="flex min-w-0 items-center gap-1">
                   <Hash className="size-3 shrink-0" />
                   <span className="truncate">{stepWords(standingOf(r))}</span>
@@ -190,8 +193,8 @@ function ReportRow({ report: r, stage, onOpen, onDiscard, onCorrect }: { report:
         </TooltipHint>
       ) : null}
       {onCorrect ? (
-        <TooltipHint label="Correct the details">
-          <Button variant="ghost" size="icon-sm" aria-label={`Correct the details: ${title}`} className="text-muted-foreground" onClick={onCorrect}>
+        <TooltipHint label={r.correction ? "See your changes" : "Correct the details"}>
+          <Button variant="ghost" size="icon-sm" aria-label={`${r.correction ? "See your changes" : "Correct the details"}: ${title}`} className={r.correction ? "text-primary" : "text-muted-foreground"} onClick={onCorrect}>
             <PenLine />
           </Button>
         </TooltipHint>

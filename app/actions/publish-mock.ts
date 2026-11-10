@@ -6,31 +6,51 @@ import { cookies, headers } from "next/headers";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { extractPdfJsTextPages } from "@/convex/extraction/pdfjs_extract";
 import { accountOf, accountsMatching, organizationsOf, requireAdmin } from "@/lib/publish-mock/admin";
+import { applyCorrection } from "@/lib/publish-mock/checks";
 import { mail, type MailEvent } from "@/lib/publish-mock/emails";
 import { readDetails } from "@/lib/publish-mock/reader";
 import type { PublicationSecrets, PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
 import { renderCover } from "@/lib/publish-mock/cover";
 import { CROSSREF_SANDBOX, MOCK_DIR, changeState, coverPath, nextKey, pdfPath, readState, textPath } from "@/lib/publish-mock/store";
-import { REVIEW_TEXT_MAX, canPublish, isMetadata, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type LimitOverride, type Metadata, type Review, type MockState, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { SITE_URL } from "@/lib/seo/page-metadata";
+import { REVIEW_TEXT_MAX, canDiscard, canPublish, canRegister, correctionStageOf, isMetadata, limitFor, startsLeft, doiOf, providersOf, registrationOf, stageOf, stepsOf, type Check, type Correction, type LimitOverride, type Metadata, type Review, type MockState, type Refused, type Settings, type Stage, type Step, type Submission } from "@/lib/publish-mock/types";
 
 /** The rail reads this to leave Publish out while the admin page has it off. */
 const OFF_COOKIE = "os-publish-off";
 
 const change = changeState;
 
-/** Who is acting. Each person has a report of their own open, so every step needs to know whose it is. */
+/**
+ * Something that can't be done, in words for the person who tried. A built server hides what an action throws and
+ * sends a digest in its place, so every action hands a refusal back as a value (`answered`) and the page says it.
+ */
+class Refusal extends Error {}
+const refuse = (words: string): never => {
+  throw new Refusal(words);
+};
+async function answered<T>(run: () => Promise<T>): Promise<T | Refused> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof Refusal) return { refused: error.message };
+    throw error;
+  }
+}
+/** What a refusal says when the report moved on in another tab or under a reviewer's hand. */
+const MOVED_ON = "This report has moved on since this page loaded. Reload to see where it stands.";
+
+/** Where an email's links start: the address this request came to, or the site's own when it names none. */
+const here = async () => (await headers()).get("origin") ?? SITE_URL;
+
+/** Who is acting. Several reports can be under way at once, so every step also says which report it means. */
 async function me() {
   const { userId } = await auth();
-  if (!userId) throw new Error("Sign in to publish.");
-  return userId;
+  return userId ?? refuse("Sign in to publish.");
 }
 
-/** One of this person's reports, by its key. Several can be under way at once, so each step says which it means:
- * the one on the screen it came from, whichever is open elsewhere. */
+/** One of this person's reports, by its key: the one on the screen the step came from, whichever is open elsewhere. */
 function reportOf(state: MockState, id: string, userId: string) {
-  const report = state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId));
-  if (!report) throw new Error("No such report of yours.");
-  return report;
+  return state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId)) ?? refuse("This report isn't one of yours, or it was discarded.");
 }
 
 function touch(submission: Submission, patch: Partial<Submission>) {
@@ -38,59 +58,54 @@ function touch(submission: Submission, patch: Partial<Submission>) {
   return submission;
 }
 
-/** The report this person is publishing, made when they have none open: signing the agreement starts one. */
-function openDraft(state: MockState, userId: string) {
-  const open = state.submissions.find((s) => s.id === state.drafts[userId]);
-  if (open && open.step !== "done") return open;
-  const id = nextKey(state);
-  const draft: Submission = { id, ownerId: userId, doi: doiOf(state.settings, id), step: "agreement", status: "draft", deposit: "none", archive: "none", createdAt: Date.now(), updatedAt: Date.now() };
-  state.submissions.unshift(draft);
-  state.drafts[userId] = id;
-  return draft;
-}
-
 /**
- * Signs the agreement, which starts the person's report and reserves its DOI. A person may start only so many a
- * day (`limitFor`): past that the signing is refused, in words, since a built server hides what an action throws.
+ * Signs the agreement, which starts a report of the person's and reserves its DOI. Each signing starts one, and a
+ * person may start only so many a day (`limitFor`). `version` is the agreement the person read: one changed since
+ * is read again before it's signed.
  */
-export async function signAgreement({ name, onBehalfOfAll }: { name: string; onBehalfOfAll: boolean }): Promise<{ draft: Submission } | { refused: string }> {
+export async function signAgreement({ name, onBehalfOfAll, version }: { name: string; onBehalfOfAll: boolean; version: number }): Promise<{ draft: Submission } | Refused> {
   const user = await currentUser();
   if (!user) return { refused: "Sign in to publish." };
   const orgIds = await organizationsOf(user.id);
   return change((state) => {
     if (!canPublish(state.settings)) return { refused: "Publishing is off for now." };
-    const open = state.submissions.find((s) => s.id === state.drafts[user.id]);
-    const starting = !open || open.step === "done";
-    if (starting && startsLeft(state, user.id, orgIds) < 1) {
+    if (version !== state.settings.agreement.version) return { refused: "The agreement changed while you were reading it. Reload to read the new one." };
+    if (startsLeft(state, user.id, orgIds) < 1) {
       const perDay = limitFor(state.settings, user.id, orgIds);
       return { refused: perDay === 0 ? "Publishing isn't open to your account yet." : `You can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.` };
     }
-    const registration = registrationOf(state.settings);
-    const draft = openDraft(state, user.id);
-    // Signed once: a second signing, say from a tab left open, never moves a reserved DOI or its route.
-    if (draft.step !== "agreement") return { draft };
     // Counted where it can't be undone: a report discarded later still used one of the day's starts.
-    if (starting) state.started = { ...state.started, [user.id]: [...(state.started?.[user.id] ?? []).filter((at) => Date.now() - at < 24 * 60 * 60 * 1000), Date.now()] };
-    touch(draft, {
+    state.started = { ...state.started, [user.id]: [...(state.started?.[user.id] ?? []).filter((at) => Date.now() - at < 24 * 60 * 60 * 1000), Date.now()] };
+    const id = nextKey(state);
+    const registration = registrationOf(state.settings);
+    const draft: Submission = {
+      id,
+      ownerId: user.id,
       signedBy: { name: name.trim(), email: user.primaryEmailAddress?.emailAddress ?? "", onBehalfOfAll },
       signedAt: Date.now(),
-      agreementVersion: state.settings.agreement.version,
+      agreementVersion: version,
       // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
       // the report registers is fixed with it. With Zenodo on, Zenodo holds a draft for the file from here, as for
       // a community's record.
-      doi: doiOf(state.settings, draft.id),
+      doi: doiOf(state.settings, id),
       registration,
       archive: registration.zenodo ? "draft" : "none",
+      deposit: "none",
       step: "doi",
-    });
+      status: "draft",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    state.submissions.unshift(draft);
     return { draft };
   });
 }
 
-/** The author's corrections, kept as they make them, so leaving the details step loses nothing. */
+/** The author's corrections, kept as they make them, so leaving the details step loses nothing. A title being
+ * retyped is kept empty; the checks are what need one. */
 export async function saveDetails(id: string, metadata: unknown) {
-  const userId = await me();
-  if (!isMetadata(metadata)) throw new Error("The report's details are missing.");
+  const { userId } = await auth();
+  if (!userId || !isMetadata(metadata, { titled: false })) return;
   await change((state) => {
     const draft = state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId));
     // Only while the details are being corrected: a save that arrives after the checks started changes nothing.
@@ -98,65 +113,73 @@ export async function saveDetails(id: string, metadata: unknown) {
   });
 }
 
-/** Gives up a report that was never checked: it, its PDF and its reserved DOI are gone. The day's start it used stays used. */
-export async function discardReport(id: string) {
-  const userId = await me();
-  await change(async (state) => {
-    const report = state.submissions.find((s) => s.id === id && s.ownerId === userId);
-    if (!report) throw new Error("No such report of yours.");
-    if (report.status !== "draft") throw new Error("Only a report that hasn't been checked can be discarded.");
-    state.submissions = state.submissions.filter((s) => s !== report);
-    if (state.drafts[userId] === id) delete state.drafts[userId];
-    await Promise.all([pdfPath(id), coverPath(id), textPath(id)].map((file) => rm(file, { force: true })));
+/** Gives up a report that never went live and no reviewer approved: it, its PDF and its reserved DOI are gone. The
+ * day's start it used stays used. */
+export async function discardReport(id: string): Promise<null | Refused> {
+  return answered(async () => {
+    const userId = await me();
+    return change(async (state) => {
+      const report = reportOf(state, id, userId);
+      if (!canDiscard(report)) refuse("Only a report that isn't approved or live can be discarded.");
+      state.submissions = state.submissions.filter((s) => s !== report);
+      await Promise.all([pdfPath(id), coverPath(id), textPath(id)].map((file) => rm(file, { force: true })));
+      return null;
+    });
   });
 }
 
-/** Back to a step already done, or on to the next one the report is ready for. */
-export async function goTo(id: string, step: Step) {
-  const userId = await me();
-  return change((state) => {
-    const draft = reportOf(state, id, userId);
-    // A report past its checks goes back only to replace a PDF that failed them: one that passed or is live stays as checked.
-    if (draft.step === "done" && draft.status !== "failed") throw new Error("This report has been checked. Start another to publish a new PDF.");
-    return touch(draft, { step });
+/** Back to a step already done, or on from the DOI to the upload. A report past its checks goes back only to
+ * replace a PDF that failed them; its details open again once that PDF has been read. */
+export async function goTo(id: string, step: Step): Promise<Submission | Refused> {
+  return answered(async () => {
+    const userId = await me();
+    return change((state) => {
+      const draft = reportOf(state, id, userId);
+      const checked = draft.step === "done";
+      if (checked && stageOf(draft, state.settings) !== "failed") refuse(MOVED_ON);
+      if (!(step === "doi" || step === "upload" || (step === "details" && !checked && !!draft.metadata))) refuse("That step isn't open for this report yet.");
+      return touch(draft, { step });
+    });
   });
 }
 
 /** The PDF, kept with the report with its text and a picture of its first page. Its details are read next (`readPdfDetails`). */
-export async function uploadPdf(form: FormData) {
-  const file = form.get("pdf");
-  const id = form.get("id");
-  if (typeof id !== "string" || !(file instanceof File) || !/\.pdf$/i.test(file.name)) throw new Error("Choose a PDF.");
-  const bytes = await file.arrayBuffer();
-  // pdfjs takes its buffer over, so each reader gets a copy and the original is kept.
-  // The text and the cover are read side by side. A first page that can't be drawn leaves the report its title page.
-  const userId = await me();
-  const origin = (await headers()).get("origin") ?? "";
-  const opened = await Promise.all([
-    extractPdfJsTextPages(bytes.slice(0)),
-    renderCover(bytes.slice(0)).catch((error: unknown) => {
-      console.error("[publish mock] cover not drawn", String(error));
+export async function uploadPdf(form: FormData): Promise<Submission | Refused> {
+  return answered(async () => {
+    const file = form.get("pdf");
+    const id = form.get("id");
+    if (typeof id !== "string" || !(file instanceof File) || !/\.pdf$/i.test(file.name)) return refuse("Choose a PDF.");
+    const bytes = await file.arrayBuffer();
+    // pdfjs takes its buffer over, so each reader gets a copy and the original is kept.
+    // The text and the cover are read side by side. A first page that can't be drawn leaves the report its title page.
+    const userId = await me();
+    const origin = await here();
+    const opened = await Promise.all([
+      extractPdfJsTextPages(bytes.slice(0)),
+      renderCover(bytes.slice(0)).catch((error: unknown) => {
+        console.error("[publish mock] cover not drawn", String(error));
+        return null;
+      }),
+    ]).catch(async (error: unknown) => {
+      // A file that isn't a PDF pdf.js can open: the team's inbox hears of it, and the author is told to try another.
+      console.error("[publish mock] the PDF couldn't be opened", { name: file.name, bytes: file.size, error: String(error).slice(0, 300) });
+      await change((state) => mail(state, "pdf-unopened", { ...reportOf(state, id, userId), pdf: { name: file.name, pages: 0, bytes: file.size } }, origin));
       return null;
-    }),
-  ]).catch(async (error: unknown) => {
-    // A file that isn't a PDF pdf.js can open: the team's inbox hears of it, and the author is told to try another.
-    console.error("[publish mock] the PDF couldn't be opened", { name: file.name, bytes: file.size, error: String(error).slice(0, 300) });
-    await change((state) => mail(state, "pdf-unread", { ...reportOf(state, id, userId), pdf: { name: file.name, pages: 0, bytes: file.size } }, origin));
-    return null;
-  });
-  if (!opened) throw new Error("This PDF couldn't be opened. Try saving it again as a PDF.");
-  const [{ pages, totalPages }, cover] = opened;
-  return change(async (state) => {
-    const draft = reportOf(state, id, userId);
-    if (draft.step === "done") throw new Error("This report has been checked. Start another to publish a new PDF.");
-    await mkdir(MOCK_DIR, { recursive: true });
-    await writeFile(pdfPath(draft.id), Buffer.from(bytes));
-    if (cover) await writeFile(coverPath(draft.id), cover);
-    // The text the model falls back to and the checks read, kept beside the PDF.
-    await writeFile(textPath(draft.id), pages.map((p) => p.text).join("\n"));
-    const at = Date.now();
-    // A new PDF starts over: the details read from the one before it are gone until this one is read.
-    return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size, at }, run: undefined, cover: cover ? at : undefined, step: "upload", metadata: undefined, reviewRequest: undefined, approved: undefined });
+    });
+    if (!opened) return refuse("This PDF couldn't be opened. Try saving it again as a PDF.");
+    const [{ pages, totalPages }, cover] = opened;
+    return change(async (state) => {
+      const draft = reportOf(state, id, userId);
+      if (draft.step === "done") refuse(MOVED_ON);
+      await mkdir(MOCK_DIR, { recursive: true });
+      await writeFile(pdfPath(draft.id), Buffer.from(bytes));
+      if (cover) await writeFile(coverPath(draft.id), cover);
+      // The text the model falls back to and the checks read, kept beside the PDF.
+      await writeFile(textPath(draft.id), pages.map((p) => p.text).join("\n"));
+      const at = Date.now();
+      // A new PDF starts over: the details read from the one before it are gone until this one is read.
+      return touch(draft, { pdf: { name: file.name, pages: totalPages, bytes: file.size, at }, run: undefined, cover: cover ? at : undefined, step: "upload", metadata: undefined, reviewRequest: undefined, approved: undefined });
+    });
   });
 }
 
@@ -166,52 +189,71 @@ export async function uploadPdf(form: FormData) {
  * its author to correct them. `read` is false when the model couldn't read the PDF: the details are then left for
  * the author to fill in.
  */
-export async function readPdfDetails(id: string): Promise<{ draft: Submission; read: boolean }> {
-  const user = await currentUser();
-  const origin = (await headers()).get("origin") ?? "";
-  const state = await readState();
-  const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
-  if (!report?.pdf || report.step === "done") throw new Error("This report has no PDF waiting to be read.");
-  const { at, name } = report.pdf;
-  const [pdf, text] = await Promise.all([readFile(pdfPath(id)), readFile(textPath(id), "utf8").catch(() => "")]);
-  // The model reads outside the store's queue: half a minute of reading holds no one else's change up.
-  const metadata = await readDetails({ pdf, text, fileName: name, ownDoi: report.doi, model: state.settings.metadataModel }).catch((error: unknown) => {
-    console.error("[publish] the PDF's details couldn't be read", { id, model: state.settings.metadataModel.id, error: String(error).slice(0, 600) });
-    return null;
-  });
-  const signer = { name: report.signedBy?.name || user?.fullName || "", orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] };
-  const details: Metadata = metadata ?? {
-    title: name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: new Date().toISOString().slice(0, 10), licence: "CC BY 4.0",
-    authors: [], abstract: "", topics: [], keywords: [], sdgs: [], studyDesigns: [], countries: [], funding: [], references: [], relations: [],
-  };
-  // A PDF that names no author is its signer's until they say otherwise.
-  if (!details.authors.length) details.authors = [signer];
-  return change((state) => {
-    const draft = state.submissions.find((s) => s.id === id);
-    // A PDF uploaded while this one was being read is the report's now: its own reading fills the details.
-    if (!draft?.pdf || draft.pdf.at !== at || draft.step === "done") throw new Error("A newer PDF replaced the one being read.");
-    touch(draft, { metadata: details, step: "details" });
-    if (!metadata) mail(state, "pdf-unread", draft, origin);
-    return { draft, read: metadata !== null };
-  });
-}
-
-/** One of your reports, made the one the Publish page shows: a draft or a failed one carries on from where it stopped. */
-export async function openReport(id: string) {
-  const user = await currentUser();
-  return change((state) => {
+export async function readPdfDetails(id: string): Promise<{ draft: Submission; read: boolean } | Refused> {
+  return answered(async () => {
+    const user = await currentUser();
+    const origin = await here();
+    const state = await readState();
     const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
-    if (!user || !report) throw new Error("No such report of yours.");
-    state.drafts[user.id] = id;
-    return report;
+    if (!report?.pdf || report.step === "done") return refuse(MOVED_ON);
+    const { at, name } = report.pdf;
+    const [pdf, text] = await Promise.all([readFile(pdfPath(id)), readFile(textPath(id), "utf8").catch(() => "")]);
+    // The model reads outside the store's queue: half a minute of reading holds no one else's change up.
+    const metadata = await readDetails({ pdf, text, fileName: name, ownDoi: report.doi, model: state.settings.metadataModel }).catch((error: unknown) => {
+      console.error("[publish] the PDF's details couldn't be read", { id, model: state.settings.metadataModel.id, error: String(error).slice(0, 600) });
+      return null;
+    });
+    const signer = { name: report.signedBy?.name || user?.fullName || "", orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] };
+    const details: Metadata = metadata ?? {
+      title: name.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: new Date().toISOString().slice(0, 10), licence: "CC BY 4.0",
+      authors: [], abstract: "", topics: [], keywords: [], sdgs: [], studyDesigns: [], countries: [], funding: [], references: [], relations: [],
+    };
+    // A PDF that names no author is its signer's until they say otherwise.
+    if (!details.authors.length) details.authors = [signer];
+    return change((state) => {
+      const draft = state.submissions.find((s) => s.id === id);
+      // A PDF uploaded while this one was being read is the report's now: its own reading fills the details.
+      if (!draft?.pdf || draft.pdf.at !== at || draft.step === "done") return refuse("A newer PDF replaced this one while it was being read. Reload to carry on with it.");
+      touch(draft, { metadata: details, step: "details" });
+      if (!metadata) mail(state, "pdf-unread", draft, origin);
+      return { draft, read: metadata !== null };
+    });
   });
 }
 
-/** Starts a new report after one that's done. */
-export async function startOver() {
-  const userId = await me();
-  await change((state) => {
-    delete state.drafts[userId];
+/** A live report of this person's with changes waiting, or a refusal in words. */
+function waitingChanges(state: MockState, id: string, userId: string | null): { report: Submission; correction: Correction } | Refused {
+  const report = userId ? state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === userId)) : undefined;
+  return report?.status === "live" && report.correction ? { report, correction: report.correction } : { refused: "This report has no changes waiting any more. Reload to see where it stands." };
+}
+
+/**
+ * The author of changes a check refused asks a person to look, with what they think the check got wrong. The
+ * changes then wait for a reviewer, and the team's inbox hears of them.
+ */
+export async function requestCorrectionReview(id: string, comment: string): Promise<Submission | Refused> {
+  const { userId } = await auth();
+  const origin = await here();
+  return change((state) => {
+    const found = waitingChanges(state, id, userId);
+    if ("refused" in found) return found;
+    const { report, correction } = found;
+    const stage = correctionStageOf(report, correction);
+    if (stage === "declined") return { refused: "A reviewer declined these changes since this page loaded. Reload to see their note." };
+    // Already with a reviewer: asking again tells no one anything new.
+    if (stage === "review") return report;
+    correction.request = { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() };
+    mail(state, "changes-review-requested", report, origin);
+    return touch(report, {});
+  });
+}
+
+/** The author gives up changes that haven't gone live. The report stays as it is. */
+export async function discardCorrection(id: string): Promise<Submission | Refused> {
+  const { userId } = await auth();
+  return change((state) => {
+    const found = waitingChanges(state, id, userId);
+    return "refused" in found ? found : touch(found.report, { correction: undefined });
   });
 }
 
@@ -227,7 +269,7 @@ export async function findAccounts(query: string) {
 }
 
 /** Gives a person or an organisation a daily limit of their own, or changes the one they have. Clerk says who they are. */
-export async function saveLimit({ kind, id, perDay }: { kind: LimitOverride["kind"]; id: string; perDay: number }): Promise<{ settings: Settings } | { refused: string }> {
+export async function saveLimit({ kind, id, perDay }: { kind: LimitOverride["kind"]; id: string; perDay: number }): Promise<{ settings: Settings } | Refused> {
   await requireAdmin();
   const account = await accountOf(kind, id);
   if (!account) return { refused: kind === "person" ? "That account is no longer there." : "That organisation is no longer there." };
@@ -260,11 +302,24 @@ async function showInRail(settings: Settings) {
 
 export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "humanReview" | "metadataModel">> & { series?: Partial<Settings["series"]>; perDay?: number }) {
   await requireAdmin();
+  const origin = await here();
   const settings = await change((state) => {
     const { series, perDay, ...rest } = patch;
+    const waited = state.submissions.filter((s) => stageOf(s, state.settings) === "review");
     Object.assign(state.settings, rest);
     if (perDay !== undefined) state.settings.limits.perDay = dailyLimit(perDay);
     if (series) Object.assign(state.settings.series, series);
+    // Review switched off releases what waited only for it. A report becomes its author's to activate (`stageOf`);
+    // changes to a live report, which their author already sent, go live.
+    if (!state.settings.humanReview) {
+      for (const report of waited) if (stageOf(report, state.settings) === "ready") mail(state, "released", report, origin);
+      for (const report of state.submissions) {
+        const waiting = report.status === "live" ? report.correction : undefined;
+        if (!waiting || waiting.declined || waiting.results.some((r) => !r.pass)) continue;
+        applyCorrection(report, waiting);
+        mail(state, "changes-live", report, origin);
+      }
+    }
     return state.settings;
   });
   await showInRail(settings);
@@ -278,7 +333,7 @@ export async function updateSettings(patch: Partial<Pick<Settings, "enabled" | "
  * MOCK: sandboxes only, and nothing is checked with Zenodo or Crossref. The real build verifies both and keeps the
  * credentials encrypted, as `publicationProviderActions.verifyAndSave` does for a community.
  */
-export async function savePublication(input: { settings: PublicationSettings; credentials: PublicationSecrets; expectedUpdatedAt: number | null }): Promise<{ settings: Settings } | { refused: string }> {
+export async function savePublication(input: { settings: PublicationSettings; credentials: PublicationSecrets; expectedUpdatedAt: number | null }): Promise<{ settings: Settings } | Refused> {
   await requireAdmin();
   const settings = structuredClone(input.settings);
   if (settings.zenodo.mode === "custom" || settings.crossref.mode === "custom") return { refused: "Shared dev registers on the sandboxes only." };
@@ -339,17 +394,19 @@ export async function updateAgreement(text: string) {
  * tells the team's inbox and shows the words to a reviewer, and nothing else: a reviewer can approve or decline any
  * report, asked or not. MOCK: the email is kept in the store, not sent.
  */
-export async function requestReview(id: string, comment: string) {
-  const user = await currentUser();
-  const origin = (await headers()).get("origin") ?? "";
-  return change((state) => {
-    const report = user ? state.submissions.find((s) => s.id === id && (s.demo || s.ownerId === user.id)) : undefined;
-    if (!report) throw new Error("No such report of yours.");
-    if (report.status !== "failed" || report.step !== "done") throw new Error("Only a report its checks failed can be sent for review.");
-    if (report.reviewRequest) return report;
-    report.reviewRequest = { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() };
-    mail(state, "review-requested", report, origin);
-    return touch(report, {});
+export async function requestReview(id: string, comment: string): Promise<Submission | Refused> {
+  return answered(async () => {
+    const userId = await me();
+    const origin = await here();
+    return change((state) => {
+      const report = reportOf(state, id, userId);
+      // Asked of a report its checks failed and no one has approved since: anything else has moved on.
+      if (stageOf(report, state.settings) !== "failed") refuse(MOVED_ON);
+      if (report.reviewRequest) return report;
+      report.reviewRequest = { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() };
+      mail(state, "review-requested", report, origin);
+      return touch(report, {});
+    });
   });
 }
 
@@ -358,16 +415,18 @@ export async function requestReview(id: string, comment: string) {
  * isn't live yet, so its author can activate it, or decline it. Declining a live report withdraws it: its page then
  * says it was withdrawn, since its DOI can't be removed. A withdrawn report can be reinstated, which makes it live again.
  */
-export async function review(id: string, decision: "approve" | "decline" | "reinstate", seenPdfAt: number | undefined, note?: string) {
+export async function review(id: string, decision: "approve" | "decline" | "withdraw" | "reinstate", seenPdfAt: number | undefined, note?: string): Promise<Submission | Refused> {
   await requireAdmin();
   const user = await currentUser();
-  const origin = (await headers()).get("origin") ?? "";
-  const by = user?.fullName || user?.primaryEmailAddress?.emailAddress || "A reviewer";
+  const origin = await here();
+  // By name only: a reviewer's address never goes on a report its author reads.
+  const by = user?.fullName || "A reviewer";
+  // What stops a reviewer's word comes back in words: something changed since the report was opened.
   return change((state) => {
     const submission = state.submissions.find((s) => s.id === id);
-    if (!submission || submission.step !== "done") throw new Error("No such report to review.");
+    if (!submission || submission.step !== "done") return { refused: "This report isn't waiting on a reviewer any more. Reload to see where it stands." };
     // The word is on the PDF the reviewer had open: one uploaded since needs looking at again.
-    if (submission.pdf?.at !== seenPdfAt) throw new Error("The author uploaded a new PDF since you opened this. Reload to review it.");
+    if (submission.pdf?.at !== seenPdfAt) return { refused: "The author uploaded a new PDF since you opened this. Reload to review it." };
     const stage = stageOf(submission, state.settings);
     const said = note?.trim().slice(0, REVIEW_TEXT_MAX) || undefined;
     // Who decided what, and when, stays with the report; its author hears of it by email.
@@ -377,34 +436,74 @@ export async function review(id: string, decision: "approve" | "decline" | "rein
       return submission;
     };
     if (decision === "reinstate") {
-      if (stage !== "declined" || !submission.withdrawnAt) throw new Error("Only a withdrawn report can be reinstated.");
+      if (stage !== "declined" || !submission.withdrawnAt) return { refused: "Only a withdrawn report can be reinstated." };
       return record("reinstate", "reinstated", { status: "live", withdrawnAt: undefined, note: undefined });
     }
-    if (stage === "declined") throw new Error("This report was already declined.");
+    if (stage === "declined") return { refused: submission.withdrawnAt ? "This report was already withdrawn." : "This report was already declined." };
+    // Withdrawing is a live report's and declining is one not yet live: a word given for the one never becomes the
+    // other because the report went live, or was withdrawn, since the reviewer opened it.
+    if (decision === "withdraw") {
+      if (stage !== "live") return { refused: "This report isn't live. Reload to see where it stands." };
+      return record("withdraw", "withdrawn", { status: "declined", withdrawnAt: Date.now(), note: said });
+    }
+    if (stage === "live") return { refused: "This report went live since you opened it. Reload to review it." };
     if (decision === "approve") {
-      if (stage !== "failed" && stage !== "review") throw new Error("This report doesn't need approving.");
+      if (stage !== "failed" && stage !== "review") return { refused: "This report doesn't need approving any more. Its author can activate it." };
       // Approving lets the author activate it; the author decides when it goes live.
       return record("approve", "approved", { approved: true });
     }
-    return stage === "live"
-      ? record("withdraw", "withdrawn", { status: "declined", withdrawnAt: Date.now(), note: said })
-      : record("decline", "declined", { status: "declined", note: said });
+    return record("decline", "declined", { status: "declined", note: said });
   });
 }
 
-/** The author makes a passed report live: its DOI goes to Crossref and its page opens. Only once no review is owed. */
-export async function activate(id: string) {
+/**
+ * A reviewer's word on changes to a live report: approving puts them live and registers the report again, declining
+ * keeps them for the author to change or discard. The report itself stays live either way. `seenAt` names the
+ * changes the reviewer read, so changes the author has since replaced are never the ones decided.
+ */
+export async function reviewCorrection(id: string, decision: "approve" | "decline", seenAt: number, note?: string): Promise<Submission | Refused> {
+  await requireAdmin();
   const user = await currentUser();
-  const origin = (await headers()).get("origin") ?? "";
+  const origin = await here();
+  const by = user?.fullName || "A reviewer";
   return change((state) => {
-    const submission = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
-    if (!submission) throw new Error("No such report of yours.");
-    if (submission.step !== "done" || stageOf(submission, state.settings) !== "ready") throw new Error("A reviewer approves this report before you can activate it.");
-    const registers = providersOf(submission);
-    touch(submission, { status: "live", activatedAt: Date.now(), archive: registers.includes("zenodo") ? "queued" : "none", deposit: registers.includes("crossref") ? "queued" : "none" });
-    mail(state, "live", submission, origin);
-    mail(state, "live-author", submission, origin);
-    return submission;
+    const report = state.submissions.find((s) => s.id === id);
+    const waiting = report?.status === "live" ? report.correction : undefined;
+    if (!report || !waiting || waiting.declined) return { refused: "These changes aren't waiting any more. Reload to see where the report stands." };
+    if (waiting.at !== seenAt) return { refused: "The author changed the details again since you opened this. Reload to review them." };
+    const said = note?.trim().slice(0, REVIEW_TEXT_MAX) || undefined;
+    if (decision === "approve") {
+      applyCorrection(report, waiting);
+      report.reviews = [...(report.reviews ?? []), { decision: "approve-changes", by, at: Date.now() }];
+      mail(state, "changes-live", report, origin);
+      return report;
+    }
+    waiting.declined = { at: Date.now(), ...(said ? { note: said } : {}) };
+    touch(report, { reviews: [...(report.reviews ?? []), { decision: "decline-changes", by, at: Date.now(), ...(said ? { note: said } : {}) }] });
+    mail(state, "changes-declined", report, origin);
+    return report;
+  });
+}
+
+/** The author makes a report live once no review is owed: its DOI is registered and its page opens. */
+export async function activate(id: string): Promise<Submission | Refused> {
+  return answered(async () => {
+    const userId = await me();
+    const origin = await here();
+    return change((state) => {
+      const submission = reportOf(state, id, userId);
+      const stage: Stage = stageOf(submission, state.settings);
+      if (stage === "live") refuse("This report is already live.");
+      if (stage === "review") refuse("A reviewer has to approve this report before you can activate it.");
+      if (stage !== "ready") refuse(MOVED_ON);
+      // A DOI needs somewhere to register: with both registrars switched off, nothing goes live.
+      if (!canRegister(state.settings)) refuse("Publishing is paused for now, so nothing can go live. Your report keeps its place.");
+      const registers = providersOf(submission);
+      touch(submission, { status: "live", activatedAt: Date.now(), archive: registers.includes("zenodo") ? "queued" : "none", deposit: registers.includes("crossref") ? "queued" : "none" });
+      mail(state, "live", submission, origin);
+      mail(state, "live-author", submission, origin);
+      return submission;
+    });
   });
 }
 
@@ -421,15 +520,17 @@ export async function readReport(id: string) {
  * nowhere a community can look it up. The real build sends the DOI through `evidenceLibraries.assistant.addPapers`,
  * and the community asks Openscholar for the report before OpenAlex and the DOI's registrar.
  */
-export async function addToCommunity(id: string, community: { id: string; name: string }, publish: boolean): Promise<{ outcome: "added" | "queued" | "existing"; report: Submission }> {
-  const user = await currentUser();
-  return change((state) => {
-    const report = state.submissions.find((s) => s.id === id && (s.demo || (user && s.ownerId === user.id)));
-    if (!report || report.status !== "live") throw new Error("Only a live report of yours can be added to a community.");
-    report.communities ??= [];
-    if (report.communities.some((c) => c.id === community.id)) return { outcome: "existing", report };
-    report.communities.push({ ...community, status: publish ? "published" : "queued" });
-    return { outcome: publish ? "added" : "queued", report };
+export async function addToCommunity(id: string, community: { id: string; name: string }, publish: boolean): Promise<{ outcome: "added" | "queued" | "existing"; report: Submission } | Refused> {
+  return answered(async () => {
+    const userId = await me();
+    return change((state) => {
+      const report = reportOf(state, id, userId);
+      if (report.status !== "live") return refuse("This report isn't live any more, so it can't be added to a community.");
+      report.communities ??= [];
+      if (report.communities.some((c) => c.id === community.id)) return { outcome: "existing" as const, report };
+      report.communities.push({ ...community, status: publish ? "published" : "queued" });
+      return { outcome: publish ? ("added" as const) : ("queued" as const), report };
+    });
   });
 }
 
@@ -440,6 +541,8 @@ export async function retryDeposit(id: string) {
     if (!submission) throw new Error("No such report.");
     // MOCK: the registration that was refused goes through this time.
     const failed = stepsOf(submission).find((step) => step.state === "failed")?.provider;
+    // Nothing was refused: a row left open from earlier has nothing to send again.
+    if (!failed) return submission;
     return touch(submission, failed === "zenodo" ? { archive: "archived" } : { deposit: "deposited" });
   });
 }

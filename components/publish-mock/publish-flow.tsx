@@ -36,6 +36,7 @@ import {
   PenLine,
   Plus,
   PublishIcon,
+  Trash2,
   ReviewQueueIcon,
   RotateCcw,
   ShieldCheck,
@@ -44,7 +45,7 @@ import {
   Hash,
 } from "@/components/icons";
 import { DetailsStep } from "@/components/publish-mock/details-step";
-import { activate, addToCommunity, discardReport, goTo, openReport, readPdfDetails, readReport, requestReview, saveDetails, signAgreement, startOver, uploadPdf } from "@/app/actions/publish-mock";
+import { activate, addToCommunity, discardCorrection, discardReport, goTo, readPdfDetails, readReport, requestCorrectionReview, requestReview, saveDetails, signAgreement, uploadPdf } from "@/app/actions/publish-mock";
 import { fillAgreement } from "@/lib/publish-mock/agreement";
 import { useClerk } from "@clerk/nextjs";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
@@ -53,10 +54,11 @@ import { CitationControl } from "@/components/citation-control";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { reportPaper } from "@/lib/publish-mock/report-paper";
-import { StatusFilter, YourReports, type Show } from "@/components/publish-mock/your-reports";
-import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { REVIEW_TEXT_MAX, bylineOf, coverUrlOf, stageOf, stepsOf, type CheckResult, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
+import { SHOWS, StatusFilter, YourReports } from "@/components/publish-mock/your-reports";
+import { ListEmpty, ListViewTabs } from "@/components/evidence-libraries/list-controls";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { REVIEW_TEXT_MAX, bylineOf, changesOf, correctionStageOf, coverUrlOf, reportsUnderWay, stageOf, type Refused, type CheckResult, type Correction, type Metadata, type Settings, type Step, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const STEPS: Array<{ id: Step | "live"; label: string; icon: typeof PenLine }> = [
@@ -89,7 +91,7 @@ function copy(text: string, what: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(`${what} copied`));
 }
 
-type Running = { checks: Array<{ id: string; name: string }>; results: Record<string, CheckResult> };
+type Running = { id: string; checks: Array<{ id: string; name: string }>; results: Record<string, CheckResult> };
 
 /** Reads the checks' answers as the route sends them, one line each, and the report as saved at the end. */
 async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckResult) => void, correction = false): Promise<{ draft: Submission; applied: boolean }> {
@@ -113,114 +115,142 @@ async function streamChecks(id: string, metadata: Metadata, onResult: (r: CheckR
   throw new Error("The checks stopped before they finished");
 }
 
+/** A refusal that came back in words, thrown so the caller's catch says it; anything else is the report. */
+function taken<T extends object>(result: T | Refused): T {
+  if ("refused" in result) throw new Error(result.refused);
+  return result;
+}
+
+/** What to tell an author whose report moved on while they watched it: a reviewer's word, or changes gone live. */
+function newsOf(was: Submission, now: Submission, settings: Settings): { good: boolean; words: string } | null {
+  const before = stageOf(was, settings);
+  const after = stageOf(now, settings);
+  if (before !== after && after === "ready") return { good: true, words: now.approved ? "A reviewer approved your report" : "Your report can be activated now" };
+  if (before !== after && after === "declined") return { good: false, words: now.withdrawnAt ? "A reviewer withdrew your report" : "A reviewer declined your report" };
+  if (before === "declined" && after === "live") return { good: true, words: "Your report is live again" };
+  if (was.correction && !now.correction && now.correctedAt !== was.correctedAt) return { good: true, words: "Your changes are live" };
+  if (was.correction && !was.correction.declined && now.correction?.declined) return { good: false, words: "A reviewer declined your changes" };
+  return null;
+}
+
+/** Where the Publish page is, kept in its address so a link, a reload and the back button all land on it. */
+const PLACE = {
+  view: parseAsStringLiteral(["new", "reports"] as const).withDefault("new"),
+  /** The report shown, by its key; "new" for one not started yet. */
+  report: parseAsString,
+  /** A live report's details open to be corrected. */
+  correct: parseAsBoolean.withDefault(false),
+  show: parseAsStringLiteral(SHOWS).withDefault("all"),
+  page: parseAsInteger.withDefault(1),
+};
+
 export function PublishFlow({
   settings,
-  initial,
   reports: initialReports,
   userName,
   signedIn,
   starts,
 }: {
   settings: Settings;
-  initial: Submission | null;
   reports: Submission[];
   userName: string;
   signedIn: boolean;
   /** How many reports this person may still start today, and their daily limit. */
   starts: { left: number; perDay: number };
 }) {
-  const [view, setView] = useQueryState("view", parseAsStringLiteral(["new", "reports"] as const).withDefault("new"));
-  const [draft, setDraftOnly] = useState(initial);
+  const [{ view, report: asked, correct, show, page }, setPlace] = useQueryStates(PLACE);
+  /** Moves to another report or view, so the back button returns to this one. */
+  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push" });
   const [reports, setReports] = useState(initialReports);
+  /** A report as an action left it, newest first as the list came. */
+  const keep = (next: Submission) => setReports((all) => [next, ...all.filter((r) => r.id !== next.id)].sort((a, b) => b.updatedAt - a.updatedAt));
+  // The report shown is the one the address names; with none named, the only one under way, as the server opens it.
+  const underWay = reportsUnderWay(reports);
+  const shownId = asked ?? (underWay.length === 1 ? underWay[0]!.id : "new");
+  const draft = reports.find((r) => r.id === shownId) ?? null;
+  const missing = shownId !== "new" && !draft;
   const [running, setRunning] = useState<Running | null>(null);
+  const busy = running && running.id === draft?.id ? running : null;
   // The day's starts this person has left: one fewer with each report they start here.
   const [startsLeft, setStartsLeft] = useState(starts.left);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
   const [fresh, setFresh] = useState<{ id: string; step: "doi" | "live" } | null>(null);
-  // Every change to the report shows on Your reports too.
-  const setDraft = (next: Submission | null) => {
-    setDraftOnly(next);
-    if (next) setReports((all) => [next, ...all.filter((r) => r.id !== next.id)]);
-  };
-  const place = running ? 4 : placeOf(draft);
-  const step: Step = draft?.step ?? "agreement";
+  // Changes to a live report as last sent to the checks, kept while they run so a run that breaks loses none of them.
+  const [attempt, setAttempt] = useState<{ id: string; metadata: Metadata } | null>(null);
+  const live = draft?.step === "done" && draft.status === "live";
+  // A live report stays live while the checks read changes to it.
+  const place = busy && !live ? 4 : placeOf(draft);
+  /** The report as the server has it now, after something here turned out to be behind it. */
+  const reread = (id: string) => void readReport(id).then((next) => next && keep(next), () => undefined);
   const back = (to: Step) => {
     setFresh(null);
-    if (draft) goTo(draft.id, to).then(setDraft, said("That step couldn't be opened"));
-  };
-  // Starts a new report in place of one that's done.
-  const another = (then?: () => void) => {
-    startOver().then(() => {
-      setDraftOnly(null);
-      setCorrecting(null);
-      then?.();
-    }, said("A new report couldn't be started"));
-  };
-  const run = async (metadata: Metadata) => {
     if (!draft) return;
     const id = draft.id;
-    // The author's corrections are kept on the report, so a run that fails comes back to them, not to what the PDF said.
-    setDraftOnly({ ...draft, metadata });
+    goTo(id, to)
+      .then(taken)
+      .then(keep, (error: unknown) => {
+        toast.error(reasonOf(error, "That step couldn't be opened"));
+        reread(id);
+      });
+  };
+  /** A new report, beside any already under way. */
+  const another = () => {
+    setFresh(null);
+    go({ view: null, report: "new", correct: null });
+  };
+  /** Runs the checks on a report's details: a new report's, or changes to a live one's. */
+  const check = async (report: Submission, metadata: Metadata, correction: boolean) => {
+    const id = report.id;
+    // The author's corrections are kept, so a run that fails comes back to them, not to what the PDF said.
+    if (correction) setAttempt({ id, metadata });
+    else setReports((all) => all.map((r) => (r.id === id ? { ...r, metadata } : r)));
     // The rows are there at once, one per check that's on; each settles as its answer comes.
-    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name })), results: {} });
+    setRunning({ id, checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name })), results: {} });
     try {
-      const { draft: saved } = await streamChecks(id, metadata, (result) => setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)));
-      setReports((all) => [saved, ...all.filter((r) => r.id !== saved.id)]);
-      // Another report opened while these ran stays the one shown.
-      setDraftOnly((current) => (current?.id === saved.id ? saved : current));
-    } catch (error) {
-      toast.error(reasonOf(error, "The checks couldn't run"));
-    } finally {
-      setRunning(null);
-    }
-  };
-  // A live report's details being corrected: what the author changed them to, and the checks' answers when they refused it.
-  // A link from the report's own page asks for it in the address, which is cleared once the correcting is over.
-  const [asked, setAsked] = useQueryState("correct");
-  const [correcting, setCorrectingOnly] = useState<{ id: string; metadata: Metadata; refused?: CheckResult[] } | null>(() =>
-    asked && initial?.id === asked && initial.status === "live" && initial.metadata ? { id: initial.id, metadata: initial.metadata } : null,
-  );
-  const setCorrecting = (next: typeof correcting) => {
-    setCorrectingOnly(next);
-    if (!next && asked) void setAsked(null);
-  };
-  /** Opens a live report of the person's with its details ready to correct. */
-  const startCorrecting = (report: Submission) => {
-    if (report.status !== "live" || !report.metadata) return;
-    setDraftOnly(report);
-    setCorrectingOnly({ id: report.id, metadata: report.metadata });
-    void setView(null);
-  };
-  const correct = async (metadata: Metadata) => {
-    if (!draft) return;
-    const id = draft.id;
-    const answers: CheckResult[] = [];
-    setRunning({ checks: settings.checks.filter((c) => c.enabled).map((c) => ({ id: c.id, name: c.name })), results: {} });
-    try {
-      const { draft: saved, applied } = await streamChecks(
-        id,
-        metadata,
-        (result) => {
-          answers.push(result);
-          setRunning((r) => (r ? { ...r, results: { ...r.results, [result.checkId]: result } } : r));
-        },
-        true,
-      );
-      setReports((all) => all.map((r) => (r.id === saved.id ? saved : r)));
-      setDraftOnly((current) => (current?.id === saved.id ? saved : current));
-      // Taken: back to the live view with the corrected details. Refused: the answers are shown, and the report is as it was.
-      // Only what refused it is shown: a check a reviewer overruled before the report went live refuses nothing now.
-      const failedBefore = new Set((draft.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
-      setCorrecting(applied ? null : { id, metadata, refused: answers.filter((r) => r.errored || (!r.pass && r.blocking && !failedBefore.has(r.checkId))) });
+      const { draft: saved, applied } = await streamChecks(id, metadata, (result) => setRunning((r) => (r?.id === id ? { ...r, results: { ...r.results, [result.checkId]: result } } : r)), correction);
+      keep(saved);
+      if (!correction) return;
+      // Live or kept for a reviewer, the changes are with the report now: the form closes on where they stand.
+      setAttempt(null);
+      void setPlace((now) => (now.report === id ? { correct: null } : {}));
       if (applied) toast.success("Your changes are live");
+      else if (saved.correction && correctionStageOf(saved, saved.correction) === "review") toast.success("Your changes are with a reviewer");
     } catch (error) {
       toast.error(reasonOf(error, "The checks couldn't run"));
+      // A refusal means the report isn't where this page thought: it's shown as it stands.
+      reread(id);
     } finally {
-      setRunning(null);
+      setRunning((r) => (r?.id === id ? null : r));
     }
   };
-  const [show, setShow] = useState<Show>("all");
+  const screen = busy ? "checks" : missing ? "missing" : !draft ? "agreement" : draft.step !== "done" ? draft.step : !live ? "checks" : correct ? "correct" : draft.correction ? "changes" : "live";
+  // MOCK: a timer asks for the report again once it's past its checks, when a reviewer or a registrar can move it on,
+  // so the page follows without a reload and says what happened. The real build is told by Convex and needs no timer.
+  // Not while its details are open in the form: what's being typed is never redrawn.
+  const watched = view === "new" && draft?.step === "done" && !busy && screen !== "correct" ? draft : null;
+  useEffect(() => {
+    if (!watched) return;
+    let on = true;
+    const timer = setInterval(
+      () =>
+        void readReport(watched.id).then(
+          (next) => {
+            // Kept only when something changed, so nothing redraws on a quiet answer.
+            if (!on || !next || JSON.stringify(next) === JSON.stringify(watched)) return;
+            const news = newsOf(watched, next, settings);
+            if (news) (news.good ? toast.success : toast.info)(news.words);
+            setReports((all) => all.map((r) => (r.id === next.id ? next : r)));
+          },
+          () => undefined,
+        ),
+      3000,
+    );
+    return () => {
+      on = false;
+      clearInterval(timer);
+    };
+  }, [watched, settings]);
   // In the header bar, as on Explore: the page's two views, and on Your reports its status filter.
   const tabs = (
     <ListViewTabs
@@ -229,10 +259,11 @@ export function PublishFlow({
       onChange={(next) => {
         // The live moment plays once: coming back to the report shows it settled.
         setFresh(null);
-        void setView(next === "reports" ? "reports" : null);
+        // The list is left with nothing half-open behind it; the report shown comes back as it stands.
+        go(next === "reports" ? { view: "reports", correct: null } : { view: null });
       }}
       tabs={[
-        { value: "new", label: draft ? "Your report" : "New report", icon: <PublishIcon aria-hidden className="size-3.5" /> },
+        { value: "new", label: draft ? "This report" : "New report", icon: <PublishIcon aria-hidden className="size-3.5" /> },
         { value: "reports", label: "Your reports", icon: <FileText aria-hidden className="size-3.5" />, count: reports.length },
       ]}
     />
@@ -243,119 +274,152 @@ export function PublishFlow({
       icon={PublishIcon}
       title="Publish"
       tabs={tabs}
-      filters={view === "reports" ? <StatusFilter reports={reports} settings={settings} show={show} onShow={setShow} /> : undefined}
+      filters={view === "reports" ? <StatusFilter reports={reports} settings={settings} show={show} onShow={(next) => void setPlace({ show: next, page: null })} /> : undefined}
       // Several reports can be under way at once: a new one starts here, and each counts against the day's limit.
       actions={
         view === "reports" && signedIn ? (
-          <Button size="sm" className={BAR_ACTION} onClick={() => another(() => void setView(null))}>
+          <Button size="sm" className={BAR_ACTION} onClick={another}>
             <Plus aria-hidden />
             <span className={BAR_LABEL}>New report</span>
           </Button>
         ) : undefined
       }
-      intro={view === "new" ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !running} onBack={back} draft={running ? null : draft} settings={settings} /> : undefined}
+      intro={view === "new" && !missing ? <StepTrail place={place} canGoBack={draft?.step !== "done" && !busy} onBack={back} draft={busy && !live ? null : draft} settings={settings} /> : undefined}
     >
       {view === "reports" ? (
         <YourReports
           settings={settings}
           show={show}
+          page={page}
+          onPage={(next) => void setPlace({ page: next })}
           reports={reports}
-          onCorrect={(id) => openReport(id).then(startCorrecting, said("That report couldn't be opened"))}
+          onOpen={(id) => go({ view: null, report: id, correct: null })}
+          // Changes already waiting open where they stand; otherwise the details open to be corrected.
+          onCorrect={(id) => go({ view: null, report: id, correct: reports.find((r) => r.id === id)?.correction ? null : true })}
           onDiscard={(id) =>
-            discardReport(id).then(() => {
+            discardReport(id).then((result) => {
+              if (result) return void toast.error(result.refused);
               setReports((all) => all.filter((r) => r.id !== id));
-              setDraftOnly((current) => (current?.id === id ? null : current));
+              if (asked === id) void setPlace({ report: null, correct: null });
               toast.success("Report discarded");
             }, said("The report couldn't be discarded"))
           }
-          onNew={() => {
-            another(() => void setView(null));
-          }}
-          onOpen={(id) => {
-            openReport(id)
-              .then((report) => {
-                setDraftOnly(report);
-                setCorrecting(null);
-                void setView(null);
-              })
-              .catch((error: unknown) => toast.error(reasonOf(error, "That report couldn't be opened")));
-          }}
+          onNew={another}
         />
+      ) : missing ? (
+        <ListEmpty
+          icon={FileText}
+          description="It isn't one of this account's reports, or it was discarded. If an email sent you here, sign in with the account you published it from."
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => go({ view: "reports", report: null, correct: null })}>
+                <FileText /> Your reports
+              </Button>
+              <Button size="sm" onClick={another}>
+                <Plus /> New report
+              </Button>
+            </div>
+          }
+        >
+          This report isn't here
+        </ListEmpty>
       ) : (
       <div className="grid grid-cols-1 gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_13rem] @3xl:gap-10">
         <AutoHeight>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
-              key={running ? "checks" : step === "done" ? (draft?.status === "live" ? (correcting?.id === draft.id ? (correcting.refused ? "refused" : "correct") : "live") : "checks") : step}
+              // A different report is a different screen, even at the same step.
+              key={`${draft?.id ?? "new"}:${screen}`}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.25, ease: EASE }}
             >
-              {running ? (
-                <Checks rows={running.checks.map((c) => ({ ...c, result: running.results[c.id] }))} draft={null} />
-              ) : step === "agreement" ? (
+              {busy ? (
+                <Checks rows={busy.checks.map((c) => ({ ...c, result: busy.results[c.id] }))} draft={null} />
+              ) : !draft ? (
                 <AgreementStep
                   settings={settings}
-                  userName={draft?.signedBy?.name ?? userName}
+                  userName={userName}
                   signedIn={signedIn}
-                  // A report already under way was counted when it started.
-                  blocked={(!draft || draft.step === "done") && startsLeft < 1 ? starts.perDay : null}
+                  blocked={startsLeft < 1 ? starts.perDay : null}
                   onSigned={(signed) => {
                     setStartsLeft((left) => left - 1);
                     setFresh({ id: signed.id, step: "doi" });
-                    setDraft(signed);
+                    keep(signed);
+                    // In place of the unsigned page, so going back never lands on an agreement that starts a second report.
+                    void setPlace({ report: signed.id });
                   }}
                 />
-              ) : step === "doi" && draft ? (
+              ) : draft.step === "doi" ? (
                 <DoiStep draft={draft} fresh={fresh?.id === draft.id && fresh.step === "doi"} onNext={() => back("upload")} />
-              ) : step === "upload" && draft ? (
-                <UploadStep settings={settings} draft={draft} onStored={setDraft} onRead={setDraft} />
-              ) : step === "details" && draft?.metadata ? (
-                <DetailsStep initial={draft.metadata} onRun={run} onSave={(metadata) => {
+              ) : draft.step === "upload" ? (
+                <UploadStep settings={settings} draft={draft} onStored={keep} onRead={keep} />
+              ) : draft.step === "details" && draft.metadata ? (
+                <DetailsStep
+                  initial={draft.metadata}
+                  onRun={(metadata) => check(draft, metadata, false)}
+                  onSave={(metadata) => {
                     // Kept here too, so coming back to the step from Your reports shows what was saved.
-                    setDraftOnly((current) => (current?.id === draft.id ? { ...current, metadata } : current));
+                    setReports((all) => all.map((r) => (r.id === draft.id && r.step === "details" ? { ...r, metadata } : r)));
                     void saveDetails(draft.id, metadata).catch(said("Your changes couldn't be saved"));
                   }}
                 />
-              ) : draft && correcting?.id === draft.id && draft.status === "live" ? (
-                correcting.refused ? (
-                  <CorrectionRefused results={correcting.refused} onBack={() => setCorrecting({ id: draft.id, metadata: correcting.metadata })} onKeep={() => setCorrecting(null)} />
-                ) : (
-                  <DetailsStep initial={correcting.metadata} onRun={correct} onCancel={() => setCorrecting(null)} />
-                )
-              ) : step === "done" && draft?.status === "live" ? (
-                <LiveReport
-                  onCorrect={() => draft.metadata && setCorrecting({ id: draft.id, metadata: draft.metadata })}
-                  settings={settings}
-                  draft={draft}
-                  fresh={fresh?.id === draft.id && fresh.step === "live"}
-                  onChange={(next) => {
-                    setReports((all) => all.map((r) => (r.id === next.id ? next : r)));
-                    setDraftOnly((current) => (current?.id === next.id ? next : current));
-                  }}
-                  onAnother={() => {
-                    another();
+              ) : live && correct && draft.metadata ? (
+                // Changes already waiting are carried on from; so are ones a broken run never finished checking.
+                <DetailsStep
+                  initial={attempt?.id === draft.id ? attempt.metadata : (draft.correction?.metadata ?? draft.metadata)}
+                  resend={attempt?.id === draft.id || !!draft.correction}
+                  // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
+                  waits={settings.humanReview || (draft.results ?? []).some((r) => !r.pass)}
+                  onRun={(metadata) => check(draft, metadata, true)}
+                  onCancel={() => {
+                    setAttempt(null);
+                    void setPlace({ correct: null });
                   }}
                 />
-              ) : draft ? (
+              ) : live && draft.correction ? (
+                <ChangesWaiting
+                  draft={draft}
+                  correction={draft.correction}
+                  onEdit={() => go({ correct: true })}
+                  onDiscard={() => discardCorrection(draft.id).then(taken).then(keep)}
+                  onRequestReview={(comment) => requestCorrectionReview(draft.id, comment).then(taken).then(keep)}
+                />
+              ) : live ? (
+                <LiveReport onCorrect={() => go({ correct: true })} settings={settings} draft={draft} fresh={fresh?.id === draft.id && fresh.step === "live"} onChange={keep} onAnother={another} />
+              ) : (
                 <Checks
                   rows={(draft.results ?? []).map((r) => ({ id: r.checkId, name: r.name, result: r }))}
                   draft={draft}
                   settings={settings}
                   onActivate={() =>
-                    activate(draft.id).then((live) => {
-                      setFresh({ id: live.id, step: "live" });
-                      setDraft(live);
-                    })
+                    activate(draft.id)
+                      .then(taken)
+                      .then(
+                        (activated) => {
+                          setFresh({ id: activated.id, step: "live" });
+                          keep(activated);
+                        },
+                        (error: unknown) => {
+                          // It can't be activated as this page shows it: the page catches up with where it stands.
+                          reread(draft.id);
+                          throw error;
+                        },
+                      )
                   }
                   onFix={() => back("upload")}
-                  onRequestReview={(comment) => requestReview(draft.id, comment).then(setDraft)}
-                  onAnother={() => {
-                    another();
-                  }}
+                  onRequestReview={(comment) =>
+                    requestReview(draft.id, comment)
+                      .then(taken)
+                      .then(keep, (error: unknown) => {
+                        reread(draft.id);
+                        throw error;
+                      })
+                  }
+                  onAnother={another}
                 />
-              ) : null}
+              )}
             </motion.div>
           </AnimatePresence>
         </AutoHeight>
@@ -451,7 +515,7 @@ function AgreementStep({
   return (
     <div>
       <StepHead
-        title={`Publication agreement with ${settings.series.name}`}
+        title={`Publishing agreement with ${settings.series.name}`}
         aside={<StatusChip tone="neutral">Version {agreement.version}</StatusChip>}
       >
         You keep the copyright and publish under CC BY 4.0. Signing reserves your DOI.
@@ -489,7 +553,7 @@ function AgreementStep({
             onClick={() =>
               start(async () => {
                 try {
-                  const result = await signAgreement({ name, onBehalfOfAll: all });
+                  const result = await signAgreement({ name, onBehalfOfAll: all, version: agreement.version });
                   if ("refused" in result) toast.error(result.refused);
                   else onSigned(result.draft);
                 } catch (error) {
@@ -569,7 +633,7 @@ function DoiStep({ draft, fresh, onNext }: { draft: Submission; fresh: boolean; 
         Your DOI is reserved
       </motion.h2>
       <motion.p className="mt-1.5 max-w-md text-sm text-muted-foreground" {...rise(0.4)}>
-        It is your report&apos;s for good, and goes live when the report does.
+        It stays with your report, and goes live when the report does.
       </motion.p>
       <motion.div className="relative mt-7 w-full max-w-xl overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.06] px-5 py-6" {...rise(0.45)}>
         <p className="sr-only">{draft.doi}</p>
@@ -641,14 +705,14 @@ function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings;
     // The report on this screen, whichever is open elsewhere.
     form.set("id", draft.id);
     try {
-      const stored = await uploadPdf(form);
+      const stored = taken(await uploadPdf(form));
       onStored(stored);
       setStage("reading");
-      const { draft: read, read: wasRead } = await readPdfDetails(stored.id);
-      if (!wasRead) toast.info("The details couldn't be read from this PDF", { description: "Fill them in on the next step." });
+      const { draft: read, read: wasRead } = taken(await readPdfDetails(stored.id));
+      if (!wasRead) toast.info("The details couldn't be read from this PDF", { description: "Fill them in by hand on the next step." });
       onRead(read);
     } catch (error) {
-      toast.error(reasonOf(error, "This PDF couldn't be read. Try saving it again as a PDF."));
+      toast.error(reasonOf(error, "The PDF couldn't be uploaded. Try again."));
       setFile(null);
     } finally {
       setStage(null);
@@ -715,7 +779,19 @@ function UploadStep({ settings, draft, onStored, onRead }: { settings: Settings;
  * One check: running, then its answer. A check that finds something or doesn't says what; a scored one shows its score
  * against its line, the failing side tinted. What arrives after the row is drawn fades in and opens its place.
  */
-export function CheckRow({ name, result }: { name: string; result?: CheckResult }) {
+export function CheckRow({
+  name,
+  result,
+  advice = true,
+  overruled = false,
+}: {
+  name: string;
+  result?: CheckResult;
+  /** Whether to say what the author can do about a failed check: only where they still can. */
+  advice?: boolean;
+  /** A reviewer approved the report over this check's answer. */
+  overruled?: boolean;
+}) {
   const reduce = useReducedMotion();
   const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
   const asked = result?.confidence !== undefined && result.threshold !== undefined;
@@ -751,7 +827,7 @@ export function CheckRow({ name, result }: { name: string; result?: CheckResult 
           <AnimatePresence initial={false}>
             {result && tone ? (
               <motion.span key="chip" {...fade}>
-                <StatusChip tone={tone}>{result.pass ? "Passed" : result.blocking ? "Failed" : "Flagged"}</StatusChip>
+                <StatusChip tone={overruled ? "neutral" : tone}>{overruled ? "Approved by a reviewer" : result.pass ? "Passed" : result.blocking ? "Failed" : "Flagged"}</StatusChip>
               </motion.span>
             ) : null}
           </AnimatePresence>
@@ -795,7 +871,7 @@ export function CheckRow({ name, result }: { name: string; result?: CheckResult 
                 </a>
               ) : null}
               {result.reasoning ? <p className="ms-8 mt-2 text-xs/5 text-muted-foreground">{result.reasoning}</p> : null}
-              {!result.pass && result.fix ? (
+              {!result.pass && result.fix && advice ? (
                 <p className="ms-8 mt-2 flex items-start gap-2 rounded-xl bg-inset px-3 py-2 text-xs/5">
                   <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" />
                   <span className="min-w-0 break-words">{result.fix}</span>
@@ -828,16 +904,18 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
       Looking for earlier copies takes a few seconds.
     </StepHead>
   ) : stage === "ready" ? (
-    <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>{draft.status === "failed" ? "Approved" : "Passed"}</StatusChip>}>
-      {draft.status === "failed" ? "A reviewer approved your report. Activate it to make its DOI live and open its page." : "Your report passed its checks. Activate it to make its DOI live and open its page."}
+    <StepHead key="ready" title="Ready to activate" aside={<StatusChip tone="success" icon={CircleCheck}>{draft.approved ? "Approved" : "Passed"}</StatusChip>}>
+      {draft.approved ? "A reviewer approved your report. Activate it to make its DOI live and open its page." : "Your report passed its checks. Activate it to make its DOI live and open its page."}
     </StepHead>
   ) : stage === "review" ? (
     <StepHead key="review" title="Waiting for review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
-      Your report passed its checks. You can activate it once a reviewer approves it.
+      {rows.some((r) => r.result && !r.result.pass)
+        ? "A check flagged your report, so a reviewer looks at it. You can activate it once they approve it, and you'll hear by email."
+        : "Your report passed its checks. You can activate it once a reviewer approves it, and you'll hear by email."}
     </StepHead>
   ) : stage === "declined" ? (
     <StepHead key="declined" title={draft.withdrawnAt ? "Withdrawn" : "Not published"} aside={<StatusChip tone="danger" icon={CircleX}>{draft.withdrawnAt ? "Withdrawn" : "Declined"}</StatusChip>}>
-      {draft.note ?? (draft.withdrawnAt ? "A reviewer withdrew this report. Its page now says so." : "The reviewer declined this report.")}
+      {draft.withdrawnAt ? "A reviewer withdrew this report. Its page now says so." : "A reviewer declined this report."}
     </StepHead>
   ) : (
     <StepHead key="failed" title="Not published yet" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
@@ -853,18 +931,13 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
           </motion.div>
         </AnimatePresence>
       </AutoHeight>
-      {draft?.reviewRequest && stage === "failed" ? (
-        <div className="mb-4 flex items-start gap-3 rounded-2xl bg-inset px-4 py-3">
-          <ReviewQueueIcon className="mt-0.5 size-4 shrink-0 text-primary" />
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-muted-foreground">Your request</p>
-            <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{draft.reviewRequest.comment || "Sent without a comment"}</p>
-          </div>
-        </div>
-      ) : null}
+      {draft?.reviewRequest && stage === "failed" ? <Said label="Your request">{draft.reviewRequest.comment || "Sent without a comment"}</Said> : null}
+      {draft?.note && stage === "declined" ? <Said label="The reviewer's note">{draft.note}</Said> : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
         {rows.map((r) => (
-          <CheckRow key={r.id} name={r.name} result={r.result} />
+          // What to do about a failed check shows only while a new PDF can still be uploaded. Once a reviewer has
+          // approved the report, the checks it failed say so.
+          <CheckRow key={r.id} name={r.name} result={r.result} advice={stage === "failed"} overruled={!!draft?.approved && stage !== "declined" && r.result?.pass === false} />
         ))}
       </ul>
       <AutoHeight>
@@ -896,7 +969,7 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
                       </Working>
                     </Button>
                   ) : stage === "review" ? (
-                    <TooltipHint label="A reviewer approves it first">
+                    <TooltipHint label="A reviewer has to approve it first">
                       <span tabIndex={0}>
                         <Button disabled>
                           <BadgeCheck /> Activate
@@ -915,27 +988,101 @@ function Checks({ rows, draft, settings, onActivate, onFix, onRequestReview, onA
   );
 }
 
-/** The report as it builds up: its cover with the series, title, authors and DOI, and what it stands on. */
-/** A correction to a live report that a check refused: what the checks said, with the way back to the details. */
-function CorrectionRefused({ results, onBack, onKeep }: { results: CheckResult[]; onBack: () => void; onKeep: () => void }) {
+/** Words someone wrote about the report, under whose they are: the author's request, or a reviewer's note. */
+function Said({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="mb-4 flex items-start gap-3 rounded-2xl bg-inset px-4 py-3">
+      <ReviewQueueIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{children}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Changes to a live report's details that haven't gone live: where they stand, what they change, what the checks said
+ * of them, and what their author can do. The report itself stays live as it was all the while.
+ */
+function ChangesWaiting({ draft, correction, onEdit, onDiscard, onRequestReview }: { draft: Submission; correction: Correction; onEdit: () => void; onDiscard: () => Promise<void>; onRequestReview: (comment: string) => Promise<void> }) {
+  const stage = correctionStageOf(draft, correction);
+  const [asking, setAsking] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const changed = draft.metadata ? changesOf(draft.metadata, correction.metadata) : [];
+  const note = stage === "declined" ? correction.declined?.note : stage === "review" ? correction.request?.comment : undefined;
+  // Checks the report itself failed, which a reviewer approved it over: only a reviewer answers those, and a live
+  // report takes no new PDF, so what to do about them is never shown.
+  const overruled = new Set((draft.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
+  const again = correction.results.some((r) => !r.pass && overruled.has(r.checkId));
   return (
     <div>
-      <StepHead title="Changes not published" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
-        Your report stays live as it was. Change the details and try again, or keep it as it is.
-      </StepHead>
+      {stage === "review" ? (
+        <StepHead title="Changes in review" aside={<StatusChip tone="running" icon={ReviewQueueIcon}>In review</StatusChip>}>
+          {correction.request
+            ? "You asked a reviewer to look. Your report stays live as it was until they decide, and you'll hear by email."
+            : again
+              ? "A reviewer approved your report over a check, so a reviewer approves its changes too. Your report stays live as it was until then, and you'll hear by email."
+              : "Your report stays live as it was. Your changes go live once a reviewer approves them, and you'll hear by email."}
+        </StepHead>
+      ) : stage === "declined" ? (
+        <StepHead title="Changes declined" aside={<StatusChip tone="danger" icon={CircleX}>Declined</StatusChip>}>
+          Your report stays live as it was. Change the details and send them again, or discard the changes.
+        </StepHead>
+      ) : (
+        <StepHead title="Changes not published" aside={<StatusChip tone="danger" icon={CircleX}>A check failed</StatusChip>}>
+          Your report stays live as it was. Change the details and try again, or request a human review.
+        </StepHead>
+      )}
+      {note ? <Said label={stage === "declined" ? "The reviewer's note" : "Your request"}>{note}</Said> : null}
+      {changed.length ? (
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <span className="me-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <PenLine className="size-3.5" /> You changed
+          </span>
+          {changed.map((c) => (
+            <StatusChip key={c.label} tone="neutral">
+              {c.label}
+            </StatusChip>
+          ))}
+        </div>
+      ) : null}
       <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
-        {results.map((r) => (
-          <CheckRow key={r.checkId} name={r.name} result={r} />
+        {correction.results.map((r) => (
+          <CheckRow key={r.checkId} name={r.name} result={r} advice={stage === "failed" && !overruled.has(r.checkId)} />
         ))}
       </ul>
       <div className="mt-6 flex flex-wrap justify-end gap-2">
-        <Button variant="outline" onClick={onKeep}>
-          Keep it as it is
+        <Button variant="outline" asChild>
+          <Link href={`/papers/${draft.id}`}>
+            Open its page <ArrowUpRight />
+          </Link>
         </Button>
-        <Button onClick={onBack}>
-          <PenLine /> Back to the details
+        <Button variant="outline" onClick={() => setDiscarding(true)}>
+          <Trash2 /> Discard the changes
+        </Button>
+        {stage === "failed" ? (
+          <Button variant="outline" onClick={() => setAsking(true)}>
+            <ReviewQueueIcon /> Request a human review
+          </Button>
+        ) : null}
+        <Button variant={stage === "review" ? "outline" : "default"} onClick={onEdit}>
+          <PenLine /> Edit the changes
         </Button>
       </div>
+      <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} />
+      <AlertDialog open={discarding} onOpenChange={setDiscarding}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard your changes?</AlertDialogTitle>
+            <AlertDialogDescription>Your report stays live as it is now. The changes you made are given up.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep them</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void onDiscard().then(() => toast.success("Changes discarded"), said("The changes couldn't be discarded"))}>Discard</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -948,7 +1095,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
     start(async () => {
       try {
         await onSend(comment);
-        toast.success("Sent for review");
+        toast.success("Sent to a reviewer");
         onClose();
       } catch (error) {
         toast.error(reasonOf(error, "The request couldn't be sent"));
@@ -959,7 +1106,7 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Request a human review</DialogTitle>
-          <DialogDescription>Our team reads your report and what the checks said. Ask when a check got your report wrong.</DialogDescription>
+          <DialogDescription>A reviewer reads your report and what the checks said. Ask when you think a check got it wrong.</DialogDescription>
         </DialogHeader>
         <Field label="What did the checks get wrong?" counter={`${comment.length} / ${REVIEW_TEXT_MAX}`}>
           {(id) => <Textarea id={id} value={comment} onChange={(e) => setComment(e.target.value)} rows={4} maxLength={REVIEW_TEXT_MAX} autoFocus />}
@@ -1028,14 +1175,6 @@ function Seal({ play }: { play: boolean }) {
 /** The report once it's live: its seal, its DOI and where to go next. Plays its moment only right after Activate. */
 function LiveReport({ settings, draft, fresh, onChange, onAnother, onCorrect }: { settings: Settings; draft: Submission; fresh: boolean; onChange: (report: Submission) => void; onAnother: () => void; onCorrect: () => void }) {
   const reduce = useReducedMotion();
-  // MOCK: a timer asks for the report again while Zenodo or Crossref is still working, so each chip settles in view.
-  // The real build is told by Convex and needs no timer.
-  const settling = stepsOf(draft).some((step) => step.state === "working" || step.state === "waiting");
-  useEffect(() => {
-    if (!settling) return;
-    const timer = setInterval(() => void readReport(draft.id).then((report) => report && onChange(report)), 3000);
-    return () => clearInterval(timer);
-  }, [settling, draft.id, onChange]);
   const play = fresh && !reduce;
   // Each part rises in after the seal has drawn, in reading order.
   const rise = (delay: number) => (play ? { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { delay, duration: 0.4, ease: EASE } } : {});
@@ -1043,7 +1182,8 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother, onCorrect }: 
   const passed = draft.results?.filter((r) => r.pass).length ?? 0;
   return (
     <div>
-      <div className="flex flex-col items-center pb-7 pt-3 text-center">
+      {/* Beside the cover, the seal takes the height the cover's column has to spare, so the buttons end on the card's edge. */}
+      <div className="flex flex-col items-center pb-7 pt-3 text-center @3xl:pb-12 @3xl:pt-10">
         <Seal play={play} />
         <motion.h2 className="mt-5 text-2xl font-semibold tracking-tight" {...rise(0.45)}>
           Your report is live
@@ -1068,7 +1208,8 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother, onCorrect }: 
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <RegistrationChips report={draft} />
-          <StatusChip tone="success" icon={ShieldCheck}>
+          {/* Green only when every check passed: a report a reviewer approved over one says how many did, plainly. */}
+          <StatusChip tone={passed === (draft.results?.length ?? 0) ? "success" : "neutral"} icon={ShieldCheck}>
             {passed} of {draft.results?.length ?? 0} checks passed
           </StatusChip>
           {draft.correctedAt ? (
@@ -1078,7 +1219,8 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother, onCorrect }: 
           ) : null}
         </div>
       </motion.div>
-      <motion.div className="mt-6 flex flex-wrap justify-end gap-2" {...rise(0.8)}>
+      {/* On a phone the four are two even rows, in place of a ragged wrap. */}
+      <motion.div className="mt-6 flex flex-wrap justify-end gap-2 max-sm:grid max-sm:grid-cols-2 max-sm:[&>*]:w-full" {...rise(0.8)}>
         <Button variant="outline" onClick={onAnother}>
           <Plus /> Publish another
         </Button>
@@ -1096,7 +1238,7 @@ function LiveReport({ settings, draft, fresh, onChange, onAnother, onCorrect }: 
           mock={{
             sent: draft.communities ?? [],
             send: async (community, publish) => {
-              const { outcome, report } = await addToCommunity(draft.id, community, publish);
+              const { outcome, report } = taken(await addToCommunity(draft.id, community, publish));
               onChange(report);
               return outcome;
             },

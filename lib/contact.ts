@@ -43,12 +43,16 @@ export type ContactMessage = z.infer<typeof contactMessage>;
 
 const LABELS: Array<[keyof ContactMessage, string]> = [["name", "Name"], ["email", "Email"], ["org", "Organisation"], ["country", "Country"], ["project", "Project"], ["message", "Message"]];
 
+/** A web address in already-escaped text, made a link, so a reader opens it with one click. The full stop or
+ * bracket that ends a sentence after it stays outside. */
+const linked = (escaped: string) => escaped.replace(/https?:\/\/[^\s<]*[^\s<.,;:!?)'"]/g, (url) => `<a href="${url}" style="color:#c2410c">${url}</a>`);
+
 /** An email to the team's inbox: a heading, then each value under its label. The body, as text and as HTML. */
 export function labelledEmail(heading: string, rows: ReadonlyArray<readonly [label: string, value: string]>) {
   return {
     text: [heading, ...rows.map(([label, value]) => `${label}:\n${value}`)].join("\n\n"),
     html: `<p style="margin:0 0 20px;font:600 15px/1.4 sans-serif">${escapeHtml(heading)}</p>${rows
-      .map(([label, value]) => `<p style="margin:0 0 4px;font:13px/1.4 sans-serif;color:#6a6a6a">${escapeHtml(label)}</p><p style="margin:0 0 18px;font:15px/1.5 sans-serif;white-space:pre-wrap">${escapeHtml(value)}</p>`)
+      .map(([label, value]) => `<p style="margin:0 0 4px;font:13px/1.4 sans-serif;color:#6a6a6a">${escapeHtml(label)}</p><p style="margin:0 0 18px;font:15px/1.5 sans-serif;white-space:pre-wrap">${linked(escapeHtml(value))}</p>`)
       .join("")}`,
   };
 }

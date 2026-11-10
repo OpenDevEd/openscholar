@@ -8,7 +8,7 @@ import { generateText, Output } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 import { decideYesNo, isDecisionModel, paperState } from "@/lib/ai/decisions";
-import { bylineOf, providersOf, stageOf, type Answer, type Check, type CheckResult, type Metadata, type Settings, type Submission } from "./types";
+import { bylineOf, changesOf, correctionStageOf, providersOf, stageOf, type Answer, type Check, type CheckResult, type Correction, type Metadata, type Settings, type Submission } from "./types";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -73,15 +73,21 @@ export async function checksFor(id: string, userId: string, metadata: Metadata, 
     if (!draft || (draft.ownerId !== userId && !draft.demo)) throw new Error("No such report of yours.");
     if (correction) {
       // A live report stays as it is while the checks read the corrected details: only the run is marked on it.
-      if (draft.status !== "live" || draft.step !== "done") throw new Error("Only a live report's details can be corrected.");
+      if (draft.status !== "live" || draft.step !== "done") throw new Error("This report isn't live any more, so its details can't be changed. Reload to see where it stands.");
+      // Changes put back to what the report already says are no changes: any that were waiting are given up.
+      if (draft.metadata && !changesOf(draft.metadata, metadata).length) {
+        draft.correction = undefined;
+        return { unchanged: true as const };
+      }
       draft.run = crypto.randomUUID();
     } else {
-      if (draft.step !== "details") throw new Error("This report isn't waiting for its checks.");
+      if (draft.step !== "details") throw new Error("This report isn't waiting for its checks any more. Reload to see where it stands.");
       // The author's corrections are saved before anything runs, so a run that fails keeps them.
       Object.assign(draft, { metadata, run: crypto.randomUUID(), updatedAt: Date.now() });
     }
     return { settings: state.settings, draft: structuredClone(draft), checks: state.settings.checks.filter((c) => c.enabled), version: state.settings.checksVersion };
   });
+  if ("unchanged" in started) throw new Error("These are the details your report already has, so there is nothing to change.");
   const text = await readFile(textPath(id), "utf8").catch(() => "");
   return { ...started, text };
 }
@@ -96,42 +102,54 @@ export function finishChecks(id: string, run: string, metadata: Metadata, result
     const blocked = results.some((r) => !r.pass && r.blocking);
     // Passing makes the report; whether it waits for a reviewer is decided when it's looked at (stageOf).
     const status = blocked ? "failed" : "passed";
-    Object.assign(draft, { metadata, results, checksVersion: version, status, step: "done", run: undefined, deposit: "none", updatedAt: Date.now() });
-    // The team's inbox hears of what needs a person.
-    if (results.some((r) => r.errored)) mail(state, "check-unfinished", draft, origin);
+    // A reviewer's approval and the author's request were about the details and answers before these.
+    Object.assign(draft, { metadata, results, checksVersion: version, status, step: "done", run: undefined, deposit: "none", approved: undefined, reviewRequest: undefined, updatedAt: Date.now() });
+    // The team's inbox hears of what needs a person: once, with every check that didn't pass or couldn't finish.
     if (stageOf(draft, state.settings) === "review") mail(state, "waiting-for-review", draft, origin);
+    else if (results.some((r) => r.errored)) mail(state, "check-unfinished", draft, origin);
     return draft;
   });
 }
 
+/** Makes a live report's checked changes its details, and registers it again so Crossref and Zenodo hold them too. */
+export function applyCorrection(report: Submission, { metadata, results, checksVersion }: Pick<Correction, "metadata" | "results" | "checksVersion">) {
+  const registers = providersOf(report);
+  Object.assign(report, {
+    metadata,
+    results,
+    checksVersion,
+    correction: undefined,
+    correctedAt: Date.now(),
+    // Registered again from now, in the same order as when it went live.
+    activatedAt: Date.now(),
+    deposit: registers.includes("crossref") ? "queued" : "none",
+    archive: registers.includes("zenodo") ? "queued" : "none",
+    updatedAt: Date.now(),
+  });
+}
+
 /**
- * What becomes of a live report's correction once the checks have read it. When none that blocks fails, the corrected
- * details replace the report's and it registers again, so Crossref and Zenodo hold them too. When one does, the
- * report stays exactly as it was. Either way only the latest run counts.
+ * What becomes of a live report's changes once the checks have read them, by the rule a new report follows. Every
+ * check passing with review off puts them live at once. Anything else keeps them beside the report, which stays
+ * exactly as it was: a check they newly fail is the author's to fix or to ask a person about, and the rest waits for
+ * a reviewer, so a report approved over a check's answer is approved by a person again. Only the latest run counts.
  */
 export function finishCorrection(id: string, run: string, metadata: Metadata, results: CheckResult[], version: number, origin: string) {
   return changeState((state) => {
     const draft = state.submissions.find((s) => s.id === id);
     if (!draft || draft.run !== run || draft.status !== "live") throw new Error("These checks were replaced, or the report is no longer live.");
     draft.run = undefined;
-    if (results.some((r) => r.errored)) mail(state, "check-unfinished", { ...draft, results }, origin);
-    // A check that failed before the report went live was overruled by a reviewer, and stays overruled: a correction
-    // is refused only by a blocking check it makes fail.
-    const failedBefore = new Set((draft.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
-    // A check that couldn't answer at all vouches for nothing: the correction waits to be tried again.
-    if (results.some((r) => r.errored || (!r.pass && r.blocking && !failedBefore.has(r.checkId)))) return { draft, applied: false };
-    const registers = providersOf(draft);
-    Object.assign(draft, {
-      metadata,
-      results,
-      checksVersion: version,
-      correctedAt: Date.now(),
-      // Registered again from now, in the same order as when it went live.
-      activatedAt: Date.now(),
-      deposit: registers.includes("crossref") ? "queued" : "none",
-      archive: registers.includes("zenodo") ? "queued" : "none",
-      updatedAt: Date.now(),
-    });
-    return { draft, applied: true };
+    if (!state.settings.humanReview && results.every((r) => r.pass)) {
+      applyCorrection(draft, { metadata, results, checksVersion: version });
+      // The author sees it happen; the email is their record of it, with the page's address.
+      mail(state, "changes-live", draft, origin);
+      return { draft, applied: true };
+    }
+    // These replace any changes that were waiting: a reviewer sees only the latest.
+    Object.assign(draft, { correction: { metadata, results, checksVersion: version, at: Date.now() }, updatedAt: Date.now() });
+    // The team's inbox hears once: of changes waiting, or of a check that couldn't finish on changes waiting on no one.
+    if (correctionStageOf(draft, draft.correction!) === "review") mail(state, "changes-waiting", draft, origin);
+    else if (results.some((r) => r.errored)) mail(state, "check-unfinished", { ...draft, results }, origin);
+    return { draft, applied: false };
   });
 }

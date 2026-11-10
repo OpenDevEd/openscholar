@@ -77,8 +77,15 @@ export type Account = { kind: "person" | "organization"; id: string; name: strin
 /** A person's or an organisation's own daily limit, by their Clerk ID. Their name is kept for the admin's list when
  * Clerk can't be asked; their email and photo are never kept here, and are read from Clerk for an admin only. */
 export type LimitOverride = Pick<Account, "kind" | "id" | "name"> & { perDay: number };
-/** The settings as an author's page may have them: without who has a limit of their own. */
-export const authorSettings = (settings: Settings): Settings => ({ ...settings, limits: { perDay: settings.limits.perDay, overrides: [] } });
+/** The settings as an author's page may have them: what its screens show, and nothing of who has a limit of their
+ * own, the registrars' accounts, or what each check asks and how sure it must be. */
+export const authorSettings = (settings: Settings): Settings => ({
+  ...settings,
+  limits: { perDay: settings.limits.perDay, overrides: [] },
+  publication: { zenodo: settings.publication.zenodo, crossref: { ...settings.publication.crossref, depositorName: "", email: "", registrant: "" } },
+  metadataModel: { ...settings.metadataModel, id: "", name: "" },
+  checks: settings.checks.map((c) => ({ ...c, question: "", fix: undefined, threshold: 0, model: { ...c.model, id: "", name: "" } })),
+});
 /** The reports a person may start in a day: their own limit, else the highest of their organisations', else everyone's. */
 export function limitFor(settings: Settings, userId: string, orgIds: readonly string[]) {
   const { perDay, overrides } = settings.limits;
@@ -146,6 +153,8 @@ export type Status = "draft" | "failed" | "passed" | "live" | "declined";
  * so switching review off releases the reports waiting only for it. */
 export type Stage = "draft" | "failed" | "review" | "ready" | "live" | "declined";
 export function stageOf(s: Submission, settings: Settings): Stage {
+  // Sent back for a new PDF, a report is being worked on again: nothing about its last checks is waiting on anyone.
+  if (s.step !== "done") return "draft";
   // A reviewer may approve a report whatever its checks said: it is then its author's to activate.
   if (s.status === "failed") return s.approved ? "ready" : "failed";
   if (s.status !== "passed") return s.status;
@@ -195,6 +204,8 @@ export type Submission = {
   activatedAt?: number;
   /** When its author last corrected its details after it went live. */
   correctedAt?: number;
+  /** Changes its author made to a live report's details that haven't gone live: the report stays as it was meanwhile. */
+  correction?: Correction;
   /** Every reviewer's word on it, oldest first. */
   reviews?: Review[];
   /** When a reviewer withdrew it after it had gone live. Its address then shows a page saying so, and it can be reinstated. */
@@ -206,16 +217,74 @@ export type Submission = {
   updatedAt: number;
 };
 
+/** What an action answers when it can't do what was asked: the reason, in words for the person. */
+export type Refused = { refused: string };
 /** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
 export const REVIEW_TEXT_MAX = 3000;
 /** An email to the team's inbox. MOCK: kept here to be read; the real build sends it (convex/lib/invitationDelivery.ts). */
 export type Email = { id: string; at: number; audience: "team" | "author"; to: string; replyTo: string; subject: string; text: string; html: string; report: string; event: string };
-/** A reviewer's word on a report: who gave it and when. */
-export type Review = { decision: "approve" | "decline" | "withdraw" | "reinstate"; by: string; at: number; note?: string };
-/** `drafts` is the report each person has open on the Publish page, by their Clerk user: one person's never shows for another. */
-export type MockState = { settings: Settings; submissions: Submission[]; drafts: Record<string, string>; started?: Record<string, number[]>; outbox?: Email[]; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
+/** A reviewer's word on a report, or on changes to a live one: who gave it and when. */
+export type Review = { decision: "approve" | "decline" | "withdraw" | "reinstate" | "approve-changes" | "decline-changes"; by: string; at: number; note?: string };
+export type MockState = { settings: Settings; submissions: Submission[]; started?: Record<string, number[]>; outbox?: Email[]; checkVersions: Record<string, Check[]>; agreementVersions?: Record<string, string> };
 
-/** Where a report's cover is served from. Its address changes with the picture, so it can be cached for good. */
+/**
+ * Changes to a live report's details, checked like the report was. They go live at once when every check passes and
+ * review is off. Otherwise they are kept here until a reviewer approves them, so a report a reviewer approved over a
+ * check's answer needs a reviewer again when it changes. `at` is when they were checked, which tells one set of
+ * changes from the next.
+ */
+export type Correction = {
+  metadata: Metadata;
+  results: CheckResult[];
+  checksVersion: number;
+  at: number;
+  /** The author asked a person to look at changes a check refused. */
+  request?: { comment: string; at: number };
+  /** A reviewer said no. The changes are kept for the author to change again or discard. */
+  declined?: { at: number; note?: string };
+};
+/** Where a live report's waiting changes stand: a check they newly fail holds them for the author to fix or ask
+ * about, anything else waits for a reviewer. */
+export type CorrectionStage = "failed" | "review" | "declined";
+export function correctionStageOf(s: Pick<Submission, "results">, c: Correction): CorrectionStage {
+  if (c.declined) return "declined";
+  // A check the report itself failed was a reviewer's to overrule, and is again.
+  const overruled = new Set((s.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
+  return !c.request && c.results.some((r) => !r.pass && r.blocking && !overruled.has(r.checkId)) ? "failed" : "review";
+}
+/** The reports a person is in the middle of: neither live nor declined. The mock's samples are everyone's, so never these. */
+export const reportsUnderWay = (reports: Submission[]) => reports.filter((r) => !r.demo && r.status !== "live" && r.status !== "declined");
+/** A report its author may give up: one never checked, or one its checks failed that no reviewer approved. Its DOI was never live. */
+export const canDiscard = (r: Submission) => !r.demo && (r.status === "draft" || (r.status === "failed" && !r.approved));
+/** Whether a report wants a reviewer now: waiting for review, failed with its author asking, or live with changes waiting. */
+export function wantsReviewer(s: Submission, settings: Settings) {
+  const stage = stageOf(s, settings);
+  return stage === "review" || (stage === "failed" && !!s.reviewRequest) || (stage === "live" && !!s.correction && correctionStageOf(s, s.correction) === "review");
+}
+
+const FIELD_TEXT: Array<[label: string, text: (m: Metadata) => string]> = [
+  ["Title", (m) => m.title],
+  ["Subtitle", (m) => m.subtitle],
+  ["Type", (m) => m.type],
+  ["Language", (m) => m.language],
+  ["Date", (m) => m.date],
+  ["Authors", (m) => m.authors.map((a) => [a.name, a.orcid, a.affiliations.map((x) => x.name).join("; "), a.roles.join(", "), a.corresponding ? "corresponding" : ""].filter(Boolean).join(", ")).join("\n")],
+  ["Abstract", (m) => m.abstract],
+  ["Topics", (m) => m.topics.map((t) => t.name).join(", ")],
+  ["Keywords", (m) => m.keywords.join(", ")],
+  ["Goals", (m) => m.sdgs.join(", ")],
+  ["Study designs", (m) => m.studyDesigns.join(", ")],
+  ["Places", (m) => m.countries.join(", ")],
+  ["Funding", (m) => m.funding.map((f) => [f.funder.name, ...f.awards].join(", ")).join("\n")],
+  ["References", (m) => m.references.join("\n")],
+  ["Links", (m) => m.relations.map((r) => `${r.kind}: ${r.target}`).join("\n")],
+];
+/** What a correction changes, field by field, as text: what it was and what it would be. */
+export function changesOf(before: Metadata, after: Metadata) {
+  return FIELD_TEXT.flatMap(([label, text]) => (text(before) === text(after) ? [] : [{ label, from: text(before), to: text(after) }]));
+}
+
+/** Where a report's cover is served from. Its address changes with the picture, so a new PDF's cover is never an old one's. */
 export const coverUrlOf = (report: Pick<Submission, "id" | "cover">) => (report.cover ? `/publish/files/${report.id}/cover?v=${report.cover}` : null);
 /** A report needs a DOI, so publishing needs Crossref or Zenodo connected. */
 export const canRegister = (settings: Settings) => settings.publication.zenodo.mode !== "off" || settings.publication.crossref.mode !== "off";
@@ -259,8 +328,9 @@ export const bylineOf = (settings: Settings, doi: string) =>
 const STRINGS = ["title", "subtitle", "type", "language", "date", "licence", "abstract"] as const;
 const LISTS = ["authors", "topics", "keywords", "sdgs", "studyDesigns", "countries", "funding", "references", "relations"] as const;
 /** The details as the details step sends them: the fields every reader of a report relies on, with their types. */
-export function isMetadata(value: unknown): value is Metadata {
+export function isMetadata(value: unknown, { titled = true } = {}): value is Metadata {
   if (typeof value !== "object" || value === null) return false;
   const m = value as Record<string, unknown>;
-  return STRINGS.every((k) => typeof m[k] === "string") && LISTS.every((k) => Array.isArray(m[k])) && (m.title as string).trim() !== "";
+  // A title is needed to run the checks, not to keep what the author has typed so far.
+  return STRINGS.every((k) => typeof m[k] === "string") && LISTS.every((k) => Array.isArray(m[k])) && (!titled || (m.title as string).trim() !== "");
 }
