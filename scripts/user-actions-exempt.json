@@ -283,10 +283,10 @@
   },
   "pending": {
     "evidenceLibraries/collectionSources:listCollectionSources": "#329",
-    "reports/flow:list": "#1213",
     "reports/flow:get": "#1213",
     "reports/flow:counts": "#1213",
-    "reports/flow:starts": "#1213"
+    "reports/flow:starts": "#1213",
+    "reports/flow:page": "#1213"
   },
   "inWorkspace": [
     "research/records",

@@ -3,7 +3,7 @@ import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validat
 import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import { capped } from "../lib/listCaps";
 import { MAX_CHECKS } from "../../lib/reports/settings";
-import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, STATUSES, STEPS } from "../../lib/reports/report";
+import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STATUSES, STEPS } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
 export const checkValidator = v.object({
@@ -179,3 +179,27 @@ export const reportDetailFields = {
   /** Changes its author made to a live report's details that haven't gone live. */
   correction: v.optional(changesValidator),
 };
+
+/** A report as a list shows it. */
+export const reportRowValidator = v.object({
+  key: v.string(),
+  /** Its title, or its PDF's name until it has one. */
+  title: v.optional(v.string()),
+  step: stepValidator,
+  status: statusValidator,
+  approved: v.optional(v.boolean()),
+  flagged: v.optional(v.boolean()),
+  changes: v.optional(changeStageValidator),
+  withdrawn: v.boolean(),
+  note: v.optional(v.string()),
+  registration: registrationValidator,
+  deposit: depositValidator,
+  archive: archiveValidator,
+  updatedAt: v.number(),
+  /** Who signed it. */
+  signer: v.string(),
+  coverUrl: v.union(v.string(), v.null()),
+  /** Whether the person may change it, or only see it. */
+  mine: v.boolean(),
+});
+export const reportRowsValidator = capped(v.array(reportRowValidator), REPORTS_PER_PAGE);

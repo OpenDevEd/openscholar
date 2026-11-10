@@ -8,7 +8,6 @@ import { blankDetails, stageOf, type Metadata } from "../../lib/reports/report";
 import { ensureWorkspace } from "../workspaces/create";
 import { startsLeft } from "./limits";
 
-const firstPage = { cursor: null, numItems: 10 };
 const refused = (code: string) => ({ data: expect.objectContaining({ code }) });
 const details = (title = "Shade trees and maize yields"): Metadata => ({ ...blankDetails("report.pdf", "2026-11-10"), title, abstract: "We measure maize yields on 640 plots." });
 const passed = (checkId: string, pass = true, blocking = true) => ({ checkId, name: checkId, model: "typesafe/jev-1.13", pass, blocking });
@@ -103,7 +102,7 @@ describe("who works on a workspace's report", () => {
     const key = await sign(world.author, world.lab);
     expect(await read(world.member, world.lab, key)).toMatchObject({ mine: false });
     expect(await read(world.orgAdmin, world.lab, key)).toMatchObject({ mine: true });
-    expect((await world.member.query(api.reports.flow.list, { workspaceId: world.lab, paginationOpts: firstPage })).page).toMatchObject([{ key, mine: false }]);
+    expect((await world.member.query(api.reports.flow.page, { workspaceId: world.lab, page: 1 })).rows).toMatchObject([{ key, mine: false }]);
     await expect(world.member.mutation(api.reports.flow.discard, { workspaceId: world.lab, key })).rejects.toMatchObject(refused("FORBIDDEN"));
     await expect(world.member.mutation(api.reports.flow.startUpload, { workspaceId: world.lab, key })).rejects.toMatchObject(refused("FORBIDDEN"));
     await expect(world.member.mutation(internal.reports.checkRuns.start, { workspaceId: world.lab, key, metadata: details(), runId: "r" })).rejects.toMatchObject(refused("FORBIDDEN"));
@@ -238,15 +237,15 @@ describe("a report's details", () => {
 });
 
 describe("a workspace's list of reports", () => {
-  it("pages the newest first and keeps one stage when asked", async () => {
+  it("lists the newest first and keeps one stage when asked", async () => {
     const world = await setup();
     const ready = await checked(world, [passed("byline")], world.author, world.lab);
     const failed = await checked(world, [passed("byline", false)], world.author, world.lab);
     const draft = await sign(world.author, world.lab);
-    const all = await world.author.query(api.reports.flow.list, { workspaceId: world.lab, paginationOpts: firstPage });
-    expect(all.page.map((r) => r.key)).toEqual([draft, failed.key, ready.key]);
-    const only = await world.author.query(api.reports.flow.list, { workspaceId: world.lab, paginationOpts: firstPage, show: "failed" });
-    expect(only.page.map((r) => r.key)).toEqual([failed.key]);
+    const all = await world.author.query(api.reports.flow.page, { workspaceId: world.lab, page: 1 });
+    expect(all.rows.map((r) => r.key)).toEqual([draft, failed.key, ready.key]);
+    // A page past the last answers the last, and says which it is.
+    expect(await world.author.query(api.reports.flow.page, { workspaceId: world.lab, page: 999, show: "failed" })).toMatchObject({ rows: [{ key: failed.key }], page: 1, pages: 1, total: 1 });
     expect(await world.author.query(api.reports.flow.counts, { workspaceId: world.lab })).toMatchObject({ all: 3, draft: 1, failed: 1, ready: 1, underWay: 3, only: null });
   });
 });

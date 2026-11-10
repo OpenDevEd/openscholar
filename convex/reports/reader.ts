@@ -7,6 +7,7 @@ import { generateText, Output, type LanguageModel } from "ai";
 import { z } from "zod";
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
 import { COUNTRIES } from "../../lib/constants";
+import { countryOfPlace } from "../../lib/reports/places";
 import { autocompleteOptions, autocompleteParameters } from "../../lib/openalex/autocomplete";
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
@@ -15,16 +16,6 @@ import { CREDIT_ROLES, DETAIL_TEXT, RELATION_KINDS, isOrcid, type Affiliation, t
 
 /** The model a reading runs on, as the server resolved it, and the effort it reads at. */
 export type Reader = { model: LanguageModel; slug: string; effort?: Effort };
-
-const SHORT = new Intl.DisplayNames(["en"], { type: "region" });
-/** Each country's names as text says them: its short English name and the catalog's formal one. */
-const COUNTRY_NAMES = Object.entries(COUNTRIES).map(([code, formal]) => ({ code, names: [...new Set([SHORT.of(code) ?? formal, formal.split(",")[0]!])].filter((n) => n.length > 3) }));
-/** The country an institution's place names, as OpenAlex's lookup gives it ("Accra, Ghana"). */
-function countryOfPlace(place: string | undefined): string {
-  const last = place?.split(",").at(-1)?.trim();
-  if (!last) return "";
-  return COUNTRY_NAMES.find(({ names }) => names.some((n) => n.toLowerCase() === last.toLowerCase()))?.code ?? "";
-}
 
 /** OpenAlex's best match for a name among its institutions or funders, or none. */
 async function bestMatch(entity: "institutions" | "funders", name: string) {

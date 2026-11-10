@@ -1,23 +1,20 @@
 // A report from its agreement to ready to activate (plans/publish-reports): what the Publish page reads and the
 // changes its author makes. A report is its workspace's. Every member of an organisation's workspace sees its
 // reports; the report's owner, who started it, and the workspace's admins change them.
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v, type Infer } from "convex/values";
-import { stream } from "convex-helpers/server/stream";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { type MutationCtx, type QueryCtx } from "../lib/functions";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { workspaceMutation, workspaceQuery } from "../lib/userActions";
-import schema from "../schema";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { reportSettings, settingsRow } from "./settings";
-import { archiveValidator, changeStageValidator, depositValidator, metadataValidator, pdfTroubleValidator, plainResults, registrationValidator, statusValidator, stepValidator } from "./validators";
+import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -26,9 +23,7 @@ export const MOVED_ON = "This report has moved on, so that can't be done any mor
 /** The largest PDF a report takes, and the largest picture of its first page. */
 export const REPORT_PDF_MAX_MB = 50;
 const COVER_MAX_BYTES = 2 * 1024 * 1024;
-/** Rows one page of a list holds at most, the rows a filtered page reads to fill itself, and the reports a count reads. */
-const PAGE_MAX = 50;
-const ROWS_READ = 500;
+/** The reports of a workspace its list and its counts read. */
 const COUNT_READ = 1_000;
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
@@ -250,27 +245,7 @@ export const requestReview = workspaceMutation({
 });
 
 const stageValidator = v.union(...STAGES.map((stage) => v.literal(stage)));
-const rowValidator = v.object({
-  key: v.string(),
-  /** Its title, or its PDF's name until it has one. */
-  title: v.optional(v.string()),
-  step: stepValidator,
-  status: statusValidator,
-  approved: v.optional(v.boolean()),
-  flagged: v.optional(v.boolean()),
-  changes: v.optional(changeStageValidator),
-  withdrawn: v.boolean(),
-  note: v.optional(v.string()),
-  registration: registrationValidator,
-  deposit: depositValidator,
-  archive: archiveValidator,
-  updatedAt: v.number(),
-  /** Who signed it. */
-  signer: v.string(),
-  coverUrl: v.union(v.string(), v.null()),
-  /** Whether the person may change it, or only see it. */
-  mine: v.boolean(),
-});
+const rowValidator = reportRowValidator;
 
 async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise<Infer<typeof rowValidator>> {
   const { key, step, status, approved, flagged, changes, note, registration, deposit, archive, updatedAt } = report;
@@ -288,26 +263,22 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise
   };
 }
 
-/** The workspace's reports, the one changed last first, a page at a time. `show` keeps those at one stage. */
-export const list = workspaceQuery({
-  args: { paginationOpts: paginationOptsValidator, show: v.optional(stageValidator) },
-  returns: paginationResultValidator(rowValidator),
-  handler: async (ctx, actor, { paginationOpts, show }) => {
-    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX) };
-    if (!show) {
-      const read = await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", actor.workspaceId)).order("desc").paginate(opts);
-      return { ...read, page: await Promise.all(read.page.map((report) => row(ctx, actor, report))) };
-    }
-    // A stage is worked out from the settings as they are, so no index holds it: the reports are read in order and
-    // those at another stage passed over.
+// ponytail: a workspace's list and its counts read its reports, up to COUNT_READ of the newest, which is what lets
+// the list page by number and keep its page in the address. A workspace starts a report or a few a day; one past
+// COUNT_READ pages by cursor and keeps its counts (lib/listCounts).
+const newest = (ctx: QueryCtx, workspaceId: Id<"workspaces">) => ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(COUNT_READ);
+
+/** One page of the workspace's reports, the one changed last first. `show` keeps those at one stage. A page past the last answers the last. */
+export const page = workspaceQuery({
+  args: { page: v.number(), show: v.optional(stageValidator) },
+  returns: v.object({ rows: reportRowsValidator, page: v.number(), pages: v.number(), total: v.number() }),
+  handler: async (ctx, actor, { page, show }) => {
     const { humanReview } = await reportSettings(ctx);
-    return await stream(ctx.db, schema)
-      .query("reports")
-      .withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", actor.workspaceId))
-      .order("desc")
-      .filterWith(async (report) => stageOf(report, humanReview) === show)
-      .map((report) => row(ctx, actor, report))
-      .paginate({ ...opts, maximumRowsRead: ROWS_READ });
+    const reports = await newest(ctx, actor.workspaceId);
+    const listed = show ? reports.filter((report) => stageOf(report, humanReview) === show) : reports;
+    const pages = Math.max(1, Math.ceil(listed.length / REPORTS_PER_PAGE));
+    const at = Math.min(Math.max(1, Math.floor(page) || 1), pages);
+    return { rows: await Promise.all(listed.slice((at - 1) * REPORTS_PER_PAGE, at * REPORTS_PER_PAGE).map((report) => row(ctx, actor, report))), page: at, pages, total: listed.length };
   },
 });
 
@@ -322,9 +293,7 @@ export const counts = workspaceQuery({
   returns: v.object({ ...countFields, all: v.number(), underWay: v.number(), only: v.union(v.string(), v.null()) }),
   handler: async (ctx, { workspaceId }) => {
     const { humanReview } = await reportSettings(ctx);
-    // ponytail: counted by reading the workspace's reports, up to COUNT_READ of the newest; a kept count per stage
-    // (lib/listCounts) once a workspace passes it. A workspace starts a report or a few a day.
-    const reports = await ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(COUNT_READ);
+    const reports = await newest(ctx, workspaceId);
     const tally = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<Stage, number>;
     for (const report of reports) tally[stageOf(report, humanReview)] += 1;
     const going = reports.filter(underWay);

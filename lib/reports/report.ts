@@ -182,6 +182,9 @@ export function changesOf(before: Metadata, after: Metadata) {
   return FIELD_TEXT.flatMap(([label, text]) => (text(before) === text(after) ? [] : [{ label, from: text(before), to: text(after) }]));
 }
 
+/** How many reports a page of a workspace's list holds. */
+export const REPORTS_PER_PAGE = 10;
+
 /** A report's key: R and six digits. */
 export const keyOf = (n: number) => `R${String(100_000 + n).padStart(6, "0")}`;
 export const isReportKey = (id: string) => /^R\d{6,}$/.test(id);
@@ -190,3 +193,11 @@ export const blankDetails = (fileName: string, today: string): Metadata => ({
   title: fileName.replace(/\.pdf$/i, "").replace(/[-_]+/g, " "), subtitle: "", type: "report", language: "en", date: today, licence: "CC BY 4.0",
   authors: [], abstract: "", topics: [], keywords: [], sdgs: [], studyDesigns: [], countries: [], funding: [], references: [], relations: [],
 });
+
+/** A link's address: a bare DOI goes to doi.org; anything that isn't a web address or a DOI has none. */
+export function linkHref(target: string) {
+  const text = target.trim();
+  if (/^https?:\/\/\S+$/i.test(text)) return text;
+  const doi = doiIn(text);
+  return doi ? `https://doi.org/${doi}` : null;
+}
