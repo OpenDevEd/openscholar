@@ -11,8 +11,12 @@ import { reportPaper } from "../../lib/reports/report-paper";
 import { detailsOf } from "./flow";
 import { reportSettings } from "./settings";
 
-/** Saved copies one step brings in step. */
-const COPIES_PER_STEP = 50;
+/**
+ * Saved copies one step brings in step. A copy of the largest report a details form allows is about half a megabyte
+ * (its paper, with every author's affiliations, beside the abstract and the names it also keeps on their own), and a
+ * step reads each copy and writes it again inside Convex's 16 MiB a transaction: eight stay well inside it.
+ */
+const COPIES_PER_STEP = 8;
 
 /**
  * Rewrites a report's saved copies from the report as it stands: a live one's details, as saving it now would keep
