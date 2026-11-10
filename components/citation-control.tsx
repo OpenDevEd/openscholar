@@ -185,9 +185,12 @@ export function CitationControl({
   paper,
   compact = true,
   iconOnly = false,
+  named = false,
 }: {
   paper: PaperResult;
   compact?: boolean;
+  /** In a page's own content, where there is room at every width: the button always says Cite. */
+  named?: boolean;
   /** An outlined icon, as the focus mode header draws its controls, each with its key beside it. */
   iconOnly?: boolean;
 }) {
@@ -223,12 +226,12 @@ export function CitationControl({
               onFocus={prepare}
               variant={compact && !iconOnly ? "ghost" : "outline"}
               size={iconOnly ? "icon-sm" : compact ? "icon" : "sm"}
-              className={iconOnly ? undefined : compact ? "size-8" : "max-sm:w-8 max-sm:px-0"}
+              className={iconOnly || named ? undefined : compact ? "size-8" : "max-sm:w-8 max-sm:px-0"}
               aria-label={t("cite")}
             >
               <Quote className={iconOnly ? "h-3 w-3" : "size-4"} />
               {/* Phones show the icon alone, as the rest of the focus mode header does. */}
-              {!compact && !iconOnly && <span className="hidden sm:inline">{t("cite")}</span>}
+              {!compact && !iconOnly && <span className={named ? undefined : "hidden sm:inline"}>{t("cite")}</span>}
             </Button>
           </PopoverTrigger>
         </TooltipHint>

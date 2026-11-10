@@ -21,7 +21,8 @@ import { AutoHeight } from "@/components/ui/auto-height";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { OrcidIcon } from "@/components/icons/author-service-icons";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
-import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, FileText, Globe, Library, LockOpen, MessageSquare, Target, TriangleAlert, Users } from "@/components/icons";
+import { Award, ArrowUpRight, BookOpen, Calendar, Check, ChevronRight, Compass, Copy, FileText, Globe, Library, LockOpen, MessageSquare, Plus, Target, TriangleAlert, Users } from "@/components/icons";
+import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { chatAbout } from "@/lib/assistant/place";
 import { topicHref } from "@/lib/topics/links";
@@ -65,6 +66,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   const tAuthors = useTranslations("authorPages");
   const tSimilar = useTranslations("similarPapers");
   const tp = useTranslations("paperCard");
+  const tAdded = useTranslations("addedPapers");
   const title = paper.title ?? paper.display_name ?? "";
   const communities = useLiveCopies(read, copyKeys);
   // A record published while the page is open fades in; the ones the page opened with are just there.
@@ -82,12 +84,12 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   const communityCover = communities.find((copy) => copy.cover);
 
   return (
+    // The bar holds what a reader does with the paper wherever they have scrolled to, each named while there is
+    // room: ask about it, keep it, read it. What belongs to a part of the page sits in that part: Cite and Share with
+    // the DOI, adding to a community with the communities it's in, and its author's corrections with its facts.
     <LibraryPageShell icon={FileText} title={title} actions={<>
       <AskAbout id={appId} title={title} />
-      <CitationControl paper={paper} compact={false} />
-      <SaveControl paper={paper} compact />
-      <PaperShare paper={paper} href={paperPath(id, title)} compact={false} className={BAR_ACTION} labelClassName={BAR_LABEL} />
-      {extra?.actions}
+      <SaveControl paper={paper} bar />
       {(pdf ?? doi) && <Button size="sm" className={BAR_ACTION} asChild>
         <a href={(pdf ?? doi)!} target="_blank" rel="noopener noreferrer">
           {pdf ? <FileText aria-hidden /> : <ArrowUpRight aria-hidden />}
@@ -114,7 +116,10 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             pdf={!!communityCover?.pdf || !!pdf}
           />
           <div className="flex min-w-0 flex-col">
-            <HeaderChips paper={paper} detail={detail} />
+            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+              <HeaderChips paper={paper} detail={detail} />
+              {extra?.actions}
+            </div>
             {/* The bar's heading is the title; this is the title at reading size. */}
             <p dir="auto" className="mt-4 text-pretty text-2xl font-semibold leading-tight tracking-tight sm:text-[2rem]">{title}</p>
             <AuthorLine detail={detail} fallback={paper.authors_unparsed} />
@@ -130,11 +135,13 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
                 </span>
               </p>
             ) : null}
-            {detail.ids.doi ? <DoiLine doi={detail.ids.doi} /> : null}
+            <DoiLine doi={detail.ids.doi}>
+              <CitationControl paper={paper} compact={false} named />
+              <PaperShare paper={paper} href={paperPath(id, title)} compact={false} labelClassName="" />
+            </DoiLine>
             <AutoHeight>
-            {communities.length ? (
               <div className="flex flex-wrap items-center gap-2 pt-5" aria-label={tAuthors("evidenceLibraries")}>
-                <span className="me-1 text-xs text-muted-foreground">{t("inCommunities")}</span>
+                {communities.length ? <span className="me-1 text-xs text-muted-foreground">{t("inCommunities")}</span> : null}
                 {communities.map((copy) => (
                   <a key={copy.id} href={copy.url} target="_blank" rel="noreferrer" className={cn("group inline-flex h-7 items-center gap-1.5 rounded-full bg-primary/10 ps-2 pe-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-2 focus-visible:outline-ring", !atOpen.has(copy.id) && "fade-enter")}>
                     <Library aria-hidden className="size-3.5" />
@@ -142,8 +149,17 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
                     <ArrowUpRight aria-hidden className="size-3 transition-transform group-hover:-translate-y-px group-hover:translate-x-px" />
                   </a>
                 ))}
+                {/* The paper onto a community, beside the ones it's already in. */}
+                <CommunityControl
+                  paper={paper}
+                  trigger={
+                    <Button variant="outline" size="sm" className="h-7 rounded-full bg-transparent px-2.5">
+                      <Plus aria-hidden className="size-3.5" />
+                      {tAdded("addToCommunity")}
+                    </Button>
+                  }
+                />
               </div>
-            ) : null}
             </AutoHeight>
             {topicPath.length ? (
               <nav aria-label={tTopics("classification")} className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground lg:mt-auto lg:pt-6">
@@ -207,21 +223,29 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   );
 }
 
-/** The DOI where it's seen: under the journal, opening the paper, with a button that copies it. */
-function DoiLine({ doi }: { doi: string }) {
+/**
+ * How the paper is pointed to: its DOI where it's seen, under the journal, opening the paper, with a button that
+ * copies it, then the ways to cite and share it (`children`). A paper with no DOI keeps those.
+ */
+function DoiLine({ doi, children }: { doi?: string | null; children: ReactNode }) {
   const t = useTranslations("paperPage");
   const [copied, setCopied] = useState(false);
   return (
-    <p className="mt-2 flex items-center gap-2 text-sm">
-      <span className="inline-flex h-5 items-center rounded bg-inset px-1.5 text-[11px] font-semibold text-muted-foreground">DOI</span>
-      <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 truncate font-mono text-[13px] hover:text-primary hover:underline">{doi}</a>
-      <TooltipHint label={copied ? t("doiCopied") : t("copyDoi")}>
-        <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground" aria-label={t("copyDoi")} onClick={async () => {
-          try { await navigator.clipboard.writeText(doi); setCopied(true); toast.success(t("doiCopied")); }
-          catch { toast.error(t("doiCopyFailed")); }
-        }}>{copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}</Button>
-      </TooltipHint>
-    </p>
+    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      {doi ? (
+        <p className="flex min-w-0 items-center gap-2">
+          <span className="inline-flex h-5 items-center rounded bg-inset px-1.5 text-[11px] font-semibold text-muted-foreground">DOI</span>
+          <a href={`https://doi.org/${doi}`} target="_blank" rel="noopener noreferrer" dir="ltr" className="min-w-0 truncate font-mono text-[13px] hover:text-primary hover:underline">{doi}</a>
+          <TooltipHint label={copied ? t("doiCopied") : t("copyDoi")}>
+            <Button variant="ghost" size="icon" className="size-7 shrink-0 text-muted-foreground" aria-label={t("copyDoi")} onClick={async () => {
+              try { await navigator.clipboard.writeText(doi); setCopied(true); toast.success(t("doiCopied")); }
+              catch { toast.error(t("doiCopyFailed")); }
+            }}>{copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}</Button>
+          </TooltipHint>
+        </p>
+      ) : null}
+      <div className="flex items-center gap-2">{children}</div>
+    </div>
   );
 }
 

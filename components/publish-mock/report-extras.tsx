@@ -8,7 +8,6 @@ import { Paged, pagerOf } from "@/components/settings/parts";
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { CountryFlag } from "@/components/ui/country-flag";
 import { ExternalLink, PenLine } from "@/components/icons";
-import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { Button } from "@/components/ui/button";
 import Link from "@/components/workspace-link";
 import { STUDY_DESIGNS } from "@/lib/openalex/vocabulary";
@@ -130,14 +129,14 @@ export function ReportSide({ m }: { m: Metadata }) {
   );
 }
 
-/** On a report's own page, for its author: the way to correct its details, which opens them on the Publish page.
+/** On a report's own page, for its workspace, beside the facts it corrects: the way to correct its details, which opens them on the Publish page.
  * With changes already waiting, it opens where they stand. */
 export function CorrectReport({ id, waiting }: { id: string; waiting: boolean }) {
   return (
-    <Button size="sm" variant="outline" className={BAR_ACTION} asChild>
+    <Button size="sm" variant="outline" className="shrink-0 bg-transparent" asChild>
       <Link href={waiting ? `/publish?report=${id}` : `/publish?report=${id}&correct=true`}>
         <PenLine aria-hidden />
-        <span className={BAR_LABEL}>{waiting ? "See your changes" : "Correct the details"}</span>
+        {waiting ? "See your changes" : "Correct the details"}
       </Link>
     </Button>
   );
