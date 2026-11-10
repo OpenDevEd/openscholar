@@ -337,7 +337,9 @@ function AccountPicker({ onPick }: { onPick: (account: Account, name: string) =>
   // What was shown stays, dimmed, until a search's answer is in.
   const [shown, setShown] = useState<{ people: NonNullable<typeof people>["page"]; organizations: NonNullable<typeof organizations>["page"] } | null>(null);
   if (people && organizations && (shown?.people !== people.page || shown.organizations !== organizations.page)) setShown({ people: people.page, organizations: organizations.page });
-  const stale = !people || !organizations;
+  // What is listed answers an earlier search until this one's answer is in, and while the typing settles: nothing
+  // of it can be picked then, or Enter would give a limit to the account the last search found.
+  const stale = !people || !organizations || query.trim() !== search;
   const groups = [
     { heading: "People", rows: (shown?.people ?? []).map((row) => ({ account: { userId: row._id } as Account, id: row._id as string, name: row.name ?? row.email, detail: row.name ? row.email : undefined, imageUrl: row.imageUrl ?? null, kind: "person" as const })) },
     { heading: "Organisations", rows: (shown?.organizations ?? []).map((row) => ({ account: { organizationId: row._id } as Account, id: row._id as string, name: row.name, detail: undefined, imageUrl: row.imageUrl ?? null, kind: "organization" as const })) },
@@ -367,6 +369,7 @@ function AccountPicker({ onPick }: { onPick: (account: Account, name: string) =>
                   <CommandItem
                     key={row.id}
                     value={row.id}
+                    disabled={stale}
                     onSelect={() => {
                       onPick(row.account, row.name);
                       setOpen(false);
@@ -391,7 +394,8 @@ function SavedInput({ value, onSave, className, placeholder, ariaLabel, numeric 
   const [was, setWas] = useState(value);
   if (value !== was) {
     setWas(value);
-    setDraft(value);
+    // Only a box still showing what was saved follows a new saved value: typing done since is never replaced.
+    if (draft === was) setDraft(value);
   }
   const commit = () => {
     const typed = draft.trim();
