@@ -6596,7 +6596,6 @@
       "offline": "Le PDF n'a pas pu être téléversé. Vérifiez votre connexion, puis choisissez-le de nouveau.",
       "uploadFailed": "Le PDF n'a pas pu être téléversé. Réessayez.",
       "uploadIntro": "Placez le texte suivant, mot pour mot, sur la couverture ou la deuxième de couverture avant de téléverser. Notre vérification cherche cette ligne.",
-      "byline": "Mention",
       "copyByline": "Copier la mention",
       "bylineCopied": "Mention copiée",
       "uploading": "Téléversement de {name}",

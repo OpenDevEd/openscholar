@@ -6596,7 +6596,6 @@
       "offline": "无法上传 PDF。请检查网络连接，然后重新选择。",
       "uploadFailed": "无法上传 PDF。请重试。",
       "uploadIntro": "上传前，请将以下文字原样放在封面或封二上。我们的检查会查找这一行。",
-      "byline": "署名",
       "copyByline": "复制署名",
       "bylineCopied": "署名已复制",
       "uploading": "正在上传 {name}",

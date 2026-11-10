@@ -6596,7 +6596,6 @@
       "offline": "The PDF couldn't be uploaded. Check your connection, then choose it again.",
       "uploadFailed": "The PDF couldn't be uploaded. Try again.",
       "uploadIntro": "Put the following text, verbatim, on the cover or the inside cover before you upload. Our check looks for this line.",
-      "byline": "Byline",
       "copyByline": "Copy byline",
       "bylineCopied": "Byline copied",
       "uploading": "Uploading {name}",

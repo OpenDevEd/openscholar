@@ -705,24 +705,6 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   );
 }
 
-function CopyField({ label, value, copyLabel, copied }: { label: string; value: string; copyLabel: string; copied: string }) {
-  return (
-    // The byline ends in its DOI, one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy
-    // button stays in reach.
-    <div className="min-w-0 space-y-1.5">
-      <span className="ps-1 text-xs font-medium text-muted-foreground">{label}</span>
-      <div className="flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
-        <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{value}</span>
-        <TooltipHint label={copyLabel}>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label={copyLabel} className="-me-1 text-muted-foreground" onClick={() => copy(value, copied)}>
-            <Copy />
-          </Button>
-        </TooltipHint>
-      </div>
-    </div>
-  );
-}
-
 /**
  * The DOI, and nothing else: its mark, then the DOI itself set large and arriving letter by letter, with one sweep of
  * light across it. Plays only right after signing; opened any other way it is already settled.
@@ -869,8 +851,15 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   return (
     <div>
       <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      <div className="mb-5">
-        <CopyField label={t("byline")} value={report.byline} copyLabel={t("copyByline")} copied={t("bylineCopied")} />
+      {/* The byline ends in its DOI, one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy
+          button stays in reach. */}
+      <div className="mb-5 flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
+        <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{report.byline}</span>
+        <TooltipHint label={t("copyByline")}>
+          <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(report.byline, t("bylineCopied"))}>
+            <Copy />
+          </Button>
+        </TooltipHint>
       </div>
       <button
         type="button"

@@ -6597,7 +6597,6 @@
       "offline": "No se pudo subir el PDF. Revisa tu conexión y vuelve a elegirlo.",
       "uploadFailed": "No se pudo subir el PDF. Inténtalo de nuevo.",
       "uploadIntro": "Pon el siguiente texto, tal cual, en la portada o en la contraportada interior antes de subirlo. Nuestra comprobación busca esta línea.",
-      "byline": "Mención",
       "copyByline": "Copiar la mención",
       "bylineCopied": "Mención copiada",
       "uploading": "Subiendo {name}",
