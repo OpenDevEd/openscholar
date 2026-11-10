@@ -266,6 +266,15 @@ describe("changes to a live report", () => {
     expect((await read(world.author, world.lab, key)).trying).toBeUndefined();
   });
 
+  it("go live as the run kept them: a link row left empty is never published", async () => {
+    const world = await setup();
+    const { key, reportId } = await live(world);
+    const metadata = { ...details("With an empty link row"), relations: [{ kind: "data" as const, target: " " }] };
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata, runId: "run-link", from: { changesSince: await openedOn(world, key) } });
+    expect(await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-link", results: [passed("byline")], version: 1, metadata })).toBe("live");
+    expect((await read(world.author, world.own, key)).metadata).toMatchObject({ title: "With an empty link row", relations: [] });
+  });
+
   it("are checked one set at a time: a second sent while the first runs is refused, not put in its place", async () => {
     const world = await setup();
     const { key } = await live(world);

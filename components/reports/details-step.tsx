@@ -230,7 +230,8 @@ export function DetailsStep({
   /** What the details were when the form opened, by the number that tells one state of the report from the next. It
    * is kept as it was then, so details saved since by someone else are never written over by this form. */
   version?: number;
-  onSave?: (m: Metadata) => void;
+  /** Given the details and the `version` the form opened on, a moment after each change. */
+  onSave?: (m: Metadata, version: number | undefined) => void;
   /** Called at the first change made to the form: from then on it holds something that isn't saved anywhere. */
   onTouched?: () => void;
   /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
@@ -268,7 +269,7 @@ export function DetailsStep({
     setM(next);
     clearTimeout(held.current.timer);
     // An ORCID iD half typed is no iD yet: the details are saved once it is one, or the box is empty.
-    held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next) : undefined;
+    held.current.send = onSave && !next.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid)) ? () => onSave(next, opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
   // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose
@@ -594,7 +595,12 @@ export function DetailsStep({
       </div>
       <div className="mt-8 flex flex-wrap justify-end gap-2">
         {onCancel ? (
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={() => {
+            // What was typed is given up, so a save still waiting must never arrive after it.
+            clearTimeout(held.current.timer);
+            held.current.send = undefined;
+            onCancel();
+          }}>
             Cancel
           </Button>
         ) : null}

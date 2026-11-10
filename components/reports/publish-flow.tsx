@@ -371,7 +371,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               onTouched={() => setTyping(true)}
               // Kept as they are typed, so Back, Forward or a reload brings them back. Typed over a report that has
               // changed since, they are not kept, and sending them is refused in words.
-              onSave={(metadata) => void typeChanges({ ...here, key: report.key, since: report.correction?.at ?? report.correctedAt ?? report.activatedAt!, metadata }).catch(said("Your changes couldn't be saved"))}
+              onSave={(metadata, since) => void typeChanges({ ...here, key: report.key, since: since!, metadata }).catch(said("Your changes couldn't be saved"))}
               onRun={async (metadata: Metadata, since) => {
                 setAttempt(metadata);
                 setTyping(false);
@@ -392,8 +392,9 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               onCancel={() => {
                 setAttempt(null);
                 setTyping(false);
-                // Cancelling gives up what was typed, here and wherever it was kept.
-                if (report.trying) void typeChanges({ ...here, key: report.key, since: report.correction?.at ?? report.correctedAt ?? report.activatedAt!, metadata: null }).catch(() => undefined);
+                // Cancelling gives up what was typed, here and wherever it was kept: a save sent a moment ago may not
+                // have come back yet, and this one runs after it.
+                if (typing || report.trying) void typeChanges({ ...here, key: report.key, since: report.correction?.at ?? report.correctedAt ?? report.activatedAt!, metadata: null }).catch(() => undefined);
                 onCorrected();
               }}
             />

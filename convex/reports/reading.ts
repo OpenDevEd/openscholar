@@ -7,20 +7,28 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
-import { blankDetails, DETAIL_CAPS, type Metadata } from "../../lib/reports/report";
+import { blankDetails, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
-/** What the model read, held to what a report keeps: a PDF with more references than that keeps the first of them. */
+/** What the model read, held to what a report keeps: a PDF with more references than that keeps the first of them,
+ * a title, keyword or grant number longer than a report holds is cut to fit, and a date still to come is today,
+ * each for its author to put right. Nothing a PDF says keeps its details from being saved (`keptDetails`). */
 function capped(metadata: Metadata): Metadata {
   const cut = <T,>(list: T[], cap: number) => list.slice(0, cap);
+  const word = (text: string) => text.slice(0, DETAIL_TEXT.keyword);
+  const today = new Date().toISOString().slice(0, 10);
   return {
     ...metadata,
+    title: metadata.title.slice(0, DETAIL_TEXT.title),
+    subtitle: metadata.subtitle.slice(0, DETAIL_TEXT.subtitle),
+    abstract: metadata.abstract.slice(0, DETAIL_TEXT.abstract),
+    date: metadata.date > today ? today : metadata.date,
     authors: cut(metadata.authors, DETAIL_CAPS.authors).map((author) => ({ ...author, affiliations: cut(author.affiliations, DETAIL_CAPS.affiliations), roles: cut(author.roles, DETAIL_CAPS.roles) })),
     topics: cut(metadata.topics, DETAIL_CAPS.topics),
-    keywords: cut(metadata.keywords, DETAIL_CAPS.keywords),
+    keywords: cut(metadata.keywords, DETAIL_CAPS.keywords).map(word),
     studyDesigns: cut(metadata.studyDesigns, DETAIL_CAPS.studyDesigns),
     countries: cut(metadata.countries, DETAIL_CAPS.countries),
-    funding: cut(metadata.funding, DETAIL_CAPS.funding).map((funding) => ({ ...funding, awards: cut(funding.awards, DETAIL_CAPS.awards) })),
+    funding: cut(metadata.funding, DETAIL_CAPS.funding).map((funding) => ({ ...funding, awards: cut(funding.awards, DETAIL_CAPS.awards).map(word) })),
     references: cut(metadata.references, DETAIL_CAPS.references),
     relations: cut(metadata.relations, DETAIL_CAPS.relations),
   };

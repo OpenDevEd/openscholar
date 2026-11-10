@@ -110,12 +110,14 @@ export const finish = internalMutation({
   args: { reportId: v.id("reports"), runId: v.string(), results: checkResultsValidator, version: v.number(), /** The changes a run on a live report read. */ metadata: v.optional(metadataValidator) },
   // Where changes to a live report stand after the run: live, or kept beside it at that stage. Null for a first run, or one that was replaced.
   returns: v.union(v.null(), v.literal("live"), changeStageValidator),
-  handler: async (ctx, { reportId, runId, results, version, metadata }) => {
+  handler: async (ctx, { reportId, runId, results, version, metadata: read }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report || report.run?.id !== runId) return null;
     const details = await detailsOf(ctx, reportId);
     if (report.run.changes) {
-      if (report.status !== "live" || !metadata) return null;
+      if (report.status !== "live" || !read) return null;
+      // As the run kept them when it started: an empty link dropped then is never published, nor counted as a change next time.
+      const metadata = checkedDetails(read);
       await ctx.db.patch("reportDetails", details._id, { running: undefined, trying: undefined });
       await ctx.db.patch("reports", reportId, { run: undefined });
       const settings = await reportSettings(ctx);
