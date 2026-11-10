@@ -92,11 +92,14 @@ included.
 | Communities asking about a DOI | `/api/v1/evidence-libraries/papers/resolve` (`convex/http.ts`) |
 
 Crossref and Zenodo deposits are new in Openscholar: a community's are made by
-new-el's publication worker. The deposit code follows that worker's order and
-payloads (`reuse-crossref`: Crossref, then Zenodo publishes its draft;
-`mint-zenodo`: Zenodo, then Crossref), and every call to Zenodo sends
-Openscholar's User-Agent, because zenodo.org answers 403 to Node's default one
-(fixed for credential checks in #1186).
+new-el's publication worker. A report's are made through the package that
+worker uses, `@opendeved/doi-sync-core` (its Crossref and Zenodo clients and
+its record mapping), from `convex/reports/registrar.ts`, in that worker's order
+(`reuse-crossref`: Crossref, then Zenodo archives under the Crossref DOI;
+`mint-zenodo`: Zenodo, then Crossref). Every call to Zenodo sends Openscholar's
+User-Agent, because zenodo.org answers 403 to Node's default one (fixed for
+credential checks in #1186). The package is a public GitHub dependency with a
+build step, as in new-el.
 
 ## Data
 
@@ -112,10 +115,14 @@ is no migration.
 - `reportLimits`: a workspace's own daily limit, by workspace.
 - `reportStarts`: one row per report started, by workspace and time. The count
   of a day's rows is read with a cap of the limit.
-- `reports`: one row per report, by key, by workspace and by DOI: owner,
-  workspace, step, status, signature, PDF and cover files, details, check
-  results, waiting changes, registration states, and reviewers' decisions
-  (capped at 100).
+- `reports`: one row per report, by key, by workspace and by DOI: what a list
+  shows of it (owner, workspace, step, status, signature, PDF and cover files,
+  where its changes and its registrations stand).
+- `reportDetails`: a report's details, its checks' answers, its author's
+  request for a review and changes that wait, one row per report.
+- `reportFiles`: which report each stored file belongs to.
+- `reportReviews`: each reviewer's decision on a report.
+- `reportEmails`: each email written about a report, sent or not.
 - `reportKeys`: the counter keys are handed out from.
 
 A live report's PDF and cover are public; a report that isn't live serves its
@@ -172,6 +179,18 @@ The milestone is done when a person on shared dev can publish a report end to
 end with both registrars on sandbox, a reviewer can decide on it, a community
 can add it by DOI, and `lib/publish-mock/`, `components/publish-mock/`,
 `app/actions/publish-mock.ts` and `.publish-mock` exist nowhere.
+
+## Left out of the first build
+
+- A report registered with Zenodo alone: its DOI would be Zenodo's to reserve
+  at signing, and `sign` refuses that route until it is built.
+- A series deposit with its ISSN at Crossref (`report-paper_series_metadata`),
+  which `@opendeved/doi-sync-core` doesn't make yet. A report is deposited as a
+  report-paper with the series as its institution.
+- A saved copy of a report following its corrections (#1219).
+- Funders, references and related links in the Crossref deposit (#1221): the
+  package deposits none of them yet, so the details form marks those sections
+  as Openscholar's alone.
 
 ## Known risks
 

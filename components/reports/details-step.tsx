@@ -172,12 +172,13 @@ function AuthorRow({ author, index, count, onChange, onMove, onRemove }: { autho
         </span>
       </div>
       {wrongOrcid ? <p role="alert" className="text-xs text-destructive @xl:ps-9">That isn&apos;t an ORCID iD. One looks like 0000-0002-1825-0097. Leave the box empty if they have none.</p> : null}
+      {/* min-w-0: a long institution's name is cut inside its column, and never widens the form past a phone's screen. */}
       <div className="grid gap-3 @xl:ps-9 @2xl:grid-cols-2">
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Affiliations</span>
           <Affiliations value={author.affiliations} onChange={(affiliations) => onChange({ affiliations })} />
         </div>
-        <div className="space-y-1.5">
+        <div className="min-w-0 space-y-1.5">
           <span className="ps-1 text-xs font-medium text-muted-foreground">Contributor roles</span>
           <OptionPicker
           label="Contributor roles"
@@ -243,6 +244,7 @@ export function DetailsStep({
 }) {
   const [m, setM] = useState(initial);
   const [opened] = useState(version);
+  const [touched, setTouched] = useState(false);
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
   // report has moved on changes nothing (saveDetails).
@@ -254,7 +256,12 @@ export function DetailsStep({
   };
   const change = (update: (was: Metadata) => Metadata) => {
     const next = update(held.current.m);
-    if (held.current.m === initial) onTouched?.();
+    // Told once, at the first change: the report's own details can arrive anew at any time, so what the form was
+    // opened with is no way to tell an untouched form from a changed one.
+    if (!touched) {
+      setTouched(true);
+      onTouched?.();
+    }
     held.current.m = next;
     setM(next);
     clearTimeout(held.current.timer);
@@ -470,7 +477,8 @@ export function DetailsStep({
           <CountrySelector label="Places studied" placeholder="Add a country or region" selectedRegions={m.countries} onSelectionChange={(countries) => set("countries", countries)} bypassLimit />
         </Section>
 
-        <Section title="Funding" crossref>
+        {/* Funders, references and links are the report's page's for now: the deposit to Crossref doesn't carry them yet (#1221). */}
+        <Section title="Funding" crossref={false}>
           <OpenAlexLookupFilter
             selected={funderIds}
             onChange={(next) => set("funding", m.funding.filter((f) => next.includes(f.funder.id ?? typedId(f.funder.name))))}
@@ -501,7 +509,7 @@ export function DetailsStep({
           ) : null}
         </Section>
 
-        <Section title="References" crossref aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
+        <Section title="References" crossref={false} aside={<span className="text-xs tabular-nums text-muted-foreground">{m.references.length}</span>}>
           {m.references.length ? (
             <Paged pager={refs} rowHeight={REF_ROW} label="references">
               <ul className="divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle">
@@ -529,7 +537,7 @@ export function DetailsStep({
           {doiTrouble ? <p role="alert" className="ps-1 text-xs text-destructive">{doiTrouble}</p> : null}
         </Section>
 
-        <Section title="Data, code and other versions" crossref>
+        <Section title="Data, code and other versions" crossref={false}>
           {m.relations.length ? (
             <Paged pager={links.pager} rowHeight={ROW} label="links">
             <ul className="divide-y divide-border-subtle rounded-2xl border border-border-subtle">
@@ -586,7 +594,7 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || (!!onCancel && !resend && m === initial)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || (!!onCancel && !resend && !touched)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;

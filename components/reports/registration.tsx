@@ -14,7 +14,11 @@ const WORDS: Record<RegistrationStep["provider"], Record<RegistrationStep["state
 };
 const TONE: Record<RegistrationStep["state"], StatusTone> = { waiting: "neutral", working: "running", done: "success", failed: "warning" };
 
-export const stepWords = (step: RegistrationStep) => WORDS[step.provider][step.state];
+/** A withdrawn report's registrars hold its record marked withdrawn: its DOI can't be removed. */
+const WITHDRAWN: Record<RegistrationStep["provider"], string> = { zenodo: "Marked withdrawn on Zenodo", crossref: "Marked withdrawn at Crossref" };
+export const PROVIDER_NAME: Record<RegistrationStep["provider"], string> = { zenodo: "Zenodo", crossref: "Crossref" };
+
+export const stepWords = (step: RegistrationStep, withdrawn = false) => (withdrawn && step.state === "done" ? WITHDRAWN[step.provider] : WORDS[step.provider][step.state]);
 export const stepTone = (step: RegistrationStep) => TONE[step.state];
 
 /** The one registration a row has room for: the one refused, else the one under way, else the last one done. */
@@ -24,12 +28,12 @@ export function standingOf(report: Registered): RegistrationStep {
 }
 
 /** Each registration as a chip, in the order they happen. */
-export function RegistrationChips({ report }: { report: Registered }) {
+export function RegistrationChips({ report, withdrawn = false }: { report: Registered; withdrawn?: boolean }) {
   return (
     <>
       {stepsOf(report).map((step) => (
-        <StatusChip key={step.provider} tone={stepTone(step)} icon="tone">
-          {stepWords(step)}
+        <StatusChip key={step.provider} tone={withdrawn && step.state === "done" ? "neutral" : stepTone(step)} icon="tone">
+          {stepWords(step, withdrawn)}
         </StatusChip>
       ))}
     </>

@@ -15,6 +15,7 @@ import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
 import { detailsOf, keptDetails, signedAgreement, touch } from "./flow";
 import { notify } from "./mail";
+import { register } from "./registering";
 import { reportSettings } from "./settings";
 import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
 
@@ -137,6 +138,7 @@ export const get = query({
       ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
       ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       reviews: reviews.reverse().map(({ decision, by, at, note }) => ({ decision, by: reviewers.get(by)!, at, ...(note && { note }) })),
+      ...(report.registrationError && { registrationError: report.registrationError }),
       emails: emails.reverse().map(({ event, audience, at, error }) => ({ event, audience, at, ...(error && { failed: true }) })),
       humanReview: settings.humanReview,
     };
@@ -169,6 +171,8 @@ export const decide = mutation({
     if (decision === "reinstate") {
       if (stage !== "declined" || !report.withdrawnAt) throw createError("CONFLICT", "Only a withdrawn report can be reinstated.");
       await touch(ctx, report, { status: "live", withdrawnAt: undefined, note: undefined });
+      // Its registrars get the record as it was before it was withdrawn.
+      await register(ctx, report);
       await record(ctx, report._id, reviewer._id, "reinstate");
       await notify(ctx, report._id, "reinstated");
       return null;
@@ -181,6 +185,8 @@ export const decide = mutation({
       // A run reading changes to it ends with it: its answer would be about a report that is no longer live.
       if (report.run) await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { running: undefined });
       await touch(ctx, report, { status: "declined", withdrawnAt: Date.now(), note: words, run: undefined });
+      // A registered DOI can't be removed: its registrars get the record again, marked withdrawn.
+      await register(ctx, report);
       // Its PDF and cover were public: they move to new addresses, so the ones already out stop working.
       await ctx.scheduler.runAfter(0, internal.reports.files.rotate, { reportId: report._id });
       await record(ctx, report._id, reviewer._id, "withdraw", words);

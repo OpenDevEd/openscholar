@@ -2,7 +2,8 @@
 // reviewer may edit them directly. Either way the report stays live as it was until the changes are its details.
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../lib/functions";
-import { changesOf, providersOf, type CheckResult, type Metadata } from "../../lib/reports/report";
+import { changesOf, type CheckResult, type Metadata } from "../../lib/reports/report";
+import { register } from "./registering";
 
 type Kept = CheckResult & { model: string };
 
@@ -13,7 +14,6 @@ type Kept = CheckResult & { model: string };
 export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, details: Doc<"reportDetails">, changes: { metadata: Metadata; results: Kept[]; checksVersion: number }) {
   // What the change is, for the email that tells its author it is live.
   const changed = details.metadata ? changesOf(details.metadata, changes.metadata).map((change) => change.label).join(", ") : "";
-  const registers = providersOf(report.registration);
   // Later than the report's last change and the last time its details were set, so a form opened before this is told from one opened after.
   const now = Math.max(Date.now(), report.updatedAt + 1, (liveSince(report) ?? 0) + 1);
   // A run still reading other changes was started over the details as they were: it ends here, so its answer can't put those over these.
@@ -25,10 +25,10 @@ export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, det
     changes: undefined,
     run: undefined,
     correctedAt: now,
-    deposit: registers.includes("crossref") ? "queued" : "none",
-    archive: registers.includes("zenodo") ? "queued" : "none",
     updatedAt: now,
   });
+  // Its registrars take the record again: Crossref the corrected deposit under the same DOI, Zenodo an edit of its record.
+  await register(ctx, report);
   return changed;
 }
 

@@ -14,6 +14,7 @@ import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { notify } from "./mail";
+import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
 import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
 
@@ -330,8 +331,8 @@ export const activate = workspaceMutation({
     if (stage !== "ready") throw createError("CONFLICT", MOVED_ON);
     // A DOI needs somewhere to register: with both registrars switched off, nothing goes live.
     if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
-    const registers = providersOf(report.registration);
-    await touch(ctx, report, { status: "live", activatedAt: Date.now(), deposit: registers.includes("crossref") ? "queued" : "none", archive: registers.includes("zenodo") ? "queued" : "none" });
+    await touch(ctx, report, { status: "live", activatedAt: Date.now() });
+    await register(ctx, report);
     await notify(ctx, report._id, "live");
     await notify(ctx, report._id, "live-author");
     return null;

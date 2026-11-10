@@ -15,7 +15,7 @@ import { Field } from "@/components/evidence-libraries/configuration/section-car
 import { StatusChip, StatusIcon } from "@/components/evidence-libraries/configuration/status-chip";
 import { FunderName } from "@/components/papers/paper-entities";
 import { CheckRow } from "@/components/reports/publish-flow";
-import { RegistrationChips, standingOf, stepTone, stepWords } from "@/components/reports/registration";
+import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/reports/registration";
 import { Enter, LIST, Paged, Segmented, Working, Zone, pagerOf } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
-import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, Mail, PenLine, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
+import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, Mail, PenLine, RefreshCw, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { SDGS } from "@/lib/openalex/vocabulary";
@@ -92,6 +92,7 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
   const [last, setLast] = useState(opened);
   if (opened && opened !== last) setLast(opened);
   const decide = useMutation(api.reports.review.decide);
+  const retry = useMutation(api.reports.registration.retry);
   // When the search box was last typed in, which tells typing on from starting another search.
   const typed = useRef(0);
   if (!shown) return <Enter ready={false}>{null}</Enter>;
@@ -142,6 +143,7 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
                     stage={stageOf(row, shown.humanReview)}
                     onOpen={() => onOpen(row.key)}
                     onApprove={() => decide({ key: row.key, decision: "approve", seenAt: row.updatedAt, ...(row.pdfAt !== undefined && { seenPdfAt: row.pdfAt }) }).then(() => void toast.success("Approved. Its author can activate it now."), failed)}
+                    onRetry={() => retry({ key: row.key }).then(() => void toast.success("Sent again"), failed)}
                   />
                 ))}
               </ul>
@@ -170,11 +172,11 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
   );
 }
 
-function SubmissionRow({ row, stage, onOpen, onApprove }: { row: Row; stage: Stage; onOpen: () => void; onApprove: () => Promise<void> }) {
+function SubmissionRow({ row, stage, onOpen, onApprove, onRetry }: { row: Row; stage: Stage; onOpen: () => void; onApprove: () => Promise<void>; onRetry: () => Promise<void> }) {
   const [busy, start] = useTransition();
   const status = stage === "draft" ? undefined : STATUS[stage];
   // A live report's registrations: the one refused, else the one under way, else the last one done.
-  const standing = row.status === "live" ? standingOf(row) : null;
+  const standing = row.status === "live" || row.withdrawn ? standingOf(row) : null;
   const wants = row.changes === "review" ? CHANGES.review.label : stage === "failed" && row.asked ? "Review asked" : null;
   const title = row.title ?? "Untitled";
   return (
@@ -195,7 +197,20 @@ function SubmissionRow({ row, stage, onOpen, onApprove }: { row: Row; stage: Sta
         </div>
         <div className="flex shrink-0 items-center gap-3 max-sm:basis-full max-sm:justify-between">
           <span className="flex items-center gap-2">
-            {standing ? <StatusIcon className="relative z-10" tone={stepTone(standing)} label={stepWords(standing)} icon={standing.state === "done" ? Hash : undefined} /> : null}
+            {standing ? (
+              standing.state === "failed" ? (
+                // A refused registration is sent again from its row.
+                <TooltipHint label={`Send to ${PROVIDER_NAME[standing.provider]} again`}>
+                  <Button variant="ghost" size="icon-sm" aria-label={`Send ${row.key} to ${PROVIDER_NAME[standing.provider]} again`} className="relative z-10 ink-warning" disabled={busy} onClick={() => start(onRetry)}>
+                    <Working busy={busy}>
+                      <RefreshCw />
+                    </Working>
+                  </Button>
+                </TooltipHint>
+              ) : (
+                <StatusIcon className="relative z-10" tone={row.withdrawn ? "neutral" : stepTone(standing)} label={stepWords(standing, row.withdrawn)} icon={standing.state === "done" ? Hash : undefined} />
+              )
+            ) : null}
             {row.changes && !wants ? <StatusIcon className="relative z-10" tone={CHANGES[row.changes].tone} label={CHANGES[row.changes].label} icon={PenLine} /> : null}
             {status && stage !== "draft" ? (
               // A row that wants a reviewer says what for, in place of where the report stands.
@@ -419,9 +434,10 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   ))}
                 </ul>
               ) : null}
-              {s.status === "live" ? (
+              {s.status === "live" || s.withdrawn ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <RegistrationChips report={s} />
+                  <RegistrationChips report={s} withdrawn={s.withdrawn} />
+                  {s.registrationError ? <p className="basis-full break-words text-xs text-muted-foreground">{s.registrationError}</p> : null}
                   {s.correctedAt ? <StatusChip tone="neutral" icon={PenLine}>Corrected {day(s.correctedAt)}</StatusChip> : null}
                 </div>
               ) : null}
