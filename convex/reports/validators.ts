@@ -214,3 +214,32 @@ export const reportFileFields = { file: v.id("_storage"), reportId: v.id("report
 
 /** What a run's details were made from: a PDF's reading, or a live report's details as they stood. */
 export const runFromValidator = v.union(v.object({ pdfAt: v.number() }), v.object({ changesSince: v.number() }));
+
+/** A report as the reviewers' list shows it: a list row without whether it is the reader's, with its DOI and whether its author asked for a person. */
+export const adminRowValidator = v.object({ ...reportRowValidator.omit("mine").fields, doi: v.string(), asked: v.optional(v.boolean()) });
+/** The reviewers' list holds 8 to a page (convex/reports/review.ts `REVIEW_PER_PAGE`). */
+export const adminRowsValidator = capped(v.array(adminRowValidator), 8);
+/** One report as a reviewer reads it. */
+export const adminReportValidator = v.object({
+  ...adminRowValidator.fields,
+  byline: v.string(),
+  /** Who started it, with the address only a reviewer sees. */
+  owner: v.object({ name: v.string(), email: v.string() }),
+  /** The organisation whose workspace it is; null for its owner's own. */
+  workspace: v.union(v.string(), v.null()),
+  signedAt: v.number(),
+  onBehalfOfAll: v.boolean(),
+  agreementVersion: v.number(),
+  checksVersion: v.optional(v.number()),
+  run: v.optional(v.object({ at: v.number(), changes: v.boolean() })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
+  metadata: v.optional(metadataValidator),
+  results: v.optional(checkResultsValidator),
+  reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
+  correction: v.optional(changesValidator),
+  activatedAt: v.optional(v.number()),
+  correctedAt: v.optional(v.number()),
+  /** Reviewers' words on it, oldest first, each by name. */
+  reviews: capped(v.array(v.object({ decision: reviewDecisionValidator, by: v.string(), at: v.number(), note: v.optional(v.string()) })), 50),
+  humanReview: v.boolean(),
+});

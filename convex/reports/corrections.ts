@@ -12,7 +12,8 @@ type Kept = CheckResult & { model: string };
  */
 export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, details: Doc<"reportDetails">, changes: { metadata: Metadata; results: Kept[]; checksVersion: number }) {
   const registers = providersOf(report.registration);
-  const now = Date.now();
+  // Later than the report's last change and the last time its details were set, so a form opened before this is told from one opened after.
+  const now = Math.max(Date.now(), report.updatedAt + 1, (liveSince(report) ?? 0) + 1);
   await ctx.db.patch("reportDetails", details._id, { metadata: changes.metadata, results: changes.results, correction: undefined });
   await ctx.db.patch("reports", report._id, {
     title: changes.metadata.title.trim() || undefined,

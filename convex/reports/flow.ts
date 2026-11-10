@@ -38,7 +38,9 @@ async function changing(ctx: QueryCtx, actor: Actor, key: string) {
   return report;
 }
 
-export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<Doc<"reports">>) => ctx.db.patch("reports", report._id, { ...patch, updatedAt: Date.now() });
+/** When a report changes now: always later than its last change, since a form is told from the report it was opened on by this. */
+export const changedAt = (report: Pick<Doc<"reports">, "updatedAt">) => Math.max(Date.now(), report.updatedAt + 1);
+export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<Doc<"reports">>) => ctx.db.patch("reports", report._id, { ...patch, updatedAt: changedAt(report) });
 
 /** A report's details as they may be kept: each list within its cap, said in words, and the whole within its size. */
 export function keptDetails(metadata: Metadata) {
@@ -279,6 +281,47 @@ export const activate = workspaceMutation({
     if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
     const registers = providersOf(report.registration);
     await touch(ctx, report, { status: "live", activatedAt: Date.now(), deposit: registers.includes("crossref") ? "queued" : "none", archive: registers.includes("zenodo") ? "queued" : "none" });
+    return null;
+  },
+});
+
+/** A live report of the workspace's with changes waiting, as the screen the change came from saw them: ones sent since, say from another tab, are never the ones discarded or asked about. */
+async function waitingChanges(ctx: QueryCtx, actor: Actor, key: string, seenAt: number) {
+  const report = await changing(ctx, actor, key);
+  const details = await detailsOf(ctx, report._id);
+  if (report.status !== "live" || !details.correction) throw createError("CONFLICT", "This report has no changes waiting any more.");
+  if (details.correction.at !== seenAt) throw createError("CONFLICT", "You changed the details again since this page opened. It shows those changes now.");
+  return { report, details, correction: details.correction };
+}
+
+/**
+ * The author of changes a check refused asks a person to look, with what they think the check got wrong. The
+ * changes then wait for a reviewer.
+ */
+export const requestChangesReview = workspaceMutation({
+  args: { key: v.string(), seenAt: v.number(), comment: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, seenAt, comment }) => {
+    await refuseApps(ctx);
+    const { report, details, correction } = await waitingChanges(ctx, actor, key, seenAt);
+    if (report.changes === "declined") throw createError("CONFLICT", "A reviewer declined these changes. Their note is on the page now.");
+    // Already with a reviewer: asking again tells no one anything new.
+    if (report.changes === "review") return null;
+    await ctx.db.patch("reportDetails", details._id, { correction: { ...correction, request: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } } });
+    await touch(ctx, report, { changes: "review" });
+    return null;
+  },
+});
+
+/** The author gives up changes that haven't gone live. The report stays as it is. A run still reading them is given up with them. */
+export const discardChanges = workspaceMutation({
+  args: { key: v.string(), seenAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key, seenAt }) => {
+    await refuseApps(ctx);
+    const { report, details } = await waitingChanges(ctx, actor, key, seenAt);
+    await ctx.db.patch("reportDetails", details._id, { correction: undefined, running: undefined });
+    await touch(ctx, report, { changes: undefined, ...(report.run?.changes && { run: undefined }) });
     return null;
   },
 });
