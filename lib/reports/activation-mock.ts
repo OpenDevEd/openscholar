@@ -48,6 +48,13 @@ export const useActivationMock = create<Store>()(
   ),
 );
 
+/**
+ * The promo codes the mock knows, by the share of the price they take off. The real ones are Autumn rewards with
+ * promotion codes: the charge passes `discounts: [{ promotion_code }]` to `billing.attach`, and the dialog's total is
+ * Autumn's `billing.preview_attach` with the same code.
+ */
+export const MOCK_CODES: Record<string, number> = { FREEDOI: 100, HALFOFF: 50 };
+
 /** The card the mock saves, as Autumn would report it. */
 export const MOCK_CARD = { brand: "visa", last4: "4242" };
 

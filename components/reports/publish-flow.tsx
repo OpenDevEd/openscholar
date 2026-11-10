@@ -41,8 +41,8 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
 import { Segmented } from "@/components/settings/parts";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
-import { ACTIVATION_PRICE, MOCK_CARD, mockWait, useActivationMock } from "@/lib/reports/activation-mock";
-import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Trash2, TriangleAlert } from "@/components/icons";
+import { ACTIVATION_PRICE, MOCK_CARD, MOCK_CODES, mockWait, useActivationMock } from "@/lib/reports/activation-mock";
+import { AiIcon, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, Copy, CreditCard, FileText, FileUp, Hash, PenLine, Plus, PublishIcon, ReviewQueueIcon, RotateCcw, ShieldCheck, Tag, Trash2, TriangleAlert, X } from "@/components/icons";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
@@ -1010,12 +1010,18 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
   const admin = !organization || (mock.role ?? workspace?.role) === "admin";
   const free = mock.freeLeft > 0;
   const [paying, setPaying] = useState(false);
-  const activateNow = () =>
+  // MOCK: a promo code applied in the charge's dialog, and what's left to pay in cents.
+  const [code, setCode] = useState<{ code: string; off: number } | null>(null);
+  const price = ACTIVATION_PRICE * 100;
+  const due = price - (code ? Math.round((price * code.off) / 100) : 0);
+  /** `charge` is what's paid now, in cents: none for a free activation or one a code covers. */
+  const activateNow = (charge: number) =>
     start(async () => {
       try {
-        // MOCK: the charge. The real one attaches the activation plan through Autumn, keyed to the report.
-        if (!free) await mockWait();
-        if (!free && mock.card === "declines") throw new Error("Your card was declined. Nothing was charged, and the report is still ready.");
+        // MOCK: the charge. The real one attaches the activation plan through Autumn, keyed to the report, with the
+        // promo code as a discount.
+        if (charge > 0) await mockWait();
+        if (charge > 0 && mock.card === "declines") throw new Error("Your card was declined. Nothing was charged, and the report is still ready.");
         await onActivate?.();
         mock.activated(free);
       } catch (error) {
@@ -1116,7 +1122,7 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
                         </span>
                       </TooltipHint>
                     ) : stage === "ready" ? (
-                      <Button className="relative" disabled={activating} onClick={free ? activateNow : () => setPaying(true)}>
+                      <Button className="relative" disabled={activating} onClick={free ? () => activateNow(0) : () => setPaying(true)}>
                         <Working busy={activating}>
                           <span className="flex items-center gap-2">
                             <BadgeCheck /> {free ? "Activate" : `Activate for $${ACTIVATION_PRICE}`}
@@ -1144,23 +1150,113 @@ function Checks({ rows, report, humanReview, onActivate, onFix, onDetails, onReq
         // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
         <UpgradeConfirmationDialog
           open={paying}
-          onOpenChange={setPaying}
-          title={`Pay $${ACTIVATION_PRICE} to activate ${report.key}`}
-          description={organization ? `${organization}'s card is charged.` : undefined}
-          confirmLabel="Pay and activate"
+          onOpenChange={(open) => {
+            setPaying(open);
+            if (!open) setCode(null);
+          }}
+          title={due === 0 ? `Activate ${report.key}` : `Pay ${dollars(due)} to activate ${report.key}`}
+          description={organization ? (due === 0 ? `Nothing is charged to ${organization}'s card.` : `${organization}'s card is charged.`) : undefined}
+          confirmLabel={due === 0 ? "Activate" : "Pay and activate"}
           totalLabel="Due now"
           labels={{ from: "Its DOI now", to: "After" }}
           isConfirming={false}
           onConfirm={() => {
             setPaying(false);
-            activateNow();
+            setCode(null);
+            activateNow(due);
           }}
           cardBrand={MOCK_CARD.brand}
           cardLast4={MOCK_CARD.last4}
-          preview={{ currency: "USD", immediateChargeCents: ACTIVATION_PRICE * 100, currentPlan: "Reserved", targetPlan: "Live", targetPlanCreditsPerMonth: 0, lineItems: [] }}
+          preview={{
+            currency: "USD",
+            immediateChargeCents: due,
+            currentPlan: "Reserved",
+            targetPlan: "Live",
+            targetPlanCreditsPerMonth: 0,
+            lineItems: code
+              ? [
+                  { description: "Activation", amountCents: price, currency: "USD" },
+                  { description: `Code ${code.code}`, amountCents: due - price, currency: "USD" },
+                ]
+              : [],
+          }}
+          extra={<PromoCode applied={code} onApply={setCode} />}
         />
       ) : null}
     </div>
+  );
+}
+
+/** Cents as dollars, without cents when there are none: $5, $2.50. */
+const dollars = (cents: number) => `$${cents % 100 ? (cents / 100).toFixed(2) : cents / 100}`;
+
+/**
+ * MOCK: a promo code for an activation that's paid for, in the charge's dialog: a link until it's wanted, then a field.
+ * The real build asks Autumn for the total with the code (`billing.preview_attach`), which also says when a code is
+ * unknown, used up or expired.
+ */
+function PromoCode({ applied, onApply }: { applied: { code: string; off: number } | null; onApply: (code: { code: string; off: number } | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [wrong, setWrong] = useState<string | null>(null);
+  const [checking, check] = useTransition();
+  const apply = () =>
+    check(async () => {
+      await mockWait(500);
+      const entered = typed.trim().toUpperCase();
+      const off = MOCK_CODES[entered];
+      if (off === undefined) {
+        setWrong(`${entered} isn't a code we know.`);
+        return;
+      }
+      setWrong(null);
+      setTyped("");
+      onApply({ code: entered, off });
+    });
+  return (
+    <AutoHeight>
+      {applied ? (
+        <div className="flex items-center gap-2 text-sm">
+          <Tag className="size-4 text-muted-foreground" />
+          <span className="font-mono font-medium">{applied.code}</span>
+          <StatusChip tone="success">{applied.off}% off</StatusChip>
+          <Button variant="ghost" size="icon-sm" className="ms-auto text-muted-foreground" aria-label={`Remove ${applied.code}`} onClick={() => onApply(null)}>
+            <X />
+          </Button>
+        </div>
+      ) : open ? (
+        <form
+          className="space-y-1.5 p-px"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (typed.trim()) apply();
+          }}
+        >
+          <div className="flex gap-2">
+            <Input
+              autoFocus
+              value={typed}
+              onChange={(e) => {
+                setTyped(e.target.value);
+                setWrong(null);
+              }}
+              placeholder="Promo code"
+              aria-label="Promo code"
+              aria-invalid={!!wrong}
+              className="font-mono placeholder:font-sans"
+            />
+            <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
+              Apply
+            </Button>
+          </div>
+          {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
+        </form>
+      ) : (
+        <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
+          <Tag /> Add a promo code
+        </Button>
+      )}
+    </AutoHeight>
   );
 }
 
@@ -1260,6 +1356,14 @@ function ActivationMockPanel({ organization }: { organization: boolean }) {
         New reports today
         <Segmented label="New reports today" value={mock.startsUsed ? "used" : "left"} onChange={(v) => mock.set({ startsUsed: v === "used" })} options={[{ id: "left", label: "Some left" }, { id: "used", label: "Used up" }]} />
       </div>
+      <span>
+        Codes{" "}
+        {Object.entries(MOCK_CODES).map(([name, off]) => (
+          <span key={name} className="me-2 font-mono text-foreground">
+            {name} <span className="font-sans text-muted-foreground">{off}%</span>
+          </span>
+        ))}
+      </span>
     </section>
   );
 }
