@@ -92,7 +92,8 @@
     "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces.",
     "reports/settings:forAuthors": "What the Publish page reads of the series before a report exists: whether publishing is open, its agreement and its checks' names. The assistant doesn't publish reports.",
     "reports/flow:agreement": "The signed agreement's own page, which a report's workspace opens from the report to read, save or print.",
-    "reports/settings:open": "Whether the sidebar shows Publish. The assistant doesn't publish reports."
+    "reports/settings:open": "Whether the sidebar shows Publish. The assistant doesn't publish reports.",
+    "reports/paper:mine": "Whether a report's page offers the person reading it the way to correct it. The assistant doesn't publish reports."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -296,7 +297,8 @@
     "reports/flow:get": "#1213",
     "reports/flow:counts": "#1213",
     "reports/flow:starts": "#1213",
-    "reports/flow:page": "#1213"
+    "reports/flow:page": "#1213",
+    "reports/paper:get": "#1213"
   },
   "inWorkspace": [
     "research/records",

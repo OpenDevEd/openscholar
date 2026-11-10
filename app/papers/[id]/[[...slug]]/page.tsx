@@ -3,9 +3,15 @@ import { cache } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { PageWrapper } from "@/components/PageWrapper";
+import { auth } from "@clerk/nextjs/server";
+import { fetchQuery } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 import { PaperPage } from "@/components/papers/paper-page";
+import { CorrectReport, ReportMain, ReportSide } from "@/components/reports/report-extras";
+import { WithdrawnReport } from "@/components/reports/withdrawn-report";
+import { readReport } from "@/lib/reports/paper-data";
 import { indexedPage, isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
-import { citeFilePath, paperPath, paperSlug } from "@/lib/papers/page-address";
+import { citeFilePath, paperPageId, paperPath, paperSlug } from "@/lib/papers/page-address";
 import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
 import { copyKeysOf, quietly, readCommunityCopies, readPaperPage, readReferencesForPage, readSimilarForPage } from "@/lib/papers/paper-page-data";
 import { topicHref } from "@/lib/topics/links";
@@ -36,7 +42,12 @@ const updatedOf = (paper: PaperResult) => (paper as { updated_date?: string | nu
 
 const dateOf = (paper: PaperResult) => paper.publication_date ?? (paper.publication_year ? String(paper.publication_year) : undefined);
 
+/** The report the address names, if it names one that went live: a withdrawn report keeps its address, which says so. */
+const reportOf = (asked: string) => readReport(paperPageId(asked) ?? "");
+
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const report = await reportOf((await params).id);
+  if (report?.state === "withdrawn") return { title: `Withdrawn: ${report.title}`, robots: { index: false, follow: false } };
   const { paper, id, detail } = await paperOf((await params).id);
   const t = await getTranslations("metadata");
   const title = paper.title ?? paper.display_name ?? "";
@@ -72,15 +83,23 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function Page({ params }: Params) {
   const { id: asked, slug } = await params;
+  const report = await reportOf(asked);
+  if (report?.state === "withdrawn") return <PageWrapper><WithdrawnReport report={report} /></PageWrapper>;
   const { paper, id, work, detail } = await paperOf(asked);
   const title = paper.title ?? paper.display_name ?? "";
   // One address per paper: an OpenAlex ID, our bare ID or an old title all lead to it.
   if (asked !== id || slugOf(slug?.[0]) !== paperSlug(title) || (slug?.length ?? 0) > 1) permanentRedirect(paperPath(id, title));
   const references = ((paper as { referenced_works?: string[] }).referenced_works ?? []).map((reference) => reference.split("/").at(-1)!).slice(0, 100);
-  const [similar, referenceRows, communities] = await Promise.all([
-    readSimilarForPage(id).catch(quietly("similar papers", id, [])),
+  // A report's own details beyond a paper's record, and whether the person reading may correct it: its owner and
+  // its workspace's admins, whom only a signed-in read can tell.
+  const live = report?.state === "live" ? report : null;
+  const token = live ? ((await (await auth()).getToken({ template: "convex" })) ?? undefined) : undefined;
+  const [similar, referenceRows, communities, mine] = await Promise.all([
+    // A report isn't in our index, so nothing is like it there yet.
+    live ? [] : readSimilarForPage(id).catch(quietly("similar papers", id, [])),
     readReferencesForPage(references).catch(quietly("references", id, [])),
     readCommunityCopies(paper.doi ?? null, work).catch(quietly("community copies", id, [])),
+    token ? fetchQuery(api.reports.paper.mine, { key: id }, { token }).catch(quietly("report's owner", id, null)) : null,
   ]);
   const address = `${SITE_URL}${paperPath(id, title)}`;
   const topic = paper.primary_topic;
@@ -135,7 +154,7 @@ export default async function Page({ params }: Params) {
       {detail.copies.find((copy) => copy.pdf) && <link rel="item" type="application/pdf" href={detail.copies.find((copy) => copy.pdf)!.url} />}
       {detail.authors.flatMap((author) => author.orcid ? [<link key={author.orcid} rel="author" href={author.orcid} />] : [])}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structured).replace(/</g, "\\u003c") }} />
-      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} />
+      <PaperPage paper={paper} id={id} detail={detail} similar={similar} references={referenceRows} communities={communities} copyKeys={copyKeysOf(paper.doi ?? null, work)} extra={live ? { main: <ReportMain m={live.metadata} />, side: <ReportSide m={live.metadata} />, cover: live.coverUrl, actions: mine ? <CorrectReport id={id} waiting={mine.waiting} /> : undefined } : undefined} />
     </PageWrapper>
   );
 }

@@ -1,0 +1,45 @@
+import { describe, expect, it } from "vitest";
+import { api, internal } from "../_generated/api";
+import { checked, live, passed, row, setup, type World } from "./reports.test-support";
+
+const decide = async (world: World, key: string, decision: "withdraw" | "reinstate") =>
+  world.reviewer.mutation(api.reports.review.decide, { key, decision, seenPdfAt: (await row(world.t, key)).pdf!.at });
+
+describe("a report's page", () => {
+  it("is anyone's to read once the report is live, and no one's before", async () => {
+    const world = await setup();
+    const waiting = await checked(world, [passed("byline", false)]);
+    expect(await world.t.query(api.reports.paper.get, { key: waiting.key })).toBeNull();
+    expect(await world.t.query(internal.reports.paper.doiOf, { key: waiting.key })).toBeNull();
+    expect(await world.t.query(api.reports.paper.get, { key: "R999999" })).toBeNull();
+
+    const { key } = await live(world, world.author, world.lab);
+    const page = await world.t.query(api.reports.paper.get, { key });
+    expect(page).toMatchObject({ state: "live", key, doi: "10.53832/openscholar-r.r100002", metadata: { title: "Shade trees and maize yields" }, series: { name: "Openscholar Reports" } });
+    expect(await world.t.query(internal.reports.paper.doiOf, { key })).toBe("10.53832/openscholar-r.r100002");
+  });
+
+  it("says a withdrawn report was withdrawn, without its details or its files, until it is reinstated", async () => {
+    const world = await setup();
+    const { key } = await live(world);
+    await decide(world, key, "withdraw");
+    const page = await world.t.query(api.reports.paper.get, { key });
+    expect(page).toMatchObject({ state: "withdrawn", key, title: "Shade trees and maize yields", year: 2026 });
+    expect(page).not.toHaveProperty("metadata");
+    expect(page).not.toHaveProperty("pdfUrl");
+    expect(await world.t.query(internal.reports.paper.doiOf, { key })).toBeNull();
+    await decide(world, key, "reinstate");
+    expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ state: "live" });
+  });
+
+  it("offers its corrections to its owner and its workspace's admins alone", async () => {
+    const world = await setup();
+    const { key } = await live(world, world.author, world.lab);
+    const mine = (who: Pick<World["t"], "query">) => who.query(api.reports.paper.mine, { key });
+    expect(await mine(world.author)).toEqual({ waiting: false });
+    expect(await mine(world.orgAdmin)).toEqual({ waiting: false });
+    expect(await mine(world.member)).toBeNull();
+    expect(await mine(world.stranger)).toBeNull();
+    expect(await mine(world.t)).toBeNull();
+  });
+});

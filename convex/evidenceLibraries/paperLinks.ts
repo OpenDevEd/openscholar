@@ -61,6 +61,11 @@ export async function paperOfLink(ctx: Pick<ActionCtx, "runQuery">, raw: string,
   const link = paperLinkOf(raw);
   if (!link) return null;
   if (link.kind === "doi") return { openalexId: null, doi: link.doi };
+  if (link.kind === "report") {
+    // A report published on Openscholar is no index's work: a community takes it by the DOI it was registered with.
+    const doi = normalDoi(await ctx.runQuery(internal.reports.paper.doiOf, { key: link.key }));
+    return doi ? { openalexId: null, doi } : null;
+  }
   if (link.kind === "record") {
     const known = await ctx.runQuery(internal.evidenceLibraries.paperLinks.recordPaper, { origin: link.origin, itemKey: link.itemKey });
     return known.paper ?? (known.community ? await recordOnSite(link.origin, link.itemKey) : null);

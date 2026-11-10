@@ -13,7 +13,7 @@ import { PaperShare } from "@/components/papers/paper-links";
 import { AuthorName, FunderName, InstitutionName, JournalName } from "@/components/papers/paper-entities";
 import { CountryFilterFlag } from "@/components/country-filter-flag";
 import { PaperCover } from "@/components/papers/paper-cover";
-import { coverOf } from "@/lib/papers/cover";
+import { REPORT_COVER, coverOf } from "@/lib/papers/cover";
 import { CitationControl } from "@/components/citation-control";
 import { SaveControl } from "@/components/library/save-control";
 import { Button } from "@/components/ui/button";
@@ -53,10 +53,12 @@ type Props = {
   communities: CommunityCopy[];
   /** The keys they're found by, which the page follows for records published while it's open. */
   copyKeys: string[];
+  /** What a report published on Openscholar has beyond a paper's record: sections under the authors and in the sidebar, its PDF's cover, and what only its workspace does. */
+  extra?: { main?: ReactNode; side?: ReactNode; cover?: string | null; actions?: ReactNode };
 };
 
 /** A paper's own page: everything our index and OpenAlex hold about it, at an address search engines and people can open. */
-export function PaperPage({ paper, id, detail, similar, references, communities: read, copyKeys }: Props) {
+export function PaperPage({ paper, id, detail, similar, references, communities: read, copyKeys, extra }: Props) {
   const t = useTranslations("paperPage");
   const tc = useTranslations("common");
   const tTopics = useTranslations("topics");
@@ -76,7 +78,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   const topic = paper.primary_topic;
   const topicPath = topic ? [topic.domain, topic.field, topic.subfield, topic].filter((node): node is { id: string; display_name: string } => !!node) : [];
   // The title page and ink this paper always wears; the next paper likely wears another.
-  const look = coverOf(id);
+  const look = extra ? REPORT_COVER : coverOf(id);
   const communityCover = communities.find((copy) => copy.cover);
 
   return (
@@ -106,7 +108,8 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             year={paper.publication_year ?? null}
             type={paper.type ?? null}
             // A community's picture of its PDF's first page opens that PDF.
-            image={communityCover?.cover ?? null}
+            // An Openscholar Report wears the cover Openscholar made of its own PDF.
+            image={extra?.cover ?? communityCover?.cover ?? null}
             href={communityCover?.pdf ?? pdf ?? doi}
             pdf={!!communityCover?.pdf || !!pdf}
           />
@@ -154,9 +157,10 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
         </div>
       </header>
     }>
-      {/* Keeping the paper: in the library, a collection or a community. */}
+      {/* Keeping the paper: in the library, a collection or a community. At the end, what only its workspace does. */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-5 py-3 sm:px-8">
         <SaveControl paper={paper} named />
+        {extra?.actions ? <div className="sm:ms-auto">{extra.actions}</div> : null}
       </div>
       <div className="grid gap-x-12 gap-y-10 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0 space-y-10">
@@ -169,6 +173,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             ) : null}
           </Section>
           <Authors detail={detail} />
+          {extra?.main}
           {similar.length ? (
             <Section id="paper-similar" title={tSimilar("title")} action={<SeeAll href={similarSearchHref([paper.id]) ?? "/results"} />}>
               <PaperRows papers={similar} link={(row) => ({ href: paperPath(row.id, row.title) })} />
@@ -182,9 +187,12 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
         </div>
         {/* On a phone the citations come before the abstract; beside it they head the sidebar. */}
         <aside className="contents lg:block lg:min-w-0 lg:space-y-10">
-          <div className="-order-1 lg:order-none">
-            <Impact detail={detail} citations={detail.citations} references={paper.referenced_works_count ?? null} fwci={paper.fwci ?? null} year={paper.publication_year ?? null} citingHref={buildShareableUrl("", { cites: appId })} />
-          </div>
+          {/* A report nothing has cited yet has no count to show, and none to follow to. */}
+          {extra && !detail.citations ? null : (
+            <div className="-order-1 lg:order-none">
+              <Impact detail={detail} citations={detail.citations} references={paper.referenced_works_count ?? null} fwci={paper.fwci ?? null} year={paper.publication_year ?? null} citingHref={buildShareableUrl("", { cites: appId })} />
+            </div>
+          )}
           <Copies copies={detail.copies} />
           {detail.funding.length ? (
             <Section id="paper-funding" title={t("funding")}>
@@ -199,6 +207,7 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
             </Section>
           ) : null}
           <Subjects detail={detail} />
+          {extra?.side}
           <Details detail={detail} />
         </aside>
       </div>
@@ -238,7 +247,7 @@ function Abstract({ text }: { text: string }) {
 }
 
 /** A part of the page: a quiet heading with its count and its one action, then what it holds. */
-function Section({ id, title, count, action, children }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode }) {
+export function Section({ id, title, count, action, children }: { id: string; title: string; count?: number; action?: ReactNode; children: ReactNode }) {
   const format = useFormatter();
   return (
     <section aria-labelledby={id} className="min-w-0">
