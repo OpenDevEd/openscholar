@@ -30,3 +30,12 @@ export const topicAssociationRequestSchema = z.object({
   }).strict().nullable(),
 }).strict().refine(value => value.state === "published" ? value.metadata !== null : value.topicIds.length === 0, "Invalid publication state");
 export type TopicAssociationRequest = z.infer<typeof topicAssociationRequestSchema>;
+/** Most records one batch carries: Openscholar saves a batch in one transaction. */
+export const TOPIC_ASSOCIATION_BATCH_MAX = 50;
+/** Longest batch body, in characters: a record's abstract alone may be 100,000. */
+export const TOPIC_ASSOCIATION_BATCH_BODY_MAX = 4_000_000;
+export const topicAssociationBatchRequestSchema = z.object({
+  ...envelope, deliveries: z.array(topicAssociationRequestSchema).min(1).max(TOPIC_ASSOCIATION_BATCH_MAX),
+}).strict()
+  .refine(value => value.deliveries.every(delivery => delivery.libraryId === value.libraryId), "Every delivery belongs to the batch's community")
+  .refine(value => new Set(value.deliveries.map(delivery => delivery.itemKey)).size === value.deliveries.length, "One delivery per record");

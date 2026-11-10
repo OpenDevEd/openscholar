@@ -48,6 +48,21 @@ it("authenticates HTTP delivery, preserves receipts, and rejects stale replay af
   expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).page).toEqual([]);
   expect(await t.run(ctx => ctx.db.query("topicLocations").first())).toMatchObject({generation: 3, state: "unpublished"});
 });
+it("saves a batch in one call, answering a refused record alone while the others save", async () => {
+  const {t, a, b, request} = await fixture();
+  const http = (body: unknown) => t.fetch("/api/v1/evidence-libraries/topic-associations/batch", {method: "POST", headers: {Authorization: `Bearer ${credential}`}, body: JSON.stringify(body)});
+  const batch = (deliveries: TopicAssociationRequest[]) => ({contractVersion: 1, libraryId: a.libraryId, deliveries});
+  const good = request();
+  const refused = request(a.libraryId, {itemKey: "WXYZ9876", idempotencyKey: "second", topicIds: ["T99999"]});
+  expect((await http(batch([good, request(b.libraryId, {itemKey: "OTHER123"})]))).status).toBe(400);
+  const response = await http(batch([good, refused]));
+  expect(response.status).toBe(200);
+  expect((await response.json()).receipts).toEqual([
+    {contractVersion: 1, idempotencyKey: "first", generation: 1, status: "applied"},
+    {idempotencyKey: "second", generation: 1, error: {code: "NOT_FOUND"}},
+  ]);
+  expect((await t.run(ctx => ctx.db.query("topicLocations").collect())).map(row => row.itemKey)).toEqual(["ABCD1234"]);
+});
 it("groups DOI variants, returns the locations in live listed communities, and retains unlisted ones' assignments", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());

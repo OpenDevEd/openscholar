@@ -1,19 +1,19 @@
 import { z } from "zod";
 import { httpAction, type ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { topicAssociationRequestSchema, topicCatalogRequestSchema, topicDetailRequestSchema } from "../../lib/topics/contract";
+import { TOPIC_ASSOCIATION_BATCH_BODY_MAX, topicAssociationBatchRequestSchema, topicAssociationRequestSchema, topicCatalogRequestSchema, topicDetailRequestSchema } from "../../lib/topics/contract";
 import { readConvexErrorData } from "../lib/errors";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { ensureCatalog } from "./catalog";
 import { readTopicDetail } from "./details";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 
-function endpoint<T extends {libraryId: string}>(operation: string, schema: z.ZodType<T>, run: (ctx: ActionCtx, body: T, digest: string) => Promise<Record<string, unknown>>): ReturnType<typeof httpAction> {
+function endpoint<T extends {libraryId: string}>(operation: string, schema: z.ZodType<T>, run: (ctx: ActionCtx, body: T, digest: string) => Promise<Record<string, unknown>>, maxBody = 512_000): ReturnType<typeof httpAction> {
   return httpAction(async (ctx, request) => {
     const credential = readBearerCredential(request);
     if (!credential) return jsonResponse(401, {error: {code: "invalid_service_credential", retryable: false}});
     const text = await request.text();
-    if (text.length > 512_000) return jsonResponse(400, {error: {code: "invalid_request", retryable: false}});
+    if (text.length > maxBody) return jsonResponse(400, {error: {code: "invalid_request", retryable: false}});
     let raw: unknown;
     try {raw = JSON.parse(text);} catch {return jsonResponse(400, {error: {code: "invalid_request", retryable: false}});}
     const parsed = schema.safeParse(raw);
@@ -43,6 +43,11 @@ export const associations: ReturnType<typeof httpAction> = endpoint("association
   await ensureCatalog(ctx);
   return ctx.runMutation(internal.topics.publications.replaceFromLibrary, {body: JSON.stringify(body), credentialDigest});
 });
+export const associationBatch: ReturnType<typeof httpAction> = endpoint("association batch", topicAssociationBatchRequestSchema, async (ctx, body, credentialDigest): Promise<Record<string, unknown>> => {
+  await ctx.runQuery(internal.topics.serviceHttp.authenticate, {libraryId: body.libraryId, credentialDigest});
+  await ensureCatalog(ctx);
+  return ctx.runMutation(internal.topics.publications.replaceManyFromLibrary, {body: JSON.stringify(body), credentialDigest});
+}, TOPIC_ASSOCIATION_BATCH_BODY_MAX);
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { authenticate as authenticateService } from "./auth";

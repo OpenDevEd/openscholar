@@ -5,12 +5,12 @@ import schema from "../schema";
 import { internalMutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { internal } from "../_generated/api";
 import type { Doc } from "../_generated/dataModel";
-import { createError } from "../lib/errors";
+import { createError, readConvexErrorData } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { MAX_LOCATIONS_READ_PER_GROUP } from "../lib/queryBounds";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
-import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
+import { topicAssociationBatchRequestSchema, topicAssociationRequestSchema, topicIdSchema, type TopicAssociationRequest } from "../../lib/topics/contract";
 import { metadataValidator, recordTopicIdsValidator } from "./validators";
 import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
 import { authenticate } from "./auth";
@@ -90,42 +90,74 @@ export async function deleteLibraryTopicsBatch(ctx: MutationCtx, libraryId: Loca
   return receipts.length > 0;
 }
 
+/**
+ * Saves one record as its community sent it. Every refusal comes before the first write, so a batch can answer it for
+ * that record alone and still save the others.
+ */
+async function applyDelivery(ctx: MutationCtx, libraryId: Location["libraryId"], input: TopicAssociationRequest) {
+  const digest = await digestOpaqueToken(JSON.stringify(input));
+  const receipt = await ctx.db.query("topicDeliveryReceipts").withIndex("by_libraryId_and_idempotencyKey", q => q.eq("libraryId", libraryId).eq("idempotencyKey", input.idempotencyKey)).unique();
+  if (receipt) {
+    if (receipt.digest !== digest) throw createError("CONFLICT", "Idempotency key reused with different content");
+    return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: receipt.generation, status: receipt.status};
+  }
+  const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
+  if (state?.rebuilding) throw createError("CONFLICT", "Topic counts are being rebuilt; try again shortly");
+  const previous = await ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", input.itemKey)).unique();
+  if (previous && previous.generation === input.generation) throw createError("CONFLICT", "Generation already used");
+  const status = previous && previous.generation > input.generation ? "superseded" as const : "applied" as const;
+  if (status === "applied") {
+    const topicIds = [...new Set(input.topicIds)].sort();
+    for (const id of topicIds) {
+      const topic = await ctx.db.query("topicCatalog").withIndex("by_external_id", q => q.eq("id", id)).unique();
+      if (!topic || topic.level !== "topic") throw createError("NOT_FOUND", `Unknown topic ${id}`);
+    }
+    const doi = normalizeDoi(input.doi);
+    if (input.doi?.trim() && !doi) throw createError("VALIDATION_ERROR", "Invalid bibliographic DOI");
+    if (previous) { await changeGroups(ctx, previous, -1); await changeDoiLink(ctx, previous, -1); }
+    await changeDoiLink(ctx, {...input, doi}, 1);
+    const groupKey = publicationGroupKey(libraryId, input.itemKey, doi, input.openalexId, await linkedDois(ctx, input.openalexId));
+    const row = {libraryId, itemKey: input.itemKey, generation: input.generation, publishedRevision: input.publishedRevision,
+      state: input.state, topicIds, doi, openalexId: input.openalexId, metadata: input.metadata, groupKey};
+    if (previous) await ctx.db.replace("topicLocations", previous._id, row);
+    else await ctx.db.insert("topicLocations", row);
+    await changeGroups(ctx, row, 1);
+    for (const id of new Set([previous?.openalexId, input.openalexId])) if (id) await reconcilePage(ctx, id, null);
+  }
+  await ctx.db.insert("topicDeliveryReceipts", {libraryId, idempotencyKey: input.idempotencyKey, digest, generation: input.generation, status});
+  return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: input.generation, status};
+}
+
+/** One record, from a community runtime that sends them one at a time. */
 export const replaceFromLibrary = internalMutation({
   args: {body: v.string(), credentialDigest: v.string()},
   handler: async (ctx, args) => {
     const input = topicAssociationRequestSchema.parse(JSON.parse(args.body));
-    const libraryId = await authenticate(ctx, input.libraryId, args.credentialDigest);
-    const digest = await digestOpaqueToken(JSON.stringify(input));
-    const receipt = await ctx.db.query("topicDeliveryReceipts").withIndex("by_libraryId_and_idempotencyKey", q => q.eq("libraryId", libraryId).eq("idempotencyKey", input.idempotencyKey)).unique();
-    if (receipt) {
-      if (receipt.digest !== digest) throw createError("CONFLICT", "Idempotency key reused with different content");
-      return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: receipt.generation, status: receipt.status};
-    }
-    const state = await ctx.db.query("topicProjectionState").withIndex("by_key", q => q.eq("key", "publications")).unique();
-    if (state?.rebuilding) throw createError("CONFLICT", "Topic counts are being rebuilt; try again shortly");
-    const previous = await ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", libraryId).eq("itemKey", input.itemKey)).unique();
-    if (previous && previous.generation === input.generation) throw createError("CONFLICT", "Generation already used");
-    const status = previous && previous.generation > input.generation ? "superseded" as const : "applied" as const;
-    if (status === "applied") {
-      const topicIds = [...new Set(input.topicIds)].sort();
-      for (const id of topicIds) {
-        const topic = await ctx.db.query("topicCatalog").withIndex("by_external_id", q => q.eq("id", id)).unique();
-        if (!topic || topic.level !== "topic") throw createError("NOT_FOUND", `Unknown topic ${id}`);
+    return applyDelivery(ctx, await authenticate(ctx, input.libraryId, args.credentialDigest), input);
+  },
+});
+
+/**
+ * Up to TOPIC_ASSOCIATION_BATCH_MAX records in one transaction, answered in order: a receipt for each saved one, and
+ * the refusal's code for each refused one, which its community sends again later. A full re-send of a 290,000-record
+ * community took about 22 hours one record a call, nearly all of it the cost of a call.
+ */
+export const replaceManyFromLibrary = internalMutation({
+  args: {body: v.string(), credentialDigest: v.string()},
+  handler: async (ctx, args) => {
+    const batch = topicAssociationBatchRequestSchema.parse(JSON.parse(args.body));
+    const libraryId = await authenticate(ctx, batch.libraryId, args.credentialDigest);
+    const receipts = [];
+    for (const input of batch.deliveries) {
+      try {
+        receipts.push(await applyDelivery(ctx, libraryId, input));
+      } catch (error) {
+        const code = readConvexErrorData(error)?.code;
+        if (!code) throw error;
+        receipts.push({idempotencyKey: input.idempotencyKey, generation: input.generation, error: {code}});
       }
-      const doi = normalizeDoi(input.doi);
-      if (input.doi?.trim() && !doi) throw createError("VALIDATION_ERROR", "Invalid bibliographic DOI");
-      if (previous) { await changeGroups(ctx, previous, -1); await changeDoiLink(ctx, previous, -1); }
-      await changeDoiLink(ctx, {...input, doi}, 1);
-      const groupKey = publicationGroupKey(libraryId, input.itemKey, doi, input.openalexId, await linkedDois(ctx, input.openalexId));
-      const row = {libraryId, itemKey: input.itemKey, generation: input.generation, publishedRevision: input.publishedRevision,
-        state: input.state, topicIds, doi, openalexId: input.openalexId, metadata: input.metadata, groupKey};
-      if (previous) await ctx.db.replace("topicLocations", previous._id, row);
-      else await ctx.db.insert("topicLocations", row);
-      await changeGroups(ctx, row, 1);
-      for (const id of new Set([previous?.openalexId, input.openalexId])) if (id) await reconcilePage(ctx, id, null);
     }
-    await ctx.db.insert("topicDeliveryReceipts", {libraryId, idempotencyKey: input.idempotencyKey, digest, generation: input.generation, status});
-    return {contractVersion: 1 as const, idempotencyKey: input.idempotencyKey, generation: input.generation, status};
+    return {contractVersion: 1 as const, receipts};
   },
 });
 
