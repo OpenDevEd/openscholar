@@ -47,7 +47,8 @@ export async function pendingReconciliation(ctx: MutationCtx, delta: number) {
 }
 async function reconcilePage(ctx: MutationCtx, openalexId: string, cursor: string | null) {
   const dois = await linkedDois(ctx, openalexId);
-  const page = await ctx.db.query("topicLocations").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", openalexId).eq("doi", null)).paginate({cursor, numItems: 20});
+  // A stream, not the database's own paging, which allows one paged read a transaction: a batch regroups for each record.
+  const page = await stream(ctx.db, schema).query("topicLocations").withIndex("by_openalexId_and_doi", q => q.eq("openalexId", openalexId).eq("doi", null)).paginate({cursor, numItems: 20});
   for (const row of page.page) {
     const groupKey = publicationGroupKey(row.libraryId, row.itemKey, null, openalexId, dois);
     if (groupKey === row.groupKey) continue;

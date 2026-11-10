@@ -55,13 +55,18 @@ it("saves a batch in one call, answering a refused record alone while the others
   const good = request();
   const refused = request(a.libraryId, {itemKey: "WXYZ9876", idempotencyKey: "second", topicIds: ["T99999"]});
   expect((await http(batch([good, request(b.libraryId, {itemKey: "OTHER123"})]))).status).toBe(400);
-  const response = await http(batch([good, refused]));
+  // Each record with an OpenAlex work regroups that work's copies, a paged read each.
+  const another = request(a.libraryId, {itemKey: "EFGH5678", idempotencyKey: "third", openalexId: "W5678", doi: "https://doi.org/10.1234/DEF"});
+  const crowded = Array.from({length: 50}, (_, index) => request(a.libraryId, {itemKey: `CROWD${String(index).padStart(3, "0")}`, idempotencyKey: `crowd-${index}`, topicIds: [topicId, topicId, topicId, topicId, topicId, topicId]}));
+  expect((await http(batch(crowded))).status).toBe(400);
+  const response = await http(batch([good, refused, another]));
   expect(response.status).toBe(200);
   expect((await response.json()).receipts).toEqual([
     {contractVersion: 1, idempotencyKey: "first", generation: 1, status: "applied"},
     {idempotencyKey: "second", generation: 1, error: {code: "NOT_FOUND"}},
+    {contractVersion: 1, idempotencyKey: "third", generation: 1, status: "applied"},
   ]);
-  expect((await t.run(ctx => ctx.db.query("topicLocations").collect())).map(row => row.itemKey)).toEqual(["ABCD1234"]);
+  expect((await t.run(ctx => ctx.db.query("topicLocations").collect())).map(row => row.itemKey).sort()).toEqual(["ABCD1234", "EFGH5678"]);
 });
 it("groups DOI variants, returns the locations in live listed communities, and retains unlisted ones' assignments", async () => {
   const {t, a, b, request, send} = await fixture();
