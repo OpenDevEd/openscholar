@@ -23,7 +23,8 @@ type Store = {
   card: MockCard;
   /** Free activations the workspace has left today. */
   freeLeft: number;
-  /** The plan's new reports for today are used up. */
+  /** The plan's new reports for today are used up, whatever the real count says. Off, the real count decides, since
+   * shared dev refuses a start past it. */
   startsUsed: boolean;
   /** The admin's free activations a day, for a person's own workspace and an organisation's. The real ones are the settings'
    * `perDay` and `orgPerDay`, which count starts until the build moves them to activations. */
