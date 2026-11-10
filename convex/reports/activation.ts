@@ -18,7 +18,7 @@ import { customerOf, readAccount, refreshAccount } from "../billing/accounts";
 import { AutumnError, autumn, type AutumnCharge, type AutumnPreview } from "../billing/autumn";
 import { readCatalog } from "../billing/catalog";
 import { purchasing, unlessDeclined } from "../billing/purchases";
-import { bankPage, chargeOf, refundInvoice, voidDeclined } from "../billing/stripeRest";
+import { bankPage, chargeOf, refundInvoice, voidDeclined, voidInvoice } from "../billing/stripeRest";
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
@@ -409,10 +409,18 @@ export const waitingCharge = internalQuery({
  * payment the bank or the card refused is voided and dropped too, so Activate starts a new one. Answers how it
  * stands: still `open`, or `settled`.
  */
-async function settleOne(ctx: ActionCtx, activationId: Id<"reportActivations">, invoice: string) {
+async function settleOne(ctx: ActionCtx, activationId: Id<"reportActivations">, invoice: string): Promise<"open" | "settled"> {
   const charge = await chargeOf(invoice);
   if (charge.status === "open" && !charge.refused) return "open";
-  if (charge.status === "open") await voidDeclined(invoice);
+  if (charge.status === "open") {
+    try {
+      await voidInvoice(invoice);
+    } catch (error) {
+      // Paid meanwhile, from another tab, it's settled as paid; otherwise it's still collectible, and stays watched.
+      if ((await chargeOf(invoice)).status === "open") throw error;
+      return settleOne(ctx, activationId, invoice);
+    }
+  }
   const outcome = charge.status === "paid" ? { kind: "paid" as const, charge: { invoice, total: charge.total, currency: charge.currency } } : charge.status === "open" ? { kind: "refused" as const } : { kind: "none" as const };
   await ctx.runMutation(internal.reports.activation.settleCharge, { activationId, outcome });
   return "settled";

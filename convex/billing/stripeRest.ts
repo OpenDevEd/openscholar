@@ -16,6 +16,11 @@ async function stripe(path: string, init: { method?: "GET" | "POST"; form?: Reco
   return (await response.json()) as Stripe;
 }
 
+/** Voids an open invoice, so nothing can be collected on it. Throws when Stripe refuses or can't be reached. */
+export async function voidInvoice(invoice: string) {
+  await stripe(`invoices/${encodeURIComponent(invoice)}/void`, { method: "POST" });
+}
+
 /**
  * Voids a declined charge's invoice, which Autumn otherwise leaves open, holding the purchase it was for, until its due
  * date: meanwhile every purchase of the workspace waits for it to be paid (`unlessPaymentOpen`). Voided, the decline
@@ -23,7 +28,7 @@ async function stripe(path: string, init: { method?: "GET" | "POST"; form?: Reco
  */
 export async function voidDeclined(invoice: string) {
   try {
-    await stripe(`invoices/${encodeURIComponent(invoice)}/void`, { method: "POST" });
+    await voidInvoice(invoice);
   } catch (error) {
     console.error(JSON.stringify({ event: "declined-invoice-not-voided", invoice, error: String(error).slice(0, 400) }));
   }
@@ -48,7 +53,10 @@ async function invoiceOf(invoice: string) {
   const read = await stripe(`invoices/${encodeURIComponent(invoice)}?expand[]=payments.data.payment.payment_intent`);
   const payments = ((read.payments as { data?: Array<{ payment?: { payment_intent?: Stripe | string } }> } | undefined)?.data ?? []).map((payment) => payment.payment?.payment_intent);
   const intent = payments.find((candidate): candidate is Stripe => typeof candidate === "object" && candidate !== null);
-  return { status: String(read.status), total: Number(read.total ?? 0), paid: Number(read.amount_paid ?? 0), currency: String(read.currency ?? "usd"), intent };
+  // The part the account's credit paid: what the invoice took from a balance in the customer's favour (a negative one).
+  const starting = Number(read.starting_balance ?? 0);
+  const fromCredit = starting < 0 ? Math.min(Number(read.total ?? 0), Number(read.ending_balance ?? 0) - starting) : 0;
+  return { status: String(read.status), total: Number(read.total ?? 0), fromCredit, currency: String(read.currency ?? "usd"), intent };
 }
 
 /**
@@ -82,17 +90,18 @@ export async function chargeOf(invoice: string): Promise<{ status: "paid"; total
 }
 
 /**
- * Gives back a paid invoice the way it was paid: the card's part to the card, the part the account's credit paid back
- * to that credit. A credit note keyed by `key`, so asking again gives the same one. In US dollars.
+ * Gives back a paid invoice's own amount the way it was paid: the part the account's credit paid back to that credit,
+ * the rest to the card. Debt from before that the invoice also collected stays collected. A credit note keyed by
+ * `key`, so asking again gives the same one. In US dollars.
  */
 export async function refundInvoice(invoice: string, key: string): Promise<{ card: number; credit: number }> {
   const read = await invoiceOf(invoice);
   if (read.status !== "paid") throw new Error(`Invoice ${invoice} is ${read.status}, not paid`);
   if (read.total === 0) return { card: 0, credit: 0 };
-  const credit = read.total - read.paid;
+  const card = read.total - read.fromCredit;
   await stripe("credit_notes", {
     idempotencyKey: key,
-    form: { invoice, amount: String(read.total), reason: "order_change", ...(read.paid > 0 && { refund_amount: String(read.paid) }), ...(credit > 0 && { credit_amount: String(credit) }) },
+    form: { invoice, amount: String(read.total), reason: "order_change", ...(card > 0 && { refund_amount: String(card) }), ...(read.fromCredit > 0 && { credit_amount: String(read.fromCredit) }) },
   });
-  return { card: read.paid / 100, credit: credit / 100 };
+  return { card: card / 100, credit: read.fromCredit / 100 };
 }

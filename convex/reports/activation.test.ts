@@ -105,12 +105,12 @@ describe("activating a report", () => {
     const { key } = await checked(world, [passed("byline")]);
     const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key });
     await world.reviewer.mutation(api.reports.review.decide, { key, decision: "decline", seenPdfAt: (await row(world.t, key)).pdf!.at, note: "Not a report" });
-    // $5, of which the account's credit paid $3 and the card $2.
+    // $5, of which the account's credit paid $3 and the card $2,.
     const notes: Array<{ form: string; key: string | null }> = [];
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fake");
     vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
       if (url.includes("/credit_notes")) notes.push({ form: String(init?.body), key: new Headers(init?.headers).get("Idempotency-Key") });
-      return Response.json({ id: "x", status: "paid", total: 500, amount_paid: 200, currency: "usd", payments: { data: [] } });
+      return Response.json({ id: "x", status: "paid", total: 500, amount_paid: 200, starting_balance: -300, ending_balance: 0, currency: "usd", payments: { data: [] } });
     });
     await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice: "in_late", total: 5, currency: "usd" } } });
     expect(await emailed(world, key)).toContain("author: Activation refunded");
