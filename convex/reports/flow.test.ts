@@ -147,17 +147,18 @@ describe("a report's PDF", () => {
     expect((await read(world.author, world.own, first.key)).step).toBe("upload");
   });
 
-  it("wears the picture drawn of it, and never one drawn of a PDF since replaced", async () => {
+  it("wears the picture drawn of it, and drops one that is too big to be a cover", async () => {
     const world = await setup();
-    const { key } = await atDetails(world);
-    const pdf = (await row(world.t, key)).pdf!.file;
-    const picture = () => world.t.run((ctx) => ctx.storage.store(new Blob(["jpeg"], { type: "image/jpeg" })));
-    const stale = await picture();
-    const other = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF other"])));
-    await world.author.mutation(api.reports.flow.attachCover, { workspaceId: world.own, key, file: stale, pdf: other });
+    const key = await sign(world.author, world.own);
+    const attach = async (cover: Blob) => {
+      const [file, picture] = await world.t.run(async (ctx) => [await ctx.storage.store(new Blob(["%PDF-1.7"])), await ctx.storage.store(cover)] as const);
+      await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "report.pdf", cover: picture });
+      return picture;
+    };
+    const huge = await attach(new Blob([new Uint8Array(3 * 1024 * 1024)], { type: "image/jpeg" }));
     expect((await read(world.author, world.own, key)).coverUrl).toBeNull();
-    expect(await world.t.run((ctx) => ctx.db.system.get(stale))).toBeNull();
-    await world.author.mutation(api.reports.flow.attachCover, { workspaceId: world.own, key, file: await picture(), pdf });
+    expect(await world.t.run((ctx) => ctx.db.system.get(huge))).toBeNull();
+    await attach(new Blob(["jpeg"], { type: "image/jpeg" }));
     expect((await read(world.author, world.own, key)).coverUrl).toEqual(expect.any(String));
   });
 

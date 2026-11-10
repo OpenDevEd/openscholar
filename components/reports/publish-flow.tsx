@@ -538,7 +538,6 @@ function PdfNotice({ trouble }: { trouble: NonNullable<Report["pdf"]>["trouble"]
 function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"workspaces"> }) {
   const startUpload = useMutation(api.reports.flow.startUpload);
   const attachPdf = useMutation(api.reports.flow.attachPdf);
-  const attachCover = useMutation(api.reports.flow.attachCover);
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   // The file on its way up. Once it's the report's, the report itself says it is being read.
@@ -549,9 +548,12 @@ function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"
     if (!response.ok) throw new Error("The upload didn't arrive. Try again.");
     return ((await response.json()) as { storageId: Id<"_storage"> }).storageId;
   };
-  // A reading that has gone on too long is given up on here, so the PDF can be sent again.
-  const reading = !sending && !!report.pdf && !report.pdf.trouble && Date.now() - report.pdf.at < STUCK_MS;
-  const stuck = !sending && !!report.pdf && !report.pdf.trouble && !reading;
+  // A PDF is being read from the moment it's the report's until its pages are known. A reading that has gone on too
+  // long is given up on here, so the PDF can be sent again. One already read, as when the author comes back to
+  // replace it, is neither.
+  const unread = !sending && !!report.pdf && !report.pdf.trouble && report.pdf.pages === undefined;
+  const reading = unread && Date.now() - report.pdf!.at < STUCK_MS;
+  const stuck = unread && !reading;
   const busy = !!sending || reading;
   const send = async (picked: File | undefined) => {
     if (!picked || busy) return;
@@ -560,13 +562,13 @@ function UploadStep({ report, workspaceId }: { report: Report; workspaceId: Id<"
     if (picked.size > PDF_MAX_MB * 1024 * 1024) return void toast.error(`The PDF is over ${PDF_MAX_MB} MB`);
     setSending(picked);
     try {
-      const pdf = await put(picked, "application/pdf");
-      const refused = await attachPdf({ ...here, file: pdf, name: picked.name });
+      // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
+      const [file, cover] = await Promise.all([
+        put(picked, "application/pdf"),
+        drawCover(picked).then((picture) => (picture ? put(picture, "image/jpeg") : undefined)).catch(() => undefined),
+      ]);
+      const refused = await attachPdf({ ...here, file, name: picked.name, ...(cover && { cover }) });
       if (refused) return void toast.error(refused);
-      // Its first page, drawn here while the report is read: a cover that can't be drawn leaves the title page.
-      void drawCover(picked).then(async (cover) => {
-        if (cover) await attachCover({ ...here, file: await put(cover, "image/jpeg"), pdf }).catch(() => undefined);
-      });
     } catch (error) {
       said("The PDF couldn't be uploaded. Try again.")(error);
     } finally {

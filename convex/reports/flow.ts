@@ -161,7 +161,7 @@ export const goTo = workspaceMutation({
   },
 });
 
-/** Where the browser sends a report's PDF, or the picture of its first page, before attaching it. */
+/** Where the browser sends a report's PDF, and the picture of its first page, before attaching them. */
 export const startUpload = workspaceMutation({
   args: { key: v.string() },
   returns: v.string(),
@@ -174,14 +174,15 @@ export const startUpload = workspaceMutation({
 });
 
 /**
- * The PDF the browser just uploaded becomes the report's, and its text and details are read next (./reading.ts).
+ * The PDF the browser just uploaded becomes the report's, with the picture it drew of its first page, and its text
+ * and details are read next (./reading.ts).
  * A new PDF starts over: the details read from the one before it are gone until this one is read. A file that
  * can't be a report's is deleted, and why is the answer: a throw would keep the file.
  */
 export const attachPdf = workspaceMutation({
-  args: { key: v.string(), file: v.id("_storage"), name: v.string() },
+  args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")) },
   returns: v.union(v.null(), v.string()),
-  handler: async (ctx, actor, { key, file, name }) => {
+  handler: async (ctx, actor, { key, file, name, cover }) => {
     await refuseApps(ctx);
     const stored = await ctx.db.system.get(file);
     if (!stored) throw createError("NOT_FOUND", "The upload didn't arrive. Try again.");
@@ -193,34 +194,19 @@ export const attachPdf = workspaceMutation({
       : stored.size > REPORT_PDF_MAX_MB * 1024 * 1024 ? `A report's PDF is at most ${REPORT_PDF_MAX_MB} MB.`
       : null;
     if (refused) {
-      await forget(ctx, file);
+      await forget(ctx, file, cover);
       return refused;
     }
     await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
     const at = Date.now();
+    // The picture of its first page, drawn by the browser that uploaded it. One that is too big or no picture is
+    // dropped, and the report keeps its title page.
+    const picture = cover ? await ctx.db.system.get(cover) : null;
+    const pictured = !!picture && picture.size <= COVER_MAX_BYTES && (picture.contentType === undefined || picture.contentType.startsWith("image/"));
+    if (cover && !pictured) await forget(ctx, cover);
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: undefined, reviewRequest: undefined, running: undefined });
-    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: undefined, run: undefined, step: "upload", title: undefined, approved: undefined, asked: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", title: undefined, approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
-    return null;
-  },
-});
-
-/** The picture of the PDF's first page, drawn by the browser that uploaded it. One for a PDF since replaced is dropped. */
-export const attachCover = workspaceMutation({
-  args: { key: v.string(), file: v.id("_storage"), pdf: v.id("_storage") },
-  returns: v.null(),
-  handler: async (ctx, actor, { key, file, pdf }) => {
-    await refuseApps(ctx);
-    const stored = await ctx.db.system.get(file);
-    if (!stored) return null;
-    const report = await changing(ctx, actor, key);
-    if (report.pdf?.file !== pdf || stored.size > COVER_MAX_BYTES || (stored.contentType !== undefined && !stored.contentType.startsWith("image/"))) {
-      await forget(ctx, file);
-      return null;
-    }
-    await forget(ctx, report.cover?.file);
-    // Its own time, so its address changes with the picture and a new PDF's cover is never an old one's.
-    await ctx.db.patch("reports", report._id, { cover: { file, at: Date.now() } });
     return null;
   },
 });
