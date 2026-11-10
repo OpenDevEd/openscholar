@@ -243,6 +243,7 @@ export function DetailsStep({
 }) {
   const [m, setM] = useState(initial);
   const [opened] = useState(version);
+  const [touched, setTouched] = useState(false);
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
   // report has moved on changes nothing (saveDetails).
@@ -254,7 +255,12 @@ export function DetailsStep({
   };
   const change = (update: (was: Metadata) => Metadata) => {
     const next = update(held.current.m);
-    if (held.current.m === initial) onTouched?.();
+    // Told once, at the first change: the report's own details can arrive anew at any time, so what the form was
+    // opened with is no way to tell an untouched form from a changed one.
+    if (!touched) {
+      setTouched(true);
+      onTouched?.();
+    }
     held.current.m = next;
     setM(next);
     clearTimeout(held.current.timer);
@@ -586,7 +592,7 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || (!!onCancel && !resend && m === initial)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || (!!onCancel && !resend && !touched)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;
