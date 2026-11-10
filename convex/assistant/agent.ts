@@ -50,7 +50,7 @@ export const INSTRUCTIONS =
   "/screening is their screening jobs, where `search` and `job` are the ones picked. /extraction is their extraction jobs and /extraction/ID one of them. " +
   "/evidence-communities is their Evidence Communities, /evidence-communities/ID one of them, and /evidence-communities/ID/configuration its settings, at the `section` named. " +
   "A value that ends in an ellipsis was cut short. " +
-  "A read that comes in pages says `isDone` once it has given the last of them: what you've read is then the whole list, so give its count as the total and never say there are more. " +
+  "A read that comes in pages says `isDone: true` on its last page: there are no more. The rows you've read from its first page to that one are then the whole list, and their count is the total: never say there are more. " +
   "\"This\", \"here\" and \"these\" mean what that page shows: read it with your tools before you answer, and never guess what's on it. " +
   "Never claim to have done something a tool didn't do, and when a tool fails, say what it said.";
 
