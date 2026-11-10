@@ -15,7 +15,8 @@ import { RedirectToSignIn, useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import Link from "@/components/workspace-link";
-import { LibraryPageShell, PageFrameLoading } from "@/components/evidence-libraries/library-page-shell";
+import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
+import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configuration/panel-header";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
@@ -140,9 +141,17 @@ export function PublishFlow() {
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
   const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || found !== undefined)));
-  // The app's own loading frame: its bar is there from the first frame, and names nothing until the page knows
-  // whether its title sits beside a back arrow, so the title never moves once it shows.
-  if (!ready || !basics) return <PageFrameLoading label="Publish" />;
+  // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
+  // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
+  // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
+  // filters land where they belong at once (a new shell shows them in the card for a moment in Firefox).
+  if (!ready || !basics) {
+    return (
+      <LibraryPageShell icon={null} title="">
+        <ListLoading label="Publish" />
+      </LibraryPageShell>
+    );
+  }
 
   const saved = found && "report" in found ? found.report : null;
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
