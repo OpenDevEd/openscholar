@@ -57,14 +57,15 @@ export function AdminPublishing() {
             <DetailsStep
               key={editable.key}
               initial={editable.metadata!}
+              version={editable.updatedAt}
               words={{
                 title: "Edit the details",
                 intro: live ? `${editable.key} is live. Your edit goes live at once, and the report registers again.` : `${editable.key} isn't live yet. Your edit is saved at once.`,
                 action: "Save the details",
               }}
-              onRun={async (metadata) => {
+              onRun={async (metadata, seenAt) => {
                 try {
-                  await editDetails({ key: editable.key, seenAt: editable.updatedAt, metadata });
+                  await editDetails({ key: editable.key, seenAt: seenAt!, metadata });
                   toast.success(live ? "Details saved. They're live." : "Details saved.");
                   // Back to the report's dialog, which now shows the edit.
                   up("edit");

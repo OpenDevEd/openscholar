@@ -100,7 +100,8 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-48 flex-1">
             <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(e) => void setList({ q: e.target.value, page: null })} placeholder="Find a report, its key or its DOI" aria-label="Find a report" className="h-9 ps-9" />
+            {/* Starting a search is a step Back returns from, to the list and page it was started on; typing on changes it in place. */}
+            <Input value={query} onChange={(e) => void setList({ q: e.target.value, page: null }, { history: query ? "replace" : "push", scroll: false })} placeholder="Find a report, its key or its DOI" aria-label="Find a report" className="h-9 ps-9" />
           </div>
           <Select value={sort} onValueChange={(v) => step({ sort: v as Sort, page: null })}>
             <SelectTrigger size="sm" className="w-32" aria-label="Sort">
@@ -241,16 +242,21 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
   // Saying no asks first, with room for a note to the author: declining a report, withdrawing a live one, which
   // takes its page down for everyone, or declining changes to it. It belongs to the report it was opened on:
   // another report opened meanwhile, as by Back, never inherits it.
-  const [asked, setAsked] = useState<{ report: string; what: keyof typeof ASKS } | null>(null);
+  // It is also for the PDF and the changes that were open when it was asked: ones that replaced them while the
+  // question stood are never what the answer is given on.
+  const [asked, setAsked] = useState<{ report: string; what: keyof typeof ASKS; pdfAt?: number; changesAt?: number } | null>(null);
   const asking = asked && asked.report === s?.key ? asked.what : null;
-  const setAsking = (what: keyof typeof ASKS | null) => setAsked(what && s ? { report: s.key, what } : null);
+  const setAsking = (what: keyof typeof ASKS | null) => setAsked(what && s ? { report: s.key, what, pdfAt: s.pdf?.at, changesAt: s.status === "live" ? s.correction?.at : undefined } : null);
   const DONE = { approve: "Approved. Its author can activate it now.", reinstate: "Reinstated. It's live again.", withdraw: "Withdrawn", decline: "Declined" };
-  const decide = (decision: keyof typeof DONE) => s && send(() => decideReport({ key: s.key, decision, ...(s.pdf && { seenPdfAt: s.pdf.at }), ...(note.trim() && { note: note.trim() }) }), DONE[decision]);
+  const decide = (decision: keyof typeof DONE) => {
+    const seenPdfAt = asking ? asked!.pdfAt : s?.pdf?.at;
+    return s && send(() => decideReport({ key: s.key, decision, ...(seenPdfAt !== undefined && { seenPdfAt }), ...(note.trim() && { note: note.trim() }) }), DONE[decision]);
+  };
   const correction = s?.status === "live" ? s.correction : undefined;
   const changes = s && correction ? { correction, stage: s.changes ?? "review" } : null;
   /** The reviewer's word on changes to a live report: the ones open here, by when they were checked. */
   const decideChanges = (decision: "approve" | "decline") =>
-    s && changes && send(() => decideItsChanges({ key: s.key, decision, seenAt: changes.correction.at, ...(note.trim() && { note: note.trim() }) }), decision === "approve" ? "Changes approved. They're live." : "Changes declined. The report stays as it was.");
+    s && changes && send(() => decideItsChanges({ key: s.key, decision, seenAt: (asking ? asked!.changesAt : undefined) ?? changes.correction.at, ...(note.trim() && { note: note.trim() }) }), decision === "approve" ? "Changes approved. They're live." : "Changes declined. The report stays as it was.");
   const changed = s?.metadata && changes ? changesOf(s.metadata, changes.correction.metadata) : [];
   // Why the changes stand where they do, for a reviewer who arrives from an email.
   const approvedOver = new Set((s?.results ?? []).filter((r) => !r.pass).map((r) => r.checkId));
@@ -490,6 +496,9 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   </Button>
                 ) : null}
               </DialogFooter>
+            ) : stage === "declined" && s.metadata ? (
+              // A declined report has no decision left to take, and its details can still be put right.
+              <DialogFooter className={FOOT}>{edits}</DialogFooter>
             ) : null}
             <AlertDialog
               open={!!asking}

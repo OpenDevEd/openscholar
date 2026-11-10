@@ -213,9 +213,14 @@ export function DetailsStep({
   waits = false,
   words,
   unread = false,
+  version,
 }: {
   initial: Metadata;
-  onRun: (m: Metadata) => Promise<void>;
+  /** Given the details, and the `version` the form opened on. */
+  onRun: (m: Metadata, version: number | undefined) => Promise<void>;
+  /** What the details were when the form opened, by the number that tells one state of the report from the next. It
+   * is kept as it was then, so details saved since by someone else are never written over by this form. */
+  version?: number;
   onSave?: (m: Metadata) => void;
   /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
   onCancel?: () => void;
@@ -229,6 +234,7 @@ export function DetailsStep({
   unread?: boolean;
 }) {
   const [m, setM] = useState(initial);
+  const [opened] = useState(version);
   // Corrections are saved a moment after the last change, by the change itself: each one restarts the wait. The wait
   // runs out whether or not the step is still open, so leaving it loses nothing, and a save that arrives once the
   // report has moved on changes nothing (saveDetails).
@@ -567,7 +573,7 @@ export function DetailsStep({
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;
-          void onRun(m);
+          void onRun(m, opened);
         }}>
           <ShieldCheck /> {words ? words.action : onCancel ? (waits ? "Check the changes and send them for review" : "Check and publish the changes") : "Run the checks"}
         </Button>

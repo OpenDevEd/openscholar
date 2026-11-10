@@ -82,7 +82,7 @@ export const run = action({
     await refuseApps(ctx);
     const runId = crypto.randomUUID();
     const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, from });
-    if ("unchanged" in started) throw createError("VALIDATION_ERROR", "These are the details your report already has, so there is nothing to change.");
+    if ("unchanged" in started) throw createError("VALIDATION_ERROR", `These are the details your report already has, so there is nothing to change.${started.waiting ? " To give up the changes that are waiting, discard them." : ""}`);
     const { reportId } = started;
     const text = started.text ? await (await ctx.storage.get(started.text))?.text() ?? "" : "";
     const communities: Community[] = started.checks.some((check) => check.builtIn)

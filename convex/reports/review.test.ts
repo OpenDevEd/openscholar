@@ -186,15 +186,50 @@ describe("changes to a live report", () => {
     expect(await read(world.author, world.own, key)).toMatchObject({ changes: "review", title: "Shade trees and maize yields" });
   });
 
-  it("put back to what the report says are no changes: any waiting are given up", async () => {
+  it("put back to what the report says are no changes, and leave any that wait as they were", async () => {
     const world = await setup();
     const { key } = await live(world);
     await setReview(world, true);
     await change(world, key, "Waiting");
-    expect(await change(world, key, "Shade trees and maize yields")).toEqual({ unchanged: true });
-    const report = await read(world.author, world.own, key);
-    expect(report.correction).toBeUndefined();
-    expect(report.changes).toBeUndefined();
+    expect(await change(world, key, "Shade trees and maize yields")).toEqual({ unchanged: true, waiting: true });
+    expect(await read(world.author, world.own, key)).toMatchObject({ changes: "review", correction: { metadata: { title: "Waiting" } } });
+  });
+
+  it("are kept while their checks run, so a run that never ends loses none, and end when the report is set another way", async () => {
+    const world = await setup();
+    const { key, reportId } = await live(world);
+    await setReview(world, true);
+    await change(world, key, "First");
+    const first = (await read(world.author, world.own, key)).correction!.at;
+    // A second set is being checked when a reviewer approves the first: the run ends there, and its late answer changes nothing.
+    const report = await row(world.t, key);
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Second"), runId: "run-second", from: { changesSince: report.correctedAt ?? report.activatedAt! } });
+    expect(await read(world.author, world.own, key)).toMatchObject({ trying: { title: "Second" } });
+    await world.reviewer.mutation(api.reports.review.decideChanges, { key, decision: "approve", seenAt: first });
+    expect(await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: "run-second", results: [passed("byline")], version: 1, metadata: details("Second") })).toBeNull();
+    const after = await read(world.author, world.own, key);
+    expect(after).toMatchObject({ metadata: { title: "First" } });
+    expect(after.run).toBeUndefined();
+    expect(after.trying).toBeUndefined();
+  });
+
+  it("stop being checked when the report is withdrawn, which leaves nothing running on it", async () => {
+    const world = await setup();
+    const { key } = await live(world);
+    const report = await row(world.t, key);
+    await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details("Mid-run"), runId: "run-mid", from: { changesSince: report.activatedAt! } });
+    await decide(world, key, "withdraw");
+    expect((await row(world.t, key)).run).toBeUndefined();
+  });
+});
+
+describe("the reviewers' list", () => {
+  it("finds a report by its key", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline", false)]);
+    await checked(world, [passed("byline", false)], world.author, world.lab);
+    const found = await world.reviewer.query(api.reports.review.page, { page: 1, q: key.toLowerCase() });
+    expect(found.rows.map((row) => row.key)).toEqual([key]);
   });
 });
 
