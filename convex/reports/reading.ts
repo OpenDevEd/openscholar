@@ -50,7 +50,10 @@ export const read = internalAction({
     try {
       if (!job.modelId) throw new Error("The model that reads PDFs is no longer offered.");
       const { model, modelSlug } = await resolveOpenRouterModel(ctx, job.modelId);
-      metadata = capped(await readDetails({ pdf: new Uint8Array(bytes), text, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
+      const read = capped(await readDetails({ pdf: new Uint8Array(bytes), text, fileName: job.name, ownDoi: job.doi, reader: { model, slug: modelSlug, effort: job.effort } }));
+      // A reading that found neither a title nor an abstract read nothing: the author fills the details in, as for one that failed.
+      if (!read.title.trim() && !read.abstract.trim()) throw new Error("The reading found no title and no abstract.");
+      metadata = read;
     } catch (error) {
       console.error(JSON.stringify({ event: "report-details-unread", reportId, error: String(error).slice(0, 600) }));
     }
