@@ -6370,7 +6370,9 @@
         "reviewFlagged": "Eine Prüfung hat diesen Bericht markiert, daher wartet er auf eine Prüferin oder einen Prüfer. {approving}",
         "reviewOn": "Die menschliche Prüfung ist aktiv, daher wartet er auf eine Prüferin oder einen Prüfer. {approving}",
         "readyApproved": "Eine Prüferin oder ein Prüfer hat diesen Bericht genehmigt. Er geht online, sobald die Autorin oder der Autor ihn aktiviert.",
-        "readyPassed": "Alle Prüfungen bestanden. Er geht online, sobald die Autorin oder der Autor ihn aktiviert."
+        "readyPassed": "Alle Prüfungen bestanden. Er geht online, sobald die Autorin oder der Autor ihn aktiviert.",
+        "readyPassedOrg": "Alle Prüfungen bestanden. Er geht online, sobald eine Administratorin oder ein Administrator von {organization} ihn aktiviert.",
+        "readyApprovedOrg": "Eine Prüferin oder ein Prüfer hat diesen Bericht genehmigt. Er geht online, sobald eine Administratorin oder ein Administrator von {organization} ihn aktiviert."
       },
       "authorAsked": "Die Autorin oder der Autor hat eine Prüfung angefragt",
       "noComment": "Kein Kommentar",

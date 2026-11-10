@@ -6369,7 +6369,9 @@
         "reviewFlagged": "Ukuhlolwa kuphawule lo mbiko, ngakho ulinde umbuyekezi. {approving}",
         "reviewOn": "Ukubuyekezwa ngumuntu kuvuliwe, ngakho ulinde umbuyekezi. {approving}",
         "readyApproved": "Umbuyekezi uvume lo mbiko. Ushicilelwa lapho umbhali ewenza usebenze.",
-        "readyPassed": "Uphumelele kukho konke ukuhlolwa. Ushicilelwa lapho umbhali ewenza usebenze."
+        "readyPassed": "Uphumelele kukho konke ukuhlolwa. Ushicilelwa lapho umbhali ewenza usebenze.",
+        "readyPassedOrg": "Uphumelele kukho konke ukuhlolwa. Ushicilelwa lapho umphathi we-{organization} ewenza usebenze.",
+        "readyApprovedOrg": "Umbuyekezi uvume lo mbiko. Ushicilelwa lapho umphathi we-{organization} ewenza usebenze."
       },
       "authorAsked": "Umbhali ucele ukubuyekezwa",
       "noComment": "Akukho ukuphawula",

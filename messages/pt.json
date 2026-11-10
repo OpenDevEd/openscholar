@@ -6370,7 +6370,9 @@
         "reviewFlagged": "Uma verificação assinalou este relatório, por isso espera por um revisor. {approving}",
         "reviewOn": "A revisão humana está ativa, por isso espera por um revisor. {approving}",
         "readyApproved": "Um revisor aprovou este relatório. Fica publicado quando o autor o ativar.",
-        "readyPassed": "Todas as verificações passaram. Fica publicado quando o autor o ativar."
+        "readyPassed": "Todas as verificações passaram. Fica publicado quando o autor o ativar.",
+        "readyPassedOrg": "Todas as verificações passaram. Fica publicado quando um administrador de {organization} o ativar.",
+        "readyApprovedOrg": "Um revisor aprovou este relatório. Fica publicado quando um administrador de {organization} o ativar."
       },
       "authorAsked": "O autor pediu uma revisão",
       "noComment": "Sem comentário",

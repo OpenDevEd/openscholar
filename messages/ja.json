@@ -6369,7 +6369,9 @@
         "reviewFlagged": "チェックがこのレポートにフラグを付けたため、審査者を待っています。{approving}",
         "reviewOn": "人による審査が有効なため、審査者を待っています。{approving}",
         "readyApproved": "審査者がこのレポートを承認しました。著者が有効化すると公開されます。",
-        "readyPassed": "すべてのチェックに合格しました。著者が有効化すると公開されます。"
+        "readyPassed": "すべてのチェックに合格しました。著者が有効化すると公開されます。",
+        "readyPassedOrg": "すべてのチェックに合格しました。{organization} の管理者が有効化すると公開されます。",
+        "readyApprovedOrg": "審査者がこのレポートを承認しました。{organization} の管理者が有効化すると公開されます。"
       },
       "authorAsked": "著者が審査を依頼しました",
       "noComment": "コメントなし",

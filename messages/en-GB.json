@@ -6369,7 +6369,9 @@
         "reviewFlagged": "A check flagged this report, so it waits for a reviewer. {approving}",
         "reviewOn": "Human review is on, so it waits for a reviewer. {approving}",
         "readyApproved": "A reviewer approved this report. It goes live when its author activates it.",
-        "readyPassed": "Every check passed. It goes live when its author activates it."
+        "readyPassed": "Every check passed. It goes live when its author activates it.",
+        "readyPassedOrg": "Every check passed. It goes live when an admin of {organization} activates it.",
+        "readyApprovedOrg": "A reviewer approved this report. It goes live when an admin of {organization} activates it."
       },
       "authorAsked": "The author asked for a review",
       "noComment": "No comment",

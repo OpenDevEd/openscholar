@@ -6370,7 +6370,9 @@
         "reviewFlagged": "Ukaguzi uliiwekea alama ripoti hii, kwa hiyo inasubiri mkaguzi. {approving}",
         "reviewOn": "Ukaguzi wa binadamu umewashwa, kwa hiyo inasubiri mkaguzi. {approving}",
         "readyApproved": "Mkaguzi aliidhinisha ripoti hii. Inachapishwa mara tu mwandishi anapoiwasha.",
-        "readyPassed": "Ilipita kila ukaguzi. Inachapishwa mara tu mwandishi anapoiwasha."
+        "readyPassed": "Ilipita kila ukaguzi. Inachapishwa mara tu mwandishi anapoiwasha.",
+        "readyPassedOrg": "Ilipita kila ukaguzi. Inachapishwa mara tu msimamizi wa {organization} anapoiwasha.",
+        "readyApprovedOrg": "Mkaguzi aliidhinisha ripoti hii. Inachapishwa mara tu msimamizi wa {organization} anapoiwasha."
       },
       "authorAsked": "Mwandishi aliomba ukaguzi",
       "noComment": "Hakuna maoni",

@@ -6370,7 +6370,9 @@
         "reviewFlagged": "Una comprobación marcó este informe, así que espera a un revisor. {approving}",
         "reviewOn": "La revisión humana está activada, así que espera a un revisor. {approving}",
         "readyApproved": "Un revisor aprobó este informe. Se publica cuando su autor lo active.",
-        "readyPassed": "Todas las comprobaciones se superaron. Se publica cuando su autor lo active."
+        "readyPassed": "Todas las comprobaciones se superaron. Se publica cuando su autor lo active.",
+        "readyPassedOrg": "Todas las comprobaciones se superaron. Se publica cuando un administrador de {organization} lo active.",
+        "readyApprovedOrg": "Un revisor aprobó este informe. Se publica cuando un administrador de {organization} lo active."
       },
       "authorAsked": "El autor pidió una revisión",
       "noComment": "Sin comentarios",

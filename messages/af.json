@@ -6370,7 +6370,9 @@
         "reviewFlagged": "'n Kontrole het hierdie verslag gemerk, so dit wag vir 'n hersiener. {approving}",
         "reviewOn": "Menslike hersiening is aan, so dit wag vir 'n hersiener. {approving}",
         "readyApproved": "'n Hersiener het hierdie verslag goedgekeur. Dit word gepubliseer sodra die skrywer dit aktiveer.",
-        "readyPassed": "Dit het elke kontrole geslaag. Dit word gepubliseer sodra die skrywer dit aktiveer."
+        "readyPassed": "Dit het elke kontrole geslaag. Dit word gepubliseer sodra die skrywer dit aktiveer.",
+        "readyPassedOrg": "Dit het elke kontrole geslaag. Dit word gepubliseer sodra ’n administrateur van {organization} dit aktiveer.",
+        "readyApprovedOrg": "’n Hersiener het hierdie verslag goedgekeur. Dit word gepubliseer sodra ’n administrateur van {organization} dit aktiveer."
       },
       "authorAsked": "Die skrywer het 'n hersiening gevra",
       "noComment": "Geen kommentaar nie",

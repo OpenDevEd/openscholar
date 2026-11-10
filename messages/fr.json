@@ -6369,7 +6369,9 @@
         "reviewFlagged": "Une vérification a signalé ce rapport, il attend donc un relecteur. {approving}",
         "reviewOn": "La relecture humaine est activée, il attend donc un relecteur. {approving}",
         "readyApproved": "Un relecteur a approuvé ce rapport. Il est mis en ligne quand son auteur l'active.",
-        "readyPassed": "Toutes les vérifications ont réussi. Il est mis en ligne quand son auteur l'active."
+        "readyPassed": "Toutes les vérifications ont réussi. Il est mis en ligne quand son auteur l'active.",
+        "readyPassedOrg": "Toutes les vérifications ont réussi. Il est mis en ligne quand un administrateur de {organization} l’active.",
+        "readyApprovedOrg": "Un relecteur a approuvé ce rapport. Il est mis en ligne quand un administrateur de {organization} l’active."
       },
       "authorAsked": "L'auteur a demandé une relecture",
       "noComment": "Aucun commentaire",

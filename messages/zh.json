@@ -6369,7 +6369,9 @@
         "reviewFlagged": "有一项检查标记了此报告，因此它在等待审核人。{approving}",
         "reviewOn": "人工审核已开启，因此它在等待审核人。{approving}",
         "readyApproved": "审核人已批准此报告。作者激活后即上线。",
-        "readyPassed": "所有检查均已通过。作者激活后即上线。"
+        "readyPassed": "所有检查均已通过。作者激活后即上线。",
+        "readyPassedOrg": "所有检查均已通过。{organization} 的管理员激活后即上线。",
+        "readyApprovedOrg": "审核人已批准此报告。{organization} 的管理员激活后即上线。"
       },
       "authorAsked": "作者请求了审核",
       "noComment": "无评论",
