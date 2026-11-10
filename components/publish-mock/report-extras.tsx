@@ -129,7 +129,7 @@ export function ReportSide({ m }: { m: Metadata }) {
   );
 }
 
-/** On a report's own page, for its workspace, on the line with Cite and Share: the way to correct its details, which opens them on the Publish page.
+/** On a report's own page, for its workspace, at the end of the row of actions: the way to correct its details, which opens them on the Publish page.
  * With changes already waiting, it opens where they stand. */
 export function CorrectReport({ id, waiting }: { id: string; waiting: boolean }) {
   return (
