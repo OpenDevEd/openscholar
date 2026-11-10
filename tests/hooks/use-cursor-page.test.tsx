@@ -64,6 +64,14 @@ describe("useCursorPage", () => {
     expect(result.current).toMatchObject({ items: ["x"], page: 1, canPrevious: false, hasPages: false });
   });
 
+  it("stays on the first page when its arguments change back", () => {
+    const { result, rerender } = renderHook(({ search }) => useCursorPage(query, { search }, 2), { initialProps: { search: undefined as string | undefined } });
+    act(() => result.current.next());
+    rerender({ search: "x" });
+    rerender({ search: undefined });
+    expect(result.current).toMatchObject({ items: ["a", "b"], page: 1, canPrevious: false });
+  });
+
   it("starts over from the first page when the page size changes", () => {
     const { result, rerender } = renderHook(({ size }) => useCursorPage(query, {}, size), { initialProps: { size: 2 } });
     act(() => result.current.next());
@@ -254,8 +262,13 @@ describe("useCursorPageAt", () => {
 
   it("opens the last page when the address names one past the list's end", async () => {
     const address = (await second()).replace("page=2", "page=9");
-    const { result } = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper: at(address) });
+    const { result, rerender } = renderHook(() => useCursorPageAt("page", query, {}, 2), { wrapper: at(address) });
     expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: false });
+    // Rows added after it: the page shown stays, and offers the next.
+    server.pages.set("|c1", page(["c", "d"], "c2"));
+    server.pages.set("|c2", page(["e"], "c3", true));
+    rerender();
+    expect(result.current).toMatchObject({ items: ["c", "d"], page: 2, canNext: true });
   });
 
   it("opens the first page when the address names a place in another search", async () => {

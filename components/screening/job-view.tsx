@@ -322,7 +322,8 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   const missing = job.libraryDestination ? (job.libraryMissing ?? 0) : 0;
   const [notInLibrary, setNotInLibrary] = useState(false);
   const onlyMissing = notInLibrary && tab === "included" && missing > 0;
-  const list = useCursorPageAt("page", api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}), ...(onlyMissing ? { notInLibrary: true } : {}) }), PAGE_SIZE);
+  // The papers sit under the job's summary and criteria: the next page opens where the list is.
+  const list = useCursorPageAt("page", api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}), ...(onlyMissing ? { notInLibrary: true } : {}) }), PAGE_SIZE, { scroll: false });
   // The held paper as it stands now, read on its own: its outcome's list no longer holds it.
   const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.paper } : "skip"));
   const answer = useWorkspaceMutation(api.screening.papers.answer);

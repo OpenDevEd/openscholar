@@ -213,6 +213,8 @@ export default function JobDetailPage() {
     api.extraction.queries.listJobResults,
     inWorkspace(workspaceId, isExtractionJob ? { ...resultsView, sortBy: resultsSortBy } : "skip"),
     pageSize,
+    // The table sits under the job's summary: the next page opens where the table is.
+    { scroll: false },
   );
   // Only a filtered view is counted: without filters every paper of the job matches.
   const { data: resultCounts } = useProtectedQuery(

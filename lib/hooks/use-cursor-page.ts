@@ -53,6 +53,7 @@ type PlacedOptions = Options & { scroll?: boolean };
  * `of` names that list, so a place kept from another search, another size or another list is no place in this one.
  */
 type Placed = { of: string; page: number };
+/** Where a place is kept outside the list. A list that keeps its page to itself has none. */
 type Place = { placed: Placed | null; setPlaced: (next: Placed | null) => void };
 
 /** A short name for a list's query, arguments and page size, to tell one list's place from another's. */
@@ -78,8 +79,7 @@ const parseAsPlaced = createParser<Placed>({
 
 /** The list with its page kept in the component: for a picker, a dialog or a rail, whose paging is no place to come back to. */
 export function useCursorPage<Query extends PageQuery>(query: Query, args: PageArgs<Query> | "skip", pageSize: number, options: Options = {}) {
-  const [placed, setPlaced] = useState<Placed | null>(null);
-  return usePages({ placed, setPlaced }, query, args, pageSize, options);
+  return usePages(null, query, args, pageSize, options);
 }
 
 /**
@@ -92,28 +92,32 @@ export function useCursorPageAt<Query extends PageQuery>(name: string, query: Qu
   return usePages({ placed, setPlaced: (next) => void setPlaced(next) }, query, args, pageSize, options);
 }
 
-function usePages<Query extends PageQuery>(place: Place, query: Query, args: PageArgs<Query> | "skip", pageSize: number, { open = false }: Options) {
+function usePages<Query extends PageQuery>(place: Place | null, query: Query, args: PageArgs<Query> | "skip", pageSize: number, { open = false }: Options) {
   const { canRunProtectedQueries } = useAuthReadiness();
   // A page of another size starts somewhere else, so the size is part of what the pages are of.
   const key = JSON.stringify([args, pageSize]);
   // Two lists on one page may share a parameter and take the same arguments: the query is part of which list it is.
   const of = nameOf(`${getFunctionName(query)} ${key}`);
   // How many pages the place is past the first: the starts it takes to read the page it names.
-  const placed = place.placed?.of === of ? place.placed.page - 1 : 0;
+  const named = place ? (place.placed?.of === of ? place.placed.page - 1 : 0) : undefined;
   // `starts` holds where every page after the first starts; `reads`, the current page's reads.
   // `end` is where the list was found to end, by stepping to an empty page: the page before
   // it, and the cursor the empty page started at.
   // `want` is how many starts the page to show takes. It is the place's own, unless the list itself moved off it: a
-  // cursor the server refused, or a last page emptied by deletions, shows another page than the place names until
-  // the next step names it. While `starts` is short of it, the pages between are read one after another to find
-  // where the page starts. ponytail: a page far down a list, opened from a link or a reload, costs a read for
-  // every page before it; a server that kept each page's start under the address's name would open it in one.
+  // cursor the server refused, a last page emptied by deletions, or a place past the list's end shows another page
+  // than the place names until the next step names it. While `starts` is short of it, the pages between are read one
+  // after another to find where the page starts. ponytail: a page far down a list, opened from a link or a reload,
+  // costs a read for every page before it; a server that kept each page's start under the address's name would open
+  // it in one.
   // `known` keeps every start found for this list, so Back to a page already passed reads it at once.
-  const from = (starts: Start[], known: Start[], want = placed) => ({
+  const fresh = (placed: number, starts: Start[], known: Start[], want = placed) => ({
     key, placed, want, starts, known: starts.length > known.length || starts.some((start, i) => start.cursor !== known[i]!.cursor) ? starts : known,
     reads: [{ cursor: starts.at(-1)?.cursor ?? null, numItems: pageSize }] as Read[], id: 0, end: undefined as { page: number; cursor: string } | undefined,
   });
-  const [state, setState] = useState(() => from(NO_STARTS, NO_STARTS));
+  const [state, setState] = useState(() => fresh(named ?? 0, NO_STARTS, NO_STARTS));
+  // A list that keeps its page to itself keeps it here, for as long as it is the same list.
+  const placed = named ?? (state.key === key ? state.placed : 0);
+  const from = (starts: Start[], known: Start[], want = placed) => fresh(placed, starts, known, want);
   // When the list or its place changes, the reads start over from that place, with the starts this list already gave.
   const moved = state.key !== key || state.placed !== placed;
   const current = moved ? from(state.key === key ? state.known.slice(0, placed) : NO_STARTS, state.key === key ? state.known : NO_STARTS) : state;
@@ -168,8 +172,8 @@ function usePages<Query extends PageQuery>(place: Place, query: Query, args: Pag
 
   // A step the person takes names the page it goes to, wherever the place is kept; the reads follow it at once.
   const step = (nextStarts: Start[]) => {
-    setState({ ...from(nextStarts, known, nextStarts.length), placed: nextStarts.length, id });
-    place.setPlaced(nextStarts.length ? { of, page: nextStarts.length + 1 } : null);
+    setState({ ...fresh(nextStarts.length, nextStarts, known), id });
+    place?.setPlaced(nextStarts.length ? { of, page: nextStarts.length + 1 } : null);
   };
   // An empty last page, after a list that ended on a full page or one emptied by deletions, steps
   // back to the page before it, the list's end. The list moved, not the person: the place keeps its name.
@@ -178,7 +182,12 @@ function usePages<Query extends PageQuery>(place: Place, query: Query, args: Pag
   const passing = data !== undefined && !emptied && starts.length < want && !data.isDone;
   if (emptied) setState({ ...current, want: starts.length - 1, starts: starts.slice(0, -1), reads: [{ cursor: starts.at(-2)?.cursor ?? null, numItems: pageSize }], end: { page: starts.length - 1, cursor: starts[starts.length - 1].cursor } });
   else if (passing) setState({ ...from([...starts, { cursor: data!.continueCursor, offset: data!.offset + data!.page.length }], known, want), id });
-  else if (data !== undefined && data !== shown) setShown(data);
+  else if (data !== undefined) {
+    // The list ends before the page the place names: this is the page to show, and it stays the one shown when rows
+    // added after it make it no longer the last.
+    if (starts.length < want) setState({ ...current, want: starts.length });
+    if (data !== shown) setShown(data);
+  }
   if (passing) data = undefined;
 
   // Past the page the list ended on there is more once the read after it finds a row, or stops short of the end.
