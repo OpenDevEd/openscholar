@@ -213,6 +213,7 @@ export function DetailsStep({
   initial,
   onRun,
   onSave,
+  onTouched,
   onCancel,
   resend = false,
   waits = false,
@@ -227,6 +228,8 @@ export function DetailsStep({
    * is kept as it was then, so details saved since by someone else are never written over by this form. */
   version?: number;
   onSave?: (m: Metadata) => void;
+  /** Called at the first change made to the form: from then on it holds something that isn't saved anywhere. */
+  onTouched?: () => void;
   /** Given when a live report's details are being corrected: the form says so, and can be left without changing anything. */
   onCancel?: () => void;
   /** The details shown are changes already made and not yet live, so they can be sent to the checks as they are. */
@@ -251,6 +254,7 @@ export function DetailsStep({
   };
   const change = (update: (was: Metadata) => Metadata) => {
     const next = update(held.current.m);
+    if (held.current.m === initial) onTouched?.();
     held.current.m = next;
     setM(next);
     clearTimeout(held.current.timer);

@@ -44,7 +44,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
 import { limitWords } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -60,7 +60,7 @@ type Starts = FunctionReturnType<typeof api.reports.flow.starts>;
 /** The largest PDF a report takes, as its upload says (convex/reports/flow.ts `REPORT_PDF_MAX_MB`). */
 const PDF_MAX_MB = 50;
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
-const STUCK_MS = 4 * 60 * 1000;
+const STUCK_MS = RUN_STUCK_MS;
 
 const STEPS: Array<{ id: "agreement" | "doi" | "upload" | "details" | "checks" | "live"; label: string; icon: typeof PenLine }> = [
   { id: "agreement", label: "Agreement", icon: PenLine },
@@ -294,6 +294,9 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const discardChanges = useMutation(api.reports.flow.discardChanges);
   // Changes to a live report as last sent to the checks, kept while they run so a run that breaks loses none of them.
   const [attempt, setAttempt] = useState<Metadata | null>(null);
+  // The form of changes holds something typed here and not sent yet. It then stays open whatever else happens to
+  // the report, such as its checks running on changes sent from another tab: what was typed is never thrown away.
+  const [typing, setTyping] = useState(false);
   // The checks were asked for here and the report hasn't said so yet: the page shows them running at once.
   const [starting, setStarting] = useState(false);
   const here = { workspaceId: workspaceId! };
@@ -307,7 +310,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const running = !!report?.run && !runStuck;
   const live = report?.step === "done" && report.status === "live";
   // A first run reads a report at its details; a run on changes reads a live one, which stays live meanwhile.
-  const busy = (report?.step === "details" || live) && (running || starting);
+  const busy = (report?.step === "details" || live) && (starting || (running && !(live && correcting && typing)));
   const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
@@ -363,8 +366,10 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               version={report.correctedAt ?? report.activatedAt}
               // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
               waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
+              onTouched={() => setTyping(true)}
               onRun={async (metadata: Metadata, since) => {
                 setAttempt(metadata);
+                setTyping(false);
                 setStarting(true);
                 try {
                   const stands = await runChecks({ ...here, key: report.key, metadata, from: { changesSince: since! } });
@@ -381,6 +386,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
               }}
               onCancel={() => {
                 setAttempt(null);
+                setTyping(false);
                 onCorrected();
               }}
             />
