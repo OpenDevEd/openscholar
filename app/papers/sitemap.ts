@@ -46,6 +46,7 @@ export default async function sitemap({ id }: { id: Promise<string> }): Promise<
   }
   return rows.flatMap((row) => {
     const path = ourPaperPage(appWork(row));
-    return path ? [{ url: `${SITE_URL}${path}`, lastModified: row.updated_date ?? undefined }] : [];
+    // The day alone: our index gives a time with no zone, which a sitemap's date can't carry, and Google refuses the entry.
+    return path ? [{ url: `${SITE_URL}${path}`, lastModified: row.updated_date?.slice(0, 10) }] : [];
   });
 }
