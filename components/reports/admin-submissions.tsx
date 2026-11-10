@@ -4,7 +4,7 @@
 // dialog per report where a reviewer approves, declines, withdraws or reinstates it, decides on changes to a live
 // one, and opens its details to edit.
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useState, useTransition, type ReactNode, useRef } from "react";
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useLocale, useTranslations } from "next-intl";
@@ -43,6 +43,8 @@ export const SHOWS = ["all", "review", "ready", "live", "failed", "declined"] as
 type Show = (typeof SHOWS)[number];
 const SORTS = ["newest", "oldest", "title"] as const;
 type Sort = (typeof SORTS)[number];
+/** A pause in typing this long ends one search: what is typed next is another. */
+const SEARCH_PAUSE_MS = 1000;
 const PER_PAGE = 8;
 /** A row with its divider: an entry's padding and its two lines. */
 const ROW = 73;
@@ -90,6 +92,8 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
   const [last, setLast] = useState(opened);
   if (opened && opened !== last) setLast(opened);
   const decide = useMutation(api.reports.review.decide);
+  // When the search box was last typed in, which tells typing on from starting another search.
+  const typed = useRef(0);
   if (!shown) return <Enter ready={false}>{null}</Enter>;
   // Another filter or order is another list, and a step Back returns from; typing in the box changes the address in place.
   const step = (next: Parameters<typeof setList>[0]) => void setList(next, { history: "push", scroll: false });
@@ -100,8 +104,20 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-48 flex-1">
             <Search className="absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            {/* Starting a search is a step Back returns from, to the list and page it was started on; typing on changes it in place. */}
-            <Input value={query} onChange={(e) => void setList({ q: e.target.value, page: null }, { history: query ? "replace" : "push", scroll: false })} placeholder="Find a report, its key or its DOI" aria-label="Find a report" className="h-9 ps-9" />
+            {/* Each search is a step Back returns from: one starts with the first letter typed, or the first after a
+                pause, and the letters typed on from there change it in place. */}
+            <Input
+              value={query}
+              onChange={(e) => {
+                const now = Date.now();
+                const another = !query || now - typed.current > SEARCH_PAUSE_MS;
+                typed.current = now;
+                void setList({ q: e.target.value, page: null }, { history: another ? "push" : "replace", scroll: false });
+              }}
+              placeholder="Find a report, its key or its DOI"
+              aria-label="Find a report"
+              className="h-9 ps-9"
+            />
           </div>
           <Select value={sort} onValueChange={(v) => step({ sort: v as Sort, page: null })}>
             <SelectTrigger size="sm" className="w-32" aria-label="Sort">

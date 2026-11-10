@@ -77,9 +77,10 @@ export const page = query({
     const shows = (report: Doc<"reports">, kept: Show) => kept === "all" || (kept === "review" ? wantsReviewer(report, humanReview) : stageOf(report, humanReview) === (kept as Stage));
     const words = (q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
     const text = (report: Doc<"reports">) => `${report.title ?? ""} ${report.key} ${report.doi} ${report.signedBy.name}`.toLowerCase();
-    const listed = reports
+    // What the search keeps, which each filter then counts: the numbers on the filters are of what is searched for.
+    const found = reports.filter((report) => words.every((word) => text(report).includes(word)));
+    const listed = found
       .filter((report) => shows(report, show))
-      .filter((report) => words.every((word) => text(report).includes(word)))
       .sort((a, b) => (sort === "title" ? (a.title ?? "").localeCompare(b.title ?? "") : sort === "oldest" ? a.updatedAt - b.updatedAt : b.updatedAt - a.updatedAt));
     const pages = Math.max(1, Math.ceil(listed.length / REVIEW_PER_PAGE));
     const at = Math.min(Math.max(1, Math.floor(page) || 1), pages);
@@ -88,7 +89,7 @@ export const page = query({
       page: at,
       pages,
       total: listed.length,
-      counts: Object.fromEntries(SHOWS.map((kept) => [kept, reports.filter((report) => shows(report, kept)).length])) as Record<Show, number>,
+      counts: Object.fromEntries(SHOWS.map((kept) => [kept, found.filter((report) => shows(report, kept)).length])) as Record<Show, number>,
       series: series.name,
       humanReview,
     };
