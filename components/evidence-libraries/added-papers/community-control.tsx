@@ -115,8 +115,8 @@ export function CommunityControl({
   trigger,
 }: {
   paper: WorkInput;
-  /** A button of the page's own to open the list from, such as a named one: it needs no tooltip. */
-  trigger?: ReactElement<React.ComponentProps<"button">>;
+  /** A button of the page's own to open the list from, such as a named one: it needs no tooltip. It draws the icon it is given, which turns orange once the paper is in a community. */
+  trigger?: (icon: ReactElement) => ReactElement<React.ComponentProps<"button">>;
 }) {
   const t = useTranslations("addedPapers");
   const { isSignedIn } = useAuth();
@@ -139,8 +139,9 @@ export function CommunityControl({
   const recentRead = useProtectedQuery(api.evidenceLibraries.submissions.recentCommunities, reads ? {} : "skip").data;
   const sent = useProtectedQuery(api.evidenceLibraries.submissions.sentTo, reads && openalexId ? { openalexId } : "skip").data;
   const statusIn = new Map((sent ?? []).map((row) => [row.libraryId as string, row.status]));
+  const icon = <EvidenceLibrariesIcon className={statusIn.size ? "text-primary" : "text-muted-foreground"} />;
   const button = trigger ? (
-    cloneElement(trigger, isSignedIn ? {} : { onClick: () => openSignIn() })
+    cloneElement(trigger(icon), isSignedIn ? {} : { onClick: () => openSignIn() })
   ) : (
     <Button
       variant="outline"
@@ -151,7 +152,7 @@ export function CommunityControl({
       onPointerEnter={() => setPrepared(true)}
       onFocus={() => setPrepared(true)}
     >
-      <EvidenceLibrariesIcon className={statusIn.size ? "text-primary" : "text-muted-foreground"} />
+      {icon}
     </Button>
   );
   // A named button says what it does; only the icon needs the hint.
