@@ -41,6 +41,21 @@ describe("reviewing", () => {
     expect(await world.t.run((ctx) => ctx.db.query("reportReviews").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).take(5))).toEqual([]);
   });
 
+  it("is never given over another reviewer's without seeing it: a decline asked before an approval is refused, and a decline unapproves", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline", false)]);
+    const opened = (await row(world.t, key)).updatedAt;
+    await decide(world, key, "approve");
+    // The second reviewer's Decline was asked when the report was still failed: it is told what happened instead.
+    await expect(world.reviewer.mutation(api.reports.review.decide, { key, decision: "decline", seenPdfAt: await seen(world, key), seenAt: opened })).rejects.toMatchObject(refused("CONFLICT"));
+    expect(await row(world.t, key)).toMatchObject({ status: "failed", approved: true });
+    // Seeing the approval, they decline anyway: the report is declined, and no longer approved.
+    await world.reviewer.mutation(api.reports.review.decide, { key, decision: "decline", seenPdfAt: await seen(world, key), seenAt: (await row(world.t, key)).updatedAt });
+    const declined = await row(world.t, key);
+    expect(declined.status).toBe("declined");
+    expect(declined.approved).toBeUndefined();
+  });
+
   it("approves a report whatever its checks said, so its author can activate it", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline", false)]);
