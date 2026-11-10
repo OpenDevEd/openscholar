@@ -136,6 +136,8 @@ test("a search delete confirmation refuses an account change without losing the 
     await expect.poll(() => client.query(api.research.records.getSearch, { accountId, workspaceId, id })).toMatchObject({ id });
     await expect(page.getByRole("button", { name: marker, exact: true })).toBeVisible();
     await page.getByRole("textbox", { name: "Search your history...", exact: true }).fill(marker);
+    // The list narrows a moment after the words are typed: until then a search another run left behind is listed too.
+    await expect(page.getByRole("button", { name: "Delete", exact: true })).toHaveCount(1);
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     const dialog = page.getByRole("alertdialog");
     await expect(dialog).toBeVisible();
