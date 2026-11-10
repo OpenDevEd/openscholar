@@ -278,11 +278,11 @@ export async function requestRefresh(ctx: MutationCtx, workspaceId: Id<"workspac
 
 export const refresh = internalAction({
   // `userId` alone: a refresh scheduled before accounts were a workspace's (#650), which is the person's own; slice 8 drops it.
-  args: { workspaceId: v.optional(v.id("workspaces")), userId: v.optional(v.id("users")) },
+  args: { workspaceId: v.optional(v.id("workspaces")), userId: v.optional(v.id("users")), card: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, userId }) => {
+  handler: async (ctx, { workspaceId, userId, card }) => {
     const refreshed = workspaceId ?? (userId ? await ctx.runQuery(internal.workspaces.actor.personalOf, { userId }) : null);
-    if (refreshed) await refreshAccount(ctx, refreshed);
+    if (refreshed) await refreshAccount(ctx, refreshed, { card: card ?? false });
     return null;
   },
 });

@@ -279,5 +279,5 @@ export const liveReportValidator = v.object({ state: v.literal("live"), key: v.s
 export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
 
 /** An email about a report, kept on its record: who it went to, what it said, and why it didn't go if it didn't. */
-export const mailAudienceValidator = v.union(v.literal("team"), v.literal("author"));
+export const mailAudienceValidator = v.union(v.literal("team"), v.literal("author"), v.literal("admins"));
 export const reportEmailFields = { reportId: v.id("reports"), event: v.string(), audience: mailAudienceValidator, subject: v.string(), text: v.string(), at: v.number(), error: v.optional(v.string()) };

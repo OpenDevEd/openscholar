@@ -10,6 +10,12 @@ import { autumn, type AutumnCustomer } from "./autumn";
 /** How long a purchase holds its workspace's lock: as long as an action can run, so a live one is never taken over. */
 const PURCHASE_LEASE_MS = 10 * 60_000;
 
+/** Refuses a charge Autumn reports declined: it changed nothing, and the person is told why. */
+export function unlessDeclined<T extends { required_action?: { code: string; reason?: string } | null }>(result: T): T {
+  if (result.required_action?.code === "payment_failed") throw createError("BILLING_PAYMENT_DECLINED", `${result.required_action.reason ?? "The card was declined."} Nothing was charged.`);
+  return result;
+}
+
 /**
  * Refuses anything bought while a payment is still open, a renewal or a charge that was declined: Autumn
  * gives a change made then at once, for nothing, and paying the open invoice finishes the change it was for.

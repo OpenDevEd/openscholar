@@ -104,9 +104,8 @@ export const REPORT_DEFAULTS = {
   humanReview: true,
   series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}" } satisfies Series,
   publication: NO_PUBLICATION,
-  // One new report a day for a person's own workspace. An organisation's has none until an admin opens it, since
-  // anyone can make an organisation.
-  perDay: 1,
+  // Free activations a day (#1261): none, so every activation is paid for, until an admin gives a workspace some.
+  perDay: 0,
   orgPerDay: 0,
   metadataModelId: DEFAULT_TEXT_MODEL,
   metadataEffort: DEFAULT_TEXT_EFFORT as Effort | undefined,
@@ -116,20 +115,16 @@ export const REPORT_DEFAULTS = {
 };
 
 export type WorkspaceKind = "personal" | "organization";
-/** The reports a workspace may start in a day: the number it was given, else the one for its kind. A person's
+/** The activations a workspace makes free in a day: the number it was given, else the one for its kind. A person's
  * number is their own workspace's and nothing to do with the organisations they are in. */
-export const limitFor = (defaults: { perDay: number; orgPerDay: number }, kind: WorkspaceKind, own: number | null | undefined) => own ?? (kind === "personal" ? defaults.perDay : defaults.orgPerDay);
-/** How long a start counts against its workspace. */
-export const START_COUNTS_MS = 24 * 60 * 60 * 1000;
-/** What a workspace that has used up its day's reports, or has none, is told. */
-export const limitWords = (perDay: number, kind: WorkspaceKind) =>
-  kind === "personal"
-    ? perDay === 0
-      ? "Publishing isn't open to your account yet."
-      : `You can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.`
-    : perDay === 0
-      ? "Publishing isn't open to this workspace yet. You can publish from your own."
-      : `This workspace can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.`;
+export const freeFor = (defaults: { perDay: number; orgPerDay: number }, kind: WorkspaceKind, own: number | null | undefined) => own ?? (kind === "personal" ? defaults.perDay : defaults.orgPerDay);
+/** How long a start or an activation counts against its workspace's day. */
+export const DAY_MS = 24 * 60 * 60 * 1000;
+/** What a workspace whose plan's new reports for the day are used up, or that has none, is told. */
+export const startWords = (perDay: number, kind: WorkspaceKind) => {
+  const plan = kind === "personal" ? "Your plan" : "This workspace's plan";
+  return perDay === 0 ? `${plan} doesn't include publishing. Move to a plan that does.` : `${plan} starts ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow, or move to a plan with more.`;
+};
 
 /** A report needs a DOI, so publishing needs Crossref or Zenodo connected. */
 export const canRegister = (publication: PublicationSettings) => publication.zenodo.mode !== "off" || publication.crossref.mode !== "off";

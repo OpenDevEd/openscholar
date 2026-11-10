@@ -8,7 +8,7 @@ import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
 import { OWNERS_ONLY, checkedDetails, detailsOf, mayChange, touch } from "./flow";
 import { RUN_STUCK_MS, changeStageOf, stageOf } from "../../lib/reports/report";
-import { notify } from "./mail";
+import { becameReady, notify } from "./mail";
 import { SAME_PDF_ADVICE, applyChanges, formVersion } from "./corrections";
 import { reportSettings, settingsRow } from "./settings";
 import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, metadataValidator, runFromValidator } from "./validators";
@@ -155,8 +155,10 @@ export const finish = internalMutation({
     });
     // The team hears of a report that waits for a reviewer, and of a check that couldn't answer when nothing waits.
     const checked = (await ctx.db.get("reports", reportId))!;
-    if (stageOf(checked, (await reportSettings(ctx)).humanReview) === "review") await notify(ctx, reportId, "waiting-for-review");
+    const stage = stageOf(checked, (await reportSettings(ctx)).humanReview);
+    if (stage === "review") await notify(ctx, reportId, "waiting-for-review");
     else if (results.some((result) => result.errored)) await notify(ctx, reportId, "check-unfinished");
+    if (stage === "ready") await becameReady(ctx, reportId);
     return null;
   },
 });

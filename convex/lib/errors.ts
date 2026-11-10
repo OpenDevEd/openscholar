@@ -49,6 +49,8 @@ export type ErrorCode =
   | "BILLING_PAYMENT_DECLINED"
   // The bank asks the person to confirm a charge made in the page (3-D Secure): `url` is where.
   | "BILLING_PAYMENT_ACTION_REQUIRED"
+  // A purchase needs a card saved on the workspace's billing account, and it has none.
+  | "BILLING_CARD_REQUIRED"
   // A payment is still open, a renewal or a charge that was declined: nothing new is bought until it's paid. `url` is where to pay it.
   | "BILLING_PAYMENT_OPEN"
   | "BILLING_UNAVAILABLE"

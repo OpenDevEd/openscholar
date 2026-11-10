@@ -98,9 +98,13 @@ export type AutumnPreview = {
 /** What a change Autumn bills answers: a page to pay on when the card can't be charged without one, and why a charge failed. */
 export type AutumnCharge = {
   payment_url: string | null;
-  invoice?: { status: string } | null;
+  /** The invoice the change made, when it charged anything: `total` is in the currency's main unit. */
+  invoice?: { status: string | null; stripe_id?: string; total?: number; currency?: string; hosted_invoice_url?: string | null } | null;
   required_action?: { code: string; reason?: string } | null;
 };
+
+/** A promotion code given with a purchase, as Autumn's `discounts` take it. */
+const promotion = (code?: string) => (code ? { discounts: [{ promotion_code: code }] } : {});
 
 /** A member's monthly credit cap as Autumn's usage limit on their entity, which every lock and track as the entity counts against. */
 const capControls = (cap: number | null) => ({
@@ -259,6 +263,8 @@ export const autumn = {
     idempotencyKey?: string;
     newMonth?: boolean;
     seats?: SeatQuantity;
+    /** A promotion code of an Autumn reward, taken off the charge. */
+    code?: string;
   }) {
     return call<AutumnCharge>(
       "billing.attach",
@@ -272,14 +278,20 @@ export const autumn = {
           : {}),
         ...(args.successUrl ? { success_url: args.successUrl } : {}),
         ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
+        ...promotion(args.code),
       },
       args.idempotencyKey,
     );
   },
 
-  /** What `attach` would charge now, with the same `newMonth` and `seats`. */
-  previewAttach(customerId: string, planId: string, newMonth: boolean, seats?: SeatQuantity) {
-    return call<AutumnPreview>("billing.preview_attach", { customer_id: customerId, plan_id: planId, ...(newMonth ? { billing_cycle_anchor: "now" } : {}), ...licenseQuantities(seats) });
+  /** What `attach` would charge now, with the same `newMonth`, `seats` and promotion `code`. */
+  previewAttach(customerId: string, planId: string, newMonth: boolean, seats?: SeatQuantity, code?: string) {
+    return call<AutumnPreview>("billing.preview_attach", { customer_id: customerId, plan_id: planId, ...(newMonth ? { billing_cycle_anchor: "now" } : {}), ...licenseQuantities(seats), ...promotion(code) });
+  },
+
+  /** Stripe's page for saving a card without paying anything (Checkout in setup mode), which comes back to `successUrl`. */
+  setupPayment(customerId: string, successUrl: string) {
+    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl });
   },
 
   /**

@@ -29,12 +29,12 @@ const COVER_MAX_BYTES = 2 * 1024 * 1024;
 /** The most reports a workspace holds, which `sign` enforces: its list and its counts read them all. */
 const MAX_WORKSPACE_REPORTS = 1_000;
 
-const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
+export const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 export const detailsOf = async (ctx: QueryCtx, reportId: Id<"reports">) => (await ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).unique())!;
 export const mayChange = (actor: Pick<Actor, "userId" | "role">, report: Pick<Doc<"reports">, "ownerId">) => actor.role === "admin" || report.ownerId === actor.userId;
 
 /** A report of the workspace the person acts in, by its key, that they may change. */
-async function changing(ctx: QueryCtx, actor: Actor, key: string) {
+export async function changing(ctx: QueryCtx, actor: Actor, key: string) {
   const report = await byKey(ctx, key);
   if (!report || report.workspaceId !== actor.workspaceId) throw createError("NOT_FOUND", "This report isn't one of this workspace's, or it was discarded.");
   if (!mayChange(actor, report)) throw createError("FORBIDDEN", OWNERS_ONLY);
@@ -142,10 +142,10 @@ async function uploaded(ctx: MutationCtx, file: Id<"_storage">) {
 export const startsAction = defineUserQuery({
   path: "reports/flow:starts",
   description:
-    "How many more reports the workspace may start today on Openscholar Reports: its daily limit (`perDay`), how many are left (`left`), and whether the workspace is a person's own or an organization's. " +
+    "How many more reports the workspace may start today on Openscholar Reports: its plan's daily limit (`perDay`), how many are left (`left`), both null when its plan sets none, and whether the workspace is a person's own or an organization's. " +
     "`now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
-  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.number(), left: v.number(), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()) }),
+  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()) }),
   run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }) };
@@ -334,31 +334,6 @@ export const requestReview = workspaceMutation({
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: { comment: comment.trim().slice(0, REVIEW_TEXT_MAX), at: Date.now() } });
     await touch(ctx, report, { asked: true });
     await notify(ctx, report._id, "review-requested");
-    return null;
-  },
-});
-
-/**
- * The author makes a report live once no review is owed. Its registrations are queued in the order its route fixed
- * when its DOI was reserved (lib/reports/report.ts `providersOf`).
- */
-export const activate = workspaceMutation({
-  args: { key: v.string() },
-  returns: v.null(),
-  handler: async (ctx, actor, { key }) => {
-    await refuseApps(ctx);
-    const report = await changing(ctx, actor, key);
-    const settings = await reportSettings(ctx);
-    const stage = stageOf(report, settings.humanReview);
-    if (stage === "live") throw createError("CONFLICT", "This report is already live.");
-    if (stage === "review") throw createError("CONFLICT", "A reviewer has to approve this report before you can activate it.");
-    if (stage !== "ready") throw createError("CONFLICT", MOVED_ON);
-    // A DOI needs somewhere to register: with both registrars switched off, nothing goes live.
-    if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
-    await touch(ctx, report, { status: "live", activatedAt: Date.now() });
-    await register(ctx, report);
-    await notify(ctx, report._id, "live");
-    await notify(ctx, report._id, "live-author");
     return null;
   },
 });
