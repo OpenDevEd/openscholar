@@ -296,17 +296,17 @@ export const release = internalMutation({
 
 /**
  * Tells the authors whose reports waited only for a reviewer that they can activate them now, once review is
- * switched off. ponytail: the newest RELEASED_PER_STEP passed reports are told; with more than that waiting, the
- * older ones find out on Publish. Page through them if that ever happens.
+ * switched off. A page at a time, until every passed report has been looked at.
  */
 export const tellReleased = internalMutation({
-  args: {},
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, { cursor = null }) => {
     if ((await reportSettings(ctx)).humanReview) return null;
-    const passed = await ctx.db.query("reports").withIndex("by_status_and_updatedAt", (q) => q.eq("status", "passed")).order("desc").take(RELEASED_PER_STEP);
+    const passed = await ctx.db.query("reports").withIndex("by_status_and_updatedAt", (q) => q.eq("status", "passed")).paginate({ cursor, numItems: RELEASED_PER_STEP });
     // One a reviewer approved was already its author's to activate, and one a check flagged still waits for a person.
-    for (const report of passed) if (!report.approved && !report.flagged) await notify(ctx, report._id, "released");
+    for (const report of passed.page) if (!report.approved && !report.flagged) await notify(ctx, report._id, "released");
+    if (!passed.isDone) await ctx.scheduler.runAfter(0, internal.reports.review.tellReleased, { cursor: passed.continueCursor });
     return null;
   },
 });

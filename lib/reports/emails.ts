@@ -139,6 +139,8 @@ const EVENTS = {
 
 export type MailEvent = keyof typeof EVENTS;
 export const MAIL_EVENTS = Object.keys(EVENTS) as [MailEvent, ...MailEvent[]];
+/** Who an email is for and what it is called on the report's record. */
+export const mailAbout = (event: MailEvent): Pick<Event, "to" | "label"> => EVENTS[event];
 
 /**
  * One email about a report: to the team's inbox with replies going to the author, or to the author with replies

@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { internalMutation, internalQuery, type MutationCtx } from "../lib/functions";
+import { internalMutation, type MutationCtx } from "../lib/functions";
 import { changesOf } from "../../lib/reports/report";
 import { MAIL_EVENTS, type MailEvent } from "../../lib/reports/emails";
 import { detailsOf } from "./flow";
@@ -13,39 +13,40 @@ export const mailEventValidator = v.union(...MAIL_EVENTS.map((event) => v.litera
 /** The longest email kept on a report's record: a failed check's reasons can run long. */
 const TEXT_KEPT = 20_000;
 
-/** Writes to the team's inbox or the report's author about what just happened to it. `edited` is what a reviewer changed, for the email that says so. */
-export const notify = (ctx: MutationCtx, reportId: Id<"reports">, event: MailEvent, edited?: string) =>
-  ctx.scheduler.runAfter(0, internal.reports.mailer.send, { reportId, event, ...(edited && { edited }) });
+const factsValidator = v.object({
+  key: v.string(),
+  doi: v.string(),
+  title: v.string(),
+  activated: v.boolean(),
+  live: v.boolean(),
+  signer: v.string(),
+  authorEmail: v.union(v.string(), v.null()),
+  pdfName: v.optional(v.string()),
+  results: checkResultsValidator,
+  request: v.optional(v.string()),
+  note: v.optional(v.string()),
+  correction: v.optional(v.object({ changed: v.array(v.string()), results: checkResultsValidator, request: v.optional(v.string()), declinedNote: v.optional(v.string()) })),
+  deposit: v.string(),
+  archive: v.string(),
+  edited: v.optional(v.string()),
+});
+export const mailArgs = { reportId: v.id("reports"), event: mailEventValidator, report: factsValidator };
 
-/** A report as its emails describe it; null once it is gone. */
-export const facts = internalQuery({
-  args: { reportId: v.id("reports") },
-  returns: v.union(
-    v.null(),
-    v.object({
-      key: v.string(),
-      doi: v.string(),
-      title: v.string(),
-      activated: v.boolean(),
-      live: v.boolean(),
-      signer: v.string(),
-      authorEmail: v.union(v.string(), v.null()),
-      pdfName: v.optional(v.string()),
-      results: checkResultsValidator,
-      request: v.optional(v.string()),
-      note: v.optional(v.string()),
-      correction: v.optional(v.object({ changed: v.array(v.string()), results: checkResultsValidator, request: v.optional(v.string()), declinedNote: v.optional(v.string()) })),
-      deposit: v.string(),
-      archive: v.string(),
-    }),
-  ),
-  handler: async (ctx, { reportId }) => {
-    const report = await ctx.db.get("reports", reportId);
-    if (!report) return null;
-    const details = await detailsOf(ctx, reportId);
-    const owner = await ctx.db.get("users", report.ownerId);
-    const changes = details.correction;
-    return {
+/**
+ * Writes to the team's inbox or the report's author about what just happened to it. The email says what the report
+ * was at that moment, read here and handed to the action that sends it: a note discarded or a correction replaced a
+ * second later is never what it quotes. `edited` is what a reviewer changed, for the email that says so.
+ */
+export async function notify(ctx: MutationCtx, reportId: Id<"reports">, event: MailEvent, edited?: string) {
+  const report = await ctx.db.get("reports", reportId);
+  if (!report) return;
+  const details = await detailsOf(ctx, reportId);
+  const owner = await ctx.db.get("users", report.ownerId);
+  const changes = details.correction;
+  await ctx.scheduler.runAfter(0, internal.reports.mailer.send, {
+    reportId,
+    event,
+    report: {
       key: report.key,
       doi: report.doi,
       title: details.metadata?.title || report.pdf?.name || report.key,
@@ -67,9 +68,10 @@ export const facts = internalQuery({
       }),
       deposit: report.deposit,
       archive: report.archive,
-    };
-  },
-});
+      ...(edited && { edited }),
+    },
+  });
+}
 
 /** Keeps an email on its report's record: what it was, who it went to, and why it didn't go if it didn't. */
 export const sent = internalMutation({
