@@ -86,9 +86,11 @@ export async function checked(world: World, results: ReturnType<typeof passed>[]
  */
 export async function activate(world: World, key: string, { as = "author", workspaceId = world.own, free = false }: { as?: string; workspaceId?: Id<"workspaces">; free?: boolean } = {}) {
   const actor = await world.t.run(async (ctx) => actorFor(ctx, (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", as)).unique())!, workspaceId));
-  // As the action does: what's in the way refuses before anything is charged.
+  // As the action does: what's in the way refuses before anything is charged, and a paid one is recorded first.
   await world.t.query(internal.reports.activation.prepare, { actor, key, now: Date.now() });
-  return world.t.mutation(internal.reports.activation.goLive, { actor, key, free, ...(!free && { charge: { invoice: `in_${key}`, total: 5, currency: "usd" } }) });
+  if (free) return world.t.mutation(internal.reports.activation.goLiveFree, { actor, key });
+  const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor, key });
+  return world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice: `in_${key}`, total: 5, currency: "usd" } } });
 }
 
 /** A report live in the author's own workspace, every check passed. In the organisation, its admin activates it. */

@@ -606,16 +606,20 @@ export default defineSchema({
   // One row per report started, which is what a workspace's day is counted against its plan's: a discarded report keeps its row.
   reportStarts: defineTable({ workspaceId: v.id("workspaces"), at: v.number() }).index("by_workspaceId_and_at", ["workspaceId", "at"]),
   // One row per activation (#1261): a free one counts against the workspace's free activations for the day, a paid one
-  // keeps its invoice. `pending` is a charge the bank asked to confirm, which goes live once its invoice is paid.
+  // keeps its invoice, and its id is the charge's idempotency key at Autumn. `pending` is a charge the bank asked to
+  // confirm, which goes live once its invoice is paid.
   reportActivations: defineTable({
     workspaceId: v.id("workspaces"),
     reportId: v.id("reports"),
     at: v.number(),
     by: v.id("users"),
     free: v.boolean(),
+    // `charging`: written before Autumn is asked to charge, so a retry after a lost answer reuses its idempotency key.
     // `unused`: paid for, but the report had moved on (declined, say) when the charge came back: kept for a refund.
-    state: v.union(v.literal("pending"), v.literal("live"), v.literal("unused")),
-    charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string(), code: v.optional(v.string()) })),
+    state: v.union(v.literal("charging"), v.literal("pending"), v.literal("live"), v.literal("unused")),
+    /** The promotion code the charge was asked with. */
+    code: v.optional(v.string()),
+    charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string() })),
     /** Stripe's page for confirming a pending charge. */
     payUrl: v.optional(v.string()),
   })

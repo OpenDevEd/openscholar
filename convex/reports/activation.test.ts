@@ -16,6 +16,8 @@ afterEach(() => {
 });
 
 const activations = (world: World) => world.t.run((ctx) => ctx.db.query("reportActivations").take(20));
+const actorOf = (world: World, clerkId: string, workspaceId: World["own"]) =>
+  world.t.run(async (ctx) => actorFor(ctx, (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId)).unique())!, workspaceId));
 const emailed = async (world: World, key: string) => {
   await world.t.finishAllScheduledFunctions(vi.runAllTimers);
   const { _id } = await row(world.t, key);
@@ -60,13 +62,38 @@ describe("activating a report", () => {
     expect(await activations(world)).toEqual(charged);
   });
 
+  it("records a charge before it is made, and asking again carries on the same one with its own code", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    const actor = await actorOf(world, "author", world.own);
+    const first = await world.t.mutation(internal.reports.activation.begin, { actor, key, code: "HALFOFF" });
+    // Its answer was lost, and the person tries again with another code: the same charge, asked the same way.
+    expect(await world.t.mutation(internal.reports.activation.begin, { actor, key, code: "FREEDOI" })).toEqual(first);
+    expect(await activations(world)).toMatchObject([{ state: "charging", code: "HALFOFF" }]);
+  });
+
+  it("settles a charge once, keeps its code through the bank's confirmation, and needs nobody still an admin", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")], world.author, world.lab);
+    const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "orgadmin", world.lab), key, code: "HALFOFF" });
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "pending", invoice: "in_3ds", url: "https://bank.example/confirm" } });
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.lab, key, now: Date.now() })).toMatchObject({ pending: { url: "https://bank.example/confirm" } });
+    // The admin who paid leaves before the bank answers; the webhook and the page then both settle it.
+    await world.t.run(async (ctx) => ctx.db.patch("organizationMemberships", (await ctx.db.query("organizationMemberships").withIndex("by_clerkMembershipId", (q) => q.eq("clerkMembershipId", "mem_orgadmin")).unique())!._id, { state: "revoked" }));
+    const paid = { kind: "paid" as const, charge: { invoice: "in_3ds", total: 2.5, currency: "usd" } };
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: paid });
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: paid });
+    expect(await row(world.t, key)).toMatchObject({ status: "live" });
+    expect(await activations(world)).toMatchObject([{ state: "live", code: "HALFOFF", charge: { invoice: "in_3ds", total: 2.5 } }]);
+  });
+
   it("keeps a charge that comes back after its report moved on, and leaves the report as it was", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);
+    const { activationId } = await world.t.mutation(internal.reports.activation.begin, { actor: await actorOf(world, "author", world.own), key });
     // A reviewer declines it while the bank answers: declined, it can't go live.
     await world.reviewer.mutation(api.reports.review.decide, { key, decision: "decline", seenPdfAt: (await row(world.t, key)).pdf!.at, note: "Not a report" });
-    const actor = await world.t.run(async (ctx) => actorFor(ctx, (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "author")).unique())!, world.own));
-    await world.t.mutation(internal.reports.activation.goLive, { actor, key, free: false, charge: { invoice: "in_late", total: 5, currency: "usd" } });
+    await world.t.mutation(internal.reports.activation.settleCharge, { activationId, outcome: { kind: "paid", charge: { invoice: "in_late", total: 5, currency: "usd" } } });
     expect(await row(world.t, key)).toMatchObject({ status: "declined" });
     expect(await activations(world)).toMatchObject([{ state: "unused", charge: { invoice: "in_late" } }]);
   });
