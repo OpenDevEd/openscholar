@@ -1023,16 +1023,19 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   const answered = rows.filter((r) => r.result).length;
   const stage = report ? stageOf(report, humanReview) : null;
   const [activating, start] = useTransition();
+  // MOCK (mock/activation-button): `state` in the address puts the report in each case the looks are compared in.
+  const [forced] = useQueryState("state", parseAsStringLiteral(STATES));
+  const shown = terms && forced ? { ...terms, ...FORCED[forced] } : terms;
   // Only the workspace's admins activate (#1261). A free activation and a paid one both need a saved card; a paid one
   // is confirmed in a dialog first, where a promotion code can lower it.
-  const organization = terms?.organization ?? null;
-  const admin = terms?.admin ?? true;
-  const free = (terms?.free.left ?? 0) > 0;
-  const card = terms?.card ?? null;
-  const pending = terms?.pending ?? null;
-  const price = terms?.price === null || terms?.price === undefined ? null : Math.round(terms.price * 100);
+  const organization = shown?.organization ?? null;
+  const admin = shown?.admin ?? true;
+  const free = (shown?.free.left ?? 0) > 0;
+  const card = shown?.card ?? null;
+  const pending = shown?.pending ?? null;
+  const price = shown?.price === null || shown?.price === undefined ? null : Math.round(shown.price * 100);
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
-  const credit = Math.round((terms?.credit ?? 0) * 100);
+  const credit = Math.round((shown?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
   // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
   if (paying && !admin) setPaying(false);
@@ -1103,10 +1106,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
-              {stage === "ready" && admin && terms ? (
+              {stage === "ready" && admin && shown ? (
                 <PaymentLine
                   organization={organization}
-                  free={terms.free.left}
+                  free={shown.free.left}
                   card={card}
                   credit={credit}
                   price={price}
@@ -1242,6 +1245,18 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
     </div>
   );
 }
+
+/** MOCK: the cases each look is shown in, forced over the report's real terms. */
+const STATES = ["nocard", "due", "credit", "free", "bank", "member"] as const;
+const CARD = { brand: "visa", last4: "4242" };
+const FORCED: Record<(typeof STATES)[number], Partial<Terms>> = {
+  nocard: { admin: true, card: null, credit: 0, free: { perDay: 0, left: 0 }, pending: null },
+  due: { admin: true, card: CARD, credit: 0, free: { perDay: 0, left: 0 }, pending: null },
+  credit: { admin: true, card: CARD, credit: 5.05, free: { perDay: 0, left: 0 }, pending: null },
+  free: { admin: true, card: CARD, credit: 0, free: { perDay: 1, left: 1 }, pending: null },
+  bank: { admin: true, card: CARD, credit: 0, free: { perDay: 0, left: 0 }, pending: { url: "https://invoice.stripe.com" } },
+  member: { admin: false, organization: "Open Development and Education", card: CARD, credit: 0, free: { perDay: 0, left: 0 }, pending: null },
+};
 
 /** MOCK: the looks compared for Activate. */
 const LOOKS = ["now", "seal", "bar", "live"] as const;
