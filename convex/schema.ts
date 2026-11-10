@@ -1410,6 +1410,8 @@ export default defineSchema({
   libraryItems: defineTable(libraryItemFields)
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_paperKey", ["workspaceId", "paperKey"])
+    // A paper's saved copies in every workspace: a report's follow its corrections (./reports/saved.ts).
+    .index("by_paperKey", ["paperKey"])
     .index("by_workspace_rating", ["workspaceId", "rating"])
     .index("by_workspace_savedAt", ["workspaceId", "savedAt"])
     .index("by_workspace_year", ["workspaceId", "publicationYear"])

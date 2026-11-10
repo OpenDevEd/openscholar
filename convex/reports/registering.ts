@@ -23,4 +23,6 @@ export async function register(ctx: MutationCtx, report: Pick<Doc<"reports">, "_
     depositSent: undefined,
   });
   await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id, rev });
+  // Whatever changed what the registrars hold changed what a saved copy shows: its copies follow (./saved.ts).
+  await ctx.scheduler.runAfter(0, internal.reports.saved.follow, { reportId: report._id });
 }
