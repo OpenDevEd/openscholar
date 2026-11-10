@@ -73,6 +73,9 @@ export const DETAILS_MAX_BYTES = 300_000;
 /** The longest each of a report's texts is, which its box shows as it's typed. */
 export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500 } as const;
 
+/** Where each licence a report can carry is written out. */
+export const LICENCE_URL: Record<Metadata["licence"], string> = { "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/" };
+
 /** An ORCID iD with its check digit right (ISO 7064 11-2), as 0000-0002-1825-0097. */
 export function isOrcid(id: string) {
   if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(id)) return false;
