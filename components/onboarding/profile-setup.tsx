@@ -9,9 +9,11 @@
 
 import { useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
+import { useTranslations } from "next-intl";
 import useSWR from "swr";
 import { toast } from "sonner";
+import { LogOut } from "@/components/icons";
 import { LogoMark } from "@/components/logo";
 import { AffiliationPicker } from "@/components/people/affiliation-picker";
 import { OrcidButton, OrcidSearch } from "@/components/people/orcid-search";
@@ -90,7 +92,10 @@ function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { pers
   return (
     <main className="flex min-h-dvh justify-center bg-background px-4 py-10 sm:items-center">
       <div className="w-full max-w-md space-y-8">
-        <LogoMark className="size-9" />
+        <div className="flex items-center justify-between gap-3">
+          <LogoMark className="size-9" />
+          <SignOutButton />
+        </div>
         <header className="flex items-center gap-3">
           <IdentityAvatar name={person.name} imageUrl={person.imageUrl ?? undefined} className="size-12 shrink-0" />
           <div className="min-w-0 space-y-0.5">
@@ -121,6 +126,37 @@ function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { pers
         </div>
       </div>
     </main>
+  );
+}
+
+/**
+ * Signing out from the setup, the only way out of the page other than finishing or skipping it. The page is then
+ * loaded again from the server, which draws it for someone signed out.
+ */
+function SignOutButton() {
+  const t = useTranslations("common");
+  const tw = useTranslations("workspaces");
+  const { signOut } = useClerk();
+  const [leaving, setLeaving] = useState(false);
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={leaving}
+      className="text-muted-foreground"
+      onClick={() => {
+        setLeaving(true);
+        signOut()
+          .then(() => window.location.reload())
+          .catch(() => {
+            setLeaving(false);
+            toast.error(tw("signOutFailed"));
+          });
+      }}
+    >
+      {leaving ? <Spinner /> : <LogOut />}
+      {t("signOut")}
+    </Button>
   );
 }
 
