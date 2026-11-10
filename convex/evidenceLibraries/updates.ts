@@ -78,31 +78,50 @@ export const readRunningRelease = internalQuery({
       throw createError("CONFLICT", "This community is not running yet");
     }
     const running = binding.runtimeCommit;
-    const cached = await ctx.db
-      .query("evidenceLibraryRuntimeReleases")
-      .withIndex("by_running", (query) => query.eq("running", running))
-      .first();
     return {
       running,
       bindingId: binding._id,
       address: binding.canonicalBaseUrl ?? binding.targetBaseUrl,
-      cached:
-        cached &&
-        typeof cached.latestImage === "string" &&
-        cached.releases !== undefined
-          ? {
-              running,
-              latest: cached.latest,
-              latestImage: cached.latestImage,
-              changes: cached.changes,
-              releases: cached.releases,
-              checkedAt: cached.checkedAt,
-              ...(cached.contractSupport
-                ? { contractSupport: cached.contractSupport }
-                : {}),
-            }
-          : null,
+      cached: await storedRelease(ctx, running),
     };
+  },
+});
+
+/** The last check's answer for software `running`, as it was stored; null before the first, or for a row from before releases were kept. */
+async function storedRelease(ctx: QueryCtx, running: string): Promise<RuntimeUpdateState | null> {
+  const cached = await ctx.db
+    .query("evidenceLibraryRuntimeReleases")
+    .withIndex("by_running", (query) => query.eq("running", running))
+    .first();
+  return cached &&
+    typeof cached.latestImage === "string" &&
+    cached.releases !== undefined
+    ? {
+        running,
+        latest: cached.latest,
+        latestImage: cached.latestImage,
+        changes: cached.changes,
+        releases: cached.releases,
+        checkedAt: cached.checkedAt,
+        ...(cached.contractSupport
+          ? { contractSupport: cached.contractSupport }
+          : {}),
+      }
+    : null;
+}
+
+/**
+ * What the last software check said about what the library runs, for the Versions summary to show at its full size
+ * from the first frame while the page checks again; null for a library not running yet, or never checked.
+ */
+export const lastCheck = query({
+  args: { libraryId: v.id("evidenceLibraries") },
+  returns: v.union(v.null(), runtimeUpdateStateValidator),
+  handler: async (ctx, args) => {
+    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const binding = access.library.runtimeBindingId ? await ctx.db.get(access.library.runtimeBindingId) : null;
+    if (!binding || binding.libraryId !== args.libraryId || !("runtimeCommit" in binding)) return null;
+    return await storedRelease(ctx, binding.runtimeCommit);
   },
 });
 

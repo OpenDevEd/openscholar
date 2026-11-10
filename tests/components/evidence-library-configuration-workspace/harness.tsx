@@ -96,7 +96,8 @@ vi.mock("@/convex/_generated/api", () => ({
       teardown: { requestDevelopmentTeardown: "requestDevelopmentTeardown" },
       uploads: { generateUploadUrl: "generateUploadUrl" },
       uploadActions: { upload: "upload", remove: "remove" },
-      updates: { check: "check", getAddressNotice: "getAddressNotice", publishRuntime: "publishRuntime" },
+      updates: { check: "check", getAddressNotice: "getAddressNotice", lastCheck: "lastCheck", publishRuntime: "publishRuntime" },
+      applications: { setOpen: "setOpenApplications", waiting: "waitingApplications", waitingCounts: "waitingApplicationCounts" },
       addressActions: { moveLibraryAddress: "moveLibraryAddress" },
       configurationDeployment: {
         retryConfigurationDeployment: "retryConfigurationDeployment",
@@ -202,8 +203,10 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
         ? { data: { page: [], isDone: true, continueCursor: "" }, isReady: true }
         : query === "countVersions"
         ? { data: 0, isReady: true }
-        : query === "getAddressNotice"
+        : query === "getAddressNotice" || query === "lastCheck"
         ? { data: null, isReady: true }
+        : query === "waitingApplicationCounts"
+        ? { data: { page: [], isDone: true, continueCursor: "" }, isReady: true }
         : query === "listCredentials"
           ? { data: { page: harness.storedCredentials, isDone: true, continueCursor: "" }, isReady: true }
           : query === "listTeam"

@@ -3049,7 +3049,8 @@
       "users": "Gebruikers",
       "aiModels": "KI-modelle",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "Gemeenskapvrystellings"
+      "communityReleases": "Gemeenskapvrystellings",
+      "publishing": "Publikasie"
     },
     "sharedDev": "Gedeelde ontwikkeling",
     "production": "Produksie",
@@ -4432,6 +4433,71 @@
         "did": "Het die artikels gelees wat jy na gemeenskappe gestuur het",
         "where": "Evidence Communities",
         "ask": "Lees die artikels wat jy na gemeenskappe gestuur het"
+      },
+      "applyToCommunity": {
+        "doing": "Doen aansoek om by 'n gemeenskap aan te sluit",
+        "did": "Het aansoek gedoen om by 'n gemeenskap aan te sluit",
+        "where": "Evidence Communities",
+        "ask": "Doen aansoek om by 'n gemeenskap aan te sluit"
+      },
+      "withdrawApplication": {
+        "doing": "Trek 'n aansoek by 'n gemeenskap terug",
+        "did": "Het 'n aansoek by 'n gemeenskap teruggetrek",
+        "where": "Evidence Communities",
+        "ask": "Trek 'n aansoek by 'n gemeenskap terug"
+      },
+      "hideApplication": {
+        "doing": "Versteek 'n geweierde aansoek",
+        "did": "Het 'n geweierde aansoek versteek",
+        "where": "Evidence Communities",
+        "ask": "Versteek 'n geweierde aansoek"
+      },
+      "myApplications": {
+        "doing": "Lees jou aansoeke by gemeenskappe",
+        "did": "Het jou aansoeke by gemeenskappe gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees jou aansoeke by gemeenskappe"
+      },
+      "applicationStanding": {
+        "doing": "Kyk waar jy by gemeenskappe staan",
+        "did": "Het gekyk waar jy by gemeenskappe staan",
+        "where": "Evidence Communities",
+        "ask": "Kyk waar jy by gemeenskappe staan"
+      },
+      "applicationsWaiting": {
+        "doing": "Lees aansoeke om by 'n gemeenskap aan te sluit",
+        "did": "Het aansoeke om aan te sluit gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees aansoeke om by 'n gemeenskap aan te sluit"
+      },
+      "applicationCounts": {
+        "doing": "Tel aansoeke wat wag",
+        "did": "Het aansoeke wat wag getel",
+        "where": "Evidence Communities",
+        "ask": "Tel aansoeke wat wag"
+      },
+      "acceptApplication": {
+        "doing": "Aanvaar 'n aansoek om aan te sluit",
+        "did": "Het 'n aansoek om aan te sluit aanvaar",
+        "where": "Evidence Communities",
+        "ask": "Aanvaar 'n aansoek om aan te sluit"
+      },
+      "declineApplication": {
+        "doing": "Weier 'n aansoek om aan te sluit",
+        "did": "Het 'n aansoek om aan te sluit geweier",
+        "where": "Evidence Communities",
+        "ask": "Weier 'n aansoek om aan te sluit"
+      },
+      "applicationsOpen": {
+        "doing": "Skakel aansoeke om aan te sluit aan of af",
+        "did": "Het aansoeke om aan te sluit aan- of afgeskakel",
+        "where": "Evidence Communities",
+        "ask": "Skakel aansoeke om aan te sluit aan of af"
+      },
+      "readReports": {
+        "doing": "Lees tans jou verslae",
+        "did": "Het jou verslae gelees",
+        "where": "Publiseer"
       }
     },
     "asks": {
@@ -4606,6 +4672,7 @@
     "main": "Hoof",
     "screen": "Sif",
     "extract": "Onttrek",
+    "publish": "Publiseer",
     "communities": "Gemeenskappe",
     "explore": "Verken",
     "authors": "Outeurs",
@@ -5188,10 +5255,6 @@
     "peopleFromTheLibrarySTeam": "Mense uit die gemeenskap se span, of met die hand bygevoeg, gaan verby in die volgorde wat hier gestel is.",
     "aboutTheTeam": "Oor die span",
     "usedInsteadWhenThereIsNo": "Word eerder gebruik wanneer daar geen span-sin is nie.",
-    "suggestAPublication": "Stel ’n publikasie voor",
-    "opensAnEmailTo": "Maak ’n e-pos oop aan {email}",
-    "needsAContactEmail": "Het ’n kontak-e-posadres nodig",
-    "joinAsAnEditor": "Sluit aan as redigeerder",
     "askTheLibrary": "Vra die gemeenskap",
     "typedIntoTheQuestionBoxOne": "In die vraagkassie een na die ander ingetik. ’n Leë kassie hou die vraag wat uit die gemeenskap se onderwerpe gemaak is.",
     "shownWhenAiAnswersAreOn": "Gewys wanneer KI-antwoorde by Kenmerke aan is. ’n Leë kassie hou die vraag wat uit die gemeenskap se onderwerpe gemaak is.",
@@ -5319,7 +5382,12 @@
     "noPublicationHasAPdfYet": "Geen publikasie het nog ’n PDF nie.",
     "noPublicationMatches": "Geen publikasie pas nie.",
     "theLibraryIsNotSetUp": "Die gemeenskap is nog nie opgestel nie.",
-    "linked": "Gekoppel"
+    "linked": "Gekoppel",
+    "suggestPapers": "Stel artikels voor",
+    "suggestPapersHint": "Maak die werf se Stel artikels voor-dialoog oop. Die span beoordeel elke artikel.",
+    "needsReaderAccounts": "Benodig leserrekeninge",
+    "joinThisTeam": "Sluit by hierdie span aan",
+    "joinThisTeamHint": "Maak aansoek doen op Openscholar oop. Versteek terwyl aansoeke af is."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Soek naam of e-pos",
@@ -5971,5 +6039,94 @@
     "askQueue": "Stuur {count, plural, one {# artikel} other {# artikels}} vir hersiening",
     "alreadyInIt": "Reeds daarin",
     "inReview": "In hersiening"
+  },
+  "communityApplications": {
+    "joinName": "Sluit aan by {name}",
+    "runBy": "Bestuur deur {name}",
+    "anOpenscholarMember": "'n Openscholar-lid",
+    "asACreator": "As Skepper kan jy",
+    "can": {
+      "add": {
+        "title": "Voeg artikels by",
+        "body": "Stuur artikels wat jy vind na sy hersieningsry."
+      },
+      "edit": {
+        "title": "Wysig rekords",
+        "body": "Maak besonderhede reg en laai PDF's op."
+      },
+      "review": {
+        "title": "Dien in vir hersiening",
+        "body": "Sy redakteurs gaan jou werk na en publiseer dit dan."
+      }
+    },
+    "messageLabel": "Boodskap aan die span",
+    "messageHint": "Sê wie jy is en hoekom jy wil aansluit. Sy eienaars en redakteurs besluit.",
+    "messagePlaceholder": "Ek is 'n navorser by… Ek wil graag byvoeg…",
+    "messageMissing": "Skryf 'n paar woorde vir die span.",
+    "whoSees": "Sy eienaars en redakteurs sien jou naam, jou e-pos en hierdie boodskap.",
+    "cancel": "Kanselleer",
+    "send": "Stuur aansoek",
+    "sentTitle": "Aansoek gestuur",
+    "sentBody": "Dit is in Jou gemeenskappe, waar jy dit kan terugtrek.",
+    "steps": {
+      "sent": "Gestuur",
+      "justNow": "Pas nou",
+      "review": "Eienaars en redakteurs lees dit",
+      "reviewDetail": "Hulle aanvaar of weier dit",
+      "email": "Jy kry 'n e-pos met hul antwoord",
+      "emailTo": "By {email}",
+      "accepted": "Aanvaar",
+      "declined": "Nie aanvaar nie"
+    },
+    "done": "Klaar",
+    "theirReason": "Hul rede",
+    "noReason": "Hulle het nie 'n rede gegee nie.",
+    "applyAgainFrom": "Jy kan weer aansoek doen vanaf {date}.",
+    "youreIn": "Jy is in. Jy kan as Skepper artikels by {name} voeg.",
+    "yourMessage": "Jou boodskap",
+    "withdrawSure": "Trek dit terug? Jy kan later weer aansoek doen.",
+    "keep": "Hou dit",
+    "withdraw": "Trek terug",
+    "dismiss": "Versteek uit sybalk",
+    "openCommunity": "Maak gemeenskap oop",
+    "close": "Maak toe",
+    "apply": "Doen aansoek",
+    "applied": "Aansoek gedoen",
+    "member": "Lid",
+    "notAccepted": "Nie aanvaar nie",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Wag vir 'n antwoord",
+    "toReview": "{count, plural, one {# om te hersien} other {# om te hersien}}",
+    "applications": "Aansoeke",
+    "acceptingMakesCreator": "As jy aanvaar, word hulle 'n Skepper. Elke persoon kry 'n e-pos met jou antwoord.",
+    "noMatchingApplications": "Geen aansoeke pas by hierdie soektog nie.",
+    "offForOwner": "Aansoeke is af. Skakel dit aan by <link>Lys</link>.",
+    "offForEditor": "Sy eienaars het aansoeke afgeskakel.",
+    "noApplications": "Niemand wag nie. Mense doen aansoek vanaf sy kaart op die Gemeenskappe-blad en vanaf sy webwerf.",
+    "appliedWhen": "Aansoek gedoen {when}",
+    "showAll": "Wys alles",
+    "showLess": "Wys minder",
+    "declinedNotice": "{name} geweier. Ons het jou rede aan hulle ge-e-pos.",
+    "whyDecline": "Hoekom? Hulle sien dit in die e-pos.",
+    "reasons": {
+      "topic": "Buite ons onderwerp",
+      "moreAbout": "Vertel ons meer oor jou werk",
+      "notNow": "Ons voeg nie nou mense by nie"
+    },
+    "addANote": "Voeg 'n nota by (opsioneel)",
+    "theyGetAnEmail": "Hulle kry 'n e-pos met jou rede.",
+    "declineAndEmail": "Weier en stuur e-pos",
+    "acceptedNotice": "{name} is nou 'n Skepper. Ons het hulle ge-e-pos.",
+    "acceptAsCreator": "Aanvaar as Skepper",
+    "decline": "Weier",
+    "letPeopleApply": "Laat mense aansoek doen om aan te sluit",
+    "letPeopleApplyHint": "Mense doen aansoek vanaf sy kaart op die Gemeenskappe-blad en vanaf sy webwerf. Eienaars en redakteurs aanvaar of weier elkeen.",
+    "onlyPublic": "Net openbare gemeenskappe neem aansoeke.",
+    "closedNow": "Hierdie gemeenskap neem nie nou aansoeke nie.",
+    "couldNotSend": "Jou aansoek kon nie gestuur word nie. Probeer weer.",
+    "couldNotChange": "Dit het nie deurgegaan nie. Probeer weer.",
+    "showMore": "Wys meer",
+    "linkUnavailable": "Hierdie skakel maak nie 'n gemeenskap oop wat aansoeke neem nie. Dit is dalk verkeerd getik, of die gemeenskap is nie meer openbaar nie.",
+    "sayMore": "Vertel meer oor jou werk in die boodskap hieronder, en stuur dit dan weer."
   }
 }

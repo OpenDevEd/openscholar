@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type MouseEventHandler, type ReactNode } from "react";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ export function LibraryPageShell({
   title,
   backHref,
   backLabel,
+  onBackClick,
   titleAside,
   tabs,
   filters,
@@ -36,6 +37,8 @@ export function LibraryPageShell({
   title: string;
   backHref?: string;
   backLabel?: string;
+  /** Called with the back link's click before it navigates, for a page that can step back in history instead. */
+  onBackClick?: MouseEventHandler<HTMLAnchorElement>;
   titleAside?: ReactNode;
   tabs?: ReactNode;
   filters?: ReactNode;
@@ -64,6 +67,7 @@ export function LibraryPageShell({
           title={title}
           backHref={backHref}
           backLabel={backLabel}
+          onBackClick={onBackClick}
           titleAside={titleAside}
           tabs={tabs}
           filters={filtersInBar}

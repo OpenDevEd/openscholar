@@ -1,0 +1,72 @@
+// The publishing agreement an author signs for a single work, as BeeWriter holds it
+// (openscholar-proposal/end-user-agreements/publishing-agreement-single-work). It is the text Openscholar Reports
+// starts with; admins change it at Settings > Admin > Publishing, and each change is a new version.
+export const DEFAULT_AGREEMENT = `# Publishing agreement: single work (Openscholar Reports)
+
+Draft for discussion, 2 November 2026. Not legal advice; to be reviewed by a lawyer in Kenya before first use. For route 1 (one-off work) in the introduction.
+
+**Publishing agreement**
+
+This agreement is made on [date] between:
+
+1. [Name of author(s) or organisation], of [address] (the “Author”). Where there are several authors, one of them signs on behalf of all and confirms that they have the others’ agreement; and
+2. Openscholar, [legal form], registered in Kenya under number [number], of [address] (“Openscholar”).
+
+## 1. The Work
+
+The Work is: [title], by [authors], [number of pages], [date of completion] (the “Work”).
+
+## 2. Publication
+
+2.1. Openscholar will publish the Work in the series Openscholar Reports, register a DOI for it with Crossref, and keep a landing page for it on openscholar.ai.
+
+2.2. The Work will carry the byline “Co-published with Openscholar Reports” and its DOI (https://doi.org/[prefix]/[suffix]), on its cover or first page. Openscholar may add a cover sheet with this information.
+
+2.3. Openscholar may decline to publish the Work, for example if it is outside Openscholar’s scope, not original, or raises legal or ethical concerns. If it declines, this agreement ends and no DOI is registered.
+
+## 3. Copyright and licence
+
+3.1. The Author keeps the copyright in the Work.
+
+3.2. The Work is published under the Creative Commons Attribution 4.0 licence (CC BY 4.0).
+
+3.3. The Author grants Openscholar a non-exclusive, worldwide, irrevocable licence to publish, host, archive and distribute the Work, and to register and publish its metadata.
+
+## 4. Author’s warranties
+
+4.1. The Author confirms that:
+
+- the Author has the right to enter into this agreement and to publish the Work under CC BY 4.0;
+- the Work is original, and is free of third-party material for which the Author does not have permission (any such material is listed and credited in the Work, with its own licence);
+- the Work contains nothing defamatory, unlawful or otherwise offending, and does not breach anyone’s privacy or confidentiality;
+- the Work has not been published elsewhere with a DOI.
+
+4.2. The Author will indemnify Openscholar against any claims, losses and costs arising from a breach of these warranties.
+
+## 5. Metadata
+
+The Author will provide the title, authors (with ORCID iDs where available) and affiliations, date, abstract, keywords and funder information. Openscholar will register accurate metadata with Crossref and correct it if the Author reports an error.
+
+## 6. Permanence and withdrawal
+
+6.1. The Author understands that a DOI is permanent and cannot be deleted.
+
+6.2. Openscholar will keep the landing page online and keep an archived copy of the Work in a long-term archive.
+
+6.3. If the Work has to be withdrawn (for example for legal reasons), the DOI will continue to resolve to a page explaining that the Work has been withdrawn. Corrections are published as a new version or a correction notice.
+
+## 7. Fees
+
+7.1. Crossref fees: Openscholar registers the DOI under its own Crossref membership. [Crossref charges Openscholar no content registration fee / The Crossref content registration fee is [amount].]
+
+7.2. Any other fees: [none / as agreed between the parties].
+
+## 8. General
+
+8.1. This agreement is governed by the laws of Kenya.
+
+8.2. Sections 3, 4 and 6 continue to apply after publication.
+
+Signed for the Author: ____________________ Name, date
+
+Signed for Openscholar: ____________________ Name, role, date`;

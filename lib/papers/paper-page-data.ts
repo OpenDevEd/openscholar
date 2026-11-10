@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { fetchOwnWorks, readOpenAlexWorks } from "@/lib/openalex/read-works";
+import { SearchError } from "@/lib/search/search-error";
 import { MAX_LOCATIONS } from "@/lib/topics/publications";
 import { normalizeDoi } from "@/lib/topics/identity";
 import { fetchPublicationPdf } from "@/lib/evidence-libraries/publication-cards";
@@ -10,6 +11,8 @@ import type { SimilarPaper } from "@/app/actions/similar";
 import type { PaperResult } from "@/lib/types/search.types";
 import { paperPageId, paperPath } from "@/lib/papers/page-address";
 import { paperDetail } from "@/lib/papers/paper-detail";
+import { readReport } from "@/lib/reports/paper-data";
+import { reportPaper } from "@/lib/reports/report-paper";
 import { copyOf, type CommunityCopy } from "./community-copies";
 
 /** How long a paper page reuses what it read: a paper's record barely changes, and crawlers read many pages once each. */
@@ -21,8 +24,13 @@ const DAY = 60 * 60 * 24;
 /** A paper as our index holds it, by our ID or its OpenAlex ID. Null when our index has none. */
 export const readPaperForPage = unstable_cache(
   async (id: string): Promise<PaperResult | null> => {
-    const read = await readOpenAlexWorks({ filter: { openalex_id: id } as never, cursor: "*", perPage: 1 }, "openscholar");
-    return (read.results[0] as PaperResult | undefined) ?? null;
+    // Our index answers 400 for an ID no work can have (an OS number past its range): no such paper, so the page is a 404.
+    // Anything else it can't answer still throws, so an outage is never kept as a missing paper.
+    const read = await readOpenAlexWorks({ filter: { openalex_id: id } as never, cursor: "*", perPage: 1 }, "openscholar").catch((error: unknown) => {
+      if (error instanceof SearchError && error.status === 400) return null;
+      throw error;
+    });
+    return (read?.results[0] as PaperResult | undefined) ?? null;
   },
   ["paper-page"],
   { revalidate: DAY },
@@ -131,6 +139,11 @@ export const quietly = <T,>(what: string, id: string, fallback: T) => (error: un
  */
 export async function readAskedPaper(asked: string | null): Promise<PaperResult | null> {
   if (!asked) return null;
+  // A report published on Openscholar (R…) is Convex's to give, and only while it is live.
+  if (asked.startsWith("R")) {
+    const report = await readReport(asked);
+    return report?.state === "live" ? reportPaper(report, report.metadata, report.series) : null;
+  }
   const openalexId = asked.startsWith("W") ? asked : null;
   const indexed = await readPaperForPage(asked).catch((error: unknown) => { if (!openalexId) throw error; return quietly("our index's record", asked, null)(error); });
   return indexed ?? (openalexId ? await readOpenAlexForPage(openalexId).catch(quietly("OpenAlex record", openalexId, null)) : null);
@@ -143,7 +156,8 @@ export async function readPaperPage(raw: string) {
   // Saved papers keep the OpenAlex ID our index pairs a record with; the page is named by our own.
   const id = ((paper as { openscholar_id?: string }).openscholar_id ?? paper.id).split("/").at(-1)!;
   const work = openalexIdOf(paper);
-  const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : null;
+  // A report is its own fullest record, so its goals and grant numbers show as OpenAlex's would.
+  const openalex = work ? await readOpenAlexForPage(work).catch(quietly("OpenAlex record", id, null)) : id.startsWith("R") ? paper : null;
   // What kind of work it is and whether it's free to read, as OpenAlex says when it says: our index has called journal
   // articles book chapters and left open ones closed, which the badges and the citation then repeated.
   const shown = openalex ? { ...paper, type: openalex.type ?? paper.type, open_access: openalex.open_access ?? paper.open_access } : paper;

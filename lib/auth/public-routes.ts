@@ -13,6 +13,8 @@ const PRIVATE_PATHS = [
   "/shared/:path*",
   "/join/:path*",
   "/from-library/:path*",
+  // A report's signed agreement is its workspace's to read. Publish itself is open, and asks for sign-in at the first step.
+  "/publish/agreements/:path*",
   "/o/:path*",
   "/api/:path*",
   "/trpc/:path*",

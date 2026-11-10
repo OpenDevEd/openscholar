@@ -14,11 +14,12 @@ const metadataSchema = z.object({
   "container-title": text.optional(), publisher: text.optional(), "publisher-place": text.optional(),
   volume: text.optional(), issue: text.optional(), page: text.optional(), edition: text.optional(), language: text.optional(),
 });
-const inputSchema = metadataSchema.extend({ id: z.string().regex(/^(?:W|OS)\d+$/), "citation-key": z.string().regex(/^os_(?:W|OS)\d+$/) });
+const inputSchema = metadataSchema.extend({ id: z.string().regex(/^(?:W|OS|R)\d+$/), "citation-key": z.string().regex(/^os_(?:W|OS|R)\d+$/) });
 
 export async function getPaperCitationMetadata(input: unknown) {
   const data: CitationData = inputSchema.parse(input);
-  const doi = typeof data.DOI === "string" && /^10\.\d{4,9}\/\S+$/i.test(data.DOI) ? data.DOI : null;
+  // A report published here is its own record: what its registrars hold is a copy of it, and can be a correction behind.
+  const doi = !data.id.startsWith("R") && typeof data.DOI === "string" && /^10\.\d{4,9}\/\S+$/i.test(data.DOI) ? data.DOI : null;
   let record = data;
   if (doi) {
     try {

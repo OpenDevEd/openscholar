@@ -17,7 +17,12 @@ import {
   ChevronRight,
   Check,
   Building2,
+  UserPlus,
 } from "@/components/icons";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { useWorkspace } from "@/lib/workspaces/url";
+import { useWithPage } from "../preloads";
+import { ApplicationsList } from "../../applications/applications-list";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -151,6 +156,8 @@ export function TeamAccess({
   organization,
   onResend,
   readOnly = false,
+  reviews = false,
+  applicationsClosed = false,
 }: {
   scope: "library" | "profile";
   members: AccessMember[];
@@ -162,9 +169,14 @@ export function TeamAccess({
   onResend: (member: AccessMember) => Promise<void>;
   /** For everyone but its owners: who has access and their roles, with nothing to add, change or remove. */
   readOnly?: boolean;
+  /** Whether the person answers applications to join: its owners and editors. */
+  reviews?: boolean;
+  /** Its owners turned applications off (OS-31); those waiting still get answered. */
+  applicationsClosed?: boolean;
 }) {
   const tLabels = useTranslations("libraryTeamAccess");
   const t = useTranslations("libraryTeamAccess");
+  const ta = useTranslations("communityApplications");
   const isProfile = scope === "profile";
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
@@ -191,7 +203,22 @@ export function TeamAccess({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [selected, setSelected] = useState<Pick<AccessMember, "id" | "name" | "email" | "imageUrl"> | null>(null);
   const convex = useConvex();
-  const [view, setView] = useState<"members" | "invitations">("members");
+  // The list shown, kept in the address so the sidebar's "to review" opens Applications.
+  const [view, setView] = useQueryState("team", parseAsStringLiteral(["members", "invitations", "applications"] as const).withDefault("members"));
+  // How many applications wait, for the tab: from the page's server until the live count arrives.
+  const workspaceId = useWorkspace();
+  const waitingRead = useWithPage<typeof api.evidenceLibraries.applications.waitingCounts>("applicationsWaiting", useProtectedQuery(
+    api.evidenceLibraries.applications.waitingCounts,
+    reviews && libraryId && workspaceId ? { workspaceId, libraryIds: [libraryId] } : "skip",
+  ).data);
+  const waiting = waitingRead?.page[0]?.waiting ?? 0;
+  const tabs = [
+    "members" as const,
+    ...(readOnly ? [] : ["invitations" as const]),
+    ...(reviews && libraryId ? ["applications" as const] : []),
+  ];
+  // A tab the person can't open, from a link, shows the members instead.
+  const shown = (tabs as string[]).includes(view) ? view : "members";
   const [rolesOpen, setRolesOpen] = useState(false);
   const filtered = members.filter((member) =>
     `${member.name} ${member.email}`
@@ -679,11 +706,12 @@ export function TeamAccess({
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
-          <div className="flex items-center gap-1" aria-label={t("teamView")}>
+          {/* Wraps on a phone, so every list stays on the card. */}
+          <div className="flex flex-wrap items-center gap-1" aria-label={t("teamView")}>
             {/* Invitations are its owners' to see. */}
-            {(readOnly ? ["members"] as const : ["members", "invitations"] as const).map((tab) => {
-              const Icon = tab === "members" ? Users : Mail;
-              const count = members.filter(
+            {tabs.map((tab) => {
+              const Icon = tab === "members" ? Users : tab === "invitations" ? Mail : UserPlus;
+              const count = tab === "applications" ? waiting : members.filter(
                 (member) =>
                   (isProfile || member.role !== "Owner") &&
                   member.invited === (tab === "invitations"),
@@ -693,14 +721,14 @@ export function TeamAccess({
                   key={tab}
                   variant="ghost"
                   size="sm"
-                  aria-pressed={view === tab}
+                  aria-pressed={shown === tab}
                   onClick={() => {
-                    setView(tab);
+                    void setView(tab === "members" ? null : tab);
                     setRemoving(null);
                   }}
                   className={cn(
                     "gap-2 text-muted-foreground",
-                    view === tab && "bg-muted text-foreground",
+                    shown === tab && "bg-muted text-foreground",
                   )}
                 >
                   <Icon className="size-3.5" />
@@ -708,7 +736,7 @@ export function TeamAccess({
                     ? isProfile
                       ? t("profileMembers")
                       : t("libraryMembers")
-                    : t("invitations")}
+                    : tab === "invitations" ? t("invitations") : ta("applications")}
                   <span className="text-xs tabular-nums text-muted-foreground">
                     {count}
                   </span>
@@ -727,19 +755,25 @@ export function TeamAccess({
             />
           </div>
         </div>
-        {view === "invitations" && (
+        {shown === "invitations" && (
           <p className="flex items-center gap-2 border-b border-border-subtle px-4 py-3 text-xs text-muted-foreground">
             <Clock3 className="size-3.5" />
             {t(scope === "library" ? "acceptingGrantsLibrary" : "acceptingGrantsProfile")}
           </p>
         )}
-        {people(
+        {shown === "applications" && libraryId && (
+          <p className="flex items-center gap-2 border-b border-border-subtle px-4 py-3 text-xs text-muted-foreground">
+            <UserPlus className="size-3.5 shrink-0" />
+            {ta("acceptingMakesCreator")}
+          </p>
+        )}
+        {shown === "applications" && libraryId ? <ApplicationsList libraryId={libraryId} search={search} owner={!readOnly} closed={applicationsClosed} notify={setNotice} /> : people(
           filtered.filter(
             (member) =>
               (isProfile || member.role !== "Owner") &&
-              member.invited === (view === "invitations"),
+              member.invited === (shown === "invitations"),
           ),
-          view === "invitations"
+          shown === "invitations"
             ? tLabels("noPendingInvitations")
             : tLabels("noMembersYet"),
         )}

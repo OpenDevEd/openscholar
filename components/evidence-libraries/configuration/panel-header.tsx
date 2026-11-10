@@ -2,7 +2,7 @@
 
 import { ChevronLeft, type AppIcon } from "@/components/icons";
 import Link from "@/components/workspace-link";
-import type { ReactNode } from "react";
+import type { MouseEventHandler, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { LibraryImage } from "../library-image";
@@ -22,6 +22,7 @@ export function PanelHeader({
   title,
   backHref,
   backLabel,
+  onBackClick,
   titleAside,
   tabs,
   filters,
@@ -35,6 +36,7 @@ export function PanelHeader({
   /** Where the back chevron goes. */
   backHref?: string;
   backLabel?: string;
+  onBackClick?: MouseEventHandler<HTMLAnchorElement>;
   /** Shown right after the title, such as a state chip. */
   titleAside?: ReactNode;
   /** Views of the list, shown in the bar on wide pages. */
@@ -50,7 +52,7 @@ export function PanelHeader({
       <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial">
         {backHref ? (
           <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
-            <Link href={backHref} aria-label={backLabel}>
+            <Link href={backHref} aria-label={backLabel} onClick={onBackClick}>
               <ChevronLeft className="size-5" />
             </Link>
           </Button>

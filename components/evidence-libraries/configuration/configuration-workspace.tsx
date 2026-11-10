@@ -132,6 +132,7 @@ import { StatusChip, StatusIcon } from "./status-chip";
 const STATE_ICON = { complete: undefined, edited: PencilLine, attention: CircleAlert } as const;
 import { FileUploadsProvider } from "./use-file-uploads";
 import { useScrollSpy } from "./use-scroll-spy";
+import { ConfigurationPreloadsProvider, useWithPage, type ConfigurationPreloads } from "./preloads";
 import { ActivationControl } from "./activation-control";
 import { OPERATION_STAGE_ICONS } from "./operation-stage-icons";
 
@@ -236,14 +237,24 @@ const RAIL_KEYS: readonly RailKey[] = [
   "danger",
 ];
 
-export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
-  const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
+/** `preloads`: what the page's server read with it, which the cards show until their live reads arrive. */
+export function ConfigurationWorkspace({ libraryId, preloads = {} }: { libraryId: string; preloads?: ConfigurationPreloads }) {
+  return (
+    <ConfigurationPreloadsProvider value={preloads}>
+      <DraftWorkspace libraryId={libraryId} />
+    </ConfigurationPreloadsProvider>
+  );
+}
+
+function DraftWorkspace({ libraryId }: { libraryId: string }) {
+  const live = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
     libraryId: libraryId as Id<"evidenceLibraries">,
-  });
-  if (draftQuery.data === undefined) {
+  }).data;
+  const data = useWithPage<typeof api.evidenceLibraries.queries.getDraft>("draft", live);
+  if (data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
-  if (draftQuery.data === null) return <AuthStatePanel variant="no_access" layout="fullscreen" />;
+  if (data === null) return <AuthStatePanel variant="no_access" layout="fullscreen" />;
   const {
     draft,
     editable,
@@ -253,7 +264,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
     operation,
     role,
     sections,
-  } = draftQuery.data;
+  } = data;
   return (
     <Workspace
       key={draft._id}
@@ -264,6 +275,7 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       libraryState={library.state}
       workspaceId={library.workspaceId}
       unlisted={library.unlisted === true}
+      applicationsClosed={library.applicationsClosed === true}
       liveAddress={liveAddress}
       latest={{ editVersion: draft.editVersion, rows: sections }}
       hasUnpublishedChanges={hasUnpublishedChanges}
@@ -280,6 +292,7 @@ function Workspace({
   libraryState,
   workspaceId,
   unlisted,
+  applicationsClosed,
   liveAddress,
   latest,
   hasUnpublishedChanges,
@@ -295,6 +308,8 @@ function Workspace({
   workspaceId: Id<"workspaces">;
   /** Left out of the public directory by its owners (#1090). */
   unlisted: boolean;
+  /** Its owners turned off applications to join (OS-31). */
+  applicationsClosed: boolean;
   liveAddress: string | null;
   /** The rows the platform holds now, and the edit version they belong to. */
   latest: { editVersion: number; rows: readonly SectionRow[] };
@@ -349,13 +364,13 @@ function Workspace({
   const { editVersion, rows: saved, edited } = work;
   // Whether an OpenRouter key is stored is not a saved row; it comes from the
   // credential store and is folded into the draft while the page renders.
-  const credentials = useProtectedQuery(
+  const credentials = useWithPage<typeof api.evidenceLibraries.credentials.listCredentials>("credentials", useProtectedQuery(
     api.evidenceLibraries.credentials.listCredentials,
     { libraryId },
-  );
+  ).data);
   const draft = withAiKey(
     edited,
-    (credentials.data?.page ?? []).some(
+    (credentials?.page ?? []).some(
       (credential) => credential.credentialKey === AI_PROVIDER_CREDENTIAL_KEY,
     ),
   );
@@ -729,14 +744,14 @@ function Workspace({
                   <>
                     <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
                     <DomainSection libraryId={libraryId} />
-                    <ListingSection libraryId={libraryId} unlisted={unlisted} />
+                    <ListingSection libraryId={libraryId} unlisted={unlisted} applicationsClosed={applicationsClosed} />
                     <VersionsSection
                       libraryId={libraryId}
                       live={libraryState === "active"}
                       operationRunning={operationRunning}
                       refreshKey={runtimeRefreshKey}
                     />
-                    <TeamSection libraryId={libraryId} />
+                    <TeamSection libraryId={libraryId} reviews applicationsClosed={applicationsClosed} />
                     <DangerSection onMove={() => setMoveOpen(true)} onDelete={() => setDeleteOpen(true)} />
                   </>
                 ) : null}
@@ -746,7 +761,7 @@ function Workspace({
               {/* Its people arrive after the page: the card slides to their height instead of jumping. */}
               {/* An editor or creator still adds papers, outside the disabled fieldset like the team. */}
               {editable ? null : <AddedPapersCard libraryId={libraryId} />}
-              {editable ? null : <AutoHeight><div className="pt-4"><TeamSection libraryId={libraryId} readOnly /></div></AutoHeight>}
+              {editable ? null : <AutoHeight><div className="pt-4"><TeamSection libraryId={libraryId} readOnly reviews={role === "editor"} applicationsClosed={applicationsClosed} /></div></AutoHeight>}
               </div>
       </ConfigurationLayout>
     </FileUploadsProvider>

@@ -3048,7 +3048,8 @@
       "users": "Abasebenzisi",
       "aiModels": "Amamodeli e-AI",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "Okukhishwayo kwemiphakathi"
+      "communityReleases": "Okukhishwayo kwemiphakathi",
+      "publishing": "Ukushicilela"
     },
     "sharedDev": "I-dev ehlanganyelwe",
     "production": "Ukukhiqiza",
@@ -4431,6 +4432,71 @@
         "did": "Kufundwe amaphepha owathumele emiphakathini",
         "where": "Evidence Communities",
         "ask": "Funda amaphepha owathumele emiphakathini"
+      },
+      "applyToCommunity": {
+        "doing": "Ifaka isicelo sokujoyina umphakathi",
+        "did": "Ifake isicelo sokujoyina umphakathi",
+        "where": "Evidence Communities",
+        "ask": "Faka isicelo sokujoyina umphakathi"
+      },
+      "withdrawApplication": {
+        "doing": "Ihoxisa isicelo emphakathini",
+        "did": "Ihoxise isicelo emphakathini",
+        "where": "Evidence Communities",
+        "ask": "Hoxisa isicelo emphakathini"
+      },
+      "hideApplication": {
+        "doing": "Ifihla isicelo esenqatshiwe",
+        "did": "Ifihle isicelo esenqatshiwe",
+        "where": "Evidence Communities",
+        "ask": "Fihla isicelo esenqatshiwe"
+      },
+      "myApplications": {
+        "doing": "Ifunda izicelo zakho emiphakathini",
+        "did": "Ifunde izicelo zakho emiphakathini",
+        "where": "Evidence Communities",
+        "ask": "Funda izicelo zakho emiphakathini"
+      },
+      "applicationStanding": {
+        "doing": "Ihlola ukuthi umi kuphi emiphakathini",
+        "did": "Ihlolile ukuthi umi kuphi emiphakathini",
+        "where": "Evidence Communities",
+        "ask": "Hlola ukuthi umi kuphi emiphakathini"
+      },
+      "applicationsWaiting": {
+        "doing": "Ifunda izicelo zokujoyina umphakathi",
+        "did": "Ifunde izicelo zokujoyina umphakathi",
+        "where": "Evidence Communities",
+        "ask": "Funda izicelo zokujoyina umphakathi"
+      },
+      "applicationCounts": {
+        "doing": "Ibala izicelo ezilindile",
+        "did": "Ibale izicelo ezilindile",
+        "where": "Evidence Communities",
+        "ask": "Bala izicelo ezilindile"
+      },
+      "acceptApplication": {
+        "doing": "Yamukela isicelo sokujoyina",
+        "did": "Yamukele isicelo sokujoyina",
+        "where": "Evidence Communities",
+        "ask": "Yamukela isicelo sokujoyina"
+      },
+      "declineApplication": {
+        "doing": "Yenqaba isicelo sokujoyina",
+        "did": "Yenqabe isicelo sokujoyina",
+        "where": "Evidence Communities",
+        "ask": "Yenqaba isicelo sokujoyina"
+      },
+      "applicationsOpen": {
+        "doing": "Ivula noma ivala izicelo zokujoyina",
+        "did": "Ivulile noma ivalile izicelo zokujoyina",
+        "where": "Evidence Communities",
+        "ask": "Vula noma vala izicelo zokujoyina"
+      },
+      "readReports": {
+        "doing": "Ifunda imibiko yakho",
+        "did": "Ifunde imibiko yakho",
+        "where": "Shicilela"
       }
     },
     "asks": {
@@ -4605,6 +4671,7 @@
     "main": "Okuyinhloko",
     "screen": "Ukuskrini",
     "extract": "Ukukhishwa",
+    "publish": "Shicilela",
     "communities": "Imiphakathi",
     "explore": "Hlola",
     "authors": "Ababhali",
@@ -5187,10 +5254,6 @@
     "peopleFromTheLibrarySTeam": "Abantu abavela ethimbeni lomphakathi, noma abangezwe ngesandla, badlula ngohlelo olusethwe lapha.",
     "aboutTheTeam": "Mayelana nethimba",
     "usedInsteadWhenThereIsNo": "Isetshenziswa esikhundleni salokho uma kungekho sigwebo sethimba.",
-    "suggestAPublication": "Phakamisa ushicilelo",
-    "opensAnEmailTo": "Ivula imeyili ku-{email}",
-    "needsAContactEmail": "Idinga imeyili yokuxhumana",
-    "joinAsAnEditor": "Joyina njengomhleli",
     "askTheLibrary": "Buza umphakathi",
     "typedIntoTheQuestionBoxOne": "Ibhalwa ebhokisini lombuzo ngalinye ngemva kwelinye. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomphakathi.",
     "shownWhenAiAnswersAreOn": "Iboniswa uma izimpendulo ze-AI zivuliwe kuZici. Ibhokisi elingenalutho ligcina umbuzo owenziwe ngezihloko zomphakathi.",
@@ -5318,7 +5381,12 @@
     "noPublicationHasAPdfYet": "Akukho ushicilelo oluneyi-PDF okwamanje.",
     "noPublicationMatches": "Akukho ushicilelo ohambisanayo.",
     "theLibraryIsNotSetUp": "Umphakathi awusalungiswa okwamanje.",
-    "linked": "Kuxhunyiwe"
+    "linked": "Kuxhunyiwe",
+    "suggestPapers": "Phakamisa amaphepha",
+    "suggestPapersHint": "Kuvula ibhokisi lesayithi elithi Phakamisa amaphepha. Iqembu libuyekeza iphepha ngalinye.",
+    "needsReaderAccounts": "Kudinga ama-akhawunti abafundi",
+    "joinThisTeam": "Joyina leli qembu",
+    "joinThisTeamHint": "Kuvula ukufaka isicelo ku-Openscholar. Kuyafihlwa uma izicelo zivaliwe."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Sesha igama noma imeyili",
@@ -5970,5 +6038,94 @@
     "askQueue": "Thumela {count, plural, one {iphepha elingu-#} other {amaphepha angu-#}} ukuze libuyekezwe",
     "alreadyInIt": "Selikhona",
     "inReview": "Liyabuyekezwa"
+  },
+  "communityApplications": {
+    "joinName": "Joyina i-{name}",
+    "runBy": "Iphethwe ngu-{name}",
+    "anOpenscholarMember": "ilungu le-Openscholar",
+    "asACreator": "Njengo-Mdali, ungakwazi",
+    "can": {
+      "add": {
+        "title": "Engeza amaphepha",
+        "body": "Thumela amaphepha owatholayo emugqeni wayo wokubuyekeza."
+      },
+      "edit": {
+        "title": "Hlela amarekhodi",
+        "body": "Lungisa imininingwane futhi ulayishe ama-PDF."
+      },
+      "review": {
+        "title": "Thumela ukuze kubuyekezwe",
+        "body": "Abahleli bayo bahlola umsebenzi wakho, bese bewushicilela."
+      }
+    },
+    "messageLabel": "Umlayezo eqenjini",
+    "messageHint": "Yisho ukuthi ungubani nokuthi kungani ufuna ukujoyina. Abanikazi nabahleli bayo yibo abanquma.",
+    "messagePlaceholder": "Ngingumcwaningi e… Ngingathanda ukwengeza…",
+    "messageMissing": "Bhala amagama ambalwa eqenjini.",
+    "whoSees": "Abanikazi nabahleli bayo babona igama lakho, i-imeyili yakho nalo mlayezo.",
+    "cancel": "Khansela",
+    "send": "Thumela isicelo",
+    "sentTitle": "Isicelo sithunyelwe",
+    "sentBody": "Sikuma-Communities akho, lapho ungasihoxisa khona.",
+    "steps": {
+      "sent": "Kuthunyelwe",
+      "justNow": "Manje",
+      "review": "Abanikazi nabahleli bayasifunda",
+      "reviewDetail": "Bayasamukela noma basenqabe",
+      "email": "Uthola i-imeyili enempendulo yabo",
+      "emailTo": "Ku-{email}",
+      "accepted": "Kwamukelwe",
+      "declined": "Akwamukelwanga"
+    },
+    "done": "Kwenziwe",
+    "theirReason": "Isizathu sabo",
+    "noReason": "Abasinikanga isizathu.",
+    "applyAgainFrom": "Ungaphinda ufake isicelo kusukela ngo-{date}.",
+    "youreIn": "Usungene. Ungengeza amaphepha ku-{name} njengo-Mdali.",
+    "yourMessage": "Umlayezo wakho",
+    "withdrawSure": "Uyasihoxisa? Ungaphinda ufake isicelo kamuva.",
+    "keep": "Sigcine",
+    "withdraw": "Hoxisa",
+    "dismiss": "Fihla kubha eseceleni",
+    "openCommunity": "Vula umphakathi",
+    "close": "Vala",
+    "apply": "Faka isicelo",
+    "applied": "Kufakwe isicelo",
+    "member": "Ilungu",
+    "notAccepted": "Akwamukelwanga",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Kulindwe impendulo",
+    "toReview": "{count, plural, one {# ezobuyekezwa} other {# ezobuyekezwa}}",
+    "applications": "Izicelo",
+    "acceptingMakesCreator": "Ukwamukela kubenza babe ngu-Mdali. Umuntu ngamunye uthola i-imeyili enempendulo yakho.",
+    "noMatchingApplications": "Azikho izicelo ezifana nalolu sesho.",
+    "offForOwner": "Izicelo zivaliwe. Zivule ku-<link>Ukuhlelwa</link>.",
+    "offForEditor": "Abanikazi bayo bavale izicelo.",
+    "noApplications": "Akekho olindile. Abantu bafaka izicelo ekhadini layo ekhasini le-Communities nasesizeni sayo.",
+    "appliedWhen": "Kufakwe isicelo {when}",
+    "showAll": "Bonisa konke",
+    "showLess": "Bonisa okumbalwa",
+    "declinedNotice": "Wenqabe u-{name}. Simthumelele isizathu sakho nge-imeyili.",
+    "whyDecline": "Kungani? Bazokubona ku-imeyili.",
+    "reasons": {
+      "topic": "Ngaphandle kwesihloko sethu",
+      "moreAbout": "Sitshele kabanzi ngomsebenzi wakho",
+      "notNow": "Asengezi bantu okwamanje"
+    },
+    "addANote": "Engeza inothi (akuphoqelekile)",
+    "theyGetAnEmail": "Bathola i-imeyili enesizathu sakho.",
+    "declineAndEmail": "Yenqaba futhi uthumele i-imeyili",
+    "acceptedNotice": "U-{name} manje ungu-Mdali. Simthumelele i-imeyili.",
+    "acceptAsCreator": "Yamukela njengo-Mdali",
+    "decline": "Yenqaba",
+    "letPeopleApply": "Vumela abantu bafake isicelo sokujoyina",
+    "letPeopleApplyHint": "Abantu bafaka izicelo ekhadini layo ekhasini le-Communities nasesizeni sayo. Abanikazi nabahleli bamukela noma benqabe ngasinye.",
+    "onlyPublic": "Imiphakathi yomphakathi kuphela eyamukela izicelo.",
+    "closedNow": "Lo mphakathi awamukeli izicelo okwamanje.",
+    "couldNotSend": "Isicelo sakho asikwazanga ukuthunyelwa. Zama futhi.",
+    "couldNotChange": "Lokho akuphumelelanga. Zama futhi.",
+    "showMore": "Bonisa okwengeziwe",
+    "linkUnavailable": "Lesi sixhumanisi asivuli umphakathi owamukela izicelo. Kungenzeka sibhalwe kabi, noma umphakathi awusesona owomphakathi.",
+    "sayMore": "Chaza kabanzi ngomsebenzi wakho emlayezweni ongezansi, bese uwuthumela futhi."
   }
 }

@@ -23,7 +23,8 @@ vi.mock("next-intl", async () => {
     useFormatter: () => ({ number: (value: number) => String(value) }),
   };
 });
-vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
+// The apply dialog's reading of one community stays unread: it opens only from an `?apply=` address.
+vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond, useQuery: () => undefined }));
 vi.mock("@/convex/_generated/api", () => ({ api: {
   organizationFeatures: { opens: "opens" },
   evidenceLibraries: {
@@ -31,6 +32,7 @@ vi.mock("@/convex/_generated/api", () => ({ api: {
     queries: { listLibraries: "libraries" },
     directory: { directory: "public" },
     invitations: { listInvitations: "invitations" }, invitationActions: { respond: "respond" },
+    applications: { mine: "applications", standing: "standing", waitingCounts: "waitingCounts", apply: "apply", withdraw: "withdraw", hide: "hide" },
     submissions: { mine: "submissions", counts: "submissionCounts" },
     assistant: { removeAddedPaper: "removeAddedPaper" },
   },

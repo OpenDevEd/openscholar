@@ -10,6 +10,7 @@ describe("a paper someone pastes", () => {
     expect(paperLinkOf("https://openscholar.ai/o/lab/papers/OS79563844?from=search")).toEqual({ kind: "own", work: "OS79563844" });
     expect(paperLinkOf("https://discover.openscholar.ai/papers/os79563844")).toEqual({ kind: "own", work: "OS79563844" });
     expect(paperLinkOf("OS79563844")).toEqual({ kind: "own", work: "OS79563844" });
+    expect(paperLinkOf("https://openscholar.ai/papers/R100001/shade-trees-and-maize-yields")).toEqual({ kind: "report", key: "R100001" });
     expect(paperLinkOf("https://wealth-inequality.openscholar.ai/lib/ABCD2345")).toEqual({ kind: "record", origin: "https://wealth-inequality.openscholar.ai", itemKey: "ABCD2345" });
     expect(paperLinkOf("https://aievidencehub.org/lib/WMYN7Q2X/")).toEqual({ kind: "record", origin: "https://aievidencehub.org", itemKey: "WMYN7Q2X" });
     expect(paperLinkOf("https://doi.org/10.1016/j.tate.2015.06.010.")).toEqual({ kind: "doi", doi: "10.1016/j.tate.2015.06.010" });

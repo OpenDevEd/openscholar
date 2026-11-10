@@ -41,6 +41,8 @@ const cardValidator = v.object({
     workspaceId: v.id("workspaces"),
     colour: v.union(v.string(), v.null()),
   }),
+  /** Whether people can apply to join it from its card (OS-31). */
+  applicationsOpen: v.boolean(),
 });
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : undefined);
@@ -186,6 +188,7 @@ async function cardRow(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
     ...cardFacts(library),
     faviconUrl: library.card?.faviconUrl ?? null,
     address: binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "",
+    applicationsOpen: library.applicationsClosed !== true,
     owner: owner.organization
       ? { name: shown.name, kind: "organization" as const, imageUrl: shown.imageUrl, workspaceId: owner.workspace._id, colour: owner.organization.colour ?? null }
       : { name: person || null, kind: "person" as const, imageUrl: shown.imageUrl, workspaceId: owner.workspace._id, colour: null },
@@ -222,6 +225,21 @@ export const listPublicAction = defineUserQuery({
 });
 export const listPublic = userQuery(listPublicAction);
 export const listPublicForAssistant = assistantQuery(listPublicAction);
+
+/**
+ * One public community's card, for the dialog to apply to it: opened from a card on any page of the directory, or a
+ * link from its own site (`?apply=`). Null for one that isn't live and listed.
+ */
+export const card = query({
+  args: { libraryId: v.string() },
+  returns: v.union(cardValidator, v.null()),
+  handler: async (ctx, args) => {
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
+    const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+    if (!library || library.state !== "active" || library.unlisted) return null;
+    return await cardRow(ctx, library);
+  },
+});
 
 /** The same directory for the Communities page, which anyone opens, signed in or not. */
 export const directory = query({

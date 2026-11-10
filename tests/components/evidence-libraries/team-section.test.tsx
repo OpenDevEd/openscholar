@@ -2,7 +2,9 @@
 import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
+import type { ReactElement } from "react";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
+import { renderWithTooltip } from "../../helpers/render-with-tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
 const mocks = vi.hoisted(() => ({ mutate: vi.fn(), invite: vi.fn(), organizations: [] as object[] }));
 vi.mock("next-intl", async () => {
@@ -15,8 +17,10 @@ vi.mock("@/lib/hooks/use-cursor-page", () => ({ useCursorPage: () => ({ items: [
 vi.mock("@/convex/_generated/api", () => ({ api: { evidenceLibraries: {
  queries: { listTeam: "team", listOrganizationPeople: "people", isOrganizationPerson: "isPerson" }, team: { addOrganizationMember: "add", changeRole: "change", removeMember: "remove" }, invitations: { change: "invitation" }, invitationActions: { invite: "invite" },
  organizationGrants: { grant: "grantOrganization", changeRole: "changeOrganization", remove: "removeOrganization", grantable: "grantable" },
+ applications: { waiting: "waiting", waitingCounts: "waitingCounts" },
 } } }));
-vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: () => ({ data: {
+// The team; the applications waiting are counted by a query of their own, unread here.
+vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string) => ({ data: name !== "team" ? undefined : {
  owners: [{ clerkUserId: "owner", name: "Ada", email: "ada@example.org" }],
  editors: [], creators: [{ clerkUserId: "creator", name: "Grace", email: "grace@example.org" }],
  invitations: [],
@@ -25,6 +29,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: () => ({ data: 
 } }) }));
 import { TeamSection } from "@/components/evidence-libraries/configuration/sections/team-section";
 const libraryId = "library_1" as Id<"evidenceLibraries">;
+// The Team card keeps the list it shows in the address.
+const render = (ui: ReactElement) => renderWithTooltip(<NuqsTestingAdapter>{ui}</NuqsTestingAdapter>);
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.organizations.length = 0;

@@ -1,5 +1,6 @@
 "use client";
 
+import { VERSIONS_PAGE_SIZE } from "@/lib/evidence-libraries/versions";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,9 +41,6 @@ export type VersionHistoryRow = {
   kind: "runtime" | "config";
   runtimeCommit?: string;
 };
-
-/** Versions the history reads at a time. */
-export const VERSIONS_PAGE_SIZE = 10;
 
 const VERSION_TONE: Record<VersionStatus, StatusTone> = {
   live: "success",

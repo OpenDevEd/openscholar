@@ -13,6 +13,7 @@ import { dropWorkspace, purgeWorkspace } from "../workspaces/purge";
 import { purgeRatings } from "../ratings";
 import { purgeReaders } from "../evidenceLibraries/readers";
 import { purgeSubmissions } from "../evidenceLibraries/submissions";
+import { purgeApplications } from "../evidenceLibraries/applications";
 import { purgeGrants } from "../sharing/upkeep";
 import { purgeDeveloperApps } from "../developerApps/apps";
 
@@ -138,6 +139,11 @@ export const cleanupDeletedUsers = internalMutation({
       }
       // The papers they sent to communities, and where each got to.
       if (!(await purgeSubmissions(ctx, user._id))) {
+        deferred = true;
+        continue; // Skip user delete, process on next run
+      }
+      // Their applications to join communities, so the waiting ones stop holding places there.
+      if (!(await purgeApplications(ctx, user._id))) {
         deferred = true;
         continue; // Skip user delete, process on next run
       }

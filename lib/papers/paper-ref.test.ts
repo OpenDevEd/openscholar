@@ -6,6 +6,7 @@ const refs: PaperRef[] = [
   { source: "library", libraryId: "r176jnjsjfvmda1g2jfca8638n8en9r8", key: "27BGDU89" },
   { source: "zotero", library: "group", owner: "2129771", key: "JUDM2WBF" },
   { source: "upload", file: "kg2bq1wz0h7v9m7z8b5c3d4e5f6g7h8j" },
+  { source: "report", key: "R100001" },
 ];
 
 describe("paper keys", () => {
@@ -33,6 +34,13 @@ describe("IDs stored before keys", () => {
     expect(legacyPaperRef("zotero:user:ABCD1234")).toBeNull();
     // Extraction once named a Zotero item by its key alone; its PDF address says whose it is.
     expect(legacyPaperRef("zotero:ABCD1234", { pdfUrl: "zotero://select/groups/55/items/ABCD1234" })).toEqual({ source: "zotero", library: "group", owner: "55", key: "ABCD1234" });
+  });
+
+  it("reads a report published on Openscholar by its key, bare or in its address, so it is saved like any paper", () => {
+    expect(toPaperKey("R100001")).toBe("report:R100001");
+    expect(toPaperKey("https://openscholar.ai/R100001")).toBe("report:R100001");
+    // Too short for a report's key, which is R and six digits or more.
+    expect(toPaperKey("R12")).toBeNull();
   });
 
   it("reads an uploaded PDF's placeholder as the upload", () => {

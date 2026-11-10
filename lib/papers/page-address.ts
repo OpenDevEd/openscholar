@@ -1,8 +1,8 @@
 import { CITATION_FILES, type CitationFile } from "@/lib/citations/formats";
 import { legacyPaperRef } from "./paper-ref";
 
-/** A paper page's ID: one of our index (OS…) or an OpenAlex work (W…), which redirects to ours. */
-const PAGE_ID = /^(OS|W)(\d+)$/i;
+/** A paper page's ID: one of our index (OS…), an OpenAlex work (W…), which redirects to ours, or a report published on Openscholar (R…). */
+const PAGE_ID = /^(OS|W|R)(\d+)$/i;
 
 /** The bare ID a paper page takes, upper-cased, or null for anything else. */
 export function paperPageId(raw: string): string | null {
@@ -28,11 +28,13 @@ export function paperPath(id: string, title: string | null | undefined): string 
 }
 
 /**
- * A search result's own page here, for a paper from OpenAlex or our index; null for one that lives elsewhere (a
- * community's record, Zotero, an upload). Named by our ID when the paper carries it, so the link needs no redirect.
+ * A search result's own page here, for a paper from OpenAlex or our index, or a report published on Openscholar; null
+ * for one that lives elsewhere (a community's record, Zotero, an upload). Named by our ID when the paper carries it, so
+ * the link needs no redirect.
  */
 export function ourPaperPage(paper: { id: string; title?: string | null; display_name?: string | null; openscholar_id?: string }): string | null {
   const ref = legacyPaperRef(paper.id);
+  if (ref?.source === "report") return paperPath(ref.key, paper.title ?? paper.display_name);
   if (ref?.source !== "openalex" && ref?.source !== "openscholar") return null;
   return paperPath(paper.openscholar_id?.split("/").at(-1) ?? ref.work, paper.title ?? paper.display_name);
 }

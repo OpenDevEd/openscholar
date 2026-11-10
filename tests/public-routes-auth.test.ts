@@ -92,9 +92,13 @@ describe("public route auth matrix", () => {
       "/papers/x/cite.ris",
       // The paper's picture, for link previews and search engines.
       "/papers/x/cover.png",
+      // A live report's PDF, for anyone who reads its page: it leads nowhere once the report is withdrawn.
+      "/papers/x/report.pdf",
       "/papers/x/x",
       "/pricing",
       "/privacy",
+      // Publish shows what publishing a report takes to someone signed out, and asks for sign-in to start one.
+      "/publish",
       // The question stage's planet script and its first-paint hold, loaded by a visitor arriving signed out from the home page.
       "/question-stage/earth.js",
       "/question-stage/hold",

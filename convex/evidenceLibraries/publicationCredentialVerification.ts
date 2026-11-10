@@ -1,8 +1,11 @@
 "use node";
 
+import { buildPublicationConfiguration } from "../../lib/evidence-libraries/configuration/publication";
+import type { PublicationSecrets, PublicationSettings } from "./publicationValidators";
+
 const timeout = () => AbortSignal.timeout(15_000);
 // zenodo.org answers 403 with an HTML page to Node fetch's default `node` User-Agent; its sandbox does not.
-const userAgent = "Openscholar (https://openscholar.ai)";
+export const userAgent = "Openscholar (https://openscholar.ai)";
 
 export async function verifyCrossrefCredentials(
   loginId: string,
@@ -124,4 +127,87 @@ export async function verifyZenodoCredentials(token: string, sandbox: boolean) {
         `Zenodo could not remove verification draft ${draft.id}. Remove it in Zenodo and try again.`,
       );
   }
+}
+
+function sandboxValue(name: string) {
+  const value = process.env[`EL_${name}`]?.trim();
+  if (!value)
+    throw new Error(
+      "The Openscholar sandbox is not configured for this provider yet.",
+    );
+  return value;
+}
+
+/**
+ * The registrar settings and credentials a form asks to save, as they are kept, once Zenodo and Crossref have both
+ * accepted them: a community's (./publicationProviderActions.ts) or Openscholar Reports' own
+ * (../reports/publicationActions.ts). A sandbox account is the platform's. A custom one keeps the secret it had
+ * when none is typed. Throws, saving nothing, when a provider refuses.
+ */
+export async function verifiedPublication(
+  asked: { settings: PublicationSettings; credentials: PublicationSecrets },
+  kept: { settings?: PublicationSettings | null; credentials: PublicationSecrets },
+  { namespace, crossrefAlone = false }: { /** The DOI namespace when none is typed. */ namespace: string; crossrefAlone?: boolean },
+): Promise<{ settings: PublicationSettings; credentials: PublicationSecrets }> {
+  const settings = structuredClone(asked.settings);
+  for (const key of [
+    "prefix",
+    "suffixNamespace",
+    "depositorName",
+    "email",
+    "registrant",
+  ] as const)
+    settings.crossref[key] = settings.crossref[key].trim();
+  settings.zenodo.license = settings.zenodo.license.trim().toLowerCase();
+  settings.crossref.suffixNamespace ||= namespace;
+  const credentials: PublicationSecrets = {};
+  if (settings.zenodo.mode === "sandbox")
+    credentials.zenodoToken = sandboxValue("ZENODO_SANDBOX_TOKEN");
+  if (settings.zenodo.mode === "custom")
+    credentials.zenodoToken =
+      asked.credentials.zenodoToken?.trim() ||
+      (kept.settings?.zenodo.mode === "custom"
+        ? kept.credentials.zenodoToken
+        : undefined);
+  if (settings.crossref.mode === "sandbox") {
+    credentials.crossrefLoginId = sandboxValue("CROSSREF_SANDBOX_LOGIN_ID");
+    credentials.crossrefPassword = sandboxValue("CROSSREF_SANDBOX_PASSWORD");
+    settings.crossref.prefix = sandboxValue("CROSSREF_SANDBOX_PREFIX");
+    settings.crossref.depositorName = sandboxValue(
+      "CROSSREF_SANDBOX_DEPOSITOR_NAME",
+    );
+    settings.crossref.email = sandboxValue("CROSSREF_SANDBOX_EMAIL");
+    settings.crossref.registrant = sandboxValue("CROSSREF_SANDBOX_REGISTRANT");
+  }
+  if (settings.crossref.mode === "custom") {
+    const sameMode = kept.settings?.crossref.mode === "custom";
+    credentials.crossrefLoginId =
+      asked.credentials.crossrefLoginId?.trim() ||
+      (sameMode ? kept.credentials.crossrefLoginId : undefined);
+    credentials.crossrefPassword =
+      asked.credentials.crossrefPassword ||
+      (sameMode ? kept.credentials.crossrefPassword : undefined);
+  }
+  buildPublicationConfiguration(settings, credentials, { crossrefAlone });
+  if (settings.zenodo.mode !== "off")
+    await verifyZenodoCredentials(
+      credentials.zenodoToken!,
+      settings.zenodo.mode === "sandbox",
+    );
+  if (settings.crossref.mode !== "off")
+    await verifyCrossrefCredentials(
+      credentials.crossrefLoginId!,
+      credentials.crossrefPassword!,
+      settings.crossref.mode === "sandbox",
+    );
+  return { settings, credentials };
+}
+
+/** What a refused save tells the form: the provider's own words, or that it took too long. */
+export function publicationRefusal(error: unknown) {
+  if (error instanceof Error && error.name === "TimeoutError")
+    return "The provider took too long to respond. Nothing was saved. Try again.";
+  return error instanceof Error
+    ? error.message
+    : "Credentials could not be verified. Nothing was saved.";
 }

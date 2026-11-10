@@ -3049,7 +3049,8 @@
       "users": "Utilizadores",
       "aiModels": "Modelos de IA",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "Versões das comunidades"
+      "communityReleases": "Versões das comunidades",
+      "publishing": "Publicação"
     },
     "sharedDev": "Desenvolvimento partilhado",
     "production": "Produção",
@@ -4432,6 +4433,71 @@
         "did": "Leu os artigos que você enviou a comunidades",
         "where": "Evidence Communities",
         "ask": "Ler os artigos que você enviou a comunidades"
+      },
+      "applyToCommunity": {
+        "doing": "Pedindo para entrar em uma comunidade",
+        "did": "Pediu para entrar em uma comunidade",
+        "where": "Evidence Communities",
+        "ask": "Pedir para entrar em uma comunidade"
+      },
+      "withdrawApplication": {
+        "doing": "Retirando um pedido a uma comunidade",
+        "did": "Retirou um pedido a uma comunidade",
+        "where": "Evidence Communities",
+        "ask": "Retirar um pedido a uma comunidade"
+      },
+      "hideApplication": {
+        "doing": "Ocultando um pedido recusado",
+        "did": "Ocultou um pedido recusado",
+        "where": "Evidence Communities",
+        "ask": "Ocultar um pedido recusado"
+      },
+      "myApplications": {
+        "doing": "Lendo seus pedidos a comunidades",
+        "did": "Leu seus pedidos a comunidades",
+        "where": "Evidence Communities",
+        "ask": "Ler seus pedidos a comunidades"
+      },
+      "applicationStanding": {
+        "doing": "Verificando sua situação nas comunidades",
+        "did": "Verificou sua situação nas comunidades",
+        "where": "Evidence Communities",
+        "ask": "Verificar sua situação nas comunidades"
+      },
+      "applicationsWaiting": {
+        "doing": "Lendo pedidos para entrar em uma comunidade",
+        "did": "Leu pedidos para entrar em uma comunidade",
+        "where": "Evidence Communities",
+        "ask": "Ler pedidos para entrar em uma comunidade"
+      },
+      "applicationCounts": {
+        "doing": "Contando pedidos em espera",
+        "did": "Contou pedidos em espera",
+        "where": "Evidence Communities",
+        "ask": "Contar pedidos em espera"
+      },
+      "acceptApplication": {
+        "doing": "Aceitando um pedido para entrar",
+        "did": "Aceitou um pedido para entrar",
+        "where": "Evidence Communities",
+        "ask": "Aceitar um pedido para entrar"
+      },
+      "declineApplication": {
+        "doing": "Recusando um pedido para entrar",
+        "did": "Recusou um pedido para entrar",
+        "where": "Evidence Communities",
+        "ask": "Recusar um pedido para entrar"
+      },
+      "applicationsOpen": {
+        "doing": "Ativando ou desativando pedidos",
+        "did": "Ativou ou desativou pedidos",
+        "where": "Evidence Communities",
+        "ask": "Ativar ou desativar pedidos"
+      },
+      "readReports": {
+        "doing": "A ler os seus relatórios",
+        "did": "Relatórios lidos",
+        "where": "Publicar"
       }
     },
     "asks": {
@@ -4606,6 +4672,7 @@
     "main": "Principal",
     "screen": "Triagem",
     "extract": "Extrair",
+    "publish": "Publicar",
     "communities": "Comunidades",
     "explore": "Explorar",
     "authors": "Autores",
@@ -5188,10 +5255,6 @@
     "peopleFromTheLibrarySTeam": "As pessoas da equipa da comunidade, ou acrescentadas manualmente, aparecem pela ordem definida aqui.",
     "aboutTheTeam": "Sobre a equipa",
     "usedInsteadWhenThereIsNo": "Usado em vez disso quando não há frase sobre a equipa.",
-    "suggestAPublication": "Sugerir uma publicação",
-    "opensAnEmailTo": "Abre um email para {email}",
-    "needsAContactEmail": "Precisa de um email de contacto",
-    "joinAsAnEditor": "Juntar-se como editor",
     "askTheLibrary": "Perguntar à comunidade",
     "typedIntoTheQuestionBoxOne": "Escritas na caixa de perguntas, uma a seguir à outra. Uma caixa vazia mantém a pergunta feita a partir dos tópicos da comunidade.",
     "shownWhenAiAnswersAreOn": "Apresentadas quando as respostas de IA estão ativas em Funcionalidades. Uma caixa vazia mantém a pergunta feita a partir dos tópicos da comunidade.",
@@ -5319,7 +5382,12 @@
     "noPublicationHasAPdfYet": "Nenhuma publicação tem ainda um PDF.",
     "noPublicationMatches": "Nenhuma publicação corresponde.",
     "theLibraryIsNotSetUp": "A comunidade ainda não está configurada.",
-    "linked": "Ligado"
+    "linked": "Ligado",
+    "suggestPapers": "Sugerir artigos",
+    "suggestPapersHint": "Abre a caixa Sugerir artigos do site. A equipe revisa cada artigo.",
+    "needsReaderAccounts": "Requer contas de leitor",
+    "joinThisTeam": "Entrar nesta equipe",
+    "joinThisTeamHint": "Abre a candidatura no Openscholar. Fica oculto enquanto as candidaturas estiverem desativadas."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "Pesquisar nome ou email",
@@ -5971,5 +6039,94 @@
     "askQueue": "Enviar {count, plural, one {# artigo} other {# artigos}} para revisão",
     "alreadyInIt": "Já está lá",
     "inReview": "Em revisão"
+  },
+  "communityApplications": {
+    "joinName": "Entrar em {name}",
+    "runBy": "Mantida por {name}",
+    "anOpenscholarMember": "um membro do Openscholar",
+    "asACreator": "Como criador, você pode",
+    "can": {
+      "add": {
+        "title": "Adicionar artigos",
+        "body": "Envie os artigos que encontrar para a fila de revisão."
+      },
+      "edit": {
+        "title": "Editar registros",
+        "body": "Corrija detalhes e envie PDFs."
+      },
+      "review": {
+        "title": "Enviar para revisão",
+        "body": "Os editores verificam seu trabalho e depois publicam."
+      }
+    },
+    "messageLabel": "Mensagem para a equipe",
+    "messageHint": "Diga quem você é e por que quer entrar. Os donos e editores decidem.",
+    "messagePlaceholder": "Sou pesquisador em… Gostaria de adicionar…",
+    "messageMissing": "Escreva algumas palavras para a equipe.",
+    "whoSees": "Os donos e editores veem seu nome, seu e-mail e esta mensagem.",
+    "cancel": "Cancelar",
+    "send": "Enviar pedido",
+    "sentTitle": "Pedido enviado",
+    "sentBody": "Ele fica em Suas comunidades, onde você pode retirá-lo.",
+    "steps": {
+      "sent": "Enviado",
+      "justNow": "Agora mesmo",
+      "review": "Donos e editores leem",
+      "reviewDetail": "Eles aceitam ou recusam",
+      "email": "Você recebe um e-mail com a resposta",
+      "emailTo": "Para {email}",
+      "accepted": "Aceito",
+      "declined": "Não aceito"
+    },
+    "done": "Concluir",
+    "theirReason": "O motivo",
+    "noReason": "Não informaram um motivo.",
+    "applyAgainFrom": "Você pode pedir de novo a partir de {date}.",
+    "youreIn": "Você entrou. Pode adicionar artigos a {name} como criador.",
+    "yourMessage": "Sua mensagem",
+    "withdrawSure": "Retirar? Você pode pedir de novo depois.",
+    "keep": "Manter",
+    "withdraw": "Retirar",
+    "dismiss": "Ocultar da barra lateral",
+    "openCommunity": "Abrir comunidade",
+    "close": "Fechar",
+    "apply": "Pedir para entrar",
+    "applied": "Pedido feito",
+    "member": "Membro",
+    "notAccepted": "Não aceito",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "Aguardando resposta",
+    "toReview": "{count, plural, one {# para analisar} other {# para analisar}}",
+    "applications": "Pedidos",
+    "acceptingMakesCreator": "Ao aceitar, a pessoa vira criador. Cada pessoa recebe um e-mail com sua resposta.",
+    "noMatchingApplications": "Nenhum pedido corresponde a esta busca.",
+    "offForOwner": "Os pedidos estão desativados. Ative em <link>Listagem</link>.",
+    "offForEditor": "Os donos desativaram os pedidos.",
+    "noApplications": "Ninguém está esperando. As pessoas pedem pelo cartão na página Comunidades e pelo site.",
+    "appliedWhen": "Pediu {when}",
+    "showAll": "Mostrar tudo",
+    "showLess": "Mostrar menos",
+    "declinedNotice": "Pedido de {name} recusado. Enviamos seu motivo por e-mail.",
+    "whyDecline": "Por quê? A pessoa verá isso no e-mail.",
+    "reasons": {
+      "topic": "Fora do nosso tema",
+      "moreAbout": "Conte mais sobre seu trabalho",
+      "notNow": "Não estamos adicionando pessoas agora"
+    },
+    "addANote": "Adicionar uma nota (opcional)",
+    "theyGetAnEmail": "A pessoa recebe um e-mail com seu motivo.",
+    "declineAndEmail": "Recusar e enviar e-mail",
+    "acceptedNotice": "{name} agora é criador. Enviamos um e-mail.",
+    "acceptAsCreator": "Aceitar como criador",
+    "decline": "Recusar",
+    "letPeopleApply": "Permitir pedidos para entrar",
+    "letPeopleApplyHint": "As pessoas pedem pelo cartão na página Comunidades e pelo site. Donos e editores aceitam ou recusam cada pedido.",
+    "onlyPublic": "Só comunidades públicas recebem pedidos.",
+    "closedNow": "Esta comunidade não está recebendo pedidos agora.",
+    "couldNotSend": "Não foi possível enviar seu pedido. Tente de novo.",
+    "couldNotChange": "Isso não deu certo. Tente de novo.",
+    "showMore": "Mostrar mais",
+    "linkUnavailable": "Este link não abre uma comunidade que recebe pedidos. Pode estar digitado errado, ou a comunidade não é mais pública.",
+    "sayMore": "Conte mais sobre seu trabalho na mensagem abaixo e envie de novo."
   }
 }

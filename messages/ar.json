@@ -3049,7 +3049,8 @@
       "users": "المستخدمون",
       "aiModels": "نماذج الذكاء الاصطناعي",
       "evidenceLibraries": "Evidence Communities",
-      "communityReleases": "إصدارات المجتمعات"
+      "communityReleases": "إصدارات المجتمعات",
+      "publishing": "النشر"
     },
     "sharedDev": "التطوير المشترك",
     "production": "الإنتاج",
@@ -4432,6 +4433,71 @@
         "did": "قرأ الأوراق التي أرسلتها إلى المجتمعات",
         "where": "Evidence Communities",
         "ask": "اقرأ الأوراق التي أرسلتها إلى المجتمعات"
+      },
+      "applyToCommunity": {
+        "doing": "جارٍ تقديم طلب للانضمام إلى مجتمع",
+        "did": "قُدّم طلب للانضمام إلى مجتمع",
+        "where": "Evidence Communities",
+        "ask": "تقديم طلب للانضمام إلى مجتمع"
+      },
+      "withdrawApplication": {
+        "doing": "جارٍ سحب طلب إلى مجتمع",
+        "did": "سُحب طلب إلى مجتمع",
+        "where": "Evidence Communities",
+        "ask": "سحب طلب إلى مجتمع"
+      },
+      "hideApplication": {
+        "doing": "جارٍ إخفاء طلب مرفوض",
+        "did": "أُخفي طلب مرفوض",
+        "where": "Evidence Communities",
+        "ask": "إخفاء طلب مرفوض"
+      },
+      "myApplications": {
+        "doing": "جارٍ قراءة طلباتك إلى المجتمعات",
+        "did": "قُرئت طلباتك إلى المجتمعات",
+        "where": "Evidence Communities",
+        "ask": "قراءة طلباتك إلى المجتمعات"
+      },
+      "applicationStanding": {
+        "doing": "جارٍ التحقق من وضعك في المجتمعات",
+        "did": "تم التحقق من وضعك في المجتمعات",
+        "where": "Evidence Communities",
+        "ask": "التحقق من وضعك في المجتمعات"
+      },
+      "applicationsWaiting": {
+        "doing": "جارٍ قراءة طلبات الانضمام إلى مجتمع",
+        "did": "قُرئت طلبات الانضمام إلى مجتمع",
+        "where": "Evidence Communities",
+        "ask": "قراءة طلبات الانضمام إلى مجتمع"
+      },
+      "applicationCounts": {
+        "doing": "جارٍ عدّ الطلبات المنتظرة",
+        "did": "عُدّت الطلبات المنتظرة",
+        "where": "Evidence Communities",
+        "ask": "عدّ الطلبات المنتظرة"
+      },
+      "acceptApplication": {
+        "doing": "جارٍ قبول طلب انضمام",
+        "did": "قُبل طلب انضمام",
+        "where": "Evidence Communities",
+        "ask": "قبول طلب انضمام"
+      },
+      "declineApplication": {
+        "doing": "جارٍ رفض طلب انضمام",
+        "did": "رُفض طلب انضمام",
+        "where": "Evidence Communities",
+        "ask": "رفض طلب انضمام"
+      },
+      "applicationsOpen": {
+        "doing": "جارٍ تشغيل طلبات الانضمام أو إيقافها",
+        "did": "شُغّلت طلبات الانضمام أو أُوقفت",
+        "where": "Evidence Communities",
+        "ask": "تشغيل طلبات الانضمام أو إيقافها"
+      },
+      "readReports": {
+        "doing": "جارٍ قراءة تقاريرك",
+        "did": "قرأ تقاريرك",
+        "where": "النشر"
       }
     },
     "asks": {
@@ -4606,6 +4672,7 @@
     "main": "الرئيسية",
     "screen": "الفرز",
     "extract": "الاستخلاص",
+    "publish": "النشر",
     "communities": "المجتمعات",
     "explore": "استكشاف",
     "authors": "المؤلفون",
@@ -5188,10 +5255,6 @@
     "peopleFromTheLibrarySTeam": "يظهر الأشخاص من فريق المجتمع، أو الذين أُضيفوا يدويًا، بالترتيب المحدد هنا.",
     "aboutTheTeam": "عن الفريق",
     "usedInsteadWhenThereIsNo": "يُستخدم بدلًا من ذلك عند عدم وجود جملة للفريق.",
-    "suggestAPublication": "اقتراح منشور",
-    "opensAnEmailTo": "يفتح رسالة بريد إلكتروني إلى {email}",
-    "needsAContactEmail": "يحتاج إلى بريد إلكتروني للتواصل",
-    "joinAsAnEditor": "الانضمام كمحرر",
     "askTheLibrary": "اسأل المجتمع",
     "typedIntoTheQuestionBoxOne": "تُكتب في مربع السؤال واحدًا تلو الآخر. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المجتمع.",
     "shownWhenAiAnswersAreOn": "يظهر عند تفعيل إجابات الذكاء الاصطناعي في الميزات. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المجتمع.",
@@ -5319,7 +5382,12 @@
     "noPublicationHasAPdfYet": "لا يوجد منشور يحتوي على ملف PDF بعد.",
     "noPublicationMatches": "لا توجد منشورات مطابقة.",
     "theLibraryIsNotSetUp": "لم يُهيّأ المجتمع بعد.",
-    "linked": "مرتبط"
+    "linked": "مرتبط",
+    "suggestPapers": "اقترح أوراقًا",
+    "suggestPapersHint": "يفتح نافذة اقتراح الأوراق في الموقع. يراجع الفريق كل ورقة.",
+    "needsReaderAccounts": "يتطلب حسابات القرّاء",
+    "joinThisTeam": "انضم إلى هذا الفريق",
+    "joinThisTeamHint": "يفتح التقديم على Openscholar. يُخفى ما دامت الطلبات متوقفة."
   },
   "libraryTeamAccess": {
     "searchNameOrEmail": "ابحث بالاسم أو البريد الإلكتروني",
@@ -5971,5 +6039,94 @@
     "askQueue": "أرسل {count, plural, one {ورقة واحدة} two {ورقتين} few {# أوراق} many {# ورقة} other {# ورقة}} للمراجعة",
     "alreadyInIt": "موجودة بالفعل",
     "inReview": "قيد المراجعة"
+  },
+  "communityApplications": {
+    "joinName": "انضم إلى {name}",
+    "runBy": "يديره {name}",
+    "anOpenscholarMember": "عضو في Openscholar",
+    "asACreator": "بصفتك منشئًا، يمكنك",
+    "can": {
+      "add": {
+        "title": "إضافة أوراق",
+        "body": "أرسل الأوراق التي تجدها إلى قائمة المراجعة الخاصة به."
+      },
+      "edit": {
+        "title": "تعديل السجلات",
+        "body": "صحّح التفاصيل وارفع ملفات PDF."
+      },
+      "review": {
+        "title": "الإرسال للمراجعة",
+        "body": "يراجع محرروه عملك ثم ينشرونه."
+      }
+    },
+    "messageLabel": "رسالة إلى الفريق",
+    "messageHint": "اذكر من أنت ولماذا تريد الانضمام. مالكوه ومحرروه يقررون.",
+    "messagePlaceholder": "أنا باحث في… أود إضافة…",
+    "messageMissing": "اكتب بضع كلمات للفريق.",
+    "whoSees": "يرى مالكوه ومحرروه اسمك وبريدك الإلكتروني وهذه الرسالة.",
+    "cancel": "إلغاء",
+    "send": "إرسال الطلب",
+    "sentTitle": "تم إرسال الطلب",
+    "sentBody": "تجده في مجتمعاتك، حيث يمكنك سحبه.",
+    "steps": {
+      "sent": "أُرسل",
+      "justNow": "الآن",
+      "review": "يقرؤه المالكون والمحررون",
+      "reviewDetail": "يقبلونه أو يرفضونه",
+      "email": "تصلك رسالة بريد إلكتروني بردّهم",
+      "emailTo": "على {email}",
+      "accepted": "مقبول",
+      "declined": "غير مقبول"
+    },
+    "done": "تم",
+    "theirReason": "سببهم",
+    "noReason": "لم يذكروا سببًا.",
+    "applyAgainFrom": "يمكنك التقديم مجددًا ابتداءً من {date}.",
+    "youreIn": "أنت عضو الآن. يمكنك إضافة أوراق إلى {name} بصفتك منشئًا.",
+    "yourMessage": "رسالتك",
+    "withdrawSure": "هل تريد سحبه؟ يمكنك التقديم لاحقًا.",
+    "keep": "احتفظ به",
+    "withdraw": "سحب",
+    "dismiss": "إخفاء من الشريط الجانبي",
+    "openCommunity": "فتح المجتمع",
+    "close": "إغلاق",
+    "apply": "تقديم طلب",
+    "applied": "تم التقديم",
+    "member": "عضو",
+    "notAccepted": "غير مقبول",
+    "applyFor": "{label}: {name}",
+    "waitingForReview": "بانتظار الرد",
+    "toReview": "{count, plural, zero {لا شيء للمراجعة} one {طلب واحد للمراجعة} two {طلبان للمراجعة} few {# طلبات للمراجعة} many {# طلبًا للمراجعة} other {# طلب للمراجعة}}",
+    "applications": "الطلبات",
+    "acceptingMakesCreator": "القبول يجعل الشخص منشئًا. يتلقى كل شخص رسالة بريد إلكتروني بردّك.",
+    "noMatchingApplications": "لا توجد طلبات تطابق هذا البحث.",
+    "offForOwner": "الطلبات متوقفة. فعّلها من <link>الإدراج</link>.",
+    "offForEditor": "أوقف مالكوه الطلبات.",
+    "noApplications": "لا أحد ينتظر. يقدّم الناس طلباتهم من بطاقته في صفحة المجتمعات ومن موقعه.",
+    "appliedWhen": "قدّم {when}",
+    "showAll": "عرض الكل",
+    "showLess": "عرض أقل",
+    "declinedNotice": "رُفض طلب {name}. أرسلنا إليه سببك بالبريد الإلكتروني.",
+    "whyDecline": "لماذا؟ سيرون هذا في البريد الإلكتروني.",
+    "reasons": {
+      "topic": "خارج موضوعنا",
+      "moreAbout": "أخبرنا المزيد عن عملك",
+      "notNow": "لا نضيف أشخاصًا الآن"
+    },
+    "addANote": "أضف ملاحظة (اختياري)",
+    "theyGetAnEmail": "يتلقون رسالة بريد إلكتروني بسببك.",
+    "declineAndEmail": "رفض وإرسال بريد",
+    "acceptedNotice": "{name} أصبح منشئًا الآن. أرسلنا إليه بريدًا إلكترونيًا.",
+    "acceptAsCreator": "قبول كمنشئ",
+    "decline": "رفض",
+    "letPeopleApply": "السماح للناس بطلب الانضمام",
+    "letPeopleApplyHint": "يقدّم الناس طلباتهم من بطاقته في صفحة المجتمعات ومن موقعه. يقبل المالكون والمحررون كل طلب أو يرفضونه.",
+    "onlyPublic": "المجتمعات العامة فقط تقبل الطلبات.",
+    "closedNow": "لا يقبل هذا المجتمع طلبات الآن.",
+    "couldNotSend": "تعذّر إرسال طلبك. حاول مرة أخرى.",
+    "couldNotChange": "لم يكتمل ذلك. حاول مرة أخرى.",
+    "showMore": "عرض المزيد",
+    "linkUnavailable": "هذا الرابط لا يفتح مجتمعًا يقبل الطلبات. ربما كُتب خطأً، أو لم يعد المجتمع عامًا.",
+    "sayMore": "اكتب المزيد عن عملك في الرسالة أدناه، ثم أرسلها مرة أخرى."
   }
 }

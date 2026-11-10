@@ -36,6 +36,7 @@ import {
   userFields,
 } from "./lib/validators";
 import {
+  libraryApplicationFields,
   clerkEventLogFields,
   evidenceLibraryReaderDeletionFields,
   evidenceLibraryOAuthClientFields,
@@ -72,6 +73,7 @@ import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./t
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
 import { assistantLimitFields, assistantSpenderFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
+import { checksValidator, reportDetailFields, reportFields, reportFileFields, reportReviewFields, reportSettingsFields, reportEmailFields } from "./reports/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
 
@@ -592,6 +594,34 @@ export default defineSchema({
     sortOrder: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  // Openscholar Reports (plans/publish-reports), the series Openscholar publishes itself. Its settings are one row,
+  // once an admin changes something.
+  reportSettings: defineTable(reportSettingsFields),
+  // Each version of the checks and of the agreement, kept because a report records which it was checked and signed under.
+  reportCheckVersions: defineTable({ version: v.number(), checks: checksValidator }).index("by_version", ["version"]),
+  reportAgreementVersions: defineTable({ version: v.number(), text: v.string() }).index("by_version", ["version"]),
+  // A workspace's own daily limit, where an admin gave it one.
+  reportLimits: defineTable({ workspaceId: v.id("workspaces"), perDay: v.number(), updatedAt: v.number(), updatedBy: v.id("users") }).index("by_workspaceId", ["workspaceId"]),
+  // One row per report started, which is what a workspace's day is counted from: a discarded report keeps its row.
+  reportStarts: defineTable({ workspaceId: v.id("workspaces"), at: v.number() }).index("by_workspaceId_and_at", ["workspaceId", "at"]),
+
+  // The reports themselves. A row here is what a list reads; `reportDetails` holds what opening one reads.
+  reports: defineTable(reportFields)
+    .index("by_key", ["key"])
+    .index("by_doi", ["doi"])
+    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
+    // The reviewers' list reads each status's newest, and the reports whose changes wait.
+    .index("by_status_and_updatedAt", ["status", "updatedAt"])
+    .index("by_changes", ["changes"])
+    // A workspace's reports that never went live, which go with it when it is deleted (workspaces/purge.ts).
+    .index("by_workspaceId_and_activatedAt", ["workspaceId", "activatedAt"]),
+  reportDetails: defineTable(reportDetailFields).index("by_reportId", ["reportId"]),
+  reportReviews: defineTable(reportReviewFields).index("by_reportId", ["reportId"]),
+  reportEmails: defineTable(reportEmailFields).index("by_reportId", ["reportId"]),
+  reportFiles: defineTable(reportFileFields).index("by_file", ["file"]),
+  // The number the next report's key is made from: one row.
+  reportKeys: defineTable({ next: v.number() }),
 
   // What the free writing of queries from questions runs on and may spend (lib/ai/free-queries.ts). One row, once an admin changes something.
   freeQuerySettings: defineTable({
@@ -1380,6 +1410,8 @@ export default defineSchema({
   libraryItems: defineTable(libraryItemFields)
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_paperKey", ["workspaceId", "paperKey"])
+    // A paper's saved copies in every workspace: a report's follow its corrections (./reports/saved.ts).
+    .index("by_paperKey", ["paperKey"])
     .index("by_workspace_rating", ["workspaceId", "rating"])
     .index("by_workspace_savedAt", ["workspaceId", "savedAt"])
     .index("by_workspace_year", ["workspaceId", "publicationYear"])
@@ -1443,6 +1475,16 @@ export default defineSchema({
     .index("by_user_and_kind_and_role_and_name", ["userId", "kind", "role", "name"])
     // The chats shared with a person, newest message first, beside their own in one list (../assistant/threads.ts).
     .index("by_user_and_kind_and_lastMessageAt", ["userId", "kind", "lastMessageAt"]),
+  // Applications to join a community (OS-31, ./evidenceLibraries/applications.ts).
+  libraryApplications: defineTable(libraryApplicationFields)
+    .index("by_userId_and_libraryId", ["userId", "libraryId"])
+    // A person's sidebar rows, newest first.
+    .index("by_userId_and_listed_and_createdAt", ["userId", "listed", "createdAt"])
+    // A person's waiting ones, counted against MAX_WAITING_APPLICATIONS_PER_PERSON.
+    .index("by_userId_and_state", ["userId", "state"])
+    // What a community's owners and editors answer, oldest first.
+    .index("by_libraryId_and_state_and_createdAt", ["libraryId", "state", "createdAt"]),
+
   itemInvitations: defineTable(itemInvitationFields)
     .index("by_item_and_email", ["item", "email"])
     .index("by_item_and_state", ["item", "state"])

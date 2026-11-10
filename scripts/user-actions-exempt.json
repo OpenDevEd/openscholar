@@ -40,6 +40,7 @@
     "evidenceLibraries/teardown:getDevelopmentTeardownStatus": "The progress of a deletion the person started on the library's page.",
     "evidenceLibraries/updates:check": "The configuration page's check for newer library software when it opens.",
     "evidenceLibraries/updates:getAddressNotice": "The versions section's notice about a moved address.",
+    "evidenceLibraries/updates:lastCheck": "The versions section's last software check, shown while it checks again.",
     "evidenceLibraries/updates:publishRuntime": "The publish dialog's note on whether publishing also updates the software. Publishing stays on the page.",
     "evidenceLibraries/uploads:generateUploadUrl": "A storage URL for a file the person picks in their browser.",
     "evidenceLibraries/versions:countVersions": "The versions section's list. Restoring a version stays on that page.",
@@ -88,7 +89,11 @@
     "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library.",
     "app/actions/similar:orderByCloseness": "Reorders the results on the person's screen. The assistant reads similar papers with research/papers:search and `similarTo`.",
     "evidenceLibraries/organizationGrants:grantable": "The Team section's list of organizations its owner can share the community with straight away. The assistant reads a community's team through evidenceLibraries/assistant:team.",
-    "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces."
+    "evidenceLibraries/organizationGrants:adminOf": "The Communities sidebar's choice of which organization an invitation for one is accepted for. The assistant reads the person's workspaces through organizations/queries:workspaces.",
+    "reports/settings:forAuthors": "What the Publish page reads of the series before a report exists: whether publishing is open, its agreement and its checks' names. The assistant doesn't publish reports.",
+    "reports/flow:agreement": "The signed agreement's own page, which a report's workspace opens from the report to read, save or print.",
+    "reports/settings:open": "Whether the sidebar shows Publish. The assistant doesn't publish reports.",
+    "reports/paper:mine": "Whether a report's page offers the person reading it the way to correct it. The assistant doesn't publish reports."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -129,6 +134,7 @@
     "screening/queries:getScreeningProgress": "screening/queries:getScreeningJob",
     "screening/queries:listUserScreeningJobs": "screening/queries:listJobs",
     "topics/details:get": "research/topics:get",
+    "evidenceLibraries/directory:card": "evidenceLibraries/directory:listPublic",
     "evidenceLibraries/invitationActions:invite": "evidenceLibraries/assistant:invite",
     "evidenceLibraries/invitationActions:respond": "evidenceLibraries/assistant:answerInvitation",
     "evidenceLibraries/invitations:change": "evidenceLibraries/assistant:changeInvitation",
@@ -164,7 +170,8 @@
     "evidenceLibraries/submissions:recentCommunities": "evidenceLibraries/assistant:submissions",
     "evidenceLibraries/submissions:sentTo": "evidenceLibraries/assistant:submissions",
     "evidenceLibraries/collectionSources:connectCollectionSource": "evidenceLibraries/assistant:connectCollection",
-    "evidenceLibraries/mutations:activateConfiguration": "evidenceLibraries/assistant:putLive"
+    "evidenceLibraries/mutations:activateConfiguration": "evidenceLibraries/assistant:putLive",
+    "reports/paper:get": "research/papers:get"
   },
   "manual": {
     "evidenceLibraries/releases:overview": "Site administration, for Openscholar's own admins on the admin pages.",
@@ -256,7 +263,37 @@
     "assistant/spending:setTool": "Money: what the assistant may spend of the person's credits is their own setting, on the panel's Spending sheet.",
     "evidenceLibraries/organizationGrants:grant": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
     "evidenceLibraries/organizationGrants:changeRole": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
-    "evidenceLibraries/organizationGrants:remove": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches."
+    "evidenceLibraries/organizationGrants:remove": "Sharing a community with a whole organization stays on its Team section, where its owner sees which organizations, and so which people, it reaches.",
+    "reports/limits:list": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/limits:remove": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/limits:set": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/publicationActions:save": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:admin": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:removeCheck": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:saveCheck": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:setAgreement": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:setMetadataModel": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:update": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/settings:switchCheck": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/flow:sign": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:saveDetails": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:discard": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:goTo": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:startUpload": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:attachPdf": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:requestReview": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/checks:run": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:activate": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/review:page": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/review:get": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/review:decide": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/review:decideChanges": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/review:editDetails": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/flow:requestChangesReview": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/flow:discardChanges": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "reports/review:agreement": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/registration:retry": "Site administration, for Openscholar's own admins on the admin pages.",
+    "reports/flow:typeChanges": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public."
   },
   "pending": {
     "evidenceLibraries/collectionSources:listCollectionSources": "#329"
@@ -268,6 +305,7 @@
     "library/collections",
     "library/mutations",
     "library/papers",
-    "extraction/sources/library"
+    "extraction/sources/library",
+    "reports/flow"
   ]
 }

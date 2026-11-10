@@ -15,7 +15,10 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { Check, ChevronDown, ExternalLink, Layers, MoreHorizontal, Move, RotateCcw, Settings2, Share2, UserRound, X } from "@/components/icons";
+import { Check, ChevronDown, Clock3, ExternalLink, Layers, MoreHorizontal, Move, RotateCcw, Settings2, Share2, UserPlus, UserRound, X, XCircle } from "@/components/icons";
+import { useWorkspace } from "@/lib/workspaces/url";
+import { APPLICATIONS_SHOWN } from "@/lib/evidence-libraries/applications";
+import { useOpenApply, type ApplySeed } from "./applications/apply-dialog";
 import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { Button } from "@/components/ui/button";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -32,7 +35,17 @@ import { LibraryStatusIcon, type LibraryOperation } from "./library-status-chip"
 
 type Overview = FunctionReturnType<typeof api.evidenceLibraries.queries.listLibraries>["page"][number];
 /** The sidebar's first page as the page's server read it, for the filter in its address. */
-export type SidebarFirstPage = { filter: CommunityFilter; list: Preloaded<typeof api.evidenceLibraries.queries.listLibraries>; invitations?: Preloaded<typeof api.evidenceLibraries.invitations.listInvitations> };
+export type SidebarFirstPage = {
+  filter: CommunityFilter;
+  list: Preloaded<typeof api.evidenceLibraries.queries.listLibraries>;
+  invitations?: Preloaded<typeof api.evidenceLibraries.invitations.listInvitations>;
+  /** The person's applications to join communities (OS-31), and how many wait on the ones they answer for. */
+  applicationsWaiting?: Preloaded<typeof api.evidenceLibraries.applications.mine>;
+  applicationsDeclined?: Preloaded<typeof api.evidenceLibraries.applications.mine>;
+  waitingCounts?: Preloaded<typeof api.evidenceLibraries.applications.waitingCounts>;
+};
+type MyApplication = FunctionReturnType<typeof api.evidenceLibraries.applications.mine>["page"][number];
+
 type Invitation = FunctionReturnType<typeof api.evidenceLibraries.invitations.listInvitations>["page"][number];
 type Role = "owner" | "editor" | "creator" | "viewer";
 /** Who a community belongs to, for the badge on its icon: an organization's logo, or a person's photo. */
@@ -53,6 +66,11 @@ export type Community = {
   operation?: LibraryOperation | null;
   /** An invitation for an organization the person is an admin of, which they pick on accepting (#1091). */
   toOrganization?: boolean;
+  /** The person's own application to join it, and where it stands, with what the apply dialog shows of it. */
+  application?: "waiting" | "declined";
+  applicationSeed?: ApplySeed;
+  /** People waiting for an answer to join it, for its owners and editors. */
+  toReview?: number;
 };
 export const ROLE_KINDS = { owner: "owner", editor: "editor", creator: "creator", viewer: "view" } as const;
 
@@ -61,6 +79,17 @@ const fromOverview = (library: Overview): Community => ({
   address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation,
   deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active",
   ...(library.role === "owner" || library.status !== "deleting" ? { configuration: `/evidence-communities/${library._id}/configuration` } : {}),
+});
+const fromApplication = (application: MyApplication): Community => ({
+  id: application.libraryId, name: application.name, faviconUrl: application.faviconUrl, role: "creator", address: application.address,
+  owner: application.owner, application: application.state === "declined" ? "declined" : "waiting", pending: true,
+  applicationSeed: {
+    community: { libraryId: application.libraryId, name: application.name, faviconUrl: application.faviconUrl, address: application.address, owner: application.owner, applicationsOpen: true },
+    standing: {
+      libraryId: application.libraryId, member: false,
+      application: { state: application.state, message: application.message, createdAt: application.createdAt, decidedAt: application.decidedAt, reason: application.reason, reasonPreset: application.reasonPreset, appliesAgainAt: application.appliesAgainAt, hidden: false },
+    },
+  },
 });
 const fromInvitation = (invitation: Invitation): Community => ({
   id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: invitation.role, address: "", pending: true, toOrganization: invitation.toOrganization,
@@ -121,9 +150,25 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
   const invitationRows = invitations.data ?? (fromServer && preloaded.invitations ? preloadedQueryResult(preloaded.invitations) : undefined);
   const items = firstList?.page ?? read.items;
   const invited = read.page === 1 ? (invitationRows?.page ?? []).filter((row) => `${row.name} ${row.organization.name}`.toLowerCase().includes(needle)).map(fromInvitation) : [];
+  // The person's applications to join communities (OS-31), beside their invitations, from the page's server until the live ones arrive.
+  const workspaceId = useWorkspace();
+  const showsApplications = personal && !waiting && (filter === "all" || filter === "shared");
+  // Every waiting one (a person has at most APPLICATIONS_SHOWN), then the newest declined, so no decline hides one that waits.
+  const first = { numItems: APPLICATIONS_SHOWN, cursor: null };
+  const waitingLive = useProtectedQuery(api.evidenceLibraries.applications.mine, showsApplications && workspaceId ? { workspaceId, state: "waiting", paginationOpts: first } : "skip").data;
+  const declinedLive = useProtectedQuery(api.evidenceLibraries.applications.mine, showsApplications && workspaceId ? { workspaceId, state: "declined", paginationOpts: first } : "skip").data;
+  const waitingRows = waitingLive ?? (fromServer && preloaded.applicationsWaiting ? preloadedQueryResult(preloaded.applicationsWaiting) : undefined);
+  const declinedRows = declinedLive ?? (fromServer && preloaded.applicationsDeclined ? preloadedQueryResult(preloaded.applicationsDeclined) : undefined);
+  const applicationRows = waitingRows && declinedRows ? [...waitingRows.page, ...declinedRows.page] : undefined;
+  const applied = read.page === 1 ? (applicationRows ?? []).filter((row) => `${row.name} ${row.owner.name}`.toLowerCase().includes(needle)).map(fromApplication) : [];
+  // How many wait on the communities the person answers for: their owners' and editors'.
+  const answered = items.filter((library) => (library.role === "owner" || library.role === "editor") && library.status === "active").map((library) => library._id);
+  const countsLive = useProtectedQuery(api.evidenceLibraries.applications.waitingCounts, workspaceId && answered.length ? { workspaceId, libraryIds: answered } : "skip").data;
+  const counts = new Map(((countsLive ?? (fromServer && preloaded.waitingCounts ? preloadedQueryResult(preloaded.waitingCounts) : undefined))?.page ?? []).map((row) => [row.libraryId as string, row.waiting]));
+  const reviewing = (community: Community): Community => (counts.get(community.id) ? { ...community, toReview: counts.get(community.id) } : community);
   // ponytail: a page is sorted by name here; the server pages place by place. Sorting across pages needs an index by name across workspaces.
-  const rows = [...invited, ...items.map(fromOverview).sort((a, b) => a.name.localeCompare(b.name))];
-  const loading = !firstList && (waiting || read.isLoading || (invitationRows === undefined && personal && (filter === "all" || filter === "shared")));
+  const rows = [...invited, ...applied, ...items.map(fromOverview).map(reviewing).sort((a, b) => a.name.localeCompare(b.name))];
+  const loading = !firstList && (waiting || read.isLoading || (invitationRows === undefined && personal && (filter === "all" || filter === "shared")) || (applicationRows === undefined && showsApplications));
   const hasPages = firstList ? !firstList.isDone : read.hasPages;
   const shared = personal ? t("sharedWithYou") : t("sharedWith", { name: workspaceName });
   const filterName = filter === "own" ? t("yours") : organizations.find((row) => row.workspaceId === filter)?.name ?? workspaceName;
@@ -178,7 +223,7 @@ export function YourCommunities({ waiting = false, framed = false, search, perso
               className={cn(read.isStale && "opacity-60")}
               inert={read.isStale || undefined}
             >
-              {rows.map((community) => <CommunityRow key={community.invitationId ?? community.id} community={community} actions={actions} />)}
+              {rows.map((community) => <CommunityRow key={community.invitationId ?? (community.application ? `applied:${community.id}` : community.id)} community={community} actions={actions} />)}
             </ul>
           ) : (
             <p className="fade-enter px-2 py-3 text-xs text-muted-foreground">{empty}</p>
@@ -236,6 +281,7 @@ export function CommunityIcon({ community, fadeIn = false }: {
 function CommunityRow({ community, actions }: { community: Community; actions: Actions }) {
   const t = useTranslations("libraryList");
   const ts = useTranslations("libraryList.sidebar");
+  const ta = useTranslations("communityApplications");
   const role = t(community.role);
   const tm = useTranslations("workspaces.move");
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
@@ -243,14 +289,17 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
   const [moving, setMoving] = useState(false);
   // Its owners move it, from the workspace it's in, unless it's being deleted.
   const movesFrom = community.role === "owner" && community.status !== "deleting" ? community.owner.workspaceId : undefined;
-  const live = !community.pending && !community.draft;
+  const live = !community.pending && !community.draft && !community.application;
+  const openApplication = useOpenApply();
   // The whole row opens it: the name's link covers the row, under the buttons.
-  const name = community.configuration
+  const name = community.application
+    ? <button type="button" onClick={() => { if (community.applicationSeed) openApplication(community.applicationSeed); }} className="truncate text-start text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">{community.name}</button>
+    : community.configuration
     ? <Link href={community.configuration} className="truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">{community.name}</Link>
     : live ? <a href={`https://${community.address}`} target="_blank" rel="noopener noreferrer" className="truncate text-sm font-medium outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring">{community.name}</a>
     : <span className="truncate text-sm font-medium">{community.name}</span>;
   // Every community but an invitation shows its state as an icon before its name, its word on hover, as the list always has.
-  const status = community.pending ? null : community.status ?? "active";
+  const status = community.pending || community.application ? null : community.status ?? "active";
   return (
     <li data-library-row={community.id} data-status={community.status} style={{ height: `${ROW_REM}rem` }} className="fade-enter group/row relative flex items-center gap-3 rounded-lg px-2 transition-colors hover:bg-muted has-[[data-state=open]]:bg-muted">
       <CommunityIcon community={community} />
@@ -259,15 +308,23 @@ function CommunityRow({ community, actions }: { community: Community; actions: A
           {status && <LibraryStatusIcon status={status} operation={community.operation} className="relative z-10 [&>svg]:size-3.5" />}
           {name}
         </span>
-        <span className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
-          {/* Cut off at the row's edge, before the invitation's buttons, as the name above it is. */}
-          {/* Cut off beside an invitation's buttons, the role it offers shows whole on hover. */}
-          <TooltipHint label={community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role} onlyWhenClipped>
-            <RoleLabel role={ROLE_KINDS[community.role]} className="min-w-0 shrink"><span className="truncate">{community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role}</span></RoleLabel>
-          </TooltipHint>
+        {/* The height of its "to review" chip, with or without it, so the row holds still when the count arrives. */}
+        <span className="flex h-5 min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          {community.application === "waiting" || community.application === "declined" ? <ApplicationState state={community.application} /> : (
+            // Cut off beside an invitation's buttons, the role it offers shows whole on hover.
+            <TooltipHint label={community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role} onlyWhenClipped>
+              <RoleLabel role={ROLE_KINDS[community.role]} className="min-w-0 shrink"><span className="truncate">{community.pending ? ts(community.toOrganization ? "invitedForOrganization" : "invitedAs", { role }) : role}</span></RoleLabel>
+            </TooltipHint>
+          )}
+          {community.toReview ? (
+            // Above the row's link: straight to the people waiting, on its Team card.
+            <Link href={`/evidence-communities/${community.id}/configuration?section=team&team=applications`} className="relative z-10 inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-primary/10 px-2 font-medium text-primary outline-none hover:bg-primary/15 focus-visible:ring-2 focus-visible:ring-ring">
+              <UserPlus className="size-3" />{ta("toReview", { count: community.toReview })}
+            </Link>
+          ) : null}
         </span>
       </div>
-      {community.pending ? (
+      {community.application ? null : community.pending ? (
         <div className="relative flex shrink-0 items-center gap-1">
           <IconAction label={t("declineInvitation")} disabled={actions.answering !== null} onClick={() => actions.onDecline(community)}><X /></IconAction>
           {community.toOrganization ? <AcceptForOrganization community={community} actions={actions} /> : (
@@ -346,6 +403,13 @@ function AcceptForOrganization({ community, actions }: { community: Community; a
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+/** Where the person's application stands, in words beside its icon. */
+function ApplicationState({ state }: { state: "waiting" | "declined" }) {
+  const t = useTranslations("communityApplications");
+  const Icon = state === "waiting" ? Clock3 : XCircle;
+  return <span className={cn("inline-flex items-center gap-1.5", state === "declined" && "text-destructive")}><Icon className="size-3.5 shrink-0" />{state === "waiting" ? t("waitingForReview") : t("notAccepted")}</span>;
 }
 
 function IconAction({ label, disabled, onClick, children }: { label: string; disabled: boolean; onClick: () => void; children: ReactNode }) {

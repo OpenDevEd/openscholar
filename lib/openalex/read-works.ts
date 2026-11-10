@@ -3,6 +3,7 @@ import { abstractFromIndex } from "@/lib/papers/abstract-text";
 import type { SearchParameters, Work, Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SearchSource } from "../search/source";
 import { OPENALEX_TIMEOUT_MS, openAlexFetch, openAlexReason } from "./fetch";
+import { SearchError } from "../search/search-error";
 import { appWork } from "./work-id";
 import { worksUrl } from "./works-url";
 
@@ -22,7 +23,7 @@ const responseSchema = z.object({
 export async function readOpenAlexWorks(parameters: SearchParameters & {cursor: string}, source: SearchSource = "openalex") {
   const url = worksUrl(parameters, { cursor: parameters.cursor, "per-page": String(parameters.perPage ?? 10) }, source);
   const response = await openAlexFetch(url, {timeoutMs: OPENALEX_TIMEOUT_MS, next: {revalidate: 60}} as RequestInit & {timeoutMs: number});
-  if (!response.ok) throw new Error(`Publications unavailable: ${response.status}`);
+  if (!response.ok) throw new SearchError(`Publications unavailable: ${response.status}`, response.status);
   const parsed = responseSchema.parse(await response.json());
   return {
     meta: parsed.meta,

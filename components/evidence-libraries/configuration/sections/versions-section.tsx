@@ -5,7 +5,7 @@ import { useAction, useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { RefreshCw, HistoryIcon } from "@/components/icons";
 import { useFormatter, useTranslations } from "next-intl";
-import { Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
+import { Fragment, Suspense, use, useDeferredValue, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -27,9 +27,12 @@ import {
   shortCommit,
 } from "@/lib/evidence-libraries/configuration/versions";
 import { FieldGroup, Panel } from "../fields";
+import { useWithPage } from "../preloads";
+import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { InlineNotice, SectionCard } from "../section-card";
 import { StatusChip } from "../status-chip";
-import { ReleaseNotes, VERSIONS_PAGE_SIZE, VersionHistory } from "./versions-views";
+import { ReleaseNotes, VersionHistory } from "./versions-views";
+import { VERSIONS_PAGE_SIZE } from "@/lib/evidence-libraries/versions";
 
 type RuntimeState = FunctionReturnType<typeof api.evidenceLibraries.updates.check>;
 type VersionRow = FunctionReturnType<
@@ -139,17 +142,22 @@ export function VersionsSection({
     { libraryId },
     { initialNumItems: VERSIONS_PAGE_SIZE },
   );
-  const versionCount = useProtectedQuery(
+  const versionCount = useWithPage<typeof api.evidenceLibraries.versions.countVersions>("versionCount", useProtectedQuery(
     api.evidenceLibraries.versions.countVersions,
     { libraryId },
-  );
+  ).data);
+  // Until the live history arrives, its first page as the page's server read it.
+  const firstPage = useWithPage<typeof api.evidenceLibraries.versions.listVersionRows>("versions", undefined);
+  // Waiting for sign-in in the browser counts as not loaded yet too.
+  const rows = versions.hasLoadedFirstPage ? versions.results : firstPage?.page;
+  const canLoadMore = versions.hasLoadedFirstPage ? versions.status === "CanLoadMore" : firstPage?.isDone === false;
   // The address answer the last check stored. It stays right even when the
   // software check cannot reach GitHub, and clears itself once a move lands.
-  const addressNotice =
-    useProtectedQuery(
-      api.evidenceLibraries.updates.getAddressNotice,
-      live ? { libraryId } : "skip",
-    ).data ?? null;
+  const noticeRead = useWithPage<typeof api.evidenceLibraries.updates.getAddressNotice>("addressNotice", useProtectedQuery(
+    api.evidenceLibraries.updates.getAddressNotice,
+    live ? { libraryId } : "skip",
+  ).data);
+  const addressNotice = live ? noticeRead ?? null : null;
   // A silent custom domain is not fixed by moving the platform address: the
   // way out is to send the library back to it.
   const domains = useProtectedQuery(
@@ -165,12 +173,20 @@ export function VersionsSection({
   // Opening the page checks for updates once; "Check again" asks once more.
   const [checkCount, setCheckCount] = useState(0);
   const checkError = t("versions.checkError");
-  const checkPromise = live
+  // The check runs once the browser is signed in: run before, it would be refused, and the refusal kept.
+  const { canRunProtectedQueries } = useAuthReadiness();
+  const checkPromise = live && canRunProtectedQueries
     ? runtimeCheck(check, libraryId, `${refreshKey}:${checkCount}`, checkError, checkCount > 0)
     : null;
   // Keep the last result visible while a manual or post-update check suspends.
   const deferredCheckPromise = useDeferredValue(checkPromise);
   const checking = checkPromise !== deferredCheckPromise;
+  // What the last check said, stored and read with the page: shown at its full size, release notes and all, while
+  // the page checks again, so nothing below moves when the answer arrives. Before any check, the summary's shape.
+  const stored = useWithPage<typeof api.evidenceLibraries.updates.lastCheck>("lastCheck", useProtectedQuery(
+    api.evidenceLibraries.updates.lastCheck,
+    live ? { libraryId } : "skip",
+  ).data) ?? null;
   const [busy, setBusy] = useState(false);
   const [updateOpen, setUpdateOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -245,6 +261,16 @@ export function VersionsSection({
       .finally(() => setBusy(false));
   }
 
+  const checkAgainButton = (busy: boolean) => (
+    <Button type="button" variant="ghost" size="sm" onClick={checkAgain} disabled={blocked || busy} aria-busy={busy}>
+      {busy ? <Spinner aria-hidden="true" /> : <RefreshCw />}
+      {t("versions.checkAgain")}
+    </Button>
+  );
+  // Update waits for the fresh check: the platform starts one only against a check of the last ten minutes.
+  const whileChecking = stored && live
+    ? <SoftwareSummary result={{ ok: true, state: stored }} stored={stored} blocked onUpdate={() => setUpdateOpen(true)} checkAgain={checkAgainButton(true)} />
+    : <CheckingPanel />;
   return (
     <SectionCard
       id="sec-versions"
@@ -280,37 +306,17 @@ export function VersionsSection({
 
       <div data-section-part="software">
         {checkPromise ? (
-          <Suspense
-            fallback={
-              <Panel
-                tone="muted"
-                role="status"
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-              >
-                <Spinner className="h-4 w-4" />
-                {t("versions.checking")}
-              </Panel>
-            }
-          >
+          <Suspense fallback={whileChecking}>
             <SoftwarePanel
               promise={deferredCheckPromise ?? checkPromise}
+              stored={stored}
               blocked={blocked}
               onUpdate={() => setUpdateOpen(true)}
-              checkAgain={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={checkAgain}
-                  disabled={blocked}
-                  aria-busy={checking}
-                >
-                  {checking ? <Spinner aria-hidden="true" /> : <RefreshCw />}
-                  {t("versions.checkAgain")}
-                </Button>
-              }
+              checkAgain={checkAgainButton(checking)}
             />
           </Suspense>
+        ) : live ? (
+          whileChecking
         ) : (
           <Panel tone="muted" data-runtime-state="not-running">
             <p className="text-sm text-muted-foreground">
@@ -321,16 +327,17 @@ export function VersionsSection({
       </div>
 
       <FieldGroup title={t("versions.historyHeading")}>
-        {versions.isInitialLoading || versionCount.data === undefined ? (
+        {rows === undefined || versionCount === undefined ? (
           <Panel tone="muted" className="flex items-center">
             <Spinner className="my-0.5 h-4 w-4" aria-label={t("versions.loading")} />
           </Panel>
         ) : (
           <VersionHistory
-            rows={versions.results}
-            total={versionCount.data}
-            more={versions.status === "CanLoadMore" ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
-            loading={versions.status === "LoadingMore"}
+            rows={rows}
+            total={versionCount}
+            more={canLoadMore ? () => versions.loadMore(VERSIONS_PAGE_SIZE) : undefined}
+            // Until the live list arrives, Show more waits with it: asking for more before it has nothing to add to.
+            loading={versions.status === "LoadingMore" || (!versions.hasLoadedFirstPage && canLoadMore)}
             blocked={blocked}
             onRestore={setRestoring}
           />
@@ -408,41 +415,83 @@ export function VersionsSection({
   );
 }
 
-function SoftwarePanel({
-  promise,
-  blocked,
-  onUpdate,
-  checkAgain,
-}: {
-  promise: Promise<RuntimeCheck>;
+function CheckingPanel() {
+  const t = useTranslations("evidenceLibraryConfiguration");
+  return (
+    <SummaryShape role="status" state="checking" status={<StatusChip tone="running" icon="tone">{t("versions.checking")}</StatusChip>}>
+      <Button type="button" variant="ghost" size="sm" disabled>
+        <RefreshCw />
+        {t("versions.checkAgain")}
+      </Button>
+    </SummaryShape>
+  );
+}
+
+/**
+ * The software summary's shape without its answer, for while it's checked and when the check fails: the status and
+ * its button, then the running, latest and checked rows, blank. The answer then fills the same space.
+ */
+function SummaryShape({ role, state, status, children }: { role: "status" | "alert"; state: string; status: ReactNode; children: ReactNode }) {
+  const t = useTranslations("evidenceLibraryConfiguration");
+  return (
+    <Panel tone="muted" className="space-y-3" role={role} data-runtime-state={state}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {status}
+        {children}
+      </div>
+      <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+        {(["runningLabel", "latestLabel", "checkedLabel"] as const).map((label) => (
+          <Fragment key={label}>
+            <dt className="text-xs font-medium text-muted-foreground">{t(`versions.${label}`)}</dt>
+            <dd aria-hidden className="text-subtle-foreground">–</dd>
+          </Fragment>
+        ))}
+      </dl>
+    </Panel>
+  );
+}
+
+type SummaryProps = {
+  /** The last check's stored answer, which a failed check leaves in view. */
+  stored: RuntimeState | null;
   blocked: boolean;
   onUpdate: () => void;
   /** The "Check again" button; it lives inside the panel, next to Update. */
   checkAgain: ReactNode;
-}) {
+};
+
+function SoftwarePanel({ promise, ...props }: SummaryProps & { promise: Promise<RuntimeCheck> }) {
+  return <SoftwareSummary result={use(promise)} {...props} />;
+}
+
+function SoftwareSummary({
+  result,
+  stored,
+  blocked,
+  onUpdate,
+  checkAgain,
+}: SummaryProps & { result: RuntimeCheck }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const format = useFormatter();
-  const result = use(promise);
-  if (!result.ok) {
+  // A failed check says so where the status goes, over the last answer when there is one, so the panel keeps its size.
+  const shown = result.ok ? result.state : stored;
+  const failure = result.ok ? null : result.message;
+  if (!shown) {
     return (
-      <Panel
-        tone="muted"
-        role="alert"
-        data-runtime-state="check-failed"
-        className="flex flex-wrap items-center justify-between gap-3"
-      >
-        <p className="text-sm text-destructive">{result.message}</p>
+      <SummaryShape role="alert" state="check-failed" status={<p className="text-sm text-destructive">{failure}</p>}>
         {checkAgain}
-      </Panel>
+      </SummaryShape>
     );
   }
-  const { running, latest, changes, releases, checkedAt } = result.state;
+  const { running, latest, changes, releases, checkedAt } = shown;
   const state = runtimeUpdateState({ running, latest });
   const updateAvailable = state === "update-available";
   return (
-    <Panel tone="muted" className="space-y-3" data-runtime-state={state}>
+    <Panel tone="muted" className="space-y-3" data-runtime-state={failure ? "check-failed" : state} role={failure ? "alert" : undefined}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {updateAvailable ? (
+        {failure ? (
+          <p className="text-sm text-destructive">{failure}</p>
+        ) : updateAvailable ? (
           <StatusChip tone="warning">{t("versions.updateAvailable")}</StatusChip>
         ) : (
           <StatusChip tone="success">{t("versions.upToDate")}</StatusChip>
@@ -450,7 +499,8 @@ function SoftwarePanel({
         <div className="flex items-center gap-1">
           {checkAgain}
           {updateAvailable ? (
-            <Button type="button" size="sm" disabled={blocked} onClick={onUpdate}>
+            // Over a failed check the last answer stays in view, but the platform updates only after a fresh check.
+            <Button type="button" size="sm" disabled={blocked || failure !== null} onClick={onUpdate}>
               <RefreshCw />
               {t("versions.update")}
             </Button>

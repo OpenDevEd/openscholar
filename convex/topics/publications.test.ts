@@ -48,7 +48,7 @@ it("authenticates HTTP delivery, preserves receipts, and rejects stale replay af
   expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).page).toEqual([]);
   expect(await t.run(ctx => ctx.db.query("topicLocations").first())).toMatchObject({generation: 3, state: "unpublished"});
 });
-it("groups DOI variants, returns all enabled public locations, and retains private assignments", async () => {
+it("groups DOI variants, returns the locations in live listed communities, and retains unlisted ones' assignments", async () => {
   const {t, a, b, request, send} = await fixture();
   await send(request());
   await send(request(b.libraryId, {doi: "doi:10.1234/abc", topicIds: [], openalexId: null}), "second-credential");
@@ -56,11 +56,14 @@ it("groups DOI variants, returns all enabled public locations, and retains priva
   expect(page.page).toEqual([{key: "doi:10.1234/abc"}]);
   const read = () => t.query(api.topics.publications.listLocations, {groupKey: page.page[0].key, paginationOpts: {cursor: null, numItems: 100}});
   expect((await read()).page.map(row => row.library.name).sort()).toEqual(["first", "second"]);
-  await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", a.sectionId, {payload: {enabled: false}}));
+  await t.run(ctx => ctx.db.patch("evidenceLibraries", a.libraryId, {unlisted: true}));
   expect((await read()).page.map(row => row.library.name)).toEqual(["second"]);
   expect((await t.query(api.topics.publications.listGroups, {topicId, paginationOpts: {cursor: null, numItems: 10}})).page).toEqual([]);
   expect(await t.run(ctx => ctx.db.query("topicLocations").withIndex("by_libraryId_and_itemKey", q => q.eq("libraryId", a.libraryId).eq("itemKey", "ABCD1234")).unique())).toMatchObject({topicIds: [topicId]});
-  await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", a.sectionId, {payload: {enabled: true}}));
+  await t.run(ctx => ctx.db.patch("evidenceLibraries", a.libraryId, {unlisted: undefined}));
+  expect((await read()).page).toHaveLength(2);
+  // A community with Topics off sends its records without topics: its paper pages list it, its topic pages don't.
+  await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", a.sectionId, {payload: {enabled: false}}));
   expect((await read()).page).toHaveLength(2);
 });
 it("keeps a record's PDF and cover as its community last sent them, so a paper page shows them live", async () => {
@@ -122,6 +125,10 @@ it("revalidates cards, keeps available library links on timeout, and drops missi
   const complete = await readTopicPublications(topicId, "", null);
   expect(complete).toMatchObject({unavailableCount: 0, complete: true});
   expect(complete.papers[0].locations).toHaveLength(2);
+  // A community with Topics off stays off topic pages, though paper pages list it.
+  await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", b.sectionId, {payload: {enabled: false}}));
+  expect((await readTopicPublications(topicId, "", null)).papers[0].locations.map(row => row.name)).toEqual(["first"]);
+  await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", b.sectionId, {payload: {enabled: true}}));
   vi.stubGlobal("fetch", vi.fn(async (url: URL) => url.hostname === "first.example.test" ? new Response(null, {status: 404}) : Response.json({item: card})));
   expect((await readTopicPublications(topicId, "", null)).papers).toEqual([]);
 });

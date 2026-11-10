@@ -24,9 +24,11 @@ export const EMPTY_PUBLICATION_SETTINGS: PublicationSettings = {
 export function buildPublicationConfiguration(
   settings: PublicationSettings,
   secrets: PublicationSecrets,
+  /** Crossref may be on without Zenodo. A community's runtime refuses that; Openscholar Reports chooses. */
+  { crossrefAlone = false }: { crossrefAlone?: boolean } = {},
 ) {
   const { crossref, zenodo } = settings;
-  if (crossref.mode !== "off" && zenodo.mode === "off")
+  if (crossref.mode !== "off" && zenodo.mode === "off" && !crossrefAlone)
     throw new Error("Crossref requires Zenodo archiving. Enable Zenodo first.");
   if (crossref.mode === "custom" && zenodo.mode === "sandbox")
     throw new Error("Production Crossref requires production Zenodo. Use custom Zenodo credentials.");
