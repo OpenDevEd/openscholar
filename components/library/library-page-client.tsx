@@ -14,7 +14,7 @@ import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { usePhoneView } from "@/lib/hooks";
 import {
@@ -176,12 +176,15 @@ export function LibraryPageClient() {
     inWorkspace(workspaceId, filteredCountQueryArgs),
   );
 
-  const browseItems = useCursorPage(
+  // One place in the address for the two reads: only the one running reads it.
+  const browseItems = useCursorPageAt(
+    "page",
     api.library.queries.browseLibrary,
     inWorkspace(workspaceId, queryText ? "skip" : libraryFilters),
     PAGE_SIZE,
   );
-  const searchItems = useCursorPage(
+  const searchItems = useCursorPageAt(
+    "page",
     api.library.queries.searchLibrary,
     inWorkspace(workspaceId, queryText ? { ...libraryFilters, searchText: queryText } : "skip"),
     PAGE_SIZE,
@@ -317,11 +320,6 @@ export function LibraryPageClient() {
     filteredTotal === undefined
       ? undefined
       : Math.max(1, Math.ceil(filteredTotal / PAGE_SIZE));
-
-  const stepPage = useCallback((step: () => void) => {
-    step();
-    window.scrollTo({ top: 0 });
-  }, []);
 
   const { data: selectedCollection } = useProtectedQuery(
     api.library.collections.getCollection,
@@ -671,7 +669,7 @@ export function LibraryPageClient() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => stepPage(paged.previous)}
+                              onClick={paged.previous}
                               disabled={!paged.canPrevious}
                               className="rounded-xl"
                             >
@@ -690,7 +688,7 @@ export function LibraryPageClient() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => stepPage(paged.next)}
+                              onClick={paged.next}
                               disabled={!paged.canNext}
                               className="rounded-xl"
                             >

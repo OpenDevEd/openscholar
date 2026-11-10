@@ -13,7 +13,7 @@ import type { ExtractionSortBy } from "@/lib/types";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import Link from "@/components/workspace-link";
 import {
@@ -69,14 +69,10 @@ export function ExtractionCommandCenter() {
   // Read a page at a time, sorted and filtered on the server: the page number can't be jumped to, so it stays out of the URL.
   // In an organization, everyone's extractions or one member's (#656).
   const runBy = useRunBy("extractionJobs");
-  const jobs = useCursorPage(api.extraction.queries.listJobs, inWorkspace(workspaceId, { sort: extractionSortBy, ...(text ? { text } : {}), ...(runBy.by ? { by: runBy.by } : {}) }), COMMAND_CENTER_ITEMS_PER_PAGE);
+  const jobs = useCursorPageAt("page", api.extraction.queries.listJobs, inWorkspace(workspaceId, { sort: extractionSortBy, ...(text ? { text } : {}), ...(runBy.by ? { by: runBy.by } : {}) }), COMMAND_CENTER_ITEMS_PER_PAGE);
   // A search's matches aren't counted, so its pager shows the page alone; one member's are the count the filter knows.
   const { data: count } = useProtectedQuery(api.extraction.queries.countJobs, inWorkspace(workspaceId, {}));
   const total = text ? undefined : runBy.by ? runBy.countOf(runBy.by) : count;
-  const step = (to: () => void) => () => {
-    to();
-    window.scrollTo({ top: 0 });
-  };
 
   return (
     <LibraryPageShell
@@ -123,8 +119,8 @@ export function ExtractionCommandCenter() {
             steps={{
               canPrevious: jobs.canPrevious,
               canNext: jobs.canNext,
-              onPrevious: step(jobs.previous),
-              onNext: step(jobs.next),
+              onPrevious: jobs.previous,
+              onNext: jobs.next,
               offset: jobs.offset,
               shown: jobs.items.length,
               total,

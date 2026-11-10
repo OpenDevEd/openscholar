@@ -34,7 +34,7 @@ import { FileText, Hash, PenLine, Pencil, Plus, Trash2, UserPlus } from "@/compo
 import type { Effort } from "@/lib/ai/core/call-options";
 import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, MAX_DAILY_LIMIT, bylineOf, canRegister, crossrefDoiOf, dailyLimit } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -82,7 +82,8 @@ function Row({ label, hint, children, wide = false }: { label: string; hint?: st
 
 export function AdminPublishingSettings() {
   const { data: settings } = useProtectedQuery(api.reports.settings.admin, {});
-  const limits = useCursorPage(api.reports.limits.list, {}, LIMITS_PER_PAGE);
+  // Its page is in the address, and the next one opens where the list is: it sits far down a long page.
+  const limits = useCursorPageAt("limits", api.reports.limits.list, {}, LIMITS_PER_PAGE, { scroll: false });
   if (!settings || limits.isLoading) return <Enter ready={false}>{null}</Enter>;
   return (
     <Enter ready>
@@ -91,7 +92,7 @@ export function AdminPublishingSettings() {
   );
 }
 
-function SettingsView({ settings, limits }: { settings: Settings; limits: ReturnType<typeof useCursorPage<typeof api.reports.limits.list>> }) {
+function SettingsView({ settings, limits }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>> }) {
   const [nav, setNav] = useQueryStates(NAV);
   // A dialog opens over the page where it is, and closing it with its own button takes the step back when that step
   // is there (lib/url-state/step-back.ts), so Back never reopens what was just closed.
@@ -266,7 +267,7 @@ const OWN_LIMIT = 5;
  * How many reports a workspace may start in a day, and the people and organisations with a limit of their own,
  * shown as people and organisations are everywhere else in the app.
  */
-function Limits({ settings, limits, save }: { settings: Settings; limits: ReturnType<typeof useCursorPage<typeof api.reports.limits.list>>; save: (patch: { perDay: number } | { orgPerDay: number }, saved: string) => Promise<boolean> }) {
+function Limits({ settings, limits, save }: { settings: Settings; limits: ReturnType<typeof useCursorPageAt<typeof api.reports.limits.list>>; save: (patch: { perDay: number } | { orgPerDay: number }, saved: string) => Promise<boolean> }) {
   const set = useMutation(api.reports.limits.set);
   const remove = useMutation(api.reports.limits.remove);
   return (

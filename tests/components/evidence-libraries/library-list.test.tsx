@@ -43,10 +43,14 @@ vi.mock("@/lib/auth/use-auth-query", () => ({ useProtectedQuery: (name: string, 
   return !result?.data ? { data: undefined } : { ...result, data: { page: result.data, isDone: true, continueCursor: "" } };
 } }));
 // Every list arrives as one loaded page that has no page after it; the tests read what each was asked for.
-vi.mock("@/lib/hooks/use-cursor-page", () => ({ useCursorPage: (name: string, args: unknown) => {
-  mocks.pages(name, args);
-  return { items: args === "skip" ? [] : mocks.query(name).data, isLoading: args === "skip", isStale: false, page: 1, offset: 0, hasPages: false, canPrevious: false, canNext: false, previous: vi.fn(), next: vi.fn() };
-} }));
+vi.mock("@/lib/hooks/use-cursor-page", () => {
+  const useCursorPage = (name: string, args: unknown) => {
+    mocks.pages(name, args);
+    return { items: args === "skip" ? [] : mocks.query(name).data, isLoading: args === "skip", isStale: false, page: 1, offset: 0, hasPages: false, canPrevious: false, canNext: false, previous: vi.fn(), next: vi.fn() };
+  };
+  // The same list, wherever its page is kept.
+  return { useCursorPage, useCursorPageAt: (_place: string, name: string, args: unknown) => useCursorPage(name, args) };
+});
 import { LibraryList } from "@/components/evidence-libraries/library-list";
 const render = (ui: ReactElement, searchParams = "") => renderWithTooltip(<NuqsTestingAdapter searchParams={searchParams}>{ui}</NuqsTestingAdapter>);
 const library = (role: string, extra: Record<string, unknown> = {}) => ({

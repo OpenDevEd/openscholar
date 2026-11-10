@@ -62,7 +62,7 @@ import { BulkActionsBar } from "@/components/extraction/bulk-actions-bar";
 import { ExportDialog } from "@/components/extraction/export-dialog";
 import { ExtractionExportError, readExtractionExport } from "@/lib/extraction/export";
 import { RESULTS_PAGE_SIZE_MAX } from "@/lib/extraction/limits";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { CostBadge } from "@/components/extraction/cost-badge";
@@ -208,10 +208,13 @@ export default function JobDetailPage() {
   // The results are read a page at a time, sorted and filtered on the server; the hook starts
   // over from the first page whenever the filters, the order or the page size change.
   const resultsView = useMemo(() => ({ jobId, filters: serializedResultsFilters }), [jobId, serializedResultsFilters]);
-  const results = useCursorPage(
+  const results = useCursorPageAt(
+    "page",
     api.extraction.queries.listJobResults,
     inWorkspace(workspaceId, isExtractionJob ? { ...resultsView, sortBy: resultsSortBy } : "skip"),
     pageSize,
+    // The table sits under the job's summary: the next page opens where the table is.
+    { scroll: false },
   );
   // Only a filtered view is counted: without filters every paper of the job matches.
   const { data: resultCounts } = useProtectedQuery(

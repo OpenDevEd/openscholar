@@ -17,7 +17,7 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { monthStart } from "@/lib/billing/month";
@@ -32,7 +32,7 @@ const CAPS = [null, 1_000, 2_000, 5_000, 10_000] as const;
 export function useMemberSpending(workspaceId: Id<"workspaces"> | undefined) {
   // This month's, which moves on to the next when a page left open reaches it.
   const month = monthStart(useNow({ updateInterval: 60_000 }).getTime());
-  const list = useCursorPage(api.billing.caps.spending, inWorkspace(workspaceId, { month }), PER_PAGE);
+  const list = useCursorPageAt("spending", api.billing.caps.spending, inWorkspace(workspaceId, { month }), PER_PAGE, { scroll: false });
   const { data: allowance } = useProtectedQuery(api.billing.caps.allowance, inWorkspace(workspaceId, { month }));
   return { list, allowance, ready: !list.isLoading && allowance !== undefined };
 }
