@@ -302,6 +302,7 @@ export function DetailsStep({
     setDoi("");
   };
   const wrongOrcids = m.authors.some((a) => a.orcid !== "" && !isOrcid(a.orcid));
+  const future = m.date > localToday();
 
   return (
     <div>
@@ -360,8 +361,9 @@ export function DetailsStep({
               </Select>
             </Field>
             <Field label="Date published">
-              {/* A report is published by today, as the author's own calendar has it. */}
-              <Input type="date" value={m.date} max={localToday()} onChange={(e) => set("date", e.target.value)} />
+              {/* A report is published by today, as the author's own calendar has it. A date typed past it says so here, before the checks are asked for. */}
+              <Input type="date" value={m.date} max={localToday()} aria-invalid={future || undefined} onChange={(e) => set("date", e.target.value)} />
+              {future ? <span className="block ps-1 text-xs text-destructive">A report can&apos;t be dated in the future.</span> : null}
             </Field>
             <div className="space-y-1.5">
               <span className="ps-1 text-xs font-medium text-muted-foreground">Licence</span>
@@ -584,7 +586,7 @@ export function DetailsStep({
           </Button>
         ) : null}
         {/* Not in a transition: the page shows the checks running at once, which a transition would hold back until they end. */}
-        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || (!!onCancel && !resend && m === initial)} onClick={() => {
+        <Button disabled={!m.title.trim() || !m.authors.some((a) => a.name.trim()) || wrongOrcids || future || (!!onCancel && !resend && m === initial)} onClick={() => {
           // The run carries the details as they are, so a save still waiting has nothing left to send.
           clearTimeout(held.current.timer);
           held.current.send = undefined;
