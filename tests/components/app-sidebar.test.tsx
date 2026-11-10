@@ -27,7 +27,8 @@ vi.mock("@clerk/nextjs", () => ({
   useClerk: () => ({ signOut: vi.fn() }),
   useAuth: () => ({ isLoaded: true, userId: "user_ada" }),
 }));
-vi.mock("convex/react", () => ({ useAction: () => vi.fn(), useMutation: () => vi.fn() }));
+// The rail's one open read is whether Publish is switched on, which these tests leave unanswered.
+vi.mock("convex/react", () => ({ useAction: () => vi.fn(), useMutation: () => vi.fn(), useQuery: () => undefined }));
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     screening: { queries: { getActiveScreeningJobProgress: "screening:getActiveScreeningJobProgress" } },
@@ -35,6 +36,7 @@ vi.mock("@/convex/_generated/api", () => ({
     organizations: { queries: { workspaces: "organizations:workspaces", myInvitations: "organizations:myInvitations" }, manage: { create: "create", invite: "invite", declineInvitation: "decline", confirmJoin: "confirmJoin" } },
     workspaces: { queries: { personal: "workspaces:personal", bySlug: "workspaces:bySlug" } },
     sharing: { shared: { counts: "sharing:counts" } },
+    reports: { settings: { open: "reports:open" } },
   },
 }));
 vi.mock("@/lib/auth/use-auth-query", () => ({
