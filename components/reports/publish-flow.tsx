@@ -28,7 +28,7 @@ import { DetailsStep } from "@/components/reports/details-step";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown, useStageLabel } from "@/components/reports/your-reports";
 import { useChangeLabel } from "@/components/reports/words";
-import { Working } from "@/components/settings/parts";
+import { Segmented, Working } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
@@ -1048,6 +1048,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         said(t("activateFailed"))(error);
       }
     });
+  // MOCK (mock/activation-button): three looks for Activate, compared with today's, picked in the address (`button`).
+  const [look, setLook] = useQueryState("button", parseAsStringLiteral(LOOKS).withDefault("seal"));
+  /** What Activate costs now, for the looks that show it apart from the word; null when it's free or credit covers it. */
+  const amount = free || price === null || price <= credit ? null : dollars(price - credit);
   /** Activate's words: the same whether it can be pressed yet or not, so the button keeps its width. */
   const activateLabel = free || price === null || price <= credit ? t("activate") : t("activation.activateFor", { price: dollars(price - credit) });
   /** Why Activate can't be pressed yet, for an admin. */
@@ -1099,7 +1103,18 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         <AnimatePresence initial={false}>
           {report ? (
             <motion.div key="actions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} className="mt-6">
-              {stage === "ready" && admin && terms ? <PaymentLine organization={organization} free={terms.free.left} card={card} credit={credit} price={price} pending={pending} onAddCard={onAddCard} /> : null}
+              {stage === "ready" && admin && terms ? (
+                <PaymentLine
+                  organization={organization}
+                  free={terms.free.left}
+                  card={card}
+                  credit={credit}
+                  price={price}
+                  pending={pending}
+                  onAddCard={onAddCard}
+                  action={look === "bar" && card && !pending ? <ActivateButton look="bar" label={t("activate")} amount={amount} busy={activating} disabled={!!waitingFor} onClick={free ? () => activateNow(false) : () => setPaying(true)} /> : undefined}
+                />
+              ) : null}
               <div className="flex flex-wrap justify-end gap-2">
                 {stage === "failed" ? (
                   <>
@@ -1118,7 +1133,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                 ) : (
                   <>
                     {onAnother ? (
-                      <Button variant={stage === "declined" ? "default" : "outline"} onClick={onAnother}>
+                      <Button variant={stage === "declined" ? "default" : stage === "ready" && look === "bar" && admin ? "ghost" : "outline"} onClick={onAnother}>
                         <Plus /> {t("publishAnother")}
                       </Button>
                     ) : null}
@@ -1130,6 +1145,16 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                           </Button>
                         </span>
                       </TooltipHint>
+                    ) : stage === "ready" && look === "bar" ? null : stage === "ready" && look !== "now" ? (
+                      waitingFor ? (
+                        <TooltipHint label={waitingFor}>
+                          <span tabIndex={0}>
+                            <ActivateButton look={look} label={t("activate")} amount={amount} busy={false} disabled onClick={() => {}} />
+                          </span>
+                        </TooltipHint>
+                      ) : (
+                        <ActivateButton look={look} label={t("activate")} amount={amount} busy={activating} disabled={false} onClick={free ? () => activateNow(false) : () => setPaying(true)} />
+                      )
                     ) : stage === "ready" && waitingFor ? (
                       <TooltipHint label={waitingFor}>
                         <span tabIndex={0}>
@@ -1166,6 +1191,14 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
           ) : null}
         </AnimatePresence>
       </AutoHeight>
+      {stage === "ready" && admin ? (
+        // MOCK: not part of any look.
+        <div className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-border px-4 py-3 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Mock</span>
+          Activate button
+          <Segmented label="Activate button" value={look} onChange={(next) => void setLook(next)} options={[{ id: "now", label: "Today" }, { id: "seal", label: "A Seal" }, { id: "bar", label: "B In the card bar" }, { id: "live", label: "C Live green" }]} />
+        </div>
+      ) : null}
       {onRequestReview ? <ReviewRequestDialog open={asking} onClose={() => setAsking(false)} onSend={onRequestReview} /> : null}
       {report && price !== null ? (
         // Asks before the charge: a saved card is charged as soon as it's confirmed, with no page of Stripe's in between.
@@ -1207,6 +1240,41 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         />
       ) : null}
     </div>
+  );
+}
+
+/** MOCK: the looks compared for Activate. */
+const LOOKS = ["now", "seal", "bar", "live"] as const;
+
+/**
+ * MOCK: Activate in one of the looks. A, `seal`: taller, its badge in a ring, the price in a segment of its own. B, `bar`:
+ * the same button, held at the end of the payment bar. C, `live`: the green of Passed and Live, the price in a pill.
+ */
+function ActivateButton({ look, label, amount, busy, disabled, onClick }: { look: (typeof LOOKS)[number]; label: string; amount: string | null; busy: boolean; disabled: boolean; onClick: () => void }) {
+  const green = look === "live";
+  return (
+    <Button
+      size="lg"
+      disabled={disabled || busy}
+      onClick={onClick}
+      className={cn("relative h-11 gap-0 overflow-hidden rounded-xl p-0 text-[15px] font-semibold shadow-sm has-[>svg]:px-0", green && "bg-success text-white hover:bg-success/90")}
+    >
+      <Working busy={busy}>
+        <span className="flex h-11 items-center">
+          <span className="flex items-center gap-2.5 ps-2 pe-4">
+            <span className={cn("flex size-7 items-center justify-center rounded-full", "bg-white/25")}>
+              <BadgeCheck className="size-4" />
+            </span>
+            {label}
+          </span>
+          {amount === null ? null : green ? (
+            <span className="me-2 rounded-full bg-white/20 px-2.5 py-0.5 text-sm tabular-nums">{amount}</span>
+          ) : (
+            <span className="flex h-full items-center border-s border-primary-foreground/25 bg-black/10 px-4 tabular-nums">{amount}</span>
+          )}
+        </span>
+      </Working>
+    </Button>
   );
 }
 
@@ -1290,7 +1358,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
  * free. With no card, the way to add one: Stripe's page for saving a card, which comes back here. A charge the bank
  * asked to confirm says so, with the way back to its page.
  */
-function PaymentLine({ organization, free, card, credit, price, pending, onAddCard }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void> }) {
+function PaymentLine({ organization, free, card, credit, price, pending, onAddCard, action }: { organization: string | null; free: number; card: { brand: string; last4: string } | null; /** Credit on the Stripe balance, in cents. */ credit: number; /** In cents; null while there's no price. */ price: number | null; pending: Terms["pending"]; onAddCard?: () => Promise<void>; /** MOCK: Activate, held in the bar. */ action?: ReactNode }) {
   const [saving, save] = useTransition();
   const t = useTranslations("publishReports.flow.activation.card");
   const dollars = useDollars();
@@ -1337,7 +1405,14 @@ function PaymentLine({ organization, free, card, credit, price, pending, onAddCa
             {t("confirm")} <ArrowUpRight />
           </a>
         </Button>
-      ) : pending ? null : card ? (
+      ) : pending ? null : card && action ? (
+        <>
+          <Button variant="ghost" size="sm" asChild className="shrink-0 text-muted-foreground">
+            <Link href="/settings/billing">{t("change")}</Link>
+          </Button>
+          {action}
+        </>
+      ) : card ? (
         // The cards are the billing page's, where Stripe's own page changes them.
         <Button variant="ghost" asChild className="shrink-0 text-muted-foreground">
           <Link href="/settings/billing">
