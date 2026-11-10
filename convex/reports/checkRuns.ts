@@ -28,7 +28,7 @@ export const start = internalMutation({
     /** What the details were made from: the PDF they were read from, by when it was uploaded, or, for changes to a live report, when its details were last set as the form that made them saw it. */
     from: runFromValidator,
   },
-  returns: v.union(v.object({ unchanged: v.literal(true) }), v.object({
+  returns: v.union(v.object({ unchanged: v.literal(true), /** Changes are waiting, which these details don't give up. */ waiting: v.boolean() }), v.object({
     reportId: v.id("reports"),
     doi: v.string(),
     byline: v.string(),
@@ -52,15 +52,12 @@ export const start = internalMutation({
       // The changes were made from the details as they stood when the form opened. Ones made live since, from another
       // tab or by a reviewer, would be undone by sending the whole form over them.
       if (liveSince(report) !== from.changesSince) throw createError("CONFLICT", "This report's details changed since you opened this form. Open it again to start from them.");
-      // Details put back to exactly what the report already says are no changes: any that were waiting are given
-      // up, and so is a run still reading them, which must not put them live afterwards. Compared whole, so a
-      // change a reader of the page can't see, such as an institution's catalogue ID, still counts as one.
-      if (JSON.stringify(details.metadata) === JSON.stringify(keptDetails(metadata))) {
-        await ctx.db.patch("reportDetails", details._id, { correction: undefined, running: undefined });
-        await touch(ctx, report, { run: undefined, changes: undefined });
-        return { unchanged: true as const };
-      }
-      await ctx.db.patch("reportDetails", details._id, { running: [] });
+      // Details put back to exactly what the report already says are no changes, and nothing is done about them:
+      // changes that are waiting are given up with Discard, never by this. Compared whole, so a change a reader of
+      // the page can't see, such as an institution's catalogue ID, still counts as one.
+      if (JSON.stringify(details.metadata) === JSON.stringify(keptDetails(metadata))) return { unchanged: true as const, waiting: details.correction !== undefined };
+      // The changes are kept while they are checked, so a run that never ends loses none of them.
+      await ctx.db.patch("reportDetails", details._id, { running: [], trying: keptDetails(metadata) });
       await touch(ctx, report, { run: { id: runId, at: Date.now(), changes: true } });
     } else {
       if (report.step !== "details") throw createError("CONFLICT", "This report isn't waiting for its checks any more.");
@@ -115,7 +112,7 @@ export const finish = internalMutation({
     const details = await detailsOf(ctx, reportId);
     if (report.run.changes) {
       if (report.status !== "live" || !metadata) return null;
-      await ctx.db.patch("reportDetails", details._id, { running: undefined });
+      await ctx.db.patch("reportDetails", details._id, { running: undefined, trying: undefined });
       await ctx.db.patch("reports", reportId, { run: undefined });
       const settings = await reportSettings(ctx);
       if (!settings.humanReview && results.every((result) => result.pass)) {

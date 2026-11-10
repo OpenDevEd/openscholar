@@ -180,6 +180,8 @@ export const reportDetailFields = {
   metadata: v.optional(metadataValidator),
   /** The last finished run's answers. */
   results: optionalResults,
+  /** Changes to a live report as a run was given them, kept until the run ends so one that breaks loses none. */
+  trying: v.optional(metadataValidator),
   /** The answers of the run under way, as each arrives. */
   running: optionalResults,
   /** What the author thinks the checks got wrong, sent with a request for a person. */

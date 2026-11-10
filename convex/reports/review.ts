@@ -10,7 +10,7 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
-import { REVIEW_TEXT_MAX, STAGES, changesOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
+import { REVIEW_TEXT_MAX, STAGES, changesOf, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
 import { detailsOf, keptDetails, signedAgreement, touch } from "./flow";
@@ -72,7 +72,10 @@ export const page = query({
     await refuseApps(ctx);
     await requireAdmin(ctx);
     const { humanReview, series } = await reportSettings(ctx);
-    const reports = await checked(ctx);
+    const read = await checked(ctx);
+    // A report asked for by its key is found however far back it is, past what the list reads of its status.
+    const named = q && isReportKey(q.trim().toUpperCase()) ? await byKey(ctx, q.trim().toUpperCase()) : null;
+    const reports = named && named.step === "done" && !read.some((report) => report._id === named._id) ? [...read, named] : read;
     const shows = (report: Doc<"reports">, kept: Show) => kept === "all" || (kept === "review" ? wantsReviewer(report, humanReview) : stageOf(report, humanReview) === (kept as Stage));
     const words = (q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
     const text = (report: Doc<"reports">) => `${report.title ?? ""} ${report.key} ${report.doi} ${report.signedBy.name}`.toLowerCase();
@@ -175,7 +178,9 @@ export const decide = mutation({
     // other because the report went live, or was withdrawn, since the reviewer opened it.
     if (decision === "withdraw") {
       if (stage !== "live") throw createError("CONFLICT", "This report isn't live, so there is nothing to withdraw.");
-      await touch(ctx, report, { status: "declined", withdrawnAt: Date.now(), note: words });
+      // A run reading changes to it ends with it: its answer would be about a report that is no longer live.
+      if (report.run) await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { running: undefined });
+      await touch(ctx, report, { status: "declined", withdrawnAt: Date.now(), note: words, run: undefined });
       // A registered DOI can't be removed: its registrars get the record again, marked withdrawn.
       await register(ctx, report);
       await record(ctx, report._id, reviewer._id, "withdraw", words);
@@ -273,23 +278,21 @@ const RELEASED_PER_STEP = 50;
  * A step at a time, until none is left.
  */
 export const release = internalMutation({
-  args: {},
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, { cursor = null }) => {
     if ((await reportSettings(ctx)).humanReview) return null;
-    const waiting = await ctx.db.query("reports").withIndex("by_changes", (q) => q.eq("changes", "review")).take(RELEASED_PER_STEP);
-    let released = 0;
-    for (const report of waiting) {
+    // Paged from where the last step stopped, so the changes that stay waiting for a person never hide the ones behind them.
+    const waiting = await ctx.db.query("reports").withIndex("by_changes", (q) => q.eq("changes", "review")).paginate({ cursor, numItems: RELEASED_PER_STEP });
+    for (const report of waiting.page) {
       const details = await detailsOf(ctx, report._id);
       const changes = details.correction;
       // Changes a check failed wait on a person whatever the setting says.
       if (report.status !== "live" || !changes || changes.declined || changes.results.some((result) => !result.pass)) continue;
       await applyChanges(ctx, report, details, changes);
       await notify(ctx, report._id, "changes-live");
-      released += 1;
     }
-    // Those released left the index's range; the rest of this step stay, so a full step with any released has more behind it.
-    if (waiting.length === RELEASED_PER_STEP && released > 0) await ctx.scheduler.runAfter(0, internal.reports.review.release, {});
+    if (!waiting.isDone) await ctx.scheduler.runAfter(0, internal.reports.review.release, { cursor: waiting.continueCursor });
     return null;
   },
 });

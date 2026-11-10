@@ -355,7 +355,7 @@ export const discardChanges = workspaceMutation({
   handler: async (ctx, actor, { key, seenAt }) => {
     await refuseApps(ctx);
     const { report, details } = await waitingChanges(ctx, actor, key, seenAt);
-    await ctx.db.patch("reportDetails", details._id, { correction: undefined, running: undefined });
+    await ctx.db.patch("reportDetails", details._id, { correction: undefined, running: undefined, trying: undefined });
     await touch(ctx, report, { changes: undefined, ...(report.run?.changes && { run: undefined }) });
     return null;
   },
@@ -434,6 +434,7 @@ const reportValidator = v.object({
   metadata: v.optional(metadataValidator),
   results: v.optional(plainResults),
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
+  trying: v.optional(metadataValidator),
   correction: v.optional(v.object({ metadata: metadataValidator, results: plainResults, at: v.number(), request: v.optional(v.object({ comment: v.string(), at: v.number() })), declined: v.optional(v.object({ at: v.number(), note: v.optional(v.string()) })) })),
   activatedAt: v.optional(v.number()),
   correctedAt: v.optional(v.number()),
@@ -477,6 +478,8 @@ export const get = workspaceQuery({
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),
         ...(correction && { correction: { metadata: correction.metadata, results: plain(correction.results)!, at: correction.at, ...(correction.request && { request: correction.request }), ...(correction.declined && { declined: correction.declined }) } }),
+        // Changes a run was given and never finished checking, for the one who sent them to carry on from.
+        ...(details.trying && mayChange(actor, report) && { trying: details.trying }),
         ...(report.activatedAt !== undefined && { activatedAt: report.activatedAt }),
         ...(report.correctedAt !== undefined && { correctedAt: report.correctedAt }),
       },

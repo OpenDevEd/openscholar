@@ -15,12 +15,14 @@ export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, det
   const registers = providersOf(report.registration);
   // Later than the report's last change and the last time its details were set, so a form opened before this is told from one opened after.
   const now = Math.max(Date.now(), report.updatedAt + 1, (liveSince(report) ?? 0) + 1);
-  await ctx.db.patch("reportDetails", details._id, { metadata: changes.metadata, results: changes.results, correction: undefined });
+  // A run still reading other changes was started over the details as they were: it ends here, so its answer can't put those over these.
+  await ctx.db.patch("reportDetails", details._id, { metadata: changes.metadata, results: changes.results, correction: undefined, running: undefined, trying: undefined });
   await ctx.db.patch("reports", report._id, {
     title: changes.metadata.title.trim() || undefined,
     checksVersion: changes.checksVersion,
     flagged: changes.results.some((result) => !result.pass) || undefined,
     changes: undefined,
+    run: undefined,
     correctedAt: now,
     // Its registrars take the record again: Crossref the corrected deposit under the same DOI, Zenodo an edit of its record.
     deposit: registers.includes("crossref") ? "queued" : "none",
