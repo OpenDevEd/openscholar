@@ -37,7 +37,7 @@ import { isDecisionModel, JEV_MODEL } from "@/lib/ai/decisions";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, MAX_DAILY_LIMIT, bylineOf, canRegister, crossrefDoiOf, dailyLimit } from "@/lib/reports/settings";
+import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, MAX_DAILY_LIMIT, bylineOf, canRegister, crossrefDoiOf, dailyLimit, isIssn } from "@/lib/reports/settings";
 import { useFailed } from "@/components/reports/words";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -127,7 +127,17 @@ function SettingsView({ settings, limits }: { settings: Settings; limits: Return
       (error) => (failed(error), false),
     );
   const save = (patch: Parameters<typeof update>[0], saved: string) => said(update(patch), saved);
-  const series = (part: Partial<Settings["series"]>, saved: string) => save({ series: part }, saved);
+  // What the server refuses in the series, said here in the page's language before anything is sent.
+  const seriesRefusal = ({ name, byline, issn }: Partial<Settings["series"]>) =>
+    name !== undefined && !name.trim() ? t("enterSeriesName")
+    : byline !== undefined && !byline.trim() ? t("enterByline")
+    : byline !== undefined && !byline.includes("{doi}") ? t("bylineNeedsDoi", { doi: "{doi}" })
+    : issn?.trim() && !isIssn(issn.trim().toUpperCase()) ? t("notIssn")
+    : null;
+  const series = (part: Partial<Settings["series"]>, saved: string) => {
+    const refused = seriesRefusal(part);
+    return refused ? (toast.error(refused), Promise.resolve(false)) : save({ series: part }, saved);
+  };
 
   const { zenodo, crossref } = settings.publication;
   const registers = canRegister(settings.publication);

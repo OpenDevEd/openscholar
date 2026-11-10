@@ -806,7 +806,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
   /** A file's size, in megabytes or kilobytes as the reader's language writes them. */
-  const bytes = (n: number) => (n > 1_000_000 ? format.number(n / 1_000_000, { style: "unit", unit: "megabyte", maximumFractionDigits: 1 }) : format.number(Math.round(n / 1000), { style: "unit", unit: "kilobyte" }));
+  const bytes = (n: number) => (n > 1_000_000 ? format.number(n / 1_000_000, { style: "unit", unit: "megabyte", minimumFractionDigits: 1, maximumFractionDigits: 1 }) : format.number(Math.round(n / 1000), { style: "unit", unit: "kilobyte" }));
   const startUpload = useMutation(api.reports.flow.startUpload);
   const attachPdf = useMutation(api.reports.flow.attachPdf);
   const input = useRef<HTMLInputElement>(null);

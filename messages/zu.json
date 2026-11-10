@@ -6303,7 +6303,7 @@
       "ask": {
         "decline": {
           "title": "Wenqabe lo mbiko?",
-          "says": "Ngeke ushicilelwe, futhi ababhali bazofunda inothi lakho embikweni.",
+          "says": "Ngeke ushicilelwe, futhi umbhali wawo uzofunda inothi lakho embikweni.",
           "action": "Yenqaba"
         },
         "withdraw": {
@@ -6313,7 +6313,7 @@
         },
         "decline-changes": {
           "title": "Wenqabe lezi zinguquko?",
-          "says": "Umbiko uhlala ushicilelwe njengoba ubunjalo. Ababhali bangashintsha imininingwane bathumele futhi.",
+          "says": "Umbiko uhlala ushicilelwe njengoba ubunjalo. Umbhali wawo angashintsha imininingwane athumele futhi.",
           "action": "Yenqaba izinguquko"
         }
       },
@@ -6327,7 +6327,7 @@
       },
       "which": "Yimiphi imibiko",
       "pagerItems": "imibiko",
-      "approvedToast": "Kuvunyiwe. Ababhali manje bangawenza usebenze.",
+      "approvedToast": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
       "sentAgain": "Kuthunyelwe futhi",
       "noMatch": "Ayikho imibiko efanayo",
       "noReports": "Ayikho imibiko okwamanje",
@@ -6344,7 +6344,7 @@
       "openPage": "Vula ikhasi lawo",
       "openPageLabel": "Vula ikhasi le-{key}",
       "done": {
-        "approve": "Kuvunyiwe. Ababhali manje bangawenza usebenze.",
+        "approve": "Kuvunyiwe. Umbhali wawo manje angawenza usebenze.",
         "reinstate": "Kubuyiselwe. Kushicilelwe futhi.",
         "withdraw": "Kuhoxisiwe",
         "decline": "Kwenqatshiwe"
@@ -6352,14 +6352,14 @@
       "changesApproved": "Izinguquko zivunyiwe. Zishicilelwe.",
       "changesDeclined": "Izinguquko zenqatshiwe. Umbiko uhlala njengoba ubunjalo.",
       "why": {
-        "declined": "Umbuyekezi uzenqabile. Ababhali bangazishintsha bazithumele futhi, noma bazilahle.",
+        "declined": "Umbuyekezi uzenqabile. Umbhali angazishintsha azithumele futhi, noma azilahle.",
         "failed": "Ukuhlolwa okusha kuhlulekile ngenxa yalezi zinguquko, ngakho zikumbhali ukuze azilungise noma acele ukubuyekezwa. Usengakwazi ukunquma.",
         "asked": "Ukuhlolwa kuhlulekile, futhi umbhali ucele ukubuyekezwa.",
-        "again": "I-{checks} ihlulekile futhi. Umbuyekezi wayesevumile lo mbiko naphezu {count, plural, one {kwalokho kuhlolwa} other {kwalokho kuhlolwa}}, ngakho izinguquko zawo nazo zidinga umbuyekezi.",
+        "again": "{count, plural, one {I-{checks} ihlulekile futhi} other {I-{checks} zihlulekile futhi}}. Umbuyekezi wayesevumile lo mbiko naphezu {count, plural, one {kwalokho kuhlolwa} other {kwalokho kuhlolwa}}, ngakho izinguquko zawo nazo zidinga umbuyekezi.",
         "flagged": "Ukuhlolwa kuphawule lezi zinguquko.",
         "humanReview": "Ukubuyekezwa ngumuntu kuvuliwe, ngakho izinguquko zilinde umbuyekezi."
       },
-      "approving": "Ukuvuma kuvumela ababhali ukuthi bawenze usebenze, futhi ushicilelwa lapho bewenza usebenze.",
+      "approving": "Ukuvuma kuvumela umbhali wawo ukuthi awenze usebenze, futhi ushicilelwa lapho ewenza usebenze.",
       "standing": {
         "failedAsked": "Ukuhlolwa kuhlulekile. {approving}",
         "failed": "Ukuhlolwa kuhlulekile, ngakho umbiko ubuyele kumbhali ukuze awulungise. Usengakwazi ukunquma. {approving}",
@@ -6396,7 +6396,7 @@
       "decline": "Yenqaba",
       "declineChanges": "Yenqaba izinguquko",
       "approveChanges": "Vuma izinguquko",
-      "noteLabel": "Inothi kubabhali",
+      "noteLabel": "Inothi kumbhali",
       "notePlaceholder": "Akuphoqelekile. Balifunda embikweni.",
       "keepLive": "Gcina kushicilelwe",
       "cancel": "Khansela",
@@ -6425,6 +6425,10 @@
       "issnHint": "Shiya kungenalutho kuze kube uchungechunge luthola i-ISSN. Kuze kube yileso sikhathi, umugqa womnikazi uthi \"ISSN pending\".",
       "issnPending": "kusalindiwe",
       "issnSaved": "I-ISSN ilondoloziwe",
+      "enterSeriesName": "Thayipha igama lochungechunge.",
+      "enterByline": "Thayipha umugqa womnikazi.",
+      "bylineNeedsDoi": "Umugqa womnikazi udinga i-{doi}, eba yi-DOI yombiko ngamunye.",
+      "notIssn": "Lokhu akuyona i-ISSN. Ibukeka njenge-2049-3630, futhi idijithi yayo yokugcina ihlola ezinye.",
       "byline": "Umugqa womnikazi",
       "bylineHint": "I-{series}, i-{issn} ne-{doi} kugcwaliswa embikweni ngamunye",
       "bylineSaved": "Umugqa womnikazi ulondoloziwe",
@@ -6439,7 +6443,7 @@
       "zenodoDoi": "I-DOI egodlwa yi-Zenodo embikweni ngamunye",
       "noDoi": "Ayikho i-DOI kuze kuvulwe i-Crossref noma i-Zenodo",
       "metadata": "Imethadatha",
-      "readerHint": "Ifunda yonke i-PDF bese igcwalisa isihloko sayo, ababhali, isifinyezo namagama abalulekile, ababhali abangakulungisa.",
+      "readerHint": "Ifunda yonke i-PDF bese igcwalisa isihloko sayo, ababhali, isifinyezo namagama abalulekile, umbhali angakulungisa.",
       "readerGone": "Imodeli efunda ama-PDF ayisatholakali. Khetha enye.",
       "checks": "Ukuhlolwa",
       "version": "Inguqulo {version}",
@@ -6493,7 +6497,7 @@
       "questionHint": "I-{byline} ne-{doi} kufakwa esikhundleni ngamanani ombiko uqobo.",
       "questionPlaceholder": "Ingabe umbhalo awunayo inkulumo yenzondo, ukuhlukumeza nezinsongo ezibhekiswe kubantu?",
       "fix": "Indlela yokulungisa",
-      "fixHint": "Kuboniswa ababhali lapho lokhu kuhlolwa kuhluleka. I-{byline} ne-{doi} kuyagcwaliswa.",
+      "fixHint": "Kuboniswa umbhali lapho lokhu kuhlolwa kuhluleka. I-{byline} ne-{doi} kuyagcwaliswa.",
       "fixPlaceholder": "Beka umugqa womnikazi ekhasini lokuqala, bese ulayisha i-PDF futhi.",
       "compareModel": "Imodeli eqhathanisa okufanayo",
       "model": "Imodeli",
@@ -6559,7 +6563,7 @@
       "agree": "Ngiyavumelana nalesi sivumelwano",
       "untouched": "Usuvele uyigodlile i-DOI ye-<mono>{key}</mono> futhi awukayilayishi i-PDF yayo.",
       "continueWith": "Qhubeka nayo",
-      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza ibhokisi.",
+      "agreementChanged": "Isivumelwano sishintshile ngesikhathi leli khasi livuliwe. Siphinde usifunde, bese uchofoza amabhokisi.",
       "unopened": "Ukushicilela akukavulwa kule ndawo yokusebenza. I-Openscholar ikuvulela inhlangano uma icela: bhalela ku-<mail>{email}</mail>. Okwamanje, ungashicilela usendaweni yakho yokusebenza.",
       "limit": {
         "personalClosed": "Ukushicilela akukavulwa ku-akhawunti yakho.",

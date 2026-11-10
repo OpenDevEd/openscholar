@@ -6304,7 +6304,7 @@
       "ask": {
         "decline": {
           "title": "Ukatae ripoti hii?",
-          "says": "Haitachapishwa, na waandishi watasoma maoni yako kwenye ripoti.",
+          "says": "Haitachapishwa, na mwandishi wake atasoma maoni yako kwenye ripoti.",
           "action": "Kataa"
         },
         "withdraw": {
@@ -6314,7 +6314,7 @@
         },
         "decline-changes": {
           "title": "Ukatae mabadiliko haya?",
-          "says": "Ripoti inabaki imechapishwa kama ilivyokuwa. Waandishi wanaweza kubadilisha maelezo na kutuma tena.",
+          "says": "Ripoti inabaki imechapishwa kama ilivyokuwa. Mwandishi wake anaweza kubadilisha maelezo na kutuma tena.",
           "action": "Kataa mabadiliko"
         }
       },
@@ -6328,7 +6328,7 @@
       },
       "which": "Ripoti zipi",
       "pagerItems": "ripoti",
-      "approvedToast": "Imeidhinishwa. Waandishi sasa wanaweza kuiwasha.",
+      "approvedToast": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
       "sentAgain": "Imetumwa tena",
       "noMatch": "Hakuna ripoti inayolingana",
       "noReports": "Bado hakuna ripoti",
@@ -6345,7 +6345,7 @@
       "openPage": "Fungua ukurasa wake",
       "openPageLabel": "Fungua ukurasa wa {key}",
       "done": {
-        "approve": "Imeidhinishwa. Waandishi sasa wanaweza kuiwasha.",
+        "approve": "Imeidhinishwa. Mwandishi wake sasa anaweza kuiwasha.",
         "reinstate": "Imerejeshwa. Imechapishwa tena.",
         "withdraw": "Imeondolewa",
         "decline": "Imekataliwa"
@@ -6353,14 +6353,14 @@
       "changesApproved": "Mabadiliko yameidhinishwa. Yamechapishwa.",
       "changesDeclined": "Mabadiliko yamekataliwa. Ripoti inabaki kama ilivyokuwa.",
       "why": {
-        "declined": "Mkaguzi aliyakataa. Waandishi wanaweza kuyabadilisha na kutuma tena, au kuyaacha.",
+        "declined": "Mkaguzi aliyakataa. Mwandishi anaweza kuyabadilisha na kutuma tena, au kuyaacha.",
         "failed": "Ukaguzi mpya ulishindwa kwa sababu ya mabadiliko haya, kwa hiyo yako kwa mwandishi ili ayarekebishe au aombe ukaguzi. Bado unaweza kuamua.",
         "asked": "Ukaguzi ulishindwa, na mwandishi aliomba ukaguzi.",
-        "again": "{checks} ilishindwa tena. Mkaguzi tayari aliidhinisha ripoti hii licha ya {count, plural, one {ukaguzi huo} other {ukaguzi huo}}, kwa hiyo mabadiliko yake yanahitaji mkaguzi pia.",
+        "again": "{count, plural, one {{checks} ulishindwa tena} other {{checks} ilishindwa tena}}. Mkaguzi tayari aliidhinisha ripoti hii licha ya {count, plural, one {ukaguzi huo} other {ukaguzi huo}}, kwa hiyo mabadiliko yake yanahitaji mkaguzi pia.",
         "flagged": "Ukaguzi uliyawekea alama mabadiliko haya.",
         "humanReview": "Ukaguzi wa binadamu umewashwa, kwa hiyo mabadiliko yanasubiri mkaguzi."
       },
-      "approving": "Kuidhinisha kunawaruhusu waandishi kuiwasha, na inachapishwa mara tu wanapoiwasha.",
+      "approving": "Kuidhinisha kunamruhusu mwandishi wake kuiwasha, na inachapishwa mara tu anapoiwasha.",
       "standing": {
         "failedAsked": "Ukaguzi ulishindwa. {approving}",
         "failed": "Ukaguzi ulishindwa, kwa hiyo ripoti iko kwa mwandishi ili airekebishe. Bado unaweza kuamua. {approving}",
@@ -6397,7 +6397,7 @@
       "decline": "Kataa",
       "declineChanges": "Kataa mabadiliko",
       "approveChanges": "Idhinisha mabadiliko",
-      "noteLabel": "Maoni kwa waandishi",
+      "noteLabel": "Maoni kwa mwandishi",
       "notePlaceholder": "Si lazima. Wanayasoma kwenye ripoti.",
       "keepLive": "Ibaki imechapishwa",
       "cancel": "Ghairi",
@@ -6426,6 +6426,10 @@
       "issnHint": "Acha tupu hadi mfululizo upate ISSN. Hadi hapo, mstari wa utambulisho unasema \"ISSN pending\".",
       "issnPending": "inasubiri",
       "issnSaved": "ISSN imehifadhiwa",
+      "enterSeriesName": "Andika jina la mfululizo.",
+      "enterByline": "Andika mstari wa utambulisho.",
+      "bylineNeedsDoi": "Mstari wa utambulisho unahitaji {doi} ndani yake, ambayo inakuwa DOI ya kila ripoti.",
+      "notIssn": "Hii si ISSN. Inaonekana kama 2049-3630, na tarakimu yake ya mwisho inakagua zilizobaki.",
       "byline": "Mstari wa utambulisho",
       "bylineHint": "{series}, {issn} na {doi} hujazwa kwa kila ripoti",
       "bylineSaved": "Mstari wa utambulisho umehifadhiwa",
@@ -6440,7 +6444,7 @@
       "zenodoDoi": "DOI ambayo Zenodo inahifadhi kwa kila ripoti",
       "noDoi": "Hakuna DOI hadi Crossref au Zenodo iwashwe",
       "metadata": "Metadata",
-      "readerHint": "Inasoma kila PDF na kujaza kichwa, waandishi, muhtasari na maneno muhimu, ambayo waandishi wanaweza kusahihisha.",
+      "readerHint": "Inasoma kila PDF na kujaza kichwa, waandishi, muhtasari na maneno muhimu, ili mwandishi ayasahihishe.",
       "readerGone": "Modeli inayosoma PDF haipatikani tena. Chagua nyingine.",
       "checks": "Ukaguzi",
       "version": "Toleo {version}",
@@ -6494,7 +6498,7 @@
       "questionHint": "{byline} na {doi} hubadilishwa na thamani za ripoti yenyewe.",
       "questionPlaceholder": "Je, maandishi hayana matamshi ya chuki, unyanyasaji na vitisho dhidi ya watu?",
       "fix": "Jinsi ya kurekebisha",
-      "fixHint": "Huonyeshwa kwa waandishi ukaguzi huu unaposhindwa. {byline} na {doi} hujazwa.",
+      "fixHint": "Huonyeshwa kwa mwandishi ukaguzi huu unaposhindwa. {byline} na {doi} hujazwa.",
       "fixPlaceholder": "Weka mstari wa utambulisho kwenye ukurasa wa kwanza, kisha pakia PDF tena.",
       "compareModel": "Modeli inayolinganisha vinavyolingana",
       "model": "Modeli",
@@ -6560,7 +6564,7 @@
       "agree": "Ninakubali makubaliano haya",
       "untouched": "Tayari umehifadhi DOI kwa <mono>{key}</mono> na hujapakia PDF yake.",
       "continueWith": "Endelea nayo",
-      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye kisanduku.",
+      "agreementChanged": "Makubaliano yalibadilika ukurasa huu ukiwa wazi. Yasome tena, kisha weka alama kwenye visanduku.",
       "unopened": "Uchapishaji bado haujafunguliwa kwa eneo hili la kazi. Openscholar huufungua kwa shirika linapoomba: andika kwa <mail>{email}</mail>. Hadi hapo, unaweza kuchapisha kutoka eneo lako la kazi binafsi.",
       "limit": {
         "personalClosed": "Uchapishaji bado haujafunguliwa kwa akaunti yako.",

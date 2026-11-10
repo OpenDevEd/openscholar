@@ -6304,7 +6304,7 @@
       "ask": {
         "decline": {
           "title": "Keur hierdie verslag af?",
-          "says": "Dit word nie gepubliseer nie, en die skrywers lees jou nota op die verslag.",
+          "says": "Dit word nie gepubliseer nie, en sy skrywer lees jou nota op die verslag.",
           "action": "Keur af"
         },
         "withdraw": {
@@ -6314,7 +6314,7 @@
         },
         "decline-changes": {
           "title": "Keur hierdie wysigings af?",
-          "says": "Die verslag bly gepubliseer soos dit was. Die skrywers kan die besonderhede verander en weer stuur.",
+          "says": "Die verslag bly gepubliseer soos dit was. Sy skrywer kan die besonderhede verander en weer stuur.",
           "action": "Keur wysigings af"
         }
       },
@@ -6328,7 +6328,7 @@
       },
       "which": "Watter verslae",
       "pagerItems": "verslae",
-      "approvedToast": "Goedgekeur. Die skrywers kan dit nou aktiveer.",
+      "approvedToast": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
       "sentAgain": "Weer gestuur",
       "noMatch": "Geen verslae pas nie",
       "noReports": "Nog geen verslae nie",
@@ -6345,7 +6345,7 @@
       "openPage": "Maak sy bladsy oop",
       "openPageLabel": "Maak {key} se bladsy oop",
       "done": {
-        "approve": "Goedgekeur. Die skrywers kan dit nou aktiveer.",
+        "approve": "Goedgekeur. Sy skrywer kan dit nou aktiveer.",
         "reinstate": "Herstel. Dit is weer gepubliseer.",
         "withdraw": "Teruggetrek",
         "decline": "Afgekeur"
@@ -6353,14 +6353,14 @@
       "changesApproved": "Wysigings goedgekeur. Hulle is gepubliseer.",
       "changesDeclined": "Wysigings afgekeur. Die verslag bly soos dit was.",
       "why": {
-        "declined": "'n Hersiener het dit afgekeur. Die skrywers kan dit verander en weer stuur, of dit weggooi.",
+        "declined": "'n Hersiener het dit afgekeur. Die skrywer kan dit verander en weer stuur, of dit weggooi.",
         "failed": "'n Nuwe kontrole het weens hierdie wysigings gefaal, so hulle is by die skrywer om reg te stel of 'n hersiening te vra. Jy kan steeds besluit.",
         "asked": "'n Kontrole het gefaal, en die skrywer het 'n hersiening gevra.",
         "again": "{checks} het weer gefaal. 'n Hersiener het hierdie verslag reeds ondanks {count, plural, one {daardie kontrole} other {daardie kontroles}} goedgekeur, so sy wysigings het ook 'n hersiener nodig.",
         "flagged": "'n Kontrole het hierdie wysigings gemerk.",
         "humanReview": "Menslike hersiening is aan, so wysigings wag vir 'n hersiener."
       },
-      "approving": "Goedkeuring laat die skrywers dit aktiveer, en dit word gepubliseer sodra hulle dit doen.",
+      "approving": "Goedkeuring laat sy skrywer dit aktiveer, en dit word gepubliseer sodra hulle dit doen.",
       "standing": {
         "failedAsked": "'n Kontrole het gefaal. {approving}",
         "failed": "'n Kontrole het gefaal, so die verslag is terug by die skrywer om reg te stel. Jy kan steeds besluit. {approving}",
@@ -6397,7 +6397,7 @@
       "decline": "Keur af",
       "declineChanges": "Keur wysigings af",
       "approveChanges": "Keur wysigings goed",
-      "noteLabel": "Nota aan die skrywers",
+      "noteLabel": "Nota aan die skrywer",
       "notePlaceholder": "Opsioneel. Hulle lees dit op die verslag.",
       "keepLive": "Hou gepubliseer",
       "cancel": "Kanselleer",
@@ -6426,6 +6426,10 @@
       "issnHint": "Laat leeg totdat die reeks 'n ISSN kry. Tot dan sê die eienaarsreël \"ISSN pending\".",
       "issnPending": "hangende",
       "issnSaved": "ISSN gestoor",
+      "enterSeriesName": "Tik die reeks se naam.",
+      "enterByline": "Tik die eienaarsreël.",
+      "bylineNeedsDoi": "Die eienaarsreël moet {doi} bevat, wat elke verslag se DOI word.",
+      "notIssn": "Dit is nie 'n ISSN nie. Een lyk soos 2049-3630, en sy laaste syfer kontroleer die res.",
       "byline": "Eienaarsreël",
       "bylineHint": "{series}, {issn} en {doi} word vir elke verslag ingevul",
       "bylineSaved": "Eienaarsreël gestoor",
@@ -6440,7 +6444,7 @@
       "zenodoDoi": "Die DOI wat Zenodo vir elke verslag reserveer",
       "noDoi": "Geen DOI totdat Crossref of Zenodo aan is nie",
       "metadata": "Metadata",
-      "readerHint": "Lees elke PDF en vul sy titel, skrywers, opsomming en sleutelwoorde in, wat die skrywers kan korrigeer.",
+      "readerHint": "Lees elke PDF en vul sy titel, skrywers, opsomming en sleutelwoorde in, wat die skrywer kan korrigeer.",
       "readerGone": "Die model wat PDF's lees is nie meer beskikbaar nie. Kies 'n ander.",
       "checks": "Kontroles",
       "version": "Weergawe {version}",
@@ -6494,7 +6498,7 @@
       "questionHint": "{byline} en {doi} word met die verslag se eie waardes vervang.",
       "questionPlaceholder": "Is die teks vry van haatspraak, teistering en dreigemente teen mense?",
       "fix": "Hoe om reg te stel",
-      "fixHint": "Word aan skrywers gewys wanneer hierdie kontrole faal. {byline} en {doi} word ingevul.",
+      "fixHint": "Word aan die skrywer gewys wanneer hierdie kontrole faal. {byline} en {doi} word ingevul.",
       "fixPlaceholder": "Plaas die eienaarsreël op die eerste bladsy en laai dan die PDF weer op.",
       "compareModel": "Model wat treffers vergelyk",
       "model": "Model",
@@ -6560,7 +6564,7 @@
       "agree": "Ek stem in tot hierdie ooreenkoms",
       "untouched": "Jy het reeds 'n DOI vir <mono>{key}</mono> gereserveer en nog nie sy PDF opgelaai nie.",
       "continueWith": "Gaan daarmee voort",
-      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkie.",
+      "agreementChanged": "Die ooreenkoms het verander terwyl hierdie bladsy oop was. Lees dit weer en merk dan die blokkies.",
       "unopened": "Publikasie is nog nie vir hierdie werkruimte oop nie. Openscholar maak dit op versoek vir 'n organisasie oop: skryf aan <mail>{email}</mail>. Intussen kan jy uit jou eie werkruimte publiseer.",
       "limit": {
         "personalClosed": "Publikasie is nog nie vir jou rekening oop nie.",
