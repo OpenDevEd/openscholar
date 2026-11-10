@@ -50,7 +50,8 @@
       "KEYS_PAGES": "convex/paperSets/libraryKeys.ts:keepKeys",
       "MAX_PROFILE_RECORDS": "convex/authors/links.ts:linkRecord",
       "MAX_RELEASES": "convex/evidenceLibraries/validators.ts",
-      "MAX_APPS": "convex/developerApps/apps.ts:insert"
+      "MAX_APPS": "convex/developerApps/apps.ts:insert",
+      "MAX_WORKSPACE_REPORTS": "convex/reports/flow.ts:sign"
     },
     "refused": {
       "MAX_ROLLOUT_COMMUNITIES": "reads one past it and refuses to list or update communities, naming why",
