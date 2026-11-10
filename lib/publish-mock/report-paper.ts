@@ -1,7 +1,17 @@
 // MOCK (mock/publish-reports): a report shaped like a record of our index, for the paper page and the Cite menu.
 import type { PaperResult } from "@/lib/types/search.types";
 import { SDGS } from "@/lib/openalex/vocabulary";
-import type { Metadata, Settings, Submission } from "./types";
+import { catalogAncestors } from "@/lib/topics/search";
+import type { Metadata, Settings, Submission, Topic } from "./types";
+
+/**
+ * A topic with the domain, field and subfield above it, as OpenAlex gives a paper's: a report keeps only the topic
+ * itself, and its parents come from our catalogue, so its page leads down to it as any paper's does.
+ */
+function withParents(topic: Topic) {
+  const parents = Object.fromEntries(catalogAncestors(topic.id).map((node) => [node.level, { id: node.id, display_name: node.name }]));
+  return { id: topic.id, display_name: topic.name, score: topic.score, ...parents };
+}
 
 export function reportPaper(report: Pick<Submission, "id" | "doi">, m: Metadata, series: Settings["series"]): PaperResult {
   const location = {
@@ -28,8 +38,8 @@ export function reportPaper(report: Pick<Submission, "id" | "doi">, m: Metadata,
     cited_by_count: 0,
     counts_by_year: [],
     keywords: m.keywords.map((k) => ({ id: k, display_name: k, score: 1 })),
-    topics: m.topics.map((t) => ({ id: t.id, display_name: t.name, score: t.score })),
-    ...(m.topics[0] ? { primary_topic: { id: m.topics[0].id, display_name: m.topics[0].name, score: m.topics[0].score } } : {}),
+    topics: m.topics.map(withParents),
+    ...(m.topics[0] ? { primary_topic: withParents(m.topics[0]) } : {}),
     sustainable_development_goals: m.sdgs.map((goal) => ({ id: `https://metadata.un.org/sdg/${goal}`, display_name: SDGS.find((g) => g.id === goal)?.name.replace(/^\d+\. /, "") ?? goal, score: 1 })),
     funders: m.funding.map((f) => ({ id: f.funder.id, display_name: f.funder.name })),
     awards: m.funding.flatMap((f) => f.awards.map((award) => ({ funder_id: f.funder.id, funder_display_name: f.funder.name, funder_award_id: award }))),
