@@ -9,7 +9,6 @@ import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { MAX_LOCATIONS_READ_PER_GROUP } from "../lib/queryBounds";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
-import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
 import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
 import { metadataValidator, recordTopicIdsValidator } from "./validators";
 import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
@@ -131,7 +130,9 @@ export const replaceFromLibrary = internalMutation({
 
 async function publicLibrary(ctx: QueryCtx, libraryId: Location["libraryId"]) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  if (!library || !await readActiveTopicsEnabled(ctx, library)) return null;
+  // Every live community its owners haven't unlisted, as the public directory lists them. A record's topics come only
+  // from a community with Topics on, so topic pages still show only those.
+  if (!library || library.state !== "active" || library.unlisted) return null;
   const url = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
   return url ? {id: library._id, name: library.name, url} : null;
 }
