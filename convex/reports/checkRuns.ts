@@ -6,7 +6,6 @@ import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { slugPick } from "../ai/serverModel";
 import { actorFor } from "../workspaces/actor";
-import { bylineOf } from "../../lib/reports/settings";
 import { OWNERS_ONLY, checkedDetails, detailsOf, mayChange, touch } from "./flow";
 import { RUN_STUCK_MS, changeStageOf, stageOf } from "../../lib/reports/report";
 import { notify } from "./mail";
@@ -80,7 +79,7 @@ export const start = internalMutation({
     return {
       reportId: report._id,
       doi: report.doi,
-      byline: report.byline ?? bylineOf(settings.series, report.doi),
+      byline: report.byline,
       text: report.pdf?.text ?? null,
       version,
       checks: await Promise.all(on.map(async (check) => ({ ...check, model: (await slugPick(ctx, check.modelId, check.effort, "screening"))?.modelId ?? null }))),
