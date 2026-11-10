@@ -223,6 +223,8 @@ export const settleCharge = internalMutation({
     }
     await ctx.db.patch("reportActivations", activationId, { state: "live", charge: outcome.charge, payUrl: undefined });
     await putLive(ctx, report);
+    // The charge may have taken the account's credit: the next activation is shown what's left of it.
+    await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId: activation.workspaceId, card: true });
     return null;
   },
 });
@@ -271,9 +273,16 @@ const actorIn = (ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<Actor> 
  * bank's page when it asks to confirm the charge, after which the report goes live by itself.
  */
 export const activate = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string(), pay: v.boolean(), code: v.optional(v.string()) },
+  args: {
+    workspaceId: v.id("workspaces"),
+    key: v.string(),
+    pay: v.boolean(),
+    code: v.optional(v.string()),
+    /** What the person was shown as due, in US dollars: a charge that would take more from the card is refused. */
+    expect: v.optional(v.number()),
+  },
   returns: v.union(v.object({ live: v.literal(true) }), v.object({ url: v.string() })),
-  handler: async (ctx, { workspaceId, key, pay, code: typed }): Promise<{ live: true } | { url: string }> => {
+  handler: async (ctx, { workspaceId, key, pay, code: typed, expect }): Promise<{ live: true } | { url: string }> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const code = codeOf(typed);
@@ -292,6 +301,14 @@ export const activate = action({
     if (!pay) throw createError("CONFLICT", "Today's free activations were just used. Activate it again to pay for it.");
     // Under the workspace's purchase lock from the record to the answer, so another tab's activation waits for this one.
     const outcome = await purchasing(ctx, workspaceId, first.customerId, first.charging ? { resuming: true } : {}, async () => {
+      // What's due now, after the account's credit, which the page may have read before another purchase spent it.
+      if (expect !== undefined && !first.charging) {
+        const due = (await autumn.previewAttach(first.customerId, ACTIVATION_PLAN, false, undefined, code).catch(refusedCode<AutumnPreview>(code))).total;
+        if (due > expect + 0.005) {
+          await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId, card: true });
+          throw createError("CONFLICT", `Activating it now takes ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(due)} from your card, not ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(expect)}. Check it and activate again.`);
+        }
+      }
       const started: { activationId: Id<"reportActivations">; code?: string } = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
       const asked = started.code;
       let charged: AutumnCharge;
