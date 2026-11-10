@@ -71,6 +71,8 @@ export const checkResultValidator = v.object({
   errored: v.optional(v.boolean()),
 });
 export const checkResultsValidator = capped(v.array(checkResultValidator), MAX_CHECKS);
+/** The same list where a row may not have one yet: the cap is the list's, so it wraps the optional. */
+const optionalResults = capped(v.optional(v.array(checkResultValidator)), MAX_CHECKS);
 /** The answers as an author's page gets them: without the model behind each. */
 export const plainResults = capped(v.array(v.object(checkResultValidator.omit("model").fields)), MAX_CHECKS);
 
@@ -171,9 +173,9 @@ export const reportDetailFields = {
   reportId: v.id("reports"),
   metadata: v.optional(metadataValidator),
   /** The last finished run's answers. */
-  results: v.optional(checkResultsValidator),
+  results: optionalResults,
   /** The answers of the run under way, as each arrives. */
-  running: v.optional(checkResultsValidator),
+  running: optionalResults,
   /** What the author thinks the checks got wrong, sent with a request for a person. */
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
   /** Changes its author made to a live report's details that haven't gone live. */
