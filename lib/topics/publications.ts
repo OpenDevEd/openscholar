@@ -29,7 +29,8 @@ export async function readTopicPublicationsWith(reads: TopicPublicationReads, to
         unavailableCount++;
         console.error("Topic publication has more copies than one page lists", {topicId, group: group.key, listed: MAX_LOCATIONS});
       }
-      const locations = read.page;
+      // Communities with Topics off keep their copies off topic pages.
+      const locations = read.page.filter(location => location.library.topics);
       const cards = await Promise.allSettled(locations.map(async location => ({location, card: await reads.card(location.library.id, location.itemKey, location.library.url)})));
       const available = cards.flatMap((result, index) => {
         if (result.status === "fulfilled") return result.value.card ? [{location: result.value.location, card: result.value.card}] : [];

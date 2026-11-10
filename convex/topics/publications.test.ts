@@ -125,6 +125,10 @@ it("revalidates cards, keeps available library links on timeout, and drops missi
   const complete = await readTopicPublications(topicId, "", null);
   expect(complete).toMatchObject({unavailableCount: 0, complete: true});
   expect(complete.papers[0].locations).toHaveLength(2);
+  // A community with Topics off stays off topic pages, though paper pages list it.
+  await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", b.sectionId, {payload: {enabled: false}}));
+  expect((await readTopicPublications(topicId, "", null)).papers[0].locations.map(row => row.name)).toEqual(["first"]);
+  await t.run(ctx => ctx.db.patch("evidenceLibraryConfigSections", b.sectionId, {payload: {enabled: true}}));
   vi.stubGlobal("fetch", vi.fn(async (url: URL) => url.hostname === "first.example.test" ? new Response(null, {status: 404}) : Response.json({item: card})));
   expect((await readTopicPublications(topicId, "", null)).papers).toEqual([]);
 });

@@ -9,6 +9,7 @@ import { createError } from "../lib/errors";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { MAX_LOCATIONS_READ_PER_GROUP } from "../lib/queryBounds";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
+import { readActiveTopicsEnabled } from "../evidenceLibraries/activeTopics";
 import { topicAssociationRequestSchema, topicIdSchema } from "../../lib/topics/contract";
 import { metadataValidator, recordTopicIdsValidator } from "./validators";
 import { normalizeDoi, publicationGroupKey } from "../../lib/topics/identity";
@@ -130,11 +131,11 @@ export const replaceFromLibrary = internalMutation({
 
 async function publicLibrary(ctx: QueryCtx, libraryId: Location["libraryId"]) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
-  // Every live community its owners haven't unlisted, as the public directory lists them. A record's topics come only
-  // from a community with Topics on, so topic pages still show only those.
+  // Every live community its owners haven't unlisted, as the public directory lists them: a paper page lists each one
+  // that holds the paper. A topic page lists only those with Topics on, which `topics` says.
   if (!library || library.state !== "active" || library.unlisted) return null;
   const url = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
-  return url ? {id: library._id, name: library.name, url} : null;
+  return url ? {id: library._id, name: library.name, url, topics: await readActiveTopicsEnabled(ctx, library)} : null;
 }
 type PublicLibraries = (libraryId: Location["libraryId"]) => ReturnType<typeof publicLibrary>;
 /** Reads each library once per query, however many groups or locations share it. */
@@ -157,7 +158,7 @@ async function hasPublicTopic(ctx: QueryCtx, libraries: PublicLibraries, topicId
   console.error("[topics] A publication group has more locations than one read checks", {groupKey, topicId, read: MAX_LOCATIONS_READ_PER_GROUP});
   throw createError("VALIDATION_ERROR", "This topic has a publication with more copies than its page can check.");
 }
-const publicLibraryValidator = v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string()});
+const publicLibraryValidator = v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string(), topics: v.boolean()});
 const locationValidator = v.object({id: v.id("topicLocations"), itemKey: v.string(), topicIds: recordTopicIdsValidator, metadata: metadataValidator, library: publicLibraryValidator});
 /** Most publication groups one page holds. */
 const GROUPS_PAGE_MAX = 50;
