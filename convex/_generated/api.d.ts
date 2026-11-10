@@ -401,6 +401,7 @@ import type * as reports_published from "../reports/published.js";
 import type * as reports_reader from "../reports/reader.js";
 import type * as reports_reading from "../reports/reading.js";
 import type * as reports_readingState from "../reports/readingState.js";
+import type * as reports_registering from "../reports/registering.js";
 import type * as reports_registrar from "../reports/registrar.js";
 import type * as reports_registration from "../reports/registration.js";
 import type * as reports_review from "../reports/review.js";
@@ -907,6 +908,7 @@ declare const fullApi: ApiFromModules<{
   "reports/reader": typeof reports_reader;
   "reports/reading": typeof reports_reading;
   "reports/readingState": typeof reports_readingState;
+  "reports/registering": typeof reports_registering;
   "reports/registrar": typeof reports_registrar;
   "reports/registration": typeof reports_registration;
   "reports/review": typeof reports_review;
