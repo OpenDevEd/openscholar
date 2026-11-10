@@ -82,10 +82,12 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
   const communityCover = communities.find((copy) => copy.cover);
 
   return (
-    // The bar holds the two things a reader does with the paper wherever they have scrolled to: ask about it and
-    // read it. Everything else done with it is one row of named actions between its header and its abstract.
+    // The bar holds what a reader does with the paper wherever they have scrolled to: ask about it, cite it, share
+    // it, read it. Keeping it is a row of named actions between its header and its abstract.
     <LibraryPageShell icon={FileText} title={title} actions={<>
       <AskAbout id={appId} title={title} />
+      <CitationControl paper={paper} compact={false} />
+      <PaperShare paper={paper} href={paperPath(id, title)} compact={false} className={BAR_ACTION} labelClassName={BAR_LABEL} />
       {(pdf ?? doi) && <Button size="sm" className={BAR_ACTION} asChild>
         <a href={(pdf ?? doi)!} target="_blank" rel="noopener noreferrer">
           {pdf ? <FileText aria-hidden /> : <ArrowUpRight aria-hidden />}
@@ -155,11 +157,9 @@ export function PaperPage({ paper, id, detail, similar, references, communities:
         </div>
       </header>
     }>
-      {/* What's done with the paper: keeping it, then pointing to it, and at the end what only its workspace does. */}
+      {/* Keeping the paper: in the library, a collection or a community. At the end, what only its workspace does. */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-5 py-3 sm:px-8">
         <SaveControl paper={paper} named />
-        <CitationControl paper={paper} compact={false} named />
-        <PaperShare paper={paper} href={paperPath(id, title)} compact={false} labelClassName="" />
         {extra?.actions ? <div className="sm:ms-auto">{extra.actions}</div> : null}
       </div>
       <div className="grid gap-x-12 gap-y-10 p-5 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px]">
