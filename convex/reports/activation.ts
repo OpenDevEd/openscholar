@@ -226,12 +226,11 @@ export const settleCharge = internalMutation({
   handler: async (ctx, { activationId, outcome }) => {
     const activation = await ctx.db.get("reportActivations", activationId);
     if (!activation || activation.state === "live" || activation.state === "unused") return null;
-    if (outcome.kind === "none") {
-      await ctx.db.delete("reportActivations", activationId);
-      return null;
-    }
-    if (outcome.kind === "refused") {
-      await ctx.db.patch("reportActivations", activationId, { state: "refused", payUrl: undefined });
+    if (outcome.kind === "none" || outcome.kind === "refused") {
+      if (outcome.kind === "none") await ctx.db.delete("reportActivations", activationId);
+      else await ctx.db.patch("reportActivations", activationId, { state: "refused", payUrl: undefined });
+      // A voided invoice gives back any credit it had taken: the page reads it again.
+      await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId: activation.workspaceId, card: true });
       return null;
     }
     if (outcome.kind === "pending") {
