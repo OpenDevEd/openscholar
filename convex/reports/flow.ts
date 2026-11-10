@@ -14,7 +14,7 @@ import { bylineOf, canRegister } from "../../lib/reports/settings";
 import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { reportSettings, settingsRow } from "./settings";
-import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signerNamesValidator } from "./validators";
+import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -449,33 +449,31 @@ export const get = workspaceQuery({
   },
 });
 
-/**
- * The agreement a report's author signed, in the wording of the version they signed, with who signed and when and
- * what the report has become since. Its workspace reads it; it can be saved or printed from its page.
- */
+/** The agreement a report's author signed, in the wording of the version they signed, with who signed and when and what the report has become since. */
+export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
+  const version = report.agreementVersion;
+  const kept = await ctx.db.query("reportAgreementVersions").withIndex("by_version", (q) => q.eq("version", version)).unique();
+  const { metadata } = await detailsOf(ctx, report._id);
+  return {
+    // Every version's wording is kept from the first change on; before one, it is the series' own.
+    text: kept?.text ?? (await reportSettings(ctx)).agreement.text,
+    version,
+    signer: report.signedBy.name,
+    onBehalfOfAll: report.signedBy.onBehalfOfAll,
+    signedAt: report.signedAt,
+    doi: report.doi,
+    ...(metadata?.title && { title: metadata.title }),
+    authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),
+    ...(report.pdf?.pages !== undefined && { pages: report.pdf.pages }),
+  };
+}
+
+/** A report's signed agreement, for its workspace to read, save or print from its own page. */
 export const agreement = workspaceQuery({
   args: { key: v.string() },
-  returns: v.union(
-    v.null(),
-    v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) }),
-  ),
+  returns: v.union(v.null(), signedAgreementValidator),
   handler: async (ctx, actor, { key }) => {
     const report = await byKey(ctx, key);
-    if (!report || report.workspaceId !== actor.workspaceId) return null;
-    const version = report.agreementVersion;
-    const kept = await ctx.db.query("reportAgreementVersions").withIndex("by_version", (q) => q.eq("version", version)).unique();
-    const { metadata } = await detailsOf(ctx, report._id);
-    return {
-      // Every version's wording is kept from the first change on; before one, it is the series' own.
-      text: kept?.text ?? (await reportSettings(ctx)).agreement.text,
-      version,
-      signer: report.signedBy.name,
-      onBehalfOfAll: report.signedBy.onBehalfOfAll,
-      signedAt: report.signedAt,
-      doi: report.doi,
-      ...(metadata?.title && { title: metadata.title }),
-      authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),
-      ...(report.pdf?.pages !== undefined && { pages: report.pdf.pages }),
-    };
+    return report && report.workspaceId === actor.workspaceId ? await signedAgreement(ctx, report) : null;
   },
 });

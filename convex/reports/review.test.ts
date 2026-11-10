@@ -85,10 +85,10 @@ describe("reviewing", () => {
     await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.lab, key: failed.key, metadata: details("Unused"), pdfAt: failed.pdfAt });
     const list = (args: { show?: "all" | "review" | "ready" | "failed"; q?: string } = {}) => world.reviewer.query(api.reports.review.page, { page: 1, ...args });
     expect((await list()).rows.map((r) => r.key)).toEqual([failed.key, waiting.key]);
-    expect(await list({ show: "review" })).toMatchObject({ rows: [{ key: waiting.key }], waiting: 1, total: 1 });
+    expect(await list({ show: "review" })).toMatchObject({ rows: [{ key: waiting.key }], counts: { all: 2, review: 1, failed: 1 }, total: 1 });
     // A failed report whose author asks for a person wants a reviewer too.
     await world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.lab, key: failed.key, comment: "The byline is there." });
-    expect((await list({ show: "review" })).waiting).toBe(2);
+    expect((await list({ show: "review" })).counts.review).toBe(2);
     expect((await list({ q: waiting.key.toLowerCase() })).rows.map((r) => r.key)).toEqual([waiting.key]);
     // Review switched off, the report that waited only for it is ready, with nothing done to it.
     await setReview(world, false);

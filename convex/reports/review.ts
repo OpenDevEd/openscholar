@@ -13,15 +13,17 @@ import { workspaceFrom } from "../workspaces/personal";
 import { REVIEW_TEXT_MAX, STAGES, changesOf, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
 import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
-import { detailsOf, keptDetails, touch } from "./flow";
+import { detailsOf, keptDetails, signedAgreement, touch } from "./flow";
 import { reportSettings } from "./settings";
-import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, type adminRowValidator } from "./validators";
+import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
 
 /** Reports one page of the reviewers' list holds, and the newest of each status the list reads. */
 export const REVIEW_PER_PAGE = 8;
 const STATUS_READ = 500;
 const SHOWS = ["all", "review", ...STAGES.filter((stage) => stage !== "draft" && stage !== "review")] as const;
+type Show = (typeof SHOWS)[number];
 const showValidator = v.union(...SHOWS.map((show) => v.literal(show)));
+const countFields = Object.fromEntries(SHOWS.map((show) => [show, v.number()])) as Record<Show, ReturnType<typeof v.number>>;
 const sortValidator = v.union(v.literal("newest"), v.literal("oldest"), v.literal("title"));
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
@@ -29,6 +31,8 @@ const said = (note: string | undefined) => note?.trim().slice(0, REVIEW_TEXT_MAX
 
 async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof adminRowValidator>> {
   const { key, doi, step, status, approved, flagged, asked, changes, note, registration, deposit, archive, updatedAt } = report;
+  // Its first author, with where they work, as the list names a report's people.
+  const first = (await detailsOf(ctx, report._id)).metadata?.authors[0];
   return {
     key, doi, step, status, registration, deposit, archive, updatedAt,
     ...(approved && { approved }),
@@ -40,6 +44,8 @@ async function row(ctx: QueryCtx, report: Doc<"reports">): Promise<Infer<typeof 
     withdrawn: report.withdrawnAt !== undefined,
     signer: report.signedBy.name,
     coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
+    ...(report.pdf && { pdfAt: report.pdf.at }),
+    ...(first?.name && { first: { name: first.name, ...(first.affiliations[0]?.country && { country: first.affiliations[0].country }) } }),
   };
 }
 
@@ -55,20 +61,21 @@ async function checked(ctx: QueryCtx) {
 /**
  * One page of the reports reviewers work on: every report whose checks have run. `show` keeps one stage, or those
  * that want a reviewer now (waiting for review, failed with its author asking, live with changes waiting); `q`
- * keeps those whose title, key, DOI or signer holds its words. With how many want a reviewer, for the page's tab.
+ * keeps those whose title, key, DOI or signer holds its words. With how many each filter holds.
  */
 export const page = query({
   args: { page: v.number(), show: v.optional(showValidator), sort: v.optional(sortValidator), q: v.optional(v.string()) },
-  returns: v.object({ rows: adminRowsValidator, page: v.number(), pages: v.number(), total: v.number(), waiting: v.number(), humanReview: v.boolean() }),
+  returns: v.object({ rows: adminRowsValidator, page: v.number(), pages: v.number(), total: v.number(), counts: v.object(countFields), series: v.string(), humanReview: v.boolean() }),
   handler: async (ctx, { page, show = "all", sort = "newest", q }) => {
     await refuseApps(ctx);
     await requireAdmin(ctx);
-    const { humanReview } = await reportSettings(ctx);
+    const { humanReview, series } = await reportSettings(ctx);
     const reports = await checked(ctx);
+    const shows = (report: Doc<"reports">, kept: Show) => kept === "all" || (kept === "review" ? wantsReviewer(report, humanReview) : stageOf(report, humanReview) === (kept as Stage));
     const words = (q ?? "").toLowerCase().split(/\s+/).filter(Boolean);
     const text = (report: Doc<"reports">) => `${report.title ?? ""} ${report.key} ${report.doi} ${report.signedBy.name}`.toLowerCase();
     const listed = reports
-      .filter((report) => show === "all" || (show === "review" ? wantsReviewer(report, humanReview) : stageOf(report, humanReview) === (show as Stage)))
+      .filter((report) => shows(report, show))
       .filter((report) => words.every((word) => text(report).includes(word)))
       .sort((a, b) => (sort === "title" ? (a.title ?? "").localeCompare(b.title ?? "") : sort === "oldest" ? a.updatedAt - b.updatedAt : b.updatedAt - a.updatedAt));
     const pages = Math.max(1, Math.ceil(listed.length / REVIEW_PER_PAGE));
@@ -78,7 +85,8 @@ export const page = query({
       page: at,
       pages,
       total: listed.length,
-      waiting: reports.filter((report) => wantsReviewer(report, humanReview)).length,
+      counts: Object.fromEntries(SHOWS.map((kept) => [kept, reports.filter((report) => shows(report, kept)).length])) as Record<Show, number>,
+      series: series.name,
       humanReview,
     };
   },
@@ -266,5 +274,17 @@ export const release = internalMutation({
     // Those released left the index's range; the rest of this step stay, so a full step with any released has more behind it.
     if (waiting.length === RELEASED_PER_STEP && released > 0) await ctx.scheduler.runAfter(0, internal.reports.review.release, {});
     return null;
+  },
+});
+
+/** The agreement a report's author signed, for a reviewer: what its workspace reads at the same address (./flow.ts `agreement`). */
+export const agreement = query({
+  args: { key: v.string() },
+  returns: v.union(v.null(), signedAgreementValidator),
+  handler: async (ctx, { key }) => {
+    await refuseApps(ctx);
+    await requireAdmin(ctx);
+    const report = await byKey(ctx, key);
+    return report ? await signedAgreement(ctx, report) : null;
   },
 });

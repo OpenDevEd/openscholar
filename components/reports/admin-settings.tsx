@@ -62,7 +62,8 @@ const pickButton = (
  * What is open on the page, in its address: the check being edited (its ID, or "new") and the agreement's editor.
  * Opening one is a step in the browser's history, so Back closes it and a link or a reload lands on the same thing.
  */
-const NAV = { check: parseAsString, agreement: parseAsBoolean.withDefault(false) };
+export const SETTINGS_PLACE = { check: parseAsString, agreement: parseAsBoolean.withDefault(false) };
+const NAV = SETTINGS_PLACE;
 
 const Tag = ({ children }: { children: React.ReactNode }) => <span className="shrink-0 rounded bg-background px-1.5 text-2xs tabular-nums text-muted-foreground">{children}</span>;
 

@@ -11,7 +11,7 @@ import { OWNERS_ONLY, detailsOf, keptDetails, mayChange, touch } from "./flow";
 import { changeStageOf } from "../../lib/reports/report";
 import { SAME_PDF_ADVICE, applyChanges, liveSince } from "./corrections";
 import { reportSettings, settingsRow } from "./settings";
-import { checkResultValidator, checkResultsValidator, checkValidator, metadataValidator, runFromValidator } from "./validators";
+import { changeStageValidator, checkResultValidator, checkResultsValidator, checkValidator, metadataValidator, runFromValidator } from "./validators";
 
 /**
  * Starts a run: the author's corrections are saved before anything runs, so a run that fails keeps them, and the
@@ -106,7 +106,8 @@ export const answer = internalMutation({
  */
 export const finish = internalMutation({
   args: { reportId: v.id("reports"), runId: v.string(), results: checkResultsValidator, version: v.number(), /** The changes a run on a live report read. */ metadata: v.optional(metadataValidator) },
-  returns: v.null(),
+  // Where changes to a live report stand after the run: live, or kept beside it at that stage. Null for a first run, or one that was replaced.
+  returns: v.union(v.null(), v.literal("live"), changeStageValidator),
   handler: async (ctx, { reportId, runId, results, version, metadata }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report || report.run?.id !== runId) return null;
@@ -118,15 +119,16 @@ export const finish = internalMutation({
       const settings = await reportSettings(ctx);
       if (!settings.humanReview && results.every((result) => result.pass)) {
         await applyChanges(ctx, (await ctx.db.get("reports", reportId))!, details, { metadata, results, checksVersion: version });
-        return null;
+        return "live" as const;
       }
       // A check the report passed reads the same PDF now: what it says to do about a new PDF can't be done here.
       const passedBefore = new Set((details.results ?? []).filter((result) => result.pass).map((result) => result.checkId));
       const said = results.map((result) => (!result.pass && result.fix && passedBefore.has(result.checkId) ? { ...result, fix: SAME_PDF_ADVICE } : result));
       // These replace any changes that were waiting: a reviewer sees only the latest.
       await ctx.db.patch("reportDetails", details._id, { correction: { metadata, results: said, checksVersion: version, at: Date.now() } });
-      await touch(ctx, (await ctx.db.get("reports", reportId))!, { changes: changeStageOf(details.results, { results: said }) });
-      return null;
+      const stage = changeStageOf(details.results, { results: said });
+      await touch(ctx, (await ctx.db.get("reports", reportId))!, { changes: stage });
+      return stage;
     }
     if (report.step !== "details") return null;
     await ctx.db.patch("reportDetails", details._id, { results, running: undefined, reviewRequest: undefined });

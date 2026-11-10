@@ -13,10 +13,10 @@ import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
-import type { Answer, CheckResult, Metadata } from "../../lib/reports/report";
+import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
 import type { Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
-import { metadataValidator, runFromValidator } from "./validators";
+import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
 
 const QUESTION_RULES = [
   "You answer one yes-or-no question about a report being published, from its details and its PDF's text.",
@@ -75,8 +75,10 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
  */
 export const run = action({
   args: { workspaceId: v.id("workspaces"), key: v.string(), metadata: metadataValidator, from: runFromValidator },
-  returns: v.null(),
-  handler: async (ctx, { workspaceId, key, metadata, from }) => {
+  // Where changes to a live report stand after the run; null for a report's first checks.
+  returns: v.union(v.null(), v.literal("live"), changeStageValidator),
+  // The return is typed because a handler that returns what its own module's functions return has no type to infer.
+  handler: async (ctx, { workspaceId, key, metadata, from }): Promise<"live" | ChangeStage | null> => {
     await refuseApps(ctx);
     const runId = crypto.randomUUID();
     const started = await ctx.runMutation(internal.reports.checkRuns.start, { workspaceId, key, metadata, runId, from });
@@ -102,7 +104,6 @@ export const run = action({
         return result;
       }),
     );
-    await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version, ...(started.changes && { metadata }) });
-    return null;
+    return await ctx.runMutation(internal.reports.checkRuns.finish, { reportId, runId, results, version: started.version, ...(started.changes && { metadata }) });
   },
 });

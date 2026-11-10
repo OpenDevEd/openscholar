@@ -216,7 +216,7 @@ export const reportFileFields = { file: v.id("_storage"), reportId: v.id("report
 export const runFromValidator = v.union(v.object({ pdfAt: v.number() }), v.object({ changesSince: v.number() }));
 
 /** A report as the reviewers' list shows it: a list row without whether it is the reader's, with its DOI and whether its author asked for a person. */
-export const adminRowValidator = v.object({ ...reportRowValidator.omit("mine").fields, doi: v.string(), asked: v.optional(v.boolean()) });
+export const adminRowValidator = v.object({ ...reportRowValidator.omit("mine").fields, doi: v.string(), asked: v.optional(v.boolean()), /** Its first author as typed on the report, with the country they work in. */ first: v.optional(v.object({ name: v.string(), country: v.optional(v.string()) })), /** Its PDF, by when it was uploaded: what a reviewer's word is given on. */ pdfAt: v.optional(v.number()) });
 /** The reviewers' list holds 8 to a page (convex/reports/review.ts `REVIEW_PER_PAGE`). */
 export const adminRowsValidator = capped(v.array(adminRowValidator), 8);
 /** One report as a reviewer reads it. */
@@ -243,3 +243,4 @@ export const adminReportValidator = v.object({
   reviews: capped(v.array(v.object({ decision: reviewDecisionValidator, by: v.string(), at: v.number(), note: v.optional(v.string()) })), 50),
   humanReview: v.boolean(),
 });
+export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
