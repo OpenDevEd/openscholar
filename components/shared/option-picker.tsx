@@ -16,8 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-/** `group` sorts options under a heading; `detail` is a second, quieter line; `icon` is a sign before the name, such as a flag. */
-export type PickerOption = { id: string; name: string; group?: string; detail?: string; icon?: React.ReactNode };
+/** `group` sorts options under a heading; `detail` is a second, quieter line; `icon` is a sign before the name, such as a flag; `mark` one after it, such as ROR's. */
+export type PickerOption = { id: string; name: string; group?: string; detail?: string; icon?: React.ReactNode; mark?: React.ReactNode; /** Shown but not to be picked, such as a result for words since changed. */ disabled?: boolean };
 
 /** A searchable multi-select in a popover, with the choices as removable chips below. */
 export function OptionPicker({
@@ -31,7 +31,9 @@ export function OptionPicker({
   selected,
   names,
   icons,
+  after,
   onSearch,
+  busy,
   onToggle,
 }: {
   label: string;
@@ -45,8 +47,12 @@ export function OptionPicker({
   names: Record<string, string>;
   /** What each chip shows before its name, as its row does, such as a country's flag. */
   icons?: Record<string, React.ReactNode>;
+  /** What each chip shows after its name, such as a link to the record elsewhere. */
+  after?: Record<string, React.ReactNode>;
   /** Given when the caller searches; otherwise the list filters itself. */
   onSearch?: (value: string) => void;
+  /** The caller's search is under way: its search box says so. */
+  busy?: boolean;
   onToggle: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -84,6 +90,7 @@ export function OptionPicker({
             searchPlaceholder={searchPlaceholder}
             emptyText={emptyText}
             onSearch={onSearch}
+            busy={busy}
             onToggle={onToggle}
           />
         </PopoverContent>
@@ -98,6 +105,7 @@ export function OptionPicker({
                   {names[id] ?? id}
                 </span>
               </TooltipHint>
+              {after?.[id]}
               <button
                 type="button"
                 aria-label={removeLabel(names[id] ?? id)}
@@ -120,12 +128,13 @@ const FIRST_ROWS = 40;
 const rowValue = (option: PickerOption) => `${option.name} ${option.id}`;
 
 /** The search box and the rows. It lives inside the popover, so it starts afresh each time that opens. */
-function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch, onToggle }: {
+function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch, busy, onToggle }: {
   options: readonly PickerOption[];
   selected: readonly string[];
   searchPlaceholder: string;
   emptyText: string;
   onSearch?: (value: string) => void;
+  busy?: boolean;
   onToggle: (id: string) => void;
 }) {
   // A long list (every country) opens with its first rows, and React adds the rest when it is free.
@@ -133,9 +142,15 @@ function OptionList({ options, selected, searchPlaceholder, emptyText, onSearch,
   // the list settle on the first row of each new search.
   const complete = useDeferredValue(true, false);
   const list = useRef<HTMLDivElement>(null);
+  // A list the caller searches can change under the highlighted row, as when a record named exactly as typed takes
+  // the typed row's place: the first row is then highlighted, so Enter always picks something.
+  const [chosen, setChosen] = useState("");
+  const values = options.map(rowValue);
+  const highlighted = values.some((value) => value.toLowerCase() === chosen.toLowerCase()) ? chosen : (values[0] ?? "");
   return (
-    <Command shouldFilter={!onSearch}>
+    <Command shouldFilter={!onSearch} {...(onSearch && { value: highlighted, onValueChange: setChosen })}>
       <CommandInput
+        busy={busy}
         placeholder={searchPlaceholder}
         onValueChange={(text) => {
           onSearch?.(text);
@@ -163,6 +178,7 @@ function OptionRows({ options: shown, selected, onToggle }: {
         <CommandItem
           key={option.id}
           value={rowValue(option)}
+          disabled={option.disabled}
           // The search box keeps the focus, so typing goes on after a click.
           onMouseDown={(event) => event.preventDefault()}
           onSelect={() => onToggle(option.id)}
@@ -183,6 +199,7 @@ function OptionRows({ options: shown, selected, onToggle }: {
               </TooltipHint>
             ) : null}
           </span>
+          {option.mark}
         </CommandItem>
       ))}
     </CommandGroup>

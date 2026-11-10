@@ -7,6 +7,8 @@ import { FilterName } from "@/components/paper-card/shared";
 import { authorValue, useAuthorFilter, useInstitutionFilter, useJournalFilter } from "@/components/paper-card/hooks";
 import { buildShareableUrl } from "@/lib/search-params";
 import { rememberFunderNames } from "@/lib/openalex/use-record-names";
+import { RorIcon } from "@/components/icons/author-service-icons";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { PaperInstitution } from "@/lib/papers/paper-detail";
 
@@ -36,6 +38,17 @@ export function InstitutionName({ institution, className }: { institution: Paper
     <InstitutionHoverCard id={id} name={name}>
       <FilterName pressed={false} label={tf("filterByThisInstitution", { name })} onToggle={() => filter.toggle({ value: id, name })} className={className}>{name}</FilterName>
     </InstitutionHoverCard>
+  );
+}
+
+/** An institution's ROR mark, which opens its record on ror.org; `label` names the institution for a screen reader. */
+export function RorLink({ ror, label, className }: { ror: string; label: string; className?: string }) {
+  return (
+    <TooltipHint label={label}>
+      <a href={ror} target="_blank" rel="noreferrer" aria-label={label} className={cn("inline-flex h-4 shrink-0 items-center rounded-sm px-0.5 opacity-80 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-ring", className)}>
+        <RorIcon />
+      </a>
+    </TooltipHint>
   );
 }
 

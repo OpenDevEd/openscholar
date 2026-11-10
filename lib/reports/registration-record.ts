@@ -59,7 +59,8 @@ function creator(author: Metadata["authors"][number], institutions: RegistryIds[
   const affiliations = author.affiliations
     .filter((affiliation) => affiliation.name.trim())
     .map((affiliation) => {
-      const ror = affiliation.id ? rorKey(institutions[openAlexKey(affiliation.id)]) : undefined;
+      // The ROR ID the affiliation was picked or read with, else the one OpenAlex gives its institution now.
+      const ror = rorKey(affiliation.ror) ?? (affiliation.id ? rorKey(institutions[openAlexKey(affiliation.id)]) : undefined);
       return { name: affiliation.name.trim(), ...(ror && { ror }), ...(/^[A-Z]{2}$/.test(affiliation.country) && { country: affiliation.country }) };
     });
   return {
