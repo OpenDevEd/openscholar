@@ -493,7 +493,7 @@ export const settle = action({
   handler: async (ctx, { workspaceId, card }): Promise<null> => {
     await refuseApps(ctx);
     await actorIn(ctx, workspaceId);
-    if (card) await refreshAccount(ctx, workspaceId, { card: true });
+    if (card) await refreshAccount(ctx, workspaceId, { card: true, newestCard: true });
     await settlePending(ctx, workspaceId);
     return null;
   },

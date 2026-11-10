@@ -24,7 +24,7 @@ import {
 } from "./validators";
 import { EVIDENCE_LIBRARIES_FEATURE, ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
-import { stripeCredit } from "./stripeRest";
+import { stripeCredit, defaultToNewestCard } from "./stripeRest";
 
 /** A person's own workspace, if they still have one: whose billing their own billing page shows. */
 export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
@@ -248,11 +248,16 @@ async function captureBillingChanges(
 export async function refreshAccount(
   ctx: ActionCtx,
   workspaceId: Id<"workspaces">,
-  options: { email?: string; name?: string; card?: boolean } = {},
+  options: { email?: string; name?: string; card?: boolean; newestCard?: boolean } = {},
 ): Promise<BillingAccountSnapshot> {
   const fetchedAt = Date.now();
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
   let customer = await autumn.customer(customerId, options);
+  // Back from saving a card on Stripe's page: that card is the one charged from now on.
+  if (options.newestCard && customer.stripe_id) {
+    await defaultToNewestCard(customer.stripe_id);
+    customer = await autumn.customer(customerId, options);
+  }
   // A failed payment's invoice is read only while one is due, which is rare.
   if (customer.subscriptions.some((subscription) => subscription.past_due)) customer = await autumn.customer(customerId, { ...options, invoices: true });
   // The card's read also reads the credit on the Stripe balance, which a purchase is paid from first.

@@ -48,6 +48,22 @@ export async function stripeCredit(customer: string): Promise<number | undefined
   }
 }
 
+/**
+ * Makes the card saved last the one the customer is charged. Autumn makes a card saved on Stripe's page the default
+ * only when there was none, so a second card saved to replace the first would never be charged. A failure is logged
+ * and leaves the cards as they were.
+ */
+export async function defaultToNewestCard(customer: string) {
+  try {
+    const [read, cards] = await Promise.all([stripe(`customers/${encodeURIComponent(customer)}`), stripe(`customers/${encodeURIComponent(customer)}/payment_methods?type=card&limit=1`)]);
+    const newest = (cards.data as Array<{ id: string }> | undefined)?.[0]?.id;
+    const current = (read.invoice_settings as { default_payment_method?: string | null } | undefined)?.default_payment_method;
+    if (newest && newest !== current) await stripe(`customers/${encodeURIComponent(customer)}`, { form: { "invoice_settings[default_payment_method]": newest } });
+  } catch (error) {
+    console.error(JSON.stringify({ event: "newest-card-not-default", customer, error: String(error).slice(0, 400) }));
+  }
+}
+
 /** An invoice with the payment Stripe tried for it: amounts in cents. */
 async function invoiceOf(invoice: string) {
   const read = await stripe(`invoices/${encodeURIComponent(invoice)}?expand[]=payments.data.payment.payment_intent`);
