@@ -36,10 +36,13 @@ describe("a report's page", () => {
     vi.useFakeTimers();
     try {
       const world = await setup();
-      const { key } = await live(world);
+      const { key, reportId } = await live(world);
       const before = (await row(world.t, key)).pdf!.file;
       await decide(world, key, "withdraw");
       await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+      // Withdrawing schedules this. It is also run here by hand, so the test doesn't hang on when the scheduler got
+      // to it: run twice, it moves the files once more, which changes nothing this test looks at.
+      await world.t.action(internal.reports.files.rotate, { reportId });
       const after = await row(world.t, key);
       expect(after.pdf!.file).not.toBe(before);
       expect(await world.t.run((ctx) => ctx.db.system.get(before))).toBeNull();
