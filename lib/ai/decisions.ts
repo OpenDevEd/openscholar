@@ -8,8 +8,8 @@ import { openRouterUsageCost } from './pick-provider-cost'
 export const JEV_MODEL = 'typesafe/jev-1.13'
 const DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisions'
 
-/** Models answered through the Decisions API rather than text generation: TypeSafe's Jev and Nace's Drex. */
-export const isDecisionModel = (modelSlug: string) => modelSlug.startsWith('typesafe/jev') || modelSlug.startsWith('nace-ai/drex')
+/** Models answered through the Decisions API rather than text generation. */
+export const isDecisionModel = (modelSlug: string) => modelSlug.startsWith('typesafe/jev')
 
 /** A failed decisions call, with the HTTP status the error classifier reads and OpenRouter's reason. */
 export class DecisionsError extends Error {

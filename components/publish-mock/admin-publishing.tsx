@@ -68,7 +68,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { Field } from "@/components/evidence-libraries/configuration/section-card";
 import { PublicationForm } from "@/components/evidence-libraries/configuration/sections/publication-section";
 import { PROVIDER_NAME, RegistrationChips, standingOf, stepTone, stepWords } from "@/components/publish-mock/registration";
-import { DREX, REVIEW_TEXT_MAX, bylineOf, canRegister, changesOf, correctionStageOf, doiOf, providersOf, stageOf, wantsReviewer, type Account, type Check as CheckDef, type Email, type LimitOverride, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
+import { JEV, REVIEW_TEXT_MAX, bylineOf, canRegister, changesOf, correctionStageOf, doiOf, providersOf, stageOf, wantsReviewer, type Account, type Check as CheckDef, type Email, type LimitOverride, type MockState, type Review, type Settings, type Stage, type Submission } from "@/lib/publish-mock/types";
 import { cn } from "@/lib/utils";
 
 const VIEWS = ["submissions", "settings"] as const;
@@ -1162,7 +1162,7 @@ function CheckSettingRow({ check, onEdit, onToggle }: { check: CheckDef; onEdit:
 
 /** The longest "how to fix it" line a check carries. */
 const FIX_MAX = 300;
-const BLANK: CheckDef = { id: "", name: "", question: "", model: DREX, threshold: 0.7, blocking: true, enabled: true };
+const BLANK: CheckDef = { id: "", name: "", question: "", model: JEV, threshold: 0.7, blocking: true, enabled: true };
 
 /** A check: a yes-or-no question, the model that answers it, how sure of yes it must be, and what a fail does. */
 function CheckDialog({ check, onClose, onSaved }: { check: CheckDef | "new" | null; onClose: () => void; onSaved: (s: Settings) => void }) {

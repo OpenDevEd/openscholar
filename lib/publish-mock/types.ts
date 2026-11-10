@@ -3,17 +3,14 @@
 
 import type { Effort } from "@/lib/ai/core/call-options";
 import type { PublicationSettings } from "@/convex/evidenceLibraries/publicationValidators";
+import { JEV_MODEL } from "@/lib/ai/decisions";
 
 /** A model a check or the metadata reader runs on, as the model picker gives it, with the effort it runs at. */
 export type LlmModel = { id: string; name: string; inputPricePerMillion: number; outputPricePerMillion: number; effort?: Effort; reasoningEfforts?: Effort[] };
 /** GPT-6 Luna at medium: read 30 of our communities' reports as well as Opus 5.5 and GPT-6.1 Sol, at a fiftieth of Opus's cost (2026-11-09). */
 export const DEFAULT_LLM: LlmModel = { id: "openai/gpt-6-luna", name: "GPT-6 Luna", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, effort: "medium", reasoningEfforts: ["low", "medium", "high"] };
-/**
- * Nace's Drex Max: a decision model, answering yes or no with how sure it is. A report's checks run on it. On
- * 2026-11-10 it gave Jev 1.13's answer to all twelve check questions asked of four reports, in about a second a
- * report, at $0.06 a million tokens read against Jev's $0.042.
- */
-export const DREX: LlmModel = { id: "nace-ai/drex-max", name: "Drex Max", inputPricePerMillion: 0.06, outputPricePerMillion: 0 };
+/** TypeSafe's Jev: a decision model, answering yes or no with how sure it is, as screening uses it. */
+export const JEV: LlmModel = { id: JEV_MODEL, name: "Jev 1.13", inputPricePerMillion: 0.042, outputPricePerMillion: 0 };
 
 /**
  * A check is a yes-or-no question about the report, answered by a model: a decision model like Jev, or an LLM, which
