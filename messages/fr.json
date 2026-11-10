@@ -4492,6 +4492,11 @@
         "did": "Demandes activées ou désactivées",
         "where": "Evidence Communities",
         "ask": "Activer ou désactiver les demandes"
+      },
+      "readReports": {
+        "doing": "Lecture de vos rapports",
+        "did": "Rapports lus",
+        "where": "Publier"
       }
     },
     "asks": {

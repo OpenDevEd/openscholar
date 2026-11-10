@@ -4492,6 +4492,11 @@
         "did": "参加申請の受付を切り替えました",
         "where": "Evidence Community",
         "ask": "参加申請の受付を切り替える"
+      },
+      "readReports": {
+        "doing": "レポートを読み込み中",
+        "did": "レポートを読み込みました",
+        "where": "公開"
       }
     },
     "asks": {

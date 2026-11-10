@@ -4492,6 +4492,11 @@
         "did": "Turned applications to join on or off",
         "where": "Evidence Communities",
         "ask": "Turn applications to join on or off"
+      },
+      "readReports": {
+        "doing": "Reading your reports",
+        "did": "Read your reports",
+        "where": "Publish"
       }
     },
     "asks": {

@@ -7,7 +7,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { refuseApps } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { workspaceMutation, workspaceQuery } from "../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspaceQuery } from "../lib/userActions";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
@@ -17,7 +17,7 @@ import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { metadataValidator, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
+import { metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -139,14 +139,20 @@ async function uploaded(ctx: MutationCtx, file: Id<"_storage">) {
 }
 
 /** How many more reports the workspace may start at `now`, which the page gives so this query doesn't read the clock. */
-export const starts = workspaceQuery({
+export const startsAction = defineUserQuery({
+  path: "reports/flow:starts",
+  description:
+    "How many more reports the workspace may start today on Openscholar Reports: its daily limit (`perDay`), how many are left (`left`), and whether the workspace is a person's own or an organization's. " +
+    "`now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
   returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.number(), left: v.number(), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()) }),
-  handler: async (ctx, { userId, workspaceId }, { now }) => {
+  run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }) };
   },
 });
+export const starts = userQuery(startsAction);
+export const startsForAssistant = assistantQuery(startsAction);
 
 /**
  * Signs the agreement, which starts a report of the workspace's and reserves its DOI. Each signing starts one, and a
@@ -441,10 +447,14 @@ async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise
 const newest = (ctx: QueryCtx, workspaceId: Id<"workspaces">) => ctx.db.query("reports").withIndex("by_workspaceId_and_updatedAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").take(MAX_WORKSPACE_REPORTS);
 
 /** One page of the workspace's reports, the one changed last first. `show` keeps those at one stage. A page past the last answers the last. */
-export const page = workspaceQuery({
+export const pageAction = defineUserQuery({
+  path: "reports/flow:page",
+  description:
+    "A page of the reports the workspace has on Openscholar Reports, the one changed last first: each with its key (R…), title, who signed it, and its stage (draft, failed, review, ready, live or declined). " +
+    "`page` counts from 1; `show` keeps those at one stage. The answer says the page given, how many pages there are and the total. reports/flow:get reads one of them in full.",
   args: { page: v.number(), show: v.optional(stageValidator) },
   returns: v.object({ rows: reportRowsValidator, page: v.number(), pages: v.number(), total: v.number() }),
-  handler: async (ctx, actor, { page, show }) => {
+  run: async (ctx, actor, { page, show }) => {
     const { humanReview } = await reportSettings(ctx);
     const reports = await newest(ctx, actor.workspaceId);
     const listed = show ? reports.filter((report) => stageOf(report, humanReview) === show) : reports;
@@ -453,6 +463,8 @@ export const page = workspaceQuery({
     return { rows: await Promise.all(listed.slice((at - 1) * REPORTS_PER_PAGE, at * REPORTS_PER_PAGE).map((report) => row(ctx, actor, report))), page: at, pages, total: listed.length };
   },
 });
+export const page = userQuery(pageAction);
+export const pageForAssistant = assistantQuery(pageAction);
 
 const countFields = Object.fromEntries(STAGES.map((stage) => [stage, v.number()])) as Record<Stage, ReturnType<typeof v.number>>;
 
@@ -460,10 +472,12 @@ const countFields = Object.fromEntries(STAGES.map((stage) => [stage, v.number()]
  * How many of the workspace's reports are at each stage, and how many are under way: with one, Publish carries on
  * with it (`only`), with several it opens the list, with none a new report.
  */
-export const counts = workspaceQuery({
+export const countsAction = defineUserQuery({
+  path: "reports/flow:counts",
+  description: "How many reports the workspace has on Openscholar Reports at each stage (draft, failed, review, ready, live, declined), in all (`all`), and how many are still under way (`underWay`). `only` is the key of the one under way when there is exactly one.",
   args: {},
   returns: v.object({ ...countFields, all: v.number(), underWay: v.number(), only: v.union(v.string(), v.null()) }),
-  handler: async (ctx, { workspaceId }) => {
+  run: async (ctx, { workspaceId }) => {
     const { humanReview } = await reportSettings(ctx);
     const reports = await newest(ctx, workspaceId);
     const tally = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<Stage, number>;
@@ -472,6 +486,8 @@ export const counts = workspaceQuery({
     return { ...tally, all: reports.length, underWay: going.length, only: going.length === 1 ? going[0]!.key : null };
   },
 });
+export const counts = userQuery(countsAction);
+export const countsForAssistant = assistantQuery(countsAction);
 
 const reportValidator = v.object({
   ...rowValidator.fields,
@@ -487,7 +503,7 @@ const reportValidator = v.object({
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
   pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
-  results: v.optional(plainResults),
+  results: optionalPlainResults,
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
   trying: v.optional(metadataValidator),
   correction: v.optional(v.object({ metadata: metadataValidator, results: plainResults, at: v.number(), request: v.optional(v.object({ comment: v.string(), at: v.number() })), declined: v.optional(v.object({ at: v.number(), note: v.optional(v.string()) })) })),
@@ -502,10 +518,14 @@ const plain = (results: Doc<"reportDetails">["results"]) => results?.map(({ mode
  * behind each check's answer, and who reviewed it. A report of another workspace the person is in is named by
  * `elsewhere`, so a link from an email opens it where it lives; anything else is null.
  */
-export const get = workspaceQuery({
+export const getAction = defineUserQuery({
+  path: "reports/flow:get",
+  description:
+    "One of the workspace's reports on Openscholar Reports, by its key (R…): where it stands (its step and status, whether a reviewer approved it, whether changes to a live report are waiting), its DOI, its details as they are now, " +
+    "what each check said, and a reviewer's note. A report of another workspace the person is in answers `elsewhere` with that workspace's name; anything else is null. Its page, once live, is /papers/<key>.",
   args: { key: v.string() },
   returns: v.union(v.object({ report: reportValidator }), v.object({ elsewhere: v.object({ name: v.string(), slug: v.union(v.string(), v.null()) }) }), v.null()),
-  handler: async (ctx, actor, { key }) => {
+  run: async (ctx, actor, { key }) => {
     const report = await byKey(ctx, key);
     if (!report) return null;
     if (report.workspaceId !== actor.workspaceId) {
@@ -541,6 +561,8 @@ export const get = workspaceQuery({
     };
   },
 });
+export const get = userQuery(getAction);
+export const getForAssistant = assistantQuery(getAction);
 
 /** The agreement a report's author signed, in the wording of the version they signed, with who signed and when and what the report has become since. */
 export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {

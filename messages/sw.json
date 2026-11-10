@@ -4493,6 +4493,11 @@
         "did": "Iliwasha au kuzima maombi ya kujiunga",
         "where": "Evidence Communities",
         "ask": "Washa au zima maombi ya kujiunga"
+      },
+      "readReports": {
+        "doing": "Inasoma ripoti zako",
+        "did": "Imesoma ripoti zako",
+        "where": "Chapisha"
       }
     },
     "asks": {

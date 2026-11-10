@@ -75,6 +75,8 @@ export const checkResultsValidator = capped(v.array(checkResultValidator), MAX_C
 const optionalResults = capped(v.optional(v.array(checkResultValidator)), MAX_CHECKS);
 /** The answers as an author's page gets them: without the model behind each. */
 export const plainResults = capped(v.array(v.object(checkResultValidator.omit("model").fields)), MAX_CHECKS);
+/** The same list where a report may have none yet: the cap is told through the optional, as `optionalResults` is. */
+export const optionalPlainResults = capped(v.optional(v.array(v.object(checkResultValidator.omit("model").fields))), MAX_CHECKS);
 
 const affiliationValidator = v.object({ id: v.union(v.string(), v.null()), name: v.string(), country: v.string() });
 export const metadataValidator = v.object({

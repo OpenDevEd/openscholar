@@ -4492,6 +4492,11 @@
         "did": "Ivulile noma ivalile izicelo zokujoyina",
         "where": "Evidence Communities",
         "ask": "Vula noma vala izicelo zokujoyina"
+      },
+      "readReports": {
+        "doing": "Ifunda imibiko yakho",
+        "did": "Ifunde imibiko yakho",
+        "where": "Shicilela"
       }
     },
     "asks": {

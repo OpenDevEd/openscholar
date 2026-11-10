@@ -170,7 +170,8 @@
     "evidenceLibraries/submissions:recentCommunities": "evidenceLibraries/assistant:submissions",
     "evidenceLibraries/submissions:sentTo": "evidenceLibraries/assistant:submissions",
     "evidenceLibraries/collectionSources:connectCollectionSource": "evidenceLibraries/assistant:connectCollection",
-    "evidenceLibraries/mutations:activateConfiguration": "evidenceLibraries/assistant:putLive"
+    "evidenceLibraries/mutations:activateConfiguration": "evidenceLibraries/assistant:putLive",
+    "reports/paper:get": "research/papers:get"
   },
   "manual": {
     "evidenceLibraries/releases:overview": "Site administration, for Openscholar's own admins on the admin pages.",
@@ -295,12 +296,7 @@
     "reports/flow:typeChanges": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public."
   },
   "pending": {
-    "evidenceLibraries/collectionSources:listCollectionSources": "#329",
-    "reports/flow:get": "#1213",
-    "reports/flow:counts": "#1213",
-    "reports/flow:starts": "#1213",
-    "reports/flow:page": "#1213",
-    "reports/paper:get": "#1213"
+    "evidenceLibraries/collectionSources:listCollectionSources": "#329"
   },
   "inWorkspace": [
     "research/records",

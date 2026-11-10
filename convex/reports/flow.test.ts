@@ -304,5 +304,12 @@ describe("a workspace's list of reports", () => {
     // A page past the last answers the last, and says which it is.
     expect(await world.author.query(api.reports.flow.page, { workspaceId: world.lab, page: 999, show: "failed" })).toMatchObject({ rows: [{ key: failed.key }], page: 1, pages: 1, total: 1 });
     expect(await world.author.query(api.reports.flow.counts, { workspaceId: world.lab })).toMatchObject({ all: 3, draft: 1, failed: 1, ready: 1, underWay: 3, only: null });
+    // The assistant reads the same, as the person who asked: which reports the workspace has, and where one stands.
+    const asked = { userId: world.authorId, workspaceId: world.lab };
+    expect((await world.t.query(internal.reports.flow.pageForAssistant, { ...asked, page: 1 })).rows.map((r) => r.key)).toEqual([draft, failed.key, ready.key]);
+    expect(await world.t.query(internal.reports.flow.getForAssistant, { ...asked, key: failed.key })).toMatchObject({ report: { key: failed.key, status: "failed" } });
+    expect(await world.t.query(internal.reports.flow.countsForAssistant, asked)).toMatchObject({ all: 3, underWay: 3 });
+    // Someone outside the organisation is told nothing of its reports through it.
+    await expect(world.t.query(internal.reports.flow.pageForAssistant, { userId: world.strangerId, workspaceId: world.lab, page: 1 })).rejects.toThrow();
   });
 });
