@@ -23,6 +23,13 @@ const emailed = async (world: World, key: string) => {
 const decide = async (world: World, key: string, decision: "approve" | "decline" | "withdraw" | "reinstate", note?: string) =>
   world.reviewer.mutation(api.reports.review.decide, { key, decision, seenPdfAt: (await row(world.t, key)).pdf!.at, ...(note && { note }) });
 
+/** What a form of changes opened now would be opened on: the changes that wait, else the live details. */
+const openedOn = async (world: World, key: string) => {
+  const report = await row(world.t, key);
+  const details = await world.t.run((ctx) => ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", report._id)).unique());
+  return details!.correction?.at ?? report.correctedAt ?? report.activatedAt!;
+};
+
 describe("the emails about a report", () => {
   it("tell the team it went live and its author too, and nothing before", async () => {
     const world = await setup();
@@ -67,7 +74,7 @@ describe("the emails about a report", () => {
     await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
     const change = async (title: string) => {
       const report = await row(world.t, key);
-      await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details(title), runId: `run-${title}`, from: { changesSince: report.correctedAt ?? report.activatedAt! } });
+      await world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details(title), runId: `run-${title}`, from: { changesSince: await openedOn(world, key) } });
       await world.t.mutation(internal.reports.checkRuns.finish, { reportId, runId: `run-${title}`, results: [passed("byline")], version: 1, metadata: details(title) });
       return (await world.t.run((ctx) => ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).unique()))!.correction!.at;
     };

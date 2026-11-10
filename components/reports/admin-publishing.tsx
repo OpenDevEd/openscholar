@@ -60,7 +60,7 @@ export function AdminPublishing() {
               version={editable.updatedAt}
               words={{
                 title: "Edit the details",
-                intro: live ? `${editable.key} is live. Your edit goes live at once, and the report registers again.` : `${editable.key} isn't live yet. Your edit is saved at once.`,
+                intro: live ? `${editable.key} is live. Saving puts your edit live at once, without the checks, and the report registers again.` : `${editable.key} isn't live yet. Saving puts your edit in place at once, without the checks.`,
                 action: "Save the details",
               }}
               onRun={async (metadata, seenAt) => {

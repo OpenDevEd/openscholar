@@ -32,6 +32,12 @@ export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, det
   return changed;
 }
 
+/**
+ * What a form of changes was opened on, by the number that tells one state from the next: the changes that wait,
+ * which the form shows when there are any, else the report's details as they were last set.
+ */
+export const formVersion = (report: Pick<Doc<"reports">, "activatedAt" | "correctedAt">, details: Pick<Doc<"reportDetails">, "correction">) => details.correction?.at ?? liveSince(report);
+
 /** When a live report's details were last set: what a form of changes started from. */
 export const liveSince = (report: Pick<Doc<"reports">, "activatedAt" | "correctedAt">) => report.correctedAt ?? report.activatedAt;
 

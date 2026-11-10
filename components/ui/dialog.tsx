@@ -161,6 +161,22 @@ function DialogDescription({
 
 type FocusEvents = { onOpenAutoFocus?: (event: Event) => void; onCloseAutoFocus?: (event: Event) => void }
 
+/** The control pressed last, and when: what opened a dialog in a browser that doesn't focus what it clicks. */
+let pressed: { control: HTMLElement; at: number } | null = null
+/** How long after a press a dialog that opens counts as opened by it. */
+const PRESSED_MS = 1500
+// The page's pointer is the outside system: one listener for the page's life, kept by the module.
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const control = event.target instanceof Element ? event.target.closest<HTMLElement>("button, a[href], [role='button'], [tabindex]:not([tabindex='-1'])") : null
+      pressed = control ? { control, at: Date.now() } : null
+    },
+    true
+  )
+}
+
 /**
  * Gives the focus back to what had it when the dialog opened, once it closes. Radix does that only for a dialog
  * opened by its own trigger: one opened by state or by the address, as most here are, left the focus on the page's
@@ -170,8 +186,10 @@ function useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus }: FocusEvents): Req
   const opener = React.useRef<HTMLElement | null>(null)
   return {
     onOpenAutoFocus: (event) => {
-      // Still what the person pressed: the dialog takes the focus after this.
-      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      // Still what the person pressed: the dialog takes the focus after this. Safari doesn't focus a button it
+      // clicks, so there the control pressed a moment ago stands in for the one that would have had the focus.
+      const focused = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null
+      opener.current = focused ?? (pressed && Date.now() - pressed.at < PRESSED_MS ? pressed.control : null)
       onOpenAutoFocus?.(event)
     },
     onCloseAutoFocus: (event) => {
