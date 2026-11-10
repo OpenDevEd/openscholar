@@ -14,11 +14,14 @@ describe("a report's page", () => {
     expect(await world.t.query(api.reports.paper.get, { key: waiting.key })).toBeNull();
     expect(await world.t.query(internal.reports.paper.doiOf, { key: waiting.key })).toBeNull();
     expect(await world.t.query(api.reports.paper.get, { key: "R999999" })).toBeNull();
+    expect(await world.t.query(api.reports.paper.keyByDoi, { doi: (await row(world.t, waiting.key)).doi })).toBeNull();
 
     const { key } = await live(world, world.author, world.lab);
     const page = await world.t.query(api.reports.paper.get, { key });
     expect(page).toMatchObject({ state: "live", key, doi: "10.53832/openscholar-r.r100002", metadata: { title: "Shade trees and maize yields" }, series: { name: "Openscholar Reports" } });
     expect(await world.t.query(internal.reports.paper.doiOf, { key })).toBe("10.53832/openscholar-r.r100002");
+    // A DOI link may carry the DOI in any case.
+    expect(await world.t.query(api.reports.paper.keyByDoi, { doi: "10.53832/OPENSCHOLAR-R.R100002" })).toBe(key);
   });
 
   it("says a withdrawn report was withdrawn, without its details or its files, until it is reinstated", async () => {
@@ -30,6 +33,8 @@ describe("a report's page", () => {
     expect(page).not.toHaveProperty("metadata");
     expect(page).not.toHaveProperty("pdfUrl");
     expect(await world.t.query(internal.reports.paper.doiOf, { key })).toBeNull();
+    // Its page still says it was withdrawn, so its DOI's link still leads there.
+    expect(await world.t.query(api.reports.paper.keyByDoi, { doi: (await row(world.t, key)).doi })).toBe(key);
     await decide(world, key, "reinstate");
     expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ state: "live" });
   });

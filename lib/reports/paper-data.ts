@@ -9,3 +9,6 @@ import { isReportKey } from "./report";
  * a request and never kept longer, so a correction or a withdrawal shows on the next visit.
  */
 export const readReport = cache(async (key: string) => (isReportKey(key) ? await fetchQuery(api.reports.paper.get, { key }) : null));
+
+/** The report a DOI names, live or withdrawn after going live; null for any other DOI. Never kept: a report goes live at any time. */
+export const readReportKeyByDoi = (doi: string) => fetchQuery(api.reports.paper.keyByDoi, { doi });

@@ -94,6 +94,7 @@
     "reports/flow:agreement": "The signed agreement's own page, which a report's workspace opens from the report to read, save or print.",
     "reports/settings:open": "Whether the sidebar shows Publish. The assistant doesn't publish reports.",
     "reports/paper:mine": "Whether a report's page offers the person reading it the way to correct it. The assistant doesn't publish reports.",
+    "reports/paper:keyByDoi": "A DOI link's redirect to its report's page (app/papers/doi). The assistant reads a report by its key.",
     "app/actions/people-lookup:findOrcid": "A form's ORCID iD picker searching ORCID as someone types: the form saves the iD they pick (a report's details, the profile setup).",
     "app/actions/people-lookup:findRor": "A form's institution picker searching ROR as someone types: the form saves the institution they pick.",
     "users/profileSetup:get": "A person's own profile setup answers, for the setup page and Settings › Profile to show.",
