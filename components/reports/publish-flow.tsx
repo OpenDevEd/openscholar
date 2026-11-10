@@ -94,6 +94,8 @@ const PLACE = {
   report: parseAsString,
   /** A live report's details open to be corrected. */
   correct: parseAsBoolean.withDefault(false),
+  /** A report still without its PDF, opened at its upload: before that it shows its DOI. */
+  step: parseAsStringLiteral(["upload"] as const),
   show: parseAsStringLiteral(SHOWS).withDefault("all"),
   page: parseAsInteger.withDefault(1),
 };
@@ -103,7 +105,7 @@ export function PublishFlow() {
   const workspaceId = useWorkspace();
   // In an organisation's workspace every member sees its reports, so each row says who signed.
   const shared = useWorkspaceSlug() !== undefined;
-  const [{ view, report: asked, correct, show, page }, setPlace] = useQueryStates(PLACE);
+  const [{ view, report: asked, correct, step: at, show, page }, setPlace] = useQueryStates(PLACE);
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
@@ -148,7 +150,12 @@ export function PublishFlow() {
     );
   }
 
-  const report = found && "report" in found ? found.report : null;
+  const saved = found && "report" in found ? found.report : null;
+  // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
+  // address's: opening the upload is a step forward, and Back from it returns to the DOI.
+  const report = saved?.step === "doi" && (at === "upload" || saved.pdf) ? { ...saved, step: "upload" as const } : saved;
+  // A step the report is sent to is its own from then on, whatever the address said before.
+  const ownStep = () => void (at && setPlace({ step: null }));
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
   const missing = !listed && shownKey !== "new" && !report;
   const another = () => {
@@ -182,7 +189,7 @@ export function PublishFlow() {
           </Button>
         ) : undefined
       }
-      intro={!listed && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} /> : undefined}
+      intro={!listed && !missing && !closed ? <StepTrail report={report} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
     >
       {listed ? (
         <div className={cn("transition-opacity", !list && "opacity-60")} aria-busy={!list || undefined}>
@@ -264,6 +271,8 @@ export function PublishFlow() {
             onSigned={(key) => void setPlace({ report: key })}
             onAnother={another}
             correcting={correct}
+            onUpload={() => go({ step: "upload" })}
+            onStep={ownStep}
             onCorrect={() => go({ correct: true })}
             onCorrected={() => up("correct")}
           />
@@ -275,7 +284,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh, onSigned, onAnother, correcting, onUpload, onStep, onCorrect, onCorrected }: { basics: Basics; report: Report | null; starts: Starts | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -290,6 +299,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
   const here = { workspaceId: workspaceId! };
   const back = (step: BackStep) => {
     setFresh(null);
+    onStep();
     if (report) void goTo({ ...here, key: report.key, step }).catch(said("That step couldn't be opened"));
   };
   // A run that has gone on too long is given up on here, so its author can run the checks again.
@@ -320,7 +330,7 @@ function Screens({ basics, report, starts, shared, workspaceId, fresh, setFresh,
           ) : busy ? (
             <Checks rows={basics.checks.map((check) => ({ id: check.id, name: check.name, result: report.run?.results.find((result) => result.checkId === check.id) }))} report={null} humanReview={basics.humanReview} />
           ) : report.step === "doi" ? (
-            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={() => back("upload")} />
+            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
           ) : report.step === "upload" ? (
             <UploadStep report={report} workspaceId={workspaceId!} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
@@ -416,7 +426,7 @@ function usePassed(at: number | undefined) {
 }
 
 /** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
-function StepTrail({ report, humanReview, workspaceId }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined }) {
+function StepTrail({ report, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
   const reduce = useReducedMotion();
   const goTo = useMutation(api.reports.flow.goTo);
   const running = report?.step === "details" && !!report.run;
@@ -444,7 +454,7 @@ function StepTrail({ report, humanReview, workspaceId }: { report: Report | null
           return (
             <li key={s.id} className="min-w-0">
               {clickable ? (
-                <button type="button" onClick={() => void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said("That step couldn't be opened"))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
+                <button type="button" onClick={() => (s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said("That step couldn't be opened"))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
               ) : (
@@ -518,6 +528,17 @@ function AgreementStep({ basics, shared, starts, workspaceId, onSigned }: { basi
           <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
           <span>I agree to this agreement</span>
         </label>
+        {starts?.untouched ? (
+          // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
+          <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+            <span className="min-w-0 flex-1 basis-56">
+              You already reserved a DOI for <span className="font-mono">{starts.untouched}</span> and haven&apos;t uploaded its PDF.
+            </span>
+            <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
+              Continue with it <ArrowUpRight />
+            </Button>
+          </p>
+        ) : null}
         {changed ? (
           <p role="status" className="flex items-start gap-2 text-sm text-muted-foreground">
             <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
