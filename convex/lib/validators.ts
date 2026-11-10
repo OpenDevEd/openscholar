@@ -75,6 +75,17 @@ export const MAX_API_KEYS_PER_USER = apiKeyProviderValidator.members.length;
 
 export const analyticsChoiceValidator = v.union(v.literal("granted"), v.literal("denied"));
 
+/** An institution a person or a report's author was at: OpenAlex's where it has it (I…), with its country, and its ROR ID where OpenAlex or ROR know it. */
+export const affiliationValidator = v.object({ id: v.union(v.string(), v.null()), name: v.string(), country: v.string(), ror: v.optional(v.string()) });
+/** The most institutions a person's profile lists. */
+export const PROFILE_AFFILIATIONS_MAX = 10;
+/** What the profile setup asks (users/profileSetup.ts): their institutions, ORCID iD and the emails they want from Openscholar. */
+export const profileValidator = v.object({
+  affiliations: capped(v.array(affiliationValidator), PROFILE_AFFILIATIONS_MAX),
+  orcid: v.string(),
+  emails: v.object({ updates: v.boolean(), news: v.boolean(), research: v.boolean() }),
+});
+
 export const userFields = {
   clerkId: v.string(),
   email: v.string(),
@@ -87,6 +98,9 @@ export const userFields = {
   lastLoginAt: v.optional(v.number()),
   /** Their latest answer to the cookie banner, on any device. Without "granted", analytics from the server don't name them (./analytics.ts). */
   analyticsConsent: v.optional(v.object({ choice: analyticsChoiceValidator, at: v.number() })),
+  profile: v.optional(profileValidator),
+  /** When they finished or skipped the profile setup. Until either, a new account gets it in front of every page. */
+  onboarding: v.optional(v.object({ finishedAt: v.optional(v.number()), skippedAt: v.optional(v.number()) })),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

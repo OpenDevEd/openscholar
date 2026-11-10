@@ -16,13 +16,11 @@ import {
   useSyncExternalStore,
 } from "react";
 import { api } from "@/convex/_generated/api";
-import { PostHogIdentify } from "@/components/posthog-identify";
 import {
   resolveClerkAppearance,
 } from "@/lib/auth/clerk-ui-config";
 import { FeatureFlagProvider } from "@/lib/feature-flags/provider";
 import { BillingCatalogProvider } from "@/lib/billing/catalog-provider";
-import { ResearchStateProvider } from "@/lib/research/provider";
 import { UserSync } from "@/lib/auth/user-sync";
 import { RetryingConvexClient } from "@/lib/convex-client";
 
@@ -134,9 +132,6 @@ function AuthReadinessProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AuthReadinessContext.Provider value={contextValue}>
-      <PostHogIdentify />
-      <ResearchStateProvider>{children}</ResearchStateProvider>
-    </AuthReadinessContext.Provider>
+    <AuthReadinessContext.Provider value={contextValue}>{children}</AuthReadinessContext.Provider>
   );
 }

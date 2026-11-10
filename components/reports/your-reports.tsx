@@ -4,6 +4,7 @@
 // entries (components/command-center). The list is read a page at a time (convex/reports/flow.ts `page`).
 
 import { useRef, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { LIST_FILTER, ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { CommandCenterPagination } from "@/components/command-center/command-center-pagination";
@@ -19,8 +20,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowRight, ArrowUpRight, BadgeCheck, CircleCheck, CircleX, FileText, Hash, PenLine, Plus, ReviewQueueIcon, RotateCcw, Trash2 } from "@/components/icons";
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "@/convex/_generated/api";
-import { standingOf, stepWords } from "@/components/reports/registration";
-import { REPORTS_PER_PAGE, STAGES, canDiscard, stageOf, type ChangeStage, type Stage } from "@/lib/reports/report";
+import { standingOf, useStepWords } from "@/components/reports/registration";
+import { REPORTS_PER_PAGE, STAGES, canDiscard, stageOf, type Stage } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
 type Listed = FunctionReturnType<typeof api.reports.flow.page>;
@@ -28,18 +29,20 @@ export type ReportRow = Listed["rows"][number];
 export type Counts = FunctionReturnType<typeof api.reports.flow.counts>;
 /** A row's height with its divider: its cover and the entry's padding. */
 const ROW = 81;
-const SHOW_LABEL: Record<Show, string> = { all: "Every status", draft: "Drafts", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed checks", declined: "Declined or withdrawn" };
-export const STATUS: Record<Stage, { label: string; tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
-  draft: { label: "Draft", tone: "neutral", icon: PenLine },
-  review: { label: "In review", tone: "running", icon: ReviewQueueIcon },
-  ready: { label: "Ready to activate", tone: "success", icon: CircleCheck },
-  live: { label: "Live", tone: "success", icon: BadgeCheck },
-  failed: { label: "Failed checks", tone: "danger", icon: CircleX },
-  declined: { label: "Declined", tone: "neutral", icon: CircleX },
+export const STATUS: Record<Stage, { tone: "neutral" | "running" | "success" | "danger" | "warning"; icon: typeof PenLine }> = {
+  draft: { tone: "neutral", icon: PenLine },
+  review: { tone: "running", icon: ReviewQueueIcon },
+  ready: { tone: "success", icon: CircleCheck },
+  live: { tone: "success", icon: BadgeCheck },
+  failed: { tone: "danger", icon: CircleX },
+  declined: { tone: "neutral", icon: CircleX },
 };
-const EMPTY: Record<Show, string> = { all: "No reports yet", draft: "No drafts", review: "No reports in review", ready: "No reports ready to activate", live: "No live reports", failed: "No reports that failed their checks", declined: "No declined reports" };
-const CHANGES: Record<ChangeStage, string> = { review: "Changes in review", failed: "Changes not published", declined: "Changes declined" };
-const day = (at: number) => new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+/** A stage's name; a declined report that was live is named withdrawn. */
+export function useStageLabel() {
+  const t = useTranslations("publishReports.stages");
+  return (stage: Stage, withdrawn = false) => t(stage === "declined" && withdrawn ? "withdrawn" : stage);
+}
 
 export const SHOWS = ["all", "draft", "review", "ready", "live", "failed", "declined"] as const satisfies ReadonlyArray<"all" | Stage>;
 export type Show = (typeof SHOWS)[number];
@@ -48,16 +51,17 @@ export const stageShown = (show: Show) => (show === "all" ? undefined : STAGES.f
 
 /** The status filter, which sits in the page's header bar beside the tabs. */
 export function StatusFilter({ counts, show, onShow }: { counts: Counts; show: Show; onShow: (show: Show) => void }) {
+  const t = useTranslations("publishReports.list");
   return (
     <Select value={show} onValueChange={(value) => onShow(value as Show)}>
-      <SelectTrigger size="sm" aria-label="Status" className={cn("w-44", LIST_FILTER)}>
+      <SelectTrigger size="sm" aria-label={t("status")} className={cn("w-44", LIST_FILTER)}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="end">
         {SHOWS.map((id) => (
           <SelectItem key={id} value={id}>
             <span className="flex w-full items-center justify-between gap-3">
-              {SHOW_LABEL[id]}
+              {t(`show.${id}`)}
               <span className="tabular-nums text-muted-foreground">{counts[id]}</span>
             </span>
           </SelectItem>
@@ -73,11 +77,12 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
   // The button that asked, so the keyboard is back on it when the question closes: the dialog has no trigger of its own.
   const asker = useRef<HTMLElement | null>(null);
   const { rows: shown, page: at, pages, total } = list;
+  const t = useTranslations("publishReports.list");
 
   return (
     // The rows run edge to edge in the page's card with a line between them, and the pager closes the card: the
     // layout History, Bookmarks and Extract list with.
-    <section aria-label="Your reports">
+    <section aria-label={t("yourReports")}>
       {shown.length ? (
         // A list of several pages keeps a full page's height, so its last page doesn't pull the pager up. A short one
         // keeps the height of the loading frame it replaces (list-controls' LIST_STATE), so the card doesn't shrink under it.
@@ -96,19 +101,19 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
       ) : (
         <ListEmpty
           icon={FileText}
-          description={show === "all" ? "Each report you publish shows here, with where it got to." : undefined}
+          description={show === "all" ? t("emptyHint") : undefined}
           action={
             show === "all" ? (
               <Button size="sm" onClick={onNew}>
-                <Plus /> Publish a report
+                <Plus /> {t("publishReport")}
               </Button>
             ) : undefined
           }
         >
-          {EMPTY[show]}
+          {t(`empty.${show}`)}
         </ListEmpty>
       )}
-      {pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4" currentPage={at} totalPages={pages} onPageChange={onPage} totalItems={total} itemsPerPage={REPORTS_PER_PAGE} itemLabel="reports" /> : null}
+      {pages > 1 ? <CommandCenterPagination className="border-t border-border-subtle p-4" currentPage={at} totalPages={pages} onPageChange={onPage} totalItems={total} itemsPerPage={REPORTS_PER_PAGE} itemLabel={t("pagerItems")} /> : null}
       <AlertDialog open={!!discarding} onOpenChange={(open) => !open && setDiscarding(null)}>
         <AlertDialogContent
           onCloseAutoFocus={(event) => {
@@ -119,17 +124,17 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
           }}
         >
           <AlertDialogHeader>
-            <AlertDialogTitle>Discard this report?</AlertDialogTitle>
-            <AlertDialogDescription>Its PDF and its reserved DOI are given up for good. It still counts as one of the reports you started today.</AlertDialogDescription>
+            <AlertDialogTitle>{t("discardTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("discardBody")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep it</AlertDialogCancel>
+            <AlertDialogCancel>{t("keep")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (discarding) void onDiscard(discarding.key);
               }}
             >
-              Discard
+              {t("discard")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -143,23 +148,27 @@ export function YourReports({ list, humanReview, series, shared, show, onPage, o
  * opens it, its key, date and where it stands, its status, and its actions: discard, correct, and the way in.
  */
 function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }: { report: ReportRow; series: string; shared: boolean; stage: Stage; onOpen: () => void; onDiscard?: () => void; onCorrect?: () => void }) {
+  const t = useTranslations("publishReports.list");
+  const format = useFormatter();
+  const stepWords = useStepWords();
+  const stageLabel = useStageLabel();
   const status = STATUS[stage];
-  const title = r.title ?? "Untitled report";
+  const title = r.title ?? t("untitled");
   /** The person sees this report and can't change it: its way in only opens it. */
   const watching = !r.mine;
   // The row's way in, named for what the report needs next.
   const action =
     r.status === "live"
-      ? { label: "Open its page", icon: ArrowUpRight }
+      ? { label: t("action.openPage"), icon: ArrowUpRight }
       : watching
-        ? { label: "Open", icon: FileText }
+        ? { label: t("action.open"), icon: FileText }
       : stage === "ready"
-        ? { label: "Activate it", icon: ArrowRight }
+        ? { label: t("action.activate"), icon: ArrowRight }
         : stage === "draft"
-          ? { label: "Carry on", icon: ArrowRight }
+          ? { label: t("action.carryOn"), icon: ArrowRight }
           : stage === "failed"
-            ? { label: "See what failed", icon: RotateCcw }
-            : { label: "Open", icon: FileText };
+            ? { label: t("action.seeFailed"), icon: RotateCcw }
+            : { label: t("action.open"), icon: FileText };
   return (
     <Entry viewMode="list-detail" className="items-center">
       {/* The cover its page wears: the PDF's first page once there is one, the series' title page until then. */}
@@ -171,14 +180,14 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
         <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
           <span className="shrink-0 font-mono">{r.key}</span>
           {shared && r.signer ? <span className="shrink-0">{r.signer}</span> : null}
-          <span className="shrink-0 tabular-nums">{day(r.updatedAt)}</span>
+          <span className="shrink-0 tabular-nums">{format.dateTime(r.updatedAt, { day: "numeric", month: "short", year: "numeric" })}</span>
           {r.status === "declined" && r.note ? (
             <span className="truncate">{r.note}</span>
           ) : r.status === "live" && r.changes ? (
             // Changes that haven't gone live say where they stand, in place of the registrations.
             <span className="flex min-w-0 items-center gap-1">
               <PenLine className="size-3 shrink-0" />
-              <span className="truncate">{CHANGES[r.changes]}</span>
+              <span className="truncate">{t(`changes.${r.changes}`)}</span>
             </span>
           ) : r.status === "live" ? (
             <span className="flex min-w-0 items-center gap-1">
@@ -192,12 +201,12 @@ function Row({ report: r, series, shared, stage, onOpen, onDiscard, onCorrect }:
           press, each above the row's own hit area: none waits for a pointer. */}
       <div className="flex shrink-0 items-center gap-3 max-sm:basis-full max-sm:justify-between max-sm:ps-12">
         <StatusChip tone={status.tone} icon={status.icon} className="shrink-0">
-          {stage === "declined" && r.withdrawn ? "Withdrawn" : status.label}
+          {stageLabel(stage, r.withdrawn)}
         </StatusChip>
         {/* Room for the two buttons a row can have, so every row's status ends on the same line. */}
         <div className="relative z-10 flex min-w-[4.25rem] items-center justify-end gap-1">
-          {onDiscard ? <EntryAction label="Discard" icon={Trash2} danger className="size-8" onClick={onDiscard} /> : null}
-          {onCorrect ? <EntryAction label={r.changes ? "See your changes" : "Correct the details"} icon={PenLine} className={cn("size-8", r.changes && "text-primary")} onClick={onCorrect} /> : null}
+          {onDiscard ? <EntryAction label={t("discard")} icon={Trash2} danger className="size-8" onClick={onDiscard} /> : null}
+          {onCorrect ? <EntryAction label={t(r.changes ? "seeChanges" : "correct")} icon={PenLine} className={cn("size-8", r.changes && "text-primary")} onClick={onCorrect} /> : null}
           {r.status === "live" ? (
             <TooltipHint label={action.label}>
               <Button asChild variant="ghost" size="icon" className="size-8 text-muted-foreground">

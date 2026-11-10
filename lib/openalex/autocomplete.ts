@@ -7,7 +7,8 @@
 import type { SearchSource } from "../search/source";
 
 export type LookupEntity = "authors" | "funders" | "sources" | "institutions";
-export type LookupOption = { id: string; name: string; detail?: string };
+/** A record found by its name; an institution carries its ROR ID (https://ror.org/…) when asked for and it has one. */
+export type LookupOption = { id: string; name: string; detail?: string; ror?: string };
 
 /** The IDs each kind of record has, such as S… on OpenAlex and OSV… on our index for a source. */
 export const LOOKUP_ID: Record<LookupEntity, RegExp> = { authors: /^(?:A|OSA)\d+$/, funders: /^F\d+$/, sources: /^(?:S|OSV)\d+$/, institutions: /^I\d+$/ };
@@ -17,11 +18,17 @@ export const autocompleteParameters = (query: string, entity: LookupEntity, sour
   // Our index filters its authors and institutions by works, but refuses it on funders and sources.
   source === "openscholar" && (entity === "funders" || entity === "sources") ? { q: query } : { q: query, filter: "works_count:>0" };
 
-export function autocompleteOptions(body: unknown): LookupOption[] {
+/** `ror` keeps an institution's ROR ID, which autocomplete gives as its `external_id`; the assistant's answers leave it out. */
+export function autocompleteOptions(body: unknown, { ror = false } = {}): LookupOption[] {
   const results = (body as { results?: unknown } | null)?.results;
-  return (Array.isArray(results) ? results : []).flatMap((result: { id?: unknown; display_name?: unknown; hint?: unknown }) =>
+  return (Array.isArray(results) ? results : []).flatMap((result: { id?: unknown; display_name?: unknown; hint?: unknown; external_id?: unknown }) =>
     typeof result.id === "string" && typeof result.display_name === "string" && result.display_name
-      ? [{ id: result.id.split("/").at(-1)!, name: result.display_name, ...(typeof result.hint === "string" && result.hint ? { detail: result.hint } : {}) }]
+      ? [{
+          id: result.id.split("/").at(-1)!,
+          name: result.display_name,
+          ...(typeof result.hint === "string" && result.hint ? { detail: result.hint } : {}),
+          ...(ror && typeof result.external_id === "string" && result.external_id.startsWith("https://ror.org/") ? { ror: result.external_id } : {}),
+        }]
       : [],
   );
 }

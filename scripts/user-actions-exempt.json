@@ -93,7 +93,11 @@
     "reports/settings:forAuthors": "What the Publish page reads of the series before a report exists: whether publishing is open, its agreement and its checks' names. The assistant doesn't publish reports.",
     "reports/flow:agreement": "The signed agreement's own page, which a report's workspace opens from the report to read, save or print.",
     "reports/settings:open": "Whether the sidebar shows Publish. The assistant doesn't publish reports.",
-    "reports/paper:mine": "Whether a report's page offers the person reading it the way to correct it. The assistant doesn't publish reports."
+    "reports/paper:mine": "Whether a report's page offers the person reading it the way to correct it. The assistant doesn't publish reports.",
+    "app/actions/people-lookup:findOrcid": "A form's ORCID iD picker searching ORCID as someone types: the form saves the iD they pick (a report's details, the profile setup).",
+    "app/actions/people-lookup:findRor": "A form's institution picker searching ROR as someone types: the form saves the institution they pick.",
+    "users/profileSetup:get": "A person's own profile setup answers, for the setup page and Settings › Profile to show.",
+    "users/profileSetup:due": "Whether the page the server is drawing is the profile setup instead."
   },
   "covered": {
     "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
@@ -297,7 +301,9 @@
     "reports/flow:discardChanges": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
     "reports/review:agreement": "Site administration, for Openscholar's own admins on the admin pages.",
     "reports/registration:retry": "Site administration, for Openscholar's own admins on the admin pages.",
-    "reports/flow:typeChanges": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public."
+    "reports/flow:typeChanges": "Publishing a report under a signed agreement, with its PDF and its checks: done on the Publish page, where the person reads what they sign and sees what goes public.",
+    "users/profileSetup:save": "A person's own account setup: their institutions, ORCID iD and email choices, which they set themselves on the setup page or in Settings.",
+    "users/profileSetup:skip": "A person putting their own account's profile setup away, on the setup page."
   },
   "pending": {
     "evidenceLibraries/collectionSources:listCollectionSources": "#329"
