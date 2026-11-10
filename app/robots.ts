@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { isLiveSite, SITE_URL } from "@/lib/seo/page-metadata";
+import { isLiveSite, PAPER_SITEMAP_YEARS, SITE_URL } from "@/lib/seo/page-metadata";
 import { TRAINING_CRAWLERS } from "@/lib/seo/training-crawlers";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
@@ -9,6 +9,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       { userAgent: TRAINING_CRAWLERS, disallow: "/" },
       { userAgent: "*", allow: "/" },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    sitemap: [`${SITE_URL}/sitemap.xml`, ...PAPER_SITEMAP_YEARS.map((_, id) => `${SITE_URL}/papers/sitemap/${id}.xml`)],
   };
 }

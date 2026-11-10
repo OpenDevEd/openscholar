@@ -47,3 +47,11 @@ export async function namedTitle(name: string): Promise<Metadata["title"]> {
 
 /** The search-engine pages, for the sitemap. */
 export const INDEXED_PATHS = ["/", "/pricing", "/terms", "/privacy", "/cookie-policy", "/credits"] as const;
+
+/**
+ * The paper pages search engines are asked to read (`app/papers/sitemap.ts`): in each band of years, the 10,000 most cited
+ * papers with an abstract, as only those pages are indexed. Bands, not one list, so recent papers get their share and each
+ * sitemap is read on its own: our index numbers pages only to its 10,000th result. Grow the list by adding bands once
+ * Search Console shows most of these indexed, never the whole index.
+ */
+export const PAPER_SITEMAP_YEARS = ["<2001", "2001-2010", "2011-2016", "2017-2021", ">2021"] as const;
