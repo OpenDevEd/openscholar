@@ -38,4 +38,4 @@ export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, det
 export const liveSince = (report: Pick<Doc<"reports">, "activatedAt" | "correctedAt">) => report.correctedAt ?? report.activatedAt;
 
 /** What a check that passed on the report and failed on its changes tells the author: it read the same PDF. */
-export const SAME_PDF_ADVICE = "This check read the same PDF as when your report passed it, and answered differently this time. Send the changes again, or request a human review.";
+export const SAME_PDF_ADVICE = "Your report passed this check before, and its PDF is the same. If your changes to the title or the abstract could be why it fails now, put them right and send them again. Otherwise request a human review.";

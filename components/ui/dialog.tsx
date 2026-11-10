@@ -56,6 +56,8 @@ function DialogContent({
   showCloseButton = true,
   overlayClassName,
   onInteractOutside,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -63,6 +65,7 @@ function DialogContent({
 }) {
   const t = useTranslations("sharedControls");
   const closing = useClosing()
+  const focus = useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus })
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay className={overlayClassName} />
@@ -75,6 +78,7 @@ function DialogContent({
         )}
         onInteractOutside={withToastsInside(onInteractOutside)}
         {...props}
+        {...focus}
       >
         {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
         {showCloseButton && (
@@ -155,10 +159,36 @@ function DialogDescription({
   )
 }
 
+type FocusEvents = { onOpenAutoFocus?: (event: Event) => void; onCloseAutoFocus?: (event: Event) => void }
+
+/**
+ * Gives the focus back to what had it when the dialog opened, once it closes. Radix does that only for a dialog
+ * opened by its own trigger: one opened by state or by the address, as most here are, left the focus on the page's
+ * body, and the next Tab started from the top of the page.
+ */
+function useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus }: FocusEvents): Required<FocusEvents> {
+  const opener = React.useRef<HTMLElement | null>(null)
+  return {
+    onOpenAutoFocus: (event) => {
+      // Still what the person pressed: the dialog takes the focus after this.
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      onOpenAutoFocus?.(event)
+    },
+    onCloseAutoFocus: (event) => {
+      onCloseAutoFocus?.(event)
+      const back = opener.current
+      // Gone, as a row that was deleted is, or never anything: Radix's own choice stands.
+      if (event.defaultPrevented || !back?.isConnected || back === document.body) return
+      event.preventDefault()
+      back.focus()
+    },
+  }
+}
+
 /** For `onOpenAutoFocus`: focuses the dialog itself, not its first button, so no tooltip opens with it. */
 function focusContent(event: Event) {
   event.preventDefault()
   ;(event.currentTarget as HTMLElement).focus()
 }
 
-export { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, focusContent };
+export { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, focusContent, useReturnFocus };
