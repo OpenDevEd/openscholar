@@ -24,6 +24,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         <div style={{ display: "flex", fontSize: 30, color: "rgba(255,255,255,0.72)" }}>{meta}</div>
       </div>
     ),
-    { width, height, headers: { "Cache-Control": "public, max-age=86400" } },
+    // A report can be corrected or withdrawn at any time, so its picture is drawn each time; any other paper's is kept a day.
+    { width, height, headers: { "Cache-Control": read.id.startsWith("R") ? "no-store" : "public, max-age=86400" } },
   );
 }
