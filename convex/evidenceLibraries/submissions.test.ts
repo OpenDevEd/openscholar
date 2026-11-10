@@ -221,4 +221,9 @@ it("emails the sender when the team answers a paper that waited for review, and 
   expect(await emails()).toBe(2);
   expect(await t.query(internal.evidenceLibraries.submissions.readForEmail, { submissionId, generation: 2 })).toBeNull();
   expect(await t.query(internal.evidenceLibraries.submissions.readForEmail, { submissionId, generation: 3 })).toMatchObject({ status: "published", note: null });
+  // Sent again after a decline, a paper can be declined again before Openscholar has recorded that it waits: still an answer.
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r2", papers: [{ itemKey: "RESENT01", ...paper, openalexId: "W62", status: "queued" }] });
+  await tell("RESENT01", 2, "returned", "Not peer reviewed");
+  await tell("RESENT01", 4, "returned", "Still not peer reviewed");
+  expect(await emails()).toBe(4);
 });

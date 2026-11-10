@@ -61,12 +61,13 @@ async function applyHeld(ctx: MutationCtx, id: Id<"paperSubmissions">, libraryId
 }
 
 /**
- * The person who sent a paper hears the team's answer by email: it's live, or it wasn't added. Only for a paper that
- * waited for review, or one the team declined and then published after all: one published as it was sent, by someone
- * on the team, needs no telling.
+ * The person who sent a paper hears the team's answer by email: it's live, or it wasn't added. Every such word about a
+ * paper that isn't published yet is an answer, whatever the row last said: sent again, a paper can be answered before
+ * Openscholar has recorded that it waits. One published as it was sent, by someone on the team, is published already
+ * when the community says so, and needs no telling.
  */
 async function tellSender(ctx: MutationCtx, before: Doc<"paperSubmissions">, status: Doc<"paperSubmissions">["status"], generation: number) {
-  const answered = (before.status === "queued" && (status === "published" || status === "returned")) || (before.status === "returned" && status === "published");
+  const answered = (status === "published" || status === "returned") && before.status !== "published";
   if (!answered) return;
   await ctx.scheduler.runAfter(0, internal.evidenceLibraries.submissionEmails.toSender, { submissionId: before._id, generation });
 }
