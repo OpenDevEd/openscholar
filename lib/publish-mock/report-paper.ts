@@ -46,7 +46,7 @@ export function reportPaper(report: Pick<Submission, "id" | "doi">, m: Metadata,
     authorships: m.authors.map((a, i) => ({
       author_position: i === 0 ? "first" : "middle",
       author: { id: a.openalexId, display_name: a.name, orcid: a.orcid ? `https://orcid.org/${a.orcid}` : null },
-      institutions: a.affiliations.map((inst) => ({ id: inst.id, display_name: inst.name, country_code: inst.country || null })),
+      institutions: a.affiliations.map((inst) => ({ id: inst.id, display_name: inst.name, country_code: inst.country || null, ror: inst.ror ?? null })),
       is_corresponding: a.corresponding,
     })),
     primary_location: location,

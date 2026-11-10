@@ -5861,6 +5861,7 @@
     "showFewer": "收起",
     "corresponding": "通讯作者",
     "orcidOf": "{name} 的 ORCID iD",
+    "rorOf": "ROR 上的 {name}",
     "institutions": "机构",
     "whereToRead": "阅读途径",
     "kindPublisher": "出版商",

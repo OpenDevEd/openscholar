@@ -9,8 +9,8 @@ import { OpenAlexLookupFilter } from "@/components/openalex-lookup-filter";
 import { CountrySelector } from "@/components/country-selector";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Paged, pagerOf } from "@/components/settings/parts";
-import { FunderName } from "@/components/papers/paper-entities";
-import { OrcidIcon, RorIcon } from "@/components/icons/author-service-icons";
+import { OrcidIcon } from "@/components/icons/author-service-icons";
+import { FunderName, RorLink } from "@/components/papers/paper-entities";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { findOrcid, institutionRor } from "@/app/actions/publish-mock";
@@ -138,11 +138,7 @@ function Affiliations({ value, onChange, onRor }: { value: Affiliation[]; onChan
       after={Object.fromEntries(
         value.filter((a) => a.ror).map((a) => [
           a.id ?? typedId(a.name),
-          <TooltipHint key="ror" label="Open on ROR">
-            <a href={a.ror} target="_blank" rel="noreferrer" aria-label={`${a.name} on ROR`} className="flex h-4 items-center rounded-sm px-0.5 opacity-80 animate-in fade-in duration-300 hover:opacity-100">
-              <RorIcon />
-            </a>
-          </TooltipHint>,
+          <RorLink key="ror" ror={a.ror!} label={`${a.name} on ROR`} className="animate-in fade-in duration-300" />,
         ]),
       )}
       lookup={{

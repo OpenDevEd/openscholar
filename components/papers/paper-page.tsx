@@ -10,7 +10,7 @@ import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configura
 import { IntroGlow, Stat } from "@/components/entity-cards";
 import { PaperRows } from "@/components/papers/paper-rows";
 import { PaperShare } from "@/components/papers/paper-links";
-import { AuthorName, FunderName, InstitutionName, JournalName } from "@/components/papers/paper-entities";
+import { AuthorName, FunderName, InstitutionName, JournalName, RorLink } from "@/components/papers/paper-entities";
 import { CountryFilterFlag } from "@/components/country-filter-flag";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { REPORT_COVER, coverOf } from "@/lib/papers/cover";
@@ -416,6 +416,8 @@ function Authors({ detail }: { detail: PaperDetail }) {
                       {/* The flag stays on the name's first line when a long name wraps. */}
                       {institution.country && <CountryFilterFlag code={institution.country} className="mt-1" />}
                       <InstitutionName institution={institution} className="min-w-0" />
+                      {/* Like the flag, the ROR mark stays on the name's first line when a long name wraps: the name is a button, which wraps as one box. */}
+                      {institution.ror ? <RorLink ror={institution.ror} label={t("rorOf", { name: institution.name })} className="mt-0.5" /> : null}
                     </li>
                   ))}
                 </ul>
@@ -427,7 +429,7 @@ function Authors({ detail }: { detail: PaperDetail }) {
       {/* Our index lists a paper's institutions without saying whose they are. */}
       {!anyAffiliation && detail.institutions.length ? (
         <div className="mt-4 flex flex-wrap gap-1.5" aria-label={t("institutions")}>
-          {detail.institutions.map((institution, index) => <span key={`${institution.name}-${index}`} className={CHIP}>{institution.country && <CountryFilterFlag code={institution.country} />}<InstitutionName institution={institution} /></span>)}
+          {detail.institutions.map((institution, index) => <span key={`${institution.name}-${index}`} className={CHIP}>{institution.country && <CountryFilterFlag code={institution.country} />}<InstitutionName institution={institution} />{institution.ror ? <RorLink ror={institution.ror} label={t("rorOf", { name: institution.name })} /> : null}</span>)}
         </div>
       ) : null}
     </Section>

@@ -5861,6 +5861,7 @@
     "showFewer": "Bonisa okumbalwa",
     "corresponding": "Umbhali wokuxhumana",
     "orcidOf": "I-ORCID iD ka-{name}",
+    "rorOf": "{name} ku-ROR",
     "institutions": "Izikhungo",
     "whereToRead": "Lapho ungafunda khona",
     "kindPublisher": "Umshicileli",
