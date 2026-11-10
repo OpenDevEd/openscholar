@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { fetchOwnWorks, readOpenAlexWorks } from "@/lib/openalex/read-works";
+import { SearchError } from "@/lib/search/search-error";
 import { MAX_LOCATIONS } from "@/lib/topics/publications";
 import { normalizeDoi } from "@/lib/topics/identity";
 import { fetchPublicationPdf } from "@/lib/evidence-libraries/publication-cards";
@@ -23,8 +24,13 @@ const DAY = 60 * 60 * 24;
 /** A paper as our index holds it, by our ID or its OpenAlex ID. Null when our index has none. */
 export const readPaperForPage = unstable_cache(
   async (id: string): Promise<PaperResult | null> => {
-    const read = await readOpenAlexWorks({ filter: { openalex_id: id } as never, cursor: "*", perPage: 1 }, "openscholar");
-    return (read.results[0] as PaperResult | undefined) ?? null;
+    // Our index answers 400 for an ID no work can have (an OS number past its range): no such paper, so the page is a 404.
+    // Anything else it can't answer still throws, so an outage is never kept as a missing paper.
+    const read = await readOpenAlexWorks({ filter: { openalex_id: id } as never, cursor: "*", perPage: 1 }, "openscholar").catch((error: unknown) => {
+      if (error instanceof SearchError && error.status === 400) return null;
+      throw error;
+    });
+    return (read?.results[0] as PaperResult | undefined) ?? null;
   },
   ["paper-page"],
   { revalidate: DAY },
