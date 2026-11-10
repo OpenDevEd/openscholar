@@ -230,7 +230,7 @@ export function PublishFlow() {
               {elsewhere ? (
                 <Button size="sm" asChild>
                   {/* A plain address: the report's own workspace, whichever this page is in. */}
-                  <a href={`${elsewhere.slug ? `/o/${elsewhere.slug}` : ""}/publish?report=${shownKey}`}>
+                  <a href={`${elsewhere.slug ? `/o/${elsewhere.slug}` : ""}/publish?report=${shownKey}${correct ? "&correct=true" : ""}`}>
                     Open it in {elsewhere.name} <ArrowUpRight />
                   </a>
                 </Button>

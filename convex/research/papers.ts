@@ -21,7 +21,7 @@ import { convertUsdToCredits, PAPER_PDF_CREDITS } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
 import { paperPdf } from "../lib/paperPdfs";
 import { requirePdfModel } from "../assistant/files";
-import { ownWork, paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
+import { ownWork, paperIdOf, parsePaperKey, reportKey } from "../../lib/papers/paper-ref";
 import { SEARCH_SOURCE_NAMES, sourceForId } from "../../lib/search/source";
 import { parseSourceAddress } from "../../lib/evidence-libraries/source-address";
 import type { Id } from "../_generated/dataModel";
@@ -128,7 +128,7 @@ function workPath(id: string) {
 export const getAction = defineUserAction({
   path: "research/papers:get",
   description:
-    "Reads one paper whole, by its ID as results give it (such as W2741809807), its DOI, or a link to it (Openscholar's paper pages included): its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
+    "Reads one paper whole, by its ID as results give it (such as W2741809807), its DOI, or a link to it (Openscholar's paper pages included), or a report published on Openscholar by its key (such as R100012): its title, its authors with their IDs and where each works, year, venue, type, language, DOI, whether and where it's free to read, citations, who funded it, and all of its abstract. An abstract cut short ends in an ellipsis. " +
     "One request against the person's search allowance. An Evidence Community's record is read through evidenceLibraries/library:records instead, by its `paper` (library:<libraryId>:<key>).",
   args: { id: v.string() },
   returns: paperRecordValidator,
@@ -137,6 +137,14 @@ export const getAction = defineUserAction({
   // It changes nothing, so there's nothing to undo.
   undoable: true,
   run: async (ctx, { userId }, { id }): Promise<Infer<typeof paperRecordValidator>> => {
+    // A report published on Openscholar, by its key or its page's address, is read from where it is kept.
+    const link = paperLinkOf(id.trim());
+    const report = reportKey(id) ?? (link?.kind === "report" ? link.key : null);
+    if (report) {
+      const found: Infer<typeof paperRecordValidator> | null = await ctx.runQuery(internal.reports.paper.record, { key: report });
+      if (!found) throw createError("NOT_FOUND", "Openscholar Reports has no live report by that key.");
+      return found;
+    }
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
