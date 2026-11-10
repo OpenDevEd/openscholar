@@ -528,6 +528,8 @@ export const refunded = internalMutation({
     if (!activation || activation.refund) return null;
     await ctx.db.patch("reportActivations", activationId, { refund: { card, credit, at: Date.now() } });
     if (card + credit === 0) return null;
+    // Credit given back is the next activation's to spend: the page reads it again.
+    if (credit > 0) await ctx.scheduler.runAfter(0, internal.billing.accounts.refresh, { workspaceId: activation.workspaceId, card: true });
     const workspace = await ctx.db.get("workspaces", activation.workspaceId);
     await notify(ctx, activation.reportId, workspace?.kind === "organization" ? "refunded-admins" : "refunded", { refund: { card, credit } });
     return null;
