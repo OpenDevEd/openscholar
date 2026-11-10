@@ -15,7 +15,7 @@ import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
 import { detailsOf, keptDetails, signedAgreement, touch } from "./flow";
 import { notify } from "./mail";
-import { register } from "./registration";
+import { register } from "./registering";
 import { reportSettings } from "./settings";
 import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
 

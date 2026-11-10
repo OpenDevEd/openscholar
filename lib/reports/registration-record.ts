@@ -3,8 +3,17 @@
 import type { Metadata } from "./report";
 import type { Series } from "./settings";
 
-/** A person's name as the registrars keep one: family name, then given names. A single word is a family name. */
+/**
+ * ponytail: a report's authors are names with no word on whether each is a person or a body, so a body is told by
+ * the words such names carry. One it misses is filed as a person ("Organization, World Health"), and a person it
+ * catches keeps their name whole, which reads right either way. Ask on the details form when either matters.
+ */
+const BODY = /\b(organi[sz]ation|universit[yé]|institut[eo]?|minist(ry|ère|erio)|foundation|bank|agency|council|committee|commission|department|cent(er|re)|network|association|society|programme|consortium|collaboration|authority|ltd|inc|gmbh|llc)\b/i;
+const ACRONYM = /\b(WHO|UNICEF|UNESCO|OECD|FAO|UNDP|IMF)\b/;
+
+/** A person's name as the registrars keep one: family name, then given names. A single word is a family name. A body keeps its name as it is. */
 function creator(author: Metadata["authors"][number]) {
+  if (!author.orcid && (BODY.test(author.name) || ACRONYM.test(author.name))) return { type: "organizational" as const, name: author.name.trim(), creatorType: "author" };
   const words = author.name.trim().split(/\s+/);
   const familyName = words.at(-1)!;
   const givenName = words.slice(0, -1).join(" ");

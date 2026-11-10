@@ -156,6 +156,12 @@ export const reportFields = {
   registrationTries: v.optional(v.number()),
   /** Crossref took the deposit of the record as it stands, and hasn't shown it yet: it is looked for, not sent again. */
   depositSent: v.optional(v.boolean()),
+  /** Which asking to register this is: one more each time what the registrars hold has to change. */
+  registrationRev: v.optional(v.number()),
+  /** Until when a registering action holds the report, so two never register it at once. */
+  registrationLease: v.optional(v.number()),
+  /** A draft Zenodo made for it that isn't published yet: the next try carries on from it. */
+  zenodoDraftId: v.optional(v.string()),
   activatedAt: v.optional(v.number()),
   correctedAt: v.optional(v.number()),
   /** When a reviewer withdrew it after it had gone live. Its address then shows a page saying so. */
