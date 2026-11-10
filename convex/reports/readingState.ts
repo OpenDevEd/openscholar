@@ -22,13 +22,13 @@ export const begin = internalQuery({
 
 /**
  * What a reading found: the PDF's pages and text, and its details for the author to correct. A PDF that couldn't be
- * opened stays at the upload step with its trouble said; one whose details couldn't be read opens them to be filled
- * in. A reading of a PDF replaced meanwhile saves nothing, and its text is given up.
+ * opened stays at the upload step with its trouble said; one with no text in it, or whose details couldn't be read,
+ * opens them to be filled in and says so. A reading of a PDF replaced meanwhile saves nothing, and its text is given up.
  */
 export const finish = internalMutation({
-  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), read: v.boolean() },
+  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))) },
   returns: v.null(),
-  handler: async (ctx, { reportId, at, pages, text, metadata, read }) => {
+  handler: async (ctx, { reportId, at, pages, text, metadata, trouble }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report?.pdf || report.pdf.at !== at || report.step === "done") {
       if (text) await ctx.storage.delete(text);
@@ -39,7 +39,7 @@ export const finish = internalMutation({
       return null;
     }
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { metadata: keptDetails(metadata) });
-    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, ...(read ? {} : { trouble: "unread" as const }) }, step: "details", title: metadata.title.trim() || undefined });
+    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: metadata.title.trim() || undefined });
     return null;
   },
 });

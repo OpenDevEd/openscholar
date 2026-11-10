@@ -41,7 +41,7 @@ export const read = internalAction({
       return null;
     });
     if (!opened) {
-      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, read: false });
+      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at });
       return null;
     }
     const text = opened.pages.map((page) => page.text).join("\n");
@@ -57,7 +57,9 @@ export const read = internalAction({
     const details = metadata ?? blankDetails(job.name, new Date().toISOString().slice(0, 10));
     // A PDF that names no author is its signer's until they say otherwise.
     if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
-    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, metadata: details, read: metadata !== null });
+    // A scan holds no text for the checks to read, which matters more to its author than a reading that fell short.
+    const trouble = !text.trim() ? ("textless" as const) : metadata ? undefined : ("unread" as const);
+    await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, metadata: details, ...(trouble && { trouble }) });
     return null;
   },
 });

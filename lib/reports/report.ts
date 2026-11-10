@@ -70,6 +70,19 @@ export type Metadata = {
 /** The most of each list a report's details hold, and the longest they are altogether, as their JSON. */
 export const DETAIL_CAPS = { authors: 200, affiliations: 10, roles: CREDIT_ROLES.length, topics: 20, keywords: 50, sdgs: 17, studyDesigns: 20, countries: 300, funding: 50, awards: 20, references: 1000, relations: 50 } as const;
 export const DETAILS_MAX_BYTES = 300_000;
+/** The longest each of a report's texts is, which its box shows as it's typed. */
+export const DETAIL_TEXT = { title: 500, subtitle: 500, abstract: 10_000, name: 200, keyword: 100, link: 500 } as const;
+
+/** An ORCID iD with its check digit right (ISO 7064 11-2), as 0000-0002-1825-0097. */
+export function isOrcid(id: string) {
+  if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(id)) return false;
+  const digits = id.replace(/-/g, "");
+  const total = [...digits.slice(0, 15)].reduce((sum, digit) => (sum + Number(digit)) * 2, 0);
+  const check = (12 - (total % 11)) % 11;
+  return (check === 10 ? "X" : String(check)) === digits[15];
+}
+/** A DOI as a reference keeps it, lower case and without its address; null for text that isn't one. */
+export const doiIn = (text: string) => text.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "").replace(/^doi:\s*/, "").match(/^10\.\d{4,9}\/\S+$/)?.[0] ?? null;
 /** The longest comment an author sends with a review request, and the longest note a reviewer sends back: the contact form's limit. */
 export const REVIEW_TEXT_MAX = 3000;
 export const SIGNER_NAME_MAX = 200;

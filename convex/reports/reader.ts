@@ -11,7 +11,7 @@ import { autocompleteOptions, autocompleteParameters } from "../../lib/openalex/
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "../../lib/openalex/vocabulary";
-import { CREDIT_ROLES, RELATION_KINDS, type Affiliation, type Funding, type Metadata, type Topic } from "../../lib/reports/report";
+import { CREDIT_ROLES, DETAIL_TEXT, RELATION_KINDS, isOrcid, type Affiliation, type Funding, type Metadata, type Topic } from "../../lib/reports/report";
 
 /** The model a reading runs on, as the server resolved it, and the effort it reads at. */
 export type Reader = { model: LanguageModel; slug: string; effort?: Effort };
@@ -161,15 +161,8 @@ const funder = async (name: string): Promise<Funding["funder"] | null> => {
 };
 
 const DOI = /10\.\d{4,9}\/\S+/;
-/** An ORCID iD with its check digit right (ISO 7064 11-2), or none: a mistyped one is never kept. */
-function orcidOf(printed: string) {
-  const id = printed.trim().toUpperCase();
-  if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(id)) return "";
-  const digits = id.replace(/-/g, "");
-  const total = [...digits.slice(0, 15)].reduce((sum, digit) => (sum + Number(digit)) * 2, 0);
-  const check = (12 - (total % 11)) % 11;
-  return (check === 10 ? "X" : String(check)) === digits[15] ? id : "";
-}
+/** The ORCID iD the PDF prints, or none: a mistyped one is never kept. */
+const orcidOf = (printed: string) => (isOrcid(printed.trim().toUpperCase()) ? printed.trim().toUpperCase() : "");
 /** A date the PDF states in part gets its first month or day, for the author to correct; none is today. */
 const dateOf = (stated: string) => (/^\d{4}-\d{2}-\d{2}$/.test(stated) ? stated : /^\d{4}-\d{2}$/.test(stated) ? `${stated}-01` : /^\d{4}$/.test(stated) ? `${stated}-01-01` : new Date().toISOString().slice(0, 10));
 
@@ -183,8 +176,8 @@ export async function readDetails({ pdf, text, fileName, ownDoi, reader }: { pdf
   ]);
   const cited = read.citedDois.flatMap((doi) => doi.toLowerCase().match(DOI)?.[0].replace(/[.,;)\]]+$/, "") ?? []);
   return {
-    title: read.title.trim(),
-    subtitle: read.subtitle.trim(),
+    title: read.title.trim().slice(0, DETAIL_TEXT.title),
+    subtitle: read.subtitle.trim().slice(0, DETAIL_TEXT.subtitle),
     type: read.type,
     language: WORK_LANGUAGES.includes(read.language.toLowerCase()) ? read.language.toLowerCase() : "en",
     date: dateOf(read.date.trim()),
@@ -200,7 +193,7 @@ export async function readDetails({ pdf, text, fileName, ownDoi, reader }: { pdf
         roles: a.roles,
       })),
     // A PDF breaks a paragraph into lines; a paragraph here is one line, as the report's page shows it.
-    abstract: read.abstract.trim().replace(/[ \t]*\n[ \t]*/g, "\n").replace(/(?<!\n)\n(?!\n)/g, " ").replace(/\n{2,}/g, "\n\n"),
+    abstract: read.abstract.trim().replace(/[ \t]*\n[ \t]*/g, "\n").replace(/(?<!\n)\n(?!\n)/g, " ").replace(/\n{2,}/g, "\n\n").slice(0, DETAIL_TEXT.abstract),
     topics: classified.topics,
     // The PDF's own keywords; when it lists none, the classifier's.
     keywords: read.keywords.length ? read.keywords.map((k) => k.trim()).filter(Boolean) : classified.keywords,

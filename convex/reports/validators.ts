@@ -100,6 +100,7 @@ export const changeStageValidator = literals(CHANGE_STAGES);
 export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")) });
 export const depositValidator = v.union(v.literal("none"), v.literal("queued"), v.literal("deposited"), v.literal("failed"));
 export const archiveValidator = v.union(v.literal("none"), v.literal("draft"), v.literal("queued"), v.literal("archived"), v.literal("failed"));
+export const pdfTroubleValidator = v.union(v.literal("unopened"), v.literal("textless"), v.literal("unread"));
 export const pdfValidator = v.object({
   file: v.id("_storage"),
   name: v.string(),
@@ -110,8 +111,8 @@ export const pdfValidator = v.object({
   pages: v.optional(v.number()),
   /** Its text, which the checks read, kept as a file beside it. */
   text: v.optional(v.id("_storage")),
-  /** It couldn't be opened as a PDF, or its details couldn't be read from it: the author is told which. */
-  trouble: v.optional(v.union(v.literal("unopened"), v.literal("unread"))),
+  /** It couldn't be opened as a PDF, it holds no text (a scan), or its details couldn't be read from it: the author is told which. */
+  trouble: v.optional(pdfTroubleValidator),
 });
 
 export const reportFields = {

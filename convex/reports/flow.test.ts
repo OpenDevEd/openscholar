@@ -54,7 +54,7 @@ async function atDetails(world: World, who = world.author, workspaceId = world.o
   const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a report"], { type: "application/pdf" })));
   expect(await who.mutation(api.reports.flow.attachPdf, { workspaceId, key, file, name: "report.pdf" })).toBeNull();
   const { _id: reportId, pdf } = await row(world.t, key);
-  await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdf!.at, pages: 12, metadata: details(), read: true });
+  await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdf!.at, pages: 12, metadata: details() });
   return { key, reportId, pdfAt: pdf!.at };
 }
 
@@ -144,7 +144,7 @@ describe("a report's PDF", () => {
     const replaced = await read(world.author, world.own, first.key);
     expect(replaced.step).toBe("upload");
     expect(replaced.metadata).toBeUndefined();
-    await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at: first.pdfAt, pages: 12, metadata: details("The first PDF's title"), read: true });
+    await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at: first.pdfAt, pages: 12, metadata: details("The first PDF's title") });
     expect((await read(world.author, world.own, first.key)).step).toBe("upload");
   });
 
@@ -152,9 +152,9 @@ describe("a report's PDF", () => {
     const world = await setup();
     const { key, reportId, pdfAt } = await atDetails(world);
     await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
-    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdfAt, read: false });
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdfAt });
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "upload", pdf: { trouble: "unopened" } });
-    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdfAt, pages: 3, metadata: details(), read: false });
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: pdfAt, pages: 3, metadata: details(), trouble: "unread" });
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", pdf: { trouble: "unread" } });
   });
 });
@@ -205,6 +205,9 @@ describe("a report's checks", () => {
     const { key } = await checked(world, [passed("byline", false)]);
     await world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "  The byline is on page 2.  " });
     expect(await read(world.author, world.own, key)).toMatchObject({ asked: true, reviewRequest: { comment: "The byline is on page 2." } });
+    // Its details open again without a new PDF, and its PDF can be replaced.
+    await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
+    expect(await read(world.author, world.own, key)).toMatchObject({ step: "details", status: "failed", metadata: { title: "Shade trees and maize yields" } });
     await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" });
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "upload", status: "failed" });
     await world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key });
@@ -217,6 +220,20 @@ describe("a report's checks", () => {
     await expect(world.author.mutation(api.reports.flow.requestReview, { workspaceId: world.own, key, comment: "" })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "upload" })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+  });
+});
+
+describe("a report's details", () => {
+  it("are refused with an ORCID iD that isn't one, or a title past its limit, and kept otherwise", async () => {
+    const world = await setup();
+    const { key } = await atDetails(world);
+    const author = (orcid: string) => ({ name: "Ada Author", orcid, openalexId: null, affiliations: [], corresponding: true, roles: [] });
+    const save = (metadata: Metadata) => world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, metadata });
+    await expect(save({ ...details(), authors: [author("banana")] })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await expect(save({ ...details(), authors: [author("0000-0002-1825-0098")] })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await expect(save({ ...details("x".repeat(501)) })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await save({ ...details("A kept title"), authors: [author("0000-0002-1825-0097")] });
+    expect(await read(world.author, world.own, key)).toMatchObject({ title: "A kept title", metadata: { authors: [{ orcid: "0000-0002-1825-0097" }] } });
   });
 });
 

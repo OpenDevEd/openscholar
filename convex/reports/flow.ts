@@ -14,10 +14,10 @@ import schema from "../schema";
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, FILE_NAME_MAX, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, keyOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, stageOf, underWay, type Metadata, type Stage } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { reportSettings, settingsRow } from "./settings";
-import { archiveValidator, changeStageValidator, depositValidator, metadataValidator, plainResults, registrationValidator, statusValidator, stepValidator } from "./validators";
+import { archiveValidator, changeStageValidator, depositValidator, metadataValidator, pdfTroubleValidator, plainResults, registrationValidator, statusValidator, stepValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
@@ -49,6 +49,9 @@ export const touch = (ctx: MutationCtx, report: Doc<"reports">, patch: Partial<D
 export function keptDetails(metadata: Metadata) {
   const over = (Object.keys(DETAIL_CAPS) as Array<keyof typeof DETAIL_CAPS>).find((list) => list in metadata && (metadata[list as keyof Metadata] as unknown[]).length > DETAIL_CAPS[list]);
   if (over) throw createError("VALIDATION_ERROR", `A report holds at most ${DETAIL_CAPS[over].toLocaleString("en")} ${over === "studyDesigns" ? "study designs" : over === "sdgs" ? "goals" : over === "relations" ? "links" : over}.`);
+  for (const text of ["title", "subtitle", "abstract"] as const) if (metadata[text].length > DETAIL_TEXT[text]) throw createError("VALIDATION_ERROR", `Keep the ${text} to ${DETAIL_TEXT[text].toLocaleString("en")} characters.`);
+  const wrong = metadata.authors.find((author) => author.orcid && !isOrcid(author.orcid));
+  if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
   if (JSON.stringify(metadata).length > DETAILS_MAX_BYTES) throw createError("VALIDATION_ERROR", "These details are too long to save. Shorten the abstract or the lists.");
   return metadata;
 }
@@ -146,8 +149,8 @@ export const discard = workspaceMutation({
   },
 });
 
-/** Back to a step already done, or on from the DOI to the upload. A report past its checks goes back only to
- * replace a PDF that failed them; its details open again once that PDF has been read. */
+/** Back to a step already done, or on from the DOI to the upload. A report past its checks goes back only when it
+ * failed them: to replace its PDF, or to change the details its PDF was read into. */
 export const goTo = workspaceMutation({
   args: { key: v.string(), step: v.union(v.literal("doi"), v.literal("upload"), v.literal("details")) },
   returns: v.null(),
@@ -157,7 +160,7 @@ export const goTo = workspaceMutation({
     const checked = report.step === "done";
     if (checked && stageOf(report, (await reportSettings(ctx)).humanReview) !== "failed") throw createError("CONFLICT", MOVED_ON);
     const details = step === "details" ? await detailsOf(ctx, report._id) : null;
-    if (step === "details" && (checked || !details?.metadata)) throw createError("CONFLICT", "That step isn't open for this report yet.");
+    if (step === "details" && !details?.metadata) throw createError("CONFLICT", "That step isn't open for this report yet.");
     await touch(ctx, report, { step });
     return null;
   },
@@ -340,7 +343,7 @@ const reportValidator = v.object({
   agreementVersion: v.number(),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(v.union(v.literal("unopened"), v.literal("unread"))), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: v.optional(plainResults),
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
