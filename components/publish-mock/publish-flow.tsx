@@ -48,6 +48,7 @@ import { DetailsStep } from "@/components/publish-mock/details-step";
 import { activate, addToCommunity, discardCorrection, discardReport, goTo, readPdfDetails, readReport, requestCorrectionReview, requestReview, saveDetails, signAgreement, uploadPdf } from "@/app/actions/publish-mock";
 import { fillAgreement } from "@/lib/publish-mock/agreement";
 import { useClerk } from "@clerk/nextjs";
+import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { CommunityControl } from "@/components/evidence-libraries/added-papers/community-control";
 import { RegistrationChips } from "@/components/publish-mock/registration";
@@ -170,17 +171,12 @@ export function PublishFlow({
   const [{ view, report: asked, correct, show, page }, setPlace] = useQueryStates(PLACE);
   // Moving to another report, view or page of the list, or opening a report's details to correct, is a step forward
   // in the browser's history, so Back returns to where the person was. It is another screen, so it opens at its
-  // top, as History's and the library's pages do; the browser puts the place back on the way back. Leaving the details with their own Cancel is
-  // the step back, so Back afterwards never reopens them; what a link or a reload opened closes in place.
-  const steps = useRef(0);
-  const go = (next: Parameters<typeof setPlace>[0]) => {
-    steps.current += 1;
-    void setPlace(next, { history: "push", scroll: true });
-  };
-  const up = (next: Parameters<typeof setPlace>[0]) => {
-    if (steps.current < 1) return void setPlace(next);
-    steps.current -= 1;
-    window.history.back();
+  // top, as History's and the library's pages do; the browser puts the place back on the way back. Leaving with the
+  // screen's own button is the step back when that step is there (lib/url-state/step-back.ts), so Back afterwards
+  // never reopens it; what a link or a reload opened closes in place.
+  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push", scroll: true });
+  const up = (...closed: Array<keyof typeof PLACE>) => {
+    if (!stepBack(withoutKeys(closed))) void setPlace(Object.fromEntries(closed.map((key) => [key, null])));
   };
   const [reports, setReports] = useState(initialReports);
   // Whether review is on decides where a report stands, and an admin can switch it while this page is open: the
@@ -296,6 +292,10 @@ export function PublishFlow({
       // Back to the list, once there is one to go back to.
       backHref={!listed && reports.length ? "/publish?view=reports" : undefined}
       backLabel="Your reports"
+      // Back to the list it was opened from is the browser's own step back, so Back afterwards doesn't reopen the report.
+      onBackClick={(event) => {
+        if (stepBack((behind) => behind.pathname === new URL(event.currentTarget.href).pathname && behind.searchParams.get("view") === "reports")) event.preventDefault();
+      }}
       filters={listed ? <StatusFilter reports={reports} settings={settings} show={show} onShow={(next) => void setPlace({ show: next, page: null })} /> : undefined}
       // Several reports can be under way at once: a new one starts here, and each counts against the day's limit.
       actions={
@@ -402,7 +402,7 @@ export function PublishFlow({
                   onRun={(metadata) => check(draft, metadata, true)}
                   onCancel={() => {
                     setAttempt(null);
-                    up({ correct: null });
+                    up("correct");
                   }}
                 />
               ) : live && draft.correction ? (

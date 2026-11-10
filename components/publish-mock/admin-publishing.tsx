@@ -4,7 +4,7 @@
 // approve and decline for those waiting. Settings: the Publish button, human review, the series and its DOIs, the
 // model that reads PDFs, the checks, and the agreement. State lives in the mock's local store.
 
-import { useMemo, useRef, useState, useTransition, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useMemo, useState, useTransition, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import { toast } from "sonner";
 import Link from "@/components/workspace-link";
@@ -51,6 +51,7 @@ import {
 import { CheckRow } from "@/components/publish-mock/publish-flow";
 import { ENTRY_OPEN, Entry } from "@/components/command-center/entry";
 import { DetailsStep } from "@/components/publish-mock/details-step";
+import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { usePlaceName } from "@/components/publish-mock/report-extras";
 import { editDetails, findAccounts, removeCheck, removeLimit, retryDeposit, review, reviewCorrection, saveCheck, saveLimit, savePublication, updateAgreement, updateSettings } from "@/app/actions/publish-mock";
 import useSWR from "swr";
@@ -129,18 +130,12 @@ const NAV = {
 export function AdminPublishing({ initial, accounts, known }: { initial: MockState; accounts: Accounts; known: Account[] }) {
   const [nav, setNav] = useQueryStates(NAV);
   // Opening something is a step forward in the browser's history, and closing it with its own button is the step
-  // back, so Back never reopens what was just closed and Forward does. What a link or a reload opened has no step
-  // behind it on this page, so it closes in place.
-  const steps = useRef(0);
+  // back when that step is there (lib/url-state/step-back.ts), so Back never reopens what was just closed and
+  // Forward does. What a link or a reload opened has no step behind it, so it closes in place.
   // Another screen opens at its top; a dialog opens over the page where it is.
-  const go = (next: Parameters<typeof setNav>[0], scroll = true) => {
-    steps.current += 1;
-    void setNav(next, { history: "push", scroll });
-  };
-  const up = (next: Parameters<typeof setNav>[0]) => {
-    if (steps.current < 1) return void setNav(next);
-    steps.current -= 1;
-    window.history.back();
+  const go = (next: Parameters<typeof setNav>[0], scroll = true) => void setNav(next, { history: "push", scroll });
+  const up = (...closed: Array<keyof typeof NAV>) => {
+    if (!stepBack(withoutKeys(closed))) void setNav(Object.fromEntries(closed.map((key) => [key, null])));
   };
   const [settings, setSettings] = useState(initial.settings);
   const [submissions, setSubmissions] = useState(initial.submissions.filter((s) => s.status !== "draft"));
@@ -160,7 +155,7 @@ export function AdminPublishing({ initial, accounts, known }: { initial: MockSta
     return (
       <Enter ready>
         <div className="space-y-5">
-          <Button variant="ghost" size="sm" className="-ms-2.5 text-muted-foreground" onClick={() => up({ edit: null })}>
+          <Button variant="ghost" size="sm" className="-ms-2.5 text-muted-foreground" onClick={() => up("edit")}>
             <ChevronLeft /> Back to the report
           </Button>
           <DetailsStep
@@ -175,17 +170,17 @@ export function AdminPublishing({ initial, accounts, known }: { initial: MockSta
             }}
             onRun={async (metadata) => {
               try {
-                const result = await editDetails(opened.id, metadata);
+                const result = await editDetails(opened.id, opened.updatedAt, metadata);
                 if ("refused" in result) return void toast.error(result.refused);
                 replace(result);
                 toast.success(live ? "Details saved. They're live." : "Details saved.");
                 // Back to the report's dialog, which now shows the edit.
-                up({ edit: null });
+                up("edit");
               } catch (error) {
                 failed(error);
               }
             }}
-            onCancel={() => up({ edit: null })}
+            onCancel={() => up("edit")}
           />
         </div>
       </Enter>
@@ -207,9 +202,9 @@ export function AdminPublishing({ initial, accounts, known }: { initial: MockSta
           size="md"
         />
         {nav.view === "submissions" ? (
-          <Submissions settings={settings} submissions={submissions} outbox={outbox} onChange={replace} open={nav.report} opened={opened} onOpen={(report) => (report ? go({ report, edit: null }, false) : up({ report: null, edit: null }))} onEdit={() => go({ edit: true })} />
+          <Submissions settings={settings} submissions={submissions} outbox={outbox} onChange={replace} open={nav.report} opened={opened} onOpen={(report) => (report ? go({ report, edit: null }, false) : up("report", "edit"))} onEdit={() => go({ edit: true })} />
         ) : (
-          <SettingsView settings={settings} accounts={accounts} known={known} onChange={setSettings} check={nav.check} onCheck={(check) => (check ? go({ check }, false) : up({ check: null }))} agreement={nav.agreement} onAgreement={(open) => (open ? go({ agreement: true }, false) : up({ agreement: null }))} />
+          <SettingsView settings={settings} accounts={accounts} known={known} onChange={setSettings} check={nav.check} onCheck={(check) => (check ? go({ check }, false) : up("check"))} agreement={nav.agreement} onAgreement={(open) => (open ? go({ agreement: true }, false) : up("agreement"))} />
         )}
       </div>
     </Enter>
@@ -434,7 +429,10 @@ function SubmissionDialog({ submission: s, settings, emails, onClose, onChange, 
     });
   // Saying no asks first, with room for a note to the author: declining a report, withdrawing a live one, which
   // takes its page down for everyone, or declining changes to it.
-  const [asking, setAsking] = useState<keyof typeof ASKS | null>(null);
+  // It belongs to the report it was opened on: another report opened meanwhile, as by Back, never inherits it.
+  const [asked, setAsked] = useState<{ report: string; what: keyof typeof ASKS } | null>(null);
+  const asking = asked && asked.report === s?.id ? asked.what : null;
+  const setAsking = (what: keyof typeof ASKS | null) => setAsked(what && s ? { report: s.id, what } : null);
   const DONE = { approve: "Approved. Its author can activate it now.", reinstate: "Reinstated. It's live again.", withdraw: "Withdrawn", decline: "Declined" };
   const decide = (decision: keyof typeof DONE) => s && send(() => review(s.id, decision, s.pdf?.at, note.trim() || undefined), DONE[decision]);
   const changes = s ? changesIn(s) : null;

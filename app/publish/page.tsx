@@ -26,6 +26,9 @@ export default async function PublishPage({ params, searchParams }: { params: Pr
   // The organisation whose workspace this is. Its layout has already turned away anyone who isn't a member.
   const organization = slug ? await organizationAt(slug) : null;
   if (slug && !organization) notFound();
+  // Asked of the page itself, not only the layout above it, which a move between an organisation's pages doesn't
+  // run again: someone taken out of the organisation meanwhile gets their own Publish.
+  if (organization && user && !(await organizationsOf(user.id)).includes(organization.id)) redirect("/publish");
   const here = (path: string) => workspaceHref(slug, path);
   // A report named from the wrong workspace, as by an email or its own page's button, opens in its own.
   const named = report && user ? state.submissions.find((s) => s.id === report) : undefined;

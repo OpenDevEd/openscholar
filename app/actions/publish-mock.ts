@@ -570,7 +570,7 @@ export async function addToCommunity(id: string, community: { id: string; name: 
  * when, stays on the report, and its author is told what changed. Not while the author's own changes are waiting:
  * those are approved or declined first, so neither set overwrites the other.
  */
-export async function editDetails(id: string, metadata: unknown): Promise<Submission | Refused> {
+export async function editDetails(id: string, seenAt: number, metadata: unknown): Promise<Submission | Refused> {
   if (!(await isAdmin())) return NOT_ADMIN;
   if (!isMetadata(metadata)) return { refused: "The report needs a title." };
   const user = await currentUser();
@@ -580,12 +580,15 @@ export async function editDetails(id: string, metadata: unknown): Promise<Submis
     const report = state.submissions.find((s) => s.id === id);
     if (!report?.metadata || report.step !== "done") return { refused: "This report's details aren't a reviewer's to edit yet: its author is still working on it." };
     if (report.correction) return { refused: "The author's changes to this report are waiting. Approve or decline them first." };
+    // The edit was made from the report as it stood when the form opened: one changed since, or being checked now,
+    // is never overwritten by it.
+    if (report.run) return { refused: "This report's checks are running on a change right now. Try again in a moment." };
+    if (report.updatedAt !== seenAt) return { refused: "This report changed since you opened it. Reload to edit it as it stands." };
     const changed = changesOf(report.metadata, metadata).map((c) => c.label);
     if (JSON.stringify(report.metadata) === JSON.stringify(metadata)) return { refused: "Nothing was changed." };
-    // A run of the checks still reading the old details is given up with them.
     if (report.status === "live") applyCorrection(report, { metadata, results: report.results ?? [], checksVersion: report.checksVersion ?? state.settings.checksVersion });
     else touch(report, { metadata });
-    Object.assign(report, { run: undefined, reviews: [...(report.reviews ?? []), { decision: "edit", by, at: Date.now() }] });
+    report.reviews = [...(report.reviews ?? []), { decision: "edit", by, at: Date.now() }];
     mail(state, "details-edited", { ...report, note: changed.join(", ") }, origin);
     return report;
   });
