@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { checked, live, passed, row, setup, type World } from "./reports.test-support";
+import { trimPaperData } from "../../lib/library/trim-paper-data";
+import { reportPaper } from "../../lib/reports/report-paper";
 
 const decide = async (world: World, key: string, decision: "withdraw" | "reinstate") =>
   world.reviewer.mutation(api.reports.review.decide, { key, decision, seenPdfAt: (await row(world.t, key)).pdf!.at });
@@ -80,6 +82,45 @@ describe("a report's page", () => {
       expect(await world.t.run((ctx) => ctx.db.query("reportFiles").withIndex("by_file", (q) => q.eq("file", after.pdf!.file)).unique())).not.toBeNull();
       await decide(world, key, "reinstate");
       expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ state: "live", pdfUrl: expect.any(String) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps its saved copies in step in every workspace: corrected, withdrawn and reinstated", async () => {
+    vi.useFakeTimers();
+    try {
+      const world = await setup();
+      const { key } = await live(world);
+      const page = await world.t.query(api.reports.paper.get, { key });
+      if (page?.state !== "live") throw new Error("The report isn't live");
+      // Saved as its page saves it, by its author at home and by a colleague in the organisation.
+      const paper = reportPaper({ key, doi: page.doi, pdfUrl: page.pdfUrl, updatedAt: page.updatedAt }, page.metadata, page.series);
+      const saved = { ...trimPaperData(paper), paperData: JSON.stringify(paper) };
+      await world.author.mutation(api.library.mutations.saveToLibrary, { workspaceId: world.own, ...saved });
+      await world.orgAdmin.mutation(api.library.mutations.saveToLibrary, { workspaceId: world.lab, ...saved });
+      const copies = () => world.t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_paperKey", (q) => q.eq("paperKey", `report:${key}`)).collect());
+      expect((await copies()).map((copy) => copy.title)).toEqual(["Shade trees and maize yields", "Shade trees and maize yields"]);
+
+      await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt: (await row(world.t, key)).updatedAt, metadata: { ...page.metadata, title: "Shade trees, corrected" } });
+      await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+      for (const copy of await copies()) {
+        expect(copy).toMatchObject({ title: "Shade trees, corrected", pdfUrl: `/papers/${key}/report.pdf` });
+        expect(copy.searchableText).toContain("Shade trees, corrected");
+        expect(JSON.parse(copy.paperData!)).toMatchObject({ title: "Shade trees, corrected" });
+      }
+
+      await decide(world, key, "withdraw");
+      await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+      for (const copy of await copies()) {
+        expect(copy.title).toBe("Withdrawn: Shade trees, corrected");
+        expect(copy.pdfUrl).toBeUndefined();
+        expect(copy.oaUrl).toBeUndefined();
+      }
+
+      await decide(world, key, "reinstate");
+      await world.t.finishAllScheduledFunctions(vi.runAllTimers);
+      for (const copy of await copies()) expect(copy).toMatchObject({ title: "Shade trees, corrected", pdfUrl: `/papers/${key}/report.pdf` });
     } finally {
       vi.useRealTimers();
     }
