@@ -163,7 +163,10 @@ export const update = mutation({
     await requireAdmin(ctx);
     const row = await settingsRow(ctx);
     // Review switched off releases what waited only for it (./review.ts `release`).
-    if (humanReview === false && row.humanReview) await ctx.scheduler.runAfter(0, internal.reports.review.release, {});
+    if (humanReview === false && row.humanReview) {
+      await ctx.scheduler.runAfter(0, internal.reports.review.release, {});
+      await ctx.scheduler.runAfter(0, internal.reports.review.tellReleased, {});
+    }
     await save(ctx, row._id, {
       ...(enabled !== undefined && { enabled }),
       ...(humanReview !== undefined && { humanReview }),

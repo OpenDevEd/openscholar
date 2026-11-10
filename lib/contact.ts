@@ -43,14 +43,33 @@ export type ContactMessage = z.infer<typeof contactMessage>;
 
 const LABELS: Array<[keyof ContactMessage, string]> = [["name", "Name"], ["email", "Email"], ["org", "Organisation"], ["country", "Country"], ["project", "Project"], ["message", "Message"]];
 
+/**
+ * Text as HTML, with each web address in it a link, so a reader opens it with one click. The addresses are found in
+ * the text as typed, before any of it is escaped: the quote, full stop or bracket around one stays outside it.
+ */
+function linked(text: string) {
+  let html = "";
+  let from = 0;
+  for (const found of text.matchAll(/https?:\/\/[^\s<>"']*[^\s<>"'.,;:!?)]/g)) {
+    html += `${escapeHtml(text.slice(from, found.index))}<a href="${escapeHtml(found[0])}" style="color:#c2410c">${escapeHtml(found[0])}</a>`;
+    from = found.index + found[0].length;
+  }
+  return html + escapeHtml(text.slice(from));
+}
+
+/** An email of labelled values: a heading, then each value under its label. The body, as text and as HTML. */
+export function labelledEmail(heading: string, rows: ReadonlyArray<readonly [label: string, value: string]>) {
+  return {
+    text: [heading, ...rows.map(([label, value]) => `${label}:\n${value}`)].join("\n\n"),
+    html: `<p style="margin:0 0 20px;font:600 15px/1.4 sans-serif">${escapeHtml(heading)}</p>${rows
+      .map(([label, value]) => `<p style="margin:0 0 4px;font:13px/1.4 sans-serif;color:#6a6a6a">${escapeHtml(label)}</p><p style="margin:0 0 18px;font:15px/1.5 sans-serif;white-space:pre-wrap">${linked(value)}</p>`)
+      .join("")}`,
+  };
+}
+
 /** The email a message becomes: its topic and sender in the subject, then each answer under its label. */
 export function contactEmail(form: ContactMessage) {
   const rows = LABELS.flatMap(([key, label]) => (form[key] ? [[label, String(form[key])] as const] : []));
-  return {
-    subject: `${CONTACT_TOPICS[form.topic]}: ${form.name}`,
-    text: [`Topic: ${CONTACT_TOPICS[form.topic]}`, ...rows.map(([label, value]) => `${label}:\n${value}`)].join("\n\n"),
-    html: `<p style="margin:0 0 20px;font:600 15px/1.4 sans-serif">${escapeHtml(CONTACT_TOPICS[form.topic])}</p>${rows
-      .map(([label, value]) => `<p style="margin:0 0 4px;font:13px/1.4 sans-serif;color:#6a6a6a">${label}</p><p style="margin:0 0 18px;font:15px/1.5 sans-serif;white-space:pre-wrap">${escapeHtml(value)}</p>`)
-      .join("")}`,
-  };
+  const body = labelledEmail(CONTACT_TOPICS[form.topic], rows);
+  return { subject: `${CONTACT_TOPICS[form.topic]}: ${form.name}`, text: `Topic: ${body.text}`, html: body.html };
 }

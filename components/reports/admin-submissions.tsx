@@ -27,7 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
-import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, PenLine, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
+import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, Mail, PenLine, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { REVIEW_TEXT_MAX, changesOf, stageOf, type Metadata, type Stage } from "@/lib/reports/report";
@@ -55,7 +56,7 @@ const STATUS: Record<Exclude<Stage, "draft">, { label: string; tone: "running" |
   failed: { label: "Failed checks", tone: "danger", icon: CircleX },
   declined: { label: "Declined", tone: "neutral", icon: CircleX },
 };
-const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed", declined: "Declined" };
+const SHOW_LABEL: Record<Show, string> = { all: "All", review: "In review", ready: "Ready to activate", live: "Live", failed: "Failed", declined: "Declined or withdrawn" };
 const CHANGES = { review: { label: "Changes to review", tone: "running" }, failed: { label: "Changes failed a check", tone: "danger" }, declined: { label: "Changes declined", tone: "neutral" } } as const;
 const REVIEWED: Record<Report["reviews"][number]["decision"], string> = { approve: "Approved", decline: "Declined", withdraw: "Withdrawn", reinstate: "Reinstated", "approve-changes": "Changes approved", "decline-changes": "Changes declined", edit: "Details edited" };
 /** What a reviewer is asked before saying no, each with room for a note to the author. */
@@ -140,7 +141,7 @@ export function Submissions({ open, onOpen, onEdit }: { /** The report the addre
                     row={row}
                     stage={stageOf(row, shown.humanReview)}
                     onOpen={() => onOpen(row.key)}
-                    onApprove={() => decide({ key: row.key, decision: "approve", ...(row.pdfAt !== undefined && { seenPdfAt: row.pdfAt }) }).then(() => void toast.success("Approved. Its author can activate it now."), failed)}
+                    onApprove={() => decide({ key: row.key, decision: "approve", seenAt: row.updatedAt, ...(row.pdfAt !== undefined && { seenPdfAt: row.pdfAt }) }).then(() => void toast.success("Approved. Its author can activate it now."), failed)}
                   />
                 ))}
               </ul>
@@ -259,13 +260,15 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
   // another report opened meanwhile, as by Back, never inherits it.
   // It is also for the PDF and the changes that were open when it was asked: ones that replaced them while the
   // question stood are never what the answer is given on.
-  const [asked, setAsked] = useState<{ report: string; what: keyof typeof ASKS; pdfAt?: number; changesAt?: number } | null>(null);
+  const [asked, setAsked] = useState<{ report: string; what: keyof typeof ASKS; at: number; pdfAt?: number; changesAt?: number } | null>(null);
   const asking = asked && asked.report === s?.key ? asked.what : null;
-  const setAsking = (what: keyof typeof ASKS | null) => setAsked(what && s ? { report: s.key, what, pdfAt: s.pdf?.at, changesAt: s.status === "live" ? s.correction?.at : undefined } : null);
+  const setAsking = (what: keyof typeof ASKS | null) => setAsked(what && s ? { report: s.key, what, at: s.updatedAt, pdfAt: s.pdf?.at, changesAt: s.status === "live" ? s.correction?.at : undefined } : null);
   const DONE = { approve: "Approved. Its author can activate it now.", reinstate: "Reinstated. It's live again.", withdraw: "Withdrawn", decline: "Declined" };
   const decide = (decision: keyof typeof DONE) => {
     const seenPdfAt = asking ? asked!.pdfAt : s?.pdf?.at;
-    return s && send(() => decideReport({ key: s.key, decision, ...(seenPdfAt !== undefined && { seenPdfAt }), ...(note.trim() && { note: note.trim() }) }), DONE[decision]);
+    // The report as it was when the question was asked, or as it is shown now.
+    const seenAt = asking ? asked!.at : s?.updatedAt;
+    return s && send(() => decideReport({ key: s.key, decision, ...(seenPdfAt !== undefined && { seenPdfAt }), ...(seenAt !== undefined && { seenAt }), ...(note.trim() && { note: note.trim() }) }), DONE[decision]);
   };
   const correction = s?.status === "live" ? s.correction : undefined;
   const changes = s && correction ? { correction, stage: s.changes ?? "review" } : null;
@@ -434,6 +437,23 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   ))}
                 </ul>
               ) : null}
+              {/* What the team's inbox and the author were emailed about it, in order. */}
+              {(["team", "author"] as const).map((audience) => {
+                const told = s.emails.filter((email) => email.audience === audience);
+                return told.length ? (
+                  <div key={audience} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Mail className="size-3.5" /> {audience === "team" ? `Emailed to ${CONTACT_EMAIL}` : "Emailed to the author"}
+                    </span>
+                    {told.map((email) => (
+                      <span key={`${email.at}:${email.event}`} className={cn("font-medium text-foreground/80", email.failed && "text-destructive line-through")}>
+                        {email.event}
+                        {email.failed ? <span className="sr-only"> (couldn&apos;t be sent)</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : null;
+              })}
               {s.metadata?.abstract ? <p className="line-clamp-5 text-sm/6 text-muted-foreground">{s.metadata.abstract}</p> : null}
               {s.metadata ? <Subjects m={s.metadata} /> : null}
               {s.status === "declined" && s.note ? <p className="whitespace-pre-wrap break-words rounded-xl bg-inset p-3 text-sm">{s.note}</p> : null}
