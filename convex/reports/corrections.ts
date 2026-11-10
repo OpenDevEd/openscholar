@@ -29,6 +29,7 @@ export async function applyChanges(ctx: MutationCtx, report: Doc<"reports">, det
     archive: registers.includes("zenodo") ? "queued" : "none",
     registrationError: undefined,
     registrationTries: undefined,
+    depositSent: undefined,
     updatedAt: now,
   });
   await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id });

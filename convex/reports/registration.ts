@@ -29,6 +29,7 @@ export async function register(ctx: MutationCtx, report: Doc<"reports">) {
     archive: registers.includes("zenodo") ? "queued" : "none",
     registrationError: undefined,
     registrationTries: undefined,
+    depositSent: undefined,
   });
   await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id });
 }
@@ -48,6 +49,8 @@ export const job = internalQuery({
       waiting: v.array(providerValidator),
       zenodoRecordId: v.optional(v.string()),
       zenodoDoi: v.optional(v.string()),
+      /** Crossref took this record's deposit, and hasn't shown the record yet. */
+      depositSent: v.boolean(),
       pdf: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string() })),
       publication: publicationSettingsValidator,
       encryptedCredentials: v.union(v.string(), v.null()),
@@ -72,6 +75,7 @@ export const job = internalQuery({
       waiting: providersOf(report.registration).filter((provider) => (provider === "crossref" ? report.deposit : report.archive) === "queued"),
       ...(report.zenodoRecordId && { zenodoRecordId: report.zenodoRecordId }),
       ...(report.zenodoDoi && { zenodoDoi: report.zenodoDoi }),
+      depositSent: report.depositSent === true,
       pdf: report.pdf ? { file: report.pdf.file, name: report.pdf.name } : null,
       publication: settings.publication,
       encryptedCredentials: settings.row?.encryptedCredentials ?? null,
@@ -85,20 +89,20 @@ export const job = internalQuery({
  * `unreached` tries again in a few minutes, a few times, then counts as refused.
  */
 export const settle = internalMutation({
-  args: { reportId: v.id("reports"), provider: providerValidator, outcome: v.union(v.literal("done"), v.literal("refused"), v.literal("unreached")), error: v.optional(v.string()), zenodoRecordId: v.optional(v.string()), zenodoDoi: v.optional(v.string()) },
+  args: { reportId: v.id("reports"), provider: providerValidator, outcome: v.union(v.literal("done"), v.literal("refused"), v.literal("unreached")), error: v.optional(v.string()), zenodoRecordId: v.optional(v.string()), zenodoDoi: v.optional(v.string()), /** Crossref took the deposit: the next try looks for the record and sends nothing. */ sent: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { reportId, provider, outcome, error, zenodoRecordId, zenodoDoi }) => {
+  handler: async (ctx, { reportId, provider, outcome, error, zenodoRecordId, zenodoDoi, sent }) => {
     const report = await ctx.db.get("reports", reportId);
     // Asked to register again since this attempt began, or gone: this answer is about an older record.
     if (!report || (provider === "crossref" ? report.deposit : report.archive) !== "queued") return null;
     const field = provider === "crossref" ? "deposit" : "archive";
     if (outcome === "done") {
-      await ctx.db.patch("reports", reportId, { [field]: provider === "crossref" ? "deposited" : "archived", registrationError: undefined, registrationTries: undefined, ...(zenodoRecordId && { zenodoRecordId }), ...(zenodoDoi && { zenodoDoi }) });
+      await ctx.db.patch("reports", reportId, { [field]: provider === "crossref" ? "deposited" : "archived", registrationError: undefined, registrationTries: undefined, ...(provider === "crossref" && { depositSent: undefined }), ...(zenodoRecordId && { zenodoRecordId }), ...(zenodoDoi && { zenodoDoi }) });
       return null;
     }
     const tries = (report.registrationTries ?? 0) + 1;
     if (outcome === "unreached" && tries < REGISTRATION_TRIES) {
-      await ctx.db.patch("reports", reportId, { registrationTries: tries, ...(error && { registrationError: error.slice(0, ERROR_MAX) }) });
+      await ctx.db.patch("reports", reportId, { registrationTries: tries, ...(sent && { depositSent: true }), ...(error && { registrationError: error.slice(0, ERROR_MAX) }) });
       await ctx.scheduler.runAfter(RETRY_AFTER_MS, internal.reports.registrar.register, { reportId });
       return null;
     }
@@ -126,6 +130,8 @@ export const retry = mutation({
       ...(registers.includes("zenodo") && { archive: again(report.archive, "archived") as Doc<"reports">["archive"] }),
       registrationError: undefined,
       registrationTries: undefined,
+      // Sent again whole: a deposit Crossref took and never showed is not waited on any longer.
+      depositSent: undefined,
     });
     await ctx.scheduler.runAfter(0, internal.reports.registrar.register, { reportId: report._id });
     return null;

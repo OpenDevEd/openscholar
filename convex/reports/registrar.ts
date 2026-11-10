@@ -35,8 +35,19 @@ export const register = internalAction({
           const mapped = mapCrossrefRecord(record, job.doi);
           if (!mapped.ok) throw new Error(`Crossref can't take this record: ${mapped.issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`);
           const stamp = new Date().toISOString().replace(/\D/g, "").slice(0, 17);
-          const outcome = await new CrossrefApiClient().submitPublication({
-            environment: crossref.mode === "sandbox" ? "test" : "production",
+          const environment = crossref.mode === "sandbox" ? ("test" as const) : ("production" as const);
+          const client = new CrossrefApiClient();
+          // A deposit Crossref already took is only looked for, never sent twice.
+          const seen = async () => (await client.verifyPublication({ environment, emailAddress: crossref.email, record: mapped.record })).status === "matched";
+          if (job.depositSent) {
+            const there = await seen();
+            console.info(JSON.stringify({ event: "report-crossref-verify", reportId, key: job.key, there }));
+            await ctx.runMutation(internal.reports.registration.settle, there ? { reportId, provider, outcome: "done" } : { reportId, provider, outcome: "unreached", error: "Crossref took the deposit and doesn't show the record yet.", sent: true });
+            if (!there) return null;
+            continue;
+          }
+          const outcome = await client.submitPublication({
+            environment,
             loginId: secrets.crossrefLoginId,
             password: secrets.crossrefPassword,
             depositorName: crossref.depositorName,
@@ -50,9 +61,15 @@ export const register = internalAction({
           });
           console.info(JSON.stringify({ event: "report-crossref-deposit", reportId, key: job.key, status: outcome.status, diagnostic: "diagnostic" in outcome ? outcome.diagnostic : null }));
           if (outcome.status === "failed") throw new Error(`Crossref refused the deposit: ${outcome.diagnostic.failureCount} of ${outcome.diagnostic.recordCount} records failed (${outcome.diagnostic.batchStatus ?? outcome.diagnostic.status}).`);
-          // Still in Crossref's queue after the wait: asked again later, which changes nothing once it is in.
-          await ctx.runMutation(internal.reports.registration.settle, outcome.status === "pending" ? { reportId, provider, outcome: "unreached", error: "Crossref hasn't processed the deposit yet." } : { reportId, provider, outcome: "done" });
-          if (outcome.status === "pending") return null;
+          // Crossref answered that the batch went in without failures: its sandbox stops there, and production may
+          // not show the record at once. Either way the record is looked for, now and again later, and never re-sent.
+          const taken = outcome.status === "succeeded" || (outcome.diagnostic !== undefined && outcome.diagnostic.failureCount === 0 && (outcome.diagnostic.successCount ?? 0) > 0);
+          const registered = outcome.status === "succeeded" || (taken && (await seen()));
+          await ctx.runMutation(
+            internal.reports.registration.settle,
+            registered ? { reportId, provider, outcome: "done" } : { reportId, provider, outcome: "unreached", error: taken ? "Crossref took the deposit and doesn't show the record yet." : "Crossref hasn't processed the deposit yet.", ...(taken && { sent: true }) },
+          );
+          if (!registered) return null;
         } else {
           if (zenodo.mode === "off" || !secrets.zenodoToken) throw new Error("Zenodo isn't connected in the publishing settings.");
           const client = new ZenodoApiClient({

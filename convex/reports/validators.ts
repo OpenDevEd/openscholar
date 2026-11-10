@@ -154,6 +154,8 @@ export const reportFields = {
   /** Why its last registration was refused or couldn't be made, for a reviewer, and how often it has been tried again. */
   registrationError: v.optional(v.string()),
   registrationTries: v.optional(v.number()),
+  /** Crossref took the deposit of the record as it stands, and hasn't shown it yet: it is looked for, not sent again. */
+  depositSent: v.optional(v.boolean()),
   activatedAt: v.optional(v.number()),
   correctedAt: v.optional(v.number()),
   /** When a reviewer withdrew it after it had gone live. Its address then shows a page saying so. */
