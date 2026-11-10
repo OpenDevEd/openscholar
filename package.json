@@ -57,7 +57,7 @@
     "@formatjs/intl-localematcher": "^0.8.1",
     "@hugeicons/core-free-icons": "^4.3.0",
     "@hugeicons/react": "^1.1.10",
-    "@opendeved/doi-sync-core": "github:OpenDevEd/doi-sync-core#603316a8827b3072782fb2dabb918cf748a165d9",
+    "@opendeved/doi-sync-core": "github:OpenDevEd/doi-sync-core#7db4e93b2a23d48f7bca1478f6b9f2c934a0eb39",
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "@posthog/nextjs-config": "^1.12.1",
     "@sickrin/openalex-sdk": "^1.1.0",

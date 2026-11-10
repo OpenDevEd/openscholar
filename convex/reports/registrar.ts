@@ -5,7 +5,7 @@
 // registrars in the order its route fixed when its DOI was reserved, and each answer is kept as it comes
 // (./registration.ts). Every attempt is logged with what the registrar said, since it is the only record of a refusal.
 import { v } from "convex/values";
-import { CrossrefApiClient, ProviderHttpError, ZenodoApiClient, mapCrossrefRecord } from "@opendeved/doi-sync-core";
+import { CrossrefApiClient, ProviderHttpError, ZenodoApiClient, mapCrossrefRecord, type CrossrefDiagnosticResult } from "@opendeved/doi-sync-core";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import type { PublicationSecrets } from "../evidenceLibraries/publicationValidators";
@@ -23,6 +23,10 @@ class FundersUnread extends Error {}
 /** A registrar that couldn't be reached, or answered that it is busy: worth trying again. Anything else is a refusal. */
 const unreached = (error: unknown) =>
   error instanceof FundersUnread || (error instanceof ProviderHttpError ? error.retryable : error instanceof TypeError || (error instanceof Error && error.name === "TimeoutError"));
+
+/** Crossref's own words for a refused deposit, or its counts when it gave none. */
+const said = (diagnostic: CrossrefDiagnosticResult) =>
+  diagnostic.failures?.join(" ") || `${diagnostic.failureCount} of ${diagnostic.recordCount} records failed (${diagnostic.batchStatus ?? diagnostic.status}).`;
 
 /** Each funder's Funder Registry DOI, which Crossref matches funders by, by OpenAlex ID: one request, as a report holds at most 50 funders. */
 async function funderDois(funding: Funding[]) {
@@ -93,7 +97,7 @@ export const register = internalAction({
               if (held.record?.relations?.length) {
                 const cleared = await client.submitPublication(deposit("delete-all"));
                 console.info(JSON.stringify({ event: "report-crossref-clear", reportId, key: job.key, held: held.record.relations.length, status: cleared.status }));
-                if (cleared.status === "failed") throw new Error(`Crossref refused clearing the report's earlier links: ${cleared.diagnostic.failureCount} of ${cleared.diagnostic.recordCount} records failed (${cleared.diagnostic.batchStatus ?? cleared.diagnostic.status}).`);
+                if (cleared.status === "failed") throw new Error(`Crossref refused clearing the report's earlier links: ${said(cleared.diagnostic)}`);
                 // Until Crossref shows them gone, the links to send wait: the next try looks again.
                 if (cleared.status !== "succeeded") {
                   if (!(await settle(provider, { outcome: "unreached", error: "Crossref is clearing the report's earlier links before the new ones go in." }))) return null;
@@ -108,7 +112,7 @@ export const register = internalAction({
                 onSubmitted: async () => void (await ctx.runMutation(internal.reports.registration.noted, { reportId, rev, depositSent: true })),
               });
               console.info(JSON.stringify({ event: "report-crossref-deposit", reportId, key: job.key, status: outcome.status, diagnostic: "diagnostic" in outcome ? outcome.diagnostic : null }));
-              if (outcome.status === "failed") throw new Error(`Crossref refused the deposit: ${outcome.diagnostic.failureCount} of ${outcome.diagnostic.recordCount} records failed (${outcome.diagnostic.batchStatus ?? outcome.diagnostic.status}).`);
+              if (outcome.status === "failed") throw new Error(`Crossref refused the deposit: ${said(outcome.diagnostic)}`);
               registered = outcome.status === "succeeded";
               taken = true;
             }
