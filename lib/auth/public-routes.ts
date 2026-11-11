@@ -46,6 +46,15 @@ function matchesPattern(pathname: string, pattern: string) {
   return pathname === basePath || pathname.startsWith(`${basePath}/`);
 }
 
+/**
+ * The files and redirects routes serve to anyone, and the only addresses outside /api that aren't pages: a report's PDF,
+ * a paper's citation files and cover, a DOI's paper, robots.txt and the sitemaps, the question stage's parts. They need
+ * no account, so the proxy never hands them to Clerk. Exact, because a page takes any other address (`/papers/x.php`
+ * is a paper page that isn't found) and a page needs Clerk.
+ */
+export const isPublicFile = (pathname: string) =>
+  /^\/(?:robots\.txt|sitemap\.xml|papers\/sitemap\/\d+\.xml|papers\/doi\/.+|papers\/[^/]+\/(?:report\.pdf|cite\.(?:bib|ris)|cover\.png)|question-stage\/(?:hold|earth\.js))$/.test(pathname);
+
 export function isPublicPath(pathname: string) {
   const normalizedPath = normalizePathname(pathname);
 

@@ -7,6 +7,7 @@ import { locales } from "@/i18n/config";
 import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
 import { languageFromLink } from "@/i18n/link-language";
 import { shouldProtectPath } from "@/lib/auth/proxy-policy";
+import { isPublicFile } from "@/lib/auth/public-routes";
 import { bareWorkLink } from "@/lib/search-params/bare-work-link";
 import { slugOf, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { ADDRESS_HEADER } from "@/lib/workspaces/paths";
@@ -77,6 +78,9 @@ export default async function proxy(
   request: NextRequest,
   event: NextFetchEvent
 ) {
+  // A file or redirect a route serves to anyone never meets Clerk: Clerk sends a browser with no session token, or a
+  // stale one, to its handshake first, and Cloudflare keeps that redirect for hours on a `.pdf` address, which loops.
+  if (isPublicFile(request.nextUrl.pathname)) return NextResponse.next();
   const bareLink = bareWorkLink(request.nextUrl);
   if (bareLink) return NextResponse.redirect(bareLink);
   // Our index names each record by an address, openscholar.ai/OS…, which reaches here: it's that paper's page.
