@@ -1062,6 +1062,20 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
   if (paying && !admin) setPaying(false);
   const [code, setCode] = useState<Quote | null>(null);
+  const [quoting, setQuoting] = useState(false);
+  // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
+  // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price.
+  const openPay = () => {
+    const again = terms?.refused?.code;
+    if (!again || !onQuote) return setPaying(true);
+    setQuoting(true);
+    onQuote(again)
+      .then(setCode, () => setCode(null))
+      .finally(() => {
+        setQuoting(false);
+        setPaying(true);
+      });
+  };
   const subtotal = code ? Math.round(code.total * 100) : (price ?? 0);
   const fromCredit = Math.min(credit, subtotal);
   const due = subtotal - fromCredit;
@@ -1143,7 +1157,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   credit={credit}
                   price={price}
                   pending={pending}
-                  refused={terms.refused}
+                  refused={terms.refused !== null}
                   onAddCard={onAddCard}
                   action={
                     terms.paused || (!free && price === null) ? (
@@ -1153,7 +1167,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                         </span>
                       </TooltipHint>
                     ) : (
-                      <ActivateButton label={t("activate")} amount={amount} busy={activating} disabled={false} onClick={free ? () => activateNow(false) : () => setPaying(true)} />
+                      <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} onClick={free ? () => activateNow(false) : openPay} />
                     )
                   }
                 />
