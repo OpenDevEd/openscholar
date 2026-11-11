@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { CREDIT_ROLES, RelationKind } from "@/lib/reports/report";
+import { DEFAULT_CHECKS } from "@/lib/reports/settings";
 
 const ROLE_KEY = {
   Conceptualization: "conceptualization", "Data curation": "dataCuration", "Formal analysis": "formalAnalysis", "Funding acquisition": "fundingAcquisition",
@@ -39,4 +40,30 @@ export function useChangeLabel() {
 export function useFailed() {
   const t = useTranslations("publishReports.common");
   return (error: unknown) => void toast.error(getErrorMessage(error, t("failed")));
+}
+
+type DefaultCheckId = "byline" | "published" | "harm" | "research";
+
+/**
+ * A check's name and fix in the reader's language while they are still the words Openscholar ships them with (the
+ * messages' `check.defaults`). Once an admin rewords them, they read as written. "Already published" is the name the
+ * published check shipped with before it was renamed, kept by settings made then.
+ */
+export function useCheckWords() {
+  const t = useTranslations("publishReports.flow");
+  const name = (name: string) => {
+    const shipped = DEFAULT_CHECKS.find((check) => check.name === name || (check.id === "published" && name === "Already published"));
+    return shipped ? t(`check.defaults.${shipped.id as DefaultCheckId}.name`) : name;
+  };
+  /** A fix as a result keeps it, its byline already filled in: the byline is carried into the translated words. */
+  const fix = (fix: string) => {
+    for (const check of DEFAULT_CHECKS) {
+      if (!check.fix) continue;
+      const [before = "", after = ""] = check.fix.split("{byline}");
+      const same = check.fix.includes("{byline}") ? fix.startsWith(before) && fix.endsWith(after) : fix === check.fix;
+      if (same) return t(`check.defaults.${check.id as DefaultCheckId}.fix`, { byline: fix.slice(before.length, fix.length - after.length) });
+    }
+    return fix;
+  };
+  return { name, fix };
 }

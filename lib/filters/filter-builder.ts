@@ -26,6 +26,7 @@ import {
 import { SECTION_TITLES, FILTER_ICONS, SORT_OPTIONS } from "./filter-config";
 import { bareWork } from "@/lib/openalex/ids";
 import { INSTITUTION_TYPES, SDGS, STUDY_DESIGNS, WORK_TYPES } from "@/lib/openalex/vocabulary";
+import type { Vocabulary } from "@/lib/openalex/use-vocabulary";
 
 /** Translation function for filter strings (from useTranslations("searchFilters")) */
 export type FilterT = {
@@ -165,6 +166,8 @@ export type FilterNames = {
   institutions?: Record<string, string>;
   place?: (codeOrRegionId: string) => string;
   language?: (code: string) => string;
+  /** OpenAlex's terms in the reader's language (useVocabulary); English without it. */
+  vocabulary?: Pick<Vocabulary, "workTypes" | "sdgs" | "institutionTypes" | "studyDesigns">;
 };
 const namesOf = (ids: string[], options: readonly { id: string; name: string }[]) =>
   ids.map((id) => options.find((option) => option.id === id)?.name ?? id).join(", ");
@@ -300,7 +303,7 @@ export function buildFilterData(
       createFilterItem(
         "workType",
         "workType",
-        namesOf(params.workTypes, WORK_TYPES),
+        namesOf(params.workTypes, names.vocabulary?.workTypes ?? WORK_TYPES),
         t ? t("publicationType") : "Publication type"
       )
     );
@@ -317,7 +320,7 @@ export function buildFilterData(
   }
   if (params.sdgs?.length) {
     contentItems.push(
-      createFilterItem("sdg", "sdg", namesOf(params.sdgs, SDGS), t ? t("sdgs") : "SDGs")
+      createFilterItem("sdg", "sdg", namesOf(params.sdgs, names.vocabulary?.sdgs ?? SDGS), t ? t("sdgs") : "SDGs")
     );
   }
   if (params.workLanguages?.length) {
@@ -335,7 +338,7 @@ export function buildFilterData(
       createFilterItem(
         "institutionType",
         "institutionType",
-        namesOf(params.institutionTypes, INSTITUTION_TYPES),
+        namesOf(params.institutionTypes, names.vocabulary?.institutionTypes ?? INSTITUTION_TYPES),
         t ? t("institutionType") : "Institution type"
       )
     );
@@ -372,7 +375,7 @@ export function buildFilterData(
   }
   if (params.studyDesigns?.length) {
     contentItems.push(
-      createFilterItem("studyDesign", "studyDesign", namesOf(params.studyDesigns, STUDY_DESIGNS), t ? t("studyDesign") : "Study design")
+      createFilterItem("studyDesign", "studyDesign", namesOf(params.studyDesigns, names.vocabulary?.studyDesigns ?? STUDY_DESIGNS), t ? t("studyDesign") : "Study design")
     );
   }
   if (params.topCitedOnly) {

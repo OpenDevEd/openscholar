@@ -20,7 +20,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { AiIcon, ArrowDown, ArrowUp, BadgeCheck, CircleX, ExternalLink, Plus, ShieldCheck, Trash2 } from "@/components/icons";
-import { SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
+import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { searchTopicCatalog, topicName } from "@/lib/topics/search";
 import { useFunderNames, rememberFunderNames } from "@/lib/openalex/use-record-names";
 import { useRelationName, useRoleName } from "@/components/reports/words";
@@ -266,6 +267,7 @@ export function DetailsStep({
   const m: Metadata = { ...initial, ...own };
   const t = useTranslations("publishReports.details");
   const format = useFormatter();
+  const vocabulary = useVocabulary();
   const locale = useLocale();
   const used = useUsed();
   const relationName = useRelationName();
@@ -373,7 +375,7 @@ export function DetailsStep({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {WORK_TYPES.map((type) => (
+                  {vocabulary.workTypes.map((type) => (
                     <SelectItem key={type.id} value={type.id}>
                       {type.name}
                     </SelectItem>
@@ -482,9 +484,9 @@ export function DetailsStep({
                 searchPlaceholder={t("findGoal")}
                 emptyText={t("noGoal")}
                 removeLabel={(name) => t("remove", { name })}
-                options={SDGS}
+                options={vocabulary.sdgs}
                 selected={m.sdgs}
-                names={Object.fromEntries(SDGS.map((g) => [g.id, g.name]))}
+                names={Object.fromEntries(vocabulary.sdgs.map((g) => [g.id, g.name]))}
                 onToggle={(id) => set("sdgs", m.sdgs.includes(id) ? m.sdgs.filter((g) => g !== id) : [...m.sdgs, id])}
               />
             </div>
@@ -497,9 +499,9 @@ export function DetailsStep({
                 searchPlaceholder={t("findDesign")}
                 emptyText={t("noDesign")}
                 removeLabel={(name) => t("remove", { name })}
-                options={STUDY_DESIGNS}
+                options={vocabulary.studyDesigns}
                 selected={m.studyDesigns}
-                names={Object.fromEntries(STUDY_DESIGNS.map((d) => [d.id, d.name]))}
+                names={Object.fromEntries(vocabulary.studyDesigns.map((d) => [d.id, d.name]))}
                 onToggle={(id) => set("studyDesigns", m.studyDesigns.includes(id) ? m.studyDesigns.filter((d) => d !== id) : [...m.studyDesigns, id])}
               />
             </div>

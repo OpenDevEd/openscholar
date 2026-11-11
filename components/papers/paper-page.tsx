@@ -1,5 +1,6 @@
 "use client";
 
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { creativeCommons } from "@/lib/papers/licence";
 import { Fragment, useState, type ReactNode } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
@@ -274,6 +275,7 @@ function SeeAll({ href }: { href: string }) {
 }
 
 function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetail }) {
+  const { workType } = useVocabulary();
   const t = useTranslations("paperPage");
   const format = useFormatter();
   const locale = useLocale();
@@ -284,7 +286,7 @@ function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetai
     <div className="flex flex-wrap items-center gap-2">
       {detail.retracted ? <span className={`${CHIP} bg-destructive/10 text-destructive`}><TriangleAlert aria-hidden className="size-3.5" />{t("retracted")}</span> : null}
       {date || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{date ? format.dateTime(date, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }) : paper.publication_year}</span> : null}
-      {paper.type ? <span className={`${CHIP} capitalize`}><FileText aria-hidden className="size-3.5" />{paper.type.replace(/-/g, " ")}</span> : null}
+      {paper.type ? <span className={CHIP}><FileText aria-hidden className="size-3.5" />{workType(paper.type)}</span> : null}
       {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t("openAccess")}</span> : null}
       {license?.url ? (
         <a href={license.url} target="_blank" rel="noreferrer license" className={`${CHIP} hover:text-foreground`}>{license.name}</a>
@@ -472,6 +474,7 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
 /** What the paper is about: its topics by how closely they fit, the goals it serves and its MeSH terms. */
 function Subjects({ detail }: { detail: PaperDetail }) {
   const t = useTranslations("paperPage");
+  const { sdg } = useVocabulary();
   const [allMesh, setAllMesh] = useState(false);
   if (!detail.topics.length && !detail.sdgs.length && !detail.mesh.length) return null;
   const mesh = allMesh ? detail.mesh : detail.mesh.slice(0, MESH_SHOWN);
@@ -489,7 +492,7 @@ function Subjects({ detail }: { detail: PaperDetail }) {
       ) : null}
       {detail.sdgs.length ? (
         <div className="mt-4 flex flex-wrap gap-1.5" aria-label={t("sdgs")}>
-          {detail.sdgs.map((goal) => <Link key={goal.id} href={buildShareableUrl("", { sdg: [goal.id] })} className={`${CHIP} bg-success/10 ink-success transition-colors hover:bg-success/20`}><Target aria-hidden className="size-3.5" />{goal.name}</Link>)}
+          {detail.sdgs.map((goal) => <Link key={goal.id} href={buildShareableUrl("", { sdg: [goal.id] })} className={`${CHIP} bg-success/10 ink-success transition-colors hover:bg-success/20`}><Target aria-hidden className="size-3.5" />{sdg(goal.id, goal.name)}</Link>)}
         </div>
       ) : null}
       {detail.mesh.length ? (

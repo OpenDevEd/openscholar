@@ -33,7 +33,7 @@ import Link from "@/components/workspace-link";
 import { ArrowUpRight, BadgeCheck, Building2, Check, CircleCheck, CircleX, FileText, Hash, Mail, PenLine, RefreshCw, ReviewQueueIcon, RotateCcw, Search, SearchX, ShieldCheck } from "@/components/icons";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { SDGS } from "@/lib/openalex/vocabulary";
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { REVIEW_TEXT_MAX, changesOf, stageOf, type Metadata, type Stage } from "@/lib/reports/report";
 import { cn, finePointer } from "@/lib/utils";
 
@@ -610,10 +610,11 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
 /** What the report is about and who paid for it, as chips: topics, goals, places and funders. */
 function Subjects({ m }: { m: Metadata }) {
   const placeName = usePlaceName();
+  const { sdgs } = useVocabulary();
   const t = useTranslations("publishReports.review.subjects");
   const groups: Array<{ label: string; chips: ReactNode[] }> = [
     { label: t("topics"), chips: m.topics.map((t) => <Chip key={t.id}>{t.name}</Chip>) },
-    { label: t("goals"), chips: m.sdgs.map((g) => <Chip key={g}>{SDGS.find((x) => x.id === g)?.name ?? g}</Chip>) },
+    { label: t("goals"), chips: m.sdgs.map((g) => <Chip key={g}>{sdgs.find((x) => x.id === g)?.name ?? g}</Chip>) },
     { label: t("places"), chips: m.countries.map((c) => <Chip key={c}>{c.length === 2 ? <CountryFlag countryCode={c} /> : null}{placeName(c)}</Chip>) },
     { label: t("funders"), chips: m.funding.map((f) => <Chip key={f.funder.name}><FunderName id={f.funder.id} name={f.funder.name} /></Chip>) },
   ].filter((g) => g.chips.length);

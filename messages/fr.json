@@ -6623,6 +6623,24 @@
           "notPublished": "Absent d’OpenAlex, de l’index d’Openscholar et de nos communautés.",
           "unfinished": "Cette vérification n’a pas pu aboutir.",
           "bylineFound": "Le texte du PDF contient la ligne mot pour mot."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Ligne de publication et DOI dans le PDF",
+            "fix": "Placez cette ligne sur la couverture ou la deuxième de couverture, sous forme de texte et non d'image, puis téléversez à nouveau le PDF : {byline}"
+          },
+          "published": {
+            "name": "Jamais publié auparavant",
+            "fix": "S'il s'agit de votre propre publication antérieure, dites-le lorsque vous demandez une relecture."
+          },
+          "harm": {
+            "name": "Ni discours haineux ni harcèlement",
+            "fix": "Retirez les passages qui s'en prennent à des personnes, puis téléversez à nouveau le PDF."
+          },
+          "research": {
+            "name": "De la recherche, pas de la publicité",
+            "fix": "Openscholar Reports publie de la recherche. Si votre document en est, demandez une relecture et indiquez ce que la vérification a manqué."
+          }
         }
       },
       "activateFailed": "Il n'a pas pu être activé",
@@ -6900,6 +6918,73 @@
         "label": "Recherche et retours",
         "hint": "Invitations à essayer de nouvelles fonctionnalités et à donner votre avis"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "Pas de pauvreté",
+      "2": "Faim « zéro »",
+      "3": "Bonne santé et bien-être",
+      "4": "Éducation de qualité",
+      "5": "Égalité entre les sexes",
+      "6": "Eau propre et assainissement",
+      "7": "Énergie propre et d'un coût abordable",
+      "8": "Travail décent et croissance économique",
+      "9": "Industrie, innovation et infrastructure",
+      "10": "Inégalités réduites",
+      "11": "Villes et communautés durables",
+      "12": "Consommation et production responsables",
+      "13": "Mesures relatives à la lutte contre les changements climatiques",
+      "14": "Vie aquatique",
+      "15": "Vie terrestre",
+      "16": "Paix, justice et institutions efficaces",
+      "17": "Partenariats pour la réalisation des objectifs"
+    },
+    "workType": {
+      "article": "Article",
+      "dataset": "Jeu de données",
+      "book-chapter": "Chapitre d'ouvrage",
+      "conference-paper": "Article de conférence",
+      "dissertation": "Thèse",
+      "preprint": "Prépublication",
+      "book": "Livre",
+      "report": "Rapport",
+      "review": "Article de synthèse",
+      "reference-entry": "Entrée d'ouvrage de référence",
+      "conference-abstract": "Résumé de conférence",
+      "book-review": "Compte rendu de livre",
+      "peer-review": "Évaluation par les pairs",
+      "editorial": "Éditorial",
+      "letter": "Lettre",
+      "standard": "Norme",
+      "software": "Logiciel",
+      "data-paper": "Data paper",
+      "software-paper": "Article sur un logiciel",
+      "supplementary-materials": "Documents supplémentaires",
+      "erratum": "Erratum",
+      "retraction": "Rétractation",
+      "libguides": "Guide de bibliothèque",
+      "paratext": "Paratexte",
+      "other": "Autre"
+    },
+    "studyDesign": {
+      "systematic-review": "Revue systématique",
+      "meta-analysis": "Méta-analyse",
+      "randomized-controlled-trial": "Essai contrôlé randomisé",
+      "observational-study": "Étude observationnelle",
+      "case-report": "Rapport de cas",
+      "study-protocol": "Protocole d'étude"
+    },
+    "institutionType": {
+      "education": "Enseignement",
+      "facility": "Établissement",
+      "healthcare": "Santé",
+      "government": "Administration publique",
+      "company": "Entreprise",
+      "nonprofit": "Organisation à but non lucratif",
+      "funder": "Bailleur de fonds",
+      "archive": "Archives",
+      "other": "Autre"
     }
   }
 }

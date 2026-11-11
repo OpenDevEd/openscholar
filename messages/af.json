@@ -6624,6 +6624,24 @@
           "notPublished": "Nie in OpenAlex, Openscholar se indeks of ons gemeenskappe nie.",
           "unfinished": "Hierdie kontrole kon nie klaarmaak nie.",
           "bylineFound": "Die PDF se teks bevat die reël woord vir woord."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Publikasiereël en DOI in die PDF",
+            "fix": "Sit hierdie reël op die voorblad of die binnekant van die voorblad, as teks en nie as 'n prent nie, en laai dan die PDF weer op: {byline}"
+          },
+          "published": {
+            "name": "Nog nie vantevore gepubliseer nie",
+            "fix": "As dit jou eie vroeëre publikasie is, sê so wanneer jy om 'n hersiening vra."
+          },
+          "harm": {
+            "name": "Geen haatspraak of teistering nie",
+            "fix": "Haal die gedeeltes uit wat mense aanval, en laai dan die PDF weer op."
+          },
+          "research": {
+            "name": "Navorsing, nie advertensie nie",
+            "fix": "Openscholar Reports publiseer navorsing. As joune navorsing is, vra om 'n hersiening en sê wat die toets gemis het."
+          }
         }
       },
       "activateFailed": "Dit kon nie geaktiveer word nie",
@@ -6901,6 +6919,73 @@
         "label": "Navorsing en terugvoer",
         "hint": "Uitnodigings om nuwe funksies te probeer en jou mening te deel"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "Geen armoede",
+      "2": "Geen honger",
+      "3": "Goeie gesondheid en welstand",
+      "4": "Gehalte-onderwys",
+      "5": "Geslagsgelykheid",
+      "6": "Skoon water en sanitasie",
+      "7": "Bekostigbare en skoon energie",
+      "8": "Ordentlike werk en ekonomiese groei",
+      "9": "Nywerheid, innovasie en infrastruktuur",
+      "10": "Minder ongelykheid",
+      "11": "Volhoubare stede en gemeenskappe",
+      "12": "Verantwoordelike verbruik en produksie",
+      "13": "Klimaatoptrede",
+      "14": "Lewe onder water",
+      "15": "Lewe op land",
+      "16": "Vrede, geregtigheid en sterk instellings",
+      "17": "Vennootskappe vir die doelwitte"
+    },
+    "workType": {
+      "article": "Artikel",
+      "dataset": "Datastel",
+      "book-chapter": "Boekhoofstuk",
+      "conference-paper": "Konferensieartikel",
+      "dissertation": "Proefskrif",
+      "preprint": "Voordruk",
+      "book": "Boek",
+      "report": "Verslag",
+      "review": "Oorsigartikel",
+      "reference-entry": "Naslaaninskrywing",
+      "conference-abstract": "Konferensie-opsomming",
+      "book-review": "Boekresensie",
+      "peer-review": "Portuurbeoordeling",
+      "editorial": "Redaksioneel",
+      "letter": "Brief",
+      "standard": "Standaard",
+      "software": "Sagteware",
+      "data-paper": "Data-artikel",
+      "software-paper": "Sagteware-artikel",
+      "supplementary-materials": "Aanvullende materiaal",
+      "erratum": "Erratum",
+      "retraction": "Terugtrekking",
+      "libguides": "Biblioteekgids",
+      "paratext": "Parateks",
+      "other": "Ander"
+    },
+    "studyDesign": {
+      "systematic-review": "Sistematiese oorsig",
+      "meta-analysis": "Meta-analise",
+      "randomized-controlled-trial": "Gerandomiseerde gekontroleerde proef",
+      "observational-study": "Waarnemingstudie",
+      "case-report": "Gevalverslag",
+      "study-protocol": "Studieprotokol"
+    },
+    "institutionType": {
+      "education": "Onderwys",
+      "facility": "Fasiliteit",
+      "healthcare": "Gesondheidsorg",
+      "government": "Regering",
+      "company": "Maatskappy",
+      "nonprofit": "Niewinsorganisasie",
+      "funder": "Befondser",
+      "archive": "Argief",
+      "other": "Ander"
     }
   }
 }

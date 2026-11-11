@@ -28,7 +28,7 @@ import { PaperCover } from "@/components/papers/paper-cover";
 import { DetailsStep } from "@/components/reports/details-step";
 import { RegistrationChips } from "@/components/reports/registration";
 import { SHOWS, STATUS, StatusFilter, YourReports, stageShown, useStageLabel } from "@/components/reports/your-reports";
-import { useChangeLabel } from "@/components/reports/words";
+import { useChangeLabel, useCheckWords } from "@/components/reports/words";
 import { Working } from "@/components/settings/parts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AutoHeight } from "@/components/ui/auto-height";
@@ -56,6 +56,7 @@ import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { cn, finePointer } from "@/lib/utils";
+
 
 type Basics = FunctionReturnType<typeof api.reports.settings.forAuthors>;
 type Found = NonNullable<FunctionReturnType<typeof api.reports.flow.get>>;
@@ -958,6 +959,8 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
   };
+  const checkWords = useCheckWords();
+  const shownName = checkWords.name(name);
   const format = useFormatter();
   const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
   const asked = result?.confidence !== undefined && result.threshold !== undefined;
@@ -981,7 +984,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
           </AnimatePresence>
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{name}</span>
+          <span className="block truncate text-sm font-medium">{shownName}</span>
         </span>
         {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
         <span className="flex min-w-[4.75rem] justify-end">
@@ -1026,7 +1029,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
               {!result.pass && result.fix && advice ? (
                 <p className="ms-8 mt-2 flex items-start gap-2 rounded-xl bg-inset px-3 py-2 text-xs/5">
                   <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                  <span className="min-w-0 break-words">{result.fix}</span>
+                  <span className="min-w-0 break-words">{checkWords.fix(result.fix)}</span>
                 </p>
               ) : null}
             </motion.div>

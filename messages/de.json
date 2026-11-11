@@ -6624,6 +6624,24 @@
           "notPublished": "Nicht in OpenAlex, im Index von Openscholar oder in unseren Communities.",
           "unfinished": "Diese Prüfung konnte nicht abgeschlossen werden.",
           "bylineFound": "Der Text des PDFs enthält die Zeile wörtlich."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Publikationszeile und DOI im PDF",
+            "fix": "Setzen Sie diese Zeile als Text, nicht als Bild, auf das Titelblatt oder die Umschlaginnenseite und laden Sie das PDF erneut hoch: {byline}"
+          },
+          "published": {
+            "name": "Noch nicht veröffentlicht",
+            "fix": "Wenn es Ihre eigene frühere Veröffentlichung ist, sagen Sie das, wenn Sie um eine Prüfung bitten."
+          },
+          "harm": {
+            "name": "Keine Hassrede und keine Belästigung",
+            "fix": "Entfernen Sie die Passagen, die Menschen angreifen, und laden Sie das PDF erneut hoch."
+          },
+          "research": {
+            "name": "Forschung, keine Werbung",
+            "fix": "Openscholar Reports veröffentlicht Forschung. Wenn Ihr Bericht Forschung ist, bitten Sie um eine Prüfung und sagen Sie, was die Prüfung übersehen hat."
+          }
         }
       },
       "activateFailed": "Er konnte nicht aktiviert werden",
@@ -6901,6 +6919,73 @@
         "label": "Forschung und Feedback",
         "hint": "Einladungen, neue Funktionen auszuprobieren und Ihre Meinung zu sagen"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "Keine Armut",
+      "2": "Kein Hunger",
+      "3": "Gesundheit und Wohlergehen",
+      "4": "Hochwertige Bildung",
+      "5": "Geschlechtergleichheit",
+      "6": "Sauberes Wasser und Sanitäreinrichtungen",
+      "7": "Bezahlbare und saubere Energie",
+      "8": "Menschenwürdige Arbeit und Wirtschaftswachstum",
+      "9": "Industrie, Innovation und Infrastruktur",
+      "10": "Weniger Ungleichheiten",
+      "11": "Nachhaltige Städte und Gemeinden",
+      "12": "Nachhaltiger Konsum und Produktion",
+      "13": "Maßnahmen zum Klimaschutz",
+      "14": "Leben unter Wasser",
+      "15": "Leben an Land",
+      "16": "Frieden, Gerechtigkeit und starke Institutionen",
+      "17": "Partnerschaften zur Erreichung der Ziele"
+    },
+    "workType": {
+      "article": "Artikel",
+      "dataset": "Datensatz",
+      "book-chapter": "Buchkapitel",
+      "conference-paper": "Konferenzbeitrag",
+      "dissertation": "Dissertation",
+      "preprint": "Preprint",
+      "book": "Buch",
+      "report": "Bericht",
+      "review": "Übersichtsartikel",
+      "reference-entry": "Nachschlageeintrag",
+      "conference-abstract": "Konferenz-Abstract",
+      "book-review": "Buchbesprechung",
+      "peer-review": "Peer-Review",
+      "editorial": "Editorial",
+      "letter": "Brief",
+      "standard": "Norm",
+      "software": "Software",
+      "data-paper": "Datenpublikation",
+      "software-paper": "Softwarepublikation",
+      "supplementary-materials": "Ergänzende Materialien",
+      "erratum": "Erratum",
+      "retraction": "Zurückziehung",
+      "libguides": "Bibliotheksleitfaden",
+      "paratext": "Paratext",
+      "other": "Sonstiges"
+    },
+    "studyDesign": {
+      "systematic-review": "Systematisches Review",
+      "meta-analysis": "Metaanalyse",
+      "randomized-controlled-trial": "Randomisierte kontrollierte Studie",
+      "observational-study": "Beobachtungsstudie",
+      "case-report": "Fallbericht",
+      "study-protocol": "Studienprotokoll"
+    },
+    "institutionType": {
+      "education": "Bildung",
+      "facility": "Einrichtung",
+      "healthcare": "Gesundheitswesen",
+      "government": "Regierung",
+      "company": "Unternehmen",
+      "nonprofit": "Gemeinnützige Organisation",
+      "funder": "Förderer",
+      "archive": "Archiv",
+      "other": "Sonstiges"
     }
   }
 }

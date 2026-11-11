@@ -6623,6 +6623,24 @@
           "notPublished": "Not in OpenAlex, Openscholar's index or our communities.",
           "unfinished": "This check couldn't finish.",
           "bylineFound": "The PDF's text has the line word for word."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Byline and DOI in the PDF",
+            "fix": "Put this line on the cover or the inside cover, as text and not as a picture, then upload the PDF again: {byline}"
+          },
+          "published": {
+            "name": "Not published before",
+            "fix": "If this is your own earlier publication, say so when you ask for a review."
+          },
+          "harm": {
+            "name": "No hate speech or harassment",
+            "fix": "Take out the passages that attack people, then upload the PDF again."
+          },
+          "research": {
+            "name": "Research, not advertising",
+            "fix": "Openscholar Reports publishes research. If yours is, ask for a review and say what the check missed."
+          }
         }
       },
       "activateFailed": "It couldn't be activated",
@@ -6900,6 +6918,73 @@
         "label": "Research and feedback",
         "hint": "Invitations to try new features and share what you think"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "No poverty",
+      "2": "Zero hunger",
+      "3": "Good health and well-being",
+      "4": "Quality education",
+      "5": "Gender equality",
+      "6": "Clean water and sanitation",
+      "7": "Affordable and clean energy",
+      "8": "Decent work and economic growth",
+      "9": "Industry, innovation and infrastructure",
+      "10": "Reduced inequalities",
+      "11": "Sustainable cities and communities",
+      "12": "Responsible consumption and production",
+      "13": "Climate action",
+      "14": "Life below water",
+      "15": "Life on land",
+      "16": "Peace, justice and strong institutions",
+      "17": "Partnerships for the goals"
+    },
+    "workType": {
+      "article": "Article",
+      "dataset": "Dataset",
+      "book-chapter": "Book chapter",
+      "conference-paper": "Conference paper",
+      "dissertation": "Dissertation",
+      "preprint": "Preprint",
+      "book": "Book",
+      "report": "Report",
+      "review": "Review",
+      "reference-entry": "Reference entry",
+      "conference-abstract": "Conference abstract",
+      "book-review": "Book review",
+      "peer-review": "Peer review",
+      "editorial": "Editorial",
+      "letter": "Letter",
+      "standard": "Standard",
+      "software": "Software",
+      "data-paper": "Data paper",
+      "software-paper": "Software paper",
+      "supplementary-materials": "Supplementary materials",
+      "erratum": "Erratum",
+      "retraction": "Retraction",
+      "libguides": "Library guide",
+      "paratext": "Paratext",
+      "other": "Other"
+    },
+    "studyDesign": {
+      "systematic-review": "Systematic review",
+      "meta-analysis": "Meta-analysis",
+      "randomized-controlled-trial": "Randomised controlled trial",
+      "observational-study": "Observational study",
+      "case-report": "Case report",
+      "study-protocol": "Study protocol"
+    },
+    "institutionType": {
+      "education": "Education",
+      "facility": "Facility",
+      "healthcare": "Healthcare",
+      "government": "Government",
+      "company": "Company",
+      "nonprofit": "Nonprofit",
+      "funder": "Funder",
+      "archive": "Archive",
+      "other": "Other"
     }
   }
 }

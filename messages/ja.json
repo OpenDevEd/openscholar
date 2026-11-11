@@ -6623,6 +6623,24 @@
           "notPublished": "OpenAlex、Openscholar のインデックス、当サイトのコミュニティのいずれにもありません。",
           "unfinished": "このチェックは完了できませんでした。",
           "bylineFound": "PDF のテキストにこの行がそのまま含まれています。"
+        },
+        "defaults": {
+          "byline": {
+            "name": "PDF 内の掲載表記と DOI",
+            "fix": "この行を画像ではなくテキストとして表紙または表紙裏に入れ、PDF をもう一度アップロードしてください：{byline}"
+          },
+          "published": {
+            "name": "未発表であること",
+            "fix": "ご自身の以前の発表であれば、レビューを依頼するときにその旨を伝えてください。"
+          },
+          "harm": {
+            "name": "ヘイトスピーチや嫌がらせがないこと",
+            "fix": "人を攻撃している箇所を削除し、PDF をもう一度アップロードしてください。"
+          },
+          "research": {
+            "name": "広告ではなく研究であること",
+            "fix": "Openscholar Reports は研究を掲載します。研究であれば、レビューを依頼し、チェックが見落とした点を伝えてください。"
+          }
         }
       },
       "activateFailed": "有効化できませんでした",
@@ -6900,6 +6918,73 @@
         "label": "研究とフィードバック",
         "hint": "新機能のお試しやご意見のお願い"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "貧困をなくそう",
+      "2": "飢餓をゼロに",
+      "3": "すべての人に健康と福祉を",
+      "4": "質の高い教育をみんなに",
+      "5": "ジェンダー平等を実現しよう",
+      "6": "安全な水とトイレを世界中に",
+      "7": "エネルギーをみんなに そしてクリーンに",
+      "8": "働きがいも経済成長も",
+      "9": "産業と技術革新の基盤をつくろう",
+      "10": "人や国の不平等をなくそう",
+      "11": "住み続けられるまちづくりを",
+      "12": "つくる責任 つかう責任",
+      "13": "気候変動に具体的な対策を",
+      "14": "海の豊かさを守ろう",
+      "15": "陸の豊かさも守ろう",
+      "16": "平和と公正をすべての人に",
+      "17": "パートナーシップで目標を達成しよう"
+    },
+    "workType": {
+      "article": "論文",
+      "dataset": "データセット",
+      "book-chapter": "書籍の章",
+      "conference-paper": "会議論文",
+      "dissertation": "学位論文",
+      "preprint": "プレプリント",
+      "book": "書籍",
+      "report": "報告書",
+      "review": "レビュー論文",
+      "reference-entry": "参考文献項目",
+      "conference-abstract": "会議抄録",
+      "book-review": "書評",
+      "peer-review": "査読",
+      "editorial": "論説",
+      "letter": "レター",
+      "standard": "規格",
+      "software": "ソフトウェア",
+      "data-paper": "データ論文",
+      "software-paper": "ソフトウェア論文",
+      "supplementary-materials": "補足資料",
+      "erratum": "正誤表",
+      "retraction": "撤回",
+      "libguides": "図書館ガイド",
+      "paratext": "パラテキスト",
+      "other": "その他"
+    },
+    "studyDesign": {
+      "systematic-review": "システマティックレビュー",
+      "meta-analysis": "メタアナリシス",
+      "randomized-controlled-trial": "ランダム化比較試験",
+      "observational-study": "観察研究",
+      "case-report": "症例報告",
+      "study-protocol": "研究プロトコル"
+    },
+    "institutionType": {
+      "education": "教育",
+      "facility": "施設",
+      "healthcare": "医療",
+      "government": "政府",
+      "company": "企業",
+      "nonprofit": "非営利団体",
+      "funder": "助成機関",
+      "archive": "アーカイブ",
+      "other": "その他"
     }
   }
 }

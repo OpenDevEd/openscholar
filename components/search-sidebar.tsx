@@ -62,7 +62,8 @@ import { FilterSection } from "@/components/shared/filter-section";
 import { OptionPicker } from "@/components/shared/option-picker";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { INSTITUTION_TYPES, SDGS, STUDY_DESIGNS, WORK_LANGUAGES, WORK_TYPES } from "@/lib/openalex/vocabulary";
+import { WORK_LANGUAGES } from "@/lib/openalex/vocabulary";
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 
 
 // Date Filter Component
@@ -392,6 +393,7 @@ const toggled = (list: readonly string[], id: string) =>
   list.includes(id) ? list.filter((one) => one !== id) : [...list, id];
 
 const WorkTypeFilterPanel = React.memo(function WorkTypeFilterPanel() {
+  const vocabulary = useVocabulary();
   const tf = useTranslations("searchFilters");
   const { workTypes } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -410,9 +412,9 @@ const WorkTypeFilterPanel = React.memo(function WorkTypeFilterPanel() {
         searchPlaceholder={tf("searchPublicationTypes")}
         emptyText={tf("nothingFound")}
         removeLabel={(name) => tf("removeChoice", { name })}
-        options={WORK_TYPES}
+        options={vocabulary.workTypes}
         selected={workTypes}
-        names={Object.fromEntries(WORK_TYPES.map((type) => [type.id, type.name]))}
+        names={Object.fromEntries(vocabulary.workTypes.map((type) => [type.id, type.name]))}
         onToggle={(id) => updateFilter({ workTypes: toggled(workTypes, id) })}
       />
     </FilterSection>
@@ -440,6 +442,7 @@ const ResearchAreaFilterPanel = React.memo(function ResearchAreaFilterPanel() {
 });
 
 const SdgFilterPanel = React.memo(function SdgFilterPanel() {
+  const vocabulary = useVocabulary();
   const tf = useTranslations("searchFilters");
   const { sdgs } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -458,9 +461,9 @@ const SdgFilterPanel = React.memo(function SdgFilterPanel() {
         searchPlaceholder={tf("searchSdgs")}
         emptyText={tf("nothingFound")}
         removeLabel={(name) => tf("removeChoice", { name })}
-        options={SDGS}
+        options={vocabulary.sdgs}
         selected={sdgs}
-        names={Object.fromEntries(SDGS.map((goal) => [goal.id, goal.name]))}
+        names={Object.fromEntries(vocabulary.sdgs.map((goal) => [goal.id, goal.name]))}
         onToggle={(id) => updateFilter({ sdgs: toggled(sdgs, id) })}
       />
     </FilterSection>
@@ -592,6 +595,7 @@ const WorkLanguageFilterPanel = React.memo(function WorkLanguageFilterPanel() {
 });
 
 const StudyDesignFilterPanel = React.memo(function StudyDesignFilterPanel() {
+  const vocabulary = useVocabulary();
   const tf = useTranslations("searchFilters");
   const { studyDesigns } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -611,9 +615,9 @@ const StudyDesignFilterPanel = React.memo(function StudyDesignFilterPanel() {
           searchPlaceholder={tf("searchStudyDesigns")}
           emptyText={tf("nothingFound")}
           removeLabel={(name) => tf("removeChoice", { name })}
-          options={STUDY_DESIGNS}
+          options={vocabulary.studyDesigns}
           selected={studyDesigns}
-          names={Object.fromEntries(STUDY_DESIGNS.map((design) => [design.id, design.name]))}
+          names={Object.fromEntries(vocabulary.studyDesigns.map((design) => [design.id, design.name]))}
           onToggle={(id) => updateFilter({ studyDesigns: toggled(studyDesigns, id) })}
         />
         <p className="text-xs text-subtle-foreground">{tf("studyDesignHint")}</p>
@@ -657,6 +661,7 @@ const InstitutionFilterPanel = React.memo(function InstitutionFilterPanel() {
 });
 
 const InstitutionTypeFilterPanel = React.memo(function InstitutionTypeFilterPanel() {
+  const vocabulary = useVocabulary();
   const tf = useTranslations("searchFilters");
   const { institutionTypes } = useCurrentSearchFormState();
   const updateFilter = useUpdateSearchFilter();
@@ -675,9 +680,9 @@ const InstitutionTypeFilterPanel = React.memo(function InstitutionTypeFilterPane
         searchPlaceholder={tf("searchInstitutionTypes")}
         emptyText={tf("nothingFound")}
         removeLabel={(name) => tf("removeChoice", { name })}
-        options={INSTITUTION_TYPES}
+        options={vocabulary.institutionTypes}
         selected={institutionTypes}
-        names={Object.fromEntries(INSTITUTION_TYPES.map((type) => [type.id, type.name]))}
+        names={Object.fromEntries(vocabulary.institutionTypes.map((type) => [type.id, type.name]))}
         onToggle={(id) => updateFilter({ institutionTypes: toggled(institutionTypes, id) })}
       />
     </FilterSection>

@@ -9,6 +9,7 @@ import { getAllFilterItems, type FilterItem, type FilterParams, type FilterT } f
 import { getRegionDisplayName } from "@/lib/i18n/region-names";
 import { useFunderNames, useInstitutionNames, useJournalNames } from "@/lib/openalex/use-record-names";
 import { useAuthorNames } from "@/lib/openalex/use-author-names";
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { topicName } from "@/lib/topics/search";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +45,7 @@ export function FilterChips({
   const journals = useJournalNames(filters.journals ?? []);
   const institutions = useInstitutionNames(filters.institutions ?? []);
   const languageNames = new Intl.DisplayNames([locale], { type: "language" });
+  const vocabulary = useVocabulary();
   const items = getAllFilterItems(
     filters,
     t as FilterT,
@@ -56,6 +58,7 @@ export function FilterChips({
       institutions,
       place: (id) => getRegionDisplayName(id, locale, (key) => (t as FilterT)(key)),
       language: (code) => languageNames.of(code) ?? code,
+      vocabulary,
     },
   );
   if (!items.length) return null;
