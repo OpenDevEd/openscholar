@@ -6168,7 +6168,7 @@
     },
     "admin": {
       "backToReport": "Volver al informe",
-      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
+      "editLost": "El autor recuperó {key} para cambiarlo mientras lo editabas, así que lo que escribiste no se guardó. Ábrelo de nuevo cuando terminen sus comprobaciones.",
       "editTitle": "Editar los datos",
       "editIntroLive": "{key} está publicado. Al guardar, tu edición se publica al instante, sin las comprobaciones, y el informe se registra de nuevo.",
       "editIntroNotLive": "{key} aún no está publicado. Al guardar, tu edición se aplica al instante, sin las comprobaciones.",
@@ -6464,7 +6464,7 @@
       "limits": "Activaciones gratuitas",
       "limitsPager": "activaciones gratuitas",
       "personal": "El espacio de trabajo propio de una persona",
-      "personalHint": "Activaciones al día que no cuestan nada. Aun así hace falta una tarjeta guardada.",
+      "personalHint": "Activaciones al día que no cuestan nada. No hace falta tarjeta.",
       "personalLabel": "Activaciones gratuitas al día en el espacio propio de una persona",
       "limitSaved": "Activaciones gratuitas guardadas",
       "organization": "El espacio de trabajo de una organización",
@@ -6539,14 +6539,14 @@
     },
     "flow": {
       "steps": {
-        "prepare": "Prepare",
+        "prepare": "Preparar",
         "agreement": "Acuerdo",
         "doi": "DOI",
         "upload": "PDF",
         "details": "Datos",
         "checks": "Comprobaciones",
         "live": "Publicado",
-        "sealed": "Locked once the agreement is signed."
+        "sealed": "Bloqueado una vez firmado el acuerdo."
       },
       "publish": "Publicar",
       "newReport": "Informe nuevo",
@@ -6611,13 +6611,13 @@
       "drop": "Suelta el PDF aquí o elígelo",
       "dropHint": "Un PDF, de hasta {max} MB",
       "unopenedPdf": "No se pudo abrir {name} como PDF. Si tiene contraseña, quítasela; después guárdalo de nuevo como PDF y súbelo.",
-      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
-      "keptDetails": "These are the details you had before you replaced the PDF.",
-      "readAgain": "Read them from this PDF instead",
-      "readAgainTitle": "Read the details from this PDF?",
-      "readAgainBody": "The details shown now are replaced by this PDF's, with anything you typed into them.",
-      "readAgainKeep": "Keep these details",
-      "readAgainFailed": "The details couldn't be read again",
+      "lacksByline": "{name} no lleva la mención de arriba en su portada. Añádela y sube el PDF de nuevo, o la comprobación de la mención fallará.",
+      "keptDetails": "Estos son los datos que tenías antes de sustituir el PDF.",
+      "readAgain": "Leerlos de este PDF",
+      "readAgainTitle": "¿Leer los datos de este PDF?",
+      "readAgainBody": "Los datos que se muestran ahora se sustituyen por los de este PDF, con todo lo que hayas escrito en ellos.",
+      "readAgainKeep": "Conservar estos datos",
+      "readAgainFailed": "No se pudieron leer los datos de nuevo",
       "stuck": "La lectura de {name} está tardando más de lo normal. Súbelo de nuevo.",
       "replaces": "Una nueva subida sustituye a {name}",
       "check": {
@@ -6665,8 +6665,8 @@
       "readyPassed": "Tu informe superó sus comprobaciones. Actívalo para publicar su DOI y abrir su página.",
       "waiting": "Esperando revisión",
       "inReview": "En revisión",
-      "waitingFlagged": "Una comprobación marcó tu informe, así que un revisor lo examina. Podrás activarlo cuando lo apruebe, y te avisaremos por correo.",
-      "waitingPassed": "Tu informe superó sus comprobaciones. Podrás activarlo cuando un revisor lo apruebe, y te avisaremos por correo.",
+      "waitingFlagged": "Una comprobación marcó tu informe, así que un revisor lo examina antes de que pueda publicarse. Te avisaremos por correo, y te espera en Publicar.",
+      "waitingPassed": "Tu informe superó sus comprobaciones. Ahora un revisor lo aprueba antes de que pueda publicarse. Te avisaremos por correo, y te espera en Publicar.",
       "withdrawn": "Retirado",
       "notPublished": "No publicado",
       "declined": "Rechazado",
@@ -6754,7 +6754,7 @@
           "unknownCode": "{code} no es un código que conozcamos, o ya se ha agotado.",
           "nothingOff": "{code} no descuenta nada de una activación.",
           "codeTooLong": "Ese código es demasiado largo para ser uno de los nuestros.",
-          "applyFirst": "Apply the code, or clear it, to activate."
+          "applyFirst": "Aplica el código, o bórralo, para activar."
         },
         "card": {
           "bankAsked": "Tu banco pidió confirmar el pago",
@@ -6762,8 +6762,8 @@
           "refused": "Tu banco no confirmó el último pago, así que no se cobró nada.",
           "free": "Gratis",
           "freeLeft": "{count, plural, one {Queda # activación gratuita} other {Quedan # activaciones gratuitas}} hoy",
-          "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "Añade un método de pago para activar",
+          "freeLeftNoCard": "{count, plural, one {Queda # activación gratuita} other {Quedan # activaciones gratuitas}} hoy. No hace falta tarjeta.",
+          "add": "Activa con una tarjeta o un código promocional",
           "costs": "Cada activación cuesta {price}.",
           "costsOrg": "Cada activación cuesta {price} y se cobra a {organization}.",
           "needed": "Hace falta una tarjeta guardada para activar.",
@@ -6774,10 +6774,10 @@
           "addButton": "Añadir método de pago",
           "stripeFailed": "No se pudo abrir la página de Stripe",
           "credit": "{amount} a favor",
-          "freeTitle": "Free activation",
-          "covered": "Your code covers this activation",
-          "coveredHint": "Nothing to pay, so no card is needed.",
-          "costsWith": "With {code}, this activation costs {price}."
+          "freeTitle": "Activación gratuita",
+          "covered": "Tu código cubre esta activación",
+          "coveredHint": "No hay nada que pagar, así que no hace falta tarjeta.",
+          "costsWith": "Con {code}, esta activación cuesta {price}."
         },
         "creditLine": "Saldo a favor de la cuenta",
         "refunded": "Se reembolsaron los {amount} pagados para activarlo.",
@@ -6786,40 +6786,40 @@
         "noFreeLeft": "Hoy ya no queda ninguna activación gratuita. Actívalo de nuevo para pagarla.",
         "paused": "La publicación está en pausa por ahora, así que nada puede publicarse. Tu informe conserva su lugar."
       },
-      "back": "Back",
-      "bylineFirst": "Put this line on your PDF's cover",
-      "bylineFirstBody": "Openscholar co-publishes your report, so its cover or inside cover carries this line, as text. Our checks look for it once you upload.",
-      "nextUpload": "Next: upload the PDF",
-      "nextDetails": "Next: check the details",
+      "back": "Atrás",
+      "bylineFirst": "Pon esta mención en la portada de tu PDF",
+      "bylineFirstBody": "Openscholar copublica tu informe, así que su portada o su contraportada interior lleva esta mención, como texto. Nuestras comprobaciones la buscan cuando subes el PDF.",
+      "nextUpload": "Siguiente: subir el PDF",
+      "nextDetails": "Siguiente: revisar los datos",
       "overview": {
-        "title": "Publishing a report with {series}",
-        "intro": "About ten minutes from start to finish. This is what each step asks of you.",
-        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
-        "start": "Start",
+        "title": "Publicar un informe con {series}",
+        "intro": "Unos diez minutos de principio a fin. Esto es lo que te pide cada paso.",
+        "introReviewed": "Unos diez minutos de tu tiempo. Después un revisor aprueba el informe antes de que pueda publicarse, y te avisamos por correo.",
+        "start": "Empezar",
         "agreement": {
-          "title": "Sign the publishing agreement",
-          "body": "You keep the copyright and publish under CC BY 4.0."
+          "title": "Firmar el acuerdo de publicación",
+          "body": "Conservas los derechos de autor y publicas bajo CC BY 4.0."
         },
         "doi": {
-          "title": "Get your DOI",
-          "body": "Reserved the moment you sign. It goes live with the report."
+          "title": "Obtener tu DOI",
+          "body": "Reservado en cuanto firmas. Se activa con el informe."
         },
         "pdf": {
-          "title": "Upload your PDF",
-          "body": "With one line on its cover that names the series and the DOI. You get the line after signing."
+          "title": "Subir tu PDF",
+          "body": "Con una mención en la portada que nombra la serie y el DOI. Recibes la mención después de firmar."
         },
         "details": {
-          "title": "Check the details",
-          "body": "Read from the PDF for you: title, authors, ORCID iDs, institutions and funders."
+          "title": "Revisar los datos",
+          "body": "Leídos del PDF por ti: título, autores, identificadores ORCID, instituciones y financiadores."
         },
         "checks": {
-          "title": "Automatic checks",
-          "body": "About a minute. They look for the line on the cover and anything published before."
+          "title": "Comprobaciones automáticas",
+          "body": "Alrededor de un minuto. Buscan la mención en la portada y cualquier publicación anterior."
         },
         "activate": {
-          "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
-          "bodyPriced": "{price} for each report, paid with a card. A voucher code can lower that or cover it. The DOI is registered and the report goes live."
+          "title": "Activar",
+          "body": "Se paga con tarjeta. Un código promocional puede rebajar el precio o cubrirlo. El DOI se registra y el informe se publica.",
+          "bodyPriced": "{price} por informe, pagados con tarjeta. Un código promocional puede rebajar ese precio o cubrirlo. El DOI se registra y el informe se publica."
         }
       }
     },
@@ -6920,7 +6920,7 @@
       "checkAndPublish": "Comprobar y publicar los cambios",
       "runChecks": "Ejecutar las comprobaciones",
       "tooEarly": "Un informe no puede tener una fecha anterior a 1400.",
-      "back": "Back"
+      "back": "Atrás"
     }
   },
   "people": {
