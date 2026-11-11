@@ -243,8 +243,9 @@ export function DetailsStep({
   /** What the details were when the form opened, by the number that tells one state of the report from the next. It
    * is kept as it was then, so details saved since by someone else are never written over by this form. */
   version?: number;
-  /** Given the details and the `version` the form opened on, a moment after each change. */
-  onSave?: (m: Metadata, version: number | undefined) => void;
+  /** Given the fields this form changed and the `version` it opened on, a moment after each change. Only those
+   * fields: the rest may have been saved since by another tab, which a whole snapshot would write over. */
+  onSave?: (changes: Partial<Metadata>, version: number | undefined) => void;
   /** Called at the first change made to the form: from then on it holds something that isn't saved anywhere. */
   onTouched?: () => void;
   /** Given when a live report's details are being corrected: the form says so, and can be left without changing
@@ -293,7 +294,7 @@ export function DetailsStep({
     held.current.own = own;
     setOwn(own);
     clearTimeout(held.current.timer);
-    held.current.send = onSave ? () => onSave(next, opened) : undefined;
+    held.current.send = onSave ? () => onSave(own, opened) : undefined;
     held.current.timer = setTimeout(sendNow, SAVE_AFTER_MS);
   };
   // The browser's page lifecycle is the outside system here. A reload or a closed tab inside the wait would lose

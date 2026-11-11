@@ -14,7 +14,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const form = (initial: Metadata, onSave: (m: Metadata) => void) => (
+const form = (initial: Metadata, onSave: (changes: Partial<Metadata>) => void) => (
   <NextIntlClientProvider locale="en-US" messages={messages}>
     <TooltipProvider>
       <DetailsStep initial={initial} onRun={async () => {}} onSave={onSave} />
@@ -22,9 +22,9 @@ const form = (initial: Metadata, onSave: (m: Metadata) => void) => (
   </NextIntlClientProvider>
 );
 
-// Two tabs on one report: a title saved in the other tab reaches this form as its new `initial`. Editing only the
-// subtitle here must save that newer title, not the one this form opened with.
-it("keeps a title saved in another tab when this tab saves another field", () => {
+// Two tabs on one report: a title saved in the other tab reaches this form as its new `initial`. The form shows it,
+// and saving the subtitle here sends only the subtitle, so the server keeps the other tab's title.
+it("shows a title saved in another tab and saves only the field changed here", () => {
   vi.useFakeTimers();
   const onSave = vi.fn();
   const opened = { ...blankDetails("report.pdf", "2026-11-11"), title: "Old title" };
@@ -35,5 +35,5 @@ it("keeps a title saved in another tab when this tab saves another field", () =>
   fireEvent.change(screen.getByLabelText(/^Subtitle/), { target: { value: "Subtitle from this tab" } });
   act(() => vi.runAllTimers());
 
-  expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ title: "Title from the other tab", subtitle: "Subtitle from this tab" }), undefined);
+  expect(onSave).toHaveBeenLastCalledWith({ subtitle: "Subtitle from this tab" }, undefined);
 });

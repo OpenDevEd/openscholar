@@ -352,10 +352,10 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
   const runChecks = useAction(api.reports.checks.run);
   const requestChangesReview = useMutation(api.reports.flow.requestChangesReview);
   const discardChanges = useMutation(api.reports.flow.discardChanges);
-  const typeChanges = useMutation(api.reports.flow.typeChanges).withOptimisticUpdate((store, { key, metadata }) => {
+  const typeChanges = useMutation(api.reports.flow.typeChanges).withOptimisticUpdate((store, { key, changes }) => {
     // Given up, what was typed is gone from this page at once: a form opened again before the answer is back starts
     // from the report, never from what was just cancelled.
-    if (metadata) return;
+    if (changes) return;
     for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
       if (!value || !("report" in value) || value.report.key !== key) continue;
       const { trying, ...report } = value.report;
@@ -439,7 +439,7 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
                     setStarting(false);
                   }
                 }}
-                onSave={(metadata) => void saveDetails({ ...here, key: report.key, metadata, pdfAt: report.pdf!.at }).catch(said(t("saveFailed")))}
+                onSave={(changes) => void saveDetails({ ...here, key: report.key, changes, pdfAt: report.pdf!.at }).catch(said(t("saveFailed")))}
               />
             </>
           ) : live && correcting && report.metadata ? (
@@ -456,7 +456,7 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
               onTouched={() => setTyping(true)}
               // Kept as they are typed, so Back, Forward or a reload brings them back. Typed over a report that has
               // changed since, they are not kept, and sending them is refused in words.
-              onSave={(metadata, since) => void typeChanges({ ...here, key: report.key, since: since!, metadata }).catch(said(t("saveFailed")))}
+              onSave={(changes, since) => void typeChanges({ ...here, key: report.key, since: since!, changes }).catch(said(t("saveFailed")))}
               onRun={async (metadata: Metadata, since) => {
                 toTop();
                 setAttempt({ metadata, since: since! });
@@ -482,7 +482,7 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
                 // Cancelling gives up what was typed, here and wherever it was kept: a save sent a moment ago may not
                 // have come back yet, and this one runs after it. It names the version this form opened on, so what
                 // another tab typed over a later one is never the one given up.
-                if (typing || report.trying) void typeChanges({ ...here, key: report.key, since: since!, metadata: null }).catch(() => undefined);
+                if (typing || report.trying) void typeChanges({ ...here, key: report.key, since: since!, changes: null }).catch(() => undefined);
                 onCorrected();
               }}
             />

@@ -220,15 +220,24 @@ export const sign = workspaceMutation({
 /** The author's corrections, kept as they make them, so leaving the details step loses nothing. A title being
  * retyped is kept empty; the checks are what need one. */
 export const saveDetails = workspaceMutation({
-  args: { key: v.string(), metadata: metadataValidator, /** The PDF the details were read from, by when it was uploaded. */ pdfAt: v.number() },
+  args: {
+    key: v.string(),
+    /** The fields this form changed. The rest stay as they are, so a field another tab saved meanwhile isn't written over. */
+    changes: metadataValidator.partial(),
+    /** The PDF the details were read from, by when it was uploaded. */
+    pdfAt: v.number(),
+  },
   returns: v.null(),
-  handler: async (ctx, actor, { key, metadata, pdfAt }) => {
+  handler: async (ctx, actor, { key, changes, pdfAt }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     // Only while the details are being corrected: a save that arrives after the checks started changes nothing. Nor
     // does one typed over another PDF's details, as a tab left open across a new upload would send.
     if (report.step !== "details" || report.run || report.pdf?.at !== pdfAt) return null;
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: keptDetails(metadata) });
+    const details = await detailsOf(ctx, report._id);
+    if (!details.metadata) return null;
+    const metadata = keptDetails({ ...details.metadata, ...changes });
+    await ctx.db.patch("reportDetails", details._id, { metadata });
     await touch(ctx, report, { title: metadata.title.trim() || undefined });
     return null;
   },
@@ -375,15 +384,23 @@ export const requestChangesReview = workspaceMutation({
  * gives up what was typed, as Cancel does.
  */
 export const typeChanges = workspaceMutation({
-  args: { key: v.string(), since: v.number(), metadata: v.union(metadataValidator, v.null()) },
+  args: {
+    key: v.string(),
+    since: v.number(),
+    /** The fields this form changed, kept over the changes already typed (another tab's too); null gives them all up. */
+    changes: v.union(metadataValidator.partial(), v.null()),
+  },
   returns: v.null(),
-  handler: async (ctx, actor, { key, since, metadata }) => {
+  handler: async (ctx, actor, { key, since, changes }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     const details = await detailsOf(ctx, report._id);
     // Nothing is kept for a report that isn't live, whose checks are reading other changes, or that changed since the form opened.
     if (report.status !== "live" || report.run || formVersion(report, details) !== since) return null;
-    await ctx.db.patch("reportDetails", details._id, { trying: metadata ? keptDetails(metadata) : undefined });
+    // What the form shows under its own changes (publish-flow.tsx): the changes typed so far, else those waiting, else the report.
+    const typed = details.trying ?? details.correction?.metadata ?? details.metadata;
+    if (changes && !typed) return null;
+    await ctx.db.patch("reportDetails", details._id, { trying: changes && typed ? keptDetails({ ...typed, ...changes }) : undefined });
     return null;
   },
 });

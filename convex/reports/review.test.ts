@@ -114,7 +114,7 @@ describe("reviewing", () => {
     const world = await setup({ humanReview: true });
     const waiting = await checked(world, [passed("byline")], world.author, world.lab);
     const failed = await checked(world, [passed("byline", false)], world.author, world.lab);
-    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.lab, key: failed.key, metadata: details("Unused"), pdfAt: failed.pdfAt });
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.lab, key: failed.key, changes: details("Unused"), pdfAt: failed.pdfAt });
     const list = (args: { show?: "all" | "review" | "ready" | "failed"; q?: string } = {}) => world.reviewer.query(api.reports.review.page, { page: 1, ...args });
     expect((await list()).rows.map((r) => r.key)).toEqual([failed.key, waiting.key]);
     expect(await list({ show: "review" })).toMatchObject({ rows: [{ key: waiting.key }], counts: { all: 2, review: 1, failed: 1 }, total: 1 });
@@ -275,7 +275,7 @@ describe("changes to a live report", () => {
     const world = await setup();
     const { key } = await live(world, world.author, world.lab);
     const since = await openedOn(world, key);
-    const type = (who: World["author"], metadata: ReturnType<typeof details> | null, at = since) => who.mutation(api.reports.flow.typeChanges, { workspaceId: world.lab, key, since: at, metadata });
+    const type = (who: World["author"], metadata: ReturnType<typeof details> | null, at = since) => who.mutation(api.reports.flow.typeChanges, { workspaceId: world.lab, key, since: at, changes: metadata });
     await type(world.author, details("Half typed"));
     expect(await read(world.author, world.lab, key)).toMatchObject({ trying: { title: "Half typed" }, metadata: { title: "Shade trees and maize yields" } });
     // A member who may only read it gets none of what its owner typed, and types nothing into it.
