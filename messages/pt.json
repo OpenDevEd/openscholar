@@ -6666,6 +6666,7 @@
       "waiting": "À espera de revisão",
       "inReview": "Em revisão",
       "waitingFlagged": "Uma verificação assinalou o seu relatório, por isso um revisor analisa-o antes de poder ficar publicado. Será avisado por e-mail, e ele espera por si em Publicar.",
+      "reviewTakes": "Uma revisão demora até três dias úteis.",
       "waitingPassed": "O seu relatório passou nas verificações. Agora um revisor aprova-o antes de poder ficar publicado. Será avisado por e-mail, e ele espera por si em Publicar.",
       "withdrawn": "Retirado",
       "notPublished": "Não publicado",

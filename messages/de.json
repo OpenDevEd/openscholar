@@ -6666,6 +6666,7 @@
       "waiting": "Wartet auf Prüfung",
       "inReview": "In Prüfung",
       "waitingFlagged": "Eine Prüfung hat Ihren Bericht markiert, daher sieht ihn sich ein Gutachter an, bevor er online gehen kann. Sie erhalten eine E-Mail, und er wartet unter Publizieren auf Sie.",
+      "reviewTakes": "Eine Begutachtung dauert bis zu drei Werktage.",
       "waitingPassed": "Ihr Bericht hat seine Prüfungen bestanden. Ein Gutachter genehmigt ihn nun, bevor er online gehen kann. Sie erhalten eine E-Mail, und er wartet unter Publizieren auf Sie.",
       "withdrawn": "Zurückgezogen",
       "notPublished": "Nicht veröffentlicht",

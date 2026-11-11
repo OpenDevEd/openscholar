@@ -6665,6 +6665,7 @@
       "waiting": "En attente de relecture",
       "inReview": "En relecture",
       "waitingFlagged": "Une vérification a signalé votre rapport : un relecteur l'examine avant sa mise en ligne. Vous serez prévenu par e-mail, et il vous attend sous Publier.",
+      "reviewTakes": "Une relecture prend jusqu'à trois jours ouvrés.",
       "waitingPassed": "Votre rapport a réussi ses vérifications. Un relecteur l'approuve maintenant avant sa mise en ligne. Vous serez prévenu par e-mail, et il vous attend sous Publier.",
       "withdrawn": "Retiré",
       "notPublished": "Non publié",
