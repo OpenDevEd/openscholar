@@ -1527,7 +1527,8 @@ function PaymentLine({ organization, free, card, credit, price, pending, refused
     });
   return (
     <div ref={inViewOnReturn} className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-3 rounded-2xl bg-inset/60 py-3 ps-3 pe-3 sm:flex-nowrap">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground">
+      {/* The icon sits beside the first lines, at the top: the bar grows downwards when a code is added under them. */}
+      <span className="flex size-9 shrink-0 items-center justify-center self-start rounded-xl bg-background text-muted-foreground">
         <CreditCard className="size-4" />
       </span>
       {/* On a phone the words keep a readable width and the buttons go under them. */}
