@@ -49,13 +49,16 @@ import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
 import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
-import { bylineOf } from "@/lib/reports/settings";
+import { bylineOf, DEFAULT_CHECKS } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { cn, finePointer } from "@/lib/utils";
+
+/** The checks Openscholar ships, whose words the page translates (`check.defaults` in the messages). */
+type DefaultCheckId = "byline" | "published" | "harm" | "research";
 
 type Basics = FunctionReturnType<typeof api.reports.settings.forAuthors>;
 type Found = NonNullable<FunctionReturnType<typeof api.reports.flow.get>>;
@@ -958,6 +961,18 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
     const key = (Object.keys(CHECK_SAID) as Array<keyof typeof CHECK_SAID>).find((said) => CHECK_SAID[said] === words);
     return key ? t(`check.said.${key}`) : words;
   };
+  // A check as Openscholar ships it reads in the page's language. Once an admin rewords it, it reads as they wrote it.
+  // "Already published" is the name that check shipped with before it was renamed, kept by settings made then.
+  const shipped = DEFAULT_CHECKS.find((check) => check.name === name || (check.id === "published" && name === "Already published"));
+  const shownName = shipped ? t(`check.defaults.${shipped.id as DefaultCheckId}.name`) : name;
+  const fixInWords = (fix: string) => {
+    for (const check of DEFAULT_CHECKS) {
+      const [before, after = ""] = (check.fix ?? "").split("{byline}");
+      const filled = check.fix?.includes("{byline}") ? fix.startsWith(before!) && fix.endsWith(after) : fix === check.fix;
+      if (check.fix && filled) return t(`check.defaults.${check.id as DefaultCheckId}.fix`, { byline: fix.slice(before!.length, fix.length - after.length) });
+    }
+    return fix;
+  };
   const format = useFormatter();
   const tone = result ? (result.pass ? "success" : result.blocking ? "danger" : "warning") : null;
   const asked = result?.confidence !== undefined && result.threshold !== undefined;
@@ -981,7 +996,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
           </AnimatePresence>
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium">{name}</span>
+          <span className="block truncate text-sm font-medium">{shownName}</span>
         </span>
         {/* The chip's place is held while the check runs, so the row doesn't shift when it lands. */}
         <span className="flex min-w-[4.75rem] justify-end">
@@ -1026,7 +1041,7 @@ export function CheckRow({ name, result, advice = true, overruled = false }: { n
               {!result.pass && result.fix && advice ? (
                 <p className="ms-8 mt-2 flex items-start gap-2 rounded-xl bg-inset px-3 py-2 text-xs/5">
                   <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                  <span className="min-w-0 break-words">{result.fix}</span>
+                  <span className="min-w-0 break-words">{fixInWords(result.fix)}</span>
                 </p>
               ) : null}
             </motion.div>

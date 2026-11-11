@@ -96,9 +96,12 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 vi.mock("next-intl", () => ({
-  useTranslations:
-    (namespace: string) => (key: string, values?: Record<string, unknown>) =>
-      `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
+  useTranslations: (namespace: string) =>
+    Object.assign(
+      (key: string, values?: Record<string, unknown>) => `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
+      // As next-intl's: whether a message exists. None does here, so OpenAlex terms read as written.
+      { has: () => false },
+    ),
   useFormatter: () => ({
     dateTime: (date: Date) => date.toISOString().slice(0, 10),
     number: (value: number) => String(value),

@@ -6624,6 +6624,24 @@
           "notPublished": "Não está no OpenAlex, no índice do Openscholar nem nas nossas comunidades.",
           "unfinished": "Esta verificação não conseguiu terminar.",
           "bylineFound": "O texto do PDF tem a linha palavra por palavra."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Linha de publicação e DOI no PDF",
+            "fix": "Coloque esta linha na capa ou no verso da capa, como texto e não como imagem, e carregue o PDF de novo: {byline}"
+          },
+          "published": {
+            "name": "Não publicado antes",
+            "fix": "Se for uma publicação sua anterior, diga-o quando pedir uma revisão."
+          },
+          "harm": {
+            "name": "Sem discurso de ódio nem assédio",
+            "fix": "Retire as passagens que atacam pessoas e carregue o PDF de novo."
+          },
+          "research": {
+            "name": "Investigação, não publicidade",
+            "fix": "A Openscholar Reports publica investigação. Se o seu trabalho o é, peça uma revisão e diga o que a verificação não viu."
+          }
         }
       },
       "activateFailed": "Não foi possível ativá-lo",
@@ -6901,6 +6919,73 @@
         "label": "Investigação e opinião",
         "hint": "Convites para experimentar novas funcionalidades e dar a sua opinião"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "Erradicar a pobreza",
+      "2": "Erradicar a fome",
+      "3": "Saúde de qualidade",
+      "4": "Educação de qualidade",
+      "5": "Igualdade de género",
+      "6": "Água potável e saneamento",
+      "7": "Energias renováveis e acessíveis",
+      "8": "Trabalho digno e crescimento económico",
+      "9": "Indústria, inovação e infraestruturas",
+      "10": "Reduzir as desigualdades",
+      "11": "Cidades e comunidades sustentáveis",
+      "12": "Produção e consumo sustentáveis",
+      "13": "Ação climática",
+      "14": "Proteger a vida marinha",
+      "15": "Proteger a vida terrestre",
+      "16": "Paz, justiça e instituições eficazes",
+      "17": "Parcerias para a implementação dos objetivos"
+    },
+    "workType": {
+      "article": "Artigo",
+      "dataset": "Conjunto de dados",
+      "book-chapter": "Capítulo de livro",
+      "conference-paper": "Comunicação em conferência",
+      "dissertation": "Tese",
+      "preprint": "Pré-publicação",
+      "book": "Livro",
+      "report": "Relatório",
+      "review": "Artigo de revisão",
+      "reference-entry": "Entrada de obra de referência",
+      "conference-abstract": "Resumo de conferência",
+      "book-review": "Recensão de livro",
+      "peer-review": "Revisão por pares",
+      "editorial": "Editorial",
+      "letter": "Carta",
+      "standard": "Norma",
+      "software": "Software",
+      "data-paper": "Artigo de dados",
+      "software-paper": "Artigo de software",
+      "supplementary-materials": "Materiais suplementares",
+      "erratum": "Errata",
+      "retraction": "Retratação",
+      "libguides": "Guia de biblioteca",
+      "paratext": "Paratexto",
+      "other": "Outro"
+    },
+    "studyDesign": {
+      "systematic-review": "Revisão sistemática",
+      "meta-analysis": "Meta-análise",
+      "randomized-controlled-trial": "Ensaio controlado aleatorizado",
+      "observational-study": "Estudo observacional",
+      "case-report": "Relato de caso",
+      "study-protocol": "Protocolo de estudo"
+    },
+    "institutionType": {
+      "education": "Educação",
+      "facility": "Instalação",
+      "healthcare": "Saúde",
+      "government": "Governo",
+      "company": "Empresa",
+      "nonprofit": "Organização sem fins lucrativos",
+      "funder": "Financiador",
+      "archive": "Arquivo",
+      "other": "Outro"
     }
   }
 }

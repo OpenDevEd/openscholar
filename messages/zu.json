@@ -6623,6 +6623,24 @@
           "notPublished": "Akukho ku-OpenAlex, kunkomba ka-Openscholar noma emiphakathini yethu.",
           "unfinished": "Lokhu kuhlola akukwazanga ukuqedwa.",
           "bylineFound": "Umbhalo we-PDF unalo mugqa igama ngegama."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Umugqa wokushicilela ne-DOI ku-PDF",
+            "fix": "Beka lo mugqa ekhasini lokuqala noma ngaphakathi kwekhava, njengombhalo hhayi njengesithombe, bese ulayisha i-PDF futhi: {byline}"
+          },
+          "published": {
+            "name": "Akukaze kushicilelwe ngaphambili",
+            "fix": "Uma lokhu kuwukushicilela kwakho kwangaphambili, kusho lapho ucela ukubuyekezwa."
+          },
+          "harm": {
+            "name": "Akukho nkulumo yenzondo noma ukuhlukumeza",
+            "fix": "Susa izingxenye ezihlasela abantu, bese ulayisha i-PDF futhi."
+          },
+          "research": {
+            "name": "Ucwaningo, hhayi isikhangiso",
+            "fix": "I-Openscholar Reports ishicilela ucwaningo. Uma okwakho kuwucwaningo, cela ukubuyekezwa bese usho ukuthi ukuhlola kuphuthelwe yini."
+          }
         }
       },
       "activateFailed": "Akukwazanga ukwenziwa kusebenze",
@@ -6900,6 +6918,73 @@
         "label": "Ucwaningo nemibono",
         "hint": "Izimemo zokuzama izici ezintsha nokwabelana ngombono wakho"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "Ukuqeda ubumpofu",
+      "2": "Ukuqeda indlala",
+      "3": "Impilo enhle nenhlalakahle",
+      "4": "Imfundo esezingeni",
+      "5": "Ukulingana ngokobulili",
+      "6": "Amanzi ahlanzekile nokukhucululwa kwendle",
+      "7": "Amandla ahlanzekile nafinyelelekayo",
+      "8": "Umsebenzi ohloniphekile nokukhula komnotho",
+      "9": "Imboni, ukusungula okusha nengqalasizinda",
+      "10": "Ukunciphisa ukungalingani",
+      "11": "Amadolobha nemiphakathi esimeme",
+      "12": "Ukusetshenziswa nokukhiqizwa ngokunakekela",
+      "13": "Isenzo sesimo sezulu",
+      "14": "Impilo ngaphansi kwamanzi",
+      "15": "Impilo emhlabeni",
+      "16": "Ukuthula, ubulungiswa nezikhungo eziqinile",
+      "17": "Ubambiswano lwemigomo"
+    },
+    "workType": {
+      "article": "Isihloko",
+      "dataset": "Iqoqo ledatha",
+      "book-chapter": "Isahluko sencwadi",
+      "conference-paper": "Iphepha lengqungquthela",
+      "dissertation": "Ithisisi",
+      "preprint": "Okushicilelwe kuqala",
+      "book": "Incwadi",
+      "report": "Umbiko",
+      "review": "Isihloko sokubuyekeza",
+      "reference-entry": "Okufakwe kwireferensi",
+      "conference-abstract": "Isifinyezo sengqungquthela",
+      "book-review": "Ukubuyekezwa kwencwadi",
+      "peer-review": "Ukubuyekezwa ngontanga",
+      "editorial": "Inhloko-mbhalo",
+      "letter": "Incwadi",
+      "standard": "Indinganiso",
+      "software": "Isofthiwe",
+      "data-paper": "Iphepha ledatha",
+      "software-paper": "Iphepha lesofthiwe",
+      "supplementary-materials": "Izinto ezengeziwe",
+      "erratum": "Ukulungiswa kwephutha",
+      "retraction": "Ukuhoxiswa",
+      "libguides": "Umhlahlandlela womtapo",
+      "paratext": "Umbhalo ohambisanayo",
+      "other": "Okunye"
+    },
+    "studyDesign": {
+      "systematic-review": "Ukubuyekezwa okuhlelekile",
+      "meta-analysis": "Ukuhlaziywa kwemiphumela eminingi",
+      "randomized-controlled-trial": "Ucwaningo olulawulwayo olungahleliwe",
+      "observational-study": "Ucwaningo lokubuka",
+      "case-report": "Umbiko wesimo",
+      "study-protocol": "Uhlelo locwaningo"
+    },
+    "institutionType": {
+      "education": "Imfundo",
+      "facility": "Isikhungo",
+      "healthcare": "Ezempilo",
+      "government": "Uhulumeni",
+      "company": "Inkampani",
+      "nonprofit": "Inhlangano engenzi nzuzo",
+      "funder": "Umxhasi",
+      "archive": "Ingobolondolo",
+      "other": "Okunye"
     }
   }
 }

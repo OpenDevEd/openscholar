@@ -10,7 +10,7 @@ import { CountryFlag } from "@/components/ui/country-flag";
 import { ExternalLink, PenLine } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { STUDY_DESIGNS } from "@/lib/openalex/vocabulary";
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { useRelationName, useRoleName } from "@/components/reports/words";
 import { linkHref, type Metadata } from "@/lib/reports/report";
 
@@ -97,7 +97,7 @@ export function ReportMain({ m }: { m: Metadata }) {
 export function ReportSide({ m }: { m: Metadata }) {
   const t = useTranslations("publishReports.page");
   const placeName = usePlaceName();
-  const designs = STUDY_DESIGNS.filter((d) => m.studyDesigns.includes(d.id));
+  const designs = useVocabulary().studyDesigns.filter((d) => m.studyDesigns.includes(d.id));
   return (
     <>
       {m.countries.length ? (

@@ -6624,6 +6624,24 @@
           "notPublished": "No está en OpenAlex, en el índice de Openscholar ni en nuestras comunidades.",
           "unfinished": "Esta comprobación no pudo terminar.",
           "bylineFound": "El texto del PDF contiene la línea palabra por palabra."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Línea de publicación y DOI en el PDF",
+            "fix": "Pon esta línea en la portada o en la contraportada interior, como texto y no como imagen, y vuelve a subir el PDF: {byline}"
+          },
+          "published": {
+            "name": "No publicado antes",
+            "fix": "Si es una publicación tuya anterior, dilo cuando pidas una revisión."
+          },
+          "harm": {
+            "name": "Sin discurso de odio ni acoso",
+            "fix": "Quita los pasajes que atacan a personas y vuelve a subir el PDF."
+          },
+          "research": {
+            "name": "Investigación, no publicidad",
+            "fix": "Openscholar Reports publica investigación. Si lo tuyo lo es, pide una revisión y explica qué pasó por alto la comprobación."
+          }
         }
       },
       "activateFailed": "No se pudo activar",
@@ -6901,6 +6919,73 @@
         "label": "Investigación y opiniones",
         "hint": "Invitaciones para probar nuevas funciones y decirnos qué opinas"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "Fin de la pobreza",
+      "2": "Hambre cero",
+      "3": "Salud y bienestar",
+      "4": "Educación de calidad",
+      "5": "Igualdad de género",
+      "6": "Agua limpia y saneamiento",
+      "7": "Energía asequible y no contaminante",
+      "8": "Trabajo decente y crecimiento económico",
+      "9": "Industria, innovación e infraestructura",
+      "10": "Reducción de las desigualdades",
+      "11": "Ciudades y comunidades sostenibles",
+      "12": "Producción y consumo responsables",
+      "13": "Acción por el clima",
+      "14": "Vida submarina",
+      "15": "Vida de ecosistemas terrestres",
+      "16": "Paz, justicia e instituciones sólidas",
+      "17": "Alianzas para lograr los objetivos"
+    },
+    "workType": {
+      "article": "Artículo",
+      "dataset": "Conjunto de datos",
+      "book-chapter": "Capítulo de libro",
+      "conference-paper": "Ponencia de congreso",
+      "dissertation": "Tesis",
+      "preprint": "Preprint",
+      "book": "Libro",
+      "report": "Informe",
+      "review": "Artículo de revisión",
+      "reference-entry": "Entrada de obra de referencia",
+      "conference-abstract": "Resumen de congreso",
+      "book-review": "Reseña de libro",
+      "peer-review": "Revisión por pares",
+      "editorial": "Editorial",
+      "letter": "Carta",
+      "standard": "Norma",
+      "software": "Software",
+      "data-paper": "Artículo de datos",
+      "software-paper": "Artículo de software",
+      "supplementary-materials": "Materiales complementarios",
+      "erratum": "Fe de erratas",
+      "retraction": "Retractación",
+      "libguides": "Guía de biblioteca",
+      "paratext": "Paratexto",
+      "other": "Otro"
+    },
+    "studyDesign": {
+      "systematic-review": "Revisión sistemática",
+      "meta-analysis": "Metaanálisis",
+      "randomized-controlled-trial": "Ensayo controlado aleatorizado",
+      "observational-study": "Estudio observacional",
+      "case-report": "Informe de caso",
+      "study-protocol": "Protocolo de estudio"
+    },
+    "institutionType": {
+      "education": "Educación",
+      "facility": "Instalación",
+      "healthcare": "Salud",
+      "government": "Gobierno",
+      "company": "Empresa",
+      "nonprofit": "Organización sin ánimo de lucro",
+      "funder": "Financiador",
+      "archive": "Archivo",
+      "other": "Otro"
     }
   }
 }

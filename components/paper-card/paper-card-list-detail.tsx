@@ -1,4 +1,5 @@
 "use client";
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { TopicLink } from "@/components/topics/topic-link";
 import { similarSearchHref } from "@/lib/search/similar-href";
 import { useSearchSource } from "@/lib/search/use-search-source";
@@ -61,6 +62,7 @@ export function PaperCardListDetail({
   extra,
 }: PaperCardProps) {
   const tp = useTranslations("paperCard");
+  const vocabulary = useVocabulary();
   const tc = useTranslations("common");
   const ts = useTranslations("similarPapers");
   const format = useFormatter();
@@ -233,8 +235,8 @@ export function PaperCardListDetail({
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <FileText className="h-3.5 w-3.5 text-primary/70" />
                     <span className="font-medium">{tp("typeLabel")}</span>
-                    <span className="text-foreground capitalize">
-                      {result.type.replace(/-/g, " ")}
+                    <span className="text-foreground">
+                      {vocabulary.workType(result.type)}
                     </span>
                   </div>
                 )}
@@ -299,13 +301,13 @@ export function PaperCardListDetail({
                             <TooltipHint
                               key={sdg.id}
                               label={tp("sdgWithScoreTooltip", {
-                                name: sdg.display_name,
+                                name: vocabulary.sdg(sdg.id, sdg.display_name),
                                 scoreLabel: tp("score"),
                                 score: sdg.score?.toFixed(2) ?? tc("notAvailable"),
                               })}
                             >
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-success/15 ink-success rounded-full text-xs border border-success/30">
-                                {sdg.display_name}
+                                {vocabulary.sdg(sdg.id, sdg.display_name)}
                                 {sdg.score && (
                                   <span className="ink-success font-medium">
                                     {sdg.score.toFixed(2)}

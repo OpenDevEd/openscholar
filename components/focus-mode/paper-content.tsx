@@ -1,4 +1,5 @@
 import { TopicLink } from "@/components/topics/topic-link";
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { SimilarPapers } from "./similar-papers";
 import { similarSearchHref } from "@/lib/search/similar-href";
 import { useSearchSource } from "@/lib/search/use-search-source";
@@ -66,6 +67,7 @@ export function PaperContent({
   selectedInstitutions,
   onToggleInstitution,
 }: PaperContentProps) {
+  const vocabulary = useVocabulary();
   const ownIndex = useSearchSource() === "openscholar";
   return (
     <div className={contentClasses}>
@@ -150,8 +152,8 @@ export function PaperContent({
             {!isPreview && paper.type && (
               <span className="flex items-center gap-1">
                 <span className="text-muted-foreground">{tLabels("type")}:</span>
-                <span className="font-medium capitalize">
-                  {paper.type.replace(/-/g, " ")}
+                <span className="font-medium">
+                  {vocabulary.workType(paper.type)}
                 </span>
               </span>
             )}
@@ -293,13 +295,13 @@ export function PaperContent({
                       <TooltipHint
                         key={sdg.id}
                         label={tp("sdgWithScoreTooltip", {
-                          name: sdg.display_name,
+                          name: vocabulary.sdg(sdg.id, sdg.display_name),
                           scoreLabel: tp("score"),
                           score: sdg.score?.toFixed(2) ?? tCommon("notAvailable"),
                         })}
                       >
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-success/15 ink-success rounded-full text-xs">
-                          {sdg.display_name}
+                          {vocabulary.sdg(sdg.id, sdg.display_name)}
                           {sdg.score && (
                             <span className="ink-success font-medium">
                               {sdg.score.toFixed(2)}

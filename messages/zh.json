@@ -6623,6 +6623,24 @@
           "notPublished": "不在 OpenAlex、Openscholar 索引或我们的社区中。",
           "unfinished": "此项检查未能完成。",
           "bylineFound": "PDF 文本中逐字包含这一行。"
+        },
+        "defaults": {
+          "byline": {
+            "name": "PDF 中的出版说明行和 DOI",
+            "fix": "请把这一行以文字（而非图片）形式放在封面或封二上，然后重新上传 PDF：{byline}"
+          },
+          "published": {
+            "name": "此前未发表",
+            "fix": "如果这是你自己以前的出版物，请在申请审核时说明。"
+          },
+          "harm": {
+            "name": "无仇恨言论或骚扰",
+            "fix": "删除攻击他人的段落，然后重新上传 PDF。"
+          },
+          "research": {
+            "name": "是研究而非广告",
+            "fix": "Openscholar Reports 发表研究。如果你的作品是研究，请申请审核并说明检查遗漏了什么。"
+          }
         }
       },
       "activateFailed": "无法激活",
@@ -6900,6 +6918,73 @@
         "label": "研究和反馈",
         "hint": "邀请你试用新功能并分享想法"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "无贫穷",
+      "2": "零饥饿",
+      "3": "良好健康与福祉",
+      "4": "优质教育",
+      "5": "性别平等",
+      "6": "清洁饮水和卫生设施",
+      "7": "经济适用的清洁能源",
+      "8": "体面工作和经济增长",
+      "9": "产业、创新和基础设施",
+      "10": "减少不平等",
+      "11": "可持续城市和社区",
+      "12": "负责任消费和生产",
+      "13": "气候行动",
+      "14": "水下生物",
+      "15": "陆地生物",
+      "16": "和平、正义与强大机构",
+      "17": "促进目标实现的伙伴关系"
+    },
+    "workType": {
+      "article": "文章",
+      "dataset": "数据集",
+      "book-chapter": "书籍章节",
+      "conference-paper": "会议论文",
+      "dissertation": "学位论文",
+      "preprint": "预印本",
+      "book": "书籍",
+      "report": "报告",
+      "review": "综述",
+      "reference-entry": "参考条目",
+      "conference-abstract": "会议摘要",
+      "book-review": "书评",
+      "peer-review": "同行评审",
+      "editorial": "社论",
+      "letter": "通讯",
+      "standard": "标准",
+      "software": "软件",
+      "data-paper": "数据论文",
+      "software-paper": "软件论文",
+      "supplementary-materials": "补充材料",
+      "erratum": "勘误",
+      "retraction": "撤稿",
+      "libguides": "图书馆指南",
+      "paratext": "副文本",
+      "other": "其他"
+    },
+    "studyDesign": {
+      "systematic-review": "系统综述",
+      "meta-analysis": "荟萃分析",
+      "randomized-controlled-trial": "随机对照试验",
+      "observational-study": "观察性研究",
+      "case-report": "病例报告",
+      "study-protocol": "研究方案"
+    },
+    "institutionType": {
+      "education": "教育",
+      "facility": "设施",
+      "healthcare": "医疗",
+      "government": "政府",
+      "company": "公司",
+      "nonprofit": "非营利组织",
+      "funder": "资助方",
+      "archive": "档案馆",
+      "other": "其他"
     }
   }
 }

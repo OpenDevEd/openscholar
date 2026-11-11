@@ -6624,6 +6624,24 @@
           "notPublished": "Haipo katika OpenAlex, faharasa ya Openscholar wala jumuiya zetu.",
           "unfinished": "Ukaguzi huu haukuweza kukamilika.",
           "bylineFound": "Maandishi ya PDF yana mstari huu neno kwa neno."
+        },
+        "defaults": {
+          "byline": {
+            "name": "Mstari wa uchapishaji na DOI ndani ya PDF",
+            "fix": "Weka mstari huu kwenye jalada au ndani ya jalada, kama maandishi na si picha, kisha pakia PDF tena: {byline}"
+          },
+          "published": {
+            "name": "Haijachapishwa kabla",
+            "fix": "Ikiwa hili ni chapisho lako la awali, sema hivyo unapoomba mapitio."
+          },
+          "harm": {
+            "name": "Hakuna matamshi ya chuki wala unyanyasaji",
+            "fix": "Ondoa vifungu vinavyowashambulia watu, kisha pakia PDF tena."
+          },
+          "research": {
+            "name": "Utafiti, si tangazo",
+            "fix": "Openscholar Reports huchapisha utafiti. Ikiwa kazi yako ni utafiti, omba mapitio na useme ukaguzi ulikosa nini."
+          }
         }
       },
       "activateFailed": "Haikuweza kuwashwa",
@@ -6901,6 +6919,73 @@
         "label": "Utafiti na maoni",
         "hint": "Mialiko ya kujaribu vipengele vipya na kutoa maoni yako"
       }
+    }
+  },
+  "vocabulary": {
+    "sdg": {
+      "1": "Kutokomeza umaskini",
+      "2": "Kutokomeza njaa",
+      "3": "Afya njema na ustawi",
+      "4": "Elimu bora",
+      "5": "Usawa wa kijinsia",
+      "6": "Maji safi na usafi wa mazingira",
+      "7": "Nishati safi kwa bei nafuu",
+      "8": "Kazi zenye staha na ukuaji wa uchumi",
+      "9": "Viwanda, ubunifu na miundombinu",
+      "10": "Kupunguza tofauti",
+      "11": "Miji na jamii endelevu",
+      "12": "Matumizi na uzalishaji endelevu",
+      "13": "Hatua dhidi ya mabadiliko ya tabianchi",
+      "14": "Uhai chini ya maji",
+      "15": "Uhai ardhini",
+      "16": "Amani, haki na taasisi imara",
+      "17": "Ushirikiano kufikia malengo"
+    },
+    "workType": {
+      "article": "Makala",
+      "dataset": "Seti ya data",
+      "book-chapter": "Sura ya kitabu",
+      "conference-paper": "Makala ya mkutano",
+      "dissertation": "Tasnifu",
+      "preprint": "Chapisho la awali",
+      "book": "Kitabu",
+      "report": "Ripoti",
+      "review": "Makala ya mapitio",
+      "reference-entry": "Kipengele cha marejeo",
+      "conference-abstract": "Muhtasari wa mkutano",
+      "book-review": "Uhakiki wa kitabu",
+      "peer-review": "Tathmini ya wenzao",
+      "editorial": "Tahariri",
+      "letter": "Barua",
+      "standard": "Kiwango",
+      "software": "Programu",
+      "data-paper": "Makala ya data",
+      "software-paper": "Makala ya programu",
+      "supplementary-materials": "Nyenzo za ziada",
+      "erratum": "Masahihisho",
+      "retraction": "Ubatilishaji",
+      "libguides": "Mwongozo wa maktaba",
+      "paratext": "Matini ya ziada",
+      "other": "Nyingine"
+    },
+    "studyDesign": {
+      "systematic-review": "Mapitio ya kimfumo",
+      "meta-analysis": "Uchambuzi meta",
+      "randomized-controlled-trial": "Jaribio linalodhibitiwa kwa nasibu",
+      "observational-study": "Utafiti wa uchunguzi",
+      "case-report": "Ripoti ya kisa",
+      "study-protocol": "Itifaki ya utafiti"
+    },
+    "institutionType": {
+      "education": "Elimu",
+      "facility": "Kituo",
+      "healthcare": "Huduma za afya",
+      "government": "Serikali",
+      "company": "Kampuni",
+      "nonprofit": "Shirika lisilo la faida",
+      "funder": "Mfadhili",
+      "archive": "Kumbukumbu",
+      "other": "Nyingine"
     }
   }
 }
