@@ -17,12 +17,6 @@ export async function citeFileResponse(params: Promise<{ id: string }>, kind: Ci
   if (detail.ids.issn) data.ISSN = detail.ids.issn;
   if (detail.language) data.language = detail.language;
   if (detail.publisher) data.publisher = detail.publisher;
-  // An Openscholar Report's series is a series, not a journal: BibTeX's `series` and RIS's T2 carry it, which a
-  // technical report's container title doesn't.
-  if (read.id.startsWith("R") && data["container-title"]) {
-    data["collection-title"] = data["container-title"];
-    delete data["container-title"];
-  }
   const file = citationFile(data, kind);
   return new Response(file.text, {
     headers: {
