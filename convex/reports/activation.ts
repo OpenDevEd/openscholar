@@ -333,13 +333,14 @@ export const activate = action({
       if (first.pending.url) return { url: first.pending.url };
       throw createError("CONFLICT", STILL_PAYING);
     }
-    // The card is read from Autumn, not the cached account: it may have been removed since.
-    const customer = await autumn.customer(first.customerId, { card: true });
-    if (!customer.payment_method?.card) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
+    // A free activation charges nothing, so it needs no card.
     if (first.freeLeft > 0 && !first.charging) {
       await ctx.runMutation(internal.reports.activation.goLiveFree, { actor, key });
       return { live: true };
     }
+    // The card is read from Autumn, not the cached account: it may have been removed since.
+    const customer = await autumn.customer(first.customerId, { card: true });
+    if (!customer.payment_method?.card) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
     if (!pay) throw createError("CONFLICT", NO_FREE_LEFT, { reason: "noFreeLeft" });
     // Its open invoice would hold this charge back anyway (`unlessPaymentOpen`); this says which report to go to.
     if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);

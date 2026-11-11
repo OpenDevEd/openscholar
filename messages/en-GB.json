@@ -6462,7 +6462,7 @@
       "limits": "Free activations",
       "limitsPager": "free activations",
       "personal": "A person's own workspace",
-      "personalHint": "Activations a day that cost nothing. A saved card is still needed.",
+      "personalHint": "Activations a day that cost nothing. No card needed.",
       "personalLabel": "Free activations a day in a person's own workspace",
       "limitSaved": "Free activations saved",
       "organization": "An organisation's workspace",

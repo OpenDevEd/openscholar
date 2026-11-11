@@ -45,7 +45,8 @@ describe("activating a report", () => {
     });
     const second = await checked(world, [passed("byline")]);
     expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key: first.key, now: Date.now() })).toMatchObject({ admin: true, organization: null, free: { perDay: 1, left: 1 } });
-    await activate(world, first.key, { free: true });
+    // Through the action itself, with no card saved and Autumn never asked: a free activation needs neither.
+    expect(await world.author.action(api.reports.activation.activate, { workspaceId: world.own, key: first.key, pay: false })).toEqual({ live: true });
     await expect(activate(world, second.key, { free: true })).rejects.toMatchObject(refused("CONFLICT"));
     expect(await row(world.t, second.key)).toMatchObject({ status: "passed" });
     // Paid for, it goes live, and the day's free one stays used.
