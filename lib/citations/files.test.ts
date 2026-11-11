@@ -25,6 +25,8 @@ describe("a citation file", () => {
     const data = paperToCitationData(paper)!;
     expect(citationFile(data, "ris").text).toContain("T2  - Openscholar Reports");
     expect(citationFile(data, "bibtex").text).toMatch(/series = \{Openscholar \{?Reports\}?\}/);
+    // Its number in the series, which BibTeX reads only from its own field.
+    expect(citationFile(data, "bibtex").text).toContain("number = {R100018}");
   });
 
   it("names a report's series in both formats", () => {
