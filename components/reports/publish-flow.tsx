@@ -120,7 +120,7 @@ function opens(report: Report, step: BackStep, humanReview: boolean) {
 }
 
 type HistoryEntry = { index: number; key: string; url: string | null };
-type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[] };
+type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[]; /** How this load of the page was come to. */ activation?: { navigationType: string | null; from: HistoryEntry | null; entry: HistoryEntry } | null };
 /** The browser's history, where it can be asked what its entries are (the Navigation API). */
 const historyOf = () => (window as { navigation?: Navigation }).navigation;
 
@@ -147,15 +147,19 @@ type EntryChange = Event & { navigationType: string | null; from: HistoryEntry }
  * a report stands is the report's own, so a step the browser goes to is one the report is sent to: Back from the
  * details is the details' own Back button. An entry for a step the report can't open again (it passed its checks),
  * or for the one it already shows, is gone past the way the person was going, so no press leaves the screen as it was.
+ * After a reload the entries behind belong to the page's earlier load, and Back to one loads the page again: that
+ * arrival is settled the same way, once, when the report is in.
  */
+let arrived = false;
 function useStepHistory(report: Report | null, humanReview: boolean, send: (step: BackStep) => void) {
   // The browser's history is the outside system: it says where a step came from only through the Navigation API.
   useEffect(() => {
     const navigation = historyOf();
     if (!report || !navigation) return;
-    const onChange = (event: Event) => {
-      const { navigationType, from } = event as EntryChange;
-      if (navigationType !== "traverse" || !from.url || !navigation.currentEntry) return;
+    /** The browser came from the entry `from` to the one it is at. */
+    const land = (from: HistoryEntry) => {
+      const at = navigation.currentEntry;
+      if (!from.url || !at) return;
       const was = stepIn(new URL(from.url), report.key);
       const to = stepIn(new URL(window.location.href), report.key);
       // Another report, another page, or the same step with something else opened over it: not a step between steps.
@@ -163,9 +167,31 @@ function useStepHistory(report: Report | null, humanReview: boolean, send: (step
       // The step on the screen as the browser left it. Before its PDF is the report's, the DOI and the upload are two
       // screens of one state, which the address picks.
       const shown = report.step === "done" ? "checks" : report.step === "doi" && was !== "doi" ? "upload" : report.step;
-      if (to !== shown && report.step === "doi" && (to === "doi" || to === "upload")) return;
-      if (to !== shown && to !== "checks" && opens(report, to, humanReview)) send(to);
-      else window.history.go(Math.sign(navigation.currentEntry.index - from.index));
+      // What an entry's step comes to: shown by the address alone, one the report is sent to, or neither.
+      const reach = (step: (typeof TRAIL)[number]) => (step === shown ? null : report.step === "doi" && (step === "doi" || step === "upload") ? "shown" : step !== "checks" && opens(report, step, humanReview) ? "sent" : null);
+      const here = reach(to);
+      if (here === "shown") return;
+      if (here === "sent") return send(to as BackStep);
+      // On past it, the way the person was going, to the first entry that is another screen: in one step, since
+      // each entry of an earlier load of the page would load it again.
+      const direction = Math.sign(at.index - from.index);
+      if (!direction) return;
+      const entries = navigation.entries();
+      let next = at.index + direction;
+      for (let url = entries[next]?.url; url; url = entries[next]?.url) {
+        const step = stepIn(new URL(url), report.key);
+        if (!step || reach(step)) break;
+        next += direction;
+      }
+      window.history.go(next - at.index);
+    };
+    // This load of the page was itself a step of Back or Forward, and the page is still on the entry it loaded at.
+    const arrival = navigation.activation;
+    if (!arrived && arrival?.navigationType === "traverse" && arrival.from && arrival.entry.key === navigation.currentEntry?.key) land(arrival.from);
+    arrived = true;
+    const onChange = (event: Event) => {
+      const { navigationType, from } = event as EntryChange;
+      if (navigationType === "traverse") land(from);
     };
     navigation.addEventListener("currententrychange", onChange);
     return () => navigation.removeEventListener("currententrychange", onChange);
