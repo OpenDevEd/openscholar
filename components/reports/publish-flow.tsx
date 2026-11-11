@@ -1188,6 +1188,14 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
     setChose(true);
     setCode(quote);
   };
+  // Typing a code is choosing one too: a requote that answers meanwhile must not put the old code over the field.
+  const type = (value: string) => {
+    if (value.trim()) {
+      chosen.current = true;
+      setChose(true);
+    }
+    setTyped(value);
+  };
   const [quoting, setQuoting] = useState(false);
   // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
   // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price; a
@@ -1300,7 +1308,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   refused={terms.refused !== null}
                   onAddCard={onAddCard}
                   quoted={code && { code: code.code, total: subtotal }}
-                  voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} typed={typed} onTyped={setTyped} /> : null}
+                  voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} typed={typed} onTyped={type} /> : null}
                   action={
                     terms.paused || (!free && price === null) ? (
                       <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
