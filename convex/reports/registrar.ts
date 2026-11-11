@@ -15,7 +15,7 @@ import { requireAppUrl } from "../lib/env";
 import { openAlexFetch } from "../../lib/openalex/fetch";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import type { Metadata } from "../../lib/reports/report";
-import { openAlexKey, registrationRecord, type RegistryIds } from "../../lib/reports/registration-record";
+import { openAlexKey, registrationRecord, zenodoRecord, type RegistryIds } from "../../lib/reports/registration-record";
 
 /** OpenAlex couldn't say who a report's funders and institutions are in the Funder Registry and ROR: worth trying again, like a registrar that couldn't be reached. */
 class IdsUnread extends Error {}
@@ -146,7 +146,7 @@ export const register = internalAction({
             });
             // Reusing the Crossref DOI, Zenodo archives the file under it; otherwise it gives the copy a DOI of its own.
             const doiPolicy = job.registration.crossref && job.registration.policy === "reuse-crossref" ? ("external-crossref" as const) : ("dual" as const);
-            const { landingUrl, doi, ...metadata } = record;
+            const { landingUrl, doi, ...metadata } = zenodoRecord(record, job.metadata);
             const shared = { token, doiPolicy, metadata: { ...metadata, ...(doiPolicy === "external-crossref" && { doi }) }, resourceUrl: landingUrl };
             // A record published by a try whose answer never arrived is found under the report's DOI, not made again.
             const found = job.zenodoRecordId ?? (doiPolicy === "external-crossref" ? await client.findRecordByDoi({ token, doi }).then((looked) => (looked.status === "found" ? looked.record.identifiers.latestRecordId : undefined)) : undefined);

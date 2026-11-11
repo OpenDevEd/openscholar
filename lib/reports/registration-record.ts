@@ -137,3 +137,24 @@ export function registrationRecord(
     fields: { reportNumber: report.key, seriesTitle: series.name, ...(series.issn && { ISSN: series.issn }) },
   };
 }
+
+/**
+ * The kind of work Zenodo files a report as: the type its author chose, in doi-sync-core's item types, which map to
+ * Zenodo's resource types. Crossref takes every report in the series as a report paper (its series has one ISSN and
+ * one kind), so only Zenodo follows the author. Kinds Zenodo has no type of its own for are "other"; an unknown one
+ * stays a report.
+ */
+const ZENODO_ITEM_TYPE: Record<string, string> = {
+  article: "JournalArticle", review: "JournalArticle", editorial: "JournalArticle", "book-review": "JournalArticle", "data-paper": "JournalArticle", "software-paper": "JournalArticle",
+  dataset: "Dataset", "book-chapter": "BookSection", "reference-entry": "EncyclopediaArticle", "conference-paper": "ConferencePaper", "conference-abstract": "ConferencePaper",
+  dissertation: "Thesis", preprint: "Preprint", book: "Book", report: "Report", letter: "Letter", standard: "Standard", software: "ComputerProgram",
+  "peer-review": "Document", "supplementary-materials": "Document", erratum: "Document", retraction: "Document", libguides: "Document", paratext: "Document", other: "Document",
+};
+
+/** A report's registration record as Zenodo is sent it: of the kind its author chose (ZENODO_ITEM_TYPE). */
+export function zenodoRecord<R extends ReturnType<typeof registrationRecord>>(record: R, m: Metadata): R {
+  const itemType = ZENODO_ITEM_TYPE[m.type] ?? "Report";
+  // A thesis names the university that awarded it, which isn't Openscholar: its first author's first institution.
+  const university = m.authors.find((author) => author.affiliations.length)?.affiliations[0]?.name;
+  return { ...record, itemType, ...(itemType === "Thesis" && { institution: university }) };
+}
