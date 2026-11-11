@@ -1498,7 +1498,9 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         className="sm:max-w-lg"
         // Typing starts in the box. The dialog puts the focus there itself, so closing it gives the focus back to the
         // button that opened it: a box that took the focus by itself would be what the dialog remembered instead.
+        // With a mouse or trackpad only: on touch the dialog keeps the focus, so no keyboard rises as it opens.
         onOpenAutoFocus={(event) => {
+          if (!finePointer()) return;
           event.preventDefault();
           box.current?.focus();
         }}
