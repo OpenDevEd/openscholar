@@ -423,7 +423,7 @@ function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, t
       <AnimatePresence mode="wait">
         <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           {!report && preparing ? (
-            <Overview series={basics.series.name} onStart={onPrepared} />
+            <Overview series={basics.series.name} reviewed={basics.humanReview} onStart={onPrepared} />
           ) : !report ? (
             <AgreementStep
               onBack={onUnprepare}
@@ -868,7 +868,7 @@ function StepNav({ onBack, next }: { onBack?: () => void; next?: ReactNode }) {
 }
 
 /** What publishing a report takes, before anything is signed: the steps, and what the author brings to them. */
-function Overview({ series, onStart }: { series: string; onStart: () => void }) {
+function Overview({ series, reviewed, onStart }: { series: string; /** A reviewer approves each report before it can go live, which takes longer than the steps do. */ reviewed: boolean; onStart: () => void }) {
   const t = useTranslations("publishReports.flow.overview");
   const items = [
     { id: "agreement", icon: PenLine },
@@ -880,7 +880,7 @@ function Overview({ series, onStart }: { series: string; onStart: () => void }) 
   ] as const;
   return (
     <div>
-      <StepHead title={t("title", { series })}>{t("intro")}</StepHead>
+      <StepHead title={t("title", { series })}>{t(reviewed ? "introReviewed" : "intro")}</StepHead>
       <ol className="relative space-y-1">
         {/* One line through the icons: the steps as one road. */}
         <span aria-hidden className="absolute inset-y-5 start-[1.1875rem] w-px bg-border" />
