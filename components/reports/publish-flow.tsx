@@ -700,24 +700,25 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned, 
           <Checkbox checked={agreed} onCheckedChange={(v) => tick({ agreed: v === true })} className="mt-0.5" />
           <span>{t("agree")}</span>
         </label>
-        {starts?.untouched && starts.untouched !== signed ? (
-          // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
-          <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
-            <span className="min-w-0 flex-1 basis-56">
-              {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
-            </span>
-            <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
-              {t("continueWith")} <ArrowUpRight />
-            </Button>
-          </p>
-        ) : null}
-        {changed ? (
-          <p role="status" className="flex items-start gap-2 text-sm text-muted-foreground">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
-            {t("agreementChanged")}
-          </p>
-        ) : null}
       </div>
+      {/* Notices run the step's full width, as every other step's do: only the form's fields keep a narrow column. */}
+      {starts?.untouched && starts.untouched !== signed ? (
+        // A reload while signing lands here with the DOI already reserved: it is this one, and signing gives it again.
+        <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+          <span className="min-w-0 flex-1 basis-56">
+            {t.rich("untouched", { key: starts.untouched, mono: (chunks) => <span className="font-mono">{chunks}</span> })}
+          </span>
+          <Button size="sm" variant="outline" onClick={() => onSigned(starts.untouched!)}>
+            {t("continueWith")} <ArrowUpRight />
+          </Button>
+        </p>
+      ) : null}
+      {changed ? (
+        <p role="status" className="mt-4 flex items-start gap-2 text-sm text-muted-foreground">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
+          {t("agreementChanged")}
+        </p>
+      ) : null}
       <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
         {onBack ? (
           <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
