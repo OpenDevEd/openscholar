@@ -31,6 +31,9 @@ export function paperToCitationData(paper: PaperResult): CitationData | null {
     data.issued = { "date-parts": [paper.publication_date.split("-").map(Number)] };
   } else if (paper.publication_year) data.issued = { "date-parts": [[paper.publication_year]] };
   if (source?.display_name) data["container-title"] = source.display_name;
+  // An Openscholar Report's series is a series too: a technical report's BibTeX and RIS carry it only as one (`series`,
+  // T2), while the formatted citations read the container title.
+  if (source?.display_name && id.startsWith("R")) data["collection-title"] = source.display_name;
   if (source?.issn_l) data.ISSN = source.issn_l;
   if (paper.language) data.language = paper.language;
   if (paper.biblio?.volume) data.volume = paper.biblio.volume;

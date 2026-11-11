@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { citationFile } from "./files";
+import { paperToCitationData } from "./paper-data";
+import type { PaperResult } from "@/lib/types/search.types";
 
 // A citation file must import as the record is: reference managers join RIS continuation lines with a space.
 describe("a citation file", () => {
@@ -18,6 +20,13 @@ describe("a citation file", () => {
     expect(ris).toContain(`TI  - ${report.title}\n`);
     expect(ris.split("\n").every((line) => /^[A-Z][A-Z0-9] {2}-( |$)/.test(line))).toBe(true);
   });
+  it("names a report's series from its paper, as the page's Cite downloads and the file routes build it", () => {
+    const paper = { id: "R100018", title: "Rainwater", type: "report", authorships: [], primary_location: { source: { display_name: "Openscholar Reports", type: "repository" } } } as unknown as PaperResult;
+    const data = paperToCitationData(paper)!;
+    expect(citationFile(data, "ris").text).toContain("T2  - Openscholar Reports");
+    expect(citationFile(data, "bibtex").text).toMatch(/series = \{Openscholar \{?Reports\}?\}/);
+  });
+
   it("names a report's series in both formats", () => {
     expect(citationFile(report, "ris").text).toContain("T2  - Openscholar Reports");
     expect(citationFile(report, "bibtex").text).toMatch(/series = \{Openscholar \{?Reports\}?\}/);
