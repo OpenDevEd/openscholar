@@ -356,8 +356,9 @@ function Overlay({
             aria-label={t("label")}
           >
             {threadId ? <Here threadId={threadId} /> : null}
+            {/* On a phone with large text, its rows wrap and can be taller than the panel: it then scrolls, so Send is never out of reach. */}
             <motion.div
-              className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)]"
+              className="absolute inset-0 flex flex-col overflow-hidden max-sm:overflow-y-auto rounded-[18px] border border-border/70 bg-card shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)]"
               style={{ transformOrigin: isRightToLeft(locale) ? "100% 50%" : "0% 50%" }}
               initial={false}
               animate={stackedUnder(depth, locale)}
@@ -1228,7 +1229,8 @@ function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFo
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
-      <div className="flex items-center gap-2.5">
+      {/* On a phone, buttons that don't fit beside the title (large text) go under it, on the right. */}
+      <div className="flex items-center gap-2.5 max-sm:flex-wrap">
         {/* The logo itself sits on the panel, above this spacer, so it can fly into the launcher. */}
         <span className="size-9 shrink-0" aria-hidden />
         <div className="min-w-0 flex-1">
@@ -1247,7 +1249,7 @@ function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFo
           </AnimatePresence>
           {detail !== undefined ? <div className="mt-0.5 flex h-5 min-w-0 items-center gap-1.5">{detail}</div> : null}
         </div>
-        <div className="flex items-center">
+        <div className="flex items-center max-sm:ms-auto max-sm:flex-wrap max-sm:justify-end">
           <IconButton label={t("chats")} icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
           <IconButton label={t("shareChat")} icon={<UserPlus className="size-4" />} onClick={onShare} />
           <IconButton label={t("spending")} icon={<Gauge className="size-4" />} onClick={onSpending} />
@@ -1481,7 +1483,7 @@ function Footer({
         </div>
       </motion.div>
       {dock}
-      <div className="rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
+      <div className="@container rounded-2xl border border-border/60 bg-background shadow-xs focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
         {attachments}
         <MentionComposer
           composer={composer}
@@ -1494,7 +1496,8 @@ function Footer({
           disabled={!canWrite}
           placeholder={!canWrite ? t("readOnly") : summarizing ? t("summarizing") : t("placeholder")}
         />
-        <div className="flex items-center gap-2 px-2 pb-2">
+        {/* On a phone with large text the row is narrow for its words, and what doesn't fit goes to the next line; at normal text the model's name shortens instead. */}
+        <div className="flex items-center gap-2 px-2 pb-2 max-sm:@max-[13rem]:flex-wrap">
           {attach}
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> {t("sees", { view })}
@@ -1502,7 +1505,7 @@ function Footer({
           <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite || modelFixed} />
           {/* The span keeps the hint reachable while the button is disabled. */}
           <TooltipHint label={!canWrite ? t("readOnly") : busy ? t("stop") : t("send")}>
-            <span className="flex shrink-0" tabIndex={canWrite ? undefined : 0}>
+            <span className="flex shrink-0 max-sm:@max-[13rem]:ms-auto" tabIndex={canWrite ? undefined : 0}>
               <button
                 type="button"
                 aria-label={busy ? t("stop") : t("send")}
