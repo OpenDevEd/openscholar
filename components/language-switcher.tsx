@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useConvexAuth, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Check, Globe } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -48,8 +50,17 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
     setMounted(true);
   }, []);
 
+  const { isAuthenticated } = useConvexAuth();
+  // Signed in, the choice is the account's, said at once: this browser's cookie follows it, as every other browser
+  // the person is signed in on does (components/profile/profile-setup.tsx).
+  const remember = useMutation(api.users.profileSetup.setLocale).withOptimisticUpdate((store, { locale }) => {
+    const now = store.getQuery(api.users.profileSetup.get, {});
+    if (now) store.setQuery(api.users.profileSetup.get, {}, { ...now, locale });
+  });
+
   const handleLocaleChange = async (locale: Locale) => {
-    await setLocale(locale);
+    // An account the backend can't write to yet (made a moment ago) still changes this browser's language.
+    await (isAuthenticated ? remember({ locale }).catch(() => setLocale(locale)) : setLocale(locale));
     setOpen(false);
   };
 
