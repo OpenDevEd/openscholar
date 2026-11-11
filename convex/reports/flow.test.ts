@@ -121,11 +121,13 @@ describe("a report's PDF", () => {
     const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a report"], { type: "application/pdf" })));
     await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "report.pdf" });
     const author = (name: string, orcid = "") => ({ name, orcid, openalexId: null, affiliations: [], corresponding: false, roles: [] });
-    const readFromPdf = { ...details(), authors: [author("Kofi Mensah", "0000-0001-5109-3700"), author("ada  AUTHOR"), author("Ama Owusu")] };
+    // The signer's iD wasn't printed: ORCID's search guessed one, which their own profile comes before.
+    const readFromPdf = { ...details(), authors: [author("Kofi Mensah", "0000-0001-5109-3700"), { ...author("ada  AUTHOR", "0000-0003-1415-9269"), orcidFound: "University of Lagos" }, author("Ama Owusu")] };
     await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 12, metadata: readFromPdf });
     const { metadata } = await read(world.author, world.own, key);
     // The signer, matched by the name signed with however it is spaced or cased; the others keep what the PDF gave.
     expect(metadata?.authors).toMatchObject([{ orcid: "0000-0001-5109-3700", affiliations: [] }, { orcid: "0000-0002-1825-0097", affiliations: [lab] }, { orcid: "", affiliations: [] }]);
+    expect(metadata?.authors[1]?.orcidFound).toBeUndefined();
   });
 
   it("opens its details once read, and ignores the reading of a PDF since replaced", async () => {

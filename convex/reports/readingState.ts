@@ -32,14 +32,21 @@ const sameName = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase(
 
 /**
  * The signer's own author row, matched by the name they signed with, takes the ORCID iD and institutions their profile
- * holds where the PDF gave none. Nothing the PDF gave is changed, nor anyone else's row, and the author can still edit both.
+ * holds where the PDF gave none: their own iD also comes before one ORCID's search found (`orcidFound`). Nothing the PDF
+ * printed is changed, nor anyone else's row, and the author can still edit both.
  */
 function signerFilledIn(metadata: Metadata, signer: string, profile: Doc<"users">["profile"]): Metadata {
   if (!profile) return metadata;
   const at = metadata.authors.findIndex((author) => sameName(author.name) === sameName(signer));
   if (at < 0) return metadata;
   const authors = metadata.authors.map((author, index) =>
-    index !== at ? author : { ...author, ...(!author.orcid && profile.orcid && { orcid: profile.orcid }), ...(!author.affiliations.length && profile.affiliations.length && { affiliations: profile.affiliations }) },
+    index !== at
+      ? author
+      : {
+          ...author,
+          ...((!author.orcid || author.orcidFound) && profile.orcid && { orcid: profile.orcid, orcidFound: undefined }),
+          ...(!author.affiliations.length && profile.affiliations.length && { affiliations: profile.affiliations }),
+        },
   );
   return { ...metadata, authors };
 }
