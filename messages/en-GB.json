@@ -6745,7 +6745,8 @@
         "refunded": "The {amount} paid to activate it was refunded.",
         "refunding": "The {amount} paid to activate it is being refunded.",
         "declined": "Your card was declined. Nothing was charged. Change the card and try again.",
-        "noFreeLeft": "There's no free activation left for today. Activate it again to pay for it."
+        "noFreeLeft": "There's no free activation left for today. Activate it again to pay for it.",
+        "paused": "Publishing is paused for now, so nothing can go live. Your report keeps its place."
       }
     },
     "meta": {

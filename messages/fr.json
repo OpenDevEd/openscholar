@@ -6745,7 +6745,8 @@
         "refunded": "Les {amount} payés pour l’activer ont été remboursés.",
         "refunding": "Les {amount} payés pour l’activer sont en cours de remboursement.",
         "declined": "Votre carte a été refusée. Rien n’a été débité. Changez de carte et réessayez.",
-        "noFreeLeft": "Il ne reste plus d’activation gratuite aujourd’hui. Activez-le à nouveau pour la payer."
+        "noFreeLeft": "Il ne reste plus d’activation gratuite aujourd’hui. Activez-le à nouveau pour la payer.",
+        "paused": "La publication est en pause pour le moment : rien ne peut être mis en ligne. Votre rapport garde sa place."
       }
     },
     "meta": {

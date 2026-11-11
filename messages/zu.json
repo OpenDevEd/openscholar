@@ -6745,7 +6745,8 @@
         "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",
         "refunding": "I-{amount} ekhokhelwe ukuyenza isebenze iyabuyiselwa.",
         "declined": "Ikhadi lakho lenqatshiwe. Akukho okukhokhisiwe. Shintsha ikhadi bese uzama futhi.",
-        "noFreeLeft": "Akusekho ukwenza kusebenze kwamahhala okusele namuhla. Yenze isebenze futhi ukuze uyikhokhele."
+        "noFreeLeft": "Akusekho ukwenza kusebenze kwamahhala okusele namuhla. Yenze isebenze futhi ukuze uyikhokhele.",
+        "paused": "Ukushicilela kumisiwe okwamanje, ngakho akukho okungashicilelwa. Umbiko wakho ugcina indawo yawo."
       }
     },
     "meta": {

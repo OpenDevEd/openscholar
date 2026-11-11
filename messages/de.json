@@ -6746,7 +6746,8 @@
         "refunded": "Die {amount}, die für die Aktivierung bezahlt wurden, wurden erstattet.",
         "refunding": "Die {amount}, die für die Aktivierung bezahlt wurden, werden erstattet.",
         "declined": "Ihre Karte wurde abgelehnt. Es wurde nichts abgebucht. Ändern Sie die Karte und versuchen Sie es erneut.",
-        "noFreeLeft": "Für heute ist keine kostenlose Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um dafür zu bezahlen."
+        "noFreeLeft": "Für heute ist keine kostenlose Aktivierung mehr übrig. Aktivieren Sie ihn erneut, um dafür zu bezahlen.",
+        "paused": "Die Veröffentlichung ist vorerst pausiert, daher kann nichts online gehen. Ihr Bericht behält seinen Platz."
       }
     },
     "meta": {

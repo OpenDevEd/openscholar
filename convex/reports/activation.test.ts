@@ -62,6 +62,19 @@ describe("activating a report", () => {
     expect(await activations(world)).toEqual(charged);
   });
 
+  it("refuses before charging when the registrar its DOI was reserved with is switched off", async () => {
+    const world = await setup();
+    const { key } = await checked(world, [passed("byline")]);
+    // Its DOI is Crossref's; an admin turns Crossref off and Zenodo on afterwards.
+    await world.t.run(async (ctx) => {
+      const settings = (await ctx.db.query("reportSettings").first())!;
+      await ctx.db.patch("reportSettings", settings._id, { publication: { ...settings.publication, crossref: { ...settings.publication.crossref, mode: "off" }, zenodo: { ...settings.publication.zenodo, mode: "sandbox" } } });
+    });
+    expect(await world.author.query(api.reports.activation.terms, { workspaceId: world.own, key, now: Date.now() })).toMatchObject({ paused: true });
+    await expect(activate(world, key)).rejects.toMatchObject(refused("FEATURE_DISABLED"));
+    expect(await activations(world)).toEqual([]);
+  });
+
   it("records a charge before it is made, and asking again carries on the same one with its own code", async () => {
     const world = await setup();
     const { key } = await checked(world, [passed("byline")]);

@@ -6746,7 +6746,8 @@
         "refunded": "Se reembolsaron los {amount} pagados para activarlo.",
         "refunding": "Se están reembolsando los {amount} pagados para activarlo.",
         "declined": "Tu tarjeta fue rechazada. No se cobró nada. Cambia la tarjeta e inténtalo de nuevo.",
-        "noFreeLeft": "Hoy ya no queda ninguna activación gratuita. Actívalo de nuevo para pagarla."
+        "noFreeLeft": "Hoy ya no queda ninguna activación gratuita. Actívalo de nuevo para pagarla.",
+        "paused": "La publicación está en pausa por ahora, así que nada puede publicarse. Tu informe conserva su lugar."
       }
     },
     "meta": {

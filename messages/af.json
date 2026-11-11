@@ -6746,7 +6746,8 @@
         "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",
         "refunding": "Die {amount} wat betaal is om dit te aktiveer, word terugbetaal.",
         "declined": "Jou kaart is geweier. Niks is gehef nie. Verander die kaart en probeer weer.",
-        "noFreeLeft": "Daar is vandag geen gratis aktivering oor nie. Aktiveer dit weer om daarvoor te betaal."
+        "noFreeLeft": "Daar is vandag geen gratis aktivering oor nie. Aktiveer dit weer om daarvoor te betaal.",
+        "paused": "Publisering is tans onderbreek, so niks kan gepubliseer word nie. Jou verslag behou sy plek."
       }
     },
     "meta": {

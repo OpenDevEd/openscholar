@@ -6746,7 +6746,8 @@
         "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",
         "refunding": "{amount} zilizolipwa kuiwasha zinarejeshwa.",
         "declined": "Kadi yako imekataliwa. Hakuna kilichotozwa. Badilisha kadi ujaribu tena.",
-        "noFreeLeft": "Hakuna uwashaji wa bure uliobaki leo. Iwashe tena ili uilipie."
+        "noFreeLeft": "Hakuna uwashaji wa bure uliobaki leo. Iwashe tena ili uilipie.",
+        "paused": "Uchapishaji umesimamishwa kwa sasa, kwa hivyo hakuna kinachoweza kuchapishwa. Ripoti yako inabaki mahali pake."
       }
     },
     "meta": {

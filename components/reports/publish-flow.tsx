@@ -1048,6 +1048,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         const reason = promoReason(error);
         if (refusalOf(error)?.code === "BILLING_PAYMENT_DECLINED") toast.error(t("activation.declined"));
         else if (refusalOf(error)?.reason === "noFreeLeft") toast.error(t("activation.noFreeLeft"));
+        else if (refusalOf(error)?.reason === "paused") toast.error(t("activation.paused"));
         else if (reason) toast.error(t(`activation.promo.${reason}`, { code: withCode ?? "" }));
         else said(t("activateFailed"))(error);
       }
@@ -1090,7 +1091,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
       </AutoHeight>
       {report?.reviewRequest && stage === "failed" ? <Said label={t("yourRequest")}>{report.reviewRequest.comment || t("noComment")}</Said> : null}
       {report?.note && stage === "declined" ? <Said label={t("reviewerNote")}>{report.note}</Said> : null}
-      {terms?.refund && stage !== "ready" && stage !== "live" ? (
+      {terms?.refund && stage !== "live" ? (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
           <CreditCard className="size-4 shrink-0" />
           {t(terms.refund.done ? "activation.refunded" : "activation.refunding", { amount: dollars(Math.round(terms.refund.amount * 100)) })}
@@ -1120,8 +1121,8 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   refused={terms.refused}
                   onAddCard={onAddCard}
                   action={
-                    !free && price === null ? (
-                      <TooltipHint label={t("activation.notForSale")}>
+                    terms.paused || (!free && price === null) ? (
+                      <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
                         <span tabIndex={0}>
                           <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
                         </span>

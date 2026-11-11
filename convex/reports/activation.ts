@@ -22,6 +22,7 @@ import { bankPage, chargeOf, refundInvoice, voidDeclined, voidInvoice } from "..
 import { ACTIVATION_PLAN } from "../../lib/billing/plans";
 import { stageOf } from "../../lib/reports/report";
 import { canRegister } from "../../lib/reports/settings";
+import type { PublicationSettings } from "../evidenceLibraries/publicationValidators";
 import { MOVED_ON, byKey, changing, touch } from "./flow";
 import { freeLeft } from "./limits";
 import { notify } from "./mail";
@@ -53,9 +54,17 @@ async function readyToGoLive(ctx: QueryCtx, report: Doc<"reports">) {
   if (stage === "live") throw createError("CONFLICT", "This report is already live.");
   if (stage === "review") throw createError("CONFLICT", "A reviewer has to approve this report before you can activate it.");
   if (stage !== "ready") throw createError("CONFLICT", MOVED_ON);
-  // A DOI needs somewhere to register: with both registrars switched off, nothing goes live.
-  if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
+  if (paused(report, settings.publication)) throw createError("FEATURE_DISABLED", PAUSED, { reason: "paused" });
 }
+
+const PAUSED = "Publishing is paused for now, so nothing can go live. Your report keeps its place.";
+
+/**
+ * Whether the report can't go live for now: its DOI needs the registrar it was reserved with (Crossref's, or Zenodo's
+ * when Crossref had none), and the archive needs one switched on at all. Asked before anything is charged.
+ */
+const paused = (report: Doc<"reports">, publication: PublicationSettings) =>
+  !canRegister(publication) || (report.registration.crossref ? publication.crossref.mode === "off" : publication.zenodo.mode === "off");
 
 /** A report the actor may activate now: theirs to change, in a workspace they are an admin of, and ready to go live. */
 async function activatable(ctx: QueryCtx, actor: Actor, key: string) {
@@ -94,6 +103,8 @@ export const terms = workspaceQuery({
       refused: v.boolean(),
       /** A charge paid after the report moved on, in US dollars, and whether it has gone back yet. */
       refund: v.union(v.object({ amount: v.number(), done: v.boolean() }), v.null()),
+      /** Publishing is switched off where this report's DOI is registered: it can't go live for now. */
+      paused: v.boolean(),
     }),
     v.null(),
   ),
@@ -116,6 +127,7 @@ export const terms = workspaceQuery({
       pending: pending ? { url: actor.role === "admin" ? (pending.payUrl ?? null) : null } : null,
       refused: last?.state === "refused",
       refund: last?.state === "unused" && last.charge && last.charge.total > 0 ? { amount: last.charge.total, done: last.refund !== undefined } : null,
+      paused: paused(report, (await reportSettings(ctx)).publication),
     };
   },
 });
