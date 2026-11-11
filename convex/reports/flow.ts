@@ -11,7 +11,7 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspac
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
@@ -229,9 +229,10 @@ export const saveDetails = workspaceMutation({
   handler: async (ctx, actor, { key, changes, pdfAt }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
-    // Only while the details are being corrected: a save that arrives after the checks started changes nothing. Nor
-    // does one typed over another PDF's details, as a tab left open across a new upload would send.
-    if (report.step !== "details" || report.run || report.pdf?.at !== pdfAt) return null;
+    // Until the checks start: a save that arrives after them changes nothing, while one that arrives just after its
+    // author stepped back to the PDF or the DOI is still theirs to keep. Nor does one typed over another PDF's details
+    // change anything, as a tab left open across a new upload would send.
+    if (report.step === "done" || report.run || report.pdf?.at !== pdfAt) return null;
     const details = await detailsOf(ctx, report._id);
     if (!details.metadata) return null;
     const metadata = keptDetails({ ...details.metadata, ...changes });
@@ -463,22 +464,18 @@ export const pageForAssistant = assistantQuery(pageAction);
 
 const countFields = Object.fromEntries(STAGES.map((stage) => [stage, v.number()])) as Record<Stage, ReturnType<typeof v.number>>;
 
-/**
- * How many of the workspace's reports are at each stage, and how many are under way: with one, Publish carries on
- * with it (`only`), with several it opens the list, with none a new report.
- */
+/** How many of the workspace's reports are at each stage, and in all: with any, Publish opens the list, with none a new report. */
 export const countsAction = defineUserQuery({
   path: "reports/flow:counts",
-  description: "How many reports the workspace has on Openscholar Reports at each stage (draft, failed, review, ready, live, declined), in all (`all`), and how many are still under way (`underWay`). `only` is the key of the one under way when there is exactly one.",
+  description: "How many reports the workspace has on Openscholar Reports at each stage (draft, failed, review, ready, live, declined), and in all (`all`).",
   args: {},
-  returns: v.object({ ...countFields, all: v.number(), underWay: v.number(), only: v.union(v.string(), v.null()) }),
+  returns: v.object({ ...countFields, all: v.number() }),
   run: async (ctx, { workspaceId }) => {
     const { humanReview } = await reportSettings(ctx);
     const reports = await newest(ctx, workspaceId);
     const tally = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<Stage, number>;
     for (const report of reports) tally[stageOf(report, humanReview)] += 1;
-    const going = reports.filter(underWay);
-    return { ...tally, all: reports.length, underWay: going.length, only: going.length === 1 ? going[0]!.key : null };
+    return { ...tally, all: reports.length };
   },
 });
 export const counts = userQuery(countsAction);

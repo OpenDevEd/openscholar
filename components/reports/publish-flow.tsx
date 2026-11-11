@@ -141,18 +141,14 @@ export function PublishFlow() {
   const basics = useQuery(api.reports.settings.forAuthors, {});
   const { data: counts } = useProtectedQuery(api.reports.flow.counts, inWorkspace(workspaceId, {}));
   const { data: starts } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
-  // The report shown is the one the address names; with none named, the only one under way.
-  const listed = view === "reports" || (asked === null && (counts?.underWay ?? 0) > 1);
-  // Opened with no report named, the page stays on the one it opened: when that one stops being under way (activated
-  // here, or declined by a reviewer meanwhile) it shows where it stands now and never gives way to a new report's
-  // agreement, and a report started in another tab doesn't take its place. A report that is gone lets go of it.
-  const only = counts?.only ?? null;
-  const [held, setHeld] = useState<string | null>(null);
-  // The list, and an address that names a report, are the person's own move on: the next time the page names none, it
-  // opens the one under way then.
-  const movedOn = listed || asked !== null;
-  if (movedOn ? held !== null : held === null && only !== null) setHeld(movedOn ? null : only);
-  const shownKey = listed ? null : (asked ?? held ?? only ?? "new");
+  // With no report named the page opens the workspace's reports, and a new report only when it has none. Opened on
+  // that new report, it stays on it while it is signed: its own first report must not turn the page into the list
+  // before the address names it.
+  const bare = asked === null && view !== "reports";
+  const [began, setBegan] = useState<typeof workspaceId>(undefined);
+  if (bare ? began !== workspaceId && counts?.all === 0 : began !== undefined) setBegan(bare ? workspaceId : undefined);
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0);
+  const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
   const { data: terms } = useProtectedQuery(api.reports.activation.terms, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey, now }) : "skip");
@@ -169,7 +165,6 @@ export function PublishFlow() {
   // Just signed, its report is still on its way: the agreement stays up until it is here, and the page never falls
   // back to its loading frame in between (that would start the screens anew, and the DOI's moment with them).
   const arriving = !listed && found === undefined && fresh?.step === "doi" && fresh.key === shownKey;
-  if (held !== null && shownKey === held && found !== undefined && !(found && "report" in found)) setHeld(null);
   // A report opened from the list: the list stays up, dimmed and inert, until the report is here. The loading frame
   // in between was a blank flash.
   const [fromList, setFromList] = useState(false);
@@ -326,11 +321,6 @@ export function PublishFlow() {
             fresh={fresh}
             setFresh={setFresh}
             onSigned={(key) => void setPlace({ report: key })}
-            // A report that is about to stop being under way is named in the address first, in place of the plain
-            // one: a reload, or Back and Forward, then opens it and not a new report's agreement.
-            onNamed={(key) => {
-              if (asked === null) void setPlace({ report: key });
-            }}
             onAnother={another}
             correcting={correct}
             onUpload={() => {
@@ -357,7 +347,7 @@ export function PublishFlow() {
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onNamed, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; /** The report is named in the address from here on. */ onNamed: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
   const goTo = useMutation(api.reports.flow.goTo);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
@@ -541,7 +531,6 @@ function Screens({ preparing, onPrepared, onUnprepare, basics, report, starts, t
               // plays its moment only if it opens knowing the report was activated here.
               terms={terms}
               onActivate={(pay, code, expect) => {
-                onNamed(report.key);
                 setFresh({ key: report.key, step: "live" });
                 return activate({ ...here, key: report.key, pay, ...(code && { code }), ...(expect !== undefined && { expect }) }).then(
                   (done) => {
