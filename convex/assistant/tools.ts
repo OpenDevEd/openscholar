@@ -17,7 +17,7 @@ import { CHUNK, TRIED } from "./bulk";
 import { readConvexErrorData } from "../lib/errors";
 import { COLLIDED, messageOf } from "./failures";
 import { changeOf, changePapersSchema, papersOf, type ChangePapers } from "./paperChanges";
-import { linked } from "./links";
+import { linked, pointed } from "./links";
 import { partsOf } from "./bulkPapers";
 import { BULK, DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, UNDO_BULK, forModel } from "./steps";
 import { ASKED_EACH_MAX } from "./validators";
@@ -429,7 +429,7 @@ export function toolsFor(
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
-      return forModel(linked(entry.path, change ? (result ?? DONE) : result));
+      return forModel(linked(entry.path, change ? (result ?? DONE) : pointed(entry.path, input, result)));
     } catch (error) {
       const message = messageOf(error);
       await ctx.runMutation(internal.assistant.steps.failed, { stepId, error: message });

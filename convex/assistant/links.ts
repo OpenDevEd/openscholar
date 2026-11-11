@@ -147,3 +147,17 @@ export function linked(path: string, result: unknown): unknown {
     ...(holder.job && typeof holder.job === "object" ? { job: withLink(holder.job, kind) } : {}),
   };
 }
+
+/** What a search of collections by a name that found none tells the model, since the place a person names may be a community. */
+export const NOT_A_COLLECTION =
+  "No collection has that name. A place the person named may be an Evidence Community: evidenceLibraries/assistant:libraries searches theirs by name or short name, and evidenceLibraries/directory:listPublic the public ones.";
+
+/**
+ * A read that found nothing where the model looked, with where else to look. On Cheap, a model asked to add a paper to
+ * "Sources QA" searched collections, found none and stopped, without trying communities.
+ */
+export function pointed(path: string, input: Record<string, unknown>, result: unknown): unknown {
+  if (path !== "library/collections:listCollections" || typeof input.search !== "string" || !input.search.trim()) return result;
+  const page = (result as { page?: unknown } | null)?.page;
+  return Array.isArray(page) && page.length === 0 ? { ...(result as object), note: NOT_A_COLLECTION } : result;
+}
