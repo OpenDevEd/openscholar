@@ -199,7 +199,8 @@ export function PublishFlow() {
   const saved = found && "report" in found ? found.report : null;
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
   // address's: opening the upload is a step forward, and Back from it returns to the DOI.
-  const report = saved?.step === "doi" && (at === "upload" || saved.pdf) ? { ...saved, step: "upload" as const } : saved;
+  // A report back at its DOI with a PDF already attached was sent back there: it shows the DOI.
+  const report = saved?.step === "doi" && at === "upload" ? { ...saved, step: "upload" as const } : saved;
   // A new report starts on Prepare, what publishing asks for, then the agreement. A DOI reserved and left, or a
   // signing on its way, goes straight to the agreement.
   const preparing = !report && !prepared && !arriving && !starts?.untouched;
@@ -599,12 +600,11 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
           const done = i < place || (i === place && place === LIVE_AT);
           const current = i === place && place !== LIVE_AT;
           const Icon = done ? CircleCheck : current && failed ? CircleX : current && waiting ? ReviewQueueIcon : s.icon;
-          // The PDF and the details once done, and the DOI until there is a PDF (it shows beside the trail after, and
-          // going back to it would ask for the PDF again); the agreement is signed for good. Back at the upload, the
-          // details already read are still a step away.
+          // Every step done before the checks can be gone back to, as each step's Back button goes: the DOI, the PDF and
+          // the details. The agreement is signed for good. Back at the upload, the details already read are still a step away.
           // Before a report, Prepare is a step back from the agreement.
           const back = !report && s.id === "prepare" && !preparing;
-          const clickable = back || (canGoBack && i > 1 && i < CHECKS_AT && (done ? !(s.id === "doi" && report.pdf) : s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata));
+          const clickable = back || (canGoBack && i > 1 && i < CHECKS_AT && (done || (s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata)));
           const body = (
             <>
               <Icon className={cn("size-4 shrink-0", done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />
