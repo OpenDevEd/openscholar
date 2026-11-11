@@ -198,6 +198,13 @@ export async function verifiedPublication(
     custom.credentials.crossrefPassword = credentials.crossrefPassword =
       asked.credentials.crossrefPassword || before.credentials.crossrefPassword;
   }
+  // Switching a registrar off forgets its own account too: off is how an admin removes stored credentials.
+  if (settings.zenodo.mode === "off") delete custom.credentials.zenodoToken;
+  if (settings.crossref.mode === "off") {
+    delete custom.credentials.crossrefLoginId;
+    delete custom.credentials.crossrefPassword;
+    delete custom.crossref;
+  }
   buildPublicationConfiguration(settings, credentials, { crossrefAlone });
   if (settings.zenodo.mode !== "off")
     await verifyZenodoCredentials(

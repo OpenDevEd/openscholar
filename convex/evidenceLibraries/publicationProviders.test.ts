@@ -234,7 +234,7 @@ test("keeps the own accounts through a spell on the sandbox, so switching back n
   vi.stubGlobal("fetch", providerResponses());
   const fixture = await createDraftSetupFixture("kept_accounts");
   const libraryId = fixture.created.libraryId;
-  const save = async (mode: "sandbox" | "custom", crossref: Partial<typeof EMPTY_PUBLICATION_SETTINGS.crossref>, credentials: Record<string, string>) => {
+  const save = async (mode: "sandbox" | "custom" | "off", crossref: Partial<typeof EMPTY_PUBLICATION_SETTINGS.crossref>, credentials: Record<string, string>) => {
     const { updatedAt } = await fixture.admin.query(api.evidenceLibraries.publicationProviders.get, { libraryId });
     const settings = structuredClone(EMPTY_PUBLICATION_SETTINGS);
     settings.zenodo.mode = mode;
@@ -263,4 +263,11 @@ test("keeps the own accounts through a spell on the sandbox, so switching back n
   const back = await active();
   expect(back.credentials).toEqual({ zenodoToken: "own-token", crossrefLoginId: "own@example.org/role", crossrefPassword: "own-password" });
   expect(back.settings.crossref).toMatchObject(own);
+
+  // Off forgets them: it is how an admin removes stored credentials.
+  await save("off", {}, {});
+  const off = await fixture.admin.query(api.evidenceLibraries.publicationProviders.get, { libraryId });
+  expect(off.custom).toEqual({ crossref: null, zenodoToken: false, crossrefLogin: false });
+  const stored = await fixture.t.run((ctx) => readPublicationProviderRecord(ctx, libraryId));
+  expect(JSON.parse(decrypt(stored!.encryptedCustomValue!, key))).toEqual({});
 });
