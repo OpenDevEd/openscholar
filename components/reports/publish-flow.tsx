@@ -53,6 +53,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
 import { cn } from "@/lib/utils";
 
 type Basics = FunctionReturnType<typeof api.reports.settings.forAuthors>;
@@ -63,8 +64,6 @@ type Terms = NonNullable<FunctionReturnType<typeof api.reports.activation.terms>
 /** What an activation costs with a promotion code, in US dollars, as Autumn quotes it. */
 type Quote = { code: string; price: number; discount: number; total: number };
 
-/** The largest PDF a report takes, as its upload says (convex/reports/flow.ts `REPORT_PDF_MAX_MB`). */
-const PDF_MAX_MB = 50;
 /** How long a reading or a run may go on before the page offers the step again: either can die with its server. */
 const STUCK_MS = RUN_STUCK_MS;
 
@@ -714,23 +713,6 @@ function AgreementStep({ basics, shared, starts, workspaceId, signed, onSigned }
   );
 }
 
-function CopyField({ label, value, mono = false, copyLabel, copied }: { label: string; value: string; mono?: boolean; copyLabel: string; copied: string }) {
-  return (
-    // A DOI is one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy button stays in reach.
-    <div className="min-w-0 space-y-1.5">
-      <span className="ps-1 text-xs font-medium text-muted-foreground">{label}</span>
-      <div className="flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
-        <span className={cn("min-w-0 flex-1 text-sm [overflow-wrap:anywhere]", mono && "font-mono text-[0.9375rem] font-medium tracking-tight")}>{value}</span>
-        <TooltipHint label={copyLabel}>
-          <Button type="button" variant="ghost" size="icon-xs" aria-label={copyLabel} className="-me-1 text-muted-foreground" onClick={() => copy(value, copied)}>
-            <Copy />
-          </Button>
-        </TooltipHint>
-      </div>
-    </div>
-  );
-}
-
 /**
  * The DOI, and nothing else: its mark, then the DOI itself set large and arriving letter by letter, with one sweep of
  * light across it. Plays only right after signing; opened any other way it is already settled.
@@ -853,7 +835,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
     if (!picked || busy) return;
     if (!/\.pdf$/i.test(picked.name)) return void toast.error(t("choosePdf"));
     if (picked.size === 0) return void toast.error(t("emptyFile"));
-    if (picked.size > PDF_MAX_MB * 1024 * 1024) return void toast.error(t("tooBig", { max: PDF_MAX_MB }));
+    if (picked.size > MAX_PDF_BYTES) return void toast.error(t("tooBig", { max: MAX_PDF_MB }));
     setSending(picked);
     try {
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.
@@ -877,9 +859,15 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
   return (
     <div>
       <StepHead title={t("uploadPdf")}>{t("uploadIntro")}</StepHead>
-      <div className="mb-5 grid gap-4">
-        <CopyField label={t("byline")} value={report.byline} copyLabel={t("copyByline")} copied={t("bylineCopied")} />
-        <CopyField label={t("doi")} value={`https://doi.org/${report.doi}`} mono copyLabel={t("copyDoiField")} copied={t("doiCopied")} />
+      {/* The byline ends in its DOI, one long word: it breaks anywhere, so on a phone it wraps inside the box and the copy
+          button stays in reach. */}
+      <div className="mb-5 flex items-start gap-2 rounded-xl border border-border-subtle bg-inset px-3.5 py-3">
+        <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">{report.byline}</span>
+        <TooltipHint label={t("copyByline")}>
+          <Button type="button" variant="ghost" size="icon-xs" aria-label={t("copyByline")} className="-me-1 text-muted-foreground" onClick={() => copy(report.byline, t("bylineCopied"))}>
+            <Copy />
+          </Button>
+        </TooltipHint>
       </div>
       <button
         type="button"
@@ -913,7 +901,7 @@ function UploadStep({ report, workspaceId, onAttached }: { report: Report; works
           <>
             <FileUp className="size-6 text-primary" />
             <span className="text-sm font-medium">{t("drop")}</span>
-            <span className="text-xs text-muted-foreground">{t("dropHint", { max: PDF_MAX_MB })}</span>
+            <span className="text-xs text-muted-foreground">{t("dropHint", { max: MAX_PDF_MB })}</span>
           </>
         )}
       </button>
