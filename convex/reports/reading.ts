@@ -56,6 +56,11 @@ export const read = internalAction({
     // Built from its pieces as the extraction does, so a line break in the PDF is a break, not two words run together.
     const text = opened.pages.map((page) => buildPageTextFromItems(page.items).text).join("\n");
     const textFile = await ctx.storage.store(new Blob([text], { type: "text/plain" }));
+    if (job.kept) {
+      // The report keeps the details it has: this PDF gives the checks its text and its pages.
+      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages: opened.totalPages, text: textFile, ...(!text.trim() && { trouble: "textless" as const }) });
+      return null;
+    }
     let metadata: Metadata | null = null;
     try {
       if (!job.modelId) throw new Error("The model that reads PDFs is no longer offered.");

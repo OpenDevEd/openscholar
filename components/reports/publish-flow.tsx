@@ -607,7 +607,7 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
           // the details. The agreement is signed for good. Back at the upload, the details already read are still a step away.
           // Before a report, Prepare is a step back from the agreement.
           const back = !report && s.id === "prepare" && !preparing;
-          const clickable = back || (canGoBack && i > 1 && i < CHECKS_AT && (done || (s.id === "details" && report.step === "upload" && !!report.pdf && !!report.metadata)));
+          const clickable = back || (canGoBack && i > 1 && i < CHECKS_AT && (done || (s.id === "details" && report.step === "upload" && report.pdf?.pages !== undefined && !!report.metadata)));
           const body = (
             <>
               <Icon className={cn("size-4 shrink-0", sealed ? "text-muted-foreground" : done ? "text-primary" : current ? (failed ? "text-destructive" : "text-primary") : "text-muted-foreground/60")} />

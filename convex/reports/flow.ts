@@ -266,7 +266,8 @@ export const goTo = workspaceMutation({
     const checked = report.step === "done";
     if (checked && stageOf(report, (await reportSettings(ctx)).humanReview) !== "failed") throw createError("CONFLICT", MOVED_ON);
     const details = step === "details" ? await detailsOf(ctx, report._id) : null;
-    if (step === "details" && !details?.metadata) throw createError("CONFLICT", "That step isn't open for this report yet.");
+    // Its details wait for its PDF to be read: the checks read that PDF's text.
+    if (step === "details" && (!details?.metadata || report.pdf?.pages === undefined)) throw createError("CONFLICT", "That step isn't open for this report yet.");
     await touch(ctx, report, { step });
     return null;
   },
@@ -287,8 +288,8 @@ export const startUpload = workspaceMutation({
 /**
  * The PDF the browser just uploaded becomes the report's, with the picture it drew of its first page, and its text
  * and details are read next (./reading.ts).
- * A new PDF starts over: the details read from the one before it are gone until this one is read. A file that
- * can't be this report's is deleted, and why is the answer: a throw would keep the file.
+ * A PDF that replaces another keeps the report's details as its author left them: only its text and pages are read
+ * anew, for the checks. A file that can't be this report's is deleted, and why is the answer: a throw would keep the file.
  */
 export const attachPdf = workspaceMutation({
   args: { key: v.string(), file: v.id("_storage"), name: v.string(), cover: v.optional(v.id("_storage")) },
@@ -320,8 +321,8 @@ export const attachPdf = workspaceMutation({
     if (picture && !pictured) await forget(ctx, cover);
     await ctx.db.insert("reportFiles", { file, reportId: report._id });
     if (pictured) await ctx.db.insert("reportFiles", { file: cover!, reportId: report._id });
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: undefined, reviewRequest: undefined, running: undefined });
-    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", title: undefined, approved: undefined, asked: undefined });
+    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { reviewRequest: undefined, running: undefined });
+    await touch(ctx, report, { pdf: { file, name: name.trim().slice(-FILE_NAME_MAX), bytes: stored.size, at }, cover: pictured ? { file: cover!, at } : undefined, run: undefined, step: "upload", approved: undefined, asked: undefined });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
