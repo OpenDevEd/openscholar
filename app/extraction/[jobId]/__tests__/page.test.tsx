@@ -252,7 +252,7 @@ function mockExtractionQueries() {
 vi.mock("@/lib/hooks/use-cursor-page", async () => {
   const { useState } = await import("react");
   return {
-    useCursorPage: (_query: unknown, args: ResultsView | "skip", pageSize: number) => {
+    useCursorPageAt: (_name: string, _query: unknown, args: ResultsView | "skip", pageSize: number) => {
       const key = JSON.stringify([args, pageSize]);
       const [at, setAt] = useState({ key, page: 1 });
       const page = at.key === key ? at.page : 1;

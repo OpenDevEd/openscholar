@@ -8,6 +8,7 @@ import { internalMutation } from "../lib/functions";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { trimPaperData } from "../../lib/library/trim-paper-data";
 import { reportPaper } from "../../lib/reports/report-paper";
+import { seriesOf } from "../../lib/reports/settings";
 import { detailsOf } from "./flow";
 import { reportSettings } from "./settings";
 
@@ -34,7 +35,7 @@ export const follow = internalMutation({
     if (!metadata || (report.status !== "live" && report.withdrawnAt === undefined)) return null;
     const live = report.status === "live";
     const { series } = await reportSettings(ctx);
-    const paper = reportPaper({ key: report.key, doi: report.doi, pdfUrl: live && report.pdf ? "its own address" : null, updatedAt: report.updatedAt }, metadata, series);
+    const paper = reportPaper({ key: report.key, doi: report.doi, pdfUrl: live && report.pdf ? "its own address" : null, updatedAt: report.updatedAt }, metadata, seriesOf(report, series));
     // ponytail: a withdrawn copy is told apart by its title alone; give library cards a mark of their own if more is wanted.
     const work = live ? paper : { ...paper, title: `Withdrawn: ${paper.title}`, display_name: `Withdrawn: ${paper.title}`, open_access: { is_oa: false, oa_status: "closed", oa_url: null } };
     const { paper: _id, authors = [], ...kept } = trimPaperData(work);

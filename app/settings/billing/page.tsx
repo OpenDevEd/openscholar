@@ -34,7 +34,7 @@ import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { DAYS_TO_PAY } from "@/lib/billing/plans";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
@@ -82,7 +82,7 @@ export default function BillingPage() {
   const { data: spending } = useProtectedQuery(api.billing.usage.spending, inWorkspace(workspaceId, { since: start, days: DAYS }));
   // Charges are read a page at a time, newest first; the count totals the pages.
   const ofJob = jobId ? { jobId: jobId as Id<"extractionJobs"> } : {};
-  const charges = useCursorPage(api.billing.usage.listCharges, inWorkspace(workspaceId, ofJob), CHARGES_PER_PAGE);
+  const charges = useCursorPageAt("charges", api.billing.usage.listCharges, inWorkspace(workspaceId, ofJob), CHARGES_PER_PAGE, { scroll: false });
   const { data: counted } = useProtectedQuery(api.billing.usage.countCharges, inWorkspace(workspaceId, ofJob));
   // The last count stays up while another job's charges are counted.
   const [chargeCount, setChargeCount] = useState(counted);

@@ -7,6 +7,7 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
+import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
 import { blankDetails, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
@@ -52,7 +53,8 @@ export const read = internalAction({
       await ctx.runMutation(internal.reports.readingState.finish, { reportId, at });
       return null;
     }
-    const text = opened.pages.map((page) => page.text).join("\n");
+    // Built from its pieces as the extraction does, so a line break in the PDF is a break, not two words run together.
+    const text = opened.pages.map((page) => buildPageTextFromItems(page.items).text).join("\n");
     const textFile = await ctx.storage.store(new Blob([text], { type: "text/plain" }));
     let metadata: Metadata | null = null;
     try {

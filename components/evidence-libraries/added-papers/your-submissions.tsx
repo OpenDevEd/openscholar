@@ -15,7 +15,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { paperHref, recordHref, SUBMISSIONS_COUNTED } from "@/lib/evidence-libraries/added-papers";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspaces/url";
 import { StatusChip } from "../configuration/status-chip";
@@ -38,7 +38,7 @@ type Submission = FunctionReturnType<typeof api.evidenceLibraries.submissions.mi
  */
 export function useSubmissions(search: string, signedIn: boolean) {
   const [show, setShow] = useState<Show>("all");
-  const read = useCursorPage(api.evidenceLibraries.submissions.mine, signedIn ? { ...(show === "all" ? {} : { status: show }), ...(search ? { search } : {}) } : "skip", PER_PAGE);
+  const read = useCursorPageAt("page", api.evidenceLibraries.submissions.mine, signedIn ? { ...(show === "all" ? {} : { status: show }), ...(search ? { search } : {}) } : "skip", PER_PAGE);
   const counts = useProtectedQuery(api.evidenceLibraries.submissions.counts, signedIn ? {} : "skip").data;
   return { read, counts, show, setShow };
 }

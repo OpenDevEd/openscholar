@@ -3,11 +3,20 @@
 // What only Openscholar can say (its legal form, registration and address, and the fees) reads "to be confirmed"
 // until that text is settled.
 
-export type AgreementFacts = { name: string; date: Date; doi?: string; title?: string; authors?: string[]; pages?: number };
+export type AgreementFacts = {
+  name: string;
+  date: Date;
+  /** The line the work's PDF carries, with its DOI once there is one: the one the upload asks for. */
+  byline: string;
+  doi?: string;
+  title?: string;
+  authors?: string[];
+  pages?: number;
+};
 
 const day = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
-export function fillAgreement(text: string, { name, date, doi, title, authors, pages }: AgreementFacts) {
+export function fillAgreement(text: string, { name, date, byline, doi, title, authors, pages }: AgreementFacts) {
   const signer = name.trim() || "the person signing below";
   const work = title ? `“${title}”${authors?.length ? `, by ${authors.join(", ")}` : ""}${pages ? `, ${pages} ${pages === 1 ? "page" : "pages"}` : ""}` : "the work the Author uploads for publication after signing";
   return (
@@ -15,6 +24,7 @@ export function fillAgreement(text: string, { name, date, doi, title, authors, p
       // The note to the people drafting it isn't part of what's signed.
       .replace(/^Draft for discussion.*\n+/m, "")
       .replaceAll("[date]", day(date))
+      .replaceAll("[byline]", `“${byline}”`)
       .replaceAll("[Name of author(s) or organisation], of [address]", signer)
       .replaceAll("[Name of author(s) or organisation]", signer)
       .replaceAll("[title], by [authors], [number of pages], [date of completion]", work)

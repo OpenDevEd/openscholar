@@ -101,6 +101,7 @@
       "PAPER_SENT_TO": "the communities one paper is listed as sent to, for Add to community's row states",
       "STATUS_READ": "the newest reports of each status the reviewers' list reads and searches; past it, older reports of that status are found by their key, not listed",
       "REVIEWS_SHOWN": "a report's latest reviewer decisions, shown on its record; earlier ones stay in the table",
+      "ADMINS_WRITTEN": "the admins of an organisation emailed that a member's report waits for one to activate it; past it the first twenty are written to",
       "RECENT": "the workspace's reports last changed, looked through for a DOI its signer reserved and did nothing with; one older than those is found in Your reports, and signing then starts another"
     },
     "batches": {

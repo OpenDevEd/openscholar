@@ -2,7 +2,7 @@ import { Migrations } from "@convex-dev/migrations";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
 import { internalMutation } from "../lib/functions";
-import { backfillCard } from "../evidenceLibraries/directory";
+import { backfillCard, refreshCard } from "../evidenceLibraries/directory";
 
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
@@ -14,4 +14,7 @@ export const cardsFromPublishes = migrations.define({ table: "evidenceLibraries"
 // The same again for cards kept before they had the lower-case name the directory sorts by.
 export const cardNameKeys = migrations.define({ table: "evidenceLibraries", batchSize: 5, migrateOne: (ctx, library) => backfillCard(ctx, library) });
 
-export const run = migrations.runner([internal.migrations.communityDirectory.cardsFromPublishes, internal.migrations.communityDirectory.cardNameKeys]);
+// The same again for cards kept before they held the short name people search a community by.
+export const cardShortNames = migrations.define({ table: "evidenceLibraries", batchSize: 5, migrateOne: (ctx, library) => refreshCard(ctx, library) });
+
+export const run = migrations.runner([internal.migrations.communityDirectory.cardsFromPublishes, internal.migrations.communityDirectory.cardNameKeys, internal.migrations.communityDirectory.cardShortNames]);

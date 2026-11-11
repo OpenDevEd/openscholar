@@ -49,7 +49,7 @@ export const DEFAULT_CHECKS: Check[] = [
     id: "byline",
     name: "Byline and DOI in the PDF",
     question: 'Does the text include this line, allowing for line breaks and spacing: "{byline}"?',
-    fix: "Put this line on the cover or the first page, as text and not as a picture, then upload the PDF again: {byline}",
+    fix: "Put this line on the cover or the inside cover, as text and not as a picture, then upload the PDF again: {byline}",
     modelId: JEV_MODEL,
     threshold: 0.8,
     blocking: true,
@@ -102,11 +102,10 @@ export const NO_PUBLICATION: PublicationSettings = {
 export const REPORT_DEFAULTS = {
   enabled: false,
   humanReview: true,
-  series: { name: "Openscholar Reports", issn: "", byline: "This publication is an Openscholar Report, ISSN {issn}, {doi}" } satisfies Series,
+  series: { name: "Openscholar Reports", issn: "", byline: "Published in {series} (ISSN {issn}), {doi}" } satisfies Series,
   publication: NO_PUBLICATION,
-  // One new report a day for a person's own workspace. An organisation's has none until an admin opens it, since
-  // anyone can make an organisation.
-  perDay: 1,
+  // Free activations a day (#1261): none, so every activation is paid for, until an admin gives a workspace some.
+  perDay: 0,
   orgPerDay: 0,
   metadataModelId: DEFAULT_TEXT_MODEL,
   metadataEffort: DEFAULT_TEXT_EFFORT as Effort | undefined,
@@ -116,26 +115,28 @@ export const REPORT_DEFAULTS = {
 };
 
 export type WorkspaceKind = "personal" | "organization";
-/** The reports a workspace may start in a day: the number it was given, else the one for its kind. A person's
+/** The activations a workspace makes free in a day: the number it was given, else the one for its kind. A person's
  * number is their own workspace's and nothing to do with the organisations they are in. */
-export const limitFor = (defaults: { perDay: number; orgPerDay: number }, kind: WorkspaceKind, own: number | null | undefined) => own ?? (kind === "personal" ? defaults.perDay : defaults.orgPerDay);
-/** How long a start counts against its workspace. */
-export const START_COUNTS_MS = 24 * 60 * 60 * 1000;
-/** What a workspace that has used up its day's reports, or has none, is told. */
-export const limitWords = (perDay: number, kind: WorkspaceKind) =>
-  kind === "personal"
-    ? perDay === 0
-      ? "Publishing isn't open to your account yet."
-      : `You can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.`
-    : perDay === 0
-      ? "Publishing isn't open to this workspace yet. You can publish from your own."
-      : `This workspace can start ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow.`;
+export const freeFor = (defaults: { perDay: number; orgPerDay: number }, kind: WorkspaceKind, own: number | null | undefined) => own ?? (kind === "personal" ? defaults.perDay : defaults.orgPerDay);
+/** How long a start or an activation counts against its workspace's day. */
+export const DAY_MS = 24 * 60 * 60 * 1000;
+/** What a workspace whose plan's new reports for the day are used up, or that has none, is told. */
+export const startWords = (perDay: number, kind: WorkspaceKind) => {
+  const plan = kind === "personal" ? "Your plan" : "This workspace's plan";
+  return perDay === 0 ? `${plan} doesn't include publishing. Move to a plan that does.` : `${plan} starts ${perDay} ${perDay === 1 ? "report" : "reports"} a day. Come back tomorrow, or move to a plan with more.`;
+};
 
-/** A report needs a DOI, so publishing needs Crossref or Zenodo connected. */
-export const canRegister = (publication: PublicationSettings) => publication.zenodo.mode !== "off" || publication.crossref.mode !== "off";
-/** The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. */
-export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "pending").replace("{series}", series.name);
-/** The DOI a report gets under the Crossref prefix and namespace. With Crossref off its DOI is the one Zenodo reserves, which only Zenodo knows. */
+/** A report needs a DOI, so publishing needs Crossref connected: Zenodo alone can't give a report its DOI yet, since
+ * the DOI it reserves comes from a draft deposit that signing doesn't make. Zenodo on or off, it archives. */
+export const canRegister = (publication: PublicationSettings) => publication.crossref.mode !== "off";
+/**
+ * The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. Until the series has an ISSN the
+ * byline says so in braces, "{pending}", as it is printed.
+ */
+/** The series a report is published in: the name it was signed under, which its byline prints, and the ISSN as the series has it now. */
+export const seriesOf = (report: { seriesName?: string }, series: Pick<Series, "name" | "issn">) => ({ name: report.seriesName ?? series.name, issn: series.issn });
+export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name);
+/** The DOI a report gets under the Crossref prefix and namespace; with Crossref off, none (canRegister). */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);
 
 /** Whether text is an ISSN: eight digits as 1234-5678, the last of them the check digit (X for ten), as ISO 3297 has it. */

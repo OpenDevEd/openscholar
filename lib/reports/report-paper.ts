@@ -22,7 +22,7 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     landing_page_url: `https://doi.org/${report.doi}`,
     // Its own lasting address, which leads to the file while the report is live (app/papers/[id]/report.pdf).
     pdf_url: report.pdfUrl ? `/papers/${report.key}/report.pdf` : null,
-    license: "cc-by",
+    license: "cc-by-4.0",
     source: { id: null, display_name: series.name, type: "repository", issn_l: series.issn || null, host_organization_name: "Openscholar" },
   };
   const year = Number(m.date.slice(0, 4));
@@ -53,7 +53,7 @@ export function reportPaper(report: { key: string; doi: string; pdfUrl: string |
     authorships: m.authors.map((a, i) => ({
       author_position: i === 0 ? "first" : "middle",
       author: { id: a.openalexId, display_name: a.name, orcid: a.orcid ? `https://orcid.org/${a.orcid}` : null },
-      institutions: a.affiliations.map((inst) => ({ id: inst.id, display_name: inst.name, country_code: inst.country || null })),
+      institutions: a.affiliations.map((inst) => ({ id: inst.id, display_name: inst.name, country_code: inst.country || null, ror: inst.ror ?? null })),
       is_corresponding: a.corresponding,
     })),
     primary_location: location,

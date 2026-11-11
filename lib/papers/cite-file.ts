@@ -8,7 +8,8 @@ import { readPaperPage } from "@/lib/papers/paper-page-data";
 export async function citeFileResponse(params: Promise<{ id: string }>, kind: CitationFile) {
   const read = await readPaperPage((await params).id);
   const data = read && paperToCitationData(read.paper);
-  if (!data) return new Response("Not found", { status: 404 });
+  // Not kept: a report withdrawn now may be reinstated in a minute, and Cloudflare would go on answering this.
+  if (!data) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   // The record as the page shows it: OpenAlex's full author names where our index has initials, and the merged details.
   const { detail } = read;
   if (detail.authors.length) data.author = detail.authors.map((author) => ({ literal: author.name }));

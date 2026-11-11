@@ -77,8 +77,12 @@ vi.mock("nuqs", async () => {
   const React = await import("react");
   const parser = {
     withDefault: <T,>(value: T) => ({ defaultValue: value }),
+    withOptions: () => parser,
   };
   return {
+    // The list's page, which the address keeps, is kept in the component here.
+    createParser: () => parser,
+    useQueryState: () => React.useState(null),
     parseAsString: parser,
     parseAsInteger: parser,
     parseAsStringLiteral: () => parser,

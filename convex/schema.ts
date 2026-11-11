@@ -303,6 +303,8 @@ export default defineSchema({
     .index("by_user_and_library_and_itemKey", ["userId", "libraryId", "itemKey"])
     .index("by_library_and_itemKey", ["libraryId", "itemKey"])
     .index("by_user_and_openalexId", ["userId", "openalexId"])
+    // A paper with no OpenAlex work, such as an Openscholar Report, is sent by its DOI.
+    .index("by_user_and_doi", ["userId", "doi"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "status"] }),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     // A workspace's libraries, in the order they were made.
@@ -601,10 +603,35 @@ export default defineSchema({
   // Each version of the checks and of the agreement, kept because a report records which it was checked and signed under.
   reportCheckVersions: defineTable({ version: v.number(), checks: checksValidator }).index("by_version", ["version"]),
   reportAgreementVersions: defineTable({ version: v.number(), text: v.string() }).index("by_version", ["version"]),
-  // A workspace's own daily limit, where an admin gave it one.
+  // A workspace's own number of free activations a day, where an admin gave it one.
   reportLimits: defineTable({ workspaceId: v.id("workspaces"), perDay: v.number(), updatedAt: v.number(), updatedBy: v.id("users") }).index("by_workspaceId", ["workspaceId"]),
-  // One row per report started, which is what a workspace's day is counted from: a discarded report keeps its row.
+  // One row per report started, which is what a workspace's day is counted against its plan's: a discarded report keeps its row.
   reportStarts: defineTable({ workspaceId: v.id("workspaces"), at: v.number() }).index("by_workspaceId_and_at", ["workspaceId", "at"]),
+  // One row per activation (#1261): a free one counts against the workspace's free activations for the day, a paid one
+  // keeps its invoice, and its id is the charge's idempotency key at Autumn. `pending` is a charge the bank asked to
+  // confirm, which goes live once its invoice is paid.
+  reportActivations: defineTable({
+    workspaceId: v.id("workspaces"),
+    reportId: v.id("reports"),
+    at: v.number(),
+    by: v.id("users"),
+    free: v.boolean(),
+    // `charging`: written before Autumn is asked to charge, so a retry after a lost answer reuses its idempotency key.
+    // `unused`: paid for, but the report had moved on (declined, say) when the charge came back: refunded.
+    // `refused`: the bank didn't confirm the payment, or the card refused it, after it waited on the bank: nothing was
+    // charged, and the report says so until it's activated again.
+    state: v.union(v.literal("charging"), v.literal("pending"), v.literal("live"), v.literal("unused"), v.literal("refused")),
+    /** The promotion code the charge was asked with. */
+    code: v.optional(v.string()),
+    charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string() })),
+    /** Stripe's page for confirming a pending charge. */
+    payUrl: v.optional(v.string()),
+    /** An `unused` charge's refund, in US dollars: what went back to the card, and to the account's credit. */
+    refund: v.optional(v.object({ card: v.number(), credit: v.number(), at: v.number() })),
+  })
+    .index("by_workspaceId_and_free_and_at", ["workspaceId", "free", "at"])
+    .index("by_workspaceId_and_state", ["workspaceId", "state"])
+    .index("by_reportId", ["reportId"]),
 
   // The reports themselves. A row here is what a list reads; `reportDetails` holds what opening one reads.
   reports: defineTable(reportFields)

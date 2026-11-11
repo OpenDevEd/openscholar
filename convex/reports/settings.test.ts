@@ -4,9 +4,9 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { JEV_MODEL } from "../../lib/ai/decisions";
-import { START_COUNTS_MS } from "../../lib/reports/settings";
+import { DAY_MS } from "../../lib/reports/settings";
 import { ensureWorkspace } from "../workspaces/create";
-import { countStart, startsLeft } from "./limits";
+import { countStart, freeLeft, startsLeft } from "./limits";
 
 const firstPage = { cursor: null, numItems: 10 };
 
@@ -46,7 +46,7 @@ describe("Openscholar Reports settings", () => {
 
   it("start switched off, with a person reviewing every report", async () => {
     const { admin } = await setup();
-    expect(await admin.query(api.reports.settings.admin, {})).toMatchObject({ enabled: false, humanReview: true, perDay: 1, orgPerDay: 0, checksVersion: 1, agreement: { version: 1 } });
+    expect(await admin.query(api.reports.settings.admin, {})).toMatchObject({ enabled: false, humanReview: true, perDay: 0, orgPerDay: 0, checksVersion: 1, agreement: { version: 1 } });
   });
 
   it("change one part of the series without touching the others", async () => {
@@ -97,33 +97,65 @@ describe("Openscholar Reports settings", () => {
   });
 });
 
-describe("a workspace's daily limit", () => {
-  const at = 1_800_000_000_000;
-
-  it("is 1 for a person's own workspace and none for an organisation's, until an admin gives it a number", async () => {
-    const { t, admin, own, lab, organizationId } = await setup();
-    expect(await t.run((ctx) => startsLeft(ctx, own, at))).toEqual({ kind: "personal", perDay: 1, left: 1 });
-    expect(await t.run((ctx) => startsLeft(ctx, lab, at))).toEqual({ kind: "organization", perDay: 0, left: 0 });
-    await admin.mutation(api.reports.limits.set, { account: { organizationId }, perDay: 3 });
-    expect(await t.run((ctx) => startsLeft(ctx, lab, at))).toMatchObject({ perDay: 3, left: 3 });
-    // The organisation's number is its workspace's: the person's own is as it was.
-    expect(await t.run((ctx) => startsLeft(ctx, own, at))).toMatchObject({ perDay: 1, left: 1 });
-    const { page } = await admin.query(api.reports.limits.list, { paginationOpts: firstPage });
-    expect(page).toMatchObject([{ kind: "organization", name: "Learning Lab", perDay: 3 }]);
-    await admin.mutation(api.reports.limits.remove, { limitId: page[0]!._id });
-    expect(await t.run((ctx) => startsLeft(ctx, lab, at))).toMatchObject({ perDay: 0, left: 0 });
+describe("a workspace's new reports a day", () => {
+  /** Autumn's catalog as synced, its Free plan starting `perDay` reports a day, or setting no number with null. */
+  const catalog = (perDay: number | null) => ({
+    plans: [
+      { id: "free", name: "Free", addOn: false, autoEnable: true, features: [], popular: false, limits: { reports_per_day: perDay } },
+      { id: "free_organization", name: "Free", addOn: false, autoEnable: false, features: [], popular: false, limits: {} },
+    ],
+    features: [],
+    syncedAt: 1,
   });
 
-  it("counts every start for 24 hours, refuses the one past it, and opens the difference when it is raised", async () => {
-    const { t, admin, own, authorId } = await setup();
+  it("are the plan's: each start counts for 24 hours, and the one past them is refused", async () => {
+    const { t, own } = await setup();
+    await t.run((ctx) => ctx.db.insert("billingCatalog", catalog(2)));
+    await t.run((ctx) => countStart(ctx, own));
     await t.run((ctx) => countStart(ctx, own));
     await expect(t.run((ctx) => countStart(ctx, own))).rejects.toMatchObject({ data: expect.objectContaining({ code: "FORBIDDEN" }) });
-    const [started] = await t.run((ctx) => ctx.db.query("reportStarts").take(5));
-    // Raised to 3 for this person, two more open the same day; raised for everyone instead, their own number still wins.
-    await admin.mutation(api.reports.limits.set, { account: { userId: authorId }, perDay: 3 });
-    await admin.mutation(api.reports.settings.update, { perDay: 10 });
-    expect(await t.run((ctx) => startsLeft(ctx, own, started!.at))).toMatchObject({ perDay: 3, left: 2 });
-    // A day after it was made, the start no longer counts.
-    expect(await t.run((ctx) => startsLeft(ctx, own, started!.at + START_COUNTS_MS))).toMatchObject({ left: 3 });
+    const [, last] = await t.run((ctx) => ctx.db.query("reportStarts").take(5));
+    expect(await t.run((ctx) => startsLeft(ctx, own, last!.at))).toEqual({ kind: "personal", perDay: 2, left: 0 });
+    // A day after the starts, they no longer count.
+    expect(await t.run((ctx) => startsLeft(ctx, own, last!.at + DAY_MS))).toMatchObject({ left: 2 });
+  });
+
+  it("have no number on a plan that sets none, and the admins' numbers don't touch them", async () => {
+    const { t, admin, own, lab, organizationId } = await setup();
+    await t.run((ctx) => ctx.db.insert("billingCatalog", catalog(1)));
+    await admin.mutation(api.reports.limits.set, { account: { organizationId }, perDay: 0 });
+    expect(await t.run((ctx) => startsLeft(ctx, lab, 1))).toEqual({ kind: "organization", perDay: null, left: null });
+    await t.run((ctx) => countStart(ctx, lab));
+    await t.run((ctx) => countStart(ctx, lab));
+    expect(await t.run((ctx) => startsLeft(ctx, own, 1))).toMatchObject({ perDay: 1 });
+  });
+});
+
+describe("a workspace's free activations a day", () => {
+  const at = 1_800_000_000_000;
+  const used = (t: Awaited<ReturnType<typeof setup>>["t"], workspaceId: Id<"workspaces">, by: Id<"users">, free: boolean, when: number) =>
+    t.run(async (ctx) => {
+      const reportId = await ctx.db.insert("reports", { key: `R${when}${free}`, workspaceId, ownerId: by, doi: `10.1/r${when}${free}`, byline: "", registration: { crossref: true, zenodo: false, policy: "reuse-crossref" }, step: "done", status: "live", signedBy: { name: "A", onBehalfOfAll: true }, signedAt: when, agreementVersion: 1, deposit: "none", archive: "none", updatedAt: when });
+      await ctx.db.insert("reportActivations", { workspaceId, reportId, at: when, by, free, state: "live" });
+    });
+
+  it("are none until an admin gives some, for every workspace of a kind or for one of its own", async () => {
+    const { t, admin, own, lab, organizationId } = await setup();
+    expect(await t.run((ctx) => freeLeft(ctx, own, at))).toEqual({ perDay: 0, left: 0 });
+    await admin.mutation(api.reports.settings.update, { orgPerDay: 2 });
+    expect(await t.run((ctx) => freeLeft(ctx, lab, at))).toEqual({ perDay: 2, left: 2 });
+    // The organisation's number is its workspace's: the person's own is as it was.
+    await admin.mutation(api.reports.limits.set, { account: { organizationId }, perDay: 4 });
+    expect(await t.run((ctx) => freeLeft(ctx, lab, at))).toEqual({ perDay: 4, left: 4 });
+    expect(await t.run((ctx) => freeLeft(ctx, own, at))).toEqual({ perDay: 0, left: 0 });
+  });
+
+  it("count only free activations, each for 24 hours", async () => {
+    const { t, admin, own, authorId } = await setup();
+    await admin.mutation(api.reports.limits.set, { account: { userId: authorId }, perDay: 2 });
+    await used(t, own, authorId, true, at);
+    await used(t, own, authorId, false, at);
+    expect(await t.run((ctx) => freeLeft(ctx, own, at))).toEqual({ perDay: 2, left: 1 });
+    expect(await t.run((ctx) => freeLeft(ctx, own, at + DAY_MS + 1))).toEqual({ perDay: 2, left: 2 });
   });
 });

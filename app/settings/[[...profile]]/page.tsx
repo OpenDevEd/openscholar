@@ -13,6 +13,7 @@ import { BadgeCheck, Camera, Check, Loader2, LogOut, Monitor, Pencil, Smartphone
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Enter, Paged, pagerOf } from "@/components/settings/parts";
+import { ProfileSetupSettings, useProfileSetupReady } from "@/components/profile/profile-setup";
 import { cn } from "@/lib/utils";
 import { useWorkspaceHref } from "@/lib/workspaces/href";
 
@@ -31,6 +32,8 @@ function ProfilePage({ security }: { security: boolean }) {
   // Clerk's pages sit under the settings of the workspace the page is in.
   const settingsPath = useWorkspaceHref()("/settings");
   const [clerkReady, setClerkReady] = useState(false);
+  // The profile setup's answers are drawn with the rest, not after it.
+  const setupReady = useProfileSetupReady();
   const { user } = useUser();
   // The session request lives here, above the Suspense boundary: a component that
   // suspends before it commits loses its state, and would start a new request each try.
@@ -52,7 +55,7 @@ function ProfilePage({ security }: { security: boolean }) {
   };
   return (
     <Suspense fallback={<Enter ready={false}>{null}</Enter>}>
-      <Enter ready={clerkReady}>
+      <Enter ready={clerkReady && setupReady}>
         <div ref={watchClerk} className="space-y-8">
           {security ? (
             user && sessions ? (
@@ -63,6 +66,7 @@ function ProfilePage({ security }: { security: boolean }) {
           ) : (
             <Identity />
           )}
+          {security ? null : <ProfileSetupSettings />}
           <UserProfile
             routing="path"
             path={settingsPath}

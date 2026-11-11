@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { isPublicPath } from "../lib/auth/public-routes";
+import { isPublicFile, isPublicPath } from "../lib/auth/public-routes";
 
 describe("public route auth matrix", () => {
   it("keeps clerk auth routes public", () => {
@@ -56,16 +56,7 @@ describe("public route auth matrix", () => {
 
   // The gate names private pages, so a new page is open until it's named: this makes that a choice.
   it("opens exactly these pages to someone signed out", () => {
-    const pages: string[] = [];
-    const walk = (dir: string, route: string) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (entry.isDirectory()) {
-          const part = /^\[+\.*(.*?)\]+$/.test(entry.name) ? "x" : entry.name;
-          walk(join(dir, entry.name), `${route}/${part}`);
-        } else if (/^(page|route)\.tsx?$/.test(entry.name)) pages.push(route || "/");
-      }
-    };
-    walk(join(__dirname, "../app"), "");
+    const pages = appRoutes().map(({ path }) => path);
     expect(pages.filter(isPublicPath).sort()).toEqual([
       "/",
       // The contact form on openscholar.ai, which proves its visitors are people with Turnstile.
@@ -112,4 +103,29 @@ describe("public route auth matrix", () => {
       "/topics/x",
     ]);
   });
+
+  // The proxy hands these to no one: a route outside /api that isn't on the list meets Clerk, whose handshake loops on a
+  // `.pdf` address Cloudflare caches; a page on it can't call auth() and fails instead of rendering.
+  it("keeps Clerk off every file and redirect a route serves outside /api, and only those", () => {
+    const routes = appRoutes();
+    const files = [...routes.filter(({ kind, path }) => kind === "route" && !path.startsWith("/api/")).map(({ path }) => path), "/robots.txt", "/sitemap.xml", "/papers/sitemap/0.xml"];
+    expect(files.filter((path) => !isPublicFile(path))).toEqual([]);
+    const pages = [...routes.filter(({ kind }) => kind === "page").map(({ path }) => path), "/papers/sitemap.xml", "/papers/W1/a-title", "/wp-login.php", "/papers/doi", "/question-stage/missing.php"];
+    expect(pages.filter(isPublicFile)).toEqual([]);
+  });
 });
+
+/** Every page and route under app/, with each dynamic segment as `x`. */
+function appRoutes() {
+  const found: { kind: "page" | "route"; path: string }[] = [];
+  const walk = (dir: string, route: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        const part = /^\[+\.*(.*?)\]+$/.test(entry.name) ? "x" : entry.name;
+        walk(join(dir, entry.name), `${route}/${part}`);
+      } else if (/^(page|route)\.tsx?$/.test(entry.name)) found.push({ kind: entry.name.startsWith("page") ? "page" : "route", path: route || "/" });
+    }
+  };
+  walk(join(__dirname, "../app"), "");
+  return found;
+}

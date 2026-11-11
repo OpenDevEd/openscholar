@@ -13,6 +13,7 @@ import { providersOf } from "../../lib/reports/report";
 import { detailsOf, touch } from "./flow";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
+import { seriesOf } from "../../lib/reports/settings";
 import { metadataValidator, registrationValidator } from "./validators";
 
 const providerValidator = v.union(v.literal("crossref"), v.literal("zenodo"));
@@ -37,7 +38,7 @@ export const begin = internalMutation({
     v.object({
       key: v.string(),
       doi: v.string(),
-      withdrawn: v.boolean(),
+      withdrawnAt: v.optional(v.number()),
       metadata: metadataValidator,
       series: v.object({ name: v.string(), issn: v.string() }),
       registration: registrationValidator,
@@ -47,7 +48,7 @@ export const begin = internalMutation({
       zenodoDraftId: v.optional(v.string()),
       /** Crossref took this record's deposit, and hasn't shown the record yet. */
       depositSent: v.boolean(),
-      pdf: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string() })),
+      pdf: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), pages: v.optional(v.number()) })),
       publication: publicationSettingsValidator,
       encryptedCredentials: v.union(v.string(), v.null()),
     }),
@@ -73,15 +74,15 @@ export const begin = internalMutation({
     return {
       key: report.key,
       doi: report.doi,
-      withdrawn: report.withdrawnAt !== undefined,
+      ...(report.withdrawnAt !== undefined && { withdrawnAt: report.withdrawnAt }),
       metadata,
-      series: { name: settings.series.name, issn: settings.series.issn },
+      series: seriesOf(report, settings.series),
       registration: report.registration,
       waiting,
       ...(report.zenodoRecordId && { zenodoRecordId: report.zenodoRecordId }),
       ...(report.zenodoDraftId && { zenodoDraftId: report.zenodoDraftId }),
       depositSent: report.depositSent === true,
-      pdf: report.pdf ? { file: report.pdf.file, name: report.pdf.name } : null,
+      pdf: report.pdf ? { file: report.pdf.file, name: report.pdf.name, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }) } : null,
       publication: settings.publication,
       encryptedCredentials: settings.row?.encryptedCredentials ?? null,
     };

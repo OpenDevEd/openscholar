@@ -1,5 +1,7 @@
 "use client";
 
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
+import { creativeCommons } from "@/lib/papers/licence";
 import { Fragment, useState, type ReactNode } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
@@ -10,7 +12,7 @@ import { BAR_ACTION, BAR_LABEL } from "@/components/evidence-libraries/configura
 import { IntroGlow, Stat } from "@/components/entity-cards";
 import { PaperRows } from "@/components/papers/paper-rows";
 import { PaperShare } from "@/components/papers/paper-links";
-import { AuthorName, FunderName, InstitutionName, JournalName } from "@/components/papers/paper-entities";
+import { AuthorName, FunderName, InstitutionName, JournalName, RorLink } from "@/components/papers/paper-entities";
 import { CountryFilterFlag } from "@/components/country-filter-flag";
 import { PaperCover } from "@/components/papers/paper-cover";
 import { REPORT_COVER, coverOf } from "@/lib/papers/cover";
@@ -273,27 +275,29 @@ function SeeAll({ href }: { href: string }) {
 }
 
 function HeaderChips({ paper, detail }: { paper: PaperResult; detail: PaperDetail }) {
+  const { workType } = useVocabulary();
   const t = useTranslations("paperPage");
   const format = useFormatter();
   const locale = useLocale();
   const date = paper.publication_date ? new Date(`${paper.publication_date}T00:00:00Z`) : null;
-  const license = detail.copies.find((copy) => licenseName(copy.license))?.license;
+  const license = detail.copies.map((copy) => creativeCommons(copy.license)).find(Boolean);
   const language = detail.language && detail.language !== locale.split("-")[0] ? new Intl.DisplayNames([locale], { type: "language" }).of(detail.language) : null;
   return (
     <div className="flex flex-wrap items-center gap-2">
       {detail.retracted ? <span className={`${CHIP} bg-destructive/10 text-destructive`}><TriangleAlert aria-hidden className="size-3.5" />{t("retracted")}</span> : null}
       {date || paper.publication_year ? <span className={CHIP}><Calendar aria-hidden className="size-3.5" />{date ? format.dateTime(date, { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" }) : paper.publication_year}</span> : null}
-      {paper.type ? <span className={`${CHIP} capitalize`}><FileText aria-hidden className="size-3.5" />{paper.type.replace(/-/g, " ")}</span> : null}
+      {paper.type ? <span className={CHIP}><FileText aria-hidden className="size-3.5" />{workType(paper.type)}</span> : null}
       {paper.open_access?.is_oa ? <span className={`${CHIP} bg-success/15 ink-success`}><LockOpen aria-hidden className="size-3.5" />{t("openAccess")}</span> : null}
-      {licenseName(license) ? <span className={CHIP}>{licenseName(license)}</span> : null}
+      {license?.url ? (
+        <a href={license.url} target="_blank" rel="noreferrer license" className={`${CHIP} hover:text-foreground`}>{license.name}</a>
+      ) : license ? (
+        <span className={CHIP}>{license.name}</span>
+      ) : null}
       {language ? <span className={CHIP}><Globe aria-hidden className="size-3.5" />{language}</span> : null}
     </div>
   );
 }
 
-/** cc-by-nc-nd as people write it: CC BY-NC-ND. */
-/** A Creative Commons licence as people write it (cc-by-nc-nd: CC BY-NC-ND); null for OpenAlex's other codes (other-oa, implied-oa), which the open access chip already says. */
-const licenseName = (license: string | null | undefined) => (license?.startsWith("cc-") ? `CC ${license.slice(3).toUpperCase()}` : null);
 
 /** The first few authors under the title; the rest are in the Authors part below. */
 function AuthorLine({ detail, fallback }: { detail: PaperDetail; fallback?: string }) {
@@ -415,6 +419,8 @@ function Authors({ detail }: { detail: PaperDetail }) {
                       {/* The flag stays on the name's first line when a long name wraps. */}
                       {institution.country && <CountryFilterFlag code={institution.country} className="mt-1" />}
                       <InstitutionName institution={institution} className="min-w-0" />
+                      {/* Like the flag, the ROR mark stays on the name's first line when a long name wraps: the name is a button, which wraps as one box. */}
+                      {institution.ror ? <RorLink ror={institution.ror} label={t("rorOf", { name: institution.name })} className="mt-0.5" /> : null}
                     </li>
                   ))}
                 </ul>
@@ -426,7 +432,7 @@ function Authors({ detail }: { detail: PaperDetail }) {
       {/* Our index lists a paper's institutions without saying whose they are. */}
       {!anyAffiliation && detail.institutions.length ? (
         <div className="mt-4 flex flex-wrap gap-1.5" aria-label={t("institutions")}>
-          {detail.institutions.map((institution, index) => <span key={`${institution.name}-${index}`} className={CHIP}>{institution.country && <CountryFilterFlag code={institution.country} />}<InstitutionName institution={institution} /></span>)}
+          {detail.institutions.map((institution, index) => <span key={`${institution.name}-${index}`} className={CHIP}>{institution.country && <CountryFilterFlag code={institution.country} />}<InstitutionName institution={institution} />{institution.ror ? <RorLink ror={institution.ror} label={t("rorOf", { name: institution.name })} /> : null}</span>)}
         </div>
       ) : null}
     </Section>
@@ -453,7 +459,7 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium group-hover:text-primary">{copy.name}</span>
-                  <span className="block text-xs text-muted-foreground">{kind[copy.kind]}{copy.pdf ? <span className="ms-1.5 ink-success">{t("pdf")}</span> : null}{licenseName(copy.license) ? <span className="ms-1.5">{licenseName(copy.license)}</span> : null}</span>
+                  <span className="block text-xs text-muted-foreground">{kind[copy.kind]}{copy.pdf ? <span className="ms-1.5 ink-success">{t("pdf")}</span> : null}{creativeCommons(copy.license) ? <span className="ms-1.5">{creativeCommons(copy.license)!.name}</span> : null}</span>
                 </span>
                 <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
               </a>
@@ -468,6 +474,7 @@ function Copies({ copies }: { copies: PaperDetail["copies"] }) {
 /** What the paper is about: its topics by how closely they fit, the goals it serves and its MeSH terms. */
 function Subjects({ detail }: { detail: PaperDetail }) {
   const t = useTranslations("paperPage");
+  const { sdg } = useVocabulary();
   const [allMesh, setAllMesh] = useState(false);
   if (!detail.topics.length && !detail.sdgs.length && !detail.mesh.length) return null;
   const mesh = allMesh ? detail.mesh : detail.mesh.slice(0, MESH_SHOWN);
@@ -485,7 +492,7 @@ function Subjects({ detail }: { detail: PaperDetail }) {
       ) : null}
       {detail.sdgs.length ? (
         <div className="mt-4 flex flex-wrap gap-1.5" aria-label={t("sdgs")}>
-          {detail.sdgs.map((goal) => <Link key={goal.id} href={buildShareableUrl("", { sdg: [goal.id] })} className={`${CHIP} bg-success/10 ink-success transition-colors hover:bg-success/20`}><Target aria-hidden className="size-3.5" />{goal.name}</Link>)}
+          {detail.sdgs.map((goal) => <Link key={goal.id} href={buildShareableUrl("", { sdg: [goal.id] })} className={`${CHIP} bg-success/10 ink-success transition-colors hover:bg-success/20`}><Target aria-hidden className="size-3.5" />{sdg(goal.id, goal.name)}</Link>)}
         </div>
       ) : null}
       {detail.mesh.length ? (

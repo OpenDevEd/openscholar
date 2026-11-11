@@ -259,6 +259,8 @@ export const countriesValidator = capped(v.array(v.string()), COUNTRIES_KEPT);
 
 /** What a community's card shows from its own row (./access.ts cardFacts): what its published settings say about it, and its counts. */
 export const cardFactsValidator = v.object({
+  /** The short name its site's header shows, which people call it by; null when its settings have none. */
+  shortName: v.union(v.string(), v.null()),
   /** Its tagline, or its description when it has none; null when it has neither. */
   tagline: v.union(v.string(), v.null()),
   accentColor: v.union(v.string(), v.null()),
@@ -305,7 +307,7 @@ export const evidenceLibraryFields = {
   records: v.optional(v.number()),
   recordsAt: v.optional(v.number()),
   /** What its directory card shows, from the version it runs: a draft's new name isn't public until it's published. */
-  card: v.optional(v.object({ name: v.optional(v.string()), nameKey: v.optional(v.string()), tagline: v.optional(v.string()), description: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
+  card: v.optional(v.object({ name: v.optional(v.string()), nameKey: v.optional(v.string()), shortName: v.optional(v.string()), tagline: v.optional(v.string()), description: v.optional(v.string()), accentColor: v.optional(v.string()), faviconUrl: v.optional(v.string()) })),
   /** When its last version went live: the directory card's "updated". */
   publishedAt: v.optional(v.number()),
   /** Since when its site hasn't answered the directory's record check (#1090): the directory leaves it out until it does. */
@@ -1316,7 +1318,7 @@ export const libraryOverviewStatusValidator = v.union(
 export const LIBRARIES_LISTED = 25;
 /** A page of the person's communities, as the assistant reads it (./assistant.ts). */
 export const assistantLibrariesValidator = v.object({
-  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), status: libraryOverviewStatusValidator, role: libraryListRoleValidator, owner: v.string(), address: v.string(), editable: v.boolean() })), LIBRARIES_LISTED),
+  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), shortName: v.union(v.string(), v.null()), status: libraryOverviewStatusValidator, role: libraryListRoleValidator, owner: v.string(), address: v.string(), editable: v.boolean() })), LIBRARIES_LISTED),
   cursor: v.optional(v.string()),
 });
 /** What the configuration page flags on a draft's cards, by card and the page's name for each problem: a few to a card at most. */

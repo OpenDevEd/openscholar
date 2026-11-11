@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Loader2, ArrowRight, Zap, CreditCard } from "@/components/icons";
 import { useTranslations, useFormatter } from "next-intl";
 
@@ -44,6 +45,8 @@ type UpgradeConfirmationDialogProps = {
   preview: UpgradePreview | null;
   cardBrand?: string;
   cardLast4?: string;
+  /** Under the total: a purchase's own controls, such as a promo code. */
+  extra?: React.ReactNode;
 };
 
 export function UpgradeConfirmationDialog({
@@ -59,6 +62,7 @@ export function UpgradeConfirmationDialog({
   preview,
   cardBrand,
   cardLast4,
+  extra,
 }: UpgradeConfirmationDialogProps) {
   const t = useTranslations("upgradeDialog");
   const format = useFormatter();
@@ -131,8 +135,9 @@ export function UpgradeConfirmationDialog({
             </div>
           </div>
 
-          {/* Proration breakdown */}
-          <div className="rounded-lg border p-3 space-y-2">
+          {/* Proration breakdown. Lines that change while it's open, such as a promo code's, slide in. */}
+          <AutoHeight className="rounded-lg border">
+          <div className="p-3 space-y-2">
             {(preview.lineItems ?? []).length > 0 && (
               <>
                 {preview.lineItems.map((item, index) => (
@@ -141,13 +146,14 @@ export function UpgradeConfirmationDialog({
                     <span className="min-w-0 me-2 text-muted-foreground">
                       {item.description}
                     </span>
-                    <span className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
+                    {/* Isolated, so a right-to-left page keeps an amount and its currency in their own order. */}
+                    <bdi className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
                       {format.number(item.amountCents / 100, {
                         style: "currency",
                         currency: item.currency,
                         minimumFractionDigits: 2,
                       })}
-                    </span>
+                    </bdi>
                   </div>
                 ))}
               </>
@@ -156,9 +162,12 @@ export function UpgradeConfirmationDialog({
               <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
                 {totalLabel ?? ((preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge"))}
               </span>
-              <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
+              <bdi data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</bdi>
             </div>
           </div>
+          </AutoHeight>
+
+          {extra}
 
           {preview.targetPlanCreditsPerMonth > 0 && (
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">

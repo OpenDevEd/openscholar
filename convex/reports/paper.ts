@@ -7,8 +7,9 @@ import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { detailsOf, mayChange } from "./flow";
 import { reportSettings } from "./settings";
+import { seriesOf } from "../../lib/reports/settings";
 import { AUTHORS_LISTED, INSTITUTIONS_LISTED, paperRecordValidator } from "../research/searchValidators";
-import { liveReportValidator, withdrawnReportValidator } from "./validators";
+import { liveReportValidator, metadataValidator, withdrawnReportValidator } from "./validators";
 import { REPORTS_PER_READ } from "../../lib/reports/report";
 
 const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
@@ -27,18 +28,32 @@ export const get = query({
     if (!metadata) return null;
     const { series } = await reportSettings(ctx);
     if (report.status !== "live") {
-      return { state: "withdrawn" as const, key, doi: report.doi, title: metadata.title, authors: metadata.authors.map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: series.name, withdrawnAt: report.withdrawnAt! };
+      return { state: "withdrawn" as const, key, doi: report.doi, title: metadata.title, authors: metadata.authors.map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: seriesOf(report, series).name, withdrawnAt: report.withdrawnAt! };
     }
     return {
       state: "live" as const,
       key,
       doi: report.doi,
       metadata,
-      series: { name: series.name, issn: series.issn },
+      series: seriesOf(report, series),
       pdfUrl: report.pdf ? await ctx.storage.getUrl(report.pdf.file) : null,
       coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
       updatedAt: report.updatedAt,
     };
+  },
+});
+
+/**
+ * The key of the report a DOI names, for a link that knows a paper only by its DOI (app/papers/doi): a live report, or
+ * one withdrawn after going live, which still has its page. Null for any other DOI.
+ */
+export const keyByDoi = query({
+  args: { doi: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { doi }) => {
+    // A DOI is stored as it was reserved, in lower case.
+    const report = await ctx.db.query("reports").withIndex("by_doi", (q) => q.eq("doi", doi.trim().toLowerCase())).unique();
+    return report && (report.status === "live" || report.withdrawnAt !== undefined) ? report.key : null;
   },
 });
 
@@ -85,7 +100,7 @@ export const record = internalQuery({
       ...(authors.length > AUTHORS_LISTED && { moreAuthors: authors.length - AUTHORS_LISTED }),
       ...(Number(metadata.date.slice(0, 4)) && { year: Number(metadata.date.slice(0, 4)) }),
       published: metadata.date,
-      venue: series.name,
+      venue: seriesOf(report, series).name,
       type: metadata.type,
       language: metadata.language,
       doi: report.doi,
@@ -112,8 +127,16 @@ const communityReportValidator = v.union(
     date: v.string(),
     licence: v.string(),
     abstract: v.string(),
-    authors: v.array(v.object({ name: v.string(), orcid: v.union(v.string(), v.null()) })),
+    authors: v.array(v.object({ name: v.string(), orcid: v.union(v.string(), v.null()), affiliations: metadataValidator.fields.authors.element.fields.affiliations })),
     keywords: v.array(v.string()),
+    // The rest of the details a community's record can take, or its deposits: everything but the references, whose
+    // thousand DOIs would make a request of 25 reports too large to answer.
+    topics: metadataValidator.fields.topics,
+    sdgs: metadataValidator.fields.sdgs,
+    studyDesigns: metadataValidator.fields.studyDesigns,
+    countries: metadataValidator.fields.countries,
+    funding: metadataValidator.fields.funding,
+    relations: metadataValidator.fields.relations,
     series: v.string(),
     hasPdf: v.boolean(),
   }),
@@ -153,9 +176,15 @@ export const forCommunity = internalQuery({
           date: metadata.date,
           licence: metadata.licence,
           abstract: metadata.abstract,
-          authors: metadata.authors.filter((author) => author.name.trim()).map((author) => ({ name: author.name, orcid: author.orcid || null })),
+          authors: metadata.authors.filter((author) => author.name.trim()).map((author) => ({ name: author.name, orcid: author.orcid || null, affiliations: author.affiliations })),
           keywords: metadata.keywords,
-          series: series.name,
+          topics: metadata.topics,
+          sdgs: metadata.sdgs,
+          studyDesigns: metadata.studyDesigns,
+          countries: metadata.countries,
+          funding: metadata.funding,
+          relations: metadata.relations,
+          series: seriesOf(report, series).name,
           hasPdf: report.pdf !== undefined,
         };
       }),

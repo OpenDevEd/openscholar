@@ -11,8 +11,8 @@ import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
 import { FREE_MEMBERS, ORGANIZATION_PLAN, ORGANIZATION_PLANS, SEAT_PLAN, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
-import { setSeats, teamSeats, unlessDeclined } from "./seats";
-import { purchasing, unlessPaymentOpen } from "./purchases";
+import { setSeats, teamSeats } from "./seats";
+import { purchasing, unlessDeclined, unlessPaymentOpen } from "./purchases";
 import { costsMore, findPlan, topUpBundles } from "../../lib/billing/catalog";
 import { refuseApps } from "../lib/auth";
 

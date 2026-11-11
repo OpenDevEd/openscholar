@@ -11,10 +11,9 @@ import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { workspaceFrom } from "../workspaces/personal";
 import { REVIEW_TEXT_MAX, STAGES, changesOf, isReportKey, stageOf, wantsReviewer, type Stage } from "../../lib/reports/report";
-import { bylineOf } from "../../lib/reports/settings";
 import { applyChanges } from "./corrections";
 import { checkedDetails, detailsOf, signedAgreement, touch } from "./flow";
-import { notify } from "./mail";
+import { becameReady, notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings } from "./settings";
 import { adminReportValidator, adminRowsValidator, metadataValidator, reviewDecisionValidator, signedAgreementValidator, type adminRowValidator } from "./validators";
@@ -122,7 +121,7 @@ export const get = query({
     for (const review of reviews) if (!reviewers.has(review.by)) reviewers.set(review.by, await ctx.db.get("users", review.by).then((user) => (user && personName(user)) || "A reviewer"));
     return {
       ...(await row(ctx, report)),
-      byline: bylineOf(settings.series, report.doi),
+      byline: report.byline,
       owner: { name: (owner && personName(owner)) || "", email: owner?.email ?? "" },
       workspace: workspace.organization ? workspace.name : null,
       signedAt: report.signedAt,
@@ -200,6 +199,7 @@ export const decide = mutation({
       await touch(ctx, report, { approved: true });
       await record(ctx, report._id, reviewer._id, "approve");
       await notify(ctx, report._id, "approved");
+      await becameReady(ctx, report._id);
       return null;
     }
     // Declined, it is no longer approved, whoever approved it before.
@@ -229,7 +229,7 @@ export const decideChanges = mutation({
     if (decision === "approve") {
       const changed = await applyChanges(ctx, report, details, waiting);
       await record(ctx, report._id, reviewer._id, "approve-changes");
-      await notify(ctx, report._id, "changes-live", changed);
+      await notify(ctx, report._id, "changes-live", { edited: changed });
       return null;
     }
     const words = said(note);
@@ -271,7 +271,7 @@ export const editDetails = mutation({
       await touch(ctx, report, { title: kept.title.trim() });
     }
     await record(ctx, report._id, reviewer._id, "edit", changed.slice(0, REVIEW_TEXT_MAX));
-    await notify(ctx, report._id, "details-edited", changed.slice(0, REVIEW_TEXT_MAX));
+    await notify(ctx, report._id, "details-edited", { edited: changed.slice(0, REVIEW_TEXT_MAX) });
     return changed;
   },
 });
@@ -296,7 +296,7 @@ export const release = internalMutation({
       const changes = details.correction;
       // Changes a check failed wait on a person whatever the setting says.
       if (report.status !== "live" || !changes || changes.declined || changes.results.some((result) => !result.pass)) continue;
-      await notify(ctx, report._id, "changes-live", await applyChanges(ctx, report, details, changes));
+      await notify(ctx, report._id, "changes-live", { edited: await applyChanges(ctx, report, details, changes) });
     }
     if (!waiting.isDone) await ctx.scheduler.runAfter(0, internal.reports.review.release, { cursor: waiting.continueCursor });
     return null;
@@ -314,7 +314,11 @@ export const tellReleased = internalMutation({
     if ((await reportSettings(ctx)).humanReview) return null;
     const passed = await ctx.db.query("reports").withIndex("by_status_and_updatedAt", (q) => q.eq("status", "passed")).paginate({ cursor, numItems: RELEASED_PER_STEP });
     // One a reviewer approved was already its author's to activate, and one a check flagged still waits for a person.
-    for (const report of passed.page) if (!report.approved && !report.flagged) await notify(ctx, report._id, "released");
+    for (const report of passed.page) {
+      if (report.approved || report.flagged) continue;
+      await notify(ctx, report._id, "released");
+      await becameReady(ctx, report._id);
+    }
     if (!passed.isDone) await ctx.scheduler.runAfter(0, internal.reports.review.tellReleased, { cursor: passed.continueCursor });
     return null;
   },

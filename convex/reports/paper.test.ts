@@ -14,11 +14,22 @@ describe("a report's page", () => {
     expect(await world.t.query(api.reports.paper.get, { key: waiting.key })).toBeNull();
     expect(await world.t.query(internal.reports.paper.doiOf, { key: waiting.key })).toBeNull();
     expect(await world.t.query(api.reports.paper.get, { key: "R999999" })).toBeNull();
+    expect(await world.t.query(api.reports.paper.keyByDoi, { doi: (await row(world.t, waiting.key)).doi })).toBeNull();
 
     const { key } = await live(world, world.author, world.lab);
     const page = await world.t.query(api.reports.paper.get, { key });
     expect(page).toMatchObject({ state: "live", key, doi: "10.53832/openscholar-r.r100002", metadata: { title: "Shade trees and maize yields" }, series: { name: "Openscholar Reports" } });
     expect(await world.t.query(internal.reports.paper.doiOf, { key })).toBe("10.53832/openscholar-r.r100002");
+    // A DOI link may carry the DOI in any case.
+    expect(await world.t.query(api.reports.paper.keyByDoi, { doi: "10.53832/OPENSCHOLAR-R.R100002" })).toBe(key);
+  });
+
+  it("keeps the series name it was signed under when the series is renamed, as its registrations do", async () => {
+    const world = await setup();
+    const { key } = await live(world);
+    await world.reviewer.mutation(api.reports.settings.update, { series: { name: "Working Reports" } });
+    expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ series: { name: "Openscholar Reports" } });
+    expect(await world.t.query(internal.reports.paper.forCommunity, { dois: [(await row(world.t, key)).doi] })).toMatchObject([{ series: "Openscholar Reports" }]);
   });
 
   it("says a withdrawn report was withdrawn, without its details or its files, until it is reinstated", async () => {
@@ -30,6 +41,8 @@ describe("a report's page", () => {
     expect(page).not.toHaveProperty("metadata");
     expect(page).not.toHaveProperty("pdfUrl");
     expect(await world.t.query(internal.reports.paper.doiOf, { key })).toBeNull();
+    // Its page still says it was withdrawn, so its DOI's link still leads there.
+    expect(await world.t.query(api.reports.paper.keyByDoi, { doi: (await row(world.t, key)).doi })).toBe(key);
     await decide(world, key, "reinstate");
     expect(await world.t.query(api.reports.paper.get, { key })).toMatchObject({ state: "live" });
   });
@@ -48,9 +61,12 @@ describe("a report's page", () => {
     const seenAt = (await row(world.t, key)).updatedAt;
     const page = await world.t.query(api.reports.paper.get, { key });
     if (page?.state !== "live") throw new Error("The report isn't live");
-    await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt, metadata: { ...page.metadata, title: "Shade trees, corrected" } });
+    // Its funding and its authors' affiliations reach the community with the rest, so a corrected funder does too.
+    const funding = [{ funder: { id: "https://ror.org/021nxhr62", name: "National Science Foundation" }, awards: ["QA-WAVE9-CORRECTED"] }];
+    const author = { name: "Chikondi Banda", orcid: "0000-0002-1825-0097", openalexId: null, affiliations: [{ id: "I4210087849", name: "University of Rwanda", country: "RW", ror: "https://ror.org/00286hs46" }], corresponding: true, roles: [] };
+    await world.reviewer.mutation(api.reports.review.editDetails, { key, seenAt, metadata: { ...page.metadata, title: "Shade trees, corrected", funding, authors: [author], sdgs: ["2"] } });
     const [corrected] = await ask(doi);
-    expect(corrected).toMatchObject({ state: "live", title: "Shade trees, corrected" });
+    expect(corrected).toMatchObject({ state: "live", title: "Shade trees, corrected", funding, sdgs: ["2"], authors: [{ name: author.name, orcid: author.orcid, affiliations: author.affiliations }] });
     expect(corrected!.version).not.toBe(first!.version);
     await decide(world, key, "withdraw");
     const [withdrawn] = await ask(doi);

@@ -26,7 +26,7 @@ export const send = internalAction({
       if (!email) return null;
       kept = { audience: email.audience, subject: email.subject, text: email.text };
       const mail = optionalPlatformMailService((message) => new Error(message));
-      if (mail) await sendInvitationEmail(mail, { senderName: "Openscholar Reports", to: email.to, replyTo: email.replyTo, subject: email.subject, text: email.text, html: email.html });
+      if (mail) for (const to of email.to) await sendInvitationEmail(mail, { senderName: "Openscholar Reports", to, replyTo: email.replyTo, subject: email.subject, text: email.text, html: email.html });
       else error = "Mail isn't set up on this deployment.";
     } catch (failure) {
       error = String(failure).slice(0, 300);

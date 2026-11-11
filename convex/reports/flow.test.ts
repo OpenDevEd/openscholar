@@ -2,7 +2,7 @@ import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { stageOf, type Metadata } from "../../lib/reports/report";
 import { startsLeft } from "./limits";
-import { atDetails, checked, details, passed, read, refused, row, setup, sign } from "./reports.test-support";
+import { activate, atDetails, checked, details, passed, read, refused, row, setup, sign } from "./reports.test-support";
 import { sameTitle } from "./published";
 import { purgeWorkspace } from "../workspaces/purge";
 
@@ -107,9 +107,27 @@ describe("a report's PDF", () => {
     const second = (await row(world.t, first.key)).pdf!.at;
     await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at: second, pages: 3, metadata: details("The second PDF's title") });
     // A tab left open on the first PDF's details saves, and asks for the checks.
-    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, metadata: details("Typed over the first PDF"), pdfAt: first.pdfAt });
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, changes: details("Typed over the first PDF"), pdfAt: first.pdfAt });
     await expect(world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key: first.key, metadata: details("Typed over the first PDF"), runId: "stale", from: { pdfAt: first.pdfAt } })).rejects.toMatchObject(refused("CONFLICT"));
     expect((await read(world.author, world.own, first.key)).metadata?.title).toBe("The second PDF's title");
+  });
+
+  it("fills the signer's own author row from their profile where the PDF gave no iD or institution", async () => {
+    const world = await setup();
+    const key = await sign(world.author, world.own);
+    const { _id: reportId, ownerId } = await row(world.t, key);
+    const lab = { id: "I1", name: "University of Ghana", country: "GH" };
+    await world.t.run((ctx) => ctx.db.patch("users", ownerId, { profile: { affiliations: [lab], orcid: "0000-0002-1825-0097", emails: { updates: false, news: false, research: false } } }));
+    const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a report"], { type: "application/pdf" })));
+    await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "report.pdf" });
+    const author = (name: string, orcid = "") => ({ name, orcid, openalexId: null, affiliations: [], corresponding: false, roles: [] });
+    // The signer's iD wasn't printed: ORCID's search guessed one, which their own profile comes before.
+    const readFromPdf = { ...details(), authors: [author("Kofi Mensah", "0000-0001-5109-3700"), { ...author("ada  AUTHOR", "0000-0003-1415-9269"), orcidFound: "University of Lagos" }, author("Ama Owusu")] };
+    await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 12, metadata: readFromPdf });
+    const { metadata } = await read(world.author, world.own, key);
+    // The signer, matched by the name signed with however it is spaced or cased; the others keep what the PDF gave.
+    expect(metadata?.authors).toMatchObject([{ orcid: "0000-0001-5109-3700", affiliations: [] }, { orcid: "0000-0002-1825-0097", affiliations: [lab] }, { orcid: "", affiliations: [] }]);
+    expect(metadata?.authors[1]?.orcidFound).toBeUndefined();
   });
 
   it("opens its details once read, and ignores the reading of a PDF since replaced", async () => {
@@ -170,12 +188,12 @@ describe("a report's checks", () => {
   it("go live when its author activates it, and only once no review is owed", async () => {
     const world = await setup({ humanReview: true });
     const { key } = await checked(world, [passed("byline")]);
-    await expect(world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(activate(world, key)).rejects.toMatchObject(refused("CONFLICT"));
     await world.t.run(async (ctx) => ctx.db.patch("reportSettings", (await ctx.db.query("reportSettings").first())!._id, { humanReview: false }));
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key });
+    await activate(world, key);
     // Its route was Crossref alone, so only Crossref's registration is queued.
     expect(await read(world.author, world.own, key)).toMatchObject({ status: "live", deposit: "queued", archive: "none" });
-    await expect(world.author.mutation(api.reports.flow.activate, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
+    await expect(activate(world, key)).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
   });
 
@@ -187,6 +205,10 @@ describe("a report's checks", () => {
     const report = await read(world.author, world.lab, flagged.key);
     expect(report).toMatchObject({ status: "passed", flagged: true });
     expect(stageOf(report, false)).toBe("review");
+    // The assistant is told where it stands as the Publish page shows it, waiting for review, not just that it passed.
+    const asked = { userId: world.authorId, workspaceId: world.lab };
+    expect(await world.t.query(internal.reports.flow.getForAssistant, { ...asked, key: flagged.key })).toMatchObject({ report: { stage: "review" } });
+    expect((await world.t.query(internal.reports.flow.pageForAssistant, { ...asked, page: 1 })).rows).toMatchObject([{ key: flagged.key, stage: "review" }]);
   });
 
   it("save nothing from a run that a newer run or a new PDF replaced", async () => {
@@ -202,7 +224,7 @@ describe("a report's checks", () => {
     // Checked, it takes no more runs, saves or uploads.
     await expect(world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata: details(), runId: "late", from: { pdfAt } })).rejects.toMatchObject(refused("CONFLICT"));
     await expect(world.author.mutation(api.reports.flow.startUpload, { workspaceId: world.own, key })).rejects.toMatchObject(refused("CONFLICT"));
-    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, metadata: details("Changed after the checks"), pdfAt });
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, changes: details("Changed after the checks"), pdfAt });
     expect((await read(world.author, world.own, key)).metadata?.title).toBe("Corrected title");
   });
 
@@ -235,7 +257,7 @@ describe("a deleted workspace's reports", () => {
     const draft = await atDetails(world, world.author, world.lab);
     const draftFile = (await row(world.t, draft.key)).pdf!.file;
     const published = await checked(world, [passed("byline")], world.author, world.lab);
-    await world.author.mutation(api.reports.flow.activate, { workspaceId: world.lab, key: published.key });
+    await activate(world, published.key, { as: "orgadmin", workspaceId: world.lab });
 
     expect(await world.t.run((ctx) => purgeWorkspace(ctx, world.lab))).toBe(true);
     expect(await row(world.t, draft.key)).toBeNull();
@@ -262,7 +284,7 @@ describe("a report's links and words", () => {
     const withLinks = (...targets: string[]) => ({ ...details(), relations: targets.map((target) => ({ kind: "data" as const, target })) });
     const run = (metadata: ReturnType<typeof details>, runId: string) => world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key, metadata, runId, from: { pdfAt } });
     // Half typed, it is kept as it is: the form saves on every pause.
-    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, metadata: withLinks("javascript:alert(1)"), pdfAt });
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, changes: withLinks("javascript:alert(1)"), pdfAt });
     await expect(run(withLinks("javascript:alert(1)"), "bad-link")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await expect(run(withLinks("https://?"), "no-host")).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     // A DOI and its doi.org address are the same link: the first is kept.
@@ -270,7 +292,7 @@ describe("a report's links and words", () => {
     expect((await read(world.author, world.own, key)).metadata!.relations.map((relation) => relation.target)).toEqual(["https://example.org/data", "10.5281/zenodo.1234567"]);
     // A keyword longer than a keyword is refused, wherever it is saved from.
     const other = await atDetails(world, world.author, world.lab);
-    await expect(world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.lab, key: other.key, metadata: { ...details(), keywords: ["k".repeat(101)] }, pdfAt: other.pdfAt })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
+    await expect(world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.lab, key: other.key, changes: { ...details(), keywords: ["k".repeat(101)] }, pdfAt: other.pdfAt })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
   });
 });
 
@@ -279,12 +301,21 @@ describe("a report's details", () => {
     const world = await setup();
     const { key, pdfAt } = await atDetails(world);
     const author = (orcid: string) => ({ name: "Ada Author", orcid, openalexId: null, affiliations: [], corresponding: true, roles: [] });
-    const save = (metadata: Metadata) => world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, metadata, pdfAt });
+    const save = (metadata: Metadata) => world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, changes: metadata, pdfAt });
     await expect(save({ ...details(), authors: [author("banana")] })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await expect(save({ ...details(), authors: [author("0000-0002-1825-0098")] })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await expect(save({ ...details("x".repeat(501)) })).rejects.toMatchObject(refused("VALIDATION_ERROR"));
     await save({ ...details("A kept title"), authors: [author("0000-0002-1825-0097")] });
     expect(await read(world.author, world.own, key)).toMatchObject({ title: "A kept title", metadata: { authors: [{ orcid: "0000-0002-1825-0097" }] } });
+  });
+
+  it("keep a field another tab saved when this tab saves a different one", async () => {
+    const world = await setup();
+    const { key, pdfAt } = await atDetails(world);
+    const save = (changes: Partial<Metadata>) => world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key, changes, pdfAt });
+    await save({ title: "Title from tab one" });
+    await save({ subtitle: "Subtitle from tab two" });
+    expect(await read(world.author, world.own, key)).toMatchObject({ title: "Title from tab one", metadata: { title: "Title from tab one", subtitle: "Subtitle from tab two" } });
   });
 });
 

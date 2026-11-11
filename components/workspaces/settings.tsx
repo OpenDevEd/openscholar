@@ -43,7 +43,7 @@ import { useSeatBilling } from "@/lib/feature-flags/hook";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { useHydrated } from "@/lib/use-hydrated";
 import { findPlan, planCreditCap } from "@/lib/billing/catalog";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage, payOpenAction } from "@/lib/toast/use-app-toast";
 import { resolveToastError } from "@/lib/toast/error-resolver";
 import { cn } from "@/lib/utils";
@@ -337,8 +337,8 @@ export function WorkspaceMembers() {
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const { workspaceId, organization, admin } = useOrganization();
-  const members = useCursorPage(api.organizations.queries.members, inWorkspace(workspaceId, {}), PER_PAGE);
-  const invitations = useCursorPage(api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE);
+  const members = useCursorPageAt("members", api.organizations.queries.members, inWorkspace(workspaceId, {}), PER_PAGE, { scroll: false });
+  const invitations = useCursorPageAt("invitations", api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE, { scroll: false });
   // Members, invitations and seats counted in full: the switcher's count stops at a hundred and one.
   const team = organization?.plan === TEAM_PLAN;
   const seatBilling = useSeatBilling();

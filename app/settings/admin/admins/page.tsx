@@ -16,7 +16,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useProtectedQuery, useProtectedStreamPaginatedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { Enter, LIST, Paged, Segmented, Zone } from "@/components/settings/parts";
@@ -35,7 +35,7 @@ export default function AdminsPage() {
   const [query, setQuery] = useState("");
   // Read a page at a time, by email, searched on the server. A search's matches aren't counted, so its pager shows the page alone.
   const search = useDebouncedValue(query.trim(), 300);
-  const admins = useCursorPage(api.admins.queries.listAdmins, inWorkspace(workspaceId, search ? { search } : {}), PER_PAGE);
+  const admins = useCursorPageAt("page", api.admins.queries.listAdmins, inWorkspace(workspaceId, search ? { search } : {}), PER_PAGE);
   const { data: count } = useProtectedQuery(api.admins.queries.countAdmins, inWorkspace(workspaceId, {}));
   const remove = useMutation(api.admins.mutations.remove);
   const resend = useAction(api.admins.invitations.resend);
@@ -238,7 +238,7 @@ function AddAdmin() {
               <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
                 {/* The server searches by email, so the list isn't filtered again here. */}
                 <Command shouldFilter={false}>
-                  <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} />
+                  <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} busy={candidates.status === "LoadingFirstPage"} />
                   <CommandList onScroll={loadOnScroll}>
                     <CommandEmpty>{candidates.isInitialLoading ? <Spinner className="mx-auto my-0.5" aria-label={tc("loading")} /> : t("noUsers")}</CommandEmpty>
                     <CommandGroup>

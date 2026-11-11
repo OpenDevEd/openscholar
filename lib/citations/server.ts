@@ -11,7 +11,7 @@ const metadataSchema = z.object({
   author: z.array(name).max(5000).optional(), editor: z.array(name).max(5000).optional(),
   issued: z.object({ "date-parts": z.array(z.array(z.number().int()).min(1).max(3)).min(1).max(2) }).optional(),
   DOI: text.optional(), URL: text.optional(), ISBN: identifiers.optional(), ISSN: identifiers.optional(),
-  "container-title": text.optional(), publisher: text.optional(), "publisher-place": text.optional(),
+  "container-title": text.optional(), "collection-title": text.optional(), "collection-number": text.optional(), publisher: text.optional(), "publisher-place": text.optional(),
   volume: text.optional(), issue: text.optional(), page: text.optional(), edition: text.optional(), language: text.optional(),
 });
 const inputSchema = metadataSchema.extend({ id: z.string().regex(/^(?:W|OS|R)\d+$/), "citation-key": z.string().regex(/^os_(?:W|OS|R)\d+$/) });

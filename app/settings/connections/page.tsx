@@ -13,7 +13,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useZoteroSignIn } from "@/lib/hooks/use-zotero-sign-in";
 import { useAppToast } from "@/lib/toast";
 import { Enter, LIST, Paged, Tile, Working, Zone } from "@/components/settings/parts";
@@ -32,13 +32,13 @@ export default function ConnectionsPage() {
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   // Each list is read a page at a time, newest first; the counts total their pages.
-  const active = useCursorPage(api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: true }), PER_PAGE);
-  const revoked = useCursorPage(api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: false }), PER_PAGE);
+  const active = useCursorPageAt("keys", api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: true }), PER_PAGE, { scroll: false });
+  const revoked = useCursorPageAt("revoked", api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: false }), PER_PAGE, { scroll: false });
   const { data: counts } = useProtectedQuery(api.wallet.queries.countKeys, inWorkspace(workspaceId, {}));
   const { data: zotero } = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
-  const apps = useCursorPage(api.developerApps.apps.listApps, {}, APPS_PER_PAGE);
+  const apps = useCursorPageAt("apps", api.developerApps.apps.listApps, {}, APPS_PER_PAGE, { scroll: false });
   const { data: appCount } = useProtectedQuery(api.developerApps.apps.countApps, {});
-  const sites = useCursorPage(api.developerApps.sites.listSites, {}, PER_PAGE);
+  const sites = useCursorPageAt("sites", api.developerApps.sites.listSites, {}, PER_PAGE, { scroll: false });
   const revokeKey = useMutation(api.wallet.mutations.revokeKey);
   const [confirm, setConfirm] = useState<Id<"walletKeys"> | null>(null);
   const [revoking, setRevoking] = useState<Id<"walletKeys"> | null>(null);
@@ -265,7 +265,7 @@ const SITE_TINTS = ["#60a5fa", "#f472b6", "#2dd4bf", "#a78bfa", "#d9a27c", "#34d
  * Sites you signed in to through an app on Openscholar, newest allowed first. A site is listed once it
  * changes something for you. Disconnect signs it out of your account; it stays out until you allow it again.
  */
-function AllowedSites({ sites }: { sites: ReturnType<typeof useCursorPage<typeof api.developerApps.sites.listSites>> }) {
+function AllowedSites({ sites }: { sites: ReturnType<typeof useCursorPageAt<typeof api.developerApps.sites.listSites>> }) {
   const t = useTranslations("connectionsPage");
   return (
     <Zone label={t("allowedSites")}>

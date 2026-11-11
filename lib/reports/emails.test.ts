@@ -9,9 +9,9 @@ const links = (text: string) => text.match(/https?:\/\/\S+/g) ?? [];
 describe("a report's emails", () => {
   it("go to the team with replies to the author, or to the author with replies to the team", () => {
     const team = reportEmail("review-requested", report, origin)!;
-    expect(team).toMatchObject({ audience: "team", to: CONTACT_EMAIL, replyTo: "ada@example.org", subject: "Review requested: Shade trees & maize (R100007)" });
+    expect(team).toMatchObject({ audience: "team", to: [CONTACT_EMAIL], replyTo: "ada@example.org", subject: "Review requested: Shade trees & maize (R100007)" });
     const author = reportEmail("approved", report, origin)!;
-    expect(author).toMatchObject({ audience: "author", to: "ada@example.org", replyTo: CONTACT_EMAIL, subject: "A reviewer approved your report: Shade trees & maize" });
+    expect(author).toMatchObject({ audience: "author", to: ["ada@example.org"], replyTo: CONTACT_EMAIL, subject: "A reviewer approved your report: Shade trees & maize" });
     // The author's address is the team's to read, never an author's own email's to repeat.
     expect(team.text).toContain("Ada Author <ada@example.org>");
     expect(author.text).not.toContain("ada@example.org");
@@ -25,11 +25,11 @@ describe("a report's emails", () => {
 
   it("link a reviewer to the report's dialog, and an author to the report on Publish or to its page once live", () => {
     for (const event of MAIL_EVENTS) {
-      const email = reportEmail(event, { ...report, activated: true, live: true }, origin)!;
+      const email = reportEmail(event, { ...report, activated: true, live: true, admins: { emails: ["admin@lab.example"], organization: "Learning Lab", prefix: "/o/lab" } }, origin)!;
       const opened = links(email.text).filter((link) => link.startsWith("https://openscholar.ai"));
       // Every email opens something of ours, by an absolute address with no doubled slash.
       expect(opened.length, event).toBeGreaterThan(0);
-      for (const link of opened) expect(link, event).toMatch(/^https:\/\/openscholar\.ai\/(settings\/admin\/publishing\?report=R100007|publish\?report=R100007|papers\/R100007)$/);
+      for (const link of opened) expect(link, event).toMatch(/^https:\/\/openscholar\.ai\/(settings\/admin\/publishing\?report=R100007|(o\/lab\/)?publish\?report=R100007|papers\/R100007)$/);
       if (email.audience === "team") expect(opened, event).toContain("https://openscholar.ai/settings/admin/publishing?report=R100007");
       else expect(opened.join(" "), event).not.toContain("/settings/admin");
     }

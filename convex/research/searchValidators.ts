@@ -114,7 +114,8 @@ export const authorValidator = v.object({
 });
 export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("journal"), v.literal("institution"), v.literal("researchArea"));
 export const lookupValidator = v.object({
-  matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
+  // An institution may carry its ROR ID (https://ror.org/…), as the site's own lookup asks for.
+  matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()), ror: v.optional(v.string()) })), LOOKUP_MAX),
 });
 
 /** What a count of papers can be divided by, and OpenAlex's own name for each grouping. */

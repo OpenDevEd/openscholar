@@ -68,6 +68,15 @@ it("lists the papers someone sent, and takes where each stands from the communit
   // The request that sent it again, replayed, leaves what the community said since.
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r3", papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page[0]).toMatchObject({ status: "published" });
+  // Its team unpublishes the record on the community's site: removed for both, with no link to it; then back, published again.
+  const statuses = async () => Promise.all(["sender", "other"].map(async (subject) => {
+    const [row] = (await t.withIdentity({ subject }).query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page;
+    return [row?.status, row?.recordLink];
+  }));
+  expect((await tell(10, "removed", null)).status).toBe(200);
+  expect(await statuses()).toEqual([["removed", null], ["removed", null]]);
+  await tell(11, "published", null);
+  expect((await statuses()).map(([status]) => status)).toEqual(["published", "published"]);
 
   // Renamed, the community is found by its new name.
   await t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { name: "Teacher Learning" }));
@@ -75,12 +84,12 @@ it("lists the papers someone sent, and takes where each stands from the communit
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 }, search: "teacher learning" })).page.map((row) => row.itemKey)).toEqual(["PAPER001"]);
 
   // Withdrawn, it's listed as withdrawn; sent again, a late repeat of that withdrawal leaves the new submission.
-  await tell(4, "withdrawn", null);
+  await tell(12, "withdrawn", null);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ itemKey: "PAPER001", status: "withdrawn" }]);
   // Asked for, the assistant lists it as withdrawn.
   expect((await t.query(internal.evidenceLibraries.assistant.submissionsForAssistant, { userId, workspaceId, status: "withdrawn" })).page).toMatchObject([{ itemKey: "PAPER001", status: "withdrawn" }]);
   await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r4", papers: [{ itemKey: "PAPER001", ...paper, status: "queued" }] });
-  await tell(4, "withdrawn", null);
+  await tell(12, "withdrawn", null);
   expect((await sender.query(api.evidenceLibraries.submissions.mine, { paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ status: "queued" }]);
 });
 
@@ -226,4 +235,50 @@ it("emails the sender when the team answers a paper that waited for review, and 
   await tell("RESENT01", 2, "returned", "Not peer reviewed");
   await tell("RESENT01", 4, "returned", "Still not peer reviewed");
   expect(await emails()).toBe(4);
+});
+
+it("tells everyone who sent a paper when the community removes it, past the first page of senders", { tags: ["size"] }, async () => {
+  const t = convexTest(schema, modules);
+  const { libraryId } = await t.run(async (ctx) => {
+    const owner = await ctx.db.insert("users", { clerkId: "owner", email: "owner@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId: owner });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    return { libraryId };
+  });
+  // More people sent the same paper than one page of senders holds.
+  const senders = await t.run((ctx) => Promise.all(Array.from({ length: 130 }, (_, n) => ctx.db.insert("users", { clerkId: `sender${n}`, email: `s${n}@example.org`, state: "active", createdAt: 1, updatedAt: 1 }))));
+  const paper = { title: "Coaching teachers", authors: "Amina Yusuf", year: 2021, openalexId: "W60", doi: "10.1000/w60" };
+  for (const userId of senders) await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: `r-${userId}`, papers: [{ itemKey: "PAPER001", ...paper, status: "published" }] });
+  vi.useFakeTimers();
+  try {
+    const response = await t.fetch("/api/v1/evidence-libraries/paper-submissions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ contractVersion: 1, idempotencyKey: `${libraryId}:PAPER001:5`, libraryId, itemKey: "PAPER001", generation: 5, clerkUserId: "sender0", status: "removed", note: null, at: "2026-11-10T12:00:00Z" }),
+    });
+    expect(response.status).toBe(200);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+  } finally {
+    vi.useRealTimers();
+  }
+  const statuses = await t.run(async (ctx) => (await ctx.db.query("paperSubmissions").withIndex("by_library_and_itemKey", (q) => q.eq("libraryId", libraryId).eq("itemKey", "PAPER001")).collect()).map((row) => row.status));
+  expect(statuses).toHaveLength(130);
+  expect(new Set(statuses)).toEqual(new Set(["removed"]));
+});
+
+it("finds a paper with no OpenAlex work, such as an Openscholar Report, by the DOI it was sent with", async () => {
+  const t = convexTest(schema, modules);
+  const { libraryId, userId } = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "sender", email: "sender@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+    const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId, name: "Teacher Education", slug: "teachers", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+    return { libraryId, userId };
+  });
+  const doi = "10.53832/openscholar-reports.r100010";
+  await t.mutation(internal.evidenceLibraries.submissions.recordSent, { userId, libraryId, requestId: "r1", papers: [{ itemKey: "REPORT01", title: "Rainwater harvesting", authors: "Samira Testauthor", year: 2026, openalexId: null, doi, status: "queued" }] });
+  const sender = t.withIdentity({ subject: "sender" });
+  // Add to community shows it waiting there, so its button is orange.
+  expect(await sender.query(api.evidenceLibraries.submissions.sentTo, { doi })).toEqual([{ libraryId, status: "queued" }]);
+  expect(await sender.query(api.evidenceLibraries.submissions.sentTo, { doi: "10.1000/other" })).toEqual([]);
 });

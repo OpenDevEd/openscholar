@@ -1,5 +1,6 @@
 "use client";
 
+import { useVocabulary } from "@/lib/openalex/use-vocabulary";
 import { cloneElement, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactElement, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
@@ -363,6 +364,7 @@ function TopicCardBody({ id, name }: { id: string; name: string }) {
 }
 
 function InstitutionCardBody({ id, name }: { id: string; name: string }) {
+  const { institutionType } = useVocabulary();
   const t = useTranslations("entityCards");
   const filter = useInstitutionFilter();
   const source = useSearchSource();
@@ -376,7 +378,7 @@ function InstitutionCardBody({ id, name }: { id: string; name: string }) {
         line={institution ? (
           <>
             {institution.country && <CountryFilterFlag code={institution.country} />}
-            {institution.type && <span className="truncate capitalize">{institution.type}</span>}
+            {institution.type && <span className="truncate capitalize">{institutionType(institution.type)}</span>}
           </>
         ) : card.error ? <span>{t("institutionFailed")}</span> : <SkeletonBar className="h-3 w-32" />}
       />

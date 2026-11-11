@@ -12,11 +12,12 @@ import { IdentityRow } from "@/components/ui/identity";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useCursorPageAt } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { Enter, LIST, Paged, Segmented, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 
 const PER_PAGE = 8;
 const ROW_HEIGHT = 61;
@@ -33,13 +34,15 @@ export default function EvidenceLibraryAccessPage() {
   const workspaceId = useWorkspace();
   const t = useTranslations("settingsAdmin.evidenceLibraries");
   const tc = useTranslations("common");
-  const [kind, setKind] = useState<Kind>("organizations");
+  // Which list, and which of its rows, are in the address with its page: a reload or Back lands on the same list.
+  const [kind, setKind] = useQueryState("kind", parseAsStringLiteral(["organizations", "people"] as const).withDefault("organizations").withOptions({ history: "push" }));
   const [query, setQuery] = useState("");
-  const [show, setShow] = useState<Show>("all");
+  const [show, setShow] = useQueryState("show", parseAsStringLiteral(["all", "on", "off"] as const).withDefault("all").withOptions({ history: "push" }));
   const search = useDebouncedValue(query.trim(), 300);
   const args = inWorkspace(workspaceId, { show, ...(search ? { search } : {}) });
-  const organizations = useCursorPage(api.organizations.libraryAccess.list, kind === "organizations" ? args : "skip", PER_PAGE);
-  const people = useCursorPage(api.organizations.libraryAccess.listPeople, kind === "people" ? args : "skip", PER_PAGE);
+  // One place in the address for the two lists: only the one shown reads it, and a place of the other's is none of its.
+  const organizations = useCursorPageAt("page", api.organizations.libraryAccess.list, kind === "organizations" ? args : "skip", PER_PAGE);
+  const people = useCursorPageAt("page", api.organizations.libraryAccess.listPeople, kind === "people" ? args : "skip", PER_PAGE);
   const { data: count } = useProtectedQuery(kind === "organizations" ? api.organizations.libraryAccess.count : api.organizations.libraryAccess.countPeople, inWorkspace(workspaceId, { show }));
   // The last count stays up, dimmed with its rows, while another filter's is read.
   const [shownCount, setShownCount] = useState(count);
@@ -87,7 +90,7 @@ export default function EvidenceLibraryAccessPage() {
           <Segmented
             label={t("kind")}
             value={kind}
-            onChange={(next) => { setKind(next); setQuery(""); }}
+            onChange={(next) => { void setKind(next); setQuery(""); }}
             fill
             options={[
               { id: "organizations" as const, label: t("organizationsTab"), icon: Building2 },

@@ -17,10 +17,10 @@ async function live(suffix: string) {
 }
 
 /** Another live community in the same workspace, with what its card would hold. */
-const another = (fixture: Fixture, workspaceId: Id<"workspaces">, name: string, extra: { liveAt: number; records?: number; tagline?: string; description?: string }) =>
+const another = (fixture: Fixture, workspaceId: Id<"workspaces">, name: string, extra: { liveAt: number; records?: number; tagline?: string; description?: string; shortName?: string }) =>
   fixture.t.run((ctx) => ctx.db.insert("evidenceLibraries", {
     workspaceId, name, slug: name.toLowerCase().replaceAll(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1,
-    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, nameKey: name.toLowerCase(), ...(extra.tagline ? { tagline: extra.tagline } : {}), ...(extra.description ? { description: extra.description } : {}) },
+    liveAt: extra.liveAt, ...(extra.records === undefined ? {} : { records: extra.records }), card: { name, nameKey: name.toLowerCase(), ...(extra.shortName ? { shortName: extra.shortName } : {}), ...(extra.tagline ? { tagline: extra.tagline } : {}), ...(extra.description ? { description: extra.description } : {}) },
   }));
 
 // Read signed out: the directory is everyone's (#1090).
@@ -30,7 +30,7 @@ const list = (fixture: Fixture, sort: "newest" | "name" | "records", search?: st
 describe("the public directory", () => {
   it("keeps a community's card on its row once it goes live, and its record count once it says it", async () => {
     const { fixture, library } = await live("directory_card");
-    expect(library.card).toEqual({ name: "Climate Evidence", nameKey: "climate evidence", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
+    expect(library.card).toEqual({ name: "Climate Evidence", nameKey: "climate evidence", shortName: "Climate", accentColor: "#005A9C", faviconUrl: "https://assets.example.test/favicon.ico" });
     expect(library.liveAt).toEqual(expect.any(Number));
     // Its card's time is when its owners last put their settings live: a software update leaves it, a publish moves it.
     expect(library.publishedAt).toBe(library.liveAt);
@@ -67,7 +67,7 @@ describe("the public directory", () => {
   it("lists the live ones by each sort, searched on the server, and leaves out the unlisted", async () => {
     const { fixture, library, workspaceId } = await live("directory_list");
     await fixture.t.mutation(internal.evidenceLibraries.directory.setRecords, { libraryId: library._id, records: 50 });
-    await another(fixture, workspaceId, "Water Evidence", { liveAt: library.liveAt! + 1, records: 900, tagline: "Sanitation programmes" });
+    await another(fixture, workspaceId, "Water Evidence", { liveAt: library.liveAt! + 1, records: 900, tagline: "Sanitation programmes", shortName: "WASH QA" });
     await another(fixture, workspaceId, "Agriculture Evidence", { liveAt: library.liveAt! - 1, description: "Crop yields in smallholder farms" });
     // Not live yet: not listed.
     await fixture.t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId, name: "Draft", slug: "draft", state: "provisioning", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 }));
@@ -82,6 +82,9 @@ describe("the public directory", () => {
     // Most first; one not counted yet goes last.
     expect(await names("records")).toEqual(["Water Evidence", "Climate Evidence", "Agriculture Evidence"]);
     expect(await names("name", "sanitation")).toEqual(["Water Evidence"]);
+    // By the short name its site's header shows, which people call it by.
+    expect(await names("name", "wash qa")).toEqual(["Water Evidence"]);
+    expect((await list(fixture, "name", "wash qa"))[0]).toMatchObject({ shortName: "WASH QA" });
     // One with no tagline shows its description, and is found by it.
     expect((await list(fixture, "name", "smallholder"))[0]).toMatchObject({ name: "Agriculture Evidence", tagline: "Crop yields in smallholder farms" });
     expect(await names("name", "team directory_list")).toHaveLength(3);

@@ -14,8 +14,8 @@ import { createError } from "../lib/errors";
 import { callOptions } from "../../lib/ai/core/call-options";
 import { isDecisionModel, paperState } from "../../lib/ai/decisions";
 import type { Answer, ChangeStage, CheckResult, Metadata } from "../../lib/reports/report";
-import { doiIn, linkHref } from "../../lib/reports/report";
-import type { Check } from "../../lib/reports/settings";
+import { CHECK_SAID, doiIn, linkHref } from "../../lib/reports/report";
+import { DEFAULT_CHECKS, type Check } from "../../lib/reports/settings";
 import { alreadyPublished, decide, type CheckModel, type Community } from "./published";
 import { changeStageValidator, metadataValidator, runFromValidator } from "./validators";
 
@@ -30,6 +30,18 @@ const LLM_TEXT = 80_000;
 /** The public communities the Already published check searches: the ones with the most records. ponytail: each is
  * one request, so a ceiling; a search across every community's records in one place lifts it. */
 const COMMUNITIES_SEARCHED = 20;
+
+/** The byline check's own question, which the shortcut stands in for: one an admin has reworded goes to its model. */
+const BYLINE_QUESTION = DEFAULT_CHECKS.find((check) => check.id === "byline")?.question;
+
+/**
+ * Whether `text` carries `line` whole, however the PDF wrapped it (spaces and line breaks anywhere in it, any case),
+ * and not run on into more letters or digits, as a DOI one digit longer would.
+ */
+export const carries = (text: string, line: string) => {
+  const chars = [...line.replace(/\s+/g, "")].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return chars.length > 0 && new RegExp(`${chars.join("\\s*")}(?![\\p{L}\\p{N}])`, "iu").test(text);
+};
 
 /** How sure the model is of yes: its confidence in yes, or the other side of its confidence in no; unclear is neither. */
 const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? confidence : answer === "no" ? 1 - confidence : 0.5);
@@ -49,7 +61,12 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
     const found = await alreadyPublished(metadata, report.doi, on, communities);
     return found
       ? { ...base, ...failed, pass: false, evidence: { title: found.title, url: found.url, where: found.where }, ...(found.reason ? { reasoning: found.reason } : {}) }
-      : { ...base, pass: true, detail: "Not in OpenAlex, Openscholar's index or our communities." };
+      : { ...base, pass: true, detail: CHECK_SAID.notPublished };
+  }
+  // The byline is text the PDF has or hasn't: found word for word (line breaks and spacing aside), it passes without a
+  // model, whose confidence in a line that's plainly there can sit either side of the threshold.
+  if (check.id === "byline" && check.question === BYLINE_QUESTION && carries(text, report.byline)) {
+    return { ...base, answer: "yes", confidence: 1, threshold: check.threshold, reasoning: CHECK_SAID.bylineFound, pass: true };
   }
   const question = fill(check.question);
   if (isDecisionModel(on.slug)) {
@@ -102,7 +119,7 @@ export const run = action({
           console.error(JSON.stringify({ event: "report-check-failed", reportId, check: check.id, error: String(error).slice(0, 500) }));
           // A check that can't answer holds the report for a person rather than pass it. Why it couldn't is the
           // log's to keep: an author is told only that it didn't finish.
-          return { checkId: check.id, name: check.name, model: check.modelId, pass: false, blocking: false, errored: true, detail: "This check couldn't finish." };
+          return { checkId: check.id, name: check.name, model: check.modelId, pass: false, blocking: false, errored: true, detail: CHECK_SAID.unfinished };
         });
         await ctx.runMutation(internal.reports.checkRuns.answer, { reportId, runId, result });
         return result;

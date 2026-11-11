@@ -11,30 +11,30 @@ import { assistantQuery, defineUserQuery, userQuery, workspaceMutation, workspac
 import type { Actor } from "../workspaces/actor";
 import { workspacesOf } from "../workspaces/personal";
 import { bylineOf, canRegister } from "../../lib/reports/settings";
-import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
+import { DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, EARLIEST_DATE, FILE_NAME_MAX, REPORTS_PER_PAGE, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, STAGES, canDiscard, isOrcid, keyOf, providersOf, stageOf, underWay, type Metadata, type Stage, doiIn, linkHref } from "../../lib/reports/report";
 import { countStart, startsLeft } from "./limits";
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/files/limits";
 import { formVersion } from "./corrections";
 import { notify } from "./mail";
 import { register } from "./registering";
 import { reportSettings, settingsRow } from "./settings";
-import { metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowValidator, reportRowsValidator, signedAgreementValidator } from "./validators";
+import { authorRowValidator, metadataValidator, optionalPlainResults, pdfTroubleValidator, plainResults, reportRowsValidator, signedAgreementValidator, stageValidator } from "./validators";
 
 /** What someone who sees a workspace's report but may not change it is told. */
 export const OWNERS_ONLY = "Only this report's owner and the workspace's admins can change it.";
 /** What a change is told when the report moved on in another tab or under a reviewer's hand. The page follows by itself. */
 export const MOVED_ON = "This report has moved on, so that can't be done any more.";
-/** The largest PDF a report takes, and the largest picture of its first page. */
-export const REPORT_PDF_MAX_MB = 50;
+/** The largest picture of a report PDF's first page. A report's PDF takes the app's PDF limit (lib/files/limits.ts). */
 const COVER_MAX_BYTES = 2 * 1024 * 1024;
 /** The most reports a workspace holds, which `sign` enforces: its list and its counts read them all. */
 const MAX_WORKSPACE_REPORTS = 1_000;
 
-const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
+export const byKey = (ctx: QueryCtx, key: string) => ctx.db.query("reports").withIndex("by_key", (q) => q.eq("key", key)).unique();
 export const detailsOf = async (ctx: QueryCtx, reportId: Id<"reports">) => (await ctx.db.query("reportDetails").withIndex("by_reportId", (q) => q.eq("reportId", reportId)).unique())!;
 export const mayChange = (actor: Pick<Actor, "userId" | "role">, report: Pick<Doc<"reports">, "ownerId">) => actor.role === "admin" || report.ownerId === actor.userId;
 
 /** A report of the workspace the person acts in, by its key, that they may change. */
-async function changing(ctx: QueryCtx, actor: Actor, key: string) {
+export async function changing(ctx: QueryCtx, actor: Actor, key: string) {
   const report = await byKey(ctx, key);
   if (!report || report.workspaceId !== actor.workspaceId) throw createError("NOT_FOUND", "This report isn't one of this workspace's, or it was discarded.");
   if (!mayChange(actor, report)) throw createError("FORBIDDEN", OWNERS_ONLY);
@@ -75,6 +75,8 @@ export function keptDetails(metadata: Metadata) {
   if (wrong) throw createError("VALIDATION_ERROR", `${wrong.orcid} isn't an ORCID iD. One looks like 0000-0002-1825-0097.`);
   // Today as the calendar furthest ahead has it (UTC+14): a date past that is in the future everywhere.
   if (metadata.date > new Date(Date.now() + 14 * 60 * 60 * 1000).toISOString().slice(0, 10)) throw createError("VALIDATION_ERROR", "A report can't be dated in the future.");
+  // Crossref takes no year before 1400: a date it would refuse is refused here, before anything goes live.
+  if (metadata.date && metadata.date < EARLIEST_DATE) throw createError("VALIDATION_ERROR", "A report can't be dated before 1400.");
   if (JSON.stringify(metadata).length > DETAILS_MAX_BYTES) throw createError("VALIDATION_ERROR", "These details are too long to save. Shorten the abstract or the lists.");
   return metadata;
 }
@@ -142,10 +144,10 @@ async function uploaded(ctx: MutationCtx, file: Id<"_storage">) {
 export const startsAction = defineUserQuery({
   path: "reports/flow:starts",
   description:
-    "How many more reports the workspace may start today on Openscholar Reports: its daily limit (`perDay`), how many are left (`left`), and whether the workspace is a person's own or an organization's. " +
+    "How many more reports the workspace may start today on Openscholar Reports: its plan's daily limit (`perDay`), how many are left (`left`), both null when its plan sets none, and whether the workspace is a person's own or an organization's. " +
     "`now` is the current time in milliseconds since 1970. `untouched` is the key of a report the person signed for here and never uploaded a PDF to. A report is started, signed and published on the Publish page, never here.",
   args: { now: v.number() },
-  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.number(), left: v.number(), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()) }),
+  returns: v.object({ kind: v.union(v.literal("personal"), v.literal("organization")), perDay: v.union(v.number(), v.null()), left: v.union(v.number(), v.null()), /** A DOI the person reserved here and did nothing with, which signing gives them again whatever the day has left. */ untouched: v.optional(v.string()) }),
   run: async (ctx, { userId, workspaceId }, { now }) => {
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     return { ...(await startsLeft(ctx, workspaceId, now)), ...(untouched && { untouched: untouched.key }) };
@@ -171,14 +173,11 @@ export const sign = workspaceMutation({
     if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
     if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
     const { crossref, zenodo } = settings.publication;
-    // ponytail: a report registered with Zenodo alone takes the DOI Zenodo reserves, which the registration slice
-    // (#1205) asks Zenodo for. Until then a report needs Crossref on, whose DOI is known as soon as it has a key.
-    if (crossref.mode === "off") throw createError("FEATURE_DISABLED", "Publishing with a DOI from Zenodo alone isn't open yet.");
     // A DOI this person reserved here and did nothing with is the one they get again: signing twice, as after a
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);
     if (untouched) {
-      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version });
+      await touch(ctx, untouched, { signedBy: { name: signer, onBehalfOfAll }, signedAt: Date.now(), agreementVersion: version, byline: bylineOf(settings.series, untouched.doi), seriesName: settings.series.name });
       return untouched.key;
     }
     // The list and its counts read a workspace's reports up to MAX_WORKSPACE_REPORTS, so a workspace holds no more than that.
@@ -191,13 +190,16 @@ export const sign = workspaceMutation({
     else await ctx.db.insert("reportKeys", { next: next + 1 });
     const key = keyOf(next);
     const now = Date.now();
+    const doi = `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`;
     const reportId = await ctx.db.insert("reports", {
       key,
       workspaceId,
       ownerId: userId,
       // Signing reserves the DOI: it's the report's from now on, and goes live when the report is activated. How
-      // the report registers is fixed with it.
-      doi: `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`,
+      // the report registers is fixed with it, and so is the line its PDF carries.
+      doi,
+      byline: bylineOf(settings.series, doi),
+      seriesName: settings.series.name,
       registration: { crossref: true, zenodo: zenodo.mode !== "off", policy: zenodo.defaultIdentifierPolicy },
       step: "doi",
       status: "draft",
@@ -216,15 +218,24 @@ export const sign = workspaceMutation({
 /** The author's corrections, kept as they make them, so leaving the details step loses nothing. A title being
  * retyped is kept empty; the checks are what need one. */
 export const saveDetails = workspaceMutation({
-  args: { key: v.string(), metadata: metadataValidator, /** The PDF the details were read from, by when it was uploaded. */ pdfAt: v.number() },
+  args: {
+    key: v.string(),
+    /** The fields this form changed. The rest stay as they are, so a field another tab saved meanwhile isn't written over. */
+    changes: metadataValidator.partial(),
+    /** The PDF the details were read from, by when it was uploaded. */
+    pdfAt: v.number(),
+  },
   returns: v.null(),
-  handler: async (ctx, actor, { key, metadata, pdfAt }) => {
+  handler: async (ctx, actor, { key, changes, pdfAt }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     // Only while the details are being corrected: a save that arrives after the checks started changes nothing. Nor
     // does one typed over another PDF's details, as a tab left open across a new upload would send.
     if (report.step !== "details" || report.run || report.pdf?.at !== pdfAt) return null;
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: keptDetails(metadata) });
+    const details = await detailsOf(ctx, report._id);
+    if (!details.metadata) return null;
+    const metadata = keptDetails({ ...details.metadata, ...changes });
+    await ctx.db.patch("reportDetails", details._id, { metadata });
     await touch(ctx, report, { title: metadata.title.trim() || undefined });
     return null;
   },
@@ -295,7 +306,7 @@ export const attachPdf = workspaceMutation({
       : report.step === "done" ? MOVED_ON
       : !/\.pdf$/i.test(name.trim()) ? "Choose a PDF."
       : stored.size === 0 ? "That file is empty. Choose the PDF again."
-      : stored.size > REPORT_PDF_MAX_MB * 1024 * 1024 ? `A report's PDF is at most ${REPORT_PDF_MAX_MB} MB.`
+      : stored.size > MAX_PDF_BYTES ? `A report's PDF is at most ${MAX_PDF_MB} MB.`
       : null;
     if (refused || !report) {
       await forget(ctx, file, picture ? cover : undefined);
@@ -336,31 +347,6 @@ export const requestReview = workspaceMutation({
   },
 });
 
-/**
- * The author makes a report live once no review is owed. Its registrations are queued in the order its route fixed
- * when its DOI was reserved (lib/reports/report.ts `providersOf`).
- */
-export const activate = workspaceMutation({
-  args: { key: v.string() },
-  returns: v.null(),
-  handler: async (ctx, actor, { key }) => {
-    await refuseApps(ctx);
-    const report = await changing(ctx, actor, key);
-    const settings = await reportSettings(ctx);
-    const stage = stageOf(report, settings.humanReview);
-    if (stage === "live") throw createError("CONFLICT", "This report is already live.");
-    if (stage === "review") throw createError("CONFLICT", "A reviewer has to approve this report before you can activate it.");
-    if (stage !== "ready") throw createError("CONFLICT", MOVED_ON);
-    // A DOI needs somewhere to register: with both registrars switched off, nothing goes live.
-    if (!canRegister(settings.publication)) throw createError("FEATURE_DISABLED", "Publishing is paused for now, so nothing can go live. Your report keeps its place.");
-    await touch(ctx, report, { status: "live", activatedAt: Date.now() });
-    await register(ctx, report);
-    await notify(ctx, report._id, "live");
-    await notify(ctx, report._id, "live-author");
-    return null;
-  },
-});
-
 /** A live report of the workspace's with changes waiting, as the screen the change came from saw them: ones sent since, say from another tab, are never the ones discarded or asked about. */
 async function waitingChanges(ctx: QueryCtx, actor: Actor, key: string, seenAt: number) {
   const report = await changing(ctx, actor, key);
@@ -396,15 +382,23 @@ export const requestChangesReview = workspaceMutation({
  * gives up what was typed, as Cancel does.
  */
 export const typeChanges = workspaceMutation({
-  args: { key: v.string(), since: v.number(), metadata: v.union(metadataValidator, v.null()) },
+  args: {
+    key: v.string(),
+    since: v.number(),
+    /** The fields this form changed, kept over the changes already typed (another tab's too); null gives them all up. */
+    changes: v.union(metadataValidator.partial(), v.null()),
+  },
   returns: v.null(),
-  handler: async (ctx, actor, { key, since, metadata }) => {
+  handler: async (ctx, actor, { key, since, changes }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
     const details = await detailsOf(ctx, report._id);
     // Nothing is kept for a report that isn't live, whose checks are reading other changes, or that changed since the form opened.
     if (report.status !== "live" || report.run || formVersion(report, details) !== since) return null;
-    await ctx.db.patch("reportDetails", details._id, { trying: metadata ? keptDetails(metadata) : undefined });
+    // What the form shows under its own changes (publish-flow.tsx): the changes typed so far, else those waiting, else the report.
+    const typed = details.trying ?? details.correction?.metadata ?? details.metadata;
+    if (changes && !typed) return null;
+    await ctx.db.patch("reportDetails", details._id, { trying: changes && typed ? keptDetails({ ...typed, ...changes }) : undefined });
     return null;
   },
 });
@@ -422,13 +416,13 @@ export const discardChanges = workspaceMutation({
   },
 });
 
-const stageValidator = v.union(...STAGES.map((stage) => v.literal(stage)));
-const rowValidator = reportRowValidator;
+const rowValidator = authorRowValidator;
 
-async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">): Promise<Infer<typeof rowValidator>> {
+async function row(ctx: QueryCtx, actor: Actor, report: Doc<"reports">, humanReview: boolean): Promise<Infer<typeof rowValidator>> {
   const { key, step, status, approved, flagged, changes, note, registration, deposit, archive, updatedAt } = report;
   return {
     key, step, status, registration, deposit, archive, updatedAt,
+    stage: stageOf(report, humanReview),
     ...(approved && { approved }),
     ...(flagged && { flagged }),
     ...(changes && { changes }),
@@ -460,7 +454,7 @@ export const pageAction = defineUserQuery({
     const listed = show ? reports.filter((report) => stageOf(report, humanReview) === show) : reports;
     const pages = Math.max(1, Math.ceil(listed.length / REPORTS_PER_PAGE));
     const at = Math.min(Math.max(1, Math.floor(page) || 1), pages);
-    return { rows: await Promise.all(listed.slice((at - 1) * REPORTS_PER_PAGE, at * REPORTS_PER_PAGE).map((report) => row(ctx, actor, report))), page: at, pages, total: listed.length };
+    return { rows: await Promise.all(listed.slice((at - 1) * REPORTS_PER_PAGE, at * REPORTS_PER_PAGE).map((report) => row(ctx, actor, report, humanReview))), page: at, pages, total: listed.length };
   },
 });
 export const page = userQuery(pageAction);
@@ -521,7 +515,7 @@ const plain = (results: Doc<"reportDetails">["results"]) => results?.map(({ mode
 export const getAction = defineUserQuery({
   path: "reports/flow:get",
   description:
-    "One of the workspace's reports on Openscholar Reports, by its key (R…): where it stands (its step and status, whether a reviewer approved it, whether changes to a live report are waiting), its DOI, its details as they are now, " +
+    "One of the workspace's reports on Openscholar Reports, by its key (R…): where it stands (its stage as the Publish page shows it, one of draft, failed, review, ready, live or declined, where a report that passed its checks but was flagged is at review; whether a reviewer approved it; whether changes to a live report are waiting), its DOI, its details as they are now, " +
     "what each check said, and a reviewer's note. A report of another workspace the person is in answers `elsewhere` with that workspace's name; anything else is null. Its page, once live, is /papers/<key>.",
   args: { key: v.string() },
   returns: v.union(v.object({ report: reportValidator }), v.object({ elsewhere: v.object({ name: v.string(), slug: v.union(v.string(), v.null()) }) }), v.null()),
@@ -535,13 +529,14 @@ export const getAction = defineUserQuery({
       // An organisation's pages are under its slug; the person's own have none.
       return { elsewhere: { name: organization?.name ?? "your own workspace", slug: organization?.slug ?? null } };
     }
-    const [details, settings] = await Promise.all([detailsOf(ctx, report._id), reportSettings(ctx)]);
+    const details = await detailsOf(ctx, report._id);
     const { correction } = details;
+    const { humanReview } = await reportSettings(ctx);
     return {
       report: {
-        ...(await row(ctx, actor, report)),
+        ...(await row(ctx, actor, report, humanReview)),
         doi: report.doi,
-        byline: bylineOf(settings.series, report.doi),
+        byline: report.byline,
         asked: report.asked === true,
         signedAt: report.signedAt,
         onBehalfOfAll: report.signedBy.onBehalfOfAll,
@@ -576,6 +571,7 @@ export async function signedAgreement(ctx: QueryCtx, report: Doc<"reports">) {
     signer: report.signedBy.name,
     onBehalfOfAll: report.signedBy.onBehalfOfAll,
     signedAt: report.signedAt,
+    byline: report.byline,
     doi: report.doi,
     ...(metadata?.title && { title: metadata.title }),
     authors: (metadata?.authors ?? []).map((author) => author.name).filter(Boolean),

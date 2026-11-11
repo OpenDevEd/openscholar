@@ -2,8 +2,9 @@ import { v } from "convex/values";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import { capped } from "../lib/listCaps";
+import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
-import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STATUSES, STEPS } from "../../lib/reports/report";
+import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
 export const checkValidator = v.object({
@@ -78,7 +79,6 @@ export const plainResults = capped(v.array(v.object(checkResultValidator.omit("m
 /** The same list where a report may have none yet: the cap is told through the optional, as `optionalResults` is. */
 export const optionalPlainResults = capped(v.optional(v.array(v.object(checkResultValidator.omit("model").fields))), MAX_CHECKS);
 
-const affiliationValidator = v.object({ id: v.union(v.string(), v.null()), name: v.string(), country: v.string() });
 export const metadataValidator = v.object({
   title: v.string(),
   subtitle: v.string(),
@@ -86,7 +86,7 @@ export const metadataValidator = v.object({
   language: v.string(),
   date: v.string(),
   licence: v.literal("CC BY 4.0"),
-  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles) })), DETAIL_CAPS.authors),
+  authors: capped(v.array(v.object({ name: v.string(), orcid: v.string(), orcidFound: v.optional(v.string()), openalexId: v.union(v.string(), v.null()), affiliations: capped(v.array(affiliationValidator), DETAIL_CAPS.affiliations), corresponding: v.boolean(), roles: capped(v.array(v.string()), DETAIL_CAPS.roles) })), DETAIL_CAPS.authors),
   abstract: v.string(),
   topics: capped(v.array(v.object({ id: v.string(), name: v.string(), score: v.number() })), DETAIL_CAPS.topics),
   keywords: capped(v.array(v.string()), DETAIL_CAPS.keywords),
@@ -101,6 +101,7 @@ export const metadataValidator = v.object({
 export const stepValidator = literals(STEPS);
 export const statusValidator = literals(STATUSES);
 export const changeStageValidator = literals(CHANGE_STAGES);
+export const stageValidator = literals(STAGES);
 export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")) });
 export const depositValidator = v.union(v.literal("none"), v.literal("queued"), v.literal("deposited"), v.literal("failed"));
 export const archiveValidator = v.union(v.literal("none"), v.literal("draft"), v.literal("queued"), v.literal("archived"), v.literal("failed"));
@@ -126,6 +127,14 @@ export const reportFields = {
   /** Who started it. */
   ownerId: v.id("users"),
   doi: v.string(),
+  /**
+   * The line its PDF must carry, as it was when the agreement was signed: its checks look for this line for good, so
+   * a later ISSN or a new wording never fails a report published before it.
+   */
+  byline: v.string(),
+  /** The series' name its byline prints, kept from the same moment: its page, citations and registrations keep it,
+   * so renaming the series names only reports signed after. A report signed before this was kept has none (seriesOf). */
+  seriesName: v.optional(v.string()),
   step: stepValidator,
   status: statusValidator,
   /** A reviewer approved it, so its author can activate it whatever the settings say. */
@@ -222,7 +231,9 @@ export const reportRowValidator = v.object({
   /** Whether the person may change it, or only see it. */
   mine: v.boolean(),
 });
-export const reportRowsValidator = capped(v.array(reportRowValidator), REPORTS_PER_PAGE);
+/** A report in its workspace's list, at the stage the Publish page shows: one that passed its checks but a check flagged waits for review. */
+export const authorRowValidator = v.object({ ...reportRowValidator.fields, stage: stageValidator });
+export const reportRowsValidator = capped(v.array(authorRowValidator), REPORTS_PER_PAGE);
 /** A report's authors by name, as its signed agreement lists them. */
 export const signerNamesValidator = capped(v.array(v.string()), DETAIL_CAPS.authors);
 
@@ -264,15 +275,15 @@ export const adminReportValidator = v.object({
   /** What a registrar said when it refused the report, or couldn't be reached. */
   registrationError: v.optional(v.string()),
   /** The emails about it, oldest first: what each was and who it went to. `failed` when it couldn't be sent. */
-  emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
+  emails: capped(v.array(v.object({ event: v.string(), audience: v.union(v.literal("team"), v.literal("author"), v.literal("admins")), at: v.number(), failed: v.optional(v.boolean()) })), 50),
   humanReview: v.boolean(),
 });
-export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
+export const signedAgreementValidator = v.object({ text: v.string(), version: v.number(), signer: v.string(), onBehalfOfAll: v.boolean(), signedAt: v.number(), byline: v.string(), doi: v.string(), title: v.optional(v.string()), authors: signerNamesValidator, pages: v.optional(v.number()) });
 
 /** A live report as its paper page reads it, and one withdrawn after going live as its address says so. */
 export const liveReportValidator = v.object({ state: v.literal("live"), key: v.string(), doi: v.string(), metadata: metadataValidator, series: v.object({ name: v.string(), issn: v.string() }), pdfUrl: v.union(v.string(), v.null()), coverUrl: v.union(v.string(), v.null()), updatedAt: v.number() });
 export const withdrawnReportValidator = v.object({ state: v.literal("withdrawn"), key: v.string(), doi: v.string(), title: v.string(), authors: capped(v.array(v.string()), DETAIL_CAPS.authors), year: v.union(v.number(), v.null()), series: v.string(), withdrawnAt: v.number() });
 
 /** An email about a report, kept on its record: who it went to, what it said, and why it didn't go if it didn't. */
-export const mailAudienceValidator = v.union(v.literal("team"), v.literal("author"));
+export const mailAudienceValidator = v.union(v.literal("team"), v.literal("author"), v.literal("admins"));
 export const reportEmailFields = { reportId: v.id("reports"), event: v.string(), audience: mailAudienceValidator, subject: v.string(), text: v.string(), at: v.number(), error: v.optional(v.string()) };

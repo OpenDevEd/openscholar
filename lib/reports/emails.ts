@@ -28,10 +28,14 @@ export type MailFacts = {
   archive: string;
   /** What changed, for the email that says a reviewer edited the details or that the author's changes are live. */
   edited?: string;
+  /** For the organisation's admins: their addresses, its name, and where its pages are (`/o/<slug>`). */
+  admins?: { emails: string[]; organization: string; prefix: string };
+  /** An activation's refund, in US dollars: what went back to the card, and to the account's credit. */
+  refund?: { card: number; credit: number };
 };
 
 type Row = readonly [string, string];
-type Event = { to: "team" | "author"; label: string; heading: string; rows: (report: MailFacts, origin: string) => Row[] };
+type Event = { to: "team" | "author" | "admins"; label: string; heading: string; rows: (report: MailFacts, origin: string) => Row[] };
 
 /**
  * Each check that didn't pass, with how far it fell short and why, or `none` when every check passed. `told` says
@@ -52,6 +56,22 @@ const pageLink = (r: MailFacts, origin: string): Row => ["Its page", `${origin}/
 const noteOf = (note: string | undefined): Row[] => (note ? [["The reviewer's note", note]] : []);
 /** Replies to an author's email reach the team's inbox. */
 const QUESTIONS: Row = ["Questions", "Reply to this email."];
+const usd = (amount: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
+/** What an activation's refund says: where the money went back to, and why. */
+const refundRows = (r: MailFacts, origin: string): Row[] => [
+  [
+    "Refunded",
+    [
+      r.refund?.card ? `${usd(r.refund.card)} to the card it was paid with. Banks take 5 to 10 days to show it.` : "",
+      r.refund?.credit ? `${usd(r.refund.credit)} back to the account's credit, which the next payment uses first.` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  ],
+  ["Why", "The report changed while the bank confirmed the payment, so it didn't go live and nothing was bought."],
+  ["The report", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
+  QUESTIONS,
+];
 const changesRows = (told: boolean) => (r: MailFacts, origin: string): Row[] => [
   ["What changed", r.correction?.changed.join(", ") || "Nothing"],
   ["Checks that didn't pass", failedIn(r.correction?.results, "None. Human review is on, so changes wait for a reviewer.", told)],
@@ -105,7 +125,20 @@ const EVENTS = {
     heading: "A DOI registration was refused",
     rows: (r, origin) => [["Refused by", [r.deposit === "failed" ? "Crossref" : "", r.archive === "failed" ? "Zenodo" : ""].filter(Boolean).join(" and ")], reviewLink(r, origin)],
   },
+  // To the admins of the organisation the report is in, who activate it (#1261).
+  "waiting-for-admin": {
+    to: "admins",
+    label: "Waiting for an admin",
+    heading: "A report is waiting for you to activate",
+    rows: (r, origin) => [
+      ["Started by", `${r.signer}${r.authorEmail ? ` <${r.authorEmail}>` : ""}`],
+      ["What happens next", `It passed its checks. An admin of ${r.admins?.organization ?? "the organisation"} activates it to make its DOI live.`],
+      ["Activate it", `${origin}${r.admins?.prefix ?? ""}/publish?report=${r.key}`],
+    ],
+  },
+  "refunded-admins": { to: "admins", label: "Activation refunded", heading: "An activation was refunded", rows: refundRows },
   // To the report's author.
+  refunded: { to: "author", label: "Activation refunded", heading: "Your activation was refunded", rows: refundRows },
   approved: { to: "author", label: "Approved", heading: "A reviewer approved your report", rows: (r, origin) => [publishLink("Activate it to make its DOI live", r, origin)] },
   released: {
     to: "author",
@@ -148,19 +181,21 @@ export const MAIL_EVENTS = Object.keys(EVENTS) as [MailEvent, ...MailEvent[]];
 export const mailAbout = (event: MailEvent): Pick<Event, "to" | "label"> => EVENTS[event];
 
 /**
- * One email about a report: to the team's inbox with replies going to the author, or to the author with replies
- * going to the team. Null for an author with no address. `origin` is the site's address: a link in an email is never
+ * One email about a report: to the team's inbox with replies going to the author, or to the author or the
+ * organisation's admins with replies going to the team. Null when there's nobody with an address to write to. `origin` is the site's address: a link in an email is never
  * relative.
  */
 export function reportEmail(event: MailEvent, report: MailFacts, origin: string) {
   const { to, label, heading, rows }: Event = EVENTS[event];
   const author = report.authorEmail ?? "";
   if (to === "author" && !author) return null;
+  if (to === "admins" && !report.admins?.emails.length) return null;
   const site = origin.replace(/\/+$/, "");
   return {
     audience: to,
     label,
-    to: to === "team" ? CONTACT_EMAIL : author,
+    /** Each address is written to on its own: admins don't see each other's. */
+    to: to === "team" ? [CONTACT_EMAIL] : to === "admins" ? report.admins!.emails : [author],
     // No reply address is better than a wrong one: the team's email about an author without an address replies to the team.
     replyTo: to === "team" ? author || CONTACT_EMAIL : CONTACT_EMAIL,
     // The team tells one report's emails apart by its key; an author reads what happened, and to which report.

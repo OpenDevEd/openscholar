@@ -20,7 +20,7 @@ The Work is: [title], by [authors], [number of pages], [date of completion] (the
 
 2.1. Openscholar will publish the Work in the series Openscholar Reports, register a DOI for it with Crossref, and keep a landing page for it on openscholar.ai.
 
-2.2. The Work will carry the byline “Co-published with Openscholar Reports” and its DOI (https://doi.org/[prefix]/[suffix]), on its cover or first page. Openscholar may add a cover sheet with this information.
+2.2. The Work will carry the byline [byline] on its cover or first page. Openscholar may add a cover sheet with this information.
 
 2.3. Openscholar may decline to publish the Work, for example if it is outside Openscholar’s scope, not original, or raises legal or ethical concerns. If it declines, this agreement ends and no DOI is registered.
 

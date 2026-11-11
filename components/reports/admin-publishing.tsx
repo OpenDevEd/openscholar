@@ -4,6 +4,7 @@
 
 import { useMutation } from "convex/react";
 import { parseAsBoolean, parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { AdminPublishingSettings, SETTINGS_PLACE } from "@/components/reports/admin-settings";
@@ -29,6 +30,7 @@ const PLACE = {
 };
 
 export function AdminPublishing() {
+  const t = useTranslations("publishReports.admin");
   const [nav, setNav] = useQueryStates(PLACE);
   // Another screen opens at its top; a dialog opens over the page where it is. Closing with the screen's own
   // button is the step back when that step is there (lib/url-state/step-back.ts), so Back never reopens what was
@@ -52,25 +54,25 @@ export function AdminPublishing() {
         <Enter ready>
           <div className="space-y-5">
             <Button variant="ghost" size="sm" className="-ms-2.5 text-muted-foreground" onClick={() => up("edit")}>
-              <ChevronLeft /> Back to the report
+              <ChevronLeft /> {t("backToReport")}
             </Button>
             <DetailsStep
               key={editable.key}
               initial={editable.metadata!}
               version={editable.updatedAt}
               words={{
-                title: "Edit the details",
-                intro: live ? `${editable.key} is live. Saving puts your edit live at once, without the checks, and the report registers again.` : `${editable.key} isn't live yet. Saving puts your edit in place at once, without the checks.`,
-                action: "Save the details",
+                title: t("editTitle"),
+                intro: t(live ? "editIntroLive" : "editIntroNotLive", { key: editable.key }),
+                action: t("saveDetails"),
               }}
               onRun={async (metadata, seenAt) => {
                 try {
                   await editDetails({ key: editable.key, seenAt: seenAt!, metadata });
-                  toast.success(live ? "Details saved. They're live." : "Details saved.");
+                  toast.success(t(live ? "savedLive" : "saved"));
                   // Back to the report's dialog, which now shows the edit.
                   up("edit");
                 } catch (error) {
-                  toast.error(getErrorMessage(error, "The details couldn't be saved"));
+                  toast.error(getErrorMessage(error, t("saveFailed")));
                 }
               }}
               onCancel={() => up("edit")}
@@ -84,13 +86,13 @@ export function AdminPublishing() {
   return (
     <div className="space-y-6">
       <Segmented
-        label="Publishing"
+        label={t("publications")}
         value={nav.view}
         // The other view opens with nothing left open from this one.
         onChange={(view) => go({ view, report: null, edit: null, check: null, agreement: null })}
         options={[
-          { id: "submissions", label: "Submissions", icon: FileText, detail: waiting?.total ? <span className="rounded-full bg-primary/15 px-1.5 text-2xs tabular-nums text-primary">{waiting.total}</span> : undefined },
-          { id: "settings", label: "Settings", icon: PublishIcon },
+          { id: "submissions", label: t("submissions"), icon: FileText, detail: waiting?.total ? <span className="rounded-full bg-primary/15 px-1.5 text-2xs tabular-nums text-primary">{waiting.total}</span> : undefined },
+          { id: "settings", label: t("settings"), icon: PublishIcon },
         ]}
         size="md"
       />

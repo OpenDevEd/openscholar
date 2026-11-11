@@ -92,6 +92,12 @@ describe("the library list", () => {
     expect((await names(me, { organization: alpha, search: " TWO" }, 10)).flat()).toEqual(["Alpha two (owner)"]);
     expect((await names(me, { organization: partner, search: "partner" }, 10)).flat()).toEqual(["Shared reading (editor)"]);
     expect((await names(me, { search: "nothing like it" }, 10)).flat()).toEqual([]);
+    // By the short name its live site's header shows, which people call it by.
+    await t.run(async (ctx) => {
+      const two = (await ctx.db.query("evidenceLibraries").collect()).find((library) => library.name === "Alpha two")!;
+      await ctx.db.patch("evidenceLibraries", two._id, { card: { name: "Alpha two", shortName: "Peer QA" } });
+    });
+    expect((await names(me, { search: "peer qa" }, 10)).flat()).toEqual(["Alpha two (owner)"]);
     // Someone signed out, or with no library, reads an empty list.
     const stranger = t.withIdentity({ subject: "someone" });
     expect((await stranger.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
