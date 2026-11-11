@@ -630,7 +630,11 @@ export function DetailsStep({
       </div>
       <div className="mt-8 flex flex-wrap justify-end gap-2">
         {onBack ? (
-          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={onBack}>
+          <Button variant="ghost" className="-ms-3 me-auto text-muted-foreground" onClick={() => {
+            // An edit still waiting to be saved goes first: once the report is back at its PDF, a save of its details is refused.
+            sendNow();
+            onBack();
+          }}>
             <ArrowLeft /> {t("back")}
           </Button>
         ) : null}
