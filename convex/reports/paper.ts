@@ -7,6 +7,7 @@ import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { detailsOf, mayChange } from "./flow";
 import { reportSettings } from "./settings";
+import { seriesOf } from "../../lib/reports/settings";
 import { AUTHORS_LISTED, INSTITUTIONS_LISTED, paperRecordValidator } from "../research/searchValidators";
 import { liveReportValidator, withdrawnReportValidator } from "./validators";
 import { REPORTS_PER_READ } from "../../lib/reports/report";
@@ -27,14 +28,14 @@ export const get = query({
     if (!metadata) return null;
     const { series } = await reportSettings(ctx);
     if (report.status !== "live") {
-      return { state: "withdrawn" as const, key, doi: report.doi, title: metadata.title, authors: metadata.authors.map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: series.name, withdrawnAt: report.withdrawnAt! };
+      return { state: "withdrawn" as const, key, doi: report.doi, title: metadata.title, authors: metadata.authors.map((author) => author.name).filter(Boolean), year: Number(metadata.date.slice(0, 4)) || null, series: seriesOf(report, series).name, withdrawnAt: report.withdrawnAt! };
     }
     return {
       state: "live" as const,
       key,
       doi: report.doi,
       metadata,
-      series: { name: series.name, issn: series.issn },
+      series: seriesOf(report, series),
       pdfUrl: report.pdf ? await ctx.storage.getUrl(report.pdf.file) : null,
       coverUrl: report.cover ? await ctx.storage.getUrl(report.cover.file) : null,
       updatedAt: report.updatedAt,
@@ -99,7 +100,7 @@ export const record = internalQuery({
       ...(authors.length > AUTHORS_LISTED && { moreAuthors: authors.length - AUTHORS_LISTED }),
       ...(Number(metadata.date.slice(0, 4)) && { year: Number(metadata.date.slice(0, 4)) }),
       published: metadata.date,
-      venue: series.name,
+      venue: seriesOf(report, series).name,
       type: metadata.type,
       language: metadata.language,
       doi: report.doi,
@@ -169,7 +170,7 @@ export const forCommunity = internalQuery({
           abstract: metadata.abstract,
           authors: metadata.authors.filter((author) => author.name.trim()).map((author) => ({ name: author.name, orcid: author.orcid || null })),
           keywords: metadata.keywords,
-          series: series.name,
+          series: seriesOf(report, series).name,
           hasPdf: report.pdf !== undefined,
         };
       }),

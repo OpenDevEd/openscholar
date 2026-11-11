@@ -133,6 +133,8 @@ export const canRegister = (publication: PublicationSettings) => publication.cro
  * The byline a report's PDF must carry, with its DOI and the series' ISSN filled in. Until the series has an ISSN the
  * byline says so in braces, "{pending}", as it is printed.
  */
+/** The series a report is published in: the name it was signed under, which its byline prints, and the ISSN as the series has it now. */
+export const seriesOf = (report: { seriesName?: string }, series: Pick<Series, "name" | "issn">) => ({ name: report.seriesName ?? series.name, issn: series.issn });
 export const bylineOf = (series: Series, doi: string) => series.byline.replace("{doi}", `https://doi.org/${doi}`).replace("{issn}", series.issn || "{pending}").replace("{series}", series.name);
 /** The DOI a report gets under the Crossref prefix and namespace; with Crossref off, none (canRegister). */
 export const crossrefDoiOf = ({ crossref }: PublicationSettings, key: string) => (crossref.mode === "off" ? null : `${crossref.prefix}/${crossref.suffixNamespace}.${key.toLowerCase()}`);

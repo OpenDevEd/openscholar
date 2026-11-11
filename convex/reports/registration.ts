@@ -13,6 +13,7 @@ import { providersOf } from "../../lib/reports/report";
 import { detailsOf, touch } from "./flow";
 import { notify } from "./mail";
 import { reportSettings } from "./settings";
+import { seriesOf } from "../../lib/reports/settings";
 import { metadataValidator, registrationValidator } from "./validators";
 
 const providerValidator = v.union(v.literal("crossref"), v.literal("zenodo"));
@@ -75,7 +76,7 @@ export const begin = internalMutation({
       doi: report.doi,
       ...(report.withdrawnAt !== undefined && { withdrawnAt: report.withdrawnAt }),
       metadata,
-      series: { name: settings.series.name, issn: settings.series.issn },
+      series: seriesOf(report, settings.series),
       registration: report.registration,
       waiting,
       ...(report.zenodoRecordId && { zenodoRecordId: report.zenodoRecordId }),
