@@ -13,14 +13,14 @@ import type { Metadata } from "../../lib/reports/report";
 /** The PDF to read and the model that reads it; null when a newer PDF replaced it or the report is past its details. */
 export const begin = internalQuery({
   args: { reportId: v.id("reports"), at: v.number() },
-  returns: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), doi: v.string(), signer: v.string(), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator), /** The report has details already, from the PDF this one replaces: they are kept, and this one's aren't read. */ kept: v.boolean() })),
+  returns: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), doi: v.string(), signer: v.string(), /** The line the byline check looks for in the PDF; null while that check is switched off. */ byline: v.union(v.string(), v.null()), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator), /** The report has details already, from the PDF this one replaces: they are kept, and this one's aren't read. */ kept: v.boolean() })),
   handler: async (ctx, { reportId, at }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report?.pdf || report.pdf.at !== at || report.step === "done") return null;
     const settings = await reportSettings(ctx);
     const pick = await slugPick(ctx, settings.metadataModelId, settings.metadataEffort, "extraction");
     const kept = (await detailsOf(ctx, reportId)).metadata !== undefined;
-    return { file: report.pdf.file, name: report.pdf.name, doi: report.doi, signer: report.signedBy.name, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }), kept };
+    return { file: report.pdf.file, name: report.pdf.name, doi: report.doi, signer: report.signedBy.name, byline: settings.checks.some((check) => check.id === "byline" && check.enabled) ? report.byline : null, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }), kept };
   },
 });
 
@@ -53,9 +53,9 @@ function signerFilledIn(metadata: Metadata, signer: string, profile: Doc<"users"
 }
 
 export const finish = internalMutation({
-  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))), /** The details couldn't be read from it, whatever else is wrong with it. */ unread: v.optional(v.boolean()) },
+  args: { reportId: v.id("reports"), at: v.number(), pages: v.optional(v.number()), text: v.optional(v.id("_storage")), metadata: v.optional(metadataValidator), trouble: v.optional(v.union(v.literal("textless"), v.literal("unread"))), /** Its text doesn't carry the byline: the report stays at the upload, which says so, with the way on to its details. */ lacksByline: v.optional(v.boolean()), /** The details couldn't be read from it, whatever else is wrong with it. */ unread: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { reportId, at, pages, text, metadata, trouble, unread }) => {
+  handler: async (ctx, { reportId, at, pages, text, metadata, trouble, lacksByline, unread }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report?.pdf || report.pdf.at !== at || report.step === "done") {
       if (text) await ctx.storage.delete(text);
@@ -74,7 +74,7 @@ export const finish = internalMutation({
     const profile = (await ctx.db.get("users", report.ownerId))?.profile;
     const kept = held ?? keptDetails(signerFilledIn(metadata!, report.signedBy.name, profile));
     if (!held) await ctx.db.patch("reportDetails", details._id, { metadata: kept });
-    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: kept.title.trim() || undefined });
+    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble, ...(lacksByline && { lacksByline }) }, step: lacksByline ? "upload" : "details", title: kept.title.trim() || undefined });
     // The team hears of a reading that failed, of a scan's too: what its author is told first is that it has no text.
     if (unread) await notify(ctx, reportId, "pdf-unread");
     return null;

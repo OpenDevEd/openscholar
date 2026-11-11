@@ -623,6 +623,8 @@ export default defineSchema({
     state: v.union(v.literal("charging"), v.literal("pending"), v.literal("live"), v.literal("unused"), v.literal("refused")),
     /** The promotion code the charge was asked with. */
     code: v.optional(v.string()),
+    /** Asked of Autumn with no card, for a code that takes the whole price off: asked again, it is asked the same way. */
+    unbilled: v.optional(v.boolean()),
     charge: v.optional(v.object({ invoice: v.string(), total: v.number(), currency: v.string() })),
     /** Stripe's page for confirming a pending charge. */
     payUrl: v.optional(v.string()),

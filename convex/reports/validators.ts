@@ -121,6 +121,8 @@ export const pdfValidator = v.object({
   text: v.optional(v.id("_storage")),
   /** It couldn't be opened as a PDF, it holds no text (a scan), or its details couldn't be read from it: the author is told which. */
   trouble: v.optional(pdfTroubleValidator),
+  /** Its text doesn't carry the report's byline word for word, which the byline check looks for: said at the upload, before the checks. */
+  lacksByline: v.optional(v.boolean()),
 });
 
 export const reportFields = {
@@ -266,7 +268,7 @@ export const adminReportValidator = v.object({
   agreementVersion: v.number(),
   checksVersion: v.optional(v.number()),
   run: v.optional(v.object({ at: v.number(), changes: v.boolean() })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: capped(v.optional(v.array(checkResultValidator)), MAX_CHECKS),
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),

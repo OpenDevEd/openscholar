@@ -6610,6 +6610,7 @@
       "drop": "Déposez le PDF ici, ou choisissez-le",
       "dropHint": "Un PDF, jusqu'à {max} Mo",
       "unopenedPdf": "{name} n'a pas pu être ouvert comme PDF. S'il est protégé par un mot de passe, retirez-le, puis enregistrez-le de nouveau en PDF et téléversez-le.",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "La lecture de {name} prend plus de temps que prévu. Téléversez-le de nouveau.",
       "replaces": "Un nouveau téléversement remplace {name}",
       "check": {
@@ -6765,8 +6766,10 @@
           "addButton": "Ajouter un moyen de paiement",
           "stripeFailed": "La page de Stripe n'a pas pu s'ouvrir",
           "credit": "{amount} de crédit",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "Crédit du compte",
         "refunded": "Les {amount} payés pour l’activer ont été remboursés.",

@@ -6611,6 +6611,7 @@
       "drop": "أفلت ملف PDF هنا، أو اختره",
       "dropHint": "ملف PDF واحد، حتى {max} ميغابايت",
       "unopenedPdf": "تعذّر فتح {name} كملف PDF. إن كان محميًا بكلمة مرور فأزلها، ثم احفظه بصيغة PDF مرة أخرى وارفعه.",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "تستغرق قراءة {name} وقتًا أطول من اللازم. ارفعه مرة أخرى.",
       "replaces": "الرفع مرة أخرى يستبدل {name}",
       "check": {
@@ -6766,8 +6767,10 @@
           "addButton": "إضافة وسيلة دفع",
           "stripeFailed": "تعذّر فتح صفحة Stripe",
           "credit": "رصيد {amount}",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "رصيد الحساب",
         "refunded": "تم استرداد مبلغ {amount} المدفوع لتفعيله.",

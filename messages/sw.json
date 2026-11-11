@@ -6611,6 +6611,7 @@
       "drop": "Dondosha PDF hapa, au uichague",
       "dropHint": "PDF moja, hadi MB {max}",
       "unopenedPdf": "{name} haikuweza kufunguliwa kama PDF. Ikiwa ina nenosiri, liondoe, kisha uihifadhi kama PDF tena na uipakie.",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "Kusoma {name} kunachukua muda mrefu kuliko inavyopaswa. Ipakie tena.",
       "replaces": "Kupakia tena kunabadilisha {name}",
       "check": {
@@ -6766,8 +6767,10 @@
           "addButton": "Ongeza njia ya kulipa",
           "stripeFailed": "Ukurasa wa Stripe haukuweza kufunguka",
           "credit": "Salio {amount}",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "Salio la akaunti",
         "refunded": "{amount} zilizolipwa kuiwasha zimerejeshwa.",

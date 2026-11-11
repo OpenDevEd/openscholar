@@ -206,18 +206,18 @@ export const goLiveFree = internalMutation({
 /**
  * Starts a paid activation before anything is charged: its record, whose id is the charge's idempotency key at
  * Autumn, with the code it is asked with. A record still `charging` (its answer was lost) is the one carried on, with
- * its own code, so asking again can't charge twice. Refuses while a charge waits on the bank.
+ * its own code and its own way of being asked, so asking again can't charge twice. Refuses while a charge waits on the bank.
  */
 export const begin = internalMutation({
-  args: { actor: actorValidator, key: v.string(), code: v.optional(v.string()) },
-  returns: v.object({ activationId: v.id("reportActivations"), code: v.optional(v.string()) }),
-  handler: async (ctx, { actor, key, code }) => {
+  args: { actor: actorValidator, key: v.string(), code: v.optional(v.string()), /** With no card, for a code that takes the whole price off. */ unbilled: v.optional(v.boolean()) },
+  returns: v.object({ activationId: v.id("reportActivations"), code: v.optional(v.string()), unbilled: v.optional(v.boolean()) }),
+  handler: async (ctx, { actor, key, code, unbilled }) => {
     const report = await activatable(ctx, actor, key);
     const under = await pendingOf(ctx, report._id, true);
     if (under?.state === "pending") throw createError("CONFLICT", STILL_PAYING);
-    if (under) return { activationId: under._id, ...(under.code && { code: under.code }) };
-    const activationId = await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, free: false, state: "charging", ...(code && { code }) });
-    return { activationId, ...(code && { code }) };
+    if (under) return { activationId: under._id, ...(under.code && { code: under.code }), ...(under.unbilled && { unbilled: true }) };
+    const activationId = await ctx.db.insert("reportActivations", { workspaceId: actor.workspaceId, reportId: report._id, at: Date.now(), by: actor.userId, free: false, state: "charging", ...(code && { code }), ...(unbilled && { unbilled }) });
+    return { activationId, ...(code && { code }), ...(unbilled && { unbilled }) };
   },
 });
 
@@ -338,9 +338,11 @@ export const activate = action({
       await ctx.runMutation(internal.reports.activation.goLiveFree, { actor, key });
       return { live: true };
     }
-    // The card is read from Autumn, not the cached account: it may have been removed since.
+    // The card is read from Autumn, not the cached account: it may have been removed since. With none, only a code
+    // that takes the whole price off activates.
     const customer = await autumn.customer(first.customerId, { card: true });
-    if (!customer.payment_method?.card) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
+    const cardless = !customer.payment_method?.card;
+    if (cardless && !code && !first.charging) throw createError("BILLING_CARD_REQUIRED", "Add a payment method to activate.");
     if (!pay) throw createError("CONFLICT", NO_FREE_LEFT, { reason: "noFreeLeft" });
     // Its open invoice would hold this charge back anyway (`unlessPaymentOpen`); this says which report to go to.
     if (first.waitingOn) throw createError("CONFLICT", `${first.waitingOn} is waiting for your bank to confirm its payment. Open it and confirm that first, then activate this one.`);
@@ -354,11 +356,18 @@ export const activate = action({
           throw createError("CONFLICT", `Activating it now takes ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(due)} from your card, not ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(expect)}. Check it and activate again.`);
         }
       }
-      const started: { activationId: Id<"reportActivations">; code?: string } = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }) });
+      // No card, and a new charge: the code has to take the whole price off, before any credit. Then nothing is charged,
+      // and Autumn is told so, or it would send a card-less customer to Stripe's page for $0. Refused before the charge is
+      // recorded, so a charge already under way (its answer lost) is never dropped by this.
+      const unbilled = cardless && !first.charging;
+      if (unbilled && linesOf(await autumn.previewAttach(first.customerId, ACTIVATION_PLAN, false, undefined, code).catch(refusedCode<AutumnPreview>(code))) > 0.005) {
+        throw createError("BILLING_CARD_REQUIRED", `${code} doesn't cover the whole price. Add a payment method to pay the rest.`, { reason: "cardForRest" });
+      }
+      const started: { activationId: Id<"reportActivations">; code?: string; unbilled?: boolean } = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }), ...(unbilled && { unbilled }) });
       const asked = started.code;
       let charged: AutumnCharge;
       try {
-        charged = await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code: asked, idempotencyKey: `report-activation-${started.activationId}`, successUrl: backTo(first.prefix, key, started.activationId) }).catch(refusedCode<AutumnCharge>(asked));
+        charged = await autumn.attach({ customerId: first.customerId, planId: ACTIVATION_PLAN, code: asked, idempotencyKey: `report-activation-${started.activationId}`, successUrl: backTo(first.prefix, key, started.activationId), ...(started.unbilled && { unbilled: true }) }).catch(refusedCode<AutumnCharge>(asked));
         // Declined, its invoice is voided so the decline changes nothing: the next try, with another card or a code, isn't
         // held up by a $5 invoice left open.
         if (charged.required_action?.code === "payment_failed" && charged.invoice?.stripe_id) await voidDeclined(charged.invoice.stripe_id);
@@ -411,14 +420,15 @@ export const quote = action({
 
 /** Stripe's page for saving a card on the workspace's billing account, which comes back to the report. Its admins only. */
 export const addCard = action({
-  args: { workspaceId: v.id("workspaces"), key: v.string() },
+  args: { workspaceId: v.id("workspaces"), key: v.string(), /** The code applied in the payment bar, which the way back carries so it needn't be typed again. */ code: v.optional(v.string()) },
   returns: v.string(),
-  handler: async (ctx, { workspaceId, key }): Promise<string> => {
+  handler: async (ctx, { workspaceId, key, code: typed }): Promise<string> => {
     await refuseApps(ctx);
     const actor = await actorIn(ctx, workspaceId);
     const { prefix, customerId }: { prefix: string; customerId: string } = await ctx.runQuery(internal.reports.activation.prepare, { actor, key, now: Date.now() });
     // Stripe writes the session's id into the way back, which names the card saved in it.
-    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}`)).url;
+    const code = codeOf(typed);
+    return (await autumn.setupPayment(customerId, `${backTo(prefix, key)}&session={CHECKOUT_SESSION_ID}${code ? `&code=${encodeURIComponent(code)}` : ""}`)).url;
   },
 });
 

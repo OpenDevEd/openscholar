@@ -6611,6 +6611,7 @@
       "drop": "Los die PDF hier, of kies dit",
       "dropHint": "Een PDF, tot {max} MB",
       "unopenedPdf": "{name} kon nie as 'n PDF oopgemaak word nie. As dit 'n wagwoord het, verwyder dit; stoor dit dan weer as PDF en laai dit op.",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "Om {name} te lees neem langer as wat dit behoort. Laai dit weer op.",
       "replaces": "Weer oplaai vervang {name}",
       "check": {
@@ -6766,8 +6767,10 @@
           "addButton": "Voeg betaalmetode by",
           "stripeFailed": "Stripe se bladsy kon nie oopmaak nie",
           "credit": "{amount} krediet",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "Rekeningkrediet",
         "refunded": "Die {amount} wat betaal is om dit te aktiveer, is terugbetaal.",

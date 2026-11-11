@@ -493,7 +493,7 @@ const reportValidator = v.object({
   checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: optionalPlainResults,
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
@@ -541,7 +541,7 @@ export const getAction = defineUserQuery({
         agreementVersion: report.agreementVersion,
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

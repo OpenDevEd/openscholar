@@ -6610,6 +6610,7 @@
       "drop": "Faka i-PDF lapha, noma uyikhethe",
       "dropHint": "I-PDF eyodwa, kuze kufike ku-{max} MB",
       "unopenedPdf": "I-{name} ayikwazanga ukuvulwa njenge-PDF. Uma inephasiwedi, yisuse, bese uyilondoloza futhi njenge-PDF bese uyilayisha.",
+      "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
       "stuck": "Ukufunda i-{name} kuthatha isikhathi eside kunokufanele. Yilayishe futhi.",
       "replaces": "Ukulayisha futhi kuthatha isikhundla se-{name}",
       "check": {
@@ -6765,8 +6766,10 @@
           "addButton": "Engeza indlela yokukhokha",
           "stripeFailed": "Ikhasi le-Stripe alikwazanga ukuvuleka",
           "credit": "Isikweletu esingu-{amount}",
-          "voucher": "Have a voucher code? It goes in after you press Activate.",
-          "freeTitle": "Free activation"
+          "freeTitle": "Free activation",
+          "covered": "Your code covers this activation",
+          "coveredHint": "Nothing to pay, so no card is needed.",
+          "costsWith": "With {code}, this activation costs {price}."
         },
         "creditLine": "Isikweletu se-akhawunti",
         "refunded": "I-{amount} ekhokhelwe ukuyenza isebenze ibuyiselwe.",

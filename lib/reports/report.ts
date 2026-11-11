@@ -118,6 +118,15 @@ export const REVIEW_TEXT_MAX = 3000;
 export const SIGNER_NAME_MAX = 200;
 export const FILE_NAME_MAX = 200;
 
+/**
+ * Whether `text` carries `line` whole, however the PDF wrapped it (spaces and line breaks anywhere in it, any case),
+ * and not run on into more letters or digits, as a DOI one digit longer would.
+ */
+export const carries = (text: string, line: string) => {
+  const chars = [...line.replace(/\s+/g, "")].map((char) => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return chars.length > 0 && new RegExp(`${chars.join("\\s*")}(?![\\p{L}\\p{N}])`, "iu").test(text);
+};
+
 export const STEPS = ["doi", "upload", "details", "done"] as const;
 /** Where a report is in being made: its DOI just reserved, its PDF going up or being read, its details open, or checked. */
 export type Step = (typeof STEPS)[number];
