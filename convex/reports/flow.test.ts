@@ -98,7 +98,7 @@ describe("a report's PDF", () => {
     expect(await world.t.run((ctx) => ctx.db.system.get(file))).toBeNull();
   });
 
-  it("keeps its own details: a save typed over the PDF before it changes nothing", async () => {
+  it("keeps the details it has when its PDF is replaced, and a save typed over the PDF before it changes nothing", async () => {
     const world = await setup();
     const first = await atDetails(world);
     await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key: first.key, step: "upload" });
@@ -109,7 +109,8 @@ describe("a report's PDF", () => {
     // A tab left open on the first PDF's details saves, and asks for the checks.
     await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, changes: details("Typed over the first PDF"), pdfAt: first.pdfAt });
     await expect(world.author.mutation(internal.reports.checkRuns.start, { workspaceId: world.own, key: first.key, metadata: details("Typed over the first PDF"), runId: "stale", from: { pdfAt: first.pdfAt } })).rejects.toMatchObject(refused("CONFLICT"));
-    expect((await read(world.author, world.own, first.key)).metadata?.title).toBe("The second PDF's title");
+    // The details stay as they were before the second PDF: neither its reading nor the stale tab's typing replaces them.
+    expect(await read(world.author, world.own, first.key)).toMatchObject({ step: "details", pdf: { name: "second.pdf", pages: 3 }, metadata: { title: "Shade trees and maize yields" } });
   });
 
   it("fills the signer's own author row from their profile where the PDF gave no iD or institution", async () => {
@@ -134,13 +135,14 @@ describe("a report's PDF", () => {
     const world = await setup();
     const first = await atDetails(world);
     expect(await read(world.author, world.own, first.key)).toMatchObject({ step: "details", metadata: { title: "Shade trees and maize yields" }, pdf: { pages: 12 } });
-    // A second PDF starts over: the first one's details are gone until the new one is read.
+    // A second PDF keeps the details, and its own step waits until it is read.
     await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key: first.key, step: "upload" });
     const file = await world.t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1.7 a second report"])));
     await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key: first.key, file, name: "second.pdf" });
     const replaced = await read(world.author, world.own, first.key);
     expect(replaced.step).toBe("upload");
-    expect(replaced.metadata).toBeUndefined();
+    expect(replaced.metadata?.title).toBe("Shade trees and maize yields");
+    await expect(world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key: first.key, step: "details" })).rejects.toMatchObject(refused("CONFLICT"));
     await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at: first.pdfAt, pages: 12, metadata: details("The first PDF's title") });
     expect((await read(world.author, world.own, first.key)).step).toBe("upload");
   });

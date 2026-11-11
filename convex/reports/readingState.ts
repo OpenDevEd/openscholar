@@ -13,13 +13,14 @@ import type { Metadata } from "../../lib/reports/report";
 /** The PDF to read and the model that reads it; null when a newer PDF replaced it or the report is past its details. */
 export const begin = internalQuery({
   args: { reportId: v.id("reports"), at: v.number() },
-  returns: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), doi: v.string(), signer: v.string(), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator) })),
+  returns: v.union(v.null(), v.object({ file: v.id("_storage"), name: v.string(), doi: v.string(), signer: v.string(), modelId: v.union(v.id("models"), v.null()), effort: v.optional(effortValidator), /** The report has details already, from the PDF this one replaces: they are kept, and this one's aren't read. */ kept: v.boolean() })),
   handler: async (ctx, { reportId, at }) => {
     const report = await ctx.db.get("reports", reportId);
     if (!report?.pdf || report.pdf.at !== at || report.step === "done") return null;
     const settings = await reportSettings(ctx);
     const pick = await slugPick(ctx, settings.metadataModelId, settings.metadataEffort, "extraction");
-    return { file: report.pdf.file, name: report.pdf.name, doi: report.doi, signer: report.signedBy.name, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }) };
+    const kept = (await detailsOf(ctx, reportId)).metadata !== undefined;
+    return { file: report.pdf.file, name: report.pdf.name, doi: report.doi, signer: report.signedBy.name, modelId: pick?.modelId ?? null, ...(pick?.effort && { effort: pick.effort }), kept };
   },
 });
 
@@ -60,15 +61,20 @@ export const finish = internalMutation({
       if (text) await ctx.storage.delete(text);
       return null;
     }
-    if (!metadata) {
+    const details = await detailsOf(ctx, reportId);
+    // Details the report already has, from the PDF this one replaces, stay as their author left them.
+    const held = details.metadata;
+    // A PDF that couldn't be opened has no pages.
+    if (pages === undefined || (!metadata && !held)) {
       await touch(ctx, report, { pdf: { ...report.pdf, trouble: "unopened" } });
       await notify(ctx, reportId, "pdf-unopened");
       return null;
     }
     if (text) await ctx.db.insert("reportFiles", { file: text, reportId });
     const profile = (await ctx.db.get("users", report.ownerId))?.profile;
-    await ctx.db.patch("reportDetails", (await detailsOf(ctx, reportId))._id, { metadata: keptDetails(signerFilledIn(metadata, report.signedBy.name, profile)) });
-    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: metadata.title.trim() || undefined });
+    const kept = held ?? keptDetails(signerFilledIn(metadata!, report.signedBy.name, profile));
+    if (!held) await ctx.db.patch("reportDetails", details._id, { metadata: kept });
+    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble }, step: "details", title: kept.title.trim() || undefined });
     // The team hears of a reading that failed, of a scan's too: what its author is told first is that it has no text.
     if (unread) await notify(ctx, reportId, "pdf-unread");
     return null;
