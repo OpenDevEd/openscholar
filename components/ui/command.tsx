@@ -7,6 +7,11 @@ import { Spinner } from "@/components/ui/spinner"
 
 import { cn } from "@/lib/utils"
 
+// cmdk 1.1.1 scores each row against the search as the row mounts, even with filtering off. A row holding a long
+// pasted search (a picker's "as typed" row) made that score explode: 800 characters held the page for 52 seconds.
+// A list that doesn't filter scores nothing.
+const keepAll = () => 1
+
 function Command({
   className,
   ...props
@@ -19,6 +24,7 @@ function Command({
         className
       )}
       {...props}
+      {...(props.shouldFilter === false && { filter: keepAll })}
     />
   )
 }
