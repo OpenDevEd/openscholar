@@ -277,6 +277,29 @@ export const goTo = workspaceMutation({
   },
 });
 
+/**
+ * Reads the report's details again, from the PDF that replaced another: the ones it kept were read from the PDF
+ * before, which may have been the wrong file. What was typed over them goes with them, as the author asked.
+ */
+export const readAgain = workspaceMutation({
+  args: { key: v.string() },
+  returns: v.null(),
+  handler: async (ctx, actor, { key }) => {
+    await refuseApps(ctx);
+    const report = await changing(ctx, actor, key);
+    if (report.step !== "details" || report.run || !report.pdf?.kept) throw createError("CONFLICT", MOVED_ON);
+    await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: undefined });
+    // Back to a PDF just attached, its reading to come: the reading stores its text afresh. It counts as attached now,
+    // so a Details form left open in another tab on the kept details is refused when it saves or asks for the checks.
+    await forget(ctx, report.pdf.text);
+    const { file, name, bytes } = report.pdf;
+    const at = Math.max(Date.now(), report.pdf.at + 1);
+    await touch(ctx, report, { pdf: { file, name, bytes, at }, step: "upload" });
+    await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
+    return null;
+  },
+});
+
 /** Where the browser sends a report's PDF, and the picture of its first page, before attaching them. */
 export const startUpload = workspaceMutation({
   args: { key: v.string() },
@@ -496,7 +519,7 @@ const reportValidator = v.object({
   checksVersion: v.optional(v.number()),
   /** The checks under way since then, with the answers that have arrived. */
   run: v.optional(v.object({ at: v.number(), results: plainResults })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: optionalPlainResults,
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),
@@ -544,7 +567,7 @@ export const getAction = defineUserQuery({
         agreementVersion: report.agreementVersion,
         ...(report.checksVersion !== undefined && { checksVersion: report.checksVersion }),
         ...(report.run && { run: { at: report.run.at, results: plain(details.running) ?? [] } }),
-        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
+        ...(report.pdf && { pdf: { name: report.pdf.name, bytes: report.pdf.bytes, at: report.pdf.at, ...(report.pdf.pages !== undefined && { pages: report.pdf.pages }), ...(report.pdf.trouble && { trouble: report.pdf.trouble }), ...(report.pdf.lacksByline && { lacksByline: true }), ...(report.pdf.kept && { kept: true }), url: await ctx.storage.getUrl(report.pdf.file) } }),
         ...(details.metadata && { metadata: details.metadata }),
         ...(details.results && { results: plain(details.results) }),
         ...(details.reviewRequest && { reviewRequest: details.reviewRequest }),

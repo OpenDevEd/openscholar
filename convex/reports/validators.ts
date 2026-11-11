@@ -123,6 +123,8 @@ export const pdfValidator = v.object({
   trouble: v.optional(pdfTroubleValidator),
   /** Its text doesn't carry the report's byline word for word, which the byline check looks for: said at the upload, before the checks. */
   lacksByline: v.optional(v.boolean()),
+  /** Its details are the ones the report had before this PDF replaced another: the author may have them read from this one instead. */
+  kept: v.optional(v.boolean()),
 });
 
 export const reportFields = {
@@ -268,7 +270,7 @@ export const adminReportValidator = v.object({
   agreementVersion: v.number(),
   checksVersion: v.optional(v.number()),
   run: v.optional(v.object({ at: v.number(), changes: v.boolean() })),
-  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
+  pdf: v.optional(v.object({ name: v.string(), bytes: v.number(), at: v.number(), pages: v.optional(v.number()), trouble: v.optional(pdfTroubleValidator), lacksByline: v.optional(v.boolean()), kept: v.optional(v.boolean()), url: v.union(v.string(), v.null()) })),
   metadata: v.optional(metadataValidator),
   results: capped(v.optional(v.array(checkResultValidator)), MAX_CHECKS),
   reviewRequest: v.optional(v.object({ comment: v.string(), at: v.number() })),

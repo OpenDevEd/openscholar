@@ -6612,6 +6612,9 @@
       "dropHint": "Un PDF, de hasta {max} MB",
       "unopenedPdf": "No se pudo abrir {name} como PDF. Si tiene contraseña, quítasela; después guárdalo de nuevo como PDF y súbelo.",
       "lacksByline": "{name} doesn't carry the line above on its cover. Add the line and upload the PDF again, or the byline check will fail.",
+      "keptDetails": "These are the details you had before you replaced the PDF.",
+      "readAgain": "Read them from this PDF instead",
+      "readAgainFailed": "The details couldn't be read again",
       "stuck": "La lectura de {name} está tardando más de lo normal. Súbelo de nuevo.",
       "replaces": "Una nueva subida sustituye a {name}",
       "check": {
