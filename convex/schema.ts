@@ -303,6 +303,8 @@ export default defineSchema({
     .index("by_user_and_library_and_itemKey", ["userId", "libraryId", "itemKey"])
     .index("by_library_and_itemKey", ["libraryId", "itemKey"])
     .index("by_user_and_openalexId", ["userId", "openalexId"])
+    // A paper with no OpenAlex work, such as an Openscholar Report, is sent by its DOI.
+    .index("by_user_and_doi", ["userId", "doi"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "status"] }),
   evidenceLibraries: defineTable(evidenceLibraryFields)
     // A workspace's libraries, in the order they were made.
