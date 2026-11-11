@@ -99,6 +99,8 @@ export const userFields = {
   /** Their latest answer to the cookie banner, on any device. Without "granted", analytics from the server don't name them (./analytics.ts). */
   analyticsConsent: v.optional(v.object({ choice: analyticsChoiceValidator, at: v.number() })),
   profile: v.optional(profileValidator),
+  /** The language they chose, on any device: every browser they are signed in on follows it (components/profile/profile-setup.tsx). */
+  locale: v.optional(v.string()),
   /** When they finished or skipped the profile setup. Until either, a new account gets it in front of every page. */
   onboarding: v.optional(v.object({ finishedAt: v.optional(v.number()), skippedAt: v.optional(v.number()) })),
   createdAt: v.number(),

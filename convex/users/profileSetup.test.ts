@@ -31,7 +31,7 @@ describe("the profile setup", () => {
   it("is done once the answers are saved, which an older account edits in Settings the same way", async () => {
     const { newcomer, old } = await world();
     await newcomer.mutation(api.users.profileSetup.save, answers);
-    expect(await newcomer.query(api.users.profileSetup.get, {})).toEqual({ profile: answers, due: false });
+    expect(await newcomer.query(api.users.profileSetup.get, {})).toEqual({ profile: answers, due: false, locale: null });
     await old.mutation(api.users.profileSetup.save, { ...answers, orcid: "" });
     expect((await old.query(api.users.profileSetup.get, {}))?.profile.orcid).toBe("");
   });
@@ -40,7 +40,7 @@ describe("the profile setup", () => {
     const { newcomer } = await world();
     await newcomer.mutation(api.users.profileSetup.save, { ...answers, first: true });
     await newcomer.mutation(api.users.profileSetup.save, { affiliations: [], orcid: "", emails: { updates: false, news: false, research: false }, first: true });
-    expect(await newcomer.query(api.users.profileSetup.get, {})).toEqual({ profile: answers, due: false });
+    expect(await newcomer.query(api.users.profileSetup.get, {})).toEqual({ profile: answers, due: false, locale: null });
   });
 
   it("refuses an iD or a ROR ID that isn't one", async () => {
@@ -48,6 +48,17 @@ describe("the profile setup", () => {
     await expect(newcomer.mutation(api.users.profileSetup.save, { ...answers, orcid: "0000-0002-9050-4994" })).rejects.toThrow(/ORCID/);
     await expect(newcomer.mutation(api.users.profileSetup.save, { ...answers, affiliations: [{ ...cambridge, ror: "ror.org/013meh722" }] })).rejects.toThrow(/ROR/);
     expect(await newcomer.query(api.users.profileSetup.due, {})).toBe(true);
+  });
+
+  it("keeps the language the setup was read in, then the one the person chooses, and only a language the site has", async () => {
+    const { newcomer } = await world();
+    await newcomer.mutation(api.users.profileSetup.skip, { locale: "fr" });
+    expect((await newcomer.query(api.users.profileSetup.get, {}))?.locale).toBe("fr");
+    await newcomer.mutation(api.users.profileSetup.setLocale, { locale: "ar" });
+    // Settings saves the answers with no language: the one chosen stays.
+    await newcomer.mutation(api.users.profileSetup.save, { ...answers, locale: "de" });
+    expect((await newcomer.query(api.users.profileSetup.get, {}))?.locale).toBe("ar");
+    await expect(newcomer.mutation(api.users.profileSetup.setLocale, { locale: "tlh" })).rejects.toThrow(/language/);
   });
 
   it("is put away for good when skipped, and answers saved before stay", async () => {

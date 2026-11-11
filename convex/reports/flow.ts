@@ -493,15 +493,16 @@ const countFields = Object.fromEntries(STAGES.map((stage) => [stage, v.number()]
 /** How many of the workspace's reports are at each stage, and in all: with any, Publish opens the list, with none a new report. */
 export const countsAction = defineUserQuery({
   path: "reports/flow:counts",
-  description: "How many reports the workspace has on Openscholar Reports at each stage (draft, failed, review, ready, live, declined), and in all (`all`).",
+  description: "How many reports the workspace has on Openscholar Reports at each stage (draft, failed, review, ready, live, declined), in all (`all`), and how many wait for the person asking to activate them (`toActivate`: the ready ones, for the workspace's admin).",
   args: {},
-  returns: v.object({ ...countFields, all: v.number() }),
-  run: async (ctx, { workspaceId }) => {
+  returns: v.object({ ...countFields, all: v.number(), toActivate: v.number() }),
+  run: async (ctx, { workspaceId, role }) => {
     const { humanReview } = await reportSettings(ctx);
     const reports = await newest(ctx, workspaceId);
     const tally = Object.fromEntries(STAGES.map((stage) => [stage, 0])) as Record<Stage, number>;
     for (const report of reports) tally[stageOf(report, humanReview)] += 1;
-    return { ...tally, all: reports.length };
+    // Only the workspace's admins activate: for them a ready report is one that waits on them.
+    return { ...tally, all: reports.length, toActivate: role === "admin" ? tally.ready : 0 };
   },
 });
 export const counts = userQuery(countsAction);
