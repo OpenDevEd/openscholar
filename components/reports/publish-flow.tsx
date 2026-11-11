@@ -403,7 +403,8 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
       return;
     }
     const heading = node.querySelector("h2");
-    if (!heading) return;
+    // Only focus the old screen lost, which has fallen to the page: someone typing elsewhere, in the assistant say, keeps theirs.
+    if (!heading || (document.activeElement && document.activeElement !== document.body)) return;
     heading.tabIndex = -1;
     heading.focus({ preventScroll: true });
   }, []);
