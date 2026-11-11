@@ -6679,6 +6679,7 @@
       "waitingOwn": "{count, plural, one {Umbiko ongu-# endaweni yakho yokusebenza ulungele ukuthi uwenze usebenze.} other {Imibiko engu-# endaweni yakho yokusebenza ilungele ukuthi uyenze isebenze.}}",
       "waitingOpen": "{count, plural, one {Wuvule} other {Yivule}}",
       "savingNote": "Ikhadi lakho ligcinwa ukuze kwenziwe imibiko isebenze ku-Openscholar. Akukho okukhokhiswayo manje.",
+      "registering": "Ikhasi selivuliwe manje futhi lingabelwa. I-DOI iqala ukusebenza uma isibhalisiwe, ngokuvamile emizuzwini embalwa.",
       "sentToReviewer": "Kuthunyelwe kumbuyekezi",
       "requestFailed": "Isicelo asikwazanga ukuthunyelwa",
       "reviewIntro": "Umbuyekezi ufunda umbiko wakho nemiphumela yokuhlolwa. Cela uma ucabanga ukuthi ukuhlolwa kwenze iphutha.",

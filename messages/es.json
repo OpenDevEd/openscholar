@@ -6680,6 +6680,7 @@
       "waitingOwn": "{count, plural, one {# informe de su propio espacio está listo para que lo active.} other {# informes de su propio espacio están listos para que los active.}}",
       "waitingOpen": "{count, plural, one {Abrirlo} other {Abrirlos}}",
       "savingNote": "Su tarjeta se guarda para activar informes en Openscholar. No se cobra nada ahora.",
+      "registering": "La página ya está abierta y puede compartirse. El DOI empieza a funcionar cuando queda registrado, normalmente en unos minutos.",
       "sentToReviewer": "Enviado a un revisor",
       "requestFailed": "No se pudo enviar la solicitud",
       "reviewIntro": "Un revisor lee tu informe y lo que dijeron las comprobaciones. Pídelo cuando creas que una comprobación se equivocó.",

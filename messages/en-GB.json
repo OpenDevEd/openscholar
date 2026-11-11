@@ -6679,6 +6679,7 @@
       "waitingOwn": "{count, plural, one {# report in your own workspace is ready for you to activate.} other {# reports in your own workspace are ready for you to activate.}}",
       "waitingOpen": "{count, plural, one {Open it} other {Open them}}",
       "savingNote": "Your card is saved to activate reports on Openscholar. Nothing is charged now.",
+      "registering": "The page is open now and can be shared. The DOI starts working once it is registered, usually within a few minutes.",
       "sentToReviewer": "Sent to a reviewer",
       "requestFailed": "The request couldn't be sent",
       "reviewIntro": "A reviewer reads your report and what the checks said. Ask when you think a check got it wrong.",

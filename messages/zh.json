@@ -6679,6 +6679,7 @@
       "waitingOwn": "您自己的工作区中有 {count} 份报告等待您激活。",
       "waitingOpen": "打开",
       "savingNote": "您的银行卡将被保存，用于在 Openscholar 上激活报告。现在不会扣款。",
+      "registering": "页面现已开放，可以分享。DOI 在登记完成后生效，通常只需几分钟。",
       "sentToReviewer": "已发送给审核人",
       "requestFailed": "无法发送请求",
       "reviewIntro": "审核人会阅读您的报告和检查结果。如果您认为某项检查有误，请提出申请。",
