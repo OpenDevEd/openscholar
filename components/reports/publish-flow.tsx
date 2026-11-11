@@ -209,6 +209,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const [now] = useState(() => Math.floor(Date.now() / 60_000) * 60_000);
   const basics = useQuery(api.reports.settings.forAuthors, {});
   const { data: counts } = useProtectedQuery(api.reports.flow.counts, inWorkspace(workspaceId, {}));
+  // Reports ready in the person's other workspaces, read with the page so their notice is there when it opens.
+  const { data: waiting } = useProtectedQuery(api.reports.flow.waitingElsewhere, inWorkspace(workspaceId, {}));
   const { data: starts } = useProtectedQuery(api.reports.flow.starts, inWorkspace(workspaceId, { now }));
   // With no report named the page opens the workspace's reports, and a new report only when it has none. Opened on
   // that new report, it stays on it while it is signed: its own first report must not turn the page into the list
@@ -262,7 +264,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const signedOut = isLoaded && !isSignedIn;
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
-  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
+  const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && waiting !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
   // The page's own shell while it loads, as the app's loading frame draws it: its bar is there from the first frame
   // and names nothing until the page knows whether its title sits beside a back arrow, so the title never moves
   // once it shows. The same shell stays mounted when the page arrives, so its card is already laid out and the
@@ -346,6 +348,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
+          <WaitingElsewhere waiting={waiting ?? []} className="px-4 pt-4 sm:px-6" />
           <YourReports
             list={(list ?? lastList)!}
             humanReview={basics.humanReview}
@@ -405,6 +408,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
         </ListEmpty>
       ) : (
         <div className="grid grid-cols-1 gap-8 p-4 sm:p-6 @3xl:grid-cols-[minmax(0,1fr)_13rem] @3xl:gap-10">
+          {preparing ? <WaitingElsewhere waiting={waiting ?? []} className="col-span-full" /> : null}
           {/* Switched off, publishing takes no new report. One already started says why its sidebar item is gone. */}
           {report?.mine && !basics.open && report.status !== "live" ? (
             <p role="status" className="col-span-full flex items-start gap-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
@@ -448,6 +452,30 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
         </div>
       )}
     </LibraryPageShell>
+  );
+}
+
+/** Reports ready in the person's other workspaces, said where they are looking: each workspace's Publish lists only its own. */
+function WaitingElsewhere({ waiting, className }: { waiting: Array<{ name: string; slug: string | null; ready: number }>; className?: string }) {
+  const t = useTranslations("publishReports.flow");
+  if (!waiting.length) return null;
+  return (
+    <ul className={cn("space-y-2", className)}>
+      {waiting.map(({ name, slug, ready }) => (
+        <li key={slug ?? ""} role="status" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl bg-inset px-4 py-3 text-sm">
+          <span className="flex min-w-0 items-start gap-2.5">
+            <PublishIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+            {slug ? t("waitingIn", { count: ready, name }) : t("waitingOwn", { count: ready })}
+          </span>
+          <Button size="sm" variant="outline" asChild>
+            {/* A plain address: the other workspace's own reports, the ready ones. */}
+            <a href={`${slug ? `/o/${slug}` : ""}/publish?view=reports&show=ready`}>
+              {t("waitingOpen", { count: ready })} <ArrowUpRight />
+            </a>
+          </Button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -649,7 +677,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                   },
                 );
               }}
-              onAddCard={(code) => addCard({ ...here, key: report.key, ...(code && { code }) }).then((url) => window.location.assign(url))}
+              onAddCard={(code) => addCard({ ...here, key: report.key, note: t("savingNote"), ...(code && { code }) }).then((url) => window.location.assign(url))}
               onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
               onFix={() => onStep("upload")}
               onDetails={() => onStep("details")}
@@ -2017,6 +2045,7 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
       <p className="mt-6 text-center text-xs text-muted-foreground">
         {t.rich("takeDown", {
           email: CONTACT_EMAIL,
+          key: report.key,
           mail: (chunks) => (
             <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(report.key)}`} className="underline underline-offset-2 hover:text-foreground">
               {chunks}
