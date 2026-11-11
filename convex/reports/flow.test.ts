@@ -114,7 +114,10 @@ describe("a report's PDF", () => {
     await world.author.mutation(api.reports.flow.readAgain, { workspaceId: world.own, key: first.key });
     expect(await read(world.author, world.own, first.key)).toMatchObject({ step: "upload" });
     expect((await read(world.author, world.own, first.key)).metadata).toBeUndefined();
-    await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at, pages: 3, metadata: details("The right file's title") });
+    const again_at = (await row(world.t, first.key)).pdf!.at;
+    await world.t.mutation(internal.reports.readingState.finish, { reportId: first.reportId, at: again_at, pages: 3, metadata: details("The right file's title") });
+    // A Details form left open on the kept details, in another tab, changes nothing when it saves.
+    await world.author.mutation(api.reports.flow.saveDetails, { workspaceId: world.own, key: first.key, changes: details("Typed over the kept details"), pdfAt: at });
     const again = await read(world.author, world.own, first.key);
     expect(again).toMatchObject({ step: "details", metadata: { title: "The right file's title" } });
     expect(again.pdf?.kept).toBeUndefined();

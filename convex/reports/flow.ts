@@ -289,9 +289,11 @@ export const readAgain = workspaceMutation({
     const report = await changing(ctx, actor, key);
     if (report.step !== "details" || report.run || !report.pdf?.kept) throw createError("CONFLICT", MOVED_ON);
     await ctx.db.patch("reportDetails", (await detailsOf(ctx, report._id))._id, { metadata: undefined });
-    // Back to a PDF just attached, its reading to come: the reading stores its text afresh.
+    // Back to a PDF just attached, its reading to come: the reading stores its text afresh. It counts as attached now,
+    // so a Details form left open in another tab on the kept details is refused when it saves or asks for the checks.
     await forget(ctx, report.pdf.text);
-    const { file, name, bytes, at } = report.pdf;
+    const { file, name, bytes } = report.pdf;
+    const at = Math.max(Date.now(), report.pdf.at + 1);
     await touch(ctx, report, { pdf: { file, name, bytes, at }, step: "upload" });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
