@@ -810,8 +810,11 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
 function UploadStep({ report, workspaceId, onAttached }: { report: Report; workspaceId: Id<"workspaces">; /** The PDF is the report's: from here the report itself says where it stands. */ onAttached: () => void }) {
   const t = useTranslations("publishReports.flow");
   const format = useFormatter();
-  /** A file's size, in megabytes or kilobytes as the reader's language writes them. */
-  const bytes = (n: number) => (n > 1_000_000 ? format.number(n / 1_000_000, { style: "unit", unit: "megabyte", minimumFractionDigits: 1, maximumFractionDigits: 1 }) : format.number(Math.round(n / 1000), { style: "unit", unit: "kilobyte" }));
+  /**
+   * A file's size, in megabytes or kilobytes as the reader's language writes them. Counted in 1,024s, as the limit
+   * (`MAX_PDF_MB`) is: a PDF just under it never reads as over it.
+   */
+  const bytes = (n: number) => (n > 1024 * 1024 ? format.number(n / 1024 / 1024, { style: "unit", unit: "megabyte", minimumFractionDigits: 1, maximumFractionDigits: 1 }) : format.number(Math.round(n / 1024), { style: "unit", unit: "kilobyte" }));
   const startUpload = useMutation(api.reports.flow.startUpload);
   const attachPdf = useMutation(api.reports.flow.attachPdf);
   const input = useRef<HTMLInputElement>(null);
