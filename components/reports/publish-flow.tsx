@@ -119,8 +119,10 @@ function opens(report: Report, step: BackStep, humanReview: boolean) {
   return step !== "details" || (!!report.metadata && report.pdf?.pages !== undefined);
 }
 
-type HistoryEntry = { index: number; url: string | null };
-type Navigation = EventTarget & { currentEntry: HistoryEntry | null };
+type HistoryEntry = { index: number; key: string; url: string | null };
+type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[] };
+/** The browser's history, where it can be asked what its entries are (the Navigation API). */
+const historyOf = () => (window as { navigation?: Navigation }).navigation;
 type EntryChange = Event & { navigationType: string | null; from: HistoryEntry };
 
 /**
@@ -132,7 +134,7 @@ type EntryChange = Event & { navigationType: string | null; from: HistoryEntry }
 function useStepHistory(report: Report | null, humanReview: boolean, send: (step: BackStep) => void) {
   // The browser's history is the outside system: it says where a step came from only through the Navigation API.
   useEffect(() => {
-    const navigation = (window as { navigation?: Navigation }).navigation;
+    const navigation = historyOf();
     if (!report || !navigation) return;
     const onChange = (event: Event) => {
       const { navigationType, from } = event as EntryChange;
@@ -141,9 +143,11 @@ function useStepHistory(report: Report | null, humanReview: boolean, send: (step
       const to = stepIn(new URL(window.location.href), report.key);
       // Another report, another page, or the same step with something else opened over it: not a step between steps.
       if (!was || !to || was === to) return;
-      // Before its PDF is the report's, the DOI and the upload are two screens of one state, which the address picks.
-      if (report.step === "doi" && (to === "doi" || to === "upload")) return;
-      if (to !== "checks" && to !== report.step && opens(report, to, humanReview)) send(to);
+      // The step on the screen as the browser left it. Before its PDF is the report's, the DOI and the upload are two
+      // screens of one state, which the address picks.
+      const shown = report.step === "done" ? "checks" : report.step === "doi" && was !== "doi" ? "upload" : report.step;
+      if (to !== shown && report.step === "doi" && (to === "doi" || to === "upload")) return;
+      if (to !== shown && to !== "checks" && opens(report, to, humanReview)) send(to);
       else window.history.go(Math.sign(navigation.currentEntry.index - from.index));
     };
     navigation.addEventListener("currententrychange", onChange);
@@ -195,11 +199,11 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const bare = asked === null && view !== "reports";
   const [began, setBegan] = useState<typeof workspaceId>(undefined);
   if (bare ? began !== workspaceId && counts?.all === 0 : began !== undefined) setBegan(bare ? workspaceId : undefined);
-  // A report signed here took its agreement's place in the history, and the page it was started from is still the
-  // entry behind it. Back from its DOI lands there, on a report already started: it shows the list, never a second
-  // new report nobody asked for. Asking for one, with its button, starts one.
-  const [signedHere, setSignedHere] = useState(false);
-  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (signedHere && (asked ?? "new") === "new" && at !== "agreement" && (counts?.all ?? 0) > 0);
+  // A report signed here took its agreement's place in the history, and the Prepare it was started from is still
+  // the entry behind it. Back from its DOI lands there, on a report already started: that entry shows the list
+  // from then on, never a second new report nobody asked for. Entries are told apart by the browser's own key.
+  const [used, setUsed] = useState<string[]>([]);
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || (used.length > 0 && used.includes(historyOf()?.currentEntry?.key ?? ""));
   const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
@@ -212,7 +216,13 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   if (list && list !== lastList) setLastList(list);
 
   const discard = useMutation(api.reports.flow.discard);
-  const goTo = useMutation(api.reports.flow.goTo);
+  // Said at once, before the answer is back: the screen follows the press, and a second press of Back or Forward
+  // right behind it starts from where the first one led.
+  const goTo = useMutation(api.reports.flow.goTo).withOptimisticUpdate((store, { key, step }) => {
+    for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
+      if (value && "report" in value && value.report.key === key) store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step } });
+    }
+  });
   const saved = found && "report" in found ? found.report : null;
   const send = (step: BackStep) => void (saved && workspaceId && goTo({ workspaceId, key: saved.key, step }).catch(said(t("stepFailed"))));
   useStepHistory(saved, basics?.humanReview ?? false, send);
@@ -284,7 +294,6 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const missing = !listing && shownKey !== "new" && !report && !arriving;
   const another = () => {
     setFresh(null);
-    setSignedHere(false);
     go({ view: null, report: "new", correct: null, step: null });
   };
   const hasReports = (counts?.all ?? 0) > 0;
@@ -401,7 +410,9 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             setFresh={setFresh}
             carried={carried}
             onSigned={(key) => {
-              setSignedHere(true);
+              const navigation = historyOf();
+              const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
+              if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) setUsed((keys) => [...keys, behind.key]);
               void setPlace({ report: key, step: null });
             }}
             onAnother={another}
