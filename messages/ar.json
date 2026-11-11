@@ -6168,6 +6168,7 @@
     },
     "admin": {
       "backToReport": "العودة إلى التقرير",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "تعديل التفاصيل",
       "editIntroLive": "{key} منشور. عند الحفظ يُنشر تعديلك فورًا دون فحوصات، ويُعاد تسجيل التقرير.",
       "editIntroNotLive": "{key} غير منشور بعد. عند الحفظ يُطبَّق تعديلك فورًا دون فحوصات.",

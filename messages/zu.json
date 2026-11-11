@@ -6167,6 +6167,7 @@
     },
     "admin": {
       "backToReport": "Buyela embikweni",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "Hlela imininingwane",
       "editIntroLive": "I-{key} ishicilelwe. Uma ulondoloza, ushintsho lwakho lushicilelwa ngokushesha ngaphandle kokuhlolwa, futhi umbiko ubhaliswa kabusha.",
       "editIntroNotLive": "I-{key} ayikashicilelwa. Uma ulondoloza, ushintsho lwakho lusebenza ngokushesha ngaphandle kokuhlolwa.",

@@ -6167,6 +6167,7 @@
     },
     "admin": {
       "backToReport": "レポートに戻る",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "詳細を編集",
       "editIntroLive": "{key} は公開中です。保存すると、チェックを経ずに編集内容がすぐに公開され、レポートが再登録されます。",
       "editIntroNotLive": "{key} はまだ公開されていません。保存すると、チェックを経ずに編集内容がすぐに反映されます。",

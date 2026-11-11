@@ -6167,6 +6167,7 @@
     },
     "admin": {
       "backToReport": "Retour au rapport",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "Modifier les informations",
       "editIntroLive": "{key} est en ligne. L'enregistrement met votre modification en ligne aussitôt, sans les vérifications, et le rapport est enregistré à nouveau.",
       "editIntroNotLive": "{key} n'est pas encore en ligne. L'enregistrement applique votre modification aussitôt, sans les vérifications.",

@@ -6167,6 +6167,7 @@
     },
     "admin": {
       "backToReport": "Back to the report",
+      "editLost": "The author took {key} back to change it while you were editing, so what you typed wasn't kept. Open it again once its checks have run.",
       "editTitle": "Edit the details",
       "editIntroLive": "{key} is live. Saving puts your edit live at once, without the checks, and the report registers again.",
       "editIntroNotLive": "{key} isn't live yet. Saving puts your edit in place at once, without the checks.",
