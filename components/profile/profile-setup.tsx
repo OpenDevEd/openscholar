@@ -11,7 +11,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import { LogOut } from "@/components/icons";
@@ -69,7 +69,7 @@ export function ProfileSetupGate({ due: dueOnLoad, person, children }: { due: bo
         initial={setup.data?.profile}
         leaving={leaving}
         onSave={async (answers) => {
-          await save(answers);
+          await save({ ...answers, first: true });
           leave();
         }}
         onSkip={async () => {
@@ -84,18 +84,21 @@ export function ProfileSetupGate({ due: dueOnLoad, person, children }: { due: bo
 
 /** The setup, as the whole page. */
 function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { person: Person; initial?: Answers; /** The page it leads to is on its way. */ leaving: boolean; onSave: (answers: Answers) => Promise<void>; onSkip: () => Promise<void> }) {
+  const t = useTranslations("profileSetup");
   const [answers, setAnswers] = useState<Answers>(() => initial ?? { affiliations: [], orcid: "", emails: NO_EMAILS });
   const [sending, setSending] = useState<"continue" | "skip" | null>(null);
+  // Just signed up, the backend may not know the person for a moment yet: the answers wait for it, never refused.
+  const { isAuthenticated } = useConvexAuth();
   const send = async (which: "continue" | "skip") => {
     setSending(which);
     try {
       await (which === "continue" ? onSave(answers) : onSkip());
     } catch (error) {
-      showStyledToast("error", getErrorMessage(error, "Your profile couldn't be saved."));
+      showStyledToast("error", getErrorMessage(error, t("saveFailed")));
       setSending(null);
     }
   };
-  const busy = sending !== null || leaving;
+  const busy = sending !== null || leaving || !isAuthenticated;
   return (
     <main className="flex min-h-dvh justify-center bg-background px-4 py-10 sm:items-center">
       <div className="w-full max-w-md space-y-8">
@@ -106,29 +109,29 @@ function ProfileSetupScreen({ person, initial, leaving, onSave, onSkip }: { pers
         <header className="flex items-center gap-3">
           <IdentityAvatar name={person.name} imageUrl={person.imageUrl ?? undefined} className="size-12 shrink-0" />
           <div className="min-w-0 space-y-0.5">
-            <h1 className="text-xl font-semibold tracking-tight">Set up your profile</h1>
-            <p className="text-sm text-muted-foreground">You can change these later in Settings.</p>
+            <h1 className="text-xl font-semibold tracking-tight">{t("title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("intro")}</p>
           </div>
         </header>
         <div className="space-y-6">
-          <Field label="Institution">
+          <Field label={t("institution")}>
             <AffiliationPicker value={answers.affiliations} onChange={(affiliations) => setAnswers((was) => ({ ...was, affiliations }))} />
           </Field>
-          <Field label="ORCID iD">
+          <Field label={t("orcid")}>
             <OrcidField orcid={answers.orcid} name={person.name} affiliations={answers.affiliations} onChange={(orcid) => setAnswers((was) => ({ ...was, orcid }))} />
           </Field>
-          <Field label="Emails from Openscholar">
+          <Field label={t("emails")}>
             <EmailChoices value={answers.emails} onChange={(emails) => setAnswers((was) => ({ ...was, emails }))} />
           </Field>
         </div>
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           <Button variant="ghost" onClick={() => void send("skip")} disabled={busy}>
             {sending === "skip" ? <Spinner /> : null}
-            Skip for now
+            {t("skip")}
           </Button>
           <Button onClick={() => void send("continue")} disabled={busy}>
             {sending === "continue" ? <Spinner /> : null}
-            Continue
+            {t("continue")}
           </Button>
         </div>
       </div>
@@ -205,14 +208,15 @@ function OrcidField({ orcid, name, affiliations, onChange }: { orcid: string; na
 
 /** The emails the person asks for, each with what it brings. */
 function EmailChoices({ value, onChange }: { value: Answers["emails"]; onChange: (emails: Answers["emails"]) => void }) {
+  const t = useTranslations("profileSetup.emailKinds");
   return (
     <div className={LIST}>
       {EMAILS.map((kind) => (
         <label key={kind.id} className="flex cursor-pointer items-start gap-3 bg-inset px-4 py-3">
           <Checkbox checked={value[kind.id]} onCheckedChange={(checked) => onChange({ ...value, [kind.id]: checked === true })} className="mt-0.5" />
           <span className="min-w-0">
-            <span className="block text-sm font-medium">{kind.label}</span>
-            <span className="block text-xs text-muted-foreground">{kind.hint}</span>
+            <span className="block text-sm font-medium">{t(`${kind.id}.label`)}</span>
+            <span className="block text-xs text-muted-foreground">{t(`${kind.id}.hint`)}</span>
           </span>
         </label>
       ))}
@@ -226,6 +230,7 @@ export const useProfileSetupReady = () => useSetup().data !== undefined;
 /** The same answers on Settings › Profile, each saved as it changes. The page shows once they are in (`useProfileSetupReady`). */
 export function ProfileSetupSettings() {
   const { user } = useUser();
+  const t = useTranslations("profileSetup");
   const setup = useSetup();
   // Shown at once, as saved: the server's copy replaces it when the save is in.
   const save = useMutation(api.users.profileSetup.save).withOptimisticUpdate((store, answers) => {
@@ -234,16 +239,16 @@ export function ProfileSetupSettings() {
   });
   const answers = setup.data?.profile ?? { affiliations: [], orcid: "", emails: NO_EMAILS };
   const change = (patch: Partial<Answers>) =>
-    save({ ...answers, ...patch }).catch((error: unknown) => showStyledToast("error", getErrorMessage(error, "That couldn't be saved.")));
+    save({ ...answers, ...patch }).catch((error: unknown) => showStyledToast("error", getErrorMessage(error, t("changeFailed"))));
   return (
     <div className="space-y-8">
-      <Zone label="Institution">
+      <Zone label={t("institution")}>
         <AffiliationPicker value={answers.affiliations} onChange={(affiliations) => void change({ affiliations })} />
       </Zone>
-      <Zone label="ORCID iD">
+      <Zone label={t("orcid")}>
         <OrcidField orcid={answers.orcid} name={user?.fullName ?? ""} affiliations={answers.affiliations} onChange={(orcid) => void change({ orcid })} />
       </Zone>
-      <Zone label="Emails from Openscholar">
+      <Zone label={t("emails")}>
         <EmailChoices value={answers.emails} onChange={(emails) => void change({ emails })} />
       </Zone>
     </div>

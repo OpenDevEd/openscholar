@@ -6872,5 +6872,30 @@
     "remove": "iD entfernen",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "Auf ORCID suchen"
+  },
+  "profileSetup": {
+    "title": "Richten Sie Ihr Profil ein",
+    "intro": "Sie können das später in den Einstellungen ändern.",
+    "institution": "Einrichtung",
+    "orcid": "ORCID iD",
+    "emails": "E-Mails von Openscholar",
+    "skip": "Vorerst überspringen",
+    "continue": "Weiter",
+    "saveFailed": "Ihr Profil konnte nicht gespeichert werden.",
+    "changeFailed": "Das konnte nicht gespeichert werden.",
+    "emailKinds": {
+      "updates": {
+        "label": "Produktneuheiten",
+        "hint": "Neue Funktionen und Änderungen an Openscholar"
+      },
+      "news": {
+        "label": "Neuigkeiten und Veranstaltungen",
+        "hint": "Webinare, Community-Neuigkeiten und Forschungshighlights"
+      },
+      "research": {
+        "label": "Forschung und Feedback",
+        "hint": "Einladungen, neue Funktionen auszuprobieren und Ihre Meinung zu sagen"
+      }
+    }
   }
 }

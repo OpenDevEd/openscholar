@@ -6872,5 +6872,30 @@
     "remove": "Ondoa iD",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "Tafuta kwenye ORCID"
+  },
+  "profileSetup": {
+    "title": "Weka wasifu wako",
+    "intro": "Unaweza kubadilisha haya baadaye katika Mipangilio.",
+    "institution": "Taasisi",
+    "orcid": "ORCID iD",
+    "emails": "Barua pepe kutoka Openscholar",
+    "skip": "Ruka kwa sasa",
+    "continue": "Endelea",
+    "saveFailed": "Wasifu wako haukuweza kuhifadhiwa.",
+    "changeFailed": "Haikuweza kuhifadhiwa.",
+    "emailKinds": {
+      "updates": {
+        "label": "Habari za bidhaa",
+        "hint": "Vipengele vipya na mabadiliko ya Openscholar"
+      },
+      "news": {
+        "label": "Habari na matukio",
+        "hint": "Semina za mtandaoni, habari za jumuiya na muhtasari wa utafiti"
+      },
+      "research": {
+        "label": "Utafiti na maoni",
+        "hint": "Mialiko ya kujaribu vipengele vipya na kutoa maoni yako"
+      }
+    }
   }
 }

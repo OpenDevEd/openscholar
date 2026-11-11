@@ -6872,5 +6872,30 @@
     "remove": "Verwyder die iD",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "Soek op ORCID"
+  },
+  "profileSetup": {
+    "title": "Stel jou profiel op",
+    "intro": "Jy kan dit later in Instellings verander.",
+    "institution": "Instelling",
+    "orcid": "ORCID iD",
+    "emails": "E-posse van Openscholar",
+    "skip": "Slaan nou oor",
+    "continue": "Gaan voort",
+    "saveFailed": "Jou profiel kon nie gestoor word nie.",
+    "changeFailed": "Dit kon nie gestoor word nie.",
+    "emailKinds": {
+      "updates": {
+        "label": "Produknuus",
+        "hint": "Nuwe funksies en veranderinge aan Openscholar"
+      },
+      "news": {
+        "label": "Nuus en geleenthede",
+        "hint": "Webinare, gemeenskapsnuus en navorsingshoogtepunte"
+      },
+      "research": {
+        "label": "Navorsing en terugvoer",
+        "hint": "Uitnodigings om nuwe funksies te probeer en jou mening te deel"
+      }
+    }
   }
 }

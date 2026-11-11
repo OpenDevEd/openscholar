@@ -6871,5 +6871,30 @@
     "remove": "Susa i-iD",
     "orcidLabel": "I-ORCID iD {orcid}",
     "find": "Thola ku-ORCID"
+  },
+  "profileSetup": {
+    "title": "Setha iphrofayela yakho",
+    "intro": "Ungakushintsha lokhu kamuva kokuthi Izilungiselelo.",
+    "institution": "Isikhungo",
+    "orcid": "I-ORCID iD",
+    "emails": "Ama-imeyili avela ku-Openscholar",
+    "skip": "Yeqa okwamanje",
+    "continue": "Qhubeka",
+    "saveFailed": "Iphrofayela yakho ayikwazanga ukulondolozwa.",
+    "changeFailed": "Akukwazanga ukulondolozwa.",
+    "emailKinds": {
+      "updates": {
+        "label": "Izibuyekezo zomkhiqizo",
+        "hint": "Izici ezintsha nezinguquko ku-Openscholar"
+      },
+      "news": {
+        "label": "Izindaba nemicimbi",
+        "hint": "Ama-webinar, izindaba zomphakathi nezigqamiso zocwaningo"
+      },
+      "research": {
+        "label": "Ucwaningo nemibono",
+        "hint": "Izimemo zokuzama izici ezintsha nokwabelana ngombono wakho"
+      }
+    }
   }
 }

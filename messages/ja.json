@@ -6871,5 +6871,30 @@
     "remove": "iD を削除",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "ORCID で探す"
+  },
+  "profileSetup": {
+    "title": "プロフィールを設定",
+    "intro": "あとで設定から変更できます。",
+    "institution": "所属機関",
+    "orcid": "ORCID iD",
+    "emails": "Openscholar からのメール",
+    "skip": "今はスキップ",
+    "continue": "続ける",
+    "saveFailed": "プロフィールを保存できませんでした。",
+    "changeFailed": "保存できませんでした。",
+    "emailKinds": {
+      "updates": {
+        "label": "製品のお知らせ",
+        "hint": "Openscholar の新機能と変更点"
+      },
+      "news": {
+        "label": "ニュースとイベント",
+        "hint": "ウェビナー、コミュニティのニュース、研究のハイライト"
+      },
+      "research": {
+        "label": "研究とフィードバック",
+        "hint": "新機能のお試しやご意見のお願い"
+      }
+    }
   }
 }

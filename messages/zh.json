@@ -6871,5 +6871,30 @@
     "remove": "移除 iD",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "在 ORCID 上查找"
+  },
+  "profileSetup": {
+    "title": "设置你的个人资料",
+    "intro": "你可以稍后在设置中修改。",
+    "institution": "机构",
+    "orcid": "ORCID iD",
+    "emails": "来自 Openscholar 的邮件",
+    "skip": "暂时跳过",
+    "continue": "继续",
+    "saveFailed": "无法保存你的个人资料。",
+    "changeFailed": "无法保存。",
+    "emailKinds": {
+      "updates": {
+        "label": "产品更新",
+        "hint": "Openscholar 的新功能和变化"
+      },
+      "news": {
+        "label": "新闻和活动",
+        "hint": "网络研讨会、社区新闻和研究亮点"
+      },
+      "research": {
+        "label": "研究和反馈",
+        "hint": "邀请你试用新功能并分享想法"
+      }
+    }
   }
 }

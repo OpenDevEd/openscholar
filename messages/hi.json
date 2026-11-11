@@ -6871,5 +6871,30 @@
     "remove": "iD हटाएँ",
     "orcidLabel": "ORCID iD {orcid}",
     "find": "ORCID पर खोजें"
+  },
+  "profileSetup": {
+    "title": "अपनी प्रोफ़ाइल सेट करें",
+    "intro": "आप इन्हें बाद में सेटिंग्स में बदल सकते हैं।",
+    "institution": "संस्थान",
+    "orcid": "ORCID iD",
+    "emails": "Openscholar से ईमेल",
+    "skip": "अभी छोड़ें",
+    "continue": "जारी रखें",
+    "saveFailed": "आपकी प्रोफ़ाइल सहेजी नहीं जा सकी।",
+    "changeFailed": "यह सहेजा नहीं जा सका।",
+    "emailKinds": {
+      "updates": {
+        "label": "प्रोडक्ट अपडेट",
+        "hint": "Openscholar की नई सुविधाएँ और बदलाव"
+      },
+      "news": {
+        "label": "समाचार और कार्यक्रम",
+        "hint": "वेबिनार, समुदाय की ख़बरें और शोध की झलकियाँ"
+      },
+      "research": {
+        "label": "शोध और फ़ीडबैक",
+        "hint": "नई सुविधाएँ आज़माने और अपनी राय देने के न्योते"
+      }
+    }
   }
 }

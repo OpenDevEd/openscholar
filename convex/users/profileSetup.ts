@@ -44,13 +44,17 @@ export const due = query({
   },
 });
 
-/** Saves the answers, from the setup or from Settings; the setup is then done. */
+/**
+ * Saves the answers, from the setup or from Settings; the setup is then done. From the setup (`first`), only while it
+ * is still due: a second tab's setup, left open while the first finished it, never overwrites what was saved.
+ */
 export const save = mutation({
-  args: profileValidator.fields,
+  args: { ...profileValidator.fields, first: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { affiliations, orcid, emails }) => {
+  handler: async (ctx, { affiliations, orcid, emails, first }) => {
     await refuseApps(ctx);
     const user = await requireAuth(ctx);
+    if (first && !dueFor(user)) return null;
     if (affiliations.length > PROFILE_AFFILIATIONS_MAX) throw createError("VALIDATION_ERROR", `List at most ${PROFILE_AFFILIATIONS_MAX} institutions.`);
     for (const affiliation of affiliations) {
       if (!affiliation.name.trim() || affiliation.name.length > 300) throw createError("VALIDATION_ERROR", "An institution needs a name of up to 300 characters.");
