@@ -51,7 +51,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { REPORT_COVER } from "@/lib/papers/cover";
 import { fillAgreement } from "@/lib/reports/agreement";
 import { drawCover } from "@/lib/reports/draw-cover";
-import { CHECK_SAID, RUN_STUCK_MS, REVIEW_TEXT_MAX, SIGNER_NAME_MAX, changesOf, stageOf, type CheckResult, type Metadata } from "@/lib/reports/report";
+import { BYLINE_PAGE_MAX_BYTES, BYLINE_PAGE_MAX_MB, changesOf, CHECK_SAID, type CheckResult, type Metadata, REVIEW_TEXT_MAX, RUN_STUCK_MS, SIGNER_NAME_MAX, stageOf } from "@/lib/reports/report";
 import { bylineOf } from "@/lib/reports/settings";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
@@ -562,7 +562,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
             <UploadStep report={report} workspaceId={workspaceId!} onAttached={() => onMoved("details")} onBack={() => onStep("doi")} onNext={report.pdf?.pages !== undefined && report.metadata ? () => onStep("details") : undefined} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
-              <PdfNotice trouble={report.pdf.trouble} onUpload={() => onStep("upload")} />
+              <PdfNotice trouble={report.pdf.trouble} lineAdded={report.pdf.bylineBy === "added" && !report.pdf.lacksByline} onUpload={() => onStep("upload")} />
               {report.pdf.kept ? <KeptNotice onReadAgain={() => readAgain({ ...here, key: report.key })} /> : null}
               <DetailsStep
                 onBack={() => onStep("upload")}
@@ -1001,7 +1001,7 @@ function BylineChoice({ byline, by, onPick, disabled = false }: { byline: string
                 {t(`${value}.title`)}
                 <Icon className="ms-auto size-4 shrink-0 text-muted-foreground" />
               </span>
-              <span className="mt-0.5 block text-sm text-muted-foreground">{t(`${value}.body`)}</span>
+              <span className="mt-0.5 block text-sm text-muted-foreground">{t(`${value}.body`, { max: BYLINE_PAGE_MAX_MB })}</span>
             </span>
           </label>
         ))}
@@ -1108,7 +1108,7 @@ function KeptNotice({ onReadAgain }: { onReadAgain: () => Promise<null> }) {
 }
 
 /** What a PDF's reading fell short of, said where the author fills in what it left. */
-function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>["trouble"]; onUpload: () => void }) {
+function PdfNotice({ trouble, lineAdded, onUpload }: { trouble: NonNullable<Report["pdf"]>["trouble"]; /** Openscholar added the byline's page, so a scan has the line all the same. */ lineAdded: boolean; onUpload: () => void }) {
   const t = useTranslations("publishReports.flow");
   if (trouble !== "textless" && trouble !== "unread") return null;
   return (
@@ -1116,7 +1116,7 @@ function PdfNotice({ trouble, onUpload }: { trouble: NonNullable<Report["pdf"]>[
       <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
         <TriangleAlert className="mt-0.5 size-4 shrink-0 ink-warning" />
         <span className="min-w-0">
-          {t(trouble === "textless" ? "textless" : "unreadPdf")}
+          {t(trouble === "textless" ? (lineAdded ? "textlessAdded" : "textless") : "unreadPdf")}
         </span>
       </p>
       {trouble === "textless" ? (
@@ -1173,6 +1173,8 @@ function UploadStep({ report, workspaceId, onAttached, onBack, onNext }: { repor
     if (!/\.pdf$/i.test(picked.name)) return say(t("notPdf", { name: picked.name }));
     if (picked.size === 0) return say(t("emptyFile"));
     if (picked.size > MAX_PDF_BYTES) return say(t("tooBig", { max: MAX_PDF_MB }));
+    // Said before it goes up: a PDF this large can't have the page added, so its author picks the other way now.
+    if (by === "added" && picked.size > BYLINE_PAGE_MAX_BYTES) return say(t("bylineBy.tooBigToAdd", { name: picked.name, max: BYLINE_PAGE_MAX_MB }));
     setSending(picked);
     try {
       // The PDF goes up while its first page is drawn here: a cover that can't be drawn leaves the title page.

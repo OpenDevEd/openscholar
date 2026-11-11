@@ -10,7 +10,7 @@ import { resolveOpenRouterModel } from "../ai/provider";
 import { extractPdfJsTextPages } from "../extraction/pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
 import { withBylinePage, withoutLastPage } from "../../lib/reports/byline-page";
-import { blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
+import { BYLINE_PAGE_MAX_BYTES, blankDetails, carries, DETAILS_MAX_BYTES, DETAIL_CAPS, DETAIL_TEXT, type Metadata } from "../../lib/reports/report";
 import { readDetails } from "./reader";
 
 /** What the model read, held to what a report keeps: a PDF with more references than that keeps the first of them,
@@ -83,12 +83,12 @@ export const read = internalAction({
       if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
     }
     // An author who has Openscholar add the byline gets it on a last page, with the report's details as they stand,
-    // unless the PDF carries the line already. A page that can't be added leaves the PDF as it was, without the line,
-    // which the upload then says.
+    // unless the PDF carries the line already. A page that can't be added, or a PDF too large to add one to, leaves
+    // the PDF as it was, without the line, which the upload then says.
     let text = job.stamped ? `${read}\n${job.line}` : read;
     let pages = opened.totalPages;
     let withByline: { file: Id<"_storage">; bytes: number } | undefined;
-    if (job.added && !carries(text, job.line)) {
+    if (job.added && !carries(text, job.line) && bytes.byteLength <= BYLINE_PAGE_MAX_BYTES) {
       try {
         // Details a reading couldn't find are a file name and today's date: the page waits for the author's own.
         const known = job.held ?? metadata ?? undefined;
