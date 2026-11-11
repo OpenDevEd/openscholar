@@ -5,7 +5,7 @@ import * as React from "react"
 import { XIcon } from "@/components/icons"
 import { Dialog as DialogPrimitive } from "radix-ui"
 
-import { cn } from "@/lib/utils"
+import { cn, finePointer } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 import { withToastsInside } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
@@ -68,7 +68,15 @@ function DialogContent({
 }) {
   const t = useTranslations("sharedControls");
   const closing = useClosing()
-  const focus = useReturnFocus({ onOpenAutoFocus, onCloseAutoFocus })
+  const focus = useReturnFocus({
+    onOpenAutoFocus: (event) => {
+      onOpenAutoFocus?.(event)
+      // A phone's keyboard rising as the dialog opens pans its top off screen in Safari: on touch the dialog takes
+      // the focus itself, not its first field.
+      if (!event.defaultPrevented && !finePointer()) focusContent(event)
+    },
+    onCloseAutoFocus,
+  })
   // When it opened: the second click of a double click on what opens it lands outside it a moment later, and
   // mustn't close it again.
   const openedAt = React.useRef(0)

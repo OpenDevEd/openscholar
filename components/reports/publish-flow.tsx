@@ -55,7 +55,7 @@ import { stepBack, withoutKeys } from "@/lib/url-state/step-back";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { MAX_PDF_BYTES, MAX_PDF_MB } from "@/lib/files/limits";
-import { cn } from "@/lib/utils";
+import { cn, finePointer } from "@/lib/utils";
 
 type Basics = FunctionReturnType<typeof api.reports.settings.forAuthors>;
 type Found = NonNullable<FunctionReturnType<typeof api.reports.flow.get>>;
@@ -1304,7 +1304,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
           >
             <div className="flex gap-2">
               <Input
-                autoFocus
+                autoFocus={finePointer()}
                 value={typed}
                 maxLength={100}
                 onChange={(e) => {
@@ -1498,7 +1498,9 @@ function ReviewRequestDialog({ open, onClose, onSend }: { open: boolean; onClose
         className="sm:max-w-lg"
         // Typing starts in the box. The dialog puts the focus there itself, so closing it gives the focus back to the
         // button that opened it: a box that took the focus by itself would be what the dialog remembered instead.
+        // With a mouse or trackpad only: on touch the dialog keeps the focus, so no keyboard rises as it opens.
         onOpenAutoFocus={(event) => {
+          if (!finePointer()) return;
           event.preventDefault();
           box.current?.focus();
         }}

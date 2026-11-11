@@ -35,7 +35,7 @@ import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { SDGS } from "@/lib/openalex/vocabulary";
 import { REVIEW_TEXT_MAX, changesOf, stageOf, type Metadata, type Stage } from "@/lib/reports/report";
-import { cn } from "@/lib/utils";
+import { cn, finePointer } from "@/lib/utils";
 
 type Page = FunctionReturnType<typeof api.reports.review.page>;
 type Row = Page["rows"][number];
@@ -592,7 +592,7 @@ function SubmissionDialog({ report, last, onClose, onEdit }: { /** The report op
                   <AlertDialogDescription>{asking ? t(`ask.${asking}.says`) : ""}</AlertDialogDescription>
                 </AlertDialogHeader>
                 <Field label={t("noteLabel")} counter={`${note.length} / ${REVIEW_TEXT_MAX}`}>
-                  {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={REVIEW_TEXT_MAX} placeholder={t("notePlaceholder")} autoFocus />}
+                  {(id) => <Textarea id={id} value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={REVIEW_TEXT_MAX} placeholder={t("notePlaceholder")} autoFocus={finePointer()} />}
                 </Field>
                 <AlertDialogFooter>
                   <AlertDialogCancel>{t(asking === "withdraw" ? "keepLive" : "cancel")}</AlertDialogCancel>

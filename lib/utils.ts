@@ -738,3 +738,9 @@ export function getEffectiveSearchId(pathname: string | null, currentSearchId?: 
   
   return undefined;
 }
+
+/**
+ * Whether the person points with a mouse or trackpad. A field focused as its dialog opens raises a phone's keyboard at
+ * once, which pans the dialog's top off screen in Safari: such fields focus themselves only for a fine pointer.
+ */
+export const finePointer = () => typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches;
