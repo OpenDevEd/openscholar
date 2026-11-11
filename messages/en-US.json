@@ -6738,8 +6738,8 @@
         "activationLine": "Activation",
         "codeLine": "Code {code}",
         "promo": {
-          "add": "Add a promo code",
-          "label": "Promo code",
+          "add": "Add a voucher code",
+          "label": "Voucher code",
           "apply": "Apply",
           "remove": "Remove {code}",
           "off": "{percent}% off",
@@ -6756,7 +6756,7 @@
           "free": "Free",
           "freeLeft": "{count, plural, one {# free activation} other {# free activations}} left today",
           "freeLeftNoCard": "{count, plural, one {# free activation} other {# free activations}} left today. No card needed.",
-          "add": "Add a payment method to activate",
+          "add": "Activate with a card or a voucher code",
           "costs": "Each activation costs {price}.",
           "costsOrg": "Each activation costs {price}, charged to {organization}.",
           "needed": "A saved card is needed to activate.",
@@ -6787,6 +6787,7 @@
       "overview": {
         "title": "Publishing a report with {series}",
         "intro": "About ten minutes from start to finish. This is what each step asks of you.",
+        "introReviewed": "About ten minutes of your time. A reviewer then approves the report before it can go live, and you hear by email.",
         "start": "Start",
         "agreement": {
           "title": "Sign the publishing agreement",

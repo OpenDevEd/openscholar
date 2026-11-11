@@ -1,4 +1,5 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { DEFAULT_CHECKS } from "../../lib/reports/settings";
 import { api, internal } from "../_generated/api";
 import { stageOf, type Metadata } from "../../lib/reports/report";
 import { startsLeft } from "./limits";
@@ -107,6 +108,14 @@ describe("a report's PDF", () => {
     await world.author.mutation(api.reports.flow.attachPdf, { workspaceId: world.own, key, file, name: "no-line.pdf" });
     await world.t.mutation(internal.reports.readingState.finish, { reportId, at: (await row(world.t, key)).pdf!.at, pages: 4, lacksByline: true });
     expect(await read(world.author, world.own, key)).toMatchObject({ step: "upload", pdf: { pages: 4, lacksByline: true }, metadata: { title: "Shade trees and maize yields" } });
+    // The line is looked for only while the byline check is switched on: with it off, the reading is given none.
+    const at = (await row(world.t, key)).pdf!.at;
+    expect((await world.t.query(internal.reports.readingState.begin, { reportId, at }))?.byline).toBe((await row(world.t, key)).byline);
+    await world.t.run(async (ctx) => {
+      const settings = (await ctx.db.query("reportSettings").first())!;
+      await ctx.db.patch("reportSettings", settings._id, { checks: (settings.checks ?? DEFAULT_CHECKS).map((check) => (check.id === "byline" ? { ...check, enabled: false } : check)) });
+    });
+    expect((await world.t.query(internal.reports.readingState.begin, { reportId, at }))?.byline).toBeNull();
     // Its details are read all the same, so its author can go on to them.
     await world.author.mutation(api.reports.flow.goTo, { workspaceId: world.own, key, step: "details" });
     expect((await read(world.author, world.own, key)).step).toBe("details");
