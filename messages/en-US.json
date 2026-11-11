@@ -6849,7 +6849,8 @@
       "cancel": "Cancel",
       "sendForReview": "Check the changes and send them for review",
       "checkAndPublish": "Check and publish the changes",
-      "runChecks": "Run the checks"
+      "runChecks": "Run the checks",
+      "tooEarly": "A report can't be dated before 1400."
     }
   },
   "people": {

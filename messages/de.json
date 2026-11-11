@@ -6850,7 +6850,8 @@
       "cancel": "Abbrechen",
       "sendForReview": "Änderungen prüfen und zur Prüfung senden",
       "checkAndPublish": "Änderungen prüfen und veröffentlichen",
-      "runChecks": "Prüfungen ausführen"
+      "runChecks": "Prüfungen ausführen",
+      "tooEarly": "Ein Bericht kann nicht vor 1400 datiert sein."
     }
   },
   "people": {

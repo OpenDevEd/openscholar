@@ -6849,7 +6849,8 @@
       "cancel": "Annuler",
       "sendForReview": "Vérifier les modifications et les envoyer en relecture",
       "checkAndPublish": "Vérifier et publier les modifications",
-      "runChecks": "Lancer les vérifications"
+      "runChecks": "Lancer les vérifications",
+      "tooEarly": "Un rapport ne peut pas être daté d’avant 1400."
     }
   },
   "people": {

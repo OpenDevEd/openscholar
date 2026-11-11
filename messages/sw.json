@@ -6850,7 +6850,8 @@
       "cancel": "Ghairi",
       "sendForReview": "Kagua mabadiliko na utume kwa ukaguzi",
       "checkAndPublish": "Kagua mabadiliko na uchapishe",
-      "runChecks": "Endesha ukaguzi"
+      "runChecks": "Endesha ukaguzi",
+      "tooEarly": "Ripoti haiwezi kuwa na tarehe kabla ya 1400."
     }
   },
   "people": {

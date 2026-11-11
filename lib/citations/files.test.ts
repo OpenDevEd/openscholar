@@ -5,6 +5,7 @@ import { citationFile } from "./files";
 describe("a citation file", () => {
   const report = {
     id: "R100018",
+    "citation-key": "Testauthor2026",
     type: "report",
     title: "Rainwater harvesting and kitchen gardens in rural Morocco: a corrected links acceptance study of twenty households",
     author: [{ literal: "Samira Testauthor" }],

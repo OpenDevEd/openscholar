@@ -451,7 +451,8 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
               // What the form shows: the changes that wait, else the report's details as they were last set.
               version={attempt?.since ?? report.correction?.at ?? report.correctedAt ?? report.activatedAt}
               // Review is on, or a reviewer approved this report over a check: its changes wait for one too.
-              waits={basics.humanReview || (report.results ?? []).some((result) => !result.pass)}
+              // As the server decides (convex/reports/checkRuns.ts `finish`): with review off, changes that pass every check go live.
+              waits={basics.humanReview}
               onTouched={() => setTyping(true)}
               // Kept as they are typed, so Back, Forward or a reload brings them back. Typed over a report that has
               // changed since, they are not kept, and sending them is refused in words.
