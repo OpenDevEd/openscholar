@@ -86,7 +86,7 @@ export const librariesAction = defineUserQuery({
   path: "evidenceLibraries/assistant:libraries",
   description:
     `Lists the Evidence Communities the person has a role on, as their Communities page lists them here, ${LIBRARIES_LISTED} a page from \`cursor\`: in their own workspace their own, each organization's they're in and the ones shared with them; in an organization's, that organization's and the ones shared with it. ` +
-    "Given `search`, those whose name, short name (the one its site's header shows) or owner's name contains it. Each one's ID, name, status, the person's role on it, who owns it, where it answers, and whether they can change its settings (owners only). " +
+    "Given `search`, those whose name, short name (the one its site's header shows) or owner's name contains it. Each one's ID, name, short name, status, the person's role on it, who owns it, where it answers, and whether they can change its settings (owners only). " +
     "A community's settings are evidenceLibraries/assistant:draft; putting a running community's draft live is evidenceLibraries/assistant:putLive.",
   args: { cursor: v.optional(v.union(v.string(), v.null())), search: v.optional(v.union(v.string(), v.null())) },
   returns: assistantLibrariesValidator,
@@ -98,7 +98,7 @@ export const librariesAction = defineUserQuery({
       ...(workspace?.kind === "organization" ? { organization: workspace.organizationId } : {}),
     });
     return {
-      libraries: read.page.map((library) => ({ libraryId: library._id, name: library.name, status: library.status, role: library.role, owner: library.organization.name, address: library.publicAddress, editable: library.role === "owner" })),
+      libraries: read.page.map((library) => ({ libraryId: library._id, name: library.name, shortName: library.card.shortName, status: library.status, role: library.role, owner: library.organization.name, address: library.publicAddress, editable: library.role === "owner" })),
       ...(read.isDone ? {} : { cursor: read.continueCursor }),
     };
   },

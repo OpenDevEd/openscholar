@@ -10,7 +10,7 @@ import {
 } from "../../tests/helpers/evidence-library-setup-fixture";
 
 // A community that has never gone live has nothing on its card yet.
-const NO_CARD_FACTS = { tagline: null, accentColor: null, records: null, countries: [], people: null, liveAt: null, publishedAt: null };
+const NO_CARD_FACTS = { shortName: null, tagline: null, accentColor: null, records: null, countries: [], people: null, liveAt: null, publishedAt: null };
 
 describe("library overviews", () => {
   beforeEach(() => {
@@ -180,7 +180,7 @@ describe("library overviews", () => {
       { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
 
-    expect(overviews[0]?.card).toEqual({ tagline: "Adaptation studies", accentColor: null, records: 1200, people: 4, countries: ["ke", "et"], liveAt: 1_000, publishedAt: 2_000 });
+    expect(overviews[0]?.card).toEqual({ shortName: null, tagline: "Adaptation studies", accentColor: null, records: 1200, people: 4, countries: ["ke", "et"], liveAt: 1_000, publishedAt: 2_000 });
   });
 
   it("keeps a deleting library listable after its draft is removed", async () => {

@@ -29,6 +29,9 @@ describe("an Evidence Library's draft, for the assistant", () => {
   it("lists the person's libraries and reads one's draft as its owner, from a chat in any workspace they're in", async () => {
     const { t, as, libraryId } = await setup();
     expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, as)).toEqual({ libraries: [expect.objectContaining({ libraryId, editable: true })] });
+    // Asked for by the short name its live site shows, it is found and says that name, so the assistant knows it's the one meant.
+    await t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { card: { name: "Climate Evidence", shortName: "Climate QA" } }));
+    expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, { ...as, search: "climate qa" })).toEqual({ libraries: [expect.objectContaining({ libraryId, shortName: "Climate QA" })] });
     const draft = await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["identity"] });
     expect(draft).toMatchObject({ libraryId, editable: true, sections: [{ sectionKey: "identity" }] });
     // From their own workspace's chat too, as their Communities page there lists it: their role decides, not the workspace (OS-28).

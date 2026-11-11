@@ -50,6 +50,7 @@ export async function ownerName(ctx: Pick<QueryCtx, "db">, owner: LibraryOwner) 
 
 /** What a community's card shows from its own row (./validators.ts cardFactsValidator). */
 export const cardFacts = (library: Doc<"evidenceLibraries">) => ({
+  shortName: library.card?.shortName ?? null,
   tagline: library.card?.tagline ?? library.card?.description ?? null,
   accentColor: library.card?.accentColor ?? null,
   records: library.records ?? null,
