@@ -917,19 +917,33 @@ function Overview({ series, reviewed, price, onStart }: { series: string; /** Wh
 function KeptNotice({ onReadAgain }: { onReadAgain: () => Promise<null> }) {
   const t = useTranslations("publishReports.flow");
   const [reading, read] = useTransition();
+  // Asked first: the details shown go, with whatever was typed into them.
+  const [asking, setAsking] = useState(false);
   return (
     <div role="status" className="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-2xl bg-inset px-4 py-3 text-sm">
       <p className="flex min-w-0 flex-1 basis-72 items-start gap-2.5">
         <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <span className="min-w-0">{t("keptDetails")}</span>
       </p>
-      <Button size="sm" variant="outline" className="relative ms-auto" disabled={reading} onClick={() => read(() => onReadAgain().then(() => {}, said(t("readAgainFailed"))))}>
+      <Button size="sm" variant="outline" className="relative ms-auto" disabled={reading} onClick={() => setAsking(true)}>
         <Working busy={reading}>
           <span className="flex items-center gap-2">
             <RotateCcw /> {t("readAgain")}
           </span>
         </Working>
       </Button>
+      <AlertDialog open={asking} onOpenChange={setAsking}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("readAgainTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("readAgainBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("readAgainKeep")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => read(() => onReadAgain().then(() => {}, said(t("readAgainFailed"))))}>{t("readAgain")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
