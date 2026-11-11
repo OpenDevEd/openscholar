@@ -123,6 +123,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                   </label>
                 </PopoverAnchor>
                 <PopoverContent
+                  aria-label={t("addPeople")}
                   align="start"
                   // Focus stays in the box, which steps through the list with the arrow keys.
                   onOpenAutoFocus={(e) => e.preventDefault()}

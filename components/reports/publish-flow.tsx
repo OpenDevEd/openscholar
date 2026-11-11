@@ -5,7 +5,7 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -393,12 +393,27 @@ function Screens({ basics, report, starts, terms, shared, workspaceId, fresh, se
   const live = report?.step === "done" && report.status === "live";
   // A first run reads a report at its details; a run on changes reads a live one, which stays live meanwhile.
   const busy = (report?.step === "details" || live) && (starting || (running && !(live && correcting && typing)));
+  // A new screen replaces what had the focus, which then falls to the page: its heading takes it instead, so a
+  // keyboard carries on from there and a screen reader says where it now is. Not on the page's first screen.
+  const shown = useRef(false);
+  const toHeading = useCallback((node: HTMLDivElement | null) => {
+    if (!node) return;
+    if (!shown.current) {
+      shown.current = true;
+      return;
+    }
+    const heading = node.querySelector("h2");
+    // Only focus the old screen lost, which has fallen to the page: someone typing elsewhere, in the assistant say, keeps theirs.
+    if (!heading || (document.activeElement && document.activeElement !== document.body)) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  }, []);
   const screen = !report ? "agreement" : !report.mine ? "watching" : busy ? "running" : report.step !== "done" ? report.step : !live ? "checks" : correcting ? "correct" : report.correction ? "changes" : "live";
   return (
     <AutoHeight>
       {/* The first screen comes in too: it follows the page's loading frame, and would otherwise pop in over it. */}
       <AnimatePresence mode="wait">
-        <motion.div key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
+        <motion.div ref={toHeading} key={`${report?.key ?? "new"}:${screen}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.25, ease: EASE }}>
           {!report ? (
             <AgreementStep
               basics={basics}
