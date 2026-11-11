@@ -6,6 +6,7 @@ import { startsLeft } from "./limits";
 import { activate, atDetails, checked, details, passed, read, refused, row, setup, sign } from "./reports.test-support";
 import { sameTitle } from "./published";
 import { purgeWorkspace } from "../workspaces/purge";
+import { ensureWorkspace } from "../workspaces/create";
 
 describe("starting a report", () => {
   it("reserves a key and a DOI, and counts against the workspace's day", async () => {
@@ -39,6 +40,21 @@ describe("starting a report", () => {
     await world.author.mutation(api.reports.flow.discard, { workspaceId: world.own, key });
     expect(await world.author.query(api.reports.flow.get, { workspaceId: world.own, key })).toBeNull();
     await expect(sign(world.author, world.own)).rejects.toMatchObject(refused("FORBIDDEN"));
+  });
+});
+
+describe("reports that wait in a person's other workspaces", () => {
+  it("tells an admin of the lab, from their own workspace, and tells a member nothing", async () => {
+    const world = await setup();
+    await checked(world, [passed("byline"), passed("harm")], world.member, world.lab);
+    const ownOf = (clerkId: string) => world.t.run(async (ctx) => ensureWorkspace(ctx, { kind: "personal", userId: (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId)).unique())!._id }));
+    expect(await world.orgAdmin.query(api.reports.flow.waitingElsewhere, { workspaceId: await ownOf("orgadmin") })).toEqual([{ name: "Learning Lab", slug: "lab", ready: 1 }]);
+    // In the lab itself its own Publish says so, and a member activates nothing.
+    expect(await world.orgAdmin.query(api.reports.flow.waitingElsewhere, { workspaceId: world.lab })).toEqual([]);
+    expect(await world.member.query(api.reports.flow.waitingElsewhere, { workspaceId: await ownOf("member") })).toEqual([]);
+    // A person's own ready report is said in the lab, where they are only a member.
+    await checked(world, [passed("byline"), passed("harm")]);
+    expect(await world.author.query(api.reports.flow.waitingElsewhere, { workspaceId: world.lab })).toEqual([{ name: "", slug: null, ready: 1 }]);
   });
 });
 
