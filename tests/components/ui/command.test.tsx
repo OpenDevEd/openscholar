@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import { Command, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 afterEach(cleanup);
 
@@ -25,4 +25,18 @@ it("lists a long pasted search at once when the list doesn't filter", () => {
   render(<Picker />);
   fireEvent.change(screen.getByRole("combobox"), { target: { value: pasted } });
   expect(screen.getByRole("option").textContent).toBe(pasted);
+});
+
+// A list holds only options (axe's aria-required-children): its "type to search" line is one that can't be picked.
+it("gives an empty list's message to screen readers as an option that can't be picked", () => {
+  render(
+    <Command shouldFilter={false}>
+      <CommandInput />
+      <CommandList>
+        <CommandEmpty>Type to search</CommandEmpty>
+      </CommandList>
+    </Command>,
+  );
+  const message = screen.getByRole("option", { name: "Type to search" });
+  expect(message.getAttribute("aria-disabled")).toBe("true");
 });

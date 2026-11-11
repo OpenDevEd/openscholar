@@ -78,14 +78,17 @@ function CommandList({
 }
 
 function CommandEmpty({
+  children,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Empty>) {
   return (
-    <CommandPrimitive.Empty
-      data-slot="command-empty"
-      className="py-6 text-center text-sm"
-      {...props}
-    />
+    <CommandPrimitive.Empty data-slot="command-empty" className="py-6 text-center text-sm" {...props}>
+      {/* It sits in the list, where a screen reader expects only options: one it can read and not pick. cmdk makes
+          the element itself presentational, so the option is inside it. */}
+      <div role="option" aria-disabled="true" aria-selected="false">
+        {children}
+      </div>
+    </CommandPrimitive.Empty>
   )
 }
 

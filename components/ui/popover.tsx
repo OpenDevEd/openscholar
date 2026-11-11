@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
 
 const PopoverIsModal = React.createContext(false)
+// The trigger's id: an open popover is a dialog, named after what opened it ("Cite", "Funders") unless it names itself.
+const PopoverTriggerId = React.createContext<string | undefined>(undefined)
 
 const stopPropagation = (event: React.SyntheticEvent) => event.stopPropagation()
 // A dialog's scroll lock cancels these once they reach the document, and a popover's portal sits outside the dialog.
@@ -16,9 +18,12 @@ const outOfDialogLock = { onWheel: stopPropagation, onTouchMove: stopPropagation
 function Popover({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+  const triggerId = React.useId()
   return (
     <PopoverIsModal.Provider value={props.modal ?? false}>
-      <TrackOpen {...props}>{(root) => <PopoverPrimitive.Root data-slot="popover" {...props} {...root} />}</TrackOpen>
+      <PopoverTriggerId.Provider value={triggerId}>
+        <TrackOpen {...props}>{(root) => <PopoverPrimitive.Root data-slot="popover" {...props} {...root} />}</TrackOpen>
+      </PopoverTriggerId.Provider>
     </PopoverIsModal.Provider>
   )
 }
@@ -26,7 +31,8 @@ function Popover({
 function PopoverTrigger({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
+  const triggerId = React.useContext(PopoverTriggerId)
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" id={triggerId} {...props} />
 }
 
 function PopoverContent({
@@ -39,6 +45,9 @@ function PopoverContent({
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   const closing = useClosing()
   const modal = React.useContext(PopoverIsModal)
+  const triggerId = React.useContext(PopoverTriggerId)
+  // A popover held to an anchor instead of a trigger has nothing to be named after: it names itself (aria-label).
+  const named = props["aria-label"] || props["aria-labelledby"] ? undefined : triggerId
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -52,6 +61,7 @@ function PopoverContent({
           className
         )}
         {...(modal ? undefined : outOfDialogLock)}
+        aria-labelledby={named}
         {...props}
       >
         {props.asChild ? children : <HoldWhileClosing>{children}</HoldWhileClosing>}
