@@ -51,13 +51,15 @@ export async function stripeCredit(customer: string): Promise<number | undefined
 /**
  * Makes the card saved on Stripe's page for saving a card (Checkout `session`) the one the customer is charged. Autumn
  * makes such a card the default only when there was none, so a card saved to replace another would never be charged.
- * Only a session of this customer's counts. A failure is logged and leaves the cards as they were.
+ * Only a session of this customer's counts, and only for the card saved last: the way back from an older session,
+ * opened again, never brings back a card since replaced. A failure is logged and leaves the cards as they were.
  */
 export async function defaultToSavedCard(customer: string, session: string) {
   try {
-    const read = await stripe(`checkout/sessions/${encodeURIComponent(session)}?expand[]=setup_intent`);
+    const [read, cards] = await Promise.all([stripe(`checkout/sessions/${encodeURIComponent(session)}?expand[]=setup_intent`), stripe(`customers/${encodeURIComponent(customer)}/payment_methods?type=card&limit=1`)]);
     const intent = read.setup_intent as { status?: string; payment_method?: string | null } | null;
-    if (read.customer !== customer || read.mode !== "setup" || intent?.status !== "succeeded" || !intent.payment_method) return;
+    const newest = (cards.data as Array<{ id: string }> | undefined)?.[0]?.id;
+    if (read.customer !== customer || read.mode !== "setup" || intent?.status !== "succeeded" || !intent.payment_method || intent.payment_method !== newest) return;
     await stripe(`customers/${encodeURIComponent(customer)}`, { form: { "invoice_settings[default_payment_method]": intent.payment_method } });
   } catch (error) {
     console.error(JSON.stringify({ event: "saved-card-not-default", customer, session, error: String(error).slice(0, 400) }));

@@ -32,7 +32,12 @@ const LLM_TEXT = 80_000;
 const COMMUNITIES_SEARCHED = 20;
 
 /** Text with every space and line break taken out, and in lower case, for finding a line however the PDF wrapped it. */
-const squeezed = (words: string) => words.replace(/\s+/g, "").toLowerCase();
+export const squeezed = (words: string) => words.replace(/\s+/g, "").toLowerCase();
+/** Whether `text` has `line` whole: not run on into more letters or digits, as a DOI one digit longer would. */
+export const carries = (text: string, line: string) => {
+  for (let at = text.indexOf(line); at !== -1; at = text.indexOf(line, at + 1)) if (!/[a-z0-9]/.test(text[at + line.length] ?? "")) return true;
+  return false;
+};
 
 /** How sure the model is of yes: its confidence in yes, or the other side of its confidence in no; unclear is neither. */
 const sureOfYes = (answer: Answer, confidence: number) => (answer === "yes" ? confidence : answer === "no" ? 1 - confidence : 0.5);
@@ -56,7 +61,7 @@ async function runCheck(check: Check, on: CheckModel & { name: string }, report:
   }
   // The byline is text the PDF has or hasn't: found word for word (line breaks and spacing aside), it passes without a
   // model, whose confidence in a line that's plainly there can sit either side of the threshold.
-  if (check.id === "byline" && squeezed(text).includes(squeezed(report.byline))) {
+  if (check.id === "byline" && carries(squeezed(text), squeezed(report.byline))) {
     return { ...base, answer: "yes", confidence: 1, threshold: check.threshold, reasoning: "The PDF's text has the line word for word.", pass: true };
   }
   const question = fill(check.question);

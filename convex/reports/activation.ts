@@ -497,8 +497,10 @@ export const settle = action({
   returns: v.null(),
   handler: async (ctx, { workspaceId, card, session }): Promise<null> => {
     await refuseApps(ctx);
-    await actorIn(ctx, workspaceId);
-    if (card) await refreshAccount(ctx, workspaceId, { card: true, ...(session?.startsWith("cs_") && { savedIn: session }) });
+    const actor = await actorIn(ctx, workspaceId);
+    // Only an admin changes which card the workspace is charged with, as only an admin saves one.
+    const savedIn = actor.role === "admin" && session?.startsWith("cs_") ? session : undefined;
+    if (card) await refreshAccount(ctx, workspaceId, { card: true, ...(savedIn && { savedIn }) });
     await settlePending(ctx, workspaceId);
     return null;
   },
