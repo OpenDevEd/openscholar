@@ -223,7 +223,7 @@ export function PublicationForm({
                       autoComplete="new-password"
                       value={credentials.zenodoToken ?? ""}
                       placeholder={
-                        saved.settings.zenodo.mode === "custom"
+                        saved.custom.zenodoToken
                           ? storedHint
                           : undefined
                       }
@@ -329,15 +329,16 @@ export function PublicationForm({
                 provider="Crossref"
                 value={settings.crossref.mode as ActiveMode}
                 onChange={(mode) => {
+                  // The own account's details come back as they were kept; a first switch starts them empty.
                   updateCrossref({
                     mode,
                     ...(mode === "custom"
-                      ? {
+                      ? (saved.custom.crossref ?? {
                           prefix: "",
                           registrant: "",
                           depositorName: "",
                           email: "",
-                        }
+                        })
                       : {}),
                   });
                   if (mode === "custom" && settings.zenodo.mode === "sandbox")
@@ -352,7 +353,7 @@ export function PublicationForm({
                         autoComplete="off"
                         value={credentials.crossrefLoginId ?? ""}
                         placeholder={
-                          saved.settings.crossref.mode === "custom"
+                          saved.custom.crossrefLogin
                             ? storedHint
                             : "name@example.org/role"
                         }
@@ -370,7 +371,7 @@ export function PublicationForm({
                         autoComplete="new-password"
                         value={credentials.crossrefPassword ?? ""}
                         placeholder={
-                          saved.settings.crossref.mode === "custom"
+                          saved.custom.crossrefLogin
                             ? storedHint
                             : undefined
                         }

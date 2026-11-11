@@ -31,8 +31,15 @@ export const save = action({
       if (asked.crossref.mode === "off") asked.zenodo.defaultIdentifierPolicy = "mint-zenodo";
       asked.crossref.suffixNamespace = asked.crossref.suffixNamespace.trim().toLowerCase();
       const previous: PublicationSecrets = kept.encryptedCredentials ? JSON.parse(decrypt(kept.encryptedCredentials, encryptionKey)) : {};
-      const { settings, credentials } = await verifiedPublication({ settings: asked, credentials: args.credentials }, { settings: kept.settings, credentials: previous }, { namespace: NAMESPACE, crossrefAlone: true });
-      await ctx.runMutation(internal.reports.publication.saveVerified, { settings, encryptedCredentials: encrypt(JSON.stringify(credentials), encryptionKey), expectedUpdatedAt: args.expectedUpdatedAt });
+      const keptCustom = kept.encryptedCustomCredentials ? { ...(kept.customAccounts?.crossref && { crossref: kept.customAccounts.crossref }), credentials: JSON.parse(decrypt(kept.encryptedCustomCredentials, encryptionKey)) as PublicationSecrets } : undefined;
+      const { settings, credentials, custom } = await verifiedPublication({ settings: asked, credentials: args.credentials }, { settings: kept.settings, credentials: previous, ...(keptCustom && { custom: keptCustom }) }, { namespace: NAMESPACE, crossrefAlone: true });
+      await ctx.runMutation(internal.reports.publication.saveVerified, {
+        settings,
+        encryptedCredentials: encrypt(JSON.stringify(credentials), encryptionKey),
+        customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId },
+        encryptedCustomCredentials: encrypt(JSON.stringify(custom.credentials), encryptionKey),
+        expectedUpdatedAt: args.expectedUpdatedAt,
+      });
       return null;
     } catch (error) {
       if (error instanceof ConvexError) throw error;

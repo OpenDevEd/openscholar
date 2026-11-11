@@ -210,7 +210,7 @@ function SettingsView({ settings, limits, price, autumn }: { settings: Settings;
         <div className="space-y-5 rounded-2xl border border-border-subtle p-4">
           <PublicationForm
             key={settings.publicationSavedAt}
-            saved={{ settings: settings.publication, updatedAt: settings.publicationSavedAt, verifiedAt: settings.publicationSavedAt }}
+            saved={{ settings: settings.publication, updatedAt: settings.publicationSavedAt, verifiedAt: settings.publicationSavedAt, custom: settings.publicationCustom }}
             crossrefAlone
             words={{
               zenodoHint: t("zenodoHint"),

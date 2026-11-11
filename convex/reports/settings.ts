@@ -10,7 +10,7 @@ import { createError } from "../lib/errors";
 import { modelSummary, slugPick } from "../ai/serverModel";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
-import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
+import { keptCustomOf, keptCustomValidator, publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { AGREEMENT_MAX, CHECK_NAME_MAX, CHECK_TEXT_MAX, MAX_CHECKS, REPORT_DEFAULTS, SERIES_TEXT_MAX, canRegister, dailyLimit, isIssn, type Check } from "../../lib/reports/settings";
 import { checkNamesValidator, checkSummariesValidator, seriesValidator } from "./validators";
@@ -74,6 +74,7 @@ export const admin = query({
     series: seriesValidator,
     publication: publicationSettingsValidator,
     publicationSavedAt: v.union(v.number(), v.null()),
+    publicationCustom: keptCustomValidator,
     perDay: v.number(),
     orgPerDay: v.number(),
     metadataModel: v.union(modelSummaryValidator, v.null()),
@@ -93,6 +94,7 @@ export const admin = query({
       series: settings.series,
       publication: settings.publication,
       publicationSavedAt: settings.row?.publicationSavedAt ?? null,
+      publicationCustom: keptCustomOf(settings.publication, settings.row?.customAccounts),
       perDay: settings.perDay,
       orgPerDay: settings.orgPerDay,
       metadataModel: await modelSummary(ctx, reader?.modelId ?? null),
