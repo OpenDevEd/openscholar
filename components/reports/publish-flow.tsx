@@ -5,7 +5,8 @@
 // review. Everything shown is read live from Convex (convex/reports/flow.ts), so a reload, another tab, a reviewer's
 // word or a changed setting all land on the page by themselves.
 
-import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition, type ReactNode, useSyncExternalStore } from "react";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -108,6 +109,74 @@ function copy(text: string, copied: string) {
 const BYLINE_BY = ["self", "added"] as const;
 type BylineBy = (typeof BYLINE_BY)[number];
 
+/** A report's steps as the address names them, in order: the DOI is the address with no step. */
+const TRAIL = ["doi", "upload", "details", "checks"] as const;
+
+/** The step of `key`'s report that an address stands at; null for another report's address, or another page's. */
+function stepIn(url: URL, key: string) {
+  if (url.pathname !== window.location.pathname || url.searchParams.get("report") !== key) return null;
+  return TRAIL.find((step) => step === url.searchParams.get("step")) ?? "doi";
+}
+
+/** Whether a report can be sent to a step from where it stands, as the server decides (convex/reports/flow.ts `goTo`). */
+function opens(report: Report, step: BackStep, humanReview: boolean) {
+  if (!report.mine || report.run || (report.step === "done" && stageOf(report, humanReview) !== "failed")) return false;
+  return step !== "details" || (!!report.metadata && report.pdf?.pages !== undefined);
+}
+
+type HistoryEntry = { index: number; key: string; url: string | null };
+type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): HistoryEntry[] };
+/** The browser's history, where it can be asked what its entries are (the Navigation API). */
+const historyOf = () => (window as { navigation?: Navigation }).navigation;
+
+/**
+ * Whether the browser says when its history moves, and where from (the Navigation API's `currententrychange`). One
+ * engine has the API's object and never fires the event, so it is believed only once it has been heard: the page's
+ * own first step, or the app's own upkeep of the entry it is on, is enough.
+ */
+let heard = false;
+if (typeof window !== "undefined") historyOf()?.addEventListener("currententrychange", () => void (heard = true));
+const hearsHistory = () => heard;
+
+/** The browser's own name for the history entry the page is at, which changes as the history moves; none where it isn't said. */
+const watchEntry = (wake: () => void) => {
+  const navigation = historyOf();
+  navigation?.addEventListener("currententrychange", wake);
+  return () => navigation?.removeEventListener("currententrychange", wake);
+};
+const entryKey = () => historyOf()?.currentEntry?.key ?? "";
+type EntryChange = Event & { navigationType: string | null; from: HistoryEntry };
+
+/**
+ * Back and Forward between a report's steps. Each step is an entry in the browser's history that names it, and where
+ * a report stands is the report's own, so a step the browser goes to is one the report is sent to: Back from the
+ * details is the details' own Back button. An entry for a step the report can't open again (it passed its checks),
+ * or for the one it already shows, is gone past the way the person was going, so no press leaves the screen as it was.
+ */
+function useStepHistory(report: Report | null, humanReview: boolean, send: (step: BackStep) => void) {
+  // The browser's history is the outside system: it says where a step came from only through the Navigation API.
+  useEffect(() => {
+    const navigation = historyOf();
+    if (!report || !navigation) return;
+    const onChange = (event: Event) => {
+      const { navigationType, from } = event as EntryChange;
+      if (navigationType !== "traverse" || !from.url || !navigation.currentEntry) return;
+      const was = stepIn(new URL(from.url), report.key);
+      const to = stepIn(new URL(window.location.href), report.key);
+      // Another report, another page, or the same step with something else opened over it: not a step between steps.
+      if (!was || !to || was === to) return;
+      // The step on the screen as the browser left it. Before its PDF is the report's, the DOI and the upload are two
+      // screens of one state, which the address picks.
+      const shown = report.step === "done" ? "checks" : report.step === "doi" && was !== "doi" ? "upload" : report.step;
+      if (to !== shown && report.step === "doi" && (to === "doi" || to === "upload")) return;
+      if (to !== shown && to !== "checks" && opens(report, to, humanReview)) send(to);
+      else window.history.go(Math.sign(navigation.currentEntry.index - from.index));
+    };
+    navigation.addEventListener("currententrychange", onChange);
+    return () => navigation.removeEventListener("currententrychange", onChange);
+  }, [report, humanReview, send]);
+}
+
 /** Where the Publish page is, kept in its address so a link, a reload and the back button all land on it. */
 const PLACE = {
   view: parseAsStringLiteral(["new", "reports"] as const).withDefault("new"),
@@ -115,8 +184,8 @@ const PLACE = {
   report: parseAsString,
   /** A live report's details open to be corrected. */
   correct: parseAsBoolean.withDefault(false),
-  /** A report still without its PDF, opened at its upload: before that it shows its DOI. */
-  step: parseAsStringLiteral(["upload"] as const),
+  /** The step the address stands at: the agreement before a report has one, then the report's own (`useStepHistory`). */
+  step: parseAsStringLiteral(["agreement", "upload", "details", "checks"] as const),
   show: parseAsStringLiteral(SHOWS).withDefault("all"),
   page: parseAsInteger.withDefault(1),
   /** Who adds the byline to the report shown, as chosen on the way to its upload. It is one report's choice: another report starts without one. */
@@ -154,7 +223,12 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const bare = asked === null && view !== "reports";
   const [began, setBegan] = useState<typeof workspaceId>(undefined);
   if (bare ? began !== workspaceId && counts?.all === 0 : began !== undefined) setBegan(bare ? workspaceId : undefined);
-  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0);
+  // A report signed here took its agreement's place in the history, and the Prepare it was started from is still
+  // the entry behind it. Back from its DOI lands there, on a report already started: that entry shows the list
+  // from then on, never a second new report nobody asked for. Entries are told apart by the browser's own key.
+  const [used, setUsed] = useState<string[]>([]);
+  const entry = useSyncExternalStore(watchEntry, entryKey, () => "");
+  const listed = view === "reports" || (bare && began !== workspaceId && (counts?.all ?? 0) > 0) || used.includes(entry);
   const shownKey = listed ? null : (asked ?? "new");
   const { data: found } = useProtectedQuery(api.reports.flow.get, shownKey && shownKey !== "new" ? inWorkspace(workspaceId, { key: shownKey }) : "skip");
   // What activating the shown report takes, read with it so its screen opens with the card and the price in place.
@@ -167,6 +241,16 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   if (list && list !== lastList) setLastList(list);
 
   const discard = useMutation(api.reports.flow.discard);
+  // Said at once, before the answer is back: the screen follows the press, and a second press of Back or Forward
+  // right behind it starts from where the first one led.
+  const goTo = useMutation(api.reports.flow.goTo).withOptimisticUpdate((store, { key, step }) => {
+    for (const { args, value } of store.getAllQueries(api.reports.flow.get)) {
+      if (value && "report" in value && value.report.key === key) store.setQuery(api.reports.flow.get, args, { ...value, report: { ...value.report, step } });
+    }
+  });
+  const saved = found && "report" in found ? found.report : null;
+  const send = (step: BackStep) => void (saved && workspaceId && goTo({ workspaceId, key: saved.key, step }).catch(said(t("stepFailed"))));
+  useStepHistory(saved, basics?.humanReview ?? false, send);
   // What just happened here and now, signing or activating: only then does its step play its moment. A step opened
   // any other way is already settled.
   const [fresh, setFresh] = useState<{ key: string; step: "doi" | "live" } | null>(null);
@@ -183,8 +267,6 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   const listing = listed || opening;
 
   const signedOut = isLoaded && !isSignedIn;
-  // Prepare, the page before the agreement, has been read and left for the agreement.
-  const [prepared, setPrepared] = useState(false);
   // A link to a report or to the list is its workspace's to open: signing in comes back to it.
   if (signedOut && (view === "reports" || (asked !== null && asked !== "new"))) return <RedirectToSignIn />;
   const ready = basics !== undefined && isLoaded && (signedOut || (counts !== undefined && starts !== undefined && workspaceId !== undefined && (listed ? (list ?? lastList) !== undefined : shownKey === "new" || (found !== undefined && (!found || !("report" in found) || terms !== undefined)) || arriving || opening)));
@@ -200,22 +282,45 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
     );
   }
 
-  const saved = found && "report" in found ? found.report : null;
   // Before its PDF is read, a report's DOI and its upload are two screens of one state, so which shows is the
-  // address's: opening the upload is a step forward, and Back from it returns to the DOI.
+  // address's: opening the upload is a step forward, and Back from it returns to the DOI. An address further on
+  // is one the report is on its way to (useStepHistory), and the upload stays up meanwhile.
   // A report back at its DOI with a PDF already attached was sent back there: it shows the DOI.
-  const report = saved?.step === "doi" && at === "upload" ? { ...saved, step: "upload" as const } : saved;
-  // Every new report starts on Prepare, what publishing asks for, then the agreement. Only a signing on its way skips it.
-  const preparing = !report && !prepared && !arriving;
-  // Prepare was read for one report: the next new report starts on it again.
-  if (prepared && (report || listing)) setPrepared(false);
-  // A step the report is sent to is its own from then on, whatever the address said before.
-  const ownStep = () => void (at && setPlace({ step: null }));
+  const report = saved?.step === "doi" && at && at !== "agreement" ? { ...saved, step: "upload" as const } : saved;
+  // Every new report starts on Prepare, what publishing asks for, then the agreement: a step forward in the
+  // browser's history, so Back from the agreement is Prepare. A signing on its way stays on the agreement.
+  const preparing = !report && at !== "agreement" && !arriving;
+  // On to a report's next step: a step forward in the browser's history. Asked for when the work that leads there
+  // is done (a PDF sent, the checks run), which can be after the person has left for another report: then nothing.
+  const stepOn = (step: Exclude<(typeof TRAIL)[number], "doi">) => {
+    setFresh(null);
+    const from = saved && stepIn(new URL(window.location.href), saved.key);
+    if (!from || from === step) return;
+    // The upload is the address's alone. The steps after it are the report's, and Back between them needs the
+    // browser to say where a step came from: without that the upload's step is taken back as the report moves on,
+    // so Back never lands on a step that shows the same screen again.
+    if (step === "upload" || hearsHistory()) go({ step });
+    else if (from !== "doi") up("step");
+  };
+  // To a step the trail or a screen's own button names. Back is the browser's own step back when the entry behind
+  // is that step, and the history then sends the report there; a step opened by a link or a reload moves in place.
+  const toStep = (step: BackStep) => {
+    if (!saved || !report) return;
+    setFresh(null);
+    if (TRAIL.indexOf(step) > TRAIL.indexOf(report.step === "done" ? "checks" : report.step)) {
+      send(step);
+      return stepOn(step as "upload" | "details");
+    }
+    // A step back the address alone makes, or one the history then sends the report to (useStepHistory).
+    if ((saved.step === step || hearsHistory()) && stepBack((behind) => stepIn(behind, saved.key) === step, (between) => stepIn(between, saved.key) !== null)) return;
+    if (saved.step !== step) send(step);
+    void setPlace({ step: step === "doi" ? null : step });
+  };
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
   const missing = !listing && shownKey !== "new" && !report && !arriving;
   const another = () => {
     setFresh(null);
-    go({ view: null, report: "new", correct: null });
+    go({ view: null, report: "new", correct: null, step: null });
   };
   const hasReports = (counts?.all ?? 0) > 0;
   // Publishing switched off stops new reports. One already started keeps its address, and the list stays.
@@ -244,7 +349,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
           </Button>
         ) : undefined
       }
-      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => setPrepared(false)} humanReview={basics.humanReview} workspaceId={workspaceId} onStep={ownStep} onDoi={saved?.step === "doi" && at === "upload" ? () => up("step") : undefined} /> : undefined}
+      intro={!listing && !missing && !closed ? <StepTrail report={report} preparing={preparing} onPrepare={() => up("step")} humanReview={basics.humanReview} onStep={toStep} /> : undefined}
     >
       {listing ? (
         <div className={cn("transition-opacity", (!list || opening) && "opacity-60")} aria-busy={!list || opening || undefined} inert={opening || undefined}>
@@ -318,8 +423,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
               change of screen like any other, and what belongs to one report is put away inside (Screens). */}
           <Screens
             preparing={preparing}
-            onPrepared={() => setPrepared(true)}
-            onUnprepare={() => setPrepared(false)}
+            onPrepared={() => go({ step: "agreement" })}
+            onUnprepare={() => up("step")}
             signed={arriving ? fresh.key : null}
             basics={basics}
             report={report}
@@ -330,19 +435,16 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             fresh={fresh}
             setFresh={setFresh}
             carried={carried}
-            onSigned={(key) => void setPlace({ report: key, byline: null })}
+            onSigned={(key) => {
+              const navigation = hearsHistory() ? historyOf() : undefined;
+              const behind = navigation?.entries()[(navigation.currentEntry?.index ?? 0) - 1];
+              if (behind?.url && withoutKeys(["step"])(new URL(behind.url))) setUsed((keys) => [...keys, behind.key]);
+              void setPlace({ report: key, step: null, byline: null });
+            }}
             onAnother={another}
             correcting={correct}
-            onUpload={() => {
-              // The DOI's moment has played: coming back to it finds it settled.
-              setFresh(null);
-              go({ step: "upload" });
-            }}
-            // With its PDF the report moves on by itself, to its reading and then its details, so the upload's step
-            // in the history is taken back: Back from the details then leaves the report, and never lands on a
-            // step that shows the same screen again.
-            onAttached={() => at && up("step")}
-            onStep={ownStep}
+            onStep={toStep}
+            onMoved={stepOn}
             onCorrect={() => {
               setFresh(null);
               go({ correct: true });
@@ -357,9 +459,8 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
 }
 
 /** The one report's screen, chosen from where the report stands. */
-function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onUpload, onAttached, onStep, onCorrect, onCorrected }: { /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** On from the DOI to the upload, a step in the browser's history. */ onUpload: () => void; /** A PDF was attached at the upload. */ onAttached: () => void; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
+function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, starts, terms, shared, workspaceId, fresh, setFresh, signed, onSigned, onAnother, correcting, onStep, onMoved, onCorrect, onCorrected }: { /** A code quoted again on the way back from Stripe's page, for the report it was applied on. */ carried: (Quote & { key: string }) | null; /** The page before the agreement is open. */ preparing: boolean; onPrepared: () => void; /** Back to Prepare from the agreement. */ onUnprepare: () => void; basics: Basics; report: Report | null; starts: Starts | null; /** What activating the report takes; null before it has one. */ terms: Terms | null; shared: boolean; workspaceId: Id<"workspaces"> | undefined; fresh: { key: string; step: "doi" | "live" } | null; setFresh: (fresh: { key: string; step: "doi" | "live" } | null) => void; /** The report just signed here, while it is on its way. */ signed: string | null; onSigned: (key: string) => void; onAnother: () => void; /** A live report's details are open to be corrected. */ correcting: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void; /** The report is on its way to its next step: from the DOI to the upload, to its details with its PDF sent, to its checks once they have run. */ onMoved: (step: "upload" | "details" | "checks") => void; onCorrect: () => void; /** The form of changes is left: sent, or given up. */ onCorrected: () => void }) {
   const t = useTranslations("publishReports.flow");
-  const goTo = useMutation(api.reports.flow.goTo);
   const readAgain = useMutation(api.reports.flow.readAgain);
   const saveDetails = useMutation(api.reports.flow.saveDetails);
   const requestReview = useMutation(api.reports.flow.requestReview);
@@ -399,11 +500,6 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
   // A change of screen made from the foot of a long form opens the next screen at its top, at once, as a step to
   // another page does. Left to itself the page slid up over a quarter of a second while the tall form closed.
   const toTop = () => window.scrollTo({ top: 0 });
-  const back = (step: BackStep) => {
-    setFresh(null);
-    onStep();
-    if (report) void goTo({ ...here, key: report.key, step }).catch(said(t("stepFailed")));
-  };
   // A run that has gone on too long is given up on here, so its author can run the checks again.
   const runStuck = usePassed(report?.run ? report.run.at + STUCK_MS : undefined);
   const running = !!report?.run && !runStuck;
@@ -452,15 +548,15 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
           ) : busy ? (
             <Checks rows={basics.checks.map((check) => ({ id: check.id, name: check.name, result: report.run?.results.find((result) => result.checkId === check.id) }))} report={null} humanReview={basics.humanReview} />
           ) : report.step === "doi" ? (
-            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={onUpload} />
+            <DoiStep report={report} fresh={fresh?.key === report.key && fresh.step === "doi"} onNext={() => onMoved("upload")} />
           ) : report.step === "upload" ? (
-            <UploadStep report={report} workspaceId={workspaceId!} onAttached={onAttached} onBack={() => back("doi")} onNext={report.pdf?.pages !== undefined && report.metadata ? () => back("details") : undefined} />
+            <UploadStep report={report} workspaceId={workspaceId!} onAttached={() => onMoved("details")} onBack={() => onStep("doi")} onNext={report.pdf?.pages !== undefined && report.metadata ? () => onStep("details") : undefined} />
           ) : report.step === "details" && report.metadata && report.pdf ? (
             <>
-              <PdfNotice trouble={report.pdf.trouble} onUpload={() => back("upload")} />
+              <PdfNotice trouble={report.pdf.trouble} onUpload={() => onStep("upload")} />
               {report.pdf.kept ? <KeptNotice onReadAgain={() => readAgain({ ...here, key: report.key })} /> : null}
               <DetailsStep
-                onBack={() => back("upload")}
+                onBack={() => onStep("upload")}
                 unread={report.pdf.trouble !== undefined}
                 // The details of another PDF are another form.
                 key={report.pdf.at}
@@ -470,6 +566,7 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
                   setStarting(true);
                   try {
                     await runChecks({ ...here, key: report.key, metadata, from: { pdfAt: report.pdf!.at } });
+                    onMoved("checks");
                   } catch (error) {
                     said(t("checksFailed"))(error);
                   } finally {
@@ -561,8 +658,8 @@ function Screens({ carried, preparing, onPrepared, onUnprepare, basics, report, 
               }}
               onAddCard={(code) => addCard({ ...here, key: report.key, ...(code && { code }) }).then((url) => window.location.assign(url))}
               onQuote={(code) => quote({ ...here, key: report.key, code }).then((answer) => ({ code: code.trim(), ...answer }))}
-              onFix={() => back("upload")}
-              onDetails={() => back("details")}
+              onFix={() => onStep("upload")}
+              onDetails={() => onStep("details")}
               onRequestReview={(comment) => requestReview({ ...here, key: report.key, comment }).then(() => undefined)}
               onAnother={basics.open ? onAnother : undefined}
             />
@@ -586,16 +683,15 @@ function usePassed(at: number | undefined) {
 }
 
 /** The six steps as one track that fills as the report moves on. Steps already done can be gone back to until the checks run. */
-function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onStep, onDoi }: { report: Report | null; /** The page before the agreement is open. */ preparing: boolean; /** Back to it from the agreement. */ onPrepare: () => void; humanReview: boolean; workspaceId: Id<"workspaces"> | undefined; /** The report is being sent to a step, which is its own from then on. */ onStep: () => void; /** Back to the DOI is a step back in the browser's history, when the upload was opened from it. */ onDoi?: () => void }) {
+function StepTrail({ report, preparing, onPrepare, humanReview, onStep }: { report: Report | null; /** The page before the agreement is open. */ preparing: boolean; /** Back to it from the agreement. */ onPrepare: () => void; humanReview: boolean; /** To a step already done, or on to the details already read. */ onStep: (step: BackStep) => void }) {
   const reduce = useReducedMotion();
   const t = useTranslations("publishReports.flow");
-  const goTo = useMutation(api.reports.flow.goTo);
   const running = report?.step === "details" && !!report.run;
   const place = running ? CHECKS_AT : placeOf(report, preparing);
   const stage = report?.step === "done" ? stageOf(report, humanReview) : null;
   const failed = stage === "failed" || stage === "declined";
   const waiting = stage === "review";
-  const canGoBack = !!report && !!workspaceId && report.mine && report.step !== "done" && !running;
+  const canGoBack = !!report && report.mine && report.step !== "done" && !running;
   return (
     <div className="px-4 pb-4 pt-5 sm:px-6">
       <ol className="grid grid-cols-7 gap-1 max-sm:flex max-sm:justify-between">
@@ -620,7 +716,7 @@ function StepTrail({ report, preparing, onPrepare, humanReview, workspaceId, onS
           return (
             <li key={s.id} className={cn("min-w-0", current && "max-sm:flex-1")}>
               {clickable ? (
-                <button type="button" onClick={() => (back ? onPrepare() : s.id === "doi" && onDoi ? onDoi() : (onStep(), void goTo({ workspaceId: workspaceId!, key: report!.key, step: s.id as BackStep }).catch(said(t("stepFailed")))))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
+                <button type="button" onClick={() => (back ? onPrepare() : onStep(s.id as BackStep))} className="flex w-full min-w-0 items-center gap-1.5 rounded-md py-1 text-start transition-colors hover:text-primary">
                   {body}
                 </button>
               ) : sealed ? (
@@ -1982,6 +2078,17 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
           </Link>
         </Button>
       </motion.div>
+      {/* A live report is its author's to correct, not to remove: taking one down is asked of us, and this says how. */}
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        {t.rich("takeDown", {
+          email: CONTACT_EMAIL,
+          mail: (chunks) => (
+            <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(report.key)}`} className="underline underline-offset-2 hover:text-foreground">
+              {chunks}
+            </a>
+          ),
+        })}
+      </p>
     </div>
   );
 }

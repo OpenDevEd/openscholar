@@ -7,15 +7,18 @@ type Entries = { currentEntry?: { index: number } | null; entries(): Array<{ url
 
 /**
  * Steps back in the browser's history when the entry behind this one is where closing leads (`leadsTo`), and says
- * whether it did. False where there is no such entry, as after a link or a reload, or no Navigation API to ask: the
- * caller then changes the address in place.
+ * whether it did. Entries in between that `over` allows are passed over, as a report's later steps are on the way
+ * back to an earlier one. False where there is no such entry, as after a link or a reload, or no Navigation API to
+ * ask: the caller then changes the address in place.
  */
-export function stepBack(leadsTo: (behind: URL) => boolean): boolean {
+export function stepBack(leadsTo: (behind: URL) => boolean, over: (between: URL) => boolean = () => false): boolean {
   const navigation = (window as { navigation?: Entries }).navigation;
   const at = navigation?.currentEntry?.index ?? 0;
-  const behind = at > 0 ? navigation!.entries()[at - 1]?.url : null;
-  if (!behind || !leadsTo(new URL(behind))) return false;
-  window.history.back();
+  const urls = navigation?.entries().map((entry) => (entry.url ? new URL(entry.url) : null)) ?? [];
+  let behind = at - 1;
+  while (behind >= 0 && urls[behind] && !leadsTo(urls[behind]!) && over(urls[behind]!)) behind--;
+  if (behind < 0 || !urls[behind] || !leadsTo(urls[behind]!)) return false;
+  window.history.go(behind - at);
   return true;
 }
 
