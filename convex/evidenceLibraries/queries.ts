@@ -427,7 +427,7 @@ export const listLibrariesArgs = {
  * members view them, with the role they were given in one if any (#653). In their own workspace,
  * everything: their own, then each organization's they're in, one after another by name, then the
  * ones shared with them (on the page of an organization they aren't in, its ones shared with them); `from` narrows it to their own (`own`), one workspace's, or the shared ones.
- * Given `search`, those whose name, or whose owner's name, contains it. The cursor names the source
+ * Given `search`, those whose name, short name or owner's name contains it. The cursor names the source
  * the page stopped in and where. The Communities page and the assistant both list them through this.
  */
 export async function readLibraries(ctx: QueryCtx, { paginationOpts, search, organization, from }: ObjectType<typeof listLibrariesArgs>): Promise<{ page: Infer<typeof libraryOverviewValidator>[]; isDone: boolean; continueCursor: string }> {
@@ -446,9 +446,10 @@ export async function readLibraries(ctx: QueryCtx, { paginationOpts, search, org
   const numItems = Math.min(paginationOpts.numItems, LIBRARIES_PAGE_MAX);
   // What the page has read so far: every source of one page shares one allowance of rows.
   let rows = 0;
-  const within = (name: string, ownerName: string) => {
+  // By its name, the short name its live site's header shows (which people call it by), or its owner's name.
+  const within = (library: Doc<"evidenceLibraries">, ownerName: string) => {
     rows++;
-    return !needle || name.toLowerCase().includes(needle) || ownerName.toLowerCase().includes(needle);
+    return !needle || [library.name, library.card?.shortName ?? "", ownerName].some((text) => text.toLowerCase().includes(needle));
   };
   type Read = { page: Infer<typeof libraryOverviewValidator>[]; after: string | null };
   const workspaceSource = (key: string, name: string, workspaceId: Id<"workspaces">, shown: Shown, where: From, roleOf: (library: Doc<"evidenceLibraries">) => Promise<Infer<typeof libraryListRoleValidator>>) => ({
@@ -458,7 +459,7 @@ export async function readLibraries(ctx: QueryCtx, { paginationOpts, search, org
       const read = await stream(ctx.db, schema)
         .query("evidenceLibraries")
         .withIndex("by_workspace", (index) => index.eq("workspaceId", workspaceId))
-        .filterWith(async (library) => within(library.name, shown.name))
+        .filterWith(async (library) => within(library, shown.name))
         .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
       return { page: await Promise.all(read.page.map(async (library) => overviewRow(ctx, library, await roleOf(library), shown, where))), after: read.isDone ? null : read.continueCursor };
     },
@@ -482,7 +483,7 @@ export async function readLibraries(ctx: QueryCtx, { paginationOpts, search, org
               .query("itemAccess")
               .withIndex("by_user_and_kind_and_grantedAt", (index) => index.eq("userId", own.userId).eq("kind", "library"))
               .map(async (grant) => grantedLibrary(ctx, identity.subject, listedIds, grant))
-              .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library.name, granted.shown.name))
+              .filterWith(async (granted) => granted !== null && (!organization || granted.owner.organization?._id === organization) && within(granted.library, granted.shown.name))
               .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, LIBRARY_ROWS_READ - rows) });
             return {
               page: await Promise.all(read.page.map((granted) => overviewRow(ctx, granted!.library, granted!.role, { ...granted!.shown, kind: granted!.owner.organization ? "organization" : "person", colour: granted!.owner.organization?.colour ?? null }, { from: "shared", workspaceId: granted!.library.workspaceId }))),
@@ -513,7 +514,7 @@ export async function readLibraries(ctx: QueryCtx, { paginationOpts, search, org
           sharedRows++;
           return sharedLibrary(ctx, own!.userId, memberOf, grant, dedupe);
         })
-        .filterWith(async (shared) => shared !== null && within(shared.library.name, shared.shown.name))
+        .filterWith(async (shared) => shared !== null && within(shared.library, shared.shown.name))
         .paginate({ cursor, numItems: room, maximumRowsRead: Math.max(1, Math.min(SHARED_ROWS_READ - sharedRows, LIBRARY_ROWS_READ - rows)) });
       return {
         page: await Promise.all(read.page.map((shared) => overviewRow(ctx, shared!.library, shared!.role, { ...shared!.shown, kind: shared!.owner.organization ? "organization" : "person", colour: shared!.owner.organization?.colour ?? null }, { from: "shared", workspaceId: shared!.library.workspaceId }))),
