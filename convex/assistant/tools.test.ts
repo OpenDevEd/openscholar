@@ -635,6 +635,23 @@ describe("the assistant's tools", () => {
     vi.unstubAllEnvs();
   });
 
+  it("tell the model that a place it found no collection by may be a community, and where to look", async () => {
+    const t = convexTest(schema);
+    const { say } = await chatOf(t);
+    const search = (id: string, by: Record<string, unknown>) => calling({ id, name: "run_action", input: { name: "library/collections:listCollections", arguments: { paginationOpts: { cursor: null, numItems: 5 }, ...by } } });
+    mockDoStream.mockImplementationOnce(search("named", { search: "Sources QA" }));
+    mockDoStream.mockImplementationOnce(finishingDoStream(["I'll look at communities."]));
+    await say("Add it to Sources QA");
+    expect(told(1, "named")).toMatchObject({ page: [], note: expect.stringMatching(/evidenceLibraries\/assistant:libraries/) });
+    // Listing them all, with no name asked for, says nothing more.
+    requests.length = 0;
+    mockDoStream.mockImplementationOnce(search("all", {}));
+    mockDoStream.mockImplementationOnce(finishingDoStream(["You have none."]));
+    await say("What collections do I have?");
+    expect(told(1, "all")).toMatchObject({ page: [] });
+    expect(told(1, "all")).not.toHaveProperty("note");
+  });
+
   it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, sayUntilAsked, settled, steps, shown } = await chatOf(t);
