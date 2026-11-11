@@ -14,25 +14,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { locales, type Locale } from "@/i18n/config";
+import { localeNames, locales, type Locale } from "@/i18n/config";
 import { setLocale } from "@/i18n/locale";
 import { TooltipHint } from "@/components/ui/tooltip";
-
-const LOCALE_TO_LABEL_KEY: Record<Locale, string> = {
-  "en-US": "enUS",
-  "en-GB": "enGB",
-  zh: "zh",
-  fr: "fr",
-  hi: "hi",
-  ja: "ja",
-  ar: "ar",
-  sw: "sw",
-  pt: "pt",
-  es: "es",
-  de: "de",
-  af: "af",
-  zu: "zu",
-};
 
 interface LanguageSwitcherProps {
   isCollapsed?: boolean;
@@ -41,8 +25,7 @@ interface LanguageSwitcherProps {
 export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
   const t = useTranslations("common");
   const currentLocale = useLocale() as Locale;
-  const getLocaleLabel = (locale: Locale) =>
-    t(`localeLabels.${LOCALE_TO_LABEL_KEY[locale]}` as "localeLabels.enUS");
+  const getLocaleLabel = (locale: Locale) => localeNames[locale];
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
@@ -130,7 +113,7 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
               whileHover={{ x: 2 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="flex-1 text-start">{getLocaleLabel(locale)}</span>
+              <span lang={locale} className="flex-1 text-start">{getLocaleLabel(locale)}</span>
               <AnimatePresence>
                 {currentLocale === locale && (
                   <motion.div

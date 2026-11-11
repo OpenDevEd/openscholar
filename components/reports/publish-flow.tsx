@@ -124,23 +124,14 @@ type Navigation = EventTarget & { currentEntry: HistoryEntry | null; entries(): 
 /** The browser's history, where it can be asked what its entries are (the Navigation API). */
 const historyOf = () => (window as { navigation?: Navigation }).navigation;
 
-let heard: boolean | undefined;
 /**
  * Whether the browser says when its history moves, and where from (the Navigation API's `currententrychange`). One
- * engine has the API's object and never fires the event, so it is asked once, with a change of entry that changes
- * nothing. Never asked while drawing.
+ * engine has the API's object and never fires the event, so it is believed only once it has been heard: the page's
+ * own first step, or the app's own upkeep of the entry it is on, is enough.
  */
-function hearsHistory() {
-  if (heard !== undefined) return heard;
-  const navigation = historyOf();
-  heard = false;
-  if (!navigation) return false;
-  const hear = () => void (heard = true);
-  navigation.addEventListener("currententrychange", hear);
-  window.history.replaceState(window.history.state, "");
-  navigation.removeEventListener("currententrychange", hear);
-  return heard;
-}
+let heard = false;
+if (typeof window !== "undefined") historyOf()?.addEventListener("currententrychange", () => void (heard = true));
+const hearsHistory = () => heard;
 
 /** The browser's own name for the history entry the page is at, which changes as the history moves; none where it isn't said. */
 const watchEntry = (wake: () => void) => {
@@ -161,7 +152,7 @@ function useStepHistory(report: Report | null, humanReview: boolean, send: (step
   // The browser's history is the outside system: it says where a step came from only through the Navigation API.
   useEffect(() => {
     const navigation = historyOf();
-    if (!report || !navigation || !hearsHistory()) return;
+    if (!report || !navigation) return;
     const onChange = (event: Event) => {
       const { navigationType, from } = event as EntryChange;
       if (navigationType !== "traverse" || !from.url || !navigation.currentEntry) return;
