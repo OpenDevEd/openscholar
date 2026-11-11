@@ -6658,8 +6658,8 @@
       "readyPassed": "Your report passed its checks. Activate it to make its DOI live and open its page.",
       "waiting": "Waiting for review",
       "inReview": "In review",
-      "waitingFlagged": "A check flagged your report, so a reviewer looks at it. You can activate it once they approve it, and you'll hear by email.",
-      "waitingPassed": "Your report passed its checks. You can activate it once a reviewer approves it, and you'll hear by email.",
+      "waitingFlagged": "A check flagged your report, so a reviewer looks at it before it can go live. You'll hear by email, and it waits for you under Publish.",
+      "waitingPassed": "Your report passed its checks. A reviewer now approves it before it can go live. You'll hear by email, and it waits for you under Publish.",
       "withdrawn": "Withdrawn",
       "notPublished": "Not published",
       "declined": "Declined",
@@ -6811,7 +6811,8 @@
         },
         "activate": {
           "title": "Activate",
-          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
+          "body": "Paid with a card, or free with a voucher code. The DOI is registered and the report goes live.",
+          "bodyPriced": "{price} for each report, paid with a card, or free with a voucher code. The DOI is registered and the report goes live."
         }
       }
     },

@@ -19,8 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
  * confirmed goes live, and when Stripe sent the person back (`back`), the workspace's card is read again, the one saved in the Checkout session named (`session`) becoming the one charged. The page still
  * renders if Autumn is slow or down; the webhooks catch up.
  */
-export default async function PublishPage({ params, searchParams }: { params: Promise<{ slug?: string }>; searchParams: Promise<{ report?: string; back?: string; session?: string }> }) {
-  const [{ slug }, { report, back, session }] = await Promise.all([params, searchParams]);
+export default async function PublishPage({ params, searchParams }: { params: Promise<{ slug?: string }>; searchParams: Promise<{ report?: string; back?: string; session?: string; code?: string }> }) {
+  const [{ slug }, { report, back, session, code }] = await Promise.all([params, searchParams]);
+  // A code applied before leaving for Stripe's page comes back in the address: it is quoted here, so the report opens
+  // with it applied and nobody types or applies it a second time. A code that no longer quotes stays typed in its field.
+  let carried: { key: string; code: string; price: number; discount: number; total: number } | null = null;
   if (report || back) {
     const token = (await (await auth()).getToken({ template: "convex" })) ?? undefined;
     if (token) {
@@ -28,11 +31,17 @@ export default async function PublishPage({ params, searchParams }: { params: Pr
         const workspaceId = slug ? await fetchQuery(api.workspaces.queries.bySlug, { slug }, { token }) : await fetchQuery(api.workspaces.queries.personal, {}, { token });
         if (!workspaceId) return;
         await fetchAction(api.reports.activation.settle, { workspaceId, card: back !== undefined, ...(session && { session }) }, { token });
+        if (report && code?.trim()) {
+          carried = await fetchAction(api.reports.activation.quote, { workspaceId, key: report, code }, { token }).then(
+            (quote) => ({ key: report, code: code.trim(), ...quote }),
+            () => null,
+          );
+        }
       };
       await settle().catch((error) => {
         console.error("[publish] couldn't settle the workspace's payments", error);
       });
     }
   }
-  return <PublishFlow />;
+  return <PublishFlow carried={carried} />;
 }
