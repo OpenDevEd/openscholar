@@ -173,9 +173,6 @@ export const sign = workspaceMutation({
     if (!signer) throw createError("VALIDATION_ERROR", "Type your name to sign.");
     if (signer.length > SIGNER_NAME_MAX) throw createError("VALIDATION_ERROR", `Keep your name to ${SIGNER_NAME_MAX} characters.`);
     const { crossref, zenodo } = settings.publication;
-    // ponytail: a report registered with Zenodo alone takes the DOI Zenodo reserves, which the registration slice
-    // (#1205) asks Zenodo for. Until then a report needs Crossref on, whose DOI is known as soon as it has a key.
-    if (crossref.mode === "off") throw createError("FEATURE_DISABLED", "Publishing with a DOI from Zenodo alone isn't open yet.");
     // A DOI this person reserved here and did nothing with is the one they get again: signing twice, as after a
     // reload that lost the first answer, starts one report and uses one of the day's starts.
     const untouched = await untouchedOf(ctx, workspaceId, userId);

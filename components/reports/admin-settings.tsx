@@ -223,7 +223,7 @@ function SettingsView({ settings, limits, price, autumn }: { settings: Settings;
           />
           <p className="flex items-center gap-2 rounded-xl bg-inset px-3 py-2.5 font-mono text-xs text-muted-foreground">
             <Hash className="size-3.5 shrink-0" />
-            <span className="min-w-0 truncate">{sampleDoi ?? t(registers ? "zenodoDoi" : "noDoi")}</span>
+            <span className="min-w-0 truncate">{sampleDoi ?? t("noDoi")}</span>
           </p>
         </div>
       </Zone>
