@@ -201,9 +201,10 @@ export function PublishFlow() {
   // address's: opening the upload is a step forward, and Back from it returns to the DOI.
   // A report back at its DOI with a PDF already attached was sent back there: it shows the DOI.
   const report = saved?.step === "doi" && at === "upload" ? { ...saved, step: "upload" as const } : saved;
-  // A new report starts on Prepare, what publishing asks for, then the agreement. A DOI reserved and left, or a
-  // signing on its way, goes straight to the agreement.
-  const preparing = !report && !prepared && !arriving && !starts?.untouched;
+  // Every new report starts on Prepare, what publishing asks for, then the agreement. Only a signing on its way skips it.
+  const preparing = !report && !prepared && !arriving;
+  // Prepare was read for one report: the next new report starts on it again.
+  if (prepared && (report || listing)) setPrepared(false);
   // A step the report is sent to is its own from then on, whatever the address said before.
   const ownStep = () => void (at && setPlace({ step: null }));
   const elsewhere = found && "elsewhere" in found ? found.elsewhere : null;
