@@ -1514,7 +1514,12 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
                 {t("apply")}
               </Button>
             </div>
-            {wrong ? <p className="text-xs text-destructive">{wrong}</p> : null}
+            {wrong ? (
+              <p className="text-xs text-destructive">{wrong}</p>
+            ) : typed.trim() ? (
+              // Said under the field, not only in Activate's tooltip: a touch screen shows no tooltip on a disabled button.
+              <p className="text-xs text-muted-foreground">{t("applyFirst")}</p>
+            ) : null}
           </form>
         ) : (
           <Button variant="ghost" size="sm" className="-ms-2 text-muted-foreground" onClick={() => setOpen(true)}>
