@@ -37,7 +37,7 @@ describe("paper citations", () => {
     expect(result.citations.apa.text).toContain("Schools in Kenya.");
   });
   it("keeps an Openscholar Report's series through the metadata the Cite menu downloads from", async () => {
-    const report = { ...paper, id: "https://openscholar.ai/papers/R100018", type: "report", doi: "10.53832/openscholar-reports.r100018", primary_location: { source: { id: "", display_name: "Openscholar Reports", type: "repository" } } };
+    const report = { ...paper, id: "https://openscholar.ai/papers/R100018", type: "report", doi: "10.53832/openscholar-reports.r100018", primary_location: { source: { id: "", display_name: "Openscholar Reports", type: "repository" } } } as unknown as Parameters<typeof paperToCitationData>[0];
     const data = await getPaperCitationMetadata(paperToCitationData(report)!);
     expect(data["collection-title"]).toBe("Openscholar Reports");
   });
