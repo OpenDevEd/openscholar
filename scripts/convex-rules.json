@@ -67,6 +67,8 @@
       "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"
     },
     "windows": {
+      "ELSEWHERE_WORKSPACES": "the first organizations a person is in, asked whether a report waits there for them to activate; an admin of more opens the rest to see",
+      "ELSEWHERE_REPORTS": "a workspace's reports that never went live, looked through for the ready ones the person is told of from another workspace; its own Publish page counts them all",
       "OPERATIONS_READ": "a community's latest activations by its owners, read once by the directory backfill for the last that went live; one whose last ten all failed takes its setup's time",
       "SAVED_CHECKS_READ": "the saved update checks marked stale when a release changes channel; one past it stays fresh for at most ten minutes",
       "COUNT_READ": "organizations an admin page counts or a one-off pass switches on; one organization gets a row per customer, and the count says it stops there",

@@ -239,6 +239,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "reports/flow:page": { kind: "other", words: "readReports" },
   "reports/flow:get": { kind: "other", words: "readReports" },
   "reports/flow:counts": { kind: "other", words: "readReports" },
+  "reports/flow:waitingElsewhere": { kind: "other", words: "readReports" },
   "reports/flow:starts": { kind: "other", words: "readReports" },
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */

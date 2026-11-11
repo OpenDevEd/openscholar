@@ -311,10 +311,15 @@ export const autumn = {
   },
 
   /** Stripe's page for saving a card without paying anything (Checkout in setup mode), which comes back to `successUrl`. */
-  setupPayment(customerId: string, successUrl: string) {
-    // Cards only (Apple Pay and Google Pay are cards too): what Stripe's page would also offer, Link and Amazon Pay,
-    // saves a method that isn't a card, which nothing here charges or shows. Link's own button is hidden too.
-    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } } });
+  setupPayment(customerId: string, successUrl: string, note?: string) {
+    // A card typed in, and nothing else. Link and Amazon Pay save a method that isn't a card, which nothing here
+    // charges or shows, and Apple Pay on a computer asks for a phone to scan a code: people took it for a payment and
+    // got stuck. Stripe hides the wallets only through a payment method configuration of the account's
+    // (STRIPE_CARD_ONLY_CONFIG, one per Stripe account); without it the page is cards and their wallets, Link hidden.
+    const only = process.env.STRIPE_CARD_ONLY_CONFIG;
+    const methods = only ? { payment_method_configuration: only } : { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } };
+    // Said above Save, in the person's language: saving a card is not paying.
+    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { ...methods, ...(note ? { custom_text: { submit: { message: note } } } : {}) } });
   },
 
   /**

@@ -508,6 +508,48 @@ export const countsAction = defineUserQuery({
 export const counts = userQuery(countsAction);
 export const countsForAssistant = assistantQuery(countsAction);
 
+/** How many of the person's other workspaces are asked about, and how many unfinished reports are read in each. */
+const ELSEWHERE_WORKSPACES = 20;
+const ELSEWHERE_REPORTS = 200;
+
+/**
+ * The reports that wait on the person in the workspaces they aren't looking at: their own, and each organization
+ * they are an admin of. Someone in their own workspace is told there that their lab's report is ready, and the other
+ * way round, since each workspace's Publish page lists only its own.
+ */
+export const waitingElsewhereAction = defineUserQuery({
+  path: "reports/flow:waitingElsewhere",
+  description:
+    "The person's other workspaces that hold reports ready for them to activate on Openscholar Reports: their own workspace and each organization they are an admin of, " +
+    "leaving out the workspace asked from. It says how many are ready in all (`ready`) and names the first workspace that holds some (`first`): its name, " +
+    "its address (`slug`, none for their own) and how many are ready there. `first` is null when nothing waits.",
+  args: {},
+  returns: v.object({ ready: v.number(), first: v.union(v.null(), v.object({ name: v.string(), slug: v.union(v.string(), v.null()), ready: v.number() })) }),
+  run: async (ctx, { userId, workspaceId }) => {
+    const user = await ctx.db.get("users", userId);
+    if (!user) return { ready: 0, first: null };
+    const { humanReview } = await reportSettings(ctx);
+    // Only reports that never went live can be ready, and a workspace holds few of those.
+    const readyIn = async (id: Id<"workspaces">) =>
+      (await ctx.db.query("reports").withIndex("by_workspaceId_and_activatedAt", (q) => q.eq("workspaceId", id).eq("activatedAt", undefined)).take(ELSEWHERE_REPORTS)).filter((report) => stageOf(report, humanReview) === "ready").length;
+    const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+    // ponytail: the first organizations a person is in are asked about; someone an admin of more than these opens the rest to see.
+    const memberships = (await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).take(ELSEWHERE_WORKSPACES)).filter((membership) => membership.role === "org:admin");
+    const organizations = await Promise.all(
+      memberships.map(async (membership) => {
+        const organization = await ctx.db.get("organizations", membership.organizationId);
+        const workspace = organization?.state === "active" ? await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique() : null;
+        return organization && workspace && workspace._id !== workspaceId ? [{ name: organization.name, slug: organization.slug as string | null, ready: await readyIn(workspace._id) }] : [];
+      }),
+    );
+    const mine = own && own._id !== workspaceId ? [{ name: "", slug: null, ready: await readyIn(own._id) }] : [];
+    const waiting = [...mine, ...organizations.flat()].filter((workspace) => workspace.ready > 0);
+    return { ready: waiting.reduce((sum, workspace) => sum + workspace.ready, 0), first: waiting[0] ?? null };
+  },
+});
+export const waitingElsewhere = userQuery(waitingElsewhereAction, { signedOut: { ready: 0, first: null } });
+export const waitingElsewhereForAssistant = assistantQuery(waitingElsewhereAction);
+
 const reportValidator = v.object({
   ...rowValidator.fields,
   doi: v.string(),
