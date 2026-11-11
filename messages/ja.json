@@ -6887,6 +6887,7 @@
     "orcidDown": "現在 ORCID を検索できません",
     "searching": "ORCID を検索中",
     "nobody": "その名前の人は ORCID にいません",
+    "notOrcid": "この iD には誤った数字があります。orcid.org で確認してください。",
     "noName": "名前なし",
     "noInstitution": "ORCID に所属機関なし",
     "placesMore": "{places}、ほか {more} 件",

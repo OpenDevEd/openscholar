@@ -12,16 +12,19 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { TooltipHint } from "@/components/ui/tooltip";
 import { findOrcid } from "@/app/actions/people-lookup";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
+import { isOrcid } from "@/lib/reports/report";
 import { cn } from "@/lib/utils";
 
-/** An ORCID iD with its check digit right (ISO 7064 11-2), from the iD or its orcid.org address as typed or pasted. */
-export function orcidIn(text: string) {
+/** An ORCID iD as typed or pasted, alone or as its orcid.org address, whether or not its check digit is right. */
+function orcidShaped(text: string) {
   const id = text.trim().replace(/^https?:\/\/(www\.)?orcid\.org\//i, "").toUpperCase();
-  if (!/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(id)) return null;
-  const digits = id.replace(/-/g, "");
-  const total = [...digits.slice(0, 15)].reduce((sum, digit) => (sum + Number(digit)) * 2, 0);
-  const check = (12 - (total % 11)) % 11;
-  return (check === 10 ? "X" : String(check)) === digits[15] ? id : null;
+  return /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(id) ? id : null;
+}
+
+/** An ORCID iD with its check digit right, from the iD or its orcid.org address as typed or pasted. */
+export function orcidIn(text: string) {
+  const id = orcidShaped(text);
+  return id && isOrcid(id) ? id : null;
 }
 
 /** A person's institutions as one short line: the first two, and how many more. */
@@ -43,16 +46,21 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
   const placesOf = usePlacesOf();
   const [search, setSearch] = useState(name.trim());
   const query = useDebouncedValue(search.trim(), 300);
-  const typed = orcidIn(search);
+  const shaped = orcidShaped(search);
+  const typed = shaped && isOrcid(shaped) ? shaped : null;
+  // An iD with a digit wrong is no one's name: it isn't searched for, and the list says so.
+  const mistyped = !!shaped && !typed;
   const at = institutions;
-  const people = useSWR(query && !typed ? ["orcid", query, ...at] : null, () => findOrcid(query, at), { keepPreviousData: true, revalidateOnFocus: false });
+  // Words to look people up by: never an iD, typed now or still in the debounced words.
+  const lookup = query && !shaped && !orcidShaped(query) ? query : "";
+  const people = useSWR(lookup ? ["orcid", lookup, ...at] : null, () => findOrcid(lookup, at), { keepPreviousData: true, revalidateOnFocus: false });
   // The results on screen are for other words, or are being asked again: they wait for the answer to what's typed.
-  const searching = !typed && !!search.trim() && (search.trim() !== query || people.isValidating);
+  const searching = !shaped && !!search.trim() && (search.trim() !== query || people.isValidating);
   // A failed search keeps the last one's people on screen, which are for other words too.
   const stale = searching || (!typed && !!people.error);
   // Someone at one of the person's institutions shows that institution first.
   const theirs = new Set(at.map((name) => name.toLowerCase()));
-  const shown = (query && !typed ? (people.data ?? []) : []).map((person) => ({ ...person, institutions: [...person.institutions].sort((a, b) => Number(theirs.has(b.toLowerCase())) - Number(theirs.has(a.toLowerCase()))) }));
+  const shown = (lookup ? (people.data ?? []) : []).map((person) => ({ ...person, institutions: [...person.institutions].sort((a, b) => Number(theirs.has(b.toLowerCase())) - Number(theirs.has(a.toLowerCase()))) }));
   const groups = [
     { heading: at.length === 1 ? t("atOne", { institution: at[0] }) : t("atTheirs"), people: shown.filter((person) => person.near) },
     { heading: shown.some((person) => person.near) ? t("elsewhere") : t("onOrcid"), people: shown.filter((person) => !person.near) },
@@ -61,7 +69,14 @@ export function OrcidSearch({ name, institutions, current, onPick, onRemove }: {
     <Command shouldFilter={false}>
       <CommandInput value={search} onValueChange={setSearch} placeholder={t("searchPlaceholder")} busy={searching} />
       <CommandList grows>
-        <CommandEmpty>{!search.trim() ? t("typeName") : people.error ? t("orcidDown") : people.isLoading ? t("searching") : t("nobody")}</CommandEmpty>
+        {mistyped ? (
+          // Said whatever else the list holds: Open and Remove stay for an iD already chosen, so this can't be its empty state.
+          <div role="option" aria-disabled="true" aria-selected="false" className="py-6 text-center text-sm">
+            {t("notOrcid")}
+          </div>
+        ) : (
+          <CommandEmpty>{!search.trim() ? t("typeName") : people.error ? t("orcidDown") : searching || people.isLoading ? t("searching") : t("nobody")}</CommandEmpty>
+        )}
         {typed ? (
           <CommandGroup>
             <CommandItem value={`typed ${typed}`} onSelect={() => onPick(typed, "")}>
