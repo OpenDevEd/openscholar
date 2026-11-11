@@ -292,9 +292,9 @@ export const readAgain = workspaceMutation({
     // Back to a PDF just attached, its reading to come: the reading stores its text afresh. It counts as attached now,
     // so a Details form left open in another tab on the kept details is refused when it saves or asks for the checks.
     await forget(ctx, report.pdf.text);
-    const { file, name, bytes } = report.pdf;
+    const { file, name, bytes, bylineBy } = report.pdf;
     const at = Math.max(Date.now(), report.pdf.at + 1);
-    await touch(ctx, report, { pdf: { file, name, bytes, at }, step: "upload" });
+    await touch(ctx, report, { pdf: { file, name, bytes, at, ...(bylineBy && { bylineBy }) }, step: "upload" });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -310,11 +310,12 @@ export const addByline = workspaceMutation({
   handler: async (ctx, actor, { key }) => {
     await refuseApps(ctx);
     const report = await changing(ctx, actor, key);
-    if (report.step !== "upload" || !report.pdf?.lacksByline) throw createError("CONFLICT", MOVED_ON);
+    // Asked from the upload, which an author who went back to the DOI's page reaches again without the report moving.
+    if ((report.step !== "upload" && report.step !== "doi") || !report.pdf?.lacksByline) throw createError("CONFLICT", MOVED_ON);
     await forget(ctx, report.pdf.text);
     const { file, name, bytes } = report.pdf;
     const at = Math.max(Date.now(), report.pdf.at + 1);
-    await touch(ctx, report, { pdf: { file, name, bytes, at, bylineBy: "added" } });
+    await touch(ctx, report, { pdf: { file, name, bytes, at, bylineBy: "added" }, step: "upload" });
     await ctx.scheduler.runAfter(0, internal.reports.reading.read, { reportId: report._id, at });
     return null;
   },
@@ -361,7 +362,8 @@ export const attachPdf = workspaceMutation({
       return refused;
     }
     await forget(ctx, report.pdf?.file, report.pdf?.text, report.cover?.file);
-    const at = Date.now();
+    // Later than the PDF it replaces, even within one millisecond: a reading of that one must never be taken for this one's.
+    const at = Math.max(Date.now(), (report.pdf?.at ?? 0) + 1);
     // The picture of its first page, drawn by the browser that uploaded it. One that is too big or no picture is
     // dropped, and the report keeps its title page.
     const pictured = !!picture && picture.size <= COVER_MAX_BYTES && (picture.contentType === undefined || picture.contentType.startsWith("image/"));

@@ -104,6 +104,10 @@ function copy(text: string, copied: string) {
   void navigator.clipboard.writeText(text).then(() => toast.success(copied));
 }
 
+/** Who puts the line on the PDF: its author, on the cover, or Openscholar, on a last page it adds. */
+const BYLINE_BY = ["self", "added"] as const;
+type BylineBy = (typeof BYLINE_BY)[number];
+
 /** Where the Publish page is, kept in its address so a link, a reload and the back button all land on it. */
 const PLACE = {
   view: parseAsStringLiteral(["new", "reports"] as const).withDefault("new"),
@@ -115,6 +119,8 @@ const PLACE = {
   step: parseAsStringLiteral(["upload"] as const),
   show: parseAsStringLiteral(SHOWS).withDefault("all"),
   page: parseAsInteger.withDefault(1),
+  /** Who adds the byline to the report shown, as chosen on the way to its upload. It is one report's choice: another report starts without one. */
+  byline: parseAsStringLiteral(BYLINE_BY),
 };
 
 export function PublishFlow({ carried = null }: { /** A code applied before the trip to Stripe's page, quoted again by the server for the report it was applied on. */ carried?: (Quote & { key: string }) | null }) {
@@ -129,7 +135,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
   // Moving to another report, view or page of the list is a step forward in the browser's history, so Back returns
   // to where the person was. It is another screen, so it opens at its top, as History's and the library's pages do;
   // the browser puts the place back on the way back.
-  const go = (next: Parameters<typeof setPlace>[0]) => void setPlace(next, { history: "push", scroll: true });
+  const go = (next: Partial<{ [K in keyof typeof PLACE]: ReturnType<(typeof PLACE)[K]["parse"]> | null }>) => void setPlace("report" in next ? { byline: null, ...next } : next, { history: "push", scroll: true });
   // Leaving a screen with its own button is the step back when that step is there (lib/url-state/step-back.ts), so
   // Back afterwards never reopens it; what a link or a reload opened closes in place.
   const up = (...closed: Array<keyof typeof PLACE>) => {
@@ -324,7 +330,7 @@ export function PublishFlow({ carried = null }: { /** A code applied before the 
             fresh={fresh}
             setFresh={setFresh}
             carried={carried}
-            onSigned={(key) => void setPlace({ report: key })}
+            onSigned={(key) => void setPlace({ report: key, byline: null })}
             onAnother={another}
             correcting={correct}
             onUpload={() => {
@@ -862,11 +868,8 @@ function BylineBox({ byline, className }: { byline: string; className?: string }
 }
 
 /** Back and on, at the foot of a step: back to the step before, and on to the next one where it is open. */
-/** Who puts the line on the PDF: its author, on the cover, or Openscholar, on a last page it adds. */
-const BYLINE_BY = ["self", "added"] as const;
-type BylineBy = (typeof BYLINE_BY)[number];
 // Held in the page's address from the DOI's page to the upload, where it is saved with the PDF.
-const useBylineBy = () => useQueryState("byline", parseAsStringLiteral(BYLINE_BY));
+const useBylineBy = () => useQueryState("byline", PLACE.byline);
 
 /**
  * The line, and the choice of who adds it. Neither is chosen for the author: the DOI's page and the upload's both

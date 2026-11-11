@@ -58,10 +58,12 @@ export const read = internalAction({
     // Built from its pieces as the extraction does, so a line break in the PDF is a break, not two words run together.
     let text = opened.pages.map((page) => buildPageTextFromItems(page.items).text).join("\n");
     let pages = opened.totalPages;
+    // A scan holds no text: said to its author as that, whatever is added to the PDF below.
+    const scanned = !text.trim();
     // An author who has Openscholar add the byline gets it on a last page, unless the PDF carries it already. A page
     // that can't be added leaves the PDF as it was, without the line, which the upload then says.
     let withByline: { file: Id<"_storage">; bytes: number } | undefined;
-    if (job.added && text.trim() !== "" && !carries(text, job.line)) {
+    if (job.added && !carries(text, job.line)) {
       try {
         const added = await withBylinePage(new Uint8Array(bytes), job.line);
         withByline = { file: await ctx.storage.store(new Blob([added as Uint8Array<ArrayBuffer>], { type: "application/pdf" })), bytes: added.byteLength };
@@ -75,10 +77,10 @@ export const read = internalAction({
     // The byline is text the PDF has or hasn't, so its author hears now, at the upload, not after the checks. A scan
     // has no text to look in, and says that instead.
     // An author who asked for the page and didn't get it is told so whether or not the byline check is on.
-    const lacksByline = text.trim() !== "" && ((job.byline !== null && !carries(text, job.byline)) || (job.added && !carries(text, job.line)));
+    const lacksByline = (job.byline !== null && !scanned && !carries(text, job.byline)) || (job.added && !carries(text, job.line));
     if (job.kept) {
       // The report keeps the details it has: this PDF gives the checks its text and its pages.
-      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, ...(!text.trim() && { trouble: "textless" as const }), ...(lacksByline && { lacksByline }), ...(withByline && { withByline }) });
+      await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, ...(scanned && { trouble: "textless" as const }), ...(lacksByline && { lacksByline }), ...(withByline && { withByline }) });
       return null;
     }
     let metadata: Metadata | null = null;
@@ -98,7 +100,7 @@ export const read = internalAction({
     // A PDF that names no author is its signer's until they say otherwise.
     if (!details.authors.length) details.authors = [{ name: job.signer, orcid: "", openalexId: null, affiliations: [], corresponding: true, roles: [] }];
     // A scan holds no text for the checks to read, which matters more to its author than a reading that fell short.
-    const trouble = !text.trim() ? ("textless" as const) : metadata ? undefined : ("unread" as const);
+    const trouble = scanned ? ("textless" as const) : metadata ? undefined : ("unread" as const);
     await ctx.runMutation(internal.reports.readingState.finish, { reportId, at, pages, text: textFile, metadata: details, ...(trouble && { trouble }), ...(lacksByline && { lacksByline }), ...(!metadata && { unread: true }), ...(withByline && { withByline }) });
     return null;
   },

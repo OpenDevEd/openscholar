@@ -25,3 +25,9 @@ test("the page added to a PDF carries the byline where the byline check looks fo
   expect(carries(added.text, LINE)).toBe(true);
   expect(added.text).toContain("A report with no byline");
 });
+
+test("a PDF of tiny pages still gets the whole byline", async () => {
+  const doc = await PDFDocument.create();
+  doc.addPage([100, 100]);
+  expect(carries((await read(await withBylinePage(await doc.save(), LINE))).text, LINE)).toBe(true);
+});

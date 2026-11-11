@@ -2,7 +2,8 @@ import { PDFDocument, StandardFonts, rgb } from "@cantoo/pdf-lib";
 
 /**
  * The PDF with one more page at its end that carries `line` as text, for an author who has Openscholar add the
- * byline. The page takes the last page's size, and nothing else in the PDF changes.
+ * byline. The page takes the last page's size, or one large enough for the line when that page is smaller, and
+ * nothing else in the PDF changes.
  * Throws for a PDF pdf-lib can't open, and for a line Helvetica can't write (anything outside Latin script): the
  * caller then tells the author to add the line themselves.
  */
@@ -10,7 +11,10 @@ import { PDFDocument, StandardFonts, rgb } from "@cantoo/pdf-lib";
 // action that calls this. Write the page as an incremental update to the file if that happens.
 export async function withBylinePage(pdf: Uint8Array, line: string): Promise<Uint8Array> {
   const doc = await PDFDocument.load(pdf, { updateMetadata: false });
-  const { width, height } = doc.getPage(doc.getPageCount() - 1).getSize();
+  const last = doc.getPage(doc.getPageCount() - 1).getSize();
+  // Wide enough for a DOI's address on one line and tall enough for the line wrapped under it.
+  const width = Math.max(last.width, 420);
+  const height = Math.max(last.height, 200);
   const margin = Math.min(72, width / 8);
   const size = 11;
   doc.addPage([width, height]).drawText(line, {
