@@ -6689,6 +6689,7 @@
       "startedBy": "{name} empezó este informe. Solo esa persona y los administradores del espacio de trabajo pueden cambiarlo.",
       "startedBySomeone": "Alguien de este espacio de trabajo empezó este informe. Solo esa persona y los administradores del espacio de trabajo pueden cambiarlo.",
       "openPage": "Abrir su página",
+      "takeDown": "Para retirar un informe, escribe a <mail>{email}</mail>.",
       "sentToReviewer": "Enviado a un revisor",
       "requestFailed": "No se pudo enviar la solicitud",
       "reviewIntro": "Un revisor lee tu informe y lo que dijeron las comprobaciones. Pídelo cuando creas que una comprobación se equivocó.",

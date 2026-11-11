@@ -6688,6 +6688,7 @@
       "startedBy": "{name} started this report. Only they and the workspace's admins can change it.",
       "startedBySomeone": "Someone in this workspace started this report. Only they and the workspace's admins can change it.",
       "openPage": "Open its page",
+      "takeDown": "To take a report down, write to <mail>{email}</mail>.",
       "sentToReviewer": "Sent to a reviewer",
       "requestFailed": "The request couldn't be sent",
       "reviewIntro": "A reviewer reads your report and what the checks said. Ask when you think a check got it wrong.",

@@ -165,6 +165,9 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   // Publish, which Openscholar's admins switch on for everyone signed in. Until that is read, it shows as it did last time.
   const livePublishes = useQuery(api.reports.settings.open, {});
   const publishes = livePublishes ?? cached.look?.publish === true;
+  // Reports ready to go live, which only the workspace's admins activate: the count sits on Publish, so an admin
+  // whose member has got one ready hears of it here and not only by email.
+  const toActivate = useProtectedQuery(api.reports.flow.counts, publishes && loaded ? { workspaceId: loaded.workspaceId } : "skip").data?.toActivate;
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
@@ -239,7 +242,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
               {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
               {/* Publish (plans/publish-reports), drawn from the first frame when it showed last time; switched on since, it opens its place. */}
               <AnimatePresence initial={false}>
-                {publishes && signedIn ? <Opening key="publish">{item({ href: "/publish", icon: PublishIcon, label: t("publish"), active: is("/publish") })}</Opening> : null}
+                {publishes && signedIn ? <Opening key="publish">{item({ href: "/publish", icon: PublishIcon, label: t("publish"), active: is("/publish"), badge: toActivate || undefined })}</Opening> : null}
               </AnimatePresence>
               {item({ href: "/history", icon: HistoryIcon, label: tc("history"), active: is("/history") })}
               {item({

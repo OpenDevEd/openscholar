@@ -6689,6 +6689,7 @@
       "startedBy": "{name} het hierdie verslag begin. Net hulle en die werkruimte se administrateurs kan dit verander.",
       "startedBySomeone": "Iemand in hierdie werkruimte het hierdie verslag begin. Net hulle en die werkruimte se administrateurs kan dit verander.",
       "openPage": "Maak sy bladsy oop",
+      "takeDown": "Om 'n verslag te onttrek, skryf aan <mail>{email}</mail>.",
       "sentToReviewer": "Na 'n hersiener gestuur",
       "requestFailed": "Die versoek kon nie gestuur word nie",
       "reviewIntro": "'n Hersiener lees jou verslag en die kontroles se resultate. Vra as jy dink 'n kontrole het 'n fout gemaak.",

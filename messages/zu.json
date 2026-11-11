@@ -6688,6 +6688,7 @@
       "startedBy": "U-{name} uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
       "startedBySomeone": "Othile kule ndawo yokusebenza uqale lo mbiko. Nguye kuphela nabaphathi bendawo yokusebenza abangawushintsha.",
       "openPage": "Vula ikhasi lawo",
+      "takeDown": "Ukuze ususe umbiko, sibhalele ku-<mail>{email}</mail>.",
       "sentToReviewer": "Kuthunyelwe kumbuyekezi",
       "requestFailed": "Isicelo asikwazanga ukuthunyelwa",
       "reviewIntro": "Umbuyekezi ufunda umbiko wakho nemiphumela yokuhlolwa. Cela uma ucabanga ukuthi ukuhlolwa kwenze iphutha.",

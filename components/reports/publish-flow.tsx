@@ -6,6 +6,7 @@
 // word or a changed setting all land on the page by themselves.
 
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { CONTACT_EMAIL } from "@/lib/billing/contact";
 import { useAction, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -1916,6 +1917,17 @@ function LiveReport({ report, fresh, onAnother, onCorrect }: { report: Report; f
           </Link>
         </Button>
       </motion.div>
+      {/* A live report is its author's to correct, not to remove: taking one down is asked of us, and this says how. */}
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        {t.rich("takeDown", {
+          email: CONTACT_EMAIL,
+          mail: (chunks) => (
+            <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(report.key)}`} className="underline underline-offset-2 hover:text-foreground">
+              {chunks}
+            </a>
+          ),
+        })}
+      </p>
     </div>
   );
 }

@@ -6688,6 +6688,7 @@
       "startedBy": "{name} a commencé ce rapport. Seuls cette personne et les administrateurs de l'espace de travail peuvent le modifier.",
       "startedBySomeone": "Quelqu'un de cet espace de travail a commencé ce rapport. Seuls cette personne et les administrateurs de l'espace de travail peuvent le modifier.",
       "openPage": "Ouvrir sa page",
+      "takeDown": "Pour retirer un rapport, écrivez à <mail>{email}</mail>.",
       "sentToReviewer": "Envoyé à un relecteur",
       "requestFailed": "La demande n'a pas pu être envoyée",
       "reviewIntro": "Un relecteur lit votre rapport et ce qu'ont dit les vérifications. Demandez-le si vous pensez qu'une vérification s'est trompée.",
