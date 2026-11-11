@@ -6746,7 +6746,8 @@
           "failed": "コードを確認できませんでした。もう一度お試しください。",
           "unknownCode": "{code} は有効なコードではないか、使用済みです。",
           "nothingOff": "{code} では有効化の料金は割り引かれません。",
-          "codeTooLong": "このコードは長すぎます。"
+          "codeTooLong": "このコードは長すぎます。",
+          "applyFirst": "Apply the code, or clear it, to activate."
         },
         "card": {
           "bankAsked": "銀行が支払いの確認を求めています",

@@ -313,8 +313,8 @@ export const autumn = {
   /** Stripe's page for saving a card without paying anything (Checkout in setup mode), which comes back to `successUrl`. */
   setupPayment(customerId: string, successUrl: string) {
     // Cards only (Apple Pay and Google Pay are cards too): what Stripe's page would also offer, Link and Amazon Pay,
-    // saves a method that isn't a card, which nothing here charges or shows.
-    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { payment_method_types: ["card"] } });
+    // saves a method that isn't a card, which nothing here charges or shows. Link's own button is hidden too.
+    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } } });
   },
 
   /**

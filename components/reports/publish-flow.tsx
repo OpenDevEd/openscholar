@@ -1177,6 +1177,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
     setCode(quote);
   };
   const [quoting, setQuoting] = useState(false);
+  // A code is typed in the bar and not applied yet (or came back from Stripe typed in): Activate waits for it, or it
+  // would charge the price without the code while the code is still being checked.
+  const [carried] = useQueryState("code", parseAsString);
+  const [unapplied, setUnapplied] = useState(!!carried);
   // After the bank didn't confirm a payment, its promotion code is quoted again before the dialog opens, so the dialog
   // opens at the price the person was paying. A code that no longer applies leaves the dialog at the full price; a
   // quote that couldn't be had leaves it closed, so a code still good is never dropped from the charge.
@@ -1214,8 +1218,12 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         else said(t("activateFailed"))(error);
       }
     });
+  // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
+  const requoting = !chose && !code && !!terms?.refused?.code;
   /** What Activate takes from the card, beside the word; null when it's free, or a code or credit covers it. */
-  const amount = free || price === null || due === 0 ? null : dollars(due);
+  const amount = free || price === null || due === 0 || requoting ? null : dollars(due);
+  /** Where a code can be used: past the free activations, while there is a price and no payment waiting. */
+  const vouchers = !free && price !== null && !pending && !!onQuote;
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1283,7 +1291,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   refused={terms.refused !== null}
                   onAddCard={onAddCard}
                   quoted={code && { code: code.code, total: subtotal }}
-                  voucher={!free && price !== null && !pending && onQuote ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} /> : null}
+                  voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} onUnapplied={setUnapplied} /> : null}
                   action={
                     terms.paused || (!free && price === null) ? (
                       <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
@@ -1291,8 +1299,19 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                           <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
                         </span>
                       </TooltipHint>
+                    ) : vouchers && unapplied ? (
+                      <TooltipHint label={t("activation.promo.applyFirst")}>
+                        <span tabIndex={0}>
+                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                        </span>
+                      </TooltipHint>
                     ) : (
-                      <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} // A code that takes the whole price off charges nothing: no card, and no dialog to confirm a charge.
+                      <ActivateButton
+                        label={t("activate")}
+                        amount={amount}
+                        busy={activating || quoting}
+                        disabled={false}
+                        // A code that takes the whole price off charges nothing: no card, and no dialog to confirm a charge.
                         onClick={free ? () => activateNow(false) : code && subtotal === 0 ? () => activateNow(true, code.code, 0) : openPay}
                       />
                     )
@@ -1417,7 +1436,7 @@ function useDollars() {
  * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote> }) {
+function PromoCode({ applied, onApply, onQuote, onUnapplied }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote>; /** Whether a code is typed and not applied: nothing is charged past it. */ onUnapplied: (unapplied: boolean) => void }) {
   // Back from saving a card on Stripe's page, the code applied before leaving is in the address: the field opens with it.
   const [carried] = useQueryState("code", parseAsString);
   const [open, setOpen] = useState(!!carried);
@@ -1431,6 +1450,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
         onApply(await onQuote(typed));
         setWrong(null);
         setTyped("");
+        onUnapplied(false);
       } catch (error) {
         const reason = promoReason(error);
         setWrong(reason ? t(reason, { code: typed.trim() }) : getErrorMessage(error, t("failed")));
@@ -1466,6 +1486,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
                 onChange={(e) => {
                   setTyped(e.target.value);
                   setWrong(null);
+                  onUnapplied(e.target.value.trim() !== "");
                 }}
                 placeholder={t("label")}
                 aria-label={t("label")}
