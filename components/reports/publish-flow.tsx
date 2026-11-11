@@ -1463,6 +1463,7 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
   const t = useTranslations("publishReports.flow.activation.promo");
+  const close = useTranslations("common");
   const apply = () =>
     check(async () => {
       try {
@@ -1512,6 +1513,21 @@ function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quo
               />
               <Button type="submit" variant="outline" className="shrink-0" disabled={!typed.trim() || checking}>
                 {t("apply")}
+              </Button>
+              {/* The way out for someone with no code: the field shuts, and what was typed in it goes. */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="shrink-0 text-muted-foreground"
+                aria-label={close("close")}
+                onClick={() => {
+                  onTyped("");
+                  setWrong(null);
+                  setOpen(false);
+                }}
+              >
+                <X />
               </Button>
             </div>
             {wrong ? (
