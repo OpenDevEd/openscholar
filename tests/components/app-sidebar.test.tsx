@@ -36,7 +36,7 @@ vi.mock("@/convex/_generated/api", () => ({
     organizations: { queries: { workspaces: "organizations:workspaces", myInvitations: "organizations:myInvitations" }, manage: { create: "create", invite: "invite", declineInvitation: "decline", confirmJoin: "confirmJoin" } },
     workspaces: { queries: { personal: "workspaces:personal", bySlug: "workspaces:bySlug" } },
     sharing: { shared: { counts: "sharing:counts" } },
-    reports: { settings: { open: "reports:open" } },
+    reports: { settings: { open: "reports:open" }, flow: { counts: "reports:counts" } },
   },
 }));
 vi.mock("@/lib/auth/use-auth-query", () => ({
