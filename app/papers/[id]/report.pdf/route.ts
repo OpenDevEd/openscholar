@@ -19,8 +19,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   // Not kept either: Cloudflare caches a 404 on a .pdf address, which would outlast a reinstatement by minutes.
   if (report?.state !== "live" || !report.pdfUrl) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   const range = request.headers.get("range");
-  const file = await fetch(report.pdfUrl, { headers: range ? { Range: range } : {}, cache: "no-store" });
-  if (!file.ok || !file.body) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
+  const file = await fetch(report.pdfUrl, { headers: range ? { Range: range } : {}, cache: "no-store" }).catch((error: unknown) => {
+    console.error(JSON.stringify({ event: "report-pdf-unreachable", key, error: String(error).slice(0, 300) }));
+    return null;
+  });
+  // The report is live, so its file not answering is the file store's trouble, not a missing page: said as such, and
+  // logged with what the store answered, so an outage isn't read as a withdrawn report.
+  if (!file?.ok || !file.body) {
+    if (file) console.error(JSON.stringify({ event: "report-pdf-refused", key, status: file.status }));
+    return new Response("The file can't be read right now", { status: 502, headers: { "Cache-Control": "no-store" } });
+  }
   const headers = new Headers({ "Cache-Control": "no-store" });
   for (const name of PASSED) {
     const value = file.headers.get(name);
