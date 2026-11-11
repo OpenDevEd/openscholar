@@ -4,7 +4,7 @@ import { publicationSettingsValidator } from "../evidenceLibraries/publicationVa
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
-import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STATUSES, STEPS } from "../../lib/reports/report";
+import { CHANGE_STAGES, DETAIL_CAPS, RELATION_KINDS, REPORTS_PER_PAGE, STAGES, STATUSES, STEPS } from "../../lib/reports/report";
 
 /** A check as kept: `lib/reports/settings.ts` says what each part means. */
 export const checkValidator = v.object({
@@ -101,6 +101,7 @@ export const metadataValidator = v.object({
 export const stepValidator = literals(STEPS);
 export const statusValidator = literals(STATUSES);
 export const changeStageValidator = literals(CHANGE_STAGES);
+export const stageValidator = literals(STAGES);
 export const registrationValidator = v.object({ crossref: v.boolean(), zenodo: v.boolean(), policy: v.union(v.literal("mint-zenodo"), v.literal("reuse-crossref")) });
 export const depositValidator = v.union(v.literal("none"), v.literal("queued"), v.literal("deposited"), v.literal("failed"));
 export const archiveValidator = v.union(v.literal("none"), v.literal("draft"), v.literal("queued"), v.literal("archived"), v.literal("failed"));
@@ -230,7 +231,9 @@ export const reportRowValidator = v.object({
   /** Whether the person may change it, or only see it. */
   mine: v.boolean(),
 });
-export const reportRowsValidator = capped(v.array(reportRowValidator), REPORTS_PER_PAGE);
+/** A report in its workspace's list, at the stage the Publish page shows: one that passed its checks but a check flagged waits for review. */
+export const authorRowValidator = v.object({ ...reportRowValidator.fields, stage: stageValidator });
+export const reportRowsValidator = capped(v.array(authorRowValidator), REPORTS_PER_PAGE);
 /** A report's authors by name, as its signed agreement lists them. */
 export const signerNamesValidator = capped(v.array(v.string()), DETAIL_CAPS.authors);
 
