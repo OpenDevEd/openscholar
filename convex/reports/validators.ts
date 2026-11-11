@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
-import { publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
+import { keptCustomValidator, publicationSettingsValidator } from "../evidenceLibraries/publicationValidators";
 import { capped } from "../lib/listCaps";
 import { affiliationValidator } from "../lib/validators";
 import { MAX_CHECKS } from "../../lib/reports/settings";
@@ -39,6 +39,9 @@ export const reportSettingsFields = {
   publication: publicationSettingsValidator,
   /** Their credentials, encrypted (convex/lib/crypto.ts). Never sent to a page. */
   encryptedCredentials: v.optional(v.string()),
+  /** The own accounts, kept while a registrar runs on the sandbox: Crossref's details, and their secrets encrypted. */
+  customAccounts: v.optional(keptCustomValidator),
+  encryptedCustomCredentials: v.optional(v.string()),
   publicationSavedAt: v.optional(v.number()),
   perDay: v.number(),
   orgPerDay: v.number(),

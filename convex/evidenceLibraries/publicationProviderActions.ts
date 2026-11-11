@@ -46,9 +46,15 @@ export const verifyAndSave = action({
       const previous: PublicationSecrets = prepared.record
         ? JSON.parse(decrypt(prepared.record.encryptedValue, encryptionKey))
         : {};
-      const { settings, credentials } = await verifiedPublication(
+      const keptCustom = prepared.record?.encryptedCustomValue
+        ? {
+            ...(prepared.record.customAccounts?.crossref && { crossref: prepared.record.customAccounts.crossref }),
+            credentials: JSON.parse(decrypt(prepared.record.encryptedCustomValue, encryptionKey)) as PublicationSecrets,
+          }
+        : undefined;
+      const { settings, credentials, custom } = await verifiedPublication(
         args,
-        { settings: prepared.record?.publicationSettings, credentials: previous },
+        { settings: prepared.record?.publicationSettings, credentials: previous, ...(keptCustom && { custom: keptCustom }) },
         { namespace: prepared.slug },
       );
       await ctx.runMutation(
@@ -60,6 +66,8 @@ export const verifyAndSave = action({
             JSON.stringify(credentials),
             encryptionKey,
           ),
+          customAccounts: { crossref: custom.crossref ?? null, zenodoToken: !!custom.credentials.zenodoToken, crossrefLogin: !!custom.credentials.crossrefLoginId },
+          encryptedCustomCredentials: encrypt(JSON.stringify(custom.credentials), encryptionKey),
           expectedUpdatedAt: args.expectedUpdatedAt,
           verifiedAt: Date.now(),
           credentialDigest: createHmac("sha256", encryptionKey)

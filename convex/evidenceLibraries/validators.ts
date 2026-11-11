@@ -1,4 +1,4 @@
-import { publicationSettingsValidator } from "./publicationValidators";
+import { keptCustomValidator, publicationSettingsValidator } from "./publicationValidators";
 import type { GenericId } from "convex/values";
 import { v, type Infer } from "convex/values";
 import {
@@ -735,6 +735,9 @@ export const evidenceLibraryCredentialFields = {
   pathPattern: v.optional(v.string()),
   instanceKey: v.optional(v.string()),
   encryptedValue: v.string(),
+  /** A publishing record's own accounts, kept while a registrar runs on the sandbox: Crossref's details, and their secrets encrypted. */
+  customAccounts: v.optional(keptCustomValidator),
+  encryptedCustomValue: v.optional(v.string()),
   credentialDigest: v.optional(v.string()),
   maskedHint: v.optional(v.string()),
   validationState: v.union(
