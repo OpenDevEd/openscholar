@@ -74,7 +74,10 @@ export const finish = internalMutation({
     const profile = (await ctx.db.get("users", report.ownerId))?.profile;
     const kept = held ?? keptDetails(signerFilledIn(metadata!, report.signedBy.name, profile));
     if (!held) await ctx.db.patch("reportDetails", details._id, { metadata: kept });
-    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble, ...(lacksByline && { lacksByline }), ...(held && { kept: true }) }, step: lacksByline ? "upload" : "details", title: kept.title.trim() || undefined });
+    // An author who went back to the DOI while the PDF was being read stays there: the reading moves on only a
+    // report still waiting at its upload.
+    const step = report.step === "doi" ? "doi" : lacksByline ? "upload" : "details";
+    await touch(ctx, report, { pdf: { ...report.pdf, pages, text, trouble, ...(lacksByline && { lacksByline }), ...(held && { kept: true }) }, step, title: kept.title.trim() || undefined });
     // The team hears of a reading that failed, of a scan's too: what its author is told first is that it has no text.
     if (unread) await notify(ctx, reportId, "pdf-unread");
     return null;
