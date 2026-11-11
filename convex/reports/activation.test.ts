@@ -122,16 +122,23 @@ describe("activating a report", () => {
     vi.stubEnv("AUTUMN_URL", "https://autumn.test");
     vi.stubEnv("AUTUMN_SECRET_KEY", "am_sk_test_fake");
     const attached: Array<Record<string, unknown>> = [];
+    const emailed: string[] = [];
+    let dropped = 0;
     vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; discounts?: Array<{ promotion_code: string }> };
+      const body = JSON.parse(String(init?.body ?? "{}")) as { customer_id?: string; email?: string; discounts?: Array<{ promotion_code: string }> };
       const due = body.discounts?.[0]?.promotion_code === "FREEDOI" ? 0 : 5;
-      if (url.endsWith("/billing.preview_attach")) return Response.json({ total: due, line_items: [{ total: due }] });
+      if (url.endsWith("/billing.preview_attach")) {
+        // The first quote gets no answer, as a dropped connection gives none: it is asked once more.
+        if (dropped++ === 0) throw new TypeError("fetch failed");
+        return Response.json({ total: due, line_items: [{ total: due }] });
+      }
+      if (body.email) emailed.push(body.email);
       if (url.endsWith("/billing.attach")) {
         attached.push(body);
         return Response.json({ payment_url: null });
       }
-      // The customer has no card saved.
-      return Response.json({ id: body.customer_id, subscriptions: [], purchases: [], invoices: [], balances: {}, payment_method: null });
+      // The customer has no card saved, and no email: an organisation's has none.
+      return Response.json({ id: body.customer_id, email: null, subscriptions: [], purchases: [], invoices: [], balances: {}, payment_method: null });
     });
     const activateWith = (code: string) => world.author.action(api.reports.activation.activate, { workspaceId: world.own, key, pay: true, code });
     // Half off leaves $5 to pay, which takes a card: nothing is asked of Autumn's billing, and no charge is left behind.
@@ -142,6 +149,8 @@ describe("activating a report", () => {
     expect(await activateWith("FREEDOI")).toEqual({ live: true });
     vi.unstubAllGlobals();
     expect(attached).toMatchObject([{ invoice_mode: { enabled: true }, discounts: [{ promotion_code: "FREEDOI" }] }]);
+    // Autumn bills by invoice only a customer with an email: it was given the activating person's first.
+    expect(emailed).toHaveLength(1);
     expect(await row(world.t, key)).toMatchObject({ status: "live" });
     expect((await activations(world)).at(-1)).toMatchObject({ state: "live", free: false, code: "FREEDOI", charge: { total: 0 } });
   });

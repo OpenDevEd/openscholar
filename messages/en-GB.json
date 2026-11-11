@@ -6746,7 +6746,8 @@
           "failed": "That code couldn't be checked. Try again.",
           "unknownCode": "{code} isn't a code we know, or it has been used up.",
           "nothingOff": "{code} doesn't take anything off an activation.",
-          "codeTooLong": "That code is too long to be one of ours."
+          "codeTooLong": "That code is too long to be one of ours.",
+          "applyFirst": "Apply the code, or clear it, to activate."
         },
         "card": {
           "bankAsked": "Your bank asked to confirm the payment",

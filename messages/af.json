@@ -6747,7 +6747,8 @@
           "failed": "Daardie kode kon nie nagegaan word nie. Probeer weer.",
           "unknownCode": "{code} is nie ’n kode wat ons ken nie, of dit is opgebruik.",
           "nothingOff": "{code} haal niks van ’n aktivering af nie.",
-          "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees."
+          "codeTooLong": "Daardie kode is te lank om een van ons s’n te wees.",
+          "applyFirst": "Apply the code, or clear it, to activate."
         },
         "card": {
           "bankAsked": "Jou bank het gevra om die betaling te bevestig",

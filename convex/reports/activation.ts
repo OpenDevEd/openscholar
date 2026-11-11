@@ -146,6 +146,8 @@ const preparedValidator = v.object({
   charging: v.boolean(),
   /** Another report of the workspace whose charge waits on the bank, by its key: no new charge until it's answered. */
   waitingOn: v.union(v.string(), v.null()),
+  /** Who is activating, by their email: an organisation's customer has none until it is given one. */
+  email: v.union(v.string(), v.null()),
 });
 type Prepared = Infer<typeof preparedValidator>;
 
@@ -171,6 +173,7 @@ export const prepare = internalQuery({
       pending: pending ? { url: pending.payUrl ?? null } : null,
       charging: (await pendingOf(ctx, report._id, true))?.state === "charging",
       waitingOn: await waitingOther(ctx, actor.workspaceId, report._id),
+      email: (await ctx.db.get("users", actor.userId))?.email ?? null,
     };
   },
 });
@@ -363,6 +366,9 @@ export const activate = action({
       if (unbilled && linesOf(await autumn.previewAttach(first.customerId, ACTIVATION_PLAN, false, undefined, code).catch(refusedCode<AutumnPreview>(code))) > 0.005) {
         throw createError("BILLING_CARD_REQUIRED", `${code} doesn't cover the whole price. Add a payment method to pay the rest.`, { reason: "cardForRest" });
       }
+      // Autumn bills by invoice only a customer with an email, and an organisation's has none until a card is saved:
+      // it takes its admin's, who is the one activating.
+      if (unbilled && !customer.email && first.email) await autumn.customer(first.customerId, { email: first.email });
       const started: { activationId: Id<"reportActivations">; code?: string; unbilled?: boolean } = await ctx.runMutation(internal.reports.activation.begin, { actor, key, ...(code && { code }), ...(unbilled && { unbilled }) });
       const asked = started.code;
       let charged: AutumnCharge;

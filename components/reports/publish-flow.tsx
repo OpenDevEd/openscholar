@@ -1167,8 +1167,17 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
   // Credit on the Stripe balance is taken first, in cents: what's left is what the card pays.
   const credit = Math.round((terms?.credit ?? 0) * 100);
   const [paying, setPaying] = useState(false);
+  /** Where a code can be used: past the free activations, while there is a price and no payment waiting. */
+  const vouchers = !free && price !== null && !pending && !!onQuote;
+  // What is typed in the bar's code field, kept here so every way of charging sees it. Back from saving a card on
+  // Stripe's page, the code applied before leaving is in the address and starts typed in.
+  const [carried] = useQueryState("code", parseAsString);
+  const [typed, setTyped] = useState(carried ?? "");
+  // A code typed and not applied: nothing is charged past it, or the price without the code would be.
+  const unapplied = vouchers && typed.trim() !== "";
   // The charge's dialog closes when the person stops being an admin while it's open: they can't pay for it any more.
-  if (paying && !admin) setPaying(false);
+  // It never stays open over a code still to be applied either.
+  if (paying && (!admin || unapplied)) setPaying(false);
   const [code, setCode] = useState<Quote | null>(null);
   // The person applied or removed a code here: from then on the code is theirs, not the last payment's.
   const [chose, setChose] = useState(false);
@@ -1214,8 +1223,10 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
         else said(t("activateFailed"))(error);
       }
     });
+  // The last payment's code is quoted again when Activate is pressed: until then the price isn't known, so none is shown.
+  const requoting = !chose && !code && !!terms?.refused?.code;
   /** What Activate takes from the card, beside the word; null when it's free, or a code or credit covers it. */
-  const amount = free || price === null || due === 0 ? null : dollars(due);
+  const amount = free || price === null || due === 0 || requoting ? null : dollars(due);
 
   const head = !report ? (
     <StepHead key="running" title={t("running")} aside={<StatusChip tone="running" icon="tone">{t("ofTotal", { done: answered, total: rows.length })}</StatusChip>}>
@@ -1283,7 +1294,7 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                   refused={terms.refused !== null}
                   onAddCard={onAddCard}
                   quoted={code && { code: code.code, total: subtotal }}
-                  voucher={!free && price !== null && !pending && onQuote ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} /> : null}
+                  voucher={vouchers ? <PromoCode applied={code} onApply={choose} onQuote={onQuote} typed={typed} onTyped={setTyped} /> : null}
                   action={
                     terms.paused || (!free && price === null) ? (
                       <TooltipHint label={t(terms.paused ? "activation.paused" : "activation.notForSale")}>
@@ -1291,8 +1302,19 @@ function Checks({ rows, report, humanReview, terms, onActivate, onAddCard, onQuo
                           <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
                         </span>
                       </TooltipHint>
+                    ) : unapplied ? (
+                      <TooltipHint label={t("activation.promo.applyFirst")}>
+                        <span tabIndex={0}>
+                          <ActivateButton label={t("activate")} amount={null} busy={false} disabled onClick={() => {}} />
+                        </span>
+                      </TooltipHint>
                     ) : (
-                      <ActivateButton label={t("activate")} amount={amount} busy={activating || quoting} disabled={false} // A code that takes the whole price off charges nothing: no card, and no dialog to confirm a charge.
+                      <ActivateButton
+                        label={t("activate")}
+                        amount={amount}
+                        busy={activating || quoting}
+                        disabled={false}
+                        // A code that takes the whole price off charges nothing: no card, and no dialog to confirm a charge.
                         onClick={free ? () => activateNow(false) : code && subtotal === 0 ? () => activateNow(true, code.code, 0) : openPay}
                       />
                     )
@@ -1417,11 +1439,9 @@ function useDollars() {
  * A promotion code for an activation that's paid for, in the payment bar: a link until it's wanted, then a field.
  * Autumn quotes the activation with the code, and says when it doesn't know the code or it has been used up.
  */
-function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote> }) {
-  // Back from saving a card on Stripe's page, the code applied before leaving is in the address: the field opens with it.
-  const [carried] = useQueryState("code", parseAsString);
-  const [open, setOpen] = useState(!!carried);
-  const [typed, setTyped] = useState(carried ?? "");
+function PromoCode({ applied, onApply, onQuote, typed, onTyped }: { applied: Quote | null; onApply: (quote: Quote | null) => void; onQuote: (code: string) => Promise<Quote>; /** What is typed in the field, which its owner holds: nothing is charged while a code waits there. */ typed: string; onTyped: (typed: string) => void }) {
+  // A code already typed (it came back from Stripe's page in the address) opens the field with it.
+  const [open, setOpen] = useState(typed !== "");
   const [wrong, setWrong] = useState<string | null>(null);
   const [checking, check] = useTransition();
   const t = useTranslations("publishReports.flow.activation.promo");
@@ -1430,7 +1450,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
       try {
         onApply(await onQuote(typed));
         setWrong(null);
-        setTyped("");
+        onTyped("");
       } catch (error) {
         const reason = promoReason(error);
         setWrong(reason ? t(reason, { code: typed.trim() }) : getErrorMessage(error, t("failed")));
@@ -1464,7 +1484,7 @@ function PromoCode({ applied, onApply, onQuote }: { applied: Quote | null; onApp
                 value={typed}
                 maxLength={100}
                 onChange={(e) => {
-                  setTyped(e.target.value);
+                  onTyped(e.target.value);
                   setWrong(null);
                 }}
                 placeholder={t("label")}

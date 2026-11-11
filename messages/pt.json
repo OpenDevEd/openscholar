@@ -6747,7 +6747,8 @@
           "failed": "Não foi possível verificar esse código. Tente novamente.",
           "unknownCode": "{code} não é um código que conheçamos, ou já foi esgotado.",
           "nothingOff": "{code} não desconta nada numa ativação.",
-          "codeTooLong": "Esse código é demasiado longo para ser um dos nossos."
+          "codeTooLong": "Esse código é demasiado longo para ser um dos nossos.",
+          "applyFirst": "Apply the code, or clear it, to activate."
         },
         "card": {
           "bankAsked": "O seu banco pediu para confirmar o pagamento",

@@ -6746,7 +6746,8 @@
           "failed": "Leyo khodi ayikwazanga ukuhlolwa. Zama futhi.",
           "unknownCode": "{code} akuyona ikhodi esiyaziyo, noma isisetshenziswe yaphela.",
           "nothingOff": "{code} ayehlisi lutho entengweni yokwenza isebenze.",
-          "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu."
+          "codeTooLong": "Leyo khodi yinde kakhulu ukuba ibe ngeyethu.",
+          "applyFirst": "Apply the code, or clear it, to activate."
         },
         "card": {
           "bankAsked": "Ibhange lakho licele ukuqinisekisa inkokhelo",

@@ -35,6 +35,8 @@ export type AutumnSubscription = {
 
 export type AutumnCustomer = {
   id: string;
+  /** None on an organisation's customer until someone gives it one. */
+  email?: string | null;
   stripe_id: string | null;
   subscriptions: AutumnSubscription[];
   purchases?: Array<{ plan_id: string }>;
@@ -127,6 +129,9 @@ export class AutumnError extends Error {
   }
 }
 
+/** Calls that only read, or that Autumn answers the same way however often they're sent. */
+const REPEATABLE = /(^customers\.get_or_create$|\.preview_[a-z_]+$|\.list$)/;
+
 function config() {
   const url = process.env.AUTUMN_URL;
   const secretKey = process.env.AUTUMN_SECRET_KEY;
@@ -142,14 +147,23 @@ async function call<T>(
   idempotencyKey?: string,
 ): Promise<T> {
   const { url, secretKey } = config();
-  const response = await fetch(`${url}/v1/${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      "Content-Type": "application/json",
-      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
-    },
-    body: JSON.stringify(body),
+  const send = () =>
+    fetch(`${url}/v1/${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+  // A request that never got an answer (a dropped or stale connection) is sent once more when sending it twice changes
+  // nothing: a read, or a change that carries its idempotency key. People saw it as a code that "couldn't be checked".
+  const repeatable = idempotencyKey !== undefined || REPEATABLE.test(path);
+  const response = await send().catch((error: unknown) => {
+    if (!repeatable) throw error;
+    console.warn(`[autumn] ${path} got no answer (${String(error).slice(0, 200)}); asking once more`);
+    return send();
   });
   const text = await response.text();
   let data: unknown = text;
@@ -299,8 +313,8 @@ export const autumn = {
   /** Stripe's page for saving a card without paying anything (Checkout in setup mode), which comes back to `successUrl`. */
   setupPayment(customerId: string, successUrl: string) {
     // Cards only (Apple Pay and Google Pay are cards too): what Stripe's page would also offer, Link and Amazon Pay,
-    // saves a method that isn't a card, which nothing here charges or shows.
-    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { payment_method_types: ["card"] } });
+    // saves a method that isn't a card, which nothing here charges or shows. Link's own button is hidden too.
+    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, success_url: successUrl, checkout_session_params: { payment_method_types: ["card"], wallet_options: { link: { display: "never" } } } });
   },
 
   /**
