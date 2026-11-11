@@ -21,6 +21,9 @@ const failureCodeValidator = v.union(
 const base = {
   key: v.string(),
   provider: v.union(
+    // The papers added to the community one at a time (Added papers). Every provider new-el has must be here: one it
+    // doesn't know refuses the whole report, and the configuration page then shows every source as not imported.
+    v.literal("added"),
     v.literal("zotero"),
     v.literal("mendeley"),
     v.literal("openalex"),
