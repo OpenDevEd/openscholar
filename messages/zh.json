@@ -6887,6 +6887,7 @@
     "orcidDown": "暂时无法搜索 ORCID",
     "searching": "正在搜索 ORCID",
     "nobody": "ORCID 上没有叫这个名字的人",
+    "notOrcid": "这个 iD 有一位数字不对。请在 orcid.org 上核对。",
     "noName": "未提供姓名",
     "noInstitution": "ORCID 上无机构",
     "placesMore": "{places}，以及另外 {more} 个",
